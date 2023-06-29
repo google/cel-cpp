@@ -15,10 +15,8 @@
 #include "internal/proto_wire.h"
 
 #include <limits>
-#include <utility>
 
 #include "absl/strings/cord.h"
-#include "absl/strings/cord_buffer.h"
 #include "internal/testing.h"
 
 namespace cel::internal {
@@ -44,9 +42,7 @@ namespace {
 template <typename T>
 absl::Cord VarintEncode(T value) {
   absl::Cord cord;
-  absl::CordBuffer buffer;
-  internal::VarintEncode(value, buffer);
-  cord.Append(std::move(buffer));
+  internal::VarintEncode(value, cord);
   return cord;
 }
 
@@ -73,9 +69,7 @@ namespace {
 template <typename T>
 absl::Cord Fixed64Encode(T value) {
   absl::Cord cord;
-  absl::CordBuffer buffer;
-  internal::Fixed64Encode(value, buffer);
-  cord.Append(std::move(buffer));
+  internal::Fixed64Encode(value, cord);
   return cord;
 }
 

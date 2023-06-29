@@ -32,7 +32,9 @@
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
 #include "absl/numeric/bits.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/cord_buffer.h"
+#include "absl/strings/string_view.h"
 
 namespace cel::internal {
 
@@ -88,66 +90,81 @@ inline constexpr uint32_t MakeProtoWireTag(uint32_t field_number,
   return (field_number << 3) | static_cast<uint32_t>(type);
 }
 
-// Encodes `value` as varint and appends it to `buffer`.
-inline void VarintEncode(uint64_t value, absl::CordBuffer& buffer) {
-  auto available = buffer.available_up_to(kMaxVarintSize<uint64_t>);
+// Encodes `value` as varint and stores it in `buffer`. This method should not
+// be used outside of this header.
+inline size_t VarintEncodeUnsafe(uint64_t value, char* buffer) {
   size_t length = 0;
   while (ABSL_PREDICT_FALSE(value >= 0x80)) {
-    available[length++] = static_cast<char>(static_cast<uint8_t>(value | 0x80));
+    buffer[length++] = static_cast<char>(static_cast<uint8_t>(value | 0x80));
     value >>= 7;
   }
-  available[length++] = static_cast<char>(static_cast<uint8_t>(value));
-  buffer.IncreaseLengthBy(length);
+  buffer[length++] = static_cast<char>(static_cast<uint8_t>(value));
+  return length;
 }
 
 // Encodes `value` as varint and appends it to `buffer`.
-inline void VarintEncode(int64_t value, absl::CordBuffer& buffer) {
+inline void VarintEncode(uint64_t value, absl::Cord& buffer) {
+  // `absl::Cord::GetAppendBuffer` will allocate a block regardless of whether
+  // `buffer` has enough inline storage space left. To take advantage of inline
+  // storage space, we need to just do a plain append.
+  char scratch[kMaxVarintSize<uint64_t>];
+  buffer.Append(absl::string_view(scratch, VarintEncodeUnsafe(value, scratch)));
+}
+
+// Encodes `value` as varint and appends it to `buffer`.
+inline void VarintEncode(int64_t value, absl::Cord& buffer) {
   return VarintEncode(absl::bit_cast<uint64_t>(value), buffer);
 }
 
 // Encodes `value` as varint and appends it to `buffer`.
-inline void VarintEncode(uint32_t value, absl::CordBuffer& buffer) {
-  auto available = buffer.available_up_to(kMaxVarintSize<uint32_t>);
-  size_t length = 0;
-  while (ABSL_PREDICT_FALSE(value >= 0x80)) {
-    available[length++] = static_cast<char>(static_cast<uint8_t>(value | 0x80));
-    value >>= 7;
-  }
-  available[length++] = static_cast<char>(static_cast<uint8_t>(value));
-  buffer.IncreaseLengthBy(length);
+inline void VarintEncode(uint32_t value, absl::Cord& buffer) {
+  // `absl::Cord::GetAppendBuffer` will allocate a block regardless of whether
+  // `buffer` has enough inline storage space left. To take advantage of inline
+  // storage space, we need to just do a plain append.
+  char scratch[kMaxVarintSize<uint32_t>];
+  buffer.Append(absl::string_view(scratch, VarintEncodeUnsafe(value, scratch)));
 }
 
 // Encodes `value` as varint and appends it to `buffer`.
-inline void VarintEncode(int32_t value, absl::CordBuffer& buffer) {
+inline void VarintEncode(int32_t value, absl::Cord& buffer) {
   // Sign-extend to 64-bits, then encode.
   return VarintEncode(static_cast<int64_t>(value), buffer);
 }
 
 // Encodes `value` as varint and appends it to `buffer`.
-inline void VarintEncode(bool value, absl::CordBuffer& buffer) {
-  auto available = buffer.available_up_to(1);
-  available[0] = value ? char{1} : char{0};
-  buffer.IncreaseLengthBy(1);
+inline void VarintEncode(bool value, absl::Cord& buffer) {
+  // `absl::Cord::GetAppendBuffer` will allocate a block regardless of whether
+  // `buffer` has enough inline storage space left. To take advantage of inline
+  // storage space, we need to just do a plain append.
+  char scratch = value ? char{1} : char{0};
+  buffer.Append(absl::string_view(&scratch, 1));
+}
+
+inline void Fixed64EncodeUnsafe(uint64_t value, char* buffer) {
+  buffer[0] = static_cast<char>(static_cast<uint8_t>(value));
+  buffer[1] = static_cast<char>(static_cast<uint8_t>(value >> 8));
+  buffer[2] = static_cast<char>(static_cast<uint8_t>(value >> 16));
+  buffer[3] = static_cast<char>(static_cast<uint8_t>(value >> 24));
+  buffer[4] = static_cast<char>(static_cast<uint8_t>(value >> 32));
+  buffer[5] = static_cast<char>(static_cast<uint8_t>(value >> 40));
+  buffer[6] = static_cast<char>(static_cast<uint8_t>(value >> 48));
+  buffer[7] = static_cast<char>(static_cast<uint8_t>(value >> 56));
 }
 
 // Encodes `value` as a fixed-size number, see
 // https://protobuf.dev/programming-guides/encoding/#non-varint-numbers.
-inline void Fixed64Encode(uint64_t value, absl::CordBuffer& buffer) {
-  auto available = buffer.available_up_to(8);
-  available[0] = static_cast<char>(static_cast<uint8_t>(value));
-  available[1] = static_cast<char>(static_cast<uint8_t>(value >> 8));
-  available[2] = static_cast<char>(static_cast<uint8_t>(value >> 16));
-  available[3] = static_cast<char>(static_cast<uint8_t>(value >> 24));
-  available[4] = static_cast<char>(static_cast<uint8_t>(value >> 32));
-  available[5] = static_cast<char>(static_cast<uint8_t>(value >> 40));
-  available[6] = static_cast<char>(static_cast<uint8_t>(value >> 48));
-  available[7] = static_cast<char>(static_cast<uint8_t>(value >> 56));
-  buffer.IncreaseLengthBy(8);
+inline void Fixed64Encode(uint64_t value, absl::Cord& buffer) {
+  // `absl::Cord::GetAppendBuffer` will allocate a block regardless of whether
+  // `buffer` has enough inline storage space left. To take advantage of inline
+  // storage space, we need to just do a plain append.
+  char scratch[8];
+  Fixed64EncodeUnsafe(value, scratch);
+  buffer.Append(absl::string_view(scratch, ABSL_ARRAYSIZE(scratch)));
 }
 
 // Encodes `value` as a fixed-size number, see
 // https://protobuf.dev/programming-guides/encoding/#non-varint-numbers.
-inline void Fixed64Encode(double value, absl::CordBuffer& buffer) {
+inline void Fixed64Encode(double value, absl::Cord& buffer) {
   Fixed64Encode(absl::bit_cast<uint64_t>(value), buffer);
 }
 
