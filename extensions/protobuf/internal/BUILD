@@ -155,3 +155,31 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "field_mask",
+    srcs = ["field_mask.cc"],
+    hdrs = ["field_mask.h"],
+    deps = [
+        "//common:json",
+        "//internal:casts",
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "field_mask_test",
+    srcs = ["field_mask_test.cc"],
+    deps = [
+        ":field_mask",
+        "//internal:testing",
+        "@com_google_absl//absl/memory",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
