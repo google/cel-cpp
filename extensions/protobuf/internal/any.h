@@ -16,14 +16,18 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_ANY_H_
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/any.h"
 #include "google/protobuf/message.h"
 
 namespace cel::extensions::protobuf_internal {
 
 absl::Status SetAny(google::protobuf::Message& message, absl::string_view type_url,
                     const absl::Cord& value);
+
+absl::StatusOr<Any> AnyFromProto(const google::protobuf::Message& message);
 
 }  // namespace cel::extensions::protobuf_internal
 

@@ -133,6 +133,7 @@ cc_library(
     srcs = ["any.cc"],
     hdrs = ["any.h"],
     deps = [
+        "//common:any",
         "//internal:casts",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:absl_check",

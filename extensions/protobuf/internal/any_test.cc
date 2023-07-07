@@ -28,14 +28,17 @@
 namespace cel::extensions::protobuf_internal {
 namespace {
 
-TEST(Any, GeneratedToProto) {
+TEST(Any, GeneratedRoundtrip) {
   google::protobuf::Any proto;
   ASSERT_OK(SetAny(proto, "type.googleapis.com/foo.Bar", absl::Cord("baz")));
   EXPECT_EQ(proto.type_url(), "type.googleapis.com/foo.Bar");
   EXPECT_EQ(proto.value(), "baz");
+  ASSERT_OK_AND_ASSIGN(auto any, AnyFromProto(proto));
+  EXPECT_EQ(any.type_url(), proto.type_url());
+  EXPECT_EQ(any.value(), proto.value());
 }
 
-TEST(Any, CustomToProto) {
+TEST(Any, CustomRoundtrip) {
   google::protobuf::SimpleDescriptorDatabase database;
   {
     google::protobuf::FileDescriptorProto fd;
@@ -50,7 +53,6 @@ TEST(Any, CustomToProto) {
       factory.GetPrototype(pool.FindMessageTypeByName("google.protobuf.Any"))
           ->New());
   const auto* descriptor = proto->GetDescriptor();
-  const auto* reflection = proto->GetReflection();
   const auto* type_url_field = descriptor->FindFieldByName("type_url");
   ASSERT_NE(type_url_field, nullptr);
   const auto* value_field = descriptor->FindFieldByName("value");
@@ -58,9 +60,9 @@ TEST(Any, CustomToProto) {
 
   ASSERT_OK(SetAny(*proto, "type.googleapis.com/foo.Bar", absl::Cord("baz")));
 
-  EXPECT_EQ(reflection->GetString(*proto, type_url_field),
-            "type.googleapis.com/foo.Bar");
-  EXPECT_EQ(reflection->GetString(*proto, value_field), "baz");
+  ASSERT_OK_AND_ASSIGN(auto any, AnyFromProto(*proto));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/foo.Bar");
+  EXPECT_EQ(any.value(), "baz");
 }
 
 }  // namespace

@@ -73,4 +73,49 @@ absl::Status SetAny(google::protobuf::Message& message, absl::string_view type_u
   return absl::OkStatus();
 }
 
+absl::StatusOr<Any> AnyFromProto(const google::protobuf::Message& message) {
+  ABSL_DCHECK_EQ(message.GetTypeName(), "google.protobuf.Any");
+  const auto* desc = message.GetDescriptor();
+  if (ABSL_PREDICT_FALSE(desc == nullptr)) {
+    return absl::InternalError(
+        absl::StrCat(message.GetTypeName(), " missing descriptor"));
+  }
+  if (ABSL_PREDICT_TRUE(desc == google::protobuf::Any::descriptor())) {
+    const auto& any =
+        cel::internal::down_cast<const google::protobuf::Any&>(message);
+    return MakeAny(std::string(any.type_url()), any.value());
+  }
+  const auto* reflect = message.GetReflection();
+  if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
+    return absl::InternalError(
+        absl::StrCat(message.GetTypeName(), " missing reflection"));
+  }
+  const auto* type_url_field =
+      desc->FindFieldByNumber(google::protobuf::Any::kTypeUrlFieldNumber);
+  if (ABSL_PREDICT_FALSE(type_url_field == nullptr)) {
+    return absl::InternalError(absl::StrCat(
+        message.GetTypeName(), " missing type_url field descriptor"));
+  }
+  if (ABSL_PREDICT_FALSE(type_url_field->cpp_type() !=
+                         google::protobuf::FieldDescriptor::CPPTYPE_STRING)) {
+    return absl::InternalError(absl::StrCat(
+        message.GetTypeName(), " has unexpected type_url field type: ",
+        type_url_field->cpp_type_name()));
+  }
+  const auto* value_field =
+      desc->FindFieldByNumber(google::protobuf::Any::kValueFieldNumber);
+  if (ABSL_PREDICT_FALSE(value_field == nullptr)) {
+    return absl::InternalError(
+        absl::StrCat(message.GetTypeName(), " missing value field descriptor"));
+  }
+  if (ABSL_PREDICT_FALSE(value_field->cpp_type() !=
+                         google::protobuf::FieldDescriptor::CPPTYPE_STRING)) {
+    return absl::InternalError(absl::StrCat(
+        message.GetTypeName(),
+        " has unexpected value field type: ", value_field->cpp_type_name()));
+  }
+  return MakeAny(reflect->GetString(message, type_url_field),
+                 reflect->GetCord(message, value_field));
+}
+
 }  // namespace cel::extensions::protobuf_internal

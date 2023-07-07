@@ -40,6 +40,17 @@ class Any final {
   absl::Cord value_;
 };
 
+inline Any MakeAny(std::string type_url, absl::Cord value) {
+  Any any;
+  any.set_type_url(std::move(type_url));
+  any.set_value(std::move(value));
+  return any;
+}
+
+inline Any MakeAny(std::string type_url, const std::string& value) {
+  return MakeAny(std::move(type_url), absl::Cord(value));
+}
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_ANY_H_
