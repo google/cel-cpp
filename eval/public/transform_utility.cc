@@ -79,8 +79,8 @@ absl::Status CelValueToValue(const CelValue& value, Value* result,
       auto& list = *value.ListOrDie();
       auto* list_value = result->mutable_list_value();
       for (int i = 0; i < list.size(); ++i) {
-        CEL_RETURN_IF_ERROR(
-            CelValueToValue(list[i], list_value->add_values(), arena));
+        CEL_RETURN_IF_ERROR(CelValueToValue(list.Get(arena, i),
+                                            list_value->add_values(), arena));
       }
       break;
     }

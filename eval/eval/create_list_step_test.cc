@@ -13,6 +13,7 @@
 #include "eval/internal/interop.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
+#include "eval/public/testing/matchers.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
@@ -136,8 +137,10 @@ TEST_P(CreateListStepTest, CreateListOne) {
   ASSERT_OK_AND_ASSIGN(CelValue result,
                        RunExpression({100}, &arena, GetParam()));
   ASSERT_TRUE(result.IsList());
-  EXPECT_THAT(result.ListOrDie()->size(), Eq(1));
-  EXPECT_THAT((*result.ListOrDie())[0].Int64OrDie(), Eq(100));
+  const auto& list = *result.ListOrDie();
+  ASSERT_THAT(list.size(), Eq(1));
+  const CelValue& value = list.Get(&arena, 0);
+  EXPECT_THAT(value, test::IsCelInt64(100));
 }
 
 TEST_P(CreateListStepTest, CreateListWithError) {
@@ -181,9 +184,10 @@ TEST_P(CreateListStepTest, CreateListHundred) {
   ASSERT_OK_AND_ASSIGN(CelValue result,
                        RunExpression(values, &arena, GetParam()));
   ASSERT_TRUE(result.IsList());
-  EXPECT_THAT(result.ListOrDie()->size(), Eq(static_cast<int>(values.size())));
+  const auto& list = *result.ListOrDie();
+  EXPECT_THAT(list.size(), Eq(static_cast<int>(values.size())));
   for (size_t i = 0; i < values.size(); i++) {
-    EXPECT_THAT((*result.ListOrDie())[i].Int64OrDie(), Eq(values[i]));
+    EXPECT_THAT(list.Get(&arena, i), test::IsCelInt64(values[i]));
   }
 }
 

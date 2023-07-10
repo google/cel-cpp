@@ -7,17 +7,22 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/handle.h"
+#include "base/types/list_type.h"
+#include "base/values/list_value_builder.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/eval/mutable_list_impl.h"
 #include "eval/internal/interop.h"
-#include "eval/public/containers/container_backed_list_impl.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
 using ::cel::Handle;
+using ::cel::ListType;
+using ::cel::ListValueBuilderInterface;
+using ::cel::UniqueRef;
 using ::cel::UnknownValue;
 using ::cel::interop_internal::CreateLegacyListValue;
 using ::cel::interop_internal::ModernValueToLegacyValueOrDie;
@@ -75,11 +80,20 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
       frame->memory_manager());
 
   if (immutable_) {
-    // TODO(uncreated-issue/23): switch to new cel::ListValue in phase 2
-    result =
-        CreateLegacyListValue(google::protobuf::Arena::Create<ContainerBackedListImpl>(
-            arena,
-            ModernValueToLegacyValueOrDie(frame->memory_manager(), args)));
+    auto& type_factory = frame->value_factory().type_factory();
+    // TODO(uncreated-issue/50): add option for checking lists have homogenous element
+    // types and use a more specific list type.
+    CEL_ASSIGN_OR_RETURN(Handle<ListType> type, type_factory.CreateListType(
+                                                    type_factory.GetDynType()));
+    CEL_ASSIGN_OR_RETURN(UniqueRef<ListValueBuilderInterface> builder,
+                         type->NewValueBuilder(frame->value_factory()));
+
+    builder->reserve(args.size());
+    for (const auto& arg : args) {
+      CEL_RETURN_IF_ERROR(builder->Add(arg));
+    }
+
+    CEL_ASSIGN_OR_RETURN(result, std::move(*builder).Build());
   } else {
     // TODO(uncreated-issue/23): switch to new cel::ListValue in phase 2
     result = CreateLegacyListValue(google::protobuf::Arena::Create<MutableListImpl>(

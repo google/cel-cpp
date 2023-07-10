@@ -92,6 +92,42 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest, MapComp) {
               test::EqualsCelValue(CelValue::CreateInt64(4)));
 }
 
+TEST(CelExpressionBuilderFlatImplComprehensionsTest, ExistsOneTrue) {
+  cel::RuntimeOptions options;
+  options.enable_comprehension_list_append = true;
+  CelExpressionBuilderFlatImpl builder(options);
+
+  ASSERT_OK_AND_ASSIGN(auto parsed_expr,
+                       parser::Parse("[7].exists_one(a, a == 7)"));
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
+  EXPECT_THAT(result, test::IsCelBool(true));
+}
+
+TEST(CelExpressionBuilderFlatImplComprehensionsTest, ExistsOneFalse) {
+  cel::RuntimeOptions options;
+  options.enable_comprehension_list_append = true;
+  CelExpressionBuilderFlatImpl builder(options);
+
+  ASSERT_OK_AND_ASSIGN(auto parsed_expr,
+                       parser::Parse("[7, 7].exists_one(a, a == 7)"));
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
+  EXPECT_THAT(result, test::IsCelBool(false));
+}
+
 TEST(CelExpressionBuilderFlatImplComprehensionsTest, ListCompWithUnknowns) {
   cel::RuntimeOptions options;
   options.unknown_processing = UnknownProcessingOptions::kAttributeAndFunction;

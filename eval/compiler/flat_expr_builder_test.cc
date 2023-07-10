@@ -1807,6 +1807,37 @@ TEST(FlatExprBuilderTest, EmptyCallList) {
   }
 }
 
+// Note: this should not be allowed by default, but updating is a breaking
+// change.
+TEST(FlatExprBuilderTest, HeterogeneousListsAllowed) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("[17, 'seventeen']"));
+
+  cel::RuntimeOptions options;
+  CelExpressionBuilderFlatImpl builder(options);
+
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+
+  ASSERT_TRUE(result.IsList()) << result.DebugString();
+
+  const auto& list = *result.ListOrDie();
+  ASSERT_EQ(list.size(), 2);
+
+  CelValue elem0 = list.Get(&arena, 0);
+  CelValue elem1 = list.Get(&arena, 1);
+
+  EXPECT_THAT(elem0, test::IsCelInt64(17));
+  EXPECT_THAT(elem1, test::IsCelString("seventeen"));
+}
+
 TEST(FlatExprBuilderTest, NullUnboxingEnabled) {
   TestMessage message;
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,

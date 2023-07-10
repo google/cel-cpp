@@ -72,15 +72,17 @@ using ::google::api::expr::runtime::UnknownSet;
 
 class LegacyCelList final : public CelList {
  public:
-  explicit LegacyCelList(Handle<ListValue> impl) : impl_(std::move(impl)) {}
+  // Arena ptr must be the same arena the list was allocated on.
+  LegacyCelList(Handle<ListValue> impl, google::protobuf::Arena* arena)
+      : impl_(std::move(impl)), arena_(arena) {}
 
-  CelValue operator[](int index) const override { return Get(nullptr, index); }
+  CelValue operator[](int index) const override { return Get(arena_, index); }
 
   CelValue Get(google::protobuf::Arena* arena, int index) const override {
     if (arena == nullptr) {
       static const absl::Status* status = []() {
         return new absl::Status(absl::InvalidArgumentError(
-            "CelList::Get must be called with google::protobuf::Arena* for "
+            "CelList::Get must be called with non-null google::protobuf::Arena* for "
             "interoperation"));
       }();
       return CelValue::CreateError(status);
@@ -117,6 +119,7 @@ class LegacyCelList final : public CelList {
   }
 
   Handle<ListValue> impl_;
+  google::protobuf::Arena* arena_;
 };
 
 class LegacyCelMap final : public CelMap {
@@ -532,8 +535,8 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
         return CelValue::CreateList(reinterpret_cast<const CelList*>(
             value.As<base_internal::LegacyListValue>()->value()));
       }
-      return CelValue::CreateList(
-          google::protobuf::Arena::Create<LegacyCelList>(arena, value.As<ListValue>()));
+      return CelValue::CreateList(google::protobuf::Arena::Create<LegacyCelList>(
+          arena, value.As<ListValue>(), arena));
     }
     case ValueKind::kMap: {
       if (value->Is<base_internal::LegacyMapValue>()) {
