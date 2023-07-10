@@ -20,7 +20,22 @@
 #include "internal/testing.h"
 
 namespace cel::internal {
+
+template <typename T>
+inline constexpr bool operator==(const VarintDecodeResult<T>& lhs,
+                                 const VarintDecodeResult<T>& rhs) {
+  return lhs.value == rhs.value && lhs.size_bytes == rhs.size_bytes;
+}
+
+inline constexpr bool operator==(const ProtoWireTag& lhs,
+                                 const ProtoWireTag& rhs) {
+  return lhs.field_number() == rhs.field_number() && lhs.type() == rhs.type();
+}
+
 namespace {
+
+using testing::Eq;
+using testing::Optional;
 
 TEST(Varint, Size) {
   EXPECT_EQ(VarintSize(int32_t{-1}),
@@ -64,6 +79,29 @@ TEST(Varint, Encode) {
             "\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01");
 }
 
+TEST(Varint, Decode) {
+  EXPECT_THAT(VarintDecode<bool>(absl::Cord("\x01")),
+              Optional(Eq(VarintDecodeResult<bool>{true, 1})));
+  EXPECT_THAT(VarintDecode<int32_t>(absl::Cord("\x01")),
+              Optional(Eq(VarintDecodeResult<int32_t>{1, 1})));
+  EXPECT_THAT(VarintDecode<int64_t>(absl::Cord("\x01")),
+              Optional(Eq(VarintDecodeResult<int64_t>{1, 1})));
+  EXPECT_THAT(VarintDecode<uint32_t>(absl::Cord("\x01")),
+              Optional(Eq(VarintDecodeResult<uint32_t>{1, 1})));
+  EXPECT_THAT(VarintDecode<uint64_t>(absl::Cord("\x01")),
+              Optional(Eq(VarintDecodeResult<uint64_t>{1, 1})));
+  EXPECT_THAT(VarintDecode<uint32_t>(absl::Cord("\xff\xff\xff\xff\x0f")),
+              Optional(Eq(VarintDecodeResult<uint32_t>{
+                  std::numeric_limits<uint32_t>::max(), 5})));
+  EXPECT_THAT(VarintDecode<int64_t>(
+                  absl::Cord("\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01")),
+              Optional(Eq(VarintDecodeResult<int64_t>{int64_t{-1}, 10})));
+  EXPECT_THAT(VarintDecode<uint64_t>(
+                  absl::Cord("\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01")),
+              Optional(Eq(VarintDecodeResult<uint64_t>{
+                  std::numeric_limits<uint64_t>::max(), 10})));
+}
+
 namespace {
 
 template <typename T>
@@ -79,5 +117,82 @@ TEST(Fixed64, Encode) {
   EXPECT_EQ(Fixed64Encode(0.0), Fixed64Encode(uint64_t{0}));
 }
 
+TEST(Fixed64, Decode) {
+  EXPECT_THAT(Fixed64Decode<double>(Fixed64Encode(0.0)), Optional(Eq(0.0)));
+}
+
+TEST(Fixed32, Decode) {
+  EXPECT_THAT(Fixed32Decode<float>(
+                  absl::Cord(absl::string_view("\x00\x00\x00\x00", 4))),
+              Optional(Eq(0.0)));
+}
+
+TEST(DecodeProtoWireTag, Uint64TooLarge) {
+  EXPECT_THAT(DecodeProtoWireTag(uint64_t{1} << 32), Eq(absl::nullopt));
+}
+
+TEST(DecodeProtoWireTag, Uint64ZeroFieldNumber) {
+  EXPECT_THAT(DecodeProtoWireTag(uint64_t{0}), Eq(absl::nullopt));
+}
+
+TEST(DecodeProtoWireTag, Uint32ZeroFieldNumber) {
+  EXPECT_THAT(DecodeProtoWireTag(uint32_t{0}), Eq(absl::nullopt));
+}
+
+TEST(DecodeProtoWireTag, Success) {
+  EXPECT_THAT(DecodeProtoWireTag(uint64_t{1} << 3),
+              Optional(Eq(ProtoWireTag(1, ProtoWireType::kVarint))));
+  EXPECT_THAT(DecodeProtoWireTag(uint32_t{1} << 3),
+              Optional(Eq(ProtoWireTag(1, ProtoWireType::kVarint))));
+}
+
+void TestSkipLengthValueSuccess(absl::Cord data, ProtoWireType type,
+                                size_t skipped) {
+  size_t before = data.size();
+  EXPECT_TRUE(SkipLengthValue(data, type));
+  EXPECT_EQ(before - skipped, data.size());
+}
+
+void TestSkipLengthValueFailure(absl::Cord data, ProtoWireType type) {
+  EXPECT_FALSE(SkipLengthValue(data, type));
+}
+
+TEST(SkipLengthValue, Varint) {
+  TestSkipLengthValueSuccess(
+      absl::Cord("\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01"),
+      ProtoWireType::kVarint, 10);
+  TestSkipLengthValueSuccess(absl::Cord("\x01"), ProtoWireType::kVarint, 1);
+  TestSkipLengthValueFailure(
+      absl::Cord("\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01"),
+      ProtoWireType::kVarint);
+}
+
+TEST(SkipLengthValue, Fixed64) {
+  TestSkipLengthValueSuccess(
+      absl::Cord(
+          absl::string_view("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 8)),
+      ProtoWireType::kFixed64, 8);
+  TestSkipLengthValueFailure(absl::Cord(absl::string_view("\x00", 1)),
+                             ProtoWireType::kFixed64);
+}
+
+TEST(SkipLengthValue, LengthDelimited) {
+  TestSkipLengthValueSuccess(absl::Cord(absl::string_view("\x00", 1)),
+                             ProtoWireType::kLengthDelimited, 1);
+  TestSkipLengthValueSuccess(absl::Cord(absl::string_view("\x01\x00", 2)),
+                             ProtoWireType::kLengthDelimited, 2);
+  TestSkipLengthValueFailure(absl::Cord("\x01"),
+                             ProtoWireType::kLengthDelimited);
+}
+
+TEST(SkipLengthValue, Fixed32) {
+  TestSkipLengthValueSuccess(
+      absl::Cord(absl::string_view("\x00\x00\x00\x00", 4)),
+      ProtoWireType::kFixed32, 4);
+  TestSkipLengthValueFailure(absl::Cord(absl::string_view("\x00", 1)),
+                             ProtoWireType::kFixed32);
+}
+
 }  // namespace
+
 }  // namespace cel::internal

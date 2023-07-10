@@ -289,6 +289,7 @@ cc_test(
 
 cc_library(
     name = "proto_wire",
+    srcs = ["proto_wire.cc"],
     hdrs = ["proto_wire.h"],
     deps = [
         "@com_google_absl//absl/base",
@@ -296,6 +297,7 @@ cc_library(
         "@com_google_absl//absl/numeric:bits",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/types:optional",
     ],
 )
 
