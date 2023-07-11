@@ -123,3 +123,27 @@ cc_test(
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
+
+cc_library(
+    name = "select_optimization",
+    srcs = ["select_optimization.cc"],
+    hdrs = ["select_optimization.h"],
+    deps = [
+        "//base:data",
+        "//base:handle",
+        "//base:memory",
+        "//base/ast_internal:ast_impl",
+        "//base/ast_internal:expr",
+        "//eval/compiler:flat_expr_builder_extensions",
+        "//eval/internal:interop",
+        "//eval/public:ast_rewrite_native",
+        "//eval/public:source_position_native",
+        "//eval/public/structs:legacy_type_info_apis",
+        "@com_google_absl//absl/algorithm:container",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
