@@ -46,6 +46,9 @@ class StringType final : public base_internal::SimpleType<TypeKind::kString> {
 
   using Base::DebugString;
 
+  absl::StatusOr<Handle<Value>> NewValueFromAny(ValueFactory& value_factory,
+                                                const absl::Cord& value) const;
+
  private:
   friend class StringWrapperType;
 

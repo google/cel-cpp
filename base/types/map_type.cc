@@ -18,6 +18,8 @@
 #include <utility>
 
 #include "absl/base/macros.h"
+#include "absl/status/status.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -28,10 +30,73 @@
 #include "base/value_factory.h"
 #include "base/values/map_value.h"
 #include "base/values/map_value_builder.h"
+#include "internal/proto_wire.h"
 
 namespace cel {
 
+namespace {
+
+using internal::MakeProtoWireTag;
+using internal::ProtoWireDecoder;
+using internal::ProtoWireType;
+
+}  // namespace
+
 CEL_INTERNAL_TYPE_IMPL(MapType);
+
+absl::StatusOr<Handle<MapValue>> MapType::NewValueFromAny(
+    ValueFactory& value_factory, const absl::Cord& value) const {
+  if (key()->kind() != Kind::kString || this->value()->kind() != Kind::kDyn) {
+    return absl::FailedPreconditionError(
+        absl::StrCat("google.protobuf.Any cannot be deserialized as ", name()));
+  }
+  // google.protobuf.Struct.
+  CEL_ASSIGN_OR_RETURN(auto builder, NewValueBuilder(value_factory));
+  ProtoWireDecoder decoder("google.protobuf.Struct", value);
+  while (decoder.HasNext()) {
+    CEL_ASSIGN_OR_RETURN(auto tag, decoder.ReadTag());
+    if (tag == MakeProtoWireTag(1, ProtoWireType::kLengthDelimited)) {
+      // fields
+      CEL_ASSIGN_OR_RETURN(auto fields_value, decoder.ReadLengthDelimited());
+      Handle<StringValue> field_name = value_factory.GetStringValue();
+      Handle<Value> field_value = value_factory.GetNullValue();
+      ProtoWireDecoder fields_decoder("google.protobuf.Struct.FieldsEntry",
+                                      fields_value);
+      while (fields_decoder.HasNext()) {
+        CEL_ASSIGN_OR_RETURN(auto fields_tag, fields_decoder.ReadTag());
+        if (fields_tag ==
+            MakeProtoWireTag(1, ProtoWireType::kLengthDelimited)) {
+          // key
+          CEL_ASSIGN_OR_RETURN(auto field_name_value,
+                               fields_decoder.ReadLengthDelimited());
+          CEL_ASSIGN_OR_RETURN(field_name, value_factory.CreateStringValue(
+                                               std::move(field_name_value)));
+          continue;
+        }
+        if (fields_tag ==
+            MakeProtoWireTag(2, ProtoWireType::kLengthDelimited)) {
+          // value
+          CEL_ASSIGN_OR_RETURN(auto field_value_value,
+                               fields_decoder.ReadLengthDelimited());
+          CEL_ASSIGN_OR_RETURN(
+              field_value,
+              value_factory.type_factory().GetJsonValueType()->NewValueFromAny(
+                  value_factory, field_value_value));
+          continue;
+        }
+        CEL_RETURN_IF_ERROR(fields_decoder.SkipLengthValue());
+      }
+      fields_decoder.EnsureFullyDecoded();
+      CEL_RETURN_IF_ERROR(
+          builder->InsertOrAssign(std::move(field_name), std::move(field_value))
+              .status());
+      continue;
+    }
+    CEL_RETURN_IF_ERROR(decoder.SkipLengthValue());
+  }
+  decoder.EnsureFullyDecoded();
+  return std::move(*builder).Build();
+}
 
 absl::Span<const absl::string_view> MapType::aliases() const {
   static constexpr absl::string_view kAliases[] = {"google.protobuf.Struct"};

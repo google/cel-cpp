@@ -188,6 +188,7 @@ cc_library(
         "//internal:linked_hash_map",
         "//internal:no_destructor",
         "//internal:overloaded",
+        "//internal:proto_wire",
         "//internal:rtti",
         "//internal:status_macros",
         "//internal:strings",

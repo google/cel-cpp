@@ -23,6 +23,8 @@
 #include "absl/base/attributes.h"
 #include "absl/base/optimization.h"
 #include "absl/hash/hash.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/handle.h"
@@ -66,6 +68,9 @@ class Type : public base_internal::Data {
   void HashValue(absl::HashState state) const;
 
   bool Equals(const Type& other) const;
+
+  absl::StatusOr<Handle<Value>> NewValueFromAny(ValueFactory& value_factory,
+                                                const absl::Cord& value) const;
 
   template <typename T>
   bool Is() const {

@@ -20,9 +20,11 @@
 #include "absl/base/macros.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "base/value_factory.h"
 #include "base/values/struct_value_builder.h"
 #include "internal/overloaded.h"
 #include "internal/status_macros.h"
@@ -111,6 +113,12 @@ StructType::NewValueBuilder(ValueFactory& value_factory) const {
   return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(NewValueBuilder, value_factory);
 }
 
+absl::StatusOr<Handle<StructValue>> StructType::NewValueFromAny(
+    ValueFactory& value_factory, const absl::Cord& value) const {
+  return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(NewValueFromAny, value_factory,
+                                           value);
+}
+
 #undef CEL_INTERNAL_STRUCT_TYPE_DISPATCH
 
 struct StructType::FindFieldVisitor final {
@@ -196,6 +204,15 @@ LegacyStructType::NewValueBuilder(ValueFactory& value_factory) const {
       "overridden?");
 }
 
+absl::StatusOr<Handle<StructValue>> LegacyStructType::NewValueFromAny(
+    ValueFactory& value_factory, const absl::Cord& value) const {
+  return absl::UnimplementedError(
+      "LegacyStructType::NewValueFromAny is unimplemented. Perhaps the value "
+      "library "
+      "is not linked into your binary or StructType::NewValueFromAny was not "
+      "overridden?");
+}
+
 AbstractStructType::AbstractStructType()
     : StructType(), base_internal::HeapData(kKind) {
   // Ensure `Type*` and `base_internal::HeapData*` are not thunked.
@@ -210,6 +227,12 @@ AbstractStructType::NewValueBuilder(ValueFactory& value_factory) const {
       "StructType::NewValueBuilder is unimplemented. Perhaps the value library "
       "is not linked into your binary or StructType::NewValueBuilder was not "
       "overridden?");
+}
+
+absl::StatusOr<Handle<StructValue>> AbstractStructType::NewValueFromAny(
+    ValueFactory& value_factory, const absl::Cord& value) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat("google.protobuf.Any cannot be deserialized as ", name()));
 }
 
 }  // namespace base_internal

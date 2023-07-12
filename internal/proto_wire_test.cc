@@ -36,6 +36,7 @@ namespace {
 
 using testing::Eq;
 using testing::Optional;
+using cel::internal::IsOkAndHolds;
 
 TEST(Varint, Size) {
   EXPECT_EQ(VarintSize(int32_t{-1}),
@@ -191,6 +192,18 @@ TEST(SkipLengthValue, Fixed32) {
       ProtoWireType::kFixed32, 4);
   TestSkipLengthValueFailure(absl::Cord(absl::string_view("\x00", 1)),
                              ProtoWireType::kFixed32);
+}
+
+TEST(SkipLengthValue, Decoder) {
+  {
+    ProtoWireDecoder decoder("", absl::Cord(absl::string_view("\x0a\x00", 2)));
+    ASSERT_TRUE(decoder.HasNext());
+    EXPECT_THAT(
+        decoder.ReadTag(),
+        IsOkAndHolds(Eq(ProtoWireTag(1, ProtoWireType::kLengthDelimited))));
+    EXPECT_OK(decoder.SkipLengthValue());
+    ASSERT_FALSE(decoder.HasNext());
+  }
 }
 
 }  // namespace

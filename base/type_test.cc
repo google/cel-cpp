@@ -20,12 +20,15 @@
 
 #include "absl/hash/hash_testing.h"
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "base/handle.h"
 #include "base/internal/memory_manager_testing.h"
 #include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
+#include "base/type_provider.h"
 #include "base/value.h"
+#include "base/value_factory.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -34,6 +37,7 @@ namespace {
 using testing::ElementsAre;
 using testing::Eq;
 using cel::internal::IsOkAndHolds;
+using cel::internal::StatusIs;
 
 enum class TestEnum {
   kValue1 = 1,
@@ -753,6 +757,248 @@ TEST_P(TypeDebugStringTest, UintWrapperType) {
 }
 
 INSTANTIATE_TEST_SUITE_P(TypeDebugStringTest, TypeDebugStringTest,
+                         base_internal::MemoryManagerTestModeAll(),
+                         base_internal::MemoryManagerTestModeName);
+
+class TypeNewValueFromAnyTest : public TypeTest {
+ public:
+  TypeFactory& type_factory() { return *type_factory_; }
+
+  TypeManager& type_manager() { return *type_manager_; }
+
+  ValueFactory& value_factory() { return *value_factory_; }
+
+ protected:
+  void SetUp() override {
+    TypeTest::SetUp();
+    type_factory_.emplace(memory_manager());
+    type_manager_.emplace(type_factory(), TypeProvider::Builtin());
+    value_factory_.emplace(type_manager());
+  }
+
+ private:
+  absl::optional<TypeFactory> type_factory_;
+  absl::optional<TypeManager> type_manager_;
+  absl::optional<ValueFactory> value_factory_;
+};
+
+TEST_P(TypeNewValueFromAnyTest, BoolType) {
+  EXPECT_THAT(type_factory().GetBoolType().As<Type>()->NewValueFromAny(
+                  value_factory(), absl::Cord()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(TypeNewValueFromAnyTest, BytesType) {
+  EXPECT_THAT(type_factory().GetBytesType().As<Type>()->NewValueFromAny(
+                  value_factory(), absl::Cord()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(TypeNewValueFromAnyTest, DoubleType) {
+  EXPECT_THAT(type_factory().GetDoubleType().As<Type>()->NewValueFromAny(
+                  value_factory(), absl::Cord()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(TypeNewValueFromAnyTest, EnumType) {
+  ASSERT_OK_AND_ASSIGN(auto enum_type,
+                       type_factory().CreateEnumType<TestEnumType>());
+  EXPECT_THAT(
+      enum_type.As<Type>()->NewValueFromAny(value_factory(), absl::Cord()),
+      StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(TypeNewValueFromAnyTest, ErrorType) {
+  EXPECT_THAT(type_factory().GetErrorType().As<Type>()->NewValueFromAny(
+                  value_factory(), absl::Cord()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(TypeNewValueFromAnyTest, IntType) {
+  EXPECT_THAT(type_factory().GetIntType().As<Type>()->NewValueFromAny(
+                  value_factory(), absl::Cord()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(TypeNewValueFromAnyTest, NullType) {
+  EXPECT_THAT(type_factory().GetNullType().As<Type>()->NewValueFromAny(
+                  value_factory(), absl::Cord()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(TypeNewValueFromAnyTest, OptionalType) {
+  ASSERT_OK_AND_ASSIGN(
+      auto optional_type,
+      type_factory().CreateOptionalType(type_factory().GetDurationType()));
+  EXPECT_THAT(
+      optional_type.As<Type>()->NewValueFromAny(value_factory(), absl::Cord()),
+      StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(TypeNewValueFromAnyTest, StringType) {
+  EXPECT_THAT(type_factory().GetStringType().As<Type>()->NewValueFromAny(
+                  value_factory(), absl::Cord()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(TypeNewValueFromAnyTest, TypeType) {
+  EXPECT_THAT(type_factory().GetTypeType().As<Type>()->NewValueFromAny(
+                  value_factory(), absl::Cord()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(TypeNewValueFromAnyTest, UnknownType) {
+  EXPECT_THAT(type_factory().GetUnknownType().As<Type>()->NewValueFromAny(
+                  value_factory(), absl::Cord()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(TypeNewValueFromAnyTest, DurationType) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value, type_factory().GetDurationType().As<Type>()->NewValueFromAny(
+                      value_factory(), absl::Cord("\x08\x01\x10\x01")));
+  ASSERT_TRUE(value->Is<DurationValue>());
+  EXPECT_EQ(value->As<DurationValue>().value(),
+            absl::Seconds(1) + absl::Nanoseconds(1));
+}
+
+TEST_P(TypeNewValueFromAnyTest, TimestampType) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value, type_factory().GetTimestampType().As<Type>()->NewValueFromAny(
+                      value_factory(), absl::Cord("\x08\x01\x10\x01")));
+  ASSERT_TRUE(value->Is<TimestampValue>());
+  EXPECT_EQ(value->As<TimestampValue>().value(),
+            absl::UnixEpoch() + absl::Seconds(1) + absl::Nanoseconds(1));
+}
+
+TEST_P(TypeNewValueFromAnyTest, AnyType) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value, type_factory().GetAnyType().As<Type>()->NewValueFromAny(
+                      value_factory(),
+                      absl::Cord("\x0a\x2dtype.googleapis.com/"
+                                 "google.protobuf.BoolValue\x12\x02\x08\x01")));
+  ASSERT_TRUE(value->Is<BoolValue>());
+  EXPECT_TRUE(value->As<BoolValue>().value());
+}
+
+TEST_P(TypeNewValueFromAnyTest, BoolWrapperType) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      type_factory().GetBoolWrapperType().As<Type>()->NewValueFromAny(
+          value_factory(), absl::Cord("\x08\x01")));
+  ASSERT_TRUE(value->Is<BoolValue>());
+  EXPECT_TRUE(value->As<BoolValue>().value());
+}
+
+TEST_P(TypeNewValueFromAnyTest, IntWrapperType) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      type_factory().GetIntWrapperType().As<Type>()->NewValueFromAny(
+          value_factory(), absl::Cord("\x08\x01")));
+  ASSERT_TRUE(value->Is<IntValue>());
+  EXPECT_EQ(value->As<IntValue>().value(), 1);
+}
+
+TEST_P(TypeNewValueFromAnyTest, UintWrapperType) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      type_factory().GetUintWrapperType().As<Type>()->NewValueFromAny(
+          value_factory(), absl::Cord("\x08\x01")));
+  ASSERT_TRUE(value->Is<UintValue>());
+  EXPECT_EQ(value->As<UintValue>().value(), 1);
+}
+
+TEST_P(TypeNewValueFromAnyTest, DoubleWrapperType) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      type_factory().GetDoubleWrapperType().As<Type>()->NewValueFromAny(
+          value_factory(), absl::Cord(absl::string_view(
+                               "\x09\x00\x00\x00\x00\x00\x00\xf0?", 9))));
+  ASSERT_TRUE(value->Is<DoubleValue>());
+  EXPECT_EQ(value->As<DoubleValue>().value(), 1.0);
+  ASSERT_OK_AND_ASSIGN(
+      value, type_factory().GetDoubleWrapperType().As<Type>()->NewValueFromAny(
+                 value_factory(),
+                 absl::Cord(absl::string_view("\x0d\x00\x00\x80?", 5))));
+  ASSERT_TRUE(value->Is<DoubleValue>());
+  EXPECT_EQ(value->As<DoubleValue>().value(), 1.0);
+}
+
+TEST_P(TypeNewValueFromAnyTest, BytesWrapperType) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      type_factory().GetBytesWrapperType().As<Type>()->NewValueFromAny(
+          value_factory(), absl::Cord("\x0a\x03"
+                                      "foo")));
+  ASSERT_TRUE(value->Is<BytesValue>());
+  EXPECT_EQ(value->As<BytesValue>().ToString(), "foo");
+}
+
+TEST_P(TypeNewValueFromAnyTest, StringWrapperType) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      type_factory().GetStringWrapperType().As<Type>()->NewValueFromAny(
+          value_factory(), absl::Cord("\x0a\x03"
+                                      "foo")));
+  ASSERT_TRUE(value->Is<StringValue>());
+  EXPECT_EQ(value->As<StringValue>().ToString(), "foo");
+}
+
+TEST_P(TypeNewValueFromAnyTest, DynType) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      type_factory().GetDynType().As<Type>()->NewValueFromAny(
+          value_factory(), absl::Cord(absl::string_view("\x08\x00", 2))));
+  ASSERT_TRUE(value->Is<NullValue>());
+
+  ASSERT_OK_AND_ASSIGN(
+      value,
+      type_factory().GetDynType().As<Type>()->NewValueFromAny(
+          value_factory(), absl::Cord(absl::string_view(
+                               "\x11\x00\x00\x00\x00\x00\x00\xf0?", 9))));
+  ASSERT_TRUE(value->Is<DoubleValue>());
+  EXPECT_EQ(value->As<DoubleValue>().value(), 1.0);
+
+  ASSERT_OK_AND_ASSIGN(value, type_factory().GetDynType()->NewValueFromAny(
+                                  value_factory(), absl::Cord("\x1a\x03"
+                                                              "foo")));
+  ASSERT_TRUE(value->Is<StringValue>());
+  EXPECT_EQ(value->As<StringValue>().ToString(), "foo");
+
+  ASSERT_OK_AND_ASSIGN(value,
+                       type_factory().GetDynType().As<Type>()->NewValueFromAny(
+                           value_factory(), absl::Cord("\x20\x01")));
+  ASSERT_TRUE(value->Is<BoolValue>());
+  EXPECT_TRUE(value->As<BoolValue>().value());
+
+  ASSERT_OK_AND_ASSIGN(
+      value, type_factory().GetDynType().As<Type>()->NewValueFromAny(
+                 value_factory(), absl::Cord("\x2a\x0b\x0a\x09\x0a\x03"
+                                             "foo\x12\x02\x20\x01")));
+  ASSERT_TRUE(value->Is<MapValue>());
+  ASSERT_EQ(value->As<MapValue>().size(), 1);
+  ASSERT_OK_AND_ASSIGN(auto key, value_factory().CreateStringValue("foo"));
+  ASSERT_OK_AND_ASSIGN(
+      auto entry,
+      value->As<MapValue>().Get(MapValue::GetContext(value_factory()), key));
+  ASSERT_TRUE(entry.has_value());
+  ASSERT_TRUE((*entry)->Is<BoolValue>());
+  EXPECT_TRUE((*entry)->As<BoolValue>().value());
+
+  ASSERT_OK_AND_ASSIGN(
+      value, type_factory().GetDynType().As<Type>()->NewValueFromAny(
+                 value_factory(),
+                 absl::Cord(absl::string_view("\x32\x04\x0a\x02\x20\x01", 6))));
+  ASSERT_TRUE(value->Is<ListValue>());
+  ASSERT_EQ(value->As<ListValue>().size(), 1);
+  ASSERT_OK_AND_ASSIGN(
+      auto element,
+      value->As<ListValue>().Get(ListValue::GetContext(value_factory()), 0));
+  ASSERT_TRUE(element->Is<BoolValue>());
+  EXPECT_TRUE(element->As<BoolValue>().value());
+}
+
+INSTANTIATE_TEST_SUITE_P(TypeNewValueFromAnyTest, TypeNewValueFromAnyTest,
                          base_internal::MemoryManagerTestModeAll(),
                          base_internal::MemoryManagerTestModeName);
 

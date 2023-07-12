@@ -45,6 +45,9 @@ class NullType final : public base_internal::SimpleType<TypeKind::kNullType> {
 
   using Base::DebugString;
 
+  absl::StatusOr<Handle<Value>> NewValueFromAny(ValueFactory& value_factory,
+                                                const absl::Cord& value) const;
+
  private:
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(NullType, NullValue);
 };

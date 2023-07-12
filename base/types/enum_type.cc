@@ -17,16 +17,24 @@
 #include <string>
 
 #include "absl/base/macros.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "base/value.h"
 #include "internal/overloaded.h"
 #include "internal/status_macros.h"
 
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(EnumType);
+
+absl::StatusOr<Handle<Value>> EnumType::NewValueFromAny(
+    ValueFactory& value_factory, const absl::Cord& value) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat("google.protobuf.Any cannot be deserialized as ", name()));
+}
 
 bool operator<(const EnumType::ConstantId& lhs,
                const EnumType::ConstantId& rhs) {

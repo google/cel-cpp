@@ -53,6 +53,9 @@ class ListType
 
   std::string DebugString() const;
 
+  absl::StatusOr<Handle<ListValue>> NewValueFromAny(
+      ValueFactory& value_factory, const absl::Cord& value) const;
+
   // Returns the type of the elements in the list.
   const Handle<Type>& element() const;
 

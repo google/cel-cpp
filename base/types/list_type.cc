@@ -18,6 +18,7 @@
 #include <utility>
 
 #include "absl/base/macros.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -28,10 +29,46 @@
 #include "base/value_factory.h"
 #include "base/values/list_value.h"
 #include "base/values/list_value_builder.h"
+#include "internal/proto_wire.h"
 
 namespace cel {
 
+namespace {
+
+using internal::MakeProtoWireTag;
+using internal::ProtoWireDecoder;
+using internal::ProtoWireType;
+
+}  // namespace
+
 CEL_INTERNAL_TYPE_IMPL(ListType);
+
+absl::StatusOr<Handle<ListValue>> ListType::NewValueFromAny(
+    ValueFactory& value_factory, const absl::Cord& value) const {
+  if (element()->kind() != Kind::kDyn) {
+    return absl::FailedPreconditionError(
+        absl::StrCat("google.protobuf.Any cannot be deserialized as ", name()));
+  }
+  // google.protobuf.ListValue.
+  CEL_ASSIGN_OR_RETURN(auto builder, NewValueBuilder(value_factory));
+  ProtoWireDecoder decoder("google.protobuf.ListValue", value);
+  while (decoder.HasNext()) {
+    CEL_ASSIGN_OR_RETURN(auto tag, decoder.ReadTag());
+    if (tag == MakeProtoWireTag(1, ProtoWireType::kLengthDelimited)) {
+      // values
+      CEL_ASSIGN_OR_RETURN(auto element_value, decoder.ReadLengthDelimited());
+      CEL_ASSIGN_OR_RETURN(
+          auto element,
+          value_factory.type_factory().GetJsonValueType()->NewValueFromAny(
+              value_factory, element_value));
+      CEL_RETURN_IF_ERROR(builder->Add(std::move(element)));
+      continue;
+    }
+    CEL_RETURN_IF_ERROR(decoder.SkipLengthValue());
+  }
+  decoder.EnsureFullyDecoded();
+  return std::move(*builder).Build();
+}
 
 absl::Span<const absl::string_view> ListType::aliases() const {
   static constexpr absl::string_view kAliases[] = {"google.protobuf.ListValue"};

@@ -45,6 +45,9 @@ class OpaqueType : public Type, public base_internal::HeapData {
 
   virtual std::string DebugString() const = 0;
 
+  virtual absl::StatusOr<Handle<Value>> NewValueFromAny(
+      ValueFactory& value_factory, const absl::Cord& value) const;
+
   virtual absl::Span<const Handle<Type>> parameters() const = 0;
 
  protected:

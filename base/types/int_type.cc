@@ -14,8 +14,19 @@
 
 #include "base/types/int_type.h"
 
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
+#include "base/value.h"
+
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(IntType);
+
+absl::StatusOr<Handle<Value>> IntType::NewValueFromAny(
+    ValueFactory& value_factory, const absl::Cord& value) const {
+  // google.protobuf.{Int32,Int64}Value is handled by IntWrapperType.
+  return absl::FailedPreconditionError(
+      absl::StrCat("google.protobuf.Any cannot be deserialized as ", name()));
+}
 
 }  // namespace cel

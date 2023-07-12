@@ -141,6 +141,9 @@ class StructType : public Type {
       ValueFactory& value_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+  absl::StatusOr<Handle<StructValue>> NewValueFromAny(
+      ValueFactory& value_factory, const absl::Cord& value) const;
+
  protected:
   static FieldId MakeFieldId(absl::string_view name) { return FieldId(name); }
 
@@ -268,6 +271,9 @@ class LegacyStructType final : public StructType, public InlineData {
       ValueFactory& value_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+  absl::StatusOr<Handle<StructValue>> NewValueFromAny(
+      ValueFactory& value_factory, const absl::Cord& value) const;
+
  private:
   static constexpr uintptr_t kMetadata =
       kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
@@ -331,6 +337,9 @@ class AbstractStructType
   virtual absl::StatusOr<UniqueRef<StructValueBuilderInterface>>
   NewValueBuilder(ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND)
       const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  absl::StatusOr<Handle<StructValue>> NewValueFromAny(
+      ValueFactory& value_factory, const absl::Cord& value) const;
 
  protected:
   AbstractStructType();

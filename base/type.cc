@@ -19,6 +19,8 @@
 #include <utility>
 
 #include "absl/base/optimization.h"
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "base/internal/data.h"
 #include "base/types/any_type.h"
@@ -41,6 +43,8 @@
 #include "base/types/uint_type.h"
 #include "base/types/unknown_type.h"
 #include "base/types/wrapper_type.h"
+#include "base/value.h"
+#include "base/value_factory.h"
 
 namespace cel {
 
@@ -153,6 +157,75 @@ std::string Type::DebugString() const {
       return static_cast<const OpaqueType*>(this)->DebugString();
     default:
       return "*unreachable*";
+  }
+}
+
+absl::StatusOr<Handle<Value>> Type::NewValueFromAny(
+    ValueFactory& value_factory, const absl::Cord& value) const {
+  switch (kind()) {
+    case TypeKind::kNullType:
+      return static_cast<const NullType*>(this)->NewValueFromAny(value_factory,
+                                                                 value);
+    case TypeKind::kError:
+      return static_cast<const ErrorType*>(this)->NewValueFromAny(value_factory,
+                                                                  value);
+    case TypeKind::kDyn:
+      return static_cast<const DynType*>(this)->NewValueFromAny(value_factory,
+                                                                value);
+    case TypeKind::kAny:
+      return static_cast<const AnyType*>(this)->NewValueFromAny(value_factory,
+                                                                value);
+    case TypeKind::kType:
+      return static_cast<const TypeType*>(this)->NewValueFromAny(value_factory,
+                                                                 value);
+    case TypeKind::kBool:
+      return static_cast<const BoolType*>(this)->NewValueFromAny(value_factory,
+                                                                 value);
+    case TypeKind::kInt:
+      return static_cast<const IntType*>(this)->NewValueFromAny(value_factory,
+                                                                value);
+    case TypeKind::kUint:
+      return static_cast<const UintType*>(this)->NewValueFromAny(value_factory,
+                                                                 value);
+    case TypeKind::kDouble:
+      return static_cast<const DoubleType*>(this)->NewValueFromAny(
+          value_factory, value);
+    case TypeKind::kString:
+      return static_cast<const StringType*>(this)->NewValueFromAny(
+          value_factory, value);
+    case TypeKind::kBytes:
+      return static_cast<const BytesType*>(this)->NewValueFromAny(value_factory,
+                                                                  value);
+    case TypeKind::kEnum:
+      return static_cast<const EnumType*>(this)->NewValueFromAny(value_factory,
+                                                                 value);
+    case TypeKind::kDuration:
+      return static_cast<const DurationType*>(this)->NewValueFromAny(
+          value_factory, value);
+    case TypeKind::kTimestamp:
+      return static_cast<const TimestampType*>(this)->NewValueFromAny(
+          value_factory, value);
+    case TypeKind::kList:
+      return static_cast<const ListType*>(this)->NewValueFromAny(value_factory,
+                                                                 value);
+    case TypeKind::kMap:
+      return static_cast<const MapType*>(this)->NewValueFromAny(value_factory,
+                                                                value);
+    case TypeKind::kStruct:
+      return static_cast<const StructType*>(this)->NewValueFromAny(
+          value_factory, value);
+    case TypeKind::kUnknown:
+      return static_cast<const UnknownType*>(this)->NewValueFromAny(
+          value_factory, value);
+    case TypeKind::kWrapper:
+      return static_cast<const WrapperType*>(this)->NewValueFromAny(
+          value_factory, value);
+    case TypeKind::kOpaque:
+      return static_cast<const OpaqueType*>(this)->NewValueFromAny(
+          value_factory, value);
+    default:
+      return absl::InternalError(
+          absl::StrCat("unexpected type kind: ", TypeKindToString(kind())));
   }
 }
 

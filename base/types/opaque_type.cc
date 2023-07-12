@@ -14,8 +14,18 @@
 
 #include "base/types/opaque_type.h"
 
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
+#include "base/value.h"
+
 namespace cel {
 
 template class Handle<OpaqueType>;
+
+absl::StatusOr<Handle<Value>> OpaqueType::NewValueFromAny(
+    ValueFactory& value_factory, const absl::Cord& value) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat("google.protobuf.Any cannot be deserialized as ", name()));
+}
 
 }  // namespace cel

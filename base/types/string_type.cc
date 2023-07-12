@@ -14,8 +14,19 @@
 
 #include "base/types/string_type.h"
 
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
+#include "base/value.h"
+
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(StringType);
+
+absl::StatusOr<Handle<Value>> StringType::NewValueFromAny(
+    ValueFactory& value_factory, const absl::Cord& value) const {
+  // google.protobuf.StringValue is handled by StringWrapperType.
+  return absl::FailedPreconditionError(
+      absl::StrCat("google.protobuf.Any cannot be deserialized as ", name()));
+}
 
 }  // namespace cel

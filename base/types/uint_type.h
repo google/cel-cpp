@@ -46,6 +46,9 @@ class UintType final : public base_internal::SimpleType<TypeKind::kUint> {
 
   using Base::DebugString;
 
+  absl::StatusOr<Handle<Value>> NewValueFromAny(ValueFactory& value_factory,
+                                                const absl::Cord& value) const;
+
  private:
   friend class UintWrapperType;
 

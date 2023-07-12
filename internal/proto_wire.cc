@@ -14,6 +14,10 @@
 
 #include "internal/proto_wire.h"
 
+#include <string>
+
+#include "absl/base/optimization.h"
+
 namespace cel::internal {
 
 bool SkipLengthValue(absl::Cord& data, ProtoWireType type) {
@@ -34,16 +38,12 @@ bool SkipLengthValue(absl::Cord& data, ProtoWireType type) {
     case ProtoWireType::kLengthDelimited:
       if (auto result = VarintDecode<uint32_t>(data);
           ABSL_PREDICT_TRUE(result.has_value())) {
-        if (ABSL_PREDICT_FALSE(data.size() - result->size_bytes >=
-                               result->value)) {
+        if (ABSL_PREDICT_TRUE(data.size() - result->size_bytes >=
+                              result->value)) {
           data.RemovePrefix(result->size_bytes + result->value);
           return true;
         }
       }
-      return false;
-    case ProtoWireType::kStartGroup:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ProtoWireType::kEndGroup:
       return false;
     case ProtoWireType::kFixed32:
       if (ABSL_PREDICT_FALSE(data.size() < 4)) {
@@ -51,7 +51,63 @@ bool SkipLengthValue(absl::Cord& data, ProtoWireType type) {
       }
       data.RemovePrefix(4);
       return true;
+    case ProtoWireType::kStartGroup:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ProtoWireType::kEndGroup:
+      ABSL_FALLTHROUGH_INTENDED;
+    default:
+      return false;
   }
+}
+
+absl::StatusOr<ProtoWireTag> ProtoWireDecoder::ReadTag() {
+  ABSL_DCHECK(!tag_.has_value());
+  auto tag = internal::VarintDecode<uint32_t>(data_);
+  if (ABSL_PREDICT_FALSE(!tag.has_value())) {
+    return absl::DataLossError(
+        absl::StrCat("malformed tag encountered decoding ", message_));
+  }
+  auto field = internal::DecodeProtoWireTag(tag->value);
+  if (ABSL_PREDICT_FALSE(!field.has_value())) {
+    return absl::DataLossError(
+        absl::StrCat("invalid wire type or field number encountered decoding ",
+                     message_, ": ", static_cast<std::string>(data_)));
+  }
+  data_.RemovePrefix(tag->size_bytes);
+  tag_.emplace(*field);
+  return *field;
+}
+
+absl::Status ProtoWireDecoder::SkipLengthValue() {
+  ABSL_DCHECK(tag_.has_value());
+  if (ABSL_PREDICT_FALSE(!internal::SkipLengthValue(data_, tag_->type()))) {
+    return absl::DataLossError(
+        absl::StrCat("malformed length or value encountered decoding field ",
+                     tag_->field_number(), " of ", message_));
+  }
+  tag_.reset();
+  return absl::OkStatus();
+}
+
+absl::StatusOr<absl::Cord> ProtoWireDecoder::ReadLengthDelimited() {
+  ABSL_DCHECK(tag_.has_value() &&
+              tag_->type() == ProtoWireType::kLengthDelimited);
+  auto length = internal::VarintDecode<uint32_t>(data_);
+  if (ABSL_PREDICT_FALSE(!length.has_value())) {
+    return absl::DataLossError(
+        absl::StrCat("malformed length encountered decoding field ",
+                     tag_->field_number(), " of ", message_));
+  }
+  data_.RemovePrefix(length->size_bytes);
+  if (ABSL_PREDICT_FALSE(data_.size() < length->value)) {
+    return absl::DataLossError(absl::StrCat(
+        "out of range length encountered decoding field ", tag_->field_number(),
+        " of ", message_, ": ", length->value));
+  }
+  auto result = data_.Subcord(0, length->value);
+  data_.RemovePrefix(length->value);
+  tag_.reset();
+  return result;
 }
 
 }  // namespace cel::internal

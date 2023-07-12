@@ -67,6 +67,9 @@ class WrapperType : public Type, base_internal::InlineData {
 
   std::string DebugString() const { return std::string(name()); }
 
+  absl::StatusOr<Handle<Value>> NewValueFromAny(ValueFactory& value_factory,
+                                                const absl::Cord& value) const;
+
   const Handle<Type>& wrapped() const;
 
  private:
@@ -117,6 +120,9 @@ class BoolWrapperType final : public WrapperType {
 
   constexpr absl::string_view name() const { return kName; }
 
+  absl::StatusOr<Handle<BoolValue>> NewValueFromAny(
+      ValueFactory& value_factory, const absl::Cord& value) const;
+
   const Handle<BoolType>& wrapped() const { return BoolType::Get(); }
 
  private:
@@ -154,6 +160,9 @@ class BytesWrapperType final : public WrapperType {
 
   constexpr absl::string_view name() const { return kName; }
 
+  absl::StatusOr<Handle<BytesValue>> NewValueFromAny(
+      ValueFactory& value_factory, const absl::Cord& value) const;
+
   const Handle<BytesType>& wrapped() const { return BytesType::Get(); }
 
  private:
@@ -190,6 +199,9 @@ class DoubleWrapperType final : public WrapperType {
   }
 
   constexpr absl::string_view name() const { return kName; }
+
+  absl::StatusOr<Handle<DoubleValue>> NewValueFromAny(
+      ValueFactory& value_factory, const absl::Cord& value) const;
 
   const Handle<DoubleType>& wrapped() const { return DoubleType::Get(); }
 
@@ -232,6 +244,9 @@ class IntWrapperType final : public WrapperType {
 
   constexpr absl::string_view name() const { return kName; }
 
+  absl::StatusOr<Handle<IntValue>> NewValueFromAny(
+      ValueFactory& value_factory, const absl::Cord& value) const;
+
   const Handle<IntType>& wrapped() const { return IntType::Get(); }
 
  private:
@@ -273,6 +288,9 @@ class StringWrapperType final : public WrapperType {
 
   constexpr absl::string_view name() const { return kName; }
 
+  absl::StatusOr<Handle<StringValue>> NewValueFromAny(
+      ValueFactory& value_factory, const absl::Cord& value) const;
+
   const Handle<StringType>& wrapped() const { return StringType::Get(); }
 
  private:
@@ -309,6 +327,9 @@ class UintWrapperType final : public WrapperType {
   }
 
   constexpr absl::string_view name() const { return kName; }
+
+  absl::StatusOr<Handle<UintValue>> NewValueFromAny(
+      ValueFactory& value_factory, const absl::Cord& value) const;
 
   const Handle<UintType>& wrapped() const { return UintType::Get(); }
 

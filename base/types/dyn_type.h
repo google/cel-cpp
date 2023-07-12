@@ -47,6 +47,9 @@ class DynType final : public base_internal::SimpleType<TypeKind::kDyn> {
 
   using Base::DebugString;
 
+  absl::StatusOr<Handle<Value>> NewValueFromAny(ValueFactory& value_factory,
+                                                const absl::Cord& value) const;
+
  private:
   friend class Type;
   friend class base_internal::LegacyListType;

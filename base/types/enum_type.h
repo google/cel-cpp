@@ -126,6 +126,9 @@ class EnumType : public Type, public base_internal::HeapData {
   virtual absl::StatusOr<UniqueRef<ConstantIterator>> NewConstantIterator(
       MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
+  absl::StatusOr<Handle<Value>> NewValueFromAny(ValueFactory& value_factory,
+                                                const absl::Cord& value) const;
+
  protected:
   static ConstantId MakeConstantId(absl::string_view name) {
     return ConstantId(name);

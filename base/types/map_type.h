@@ -60,6 +60,9 @@ class MapType : public Type,
 
   std::string DebugString() const;
 
+  absl::StatusOr<Handle<MapValue>> NewValueFromAny(
+      ValueFactory& value_factory, const absl::Cord& value) const;
+
   // Returns the type of the keys in the map.
   const Handle<Type>& key() const;
 

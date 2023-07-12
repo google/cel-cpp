@@ -32,9 +32,13 @@
 #include "absl/base/casts.h"
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
+#include "absl/log/absl_check.h"
 #include "absl/numeric/bits.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/cord_buffer.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 
@@ -308,6 +312,10 @@ inline absl::optional<ProtoWireTag> DecodeProtoWireTag(uint32_t value) {
     // Field number is 0.
     return absl::nullopt;
   }
+  if (ABSL_PREDICT_FALSE((value & uint32_t{0x7}) == uint32_t{0x6})) {
+    // Wire type is 6, only 0-5 are used.
+    return absl::nullopt;
+  }
   return ProtoWireTag(value);
 }
 
@@ -323,6 +331,83 @@ inline absl::optional<ProtoWireTag> DecodeProtoWireTag(uint64_t value) {
 // `data` must point to the byte immediately after the tag which encoded `type`.
 // Returns `true` on success, `false` otherwise.
 ABSL_MUST_USE_RESULT bool SkipLengthValue(absl::Cord& data, ProtoWireType type);
+
+class ProtoWireDecoder {
+ public:
+  ProtoWireDecoder(absl::string_view message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                   const absl::Cord& data)
+      : message_(message), data_(data) {}
+
+  bool HasNext() const {
+    ABSL_DCHECK(!tag_.has_value());
+    return !data_.empty();
+  }
+
+  absl::StatusOr<ProtoWireTag> ReadTag();
+
+  absl::Status SkipLengthValue();
+
+  template <typename T>
+  std::enable_if_t<std::is_integral<T>::value, absl::StatusOr<T>> ReadVarint() {
+    ABSL_DCHECK(tag_.has_value() && tag_->type() == ProtoWireType::kVarint);
+    auto result = internal::VarintDecode<T>(data_);
+    if (ABSL_PREDICT_FALSE(!result.has_value())) {
+      return absl::DataLossError(absl::StrCat(
+          "malformed or out of range varint encountered decoding field ",
+          tag_->field_number(), " of ", message_));
+    }
+    data_.RemovePrefix(result->size_bytes);
+    tag_.reset();
+    return result->value;
+  }
+
+  template <typename T>
+  std::enable_if_t<((std::is_integral<T>::value &&
+                     std::is_unsigned<T>::value) ||
+                    std::is_floating_point<T>::value) &&
+                       sizeof(T) == 4,
+                   absl::StatusOr<T>>
+  ReadFixed32() {
+    ABSL_DCHECK(tag_.has_value() && tag_->type() == ProtoWireType::kFixed32);
+    auto result = internal::Fixed32Decode<T>(data_);
+    if (ABSL_PREDICT_FALSE(!result.has_value())) {
+      return absl::DataLossError(
+          absl::StrCat("malformed fixed32 encountered decoding field ",
+                       tag_->field_number(), " of ", message_));
+    }
+    data_.RemovePrefix(4);
+    tag_.reset();
+    return *result;
+  }
+
+  template <typename T>
+  std::enable_if_t<((std::is_integral<T>::value &&
+                     std::is_unsigned<T>::value) ||
+                    std::is_floating_point<T>::value) &&
+                       sizeof(T) == 8,
+                   absl::StatusOr<T>>
+  ReadFixed64() {
+    ABSL_DCHECK(tag_.has_value() && tag_->type() == ProtoWireType::kFixed64);
+    auto result = internal::Fixed64Decode<T>(data_);
+    if (ABSL_PREDICT_FALSE(!result.has_value())) {
+      return absl::DataLossError(
+          absl::StrCat("malformed fixed64 encountered decoding field ",
+                       tag_->field_number(), " of ", message_));
+    }
+    data_.RemovePrefix(8);
+    tag_.reset();
+    return *result;
+  }
+
+  absl::StatusOr<absl::Cord> ReadLengthDelimited();
+
+  void EnsureFullyDecoded() { ABSL_DCHECK(data_.empty()); }
+
+ private:
+  absl::string_view message_;
+  absl::Cord data_;
+  absl::optional<ProtoWireTag> tag_;
+};
 
 }  // namespace cel::internal
 
