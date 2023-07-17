@@ -18,7 +18,6 @@
 #include <string>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "common/json.h"
 #include "google/protobuf/message.h"
@@ -31,8 +30,8 @@ absl::StatusOr<std::vector<std::string>> FieldMaskFromProto(
 
 // Formats `google.protobuf.FieldMask` according to
 // https://protobuf.dev/programming-guides/proto3/#json.
-absl::Status FieldMaskToJson(const google::protobuf::Message& message,
-                             JsonMutator& mutator);
+absl::StatusOr<JsonString> FieldMaskToJsonString(
+    const google::protobuf::Message& message);
 
 }  // namespace cel::extensions::protobuf_internal
 

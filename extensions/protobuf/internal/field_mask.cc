@@ -23,7 +23,6 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
-#include "absl/strings/str_split.h"
 #include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/reflection.h"
@@ -81,10 +80,10 @@ absl::StatusOr<std::vector<std::string>> FieldMaskFromProto(
   return result;
 }
 
-absl::Status FieldMaskToJson(const google::protobuf::Message& message,
-                             JsonMutator& mutator) {
+absl::StatusOr<JsonString> FieldMaskToJsonString(
+    const google::protobuf::Message& message) {
   CEL_ASSIGN_OR_RETURN(auto paths, FieldMaskFromProto(message));
-  return mutator.SetString(absl::StrJoin(paths, ","));
+  return JsonString(absl::StrJoin(paths, ","));
 }
 
 }  // namespace cel::extensions::protobuf_internal
