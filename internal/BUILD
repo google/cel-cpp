@@ -17,6 +17,24 @@ package(default_visibility = ["//visibility:public"])
 licenses(["notice"])
 
 cc_library(
+    name = "copy_on_write",
+    hdrs = ["copy_on_write.h"],
+    deps = [
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log:absl_check",
+    ],
+)
+
+cc_test(
+    name = "copy_on_write_test",
+    srcs = ["copy_on_write_test.cc"],
+    deps = [
+        ":copy_on_write",
+        ":testing",
+    ],
+)
+
+cc_library(
     name = "linked_hash_map",
     hdrs = ["linked_hash_map.h"],
     deps = ["@com_google_absl//absl/container:flat_hash_set"],
