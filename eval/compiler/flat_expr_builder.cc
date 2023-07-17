@@ -464,29 +464,25 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
 
     // Check to see if this is a special case of add that should really be
     // treated as a list append
-    if (options_.enable_comprehension_list_append &&
-        call_expr->function() == cel::builtin::kAdd &&
-        call_expr->args().size() == 2 && !comprehension_stack_.empty()) {
+    if (!comprehension_stack_.empty() &&
+        comprehension_stack_.top().is_optimizable_list_append) {
+      // Already checked that this is an optimizeable comprehension,
+      // check that this is the correct list append node.
       const cel::ast_internal::Comprehension* comprehension =
-          comprehension_stack_.top();
-      absl::string_view accu_var = comprehension->accu_var();
-      if (comprehension->accu_init().has_list_expr() &&
-          call_expr->args()[0].has_ident_expr() &&
-          call_expr->args()[0].ident_expr().name() == accu_var) {
-        const cel::ast_internal::Expr& loop_step = comprehension->loop_step();
-        // Macro loop_step for a map() will contain a list concat operation:
-        //   accu_var + [elem]
-        if (&loop_step == expr) {
-          function = cel::builtin::kRuntimeListAppend;
-        }
-        // Macro loop_step for a filter() will contain a ternary:
-        //   filter ? result + [elem] : result
-        if (loop_step.has_call_expr() &&
-            loop_step.call_expr().function() == cel::builtin::kTernary &&
-            loop_step.call_expr().args().size() == 3 &&
-            &(loop_step.call_expr().args()[1]) == expr) {
-          function = cel::builtin::kRuntimeListAppend;
-        }
+          comprehension_stack_.top().comprehension;
+      const cel::ast_internal::Expr& loop_step = comprehension->loop_step();
+      // Macro loop_step for a map() will contain a list concat operation:
+      //   accu_var + [elem]
+      if (&loop_step == expr) {
+        function = cel::builtin::kRuntimeListAppend;
+      }
+      // Macro loop_step for a filter() will contain a ternary:
+      //   filter ? accu_var + [elem] : accu_var
+      if (loop_step.has_call_expr() &&
+          loop_step.call_expr().function() == cel::builtin::kTernary &&
+          loop_step.call_expr().args().size() == 3 &&
+          &(loop_step.call_expr().args()[1]) == expr) {
+        function = cel::builtin::kRuntimeListAppend;
       }
     }
 
@@ -518,6 +514,48 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     AddStep(CreateFunctionStep(*call_expr, expr->id(), std::move(overloads)));
   }
 
+  // Returns whether this comprehension appears to be a standard map/filter
+  // macro implementation. It is not exhaustive, so it is unsafe to use with
+  // custom comprehensions outside of the standard macros or hand crafted ASTs.
+  bool IsOptimizableListAppend(
+      const cel::ast_internal::Comprehension* comprehension,
+      bool enable_comprehension_list_append) {
+    if (!enable_comprehension_list_append) {
+      return false;
+    }
+    absl::string_view accu_var = comprehension->accu_var();
+    if (accu_var.empty() ||
+        comprehension->result().ident_expr().name() != accu_var) {
+      return false;
+    }
+    if (!comprehension->accu_init().has_list_expr()) {
+      return false;
+    }
+
+    if (!comprehension->loop_step().has_call_expr()) {
+      return false;
+    }
+
+    // Macro loop_step for a filter() will contain a ternary:
+    //   filter ? accu_var + [elem] : accu_var
+    // Macro loop_step for a map() will contain a list concat operation:
+    //   accu_var + [elem]
+    const auto* call_expr = &comprehension->loop_step().call_expr();
+
+    if (call_expr->function() == cel::builtin::kTernary &&
+        call_expr->args().size() == 3) {
+      if (!call_expr->args()[1].has_call_expr()) {
+        return false;
+      }
+      call_expr = &(call_expr->args()[1].call_expr());
+    }
+
+    return call_expr->function() == cel::builtin::kAdd &&
+           call_expr->args().size() == 2 &&
+           call_expr->args()[0].has_ident_expr() &&
+           call_expr->args()[0].ident_expr().name() == accu_var;
+  }
+
   void PreVisitComprehension(
       const cel::ast_internal::Comprehension* comprehension,
       const cel::ast_internal::Expr* expr,
@@ -546,7 +584,10 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
                     "Invalid comprehension: 'loop_step' must be set");
     ValidateOrError(comprehension->has_result(),
                     "Invalid comprehension: 'result' must be set");
-    comprehension_stack_.push(comprehension);
+    comprehension_stack_.push(
+        {comprehension,
+         IsOptimizableListAppend(comprehension,
+                                 options_.enable_comprehension_list_append)});
     cond_visitor_stack_.push(
         {expr, std::make_unique<ComprehensionVisitor>(
                    this, options_.short_circuiting,
@@ -594,11 +635,14 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
-    if (options_.enable_comprehension_list_append &&
-        !comprehension_stack_.empty() &&
-        &(comprehension_stack_.top()->accu_init()) == expr) {
-      AddStep(CreateCreateMutableListStep(*list_expr, expr->id()));
-      return;
+    if (!comprehension_stack_.empty()) {
+      const ComprehensionStackRecord& comprehension =
+          comprehension_stack_.top();
+      if (comprehension.is_optimizable_list_append &&
+          &(comprehension.comprehension->accu_init()) == expr) {
+        AddStep(CreateCreateMutableListStep(*list_expr, expr->id()));
+        return;
+      }
     }
     AddStep(CreateCreateListStep(*list_expr, expr->id()));
   }
@@ -694,6 +738,11 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   }
 
  private:
+  struct ComprehensionStackRecord {
+    const cel::ast_internal::Comprehension* comprehension;
+    bool is_optimizable_list_append;
+  };
+
   const Resolver& resolver_;
   ExecutionPath& execution_path_;
   ValueFactory& value_factory_;
@@ -721,7 +770,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
 
   const cel::RuntimeOptions& options_;
 
-  std::stack<const cel::ast_internal::Comprehension*> comprehension_stack_;
+  std::stack<ComprehensionStackRecord> comprehension_stack_;
 
   bool enable_comprehension_vulnerability_check_;
 

@@ -29,8 +29,8 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/containers/container_backed_list_impl.h"
-#include "eval/public/portable_cel_function_adapter.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
@@ -40,6 +40,7 @@ using ::cel::BinaryFunctionAdapter;
 using ::cel::Handle;
 using ::cel::ListValue;
 using ::cel::MapValue;
+using ::cel::OpaqueValue;
 using ::cel::UnaryFunctionAdapter;
 using ::cel::Value;
 using ::cel::ValueFactory;
@@ -95,17 +96,24 @@ absl::StatusOr<Handle<ListValue>> ConcatList(ValueFactory& factory,
 // This call will only be invoked within comprehensions where `value1` is an
 // intermediate result which cannot be directly assigned or co-mingled with a
 // user-provided list.
-const CelList* AppendList(Arena* arena, const CelList* value1,
-                          const CelList* value2) {
+absl::StatusOr<Handle<OpaqueValue>> AppendList(ValueFactory& factory,
+                                               Handle<OpaqueValue> value1,
+                                               const ListValue& value2) {
   // The `value1` object cannot be directly addressed and is an intermediate
   // variable. Once the comprehension completes this value will in effect be
   // treated as immutable.
-  MutableListImpl* mutable_list = const_cast<MutableListImpl*>(
-      cel::internal::down_cast<const MutableListImpl*>(value1));
-  for (int i = 0; i < value2->size(); i++) {
-    mutable_list->Append((*value2).Get(arena, i));
+  if (!value1->Is<MutableListValue>()) {
+    return absl::InvalidArgumentError(
+        "Unexpected call to runtime list append.");
   }
-  return mutable_list;
+  MutableListValue& mutable_list =
+      const_cast<MutableListValue&>(value1->As<MutableListValue>());
+  ListValue::GetContext context(factory);
+  for (int i = 0; i < value2.size(); i++) {
+    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value2.Get(context, i));
+    CEL_RETURN_IF_ERROR(mutable_list.Append(std::move(elem)));
+  }
+  return value1;
 }
 }  // namespace
 
@@ -138,10 +146,13 @@ absl::Status RegisterContainerFunctions(CelFunctionRegistry* registry,
   }
 
   return registry->Register(
-      PortableBinaryFunctionAdapter<
-          const CelList*, const CelList*,
-          const CelList*>::Create(cel::builtin::kRuntimeListAppend, false,
-                                  AppendList));
+      BinaryFunctionAdapter<
+          absl::StatusOr<Handle<OpaqueValue>>, Handle<OpaqueValue>,
+          const ListValue&>::CreateDescriptor(cel::builtin::kRuntimeListAppend,
+                                              false),
+      BinaryFunctionAdapter<absl::StatusOr<Handle<OpaqueValue>>,
+                            Handle<OpaqueValue>,
+                            const ListValue&>::WrapFunction(AppendList));
 }
 
 }  // namespace google::api::expr::runtime

@@ -16,8 +16,10 @@
 
 #include <memory>
 
+#include "absl/status/status.h"
 #include "base/value.h"
 #include "base/value_factory.h"
+#include "base/values/opaque_value.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/internal/adapter_activation_impl.h"
 #include "eval/internal/interop.h"
@@ -36,6 +38,12 @@ EvaluationListener AdaptListener(const CelEvaluationListener& listener) {
   if (!listener) return nullptr;
   return [&](int64_t expr_id, const Handle<Value>& value,
              ValueFactory& factory) -> absl::Status {
+    if (value->Is<cel::OpaqueValue>()) {
+      // Opaque types are used to implement some optimized operations.
+      // These aren't representable as legacy values and shouldn't be
+      // inspectable by clients.
+      return absl::OkStatus();
+    }
     google::protobuf::Arena* arena =
         ProtoMemoryManager::CastToProtoArena(factory.memory_manager());
     CelValue legacy_value =

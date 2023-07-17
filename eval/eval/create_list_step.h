@@ -2,6 +2,7 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_CREATE_LIST_STEP_H_
 
 #include <cstdint>
+#include <memory>
 
 #include "absl/status/statusor.h"
 #include "base/ast_internal/expr.h"

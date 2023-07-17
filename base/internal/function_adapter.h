@@ -115,6 +115,7 @@ HANDLE_ADAPTED_KIND_OVL(StructValue, Kind::kStruct);
 HANDLE_ADAPTED_KIND_OVL(MapValue, Kind::kMap);
 HANDLE_ADAPTED_KIND_OVL(ListValue, Kind::kList);
 HANDLE_ADAPTED_KIND_OVL(NullValue, Kind::kNullType);
+HANDLE_ADAPTED_KIND_OVL(OpaqueValue, Kind::kOpaque);
 
 #undef HANDLE_ADAPTED_KIND_OVL
 

@@ -181,6 +181,10 @@ class ExecutionFrame {
     return options_.enable_heterogeneous_equality;
   }
 
+  bool enable_comprehension_list_append() const {
+    return options_.enable_comprehension_list_append;
+  }
+
   cel::MemoryManager& memory_manager() { return state_.memory_manager(); }
 
   cel::TypeFactory& type_factory() { return state_.type_factory(); }

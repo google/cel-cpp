@@ -11,6 +11,7 @@
 #include "base/values/unknown_value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
+#include "eval/eval/mutable_list_impl.h"
 #include "eval/internal/errors.h"
 #include "internal/status_macros.h"
 
@@ -216,9 +217,18 @@ absl::Status ComprehensionFinish::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(2)) {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
-  auto result = frame->value_stack().Peek();
-  frame->value_stack().Pop(1);  // result
-  frame->value_stack().PopAndPush(std::move(result));
+  Handle<Value> result = frame->value_stack().Peek();
+  frame->value_stack().Pop(2);
+  if (frame->enable_comprehension_list_append() &&
+      result->Is<MutableListValue>()) {
+    // We assume this is 'owned' by the evaluator stack so const cast is safe
+    // here.
+    // Convert the buildable list to an actual cel::ListValue.
+    MutableListValue& list_value =
+        const_cast<MutableListValue&>(result->As<MutableListValue>());
+    CEL_ASSIGN_OR_RETURN(result, std::move(list_value).Build());
+  }
+  frame->value_stack().Push(std::move(result));
   CEL_RETURN_IF_ERROR(frame->PopIterFrame());
   return absl::OkStatus();
 }

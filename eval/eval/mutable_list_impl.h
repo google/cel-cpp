@@ -18,14 +18,12 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CONTAINERS_CONCAT_LIST_IMPL_H_
 
 #include <string>
-#include <vector>
 
 #include "base/handle.h"
 #include "base/memory.h"
 #include "base/types/opaque_type.h"
 #include "base/values/list_value_builder.h"
 #include "base/values/opaque_value.h"
-#include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {
 
@@ -99,30 +97,6 @@ class MutableListValue : public cel::OpaqueValue {
   cel::internal::TypeInfo TypeId() const override;
 
   cel::UniqueRef<cel::ListValueBuilderInterface> list_builder_;
-};
-
-// Mutable CelList implementation intended to be used in the accumulation of
-// a list within a comprehension loop.
-//
-// This value should only ever be used as an intermediate result from CEL and
-// not within user code.
-class MutableListImpl : public CelList {
- public:
-  // Create a list from an initial vector of CelValues.
-  explicit MutableListImpl(std::vector<CelValue> values)
-      : values_(std::move(values)) {}
-
-  // List size.
-  int size() const override { return values_.size(); }
-
-  // Append a single element to the list.
-  void Append(const CelValue& element) { values_.push_back(element); }
-
-  // List element access operator.
-  CelValue operator[](int index) const override { return values_[index]; }
-
- private:
-  std::vector<CelValue> values_;
 };
 
 }  //  namespace google::api::expr::runtime

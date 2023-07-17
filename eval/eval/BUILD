@@ -46,6 +46,7 @@ cc_library(
         "//eval/internal:interop",
         "//eval/public:cel_expression",
         "//extensions/protobuf:memory_manager",
+        "@com_google_absl//absl/status",
     ],
 )
 
@@ -238,9 +239,6 @@ cc_library(
         "//base:data",
         "//base:handle",
         "//base/ast_internal:expr",
-        "//eval/internal:interop",
-        "//eval/public/containers:container_backed_list_impl",
-        "//extensions/protobuf:memory_manager",
         "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -325,6 +323,7 @@ cc_library(
         ":attribute_trail",
         ":evaluator_core",
         ":expression_step_base",
+        ":mutable_list_impl",
         "//base:data",
         "//base:kind",
         "//eval/internal:errors",
@@ -775,7 +774,6 @@ cc_library(
         "//base:data",
         "//base:handle",
         "//base:memory",
-        "//eval/public:cel_value",
         "//internal:rtti",
     ],
 )
