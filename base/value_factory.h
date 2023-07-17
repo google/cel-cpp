@@ -35,6 +35,8 @@
 #include "base/memory.h"
 #include "base/owner.h"
 #include "base/type_manager.h"
+#include "base/types/opaque_type.h"
+#include "base/types/type_type.h"
 #include "base/value.h"
 #include "base/values/bool_value.h"
 #include "base/values/bytes_value.h"
@@ -77,6 +79,9 @@ class BorrowedValue final : public T {
 
 class ValueFactory final {
  private:
+  template <typename T, typename U>
+  using BaseOf = std::is_base_of<T, std::remove_const_t<U>>;
+
   template <typename T, typename U, typename V>
   using EnableIfBaseOf =
       std::enable_if_t<std::is_base_of_v<T, std::remove_const_t<U>>, V>;
@@ -414,6 +419,17 @@ class ValueFactory final {
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<TypeValue>::Make<
         base_internal::ModernTypeValue>(value);
+  }
+
+  template <typename ValueType, typename TypeType, typename... Args>
+  std::enable_if_t<std::conjunction_v<BaseOf<OpaqueType, TypeType>,
+                                      BaseOf<OpaqueValue, ValueType>>,
+                   absl::StatusOr<Handle<ValueType>>>
+  CreateOpaqueValue(const Handle<TypeType>& type,
+                    Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return base_internal::HandleFactory<ValueType>::template Make<
+        std::remove_const_t<ValueType>>(memory_manager(), type,
+                                        std::forward<Args>(args)...);
   }
 
   Handle<UnknownValue> CreateUnknownValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {

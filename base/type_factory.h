@@ -184,6 +184,13 @@ class TypeFactory final {
                                                 const Handle<Type>& value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+  template <typename T, typename... Args>
+  EnableIfBaseOfT<OpaqueType, T, absl::StatusOr<Handle<T>>> CreateOpaqueType(
+      Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return base_internal::HandleFactory<T>::template Make<T>(
+        memory_manager(), std::forward<Args>(args)...);
+  }
+
   absl::StatusOr<Handle<OptionalType>> CreateOptionalType(
       const Handle<Type>& type) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
