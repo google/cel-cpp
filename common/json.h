@@ -122,35 +122,31 @@ class JsonArrayBuilder {
 
   bool empty() const { return impl_.get().empty(); }
 
-  size_type size() const { return impl_.get().size(); }
+  size_type size() const;
 
-  iterator begin() { return impl_.mutable_get().begin(); }
+  iterator begin();
 
   const_iterator begin() const { return impl_.get().begin(); }
 
-  iterator end() { return impl_.mutable_get().end(); }
+  iterator end();
 
   const_iterator end() const { return impl_.get().end(); }
 
-  reverse_iterator rbegin() { return impl_.mutable_get().rbegin(); }
+  reverse_iterator rbegin();
 
-  reverse_iterator rend() { return impl_.mutable_get().rend(); }
+  reverse_iterator rend();
 
-  reference at(size_type index) { return impl_.mutable_get().at(index); }
+  reference at(size_type index);
 
-  reference operator[](size_type index) { return (impl_.mutable_get())[index]; }
+  reference operator[](size_type index);
 
-  void reserve(size_type n) {
-    if (n != 0) {
-      impl_.mutable_get().reserve(n);
-    }
-  }
+  void reserve(size_type n);
 
-  void clear() { impl_.mutable_get().clear(); }
+  void clear();
 
   void push_back(Json json);
 
-  void pop_back() { impl_.mutable_get().pop_back(); }
+  void pop_back();
 
   JsonArray Build() &&;
 
@@ -189,7 +185,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI JsonArray final {
 
   bool empty() const { return impl_.get().empty(); }
 
-  size_type size() const { return impl_.get().size(); }
+  size_type size() const;
 
   const_iterator begin() const { return impl_.get().begin(); }
 
@@ -199,19 +195,17 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI JsonArray final {
 
   const_iterator cend() const { return impl_.get().cend(); }
 
-  const_reverse_iterator rbegin() const { return impl_.get().rbegin(); }
+  const_reverse_iterator rbegin() const;
 
-  const_reverse_iterator crbegin() const { return impl_.get().crbegin(); }
+  const_reverse_iterator crbegin() const;
 
-  const_reverse_iterator rend() const { return impl_.get().rend(); }
+  const_reverse_iterator rend() const;
 
-  const_reverse_iterator crend() const { return impl_.get().crend(); }
+  const_reverse_iterator crend() const;
 
-  const_reference at(size_type index) const { return impl_.get().at(index); }
+  const_reference at(size_type index) const;
 
-  const_reference operator[](size_type index) const {
-    return (impl_.get())[index];
-  }
+  const_reference operator[](size_type index) const;
 
   friend bool operator==(const JsonArray& lhs, const JsonArray& rhs);
 
@@ -437,9 +431,48 @@ inline void JsonObjectBuilder::insert(std::initializer_list<value_type> il) {
   impl_.mutable_get().insert(il);
 }
 
+inline JsonArrayBuilder::size_type JsonArrayBuilder::size() const {
+  return impl_.get().size();
+}
+
+inline JsonArrayBuilder::iterator JsonArrayBuilder::begin() {
+  return impl_.mutable_get().begin();
+}
+
+inline JsonArrayBuilder::iterator JsonArrayBuilder::end() {
+  return impl_.mutable_get().end();
+}
+
+inline JsonArrayBuilder::reverse_iterator JsonArrayBuilder::rbegin() {
+  return impl_.mutable_get().rbegin();
+}
+
+inline JsonArrayBuilder::reverse_iterator JsonArrayBuilder::rend() {
+  return impl_.mutable_get().rend();
+}
+
+inline JsonArrayBuilder::reference JsonArrayBuilder::at(size_type index) {
+  return impl_.mutable_get().at(index);
+}
+
+inline JsonArrayBuilder::reference JsonArrayBuilder::operator[](
+    size_type index) {
+  return (impl_.mutable_get())[index];
+}
+
+inline void JsonArrayBuilder::reserve(size_type n) {
+  if (n != 0) {
+    impl_.mutable_get().reserve(n);
+  }
+}
+
+inline void JsonArrayBuilder::clear() { impl_.mutable_get().clear(); }
+
 inline void JsonArrayBuilder::push_back(Json json) {
   impl_.mutable_get().push_back(std::move(json));
 }
+
+inline void JsonArrayBuilder::pop_back() { impl_.mutable_get().pop_back(); }
 
 inline JsonArray JsonArrayBuilder::Build() && {
   return JsonArray(std::move(impl_));
@@ -455,6 +488,34 @@ inline JsonObject JsonObjectBuilder::Build() && {
 
 inline JsonObjectBuilder::operator JsonObject() && {
   return std::move(*this).Build();
+}
+
+inline JsonArray::size_type JsonArray::size() const {
+  return impl_.get().size();
+}
+
+inline JsonArray::const_reverse_iterator JsonArray::rbegin() const {
+  return impl_.get().rbegin();
+}
+
+inline JsonArray::const_reverse_iterator JsonArray::crbegin() const {
+  return impl_.get().crbegin();
+}
+
+inline JsonArray::const_reverse_iterator JsonArray::rend() const {
+  return impl_.get().rend();
+}
+
+inline JsonArray::const_reverse_iterator JsonArray::crend() const {
+  return impl_.get().crend();
+}
+
+inline JsonArray::const_reference JsonArray::at(size_type index) const {
+  return impl_.get().at(index);
+}
+
+inline JsonArray::const_reference JsonArray::operator[](size_type index) const {
+  return (impl_.get())[index];
 }
 
 inline bool operator==(const JsonArray& lhs, const JsonArray& rhs) {
