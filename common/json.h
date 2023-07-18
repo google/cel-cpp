@@ -421,6 +421,21 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI JsonObject final {
 
 // Json is now fully declared.
 
+// `cel::JsonInt` returns `value` as `cel::Json`. If `value` is representable as
+// a number, the result with be `cel::JsonNumber`. Otherwise `value` is
+// converted to a string and the result will be `cel::JsonString`.
+Json JsonInt(int64_t value);
+
+// `cel::JsonUint` returns `value` as `cel::Json`. If `value` is representable
+// as a number, the result with be `cel::JsonNumber`. Otherwise `value` is
+// converted to a string and the result will be `cel::JsonString`.
+Json JsonUint(uint64_t value);
+
+// `cel::JsonUint` returns `value` as `cel::Json`. `value` is base64 encoded and
+// returned as `cel::JsonString`.
+Json JsonBytes(absl::string_view value);
+Json JsonBytes(const absl::Cord& value);
+
 inline JsonArrayBuilder::JsonArrayBuilder(JsonArray array)
     : impl_(std::move(array.impl_)) {}
 

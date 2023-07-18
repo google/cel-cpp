@@ -14,6 +14,11 @@
 
 #include "common/json.h"
 
+#include <string>
+
+#include "absl/strings/escaping.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "internal/copy_on_write.h"
 #include "internal/no_destructor.h"
 
@@ -27,6 +32,31 @@ internal::CopyOnWrite<typename JsonArray::Container> JsonArray::Empty() {
 internal::CopyOnWrite<typename JsonObject::Container> JsonObject::Empty() {
   static const internal::NoDestructor<internal::CopyOnWrite<Container>> empty;
   return empty.get();
+}
+
+Json JsonInt(int64_t value) {
+  if (value < kJsonMinInt || value > kJsonMaxInt) {
+    return JsonString(absl::StrCat(value));
+  }
+  return Json(static_cast<double>(value));
+}
+
+Json JsonUint(uint64_t value) {
+  if (value > kJsonMaxUint) {
+    return JsonString(absl::StrCat(value));
+  }
+  return Json(static_cast<double>(value));
+}
+
+Json JsonBytes(absl::string_view value) {
+  return JsonString(absl::Base64Escape(value));
+}
+
+Json JsonBytes(const absl::Cord& value) {
+  if (auto flat = value.TryFlat(); flat.has_value()) {
+    return JsonBytes(*flat);
+  }
+  return JsonBytes(absl::string_view(static_cast<std::string>(value)));
 }
 
 }  // namespace cel

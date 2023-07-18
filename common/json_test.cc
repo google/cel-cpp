@@ -15,6 +15,8 @@
 #include "common/json.h"
 
 #include "absl/hash/hash_testing.h"
+#include "absl/strings/escaping.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "internal/testing.h"
 
@@ -131,6 +133,27 @@ TEST(JsonObjectBuilder, OneOfEach) {
   builder.clear();
   EXPECT_TRUE(builder.empty());
   EXPECT_EQ(builder.size(), 0);
+}
+
+TEST(JsonInt, Basic) {
+  EXPECT_THAT(JsonInt(1), VariantWith<JsonNumber>(1.0));
+  EXPECT_THAT(JsonInt(std::numeric_limits<int64_t>::max()),
+              VariantWith<JsonString>(
+                  Eq(absl::StrCat(std::numeric_limits<int64_t>::max()))));
+}
+
+TEST(JsonUint, Basic) {
+  EXPECT_THAT(JsonUint(1), VariantWith<JsonNumber>(1.0));
+  EXPECT_THAT(JsonUint(std::numeric_limits<uint64_t>::max()),
+              VariantWith<JsonString>(
+                  Eq(absl::StrCat(std::numeric_limits<uint64_t>::max()))));
+}
+
+TEST(JsonBytes, Basic) {
+  EXPECT_THAT(JsonBytes("foo"),
+              VariantWith<JsonString>(Eq(absl::Base64Escape("foo"))));
+  EXPECT_THAT(JsonBytes(absl::Cord("foo")),
+              VariantWith<JsonString>(Eq(absl::Base64Escape("foo"))));
 }
 
 }  // namespace
