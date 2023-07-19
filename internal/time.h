@@ -59,7 +59,13 @@ absl::Status ValidateDuration(absl::Duration duration);
 
 absl::StatusOr<absl::Duration> ParseDuration(absl::string_view input);
 
+// Human-friendly format for duration provided to match DebugString.
+// Checks that the duration is in the supported range for CEL values.
 absl::StatusOr<std::string> FormatDuration(absl::Duration duration);
+
+// Encodes duration as a string for JSON.
+// This implementation is compatible with protobuf.
+absl::StatusOr<std::string> EncodeDurationToJson(absl::Duration duration);
 
 std::string DebugStringDuration(absl::Duration duration);
 
@@ -67,7 +73,13 @@ absl::Status ValidateTimestamp(absl::Time timestamp);
 
 absl::StatusOr<absl::Time> ParseTimestamp(absl::string_view input);
 
+// Human-friendly format for timestamp provided to match DebugString.
+// Checks that the timestamp is in the supported range for CEL values.
 absl::StatusOr<std::string> FormatTimestamp(absl::Time timestamp);
+
+// Encodes timestamp as a string for JSON.
+// This implementation is compatible with protobuf.
+absl::StatusOr<std::string> EncodeTimestampToJson(absl::Time timestamp);
 
 std::string DebugStringTimestamp(absl::Time timestamp);
 

@@ -141,5 +141,48 @@ TEST(FormatTimestamp, Conformance) {
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
+TEST(EncodeDurationToJson, Conformance) {
+  std::string formatted;
+  ASSERT_OK_AND_ASSIGN(formatted, EncodeDurationToJson(absl::Seconds(1)));
+  EXPECT_EQ(formatted, "1s");
+  ASSERT_OK_AND_ASSIGN(formatted, EncodeDurationToJson(absl::Milliseconds(10)));
+  EXPECT_EQ(formatted, "0.010s");
+  ASSERT_OK_AND_ASSIGN(formatted, EncodeDurationToJson(absl::Microseconds(10)));
+  EXPECT_EQ(formatted, "0.000010s");
+  ASSERT_OK_AND_ASSIGN(formatted, EncodeDurationToJson(absl::Nanoseconds(10)));
+  EXPECT_EQ(formatted, "0.000000010s");
+
+  EXPECT_THAT(EncodeDurationToJson(absl::InfiniteDuration()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(EncodeDurationToJson(-absl::InfiniteDuration()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(EncodeTimestampToJson, Conformance) {
+  std::string formatted;
+  ASSERT_OK_AND_ASSIGN(formatted, EncodeTimestampToJson(MinTimestamp()));
+  EXPECT_EQ(formatted, "0001-01-01T00:00:00Z");
+  ASSERT_OK_AND_ASSIGN(formatted, EncodeTimestampToJson(MaxTimestamp()));
+  EXPECT_EQ(formatted, "9999-12-31T23:59:59.999999999Z");
+  ASSERT_OK_AND_ASSIGN(formatted, EncodeTimestampToJson(absl::UnixEpoch()));
+  EXPECT_EQ(formatted, "1970-01-01T00:00:00Z");
+  ASSERT_OK_AND_ASSIGN(
+      formatted,
+      EncodeTimestampToJson(absl::UnixEpoch() + absl::Milliseconds(10)));
+  EXPECT_EQ(formatted, "1970-01-01T00:00:00.010Z");
+  ASSERT_OK_AND_ASSIGN(
+      formatted,
+      EncodeTimestampToJson(absl::UnixEpoch() + absl::Microseconds(10)));
+  EXPECT_EQ(formatted, "1970-01-01T00:00:00.000010Z");
+  ASSERT_OK_AND_ASSIGN(formatted, EncodeTimestampToJson(absl::UnixEpoch() +
+                                                        absl::Nanoseconds(10)));
+  EXPECT_EQ(formatted, "1970-01-01T00:00:00.000000010Z");
+
+  EXPECT_THAT(EncodeTimestampToJson(absl::InfiniteFuture()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(EncodeTimestampToJson(absl::InfinitePast()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
 }  // namespace
 }  // namespace cel::internal

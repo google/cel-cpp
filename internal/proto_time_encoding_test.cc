@@ -36,8 +36,8 @@ TEST(EncodeDuration, Basic) {
 TEST(EncodeDurationToString, Basic) {
   ASSERT_OK_AND_ASSIGN(
       std::string json,
-      EncodeDurationToString(absl::Seconds(5) + absl::Nanoseconds(2)));
-  EXPECT_EQ(json, "5.000000002s");
+      EncodeDurationToString(absl::Seconds(5) + absl::Nanoseconds(20)));
+  EXPECT_EQ(json, "5.000000020s");
 }
 
 TEST(EncodeTime, Basic) {
@@ -49,9 +49,9 @@ TEST(EncodeTime, Basic) {
 
 TEST(EncodeTimeToString, Basic) {
   ASSERT_OK_AND_ASSIGN(std::string json,
-                       EncodeTimeToString(absl::FromUnixMillis(80000)));
+                       EncodeTimeToString(absl::FromUnixMillis(80030)));
 
-  EXPECT_EQ(json, "1970-01-01T00:01:20Z");
+  EXPECT_EQ(json, "1970-01-01T00:01:20.030Z");
 }
 
 TEST(DecodeDuration, Basic) {

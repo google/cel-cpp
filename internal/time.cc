@@ -14,10 +14,7 @@
 
 #include "internal/time.h"
 
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <cstdio>
+#include <cstdint>
 #include <string>
 
 #include "absl/status/status.h"
@@ -103,6 +100,60 @@ absl::StatusOr<absl::Time> ParseTimestamp(absl::string_view input) {
 absl::StatusOr<std::string> FormatTimestamp(absl::Time timestamp) {
   CEL_RETURN_IF_ERROR(ValidateTimestamp(timestamp));
   return RawFormatTimestamp(timestamp);
+}
+
+std::string FormatNanos(int32_t nanos) {
+  constexpr int32_t kNanosPerMillisecond = 1000000;
+  constexpr int32_t kNanosPerMicrosecond = 1000;
+
+  if (nanos % kNanosPerMillisecond == 0) {
+    return absl::StrFormat("%03d", nanos / kNanosPerMillisecond);
+  } else if (nanos % kNanosPerMicrosecond == 0) {
+    return absl::StrFormat("%06d", nanos / kNanosPerMicrosecond);
+  }
+  return absl::StrFormat("%09d", nanos);
+}
+
+absl::StatusOr<std::string> EncodeDurationToJson(absl::Duration duration) {
+  // Adapted from protobuf time_util.
+  CEL_RETURN_IF_ERROR(ValidateDuration(duration));
+  std::string result;
+  int64_t seconds = absl::IDivDuration(duration, absl::Seconds(1), &duration);
+  int64_t nanos = absl::IDivDuration(duration, absl::Nanoseconds(1), &duration);
+
+  if (seconds < 0 || nanos < 0) {
+    result = "-";
+    seconds = -seconds;
+    nanos = -nanos;
+  }
+
+  absl::StrAppend(&result, seconds);
+  if (nanos != 0) {
+    absl::StrAppend(&result, ".", FormatNanos(nanos));
+  }
+
+  absl::StrAppend(&result, "s");
+  return result;
+}
+
+absl::StatusOr<std::string> EncodeTimestampToJson(absl::Time timestamp) {
+  // Adapted from protobuf time_util.
+  static constexpr absl::string_view kTimestampFormat = "%E4Y-%m-%dT%H:%M:%S";
+  CEL_RETURN_IF_ERROR(ValidateTimestamp(timestamp));
+  // Handle nanos and the seconds separately to match proto JSON format.
+  absl::Time unix_seconds =
+      absl::FromUnixSeconds(absl::ToUnixSeconds(timestamp));
+  int64_t n = (timestamp - unix_seconds) / absl::Nanoseconds(1);
+
+  std::string result =
+      absl::FormatTime(kTimestampFormat, unix_seconds, absl::UTCTimeZone());
+
+  if (n > 0) {
+    absl::StrAppend(&result, ".", FormatNanos(n));
+  }
+
+  absl::StrAppend(&result, "Z");
+  return result;
 }
 
 std::string DebugStringTimestamp(absl::Time timestamp) {

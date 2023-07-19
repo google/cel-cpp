@@ -39,7 +39,6 @@
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
 #include "base/values/string_value.h"
-#include "eval/internal/interop.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_number.h"
 #include "eval/public/cel_options.h"
@@ -50,7 +49,6 @@
 #include "eval/public/logical_function_registrar.h"
 #include "eval/public/portable_cel_function_adapter.h"
 #include "internal/overflow.h"
-#include "internal/proto_time_encoding.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
 #include "internal/utf8.h"
@@ -67,8 +65,8 @@ using ::cel::StringValue;
 using ::cel::UnaryFunctionAdapter;
 using ::cel::Value;
 using ::cel::ValueFactory;
-using ::cel::internal::EncodeDurationToString;
-using ::cel::internal::EncodeTimeToString;
+using ::cel::internal::EncodeDurationToJson;
+using ::cel::internal::EncodeTimestampToJson;
 using ::cel::internal::MaxTimestamp;
 using ::google::protobuf::Arena;
 
@@ -1194,7 +1192,7 @@ absl::Status RegisterStringConversionFunctions(
       UnaryFunctionAdapter<Handle<Value>, absl::Duration>::WrapFunction(
           [](ValueFactory& value_factory,
              absl::Duration value) -> Handle<Value> {
-            auto encode = EncodeDurationToString(value);
+            auto encode = EncodeDurationToJson(value);
             if (!encode.ok()) {
               return value_factory.CreateErrorValue(encode.status());
             }
@@ -1207,7 +1205,7 @@ absl::Status RegisterStringConversionFunctions(
           cel::builtin::kString, false),
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::WrapFunction(
           [](ValueFactory& value_factory, absl::Time value) -> Handle<Value> {
-            auto encode = EncodeTimeToString(value);
+            auto encode = EncodeTimestampToJson(value);
             if (!encode.ok()) {
               return value_factory.CreateErrorValue(encode.status());
             }
@@ -1298,8 +1296,9 @@ absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
       UnaryFunctionAdapter<Handle<Value>, int64_t>::CreateDescriptor(
           cel::builtin::kTimestamp, false),
       UnaryFunctionAdapter<Handle<Value>, int64_t>::WrapFunction(
-          [](ValueFactory&, int64_t epoch_seconds) -> Handle<Value> {
-            return cel::interop_internal::CreateTimestampValue(
+          [](ValueFactory& value_factory,
+             int64_t epoch_seconds) -> Handle<Value> {
+            return value_factory.CreateUncheckedTimestampValue(
                 absl::FromUnixSeconds(epoch_seconds));
           })));
 
@@ -1324,7 +1323,7 @@ absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
                     absl::OutOfRangeError("timestamp overflow"));
               }
             }
-            return cel::interop_internal::CreateTimestampValue(ts);
+            return value_factory.CreateUncheckedTimestampValue(ts);
           })));
 
   return RegisterUintConversionFunctions(registry, options);
