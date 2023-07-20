@@ -440,12 +440,8 @@ cc_library(
     deps = [
         ":cel_function_registry",
         ":cel_options",
-        "//base:builtins",
-        "//base:data",
-        "//base:function_adapter",
-        "//base:handle",
-        "//internal:status_macros",
-        "//runtime/internal:mutable_list_impl",
+        "//runtime:runtime_options",
+        "//runtime/standard:container_functions",
         "@com_google_absl//absl/status",
     ],
 )

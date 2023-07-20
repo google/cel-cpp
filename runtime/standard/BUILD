@@ -101,3 +101,34 @@ cc_test(
         "@com_google_absl//absl/types:span",
     ],
 )
+
+cc_library(
+    name = "container_functions",
+    srcs = ["container_functions.cc"],
+    hdrs = ["container_functions.h"],
+    deps = [
+        "//base:builtins",
+        "//base:data",
+        "//base:function_adapter",
+        "//base:handle",
+        "//internal:status_macros",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "//runtime/internal:mutable_list_impl",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+cc_test(
+    name = "container_functions_test",
+    size = "small",
+    srcs = [
+        "container_functions_test.cc",
+    ],
+    deps = [
+        ":container_functions",
+        "//base:builtins",
+        "//base:function_descriptor",
+        "//internal:testing",
+    ],
+)
