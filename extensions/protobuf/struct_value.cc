@@ -171,7 +171,8 @@ std::string TimestampValueDebugStringFromProto(const google::protobuf::Message& 
 }
 
 std::string BoolValueDebugStringFromProto(const google::protobuf::Message& message) {
-  auto value_or_status = protobuf_internal::UnwrapBoolValueProto(message);
+  auto value_or_status =
+      protobuf_internal::UnwrapDynamicBoolValueProto(message);
   if (ABSL_PREDICT_FALSE(!value_or_status.ok())) {
     return std::string("**google.protobuf.BoolValue**");
   }
@@ -179,7 +180,8 @@ std::string BoolValueDebugStringFromProto(const google::protobuf::Message& messa
 }
 
 std::string BytesValueDebugStringFromProto(const google::protobuf::Message& message) {
-  auto value_or_status = protobuf_internal::UnwrapBytesValueProto(message);
+  auto value_or_status =
+      protobuf_internal::UnwrapDynamicBytesValueProto(message);
   if (ABSL_PREDICT_FALSE(!value_or_status.ok())) {
     return std::string("**google.protobuf.BytesValue**");
   }
@@ -187,7 +189,8 @@ std::string BytesValueDebugStringFromProto(const google::protobuf::Message& mess
 }
 
 std::string DoubleValueDebugStringFromProto(const google::protobuf::Message& message) {
-  auto value_or_status = protobuf_internal::UnwrapDoubleValueProto(message);
+  auto value_or_status =
+      protobuf_internal::UnwrapDynamicFloatingPointValueProto(message);
   if (ABSL_PREDICT_FALSE(!value_or_status.ok())) {
     return std::string("**google.protobuf.DoubleValue**");
   }
@@ -195,7 +198,8 @@ std::string DoubleValueDebugStringFromProto(const google::protobuf::Message& mes
 }
 
 std::string IntValueDebugStringFromProto(const google::protobuf::Message& message) {
-  auto value_or_status = protobuf_internal::UnwrapIntValueProto(message);
+  auto value_or_status =
+      protobuf_internal::UnwrapDynamicSignedIntegralValueProto(message);
   if (ABSL_PREDICT_FALSE(!value_or_status.ok())) {
     return std::string("**google.protobuf.Int64Value**");
   }
@@ -203,7 +207,8 @@ std::string IntValueDebugStringFromProto(const google::protobuf::Message& messag
 }
 
 std::string StringValueDebugStringFromProto(const google::protobuf::Message& message) {
-  auto value_or_status = protobuf_internal::UnwrapStringValueProto(message);
+  auto value_or_status =
+      protobuf_internal::UnwrapDynamicStringValueProto(message);
   if (ABSL_PREDICT_FALSE(!value_or_status.ok())) {
     return std::string("**google.protobuf.StringValue**");
   }
@@ -211,7 +216,8 @@ std::string StringValueDebugStringFromProto(const google::protobuf::Message& mes
 }
 
 std::string UintValueDebugStringFromProto(const google::protobuf::Message& message) {
-  auto value_or_status = protobuf_internal::UnwrapUIntValueProto(message);
+  auto value_or_status =
+      protobuf_internal::UnwrapDynamicUnsignedIntegralValueProto(message);
   if (ABSL_PREDICT_FALSE(!value_or_status.ok())) {
     return std::string("**google.protobuf.UInt64Value**");
   }
@@ -996,7 +1002,7 @@ class ParsedProtoListValue<BoolValue, google::protobuf::Message>
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
     CEL_ASSIGN_OR_RETURN(auto wrapped,
-                         protobuf_internal::UnwrapBoolValueProto(field));
+                         protobuf_internal::UnwrapDynamicBoolValueProto(field));
     return context.value_factory().CreateBoolValue(wrapped);
   }
 
@@ -1041,8 +1047,8 @@ class ParsedProtoListValue<BytesValue, google::protobuf::Message>
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
-    CEL_ASSIGN_OR_RETURN(auto wrapped,
-                         protobuf_internal::UnwrapBytesValueProto(field));
+    CEL_ASSIGN_OR_RETURN(
+        auto wrapped, protobuf_internal::UnwrapDynamicBytesValueProto(field));
     return context.value_factory().CreateBytesValue(std::move(wrapped));
   }
 
@@ -1088,8 +1094,9 @@ class ParsedProtoListValue<DoubleValue, google::protobuf::Message>
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
-    CEL_ASSIGN_OR_RETURN(auto wrapped,
-                         protobuf_internal::UnwrapDoubleValueProto(field));
+    CEL_ASSIGN_OR_RETURN(
+        auto wrapped,
+        protobuf_internal::UnwrapDynamicFloatingPointValueProto(field));
     return context.value_factory().CreateDoubleValue(wrapped);
   }
 
@@ -1135,8 +1142,9 @@ class ParsedProtoListValue<IntValue, google::protobuf::Message>
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
-    CEL_ASSIGN_OR_RETURN(auto wrapped,
-                         protobuf_internal::UnwrapIntValueProto(field));
+    CEL_ASSIGN_OR_RETURN(
+        auto wrapped,
+        protobuf_internal::UnwrapDynamicSignedIntegralValueProto(field));
     return context.value_factory().CreateIntValue(wrapped);
   }
 
@@ -1181,8 +1189,8 @@ class ParsedProtoListValue<StringValue, google::protobuf::Message>
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
-    CEL_ASSIGN_OR_RETURN(auto wrapped,
-                         protobuf_internal::UnwrapStringValueProto(field));
+    CEL_ASSIGN_OR_RETURN(
+        auto wrapped, protobuf_internal::UnwrapDynamicStringValueProto(field));
     return context.value_factory().CreateUncheckedStringValue(
         std::move(wrapped));
   }
@@ -1229,8 +1237,9 @@ class ParsedProtoListValue<UintValue, google::protobuf::Message>
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
-    CEL_ASSIGN_OR_RETURN(auto wrapped,
-                         protobuf_internal::UnwrapUIntValueProto(field));
+    CEL_ASSIGN_OR_RETURN(
+        auto wrapped,
+        protobuf_internal::UnwrapDynamicUnsignedIntegralValueProto(field));
     return context.value_factory().CreateUintValue(wrapped);
   }
 
@@ -1608,51 +1617,57 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
               case TypeKind::kBool: {
                 // google.protobuf.BoolValue, mapped to CEL primitive bool type
                 // for map values.
-                CEL_ASSIGN_OR_RETURN(auto wrapped,
-                                     protobuf_internal::UnwrapBoolValueProto(
-                                         proto_value.GetMessageValue()));
+                CEL_ASSIGN_OR_RETURN(
+                    auto wrapped,
+                    protobuf_internal::UnwrapDynamicBoolValueProto(
+                        proto_value.GetMessageValue()));
                 return context.value_factory().CreateBoolValue(wrapped);
               }
               case TypeKind::kBytes: {
                 // google.protobuf.BytesValue, mapped to CEL primitive bytes
                 // type for map values.
-                CEL_ASSIGN_OR_RETURN(auto wrapped,
-                                     protobuf_internal::UnwrapBytesValueProto(
-                                         proto_value.GetMessageValue()));
+                CEL_ASSIGN_OR_RETURN(
+                    auto wrapped,
+                    protobuf_internal::UnwrapDynamicBytesValueProto(
+                        proto_value.GetMessageValue()));
                 return context.value_factory().CreateBytesValue(
                     std::move(wrapped));
               }
               case TypeKind::kDouble: {
                 // google.protobuf.{FloatValue,DoubleValue}, mapped to CEL
                 // primitive double type for map values.
-                CEL_ASSIGN_OR_RETURN(auto wrapped,
-                                     protobuf_internal::UnwrapDoubleValueProto(
-                                         proto_value.GetMessageValue()));
+                CEL_ASSIGN_OR_RETURN(
+                    auto wrapped,
+                    protobuf_internal::UnwrapDynamicFloatingPointValueProto(
+                        proto_value.GetMessageValue()));
                 return context.value_factory().CreateDoubleValue(wrapped);
               }
               case TypeKind::kInt: {
                 // google.protobuf.{Int32Value,Int64Value}, mapped to CEL
                 // primitive int type for map values.
-                CEL_ASSIGN_OR_RETURN(auto wrapped,
-                                     protobuf_internal::UnwrapIntValueProto(
-                                         proto_value.GetMessageValue()));
+                CEL_ASSIGN_OR_RETURN(
+                    auto wrapped,
+                    protobuf_internal::UnwrapDynamicSignedIntegralValueProto(
+                        proto_value.GetMessageValue()));
                 return context.value_factory().CreateIntValue(wrapped);
               }
               case TypeKind::kString: {
                 // google.protobuf.StringValue, mapped to CEL primitive bytes
                 // type for map values.
-                CEL_ASSIGN_OR_RETURN(auto wrapped,
-                                     protobuf_internal::UnwrapStringValueProto(
-                                         proto_value.GetMessageValue()));
+                CEL_ASSIGN_OR_RETURN(
+                    auto wrapped,
+                    protobuf_internal::UnwrapDynamicStringValueProto(
+                        proto_value.GetMessageValue()));
                 return context.value_factory().CreateUncheckedStringValue(
                     std::move(wrapped));
               }
               case TypeKind::kUint: {
                 // google.protobuf.{UInt32Value,UInt64Value}, mapped to CEL
                 // primitive uint type for map values.
-                CEL_ASSIGN_OR_RETURN(auto wrapped,
-                                     protobuf_internal::UnwrapUIntValueProto(
-                                         proto_value.GetMessageValue()));
+                CEL_ASSIGN_OR_RETURN(
+                    auto wrapped,
+                    protobuf_internal::UnwrapDynamicUnsignedIntegralValueProto(
+                        proto_value.GetMessageValue()));
                 return context.value_factory().CreateUintValue(wrapped);
               }
               default:
@@ -2565,46 +2580,50 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
           switch (field.type.As<WrapperType>()->wrapped()->kind()) {
             case TypeKind::kBool: {
               CEL_ASSIGN_OR_RETURN(
-                  auto wrapped,
-                  protobuf_internal::UnwrapBoolValueProto(reflect.GetMessage(
-                      value(), &field_desc, type()->factory_)));
+                  auto wrapped, protobuf_internal::UnwrapDynamicBoolValueProto(
+                                    reflect.GetMessage(value(), &field_desc,
+                                                       type()->factory_)));
               return context.value_factory().CreateBoolValue(wrapped);
             }
             case TypeKind::kBytes: {
               CEL_ASSIGN_OR_RETURN(
-                  auto wrapped,
-                  protobuf_internal::UnwrapBytesValueProto(reflect.GetMessage(
-                      value(), &field_desc, type()->factory_)));
+                  auto wrapped, protobuf_internal::UnwrapDynamicBytesValueProto(
+                                    reflect.GetMessage(value(), &field_desc,
+                                                       type()->factory_)));
               return context.value_factory().CreateBytesValue(
                   std::move(wrapped));
             }
             case TypeKind::kDouble: {
               CEL_ASSIGN_OR_RETURN(
                   auto wrapped,
-                  protobuf_internal::UnwrapDoubleValueProto(reflect.GetMessage(
-                      value(), &field_desc, type()->factory_)));
+                  protobuf_internal::UnwrapDynamicFloatingPointValueProto(
+                      reflect.GetMessage(value(), &field_desc,
+                                         type()->factory_)));
               return context.value_factory().CreateDoubleValue(wrapped);
             }
             case TypeKind::kInt: {
               CEL_ASSIGN_OR_RETURN(
                   auto wrapped,
-                  protobuf_internal::UnwrapIntValueProto(reflect.GetMessage(
-                      value(), &field_desc, type()->factory_)));
+                  protobuf_internal::UnwrapDynamicSignedIntegralValueProto(
+                      reflect.GetMessage(value(), &field_desc,
+                                         type()->factory_)));
               return context.value_factory().CreateIntValue(wrapped);
             }
             case TypeKind::kString: {
               CEL_ASSIGN_OR_RETURN(
                   auto wrapped,
-                  protobuf_internal::UnwrapStringValueProto(reflect.GetMessage(
-                      value(), &field_desc, type()->factory_)));
+                  protobuf_internal::UnwrapDynamicStringValueProto(
+                      reflect.GetMessage(value(), &field_desc,
+                                         type()->factory_)));
               return context.value_factory().CreateUncheckedStringValue(
                   std::move(wrapped));
             }
             case TypeKind::kUint: {
               CEL_ASSIGN_OR_RETURN(
                   auto wrapped,
-                  protobuf_internal::UnwrapUIntValueProto(reflect.GetMessage(
-                      value(), &field_desc, type()->factory_)));
+                  protobuf_internal::UnwrapDynamicUnsignedIntegralValueProto(
+                      reflect.GetMessage(value(), &field_desc,
+                                         type()->factory_)));
               return context.value_factory().CreateUintValue(wrapped);
             }
             default:

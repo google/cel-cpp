@@ -34,7 +34,7 @@ using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
 TEST(BoolWrapper, GeneratedFromProto) {
-  EXPECT_THAT(UnwrapBoolValueProto(google::protobuf::BoolValue()),
+  EXPECT_THAT(UnwrapGeneratedBoolValueProto(google::protobuf::BoolValue()),
               IsOkAndHolds(Eq(false)));
 }
 
@@ -49,14 +49,14 @@ TEST(BoolWrapper, CustomFromProto) {
   pool.AllowUnknownDependencies();
   google::protobuf::DynamicMessageFactory factory(&pool);
   factory.SetDelegateToGeneratedFactory(false);
-  EXPECT_THAT(UnwrapBoolValueProto(*factory.GetPrototype(
+  EXPECT_THAT(UnwrapDynamicBoolValueProto(*factory.GetPrototype(
                   pool.FindMessageTypeByName("google.protobuf.BoolValue"))),
               IsOkAndHolds(Eq(false)));
 }
 
 TEST(BoolWrapper, GeneratedToProto) {
   google::protobuf::BoolValue proto;
-  ASSERT_OK(WrapBoolValueProto(proto, true));
+  ASSERT_OK(WrapGeneratedBoolValueProto(true, proto));
   EXPECT_TRUE(proto.value());
 }
 
@@ -80,13 +80,13 @@ TEST(BoolWrapper, CustomToProto) {
   const auto* value_field = descriptor->FindFieldByName("value");
   ASSERT_NE(value_field, nullptr);
 
-  ASSERT_OK(WrapBoolValueProto(*proto, true));
+  ASSERT_OK(WrapDynamicBoolValueProto(true, *proto));
 
   EXPECT_TRUE(reflection->GetBool(*proto, value_field));
 }
 
 TEST(BytesWrapper, GeneratedFromProto) {
-  EXPECT_THAT(UnwrapBytesValueProto(google::protobuf::BytesValue()),
+  EXPECT_THAT(UnwrapGeneratedBytesValueProto(google::protobuf::BytesValue()),
               IsOkAndHolds(Eq(absl::Cord())));
 }
 
@@ -101,14 +101,14 @@ TEST(BytesWrapper, CustomFromProto) {
   pool.AllowUnknownDependencies();
   google::protobuf::DynamicMessageFactory factory(&pool);
   factory.SetDelegateToGeneratedFactory(false);
-  EXPECT_THAT(UnwrapBytesValueProto(*factory.GetPrototype(
+  EXPECT_THAT(UnwrapDynamicBytesValueProto(*factory.GetPrototype(
                   pool.FindMessageTypeByName("google.protobuf.BytesValue"))),
               IsOkAndHolds(Eq(absl::Cord())));
 }
 
 TEST(BytesWrapper, GeneratedToProto) {
   google::protobuf::BytesValue proto;
-  ASSERT_OK(WrapBytesValueProto(proto, absl::Cord("foo")));
+  ASSERT_OK(WrapGeneratedBytesValueProto(absl::Cord("foo"), proto));
   EXPECT_EQ(proto.value(), "foo");
 }
 
@@ -133,15 +133,15 @@ TEST(BytesWrapper, CustomToProto) {
   const auto* value_field = descriptor->FindFieldByName("value");
   ASSERT_NE(value_field, nullptr);
 
-  ASSERT_OK(WrapBytesValueProto(*proto, absl::Cord("foo")));
+  ASSERT_OK(WrapDynamicBytesValueProto(absl::Cord("foo"), *proto));
 
   EXPECT_EQ(reflection->GetString(*proto, value_field), "foo");
 }
 
 TEST(DoubleWrapper, GeneratedFromProto) {
-  EXPECT_THAT(UnwrapDoubleValueProto(google::protobuf::FloatValue()),
+  EXPECT_THAT(UnwrapGeneratedFloatValueProto(google::protobuf::FloatValue()),
               IsOkAndHolds(Eq(0.0f)));
-  EXPECT_THAT(UnwrapDoubleValueProto(google::protobuf::DoubleValue()),
+  EXPECT_THAT(UnwrapGeneratedDoubleValueProto(google::protobuf::DoubleValue()),
               IsOkAndHolds(Eq(0.0)));
 }
 
@@ -156,10 +156,16 @@ TEST(DoubleWrapper, CustomFromProto) {
   pool.AllowUnknownDependencies();
   google::protobuf::DynamicMessageFactory factory(&pool);
   factory.SetDelegateToGeneratedFactory(false);
-  EXPECT_THAT(UnwrapDoubleValueProto(*factory.GetPrototype(
+  EXPECT_THAT(UnwrapDynamicFloatValueProto(*factory.GetPrototype(
                   pool.FindMessageTypeByName("google.protobuf.FloatValue"))),
               IsOkAndHolds(Eq(0.0f)));
-  EXPECT_THAT(UnwrapDoubleValueProto(*factory.GetPrototype(
+  EXPECT_THAT(UnwrapDynamicDoubleValueProto(*factory.GetPrototype(
+                  pool.FindMessageTypeByName("google.protobuf.DoubleValue"))),
+              IsOkAndHolds(Eq(0.0)));
+  EXPECT_THAT(UnwrapDynamicFloatingPointValueProto(*factory.GetPrototype(
+                  pool.FindMessageTypeByName("google.protobuf.FloatValue"))),
+              IsOkAndHolds(Eq(0.0f)));
+  EXPECT_THAT(UnwrapDynamicFloatingPointValueProto(*factory.GetPrototype(
                   pool.FindMessageTypeByName("google.protobuf.DoubleValue"))),
               IsOkAndHolds(Eq(0.0)));
 }
@@ -167,12 +173,12 @@ TEST(DoubleWrapper, CustomFromProto) {
 TEST(DoubleWrapper, GeneratedToProto) {
   {
     google::protobuf::FloatValue proto;
-    ASSERT_OK(WrapDoubleValueProto(proto, 1.0f));
+    ASSERT_OK(WrapGeneratedFloatValueProto(1.0f, proto));
     EXPECT_EQ(proto.value(), 1.0f);
   }
   {
     google::protobuf::DoubleValue proto;
-    ASSERT_OK(WrapDoubleValueProto(proto, 1.0));
+    ASSERT_OK(WrapGeneratedDoubleValueProto(1.0, proto));
     EXPECT_EQ(proto.value(), 1.0);
   }
 }
@@ -199,13 +205,17 @@ TEST(DoubleWrapper, CustomToProto) {
     const auto* value_field = descriptor->FindFieldByName("value");
     ASSERT_NE(value_field, nullptr);
 
-    ASSERT_OK(WrapDoubleValueProto(*proto, 1.0f));
+    ASSERT_OK(WrapDynamicFloatValueProto(1.0f, *proto));
 
     EXPECT_EQ(reflection->GetFloat(*proto, value_field), 1.0f);
 
-    EXPECT_THAT(
-        WrapDoubleValueProto(*proto, std::numeric_limits<double>::max()),
-        StatusIs(absl::StatusCode::kOutOfRange));
+    ASSERT_OK(WrapDynamicFloatingPointValueProto(1.0f, *proto));
+
+    EXPECT_EQ(reflection->GetFloat(*proto, value_field), 1.0f);
+
+    EXPECT_THAT(WrapDynamicFloatingPointValueProto(
+                    std::numeric_limits<double>::max(), *proto),
+                StatusIs(absl::StatusCode::kOutOfRange));
   }
   {
     std::unique_ptr<google::protobuf::Message> proto =
@@ -218,16 +228,20 @@ TEST(DoubleWrapper, CustomToProto) {
     const auto* value_field = descriptor->FindFieldByName("value");
     ASSERT_NE(value_field, nullptr);
 
-    ASSERT_OK(WrapDoubleValueProto(*proto, 1.0));
+    ASSERT_OK(WrapDynamicDoubleValueProto(1.0, *proto));
+
+    EXPECT_EQ(reflection->GetDouble(*proto, value_field), 1.0);
+
+    ASSERT_OK(WrapDynamicFloatingPointValueProto(1.0, *proto));
 
     EXPECT_EQ(reflection->GetDouble(*proto, value_field), 1.0);
   }
 }
 
 TEST(IntWrapper, GeneratedFromProto) {
-  EXPECT_THAT(UnwrapIntValueProto(google::protobuf::Int32Value()),
+  EXPECT_THAT(UnwrapGeneratedInt32ValueProto(google::protobuf::Int32Value()),
               IsOkAndHolds(Eq(0)));
-  EXPECT_THAT(UnwrapIntValueProto(google::protobuf::Int64Value()),
+  EXPECT_THAT(UnwrapGeneratedInt64ValueProto(google::protobuf::Int64Value()),
               IsOkAndHolds(Eq(0)));
 }
 
@@ -242,10 +256,16 @@ TEST(IntWrapper, CustomFromProto) {
   pool.AllowUnknownDependencies();
   google::protobuf::DynamicMessageFactory factory(&pool);
   factory.SetDelegateToGeneratedFactory(false);
-  EXPECT_THAT(UnwrapIntValueProto(*factory.GetPrototype(
+  EXPECT_THAT(UnwrapDynamicInt32ValueProto(*factory.GetPrototype(
                   pool.FindMessageTypeByName("google.protobuf.Int32Value"))),
               IsOkAndHolds(Eq(0)));
-  EXPECT_THAT(UnwrapIntValueProto(*factory.GetPrototype(
+  EXPECT_THAT(UnwrapDynamicSignedIntegralValueProto(*factory.GetPrototype(
+                  pool.FindMessageTypeByName("google.protobuf.Int32Value"))),
+              IsOkAndHolds(Eq(0)));
+  EXPECT_THAT(UnwrapDynamicInt64ValueProto(*factory.GetPrototype(
+                  pool.FindMessageTypeByName("google.protobuf.Int64Value"))),
+              IsOkAndHolds(Eq(0)));
+  EXPECT_THAT(UnwrapDynamicSignedIntegralValueProto(*factory.GetPrototype(
                   pool.FindMessageTypeByName("google.protobuf.Int64Value"))),
               IsOkAndHolds(Eq(0)));
 }
@@ -253,12 +273,12 @@ TEST(IntWrapper, CustomFromProto) {
 TEST(IntWrapper, GeneratedToProto) {
   {
     google::protobuf::Int32Value proto;
-    ASSERT_OK(WrapIntValueProto(proto, 1));
+    ASSERT_OK(WrapGeneratedInt32ValueProto(1, proto));
     EXPECT_EQ(proto.value(), 1);
   }
   {
     google::protobuf::Int64Value proto;
-    ASSERT_OK(WrapIntValueProto(proto, 1));
+    ASSERT_OK(WrapGeneratedInt64ValueProto(1, proto));
     EXPECT_EQ(proto.value(), 1);
   }
 }
@@ -285,11 +305,16 @@ TEST(IntWrapper, CustomToProto) {
     const auto* value_field = descriptor->FindFieldByName("value");
     ASSERT_NE(value_field, nullptr);
 
-    ASSERT_OK(WrapIntValueProto(*proto, 1));
+    ASSERT_OK(WrapDynamicInt32ValueProto(1, *proto));
 
     EXPECT_EQ(reflection->GetInt32(*proto, value_field), 1);
 
-    EXPECT_THAT(WrapIntValueProto(*proto, std::numeric_limits<int64_t>::max()),
+    ASSERT_OK(WrapDynamicSignedIntegralValueProto(1, *proto));
+
+    EXPECT_EQ(reflection->GetInt32(*proto, value_field), 1);
+
+    EXPECT_THAT(WrapDynamicSignedIntegralValueProto(
+                    std::numeric_limits<int64_t>::max(), *proto),
                 StatusIs(absl::StatusCode::kOutOfRange));
   }
   {
@@ -303,14 +328,18 @@ TEST(IntWrapper, CustomToProto) {
     const auto* value_field = descriptor->FindFieldByName("value");
     ASSERT_NE(value_field, nullptr);
 
-    ASSERT_OK(WrapIntValueProto(*proto, 1));
+    ASSERT_OK(WrapDynamicInt64ValueProto(1, *proto));
+
+    EXPECT_EQ(reflection->GetInt64(*proto, value_field), 1);
+
+    ASSERT_OK(WrapDynamicSignedIntegralValueProto(1, *proto));
 
     EXPECT_EQ(reflection->GetInt64(*proto, value_field), 1);
   }
 }
 
 TEST(StringWrapper, GeneratedFromProto) {
-  EXPECT_THAT(UnwrapStringValueProto(google::protobuf::StringValue()),
+  EXPECT_THAT(UnwrapGeneratedStringValueProto(google::protobuf::StringValue()),
               IsOkAndHolds(absl::Cord()));
 }
 
@@ -325,14 +354,14 @@ TEST(StringWrapper, CustomFromProto) {
   pool.AllowUnknownDependencies();
   google::protobuf::DynamicMessageFactory factory(&pool);
   factory.SetDelegateToGeneratedFactory(false);
-  EXPECT_THAT(UnwrapStringValueProto(*factory.GetPrototype(
+  EXPECT_THAT(UnwrapDynamicStringValueProto(*factory.GetPrototype(
                   pool.FindMessageTypeByName("google.protobuf.StringValue"))),
               IsOkAndHolds(absl::Cord()));
 }
 
 TEST(StringWrapper, GeneratedToProto) {
   google::protobuf::StringValue proto;
-  ASSERT_OK(WrapStringValueProto(proto, absl::Cord("foo")));
+  ASSERT_OK(WrapGeneratedStringValueProto(absl::Cord("foo"), proto));
   EXPECT_EQ(proto.value(), "foo");
 }
 
@@ -357,15 +386,15 @@ TEST(StringWrapper, CustomToProto) {
   const auto* value_field = descriptor->FindFieldByName("value");
   ASSERT_NE(value_field, nullptr);
 
-  ASSERT_OK(WrapStringValueProto(*proto, absl::Cord("foo")));
+  ASSERT_OK(WrapDynamicStringValueProto(absl::Cord("foo"), *proto));
 
   EXPECT_EQ(reflection->GetString(*proto, value_field), "foo");
 }
 
 TEST(UintWrapper, GeneratedFromProto) {
-  EXPECT_THAT(UnwrapUIntValueProto(google::protobuf::UInt32Value()),
+  EXPECT_THAT(UnwrapGeneratedUInt32ValueProto(google::protobuf::UInt32Value()),
               IsOkAndHolds(Eq(0u)));
-  EXPECT_THAT(UnwrapUIntValueProto(google::protobuf::UInt64Value()),
+  EXPECT_THAT(UnwrapGeneratedUInt64ValueProto(google::protobuf::UInt64Value()),
               IsOkAndHolds(Eq(0u)));
 }
 
@@ -380,10 +409,16 @@ TEST(UintWrapper, CustomFromProto) {
   pool.AllowUnknownDependencies();
   google::protobuf::DynamicMessageFactory factory(&pool);
   factory.SetDelegateToGeneratedFactory(false);
-  EXPECT_THAT(UnwrapUIntValueProto(*factory.GetPrototype(
+  EXPECT_THAT(UnwrapDynamicUInt32ValueProto(*factory.GetPrototype(
                   pool.FindMessageTypeByName("google.protobuf.UInt32Value"))),
               IsOkAndHolds(Eq(0u)));
-  EXPECT_THAT(UnwrapUIntValueProto(*factory.GetPrototype(
+  EXPECT_THAT(UnwrapDynamicUnsignedIntegralValueProto(*factory.GetPrototype(
+                  pool.FindMessageTypeByName("google.protobuf.UInt32Value"))),
+              IsOkAndHolds(Eq(0u)));
+  EXPECT_THAT(UnwrapDynamicUInt64ValueProto(*factory.GetPrototype(
+                  pool.FindMessageTypeByName("google.protobuf.UInt64Value"))),
+              IsOkAndHolds(Eq(0u)));
+  EXPECT_THAT(UnwrapDynamicUnsignedIntegralValueProto(*factory.GetPrototype(
                   pool.FindMessageTypeByName("google.protobuf.UInt64Value"))),
               IsOkAndHolds(Eq(0u)));
 }
@@ -391,12 +426,12 @@ TEST(UintWrapper, CustomFromProto) {
 TEST(UintWrapper, GeneratedToProto) {
   {
     google::protobuf::UInt32Value proto;
-    ASSERT_OK(WrapUIntValueProto(proto, 1));
+    ASSERT_OK(WrapGeneratedUInt32ValueProto(1, proto));
     EXPECT_EQ(proto.value(), 1);
   }
   {
     google::protobuf::UInt64Value proto;
-    ASSERT_OK(WrapUIntValueProto(proto, 1));
+    ASSERT_OK(WrapGeneratedUInt64ValueProto(1, proto));
     EXPECT_EQ(proto.value(), 1);
   }
 }
@@ -423,13 +458,17 @@ TEST(UintWrapper, CustomToProto) {
     const auto* value_field = descriptor->FindFieldByName("value");
     ASSERT_NE(value_field, nullptr);
 
-    ASSERT_OK(WrapUIntValueProto(*proto, 1));
+    ASSERT_OK(WrapDynamicUInt32ValueProto(1, *proto));
 
     EXPECT_EQ(reflection->GetUInt32(*proto, value_field), 1);
 
-    EXPECT_THAT(
-        WrapUIntValueProto(*proto, std::numeric_limits<uint64_t>::max()),
-        StatusIs(absl::StatusCode::kOutOfRange));
+    ASSERT_OK(WrapDynamicUnsignedIntegralValueProto(1, *proto));
+
+    EXPECT_EQ(reflection->GetUInt32(*proto, value_field), 1);
+
+    EXPECT_THAT(WrapDynamicUnsignedIntegralValueProto(
+                    std::numeric_limits<uint64_t>::max(), *proto),
+                StatusIs(absl::StatusCode::kOutOfRange));
   }
   {
     std::unique_ptr<google::protobuf::Message> proto =
@@ -442,7 +481,11 @@ TEST(UintWrapper, CustomToProto) {
     const auto* value_field = descriptor->FindFieldByName("value");
     ASSERT_NE(value_field, nullptr);
 
-    ASSERT_OK(WrapUIntValueProto(*proto, 1));
+    ASSERT_OK(WrapDynamicUInt64ValueProto(1, *proto));
+
+    EXPECT_EQ(reflection->GetUInt64(*proto, value_field), 1);
+
+    ASSERT_OK(WrapDynamicUnsignedIntegralValueProto(1, *proto));
 
     EXPECT_EQ(reflection->GetUInt64(*proto, value_field), 1);
   }
