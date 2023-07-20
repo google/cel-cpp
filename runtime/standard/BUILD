@@ -13,6 +13,8 @@
 # limitations under the License.
 
 # Provides registrars for CEL standard definitions.
+# TODO(uncreated-issue/41): CEL users shouldn't need to use these directly, instead they should prefer to
+# use RegisterBuiltins when available.
 package(
     # Under active development, not yet being released.
     default_visibility = ["//visibility:public"],
@@ -127,6 +129,39 @@ cc_test(
     ],
     deps = [
         ":container_functions",
+        "//base:builtins",
+        "//base:function_descriptor",
+        "//internal:testing",
+    ],
+)
+
+cc_library(
+    name = "type_conversion_functions",
+    srcs = ["type_conversion_functions.cc"],
+    hdrs = ["type_conversion_functions.h"],
+    deps = [
+        "//base:builtins",
+        "//base:data",
+        "//base:function_adapter",
+        "//base:handle",
+        "//internal:overflow",
+        "//internal:status_macros",
+        "//internal:time",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "type_conversion_functions_test",
+    size = "small",
+    srcs = [
+        "type_conversion_functions_test.cc",
+    ],
+    deps = [
+        ":type_conversion_functions",
         "//base:builtins",
         "//base:function_descriptor",
         "//internal:testing",

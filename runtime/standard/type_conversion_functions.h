@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2023 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_RUNTIME_STANDARD_LOGICAL_FUNCTIONS_H_
-#define THIRD_PARTY_CEL_CPP_RUNTIME_STANDARD_LOGICAL_FUNCTIONS_H_
+#ifndef THIRD_PARTY_CEL_CPP_RUNTIME_STANDARD_TYPE_CONVERSION_FUNCTIONS_H_
+#define THIRD_PARTY_CEL_CPP_RUNTIME_STANDARD_TYPE_CONVERSION_FUNCTIONS_H_
 
 #include "absl/status/status.h"
 #include "runtime/function_registry.h"
@@ -21,16 +21,14 @@
 
 namespace cel {
 
-// Register logical operators ! and @not_strictly_false.
-//
-// &&, ||, ?: are special cased by the interpreter (not implemented via the
-// function registry.)
+// Register builtin type conversion functions:
+// dyn, int, uint, double, timestamp, duration, string, bytes, type
 //
 // Most users should use RegisterBuiltinFunctions, which includes these
 // definitions.
-absl::Status RegisterLogicalFunctions(FunctionRegistry& registry,
-                                      const RuntimeOptions& options);
+absl::Status RegisterTypeConversionFunctions(FunctionRegistry& registry,
+                                             const RuntimeOptions& options);
 
 }  // namespace cel
 
-#endif  // THIRD_PARTY_CEL_CPP_RUNTIME_STANDARD_LOGICAL_FUNCTIONS_H_
+#endif  // THIRD_PARTY_CEL_CPP_RUNTIME_STANDARD_TYPE_CONVERSION_FUNCTIONS_H_
