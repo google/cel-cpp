@@ -19,8 +19,6 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/match.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/builtins.h"
@@ -39,13 +37,13 @@
 #include "eval/public/equality_function_registrar.h"
 #include "eval/public/portable_cel_function_adapter.h"
 #include "internal/status_macros.h"
-#include "internal/utf8.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard/arithmetic_functions.h"
 #include "runtime/standard/comparison_functions.h"
 #include "runtime/standard/container_functions.h"
 #include "runtime/standard/logical_functions.h"
+#include "runtime/standard/string_functions.h"
 #include "runtime/standard/time_functions.h"
 #include "runtime/standard/type_conversion_functions.h"
 #include "re2/re2.h"
@@ -55,10 +53,8 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::BinaryFunctionAdapter;
-using ::cel::BytesValue;
 using ::cel::Handle;
 using ::cel::StringValue;
-using ::cel::UnaryFunctionAdapter;
 using ::cel::Value;
 using ::cel::ValueFactory;
 using ::google::protobuf::Arena;
@@ -128,37 +124,6 @@ CelValue HeterogeneousEqualityIn(Arena* arena, CelValue value,
   }
 
   return CelValue::CreateBool(false);
-}
-
-// Concatenation for string type.
-absl::StatusOr<Handle<StringValue>> ConcatString(ValueFactory& factory,
-                                                 const StringValue& value1,
-                                                 const StringValue& value2) {
-  return factory.CreateUncheckedStringValue(
-      absl::StrCat(value1.ToString(), value2.ToString()));
-}
-
-// Concatenation for bytes type.
-absl::StatusOr<Handle<BytesValue>> ConcatBytes(ValueFactory& factory,
-                                               const BytesValue& value1,
-                                               const BytesValue& value2) {
-  return factory.CreateBytesValue(
-      absl::StrCat(value1.ToString(), value2.ToString()));
-}
-
-bool StringContains(ValueFactory&, const StringValue& value,
-                    const StringValue& substr) {
-  return absl::StrContains(value.ToString(), substr.ToString());
-}
-
-bool StringEndsWith(ValueFactory&, const StringValue& value,
-                    const StringValue& suffix) {
-  return absl::EndsWith(value.ToString(), suffix.ToString());
-}
-
-bool StringStartsWith(ValueFactory&, const StringValue& value,
-                      const StringValue& prefix) {
-  return absl::StartsWith(value.ToString(), prefix.ToString());
 }
 
 absl::Status RegisterSetMembershipFunctions(CelFunctionRegistry* registry,
@@ -367,89 +332,6 @@ absl::Status RegisterRegexFunctions(CelFunctionRegistry* registry,
   return absl::OkStatus();
 }
 
-absl::Status RegisterStringFunctions(CelFunctionRegistry* registry,
-                                     const InterpreterOptions& options) {
-  // Basic substring tests (contains, startsWith, endsWith)
-  for (bool receiver_style : {true, false}) {
-    CEL_RETURN_IF_ERROR(registry->Register(
-        BinaryFunctionAdapter<bool, const StringValue&, const StringValue&>::
-            CreateDescriptor(cel::builtin::kStringContains, receiver_style),
-        BinaryFunctionAdapter<bool, const StringValue&, const StringValue&>::
-            WrapFunction(StringContains)));
-
-    CEL_RETURN_IF_ERROR(registry->Register(
-        BinaryFunctionAdapter<bool, const StringValue&, const StringValue&>::
-            CreateDescriptor(cel::builtin::kStringEndsWith, receiver_style),
-        BinaryFunctionAdapter<bool, const StringValue&, const StringValue&>::
-            WrapFunction(StringEndsWith)));
-
-    CEL_RETURN_IF_ERROR(registry->Register(
-        BinaryFunctionAdapter<bool, const StringValue&, const StringValue&>::
-            CreateDescriptor(cel::builtin::kStringStartsWith, receiver_style),
-        BinaryFunctionAdapter<bool, const StringValue&, const StringValue&>::
-            WrapFunction(StringStartsWith)));
-  }
-
-  // string concatenation if enabled
-  if (options.enable_string_concat) {
-    using StrCatFnAdapter =
-        BinaryFunctionAdapter<absl::StatusOr<Handle<StringValue>>,
-                              const StringValue&, const StringValue&>;
-    CEL_RETURN_IF_ERROR(registry->Register(
-        StrCatFnAdapter::CreateDescriptor(cel::builtin::kAdd, false),
-        StrCatFnAdapter::WrapFunction(&ConcatString)));
-
-    using BytesCatFnAdapter =
-        BinaryFunctionAdapter<absl::StatusOr<Handle<BytesValue>>,
-                              const BytesValue&, const BytesValue&>;
-    CEL_RETURN_IF_ERROR(registry->Register(
-        BytesCatFnAdapter::CreateDescriptor(cel::builtin::kAdd, false),
-        BytesCatFnAdapter::WrapFunction(&ConcatBytes)));
-  }
-
-  // String size
-  auto size_func = [](ValueFactory& value_factory,
-                      const StringValue& value) -> Handle<Value> {
-    auto [count, valid] = ::cel::internal::Utf8Validate(value.ToString());
-    if (!valid) {
-      return value_factory.CreateErrorValue(
-          absl::InvalidArgumentError("invalid utf-8 string"));
-    }
-    return value_factory.CreateIntValue(count);
-  };
-
-  // receiver style = true/false
-  // Support global and receiver style size() operations on strings.
-  using StrSizeFnAdapter =
-      UnaryFunctionAdapter<Handle<Value>, const StringValue&>;
-  CEL_RETURN_IF_ERROR(
-      registry->Register(StrSizeFnAdapter::CreateDescriptor(
-                             cel::builtin::kSize, /*receiver_style=*/true),
-                         StrSizeFnAdapter::WrapFunction(size_func)));
-  CEL_RETURN_IF_ERROR(
-      registry->Register(StrSizeFnAdapter::CreateDescriptor(
-                             cel::builtin::kSize, /*receiver_style=*/false),
-                         StrSizeFnAdapter::WrapFunction(size_func)));
-
-  // Bytes size
-  auto bytes_size_func = [](ValueFactory&, const BytesValue& value) -> int64_t {
-    return value.size();
-  };
-  // receiver style = true/false
-  // Support global and receiver style size() operations on bytes.
-  using BytesSizeFnAdapter = UnaryFunctionAdapter<int64_t, const BytesValue&>;
-  CEL_RETURN_IF_ERROR(
-      registry->Register(BytesSizeFnAdapter::CreateDescriptor(
-                             cel::builtin::kSize, /*receiver_style=*/true),
-                         BytesSizeFnAdapter::WrapFunction(bytes_size_func)));
-  CEL_RETURN_IF_ERROR(
-      registry->Register(BytesSizeFnAdapter::CreateDescriptor(
-                             cel::builtin::kSize, /*receiver_style=*/false),
-                         BytesSizeFnAdapter::WrapFunction(bytes_size_func)));
-
-  return absl::OkStatus();
-}
-
 }  // namespace
 
 absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
@@ -469,11 +351,12 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
       cel::RegisterArithmeticFunctions(modern_registry, runtime_options));
   CEL_RETURN_IF_ERROR(
       cel::RegisterTimeFunctions(modern_registry, runtime_options));
+  CEL_RETURN_IF_ERROR(
+      cel::RegisterStringFunctions(modern_registry, runtime_options));
 
   return registry->RegisterAll(
       {
           &RegisterEqualityFunctions,
-          &RegisterStringFunctions,
           &RegisterRegexFunctions,
           &RegisterSetMembershipFunctions,
       },
