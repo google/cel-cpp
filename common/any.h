@@ -19,7 +19,9 @@
 #include <utility>
 
 #include "absl/strings/cord.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/strings/strip.h"
 
 namespace cel {
 
@@ -49,6 +51,18 @@ inline Any MakeAny(std::string type_url, absl::Cord value) {
 
 inline Any MakeAny(std::string type_url, const std::string& value) {
   return MakeAny(std::move(type_url), absl::Cord(value));
+}
+
+inline constexpr absl::string_view kTypeGoogleApisComPrefix =
+    "type.googleapis.com/";
+
+inline std::string MakeTypeUrlWithPrefix(absl::string_view prefix,
+                                         absl::string_view type_name) {
+  return absl::StrCat(absl::StripSuffix(prefix, "/"), "/", type_name);
+}
+
+inline std::string MakeTypeUrl(absl::string_view type_name) {
+  return MakeTypeUrlWithPrefix(kTypeGoogleApisComPrefix, type_name);
 }
 
 }  // namespace cel

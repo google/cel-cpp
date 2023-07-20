@@ -40,6 +40,15 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "any_test",
+    srcs = ["any_test.cc"],
+    deps = [
+        ":any",
+        "//internal:testing",
+    ],
+)
+
 cc_library(
     name = "json",
     srcs = ["json.cc"],
