@@ -14,7 +14,7 @@
 
 #include "eval/public/container_function_registrar.h"
 
-#include <vector>
+#include <utility>
 
 #include "absl/status/status.h"
 #include "base/builtins.h"
@@ -25,26 +25,22 @@
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
 #include "eval/eval/mutable_list_impl.h"
-#include "eval/internal/interop.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
-#include "eval/public/containers/container_backed_list_impl.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
-#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::BinaryFunctionAdapter;
 using ::cel::Handle;
+using ::cel::ListType;
 using ::cel::ListValue;
 using ::cel::MapValue;
 using ::cel::OpaqueValue;
 using ::cel::UnaryFunctionAdapter;
 using ::cel::Value;
 using ::cel::ValueFactory;
-using ::google::protobuf::Arena;
 
 int64_t MapSizeImpl(ValueFactory&, const MapValue& value) {
   return value.size();
@@ -58,8 +54,6 @@ int64_t ListSizeImpl(ValueFactory&, const ListValue& value) {
 absl::StatusOr<Handle<ListValue>> ConcatList(ValueFactory& factory,
                                              const Handle<ListValue>& value1,
                                              const Handle<ListValue>& value2) {
-  std::vector<CelValue> joined_values;
-
   int size1 = value1->size();
   if (size1 == 0) {
     return value2;
@@ -68,27 +62,27 @@ absl::StatusOr<Handle<ListValue>> ConcatList(ValueFactory& factory,
   if (size2 == 0) {
     return value1;
   }
-  joined_values.reserve(size1 + size2);
 
-  google::protobuf::Arena* arena = cel::extensions::ProtoMemoryManager::CastToProtoArena(
-      factory.memory_manager());
+  // TODO(uncreated-issue/50): add option for checking lists have homogenous element
+  // types and use a more specialized list type when possible.
+  CEL_ASSIGN_OR_RETURN(Handle<ListType> list_type,
+                       factory.type_factory().CreateListType(
+                           factory.type_factory().GetDynType()));
+  CEL_ASSIGN_OR_RETURN(auto list_builder, list_type->NewValueBuilder(factory));
+
+  list_builder->reserve(size1 + size2);
 
   ListValue::GetContext context(factory);
   for (int i = 0; i < size1; i++) {
     CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value1->Get(context, i));
-    joined_values.push_back(
-        cel::interop_internal::ModernValueToLegacyValueOrDie(arena, elem));
+    CEL_RETURN_IF_ERROR(list_builder->Add(std::move(elem)));
   }
   for (int i = 0; i < size2; i++) {
     CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value2->Get(context, i));
-    joined_values.push_back(
-        cel::interop_internal::ModernValueToLegacyValueOrDie(arena, elem));
+    CEL_RETURN_IF_ERROR(list_builder->Add(std::move(elem)));
   }
 
-  auto concatenated =
-      Arena::Create<ContainerBackedListImpl>(arena, joined_values);
-
-  return cel::interop_internal::CreateLegacyListValue(concatenated);
+  return std::move(*list_builder).Build();
 }
 
 // AppendList will append the elements in value2 to value1.

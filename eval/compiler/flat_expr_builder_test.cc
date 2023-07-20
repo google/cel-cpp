@@ -2419,7 +2419,9 @@ TEST(UpdatedConstantFolding, FoldsLists) {
   int before_size = arena.SpaceUsed();
   ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
   // Some incidental allocations are expected related to interop.
-  EXPECT_LT(arena.SpaceUsed() - before_size, 100);
+  // 128 is less than the expected allocations for allocating the list terms and
+  // any intermediates in the unoptimized case.
+  EXPECT_LE(arena.SpaceUsed() - before_size, 128);
   EXPECT_THAT(result, test::IsCelList(SizeIs(12)));
 }
 

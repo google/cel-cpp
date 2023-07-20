@@ -445,12 +445,8 @@ cc_library(
         "//base:function_adapter",
         "//base:handle",
         "//eval/eval:mutable_list_impl",
-        "//eval/internal:interop",
-        "//eval/public/containers:container_backed_list_impl",
-        "//extensions/protobuf:memory_manager",
         "//internal:status_macros",
         "@com_google_absl//absl/status",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
