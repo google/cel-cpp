@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_MAP_REFLECTION_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_MAP_REFLECTION_H_
 
+#include "absl/base/attributes.h"
 #include "google/protobuf/map_field.h"
 #include "google/protobuf/message.h"
 
@@ -27,7 +28,8 @@ namespace cel::extensions::protobuf_internal {
 bool LookupMapValue(const google::protobuf::Reflection& reflection,
                     const google::protobuf::Message& message,
                     const google::protobuf::FieldDescriptor& field,
-                    const google::protobuf::MapKey& key, google::protobuf::MapValueConstRef* value);
+                    const google::protobuf::MapKey& key, google::protobuf::MapValueConstRef* value)
+    ABSL_ATTRIBUTE_NONNULL();
 
 bool ContainsMapKey(const google::protobuf::Reflection& reflection,
                     const google::protobuf::Message& message,
@@ -50,7 +52,8 @@ bool InsertOrLookupMapValue(const google::protobuf::Reflection& reflection,
                             google::protobuf::Message* message,
                             const google::protobuf::FieldDescriptor& field,
                             const google::protobuf::MapKey& key,
-                            google::protobuf::MapValueRef* value);
+                            google::protobuf::MapValueRef* value)
+    ABSL_ATTRIBUTE_NONNULL();
 
 }  // namespace cel::extensions::protobuf_internal
 

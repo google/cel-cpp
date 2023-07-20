@@ -811,9 +811,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               if (ABSL_PREDICT_FALSE(!value.Is<BoolValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
               }
-              return protobuf_internal::WrapBoolValueProto(
-                  *value_ref.MutableMessageValue(),
-                  value.As<BoolValue>().value());
+              return protobuf_internal::WrapDynamicBoolValueProto(
+                  value.As<BoolValue>().value(),
+                  *value_ref.MutableMessageValue());
             };
           case TypeKind::kInt:
             // google.protobuf.{Int32,Int64}Value
@@ -827,9 +827,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               if (ABSL_PREDICT_FALSE(!value.Is<IntValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
               }
-              return protobuf_internal::WrapIntValueProto(
-                  *value_ref.MutableMessageValue(),
-                  value.As<IntValue>().value());
+              return protobuf_internal::WrapDynamicSignedIntegralValueProto(
+                  value.As<IntValue>().value(),
+                  *value_ref.MutableMessageValue());
             };
           case TypeKind::kUint:
             // google.protobuf.{UInt32,UInt64}Value
@@ -843,9 +843,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               if (ABSL_PREDICT_FALSE(!value.Is<UintValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
               }
-              return protobuf_internal::WrapUIntValueProto(
-                  *value_ref.MutableMessageValue(),
-                  value.As<UintValue>().value());
+              return protobuf_internal::WrapDynamicUnsignedIntegralValueProto(
+                  value.As<UintValue>().value(),
+                  *value_ref.MutableMessageValue());
             };
           case TypeKind::kDouble:
             // google.protobuf.{Float,Double}Value
@@ -859,9 +859,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               if (ABSL_PREDICT_FALSE(!value.Is<DoubleValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
               }
-              return protobuf_internal::WrapDoubleValueProto(
-                  *value_ref.MutableMessageValue(),
-                  value.As<DoubleValue>().value());
+              return protobuf_internal::WrapDynamicFloatingPointValueProto(
+                  value.As<DoubleValue>().value(),
+                  *value_ref.MutableMessageValue());
             };
           case TypeKind::kBytes:
             // google.protobuf.BytesValue
@@ -875,9 +875,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               if (ABSL_PREDICT_FALSE(!value.Is<BytesValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
               }
-              return protobuf_internal::WrapBytesValueProto(
-                  *value_ref.MutableMessageValue(),
-                  value.As<BytesValue>().ToCord());
+              return protobuf_internal::WrapDynamicBytesValueProto(
+                  value.As<BytesValue>().ToCord(),
+                  *value_ref.MutableMessageValue());
             };
           case TypeKind::kString:
             // google.protobuf.StringValue
@@ -891,9 +891,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               if (ABSL_PREDICT_FALSE(!value.Is<StringValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
               }
-              return protobuf_internal::WrapStringValueProto(
-                  *value_ref.MutableMessageValue(),
-                  value.As<StringValue>().ToCord());
+              return protobuf_internal::WrapDynamicStringValueProto(
+                  value.As<StringValue>().ToCord(),
+                  *value_ref.MutableMessageValue());
             };
           case TypeKind::kStruct:
             if (ABSL_PREDICT_FALSE(!from_value_type.Is<StructType>() &&
@@ -1105,7 +1105,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
       const google::protobuf::Reflection& reflect,
       const google::protobuf::FieldDescriptor& field_desc,
       absl::FunctionRef<std::decay_t<P>(const V&)> valuer,
-      absl::FunctionRef<absl::Status(google::protobuf::Message&, P)> wrapper) {
+      absl::FunctionRef<absl::Status(P, google::protobuf::Message&)> wrapper) {
     const auto& from_element_type = *from_list_type.element();
     ABSL_DCHECK(to_element_type.Is<T>());
     if (ABSL_PREDICT_FALSE(!from_element_type.Is<T>() &&
@@ -1127,7 +1127,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
         return TypeConversionError(*element->type(), to_element_type);
       }
       scratch->Clear();
-      CEL_RETURN_IF_ERROR(wrapper(*scratch, valuer(element->As<V>())));
+      CEL_RETURN_IF_ERROR(wrapper(valuer(element->As<V>()), *scratch));
       repeated_field_ref.Add(*scratch);
     }
     return absl::OkStatus();
@@ -1184,7 +1184,10 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
             from_list_type, to_list_type, to_element_type, value, reflect,
             field_desc,
             [](const DurationValue& value) { return value.value(); },
-            protobuf_internal::AbslDurationToDurationProto);
+            [](absl::Duration value, google::protobuf::Message& message) {
+              return protobuf_internal::AbslDurationToDurationProto(message,
+                                                                    value);
+            });
       case TypeKind::kTimestamp:
         // google.protobuf.Timestamp
         return SetRepeatedWrapperMessageField<TimestampType, TimestampValue,
@@ -1192,45 +1195,48 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
             from_list_type, to_list_type, to_element_type, value, reflect,
             field_desc,
             [](const TimestampValue& value) { return value.value(); },
-            protobuf_internal::AbslTimeToTimestampProto);
+            [](absl::Time value, google::protobuf::Message& message) {
+              return protobuf_internal::AbslTimeToTimestampProto(message,
+                                                                 value);
+            });
       case TypeKind::kBool:
         // google.protobuf.BoolValue
         return SetRepeatedWrapperMessageField<BoolType, BoolValue, bool>(
             from_list_type, to_list_type, to_element_type, value, reflect,
             field_desc, [](const BoolValue& value) { return value.value(); },
-            protobuf_internal::WrapBoolValueProto);
+            protobuf_internal::WrapDynamicBoolValueProto);
       case TypeKind::kInt:
         // google.protobuf.{Int32,Int64}Value
         return SetRepeatedWrapperMessageField<IntType, IntValue, int64_t>(
             from_list_type, to_list_type, to_element_type, value, reflect,
             field_desc, [](const IntValue& value) { return value.value(); },
-            protobuf_internal::WrapIntValueProto);
+            protobuf_internal::WrapDynamicSignedIntegralValueProto);
       case TypeKind::kUint:
         // google.protobuf.{UInt32,UInt64}Value
         return SetRepeatedWrapperMessageField<UintType, UintValue, uint64_t>(
             from_list_type, to_list_type, to_element_type, value, reflect,
             field_desc, [](const UintValue& value) { return value.value(); },
-            protobuf_internal::WrapUIntValueProto);
+            protobuf_internal::WrapDynamicUnsignedIntegralValueProto);
       case TypeKind::kDouble:
         // google.protobuf.{Float,Double}Value
         return SetRepeatedWrapperMessageField<DoubleType, DoubleValue, double>(
             from_list_type, to_list_type, to_element_type, value, reflect,
             field_desc, [](const DoubleValue& value) { return value.value(); },
-            protobuf_internal::WrapDoubleValueProto);
+            protobuf_internal::WrapDynamicFloatingPointValueProto);
       case TypeKind::kBytes:
         // google.protobuf.BytesValue
         return SetRepeatedWrapperMessageField<BytesType, BytesValue,
                                               const absl::Cord&>(
             from_list_type, to_list_type, to_element_type, value, reflect,
             field_desc, [](const BytesValue& value) { return value.ToCord(); },
-            protobuf_internal::WrapBytesValueProto);
+            protobuf_internal::WrapDynamicBytesValueProto);
       case TypeKind::kString:
         // google.protobuf.StringValue
         return SetRepeatedWrapperMessageField<StringType, StringValue,
                                               const absl::Cord&>(
             from_list_type, to_list_type, to_element_type, value, reflect,
             field_desc, [](const StringValue& value) { return value.ToCord(); },
-            protobuf_internal::WrapStringValueProto);
+            protobuf_internal::WrapDynamicStringValueProto);
       case TypeKind::kStruct: {
         auto repeated_field_ref =
             reflect.GetMutableRepeatedFieldRef<google::protobuf::Message>(message_,
@@ -1384,9 +1390,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                   "type conversion error from ", field.type->DebugString(),
                   " to ", value->type()->DebugString()));
             }
-            return protobuf_internal::WrapBoolValueProto(
-                *reflect.MutableMessage(message_, &field_desc, factory_),
-                value->As<BoolValue>().value());
+            return protobuf_internal::WrapDynamicBoolValueProto(
+                value->As<BoolValue>().value(),
+                *reflect.MutableMessage(message_, &field_desc, factory_));
           }
           case TypeKind::kInt: {
             // google.protobuf.{Int32,Int64}Value
@@ -1395,9 +1401,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                   "type conversion error from ", field.type->DebugString(),
                   " to ", value->type()->DebugString()));
             }
-            return protobuf_internal::WrapIntValueProto(
-                *reflect.MutableMessage(message_, &field_desc, factory_),
-                value->As<IntValue>().value());
+            return protobuf_internal::WrapDynamicSignedIntegralValueProto(
+                value->As<IntValue>().value(),
+                *reflect.MutableMessage(message_, &field_desc, factory_));
           }
           case TypeKind::kUint: {
             // google.protobuf.{UInt32,UInt64}Value
@@ -1406,9 +1412,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                   "type conversion error from ", field.type->DebugString(),
                   " to ", value->type()->DebugString()));
             }
-            return protobuf_internal::WrapUIntValueProto(
-                *reflect.MutableMessage(message_, &field_desc, factory_),
-                value->As<UintValue>().value());
+            return protobuf_internal::WrapDynamicUnsignedIntegralValueProto(
+                value->As<UintValue>().value(),
+                *reflect.MutableMessage(message_, &field_desc, factory_));
           }
           case TypeKind::kDouble: {
             // google.protobuf.{Float,Double}Value
@@ -1417,9 +1423,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                   "type conversion error from ", field.type->DebugString(),
                   " to ", value->type()->DebugString()));
             }
-            return protobuf_internal::WrapDoubleValueProto(
-                *reflect.MutableMessage(message_, &field_desc, factory_),
-                value->As<DoubleValue>().value());
+            return protobuf_internal::WrapDynamicFloatingPointValueProto(
+                value->As<DoubleValue>().value(),
+                *reflect.MutableMessage(message_, &field_desc, factory_));
           }
           case TypeKind::kBytes: {
             // google.protobuf.BytesValue
@@ -1428,9 +1434,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                   "type conversion error from ", field.type->DebugString(),
                   " to ", value->type()->DebugString()));
             }
-            return protobuf_internal::WrapBytesValueProto(
-                *reflect.MutableMessage(message_, &field_desc, factory_),
-                value->As<BytesValue>().ToCord());
+            return protobuf_internal::WrapDynamicBytesValueProto(
+                value->As<BytesValue>().ToCord(),
+                *reflect.MutableMessage(message_, &field_desc, factory_));
           }
           case TypeKind::kString: {
             // google.protobuf.StringValue
@@ -1439,9 +1445,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                   "type conversion error from ", field.type->DebugString(),
                   " to ", value->type()->DebugString()));
             }
-            return protobuf_internal::WrapStringValueProto(
-                *reflect.MutableMessage(message_, &field_desc, factory_),
-                value->As<StringValue>().ToCord());
+            return protobuf_internal::WrapDynamicStringValueProto(
+                value->As<StringValue>().ToCord(),
+                *reflect.MutableMessage(message_, &field_desc, factory_));
           }
           default:
             // There are only 6 wrapper types.

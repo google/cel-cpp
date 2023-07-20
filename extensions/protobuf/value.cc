@@ -643,14 +643,14 @@ absl::StatusOr<Handle<Value>> TimestampMessageBorrowConverter(
 absl::StatusOr<Handle<Value>> BoolValueMessageCopyConverter(
     ValueFactory& value_factory, const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapBoolValueProto(value));
+                       protobuf_internal::UnwrapDynamicBoolValueProto(value));
   return value_factory.CreateBoolValue(wrapped);
 }
 
 absl::StatusOr<Handle<Value>> BoolValueMessageMoveConverter(
     ValueFactory& value_factory, google::protobuf::Message&& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapBoolValueProto(value));
+                       protobuf_internal::UnwrapDynamicBoolValueProto(value));
   return value_factory.CreateBoolValue(wrapped);
 }
 
@@ -658,21 +658,21 @@ absl::StatusOr<Handle<Value>> BoolValueMessageBorrowConverter(
     Owner<Value>& owner ABSL_ATTRIBUTE_UNUSED, ValueFactory& value_factory,
     const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapBoolValueProto(value));
+                       protobuf_internal::UnwrapDynamicBoolValueProto(value));
   return value_factory.CreateBoolValue(wrapped);
 }
 
 absl::StatusOr<Handle<Value>> BytesValueMessageCopyConverter(
     ValueFactory& value_factory, const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapBytesValueProto(value));
+                       protobuf_internal::UnwrapDynamicBytesValueProto(value));
   return value_factory.CreateBytesValue(std::move(wrapped));
 }
 
 absl::StatusOr<Handle<Value>> BytesValueMessageMoveConverter(
     ValueFactory& value_factory, google::protobuf::Message&& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapBytesValueProto(value));
+                       protobuf_internal::UnwrapDynamicBytesValueProto(value));
   return value_factory.CreateBytesValue(std::move(wrapped));
 }
 
@@ -680,21 +680,21 @@ absl::StatusOr<Handle<Value>> BytesValueMessageBorrowConverter(
     Owner<Value>& owner ABSL_ATTRIBUTE_UNUSED, ValueFactory& value_factory,
     const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapBytesValueProto(value));
+                       protobuf_internal::UnwrapDynamicBytesValueProto(value));
   return value_factory.CreateBytesValue(std::move(wrapped));
 }
 
 absl::StatusOr<Handle<Value>> FloatValueMessageCopyConverter(
     ValueFactory& value_factory, const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapFloatValueProto(value));
+                       protobuf_internal::UnwrapDynamicFloatValueProto(value));
   return value_factory.CreateDoubleValue(wrapped);
 }
 
 absl::StatusOr<Handle<Value>> FloatValueMessageMoveConverter(
     ValueFactory& value_factory, google::protobuf::Message&& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapFloatValueProto(value));
+                       protobuf_internal::UnwrapDynamicFloatValueProto(value));
   return value_factory.CreateDoubleValue(wrapped);
 }
 
@@ -702,21 +702,21 @@ absl::StatusOr<Handle<Value>> FloatValueMessageBorrowConverter(
     Owner<Value>& owner ABSL_ATTRIBUTE_UNUSED, ValueFactory& value_factory,
     const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapFloatValueProto(value));
+                       protobuf_internal::UnwrapDynamicFloatValueProto(value));
   return value_factory.CreateDoubleValue(wrapped);
 }
 
 absl::StatusOr<Handle<Value>> DoubleValueMessageCopyConverter(
     ValueFactory& value_factory, const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapDoubleValueProto(value));
+                       protobuf_internal::UnwrapDynamicDoubleValueProto(value));
   return value_factory.CreateDoubleValue(wrapped);
 }
 
 absl::StatusOr<Handle<Value>> DoubleValueMessageMoveConverter(
     ValueFactory& value_factory, google::protobuf::Message&& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapDoubleValueProto(value));
+                       protobuf_internal::UnwrapDynamicDoubleValueProto(value));
   return value_factory.CreateDoubleValue(wrapped);
 }
 
@@ -724,21 +724,21 @@ absl::StatusOr<Handle<Value>> DoubleValueMessageBorrowConverter(
     Owner<Value>& owner ABSL_ATTRIBUTE_UNUSED, ValueFactory& value_factory,
     const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapDoubleValueProto(value));
+                       protobuf_internal::UnwrapDynamicDoubleValueProto(value));
   return value_factory.CreateDoubleValue(wrapped);
 }
 
 absl::StatusOr<Handle<Value>> Int32ValueMessageCopyConverter(
     ValueFactory& value_factory, const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapInt32ValueProto(value));
+                       protobuf_internal::UnwrapDynamicInt32ValueProto(value));
   return value_factory.CreateIntValue(wrapped);
 }
 
 absl::StatusOr<Handle<Value>> Int32ValueMessageMoveConverter(
     ValueFactory& value_factory, google::protobuf::Message&& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapInt32ValueProto(value));
+                       protobuf_internal::UnwrapDynamicInt32ValueProto(value));
   return value_factory.CreateIntValue(wrapped);
 }
 
@@ -746,21 +746,21 @@ absl::StatusOr<Handle<Value>> Int32ValueMessageBorrowConverter(
     Owner<Value>& owner ABSL_ATTRIBUTE_UNUSED, ValueFactory& value_factory,
     const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapInt32ValueProto(value));
+                       protobuf_internal::UnwrapDynamicInt32ValueProto(value));
   return value_factory.CreateIntValue(wrapped);
 }
 
 absl::StatusOr<Handle<Value>> Int64ValueMessageCopyConverter(
     ValueFactory& value_factory, const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapInt64ValueProto(value));
+                       protobuf_internal::UnwrapDynamicInt64ValueProto(value));
   return value_factory.CreateIntValue(wrapped);
 }
 
 absl::StatusOr<Handle<Value>> Int64ValueMessageMoveConverter(
     ValueFactory& value_factory, google::protobuf::Message&& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapInt64ValueProto(value));
+                       protobuf_internal::UnwrapDynamicInt64ValueProto(value));
   return value_factory.CreateIntValue(wrapped);
 }
 
@@ -768,21 +768,21 @@ absl::StatusOr<Handle<Value>> Int64ValueMessageBorrowConverter(
     Owner<Value>& owner ABSL_ATTRIBUTE_UNUSED, ValueFactory& value_factory,
     const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapInt64ValueProto(value));
+                       protobuf_internal::UnwrapDynamicInt64ValueProto(value));
   return value_factory.CreateIntValue(wrapped);
 }
 
 absl::StatusOr<Handle<Value>> StringValueMessageCopyConverter(
     ValueFactory& value_factory, const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapStringValueProto(value));
+                       protobuf_internal::UnwrapDynamicStringValueProto(value));
   return value_factory.CreateUncheckedStringValue(std::move(wrapped));
 }
 
 absl::StatusOr<Handle<Value>> StringValueMessageMoveConverter(
     ValueFactory& value_factory, google::protobuf::Message&& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapStringValueProto(value));
+                       protobuf_internal::UnwrapDynamicStringValueProto(value));
   return value_factory.CreateUncheckedStringValue(std::move(wrapped));
 }
 
@@ -790,21 +790,21 @@ absl::StatusOr<Handle<Value>> StringValueMessageBorrowConverter(
     Owner<Value>& owner ABSL_ATTRIBUTE_UNUSED, ValueFactory& value_factory,
     const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapStringValueProto(value));
+                       protobuf_internal::UnwrapDynamicStringValueProto(value));
   return value_factory.CreateUncheckedStringValue(std::move(wrapped));
 }
 
 absl::StatusOr<Handle<Value>> UInt32ValueMessageCopyConverter(
     ValueFactory& value_factory, const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapUInt32ValueProto(value));
+                       protobuf_internal::UnwrapDynamicUInt32ValueProto(value));
   return value_factory.CreateUintValue(wrapped);
 }
 
 absl::StatusOr<Handle<Value>> UInt32ValueMessageMoveConverter(
     ValueFactory& value_factory, google::protobuf::Message&& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapUInt32ValueProto(value));
+                       protobuf_internal::UnwrapDynamicUInt32ValueProto(value));
   return value_factory.CreateUintValue(wrapped);
 }
 
@@ -812,21 +812,21 @@ absl::StatusOr<Handle<Value>> UInt32ValueMessageBorrowConverter(
     Owner<Value>& owner ABSL_ATTRIBUTE_UNUSED, ValueFactory& value_factory,
     const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapUInt32ValueProto(value));
+                       protobuf_internal::UnwrapDynamicUInt32ValueProto(value));
   return value_factory.CreateUintValue(wrapped);
 }
 
 absl::StatusOr<Handle<Value>> UInt64ValueMessageCopyConverter(
     ValueFactory& value_factory, const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapUInt64ValueProto(value));
+                       protobuf_internal::UnwrapDynamicUInt64ValueProto(value));
   return value_factory.CreateUintValue(wrapped);
 }
 
 absl::StatusOr<Handle<Value>> UInt64ValueMessageMoveConverter(
     ValueFactory& value_factory, google::protobuf::Message&& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapUInt64ValueProto(value));
+                       protobuf_internal::UnwrapDynamicUInt64ValueProto(value));
   return value_factory.CreateUintValue(wrapped);
 }
 
@@ -834,7 +834,7 @@ absl::StatusOr<Handle<Value>> UInt64ValueMessageBorrowConverter(
     Owner<Value>& owner ABSL_ATTRIBUTE_UNUSED, ValueFactory& value_factory,
     const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
-                       protobuf_internal::UnwrapUInt64ValueProto(value));
+                       protobuf_internal::UnwrapDynamicUInt64ValueProto(value));
   return value_factory.CreateUintValue(wrapped);
 }
 

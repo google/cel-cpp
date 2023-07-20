@@ -18,6 +18,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -29,13 +30,22 @@ namespace cel {
 // protocol buffer dependency.
 class Any final {
  public:
+  Any() = default;
+
+  Any(std::string type_url, absl::Cord value)
+      : type_url_(std::move(type_url)), value_(std::move(value)) {}
+
   void set_type_url(std::string type_url) { type_url_ = std::move(type_url); }
 
-  absl::string_view type_url() const { return type_url_; }
+  absl::string_view type_url() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return type_url_;
+  }
 
   void set_value(absl::Cord value) { value_ = std::move(value); }
 
-  absl::Cord value() const { return value_; }
+  const absl::Cord& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return value_;
+  }
 
  private:
   std::string type_url_;
