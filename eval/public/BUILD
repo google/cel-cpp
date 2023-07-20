@@ -444,8 +444,8 @@ cc_library(
         "//base:data",
         "//base:function_adapter",
         "//base:handle",
-        "//eval/eval:mutable_list_impl",
         "//internal:status_macros",
+        "//runtime/internal:mutable_list_impl",
         "@com_google_absl//absl/status",
     ],
 )

@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "eval/eval/mutable_list_impl.h"
+#include "runtime/internal/mutable_list_impl.h"
 
 #include "base/memory.h"
 #include "base/type_factory.h"
@@ -24,19 +24,8 @@
 #include "base/values/opaque_value.h"
 #include "internal/testing.h"
 
-namespace google::api::expr::runtime {
+namespace cel::runtime_internal {
 namespace {
-
-using ::cel::Handle;
-using ::cel::IntValue;
-using ::cel::ListValue;
-using ::cel::MemoryManager;
-using ::cel::OpaqueType;
-using ::cel::OpaqueValue;
-using ::cel::TypeFactory;
-using ::cel::TypeManager;
-using ::cel::TypeProvider;
-using ::cel::ValueFactory;
 
 TEST(MutableListImplType, Creation) {
   TypeFactory type_factory(MemoryManager::Global());
@@ -115,4 +104,4 @@ TEST(MutableListImplValue, ListBuilding) {
 }
 
 }  // namespace
-}  // namespace google::api::expr::runtime
+}  // namespace cel::runtime_internal

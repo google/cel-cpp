@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "eval/eval/mutable_list_impl.h"
+#include "runtime/internal/mutable_list_impl.h"
 
 #include <string>
 #include <utility>
@@ -21,7 +21,7 @@
 #include "base/value.h"
 #include "internal/rtti.h"
 
-namespace google::api::expr::runtime {
+namespace cel::runtime_internal {
 using ::cel::internal::TypeInfo;
 
 bool MutableListType::Is(const cel::Type& type) {
@@ -62,4 +62,4 @@ bool MutableListValue::Is(const cel::Value& value) {
              cel::internal::TypeId<MutableListValue>();
 }
 
-}  // namespace google::api::expr::runtime
+}  // namespace cel::runtime_internal

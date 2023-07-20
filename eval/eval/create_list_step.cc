@@ -10,8 +10,8 @@
 #include "base/types/list_type.h"
 #include "base/values/list_value_builder.h"
 #include "eval/eval/expression_step_base.h"
-#include "eval/eval/mutable_list_impl.h"
 #include "internal/status_macros.h"
+#include "runtime/internal/mutable_list_impl.h"
 
 namespace google::api::expr::runtime {
 
@@ -22,6 +22,8 @@ using ::cel::ListType;
 using ::cel::ListValueBuilderInterface;
 using ::cel::UniqueRef;
 using ::cel::UnknownValue;
+using ::cel::runtime_internal::MutableListType;
+using ::cel::runtime_internal::MutableListValue;
 
 class CreateListStep : public ExpressionStepBase {
  public:

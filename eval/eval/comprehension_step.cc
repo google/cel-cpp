@@ -11,9 +11,9 @@
 #include "base/values/unknown_value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/eval/mutable_list_impl.h"
 #include "eval/internal/errors.h"
 #include "internal/status_macros.h"
+#include "runtime/internal/mutable_list_impl.h"
 
 namespace google::api::expr::runtime {
 
@@ -21,6 +21,7 @@ using ::cel::Handle;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;
+using ::cel::runtime_internal::MutableListValue;
 
 // Stack variables during comprehension evaluation:
 // 0. accu_init, then loop_step (any), available through accu_var

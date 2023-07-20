@@ -24,10 +24,10 @@
 #include "base/value_factory.h"
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
-#include "eval/eval/mutable_list_impl.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "internal/status_macros.h"
+#include "runtime/internal/mutable_list_impl.h"
 
 namespace google::api::expr::runtime {
 namespace {
@@ -41,6 +41,7 @@ using ::cel::OpaqueValue;
 using ::cel::UnaryFunctionAdapter;
 using ::cel::Value;
 using ::cel::ValueFactory;
+using ::cel::runtime_internal::MutableListValue;
 
 int64_t MapSizeImpl(ValueFactory&, const MapValue& value) {
   return value.size();

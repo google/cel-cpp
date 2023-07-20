@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CONTAINERS_CONCAT_LIST_IMPL_H_
-#define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CONTAINERS_CONCAT_LIST_IMPL_H_
+#ifndef THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_MUTABLE_LIST_IMPL_H_
+#define THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_MUTABLE_LIST_IMPL_H_
 
 #include <string>
 
@@ -25,7 +25,7 @@
 #include "base/values/list_value_builder.h"
 #include "base/values/opaque_value.h"
 
-namespace google::api::expr::runtime {
+namespace cel::runtime_internal {
 
 constexpr char kMutableListTypeName[] = "#cel.MutableList";
 
@@ -99,6 +99,6 @@ class MutableListValue : public cel::OpaqueValue {
   cel::UniqueRef<cel::ListValueBuilderInterface> list_builder_;
 };
 
-}  //  namespace google::api::expr::runtime
+}  //  namespace cel::runtime_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CONTAINERS_CONCAT_LIST_IMPL_H_
+#endif  // THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_MUTABLE_LIST_IMPL_H_

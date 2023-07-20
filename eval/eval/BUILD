@@ -235,11 +235,11 @@ cc_library(
     deps = [
         ":evaluator_core",
         ":expression_step_base",
-        ":mutable_list_impl",
         "//base:data",
         "//base:handle",
         "//base/ast_internal:expr",
         "//internal:status_macros",
+        "//runtime/internal:mutable_list_impl",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
     ],
@@ -323,11 +323,11 @@ cc_library(
         ":attribute_trail",
         ":evaluator_core",
         ":expression_step_base",
-        ":mutable_list_impl",
         "//base:data",
         "//base:kind",
         "//eval/internal:errors",
         "//internal:status_macros",
+        "//runtime/internal:mutable_list_impl",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
     ],
@@ -763,29 +763,6 @@ cc_library(
         "//base:data",
         "//base:handle",
         "@com_google_absl//absl/status:statusor",
-    ],
-)
-
-cc_library(
-    name = "mutable_list_impl",
-    srcs = ["mutable_list_impl.cc"],
-    hdrs = ["mutable_list_impl.h"],
-    deps = [
-        "//base:data",
-        "//base:handle",
-        "//base:memory",
-        "//internal:rtti",
-    ],
-)
-
-cc_test(
-    name = "mutable_list_impl_test",
-    srcs = ["mutable_list_impl_test.cc"],
-    deps = [
-        ":mutable_list_impl",
-        "//base:data",
-        "//base:memory",
-        "//internal:testing",
     ],
 )
 

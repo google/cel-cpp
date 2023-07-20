@@ -50,3 +50,26 @@ cc_library(
         "@com_google_absl//absl/types:optional",
     ],
 )
+
+cc_library(
+    name = "mutable_list_impl",
+    srcs = ["mutable_list_impl.cc"],
+    hdrs = ["mutable_list_impl.h"],
+    deps = [
+        "//base:data",
+        "//base:handle",
+        "//base:memory",
+        "//internal:rtti",
+    ],
+)
+
+cc_test(
+    name = "mutable_list_impl_test",
+    srcs = ["mutable_list_impl_test.cc"],
+    deps = [
+        ":mutable_list_impl",
+        "//base:data",
+        "//base:memory",
+        "//internal:testing",
+    ],
+)
