@@ -306,6 +306,7 @@ cc_library(
         "//internal:utf8",
         "//runtime:function_registry",
         "//runtime:runtime_options",
+        "//runtime/standard:arithmetic_functions",
         "//runtime/standard:comparison_functions",
         "//runtime/standard:container_functions",
         "//runtime/standard:logical_functions",

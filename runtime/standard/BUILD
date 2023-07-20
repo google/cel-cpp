@@ -167,3 +167,35 @@ cc_test(
         "//internal:testing",
     ],
 )
+
+cc_library(
+    name = "arithmetic_functions",
+    srcs = ["arithmetic_functions.cc"],
+    hdrs = ["arithmetic_functions.h"],
+    deps = [
+        "//base:builtins",
+        "//base:data",
+        "//base:function_adapter",
+        "//base:handle",
+        "//internal:overflow",
+        "//internal:status_macros",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "arithmetic_functions_test",
+    size = "small",
+    srcs = [
+        "arithmetic_functions_test.cc",
+    ],
+    deps = [
+        ":arithmetic_functions",
+        "//base:builtins",
+        "//base:function_descriptor",
+        "//internal:testing",
+    ],
+)
