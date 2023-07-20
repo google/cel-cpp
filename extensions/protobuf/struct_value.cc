@@ -53,9 +53,10 @@
 #include "eval/public/message_wrapper.h"
 #include "eval/public/structs/proto_message_type_adapter.h"
 #include "extensions/protobuf/enum_type.h"
+#include "extensions/protobuf/internal/duration.h"
 #include "extensions/protobuf/internal/map_reflection.h"
 #include "extensions/protobuf/internal/reflection.h"
-#include "extensions/protobuf/internal/time.h"
+#include "extensions/protobuf/internal/timestamp.h"
 #include "extensions/protobuf/internal/wrappers.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/struct_type.h"
@@ -155,7 +156,7 @@ namespace {
 
 std::string DurationValueDebugStringFromProto(const google::protobuf::Message& message) {
   auto duration_or_status =
-      protobuf_internal::AbslDurationFromDurationProto(message);
+      protobuf_internal::UnwrapDynamicDurationProto(message);
   if (ABSL_PREDICT_FALSE(!duration_or_status.ok())) {
     return std::string("**duration**");
   }
@@ -163,7 +164,7 @@ std::string DurationValueDebugStringFromProto(const google::protobuf::Message& m
 }
 
 std::string TimestampValueDebugStringFromProto(const google::protobuf::Message& message) {
-  auto time_or_status = protobuf_internal::AbslTimeFromTimestampProto(message);
+  auto time_or_status = protobuf_internal::UnwrapDynamicTimestampProto(message);
   if (ABSL_PREDICT_FALSE(!time_or_status.ok())) {
     return std::string("**timestamp**");
   }
@@ -597,7 +598,7 @@ class ParsedProtoListValue<DurationValue, google::protobuf::Message>
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     CEL_ASSIGN_OR_RETURN(
         auto duration,
-        protobuf_internal::AbslDurationFromDurationProto(
+        protobuf_internal::UnwrapDynamicDurationProto(
             fields_.Get(static_cast<int>(index), scratch.get())));
     scratch.reset();
     return context.value_factory().CreateUncheckedDurationValue(duration);
@@ -644,7 +645,7 @@ class ParsedProtoListValue<TimestampValue, google::protobuf::Message>
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     CEL_ASSIGN_OR_RETURN(
-        auto time, protobuf_internal::AbslTimeFromTimestampProto(
+        auto time, protobuf_internal::UnwrapDynamicTimestampProto(
                        fields_.Get(static_cast<int>(index), scratch.get())));
     scratch.reset();
     return context.value_factory().CreateUncheckedTimestampValue(time);
@@ -1582,15 +1583,15 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                                *value_desc->message_type()));
         switch (type->kind()) {
           case TypeKind::kDuration: {
-            CEL_ASSIGN_OR_RETURN(
-                auto duration, protobuf_internal::AbslDurationFromDurationProto(
-                                   proto_value.GetMessageValue()));
+            CEL_ASSIGN_OR_RETURN(auto duration,
+                                 protobuf_internal::UnwrapDynamicDurationProto(
+                                     proto_value.GetMessageValue()));
             return context.value_factory().CreateUncheckedDurationValue(
                 duration);
           }
           case TypeKind::kTimestamp: {
             CEL_ASSIGN_OR_RETURN(auto time,
-                                 protobuf_internal::AbslTimeFromTimestampProto(
+                                 protobuf_internal::UnwrapDynamicTimestampProto(
                                      proto_value.GetMessageValue()));
             return context.value_factory().CreateUncheckedTimestampValue(time);
           }
@@ -2541,14 +2542,14 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
         case TypeKind::kDuration: {
           CEL_ASSIGN_OR_RETURN(
               auto duration,
-              protobuf_internal::AbslDurationFromDurationProto(
+              protobuf_internal::UnwrapDynamicDurationProto(
                   reflect.GetMessage(value(), &field_desc, type()->factory_)));
           return context.value_factory().CreateUncheckedDurationValue(duration);
         }
         case TypeKind::kTimestamp: {
           CEL_ASSIGN_OR_RETURN(
               auto timestamp,
-              protobuf_internal::AbslTimeFromTimestampProto(
+              protobuf_internal::UnwrapDynamicTimestampProto(
                   reflect.GetMessage(value(), &field_desc, type()->factory_)));
           return context.value_factory().CreateUncheckedTimestampValue(
               timestamp);

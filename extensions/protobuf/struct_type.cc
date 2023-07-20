@@ -38,9 +38,10 @@
 #include "eval/internal/errors.h"
 #include "extensions/protobuf/enum_type.h"
 #include "extensions/protobuf/internal/any.h"
+#include "extensions/protobuf/internal/duration.h"
 #include "extensions/protobuf/internal/map_reflection.h"
 #include "extensions/protobuf/internal/reflection.h"
-#include "extensions/protobuf/internal/time.h"
+#include "extensions/protobuf/internal/timestamp.h"
 #include "extensions/protobuf/internal/wrappers.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/struct_value.h"
@@ -779,9 +780,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               if (ABSL_PREDICT_FALSE(!value.Is<DurationValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
               }
-              return protobuf_internal::AbslDurationToDurationProto(
-                  *value_ref.MutableMessageValue(),
-                  value.As<DurationValue>().value());
+              return protobuf_internal::WrapDynamicDurationProto(
+                  value.As<DurationValue>().value(),
+                  *value_ref.MutableMessageValue());
             };
           case TypeKind::kTimestamp:
             // google.protobuf.Timestamp
@@ -795,9 +796,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               if (ABSL_PREDICT_FALSE(!value.Is<TimestampValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
               }
-              return protobuf_internal::AbslTimeToTimestampProto(
-                  *value_ref.MutableMessageValue(),
-                  value.As<TimestampValue>().value());
+              return protobuf_internal::WrapDynamicTimestampProto(
+                  value.As<TimestampValue>().value(),
+                  *value_ref.MutableMessageValue());
             };
           case TypeKind::kBool:
             // google.protobuf.BoolValue
@@ -1185,8 +1186,8 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
             field_desc,
             [](const DurationValue& value) { return value.value(); },
             [](absl::Duration value, google::protobuf::Message& message) {
-              return protobuf_internal::AbslDurationToDurationProto(message,
-                                                                    value);
+              return protobuf_internal::WrapDynamicDurationProto(value,
+                                                                 message);
             });
       case TypeKind::kTimestamp:
         // google.protobuf.Timestamp
@@ -1196,8 +1197,8 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
             field_desc,
             [](const TimestampValue& value) { return value.value(); },
             [](absl::Time value, google::protobuf::Message& message) {
-              return protobuf_internal::AbslTimeToTimestampProto(message,
-                                                                 value);
+              return protobuf_internal::WrapDynamicTimestampProto(value,
+                                                                  message);
             });
       case TypeKind::kBool:
         // google.protobuf.BoolValue
@@ -1362,9 +1363,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               "type conversion error from ", field.type->DebugString(), " to ",
               value->type()->DebugString()));
         }
-        return protobuf_internal::AbslDurationToDurationProto(
-            *reflect.MutableMessage(message_, &field_desc, factory_),
-            value->As<DurationValue>().value());
+        return protobuf_internal::WrapDynamicDurationProto(
+            value->As<DurationValue>().value(),
+            *reflect.MutableMessage(message_, &field_desc, factory_));
       }
       case TypeKind::kTimestamp: {
         // google.protobuf.Timestamp
@@ -1373,9 +1374,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               "type conversion error from ", field.type->DebugString(), " to ",
               value->type()->DebugString()));
         }
-        return protobuf_internal::AbslTimeToTimestampProto(
-            *reflect.MutableMessage(message_, &field_desc, factory_),
-            value->As<TimestampValue>().value());
+        return protobuf_internal::WrapDynamicTimestampProto(
+            value->As<TimestampValue>().value(),
+            *reflect.MutableMessage(message_, &field_desc, factory_));
       }
       case TypeKind::kWrapper: {
         if (value->Is<NullValue>()) {

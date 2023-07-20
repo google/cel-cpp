@@ -38,6 +38,60 @@ cc_library(
 )
 
 cc_library(
+    name = "duration",
+    srcs = ["duration.cc"],
+    hdrs = ["duration.h"],
+    deps = [
+        "//internal:casts",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "duration_test",
+    srcs = ["duration_test.cc"],
+    deps = [
+        ":duration",
+        "//internal:testing",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "timestamp",
+    srcs = ["timestamp.cc"],
+    hdrs = ["timestamp.h"],
+    deps = [
+        "//internal:casts",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "timestamp_test",
+    srcs = ["timestamp_test.cc"],
+    deps = [
+        ":timestamp",
+        "//internal:testing",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "map_reflection",
     srcs = ["map_reflection.cc"],
     hdrs = ["map_reflection.h"],
@@ -71,35 +125,6 @@ cc_library(
         "//extensions/protobuf:memory_manager",
         "//internal:testing",
         "@com_google_absl//absl/types:optional",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
-    name = "time",
-    srcs = ["time.cc"],
-    hdrs = ["time.h"],
-    deps = [
-        "//internal:casts",
-        "//internal:status_macros",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/log:absl_check",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/time",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
-    name = "time_test",
-    srcs = ["time_test.cc"],
-    deps = [
-        ":time",
-        "//internal:testing",
-        "@com_google_absl//absl/memory",
-        "@com_google_absl//absl/time",
         "@com_google_protobuf//:protobuf",
     ],
 )

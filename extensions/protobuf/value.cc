@@ -41,8 +41,9 @@
 #include "base/value.h"
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
+#include "extensions/protobuf/internal/duration.h"
 #include "extensions/protobuf/internal/reflection.h"
-#include "extensions/protobuf/internal/time.h"
+#include "extensions/protobuf/internal/timestamp.h"
 #include "extensions/protobuf/internal/wrappers.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/casts.h"
@@ -599,14 +600,14 @@ using DynamicMessageConverter =
 absl::StatusOr<Handle<Value>> DurationMessageCopyConverter(
     ValueFactory& value_factory, const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto duration,
-                       protobuf_internal::AbslDurationFromDurationProto(value));
+                       protobuf_internal::UnwrapDynamicDurationProto(value));
   return value_factory.CreateUncheckedDurationValue(duration);
 }
 
 absl::StatusOr<Handle<Value>> DurationMessageMoveConverter(
     ValueFactory& value_factory, google::protobuf::Message&& value) {
   CEL_ASSIGN_OR_RETURN(auto duration,
-                       protobuf_internal::AbslDurationFromDurationProto(value));
+                       protobuf_internal::UnwrapDynamicDurationProto(value));
   return value_factory.CreateUncheckedDurationValue(duration);
 }
 
@@ -614,21 +615,21 @@ absl::StatusOr<Handle<Value>> DurationMessageBorrowConverter(
     Owner<Value>& owner ABSL_ATTRIBUTE_UNUSED, ValueFactory& value_factory,
     const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto duration,
-                       protobuf_internal::AbslDurationFromDurationProto(value));
+                       protobuf_internal::UnwrapDynamicDurationProto(value));
   return value_factory.CreateUncheckedDurationValue(duration);
 }
 
 absl::StatusOr<Handle<Value>> TimestampMessageCopyConverter(
     ValueFactory& value_factory, const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto time,
-                       protobuf_internal::AbslTimeFromTimestampProto(value));
+                       protobuf_internal::UnwrapDynamicTimestampProto(value));
   return value_factory.CreateUncheckedTimestampValue(time);
 }
 
 absl::StatusOr<Handle<Value>> TimestampMessageMoveConverter(
     ValueFactory& value_factory, google::protobuf::Message&& value) {
   CEL_ASSIGN_OR_RETURN(auto time,
-                       protobuf_internal::AbslTimeFromTimestampProto(value));
+                       protobuf_internal::UnwrapDynamicTimestampProto(value));
   return value_factory.CreateUncheckedTimestampValue(time);
 }
 
@@ -636,7 +637,7 @@ absl::StatusOr<Handle<Value>> TimestampMessageBorrowConverter(
     Owner<Value>& owner ABSL_ATTRIBUTE_UNUSED, ValueFactory& value_factory,
     const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto time,
-                       protobuf_internal::AbslTimeFromTimestampProto(value));
+                       protobuf_internal::UnwrapDynamicTimestampProto(value));
   return value_factory.CreateUncheckedTimestampValue(time);
 }
 
