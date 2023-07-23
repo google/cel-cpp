@@ -14,9 +14,13 @@
 
 #include "internal/proto_wire.h"
 
+#include <limits>
 #include <string>
+#include <utility>
 
 #include "absl/base/optimization.h"
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 
 namespace cel::internal {
 
@@ -108,6 +112,38 @@ absl::StatusOr<absl::Cord> ProtoWireDecoder::ReadLengthDelimited() {
   data_.RemovePrefix(length->value);
   tag_.reset();
   return result;
+}
+
+absl::Status ProtoWireEncoder::WriteTag(ProtoWireTag tag) {
+  ABSL_DCHECK(!tag_.has_value());
+  if (ABSL_PREDICT_FALSE(tag.field_number() == 0)) {
+    // Cannot easily add test coverage as we assert during debug builds that
+    // ProtoWireTag is valid upon construction.
+    return absl::InvalidArgumentError(
+        absl::StrCat("invalid field number encountered encoding ", message_));
+  }
+  if (ABSL_PREDICT_FALSE(!ProtoWireTypeIsValid(tag.type()))) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("invalid wire type encountered encoding field ",
+                     tag.field_number(), " of ", message_));
+  }
+  VarintEncode(static_cast<uint32_t>(tag), data_);
+  tag_.emplace(tag);
+  return absl::OkStatus();
+}
+
+absl::Status ProtoWireEncoder::WriteLengthDelimited(absl::Cord data) {
+  ABSL_DCHECK(tag_.has_value() &&
+              tag_->type() == ProtoWireType::kLengthDelimited);
+  if (ABSL_PREDICT_FALSE(data.size() > std::numeric_limits<uint32_t>::max())) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("out of range length encountered encoding field ",
+                     tag_->field_number(), " of ", message_));
+  }
+  VarintEncode(static_cast<uint32_t>(data.size()), data_);
+  data_.Append(std::move(data));
+  tag_.reset();
+  return absl::OkStatus();
 }
 
 }  // namespace cel::internal

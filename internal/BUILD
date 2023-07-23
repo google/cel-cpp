@@ -328,6 +328,7 @@ cc_test(
     deps = [
         ":proto_wire",
         ":testing",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
     ],
 )

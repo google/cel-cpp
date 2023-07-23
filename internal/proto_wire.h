@@ -88,19 +88,27 @@ enum class ProtoWireType : uint32_t {
   kFixed32 = 5,
 };
 
+inline constexpr uint32_t kProtoWireTypeMask = uint32_t{0x7};
+inline constexpr int kFieldNumberShift = 3;
+
 class ProtoWireTag final {
  public:
+  static constexpr uint32_t kTypeMask = uint32_t{0x7};
+  static constexpr int kFieldNumberShift = 3;
+
   constexpr explicit ProtoWireTag(uint32_t tag) : tag_(tag) {}
 
   constexpr ProtoWireTag(uint32_t field_number, ProtoWireType type)
-      : ProtoWireTag((field_number << 3) | static_cast<uint32_t>(type)) {
-    ABSL_ASSERT(((field_number << 3) >> 3) == field_number);
+      : ProtoWireTag((field_number << kFieldNumberShift) |
+                     static_cast<uint32_t>(type)) {
+    ABSL_ASSERT(((field_number << kFieldNumberShift) >> kFieldNumberShift) ==
+                field_number);
   }
 
-  constexpr uint32_t field_number() const { return tag_ >> 3; }
+  constexpr uint32_t field_number() const { return tag_ >> kFieldNumberShift; }
 
   constexpr ProtoWireType type() const {
-    return static_cast<ProtoWireType>(tag_ & uint32_t{0x7});
+    return static_cast<ProtoWireType>(tag_ & kTypeMask);
   }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
@@ -109,6 +117,14 @@ class ProtoWireTag final {
  private:
   uint32_t tag_;
 };
+
+inline constexpr bool ProtoWireTypeIsValid(ProtoWireType type) {
+  // Ensure `type` is only [0-5]. The bitmask for `type` is 0x7 which allows 6
+  // to exist, but that is not used and invalid. We detect that here.
+  return (static_cast<uint32_t>(type) & uint32_t{0x7}) ==
+             static_cast<uint32_t>(type) &&
+         static_cast<uint32_t>(type) != uint32_t{0x6};
+}
 
 // Creates the "tag" of a record, see
 // https://protobuf.dev/programming-guides/encoding/#structure.
@@ -166,6 +182,30 @@ inline void VarintEncode(bool value, absl::Cord& buffer) {
   // storage space, we need to just do a plain append.
   char scratch = value ? char{1} : char{0};
   buffer.Append(absl::string_view(&scratch, 1));
+}
+
+inline void Fixed32EncodeUnsafe(uint64_t value, char* buffer) {
+  buffer[0] = static_cast<char>(static_cast<uint8_t>(value));
+  buffer[1] = static_cast<char>(static_cast<uint8_t>(value >> 8));
+  buffer[2] = static_cast<char>(static_cast<uint8_t>(value >> 16));
+  buffer[3] = static_cast<char>(static_cast<uint8_t>(value >> 24));
+}
+
+// Encodes `value` as a fixed-size number, see
+// https://protobuf.dev/programming-guides/encoding/#non-varint-numbers.
+inline void Fixed32Encode(uint32_t value, absl::Cord& buffer) {
+  // `absl::Cord::GetAppendBuffer` will allocate a block regardless of whether
+  // `buffer` has enough inline storage space left. To take advantage of inline
+  // storage space, we need to just do a plain append.
+  char scratch[4];
+  Fixed32EncodeUnsafe(value, scratch);
+  buffer.Append(absl::string_view(scratch, ABSL_ARRAYSIZE(scratch)));
+}
+
+// Encodes `value` as a fixed-size number, see
+// https://protobuf.dev/programming-guides/encoding/#non-varint-numbers.
+inline void Fixed32Encode(float value, absl::Cord& buffer) {
+  Fixed32Encode(absl::bit_cast<uint32_t>(value), buffer);
 }
 
 inline void Fixed64EncodeUnsafe(uint64_t value, char* buffer) {
@@ -308,11 +348,12 @@ Fixed32Decode(const absl::Cord& data) {
 }
 
 inline absl::optional<ProtoWireTag> DecodeProtoWireTag(uint32_t value) {
-  if (ABSL_PREDICT_FALSE((value >> 3) == 0)) {
+  if (ABSL_PREDICT_FALSE((value >> ProtoWireTag::kFieldNumberShift) == 0)) {
     // Field number is 0.
     return absl::nullopt;
   }
-  if (ABSL_PREDICT_FALSE((value & uint32_t{0x7}) == uint32_t{0x6})) {
+  if (ABSL_PREDICT_FALSE(!ProtoWireTypeIsValid(
+          static_cast<ProtoWireType>(value & ProtoWireTag::kTypeMask)))) {
     // Wire type is 6, only 0-5 are used.
     return absl::nullopt;
   }
@@ -406,6 +447,60 @@ class ProtoWireDecoder {
  private:
   absl::string_view message_;
   absl::Cord data_;
+  absl::optional<ProtoWireTag> tag_;
+};
+
+class ProtoWireEncoder final {
+ public:
+  explicit ProtoWireEncoder(absl::string_view message
+                                ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                            absl::Cord& data ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : message_(message), data_(data), original_data_size_(data_.size()) {}
+
+  bool empty() const { return size() == 0; }
+
+  size_t size() const { return data_.size() - original_data_size_; }
+
+  absl::Status WriteTag(ProtoWireTag tag);
+
+  template <typename T>
+  std::enable_if_t<std::is_integral_v<T>, absl::Status> WriteVarint(T value) {
+    ABSL_DCHECK(tag_.has_value() && tag_->type() == ProtoWireType::kVarint);
+    VarintEncode(value, data_);
+    tag_.reset();
+    return absl::OkStatus();
+  }
+
+  template <typename T>
+  std::enable_if_t<sizeof(T) == 4 &&
+                       (std::is_integral_v<T> || std::is_floating_point_v<T>),
+                   absl::Status>
+  WriteFixed32(T value) {
+    ABSL_DCHECK(tag_.has_value() && tag_->type() == ProtoWireType::kFixed32);
+    Fixed32Encode(value, data_);
+    tag_.reset();
+    return absl::OkStatus();
+  }
+
+  template <typename T>
+  std::enable_if_t<sizeof(T) == 8 &&
+                       (std::is_integral_v<T> || std::is_floating_point_v<T>),
+                   absl::Status>
+  WriteFixed64(T value) {
+    ABSL_DCHECK(tag_.has_value() && tag_->type() == ProtoWireType::kFixed64);
+    Fixed64Encode(value, data_);
+    tag_.reset();
+    return absl::OkStatus();
+  }
+
+  absl::Status WriteLengthDelimited(absl::Cord data);
+
+  void EnsureFullyEncoded() { ABSL_DCHECK(!tag_.has_value()); }
+
+ private:
+  absl::string_view message_;
+  absl::Cord& data_;
+  const size_t original_data_size_;
   absl::optional<ProtoWireTag> tag_;
 };
 

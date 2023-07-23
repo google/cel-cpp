@@ -17,6 +17,7 @@
 #include <limits>
 
 #include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
 #include "internal/testing.h"
 
 namespace cel::internal {
@@ -112,6 +113,13 @@ absl::Cord Fixed64Encode(T value) {
   return cord;
 }
 
+template <typename T>
+absl::Cord Fixed32Encode(T value) {
+  absl::Cord cord;
+  internal::Fixed32Encode(value, cord);
+  return cord;
+}
+
 }  // namespace
 
 TEST(Fixed64, Encode) {
@@ -120,6 +128,10 @@ TEST(Fixed64, Encode) {
 
 TEST(Fixed64, Decode) {
   EXPECT_THAT(Fixed64Decode<double>(Fixed64Encode(0.0)), Optional(Eq(0.0)));
+}
+
+TEST(Fixed32, Encode) {
+  EXPECT_EQ(Fixed32Encode(0.0f), Fixed32Encode(uint32_t{0}));
 }
 
 TEST(Fixed32, Decode) {
@@ -204,6 +216,73 @@ TEST(SkipLengthValue, Decoder) {
     EXPECT_OK(decoder.SkipLengthValue());
     ASSERT_FALSE(decoder.HasNext());
   }
+}
+
+TEST(ProtoWireEncoder, BadTag) {
+  absl::Cord data;
+  ProtoWireEncoder encoder("foo.Bar", data);
+  EXPECT_TRUE(encoder.empty());
+  EXPECT_EQ(encoder.size(), 0);
+  EXPECT_OK(encoder.WriteTag(ProtoWireTag(1, ProtoWireType::kVarint)));
+  EXPECT_OK(encoder.WriteVarint(1));
+  encoder.EnsureFullyEncoded();
+  EXPECT_FALSE(encoder.empty());
+  EXPECT_EQ(encoder.size(), 2);
+  EXPECT_EQ(data, "\x08\x01");
+}
+
+TEST(ProtoWireEncoder, Varint) {
+  absl::Cord data;
+  ProtoWireEncoder encoder("foo.Bar", data);
+  EXPECT_TRUE(encoder.empty());
+  EXPECT_EQ(encoder.size(), 0);
+  EXPECT_OK(encoder.WriteTag(ProtoWireTag(1, ProtoWireType::kVarint)));
+  EXPECT_OK(encoder.WriteVarint(1));
+  encoder.EnsureFullyEncoded();
+  EXPECT_FALSE(encoder.empty());
+  EXPECT_EQ(encoder.size(), 2);
+  EXPECT_EQ(data, "\x08\x01");
+}
+
+TEST(ProtoWireEncoder, Fixed32) {
+  absl::Cord data;
+  ProtoWireEncoder encoder("foo.Bar", data);
+  EXPECT_TRUE(encoder.empty());
+  EXPECT_EQ(encoder.size(), 0);
+  EXPECT_OK(encoder.WriteTag(ProtoWireTag(1, ProtoWireType::kFixed32)));
+  EXPECT_OK(encoder.WriteFixed32(0.0f));
+  encoder.EnsureFullyEncoded();
+  EXPECT_FALSE(encoder.empty());
+  EXPECT_EQ(encoder.size(), 5);
+  EXPECT_EQ(data, absl::string_view("\x0d\x00\x00\x00\x00", 5));
+}
+
+TEST(ProtoWireEncoder, Fixed64) {
+  absl::Cord data;
+  ProtoWireEncoder encoder("foo.Bar", data);
+  EXPECT_TRUE(encoder.empty());
+  EXPECT_EQ(encoder.size(), 0);
+  EXPECT_OK(encoder.WriteTag(ProtoWireTag(1, ProtoWireType::kFixed64)));
+  EXPECT_OK(encoder.WriteFixed64(0.0));
+  encoder.EnsureFullyEncoded();
+  EXPECT_FALSE(encoder.empty());
+  EXPECT_EQ(encoder.size(), 9);
+  EXPECT_EQ(data, absl::string_view("\x09\x00\x00\x00\x00\x00\x00\x00\x00", 9));
+}
+
+TEST(ProtoWireEncoder, LengthDelimited) {
+  absl::Cord data;
+  ProtoWireEncoder encoder("foo.Bar", data);
+  EXPECT_TRUE(encoder.empty());
+  EXPECT_EQ(encoder.size(), 0);
+  EXPECT_OK(encoder.WriteTag(ProtoWireTag(1, ProtoWireType::kLengthDelimited)));
+  EXPECT_OK(encoder.WriteLengthDelimited(absl::Cord("foo")));
+  encoder.EnsureFullyEncoded();
+  EXPECT_FALSE(encoder.empty());
+  EXPECT_EQ(encoder.size(), 5);
+  EXPECT_EQ(data,
+            "\x0a\x03"
+            "foo");
 }
 
 }  // namespace
