@@ -199,3 +199,35 @@ cc_test(
         "//internal:testing",
     ],
 )
+
+cc_library(
+    name = "time_functions",
+    srcs = ["time_functions.cc"],
+    hdrs = ["time_functions.h"],
+    deps = [
+        "//base:builtins",
+        "//base:data",
+        "//base:function_adapter",
+        "//base:handle",
+        "//internal:overflow",
+        "//internal:status_macros",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "time_functions_test",
+    size = "small",
+    srcs = [
+        "time_functions_test.cc",
+    ],
+    deps = [
+        ":time_functions",
+        "//base:builtins",
+        "//base:function_descriptor",
+        "//internal:testing",
+    ],
+)
