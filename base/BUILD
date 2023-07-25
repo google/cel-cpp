@@ -184,6 +184,8 @@ cc_library(
         "//base/internal:type",
         "//base/internal:unknown_set",
         "//base/internal:value",
+        "//common:any",
+        "//common:json",
         "//internal:casts",
         "//internal:linked_hash_map",
         "//internal:no_destructor",

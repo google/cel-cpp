@@ -18,6 +18,7 @@
 #include <utility>
 
 #include "absl/base/optimization.h"
+#include "absl/status/status.h"
 #include "base/handle.h"
 #include "base/internal/message_wrapper.h"
 #include "base/kind.h"
@@ -124,6 +125,15 @@ std::string Value::DebugString() const {
     default:
       ABSL_UNREACHABLE();
   }
+}
+
+absl::StatusOr<Any> Value::ConvertToAny(ValueFactory& value_factory) const {
+  return absl::UnimplementedError("Value::ConvertToAny is not yet implemented");
+}
+
+absl::StatusOr<Json> Value::ConvertToJson(ValueFactory& value_factory) const {
+  return absl::UnimplementedError(
+      "Value::ConvertToJson is not yet implemented");
 }
 
 namespace base_internal {

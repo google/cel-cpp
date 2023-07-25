@@ -268,7 +268,8 @@ absl::Status SetAnyField(
           "converting ",
           value.type()->DebugString(), " to google.protobuf.Any"));
   }
-  return protobuf_internal::SetAny(mutable_message(), type_url, payload);
+  return protobuf_internal::WrapDynamicAnyProto(type_url, payload,
+                                                mutable_message());
 }
 
 absl::Status TypeConversionError(const Type& from, const Type& to) {

@@ -15,19 +15,42 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_ANY_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_ANY_H_
 
+#include "google/protobuf/any.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "base/value_factory.h"
 #include "common/any.h"
+#include "common/json.h"
 #include "google/protobuf/message.h"
 
 namespace cel::extensions::protobuf_internal {
 
-absl::Status SetAny(google::protobuf::Message& message, absl::string_view type_url,
-                    const absl::Cord& value);
+absl::Status WrapGeneratedAnyProto(absl::string_view type_url,
+                                   const absl::Cord& value,
+                                   google::protobuf::Any& message);
 
-absl::StatusOr<Any> AnyFromProto(const google::protobuf::Message& message);
+absl::Status WrapDynamicAnyProto(absl::string_view type_url,
+                                 const absl::Cord& value,
+                                 google::protobuf::Message& message);
+
+absl::StatusOr<Any> UnwrapGeneratedAnyProto(
+    const google::protobuf::Any& message);
+
+absl::StatusOr<Any> UnwrapDynamicAnyProto(const google::protobuf::Message& message);
+
+absl::StatusOr<Json> AnyToJson(ValueFactory& value_factory,
+                               absl::string_view type_url,
+                               const absl::Cord& value);
+
+absl::StatusOr<Json> AnyToJson(ValueFactory& value_factory, const Any& any);
+
+absl::StatusOr<Json> GeneratedAnyProtoToJson(
+    ValueFactory& value_factory, const google::protobuf::Any& message);
+
+absl::StatusOr<Json> DynamicAnyProtoToJson(ValueFactory& value_factory,
+                                           const google::protobuf::Message& message);
 
 }  // namespace cel::extensions::protobuf_internal
 

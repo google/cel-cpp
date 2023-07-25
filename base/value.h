@@ -22,11 +22,14 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/optimization.h"
+#include "absl/status/statusor.h"
 #include "base/handle.h"
 #include "base/internal/value.h"  // IWYU pragma: export
 #include "base/kind.h"
 #include "base/type.h"
 #include "base/types/null_type.h"
+#include "common/any.h"
+#include "common/json.h"
 #include "internal/casts.h"  // IWYU pragma: keep
 
 namespace cel {
@@ -63,6 +66,10 @@ class Value : public base_internal::Data {
   Handle<Type> type() const;
 
   std::string DebugString() const;
+
+  absl::StatusOr<Any> ConvertToAny(ValueFactory& value_factory) const;
+
+  absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
 
   template <typename T>
   bool Is() const {

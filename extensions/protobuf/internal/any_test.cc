@@ -19,7 +19,12 @@
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/descriptor.pb.h"
 #include "absl/memory/memory.h"
+#include "absl/status/status.h"
 #include "absl/strings/cord.h"
+#include "base/memory.h"
+#include "base/type_factory.h"
+#include "base/type_provider.h"
+#include "base/value_factory.h"
 #include "internal/testing.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/descriptor_database.h"
@@ -28,12 +33,15 @@
 namespace cel::extensions::protobuf_internal {
 namespace {
 
+using cel::internal::StatusIs;
+
 TEST(Any, GeneratedRoundtrip) {
   google::protobuf::Any proto;
-  ASSERT_OK(SetAny(proto, "type.googleapis.com/foo.Bar", absl::Cord("baz")));
+  ASSERT_OK(WrapGeneratedAnyProto("type.googleapis.com/foo.Bar",
+                                  absl::Cord("baz"), proto));
   EXPECT_EQ(proto.type_url(), "type.googleapis.com/foo.Bar");
   EXPECT_EQ(proto.value(), "baz");
-  ASSERT_OK_AND_ASSIGN(auto any, AnyFromProto(proto));
+  ASSERT_OK_AND_ASSIGN(auto any, UnwrapGeneratedAnyProto(proto));
   EXPECT_EQ(any.type_url(), proto.type_url());
   EXPECT_EQ(any.value(), proto.value());
 }
@@ -58,11 +66,94 @@ TEST(Any, CustomRoundtrip) {
   const auto* value_field = descriptor->FindFieldByName("value");
   ASSERT_NE(value_field, nullptr);
 
-  ASSERT_OK(SetAny(*proto, "type.googleapis.com/foo.Bar", absl::Cord("baz")));
+  ASSERT_OK(WrapDynamicAnyProto("type.googleapis.com/foo.Bar",
+                                absl::Cord("baz"), *proto));
 
-  ASSERT_OK_AND_ASSIGN(auto any, AnyFromProto(*proto));
+  ASSERT_OK_AND_ASSIGN(auto any, UnwrapDynamicAnyProto(*proto));
   EXPECT_EQ(any.type_url(), "type.googleapis.com/foo.Bar");
   EXPECT_EQ(any.value(), "baz");
+}
+
+TEST(Any, ToJson) {
+  MemoryManager& memory_manager = MemoryManager::Global();
+  TypeFactory type_factory(memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+
+  EXPECT_THAT(
+      AnyToJson(value_factory, "type.googleapis.com/google.protobuf.Value",
+                absl::Cord()),
+      StatusIs(absl::StatusCode::kUnimplemented));
+
+  EXPECT_THAT(
+      AnyToJson(value_factory, "type.googleapis.com/google.protobuf.ListValue",
+                absl::Cord()),
+      StatusIs(absl::StatusCode::kUnimplemented));
+
+  EXPECT_THAT(
+      AnyToJson(value_factory, "type.googleapis.com/google.protobuf.Struct",
+                absl::Cord()),
+      StatusIs(absl::StatusCode::kUnimplemented));
+
+  EXPECT_THAT(
+      AnyToJson(value_factory, "type.googleapis.com/google.protobuf.BoolValue",
+                absl::Cord()),
+      StatusIs(absl::StatusCode::kUnimplemented));
+
+  EXPECT_THAT(
+      AnyToJson(value_factory, "type.googleapis.com/google.protobuf.BytesValue",
+                absl::Cord()),
+      StatusIs(absl::StatusCode::kUnimplemented));
+
+  EXPECT_THAT(AnyToJson(value_factory,
+                        "type.googleapis.com/google.protobuf.DoubleValue",
+                        absl::Cord()),
+              StatusIs(absl::StatusCode::kUnimplemented));
+
+  EXPECT_THAT(
+      AnyToJson(value_factory, "type.googleapis.com/google.protobuf.FloatValue",
+                absl::Cord()),
+      StatusIs(absl::StatusCode::kUnimplemented));
+
+  EXPECT_THAT(
+      AnyToJson(value_factory, "type.googleapis.com/google.protobuf.Int32Value",
+                absl::Cord()),
+      StatusIs(absl::StatusCode::kUnimplemented));
+
+  EXPECT_THAT(
+      AnyToJson(value_factory, "type.googleapis.com/google.protobuf.Int64Value",
+                absl::Cord()),
+      StatusIs(absl::StatusCode::kUnimplemented));
+
+  EXPECT_THAT(AnyToJson(value_factory,
+                        "type.googleapis.com/google.protobuf.UInt32Value",
+                        absl::Cord()),
+              StatusIs(absl::StatusCode::kUnimplemented));
+
+  EXPECT_THAT(AnyToJson(value_factory,
+                        "type.googleapis.com/google.protobuf.UInt64Value",
+                        absl::Cord()),
+              StatusIs(absl::StatusCode::kUnimplemented));
+
+  EXPECT_THAT(AnyToJson(value_factory,
+                        "type.googleapis.com/google.protobuf.StringValue",
+                        absl::Cord()),
+              StatusIs(absl::StatusCode::kUnimplemented));
+
+  EXPECT_THAT(
+      AnyToJson(value_factory, "type.googleapis.com/google.protobuf.Duration",
+                absl::Cord()),
+      StatusIs(absl::StatusCode::kUnimplemented));
+
+  EXPECT_THAT(
+      AnyToJson(value_factory, "type.googleapis.com/google.protobuf.Timestamp",
+                absl::Cord()),
+      StatusIs(absl::StatusCode::kUnimplemented));
+
+  EXPECT_THAT(AnyToJson(value_factory,
+                        "type.googleapis.com/message.that.does.not.Exist",
+                        absl::Cord()),
+              StatusIs(absl::StatusCode::kNotFound));
 }
 
 }  // namespace
