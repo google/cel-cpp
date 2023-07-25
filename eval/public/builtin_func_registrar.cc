@@ -22,14 +22,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/builtins.h"
-#include "base/function_adapter.h"
-#include "base/handle.h"
-#include "base/value.h"
-#include "base/value_factory.h"
-#include "base/values/bytes_value.h"
-#include "base/values/list_value.h"
-#include "base/values/map_value.h"
-#include "base/values/string_value.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_number.h"
 #include "eval/public/cel_options.h"
@@ -43,20 +35,15 @@
 #include "runtime/standard/comparison_functions.h"
 #include "runtime/standard/container_functions.h"
 #include "runtime/standard/logical_functions.h"
+#include "runtime/standard/regex_functions.h"
 #include "runtime/standard/string_functions.h"
 #include "runtime/standard/time_functions.h"
 #include "runtime/standard/type_conversion_functions.h"
-#include "re2/re2.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
-using ::cel::BinaryFunctionAdapter;
-using ::cel::Handle;
-using ::cel::StringValue;
-using ::cel::Value;
-using ::cel::ValueFactory;
 using ::google::protobuf::Arena;
 
 template <class T>
@@ -294,44 +281,6 @@ absl::Status RegisterSetMembershipFunctions(CelFunctionRegistry* registry,
   return absl::OkStatus();
 }
 
-// TODO(uncreated-issue/36): after refactors for the new value type are done, move this
-// to a separate build target to enable subset environments to not depend on
-// RE2.
-absl::Status RegisterRegexFunctions(CelFunctionRegistry* registry,
-                                    const InterpreterOptions& options) {
-  if (options.enable_regex) {
-    auto regex_matches = [max_size = options.regex_max_program_size](
-                             ValueFactory& value_factory,
-                             const StringValue& target,
-                             const StringValue& regex) -> Handle<Value> {
-      RE2 re2(regex.ToString());
-      if (max_size > 0 && re2.ProgramSize() > max_size) {
-        return value_factory.CreateErrorValue(
-            absl::InvalidArgumentError("exceeded RE2 max program size"));
-      }
-      if (!re2.ok()) {
-        return value_factory.CreateErrorValue(
-            absl::InvalidArgumentError("invalid regex for match"));
-      }
-      return value_factory.CreateBoolValue(
-          RE2::PartialMatch(target.ToString(), re2));
-    };
-
-    // bind str.matches(re) and matches(str, re)
-    for (bool receiver_style : {true, false}) {
-      using MatchFnAdapter =
-          BinaryFunctionAdapter<Handle<Value>, const StringValue&,
-                                const StringValue&>;
-      CEL_RETURN_IF_ERROR(
-          registry->Register(MatchFnAdapter::CreateDescriptor(
-                                 cel::builtin::kRegexMatch, receiver_style),
-                             MatchFnAdapter::WrapFunction(regex_matches)));
-    }
-  }  // if options.enable_regex
-
-  return absl::OkStatus();
-}
-
 }  // namespace
 
 absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
@@ -353,11 +302,12 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
       cel::RegisterTimeFunctions(modern_registry, runtime_options));
   CEL_RETURN_IF_ERROR(
       cel::RegisterStringFunctions(modern_registry, runtime_options));
+  CEL_RETURN_IF_ERROR(
+      cel::RegisterRegexFunctions(modern_registry, runtime_options));
 
   return registry->RegisterAll(
       {
           &RegisterEqualityFunctions,
-          &RegisterRegexFunctions,
           &RegisterSetMembershipFunctions,
       },
       options);

@@ -298,9 +298,6 @@ cc_library(
         ":equality_function_registrar",
         ":portable_cel_function_adapter",
         "//base:builtins",
-        "//base:data",
-        "//base:function_adapter",
-        "//base:handle",
         "//internal:status_macros",
         "//runtime:function_registry",
         "//runtime:runtime_options",
@@ -308,6 +305,7 @@ cc_library(
         "//runtime/standard:comparison_functions",
         "//runtime/standard:container_functions",
         "//runtime/standard:logical_functions",
+        "//runtime/standard:regex_functions",
         "//runtime/standard:string_functions",
         "//runtime/standard:time_functions",
         "//runtime/standard:type_conversion_functions",
@@ -315,7 +313,6 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
-        "@com_googlesource_code_re2//:re2",
     ],
 )
 

@@ -263,3 +263,32 @@ cc_test(
         "//internal:testing",
     ],
 )
+
+cc_library(
+    name = "regex_functions",
+    srcs = ["regex_functions.cc"],
+    hdrs = ["regex_functions.h"],
+    deps = [
+        "//base:builtins",
+        "//base:data",
+        "//base:function_adapter",
+        "//base:handle",
+        "//internal:status_macros",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_googlesource_code_re2//:re2",
+    ],
+)
+
+cc_test(
+    name = "regex_functions_test",
+    srcs = ["regex_functions_test.cc"],
+    deps = [
+        ":regex_functions",
+        "//base:builtins",
+        "//base:function_descriptor",
+        "//internal:testing",
+    ],
+)
