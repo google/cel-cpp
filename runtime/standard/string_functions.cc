@@ -23,7 +23,6 @@
 #include "base/value.h"
 #include "base/value_factory.h"
 #include "internal/status_macros.h"
-#include "internal/utf8.h"
 
 namespace cel {
 namespace {
@@ -32,6 +31,9 @@ namespace {
 absl::StatusOr<Handle<StringValue>> ConcatString(ValueFactory& factory,
                                                  const StringValue& value1,
                                                  const StringValue& value2) {
+  // TODO(uncreated-issue/53): use StringValue::Concat when remaining interop usages
+  // removed. Modern concat implementation forces additional copies when
+  // converting to legacy string values.
   return factory.CreateUncheckedStringValue(
       absl::StrCat(value1.ToString(), value2.ToString()));
 }
@@ -40,6 +42,9 @@ absl::StatusOr<Handle<StringValue>> ConcatString(ValueFactory& factory,
 absl::StatusOr<Handle<BytesValue>> ConcatBytes(ValueFactory& factory,
                                                const BytesValue& value1,
                                                const BytesValue& value2) {
+  // TODO(uncreated-issue/53): use BytesValue::Concat when remaining interop usages
+  // removed. Modern concat implementation forces additional copies when
+  // converting to legacy string values.
   return factory.CreateBytesValue(
       absl::StrCat(value1.ToString(), value2.ToString()));
 }
@@ -62,19 +67,13 @@ bool StringStartsWith(ValueFactory&, const StringValue& value,
 absl::Status RegisterSizeFunctions(FunctionRegistry& registry) {
   // String size
   auto size_func = [](ValueFactory& value_factory,
-                      const StringValue& value) -> Handle<Value> {
-    auto [count, valid] = ::cel::internal::Utf8Validate(value.ToString());
-    if (!valid) {
-      return value_factory.CreateErrorValue(
-          absl::InvalidArgumentError("invalid utf-8 string"));
-    }
-    return value_factory.CreateIntValue(count);
+                      const StringValue& value) -> int64_t {
+    return value.size();
   };
 
   // receiver style = true/false
   // Support global and receiver style size() operations on strings.
-  using StrSizeFnAdapter =
-      UnaryFunctionAdapter<Handle<Value>, const StringValue&>;
+  using StrSizeFnAdapter = UnaryFunctionAdapter<int64_t, const StringValue&>;
   CEL_RETURN_IF_ERROR(
       registry.Register(StrSizeFnAdapter::CreateDescriptor(
                             cel::builtin::kSize, /*receiver_style=*/true),

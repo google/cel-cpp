@@ -242,7 +242,6 @@ cc_library(
         "//base:function_adapter",
         "//base:handle",
         "//internal:status_macros",
-        "//internal:utf8",
         "//runtime:function_registry",
         "//runtime:runtime_options",
         "@com_google_absl//absl/status",
