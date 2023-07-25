@@ -27,15 +27,15 @@
 namespace cel::extensions::protobuf_internal {
 namespace {
 
-using testing::ElementsAre;
+using testing::Eq;
 using cel::internal::IsOkAndHolds;
 
 TEST(FieldMask, GeneratedFromProto) {
   google::protobuf::FieldMask proto;
   proto.add_paths("foo");
   proto.add_paths("bar");
-  EXPECT_THAT(FieldMaskFromProto(proto),
-              IsOkAndHolds(ElementsAre("foo", "bar")));
+  EXPECT_THAT(GeneratedFieldMaskProtoToJsonString(proto),
+              IsOkAndHolds(Eq(JsonString("foo,bar"))));
 }
 
 TEST(Any, CustomFromProto) {
@@ -61,8 +61,8 @@ TEST(Any, CustomFromProto) {
   reflection->AddString(proto.get(), paths_field, "foo");
   reflection->AddString(proto.get(), paths_field, "bar");
 
-  EXPECT_THAT(FieldMaskFromProto(*proto),
-              IsOkAndHolds(ElementsAre("foo", "bar")));
+  EXPECT_THAT(DynamicFieldMaskProtoToJsonString(*proto),
+              IsOkAndHolds(Eq(JsonString("foo,bar"))));
 }
 
 }  // namespace

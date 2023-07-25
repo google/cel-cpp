@@ -15,7 +15,6 @@
 #include "extensions/protobuf/internal/field_mask.h"
 
 #include <string>
-#include <vector>
 
 #include "google/protobuf/field_mask.pb.h"
 #include "absl/base/optimization.h"
@@ -24,12 +23,11 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "internal/casts.h"
-#include "internal/status_macros.h"
 #include "google/protobuf/reflection.h"
 
 namespace cel::extensions::protobuf_internal {
 
-absl::StatusOr<std::vector<std::string>> FieldMaskFromProto(
+absl::StatusOr<JsonString> DynamicFieldMaskProtoToJsonString(
     const google::protobuf::Message& message) {
   ABSL_DCHECK_EQ(message.GetTypeName(), "google.protobuf.FieldMask");
   const auto* desc = message.GetDescriptor();
@@ -38,15 +36,8 @@ absl::StatusOr<std::vector<std::string>> FieldMaskFromProto(
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
   if (ABSL_PREDICT_TRUE(desc == google::protobuf::FieldMask::descriptor())) {
-    const auto& paths =
-        cel::internal::down_cast<const google::protobuf::FieldMask&>(message)
-            .paths();
-    std::vector<std::string> result;
-    result.reserve(paths.size());
-    for (const auto& path : paths) {
-      result.push_back(path);
-    }
-    return result;
+    return GeneratedFieldMaskProtoToJsonString(
+        cel::internal::down_cast<const google::protobuf::FieldMask&>(message));
   }
   const auto* reflection = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflection == nullptr)) {
@@ -70,20 +61,13 @@ absl::StatusOr<std::vector<std::string>> FieldMaskFromProto(
         absl::StrCat(message.GetTypeName(),
                      " has unexpected paths field cardinality: UNKNOWN"));
   }
-  const auto& paths =
-      reflection->GetRepeatedFieldRef<std::string>(message, paths_field);
-  std::vector<std::string> result;
-  result.reserve(paths.size());
-  for (const auto& path : paths) {
-    result.push_back(path);
-  }
-  return result;
+  return JsonString(absl::StrJoin(
+      reflection->GetRepeatedFieldRef<std::string>(message, paths_field), ","));
 }
 
-absl::StatusOr<JsonString> FieldMaskToJsonString(
-    const google::protobuf::Message& message) {
-  CEL_ASSIGN_OR_RETURN(auto paths, FieldMaskFromProto(message));
-  return JsonString(absl::StrJoin(paths, ","));
+absl::StatusOr<JsonString> GeneratedFieldMaskProtoToJsonString(
+    const google::protobuf::FieldMask& message) {
+  return JsonString(absl::StrJoin(message.paths(), ","));
 }
 
 }  // namespace cel::extensions::protobuf_internal

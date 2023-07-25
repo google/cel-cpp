@@ -15,23 +15,22 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_FIELD_MASK_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_FIELD_MASK_H_
 
-#include <string>
-#include <vector>
-
+#include "google/protobuf/field_mask.pb.h"
 #include "absl/status/statusor.h"
 #include "common/json.h"
 #include "google/protobuf/message.h"
 
 namespace cel::extensions::protobuf_internal {
 
-// Extracts the paths from `google.protobuf.FieldMask`.
-absl::StatusOr<std::vector<std::string>> FieldMaskFromProto(
+// Formats `google.protobuf.FieldMask` according to
+// https://protobuf.dev/programming-guides/proto3/#json.
+absl::StatusOr<JsonString> DynamicFieldMaskProtoToJsonString(
     const google::protobuf::Message& message);
 
 // Formats `google.protobuf.FieldMask` according to
 // https://protobuf.dev/programming-guides/proto3/#json.
-absl::StatusOr<JsonString> FieldMaskToJsonString(
-    const google::protobuf::Message& message);
+absl::StatusOr<JsonString> GeneratedFieldMaskProtoToJsonString(
+    const google::protobuf::FieldMask& message);
 
 }  // namespace cel::extensions::protobuf_internal
 
