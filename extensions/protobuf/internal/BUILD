@@ -221,3 +221,39 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "struct",
+    srcs = ["struct.cc"],
+    hdrs = ["struct.h"],
+    deps = [
+        ":map_reflection",
+        "//common:json",
+        "//internal:casts",
+        "//internal:overloaded",
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/types:variant",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "struct_test",
+    srcs = ["struct_test.cc"],
+    deps = [
+        ":struct",
+        "//common:json",
+        "//internal:testing",
+        "//testutil:util",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/memory",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
