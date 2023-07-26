@@ -14,6 +14,7 @@
 
 #include "base/values/struct_value.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -24,12 +25,16 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/internal/message_wrapper.h"
+#include "base/memory.h"
 #include "base/types/struct_type.h"
 #include "base/value.h"
+#include "common/any.h"
+#include "common/json.h"
 #include "internal/rtti.h"
 #include "internal/status_macros.h"
 
@@ -74,6 +79,13 @@ absl::StatusOr<Handle<Value>> StructValue::GetFieldByName(
 absl::StatusOr<Handle<Value>> StructValue::GetFieldByNumber(
     const GetFieldContext& context, int64_t number) const {
   return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(GetFieldByNumber, context, number);
+}
+
+absl::StatusOr<Handle<Value>> StructValue::Qualify(
+    const GetFieldContext& context,
+    absl::Span<const SelectQualifier> qualifiers, bool presence_test) const {
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(Qualify, context, qualifiers,
+                                            presence_test);
 }
 
 absl::StatusOr<bool> StructValue::HasFieldByName(const HasFieldContext& context,
@@ -231,6 +243,14 @@ absl::StatusOr<Handle<Value>> LegacyStructValue::GetFieldByNumber(
   return MessageValueGetFieldByNumber(msg_, type_info_, context.value_factory(),
                                       number,
                                       context.unbox_null_wrapper_types());
+}
+
+absl::StatusOr<Handle<Value>> LegacyStructValue::Qualify(
+    const GetFieldContext& context,
+    absl::Span<const SelectQualifier> qualifiers, bool presence_test) const {
+  return MessageValueQualify(msg_, type_info_, context.value_factory(),
+                             qualifiers, context.unbox_null_wrapper_types(),
+                             presence_test);
 }
 
 absl::StatusOr<bool> LegacyStructValue::HasFieldByName(

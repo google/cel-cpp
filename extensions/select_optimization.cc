@@ -19,6 +19,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "absl/algorithm/container.h"
@@ -28,6 +29,7 @@
 #include "absl/strings/match.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "absl/types/variant.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "base/attribute.h"
@@ -43,7 +45,9 @@
 #include "eval/eval/expression_step_base.h"
 #include "eval/public/ast_rewrite_native.h"
 #include "eval/public/source_position_native.h"
+#include "internal/overloaded.h"
 #include "internal/status_macros.h"
+#include "runtime/runtime_options.h"
 
 namespace cel::extensions {
 namespace {
@@ -68,14 +72,6 @@ using ::google::api::expr::runtime::ProgramOptimizer;
 struct SelectInstruction {
   int64_t number;
   absl::string_view name;
-};
-
-// Representation for a select path at runtime.
-// TODO(uncreated-issue/51): This should be updated and moved to the struct API so the
-// struct can optionally implement a fast path select.
-struct RuntimeSelectInstruction {
-  int64_t number;
-  std::string name;
 };
 
 struct SelectPath {
@@ -127,7 +123,7 @@ absl::optional<SelectInstruction> GetSelectInstruction(
   return absl::nullopt;
 }
 
-absl::StatusOr<RuntimeSelectInstruction> SelectInstructionFromList(
+absl::StatusOr<SelectQualifier> SelectInstructionFromList(
     const ast_internal::CreateList& list) {
   if (list.elements().size() != 2) {
     return absl::InvalidArgumentError("Invalid cel.attribute select list");
@@ -148,16 +144,16 @@ absl::StatusOr<RuntimeSelectInstruction> SelectInstructionFromList(
         "Invalid cel.attribute field select name");
   }
 
-  return RuntimeSelectInstruction{field_number.const_expr().int64_value(),
-                                  field_name.const_expr().string_value()};
+  return FieldSpecifier{field_number.const_expr().int64_value(),
+                        field_name.const_expr().string_value()};
 }
 
-absl::StatusOr<std::vector<RuntimeSelectInstruction>>
-SelectInstructionsFromCall(const ast_internal::Call& call) {
+absl::StatusOr<std::vector<SelectQualifier>> SelectInstructionsFromCall(
+    const ast_internal::Call& call) {
   if (call.args().size() < 2 || !call.args()[1].has_list_expr()) {
     return absl::InvalidArgumentError("Invalid cel.attribute call");
   }
-  std::vector<RuntimeSelectInstruction> instructions;
+  std::vector<SelectQualifier> instructions;
   const auto& ast_path = call.args()[1].list_expr().elements();
   instructions.reserve(ast_path.size());
 
@@ -276,58 +272,34 @@ class RewriterImpl : public AstRewriterBase {
 class OptimizedSelectStep : public ExpressionStepBase {
  public:
   OptimizedSelectStep(int expr_id, absl::optional<Attribute> attribute,
-                      std::vector<RuntimeSelectInstruction> select_path,
+                      std::vector<SelectQualifier> select_path,
                       std::vector<AttributeQualifier> qualifiers,
-                      bool presence_test)
+                      bool presence_test,
+                      bool enable_wrapper_type_null_unboxing,
+                      SelectOptimizationOptions options)
       : ExpressionStepBase(expr_id),
         attribute_(std::move(attribute)),
         select_path_(std::move(select_path)),
         qualifiers_(std::move(qualifiers)),
-        presence_test_(presence_test) {
+        presence_test_(presence_test),
+        enable_wrapper_type_null_unboxing_(enable_wrapper_type_null_unboxing),
+        options_(options)
+
+  {
     ABSL_ASSERT(!select_path_.empty());
   }
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  // Slow implementation if the chain select isn't available for the struct
-  // implementation at runtime.
-  absl::StatusOr<Handle<Value>> FallbackSelect(ExecutionFrame* frame,
-                                               const StructValue& root) const {
-    const StructValue* elem = &root;
-    Handle<Value> result;
-    StructValue::GetFieldContext get_context(frame->value_factory());
-    StructValue::HasFieldContext has_context(frame->type_manager());
+  absl::StatusOr<Handle<Value>> ApplySelect(
+      ExecutionFrame* frame, const StructValue& struct_value) const;
 
-    for (const auto& instruction : select_path_) {
-      if (elem == nullptr) {
-        return absl::InvalidArgumentError("select path overflow");
-      }
-      if (presence_test_) {
-        // Check if any of the fields in the selection path is unset, returning
-        // early if so.
-        // If a parent message is unset, access is expected to return the
-        // default instance (all fields defaulted and so not present
-        // see
-        // https://github.com/google/cel-spec/blob/master/doc/langdef.md#field-selection).
-        CEL_ASSIGN_OR_RETURN(
-            bool has_field,
-            elem->HasFieldByName(has_context, instruction.name));
-        if (!has_field) {
-          return frame->value_factory().CreateBoolValue(false);
-        }
-      }
-      CEL_ASSIGN_OR_RETURN(result,
-                           elem->GetFieldByName(get_context, instruction.name));
-      if (result->Is<StructValue>()) {
-        elem = &result->As<StructValue>();
-      }
-    }
-    if (presence_test_) {
-      return frame->value_factory().CreateBoolValue(true);
-    }
-    return result;
-  }
+  // Slow implementation if the Qualify operation isn't provided for the struct
+  // implementation at runtime.
+  absl::StatusOr<Handle<Value>> FallbackSelect(
+      ExecutionFrame* frame, const StructValue& root,
+      const StructValue::GetFieldContext& get_context) const;
 
   // Get the effective attribute for the optimized select expression.
   // Assumes the operand is the top of stack if the attribute wasn't known at
@@ -335,9 +307,11 @@ class OptimizedSelectStep : public ExpressionStepBase {
   AttributeTrail GetAttributeTrail(ExecutionFrame* frame) const;
 
   absl::optional<Attribute> attribute_;
-  std::vector<RuntimeSelectInstruction> select_path_;
+  std::vector<SelectQualifier> select_path_;
   std::vector<AttributeQualifier> qualifiers_;
   bool presence_test_;
+  bool enable_wrapper_type_null_unboxing_;
+  SelectOptimizationOptions options_;
 };
 
 // Check for unknowns or missing attributes.
@@ -389,6 +363,65 @@ AttributeTrail OptimizedSelectStep::GetAttributeTrail(
   return result;
 }
 
+absl::StatusOr<Handle<Value>> OptimizedSelectStep::FallbackSelect(
+    ExecutionFrame* frame, const StructValue& root,
+    const StructValue::GetFieldContext& get_context) const {
+  const StructValue* elem = &root;
+  Handle<Value> result;
+  StructValue::HasFieldContext has_context(frame->type_manager());
+
+  for (const auto& instruction : select_path_) {
+    if (elem == nullptr) {
+      return absl::InvalidArgumentError("select path overflow");
+    }
+    if (!std::holds_alternative<FieldSpecifier>(instruction)) {
+      return absl::UnimplementedError(
+          "map and repeated field traversal not yet supported");
+    }
+    const auto& field_specifier = std::get<FieldSpecifier>(instruction);
+    if (presence_test_) {
+      // Check if any of the fields in the selection path is unset, returning
+      // early if so.
+      // If a parent message is unset, access is expected to return the
+      // default instance (all fields defaulted and so not present
+      // see
+      // https://github.com/google/cel-spec/blob/master/doc/langdef.md#field-selection).
+      CEL_ASSIGN_OR_RETURN(
+          bool has_field,
+          elem->HasFieldByName(has_context, field_specifier.name));
+      if (!has_field) {
+        return frame->value_factory().CreateBoolValue(false);
+      }
+    }
+    CEL_ASSIGN_OR_RETURN(
+        result, elem->GetFieldByName(get_context, field_specifier.name));
+    if (result->Is<StructValue>()) {
+      elem = &result->As<StructValue>();
+    }
+  }
+  if (presence_test_) {
+    return frame->value_factory().CreateBoolValue(true);
+  }
+  return result;
+}
+
+absl::StatusOr<Handle<Value>> OptimizedSelectStep::ApplySelect(
+    ExecutionFrame* frame, const StructValue& struct_value) const {
+  StructValue::GetFieldContext get_context(frame->value_factory());
+  get_context.set_unbox_null_wrapper_types(enable_wrapper_type_null_unboxing_);
+
+  absl::StatusOr<Handle<Value>> value_or =
+      (options_.force_fallback_implementation)
+          ? absl::UnimplementedError("Forced fallback impl")
+          : struct_value.Qualify(get_context, select_path_, presence_test_);
+
+  if (value_or.status().code() != absl::StatusCode::kUnimplemented) {
+    return value_or;
+  }
+
+  return FallbackSelect(frame, struct_value, get_context);
+}
+
 absl::Status OptimizedSelectStep::Evaluate(ExecutionFrame* frame) const {
   // Default empty.
   AttributeTrail attribute_trail;
@@ -425,18 +458,18 @@ absl::Status OptimizedSelectStep::Evaluate(ExecutionFrame* frame) const {
         "Expected struct type for select optimization.");
   }
 
-  // TODO(uncreated-issue/51): add struct API for chain select instead of always using
-  // this implementation.
-  CEL_ASSIGN_OR_RETURN(Handle<Value> leaf,
-                       FallbackSelect(frame, operand->As<StructValue>()));
+  CEL_ASSIGN_OR_RETURN(Handle<Value> result,
+                       ApplySelect(frame, operand->As<StructValue>()));
+
   frame->value_stack().Pop(kStackInputs);
-  frame->value_stack().Push(std::move(leaf), std::move(attribute_trail));
+  frame->value_stack().Push(std::move(result), std::move(attribute_trail));
   return absl::OkStatus();
 }
 
 class SelectOptimizer : public ProgramOptimizer {
  public:
-  SelectOptimizer() = default;
+  explicit SelectOptimizer(const SelectOptimizationOptions& options)
+      : options_(options) {}
 
   absl::Status OnPreVisit(PlannerContext& context,
                           const cel::ast_internal::Expr& node) override {
@@ -445,6 +478,9 @@ class SelectOptimizer : public ProgramOptimizer {
 
   absl::Status OnPostVisit(PlannerContext& context,
                            const cel::ast_internal::Expr& node) override;
+
+ private:
+  SelectOptimizationOptions options_;
 };
 
 absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
@@ -467,7 +503,7 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
     return absl::UnimplementedError("Optionals not yet supported");
   }
 
-  CEL_ASSIGN_OR_RETURN(std::vector<RuntimeSelectInstruction> instructions,
+  CEL_ASSIGN_OR_RETURN(std::vector<SelectQualifier> instructions,
                        SelectInstructionsFromCall(node.call_expr()));
 
   if (instructions.empty()) {
@@ -494,7 +530,12 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
   std::vector<AttributeQualifier> qualifiers;
   qualifiers.reserve(instructions.size());
   for (const auto& instruction : instructions) {
-    qualifiers.push_back(AttributeQualifier::OfString(instruction.name));
+    qualifiers.push_back(absl::visit(
+        internal::Overloaded{[](const FieldSpecifier& field) {
+                               return AttributeQualifier::OfString(field.name);
+                             },
+                             [](const AttributeQualifier& q) { return q; }},
+        instruction));
   }
 
   if (!identifier.empty()) {
@@ -513,9 +554,12 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
   CEL_ASSIGN_OR_RETURN(auto operand_subplan, context.ExtractSubplan(operand));
   absl::c_move(operand_subplan, std::back_inserter(path));
 
+  bool enable_wrapper_type_null_unboxing =
+      context.options().enable_empty_wrapper_null_unboxing;
   path.push_back(std::make_unique<OptimizedSelectStep>(
       node.id(), std::move(attribute), std::move(instructions),
-      std::move(qualifiers), presence_test));
+      std::move(qualifiers), presence_test, enable_wrapper_type_null_unboxing,
+      options_));
 
   return context.ReplaceSubplan(node, std::move(path));
 }
@@ -531,9 +575,10 @@ absl::Status SelectOptimizationAstUpdater::UpdateAst(PlannerContext& context,
 }
 
 google::api::expr::runtime::ProgramOptimizerFactory
-CreateSelectOptimizationProgramOptimizer() {
-  return [](PlannerContext& context, const cel::ast_internal::AstImpl& ast) {
-    return std::make_unique<SelectOptimizer>();
+CreateSelectOptimizationProgramOptimizer(
+    const SelectOptimizationOptions& options) {
+  return [=](PlannerContext& context, const cel::ast_internal::AstImpl& ast) {
+    return std::make_unique<SelectOptimizer>(options);
   };
 }
 

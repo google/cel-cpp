@@ -23,6 +23,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "base/memory.h"
+#include "base/values/struct_value.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/legacy_type_adapter.h"
@@ -84,6 +85,12 @@ class ProtoMessageTypeAdapter : public LegacyTypeInfoApis,
   absl::StatusOr<bool> HasField(
       absl::string_view field_name,
       const CelValue::MessageWrapper& value) const override;
+
+  absl::StatusOr<CelValue> Qualify(
+      absl::Span<const cel::SelectQualifier> qualifiers,
+      const CelValue::MessageWrapper& instance,
+      ProtoWrapperTypeOptions unboxing_option, bool presence_test,
+      cel::MemoryManager& memory_manager) const override;
 
   bool IsEqualTo(const CelValue::MessageWrapper& instance,
                  const CelValue::MessageWrapper& other_instance) const override;

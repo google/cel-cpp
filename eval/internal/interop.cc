@@ -14,19 +14,22 @@
 
 #include "eval/internal/interop.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "google/protobuf/arena.h"
 #include "absl/base/attributes.h"
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
 #include "absl/types/variant.h"
+#include "base/attribute.h"
+#include "base/handle.h"
 #include "base/internal/message_wrapper.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
@@ -39,12 +42,17 @@
 #include "base/values/struct_value.h"
 #include "eval/internal/errors.h"
 #include "eval/public/cel_options.h"
+#include "eval/public/cel_value.h"
 #include "eval/public/message_wrapper.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/unknown_set.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "internal/overloaded.h"
+#include "internal/rtti.h"
 #include "internal/status_macros.h"
+#include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
 
 namespace cel::interop_internal {
@@ -233,6 +241,43 @@ absl::StatusOr<Handle<Value>> LegacyStructGetFieldImpl(
                                ? ProtoWrapperTypeOptions::kUnsetNull
                                : ProtoWrapperTypeOptions::kUnsetProtoDefault,
                            memory_manager));
+  return FromLegacyValue(arena, legacy_value);
+}
+
+absl::StatusOr<Handle<Value>> LegacyStructQualifyImpl(
+    const MessageWrapper& wrapper, absl::Span<const cel::SelectQualifier> path,
+    bool unbox_null_wrapper_types, bool presence_test,
+    MemoryManager& memory_manager) {
+  if (path.empty()) {
+    return absl::InvalidArgumentError("invalid select qualifier path.");
+  }
+  const LegacyTypeAccessApis* access_api =
+      wrapper.legacy_type_info()->GetAccessApis(wrapper);
+
+  google::protobuf::Arena* arena =
+      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager);
+  if (access_api == nullptr) {
+    absl::string_view field_name = absl::visit(
+        cel::internal::Overloaded{
+            [](const cel::FieldSpecifier& field) -> absl::string_view {
+              return field.name;
+            },
+            [](const cel::AttributeQualifier& field) -> absl::string_view {
+              return field.GetStringKey().value_or("<invalid field>");
+            }},
+        path.front());
+    return interop_internal::CreateErrorValueFromView(
+        interop_internal::CreateNoSuchFieldError(arena, field_name));
+  }
+
+  CEL_ASSIGN_OR_RETURN(
+      auto legacy_value,
+      access_api->Qualify(path, wrapper,
+                          unbox_null_wrapper_types
+                              ? ProtoWrapperTypeOptions::kUnsetNull
+                              : ProtoWrapperTypeOptions::kUnsetProtoDefault,
+                          presence_test, memory_manager));
+
   return FromLegacyValue(arena, legacy_value);
 }
 
@@ -839,6 +884,17 @@ absl::StatusOr<Handle<Value>> MessageValueGetFieldByName(
 
   return interop_internal::LegacyStructGetFieldImpl(
       wrapper, name, unbox_null_wrapper_types, value_factory.memory_manager());
+}
+
+absl::StatusOr<Handle<Value>> MessageValueQualify(
+    uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
+    absl::Span<const SelectQualifier> qualifiers, bool unbox_null_wrapper_types,
+    bool presence_test) {
+  auto wrapper = MessageWrapperAccess::Make(msg, type_info);
+
+  return interop_internal::LegacyStructQualifyImpl(
+      wrapper, qualifiers, unbox_null_wrapper_types, presence_test,
+      value_factory.memory_manager());
 }
 
 absl::StatusOr<Handle<Value>> LegacyListValueGet(uintptr_t impl,

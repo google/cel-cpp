@@ -14,27 +14,29 @@
 
 #include "eval/public/structs/proto_message_type_adapter.h"
 
+#include <vector>
+
 #include "google/protobuf/wrappers.pb.h"
 #include "google/protobuf/descriptor.pb.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
-#include "google/protobuf/message_lite.h"
 #include "absl/status/status.h"
+#include "base/attribute.h"
+#include "base/values/struct_value.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
-#include "eval/public/containers/field_access.h"
 #include "eval/public/message_wrapper.h"
-#include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/testutil/test_message.pb.h"
 #include "extensions/protobuf/memory_manager.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/runtime_options.h"
 #include "testutil/util.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 namespace {
@@ -759,6 +761,55 @@ TEST(ProtoMesssageTypeAdapter, TypeInfoAccesor) {
   EXPECT_THAT(api->GetField("int64_value", wrapped,
                             ProtoWrapperTypeOptions::kUnsetNull, manager),
               IsOkAndHolds(test::IsCelInt64(42)));
+}
+
+TEST(ProtoMesssageTypeAdapter, Qualify) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  ProtoMemoryManager manager(&arena);
+
+  TestMessage message;
+  message.mutable_message_value()->set_int64_value(42);
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{12, "message_value"},
+      cel::FieldSpecifier{2, "int64_value"}};
+  EXPECT_THAT(
+      api->Qualify(qualfiers, wrapped, ProtoWrapperTypeOptions::kUnsetNull,
+                   /*presence_test=*/false, manager),
+      IsOkAndHolds(test::IsCelInt64(42)));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyMapsNotYetSupported) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  ProtoMemoryManager manager(&arena);
+
+  TestMessage message;
+  (*message.mutable_string_message_map())["@key"].set_int64_value(42);
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::AttributeQualifier::OfString("@key"),
+      cel::FieldSpecifier{2, "int64_value"}};
+
+  EXPECT_THAT(
+      api->Qualify(qualfiers, wrapped, cel::ProtoWrapperTypeOptions::kUnsetNull,
+                   /*presence_test=*/false, manager),
+      StatusIs(absl::StatusCode::kUnimplemented));
 }
 
 }  // namespace

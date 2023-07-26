@@ -24,6 +24,18 @@ namespace cel::extensions {
 constexpr char kCelAttribute[] = "@cel.attribute";
 constexpr char kFieldsHas[] = "@cel.hasField";
 
+// Configuration options for the select optimization.
+struct SelectOptimizationOptions {
+  // Force the program to use the fallback implementation for the select.
+  // This implementation simply collapses the select operation into one program
+  // step and calls the normal field accessors on the Struct value.
+  //
+  // Normally, the fallback implementation is used when the Qualify operation is
+  // unimplemented for a given StructType. This option is exposed for testing or
+  // to more closely match behavior of unoptimized expressions.
+  bool force_fallback_implementation = false;
+};
+
 // Scans ast for optimizable select branches.
 //
 // In general, this should be done by a type checker but may be deferred to
@@ -41,7 +53,8 @@ class SelectOptimizationAstUpdater
 };
 
 google::api::expr::runtime::ProgramOptimizerFactory
-CreateSelectOptimizationProgramOptimizer();
+CreateSelectOptimizationProgramOptimizer(
+    const SelectOptimizationOptions& options = {});
 
 }  // namespace cel::extensions
 #endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_SELECT_OPTIMIZATION_H_
