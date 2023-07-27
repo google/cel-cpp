@@ -15,6 +15,8 @@
 #include "extensions/select_optimization.h"
 
 #include <cstdint>
+#include <iterator>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -23,31 +25,40 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/match.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
+#include "base/attribute.h"
 #include "base/handle.h"
 #include "base/memory.h"
 #include "base/type.h"
 #include "base/type_factory.h"
 #include "base/types/struct_type.h"
+#include "base/values/struct_value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
+#include "eval/eval/attribute_trail.h"
+#include "eval/eval/evaluator_core.h"
+#include "eval/eval/expression_step_base.h"
 #include "eval/public/ast_rewrite_native.h"
 #include "eval/public/source_position_native.h"
-#include "eval/public/structs/legacy_type_info_apis.h"
+#include "internal/status_macros.h"
 
 namespace cel::extensions {
 namespace {
 
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::AstRewriterBase;
-using ::cel::ast_internal::Constant;
 using ::cel::ast_internal::ConstantKind;
 using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::ExprKind;
 using ::cel::ast_internal::SourcePosition;
+using ::google::api::expr::runtime::AttributeTrail;
+using ::google::api::expr::runtime::ExecutionFrame;
+using ::google::api::expr::runtime::ExpressionStepBase;
 using ::google::api::expr::runtime::PlannerContext;
+using ::google::api::expr::runtime::ProgramOptimizer;
 
 // Represents a single select operation (field access or indexing).
 // For struct-typed field accesses, includes the field name and the field
@@ -59,11 +70,19 @@ struct SelectInstruction {
   absl::string_view name;
 };
 
+// Representation for a select path at runtime.
+// TODO(uncreated-issue/51): This should be updated and moved to the struct API so the
+// struct can optionally implement a fast path select.
+struct RuntimeSelectInstruction {
+  int64_t number;
+  std::string name;
+};
+
 struct SelectPath {
   Expr* operand;
   std::vector<SelectInstruction> select_instructions;
   bool test_only;
-  int64_t opt_index;
+  // TODO(uncreated-issue/54): support for optionals.
 };
 
 // Generates the AST representation of the qualification path for the optimized
@@ -106,6 +125,55 @@ absl::optional<SelectInstruction> GetSelectInstruction(
     return SelectInstruction{field_or->number, field_name};
   }
   return absl::nullopt;
+}
+
+absl::StatusOr<RuntimeSelectInstruction> SelectInstructionFromList(
+    const ast_internal::CreateList& list) {
+  if (list.elements().size() != 2) {
+    return absl::InvalidArgumentError("Invalid cel.attribute select list");
+  }
+
+  const Expr& field_number = list.elements()[0];
+  const Expr& field_name = list.elements()[1];
+
+  if (!field_number.has_const_expr() ||
+      !field_number.const_expr().has_int64_value()) {
+    return absl::InvalidArgumentError(
+        "Invalid cel.attribute field select number");
+  }
+
+  if (!field_name.has_const_expr() ||
+      !field_name.const_expr().has_string_value()) {
+    return absl::InvalidArgumentError(
+        "Invalid cel.attribute field select name");
+  }
+
+  return RuntimeSelectInstruction{field_number.const_expr().int64_value(),
+                                  field_name.const_expr().string_value()};
+}
+
+absl::StatusOr<std::vector<RuntimeSelectInstruction>>
+SelectInstructionsFromCall(const ast_internal::Call& call) {
+  if (call.args().size() < 2 || !call.args()[1].has_list_expr()) {
+    return absl::InvalidArgumentError("Invalid cel.attribute call");
+  }
+  std::vector<RuntimeSelectInstruction> instructions;
+  const auto& ast_path = call.args()[1].list_expr().elements();
+  instructions.reserve(ast_path.size());
+
+  for (const Expr& element : ast_path) {
+    // Optimized field select.
+    if (element.has_list_expr()) {
+      CEL_ASSIGN_OR_RETURN(instructions.emplace_back(),
+                           SelectInstructionFromList(element.list_expr()));
+    } else {
+      return absl::UnimplementedError("map/list elements todo");
+    }
+  }
+
+  // TODO(uncreated-issue/54): support for optionals.
+
+  return instructions;
 }
 
 class RewriterImpl : public AstRewriterBase {
@@ -158,15 +226,13 @@ class RewriterImpl : public AstRewriterBase {
     Expr call;
     call.set_id(expr->id());
     call.mutable_call_expr().set_function(std::string(fn));
-    call.mutable_call_expr().mutable_args().reserve(
-        2 + (path.opt_index >= 0 ? 1 : 0));
+    call.mutable_call_expr().mutable_args().reserve(2);
+
     call.mutable_call_expr().mutable_args().push_back(std::move(operand));
     call.mutable_call_expr().mutable_args().push_back(
         MakeSelectPathExpr(path.select_instructions));
-    if (path.opt_index >= 0) {
-      call.mutable_call_expr().mutable_args().push_back(
-          Expr(-1, ExprKind(Constant(ConstantKind(path.opt_index)))));
-    }
+
+    // TODO(uncreated-issue/54): support for optionals.
 
     *expr = std::move(call);
 
@@ -176,8 +242,6 @@ class RewriterImpl : public AstRewriterBase {
  private:
   SelectPath GetSelectPath(Expr* expr) {
     SelectPath result;
-    // TODO(uncreated-issue/52): update after C++ runtime ast supports optionals.
-    result.opt_index = -1;
     result.test_only = false;
     Expr* operand = expr;
     auto candidate_iter = candidates_.find(operand);
@@ -209,6 +273,253 @@ class RewriterImpl : public AstRewriterBase {
   std::vector<const Expr*> path_;
 };
 
+class OptimizedSelectStep : public ExpressionStepBase {
+ public:
+  OptimizedSelectStep(int expr_id, absl::optional<Attribute> attribute,
+                      std::vector<RuntimeSelectInstruction> select_path,
+                      std::vector<AttributeQualifier> qualifiers,
+                      bool presence_test)
+      : ExpressionStepBase(expr_id),
+        attribute_(std::move(attribute)),
+        select_path_(std::move(select_path)),
+        qualifiers_(std::move(qualifiers)),
+        presence_test_(presence_test) {
+    ABSL_ASSERT(!select_path_.empty());
+  }
+
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
+
+ private:
+  // Slow implementation if the chain select isn't available for the struct
+  // implementation at runtime.
+  absl::StatusOr<Handle<Value>> FallbackSelect(ExecutionFrame* frame,
+                                               const StructValue& root) const {
+    const StructValue* elem = &root;
+    Handle<Value> result;
+    StructValue::GetFieldContext get_context(frame->value_factory());
+    StructValue::HasFieldContext has_context(frame->type_manager());
+
+    for (const auto& instruction : select_path_) {
+      if (elem == nullptr) {
+        return absl::InvalidArgumentError("select path overflow");
+      }
+      if (presence_test_) {
+        // Check if any of the fields in the selection path is unset, returning
+        // early if so.
+        // If a parent message is unset, access is expected to return the
+        // default instance (all fields defaulted and so not present
+        // see
+        // https://github.com/google/cel-spec/blob/master/doc/langdef.md#field-selection).
+        CEL_ASSIGN_OR_RETURN(
+            bool has_field,
+            elem->HasFieldByName(has_context, instruction.name));
+        if (!has_field) {
+          return frame->value_factory().CreateBoolValue(false);
+        }
+      }
+      CEL_ASSIGN_OR_RETURN(result,
+                           elem->GetFieldByName(get_context, instruction.name));
+      if (result->Is<StructValue>()) {
+        elem = &result->As<StructValue>();
+      }
+    }
+    if (presence_test_) {
+      return frame->value_factory().CreateBoolValue(true);
+    }
+    return result;
+  }
+
+  // Get the effective attribute for the optimized select expression.
+  // Assumes the operand is the top of stack if the attribute wasn't known at
+  // plan time.
+  AttributeTrail GetAttributeTrail(ExecutionFrame* frame) const;
+
+  absl::optional<Attribute> attribute_;
+  std::vector<RuntimeSelectInstruction> select_path_;
+  std::vector<AttributeQualifier> qualifiers_;
+  bool presence_test_;
+};
+
+// Check for unknowns or missing attributes.
+absl::StatusOr<absl::optional<Handle<Value>>> CheckForMarkedAttributes(
+    ExecutionFrame* frame, const AttributeTrail& attribute_trail) {
+  if (attribute_trail.empty()) {
+    return absl::nullopt;
+  }
+
+  if (frame->enable_unknowns()) {
+    // Check if the inferred attribute is marked. Only matches if this attribute
+    // or a parent is marked unknown (use_partial = false).
+    // Partial matches (i.e. descendant of this attribute is marked) aren't
+    // considered yet in case another operation would select an unmarked
+    // descended attribute.
+    //
+    // TODO(uncreated-issue/51): this may return a more specific attribute than the
+    // declared pattern. Follow up will truncate the returned attribute to match
+    // the pattern.
+    if (frame->attribute_utility().CheckForUnknown(attribute_trail,
+                                                   /*use_partial=*/false)) {
+      return frame->attribute_utility().CreateUnknownSet(
+          attribute_trail.attribute());
+    }
+  }
+  if (frame->enable_missing_attribute_errors()) {
+    if (frame->attribute_utility().CheckForMissingAttribute(attribute_trail)) {
+      return frame->attribute_utility().CreateMissingAttributeError(
+          attribute_trail.attribute());
+    }
+  }
+
+  return absl::nullopt;
+}
+
+AttributeTrail OptimizedSelectStep::GetAttributeTrail(
+    ExecutionFrame* frame) const {
+  if (attribute_.has_value()) {
+    return AttributeTrail(*attribute_);
+  }
+
+  auto attr = frame->value_stack().PeekAttribute();
+  std::vector<AttributeQualifier> qualifiers =
+      attr.attribute().qualifier_path();
+  qualifiers.reserve(qualifiers_.size() + qualifiers.size());
+  absl::c_copy(qualifiers_, std::back_inserter(qualifiers));
+  AttributeTrail result(Attribute(std::string(attr.attribute().variable_name()),
+                                  std::move(qualifiers)));
+  return result;
+}
+
+absl::Status OptimizedSelectStep::Evaluate(ExecutionFrame* frame) const {
+  // Default empty.
+  AttributeTrail attribute_trail;
+  // TODO(uncreated-issue/51): add support for variable qualifiers and string literal
+  // variable names.
+  constexpr size_t kStackInputs = 1;
+
+  if (frame->enable_attribute_tracking()) {
+    // Compute the attribute trail then check for any marked values.
+    // When possible, this is computed at plan time based on the optimized
+    // select arguments.
+    // TODO(uncreated-issue/51): add support variable qualifiers
+    attribute_trail = GetAttributeTrail(frame);
+    CEL_ASSIGN_OR_RETURN(absl::optional<Handle<Value>> value,
+                         CheckForMarkedAttributes(frame, attribute_trail));
+    if (value.has_value()) {
+      frame->value_stack().Pop(kStackInputs);
+      frame->value_stack().Push(std::move(value).value(),
+                                std::move(attribute_trail));
+      return absl::OkStatus();
+    }
+  }
+
+  // Otherwise, we expect the operand to be top of stack.
+  const Handle<Value>& operand = frame->value_stack().Peek();
+
+  if (operand->Is<ErrorValue>() || operand->Is<UnknownValue>()) {
+    // Just forward the error which is already top of stack.
+    return absl::OkStatus();
+  }
+
+  if (!operand->Is<StructValue>()) {
+    return absl::InvalidArgumentError(
+        "Expected struct type for select optimization.");
+  }
+
+  // TODO(uncreated-issue/51): add struct API for chain select instead of always using
+  // this implementation.
+  CEL_ASSIGN_OR_RETURN(Handle<Value> leaf,
+                       FallbackSelect(frame, operand->As<StructValue>()));
+  frame->value_stack().Pop(kStackInputs);
+  frame->value_stack().Push(std::move(leaf), std::move(attribute_trail));
+  return absl::OkStatus();
+}
+
+class SelectOptimizer : public ProgramOptimizer {
+ public:
+  SelectOptimizer() = default;
+
+  absl::Status OnPreVisit(PlannerContext& context,
+                          const cel::ast_internal::Expr& node) override {
+    return absl::OkStatus();
+  }
+
+  absl::Status OnPostVisit(PlannerContext& context,
+                           const cel::ast_internal::Expr& node) override;
+};
+
+absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
+                                          const cel::ast_internal::Expr& node) {
+  if (!node.has_call_expr()) {
+    return absl::OkStatus();
+  }
+
+  absl::string_view fn = node.call_expr().function();
+  if (fn != kFieldsHas && fn != kCelAttribute) {
+    return absl::OkStatus();
+  }
+
+  if (node.call_expr().args().size() < 2 ||
+      node.call_expr().args().size() > 3) {
+    return absl::InvalidArgumentError("Invalid cel.attribute call");
+  }
+
+  if (node.call_expr().args().size() == 3) {
+    return absl::UnimplementedError("Optionals not yet supported");
+  }
+
+  CEL_ASSIGN_OR_RETURN(std::vector<RuntimeSelectInstruction> instructions,
+                       SelectInstructionsFromCall(node.call_expr()));
+
+  if (instructions.empty()) {
+    return absl::InvalidArgumentError("Invalid cel.attribute no select steps.");
+  }
+
+  bool presence_test = false;
+
+  if (fn == kFieldsHas) {
+    presence_test = true;
+  }
+
+  const Expr& operand = node.call_expr().args()[0];
+  absl::optional<Attribute> attribute;
+  absl::string_view identifier;
+  if (operand.has_ident_expr()) {
+    identifier = operand.ident_expr().name();
+  }
+
+  if (absl::StrContains(identifier, ".")) {
+    return absl::UnimplementedError("qualified identifiers not supported.");
+  }
+
+  std::vector<AttributeQualifier> qualifiers;
+  qualifiers.reserve(instructions.size());
+  for (const auto& instruction : instructions) {
+    qualifiers.push_back(AttributeQualifier::OfString(instruction.name));
+  }
+
+  if (!identifier.empty()) {
+    attribute.emplace(std::string(identifier), qualifiers);
+  }
+
+  // TODO(uncreated-issue/51): If the first argument is a string literal, the custom
+  // step needs to handle variable lookup.
+  google::api::expr::runtime::ExecutionPath path;
+
+  // else, we need to preserve the original plan for the first argument.
+  if (context.GetSubplan(operand).empty()) {
+    // Indicates another extension modified the step. Nothing to do here.
+    return absl::OkStatus();
+  }
+  CEL_ASSIGN_OR_RETURN(auto operand_subplan, context.ExtractSubplan(operand));
+  absl::c_move(operand_subplan, std::back_inserter(path));
+
+  path.push_back(std::make_unique<OptimizedSelectStep>(
+      node.id(), std::move(attribute), std::move(instructions),
+      std::move(qualifiers), presence_test));
+
+  return context.ReplaceSubplan(node, std::move(path));
+}
+
 }  // namespace
 
 absl::Status SelectOptimizationAstUpdater::UpdateAst(PlannerContext& context,
@@ -217,6 +528,13 @@ absl::Status SelectOptimizationAstUpdater::UpdateAst(PlannerContext& context,
 
   ast_internal::AstRewrite(&ast.root_expr(), &ast.source_info(), &rewriter);
   return absl::OkStatus();
+}
+
+google::api::expr::runtime::ProgramOptimizerFactory
+CreateSelectOptimizationProgramOptimizer() {
+  return [](PlannerContext& context, const cel::ast_internal::AstImpl& ast) {
+    return std::make_unique<SelectOptimizer>();
+  };
 }
 
 }  // namespace cel::extensions

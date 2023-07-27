@@ -40,5 +40,8 @@ class SelectOptimizationAstUpdater
                          cel::ast_internal::AstImpl& ast) const override;
 };
 
+google::api::expr::runtime::ProgramOptimizerFactory
+CreateSelectOptimizationProgramOptimizer();
+
 }  // namespace cel::extensions
 #endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_SELECT_OPTIMIZATION_H_

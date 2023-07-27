@@ -62,6 +62,10 @@ class AttributeUtility {
   // Create an initial UnknownSet from a single attribute.
   cel::Handle<cel::UnknownValue> CreateUnknownSet(cel::Attribute attr) const;
 
+  // Factory function for missing attribute errors.
+  absl::StatusOr<cel::Handle<cel::ErrorValue>> CreateMissingAttributeError(
+      const cel::Attribute& attr) const;
+
   // Create an initial UnknownSet from a single missing function call.
   cel::Handle<cel::UnknownValue> CreateUnknownSet(
       const cel::FunctionDescriptor& fn_descriptor, int64_t expr_id,

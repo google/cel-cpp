@@ -26,6 +26,14 @@ class AttributeTrail {
   explicit AttributeTrail(std::string variable_name)
       : attribute_(absl::in_place, std::move(variable_name)) {}
 
+  explicit AttributeTrail(cel::Attribute attribute)
+      : attribute_(std::move(attribute)) {}
+
+  AttributeTrail(const AttributeTrail&) = default;
+  AttributeTrail& operator=(const AttributeTrail&) = default;
+  AttributeTrail(AttributeTrail&&) = default;
+  AttributeTrail& operator=(AttributeTrail&&) = default;
+
   // Creates AttributeTrail with attribute path incremented by "qualifier".
   AttributeTrail Step(cel::AttributeQualifier qualifier) const;
 
@@ -40,8 +48,6 @@ class AttributeTrail {
   bool empty() const { return !attribute_.has_value(); }
 
  private:
-  explicit AttributeTrail(cel::Attribute attribute)
-      : attribute_(std::move(attribute)) {}
   absl::optional<cel::Attribute> attribute_;
 };
 

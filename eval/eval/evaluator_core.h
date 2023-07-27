@@ -163,6 +163,12 @@ class ExecutionFrame {
 
   EvaluatorStack& value_stack() { return state_.value_stack(); }
 
+  bool enable_attribute_tracking() const {
+    return options_.unknown_processing !=
+               cel::UnknownProcessingOptions::kDisabled ||
+           options_.enable_missing_attribute_errors;
+  }
+
   bool enable_unknowns() const {
     return options_.unknown_processing !=
            cel::UnknownProcessingOptions::kDisabled;

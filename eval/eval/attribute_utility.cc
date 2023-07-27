@@ -5,11 +5,14 @@
 #include "base/attribute_set.h"
 #include "base/handle.h"
 #include "base/internal/unknown_set.h"
+#include "base/values/error_value.h"
 #include "base/values/unknown_value.h"
+#include "eval/internal/errors.h"
 
 namespace google::api::expr::runtime {
 
 using ::cel::AttributeSet;
+using ::cel::ErrorValue;
 using ::cel::Handle;
 using ::cel::UnknownValue;
 using ::cel::base_internal::UnknownSet;
@@ -136,6 +139,14 @@ absl::optional<Handle<UnknownValue>> AttributeUtility::IdentifyAndMergeUnknowns(
 Handle<UnknownValue> AttributeUtility::CreateUnknownSet(
     cel::Attribute attr) const {
   return value_factory_.CreateUnknownValue(AttributeSet({std::move(attr)}));
+}
+
+absl::StatusOr<Handle<ErrorValue>>
+AttributeUtility::CreateMissingAttributeError(
+    const cel::Attribute& attr) const {
+  CEL_ASSIGN_OR_RETURN(std::string message, attr.AsString());
+  return value_factory_.CreateErrorValue(
+      cel::runtime_internal::CreateMissingAttributeError(message));
 }
 
 Handle<UnknownValue> AttributeUtility::CreateUnknownSet(

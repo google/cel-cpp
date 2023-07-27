@@ -689,6 +689,7 @@ cc_library(
         "//base:function_result_set",
         "//base:handle",
         "//base/internal:unknown_set",
+        "//eval/internal:errors",
         "@com_google_absl//absl/types:span",
     ],
 )
