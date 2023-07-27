@@ -69,6 +69,10 @@ class MapValue : public Value {
 
   std::string DebugString() const;
 
+  absl::StatusOr<Any> ConvertToAny(ValueFactory& value_factory) const;
+
+  absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
+
   size_t size() const;
 
   bool empty() const;
@@ -188,6 +192,10 @@ class LegacyMapValue final : public MapValue, public InlineData {
 
   std::string DebugString() const;
 
+  absl::StatusOr<Any> ConvertToAny(ValueFactory& value_factory) const;
+
+  absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
+
   size_t size() const;
 
   bool empty() const;
@@ -244,6 +252,10 @@ class AbstractMapValue : public MapValue,
   const Handle<MapType>& type() const { return type_; }
 
   virtual std::string DebugString() const = 0;
+
+  virtual absl::StatusOr<Any> ConvertToAny(ValueFactory& value_factory) const;
+
+  virtual absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
 
   virtual size_t size() const = 0;
 

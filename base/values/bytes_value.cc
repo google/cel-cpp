@@ -23,6 +23,10 @@
 #include "absl/strings/string_view.h"
 #include "base/internal/data.h"
 #include "base/types/bytes_type.h"
+#include "common/any.h"
+#include "internal/overloaded.h"
+#include "internal/proto_wire.h"
+#include "internal/status_macros.h"
 #include "internal/strings.h"
 
 namespace cel {
@@ -30,6 +34,10 @@ namespace cel {
 CEL_INTERNAL_VALUE_IMPL(BytesValue);
 
 namespace {
+
+using internal::ProtoWireEncoder;
+using internal::ProtoWireTag;
+using internal::ProtoWireType;
 
 struct BytesValueDebugStringVisitor final {
   std::string operator()(absl::string_view value) const {
@@ -263,6 +271,28 @@ std::string BytesValue::DebugString(const absl::Cord& value) {
 
 std::string BytesValue::DebugString() const {
   return absl::visit(BytesValueDebugStringVisitor{}, rep());
+}
+
+absl::StatusOr<Any> BytesValue::ConvertToAny(ValueFactory&) const {
+  static constexpr absl::string_view kTypeName = "google.protobuf.BytesValue";
+  const auto value = ToCord();
+  absl::Cord data;
+  if (!value.empty()) {
+    ProtoWireEncoder encoder(kTypeName, data);
+    CEL_RETURN_IF_ERROR(
+        encoder.WriteTag(ProtoWireTag(1, ProtoWireType::kLengthDelimited)));
+    CEL_RETURN_IF_ERROR(encoder.WriteLengthDelimited(value));
+    encoder.EnsureFullyEncoded();
+  }
+  return MakeAny(MakeTypeUrl(kTypeName), std::move(data));
+}
+
+absl::StatusOr<Json> BytesValue::ConvertToJson(ValueFactory&) const {
+  return absl::visit(
+      internal::Overloaded{
+          [](absl::string_view value) { return JsonBytes(value); },
+          [](const absl::Cord& value) { return JsonBytes(value); }},
+      rep());
 }
 
 bool BytesValue::Equals(const Value& other) const {

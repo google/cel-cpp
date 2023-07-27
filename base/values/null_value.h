@@ -47,6 +47,10 @@ class NullValue final : public base_internal::SimpleValue<NullType, void> {
 
   using Base::type;
 
+  absl::StatusOr<Any> ConvertToAny(ValueFactory&) const;
+
+  absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
+
  private:
   NullValue() = default;
   CEL_INTERNAL_SIMPLE_VALUE_MEMBERS(NullValue);

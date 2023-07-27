@@ -18,8 +18,12 @@
 #include <utility>
 
 #include "absl/base/macros.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "base/types/string_type.h"
+#include "common/any.h"
+#include "internal/proto_wire.h"
+#include "internal/status_macros.h"
 #include "internal/strings.h"
 #include "internal/utf8.h"
 
@@ -28,6 +32,10 @@ namespace cel {
 CEL_INTERNAL_VALUE_IMPL(StringValue);
 
 namespace {
+
+using internal::ProtoWireEncoder;
+using internal::ProtoWireTag;
+using internal::ProtoWireType;
 
 struct StringValueDebugStringVisitor final {
   std::string operator()(absl::string_view value) const {
@@ -285,6 +293,24 @@ std::string StringValue::DebugString(const absl::Cord& value) {
 
 std::string StringValue::DebugString() const {
   return absl::visit(StringValueDebugStringVisitor{}, rep());
+}
+
+absl::StatusOr<Any> StringValue::ConvertToAny(ValueFactory&) const {
+  static constexpr absl::string_view kTypeName = "google.protobuf.StringValue";
+  const auto value = ToCord();
+  absl::Cord data;
+  if (!value.empty()) {
+    ProtoWireEncoder encoder(kTypeName, data);
+    CEL_RETURN_IF_ERROR(
+        encoder.WriteTag(ProtoWireTag(1, ProtoWireType::kLengthDelimited)));
+    CEL_RETURN_IF_ERROR(encoder.WriteLengthDelimited(value));
+    encoder.EnsureFullyEncoded();
+  }
+  return MakeAny(MakeTypeUrl(kTypeName), std::move(data));
+}
+
+absl::StatusOr<Json> StringValue::ConvertToJson(ValueFactory&) const {
+  return ToCord();
 }
 
 bool StringValue::Equals(const Value& other) const {

@@ -15,15 +15,47 @@
 #include "base/values/int_value.h"
 
 #include <string>
+#include <utility>
 
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
+#include "common/any.h"
+#include "common/json.h"
+#include "internal/proto_wire.h"
+#include "internal/status_macros.h"
 
 namespace cel {
+
+namespace {
+
+using internal::ProtoWireEncoder;
+using internal::ProtoWireTag;
+using internal::ProtoWireType;
+
+}  // namespace
 
 CEL_INTERNAL_VALUE_IMPL(IntValue);
 
 std::string IntValue::DebugString(int64_t value) { return absl::StrCat(value); }
 
 std::string IntValue::DebugString() const { return DebugString(value()); }
+
+absl::StatusOr<Any> IntValue::ConvertToAny(ValueFactory&) const {
+  static constexpr absl::string_view kTypeName = "google.protobuf.Int64Value";
+  const auto value = this->value();
+  absl::Cord data;
+  if (value) {
+    ProtoWireEncoder encoder(kTypeName, data);
+    CEL_RETURN_IF_ERROR(
+        encoder.WriteTag(ProtoWireTag(1, ProtoWireType::kVarint)));
+    CEL_RETURN_IF_ERROR(encoder.WriteVarint(value));
+    encoder.EnsureFullyEncoded();
+  }
+  return MakeAny(MakeTypeUrl(kTypeName), std::move(data));
+}
+
+absl::StatusOr<Json> IntValue::ConvertToJson(ValueFactory&) const {
+  return JsonInt(value());
+}
 
 }  // namespace cel

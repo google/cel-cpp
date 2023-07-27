@@ -53,6 +53,10 @@ class UnknownValue final : public Value, public base_internal::InlineData {
 
   std::string DebugString() const;
 
+  absl::StatusOr<Any> ConvertToAny(ValueFactory&) const;
+
+  absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
+
   const AttributeSet& attribute_set() const;
 
   const FunctionResultSet& function_result_set() const;

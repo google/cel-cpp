@@ -14,8 +14,23 @@
 
 #include "base/values/opaque_value.h"
 
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
+
 namespace cel {
 
 template class Handle<OpaqueValue>;
+
+absl::StatusOr<Any> OpaqueValue::ConvertToAny(
+    ValueFactory& value_factory) const {
+  return absl::FailedPreconditionError(absl::StrCat(
+      type()->name(), " cannot be serialized as google.protobuf.Any"));
+}
+
+absl::StatusOr<Json> OpaqueValue::ConvertToJson(
+    ValueFactory& value_factory) const {
+  return absl::FailedPreconditionError(absl::StrCat(
+      type()->name(), " cannot be serialized as google.protobuf.Value"));
+}
 
 }  // namespace cel

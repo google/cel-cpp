@@ -53,6 +53,10 @@ class ErrorValue final : public Value, public base_internal::InlineData {
 
   std::string DebugString() const;
 
+  absl::StatusOr<Any> ConvertToAny(ValueFactory&) const;
+
+  absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
+
   const absl::Status& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:

@@ -68,6 +68,10 @@ class OptionalValue : public OpaqueValue {
 
   std::string DebugString() const final;
 
+  absl::StatusOr<Any> ConvertToAny(ValueFactory& value_factory) const final;
+
+  absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const final;
+
   virtual bool has_value() const = 0;
 
   // Requires `OptionalValue::has_value()` be true, otherwise behavior is

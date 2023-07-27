@@ -52,6 +52,15 @@ std::string MapValue::DebugString() const {
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(DebugString);
 }
 
+absl::StatusOr<Any> MapValue::ConvertToAny(ValueFactory& value_factory) const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(ConvertToAny, value_factory);
+}
+
+absl::StatusOr<Json> MapValue::ConvertToJson(
+    ValueFactory& value_factory) const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(ConvertToJson, value_factory);
+}
+
 size_t MapValue::size() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(size); }
 
 bool MapValue::empty() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(empty); }
@@ -235,6 +244,18 @@ Handle<MapType> LegacyMapValue::type() const {
 
 std::string LegacyMapValue::DebugString() const { return "map"; }
 
+absl::StatusOr<Any> LegacyMapValue::ConvertToAny(
+    ValueFactory& value_factory) const {
+  return absl::UnimplementedError(
+      "LegacyMapValue::ConvertToAny is not yet implemented");
+}
+
+absl::StatusOr<Json> LegacyMapValue::ConvertToJson(
+    ValueFactory& value_factory) const {
+  return absl::UnimplementedError(
+      "LegacyMapValue::ConvertToJson is not yet implemented");
+}
+
 size_t LegacyMapValue::size() const { return LegacyMapValueSize(impl_); }
 
 bool LegacyMapValue::empty() const { return LegacyMapValueEmpty(impl_); }
@@ -265,6 +286,18 @@ AbstractMapValue::AbstractMapValue(Handle<MapType> type)
   // Ensure `Value*` and `HeapData*` are not thunked.
   ABSL_ASSERT(reinterpret_cast<uintptr_t>(static_cast<Value*>(this)) ==
               reinterpret_cast<uintptr_t>(static_cast<HeapData*>(this)));
+}
+
+absl::StatusOr<Any> AbstractMapValue::ConvertToAny(
+    ValueFactory& value_factory) const {
+  return absl::UnimplementedError(
+      "AbstractMapValue::ConvertToAny is not yet implemented");
+}
+
+absl::StatusOr<Json> AbstractMapValue::ConvertToJson(
+    ValueFactory& value_factory) const {
+  return absl::UnimplementedError(
+      "AbstractMapValue::ConvertToJson is not yet implemented");
 }
 
 absl::StatusOr<UniqueRef<MapValue::Iterator>> AbstractMapValue::NewIterator(

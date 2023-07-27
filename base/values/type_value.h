@@ -49,6 +49,10 @@ class TypeValue : public Value {
 
   std::string DebugString() const;
 
+  absl::StatusOr<Any> ConvertToAny(ValueFactory&) const;
+
+  absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
+
   absl::string_view name() const;
 
   bool Equals(const TypeValue& other) const;

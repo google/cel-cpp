@@ -18,10 +18,22 @@
 #include <utility>
 
 #include "absl/base/optimization.h"
+#include "absl/strings/cord.h"
+#include "common/any.h"
+#include "internal/proto_wire.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(EnumValue);
+
+namespace {
+
+using internal::ProtoWireEncoder;
+using internal::ProtoWireTag;
+using internal::ProtoWireType;
+
+}  // namespace
 
 absl::string_view EnumValue::name() const {
   auto constant = type()->FindConstantByNumber(number());
@@ -50,6 +62,24 @@ std::string EnumValue::DebugString(const EnumType& type,
 
 std::string EnumValue::DebugString() const {
   return DebugString(*type(), number());
+}
+
+absl::StatusOr<Any> EnumValue::ConvertToAny(ValueFactory&) const {
+  static constexpr absl::string_view kTypeName = "google.protobuf.Int64Value";
+  const auto value = number();
+  absl::Cord data;
+  if (value) {
+    ProtoWireEncoder encoder(kTypeName, data);
+    CEL_RETURN_IF_ERROR(
+        encoder.WriteTag(ProtoWireTag(1, ProtoWireType::kVarint)));
+    CEL_RETURN_IF_ERROR(encoder.WriteVarint(value));
+    encoder.EnsureFullyEncoded();
+  }
+  return MakeAny(MakeTypeUrl(kTypeName), std::move(data));
+}
+
+absl::StatusOr<Json> EnumValue::ConvertToJson(ValueFactory&) const {
+  return JsonInt(number());
 }
 
 }  // namespace cel

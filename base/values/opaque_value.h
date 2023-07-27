@@ -46,6 +46,10 @@ class OpaqueValue : public Value, public base_internal::HeapData {
 
   virtual std::string DebugString() const = 0;
 
+  virtual absl::StatusOr<Any> ConvertToAny(ValueFactory& value_factory) const;
+
+  virtual absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
+
  protected:
   static internal::TypeInfo TypeId(const OpaqueValue& value) {
     return value.TypeId();

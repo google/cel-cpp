@@ -17,6 +17,7 @@
 #include <string>
 
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 
 namespace cel {
 
@@ -30,6 +31,16 @@ std::string ErrorValue::DebugString() const { return DebugString(value()); }
 
 const absl::Status& ErrorValue::value() const {
   return base_internal::Metadata::IsTrivial(*this) ? *value_ptr_ : value_;
+}
+
+absl::StatusOr<Any> ErrorValue::ConvertToAny(ValueFactory&) const {
+  return absl::FailedPreconditionError(absl::StrCat(
+      type()->name(), " cannot be serialized as google.protobuf.Any"));
+}
+
+absl::StatusOr<Json> ErrorValue::ConvertToJson(ValueFactory&) const {
+  return absl::FailedPreconditionError(absl::StrCat(
+      type()->name(), " cannot be serialized as google.protobuf.Value"));
 }
 
 }  // namespace cel

@@ -72,6 +72,10 @@ class StringValue : public Value {
 
   std::string DebugString() const;
 
+  absl::StatusOr<Any> ConvertToAny(ValueFactory&) const;
+
+  absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
+
   size_t size() const;
 
   bool empty() const;

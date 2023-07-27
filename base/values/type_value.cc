@@ -16,6 +16,8 @@
 
 #include <string>
 
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "base/internal/data.h"
 
 namespace cel {
@@ -42,6 +44,16 @@ absl::string_view TypeValue::name() const {
     case InlinedTypeValueVariant::kModern:
       return static_cast<const base_internal::ModernTypeValue&>(*this).name();
   }
+}
+
+absl::StatusOr<Any> TypeValue::ConvertToAny(ValueFactory&) const {
+  return absl::FailedPreconditionError(absl::StrCat(
+      type()->name(), " cannot be serialized as google.protobuf.Any"));
+}
+
+absl::StatusOr<Json> TypeValue::ConvertToJson(ValueFactory&) const {
+  return absl::FailedPreconditionError(absl::StrCat(
+      type()->name(), " cannot be serialized as google.protobuf.Value"));
 }
 
 }  // namespace cel

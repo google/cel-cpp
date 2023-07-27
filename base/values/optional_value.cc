@@ -19,6 +19,7 @@
 #include <utility>
 
 #include "absl/log/absl_log.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "base/value.h"
@@ -55,6 +56,24 @@ std::string OptionalValue::DebugString() const {
     return "optional()";
   }
   return absl::StrCat("optional(", value()->DebugString(), ")");
+}
+
+absl::StatusOr<Any> OptionalValue::ConvertToAny(
+    ValueFactory& value_factory) const {
+  if (!has_value()) {
+    return absl::FailedPreconditionError(
+        "empty optional values cannot be serialized as google.protobuf.Any");
+  }
+  return value()->ConvertToAny(value_factory);
+}
+
+absl::StatusOr<Json> OptionalValue::ConvertToJson(
+    ValueFactory& value_factory) const {
+  if (!has_value()) {
+    return absl::FailedPreconditionError(
+        "empty optional values cannot be serialized as google.protobuf.Value");
+  }
+  return value()->ConvertToJson(value_factory);
 }
 
 namespace base_internal {

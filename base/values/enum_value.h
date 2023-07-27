@@ -61,6 +61,10 @@ class EnumValue final : public Value, public base_internal::InlineData {
 
   std::string DebugString() const;
 
+  absl::StatusOr<Any> ConvertToAny(ValueFactory&) const;
+
+  absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
+
   constexpr int64_t number() const { return number_; }
 
   absl::string_view name() const;

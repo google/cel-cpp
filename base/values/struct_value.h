@@ -71,6 +71,10 @@ class StructValue : public Value {
 
   std::string DebugString() const;
 
+  absl::StatusOr<Any> ConvertToAny(ValueFactory& value_factory) const;
+
+  absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
+
   class GetFieldContext final {
    public:
     explicit GetFieldContext(ValueFactory& value_factory)
@@ -236,6 +240,10 @@ class LegacyStructValue final : public StructValue, public InlineData {
 
   std::string DebugString() const;
 
+  absl::StatusOr<Any> ConvertToAny(ValueFactory& value_factory) const;
+
+  absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
+
   size_t field_count() const;
 
   absl::StatusOr<Handle<Value>> GetFieldByName(const GetFieldContext& context,
@@ -316,6 +324,10 @@ class AbstractStructValue : public StructValue,
   virtual size_t field_count() const = 0;
 
   virtual std::string DebugString() const = 0;
+
+  virtual absl::StatusOr<Any> ConvertToAny(ValueFactory& value_factory) const;
+
+  virtual absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
 
   virtual absl::StatusOr<Handle<Value>> GetFieldByName(
       const GetFieldContext& context, absl::string_view name) const = 0;

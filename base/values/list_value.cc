@@ -47,6 +47,15 @@ std::string ListValue::DebugString() const {
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(DebugString);
 }
 
+absl::StatusOr<Any> ListValue::ConvertToAny(ValueFactory& value_factory) const {
+  return CEL_INTERNAL_LIST_VALUE_DISPATCH(ConvertToAny, value_factory);
+}
+
+absl::StatusOr<Json> ListValue::ConvertToJson(
+    ValueFactory& value_factory) const {
+  return CEL_INTERNAL_LIST_VALUE_DISPATCH(ConvertToJson, value_factory);
+}
+
 size_t ListValue::size() const {
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(size);
 }
@@ -162,6 +171,18 @@ Handle<ListType> LegacyListValue::type() const {
 
 std::string LegacyListValue::DebugString() const { return "list"; }
 
+absl::StatusOr<Any> LegacyListValue::ConvertToAny(
+    ValueFactory& value_factory) const {
+  return absl::UnimplementedError(
+      "LegacyListValue::ConvertToAny is not yet implemented");
+}
+
+absl::StatusOr<Json> LegacyListValue::ConvertToJson(
+    ValueFactory& value_factory) const {
+  return absl::UnimplementedError(
+      "LegacyListValue::ConvertToJson is not yet implemented");
+}
+
 size_t LegacyListValue::size() const { return LegacyListValueSize(impl_); }
 
 bool LegacyListValue::empty() const { return LegacyListValueEmpty(impl_); }
@@ -181,6 +202,18 @@ AbstractListValue::AbstractListValue(Handle<ListType> type)
   // Ensure `Value*` and `HeapData*` are not thunked.
   ABSL_ASSERT(reinterpret_cast<uintptr_t>(static_cast<Value*>(this)) ==
               reinterpret_cast<uintptr_t>(static_cast<HeapData*>(this)));
+}
+
+absl::StatusOr<Any> AbstractListValue::ConvertToAny(
+    ValueFactory& value_factory) const {
+  return absl::UnimplementedError(
+      "AbstractListValue::ConvertToAny is not yet implemented");
+}
+
+absl::StatusOr<Json> AbstractListValue::ConvertToJson(
+    ValueFactory& value_factory) const {
+  return absl::UnimplementedError(
+      "AbstractListValue::ConvertToJson is not yet implemented");
 }
 
 absl::StatusOr<UniqueRef<ListValue::Iterator>> AbstractListValue::NewIterator(

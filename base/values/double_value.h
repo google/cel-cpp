@@ -54,6 +54,10 @@ class DoubleValue final
 
   std::string DebugString() const;
 
+  absl::StatusOr<Any> ConvertToAny(ValueFactory&) const;
+
+  absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
+
   using Base::value;
 
  private:

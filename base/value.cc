@@ -128,12 +128,95 @@ std::string Value::DebugString() const {
 }
 
 absl::StatusOr<Any> Value::ConvertToAny(ValueFactory& value_factory) const {
-  return absl::UnimplementedError("Value::ConvertToAny is not yet implemented");
+  switch (kind()) {
+    case ValueKind::kNullType:
+      return static_cast<const NullValue*>(this)->ConvertToAny(value_factory);
+    case ValueKind::kError:
+      return static_cast<const ErrorValue*>(this)->ConvertToAny(value_factory);
+    case ValueKind::kType:
+      return static_cast<const TypeValue*>(this)->ConvertToAny(value_factory);
+    case ValueKind::kBool:
+      return static_cast<const BoolValue*>(this)->ConvertToAny(value_factory);
+    case ValueKind::kInt:
+      return static_cast<const IntValue*>(this)->ConvertToAny(value_factory);
+    case ValueKind::kUint:
+      return static_cast<const UintValue*>(this)->ConvertToAny(value_factory);
+    case ValueKind::kDouble:
+      return static_cast<const DoubleValue*>(this)->ConvertToAny(value_factory);
+    case ValueKind::kString:
+      return static_cast<const StringValue*>(this)->ConvertToAny(value_factory);
+    case ValueKind::kBytes:
+      return static_cast<const BytesValue*>(this)->ConvertToAny(value_factory);
+    case ValueKind::kEnum:
+      return static_cast<const EnumValue*>(this)->ConvertToAny(value_factory);
+    case ValueKind::kDuration:
+      return static_cast<const DurationValue*>(this)->ConvertToAny(
+          value_factory);
+    case ValueKind::kTimestamp:
+      return static_cast<const TimestampValue*>(this)->ConvertToAny(
+          value_factory);
+    case ValueKind::kList:
+      return static_cast<const ListValue*>(this)->ConvertToAny(value_factory);
+    case ValueKind::kMap:
+      return static_cast<const MapValue*>(this)->ConvertToAny(value_factory);
+    case ValueKind::kStruct:
+      return static_cast<const StructValue*>(this)->ConvertToAny(value_factory);
+    case ValueKind::kUnknown:
+      return static_cast<const UnknownValue*>(this)->ConvertToAny(
+          value_factory);
+    case ValueKind::kOpaque:
+      return static_cast<const OpaqueValue*>(this)->ConvertToAny(value_factory);
+    default:
+      ABSL_UNREACHABLE();
+  }
 }
 
 absl::StatusOr<Json> Value::ConvertToJson(ValueFactory& value_factory) const {
-  return absl::UnimplementedError(
-      "Value::ConvertToJson is not yet implemented");
+  switch (kind()) {
+    case ValueKind::kNullType:
+      return static_cast<const NullValue*>(this)->ConvertToJson(value_factory);
+    case ValueKind::kError:
+      return static_cast<const ErrorValue*>(this)->ConvertToJson(value_factory);
+    case ValueKind::kType:
+      return static_cast<const TypeValue*>(this)->ConvertToJson(value_factory);
+    case ValueKind::kBool:
+      return static_cast<const BoolValue*>(this)->ConvertToJson(value_factory);
+    case ValueKind::kInt:
+      return static_cast<const IntValue*>(this)->ConvertToJson(value_factory);
+    case ValueKind::kUint:
+      return static_cast<const UintValue*>(this)->ConvertToJson(value_factory);
+    case ValueKind::kDouble:
+      return static_cast<const DoubleValue*>(this)->ConvertToJson(
+          value_factory);
+    case ValueKind::kString:
+      return static_cast<const StringValue*>(this)->ConvertToJson(
+          value_factory);
+    case ValueKind::kBytes:
+      return static_cast<const BytesValue*>(this)->ConvertToJson(value_factory);
+    case ValueKind::kEnum:
+      return static_cast<const EnumValue*>(this)->ConvertToJson(value_factory);
+    case ValueKind::kDuration:
+      return static_cast<const DurationValue*>(this)->ConvertToJson(
+          value_factory);
+    case ValueKind::kTimestamp:
+      return static_cast<const TimestampValue*>(this)->ConvertToJson(
+          value_factory);
+    case ValueKind::kList:
+      return static_cast<const ListValue*>(this)->ConvertToJson(value_factory);
+    case ValueKind::kMap:
+      return static_cast<const MapValue*>(this)->ConvertToJson(value_factory);
+    case ValueKind::kStruct:
+      return static_cast<const StructValue*>(this)->ConvertToJson(
+          value_factory);
+    case ValueKind::kUnknown:
+      return static_cast<const UnknownValue*>(this)->ConvertToJson(
+          value_factory);
+    case ValueKind::kOpaque:
+      return static_cast<const OpaqueValue*>(this)->ConvertToJson(
+          value_factory);
+    default:
+      ABSL_UNREACHABLE();
+  }
 }
 
 namespace base_internal {

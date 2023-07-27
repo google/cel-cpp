@@ -16,10 +16,23 @@
 
 #include <string>
 
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
+#include "common/any.h"
+
 namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(NullValue);
 
 std::string NullValue::DebugString() { return "null"; }
+
+absl::StatusOr<Any> NullValue::ConvertToAny(ValueFactory&) const {
+  return MakeAny(MakeTypeUrl("google.protobuf.Value"),
+                 absl::Cord(absl::string_view("\x08\x00", 2)));
+}
+
+absl::StatusOr<Json> NullValue::ConvertToJson(ValueFactory&) const {
+  return kJsonNull;
+}
 
 }  // namespace cel

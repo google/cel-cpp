@@ -15,7 +15,9 @@
 #include "base/values/unknown_value.h"
 
 #include <string>
-#include <utility>
+
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 
 namespace cel {
 
@@ -33,6 +35,16 @@ const FunctionResultSet& UnknownValue::function_result_set() const {
   return base_internal::Metadata::IsTrivial(*this)
              ? value_ptr_->unknown_function_results()
              : value_.unknown_function_results();
+}
+
+absl::StatusOr<Any> UnknownValue::ConvertToAny(ValueFactory&) const {
+  return absl::FailedPreconditionError(absl::StrCat(
+      type()->name(), " cannot be serialized as google.protobuf.Any"));
+}
+
+absl::StatusOr<Json> UnknownValue::ConvertToJson(ValueFactory&) const {
+  return absl::FailedPreconditionError(absl::StrCat(
+      type()->name(), " cannot be serialized as google.protobuf.Value"));
 }
 
 }  // namespace cel

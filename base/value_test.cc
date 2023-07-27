@@ -29,6 +29,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
+#include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "base/internal/memory_manager_testing.h"
 #include "base/memory.h"
@@ -47,10 +48,13 @@ namespace cel {
 namespace {
 
 using testing::Eq;
+using testing::IsEmpty;
+using testing::VariantWith;
 using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
 enum class TestEnum {
+  kValue0 = 0,
   kValue1 = 1,
   kValue2 = 2,
 };
@@ -72,6 +76,9 @@ class TestEnumType final : public EnumType {
  protected:
   absl::StatusOr<absl::optional<Constant>> FindConstantByName(
       absl::string_view name) const override {
+    if (name == "VALUE0") {
+      return Constant(MakeConstantId(0), "VALUE0", 0);
+    }
     if (name == "VALUE1") {
       return Constant(MakeConstantId(1), "VALUE1", 1);
     }
@@ -84,6 +91,8 @@ class TestEnumType final : public EnumType {
   absl::StatusOr<absl::optional<Constant>> FindConstantByNumber(
       int64_t number) const override {
     switch (number) {
+      case 0:
+        return Constant(MakeConstantId(0), "VALUE0", 0);
       case 1:
         return Constant(MakeConstantId(1), "VALUE1", 1);
       case 2:
@@ -724,6 +733,379 @@ TEST_P(ValueDebugStringTest, TimestampValue) {
 }
 
 INSTANTIATE_TEST_SUITE_P(ValueDebugStringTest, ValueDebugStringTest,
+                         base_internal::MemoryManagerTestModeAll(),
+                         base_internal::MemoryManagerTestModeTupleName);
+
+class ValueConvertToAnyTest : public ValueTest {
+ public:
+  TypeFactory& type_factory() { return *type_factory_; }
+
+  TypeManager& type_manager() { return *type_manager_; }
+
+  ValueFactory& value_factory() { return *value_factory_; }
+
+ protected:
+  void SetUp() override {
+    ValueTest::SetUp();
+    type_factory_.emplace(memory_manager());
+    type_manager_.emplace(type_factory(), TypeProvider::Builtin());
+    value_factory_.emplace(type_manager());
+  }
+
+ private:
+  absl::optional<TypeFactory> type_factory_;
+  absl::optional<TypeManager> type_manager_;
+  absl::optional<ValueFactory> value_factory_;
+};
+
+TEST_P(ValueConvertToAnyTest, BoolValue) {
+  auto value = value_factory().CreateBoolValue(false);
+  ASSERT_OK_AND_ASSIGN(auto any,
+                       value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.BoolValue");
+  EXPECT_THAT(any.value(), IsEmpty());
+
+  value = value_factory().CreateBoolValue(true);
+  ASSERT_OK_AND_ASSIGN(any, value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.BoolValue");
+  EXPECT_THAT(any.value(), Eq("\x08\x01"));
+}
+
+TEST_P(ValueConvertToAnyTest, BytesValue) {
+  auto value = value_factory().GetBytesValue();
+  ASSERT_OK_AND_ASSIGN(auto any,
+                       value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.BytesValue");
+  EXPECT_THAT(any.value(), IsEmpty());
+
+  ASSERT_OK_AND_ASSIGN(value, value_factory().CreateBytesValue("foo"));
+  ASSERT_OK_AND_ASSIGN(any, value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.BytesValue");
+  EXPECT_THAT(any.value(), Eq("\x0a\x03"
+                              "foo"));
+}
+
+TEST_P(ValueConvertToAnyTest, DoubleValue) {
+  auto value = value_factory().CreateDoubleValue(0.0);
+  ASSERT_OK_AND_ASSIGN(auto any,
+                       value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.DoubleValue");
+  EXPECT_THAT(any.value(), IsEmpty());
+
+  value = value_factory().CreateDoubleValue(-0.0);
+  ASSERT_OK_AND_ASSIGN(any, value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.DoubleValue");
+  EXPECT_THAT(any.value(),
+              Eq(absl::string_view("\x09\x00\x00\x00\x00\x00\x00\x00\x80", 9)));
+}
+
+TEST_P(ValueConvertToAnyTest, DurationValue) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value, value_factory().CreateDurationValue(absl::ZeroDuration()));
+  ASSERT_OK_AND_ASSIGN(auto any,
+                       value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.Duration");
+  EXPECT_THAT(any.value(), IsEmpty());
+
+  ASSERT_OK_AND_ASSIGN(value, value_factory().CreateDurationValue(
+                                  absl::Seconds(1) + absl::Nanoseconds(1)));
+  ASSERT_OK_AND_ASSIGN(any, value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.Duration");
+  EXPECT_THAT(any.value(), Eq("\x08\x01\x10\x01"));
+}
+
+TEST_P(ValueConvertToAnyTest, EnumValue) {
+  ASSERT_OK_AND_ASSIGN(auto enum_type,
+                       type_factory().CreateEnumType<TestEnumType>());
+  ASSERT_OK_AND_ASSIGN(auto value, value_factory().CreateEnumValue(
+                                       enum_type, TestEnum::kValue0));
+  ASSERT_OK_AND_ASSIGN(auto any,
+                       value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.Int64Value");
+  EXPECT_THAT(any.value(), IsEmpty());
+
+  ASSERT_OK_AND_ASSIGN(
+      value, value_factory().CreateEnumValue(enum_type, TestEnum::kValue1));
+  ASSERT_OK_AND_ASSIGN(any, value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.Int64Value");
+  EXPECT_THAT(any.value(), Eq("\x08\x01"));
+}
+
+TEST_P(ValueConvertToAnyTest, ErrorValue) {
+  auto value = value_factory().CreateErrorValue(absl::CancelledError());
+  EXPECT_THAT(value.As<Value>()->ConvertToAny(value_factory()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(ValueConvertToAnyTest, IntValue) {
+  auto value = value_factory().CreateIntValue(0);
+  ASSERT_OK_AND_ASSIGN(auto any,
+                       value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.Int64Value");
+  EXPECT_THAT(any.value(), IsEmpty());
+
+  value = value_factory().CreateIntValue(1);
+  ASSERT_OK_AND_ASSIGN(any, value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.Int64Value");
+  EXPECT_THAT(any.value(), Eq("\x08\x01"));
+}
+
+TEST_P(ValueConvertToAnyTest, NullValue) {
+  auto value = value_factory().GetNullValue();
+  ASSERT_OK_AND_ASSIGN(auto any,
+                       value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.Value");
+  EXPECT_THAT(any.value(), absl::string_view("\x08\x00", 2));
+}
+
+TEST_P(ValueConvertToAnyTest, OptionalValue) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      OptionalValue::Of(value_factory(), value_factory().CreateIntValue(0)));
+  ASSERT_OK_AND_ASSIGN(auto any,
+                       value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.Int64Value");
+  EXPECT_THAT(any.value(), IsEmpty());
+
+  ASSERT_OK_AND_ASSIGN(auto type, type_factory().CreateOptionalType(
+                                      type_factory().GetIntType()));
+  ASSERT_OK_AND_ASSIGN(value, OptionalValue::None(value_factory(), type));
+  EXPECT_THAT(value.As<Value>()->ConvertToAny(value_factory()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(ValueConvertToAnyTest, StringValue) {
+  auto value = value_factory().GetStringValue();
+  ASSERT_OK_AND_ASSIGN(auto any,
+                       value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.StringValue");
+  EXPECT_THAT(any.value(), IsEmpty());
+
+  ASSERT_OK_AND_ASSIGN(value, value_factory().CreateStringValue("foo"));
+  ASSERT_OK_AND_ASSIGN(any, value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.StringValue");
+  EXPECT_THAT(any.value(), Eq("\x0a\x03"
+                              "foo"));
+}
+
+TEST_P(ValueConvertToAnyTest, TimestampValue) {
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       value_factory().CreateTimestampValue(absl::UnixEpoch()));
+  ASSERT_OK_AND_ASSIGN(auto any,
+                       value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.Timestamp");
+  EXPECT_THAT(any.value(), IsEmpty());
+
+  ASSERT_OK_AND_ASSIGN(
+      value, value_factory().CreateTimestampValue(
+                 absl::UnixEpoch() + absl::Seconds(1) + absl::Nanoseconds(1)));
+  ASSERT_OK_AND_ASSIGN(any, value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.Timestamp");
+  EXPECT_THAT(any.value(), Eq("\x08\x01\x10\x01"));
+}
+
+TEST_P(ValueConvertToAnyTest, TypeValue) {
+  auto value = value_factory().CreateTypeValue(type_factory().GetIntType());
+  EXPECT_THAT(value.As<Value>()->ConvertToAny(value_factory()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(ValueConvertToAnyTest, UintValue) {
+  auto value = value_factory().CreateUintValue(0);
+  ASSERT_OK_AND_ASSIGN(auto any,
+                       value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.UInt64Value");
+  EXPECT_THAT(any.value(), IsEmpty());
+
+  value = value_factory().CreateUintValue(1);
+  ASSERT_OK_AND_ASSIGN(any, value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.UInt64Value");
+  EXPECT_THAT(any.value(), Eq("\x08\x01"));
+}
+
+TEST_P(ValueConvertToAnyTest, UnknownValue) {
+  auto value = value_factory().CreateUnknownValue();
+  EXPECT_THAT(value.As<Value>()->ConvertToAny(value_factory()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+INSTANTIATE_TEST_SUITE_P(ValueConvertToAnyTest, ValueConvertToAnyTest,
+                         base_internal::MemoryManagerTestModeAll(),
+                         base_internal::MemoryManagerTestModeTupleName);
+
+class ValueConvertToJsonTest : public ValueTest {
+ public:
+  TypeFactory& type_factory() { return *type_factory_; }
+
+  TypeManager& type_manager() { return *type_manager_; }
+
+  ValueFactory& value_factory() { return *value_factory_; }
+
+ protected:
+  void SetUp() override {
+    ValueTest::SetUp();
+    type_factory_.emplace(memory_manager());
+    type_manager_.emplace(type_factory(), TypeProvider::Builtin());
+    value_factory_.emplace(type_manager());
+  }
+
+ private:
+  absl::optional<TypeFactory> type_factory_;
+  absl::optional<TypeManager> type_manager_;
+  absl::optional<ValueFactory> value_factory_;
+};
+
+TEST_P(ValueConvertToJsonTest, BoolValue) {
+  auto value = value_factory().CreateBoolValue(false);
+  ASSERT_OK_AND_ASSIGN(auto json,
+                       value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonBool>(false));
+
+  value = value_factory().CreateBoolValue(true);
+  ASSERT_OK_AND_ASSIGN(json, value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonBool>(true));
+}
+
+TEST_P(ValueConvertToJsonTest, BytesValue) {
+  auto value = value_factory().GetBytesValue();
+  ASSERT_OK_AND_ASSIGN(auto json,
+                       value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonString>(JsonString()));
+
+  ASSERT_OK_AND_ASSIGN(value, value_factory().CreateBytesValue("foo"));
+  ASSERT_OK_AND_ASSIGN(json, value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonString>(JsonString("Zm9v")));
+}
+
+TEST_P(ValueConvertToJsonTest, DoubleValue) {
+  auto value = value_factory().CreateDoubleValue(0.0);
+  ASSERT_OK_AND_ASSIGN(auto json,
+                       value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonNumber>(0.0));
+
+  value = value_factory().CreateDoubleValue(1.0);
+  ASSERT_OK_AND_ASSIGN(json, value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonNumber>(1.0));
+}
+
+TEST_P(ValueConvertToJsonTest, DurationValue) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value, value_factory().CreateDurationValue(absl::ZeroDuration()));
+  ASSERT_OK_AND_ASSIGN(auto json,
+                       value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonString>(JsonString("0s")));
+
+  ASSERT_OK_AND_ASSIGN(value, value_factory().CreateDurationValue(
+                                  absl::Seconds(1) + absl::Nanoseconds(1)));
+  ASSERT_OK_AND_ASSIGN(json, value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonString>(JsonString("1.000000001s")));
+}
+
+TEST_P(ValueConvertToJsonTest, EnumValue) {
+  ASSERT_OK_AND_ASSIGN(auto enum_type,
+                       type_factory().CreateEnumType<TestEnumType>());
+  ASSERT_OK_AND_ASSIGN(auto value, value_factory().CreateEnumValue(
+                                       enum_type, TestEnum::kValue0));
+  ASSERT_OK_AND_ASSIGN(auto json,
+                       value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonNumber>(0.0));
+
+  ASSERT_OK_AND_ASSIGN(
+      value, value_factory().CreateEnumValue(enum_type, TestEnum::kValue1));
+  ASSERT_OK_AND_ASSIGN(json, value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonNumber>(1.0));
+}
+
+TEST_P(ValueConvertToJsonTest, ErrorValue) {
+  auto value = value_factory().CreateErrorValue(absl::CancelledError());
+  EXPECT_THAT(value.As<Value>()->ConvertToJson(value_factory()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(ValueConvertToJsonTest, IntValue) {
+  auto value = value_factory().CreateIntValue(0);
+  ASSERT_OK_AND_ASSIGN(auto json,
+                       value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonNumber>(0.0));
+
+  value = value_factory().CreateIntValue(1);
+  ASSERT_OK_AND_ASSIGN(json, value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonNumber>(1.0));
+}
+
+TEST_P(ValueConvertToJsonTest, NullValue) {
+  auto value = value_factory().GetNullValue();
+  ASSERT_OK_AND_ASSIGN(auto json,
+                       value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonNull>(kJsonNull));
+}
+
+TEST_P(ValueConvertToJsonTest, OptionalValue) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      OptionalValue::Of(value_factory(), value_factory().CreateIntValue(0)));
+  ASSERT_OK_AND_ASSIGN(auto json,
+                       value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonNumber>(0.0));
+
+  ASSERT_OK_AND_ASSIGN(auto type, type_factory().CreateOptionalType(
+                                      type_factory().GetIntType()));
+  ASSERT_OK_AND_ASSIGN(value, OptionalValue::None(value_factory(), type));
+  EXPECT_THAT(value.As<Value>()->ConvertToJson(value_factory()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(ValueConvertToJsonTest, StringValue) {
+  auto value = value_factory().GetStringValue();
+  ASSERT_OK_AND_ASSIGN(auto json,
+                       value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonString>(JsonString("")));
+
+  ASSERT_OK_AND_ASSIGN(value, value_factory().CreateStringValue("foo"));
+  ASSERT_OK_AND_ASSIGN(json, value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonString>(JsonString("foo")));
+}
+
+TEST_P(ValueConvertToJsonTest, TimestampValue) {
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       value_factory().CreateTimestampValue(absl::UnixEpoch()));
+  ASSERT_OK_AND_ASSIGN(auto json,
+                       value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json,
+              VariantWith<JsonString>(JsonString("1970-01-01T00:00:00Z")));
+
+  ASSERT_OK_AND_ASSIGN(
+      value, value_factory().CreateTimestampValue(
+                 absl::UnixEpoch() + absl::Seconds(1) + absl::Nanoseconds(1)));
+  ASSERT_OK_AND_ASSIGN(json, value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonString>(
+                        JsonString("1970-01-01T00:00:01.000000001Z")));
+}
+
+TEST_P(ValueConvertToJsonTest, TypeValue) {
+  auto value = value_factory().CreateTypeValue(type_factory().GetIntType());
+  EXPECT_THAT(value.As<Value>()->ConvertToJson(value_factory()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(ValueConvertToJsonTest, UintValue) {
+  auto value = value_factory().CreateUintValue(0);
+  ASSERT_OK_AND_ASSIGN(auto json,
+                       value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonNumber>(0.0));
+
+  value = value_factory().CreateUintValue(1);
+  ASSERT_OK_AND_ASSIGN(json, value.As<Value>()->ConvertToJson(value_factory()));
+  EXPECT_THAT(json, VariantWith<JsonNumber>(1.0));
+}
+
+TEST_P(ValueConvertToJsonTest, UnknownValue) {
+  auto value = value_factory().CreateUnknownValue();
+  EXPECT_THAT(value.As<Value>()->ConvertToJson(value_factory()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+INSTANTIATE_TEST_SUITE_P(ValueConvertToJsonTest, ValueConvertToJsonTest,
                          base_internal::MemoryManagerTestModeAll(),
                          base_internal::MemoryManagerTestModeTupleName);
 

@@ -21,6 +21,7 @@
 
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
@@ -53,6 +54,16 @@ size_t StructValue::field_count() const {
 
 std::string StructValue::DebugString() const {
   return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(DebugString);
+}
+
+absl::StatusOr<Any> StructValue::ConvertToAny(
+    ValueFactory& value_factory) const {
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(ConvertToAny, value_factory);
+}
+
+absl::StatusOr<Json> StructValue::ConvertToJson(
+    ValueFactory& value_factory) const {
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(ConvertToJson, value_factory);
 }
 
 absl::StatusOr<Handle<Value>> StructValue::GetFieldByName(
@@ -197,6 +208,18 @@ std::string LegacyStructValue::DebugString() const {
   return type()->DebugString();
 }
 
+absl::StatusOr<Any> LegacyStructValue::ConvertToAny(
+    ValueFactory& value_factory) const {
+  return absl::UnimplementedError(
+      "LegacyStructValue::ConvertToAny is not yet implemented");
+}
+
+absl::StatusOr<Json> LegacyStructValue::ConvertToJson(
+    ValueFactory& value_factory) const {
+  return absl::UnimplementedError(
+      "LegacyStructValue::ConvertToJson is not yet implemented");
+}
+
 absl::StatusOr<Handle<Value>> LegacyStructValue::GetFieldByName(
     const GetFieldContext& context, absl::string_view name) const {
   return MessageValueGetFieldByName(msg_, type_info_, context.value_factory(),
@@ -232,6 +255,18 @@ AbstractStructValue::AbstractStructValue(Handle<StructType> type)
   ABSL_ASSERT(
       reinterpret_cast<uintptr_t>(static_cast<Value*>(this)) ==
       reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
+}
+
+absl::StatusOr<Any> AbstractStructValue::ConvertToAny(
+    ValueFactory& value_factory) const {
+  return absl::UnimplementedError(
+      "AbstractStructValue::ConvertToAny is not yet implemented");
+}
+
+absl::StatusOr<Json> AbstractStructValue::ConvertToJson(
+    ValueFactory& value_factory) const {
+  return absl::UnimplementedError(
+      "AbstractStructValue::ConvertToJson is not yet implemented");
 }
 
 }  // namespace base_internal
