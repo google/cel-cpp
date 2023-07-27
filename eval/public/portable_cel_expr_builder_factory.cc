@@ -17,7 +17,6 @@
 #include "eval/public/portable_cel_expr_builder_factory.h"
 
 #include <memory>
-#include <string>
 #include <utility>
 
 #include "absl/status/status.h"
@@ -27,10 +26,15 @@
 #include "eval/compiler/qualified_reference_resolver.h"
 #include "eval/compiler/regex_precompilation_optimization.h"
 #include "eval/public/cel_expression.h"
+#include "eval/public/cel_function.h"
 #include "eval/public/cel_options.h"
+#include "extensions/select_optimization.h"
 #include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
+
+using cel::extensions::CreateSelectOptimizationProgramOptimizer;
+using cel::extensions::SelectOptimizationAstUpdater;
 
 std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
     std::unique_ptr<LegacyTypeProvider> type_provider,
@@ -66,6 +70,31 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
   if (options.enable_regex_precompilation) {
     flat_expr_builder.AddProgramOptimizer(
         CreateRegexPrecompilationExtension(options.regex_max_program_size));
+  }
+
+  if (options.enable_select_optimization) {
+    // Add AST transform to update select branches on a stored
+    // CheckedExpression. This may already be performed by a type checker.
+    flat_expr_builder.AddAstTransform(
+        std::make_unique<SelectOptimizationAstUpdater>());
+    // Add overloads for select optimization signature.
+    // These are never bound, only used to prevent the builder from failing on
+    // the overloads check.
+    absl::Status status = builder->GetRegistry()->RegisterLazyFunction(
+        CelFunctionDescriptor(cel::extensions::kCelAttribute, false,
+                              {cel::Kind::kAny, cel::Kind::kList}));
+    if (!status.ok()) {
+      ABSL_LOG(ERROR) << "Failed to register @cel.attribute: " << status;
+    }
+    status = builder->GetRegistry()->RegisterLazyFunction(
+        CelFunctionDescriptor(cel::extensions::kFieldsHas, false,
+                              {cel::Kind::kAny, cel::Kind::kList}));
+    if (!status.ok()) {
+      ABSL_LOG(ERROR) << "Failed to register @cel.hasField: " << status;
+    }
+    // Add runtime implementation.
+    flat_expr_builder.AddProgramOptimizer(
+        CreateSelectOptimizationProgramOptimizer());
   }
 
   return builder;

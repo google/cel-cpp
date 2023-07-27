@@ -137,6 +137,16 @@ struct InterpreterOptions {
   // optimization overloads are not consulted for applicable calls. If you have
   // overriden the default `matches` function you should not enable this option.
   bool enable_regex_precompilation = false;
+
+  // Enable select optimization, replacing long select chains with a single
+  // operation.
+  //
+  // This assumes that the type information at check time agrees with the
+  // configured types at runtime.
+  //
+  // Note: implementation in progress -- please consult the CEL team before
+  // enabling in an existing environment.
+  bool enable_select_optimization = false;
 };
 // LINT.ThenChange(//depot/google3/runtime/runtime_options.h)
 

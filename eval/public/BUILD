@@ -1247,6 +1247,7 @@ cc_library(
     hdrs = ["portable_cel_expr_builder_factory.h"],
     deps = [
         ":cel_expression",
+        ":cel_function",
         ":cel_options",
         "//eval/compiler:cel_expression_builder_flat_impl",
         "//eval/compiler:constant_folding",
@@ -1254,6 +1255,7 @@ cc_library(
         "//eval/compiler:qualified_reference_resolver",
         "//eval/compiler:regex_precompilation_optimization",
         "//eval/public/structs:legacy_type_provider",
+        "//extensions:select_optimization",
         "//runtime:runtime_options",
         "@com_google_absl//absl/status",
     ],
