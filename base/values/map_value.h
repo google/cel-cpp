@@ -73,6 +73,9 @@ class MapValue : public Value {
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
 
+  absl::StatusOr<JsonObject> ConvertToJsonObject(
+      ValueFactory& value_factory) const;
+
   size_t size() const;
 
   bool empty() const;
@@ -194,7 +197,8 @@ class LegacyMapValue final : public MapValue, public InlineData {
 
   absl::StatusOr<Any> ConvertToAny(ValueFactory& value_factory) const;
 
-  absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
+  absl::StatusOr<JsonObject> ConvertToJsonObject(
+      ValueFactory& value_factory) const;
 
   size_t size() const;
 
@@ -255,7 +259,8 @@ class AbstractMapValue : public MapValue,
 
   virtual absl::StatusOr<Any> ConvertToAny(ValueFactory& value_factory) const;
 
-  virtual absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
+  virtual absl::StatusOr<JsonObject> ConvertToJsonObject(
+      ValueFactory& value_factory) const;
 
   virtual size_t size() const = 0;
 

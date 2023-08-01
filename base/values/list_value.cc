@@ -25,6 +25,7 @@
 #include "base/internal/data.h"
 #include "base/type.h"
 #include "base/types/list_type.h"
+#include "base/value_factory.h"
 #include "internal/rtti.h"
 #include "internal/status_macros.h"
 
@@ -53,7 +54,12 @@ absl::StatusOr<Any> ListValue::ConvertToAny(ValueFactory& value_factory) const {
 
 absl::StatusOr<Json> ListValue::ConvertToJson(
     ValueFactory& value_factory) const {
-  return CEL_INTERNAL_LIST_VALUE_DISPATCH(ConvertToJson, value_factory);
+  return ConvertToJsonArray(value_factory);
+}
+
+absl::StatusOr<JsonArray> ListValue::ConvertToJsonArray(
+    ValueFactory& value_factory) const {
+  return CEL_INTERNAL_LIST_VALUE_DISPATCH(ConvertToJsonArray, value_factory);
 }
 
 size_t ListValue::size() const {
@@ -163,6 +169,29 @@ class AbstractListValueIterator final : public ListValue::Iterator {
   size_t index_ = 0;
 };
 
+absl::StatusOr<Any> GenericListValueConvertToAny(const ListValue& value,
+                                                 ValueFactory& value_factory) {
+  CEL_ASSIGN_OR_RETURN(auto json, value.ConvertToJsonArray(value_factory));
+  return JsonArrayToAny(json);
+}
+
+absl::StatusOr<JsonArray> GenericListValueConvertToJsonArray(
+    const ListValue& value, ValueFactory& value_factory) {
+  JsonArrayBuilder builder;
+  builder.reserve(value.size());
+  CEL_ASSIGN_OR_RETURN(auto iterator,
+                       value.NewIterator(value_factory.memory_manager()));
+  while (iterator->HasNext()) {
+    CEL_ASSIGN_OR_RETURN(
+        auto element,
+        iterator->NextValue(ListValue::GetContext(value_factory)));
+    CEL_ASSIGN_OR_RETURN(auto element_json,
+                         element->ConvertToJson(value_factory));
+    builder.push_back(std::move(element_json));
+  }
+  return std::move(builder).Build();
+}
+
 }  // namespace
 
 Handle<ListType> LegacyListValue::type() const {
@@ -173,14 +202,12 @@ std::string LegacyListValue::DebugString() const { return "list"; }
 
 absl::StatusOr<Any> LegacyListValue::ConvertToAny(
     ValueFactory& value_factory) const {
-  return absl::UnimplementedError(
-      "LegacyListValue::ConvertToAny is not yet implemented");
+  return GenericListValueConvertToAny(*this, value_factory);
 }
 
-absl::StatusOr<Json> LegacyListValue::ConvertToJson(
+absl::StatusOr<JsonArray> LegacyListValue::ConvertToJsonArray(
     ValueFactory& value_factory) const {
-  return absl::UnimplementedError(
-      "LegacyListValue::ConvertToJson is not yet implemented");
+  return GenericListValueConvertToJsonArray(*this, value_factory);
 }
 
 size_t LegacyListValue::size() const { return LegacyListValueSize(impl_); }
@@ -206,14 +233,12 @@ AbstractListValue::AbstractListValue(Handle<ListType> type)
 
 absl::StatusOr<Any> AbstractListValue::ConvertToAny(
     ValueFactory& value_factory) const {
-  return absl::UnimplementedError(
-      "AbstractListValue::ConvertToAny is not yet implemented");
+  return GenericListValueConvertToAny(*this, value_factory);
 }
 
-absl::StatusOr<Json> AbstractListValue::ConvertToJson(
+absl::StatusOr<JsonArray> AbstractListValue::ConvertToJsonArray(
     ValueFactory& value_factory) const {
-  return absl::UnimplementedError(
-      "AbstractListValue::ConvertToJson is not yet implemented");
+  return GenericListValueConvertToJsonArray(*this, value_factory);
 }
 
 absl::StatusOr<UniqueRef<ListValue::Iterator>> AbstractListValue::NewIterator(

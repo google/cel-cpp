@@ -37,6 +37,8 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value_factory.h"
+#include "base/values/list_value_builder.h"
+#include "base/values/map_value_builder.h"
 #include "base/values/optional_value.h"
 #include "internal/benchmark.h"
 #include "internal/strings.h"
@@ -929,6 +931,57 @@ TEST_P(ValueConvertToAnyTest, UnknownValue) {
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
+TEST_P(ValueConvertToAnyTest, ListValue) {
+  {
+    ListValueBuilder<Value> builder(value_factory(),
+                                    type_factory().GetJsonListType());
+    ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
+    ASSERT_OK_AND_ASSIGN(auto any,
+                         value.As<Value>()->ConvertToAny(value_factory()));
+    EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.ListValue");
+    EXPECT_THAT(any.value(), IsEmpty());
+  }
+  ListValueBuilder<Value> builder(value_factory(),
+                                  type_factory().GetJsonListType());
+  EXPECT_OK(builder.Add(value_factory().CreateIntValue(1)));
+  ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto any,
+                       value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.ListValue");
+  EXPECT_THAT(
+      any.value(),
+      Eq(absl::string_view("\x0a\x09\x11\x00\x00\x00\x00\x00\x00\xf0?", 11)));
+}
+
+TEST_P(ValueConvertToAnyTest, MapValue) {
+  {
+    MapValueBuilder<StringValue, Value> builder(value_factory(),
+                                                type_factory().GetStringType(),
+                                                type_factory().GetDynType());
+    ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
+    ASSERT_OK_AND_ASSIGN(auto any,
+                         value.As<Value>()->ConvertToAny(value_factory()));
+    EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.Struct");
+    EXPECT_THAT(any.value(), IsEmpty());
+  }
+  MapValueBuilder<StringValue, Value> builder(value_factory(),
+                                              type_factory().GetStringType(),
+                                              type_factory().GetDynType());
+  ASSERT_OK_AND_ASSIGN(auto key, value_factory().CreateStringValue("foo"));
+  EXPECT_OK(
+      builder.InsertOrAssign(std::move(key), value_factory().CreateIntValue(1))
+          .status());
+  ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto any,
+                       value.As<Value>()->ConvertToAny(value_factory()));
+  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.Struct");
+  EXPECT_THAT(any.value(),
+              Eq(absl::string_view("\x0a\x10\x0a\x03"
+                                   "foo"
+                                   "\x12\x09\x11\x00\x00\x00\x00\x00\x00\xf0?",
+                                   18)));
+}
+
 INSTANTIATE_TEST_SUITE_P(ValueConvertToAnyTest, ValueConvertToAnyTest,
                          base_internal::MemoryManagerTestModeAll(),
                          base_internal::MemoryManagerTestModeTupleName);
@@ -1103,6 +1156,99 @@ TEST_P(ValueConvertToJsonTest, UnknownValue) {
   auto value = value_factory().CreateUnknownValue();
   EXPECT_THAT(value.As<Value>()->ConvertToJson(value_factory()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(ValueConvertToJsonTest, ListValue) {
+  {
+    ListValueBuilder<Value> builder(value_factory(),
+                                    type_factory().GetJsonListType());
+    ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
+    ASSERT_OK_AND_ASSIGN(auto json,
+                         value.As<Value>()->ConvertToJson(value_factory()));
+    EXPECT_THAT(json, VariantWith<JsonArray>(JsonArray()));
+  }
+  ListValueBuilder<Value> builder(value_factory(),
+                                  type_factory().GetJsonListType());
+  EXPECT_OK(builder.Add(value_factory().CreateIntValue(1)));
+  ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
+  ASSERT_OK_AND_ASSIGN(auto json,
+                       value.As<Value>()->ConvertToJson(value_factory()));
+  JsonArrayBuilder json_builder;
+  json_builder.push_back(JsonNumber(1.0));
+  EXPECT_THAT(json, VariantWith<JsonArray>(std::move(json_builder).Build()));
+}
+
+TEST_P(ValueConvertToJsonTest, MapValue) {
+  {
+    MapValueBuilder<StringValue, Value> builder(value_factory(),
+                                                type_factory().GetStringType(),
+                                                type_factory().GetDynType());
+    ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
+    ASSERT_OK_AND_ASSIGN(auto json,
+                         value.As<Value>()->ConvertToJson(value_factory()));
+    EXPECT_THAT(json, VariantWith<JsonObject>(JsonObject()));
+  }
+  {
+    MapValueBuilder<StringValue, Value> builder(value_factory(),
+                                                type_factory().GetStringType(),
+                                                type_factory().GetDynType());
+    ASSERT_OK_AND_ASSIGN(auto key, value_factory().CreateStringValue("foo"));
+    EXPECT_OK(
+        builder
+            .InsertOrAssign(std::move(key), value_factory().CreateIntValue(1))
+            .status());
+    ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
+    ASSERT_OK_AND_ASSIGN(auto json,
+                         value.As<Value>()->ConvertToJson(value_factory()));
+    JsonObjectBuilder json_builder;
+    json_builder.insert_or_assign(JsonString("foo"), JsonNumber(1.0));
+    EXPECT_THAT(json, VariantWith<JsonObject>(std::move(json_builder).Build()));
+  }
+  {
+    MapValueBuilder<Value, Value> builder(value_factory(),
+                                          type_factory().GetDynType(),
+                                          type_factory().GetDynType());
+    EXPECT_OK(builder
+                  .InsertOrAssign(value_factory().CreateBoolValue(true),
+                                  value_factory().CreateIntValue(1))
+                  .status());
+    ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
+    ASSERT_OK_AND_ASSIGN(auto json,
+                         value.As<Value>()->ConvertToJson(value_factory()));
+    JsonObjectBuilder json_builder;
+    json_builder.insert_or_assign(JsonString("true"), JsonNumber(1.0));
+    EXPECT_THAT(json, VariantWith<JsonObject>(std::move(json_builder).Build()));
+  }
+  {
+    MapValueBuilder<Value, Value> builder(value_factory(),
+                                          type_factory().GetDynType(),
+                                          type_factory().GetDynType());
+    EXPECT_OK(builder
+                  .InsertOrAssign(value_factory().CreateIntValue(1),
+                                  value_factory().CreateIntValue(1))
+                  .status());
+    ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
+    ASSERT_OK_AND_ASSIGN(auto json,
+                         value.As<Value>()->ConvertToJson(value_factory()));
+    JsonObjectBuilder json_builder;
+    json_builder.insert_or_assign(JsonString("1"), JsonNumber(1.0));
+    EXPECT_THAT(json, VariantWith<JsonObject>(std::move(json_builder).Build()));
+  }
+  {
+    MapValueBuilder<Value, Value> builder(value_factory(),
+                                          type_factory().GetDynType(),
+                                          type_factory().GetDynType());
+    EXPECT_OK(builder
+                  .InsertOrAssign(value_factory().CreateUintValue(1),
+                                  value_factory().CreateIntValue(1))
+                  .status());
+    ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
+    ASSERT_OK_AND_ASSIGN(auto json,
+                         value.As<Value>()->ConvertToJson(value_factory()));
+    JsonObjectBuilder json_builder;
+    json_builder.insert_or_assign(JsonString("1"), JsonNumber(1.0));
+    EXPECT_THAT(json, VariantWith<JsonObject>(std::move(json_builder).Build()));
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(ValueConvertToJsonTest, ValueConvertToJsonTest,

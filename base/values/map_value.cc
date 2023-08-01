@@ -23,6 +23,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
@@ -58,7 +59,12 @@ absl::StatusOr<Any> MapValue::ConvertToAny(ValueFactory& value_factory) const {
 
 absl::StatusOr<Json> MapValue::ConvertToJson(
     ValueFactory& value_factory) const {
-  return CEL_INTERNAL_MAP_VALUE_DISPATCH(ConvertToJson, value_factory);
+  return ConvertToJsonObject(value_factory);
+}
+
+absl::StatusOr<JsonObject> MapValue::ConvertToJsonObject(
+    ValueFactory& value_factory) const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(ConvertToJsonObject, value_factory);
 }
 
 size_t MapValue::size() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(size); }
@@ -236,6 +242,53 @@ class AbstractMapValueIterator final : public MapValue::Iterator {
   absl::optional<UniqueRef<ListValue::Iterator>> keys_iterator_;
 };
 
+absl::StatusOr<Any> GenericMapValueConvertToAny(const MapValue& value,
+                                                ValueFactory& value_factory) {
+  CEL_ASSIGN_OR_RETURN(auto json, value.ConvertToJsonObject(value_factory));
+  return JsonObjectToAny(json);
+}
+
+absl::StatusOr<JsonObject> GenericMapValueConvertToJsonObject(
+    const MapValue& value, ValueFactory& value_factory) {
+  JsonObjectBuilder builder;
+  builder.reserve(value.size());
+  CEL_ASSIGN_OR_RETURN(auto iterator,
+                       value.NewIterator(value_factory.memory_manager()));
+  while (iterator->HasNext()) {
+    CEL_ASSIGN_OR_RETURN(auto entry,
+                         iterator->Next(MapValue::GetContext(value_factory)));
+    absl::Cord key_json;
+    if (entry.key->Is<BoolValue>()) {
+      if (entry.key->As<BoolValue>().value()) {
+        key_json = "true";
+      } else {
+        key_json = "false";
+      }
+    } else if (entry.key->Is<IntValue>()) {
+      key_json = absl::StrCat(entry.key->As<IntValue>().value());
+    } else if (entry.key->Is<UintValue>()) {
+      key_json = absl::StrCat(entry.key->As<UintValue>().value());
+    } else if (entry.key->Is<StringValue>()) {
+      key_json = entry.key->As<StringValue>().ToCord();
+    } else {
+      return absl::FailedPreconditionError(absl::StrCat(
+          "cannot serialize map with key of type ",
+          entry.key->type()->DebugString(), " to google.protobuf.Value"));
+    }
+    CEL_ASSIGN_OR_RETURN(auto value_json,
+                         entry.value->ConvertToJson(value_factory));
+    if (ABSL_PREDICT_FALSE(
+            !builder
+                 .insert_or_assign(std::move(key_json), std::move(value_json))
+                 .second)) {
+      return absl::FailedPreconditionError(absl::StrCat(
+          "cannot serialize map with duplicate keys ",
+          entry.key->type()->DebugString(), " to google.protobuf.Value"));
+    }
+  }
+  return std::move(builder).Build();
+}
+
 }  // namespace
 
 Handle<MapType> LegacyMapValue::type() const {
@@ -246,14 +299,12 @@ std::string LegacyMapValue::DebugString() const { return "map"; }
 
 absl::StatusOr<Any> LegacyMapValue::ConvertToAny(
     ValueFactory& value_factory) const {
-  return absl::UnimplementedError(
-      "LegacyMapValue::ConvertToAny is not yet implemented");
+  return GenericMapValueConvertToAny(*this, value_factory);
 }
 
-absl::StatusOr<Json> LegacyMapValue::ConvertToJson(
+absl::StatusOr<JsonObject> LegacyMapValue::ConvertToJsonObject(
     ValueFactory& value_factory) const {
-  return absl::UnimplementedError(
-      "LegacyMapValue::ConvertToJson is not yet implemented");
+  return GenericMapValueConvertToJsonObject(*this, value_factory);
 }
 
 size_t LegacyMapValue::size() const { return LegacyMapValueSize(impl_); }
@@ -290,14 +341,12 @@ AbstractMapValue::AbstractMapValue(Handle<MapType> type)
 
 absl::StatusOr<Any> AbstractMapValue::ConvertToAny(
     ValueFactory& value_factory) const {
-  return absl::UnimplementedError(
-      "AbstractMapValue::ConvertToAny is not yet implemented");
+  return GenericMapValueConvertToAny(*this, value_factory);
 }
 
-absl::StatusOr<Json> AbstractMapValue::ConvertToJson(
+absl::StatusOr<JsonObject> AbstractMapValue::ConvertToJsonObject(
     ValueFactory& value_factory) const {
-  return absl::UnimplementedError(
-      "AbstractMapValue::ConvertToJson is not yet implemented");
+  return GenericMapValueConvertToJsonObject(*this, value_factory);
 }
 
 absl::StatusOr<UniqueRef<MapValue::Iterator>> AbstractMapValue::NewIterator(

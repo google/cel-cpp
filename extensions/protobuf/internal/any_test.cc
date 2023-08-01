@@ -80,16 +80,6 @@ TEST(Any, ToJson) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
 
-  EXPECT_THAT(
-      AnyToJson(value_factory, "type.googleapis.com/google.protobuf.ListValue",
-                absl::Cord()),
-      StatusIs(absl::StatusCode::kUnimplemented));
-
-  EXPECT_THAT(
-      AnyToJson(value_factory, "type.googleapis.com/google.protobuf.Struct",
-                absl::Cord()),
-      StatusIs(absl::StatusCode::kUnimplemented));
-
   EXPECT_THAT(AnyToJson(value_factory,
                         "type.googleapis.com/message.that.does.not.Exist",
                         absl::Cord()),

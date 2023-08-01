@@ -73,6 +73,9 @@ class ListValue : public Value {
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
 
+  absl::StatusOr<JsonArray> ConvertToJsonArray(
+      ValueFactory& value_factory) const;
+
   size_t size() const;
 
   bool empty() const;
@@ -170,7 +173,8 @@ class LegacyListValue final : public ListValue, public InlineData {
 
   absl::StatusOr<Any> ConvertToAny(ValueFactory& value_factory) const;
 
-  absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
+  absl::StatusOr<JsonArray> ConvertToJsonArray(
+      ValueFactory& value_factory) const;
 
   size_t size() const;
 
@@ -227,7 +231,8 @@ class AbstractListValue : public ListValue,
 
   virtual absl::StatusOr<Any> ConvertToAny(ValueFactory& value_factory) const;
 
-  virtual absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
+  virtual absl::StatusOr<JsonArray> ConvertToJsonArray(
+      ValueFactory& value_factory) const;
 
   virtual size_t size() const = 0;
 

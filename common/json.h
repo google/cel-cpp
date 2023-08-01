@@ -22,8 +22,10 @@
 
 #include "absl/base/attributes.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/types/variant.h"
+#include "common/any.h"
 #include "internal/copy_on_write.h"
 
 namespace cel {
@@ -435,6 +437,17 @@ Json JsonUint(uint64_t value);
 // returned as `cel::JsonString`.
 Json JsonBytes(absl::string_view value);
 Json JsonBytes(const absl::Cord& value);
+
+// Serializes `json` as `google.protobuf.Any` with type `google.protobuf.Value`.
+absl::StatusOr<Any> JsonToAny(const Json& json);
+
+// Serializes `json` as `google.protobuf.Any` with type
+// `google.protobuf.ListValue`.
+absl::StatusOr<Any> JsonArrayToAny(const JsonArray& json);
+
+// Serializes `json` as `google.protobuf.Any` with type
+// `google.protobuf.Struct`.
+absl::StatusOr<Any> JsonObjectToAny(const JsonObject& json);
 
 inline JsonArrayBuilder::JsonArrayBuilder(JsonArray array)
     : impl_(std::move(array.impl_)) {}
