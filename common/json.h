@@ -449,6 +449,26 @@ absl::StatusOr<Any> JsonArrayToAny(const JsonArray& json);
 // `google.protobuf.Struct`.
 absl::StatusOr<Any> JsonObjectToAny(const JsonObject& json);
 
+template <typename T>
+inline JsonArray MakeJsonArray(std::initializer_list<T> il) {
+  JsonArrayBuilder builder;
+  builder.reserve(il.size());
+  for (const auto& element : il) {
+    builder.push_back(element);
+  }
+  return std::move(builder).Build();
+}
+
+inline JsonObject MakeJsonObject(
+    std::initializer_list<std::pair<JsonString, Json>> il) {
+  JsonObjectBuilder builder;
+  builder.reserve(il.size());
+  for (const auto& entry : il) {
+    builder.insert(entry);
+  }
+  return std::move(builder).Build();
+}
+
 inline JsonArrayBuilder::JsonArrayBuilder(JsonArray array)
     : impl_(std::move(array.impl_)) {}
 

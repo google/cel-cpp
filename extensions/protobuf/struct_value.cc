@@ -27,6 +27,7 @@
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
 #include "absl/container/btree_set.h"
+#include "absl/functional/any_invocable.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -48,14 +49,19 @@
 #include "base/values/map_value.h"
 #include "base/values/string_value.h"
 #include "base/values/uint_value.h"
+#include "common/any.h"
+#include "common/json.h"
 #include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
 #include "eval/public/message_wrapper.h"
 #include "eval/public/structs/proto_message_type_adapter.h"
 #include "extensions/protobuf/enum_type.h"
+#include "extensions/protobuf/internal/any.h"
 #include "extensions/protobuf/internal/duration.h"
+#include "extensions/protobuf/internal/field_mask.h"
 #include "extensions/protobuf/internal/map_reflection.h"
 #include "extensions/protobuf/internal/reflection.h"
+#include "extensions/protobuf/internal/struct.h"
 #include "extensions/protobuf/internal/timestamp.h"
 #include "extensions/protobuf/internal/wrappers.h"
 #include "extensions/protobuf/memory_manager.h"
@@ -63,6 +69,7 @@
 #include "extensions/protobuf/type.h"
 #include "extensions/protobuf/value.h"
 #include "internal/status_macros.h"
+#include "internal/time.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/map_field.h"
 #include "google/protobuf/message.h"
@@ -150,6 +157,13 @@ google::protobuf::Message* ProtoStructValue::value(
 
 google::protobuf::Message* ProtoStructValue::value(google::protobuf::Arena& arena) const {
   return ValuePointer(*type()->factory_, &arena);
+}
+
+absl::StatusOr<Any> ProtoStructValue::ConvertToAny(ValueFactory&) const {
+  CEL_ASSIGN_OR_RETURN(auto serialized, SerializeAsCord());
+  return MakeAny(
+      absl::StrCat("type.googleapis.com/", type()->descriptor().full_name()),
+      std::move(serialized));
 }
 
 namespace {
@@ -2777,6 +2791,580 @@ absl::StatusOr<absl::Cord> ParsedProtoStructValue::SerializeAsCord() const {
                      value().GetDescriptor()->full_name()));
   }
   return serialized;
+}
+
+namespace {
+
+absl::StatusOr<Json> MessageFieldToJson(const google::protobuf::Message& message,
+                                        const google::protobuf::Reflection* reflection,
+                                        const google::protobuf::FieldDescriptor* field,
+                                        google::protobuf::MessageFactory* factory,
+                                        ValueFactory& value_factory);
+
+absl::StatusOr<Json> MessageToJson(const google::protobuf::Message& message,
+                                   google::protobuf::MessageFactory* factory,
+                                   ValueFactory& value_factory);
+
+absl::StatusOr<Json> MapMessageFieldToJson(const google::protobuf::Message& message,
+                                           const google::protobuf::Reflection* reflection,
+                                           const google::protobuf::FieldDescriptor* field,
+                                           google::protobuf::MessageFactory* factory,
+                                           ValueFactory& value_factory);
+
+using WellKnownTypeToJsonInvocable = absl::AnyInvocable<absl::StatusOr<Json>(
+    const google::protobuf::Message&, ValueFactory&)>;
+
+absl::StatusOr<Json> BoolValueToJson(const google::protobuf::Message& message,
+                                     ValueFactory&) {
+  CEL_ASSIGN_OR_RETURN(auto value,
+                       protobuf_internal::UnwrapDynamicBoolValueProto(message));
+  return JsonBool(value);
+}
+
+absl::StatusOr<Json> Int32ValueToJson(const google::protobuf::Message& message,
+                                      ValueFactory&) {
+  CEL_ASSIGN_OR_RETURN(
+      auto value, protobuf_internal::UnwrapDynamicInt32ValueProto(message));
+  return JsonNumber(value);
+}
+
+absl::StatusOr<Json> Int64ValueToJson(const google::protobuf::Message& message,
+                                      ValueFactory&) {
+  CEL_ASSIGN_OR_RETURN(
+      auto value, protobuf_internal::UnwrapDynamicInt64ValueProto(message));
+  return JsonInt(value);
+}
+
+absl::StatusOr<Json> UInt32ValueToJson(const google::protobuf::Message& message,
+                                       ValueFactory&) {
+  CEL_ASSIGN_OR_RETURN(
+      auto value, protobuf_internal::UnwrapDynamicUInt32ValueProto(message));
+  return JsonNumber(value);
+}
+
+absl::StatusOr<Json> UInt64ValueToJson(const google::protobuf::Message& message,
+                                       ValueFactory&) {
+  CEL_ASSIGN_OR_RETURN(
+      auto value, protobuf_internal::UnwrapDynamicUInt64ValueProto(message));
+  return JsonUint(value);
+}
+
+absl::StatusOr<Json> FloatValueToJson(const google::protobuf::Message& message,
+                                      ValueFactory&) {
+  CEL_ASSIGN_OR_RETURN(
+      auto value, protobuf_internal::UnwrapDynamicFloatValueProto(message));
+  return JsonNumber(value);
+}
+
+absl::StatusOr<Json> DoubleValueToJson(const google::protobuf::Message& message,
+                                       ValueFactory&) {
+  CEL_ASSIGN_OR_RETURN(
+      auto value, protobuf_internal::UnwrapDynamicDoubleValueProto(message));
+  return JsonNumber(value);
+}
+
+absl::StatusOr<Json> BytesValueToJson(const google::protobuf::Message& message,
+                                      ValueFactory&) {
+  CEL_ASSIGN_OR_RETURN(
+      auto value, protobuf_internal::UnwrapDynamicBytesValueProto(message));
+  return JsonBytes(value);
+}
+
+absl::StatusOr<Json> StringValueToJson(const google::protobuf::Message& message,
+                                       ValueFactory&) {
+  CEL_ASSIGN_OR_RETURN(
+      auto value, protobuf_internal::UnwrapDynamicStringValueProto(message));
+  return value;
+}
+
+absl::StatusOr<Json> DurationToJson(const google::protobuf::Message& message,
+                                    ValueFactory&) {
+  CEL_ASSIGN_OR_RETURN(auto value,
+                       protobuf_internal::UnwrapDynamicDurationProto(message));
+  CEL_ASSIGN_OR_RETURN(auto formatted, internal::EncodeDurationToJson(value));
+  return JsonString(std::move(formatted));
+}
+
+absl::StatusOr<Json> TimestampToJson(const google::protobuf::Message& message,
+                                     ValueFactory&) {
+  CEL_ASSIGN_OR_RETURN(auto value,
+                       protobuf_internal::UnwrapDynamicTimestampProto(message));
+  CEL_ASSIGN_OR_RETURN(auto formatted, internal::EncodeTimestampToJson(value));
+  return JsonString(std::move(formatted));
+}
+
+absl::StatusOr<Json> AnyToJson(const google::protobuf::Message& message,
+                               ValueFactory& value_factory) {
+  return protobuf_internal::DynamicAnyProtoToJson(value_factory, message);
+}
+
+absl::StatusOr<Json> FieldMaskToJson(const google::protobuf::Message& message,
+                                     ValueFactory&) {
+  return protobuf_internal::DynamicFieldMaskProtoToJsonString(message);
+}
+
+absl::StatusOr<Json> ValueToJson(const google::protobuf::Message& message,
+                                 ValueFactory&) {
+  return protobuf_internal::DynamicValueProtoToJson(message);
+}
+
+absl::StatusOr<Json> ListValueToJson(const google::protobuf::Message& message,
+                                     ValueFactory&) {
+  return protobuf_internal::DynamicListValueProtoToJson(message);
+}
+
+absl::StatusOr<Json> StructToJson(const google::protobuf::Message& message,
+                                  ValueFactory&) {
+  return protobuf_internal::DynamicStructProtoToJson(message);
+}
+
+absl::optional<WellKnownTypeToJsonInvocable> GetWellKnownTypeToJsonInvocable(
+    google::protobuf::Descriptor::WellKnownType well_known_type) {
+  switch (well_known_type) {
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_UNSPECIFIED:
+      return absl::nullopt;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_DOUBLEVALUE:
+      return &DoubleValueToJson;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_FLOATVALUE:
+      return &FloatValueToJson;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_INT64VALUE:
+      return &Int64ValueToJson;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT64VALUE:
+      return &UInt64ValueToJson;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_INT32VALUE:
+      return &Int32ValueToJson;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT32VALUE:
+      return &UInt32ValueToJson;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_STRINGVALUE:
+      return &StringValueToJson;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_BYTESVALUE:
+      return &BytesValueToJson;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_BOOLVALUE:
+      return &BoolValueToJson;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_ANY:
+      return &AnyToJson;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_FIELDMASK:
+      return &FieldMaskToJson;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_DURATION:
+      return &DurationToJson;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_TIMESTAMP:
+      return &TimestampToJson;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE:
+      return &ValueToJson;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE:
+      return &ListValueToJson;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT:
+      return &StructToJson;
+    default:
+      return absl::nullopt;
+  }
+}
+
+using MapKeyToJsonConverter =
+    absl::AnyInvocable<JsonString(const google::protobuf::MapKey&)>;
+
+absl::StatusOr<MapKeyToJsonConverter> GetMapKeyToJsonConverter(
+    const google::protobuf::FieldDescriptor* field) {
+  switch (field->cpp_type()) {
+    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
+      return [](const google::protobuf::MapKey& key) -> JsonString {
+        return key.GetBoolValue() ? JsonString("true") : JsonString("false");
+      };
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
+      return [](const google::protobuf::MapKey& key) -> JsonString {
+        return JsonString(absl::StrCat(key.GetInt32Value()));
+      };
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
+      return [](const google::protobuf::MapKey& key) -> JsonString {
+        return JsonString(absl::StrCat(key.GetInt64Value()));
+      };
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
+      return [](const google::protobuf::MapKey& key) -> JsonString {
+        return JsonString(absl::StrCat(key.GetUInt32Value()));
+      };
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+      return [](const google::protobuf::MapKey& key) -> JsonString {
+        return JsonString(absl::StrCat(key.GetUInt64Value()));
+      };
+    case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
+      return [](const google::protobuf::MapKey& key) -> JsonString {
+        return JsonString(key.GetStringValue());
+      };
+    default:
+      return absl::InternalError(
+          absl::StrCat("unexpected protocol buffer map field key type: ",
+                       field->cpp_type_name()));
+  }
+}
+
+using MapValueToJsonConverter = absl::AnyInvocable<absl::StatusOr<Json>(
+    const google::protobuf::MapValueRef&, google::protobuf::MessageFactory*, ValueFactory&)>;
+
+absl::StatusOr<MapValueToJsonConverter> GetMapValueToJsonConverter(
+    const google::protobuf::FieldDescriptor* field) {
+  switch (field->type()) {
+    case google::protobuf::FieldDescriptor::TYPE_DOUBLE:
+      return [](const google::protobuf::MapValueRef& value, google::protobuf::MessageFactory*,
+                ValueFactory&) -> absl::StatusOr<Json> {
+        return JsonNumber(value.GetDoubleValue());
+      };
+    case google::protobuf::FieldDescriptor::TYPE_FLOAT:
+      return [](const google::protobuf::MapValueRef& value, google::protobuf::MessageFactory*,
+                ValueFactory&) -> absl::StatusOr<Json> {
+        return JsonNumber(value.GetFloatValue());
+      };
+    case google::protobuf::FieldDescriptor::TYPE_SFIXED64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_SINT64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_INT64:
+      return [](const google::protobuf::MapValueRef& value, google::protobuf::MessageFactory*,
+                ValueFactory&) -> absl::StatusOr<Json> {
+        return JsonInt(value.GetInt64Value());
+      };
+    case google::protobuf::FieldDescriptor::TYPE_FIXED64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_UINT64:
+      return [](const google::protobuf::MapValueRef& value, google::protobuf::MessageFactory*,
+                ValueFactory&) -> absl::StatusOr<Json> {
+        return JsonUint(value.GetUInt64Value());
+      };
+    case google::protobuf::FieldDescriptor::TYPE_SFIXED32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_SINT32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_INT32:
+      return [](const google::protobuf::MapValueRef& value, google::protobuf::MessageFactory*,
+                ValueFactory&) -> absl::StatusOr<Json> {
+        return JsonNumber(value.GetInt32Value());
+      };
+    case google::protobuf::FieldDescriptor::TYPE_BOOL:
+      return [](const google::protobuf::MapValueRef& value, google::protobuf::MessageFactory*,
+                ValueFactory&) -> absl::StatusOr<Json> {
+        return JsonBool(value.GetBoolValue());
+      };
+    case google::protobuf::FieldDescriptor::TYPE_STRING:
+      return [](const google::protobuf::MapValueRef& value, google::protobuf::MessageFactory*,
+                ValueFactory&) -> absl::StatusOr<Json> {
+        return JsonString(value.GetStringValue());
+      };
+    case google::protobuf::FieldDescriptor::TYPE_GROUP:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_MESSAGE: {
+      auto invocable = GetWellKnownTypeToJsonInvocable(
+          field->message_type()->well_known_type());
+      if (invocable.has_value()) {
+        return
+            [invocable = std::move(*invocable)](
+                const google::protobuf::MapValueRef& value, google::protobuf::MessageFactory*,
+                ValueFactory& value_factory) mutable -> absl::StatusOr<Json> {
+              return invocable(value.GetMessageValue(), value_factory);
+            };
+      }
+      return [](const google::protobuf::MapValueRef& value,
+                google::protobuf::MessageFactory* factory,
+                ValueFactory& value_factory) -> absl::StatusOr<Json> {
+        return MessageToJson(value.GetMessageValue(), factory, value_factory);
+      };
+    }
+    case google::protobuf::FieldDescriptor::TYPE_BYTES:
+      return [](const google::protobuf::MapValueRef& value, google::protobuf::MessageFactory*,
+                ValueFactory&) -> absl::StatusOr<Json> {
+        return JsonBytes(value.GetStringValue());
+      };
+    case google::protobuf::FieldDescriptor::TYPE_FIXED32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_UINT32:
+      return [](const google::protobuf::MapValueRef& value, google::protobuf::MessageFactory*,
+                ValueFactory&) -> absl::StatusOr<Json> {
+        return JsonNumber(value.GetUInt32Value());
+      };
+    case google::protobuf::FieldDescriptor::TYPE_ENUM: {
+      if (field->enum_type()->full_name() == "google.protobuf.NullValue") {
+        return [](const google::protobuf::MapValueRef& value, google::protobuf::MessageFactory*,
+                  ValueFactory&) -> absl::StatusOr<Json> { return kJsonNull; };
+      }
+      return [](const google::protobuf::MapValueRef& value, google::protobuf::MessageFactory*,
+                ValueFactory&) -> absl::StatusOr<Json> {
+        return JsonNumber(value.GetEnumValue());
+      };
+    }
+  }
+}
+
+absl::StatusOr<Json> MapMessageFieldToJson(const google::protobuf::Message& message,
+                                           const google::protobuf::Reflection* reflection,
+                                           const google::protobuf::FieldDescriptor* field,
+                                           google::protobuf::MessageFactory* factory,
+                                           ValueFactory& value_factory) {
+  CEL_ASSIGN_OR_RETURN(
+      auto key_converter,
+      GetMapKeyToJsonConverter(field->message_type()->map_key()));
+  CEL_ASSIGN_OR_RETURN(
+      auto value_converter,
+      GetMapValueToJsonConverter(field->message_type()->map_value()));
+  JsonObjectBuilder builder;
+  builder.reserve(protobuf_internal::MapSize(*reflection, message, *field));
+  auto map_begin = protobuf_internal::MapBegin(*reflection, message, *field);
+  auto map_end = protobuf_internal::MapEnd(*reflection, message, *field);
+  for (; map_begin != map_end; ++map_begin) {
+    auto key = key_converter(map_begin.GetKey());
+    CEL_ASSIGN_OR_RETURN(auto value, value_converter(map_begin.GetValueRef(),
+                                                     factory, value_factory));
+    if (ABSL_PREDICT_FALSE(
+            !builder.insert_or_assign(std::move(key), std::move(value))
+                 .second)) {
+      return absl::FailedPreconditionError(
+          "cannot serialize map with duplicate keys to google.protobuf.Value");
+    }
+  }
+  return std::move(builder).Build();
+}
+
+absl::StatusOr<Json> RepeatedMessageFieldToJson(
+    const google::protobuf::Message& message, const google::protobuf::Reflection* reflection,
+    const google::protobuf::FieldDescriptor* field, google::protobuf::MessageFactory* factory,
+    ValueFactory& value_factory) {
+  JsonArrayBuilder builder;
+  switch (field->type()) {
+    case google::protobuf::FieldDescriptor::TYPE_DOUBLE: {
+      auto repeated_field_ref =
+          reflection->GetRepeatedFieldRef<double>(message, field);
+      builder.reserve(repeated_field_ref.size());
+      for (const auto& repeated_field : repeated_field_ref) {
+        builder.push_back(JsonNumber(repeated_field));
+      }
+      break;
+    }
+    case google::protobuf::FieldDescriptor::TYPE_FLOAT: {
+      auto repeated_field_ref =
+          reflection->GetRepeatedFieldRef<float>(message, field);
+      builder.reserve(repeated_field_ref.size());
+      for (const auto& repeated_field : repeated_field_ref) {
+        builder.push_back(JsonNumber(repeated_field));
+      }
+      break;
+    }
+    case google::protobuf::FieldDescriptor::TYPE_SFIXED64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_SINT64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_INT64: {
+      auto repeated_field_ref =
+          reflection->GetRepeatedFieldRef<int64_t>(message, field);
+      builder.reserve(repeated_field_ref.size());
+      for (const auto& repeated_field : repeated_field_ref) {
+        builder.push_back(JsonInt(repeated_field));
+      }
+      break;
+    }
+    case google::protobuf::FieldDescriptor::TYPE_FIXED64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_UINT64: {
+      auto repeated_field_ref =
+          reflection->GetRepeatedFieldRef<uint64_t>(message, field);
+      builder.reserve(repeated_field_ref.size());
+      for (const auto& repeated_field : repeated_field_ref) {
+        builder.push_back(JsonUint(repeated_field));
+      }
+      break;
+    }
+    case google::protobuf::FieldDescriptor::TYPE_SFIXED32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_SINT32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_INT32: {
+      auto repeated_field_ref =
+          reflection->GetRepeatedFieldRef<int32_t>(message, field);
+      builder.reserve(repeated_field_ref.size());
+      for (const auto& repeated_field : repeated_field_ref) {
+        builder.push_back(JsonNumber(repeated_field));
+      }
+      break;
+    }
+    case google::protobuf::FieldDescriptor::TYPE_BOOL: {
+      auto repeated_field_ref =
+          reflection->GetRepeatedFieldRef<bool>(message, field);
+      builder.reserve(repeated_field_ref.size());
+      for (const auto& repeated_field : repeated_field_ref) {
+        builder.push_back(JsonBool(repeated_field));
+      }
+      break;
+    }
+    case google::protobuf::FieldDescriptor::TYPE_STRING: {
+      auto repeated_field_ref =
+          reflection->GetRepeatedFieldRef<std::string>(message, field);
+      builder.reserve(repeated_field_ref.size());
+      for (const auto& repeated_field : repeated_field_ref) {
+        builder.push_back(JsonString(repeated_field));
+      }
+      break;
+    }
+    case google::protobuf::FieldDescriptor::TYPE_GROUP:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_MESSAGE: {
+      auto repeated_field_ref =
+          reflection->GetRepeatedFieldRef<google::protobuf::Message>(message, field);
+      builder.reserve(repeated_field_ref.size());
+      auto invocable = GetWellKnownTypeToJsonInvocable(
+          field->message_type()->well_known_type());
+      if (invocable.has_value()) {
+        for (const auto& repeated_field : repeated_field_ref) {
+          CEL_ASSIGN_OR_RETURN(auto element,
+                               (*invocable)(repeated_field, value_factory));
+          builder.push_back(std::move(element));
+        }
+      } else {
+        for (const auto& repeated_field : repeated_field_ref) {
+          CEL_ASSIGN_OR_RETURN(
+              auto element,
+              MessageToJson(repeated_field, factory, value_factory));
+          builder.push_back(std::move(element));
+        }
+      }
+      break;
+    }
+    case google::protobuf::FieldDescriptor::TYPE_BYTES: {
+      auto repeated_field_ref =
+          reflection->GetRepeatedFieldRef<std::string>(message, field);
+      builder.reserve(repeated_field_ref.size());
+      for (const auto& repeated_field : repeated_field_ref) {
+        builder.push_back(JsonBytes(repeated_field));
+      }
+      break;
+    }
+    case google::protobuf::FieldDescriptor::TYPE_FIXED32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_UINT32: {
+      auto repeated_field_ref =
+          reflection->GetRepeatedFieldRef<uint32_t>(message, field);
+      builder.reserve(repeated_field_ref.size());
+      for (const auto& repeated_field : repeated_field_ref) {
+        builder.push_back(JsonNumber(repeated_field));
+      }
+      break;
+    }
+    case google::protobuf::FieldDescriptor::TYPE_ENUM: {
+      auto repeated_field_ref =
+          reflection->GetRepeatedFieldRef<int32_t>(message, field);
+      builder.reserve(repeated_field_ref.size());
+      if (field->enum_type()->full_name() == "google.protobuf.NullValue") {
+        for (int index = 0; index < repeated_field_ref.size(); ++index) {
+          builder.push_back(kJsonNull);
+        }
+      } else {
+        for (const auto& repeated_field : repeated_field_ref) {
+          builder.push_back(JsonNumber(repeated_field));
+        }
+      }
+      break;
+    }
+  }
+  return std::move(builder).Build();
+}
+
+absl::StatusOr<Json> SingularMessageFieldToJson(
+    const google::protobuf::Message& message, const google::protobuf::Reflection* reflection,
+    const google::protobuf::FieldDescriptor* field, google::protobuf::MessageFactory* factory,
+    ValueFactory& value_factory) {
+  switch (field->type()) {
+    case google::protobuf::FieldDescriptor::TYPE_DOUBLE:
+      return JsonNumber(reflection->GetDouble(message, field));
+    case google::protobuf::FieldDescriptor::TYPE_FLOAT:
+      return JsonNumber(reflection->GetFloat(message, field));
+    case google::protobuf::FieldDescriptor::TYPE_SFIXED64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_SINT64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_INT64:
+      return JsonInt(reflection->GetInt64(message, field));
+    case google::protobuf::FieldDescriptor::TYPE_FIXED64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_UINT64:
+      return JsonUint(reflection->GetUInt64(message, field));
+    case google::protobuf::FieldDescriptor::TYPE_SFIXED32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_SINT32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_INT32:
+      return JsonNumber(reflection->GetInt32(message, field));
+    case google::protobuf::FieldDescriptor::TYPE_BOOL:
+      return JsonBool(reflection->GetBool(message, field));
+    case google::protobuf::FieldDescriptor::TYPE_STRING:
+      return reflection->GetCord(message, field);
+    case google::protobuf::FieldDescriptor::TYPE_GROUP:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_MESSAGE: {
+      auto invocable = GetWellKnownTypeToJsonInvocable(
+          field->message_type()->well_known_type());
+      if (invocable.has_value()) {
+        return (*invocable)(reflection->GetMessage(message, field, factory),
+                            value_factory);
+      }
+      return MessageToJson(reflection->GetMessage(message, field, factory),
+                           factory, value_factory);
+    }
+    case google::protobuf::FieldDescriptor::TYPE_BYTES: {
+      std::string scratch;
+      return JsonBytes(
+          reflection->GetStringReference(message, field, &scratch));
+    }
+    case google::protobuf::FieldDescriptor::TYPE_FIXED32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_UINT32:
+      return JsonNumber(reflection->GetUInt32(message, field));
+    case google::protobuf::FieldDescriptor::TYPE_ENUM: {
+      if (field->enum_type()->full_name() == "google.protobuf.NullValue") {
+        return kJsonNull;
+      }
+      return JsonNumber(reflection->GetEnumValue(message, field));
+    }
+  }
+}
+
+absl::StatusOr<Json> MessageFieldToJson(const google::protobuf::Message& message,
+                                        const google::protobuf::Reflection* reflection,
+                                        const google::protobuf::FieldDescriptor* field,
+                                        google::protobuf::MessageFactory* factory,
+                                        ValueFactory& value_factory) {
+  if (field->is_map()) {
+    return MapMessageFieldToJson(message, reflection, field, factory,
+                                 value_factory);
+  }
+  if (field->is_repeated()) {
+    return RepeatedMessageFieldToJson(message, reflection, field, factory,
+                                      value_factory);
+  }
+  return SingularMessageFieldToJson(message, reflection, field, factory,
+                                    value_factory);
+}
+
+absl::StatusOr<Json> MessageToJson(const google::protobuf::Message& message,
+                                   google::protobuf::MessageFactory* factory,
+                                   ValueFactory& value_factory) {
+  const auto* reflection = message.GetReflection();
+  if (ABSL_PREDICT_FALSE(reflection == nullptr)) {
+    return absl::InternalError(
+        absl::StrCat(message.GetTypeName(), " missing reflection"));
+  }
+  std::vector<const google::protobuf::FieldDescriptor*> fields;
+  reflection->ListFields(message, &fields);
+  JsonObjectBuilder builder;
+  builder.reserve(fields.size());
+  for (const auto* field : fields) {
+    CEL_ASSIGN_OR_RETURN(
+        auto value,
+        MessageFieldToJson(message, reflection, field, factory, value_factory));
+    builder.insert_or_assign(absl::Cord(field->json_name()), std::move(value));
+  }
+  return std::move(builder).Build();
+}
+
+}  // namespace
+
+absl::StatusOr<Json> ParsedProtoStructValue::ConvertToJson(
+    ValueFactory& value_factory) const {
+  return MessageToJson(value(), type()->factory_, value_factory);
 }
 
 }  // namespace protobuf_internal

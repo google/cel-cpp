@@ -30,7 +30,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/handle.h"
-#include "base/kind.h"
 #include "base/owner.h"
 #include "base/type.h"
 #include "base/types/struct_type.h"
@@ -129,6 +128,8 @@ class ProtoStructValue : public CEL_STRUCT_VALUE_CLASS {
                              message_factory) const;
   google::protobuf::Message* value(
       ABSL_ATTRIBUTE_LIFETIME_BOUND google::protobuf::Arena& arena) const;
+
+  absl::StatusOr<Any> ConvertToAny(ValueFactory&) const final;
 
   virtual absl::Status CopyTo(google::protobuf::Message& message) const = 0;
 
@@ -270,6 +271,8 @@ class ParsedProtoStructValue : public ProtoStructValue {
   absl::Status CopyTo(google::protobuf::Message& that) const final;
 
   absl::StatusOr<absl::Cord> SerializeAsCord() const final;
+
+  absl::StatusOr<Json> ConvertToJson(ValueFactory&) const final;
 
  protected:
   explicit ParsedProtoStructValue(Handle<StructType> type)

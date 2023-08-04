@@ -25,6 +25,7 @@
 #include "google/protobuf/wrappers.pb.h"
 #include "google/protobuf/descriptor.pb.h"
 #include "absl/functional/function_ref.h"
+#include "absl/log/absl_check.h"
 #include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/time/time.h"
@@ -35,6 +36,7 @@
 #include "base/type_manager.h"
 #include "base/types/struct_type.h"
 #include "base/value_factory.h"
+#include "common/json.h"
 #include "extensions/protobuf/internal/testing.h"
 #include "extensions/protobuf/type_provider.h"
 #include "extensions/protobuf/value.h"
@@ -45,6 +47,7 @@
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/descriptor_database.h"
 #include "google/protobuf/dynamic_message.h"
+#include "google/protobuf/text_format.h"
 
 namespace cel::extensions {
 namespace {
@@ -59,6 +62,13 @@ using cel::internal::StatusIs;
 
 using TestAllTypes = ::google::api::expr::test::v1::proto3::TestAllTypes;
 using NullValueProto = ::google::protobuf::NullValue;
+
+template <typename T>
+T ParseTextOrDie(absl::string_view text) {
+  T proto;
+  ABSL_CHECK(google::protobuf::TextFormat::ParseFromString(text, &proto));
+  return proto;
+}
 
 constexpr NullValueProto NULL_VALUE = NullValueProto::NULL_VALUE;
 
@@ -4195,6 +4205,321 @@ TEST_P(ProtoStructValueTest, NewFieldIteratorValues) {
   // We cannot really test actual_types, as hand translating TestAllTypes would
   // be obnoxious. Otherwise we would simply be testing the same logic against
   // itself, which would not be useful.
+}
+
+TEST_P(ProtoStructValueTest, ConvertToAny) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  auto message = ParseTextOrDie<TestAllTypes>(R"pb(
+    single_bool: true
+  )pb");
+  ASSERT_OK_AND_ASSIGN(auto value, ProtoValue::Create(value_factory, message));
+  ASSERT_OK_AND_ASSIGN(auto any,
+                       value.As<Value>()->ConvertToAny(value_factory));
+  EXPECT_EQ(any.type_url(),
+            "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes");
+  EXPECT_EQ(any.value(), message.SerializeAsString());
+}
+
+TEST_P(ProtoStructValueTest, SingularConvertToJson) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      ProtoValue::Create(
+          value_factory, ParseTextOrDie<TestAllTypes>(R"pb(
+            single_bool: true
+            single_int32: 1
+            single_int64: 1
+            single_uint32: 1
+            single_uint64: 1
+            single_float: 1.0
+            single_double: 1.0
+            single_string: "foo"
+            single_bytes: "foo"
+            standalone_enum: BAR
+            standalone_message { bb: 1 }
+            single_duration { seconds: 1, nanos: 1 }
+            single_timestamp { seconds: 1, nanos: 1 }
+            single_bool_wrapper { value: true }
+            single_int32_wrapper { value: 1 }
+            single_int64_wrapper { value: 1 }
+            single_uint32_wrapper { value: 1 }
+            single_uint64_wrapper { value: 1 }
+            single_float_wrapper { value: 1.0 }
+            single_double_wrapper { value: 1.0 }
+            single_string_wrapper { value: "foo" }
+            single_bytes_wrapper { value: "foo" }
+            single_value { bool_value: true }
+            list_value { values { bool_value: true } }
+            single_struct {
+              fields {
+                key: "foo",
+                value: { bool_value: true }
+              }
+            }
+            single_any {
+              [type.googleapis.com/google.protobuf.Int64Value] { value: 1 }
+            }
+          )pb")));
+  ASSERT_OK_AND_ASSIGN(auto json,
+                       value.As<Value>()->ConvertToJson(value_factory));
+  JsonObjectBuilder builder;
+  builder.insert_or_assign(JsonString("singleBool"), true);
+  builder.insert_or_assign(JsonString("singleInt32"), 1.0);
+  builder.insert_or_assign(JsonString("singleInt64"), 1.0);
+  builder.insert_or_assign(JsonString("singleUint32"), 1.0);
+  builder.insert_or_assign(JsonString("singleUint64"), 1.0);
+  builder.insert_or_assign(JsonString("singleFloat"), 1.0);
+  builder.insert_or_assign(JsonString("singleDouble"), 1.0);
+  builder.insert_or_assign(JsonString("singleString"), JsonString("foo"));
+  builder.insert_or_assign(JsonString("singleBytes"), JsonBytes("foo"));
+  builder.insert_or_assign(JsonString("standaloneEnum"), 1.0);
+  builder.insert_or_assign(JsonString("standaloneMessage"), []() -> Json {
+    JsonObjectBuilder builder;
+    builder.reserve(1);
+    builder.insert_or_assign(JsonString("bb"), 1.0);
+    return std::move(builder).Build();
+  }());
+  builder.insert_or_assign(JsonString("singleDuration"),
+                           JsonString("1.000000001s"));
+  builder.insert_or_assign(JsonString("singleTimestamp"),
+                           JsonString("1970-01-01T00:00:01.000000001Z"));
+  builder.insert_or_assign(JsonString("singleBoolWrapper"), true);
+  builder.insert_or_assign(JsonString("singleInt32Wrapper"), 1.0);
+  builder.insert_or_assign(JsonString("singleInt64Wrapper"), 1.0);
+  builder.insert_or_assign(JsonString("singleUint32Wrapper"), 1.0);
+  builder.insert_or_assign(JsonString("singleUint64Wrapper"), 1.0);
+  builder.insert_or_assign(JsonString("singleFloatWrapper"), 1.0);
+  builder.insert_or_assign(JsonString("singleDoubleWrapper"), 1.0);
+  builder.insert_or_assign(JsonString("singleStringWrapper"),
+                           JsonString("foo"));
+  builder.insert_or_assign(JsonString("singleBytesWrapper"), JsonBytes("foo"));
+  builder.insert_or_assign(JsonString("singleValue"), true);
+  builder.insert_or_assign(JsonString("listValue"), MakeJsonArray({true}));
+  builder.insert_or_assign(JsonString("singleStruct"),
+                           MakeJsonObject({{JsonString("foo"), true}}));
+  builder.insert_or_assign(
+      JsonString("singleAny"),
+      MakeJsonObject(
+          {{JsonString("@type"),
+            JsonString("type.googleapis.com/google.protobuf.Int64Value")},
+           {JsonString("value"), 1.0}}));
+  EXPECT_THAT(json, Eq(Json(std::move(builder).Build())));
+}
+
+TEST_P(ProtoStructValueTest, RepeatedConvertToJson) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      ProtoValue::Create(value_factory, ParseTextOrDie<TestAllTypes>(R"pb(
+                           repeated_bool: true
+                           repeated_int32: 1
+                           repeated_int64: 1
+                           repeated_uint32: 1
+                           repeated_uint64: 1
+                           repeated_float: 1.0
+                           repeated_double: 1.0
+                           repeated_string: "foo"
+                           repeated_bytes: "foo"
+                           repeated_nested_enum: BAR
+                           repeated_nested_message { bb: 1 }
+                           repeated_duration { seconds: 1, nanos: 1 }
+                           repeated_timestamp { seconds: 1, nanos: 1 }
+                           repeated_bool_wrapper { value: true }
+                           repeated_int32_wrapper { value: 1 }
+                           repeated_int64_wrapper { value: 1 }
+                           repeated_uint32_wrapper { value: 1 }
+                           repeated_uint64_wrapper { value: 1 }
+                           repeated_float_wrapper { value: 1.0 }
+                           repeated_double_wrapper { value: 1.0 }
+                           repeated_string_wrapper { value: "foo" }
+                           repeated_bytes_wrapper { value: "foo" }
+                         )pb")));
+  ASSERT_OK_AND_ASSIGN(auto json,
+                       value.As<Value>()->ConvertToJson(value_factory));
+  JsonObjectBuilder builder;
+  builder.insert_or_assign(JsonString("repeatedBool"), MakeJsonArray({true}));
+  builder.insert_or_assign(JsonString("repeatedInt32"), MakeJsonArray({1.0}));
+  builder.insert_or_assign(JsonString("repeatedInt64"), MakeJsonArray({1.0}));
+  builder.insert_or_assign(JsonString("repeatedUint32"), MakeJsonArray({1.0}));
+  builder.insert_or_assign(JsonString("repeatedUint64"), MakeJsonArray({1.0}));
+  builder.insert_or_assign(JsonString("repeatedFloat"), MakeJsonArray({1.0}));
+  builder.insert_or_assign(JsonString("repeatedDouble"), MakeJsonArray({1.0}));
+  builder.insert_or_assign(JsonString("repeatedString"),
+                           MakeJsonArray({JsonString("foo")}));
+  builder.insert_or_assign(JsonString("repeatedBytes"),
+                           MakeJsonArray({JsonBytes("foo")}));
+  builder.insert_or_assign(JsonString("repeatedNestedEnum"),
+                           MakeJsonArray({1.0}));
+  builder.insert_or_assign(JsonString("repeatedNestedMessage"),
+                           MakeJsonArray({[]() -> Json {
+                             JsonObjectBuilder builder;
+                             builder.reserve(1);
+                             builder.insert_or_assign(JsonString("bb"), 1.0);
+                             return std::move(builder).Build();
+                           }()}));
+  builder.insert_or_assign(JsonString("repeatedDuration"),
+                           MakeJsonArray({JsonString("1.000000001s")}));
+  builder.insert_or_assign(
+      JsonString("repeatedTimestamp"),
+      MakeJsonArray({JsonString("1970-01-01T00:00:01.000000001Z")}));
+  builder.insert_or_assign(JsonString("repeatedBoolWrapper"),
+                           MakeJsonArray({true}));
+  builder.insert_or_assign(JsonString("repeatedInt32Wrapper"),
+                           MakeJsonArray({1.0}));
+  builder.insert_or_assign(JsonString("repeatedInt64Wrapper"),
+                           MakeJsonArray({1.0}));
+  builder.insert_or_assign(JsonString("repeatedUint32Wrapper"),
+                           MakeJsonArray({1.0}));
+  builder.insert_or_assign(JsonString("repeatedUint64Wrapper"),
+                           MakeJsonArray({1.0}));
+  builder.insert_or_assign(JsonString("repeatedFloatWrapper"),
+                           MakeJsonArray({1.0}));
+  builder.insert_or_assign(JsonString("repeatedDoubleWrapper"),
+                           MakeJsonArray({1.0}));
+  builder.insert_or_assign(JsonString("repeatedStringWrapper"),
+                           MakeJsonArray({JsonString("foo")}));
+  builder.insert_or_assign(JsonString("repeatedBytesWrapper"),
+                           MakeJsonArray({JsonBytes("foo")}));
+  EXPECT_THAT(json, Eq(Json(std::move(builder).Build())));
+}
+
+TEST_P(ProtoStructValueTest, MapConvertToJson) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      ProtoValue::Create(value_factory, ParseTextOrDie<TestAllTypes>(R"pb(
+                           map_bool_bool { key: true, value: true }
+                           map_int32_int32 { key: 1, value: 1 }
+                           map_int64_int64 { key: 1, value: 1 }
+                           map_uint32_uint32 { key: 1, value: 1 }
+                           map_uint64_uint64 { key: 1, value: 1 }
+                           map_string_string { key: "foo", value: "bar" }
+                           map_int64_float { key: 1, value: 1.0 }
+                           map_int64_double { key: 1, value: 1.0 }
+                           map_int64_bytes { key: 1, value: "foo" }
+                           map_int64_enum { key: 1, value: BAR }
+                           map_int64_message {
+                             key: 1
+                             value: { bb: 1 }
+                           }
+                           map_int64_duration {
+                             key: 1
+                             value: { seconds: 1, nanos: 1 }
+                           }
+                           map_int64_timestamp {
+                             key: 1
+                             value: { seconds: 1, nanos: 1 }
+                           }
+                           map_int64_bool_wrapper {
+                             key: 1
+                             value: { value: true }
+                           }
+                           map_int64_int32_wrapper {
+                             key: 1
+                             value: { value: 1 }
+                           }
+                           map_int64_int64_wrapper {
+                             key: 1
+                             value: { value: 1 }
+                           }
+                           map_int64_uint32_wrapper {
+                             key: 1
+                             value: { value: 1 }
+                           }
+                           map_int64_uint64_wrapper {
+                             key: 1
+                             value: { value: 1 }
+                           }
+                           map_int64_string_wrapper {
+                             key: 1
+                             value: { value: "foo" }
+                           }
+                           map_int64_float_wrapper {
+                             key: 1
+                             value: { value: 1.0 }
+                           }
+                           map_int64_double_wrapper {
+                             key: 1
+                             value: { value: 1.0 }
+                           }
+                           map_int64_bytes_wrapper {
+                             key: 1
+                             value: { value: "foo" }
+                           }
+                         )pb")));
+  ASSERT_OK_AND_ASSIGN(auto json,
+                       value.As<Value>()->ConvertToJson(value_factory));
+  JsonObjectBuilder builder;
+  builder.insert_or_assign(JsonString("mapBoolBool"),
+                           MakeJsonObject({{JsonString("true"), true}}));
+  builder.insert_or_assign(JsonString("mapInt32Int32"),
+                           MakeJsonObject({{JsonString("1"), 1.0}}));
+  builder.insert_or_assign(JsonString("mapInt64Int64"),
+                           MakeJsonObject({{JsonString("1"), 1.0}}));
+  builder.insert_or_assign(JsonString("mapUint32Uint32"),
+                           MakeJsonObject({{JsonString("1"), 1.0}}));
+  builder.insert_or_assign(JsonString("mapUint64Uint64"),
+                           MakeJsonObject({{JsonString("1"), 1.0}}));
+  builder.insert_or_assign(
+      JsonString("mapStringString"),
+      MakeJsonObject({{JsonString("foo"), JsonString("bar")}}));
+  builder.insert_or_assign(JsonString("mapInt64Float"),
+                           MakeJsonObject({{JsonString("1"), 1.0}}));
+  builder.insert_or_assign(JsonString("mapInt64Double"),
+                           MakeJsonObject({{JsonString("1"), 1.0}}));
+  builder.insert_or_assign(
+      JsonString("mapInt64Bytes"),
+      MakeJsonObject({{JsonString("1"), JsonBytes("foo")}}));
+  builder.insert_or_assign(JsonString("mapInt64Enum"),
+                           MakeJsonObject({{JsonString("1"), 1.0}}));
+  builder.insert_or_assign(JsonString("mapInt64Message"),
+                           MakeJsonObject({{JsonString("1"), []() -> Json {
+                                              JsonObjectBuilder builder;
+                                              builder.reserve(1);
+                                              builder.insert_or_assign(
+                                                  JsonString("bb"), 1.0);
+                                              return std::move(builder).Build();
+                                            }()}}));
+  builder.insert_or_assign(
+      JsonString("mapInt64Duration"),
+      MakeJsonObject({{JsonString("1"), JsonString("1.000000001s")}}));
+  builder.insert_or_assign(
+      JsonString("mapInt64Timestamp"),
+      MakeJsonObject(
+          {{JsonString("1"), JsonString("1970-01-01T00:00:01.000000001Z")}}));
+  builder.insert_or_assign(JsonString("mapInt64BoolWrapper"),
+                           MakeJsonObject({{JsonString("1"), true}}));
+  builder.insert_or_assign(JsonString("mapInt64Int32Wrapper"),
+                           MakeJsonObject({{JsonString("1"), 1.0}}));
+  builder.insert_or_assign(JsonString("mapInt64Int64Wrapper"),
+                           MakeJsonObject({{JsonString("1"), 1.0}}));
+  builder.insert_or_assign(JsonString("mapInt64Uint32Wrapper"),
+                           MakeJsonObject({{JsonString("1"), 1.0}}));
+  builder.insert_or_assign(JsonString("mapInt64Uint64Wrapper"),
+                           MakeJsonObject({{JsonString("1"), 1.0}}));
+  builder.insert_or_assign(JsonString("mapInt64FloatWrapper"),
+                           MakeJsonObject({{JsonString("1"), 1.0}}));
+  builder.insert_or_assign(JsonString("mapInt64DoubleWrapper"),
+                           MakeJsonObject({{JsonString("1"), 1.0}}));
+  builder.insert_or_assign(
+      JsonString("mapInt64StringWrapper"),
+      MakeJsonObject({{JsonString("1"), JsonString("foo")}}));
+  builder.insert_or_assign(
+      JsonString("mapInt64BytesWrapper"),
+      MakeJsonObject({{JsonString("1"), JsonBytes("foo")}}));
+  EXPECT_THAT(json, Eq(Json(std::move(builder).Build())));
 }
 
 INSTANTIATE_TEST_SUITE_P(ProtoStructValueTest, ProtoStructValueTest,
