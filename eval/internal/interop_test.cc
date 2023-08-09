@@ -494,14 +494,13 @@ TEST(ValueInterop, LegacyListNewIteratorIndices) {
                                         CelValue::CreateInt64(2)}));
   ASSERT_OK_AND_ASSIGN(auto modern_value, FromLegacyValue(&arena, value));
   ASSERT_OK_AND_ASSIGN(
-      auto iterator, modern_value->As<ListValue>().NewIterator(memory_manager));
+      auto iterator, modern_value->As<ListValue>().NewIterator(value_factory));
   std::set<size_t> actual_indices;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(
-        auto index, iterator->NextIndex(ListValue::GetContext(value_factory)));
+    ASSERT_OK_AND_ASSIGN(auto index, iterator->NextIndex());
     actual_indices.insert(index);
   }
-  EXPECT_THAT(iterator->NextIndex(ListValue::GetContext(value_factory)),
+  EXPECT_THAT(iterator->NextIndex(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   std::set<size_t> expected_indices = {0, 1, 2};
   EXPECT_EQ(actual_indices, expected_indices);
@@ -521,14 +520,13 @@ TEST(ValueInterop, LegacyListNewIteratorValues) {
                                         CelValue::CreateInt64(5)}));
   ASSERT_OK_AND_ASSIGN(auto modern_value, FromLegacyValue(&arena, value));
   ASSERT_OK_AND_ASSIGN(
-      auto iterator, modern_value->As<ListValue>().NewIterator(memory_manager));
+      auto iterator, modern_value->As<ListValue>().NewIterator(value_factory));
   std::set<int64_t> actual_values;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(
-        auto value, iterator->NextValue(ListValue::GetContext(value_factory)));
+    ASSERT_OK_AND_ASSIGN(auto value, iterator->NextValue());
     actual_values.insert(value->As<IntValue>().value());
   }
-  EXPECT_THAT(iterator->NextValue(ListValue::GetContext(value_factory)),
+  EXPECT_THAT(iterator->NextValue(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   std::set<int64_t> expected_values = {3, 4, 5};
   EXPECT_EQ(actual_values, expected_values);
@@ -694,15 +692,14 @@ TEST(ValueInterop, LegacyMapNewIteratorKeys) {
                              CelValue::CreateInt64(3)));
   auto value = CelValue::CreateMap(map_builder);
   ASSERT_OK_AND_ASSIGN(auto modern_value, FromLegacyValue(&arena, value));
-  ASSERT_OK_AND_ASSIGN(
-      auto iterator, modern_value->As<MapValue>().NewIterator(memory_manager));
+  ASSERT_OK_AND_ASSIGN(auto iterator,
+                       modern_value->As<MapValue>().NewIterator(value_factory));
   std::set<std::string> actual_keys;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(
-        auto key, iterator->NextKey(MapValue::GetContext(value_factory)));
+    ASSERT_OK_AND_ASSIGN(auto key, iterator->NextKey());
     actual_keys.insert(key->As<StringValue>().ToString());
   }
-  EXPECT_THAT(iterator->NextKey(MapValue::GetContext(value_factory)),
+  EXPECT_THAT(iterator->NextKey(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   std::set<std::string> expected_keys = {"foo", "bar", "baz"};
   EXPECT_EQ(actual_keys, expected_keys);
@@ -724,15 +721,14 @@ TEST(ValueInterop, LegacyMapNewIteratorValues) {
                              CelValue::CreateInt64(3)));
   auto value = CelValue::CreateMap(map_builder);
   ASSERT_OK_AND_ASSIGN(auto modern_value, FromLegacyValue(&arena, value));
-  ASSERT_OK_AND_ASSIGN(
-      auto iterator, modern_value->As<MapValue>().NewIterator(memory_manager));
+  ASSERT_OK_AND_ASSIGN(auto iterator,
+                       modern_value->As<MapValue>().NewIterator(value_factory));
   std::set<int64_t> actual_values;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(
-        auto value, iterator->NextValue(MapValue::GetContext(value_factory)));
+    ASSERT_OK_AND_ASSIGN(auto value, iterator->NextValue());
     actual_values.insert(value->As<IntValue>().value());
   }
-  EXPECT_THAT(iterator->NextValue(MapValue::GetContext(value_factory)),
+  EXPECT_THAT(iterator->NextValue(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   std::set<int64_t> expected_values = {1, 2, 3};
   EXPECT_EQ(actual_values, expected_values);
@@ -852,7 +848,7 @@ TEST(ValueInterop, AbstractStructTypeFromLegacyTypeInfo) {
   EXPECT_THAT(type->As<StructType>().NewValueBuilder(value_factory),
               StatusIs(absl::StatusCode::kUnimplemented));
   EXPECT_EQ(type->As<StructType>().field_count(), 0);
-  EXPECT_THAT(type->As<StructType>().NewFieldIterator(MemoryManager::Global()),
+  EXPECT_THAT(type->As<StructType>().NewFieldIterator(type_manager),
               StatusIs(absl::StatusCode::kUnimplemented));
   EXPECT_TRUE(type->Is<LegacyAbstractStructType>());
 }

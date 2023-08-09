@@ -203,26 +203,28 @@ absl::Status TypeConversionError(const Type& from, const Type& to) {
 
 class ProtoStructTypeFieldIterator final : public StructType::FieldIterator {
  public:
-  explicit ProtoStructTypeFieldIterator(const google::protobuf::Descriptor& descriptor)
-      : descriptor_(descriptor) {}
+  ProtoStructTypeFieldIterator(TypeManager& type_manager,
+                               const google::protobuf::Descriptor& descriptor)
+      : type_manager_(type_manager), descriptor_(descriptor) {}
 
   bool HasNext() override { return index_ < descriptor_.field_count(); }
 
-  absl::StatusOr<StructType::Field> Next(TypeManager& type_manager) override {
+  absl::StatusOr<StructType::Field> Next() override {
     if (ABSL_PREDICT_FALSE(index_ >= descriptor_.field_count())) {
       return absl::FailedPreconditionError(
           "StructType::FieldIterator::Next() called when "
           "StructType::FieldIterator::HasNext() returns false");
     }
     const auto* field = descriptor_.field(index_);
-    CEL_ASSIGN_OR_RETURN(auto type, FieldDescriptorToType(type_manager, field));
+    CEL_ASSIGN_OR_RETURN(auto type,
+                         FieldDescriptorToType(type_manager_, field));
     ++index_;
     return StructType::Field(ProtoStructType::MakeFieldId(field->number()),
                              field->name(), field->number(), std::move(type),
                              field);
   }
 
-  absl::StatusOr<FieldId> NextId(TypeManager& type_manager) override {
+  absl::StatusOr<FieldId> NextId() override {
     if (ABSL_PREDICT_FALSE(index_ >= descriptor_.field_count())) {
       return absl::FailedPreconditionError(
           "StructType::FieldIterator::Next() called when "
@@ -231,8 +233,7 @@ class ProtoStructTypeFieldIterator final : public StructType::FieldIterator {
     return ProtoStructType::MakeFieldId(descriptor_.field(index_++)->number());
   }
 
-  absl::StatusOr<absl::string_view> NextName(
-      TypeManager& type_manager) override {
+  absl::StatusOr<absl::string_view> NextName() override {
     if (ABSL_PREDICT_FALSE(index_ >= descriptor_.field_count())) {
       return absl::FailedPreconditionError(
           "StructType::FieldIterator::Next() called when "
@@ -241,7 +242,7 @@ class ProtoStructTypeFieldIterator final : public StructType::FieldIterator {
     return descriptor_.field(index_++)->name();
   }
 
-  absl::StatusOr<int64_t> NextNumber(TypeManager& type_manager) override {
+  absl::StatusOr<int64_t> NextNumber() override {
     if (ABSL_PREDICT_FALSE(index_ >= descriptor_.field_count())) {
       return absl::FailedPreconditionError(
           "StructType::FieldIterator::Next() called when "
@@ -251,6 +252,7 @@ class ProtoStructTypeFieldIterator final : public StructType::FieldIterator {
   }
 
  private:
+  TypeManager& type_manager_;
   const google::protobuf::Descriptor& descriptor_;
   int index_ = 0;
 };
@@ -260,8 +262,9 @@ size_t ProtoStructType::field_count() const {
 }
 
 absl::StatusOr<UniqueRef<StructType::FieldIterator>>
-ProtoStructType::NewFieldIterator(MemoryManager& memory_manager) const {
-  return MakeUnique<ProtoStructTypeFieldIterator>(memory_manager, descriptor());
+ProtoStructType::NewFieldIterator(TypeManager& type_manager) const {
+  return MakeUnique<ProtoStructTypeFieldIterator>(type_manager.memory_manager(),
+                                                  type_manager, descriptor());
 }
 
 absl::StatusOr<absl::optional<ProtoStructType::Field>>
@@ -896,11 +899,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
         GetMapFieldValueConverter(*value_field_desc, from_value_type,
                                   to_value_type));
 
-    CEL_ASSIGN_OR_RETURN(auto iterator,
-                         value->NewIterator(value_factory_.memory_manager()));
+    CEL_ASSIGN_OR_RETURN(auto iterator, value->NewIterator(value_factory_));
     while (iterator->HasNext()) {
-      CEL_ASSIGN_OR_RETURN(
-          auto entry, iterator->Next(MapValue::GetContext(value_factory_)));
+      CEL_ASSIGN_OR_RETURN(auto entry, iterator->Next());
       google::protobuf::MapKey map_key;
       CEL_RETURN_IF_ERROR(key_converter(*entry.key, map_key));
       google::protobuf::MapValueRef map_value;
@@ -929,12 +930,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
     auto repeated_field_ref =
         reflect.GetMutableRepeatedFieldRef<P>(message_, &field_desc);
     repeated_field_ref.Clear();
-    CEL_ASSIGN_OR_RETURN(auto iterator,
-                         value.NewIterator(value_factory_.memory_manager()));
+    CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_factory_));
     while (iterator->HasNext()) {
-      CEL_ASSIGN_OR_RETURN(
-          auto element,
-          iterator->NextValue(ListValue::GetContext(value_factory_)));
+      CEL_ASSIGN_OR_RETURN(auto element, iterator->NextValue());
       if (ABSL_PREDICT_FALSE(!element->Is<V>())) {
         return TypeConversionError(*element->type(), to_element_type);
       }
@@ -964,12 +962,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
     auto repeated_field_ref =
         reflect.GetMutableRepeatedFieldRef<std::string>(message_, &field_desc);
     repeated_field_ref.Clear();
-    CEL_ASSIGN_OR_RETURN(auto iterator,
-                         value.NewIterator(value_factory_.memory_manager()));
+    CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_factory_));
     while (iterator->HasNext()) {
-      CEL_ASSIGN_OR_RETURN(
-          auto element,
-          iterator->NextValue(ListValue::GetContext(value_factory_)));
+      CEL_ASSIGN_OR_RETURN(auto element, iterator->NextValue());
       if (ABSL_PREDICT_FALSE(!element->Is<V>())) {
         return TypeConversionError(*element->type(), to_element_type);
       }
@@ -995,12 +990,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
       auto repeated_field_ref =
           reflect.GetMutableRepeatedFieldRef<int32_t>(message_, &field_desc);
       repeated_field_ref.Clear();
-      CEL_ASSIGN_OR_RETURN(auto iterator,
-                           value.NewIterator(value_factory_.memory_manager()));
+      CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_factory_));
       while (iterator->HasNext()) {
-        CEL_ASSIGN_OR_RETURN(
-            auto element,
-            iterator->NextValue(ListValue::GetContext(value_factory_)));
+        CEL_ASSIGN_OR_RETURN(auto element, iterator->NextValue());
         if (ABSL_PREDICT_FALSE(!element->Is<NullValue>())) {
           return TypeConversionError(*element->type(), to_element_type);
         }
@@ -1017,12 +1009,9 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
     auto repeated_field_ref =
         reflect.GetMutableRepeatedFieldRef<int32_t>(message_, &field_desc);
     repeated_field_ref.Clear();
-    CEL_ASSIGN_OR_RETURN(auto iterator,
-                         value.NewIterator(value_factory_.memory_manager()));
+    CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_factory_));
     while (iterator->HasNext()) {
-      CEL_ASSIGN_OR_RETURN(
-          auto element,
-          iterator->NextValue(ListValue::GetContext(value_factory_)));
+      CEL_ASSIGN_OR_RETURN(auto element, iterator->NextValue());
       if (element->Is<EnumValue>()) {
         if (ABSL_PREDICT_FALSE(element->As<EnumValue>().type()->name() !=
                                field_desc.enum_type()->full_name())) {
@@ -1070,13 +1059,10 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
         reflect.GetMutableRepeatedFieldRef<google::protobuf::Message>(message_,
                                                             &field_desc);
     repeated_field_ref.Clear();
-    CEL_ASSIGN_OR_RETURN(auto iterator,
-                         value.NewIterator(value_factory_.memory_manager()));
+    CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_factory_));
     auto scratch = absl::WrapUnique(repeated_field_ref.NewMessage());
     while (iterator->HasNext()) {
-      CEL_ASSIGN_OR_RETURN(
-          auto element,
-          iterator->NextValue(ListValue::GetContext(value_factory_)));
+      CEL_ASSIGN_OR_RETURN(auto element, iterator->NextValue());
       if (ABSL_PREDICT_FALSE(!element->Is<V>())) {
         return TypeConversionError(*element->type(), to_element_type);
       }
@@ -1099,13 +1085,10 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
             reflect.GetMutableRepeatedFieldRef<google::protobuf::Message>(message_,
                                                                 &field_desc);
         repeated_field_ref.Clear();
-        CEL_ASSIGN_OR_RETURN(
-            auto iterator, value.NewIterator(value_factory_.memory_manager()));
+        CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_factory_));
         auto scratch = absl::WrapUnique(repeated_field_ref.NewMessage());
         while (iterator->HasNext()) {
-          CEL_ASSIGN_OR_RETURN(
-              auto element,
-              iterator->NextValue(ListValue::GetContext(value_factory_)));
+          CEL_ASSIGN_OR_RETURN(auto element, iterator->NextValue());
           CEL_ASSIGN_OR_RETURN(auto any, element->ConvertToAny(value_factory_));
           scratch->Clear();
           CEL_RETURN_IF_ERROR(protobuf_internal::WrapDynamicAnyProto(
@@ -1120,13 +1103,10 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
             reflect.GetMutableRepeatedFieldRef<google::protobuf::Message>(message_,
                                                                 &field_desc);
         repeated_field_ref.Clear();
-        CEL_ASSIGN_OR_RETURN(
-            auto iterator, value.NewIterator(value_factory_.memory_manager()));
+        CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_factory_));
         auto scratch = absl::WrapUnique(repeated_field_ref.NewMessage());
         while (iterator->HasNext()) {
-          CEL_ASSIGN_OR_RETURN(
-              auto element,
-              iterator->NextValue(ListValue::GetContext(value_factory_)));
+          CEL_ASSIGN_OR_RETURN(auto element, iterator->NextValue());
           scratch->Clear();
           CEL_ASSIGN_OR_RETURN(auto json,
                                element->ConvertToJson(value_factory_));
@@ -1142,13 +1122,10 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
             reflect.GetMutableRepeatedFieldRef<google::protobuf::Message>(message_,
                                                                 &field_desc);
         repeated_field_ref.Clear();
-        CEL_ASSIGN_OR_RETURN(
-            auto iterator, value.NewIterator(value_factory_.memory_manager()));
+        CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_factory_));
         auto scratch = absl::WrapUnique(repeated_field_ref.NewMessage());
         while (iterator->HasNext()) {
-          CEL_ASSIGN_OR_RETURN(
-              auto element,
-              iterator->NextValue(ListValue::GetContext(value_factory_)));
+          CEL_ASSIGN_OR_RETURN(auto element, iterator->NextValue());
           scratch->Clear();
           if (!element->Is<ListValue>() && !element->Is<OpaqueValue>()) {
             return TypeConversionError(*element->type(), to_element_type);
@@ -1170,13 +1147,10 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
             reflect.GetMutableRepeatedFieldRef<google::protobuf::Message>(message_,
                                                                 &field_desc);
         repeated_field_ref.Clear();
-        CEL_ASSIGN_OR_RETURN(
-            auto iterator, value.NewIterator(value_factory_.memory_manager()));
+        CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_factory_));
         auto scratch = absl::WrapUnique(repeated_field_ref.NewMessage());
         while (iterator->HasNext()) {
-          CEL_ASSIGN_OR_RETURN(
-              auto element,
-              iterator->NextValue(ListValue::GetContext(value_factory_)));
+          CEL_ASSIGN_OR_RETURN(auto element, iterator->NextValue());
           scratch->Clear();
           if (!element->Is<MapValue>() && !element->Is<StructValue>() &&
               !element->Is<OpaqueValue>()) {
@@ -1258,13 +1232,10 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
             reflect.GetMutableRepeatedFieldRef<google::protobuf::Message>(message_,
                                                                 &field_desc);
         repeated_field_ref.Clear();
-        CEL_ASSIGN_OR_RETURN(
-            auto iterator, value.NewIterator(value_factory_.memory_manager()));
+        CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_factory_));
         auto scratch = absl::WrapUnique(repeated_field_ref.NewMessage());
         while (iterator->HasNext()) {
-          CEL_ASSIGN_OR_RETURN(
-              auto element,
-              iterator->NextValue(ListValue::GetContext(value_factory_)));
+          CEL_ASSIGN_OR_RETURN(auto element, iterator->NextValue());
           if (ABSL_PREDICT_FALSE(!element->Is<ProtoStructValue>())) {
             return TypeConversionError(*element->type(), to_element_type);
           }

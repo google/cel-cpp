@@ -135,7 +135,8 @@ class StructType : public Type {
   class FieldIterator;
 
   absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      TypeManager& type_manager
+          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   absl::StatusOr<UniqueRef<StructValueBuilderInterface>> NewValueBuilder(
       ValueFactory& value_factory
@@ -209,15 +210,15 @@ class StructType::FieldIterator {
 
   ABSL_MUST_USE_RESULT virtual bool HasNext() = 0;
 
-  virtual absl::StatusOr<Field> Next(TypeManager& type_manager) = 0;
+  virtual absl::StatusOr<Field> Next() = 0;
 
-  virtual absl::StatusOr<FieldId> NextId(TypeManager& type_manager);
+  virtual absl::StatusOr<FieldId> NextId();
 
-  virtual absl::StatusOr<absl::string_view> NextName(TypeManager& type_manager);
+  virtual absl::StatusOr<absl::string_view> NextName();
 
-  virtual absl::StatusOr<int64_t> NextNumber(TypeManager& type_manager);
+  virtual absl::StatusOr<int64_t> NextNumber();
 
-  virtual absl::StatusOr<Handle<Type>> NextType(TypeManager& type_manager);
+  virtual absl::StatusOr<Handle<Type>> NextType();
 };
 
 namespace base_internal {
@@ -265,7 +266,8 @@ class LegacyStructType final : public StructType, public InlineData {
       int64_t number) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      TypeManager& type_manager
+          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   absl::StatusOr<UniqueRef<StructValueBuilderInterface>> NewValueBuilder(
       ValueFactory& value_factory
@@ -332,7 +334,8 @@ class AbstractStructType
       int64_t number) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
   virtual absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
+      TypeManager& type_manager ABSL_ATTRIBUTE_LIFETIME_BOUND) const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
   virtual absl::StatusOr<UniqueRef<StructValueBuilderInterface>>
   NewValueBuilder(ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND)

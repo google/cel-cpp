@@ -127,7 +127,8 @@ class MapValue : public Value {
   class Iterator;
 
   absl::StatusOr<UniqueRef<Iterator>> NewIterator(
-      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ValueFactory& value_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   friend internal::TypeInfo base_internal::GetMapValueTypeId(
@@ -153,13 +154,11 @@ class MapValue::Iterator {
 
   ABSL_MUST_USE_RESULT virtual bool HasNext() = 0;
 
-  virtual absl::StatusOr<Entry> Next(const MapValue::GetContext& context) = 0;
+  virtual absl::StatusOr<Entry> Next() = 0;
 
-  virtual absl::StatusOr<Handle<Value>> NextKey(
-      const MapValue::GetContext& context);
+  virtual absl::StatusOr<Handle<Value>> NextKey();
 
-  virtual absl::StatusOr<Handle<Value>> NextValue(
-      const MapValue::GetContext& context);
+  virtual absl::StatusOr<Handle<Value>> NextValue();
 };
 
 CEL_INTERNAL_VALUE_DECL(MapValue);
@@ -214,7 +213,8 @@ class LegacyMapValue final : public MapValue, public InlineData {
       const ListKeysContext& context) const;
 
   absl::StatusOr<UniqueRef<Iterator>> NewIterator(
-      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ValueFactory& value_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   constexpr uintptr_t value() const { return impl_; }
 
@@ -276,7 +276,8 @@ class AbstractMapValue : public MapValue,
       const ListKeysContext& context) const = 0;
 
   virtual absl::StatusOr<UniqueRef<Iterator>> NewIterator(
-      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ValueFactory& value_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  protected:
   explicit AbstractMapValue(Handle<MapType> type);

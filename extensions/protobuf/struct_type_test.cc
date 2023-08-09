@@ -223,13 +223,13 @@ TEST_P(ProtoStructTypeTest, NewFieldIteratorIds) {
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(auto type,
                        ProtoType::Resolve<TestAllTypes>(type_manager));
-  ASSERT_OK_AND_ASSIGN(auto iterator, type->NewFieldIterator(memory_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, type->NewFieldIterator(type_manager));
   std::set<StructType::FieldId> actual_ids;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(auto id, iterator->NextId(type_manager));
+    ASSERT_OK_AND_ASSIGN(auto id, iterator->NextId());
     actual_ids.insert(id);
   }
-  EXPECT_THAT(iterator->NextId(type_manager),
+  EXPECT_THAT(iterator->NextId(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   std::set<StructType::FieldId> expected_ids;
   const auto* const descriptor = TestAllTypes::descriptor();
@@ -246,13 +246,13 @@ TEST_P(ProtoStructTypeTest, NewFieldIteratorName) {
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(auto type,
                        ProtoType::Resolve<TestAllTypes>(type_manager));
-  ASSERT_OK_AND_ASSIGN(auto iterator, type->NewFieldIterator(memory_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, type->NewFieldIterator(type_manager));
   std::set<absl::string_view> actual_names;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(auto name, iterator->NextName(type_manager));
+    ASSERT_OK_AND_ASSIGN(auto name, iterator->NextName());
     actual_names.insert(name);
   }
-  EXPECT_THAT(iterator->NextName(type_manager),
+  EXPECT_THAT(iterator->NextName(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   std::set<absl::string_view> expected_names;
   const auto* const descriptor = TestAllTypes::descriptor();
@@ -268,13 +268,13 @@ TEST_P(ProtoStructTypeTest, NewFieldIteratorNumbers) {
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(auto type,
                        ProtoType::Resolve<TestAllTypes>(type_manager));
-  ASSERT_OK_AND_ASSIGN(auto iterator, type->NewFieldIterator(memory_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, type->NewFieldIterator(type_manager));
   std::set<int64_t> actual_numbers;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(auto number, iterator->NextNumber(type_manager));
+    ASSERT_OK_AND_ASSIGN(auto number, iterator->NextNumber());
     actual_numbers.insert(number);
   }
-  EXPECT_THAT(iterator->NextNumber(type_manager),
+  EXPECT_THAT(iterator->NextNumber(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   std::set<int64_t> expected_numbers;
   const auto* const descriptor = TestAllTypes::descriptor();
@@ -290,13 +290,13 @@ TEST_P(ProtoStructTypeTest, NewFieldIteratorTypes) {
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(auto type,
                        ProtoType::Resolve<TestAllTypes>(type_manager));
-  ASSERT_OK_AND_ASSIGN(auto iterator, type->NewFieldIterator(memory_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, type->NewFieldIterator(type_manager));
   absl::flat_hash_set<Handle<Type>> actual_types;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(auto type, iterator->NextType(type_manager));
+    ASSERT_OK_AND_ASSIGN(auto type, iterator->NextType());
     actual_types.insert(std::move(type));
   }
-  EXPECT_THAT(iterator->NextType(type_manager),
+  EXPECT_THAT(iterator->NextType(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   // We cannot really test actual_types, as hand translating TestAllTypes would
   // be obnoxious. Otherwise we would simply be testing the same logic against

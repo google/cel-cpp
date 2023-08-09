@@ -104,7 +104,7 @@ class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
   size_t field_count() const override { return 4; }
 
   absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      MemoryManager& memory_manager) const override {
+      TypeManager& type_manager) const override {
     return absl::UnimplementedError(
         "StructType::NewFieldIterator() is unimplemented");
   }

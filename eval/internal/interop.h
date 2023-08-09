@@ -68,7 +68,7 @@ class LegacyAbstractStructType : public base_internal::AbstractStructType {
       TypeManager& type_manager, int64_t number) const override;
 
   absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      MemoryManager& memory_manager) const override;
+      TypeManager& type_manager) const override;
 
   absl::StatusOr<UniqueRef<StructValueBuilderInterface>> NewValueBuilder(
       ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND) const override;

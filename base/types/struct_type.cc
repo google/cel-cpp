@@ -104,8 +104,8 @@ absl::StatusOr<absl::optional<StructType::Field>> StructType::FindFieldByNumber(
 }
 
 absl::StatusOr<UniqueRef<StructType::FieldIterator>>
-StructType::NewFieldIterator(MemoryManager& memory_manager) const {
-  return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(NewFieldIterator, memory_manager);
+StructType::NewFieldIterator(TypeManager& type_manager) const {
+  return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(NewFieldIterator, type_manager);
 }
 
 absl::StatusOr<UniqueRef<StructValueBuilderInterface>>
@@ -140,27 +140,23 @@ absl::StatusOr<absl::optional<StructType::Field>> StructType::FindField(
   return absl::visit(FindFieldVisitor{*this, type_manager}, id.data_);
 }
 
-absl::StatusOr<StructType::FieldId> StructType::FieldIterator::NextId(
-    TypeManager& type_manager) {
-  CEL_ASSIGN_OR_RETURN(auto field, Next(type_manager));
+absl::StatusOr<StructType::FieldId> StructType::FieldIterator::NextId() {
+  CEL_ASSIGN_OR_RETURN(auto field, Next());
   return field.id;
 }
 
-absl::StatusOr<absl::string_view> StructType::FieldIterator::NextName(
-    TypeManager& type_manager) {
-  CEL_ASSIGN_OR_RETURN(auto field, Next(type_manager));
+absl::StatusOr<absl::string_view> StructType::FieldIterator::NextName() {
+  CEL_ASSIGN_OR_RETURN(auto field, Next());
   return field.name;
 }
 
-absl::StatusOr<int64_t> StructType::FieldIterator::NextNumber(
-    TypeManager& type_manager) {
-  CEL_ASSIGN_OR_RETURN(auto field, Next(type_manager));
+absl::StatusOr<int64_t> StructType::FieldIterator::NextNumber() {
+  CEL_ASSIGN_OR_RETURN(auto field, Next());
   return field.number;
 }
 
-absl::StatusOr<Handle<Type>> StructType::FieldIterator::NextType(
-    TypeManager& type_manager) {
-  CEL_ASSIGN_OR_RETURN(auto field, Next(type_manager));
+absl::StatusOr<Handle<Type>> StructType::FieldIterator::NextType() {
+  CEL_ASSIGN_OR_RETURN(auto field, Next());
   return std::move(field.type);
 }
 
@@ -175,7 +171,7 @@ size_t LegacyStructType::field_count() const {
 }
 
 absl::StatusOr<UniqueRef<StructType::FieldIterator>>
-LegacyStructType::NewFieldIterator(MemoryManager& memory_manager) const {
+LegacyStructType::NewFieldIterator(TypeManager&) const {
   return absl::UnimplementedError(
       "StructType::NewFieldIterator is not supported by legacy struct types");
 }

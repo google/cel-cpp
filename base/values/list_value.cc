@@ -76,8 +76,8 @@ absl::StatusOr<Handle<Value>> ListValue::Get(const GetContext& context,
 }
 
 absl::StatusOr<UniqueRef<ListValue::Iterator>> ListValue::NewIterator(
-    MemoryManager& memory_manager) const {
-  return CEL_INTERNAL_LIST_VALUE_DISPATCH(NewIterator, memory_manager);
+    ValueFactory& value_factory) const {
+  return CEL_INTERNAL_LIST_VALUE_DISPATCH(NewIterator, value_factory);
 }
 
 internal::TypeInfo ListValue::TypeId() const {
@@ -86,15 +86,13 @@ internal::TypeInfo ListValue::TypeId() const {
 
 #undef CEL_INTERNAL_LIST_VALUE_DISPATCH
 
-absl::StatusOr<size_t> ListValue::Iterator::NextIndex(
-    const ListValue::GetContext& context) {
-  CEL_ASSIGN_OR_RETURN(auto element, Next(context));
+absl::StatusOr<size_t> ListValue::Iterator::NextIndex() {
+  CEL_ASSIGN_OR_RETURN(auto element, Next());
   return element.index;
 }
 
-absl::StatusOr<Handle<Value>> ListValue::Iterator::NextValue(
-    const ListValue::GetContext& context) {
-  CEL_ASSIGN_OR_RETURN(auto element, Next(context));
+absl::StatusOr<Handle<Value>> ListValue::Iterator::NextValue() {
+  CEL_ASSIGN_OR_RETURN(auto element, Next());
   return std::move(element.value);
 }
 
@@ -104,24 +102,25 @@ namespace {
 
 class LegacyListValueIterator final : public ListValue::Iterator {
  public:
-  explicit LegacyListValueIterator(uintptr_t impl)
-      : impl_(impl), size_(LegacyListValueSize(impl_)) {}
+  LegacyListValueIterator(ValueFactory& value_factory, uintptr_t impl)
+      : value_factory_(value_factory),
+        impl_(impl),
+        size_(LegacyListValueSize(impl_)) {}
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::StatusOr<Element> Next(const ListValue::GetContext& context) override {
+  absl::StatusOr<Element> Next() override {
     if (ABSL_PREDICT_FALSE(index_ >= size_)) {
       return absl::FailedPreconditionError(
           "ListValue::Iterator::Next() called when "
           "ListValue::Iterator::HasNext() returns false");
     }
-    CEL_ASSIGN_OR_RETURN(
-        auto value, LegacyListValueGet(impl_, context.value_factory(), index_));
+    CEL_ASSIGN_OR_RETURN(auto value,
+                         LegacyListValueGet(impl_, value_factory_, index_));
     return Element(index_++, std::move(value));
   }
 
-  absl::StatusOr<size_t> NextIndex(
-      const ListValue::GetContext& context) override {
+  absl::StatusOr<size_t> NextIndex() override {
     if (ABSL_PREDICT_FALSE(index_ >= size_)) {
       return absl::FailedPreconditionError(
           "ListValue::Iterator::Next() called when "
@@ -131,6 +130,7 @@ class LegacyListValueIterator final : public ListValue::Iterator {
   }
 
  private:
+  ValueFactory& value_factory_;
   const uintptr_t impl_;
   const size_t size_;
   size_t index_ = 0;
@@ -138,23 +138,24 @@ class LegacyListValueIterator final : public ListValue::Iterator {
 
 class AbstractListValueIterator final : public ListValue::Iterator {
  public:
-  explicit AbstractListValueIterator(const AbstractListValue* value)
-      : value_(value), size_(value_->size()) {}
+  AbstractListValueIterator(ValueFactory& value_factory,
+                            const AbstractListValue* value)
+      : value_factory_(value_factory), value_(value), size_(value_->size()) {}
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::StatusOr<Element> Next(const ListValue::GetContext& context) override {
+  absl::StatusOr<Element> Next() override {
     if (ABSL_PREDICT_FALSE(index_ >= size_)) {
       return absl::FailedPreconditionError(
           "ListValue::Iterator::Next() called when "
           "ListValue::Iterator::HasNext() returns false");
     }
-    CEL_ASSIGN_OR_RETURN(auto value, value_->Get(context, index_));
+    CEL_ASSIGN_OR_RETURN(
+        auto value, value_->Get(ListValue::GetContext(value_factory_), index_));
     return Element(index_++, std::move(value));
   }
 
-  absl::StatusOr<size_t> NextIndex(
-      const ListValue::GetContext& context) override {
+  absl::StatusOr<size_t> NextIndex() override {
     if (ABSL_PREDICT_FALSE(index_ >= size_)) {
       return absl::FailedPreconditionError(
           "ListValue::Iterator::Next() called when "
@@ -164,6 +165,7 @@ class AbstractListValueIterator final : public ListValue::Iterator {
   }
 
  private:
+  ValueFactory& value_factory_;
   const AbstractListValue* const value_;
   const size_t size_;
   size_t index_ = 0;
@@ -179,12 +181,9 @@ absl::StatusOr<JsonArray> GenericListValueConvertToJsonArray(
     const ListValue& value, ValueFactory& value_factory) {
   JsonArrayBuilder builder;
   builder.reserve(value.size());
-  CEL_ASSIGN_OR_RETURN(auto iterator,
-                       value.NewIterator(value_factory.memory_manager()));
+  CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_factory));
   while (iterator->HasNext()) {
-    CEL_ASSIGN_OR_RETURN(
-        auto element,
-        iterator->NextValue(ListValue::GetContext(value_factory)));
+    CEL_ASSIGN_OR_RETURN(auto element, iterator->NextValue());
     CEL_ASSIGN_OR_RETURN(auto element_json,
                          element->ConvertToJson(value_factory));
     builder.push_back(std::move(element_json));
@@ -215,8 +214,9 @@ size_t LegacyListValue::size() const { return LegacyListValueSize(impl_); }
 bool LegacyListValue::empty() const { return LegacyListValueEmpty(impl_); }
 
 absl::StatusOr<UniqueRef<ListValue::Iterator>> LegacyListValue::NewIterator(
-    MemoryManager& memory_manager) const {
-  return MakeUnique<LegacyListValueIterator>(memory_manager, impl_);
+    ValueFactory& value_factory) const {
+  return MakeUnique<LegacyListValueIterator>(value_factory.memory_manager(),
+                                             value_factory, impl_);
 }
 
 absl::StatusOr<Handle<Value>> LegacyListValue::Get(const GetContext& context,
@@ -242,8 +242,9 @@ absl::StatusOr<JsonArray> AbstractListValue::ConvertToJsonArray(
 }
 
 absl::StatusOr<UniqueRef<ListValue::Iterator>> AbstractListValue::NewIterator(
-    MemoryManager& memory_manager) const {
-  return MakeUnique<AbstractListValueIterator>(memory_manager, this);
+    ValueFactory& value_factory) const {
+  return MakeUnique<AbstractListValueIterator>(value_factory.memory_manager(),
+                                               value_factory, this);
 }
 
 }  // namespace base_internal

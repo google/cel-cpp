@@ -63,7 +63,7 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
   size_t field_count() const override;
 
   absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      MemoryManager& memory_manager) const override;
+      TypeManager& type_manager) const override;
 
   // Called by FindField.
   absl::StatusOr<absl::optional<Field>> FindFieldByName(

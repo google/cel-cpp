@@ -275,8 +275,7 @@ LegacyAbstractStructType::FindFieldByNumber(TypeManager& type_manager,
 }
 
 absl::StatusOr<UniqueRef<StructType::FieldIterator>>
-LegacyAbstractStructType::NewFieldIterator(
-    MemoryManager& memory_manager) const {
+LegacyAbstractStructType::NewFieldIterator(TypeManager& type_manager) const {
   return absl::UnimplementedError(
       "Field iteration not implemented for legacy types");
 }

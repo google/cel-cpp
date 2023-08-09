@@ -105,7 +105,8 @@ class ListValue : public Value {
   class Iterator;
 
   absl::StatusOr<UniqueRef<Iterator>> NewIterator(
-      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ValueFactory& value_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   bool Equals(const Value& other) const;
 
@@ -135,14 +136,11 @@ class ListValue::Iterator {
 
   ABSL_MUST_USE_RESULT virtual bool HasNext() = 0;
 
-  virtual absl::StatusOr<Element> Next(
-      const ListValue::GetContext& context) = 0;
+  virtual absl::StatusOr<Element> Next() = 0;
 
-  virtual absl::StatusOr<size_t> NextIndex(
-      const ListValue::GetContext& context);
+  virtual absl::StatusOr<size_t> NextIndex();
 
-  virtual absl::StatusOr<Handle<Value>> NextValue(
-      const ListValue::GetContext& context);
+  virtual absl::StatusOr<Handle<Value>> NextValue();
 };
 
 namespace base_internal {
@@ -186,7 +184,8 @@ class LegacyListValue final : public ListValue, public InlineData {
   constexpr uintptr_t value() const { return impl_; }
 
   absl::StatusOr<UniqueRef<Iterator>> NewIterator(
-      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ValueFactory& value_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   friend class ValueHandle;
@@ -242,7 +241,8 @@ class AbstractListValue : public ListValue,
                                             size_t index) const = 0;
 
   virtual absl::StatusOr<UniqueRef<Iterator>> NewIterator(
-      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ValueFactory& value_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  protected:
   explicit AbstractListValue(Handle<ListType> type);

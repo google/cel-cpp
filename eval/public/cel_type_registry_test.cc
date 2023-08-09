@@ -194,7 +194,7 @@ class TestStructType : public cel::base_internal::AbstractStructType {
   }
 
   absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      MemoryManager& memory_manager) const override {
+      TypeManager& type_manager) const override {
     return absl::UnimplementedError("");
   }
 

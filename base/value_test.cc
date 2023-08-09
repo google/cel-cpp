@@ -230,7 +230,7 @@ class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
   size_t field_count() const override { return 4; }
 
   absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      MemoryManager& memory_manager) const override {
+      TypeManager& type_manager) const override {
     return absl::UnimplementedError(
         "StructType::NewFieldIterator() is unimplemented");
   }
@@ -2784,15 +2784,13 @@ TEST_P(ListValueTest, NewIteratorIndices) {
   ASSERT_OK_AND_ASSIGN(auto list_value,
                        value_factory.CreateListValue<TestListValue>(
                            list_type, std::vector<int64_t>{0, 1, 2}));
-  ASSERT_OK_AND_ASSIGN(auto iterator,
-                       list_value->NewIterator(memory_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, list_value->NewIterator(value_factory));
   std::set<size_t> actual_indices;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(
-        auto index, iterator->NextIndex(ListValue::GetContext(value_factory)));
+    ASSERT_OK_AND_ASSIGN(auto index, iterator->NextIndex());
     actual_indices.insert(index);
   }
-  EXPECT_THAT(iterator->NextIndex(ListValue::GetContext(value_factory)),
+  EXPECT_THAT(iterator->NextIndex(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   std::set<size_t> expected_indices = {0, 1, 2};
   EXPECT_EQ(actual_indices, expected_indices);
@@ -2807,15 +2805,13 @@ TEST_P(ListValueTest, NewIteratorValues) {
   ASSERT_OK_AND_ASSIGN(auto list_value,
                        value_factory.CreateListValue<TestListValue>(
                            list_type, std::vector<int64_t>{3, 4, 5}));
-  ASSERT_OK_AND_ASSIGN(auto iterator,
-                       list_value->NewIterator(memory_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, list_value->NewIterator(value_factory));
   std::set<int64_t> actual_values;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(
-        auto value, iterator->NextValue(ListValue::GetContext(value_factory)));
+    ASSERT_OK_AND_ASSIGN(auto value, iterator->NextValue());
     actual_values.insert(value->As<IntValue>().value());
   }
-  EXPECT_THAT(iterator->NextValue(ListValue::GetContext(value_factory)),
+  EXPECT_THAT(iterator->NextValue(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   std::set<int64_t> expected_values = {3, 4, 5};
   EXPECT_EQ(actual_values, expected_values);
@@ -2940,14 +2936,13 @@ TEST_P(MapValueTest, NewIteratorKeys) {
                        value_factory.CreateMapValue<TestMapValue>(
                            map_type, std::map<std::string, int64_t>{
                                          {"foo", 1}, {"bar", 2}, {"baz", 3}}));
-  ASSERT_OK_AND_ASSIGN(auto iterator, map_value->NewIterator(memory_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, map_value->NewIterator(value_factory));
   std::set<std::string> actual_keys;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(
-        auto key, iterator->NextKey(MapValue::GetContext(value_factory)));
+    ASSERT_OK_AND_ASSIGN(auto key, iterator->NextKey());
     actual_keys.insert(key->As<StringValue>().ToString());
   }
-  EXPECT_THAT(iterator->NextKey(MapValue::GetContext(value_factory)),
+  EXPECT_THAT(iterator->NextKey(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   std::set<std::string> expected_keys = {"foo", "bar", "baz"};
   EXPECT_EQ(actual_keys, expected_keys);
@@ -2964,14 +2959,13 @@ TEST_P(MapValueTest, NewIteratorValues) {
                        value_factory.CreateMapValue<TestMapValue>(
                            map_type, std::map<std::string, int64_t>{
                                          {"foo", 1}, {"bar", 2}, {"baz", 3}}));
-  ASSERT_OK_AND_ASSIGN(auto iterator, map_value->NewIterator(memory_manager()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, map_value->NewIterator(value_factory));
   std::set<int64_t> actual_values;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(
-        auto value, iterator->NextValue(MapValue::GetContext(value_factory)));
+    ASSERT_OK_AND_ASSIGN(auto value, iterator->NextValue());
     actual_values.insert(value->As<IntValue>().value());
   }
-  EXPECT_THAT(iterator->NextValue(MapValue::GetContext(value_factory)),
+  EXPECT_THAT(iterator->NextValue(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   std::set<int64_t> expected_values = {1, 2, 3};
   EXPECT_EQ(actual_values, expected_values);
