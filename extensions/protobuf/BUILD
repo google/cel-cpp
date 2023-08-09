@@ -104,6 +104,7 @@ cc_library(
         ":memory_manager",
         "//base:data",
         "//base:handle",
+        "//base:kind",
         "//base:memory",
         "//base:owner",
         "//common:any",
@@ -121,7 +122,6 @@ cc_library(
         "//extensions/protobuf/internal:timestamp",
         "//extensions/protobuf/internal:wrappers",
         "//internal:casts",
-        "//internal:proto_time_encoding",
         "//internal:rtti",
         "//internal:status_macros",
         "//internal:time",
@@ -139,6 +139,7 @@ cc_library(
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:variant",
         "@com_google_protobuf//:protobuf",
     ],
 )

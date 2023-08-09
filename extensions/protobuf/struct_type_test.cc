@@ -48,6 +48,7 @@ namespace cel::extensions {
 namespace {
 
 using google::api::expr::testutil::EqualsProto;
+using testing::AnyOf;
 using cel::internal::StatusIs;
 
 template <typename T>
@@ -55,6 +56,25 @@ T ParseTextOrDie(absl::string_view text) {
   T proto;
   ABSL_CHECK(google::protobuf::TextFormat::ParseFromString(text, &proto));
   return proto;
+}
+
+absl::StatusOr<Handle<ListValue>> CreateJsonListValue(
+    ValueFactory& value_factory, Handle<Value> element) {
+  ListValueBuilder<Value> builder(
+      value_factory, value_factory.type_factory().GetJsonListType());
+  CEL_RETURN_IF_ERROR(builder.Add(std::move(element)));
+  return std::move(builder).Build();
+}
+
+absl::StatusOr<Handle<MapValue>> CreateJsonMapValue(ValueFactory& value_factory,
+                                                    Handle<IntValue> key,
+                                                    Handle<Value> value) {
+  MapValueBuilder<IntValue, Value> builder(
+      value_factory, value_factory.type_factory().GetIntType(),
+      value_factory.type_factory().GetDynType());
+  CEL_RETURN_IF_ERROR(
+      builder.InsertOrAssign(std::move(key), std::move(value)).status());
+  return std::move(builder).Build();
 }
 
 using TestAllTypes = google::api::expr::test::v1::proto3::TestAllTypes;
@@ -316,7 +336,9 @@ void TestProtoStructValueBuilderImpl(
   ASSERT_OK_AND_ASSIGN(auto field, value_maker(value_factory));
   EXPECT_THAT(builder->SetField(
                   id, value_factory.CreateErrorValue(absl::CancelledError())),
-              StatusIs(absl::StatusCode::kInvalidArgument));
+              StatusIs(AnyOf(absl::StatusCode::kInvalidArgument,
+                             absl::StatusCode::kFailedPrecondition)));
+  EXPECT_OK(builder->SetField(id, field));
   EXPECT_OK(builder->SetField(id, field));
   ASSERT_OK_AND_ASSIGN(auto value, std::move(*builder).Build());
   ASSERT_TRUE(value->Is<ProtoStructValue>());
@@ -553,7 +575,9 @@ TEST_P(ProtoStructValueBuilderTest, AnyNull) {
       memory_manager(), "single_any",
       [](ValueFactory& value_factory) { return value_factory.GetNullValue(); },
       R"pb(single_any {
-             [type.googleapis.com/google.protobuf.Value] {}
+             [type.googleapis.com/google.protobuf.Value] {
+               null_value: NULL_VALUE
+             }
            })pb");
 }
 
@@ -664,6 +688,39 @@ TEST_P(ProtoStructValueBuilderTest, AnyMessage) {
       R"pb(single_any {
              [type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes
                   .NestedMessage] { bb: 1 }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, Value) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "single_value",
+      [](ValueFactory& value_factory) { return value_factory.GetNullValue(); },
+      R"pb(single_value { null_value: NULL_VALUE })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, List) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "list_value",
+      [](ValueFactory& value_factory) {
+        return CreateJsonListValue(value_factory,
+                                   value_factory.CreateIntValue(1));
+      },
+      R"pb(list_value { values { number_value: 1 } })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, Map) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "single_struct",
+      [](ValueFactory& value_factory) {
+        return CreateJsonMapValue(value_factory,
+                                  value_factory.CreateIntValue(1),
+                                  value_factory.GetNullValue());
+      },
+      R"pb(single_struct {
+             fields {
+               key: "1",
+               value { null_value: NULL_VALUE }
+             }
            })pb");
 }
 
@@ -1022,6 +1079,72 @@ TEST_P(ProtoStructValueBuilderTest, RepeatedAny) {
            },
            repeated_any: {
              [type.googleapis.com/google.protobuf.Int64Value] { value: 0 }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedValue) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_value",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<IntValue> builder(
+            value_factory, value_factory.type_factory().GetIntType());
+        CEL_RETURN_IF_ERROR(builder.Add(1));
+        CEL_RETURN_IF_ERROR(builder.Add(0));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_value: { number_value: 1 },
+           repeated_value: { number_value: 0 })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedList) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_list_value",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<Value> builder(
+            value_factory, value_factory.type_factory().GetJsonListType());
+        CEL_ASSIGN_OR_RETURN(
+            auto value1, CreateJsonListValue(value_factory,
+                                             value_factory.CreateIntValue(1)));
+        CEL_RETURN_IF_ERROR(builder.Add(std::move(value1)));
+        CEL_ASSIGN_OR_RETURN(
+            auto value2,
+            CreateJsonListValue(value_factory, value_factory.GetNullValue()));
+        CEL_RETURN_IF_ERROR(builder.Add(std::move(value2)));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_list_value: { values: { number_value: 1 } },
+           repeated_list_value: { values: { null_value: NULL_VALUE } })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedMap) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_struct",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<Value> builder(
+            value_factory, value_factory.type_factory().GetDynType());
+        CEL_ASSIGN_OR_RETURN(
+            auto value1,
+            CreateJsonMapValue(value_factory, value_factory.CreateIntValue(1),
+                               value_factory.CreateIntValue(0)));
+        CEL_RETURN_IF_ERROR(builder.Add(std::move(value1)));
+        CEL_ASSIGN_OR_RETURN(
+            auto value2,
+            CreateJsonMapValue(value_factory, value_factory.CreateIntValue(0),
+                               value_factory.GetNullValue()));
+        CEL_RETURN_IF_ERROR(builder.Add(std::move(value2)));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_struct: {
+             fields: {
+               key: "1",
+               value: { number_value: 0 }
+             }
+           },
+           repeated_struct: {
+             fields: {
+               key: "0",
+               value: { null_value: NULL_VALUE }
+             }
            })pb");
 }
 
@@ -1549,6 +1672,100 @@ TEST_P(ProtoStructValueBuilderTest, MapIntAny) {
              key: 0,
              value: {
                [type.googleapis.com/google.protobuf.Int64Value] { value: 1 }
+             }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapIntValue) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_value",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, Value> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetDynType());
+        CEL_RETURN_IF_ERROR(
+            builder.InsertOrAssign(1, value_factory.CreateIntValue(0))
+                .status());
+        CEL_RETURN_IF_ERROR(
+            builder.InsertOrAssign(0, value_factory.GetNullValue()).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_value: {
+             key: 1,
+             value: { number_value: 0 }
+           },
+           map_int64_value: {
+             key: 0,
+             value: { null_value: NULL_VALUE }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapIntList) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_list_value",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, ListValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetJsonListType());
+        CEL_ASSIGN_OR_RETURN(
+            auto value1, CreateJsonListValue(value_factory,
+                                             value_factory.CreateIntValue(0)));
+        CEL_RETURN_IF_ERROR(
+            builder.InsertOrAssign(1, std::move(value1)).status());
+        CEL_ASSIGN_OR_RETURN(
+            auto value2,
+            CreateJsonListValue(value_factory, value_factory.GetNullValue()));
+        CEL_RETURN_IF_ERROR(
+            builder.InsertOrAssign(0, std::move(value2)).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_list_value: {
+             key: 1,
+             value: { values { number_value: 0 } }
+           },
+           map_int64_list_value: {
+             key: 0,
+             value: { values { null_value: NULL_VALUE } }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapIntStruct) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_struct",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, MapValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetJsonMapType());
+        CEL_ASSIGN_OR_RETURN(
+            auto value1,
+            CreateJsonMapValue(value_factory, value_factory.CreateIntValue(0),
+                               value_factory.CreateIntValue(1)));
+        CEL_RETURN_IF_ERROR(
+            builder.InsertOrAssign(1, std::move(value1)).status());
+        CEL_ASSIGN_OR_RETURN(
+            auto value2,
+            CreateJsonMapValue(value_factory, value_factory.CreateIntValue(1),
+                               value_factory.CreateIntValue(0)));
+        CEL_RETURN_IF_ERROR(
+            builder.InsertOrAssign(0, std::move(value2)).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_struct: {
+             key: 1,
+             value: {
+               fields {
+                 key: "0",
+                 value: { number_value: 1 }
+               }
+             }
+           },
+           map_int64_struct: {
+             key: 0,
+             value: {
+               fields {
+                 key: "1",
+                 value: { number_value: 0 }
+               }
              }
            })pb");
 }

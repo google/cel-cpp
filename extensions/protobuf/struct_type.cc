@@ -14,13 +14,12 @@
 
 #include "extensions/protobuf/struct_type.h"
 
+#include <cstdint>
 #include <limits>
 #include <string>
 #include <utility>
 
-#include "google/protobuf/duration.pb.h"
 #include "google/protobuf/struct.pb.h"
-#include "google/protobuf/wrappers.pb.h"
 #include "absl/base/attributes.h"
 #include "absl/base/optimization.h"
 #include "absl/functional/any_invocable.h"
@@ -32,8 +31,12 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/variant.h"
+#include "base/handle.h"
+#include "base/kind.h"
 #include "base/type_manager.h"
 #include "base/value_factory.h"
+#include "base/values/opaque_value.h"
 #include "base/values/struct_value_builder.h"
 #include "eval/internal/errors.h"
 #include "extensions/protobuf/enum_type.h"
@@ -41,12 +44,12 @@
 #include "extensions/protobuf/internal/duration.h"
 #include "extensions/protobuf/internal/map_reflection.h"
 #include "extensions/protobuf/internal/reflection.h"
+#include "extensions/protobuf/internal/struct.h"
 #include "extensions/protobuf/internal/timestamp.h"
 #include "extensions/protobuf/internal/wrappers.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/struct_value.h"
 #include "extensions/protobuf/type.h"
-#include "internal/proto_time_encoding.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
@@ -188,88 +191,6 @@ struct CheckedCast<uint64_t, uint32_t> {
 
 std::string MakeAnyTypeUrl(absl::string_view type_name) {
   return absl::StrCat("type.googleapis.com/", type_name);
-}
-
-absl::Status SetAnyField(
-    const Value& value, absl::FunctionRef<google::protobuf::Message&()> mutable_message) {
-  std::string type_url;
-  absl::Cord payload;
-  switch (value.kind()) {
-    case ValueKind::kNull: {
-      google::protobuf::Value proto;
-      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-      payload = proto.SerializeAsCord();
-    } break;
-    case ValueKind::kBool: {
-      google::protobuf::BoolValue proto;
-      proto.set_value(value.As<BoolValue>().value());
-      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-      payload = proto.SerializeAsCord();
-    } break;
-    case ValueKind::kInt: {
-      google::protobuf::Int64Value proto;
-      proto.set_value(value.As<IntValue>().value());
-      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-      payload = proto.SerializeAsCord();
-    } break;
-    case ValueKind::kUint: {
-      google::protobuf::UInt64Value proto;
-      proto.set_value(value.As<UintValue>().value());
-      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-      payload = proto.SerializeAsCord();
-    } break;
-    case ValueKind::kDouble: {
-      google::protobuf::DoubleValue proto;
-      proto.set_value(value.As<DoubleValue>().value());
-      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-      payload = proto.SerializeAsCord();
-    } break;
-    case ValueKind::kBytes: {
-      google::protobuf::BytesValue proto;
-      proto.set_value(value.As<BytesValue>().ToString());
-      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-      payload = proto.SerializeAsCord();
-    } break;
-    case ValueKind::kString: {
-      google::protobuf::StringValue proto;
-      proto.set_value(value.As<StringValue>().ToString());
-      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-      payload = proto.SerializeAsCord();
-    } break;
-    case ValueKind::kDuration: {
-      google::protobuf::Duration proto;
-      CEL_RETURN_IF_ERROR(
-          internal::EncodeDuration(value.As<DurationValue>().value(), &proto));
-      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-      payload = proto.SerializeAsCord();
-    } break;
-    case ValueKind::kTimestamp: {
-      google::protobuf::Timestamp proto;
-      CEL_RETURN_IF_ERROR(
-          internal::EncodeTime(value.As<TimestampValue>().value(), &proto));
-      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-      payload = proto.SerializeAsCord();
-    } break;
-    case ValueKind::kStruct: {
-      if (ABSL_PREDICT_FALSE(!value.Is<ProtoStructValue>())) {
-        return absl::InvalidArgumentError(
-            "StructValueBuilderInterface::SetField does not yet support "
-            "converting custom types to "
-            "google.protobuf.Any");
-      }
-      type_url = MakeAnyTypeUrl(
-          value.type()->As<ProtoStructType>().descriptor().full_name());
-      CEL_ASSIGN_OR_RETURN(payload,
-                           value.As<ProtoStructValue>().SerializeAsCord());
-    } break;
-    default:
-      return absl::InvalidArgumentError(absl::StrCat(
-          "StructValueBuilderInterface::SetField does not yet support "
-          "converting ",
-          value.type()->DebugString(), " to google.protobuf.Any"));
-  }
-  return protobuf_internal::WrapDynamicAnyProto(type_url, payload,
-                                                mutable_message());
 }
 
 absl::Status TypeConversionError(const Type& from, const Type& to) {
@@ -550,8 +471,8 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
     }
   }
 
-  static absl::StatusOr<
-      absl::AnyInvocable<absl::Status(const Value&, google::protobuf::MapValueRef&)>>
+  static absl::StatusOr<absl::AnyInvocable<
+      absl::Status(ValueFactory&, const Value&, google::protobuf::MapValueRef&)>>
   GetMapFieldValueConverter(
       const google::protobuf::FieldDescriptor& field_desc, const Type& from_value_type,
       const Type& to_value_type ABSL_ATTRIBUTE_LIFETIME_BOUND) {
@@ -562,7 +483,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
           return TypeConversionError(from_value_type, to_value_type);
         }
         return
-            [&to_value_type](const Value& value,
+            [&to_value_type](ValueFactory&, const Value& value,
                              google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<BoolValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -580,7 +501,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
           return TypeConversionError(from_value_type, to_value_type);
         }
         return
-            [&to_value_type](const Value& value,
+            [&to_value_type](ValueFactory&, const Value& value,
                              google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<IntValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -601,7 +522,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
           return TypeConversionError(from_value_type, to_value_type);
         }
         return
-            [&to_value_type](const Value& value,
+            [&to_value_type](ValueFactory&, const Value& value,
                              google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<IntValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -617,7 +538,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
           return TypeConversionError(from_value_type, to_value_type);
         }
         return
-            [&to_value_type](const Value& value,
+            [&to_value_type](ValueFactory&, const Value& value,
                              google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<UintValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -636,7 +557,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
           return TypeConversionError(from_value_type, to_value_type);
         }
         return
-            [&to_value_type](const Value& value,
+            [&to_value_type](ValueFactory&, const Value& value,
                              google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<UintValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -650,7 +571,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
           return TypeConversionError(from_value_type, to_value_type);
         }
         return
-            [&to_value_type](const Value& value,
+            [&to_value_type](ValueFactory&, const Value& value,
                              google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<StringValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -664,7 +585,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
           return TypeConversionError(from_value_type, to_value_type);
         }
         return
-            [&to_value_type](const Value& value,
+            [&to_value_type](ValueFactory&, const Value& value,
                              google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<BytesValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -678,7 +599,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
           return TypeConversionError(from_value_type, to_value_type);
         }
         return
-            [&to_value_type](const Value& value,
+            [&to_value_type](ValueFactory&, const Value& value,
                              google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<DoubleValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -695,7 +616,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
           return TypeConversionError(from_value_type, to_value_type);
         }
         return
-            [&to_value_type](const Value& value,
+            [&to_value_type](ValueFactory&, const Value& value,
                              google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<DoubleValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -710,7 +631,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
             return TypeConversionError(from_value_type, to_value_type);
           }
           return
-              [&to_value_type](const Value& value,
+              [&to_value_type](ValueFactory&, const Value& value,
                                google::protobuf::MapValueRef& value_ref) -> absl::Status {
                 if (ABSL_PREDICT_FALSE(!value.Is<NullValue>())) {
                   return TypeConversionError(*value.type(), to_value_type);
@@ -725,7 +646,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
           return TypeConversionError(from_value_type, to_value_type);
         }
         return
-            [&to_value_type](const Value& value,
+            [&to_value_type](ValueFactory&, const Value& value,
                              google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (value.Is<IntValue>()) {
                 CEL_ASSIGN_OR_RETURN(auto raw_value,
@@ -748,27 +669,57 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
         switch (to_value_type.kind()) {
           case TypeKind::kAny:
             // google.protobuf.Any
-            return [](const Value& value,
+            return [](ValueFactory& value_factory, const Value& value,
                       google::protobuf::MapValueRef& value_ref) -> absl::Status {
-              return SetAnyField(value, [&value_ref]() -> google::protobuf::Message& {
-                return *value_ref.MutableMessageValue();
-              });
+              CEL_ASSIGN_OR_RETURN(auto any, value.ConvertToAny(value_factory));
+              return protobuf_internal::WrapDynamicAnyProto(
+                  any.type_url(), any.value(),
+                  *value_ref.MutableMessageValue());
             };
           case TypeKind::kDyn:
             // google.protobuf.Value
-            return absl::UnimplementedError(
-                "StructValueBuilderInterface::SetField does not yet implement "
-                "google.protobuf.Value support");
+            return [&to_value_type](
+                       ValueFactory& value_factory, const Value& value,
+                       google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              CEL_ASSIGN_OR_RETURN(auto json,
+                                   value.ConvertToJson(value_factory));
+              return protobuf_internal::DynamicValueProtoFromJson(
+                  json, *value_ref.MutableMessageValue());
+            };
           case TypeKind::kMap:
             // google.protobuf.Struct
-            return absl::UnimplementedError(
-                "StructValueBuilderInterface::SetField does not yet implement "
-                "google.protobuf.Struct support");
+            return [&to_value_type](
+                       ValueFactory& value_factory, const Value& value,
+                       google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (!value.Is<MapValue>() && !value.Is<StructValue>() &&
+                  !value.Is<OpaqueValue>()) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              CEL_ASSIGN_OR_RETURN(auto json,
+                                   value.ConvertToJson(value_factory));
+              if (!absl::holds_alternative<JsonObject>(json)) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              return protobuf_internal::DynamicStructProtoFromJson(
+                  absl::get<JsonObject>(json),
+                  *value_ref.MutableMessageValue());
+            };
           case TypeKind::kList:
             // google.protobuf.ListValue
-            return absl::UnimplementedError(
-                "StructValueBuilderInterface::SetField does not yet implement "
-                "google.protobuf.ListValue support");
+            return [&to_value_type](
+                       ValueFactory& value_factory, const Value& value,
+                       google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (!value.Is<ListValue>() && !value.Is<OpaqueValue>()) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              CEL_ASSIGN_OR_RETURN(auto json,
+                                   value.ConvertToJson(value_factory));
+              if (!absl::holds_alternative<JsonArray>(json)) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              return protobuf_internal::DynamicListValueProtoFromJson(
+                  absl::get<JsonArray>(json), *value_ref.MutableMessageValue());
+            };
           case TypeKind::kDuration:
             // google.protobuf.Duration
             if (ABSL_PREDICT_FALSE(!from_value_type.Is<DurationType>() &&
@@ -776,7 +727,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               return TypeConversionError(from_value_type, to_value_type);
             }
             return [&to_value_type](
-                       const Value& value,
+                       ValueFactory&, const Value& value,
                        google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<DurationValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -792,7 +743,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               return TypeConversionError(from_value_type, to_value_type);
             }
             return [&to_value_type](
-                       const Value& value,
+                       ValueFactory&, const Value& value,
                        google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<TimestampValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -808,7 +759,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               return TypeConversionError(from_value_type, to_value_type);
             }
             return [&to_value_type](
-                       const Value& value,
+                       ValueFactory&, const Value& value,
                        google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<BoolValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -824,7 +775,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               return TypeConversionError(from_value_type, to_value_type);
             }
             return [&to_value_type](
-                       const Value& value,
+                       ValueFactory&, const Value& value,
                        google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<IntValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -840,7 +791,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               return TypeConversionError(from_value_type, to_value_type);
             }
             return [&to_value_type](
-                       const Value& value,
+                       ValueFactory&, const Value& value,
                        google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<UintValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -856,7 +807,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               return TypeConversionError(from_value_type, to_value_type);
             }
             return [&to_value_type](
-                       const Value& value,
+                       ValueFactory&, const Value& value,
                        google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<DoubleValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -872,7 +823,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               return TypeConversionError(from_value_type, to_value_type);
             }
             return [&to_value_type](
-                       const Value& value,
+                       ValueFactory&, const Value& value,
                        google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<BytesValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -888,7 +839,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               return TypeConversionError(from_value_type, to_value_type);
             }
             return [&to_value_type](
-                       const Value& value,
+                       ValueFactory&, const Value& value,
                        google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<StringValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -903,7 +854,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               return TypeConversionError(from_value_type, to_value_type);
             }
             return [&to_value_type](
-                       const Value& value,
+                       ValueFactory&, const Value& value,
                        google::protobuf::MapValueRef& value_ref) -> absl::Status {
               if (ABSL_PREDICT_FALSE(!value.Is<ProtoStructValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -955,7 +906,8 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
       google::protobuf::MapValueRef map_value;
       protobuf_internal::InsertOrLookupMapValue(reflect, message_, field_desc,
                                                 map_key, &map_value);
-      CEL_RETURN_IF_ERROR(value_converter(*entry.value, map_value));
+      CEL_RETURN_IF_ERROR(
+          value_converter(value_factory_, *entry.value, map_value));
     }
     return absl::OkStatus();
   }
@@ -1154,30 +1106,92 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
           CEL_ASSIGN_OR_RETURN(
               auto element,
               iterator->NextValue(ListValue::GetContext(value_factory_)));
+          CEL_ASSIGN_OR_RETURN(auto any, element->ConvertToAny(value_factory_));
           scratch->Clear();
-          CEL_RETURN_IF_ERROR(SetAnyField(
-              *element, [&scratch]() -> google::protobuf::Message& { return *scratch; }));
+          CEL_RETURN_IF_ERROR(protobuf_internal::WrapDynamicAnyProto(
+              any.type_url(), any.value(), *scratch));
           repeated_field_ref.Add(*scratch);
         }
         return absl::OkStatus();
       }
       case TypeKind::kDyn: {
         // google.protobuf.Value
-        return absl::UnimplementedError(
-            "StructValueBuilderInterface::SetField does not yet implement "
-            "google.protobuf.Value support");
+        auto repeated_field_ref =
+            reflect.GetMutableRepeatedFieldRef<google::protobuf::Message>(message_,
+                                                                &field_desc);
+        repeated_field_ref.Clear();
+        CEL_ASSIGN_OR_RETURN(
+            auto iterator, value.NewIterator(value_factory_.memory_manager()));
+        auto scratch = absl::WrapUnique(repeated_field_ref.NewMessage());
+        while (iterator->HasNext()) {
+          CEL_ASSIGN_OR_RETURN(
+              auto element,
+              iterator->NextValue(ListValue::GetContext(value_factory_)));
+          scratch->Clear();
+          CEL_ASSIGN_OR_RETURN(auto json,
+                               element->ConvertToJson(value_factory_));
+          CEL_RETURN_IF_ERROR(
+              protobuf_internal::DynamicValueProtoFromJson(json, *scratch));
+          repeated_field_ref.Add(*scratch);
+        }
+        return absl::OkStatus();
       }
       case TypeKind::kList: {
         // google.protobuf.ListValue
-        return absl::UnimplementedError(
-            "StructValueBuilderInterface::SetField does not yet implement "
-            "google.protobuf.ListValue support");
+        auto repeated_field_ref =
+            reflect.GetMutableRepeatedFieldRef<google::protobuf::Message>(message_,
+                                                                &field_desc);
+        repeated_field_ref.Clear();
+        CEL_ASSIGN_OR_RETURN(
+            auto iterator, value.NewIterator(value_factory_.memory_manager()));
+        auto scratch = absl::WrapUnique(repeated_field_ref.NewMessage());
+        while (iterator->HasNext()) {
+          CEL_ASSIGN_OR_RETURN(
+              auto element,
+              iterator->NextValue(ListValue::GetContext(value_factory_)));
+          scratch->Clear();
+          if (!element->Is<ListValue>() && !element->Is<OpaqueValue>()) {
+            return TypeConversionError(*element->type(), to_element_type);
+          }
+          CEL_ASSIGN_OR_RETURN(auto json,
+                               element->ConvertToJson(value_factory_));
+          if (!absl::holds_alternative<JsonArray>(json)) {
+            return TypeConversionError(*element->type(), to_element_type);
+          }
+          CEL_RETURN_IF_ERROR(protobuf_internal::DynamicListValueProtoFromJson(
+              absl::get<JsonArray>(json), *scratch));
+          repeated_field_ref.Add(*scratch);
+        }
+        return absl::OkStatus();
       }
       case TypeKind::kMap: {
         // google.protobuf.Struct
-        return absl::UnimplementedError(
-            "StructValueBuilderInterface::SetField does not yet implement "
-            "google.protobuf.Struct support");
+        auto repeated_field_ref =
+            reflect.GetMutableRepeatedFieldRef<google::protobuf::Message>(message_,
+                                                                &field_desc);
+        repeated_field_ref.Clear();
+        CEL_ASSIGN_OR_RETURN(
+            auto iterator, value.NewIterator(value_factory_.memory_manager()));
+        auto scratch = absl::WrapUnique(repeated_field_ref.NewMessage());
+        while (iterator->HasNext()) {
+          CEL_ASSIGN_OR_RETURN(
+              auto element,
+              iterator->NextValue(ListValue::GetContext(value_factory_)));
+          scratch->Clear();
+          if (!element->Is<MapValue>() && !element->Is<StructValue>() &&
+              !element->Is<OpaqueValue>()) {
+            return TypeConversionError(*element->type(), to_element_type);
+          }
+          CEL_ASSIGN_OR_RETURN(auto json,
+                               element->ConvertToJson(value_factory_));
+          if (!absl::holds_alternative<JsonObject>(json)) {
+            return TypeConversionError(*element->type(), to_element_type);
+          }
+          CEL_RETURN_IF_ERROR(protobuf_internal::DynamicStructProtoFromJson(
+              absl::get<JsonObject>(json), *scratch));
+          repeated_field_ref.Add(*scratch);
+        }
+        return absl::OkStatus();
       }
       case TypeKind::kDuration:
         // google.protobuf.Duration
@@ -1326,10 +1340,10 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                                    const google::protobuf::Reflection& reflect,
                                    const google::protobuf::FieldDescriptor& field_desc,
                                    Handle<Value>&& value) {
-    return SetAnyField(
-        *value, [this, &reflect, &field_desc]() -> google::protobuf::Message& {
-          return *reflect.MutableMessage(message_, &field_desc, factory_);
-        });
+    CEL_ASSIGN_OR_RETURN(auto any, value->ConvertToAny(value_factory_));
+    return protobuf_internal::WrapDynamicAnyProto(
+        any.type_url(), any.value(),
+        *reflect.MutableMessage(message_, &field_desc, factory_));
   }
 
   absl::Status SetSingularMessageField(
@@ -1341,21 +1355,48 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                                    std::move(value));
       case TypeKind::kDyn: {
         // google.protobuf.Value
-        return absl::UnimplementedError(
-            "StructValueBuilderInterface::SetField does not yet implement "
-            "google.protobuf.Value support");
+        CEL_ASSIGN_OR_RETURN(auto json, value->ConvertToJson(value_factory_));
+        return protobuf_internal::DynamicValueProtoFromJson(
+            json, *reflect.MutableMessage(message_, &field_desc, factory_));
       }
       case TypeKind::kList: {
         // google.protobuf.ListValue
-        return absl::UnimplementedError(
-            "StructValueBuilderInterface::SetField does not yet implement "
-            "google.protobuf.ListValue support");
+        // Only ListValue and OpaqueValue could feasibly serialize as a JSON
+        // list.
+        if (!value->Is<ListValue>() && !value->Is<OpaqueValue>()) {
+          return absl::InvalidArgumentError(absl::StrCat(
+              "type conversion error from ", field.type->DebugString(), " to ",
+              value->type()->DebugString()));
+        }
+        CEL_ASSIGN_OR_RETURN(auto json, value->ConvertToJson(value_factory_));
+        if (!absl::holds_alternative<JsonArray>(json)) {
+          return absl::InvalidArgumentError(absl::StrCat(
+              "type conversion error from ", field.type->DebugString(), " to ",
+              value->type()->DebugString()));
+        }
+        return protobuf_internal::DynamicListValueProtoFromJson(
+            absl::get<JsonArray>(json),
+            *reflect.MutableMessage(message_, &field_desc, factory_));
       }
       case TypeKind::kMap: {
         // google.protobuf.Struct
-        return absl::UnimplementedError(
-            "StructValueBuilderInterface::SetField does not yet implement "
-            "google.protobuf.Struct support");
+        // Only MapValue, StructValue, and OpaqueValue could feasibly
+        // serialize as a JSON object.
+        if (!value->Is<MapValue>() && !value->Is<StructValue>() &&
+            !value->Is<OpaqueValue>()) {
+          return absl::InvalidArgumentError(absl::StrCat(
+              "type conversion error from ", field.type->DebugString(), " to ",
+              value->type()->DebugString()));
+        }
+        CEL_ASSIGN_OR_RETURN(auto json, value->ConvertToJson(value_factory_));
+        if (!absl::holds_alternative<JsonObject>(json)) {
+          return absl::InvalidArgumentError(absl::StrCat(
+              "type conversion error from ", field.type->DebugString(), " to ",
+              value->type()->DebugString()));
+        }
+        return protobuf_internal::DynamicStructProtoFromJson(
+            absl::get<JsonObject>(json),
+            *reflect.MutableMessage(message_, &field_desc, factory_));
       }
       case TypeKind::kDuration: {
         // google.protobuf.Duration
