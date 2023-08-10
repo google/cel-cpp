@@ -72,18 +72,17 @@ size_t MapValue::size() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(size); }
 bool MapValue::empty() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(empty); }
 
 absl::StatusOr<absl::optional<Handle<Value>>> MapValue::Get(
-    const GetContext& context, const Handle<Value>& key) const {
-  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Get, context, key);
+    ValueFactory& value_factory, const Handle<Value>& key) const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Get, value_factory, key);
 }
 
-absl::StatusOr<bool> MapValue::Has(const HasContext& context,
-                                   const Handle<Value>& key) const {
-  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Has, context, key);
+absl::StatusOr<bool> MapValue::Has(const Handle<Value>& key) const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Has, key);
 }
 
 absl::StatusOr<Handle<ListValue>> MapValue::ListKeys(
-    const ListKeysContext& context) const {
-  return CEL_INTERNAL_MAP_VALUE_DISPATCH(ListKeys, context);
+    ValueFactory& value_factory) const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(ListKeys, value_factory);
 }
 
 absl::StatusOr<UniqueRef<MapValue::Iterator>> MapValue::NewIterator(
@@ -192,8 +191,7 @@ class AbstractMapValueIterator final : public MapValue::Iterator {
   absl::StatusOr<Entry> Next() override {
     CEL_RETURN_IF_ERROR(OnNext());
     CEL_ASSIGN_OR_RETURN(auto key, (*keys_iterator_)->NextValue());
-    CEL_ASSIGN_OR_RETURN(
-        auto value, value_->Get(MapValue::GetContext(value_factory_), key));
+    CEL_ASSIGN_OR_RETURN(auto value, value_->Get(value_factory_, key));
     if (ABSL_PREDICT_FALSE(!value.has_value())) {
       // Something is seriously wrong. The list of keys from the map is not
       // consistent with what the map believes is set.
@@ -212,8 +210,7 @@ class AbstractMapValueIterator final : public MapValue::Iterator {
  private:
   absl::Status OnNext() {
     if (ABSL_PREDICT_FALSE(!keys_iterator_.has_value())) {
-      CEL_ASSIGN_OR_RETURN(
-          keys_, value_->ListKeys(MapValue::ListKeysContext(value_factory_)));
+      CEL_ASSIGN_OR_RETURN(keys_, value_->ListKeys(value_factory_));
       CEL_ASSIGN_OR_RETURN(keys_iterator_, keys_->NewIterator(value_factory_));
       ABSL_CHECK((*keys_iterator_)->HasNext());  // Crash OK
     }
@@ -294,19 +291,17 @@ size_t LegacyMapValue::size() const { return LegacyMapValueSize(impl_); }
 bool LegacyMapValue::empty() const { return LegacyMapValueEmpty(impl_); }
 
 absl::StatusOr<absl::optional<Handle<Value>>> LegacyMapValue::Get(
-    const GetContext& context, const Handle<Value>& key) const {
-  return LegacyMapValueGet(impl_, context.value_factory(), key);
+    ValueFactory& value_factory, const Handle<Value>& key) const {
+  return LegacyMapValueGet(impl_, value_factory, key);
 }
 
-absl::StatusOr<bool> LegacyMapValue::Has(const HasContext& context,
-                                         const Handle<Value>& key) const {
-  static_cast<void>(context);
+absl::StatusOr<bool> LegacyMapValue::Has(const Handle<Value>& key) const {
   return LegacyMapValueHas(impl_, key);
 }
 
 absl::StatusOr<Handle<ListValue>> LegacyMapValue::ListKeys(
-    const ListKeysContext& context) const {
-  return LegacyMapValueListKeys(impl_, context.value_factory());
+    ValueFactory& value_factory) const {
+  return LegacyMapValueListKeys(impl_, value_factory);
 }
 
 absl::StatusOr<UniqueRef<MapValue::Iterator>> LegacyMapValue::NewIterator(

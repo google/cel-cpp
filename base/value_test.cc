@@ -354,7 +354,7 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
   size_t size() const override { return entries_.size(); }
 
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
-      const GetContext& context, const Handle<Value>& key) const override {
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError("");
     }
@@ -362,11 +362,10 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
     if (entry == entries_.end()) {
       return absl::nullopt;
     }
-    return context.value_factory().CreateIntValue(entry->second);
+    return value_factory.CreateIntValue(entry->second);
   }
 
-  absl::StatusOr<bool> Has(const HasContext& context,
-                           const Handle<Value>& key) const override {
+  absl::StatusOr<bool> Has(const Handle<Value>& key) const override {
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError("");
     }
@@ -387,17 +386,16 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
   }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
-      const ListKeysContext& context) const override {
-    CEL_ASSIGN_OR_RETURN(
-        auto list_type,
-        context.value_factory().type_factory().CreateListType(
-            context.value_factory().type_factory().GetStringType()));
+      ValueFactory& value_factory) const override {
+    CEL_ASSIGN_OR_RETURN(auto list_type,
+                         value_factory.type_factory().CreateListType(
+                             value_factory.type_factory().GetStringType()));
     std::vector<std::string> keys;
     keys.reserve(entries_.size());
     for (const auto& entry : entries_) {
       keys.push_back(entry.first);
     }
-    return context.value_factory().CreateListValue<TestMapKeysListValue>(
+    return value_factory.CreateListValue<TestMapKeysListValue>(
         std::move(list_type), std::move(keys));
   }
 
@@ -2898,32 +2896,27 @@ TEST_P(MapValueTest, GetAndHas) {
                                          {"foo", 1}, {"bar", 2}, {"baz", 3}}));
   EXPECT_FALSE(map_value->empty());
   EXPECT_EQ(map_value->size(), 3);
-  EXPECT_EQ(Must(map_value->Get(MapValue::GetContext(value_factory),
+  EXPECT_EQ(Must(map_value->Get(value_factory,
                                 Must(value_factory.CreateStringValue("foo")))),
             value_factory.CreateIntValue(1));
-  EXPECT_THAT(map_value->Has(MapValue::HasContext(),
-                             Must(value_factory.CreateStringValue("foo"))),
+  EXPECT_THAT(map_value->Has(Must(value_factory.CreateStringValue("foo"))),
               IsOkAndHolds(true));
-  EXPECT_EQ(Must(map_value->Get(MapValue::GetContext(value_factory),
+  EXPECT_EQ(Must(map_value->Get(value_factory,
                                 Must(value_factory.CreateStringValue("bar")))),
             value_factory.CreateIntValue(2));
-  EXPECT_THAT(map_value->Has(MapValue::HasContext(),
-                             Must(value_factory.CreateStringValue("bar"))),
+  EXPECT_THAT(map_value->Has(Must(value_factory.CreateStringValue("bar"))),
               IsOkAndHolds(true));
-  EXPECT_EQ(Must(map_value->Get(MapValue::GetContext(value_factory),
+  EXPECT_EQ(Must(map_value->Get(value_factory,
                                 Must(value_factory.CreateStringValue("baz")))),
             value_factory.CreateIntValue(3));
-  EXPECT_THAT(map_value->Has(MapValue::HasContext(),
-                             Must(value_factory.CreateStringValue("baz"))),
+  EXPECT_THAT(map_value->Has(Must(value_factory.CreateStringValue("baz"))),
               IsOkAndHolds(true));
-  EXPECT_THAT(map_value->Get(MapValue::GetContext(value_factory),
-                             value_factory.CreateIntValue(0)),
+  EXPECT_THAT(map_value->Get(value_factory, value_factory.CreateIntValue(0)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(map_value->Get(MapValue::GetContext(value_factory),
+  EXPECT_THAT(map_value->Get(value_factory,
                              Must(value_factory.CreateStringValue("missing"))),
               IsOkAndHolds(Eq(absl::nullopt)));
-  EXPECT_THAT(map_value->Has(MapValue::HasContext(),
-                             Must(value_factory.CreateStringValue("missing"))),
+  EXPECT_THAT(map_value->Has(Must(value_factory.CreateStringValue("missing"))),
               IsOkAndHolds(false));
 }
 

@@ -546,11 +546,9 @@ TEST(ValueInterop, MapFromLegacy) {
   EXPECT_TRUE(value->Is<MapValue>());
   EXPECT_EQ(value.As<MapValue>()->size(), 1);
   auto entry_key = value_factory.CreateIntValue(1);
-  EXPECT_THAT(value.As<MapValue>()->Has(MapValue::HasContext(), entry_key),
-              IsOkAndHolds(Eq(true)));
+  EXPECT_THAT(value.As<MapValue>()->Has(entry_key), IsOkAndHolds(Eq(true)));
   ASSERT_OK_AND_ASSIGN(auto entry_value,
-                       value.As<MapValue>()->Get(
-                           MapValue::GetContext(value_factory), entry_key));
+                       value.As<MapValue>()->Get(value_factory, entry_key));
   EXPECT_TRUE((*entry_value)->Is<StringValue>());
   EXPECT_EQ((*entry_value).As<StringValue>()->ToString(), "foo");
 }
@@ -580,31 +578,29 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
   bool empty() const override { return entries_.empty(); }
 
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
-      const GetContext& context, const Handle<Value>& key) const override {
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
     auto existing = entries_.find(key.As<IntValue>()->value());
     if (existing == entries_.end()) {
       return absl::nullopt;
     }
-    return context.value_factory().CreateStringValue(existing->second);
+    return value_factory.CreateStringValue(existing->second);
   }
 
-  absl::StatusOr<bool> Has(const HasContext& context,
-                           const Handle<Value>& key) const override {
+  absl::StatusOr<bool> Has(const Handle<Value>& key) const override {
     return entries_.find(key.As<IntValue>()->value()) != entries_.end();
   }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
-      const ListKeysContext& context) const override {
-    CEL_ASSIGN_OR_RETURN(
-        auto type, context.value_factory().type_factory().CreateListType(
-                       context.value_factory().type_factory().GetIntType()));
+      ValueFactory& value_factory) const override {
+    CEL_ASSIGN_OR_RETURN(auto type,
+                         value_factory.type_factory().CreateListType(
+                             value_factory.type_factory().GetIntType()));
     std::vector<int64_t> keys;
     keys.reserve(entries_.size());
     for (const auto& entry : entries_) {
       keys.push_back(entry.first);
     }
-    return context.value_factory().CreateListValue<TestListValue>(
-        type, std::move(keys));
+    return value_factory.CreateListValue<TestListValue>(type, std::move(keys));
   }
 
  private:

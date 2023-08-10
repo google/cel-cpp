@@ -263,9 +263,8 @@ absl::Status ListKeysStep::ProjectKeys(ExecutionFrame* frame) const {
   }
 
   CEL_ASSIGN_OR_RETURN(
-      auto list_keys,
-      frame->value_stack().Peek().As<cel::MapValue>()->ListKeys(
-          cel::MapValue::ListKeysContext(frame->value_factory())));
+      auto list_keys, frame->value_stack().Peek().As<cel::MapValue>()->ListKeys(
+                          frame->value_factory()));
   frame->value_stack().PopAndPush(std::move(list_keys));
   return absl::OkStatus();
 }

@@ -80,41 +80,15 @@ class MapValue : public Value {
 
   bool empty() const;
 
-  class GetContext final {
-   public:
-    explicit GetContext(ValueFactory& value_factory)
-        : value_factory_(value_factory) {}
-
-    ValueFactory& value_factory() const { return value_factory_; }
-
-   private:
-    ValueFactory& value_factory_;
-  };
-
   // Retrieves the value corresponding to the given key. If the key does not
   // exist, an empty optional is returned. If the given key type is not
   // compatible with the expected key type, an error is returned.
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
-      const GetContext& context, const Handle<Value>& key) const;
+      ValueFactory& value_factory, const Handle<Value>& key) const;
 
-  class HasContext final {};
+  absl::StatusOr<bool> Has(const Handle<Value>& key) const;
 
-  absl::StatusOr<bool> Has(const HasContext& context,
-                           const Handle<Value>& key) const;
-
-  class ListKeysContext final {
-   public:
-    explicit ListKeysContext(ValueFactory& value_factory)
-        : value_factory_(value_factory) {}
-
-    ValueFactory& value_factory() const { return value_factory_; }
-
-   private:
-    ValueFactory& value_factory_;
-  };
-
-  absl::StatusOr<Handle<ListValue>> ListKeys(
-      const ListKeysContext& context) const;
+  absl::StatusOr<Handle<ListValue>> ListKeys(ValueFactory& value_factory) const;
 
   struct Entry final {
     Entry(Handle<Value> key, Handle<Value> value)
@@ -204,13 +178,11 @@ class LegacyMapValue final : public MapValue, public InlineData {
   bool empty() const;
 
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
-      const GetContext& context, const Handle<Value>& key) const;
+      ValueFactory& value_factory, const Handle<Value>& key) const;
 
-  absl::StatusOr<bool> Has(const HasContext& context,
-                           const Handle<Value>& key) const;
+  absl::StatusOr<bool> Has(const Handle<Value>& key) const;
 
-  absl::StatusOr<Handle<ListValue>> ListKeys(
-      const ListKeysContext& context) const;
+  absl::StatusOr<Handle<ListValue>> ListKeys(ValueFactory& value_factory) const;
 
   absl::StatusOr<UniqueRef<Iterator>> NewIterator(
       ValueFactory& value_factory
@@ -267,13 +239,12 @@ class AbstractMapValue : public MapValue,
   virtual bool empty() const { return size() == 0; }
 
   virtual absl::StatusOr<absl::optional<Handle<Value>>> Get(
-      const GetContext& context, const Handle<Value>& key) const = 0;
+      ValueFactory& value_factory, const Handle<Value>& key) const = 0;
 
-  virtual absl::StatusOr<bool> Has(const HasContext& context,
-                                   const Handle<Value>& key) const = 0;
+  virtual absl::StatusOr<bool> Has(const Handle<Value>& key) const = 0;
 
   virtual absl::StatusOr<Handle<ListValue>> ListKeys(
-      const ListKeysContext& context) const = 0;
+      ValueFactory& value_factory) const = 0;
 
   virtual absl::StatusOr<UniqueRef<Iterator>> NewIterator(
       ValueFactory& value_factory

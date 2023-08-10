@@ -1513,7 +1513,7 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
   }
 
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
-      const GetContext& context, const Handle<Value>& key) const final {
+      ValueFactory& value_factory, const Handle<Value>& key) const final {
     if (ABSL_PREDICT_FALSE(type()->key() != key->type())) {
       return absl::InvalidArgumentError(absl::StrCat(
           "map key type mismatch, expected: ", type()->key()->DebugString(),
@@ -1532,45 +1532,37 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
     const auto* value_desc = field_.message_type()->map_value();
     switch (value_desc->cpp_type()) {
       case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
-        return context.value_factory().CreateBoolValue(
-            proto_value.GetBoolValue());
+        return value_factory.CreateBoolValue(proto_value.GetBoolValue());
       case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
-        return context.value_factory().CreateIntValue(
-            proto_value.GetInt64Value());
+        return value_factory.CreateIntValue(proto_value.GetInt64Value());
       case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
-        return context.value_factory().CreateIntValue(
-            proto_value.GetInt32Value());
+        return value_factory.CreateIntValue(proto_value.GetInt32Value());
       case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
-        return context.value_factory().CreateUintValue(
-            proto_value.GetUInt64Value());
+        return value_factory.CreateUintValue(proto_value.GetUInt64Value());
       case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
-        return context.value_factory().CreateUintValue(
-            proto_value.GetUInt32Value());
+        return value_factory.CreateUintValue(proto_value.GetUInt32Value());
       case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
-        return context.value_factory().CreateDoubleValue(
-            proto_value.GetFloatValue());
+        return value_factory.CreateDoubleValue(proto_value.GetFloatValue());
       case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
-        return context.value_factory().CreateDoubleValue(
-            proto_value.GetDoubleValue());
+        return value_factory.CreateDoubleValue(proto_value.GetDoubleValue());
       case google::protobuf::FieldDescriptor::CPPTYPE_STRING: {
         if (value_desc->type() == google::protobuf::FieldDescriptor::TYPE_BYTES) {
-          return context.value_factory().CreateBorrowedBytesValue(
+          return value_factory.CreateBorrowedBytesValue(
               owner_from_this(), proto_value.GetStringValue());
         } else {
-          return context.value_factory().CreateBorrowedStringValue(
+          return value_factory.CreateBorrowedStringValue(
               owner_from_this(), proto_value.GetStringValue());
         }
       }
       case google::protobuf::FieldDescriptor::CPPTYPE_ENUM: {
-        CEL_ASSIGN_OR_RETURN(
-            auto type,
-            ProtoType::Resolve(context.value_factory().type_manager(),
-                               *value_desc->enum_type()));
+        CEL_ASSIGN_OR_RETURN(auto type,
+                             ProtoType::Resolve(value_factory.type_manager(),
+                                                *value_desc->enum_type()));
         switch (type->kind()) {
           case TypeKind::kNullType:
-            return context.value_factory().GetNullValue();
+            return value_factory.GetNullValue();
           case TypeKind::kEnum:
-            return context.value_factory().CreateEnumValue(
+            return value_factory.CreateEnumValue(
                 std::move(type).As<ProtoEnumType>(),
                 proto_value.GetEnumValue());
           default:
@@ -1581,41 +1573,39 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
         }
       }
       case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE: {
-        CEL_ASSIGN_OR_RETURN(
-            auto type,
-            ProtoType::Resolve(context.value_factory().type_manager(),
-                               *value_desc->message_type()));
+        CEL_ASSIGN_OR_RETURN(auto type,
+                             ProtoType::Resolve(value_factory.type_manager(),
+                                                *value_desc->message_type()));
         switch (type->kind()) {
           case TypeKind::kDuration: {
             CEL_ASSIGN_OR_RETURN(auto duration,
                                  protobuf_internal::UnwrapDynamicDurationProto(
                                      proto_value.GetMessageValue()));
-            return context.value_factory().CreateUncheckedDurationValue(
-                duration);
+            return value_factory.CreateUncheckedDurationValue(duration);
           }
           case TypeKind::kTimestamp: {
             CEL_ASSIGN_OR_RETURN(auto time,
                                  protobuf_internal::UnwrapDynamicTimestampProto(
                                      proto_value.GetMessageValue()));
-            return context.value_factory().CreateUncheckedTimestampValue(time);
+            return value_factory.CreateUncheckedTimestampValue(time);
           }
           case TypeKind::kList:
             // google.protobuf.ListValue
             return protobuf_internal::CreateBorrowedListValue(
-                owner_from_this(), context.value_factory(),
+                owner_from_this(), value_factory,
                 proto_value.GetMessageValue());
           case TypeKind::kMap:
             // google.protobuf.Struct
             return protobuf_internal::CreateBorrowedStruct(
-                owner_from_this(), context.value_factory(),
+                owner_from_this(), value_factory,
                 proto_value.GetMessageValue());
           case TypeKind::kDyn:
             // google.protobuf.Value
             return protobuf_internal::CreateBorrowedValue(
-                owner_from_this(), context.value_factory(),
+                owner_from_this(), value_factory,
                 proto_value.GetMessageValue());
           case TypeKind::kAny:
-            return ProtoValue::Create(context.value_factory(),
+            return ProtoValue::Create(value_factory,
                                       proto_value.GetMessageValue());
           case TypeKind::kWrapper:
             switch (type->As<WrapperType>().wrapped()->kind()) {
@@ -1626,7 +1616,7 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                     auto wrapped,
                     protobuf_internal::UnwrapDynamicBoolValueProto(
                         proto_value.GetMessageValue()));
-                return context.value_factory().CreateBoolValue(wrapped);
+                return value_factory.CreateBoolValue(wrapped);
               }
               case TypeKind::kBytes: {
                 // google.protobuf.BytesValue, mapped to CEL primitive bytes
@@ -1635,8 +1625,7 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                     auto wrapped,
                     protobuf_internal::UnwrapDynamicBytesValueProto(
                         proto_value.GetMessageValue()));
-                return context.value_factory().CreateBytesValue(
-                    std::move(wrapped));
+                return value_factory.CreateBytesValue(std::move(wrapped));
               }
               case TypeKind::kDouble: {
                 // google.protobuf.{FloatValue,DoubleValue}, mapped to CEL
@@ -1645,7 +1634,7 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                     auto wrapped,
                     protobuf_internal::UnwrapDynamicFloatingPointValueProto(
                         proto_value.GetMessageValue()));
-                return context.value_factory().CreateDoubleValue(wrapped);
+                return value_factory.CreateDoubleValue(wrapped);
               }
               case TypeKind::kInt: {
                 // google.protobuf.{Int32Value,Int64Value}, mapped to CEL
@@ -1654,7 +1643,7 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                     auto wrapped,
                     protobuf_internal::UnwrapDynamicSignedIntegralValueProto(
                         proto_value.GetMessageValue()));
-                return context.value_factory().CreateIntValue(wrapped);
+                return value_factory.CreateIntValue(wrapped);
               }
               case TypeKind::kString: {
                 // google.protobuf.StringValue, mapped to CEL primitive bytes
@@ -1663,7 +1652,7 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                     auto wrapped,
                     protobuf_internal::UnwrapDynamicStringValueProto(
                         proto_value.GetMessageValue()));
-                return context.value_factory().CreateUncheckedStringValue(
+                return value_factory.CreateUncheckedStringValue(
                     std::move(wrapped));
               }
               case TypeKind::kUint: {
@@ -1673,17 +1662,16 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                     auto wrapped,
                     protobuf_internal::UnwrapDynamicUnsignedIntegralValueProto(
                         proto_value.GetMessageValue()));
-                return context.value_factory().CreateUintValue(wrapped);
+                return value_factory.CreateUintValue(wrapped);
               }
               default:
                 ABSL_UNREACHABLE();
             }
           case TypeKind::kStruct:
-            return context.value_factory()
-                .CreateBorrowedStructValue<
-                    protobuf_internal::DynamicMemberParsedProtoStructValue>(
-                    owner_from_this(), std::move(type).As<ProtoStructType>(),
-                    &proto_value.GetMessageValue());
+            return value_factory.CreateBorrowedStructValue<
+                protobuf_internal::DynamicMemberParsedProtoStructValue>(
+                owner_from_this(), std::move(type).As<ProtoStructType>(),
+                &proto_value.GetMessageValue());
           default:
             return absl::InternalError(absl::StrCat(
                 "Unexpected protocol buffer type implementation for \"",
@@ -1694,8 +1682,7 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
     }
   }
 
-  absl::StatusOr<bool> Has(const HasContext& context,
-                           const Handle<Value>& key) const final {
+  absl::StatusOr<bool> Has(const Handle<Value>& key) const final {
     if (ABSL_PREDICT_FALSE(type()->key() != key->type())) {
       return absl::InvalidArgumentError(absl::StrCat(
           "map key type mismatch, expected: ", type()->key()->DebugString(),
@@ -1711,21 +1698,20 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
   }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
-      const ListKeysContext& context) const final {
+      ValueFactory& value_factory) const final {
     CEL_ASSIGN_OR_RETURN(
         auto list_type,
-        context.value_factory().type_factory().CreateListType(type()->key()));
+        value_factory.type_factory().CreateListType(type()->key()));
     std::vector<google::protobuf::MapKey, Allocator<google::protobuf::MapKey>> keys(
-        Allocator<google::protobuf::MapKey>(context.value_factory().memory_manager()));
+        Allocator<google::protobuf::MapKey>(value_factory.memory_manager()));
     keys.reserve(size());
     auto begin = protobuf_internal::MapBegin(reflection(), message_, field_);
     auto end = protobuf_internal::MapEnd(reflection(), message_, field_);
     for (; begin != end; ++begin) {
       keys.push_back(begin.GetKey());
     }
-    return context.value_factory()
-        .CreateBorrowedListValue<ParsedProtoMapValueKeysList>(
-            owner_from_this(), std::move(list_type), std::move(keys));
+    return value_factory.CreateBorrowedListValue<ParsedProtoMapValueKeysList>(
+        owner_from_this(), std::move(list_type), std::move(keys));
   }
 
  private:

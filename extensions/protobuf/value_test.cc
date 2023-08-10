@@ -429,9 +429,8 @@ TEST_P(ProtoValueTest, StaticValueStructValue) {
   EXPECT_TRUE(value->Is<MapValue>());
   EXPECT_EQ(value->As<MapValue>().size(), 1);
   ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
-  EXPECT_THAT(
-      value->As<MapValue>().Get(MapValue::GetContext(value_factory), key),
-      IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
+  EXPECT_THAT(value->As<MapValue>().Get(value_factory, key),
+              IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
 }
 
 TEST_P(ProtoValueTest, StaticLValueValueStructValue) {
@@ -449,9 +448,8 @@ TEST_P(ProtoValueTest, StaticLValueValueStructValue) {
   EXPECT_TRUE(value->Is<MapValue>());
   EXPECT_EQ(value->As<MapValue>().size(), 1);
   ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
-  EXPECT_THAT(
-      value->As<MapValue>().Get(MapValue::GetContext(value_factory), key),
-      IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
+  EXPECT_THAT(value->As<MapValue>().Get(value_factory, key),
+              IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
 }
 
 TEST_P(ProtoValueTest, StaticRValueValueStructValue) {
@@ -469,9 +467,8 @@ TEST_P(ProtoValueTest, StaticRValueValueStructValue) {
   EXPECT_TRUE(value->Is<MapValue>());
   EXPECT_EQ(value->As<MapValue>().size(), 1);
   ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
-  EXPECT_THAT(
-      value->As<MapValue>().Get(MapValue::GetContext(value_factory), key),
-      IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
+  EXPECT_THAT(value->As<MapValue>().Get(value_factory, key),
+              IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
 }
 
 TEST_P(ProtoValueTest, StaticValueUnset) {
@@ -561,7 +558,7 @@ TEST_P(ProtoValueTest, StaticStruct) {
       auto value, ProtoValue::Create(value_factory, std::move(struct_proto)));
   EXPECT_EQ(value->size(), 1);
   ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
-  EXPECT_THAT(value->Get(MapValue::GetContext(value_factory), key),
+  EXPECT_THAT(value->Get(value_factory, key),
               IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
 }
 
@@ -578,7 +575,7 @@ TEST_P(ProtoValueTest, StaticLValueStruct) {
                        ProtoValue::Create(value_factory, struct_proto));
   EXPECT_EQ(value->size(), 1);
   ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
-  EXPECT_THAT(value->Get(MapValue::GetContext(value_factory), key),
+  EXPECT_THAT(value->Get(value_factory, key),
               IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
 }
 
@@ -595,7 +592,7 @@ TEST_P(ProtoValueTest, StaticRValueStruct) {
       auto value, ProtoValue::Create(value_factory, std::move(struct_proto)));
   EXPECT_EQ(value->size(), 1);
   ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
-  EXPECT_THAT(value->Get(MapValue::GetContext(value_factory), key),
+  EXPECT_THAT(value->Get(value_factory, key),
               IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
 }
 
@@ -780,9 +777,8 @@ TEST_P(ProtoValueAnyTest, AnyMessage) {
     ASSERT_TRUE(value->Is<MapValue>());
     EXPECT_EQ(value.As<MapValue>()->size(), 1);
     ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
-    ASSERT_OK_AND_ASSIGN(
-        auto field,
-        value->As<MapValue>().Get(MapValue::GetContext(value_factory), key));
+    ASSERT_OK_AND_ASSIGN(auto field,
+                         value->As<MapValue>().Get(value_factory, key));
     ASSERT_TRUE(field.has_value());
     ASSERT_TRUE((*field)->Is<NullValue>());
   });

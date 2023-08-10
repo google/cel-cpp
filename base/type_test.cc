@@ -978,9 +978,8 @@ TEST_P(TypeNewValueFromAnyTest, DynType) {
   ASSERT_TRUE(value->Is<MapValue>());
   ASSERT_EQ(value->As<MapValue>().size(), 1);
   ASSERT_OK_AND_ASSIGN(auto key, value_factory().CreateStringValue("foo"));
-  ASSERT_OK_AND_ASSIGN(
-      auto entry,
-      value->As<MapValue>().Get(MapValue::GetContext(value_factory()), key));
+  ASSERT_OK_AND_ASSIGN(auto entry,
+                       value->As<MapValue>().Get(value_factory(), key));
   ASSERT_TRUE(entry.has_value());
   ASSERT_TRUE((*entry)->Is<BoolValue>());
   EXPECT_TRUE((*entry)->As<BoolValue>().value());

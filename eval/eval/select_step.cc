@@ -130,7 +130,7 @@ Handle<Value> TestOnlySelect(const Handle<MapValue>& map,
                              cel::ValueFactory& value_factory) {
   // Field presence only supports string keys containing valid identifier
   // characters.
-  auto presence = map->Has(MapValue::HasContext(), field_name);
+  auto presence = map->Has(field_name);
 
   if (!presence.ok()) {
     return value_factory.CreateErrorValue(std::move(presence).status());
@@ -209,10 +209,8 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     }
     case ValueKind::kMap: {
       const auto& cel_map = arg.As<MapValue>();
-      CEL_ASSIGN_OR_RETURN(
-          auto result,
-          cel_map->Get(MapValue::GetContext(frame->value_factory()),
-                       field_value_));
+      CEL_ASSIGN_OR_RETURN(auto result,
+                           cel_map->Get(frame->value_factory(), field_value_));
 
       // If object is not found, we return Error, per CEL specification.
       if (!result.has_value()) {

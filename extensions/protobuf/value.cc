@@ -268,7 +268,7 @@ class StaticProtoJsonMapValue : public CEL_MAP_VALUE_CLASS {
   size_t size() const final { return value_.fields_size(); }
 
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
-      const GetContext& context, const Handle<Value>& key) const final {
+      ValueFactory& value_factory, const Handle<Value>& key) const final {
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError("expected key to be string value");
     }
@@ -276,13 +276,12 @@ class StaticProtoJsonMapValue : public CEL_MAP_VALUE_CLASS {
     if (it == value_.fields().end()) {
       return absl::nullopt;
     }
-    return CreateMemberJsonValue(
-        context.value_factory(), it->second,
-        [this]() mutable { return owner_from_this(); });
+    return CreateMemberJsonValue(value_factory, it->second, [this]() mutable {
+      return owner_from_this();
+    });
   }
 
-  absl::StatusOr<bool> Has(const HasContext& context,
-                           const Handle<Value>& key) const final {
+  absl::StatusOr<bool> Has(const Handle<Value>& key) const final {
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError("expected key to be string value");
     }
@@ -290,17 +289,17 @@ class StaticProtoJsonMapValue : public CEL_MAP_VALUE_CLASS {
   }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
-      const ListKeysContext& context) const final {
+      ValueFactory& value_factory) const final {
     CEL_ASSIGN_OR_RETURN(
         auto list_type,
-        context.value_factory().type_factory().CreateListType(type()->key()));
+        value_factory.type_factory().CreateListType(type()->key()));
     std::vector<absl::string_view, Allocator<absl::string_view>> field_names(
-        Allocator<absl::string_view>(context.value_factory().memory_manager()));
+        Allocator<absl::string_view>(value_factory.memory_manager()));
     field_names.reserve(value_.fields_size());
     for (const auto& field : value_.fields()) {
       field_names.push_back(field.first);
     }
-    return context.value_factory()
+    return value_factory
         .CreateBorrowedListValue<StaticProtoJsonMapKeysListValue>(
             owner_from_this(), std::move(list_type), &value_,
             std::move(field_names));
@@ -330,7 +329,7 @@ class ArenaStaticProtoJsonMapValue : public CEL_MAP_VALUE_CLASS {
   size_t size() const final { return value_->fields_size(); }
 
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
-      const GetContext& context, const Handle<Value>& key) const final {
+      ValueFactory& value_factory, const Handle<Value>& key) const final {
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError("expected key to be string value");
     }
@@ -338,13 +337,12 @@ class ArenaStaticProtoJsonMapValue : public CEL_MAP_VALUE_CLASS {
     if (it == value_->fields().end()) {
       return absl::nullopt;
     }
-    return CreateMemberJsonValue(
-        context.value_factory(), it->second,
-        [this]() mutable { return owner_from_this(); });
+    return CreateMemberJsonValue(value_factory, it->second, [this]() mutable {
+      return owner_from_this();
+    });
   }
 
-  absl::StatusOr<bool> Has(const HasContext& context,
-                           const Handle<Value>& key) const final {
+  absl::StatusOr<bool> Has(const Handle<Value>& key) const final {
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError("expected key to be string value");
     }
@@ -352,17 +350,17 @@ class ArenaStaticProtoJsonMapValue : public CEL_MAP_VALUE_CLASS {
   }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
-      const ListKeysContext& context) const final {
+      ValueFactory& value_factory) const final {
     CEL_ASSIGN_OR_RETURN(
         auto list_type,
-        context.value_factory().type_factory().CreateListType(type()->key()));
+        value_factory.type_factory().CreateListType(type()->key()));
     std::vector<absl::string_view, Allocator<absl::string_view>> field_names(
-        Allocator<absl::string_view>(context.value_factory().memory_manager()));
+        Allocator<absl::string_view>(value_factory.memory_manager()));
     field_names.reserve(value_->fields_size());
     for (const auto& field : value_->fields()) {
       field_names.push_back(field.first);
     }
-    return context.value_factory()
+    return value_factory
         .CreateBorrowedListValue<StaticProtoJsonMapKeysListValue>(
             owner_from_this(), std::move(list_type), value_,
             std::move(field_names));

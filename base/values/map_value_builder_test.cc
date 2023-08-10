@@ -77,22 +77,18 @@ TEST(MapValueBuilder, UnspecializedUnspecialized) {
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
-  ASSERT_OK_AND_ASSIGN(auto entry,
-                       map->Get(MapValue::GetContext(value_factory), key));
+  ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE((*entry)->Is<BytesValue>());
   EXPECT_TRUE((*entry).As<BytesValue>()->empty());
-  ASSERT_OK_AND_ASSIGN(
-      entry, map->Get(MapValue::GetContext(value_factory), make_key("foo")));
+  ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("foo")));
   EXPECT_TRUE((*entry)->Is<BytesValue>());
   EXPECT_TRUE((*entry).As<BytesValue>()->empty());
-  ASSERT_OK_AND_ASSIGN(
-      entry, map->Get(MapValue::GetContext(value_factory), make_key("bar")));
+  ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("bar")));
   EXPECT_TRUE((*entry)->Is<BytesValue>());
   EXPECT_EQ((*entry).As<BytesValue>()->ToString(), "baz");
   EXPECT_EQ(map->DebugString(),
             "{\"\": b\"\", \"foo\": b\"\", \"bar\": b\"baz\"}");
-  ASSERT_OK_AND_ASSIGN(auto keys,
-                       map->ListKeys(MapValue::ListKeysContext(value_factory)));
+  ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(keys->size(), 3);
   EXPECT_EQ(keys->DebugString(), "[\"\", \"foo\", \"bar\"]");
@@ -146,22 +142,18 @@ TEST(MapValueBuilder, UnspecializedGeneric) {
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
-  ASSERT_OK_AND_ASSIGN(auto entry,
-                       map->Get(MapValue::GetContext(value_factory), key));
+  ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE((*entry)->Is<BytesValue>());
   EXPECT_TRUE((*entry).As<BytesValue>()->empty());
-  ASSERT_OK_AND_ASSIGN(
-      entry, map->Get(MapValue::GetContext(value_factory), make_key("foo")));
+  ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("foo")));
   EXPECT_TRUE((*entry)->Is<BytesValue>());
   EXPECT_TRUE((*entry).As<BytesValue>()->empty());
-  ASSERT_OK_AND_ASSIGN(
-      entry, map->Get(MapValue::GetContext(value_factory), make_key("bar")));
+  ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("bar")));
   EXPECT_TRUE((*entry)->Is<BytesValue>());
   EXPECT_EQ((*entry).As<BytesValue>()->ToString(), "baz");
   EXPECT_EQ(map->DebugString(),
             "{\"\": b\"\", \"foo\": b\"\", \"bar\": b\"baz\"}");
-  ASSERT_OK_AND_ASSIGN(auto keys,
-                       map->ListKeys(MapValue::ListKeysContext(value_factory)));
+  ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(keys->size(), 3);
   EXPECT_EQ(keys->DebugString(), "[\"\", \"foo\", \"bar\"]");
@@ -215,22 +207,18 @@ TEST(MapValueBuilder, GenericUnspecialized) {
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
-  ASSERT_OK_AND_ASSIGN(auto entry,
-                       map->Get(MapValue::GetContext(value_factory), key));
+  ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE((*entry)->Is<BytesValue>());
   EXPECT_TRUE((*entry).As<BytesValue>()->empty());
-  ASSERT_OK_AND_ASSIGN(
-      entry, map->Get(MapValue::GetContext(value_factory), make_key("foo")));
+  ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("foo")));
   EXPECT_TRUE((*entry)->Is<BytesValue>());
   EXPECT_TRUE((*entry).As<BytesValue>()->empty());
-  ASSERT_OK_AND_ASSIGN(
-      entry, map->Get(MapValue::GetContext(value_factory), make_key("bar")));
+  ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("bar")));
   EXPECT_TRUE((*entry)->Is<BytesValue>());
   EXPECT_EQ((*entry).As<BytesValue>()->ToString(), "baz");
   EXPECT_EQ(map->DebugString(),
             "{\"\": b\"\", \"foo\": b\"\", \"bar\": b\"baz\"}");
-  ASSERT_OK_AND_ASSIGN(auto keys,
-                       map->ListKeys(MapValue::ListKeysContext(value_factory)));
+  ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(keys->size(), 3);
   EXPECT_EQ(keys->DebugString(), "[\"\", \"foo\", \"bar\"]");
@@ -284,22 +272,18 @@ TEST(MapValueBuilder, GenericGeneric) {
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
-  ASSERT_OK_AND_ASSIGN(auto entry,
-                       map->Get(MapValue::GetContext(value_factory), key));
+  ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE((*entry)->Is<BytesValue>());
   EXPECT_TRUE((*entry).As<BytesValue>()->empty());
-  ASSERT_OK_AND_ASSIGN(
-      entry, map->Get(MapValue::GetContext(value_factory), make_key("foo")));
+  ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("foo")));
   EXPECT_TRUE((*entry)->Is<BytesValue>());
   EXPECT_TRUE((*entry).As<BytesValue>()->empty());
-  ASSERT_OK_AND_ASSIGN(
-      entry, map->Get(MapValue::GetContext(value_factory), make_key("bar")));
+  ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("bar")));
   EXPECT_TRUE((*entry)->Is<BytesValue>());
   EXPECT_EQ((*entry).As<BytesValue>()->ToString(), "baz");
   EXPECT_EQ(map->DebugString(),
             "{\"\": b\"\", \"foo\": b\"\", \"bar\": b\"baz\"}");
-  ASSERT_OK_AND_ASSIGN(auto keys,
-                       map->ListKeys(MapValue::ListKeysContext(value_factory)));
+  ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(keys->size(), 3);
   EXPECT_EQ(keys->DebugString(), "[\"\", \"foo\", \"bar\"]");
@@ -351,21 +335,17 @@ TEST(MapValueBuilder, UnspecializedSpecialized) {
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
-  ASSERT_OK_AND_ASSIGN(auto entry,
-                       map->Get(MapValue::GetContext(value_factory), key));
+  ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE((*entry)->Is<IntValue>());
   EXPECT_EQ((*entry).As<IntValue>()->value(), 0);
-  ASSERT_OK_AND_ASSIGN(
-      entry, map->Get(MapValue::GetContext(value_factory), make_key("foo")));
+  ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("foo")));
   EXPECT_TRUE((*entry)->Is<IntValue>());
   EXPECT_EQ((*entry).As<IntValue>()->value(), 0);
-  ASSERT_OK_AND_ASSIGN(
-      entry, map->Get(MapValue::GetContext(value_factory), make_key("bar")));
+  ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("bar")));
   EXPECT_TRUE((*entry)->Is<IntValue>());
   EXPECT_EQ((*entry).As<IntValue>()->value(), 1);
   EXPECT_EQ(map->DebugString(), "{\"\": 0, \"foo\": 0, \"bar\": 1}");
-  ASSERT_OK_AND_ASSIGN(auto keys,
-                       map->ListKeys(MapValue::ListKeysContext(value_factory)));
+  ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(keys->size(), 3);
   EXPECT_EQ(keys->DebugString(), "[\"\", \"foo\", \"bar\"]");
@@ -417,21 +397,17 @@ TEST(MapValueBuilder, GenericSpecialized) {
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
-  ASSERT_OK_AND_ASSIGN(auto entry,
-                       map->Get(MapValue::GetContext(value_factory), key));
+  ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE((*entry)->Is<IntValue>());
   EXPECT_EQ((*entry).As<IntValue>()->value(), 0);
-  ASSERT_OK_AND_ASSIGN(
-      entry, map->Get(MapValue::GetContext(value_factory), make_key("foo")));
+  ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("foo")));
   EXPECT_TRUE((*entry)->Is<IntValue>());
   EXPECT_EQ((*entry).As<IntValue>()->value(), 0);
-  ASSERT_OK_AND_ASSIGN(
-      entry, map->Get(MapValue::GetContext(value_factory), make_key("bar")));
+  ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("bar")));
   EXPECT_TRUE((*entry)->Is<IntValue>());
   EXPECT_EQ((*entry).As<IntValue>()->value(), 1);
   EXPECT_EQ(map->DebugString(), "{\"\": 0, \"foo\": 0, \"bar\": 1}");
-  ASSERT_OK_AND_ASSIGN(auto keys,
-                       map->ListKeys(MapValue::ListKeysContext(value_factory)));
+  ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(keys->size(), 3);
   EXPECT_EQ(keys->DebugString(), "[\"\", \"foo\", \"bar\"]");
@@ -483,21 +459,17 @@ TEST(MapValueBuilder, SpecializedUnspecialized) {
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
-  ASSERT_OK_AND_ASSIGN(auto entry,
-                       map->Get(MapValue::GetContext(value_factory), key));
+  ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE((*entry)->Is<StringValue>());
   EXPECT_TRUE((*entry).As<StringValue>()->empty());
-  ASSERT_OK_AND_ASSIGN(
-      entry, map->Get(MapValue::GetContext(value_factory), make_key(1)));
+  ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key(1)));
   EXPECT_TRUE((*entry)->Is<StringValue>());
   EXPECT_TRUE((*entry).As<StringValue>()->empty());
-  ASSERT_OK_AND_ASSIGN(
-      entry, map->Get(MapValue::GetContext(value_factory), make_key(2)));
+  ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key(2)));
   EXPECT_TRUE((*entry)->Is<StringValue>());
   EXPECT_EQ((*entry).As<StringValue>()->ToString(), "foo");
   EXPECT_EQ(map->DebugString(), "{0: \"\", 1: \"\", 2: \"foo\"}");
-  ASSERT_OK_AND_ASSIGN(auto keys,
-                       map->ListKeys(MapValue::ListKeysContext(value_factory)));
+  ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(keys->size(), 3);
   EXPECT_EQ(keys->DebugString(), "[0, 1, 2]");
@@ -549,16 +521,13 @@ TEST(MapValueBuilder, SpecializedGeneric) {
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
-  ASSERT_OK_AND_ASSIGN(auto entry,
-                       map->Get(MapValue::GetContext(value_factory), key));
+  ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE((*entry)->Is<StringValue>());
   EXPECT_TRUE((*entry).As<StringValue>()->empty());
-  ASSERT_OK_AND_ASSIGN(
-      entry, map->Get(MapValue::GetContext(value_factory), make_key(1)));
+  ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key(1)));
   EXPECT_TRUE((*entry)->Is<StringValue>());
   EXPECT_TRUE((*entry).As<StringValue>()->empty());
-  ASSERT_OK_AND_ASSIGN(
-      entry, map->Get(MapValue::GetContext(value_factory), make_key(2)));
+  ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key(2)));
   EXPECT_TRUE((*entry)->Is<StringValue>());
   EXPECT_EQ((*entry).As<StringValue>()->ToString(), "foo");
   EXPECT_EQ(map->DebugString(), "{0: \"\", 1: \"\", 2: \"foo\"}");
@@ -610,24 +579,22 @@ void TestMapBuilder(GetKey get_key, GetValue get_value, MakeKey make_key1,
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
-  ASSERT_OK_AND_ASSIGN(auto entry,
-                       map->Get(MapValue::GetContext(value_factory), key));
+  ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE((*entry)->template Is<Value>());
   EXPECT_EQ(*((*entry).template As<Value>()),
             *((make_value1(value_factory)).template As<Value>()));
-  ASSERT_OK_AND_ASSIGN(entry, map->Get(MapValue::GetContext(value_factory),
-                                       make_key2(value_factory)));
+  ASSERT_OK_AND_ASSIGN(entry,
+                       map->Get(value_factory, make_key2(value_factory)));
   EXPECT_TRUE((*entry)->template Is<Value>());
   EXPECT_EQ(*((*entry).template As<Value>()),
             *((make_value1(value_factory)).template As<Value>()));
-  ASSERT_OK_AND_ASSIGN(entry, map->Get(MapValue::GetContext(value_factory),
-                                       make_key3(value_factory)));
+  ASSERT_OK_AND_ASSIGN(entry,
+                       map->Get(value_factory, make_key3(value_factory)));
   EXPECT_TRUE((*entry)->template Is<Value>());
   EXPECT_EQ(*((*entry).template As<Value>()),
             *((make_value2(value_factory)).template As<Value>()));
   EXPECT_EQ(map->DebugString(), debug_string);
-  ASSERT_OK_AND_ASSIGN(auto keys,
-                       map->ListKeys(MapValue::ListKeysContext(value_factory)));
+  ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(keys->size(), 3);
   ASSERT_OK_AND_ASSIGN(auto element, keys->Get(value_factory, 0));
