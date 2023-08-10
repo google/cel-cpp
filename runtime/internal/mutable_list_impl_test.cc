@@ -94,9 +94,7 @@ TEST(MutableListImplValue, ListBuilding) {
 
   EXPECT_EQ(list_value->size(), 1);
 
-  ListValue::GetContext ctx(value_factory);
-
-  ASSERT_OK_AND_ASSIGN(auto element, list_value->Get(ctx, 0));
+  ASSERT_OK_AND_ASSIGN(auto element, list_value->Get(value_factory, 0));
 
   ASSERT_TRUE(element->Is<IntValue>());
 

@@ -186,7 +186,7 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInList(
       return absl::UnknownError(
           absl::StrCat("Index error: index=", idx, " size=", cel_list->size()));
     }
-    return cel_list->Get(ListValue::GetContext(frame->value_factory()), idx);
+    return cel_list->Get(frame->value_factory(), idx);
   }
 
   return absl::UnknownError(

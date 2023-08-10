@@ -174,10 +174,10 @@ class StaticProtoJsonListValue : public CEL_LIST_VALUE_CLASS {
 
   size_t size() const final { return value_.values_size(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     return CreateMemberJsonValue(
-        context.value_factory(), value_.values(index),
+        value_factory, value_.values(index),
         [this]() mutable { return owner_from_this(); });
   }
 
@@ -204,10 +204,10 @@ class ArenaStaticProtoJsonListValue : public CEL_LIST_VALUE_CLASS {
 
   size_t size() const final { return value_->values_size(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     return CreateMemberJsonValue(
-        context.value_factory(), value_->values(index),
+        value_factory, value_->values(index),
         [this]() mutable { return owner_from_this(); });
   }
 
@@ -237,10 +237,10 @@ class StaticProtoJsonMapKeysListValue : public CEL_LIST_VALUE_CLASS {
 
   size_t size() const final { return field_names_.size(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     return CreateMemberJsonValue(
-        context.value_factory(), value_->fields().at(field_names_[index]),
+        value_factory, value_->fields().at(field_names_[index]),
         [this]() mutable { return owner_from_this(); });
   }
 

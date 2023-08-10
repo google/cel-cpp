@@ -64,13 +64,12 @@ absl::StatusOr<Handle<ListValue>> ConcatList(ValueFactory& factory,
 
   list_builder->reserve(size1 + size2);
 
-  ListValue::GetContext context(factory);
   for (int i = 0; i < size1; i++) {
-    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value1->Get(context, i));
+    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value1->Get(factory, i));
     CEL_RETURN_IF_ERROR(list_builder->Add(std::move(elem)));
   }
   for (int i = 0; i < size2; i++) {
-    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value2->Get(context, i));
+    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value2->Get(factory, i));
     CEL_RETURN_IF_ERROR(list_builder->Add(std::move(elem)));
   }
 
@@ -94,9 +93,8 @@ absl::StatusOr<Handle<OpaqueValue>> AppendList(ValueFactory& factory,
   }
   MutableListValue& mutable_list =
       const_cast<MutableListValue&>(value1->As<MutableListValue>());
-  ListValue::GetContext context(factory);
   for (int i = 0; i < value2.size(); i++) {
-    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value2.Get(context, i));
+    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value2.Get(factory, i));
     CEL_RETURN_IF_ERROR(mutable_list.Append(std::move(elem)));
   }
   return value1;

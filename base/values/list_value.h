@@ -80,18 +80,7 @@ class ListValue : public Value {
 
   bool empty() const;
 
-  class GetContext final {
-   public:
-    explicit GetContext(ValueFactory& value_factory)
-        : value_factory_(value_factory) {}
-
-    ValueFactory& value_factory() const { return value_factory_; }
-
-   private:
-    ValueFactory& value_factory_;
-  };
-
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const;
 
   struct Element final {
@@ -178,7 +167,7 @@ class LegacyListValue final : public ListValue, public InlineData {
 
   bool empty() const;
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const;
 
   constexpr uintptr_t value() const { return impl_; }
@@ -237,7 +226,7 @@ class AbstractListValue : public ListValue,
 
   virtual bool empty() const { return size() == 0; }
 
-  virtual absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  virtual absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                             size_t index) const = 0;
 
   virtual absl::StatusOr<UniqueRef<Iterator>> NewIterator(
@@ -288,9 +277,9 @@ class DynamicListValue final : public AbstractListValue {
 
   bool empty() const override { return storage_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const override {
-    static_cast<void>(context);
+    static_cast<void>(value_factory);
     return storage_[index];
   }
 
@@ -332,9 +321,9 @@ class StaticListValue final : public AbstractListValue {
 
   bool empty() const override { return storage_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const override {
-    return value_traits::Wrap(context.value_factory(), storage_[index]);
+    return value_traits::Wrap(value_factory, storage_[index]);
   }
 
   internal::TypeInfo TypeId() const override {

@@ -1032,9 +1032,8 @@ TEST_P(ProtoStructValueTest, ListValueGetField) {
       [](ValueFactory& value_factory, const Handle<Value>& field) {
         ASSERT_TRUE(field->Is<ListValue>());
         EXPECT_EQ(field->As<ListValue>().size(), 1);
-        EXPECT_THAT(
-            field->As<ListValue>().Get(ListValue::GetContext(value_factory), 0),
-            IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
+        EXPECT_THAT(field->As<ListValue>().Get(value_factory, 0),
+                    IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
       });
 }
 
@@ -1158,12 +1157,9 @@ TEST_P(ProtoStructValueTest, NullValueListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[null, null]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_TRUE(field_value->Is<NullValue>());
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_TRUE(field_value->Is<NullValue>());
       });
 }
@@ -1179,12 +1175,9 @@ TEST_P(ProtoStructValueTest, BoolListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[true, false]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_TRUE(field_value.As<BoolValue>()->value());
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_FALSE(field_value.As<BoolValue>()->value());
       });
 }
@@ -1200,12 +1193,9 @@ TEST_P(ProtoStructValueTest, Int32ListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1, 0]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
       });
 }
@@ -1221,12 +1211,9 @@ TEST_P(ProtoStructValueTest, Int64ListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1, 0]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
       });
 }
@@ -1242,12 +1229,9 @@ TEST_P(ProtoStructValueTest, Uint32ListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1u, 0u]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
       });
 }
@@ -1263,12 +1247,9 @@ TEST_P(ProtoStructValueTest, Uint64ListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1u, 0u]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
       });
 }
@@ -1284,12 +1265,9 @@ TEST_P(ProtoStructValueTest, FloatListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
       });
 }
@@ -1305,12 +1283,9 @@ TEST_P(ProtoStructValueTest, DoubleListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
       });
 }
@@ -1326,12 +1301,9 @@ TEST_P(ProtoStructValueTest, BytesListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[b\"foo\", b\"bar\"]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<BytesValue>()->ToString(), "foo");
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<BytesValue>()->ToString(), "bar");
       });
 }
@@ -1347,12 +1319,9 @@ TEST_P(ProtoStructValueTest, StringListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[\"foo\", \"bar\"]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<StringValue>()->ToString(), "foo");
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<StringValue>()->ToString(), "bar");
       });
 }
@@ -1368,12 +1337,9 @@ TEST_P(ProtoStructValueTest, DurationListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1s, 2s]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<DurationValue>()->value(), absl::Seconds(1));
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<DurationValue>()->value(), absl::Seconds(2));
       });
 }
@@ -1390,13 +1356,10 @@ TEST_P(ProtoStructValueTest, TimestampListGetField) {
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(),
                   "[1970-01-01T00:00:01Z, 1970-01-01T00:00:02Z]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<TimestampValue>()->value(),
                   absl::UnixEpoch() + absl::Seconds(1));
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<TimestampValue>()->value(),
                   absl::UnixEpoch() + absl::Seconds(2));
       });
@@ -1416,12 +1379,9 @@ TEST_P(ProtoStructValueTest, EnumListGetField) {
             field->DebugString(),
             "[google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO, "
             "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<EnumValue>()->number(), TestAllTypes::FOO);
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<EnumValue>()->number(), TestAllTypes::BAR);
       });
 }
@@ -1442,14 +1402,11 @@ TEST_P(ProtoStructValueTest, StructListGetField) {
                   "google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{"
                   "bb: 2}]");
         TestAllTypes::NestedMessage message;
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         message.set_bb(1);
         EXPECT_THAT(*field_value.As<ProtoStructValue>()->value(),
                     EqualsProto(message));
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         message.set_bb(2);
         EXPECT_THAT(*field_value.As<ProtoStructValue>()->value(),
                     EqualsProto(message));
@@ -1467,12 +1424,9 @@ TEST_P(ProtoStructValueTest, BoolWrapperListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[true, false]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_TRUE(field_value.As<BoolValue>()->value());
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_FALSE(field_value.As<BoolValue>()->value());
       });
 }
@@ -1488,12 +1442,9 @@ TEST_P(ProtoStructValueTest, Int32WrapperListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1, 0]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
       });
 }
@@ -1509,12 +1460,9 @@ TEST_P(ProtoStructValueTest, Int64WrapperListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1, 0]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
       });
 }
@@ -1530,12 +1478,9 @@ TEST_P(ProtoStructValueTest, Uint32WrapperListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1u, 0u]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
       });
 }
@@ -1551,12 +1496,9 @@ TEST_P(ProtoStructValueTest, Uint64WrapperListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1u, 0u]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
       });
 }
@@ -1572,12 +1514,9 @@ TEST_P(ProtoStructValueTest, FloatWrapperListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
       });
 }
@@ -1593,12 +1532,9 @@ TEST_P(ProtoStructValueTest, DoubleWrapperListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
       });
 }
@@ -1614,12 +1550,9 @@ TEST_P(ProtoStructValueTest, BytesWrapperListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[b\"foo\", b\"bar\"]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<BytesValue>()->ToString(), "foo");
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<BytesValue>()->ToString(), "bar");
       });
 }
@@ -1635,12 +1568,9 @@ TEST_P(ProtoStructValueTest, StringWrapperListGetField) {
         EXPECT_EQ(field->size(), 2);
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[\"foo\", \"bar\"]");
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<StringValue>()->ToString(), "foo");
-        ASSERT_OK_AND_ASSIGN(
-            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<StringValue>()->ToString(), "bar");
       });
 }
@@ -1656,9 +1586,7 @@ TEST_P(ProtoStructValueTest, AnyListGetField) {
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
         EXPECT_EQ(field->size(), 1);
         EXPECT_FALSE(field->empty());
-        ASSERT_OK_AND_ASSIGN(
-            auto field_value,
-            field->Get(ListValue::GetContext(value_factory), 0));
+        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_TRUE(field_value.As<BoolValue>()->value());
       });
 }
@@ -1891,7 +1819,7 @@ void TestMapGetField(MemoryManager& memory_manager,
   EXPECT_EQ(keys->size(), 2);
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(field.As<MapValue>()->type()->key(), keys->type()->element());
-  EXPECT_OK(keys->Get(ListValue::GetContext(value_factory), 0));
+  EXPECT_OK(keys->Get(value_factory, 0));
 }
 
 template <typename T, typename MutableMapField, typename Valuer, typename Pair,
@@ -1983,7 +1911,7 @@ void TestStringMapGetField(MemoryManager& memory_manager,
   EXPECT_EQ(keys->size(), 2);
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(field.As<MapValue>()->type()->key(), keys->type()->element());
-  EXPECT_OK(keys->Get(ListValue::GetContext(value_factory), 0));
+  EXPECT_OK(keys->Get(value_factory, 0));
 }
 
 TEST_P(ProtoStructValueTest, BoolNullValueMapHasField) {
@@ -3152,8 +3080,7 @@ TEST_P(ProtoStructValueTest, BoolListValueMapGetField) {
         EXPECT_FALSE((*value)->As<ListValue>().empty());
         EXPECT_EQ((*value)->As<ListValue>().size(), 1);
         ASSERT_OK_AND_ASSIGN(auto element,
-                             (*value)->As<ListValue>().Get(
-                                 ListValue::GetContext(value_factory), 0));
+                             (*value)->As<ListValue>().Get(value_factory, 0));
         ASSERT_TRUE(element->Is<NullValue>());
       });
 }

@@ -94,8 +94,7 @@ class LegacyCelList final : public CelList {
     TypeFactory type_factory(memory_manager);
     TypeManager type_manager(type_factory, TypeProvider::Builtin());
     ValueFactory value_factory(type_manager);
-    auto value = impl_->Get(ListValue::GetContext(value_factory),
-                            static_cast<size_t>(index));
+    auto value = impl_->Get(value_factory, static_cast<size_t>(index));
     if (!value.ok()) {
       return CelValue::CreateError(
           google::protobuf::Arena::Create<absl::Status>(arena, value.status()));

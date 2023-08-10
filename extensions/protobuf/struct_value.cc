@@ -313,10 +313,10 @@ class ParsedProtoListValue<NullValue> : public CEL_LIST_VALUE_CLASS {
 
   bool empty() const final { return size_ == 0; }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     ABSL_ASSERT(index < size_);
-    return context.value_factory().GetNullValue();
+    return value_factory.GetNullValue();
   }
 
  private:
@@ -354,10 +354,9 @@ class ParsedProtoListValue<BoolValue, bool> : public CEL_LIST_VALUE_CLASS {
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
-    return context.value_factory().CreateBoolValue(
-        fields_.Get(static_cast<int>(index)));
+    return value_factory.CreateBoolValue(fields_.Get(static_cast<int>(index)));
   }
 
  private:
@@ -395,10 +394,9 @@ class ParsedProtoListValue<IntValue, P> : public CEL_LIST_VALUE_CLASS {
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
-    return context.value_factory().CreateIntValue(
-        fields_.Get(static_cast<int>(index)));
+    return value_factory.CreateIntValue(fields_.Get(static_cast<int>(index)));
   }
 
  private:
@@ -436,10 +434,9 @@ class ParsedProtoListValue<UintValue, P> : public CEL_LIST_VALUE_CLASS {
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
-    return context.value_factory().CreateUintValue(
-        fields_.Get(static_cast<int>(index)));
+    return value_factory.CreateUintValue(fields_.Get(static_cast<int>(index)));
   }
 
  private:
@@ -477,9 +474,9 @@ class ParsedProtoListValue<DoubleValue, P> : public CEL_LIST_VALUE_CLASS {
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
-    return context.value_factory().CreateDoubleValue(
+    return value_factory.CreateDoubleValue(
         fields_.Get(static_cast<int>(index)));
   }
 
@@ -519,12 +516,11 @@ class ParsedProtoListValue<BytesValue, std::string>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     // Proto does not provide a zero copy interface for accessing repeated bytes
     // fields.
-    return context.value_factory().CreateBytesValue(
-        fields_.Get(static_cast<int>(index)));
+    return value_factory.CreateBytesValue(fields_.Get(static_cast<int>(index)));
   }
 
  private:
@@ -563,11 +559,11 @@ class ParsedProtoListValue<StringValue, std::string>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     // Proto does not provide a zero copy interface for accessing repeated
     // string fields.
-    return context.value_factory().CreateUncheckedStringValue(
+    return value_factory.CreateUncheckedStringValue(
         fields_.Get(static_cast<int>(index)));
   }
 
@@ -607,7 +603,7 @@ class ParsedProtoListValue<DurationValue, google::protobuf::Message>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     CEL_ASSIGN_OR_RETURN(
@@ -615,7 +611,7 @@ class ParsedProtoListValue<DurationValue, google::protobuf::Message>
         protobuf_internal::UnwrapDynamicDurationProto(
             fields_.Get(static_cast<int>(index), scratch.get())));
     scratch.reset();
-    return context.value_factory().CreateUncheckedDurationValue(duration);
+    return value_factory.CreateUncheckedDurationValue(duration);
   }
 
  private:
@@ -655,14 +651,14 @@ class ParsedProtoListValue<TimestampValue, google::protobuf::Message>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     CEL_ASSIGN_OR_RETURN(
         auto time, protobuf_internal::UnwrapDynamicTimestampProto(
                        fields_.Get(static_cast<int>(index), scratch.get())));
     scratch.reset();
-    return context.value_factory().CreateUncheckedTimestampValue(time);
+    return value_factory.CreateUncheckedTimestampValue(time);
   }
 
  private:
@@ -703,10 +699,10 @@ class ParsedProtoListValue<EnumValue, int32_t> : public CEL_LIST_VALUE_CLASS {
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
-    return context.value_factory().CreateEnumValue(
-        type()->element().As<EnumType>(), fields_.Get(static_cast<int>(index)));
+    return value_factory.CreateEnumValue(type()->element().As<EnumType>(),
+                                         fields_.Get(static_cast<int>(index)));
   }
 
  private:
@@ -747,37 +743,34 @@ class ParsedProtoListValue<ProtoStructValue, google::protobuf::Message>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
     if (&field != scratch.get()) {
       // Scratch was not used, we can avoid copying.
       scratch.reset();
-      return context.value_factory()
-          .CreateBorrowedStructValue<
-              protobuf_internal::DynamicMemberParsedProtoStructValue>(
-              owner_from_this(), type()->element().As<StructType>(), &field);
+      return value_factory.CreateBorrowedStructValue<
+          protobuf_internal::DynamicMemberParsedProtoStructValue>(
+          owner_from_this(), type()->element().As<StructType>(), &field);
     }
-    if (ProtoMemoryManager::Is(context.value_factory().memory_manager())) {
-      auto* arena = ProtoMemoryManager::CastToProtoArena(
-          context.value_factory().memory_manager());
+    if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
+      auto* arena =
+          ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
       if (ABSL_PREDICT_TRUE(arena != nullptr)) {
         // We are using google::protobuf::Arena, but fields_.NewMessage() allocates on the
         // heap. Copy the message into the arena to avoid the extra bookkeeping.
         auto* message = field.New(arena);
         message->CopyFrom(*scratch);
         scratch.reset();
-        return context.value_factory()
-            .CreateStructValue<
-                protobuf_internal::ArenaDynamicParsedProtoStructValue>(
-                type()->element().As<ProtoStructType>(), message);
+        return value_factory.CreateStructValue<
+            protobuf_internal::ArenaDynamicParsedProtoStructValue>(
+            type()->element().As<ProtoStructType>(), message);
       }
     }
-    return context.value_factory()
-        .CreateStructValue<
-            protobuf_internal::HeapDynamicParsedProtoStructValue>(
-            type()->element().As<ProtoStructType>(), scratch.release());
+    return value_factory.CreateStructValue<
+        protobuf_internal::HeapDynamicParsedProtoStructValue>(
+        type()->element().As<ProtoStructType>(), scratch.release());
   }
 
  private:
@@ -818,17 +811,17 @@ class ParsedProtoListValue<ListValue, google::protobuf::Message>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
     if (scratch.get() == &field) {
-      return protobuf_internal::CreateListValue(context.value_factory(),
+      return protobuf_internal::CreateListValue(value_factory,
                                                 std::move(scratch));
     }
     scratch.reset();
-    return protobuf_internal::CreateBorrowedListValue(
-        owner_from_this(), context.value_factory(), field);
+    return protobuf_internal::CreateBorrowedListValue(owner_from_this(),
+                                                      value_factory, field);
   }
 
  private:
@@ -868,17 +861,16 @@ class ParsedProtoListValue<MapValue, google::protobuf::Message>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
     if (scratch.get() == &field) {
-      return protobuf_internal::CreateStruct(context.value_factory(),
-                                             std::move(scratch));
+      return protobuf_internal::CreateStruct(value_factory, std::move(scratch));
     }
     scratch.reset();
-    return protobuf_internal::CreateBorrowedStruct(
-        owner_from_this(), context.value_factory(), field);
+    return protobuf_internal::CreateBorrowedStruct(owner_from_this(),
+                                                   value_factory, field);
   }
 
  private:
@@ -918,17 +910,16 @@ class ParsedProtoListValue<DynValue, google::protobuf::Message>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
     if (scratch.get() == &field) {
-      return protobuf_internal::CreateValue(context.value_factory(),
-                                            std::move(scratch));
+      return protobuf_internal::CreateValue(value_factory, std::move(scratch));
     }
     scratch.reset();
-    return protobuf_internal::CreateBorrowedValue(
-        owner_from_this(), context.value_factory(), field);
+    return protobuf_internal::CreateBorrowedValue(owner_from_this(),
+                                                  value_factory, field);
   }
 
  private:
@@ -968,11 +959,11 @@ class ParsedProtoListValue<AnyType, google::protobuf::Message>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
-    return ProtoValue::Create(context.value_factory(), field);
+    return ProtoValue::Create(value_factory, field);
   }
 
  private:
@@ -1012,13 +1003,13 @@ class ParsedProtoListValue<BoolValue, google::protobuf::Message>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
     CEL_ASSIGN_OR_RETURN(auto wrapped,
                          protobuf_internal::UnwrapDynamicBoolValueProto(field));
-    return context.value_factory().CreateBoolValue(wrapped);
+    return value_factory.CreateBoolValue(wrapped);
   }
 
  private:
@@ -1058,13 +1049,13 @@ class ParsedProtoListValue<BytesValue, google::protobuf::Message>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
     CEL_ASSIGN_OR_RETURN(
         auto wrapped, protobuf_internal::UnwrapDynamicBytesValueProto(field));
-    return context.value_factory().CreateBytesValue(std::move(wrapped));
+    return value_factory.CreateBytesValue(std::move(wrapped));
   }
 
  private:
@@ -1105,14 +1096,14 @@ class ParsedProtoListValue<DoubleValue, google::protobuf::Message>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
     CEL_ASSIGN_OR_RETURN(
         auto wrapped,
         protobuf_internal::UnwrapDynamicFloatingPointValueProto(field));
-    return context.value_factory().CreateDoubleValue(wrapped);
+    return value_factory.CreateDoubleValue(wrapped);
   }
 
  private:
@@ -1153,14 +1144,14 @@ class ParsedProtoListValue<IntValue, google::protobuf::Message>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
     CEL_ASSIGN_OR_RETURN(
         auto wrapped,
         protobuf_internal::UnwrapDynamicSignedIntegralValueProto(field));
-    return context.value_factory().CreateIntValue(wrapped);
+    return value_factory.CreateIntValue(wrapped);
   }
 
  private:
@@ -1200,14 +1191,13 @@ class ParsedProtoListValue<StringValue, google::protobuf::Message>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
     CEL_ASSIGN_OR_RETURN(
         auto wrapped, protobuf_internal::UnwrapDynamicStringValueProto(field));
-    return context.value_factory().CreateUncheckedStringValue(
-        std::move(wrapped));
+    return value_factory.CreateUncheckedStringValue(std::move(wrapped));
   }
 
  private:
@@ -1248,14 +1238,14 @@ class ParsedProtoListValue<UintValue, google::protobuf::Message>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
     CEL_ASSIGN_OR_RETURN(
         auto wrapped,
         protobuf_internal::UnwrapDynamicUnsignedIntegralValueProto(field));
-    return context.value_factory().CreateUintValue(wrapped);
+    return value_factory.CreateUintValue(wrapped);
   }
 
  private:
@@ -1472,23 +1462,23 @@ class ParsedProtoMapValueKeysList : public CEL_LIST_VALUE_CLASS {
 
   size_t size() const final { return keys_.size(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     const auto& key = keys_[index];
     switch (key.type()) {
       case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
-        return context.value_factory().CreateIntValue(key.GetInt64Value());
+        return value_factory.CreateIntValue(key.GetInt64Value());
       case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
-        return context.value_factory().CreateIntValue(key.GetInt32Value());
+        return value_factory.CreateIntValue(key.GetInt32Value());
       case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
-        return context.value_factory().CreateUintValue(key.GetUInt64Value());
+        return value_factory.CreateUintValue(key.GetUInt64Value());
       case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
-        return context.value_factory().CreateUintValue(key.GetUInt32Value());
+        return value_factory.CreateUintValue(key.GetUInt32Value());
       case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
-        return context.value_factory().CreateBorrowedStringValue(
-            owner_from_this(), key.GetStringValue());
+        return value_factory.CreateBorrowedStringValue(owner_from_this(),
+                                                       key.GetStringValue());
       case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
-        return context.value_factory().CreateBoolValue(key.GetBoolValue());
+        return value_factory.CreateBoolValue(key.GetBoolValue());
       default:
         // Unreachable because protobuf is extremely unlikely to introduce
         // additional supported key types.

@@ -390,9 +390,8 @@ TEST(ValueInterop, ListFromLegacy) {
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<ListValue>());
   EXPECT_EQ(value.As<ListValue>()->size(), 1);
-  ASSERT_OK_AND_ASSIGN(
-      auto element,
-      value.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
+  ASSERT_OK_AND_ASSIGN(auto element,
+                       value.As<ListValue>()->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<IntValue>());
   EXPECT_EQ(element.As<IntValue>()->value(), 0);
 }
@@ -407,12 +406,12 @@ class TestListValue final : public CEL_LIST_VALUE_CLASS {
 
   size_t size() const override { return elements_.size(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const override {
     if (index >= size()) {
       return absl::OutOfRangeError("");
     }
-    return context.value_factory().CreateIntValue(elements_[index]);
+    return value_factory.CreateIntValue(elements_[index]);
   }
 
   std::string DebugString() const override {

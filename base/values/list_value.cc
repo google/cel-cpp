@@ -70,9 +70,9 @@ bool ListValue::empty() const {
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(empty);
 }
 
-absl::StatusOr<Handle<Value>> ListValue::Get(const GetContext& context,
+absl::StatusOr<Handle<Value>> ListValue::Get(ValueFactory& value_factory,
                                              size_t index) const {
-  return CEL_INTERNAL_LIST_VALUE_DISPATCH(Get, context, index);
+  return CEL_INTERNAL_LIST_VALUE_DISPATCH(Get, value_factory, index);
 }
 
 absl::StatusOr<UniqueRef<ListValue::Iterator>> ListValue::NewIterator(
@@ -150,8 +150,7 @@ class AbstractListValueIterator final : public ListValue::Iterator {
           "ListValue::Iterator::Next() called when "
           "ListValue::Iterator::HasNext() returns false");
     }
-    CEL_ASSIGN_OR_RETURN(
-        auto value, value_->Get(ListValue::GetContext(value_factory_), index_));
+    CEL_ASSIGN_OR_RETURN(auto value, value_->Get(value_factory_, index_));
     return Element(index_++, std::move(value));
   }
 
@@ -219,9 +218,9 @@ absl::StatusOr<UniqueRef<ListValue::Iterator>> LegacyListValue::NewIterator(
                                              value_factory, impl_);
 }
 
-absl::StatusOr<Handle<Value>> LegacyListValue::Get(const GetContext& context,
+absl::StatusOr<Handle<Value>> LegacyListValue::Get(ValueFactory& value_factory,
                                                    size_t index) const {
-  return LegacyListValueGet(impl_, context.value_factory(), index);
+  return LegacyListValueGet(impl_, value_factory, index);
 }
 
 AbstractListValue::AbstractListValue(Handle<ListType> type)

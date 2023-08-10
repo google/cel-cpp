@@ -146,10 +146,10 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   frame->value_stack().Push(iter_range, std::move(iter_range_attr));
   current_index += 1;
 
-  CEL_ASSIGN_OR_RETURN(auto current_value,
-                       iter_range.As<cel::ListValue>()->Get(
-                           cel::ListValue::GetContext(frame->value_factory()),
-                           static_cast<size_t>(current_index)));
+  CEL_ASSIGN_OR_RETURN(
+      auto current_value,
+      iter_range.As<cel::ListValue>()->Get(frame->value_factory(),
+                                           static_cast<size_t>(current_index)));
   frame->value_stack().Push(
       frame->value_factory().CreateIntValue(current_index));
   frame->value_stack().Push(current_value, iter_trail);

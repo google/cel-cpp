@@ -290,12 +290,12 @@ class TestListValue final : public CEL_LIST_VALUE_CLASS {
 
   size_t size() const override { return elements_.size(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const override {
     if (index >= size()) {
       return absl::OutOfRangeError("");
     }
-    return context.value_factory().CreateIntValue(elements_[index]);
+    return value_factory.CreateIntValue(elements_[index]);
   }
 
   std::string DebugString() const override {
@@ -320,12 +320,12 @@ class TestMapKeysListValue final : public CEL_LIST_VALUE_CLASS {
 
   size_t size() const override { return elements_.size(); }
 
-  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const override {
     if (index >= size()) {
       return absl::OutOfRangeError("");
     }
-    return context.value_factory().CreateStringValue(elements_[index]);
+    return value_factory.CreateStringValue(elements_[index]);
   }
 
   std::string DebugString() const override {
@@ -2767,11 +2767,13 @@ TEST_P(ListValueTest, Get) {
                            list_type, std::vector<int64_t>{0, 1, 2}));
   EXPECT_FALSE(list_value->empty());
   EXPECT_EQ(list_value->size(), 3);
-  ListValue::GetContext context(value_factory);
-  EXPECT_EQ(Must(list_value->Get(context, 0)), value_factory.CreateIntValue(0));
-  EXPECT_EQ(Must(list_value->Get(context, 1)), value_factory.CreateIntValue(1));
-  EXPECT_EQ(Must(list_value->Get(context, 2)), value_factory.CreateIntValue(2));
-  EXPECT_THAT(list_value->Get(context, 3),
+  EXPECT_EQ(Must(list_value->Get(value_factory, 0)),
+            value_factory.CreateIntValue(0));
+  EXPECT_EQ(Must(list_value->Get(value_factory, 1)),
+            value_factory.CreateIntValue(1));
+  EXPECT_EQ(Must(list_value->Get(value_factory, 2)),
+            value_factory.CreateIntValue(2));
+  EXPECT_THAT(list_value->Get(value_factory, 3),
               StatusIs(absl::StatusCode::kOutOfRange));
 }
 

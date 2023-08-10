@@ -39,12 +39,10 @@ TEST(ListValueBuilder, Unspecialized) {
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
   EXPECT_EQ(list->size(), 2);
   EXPECT_EQ(list->DebugString(), "[b\"\", b\"\"]");
-  ASSERT_OK_AND_ASSIGN(auto element,
-                       list->Get(ListValue::GetContext(value_factory), 0));
+  ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<BytesValue>());
   EXPECT_TRUE(element.As<BytesValue>()->Equals(*value));
-  ASSERT_OK_AND_ASSIGN(element,
-                       list->Get(ListValue::GetContext(value_factory), 1));
+  ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 1));
   EXPECT_TRUE(element->Is<BytesValue>());
   EXPECT_TRUE(element.As<BytesValue>()->Equals(*value));
 }
@@ -62,12 +60,10 @@ TEST(ListValueBuilder, Value) {
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
   EXPECT_EQ(list->size(), 2);
   EXPECT_EQ(list->DebugString(), "[b\"\", b\"\"]");
-  ASSERT_OK_AND_ASSIGN(auto element,
-                       list->Get(ListValue::GetContext(value_factory), 0));
+  ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<BytesValue>());
   EXPECT_TRUE(element.As<BytesValue>()->Equals(*value));
-  ASSERT_OK_AND_ASSIGN(element,
-                       list->Get(ListValue::GetContext(value_factory), 1));
+  ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 1));
   EXPECT_TRUE(element->Is<BytesValue>());
   EXPECT_TRUE(element.As<BytesValue>()->Equals(*value));
 }
@@ -87,16 +83,13 @@ TEST(ListValueBuilder, Bool) {
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
   EXPECT_EQ(list->size(), 3);
   EXPECT_EQ(list->DebugString(), "[false, true, false]");
-  ASSERT_OK_AND_ASSIGN(auto element,
-                       list->Get(ListValue::GetContext(value_factory), 0));
+  ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<BoolValue>());
   EXPECT_FALSE(element.As<BoolValue>()->value());
-  ASSERT_OK_AND_ASSIGN(element,
-                       list->Get(ListValue::GetContext(value_factory), 1));
+  ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 1));
   EXPECT_TRUE(element->Is<BoolValue>());
   EXPECT_TRUE(element.As<BoolValue>()->value());
-  ASSERT_OK_AND_ASSIGN(element,
-                       list->Get(ListValue::GetContext(value_factory), 2));
+  ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 2));
   EXPECT_TRUE(element->Is<BoolValue>());
   EXPECT_FALSE(element.As<BoolValue>()->value());
 }
@@ -116,16 +109,13 @@ TEST(ListValueBuilder, Int) {
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
   EXPECT_EQ(list->size(), 3);
   EXPECT_EQ(list->DebugString(), "[0, 1, 2]");
-  ASSERT_OK_AND_ASSIGN(auto element,
-                       list->Get(ListValue::GetContext(value_factory), 0));
+  ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<IntValue>());
   EXPECT_EQ(element.As<IntValue>()->value(), 0);
-  ASSERT_OK_AND_ASSIGN(element,
-                       list->Get(ListValue::GetContext(value_factory), 1));
+  ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 1));
   EXPECT_TRUE(element->Is<IntValue>());
   EXPECT_EQ(element.As<IntValue>()->value(), 1);
-  ASSERT_OK_AND_ASSIGN(element,
-                       list->Get(ListValue::GetContext(value_factory), 2));
+  ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 2));
   EXPECT_TRUE(element->Is<IntValue>());
   EXPECT_EQ(element.As<IntValue>()->value(), 2);
 }
@@ -145,16 +135,13 @@ TEST(ListValueBuilder, Uint) {
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
   EXPECT_EQ(list->size(), 3);
   EXPECT_EQ(list->DebugString(), "[0u, 1u, 2u]");
-  ASSERT_OK_AND_ASSIGN(auto element,
-                       list->Get(ListValue::GetContext(value_factory), 0));
+  ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<UintValue>());
   EXPECT_EQ(element.As<UintValue>()->value(), 0);
-  ASSERT_OK_AND_ASSIGN(element,
-                       list->Get(ListValue::GetContext(value_factory), 1));
+  ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 1));
   EXPECT_TRUE(element->Is<UintValue>());
   EXPECT_EQ(element.As<UintValue>()->value(), 1);
-  ASSERT_OK_AND_ASSIGN(element,
-                       list->Get(ListValue::GetContext(value_factory), 2));
+  ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 2));
   EXPECT_TRUE(element->Is<UintValue>());
   EXPECT_EQ(element.As<UintValue>()->value(), 2);
 }
@@ -174,16 +161,13 @@ TEST(ListValueBuilder, Double) {
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
   EXPECT_EQ(list->size(), 3);
   EXPECT_EQ(list->DebugString(), "[0.0, 1.0, 2.0]");
-  ASSERT_OK_AND_ASSIGN(auto element,
-                       list->Get(ListValue::GetContext(value_factory), 0));
+  ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<DoubleValue>());
   EXPECT_EQ(element.As<DoubleValue>()->value(), 0);
-  ASSERT_OK_AND_ASSIGN(element,
-                       list->Get(ListValue::GetContext(value_factory), 1));
+  ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 1));
   EXPECT_TRUE(element->Is<DoubleValue>());
   EXPECT_EQ(element.As<DoubleValue>()->value(), 1);
-  ASSERT_OK_AND_ASSIGN(element,
-                       list->Get(ListValue::GetContext(value_factory), 2));
+  ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 2));
   EXPECT_TRUE(element->Is<DoubleValue>());
   EXPECT_EQ(element.As<DoubleValue>()->value(), 2);
 }
@@ -205,16 +189,13 @@ TEST(ListValueBuilder, Duration) {
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
   EXPECT_EQ(list->size(), 3);
   EXPECT_EQ(list->DebugString(), "[0, 1s, 1m]");
-  ASSERT_OK_AND_ASSIGN(auto element,
-                       list->Get(ListValue::GetContext(value_factory), 0));
+  ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<DurationValue>());
   EXPECT_EQ(element.As<DurationValue>()->value(), absl::ZeroDuration());
-  ASSERT_OK_AND_ASSIGN(element,
-                       list->Get(ListValue::GetContext(value_factory), 1));
+  ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 1));
   EXPECT_TRUE(element->Is<DurationValue>());
   EXPECT_EQ(element.As<DurationValue>()->value(), absl::Seconds(1));
-  ASSERT_OK_AND_ASSIGN(element,
-                       list->Get(ListValue::GetContext(value_factory), 2));
+  ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 2));
   EXPECT_TRUE(element->Is<DurationValue>());
   EXPECT_EQ(element.As<DurationValue>()->value(), absl::Minutes(1));
 }
@@ -243,18 +224,15 @@ TEST(ListValueBuilder, Timestamp) {
   EXPECT_EQ(
       list->DebugString(),
       "[1970-01-01T00:00:00Z, 1970-01-01T00:00:01Z, 1970-01-01T00:01:00Z]");
-  ASSERT_OK_AND_ASSIGN(auto element,
-                       list->Get(ListValue::GetContext(value_factory), 0));
+  ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<TimestampValue>());
   EXPECT_EQ(element.As<TimestampValue>()->value(),
             absl::UnixEpoch() + absl::ZeroDuration());
-  ASSERT_OK_AND_ASSIGN(element,
-                       list->Get(ListValue::GetContext(value_factory), 1));
+  ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 1));
   EXPECT_TRUE(element->Is<TimestampValue>());
   EXPECT_EQ(element.As<TimestampValue>()->value(),
             absl::UnixEpoch() + absl::Seconds(1));
-  ASSERT_OK_AND_ASSIGN(element,
-                       list->Get(ListValue::GetContext(value_factory), 2));
+  ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 2));
   EXPECT_TRUE(element->Is<TimestampValue>());
   EXPECT_EQ(element.As<TimestampValue>()->value(),
             absl::UnixEpoch() + absl::Minutes(1));

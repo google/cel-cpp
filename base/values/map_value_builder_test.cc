@@ -630,15 +630,12 @@ void TestMapBuilder(GetKey get_key, GetValue get_value, MakeKey make_key1,
                        map->ListKeys(MapValue::ListKeysContext(value_factory)));
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(keys->size(), 3);
-  ASSERT_OK_AND_ASSIGN(auto element,
-                       keys->Get(ListValue::GetContext(value_factory), 0));
+  ASSERT_OK_AND_ASSIGN(auto element, keys->Get(value_factory, 0));
   EXPECT_EQ((*element).template As<Key>(), (*key).template As<Key>());
-  ASSERT_OK_AND_ASSIGN(element,
-                       keys->Get(ListValue::GetContext(value_factory), 1));
+  ASSERT_OK_AND_ASSIGN(element, keys->Get(value_factory, 1));
   EXPECT_EQ((*element).template As<Key>(),
             (*make_key2(value_factory)).template As<Key>());
-  ASSERT_OK_AND_ASSIGN(element,
-                       keys->Get(ListValue::GetContext(value_factory), 2));
+  ASSERT_OK_AND_ASSIGN(element, keys->Get(value_factory, 2));
   EXPECT_EQ((*element).template As<Key>(),
             (*make_key3(value_factory)).template As<Key>());
   EXPECT_EQ(keys->DebugString(), keys_debug_string);
