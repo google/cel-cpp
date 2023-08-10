@@ -21,7 +21,11 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "base/memory.h"
+#include "base/values/struct_value.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 
@@ -62,7 +66,7 @@ class LegacyTypeMutationApis {
 
 // Interface for access apis.
 // Note: in new type system this is integrated into the StructValue (via
-// dynamic dispatch to concerete implementations).
+// dynamic dispatch to concrete implementations).
 class LegacyTypeAccessApis {
  public:
   virtual ~LegacyTypeAccessApis() = default;
@@ -78,6 +82,31 @@ class LegacyTypeAccessApis {
       absl::string_view field_name, const CelValue::MessageWrapper& instance,
       ProtoWrapperTypeOptions unboxing_option,
       cel::MemoryManager& memory_manager) const = 0;
+
+  // Apply a series of select operations on the given instance.
+  //
+  // Each select qualifier may represent either a singular field access (
+  // FieldSpecifier) or an index into a container (AttributeQualifier).
+  //
+  // The Qualify implementation should return an appropriate CelError when
+  // intermediate fields or indexes are not found, or the given qualifier
+  // doesn't apply to operand.
+  //
+  // A Status with a non-ok error code may be returned for other errors.
+  // absl::StatusCode::kUnimplemented signals that Qualify is unsupported and
+  // the evaluator should emulate the default select behavior.
+  //
+  // - unboxing_option controls the field access behavior for wrapper WKTs.
+  // - presence_test controls whether to treat the call as a 'has' call,
+  // returning
+  //   whether the leaf field is set to a non-default value.
+  virtual absl::StatusOr<CelValue> Qualify(
+      absl::Span<const cel::SelectQualifier>,
+      const CelValue::MessageWrapper& instance,
+      ProtoWrapperTypeOptions unboxing_option, bool presence_test,
+      cel::MemoryManager& memory_manager) const {
+    return absl::UnimplementedError("Qualify unsupported.");
+  }
 
   // Interface for equality operator.
   // The interpreter will check that both instances report to be the same type,

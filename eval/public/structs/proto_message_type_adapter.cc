@@ -15,14 +15,19 @@
 #include "eval/public/structs/proto_message_type_adapter.h"
 
 #include <string>
+#include <vector>
 
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 #include "google/protobuf/util/message_differencer.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/strings/substitute.h"
+#include "absl/types/span.h"
+#include "absl/types/variant.h"
+#include "base/memory.h"
+#include "base/values/struct_value.h"
+#include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/internal_field_backed_list_impl.h"
 #include "eval/public/containers/internal_field_backed_map_impl.h"
@@ -35,6 +40,9 @@
 #include "internal/casts.h"
 #include "internal/no_destructor.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 namespace {
@@ -79,22 +87,11 @@ bool ProtoEquals(const google::protobuf::Message& m1, const google::protobuf::Me
   return google::protobuf::util::MessageDifferencer::Equals(m1, m2);
 }
 
-// Shared implementation for HasField.
-// Handles list or map specific behavior before calling reflection helpers.
-absl::StatusOr<bool> HasFieldImpl(const google::protobuf::Message* message,
-                                  const google::protobuf::Descriptor* descriptor,
-                                  absl::string_view field_name) {
-  ABSL_ASSERT(descriptor == message->GetDescriptor());
-  const Reflection* reflection = message->GetReflection();
-  const FieldDescriptor* field_desc = descriptor->FindFieldByName(field_name);
-  if (field_desc == nullptr && reflection != nullptr) {
-    // Search to see whether the field name is referring to an extension.
-    field_desc = reflection->FindKnownExtensionByName(field_name);
-  }
-  if (field_desc == nullptr) {
-    return absl::NotFoundError(absl::StrCat("no_such_field : ", field_name));
-  }
-
+// Implements CEL's notion of field presence for protobuf.
+// Assumes all arguments non-null.
+bool CelFieldIsPresent(const google::protobuf::Message* message,
+                       const google::protobuf::FieldDescriptor* field_desc,
+                       const google::protobuf::Reflection* reflection) {
   if (field_desc->is_map()) {
     // When the map field appears in a has(msg.map_field) expression, the map
     // is considered 'present' when it is non-empty. Since maps are repeated
@@ -111,6 +108,51 @@ absl::StatusOr<bool> HasFieldImpl(const google::protobuf::Message* message,
 
   // Standard proto presence test for non-repeated fields.
   return reflection->HasField(*message, field_desc);
+}
+
+// Shared implementation for HasField.
+// Handles list or map specific behavior before calling reflection helpers.
+absl::StatusOr<bool> HasFieldImpl(const google::protobuf::Message* message,
+                                  const google::protobuf::Descriptor* descriptor,
+                                  absl::string_view field_name) {
+  ABSL_ASSERT(descriptor == message->GetDescriptor());
+  const Reflection* reflection = message->GetReflection();
+  const FieldDescriptor* field_desc = descriptor->FindFieldByName(field_name);
+  if (field_desc == nullptr && reflection != nullptr) {
+    // Search to see whether the field name is referring to an extension.
+    field_desc = reflection->FindKnownExtensionByName(field_name);
+  }
+  if (field_desc == nullptr) {
+    return absl::NotFoundError(absl::StrCat("no_such_field : ", field_name));
+  }
+
+  if (reflection == nullptr) {
+    return absl::FailedPreconditionError(
+        "google::protobuf::Reflection unavailble in CEL field access.");
+  }
+  return CelFieldIsPresent(message, field_desc, reflection);
+}
+
+absl::StatusOr<CelValue> CreateCelValueFromField(
+    const google::protobuf::Message* message, const google::protobuf::FieldDescriptor* field_desc,
+    ProtoWrapperTypeOptions unboxing_option, google::protobuf::Arena* arena) {
+  if (field_desc->is_map()) {
+    auto* map = google::protobuf::Arena::Create<internal::FieldBackedMapImpl>(
+        arena, message, field_desc, &MessageCelValueFactory, arena);
+
+    return CelValue::CreateMap(map);
+  }
+  if (field_desc->is_repeated()) {
+    auto* list = google::protobuf::Arena::Create<internal::FieldBackedListImpl>(
+        arena, message, field_desc, &MessageCelValueFactory, arena);
+    return CelValue::CreateList(list);
+  }
+
+  CEL_ASSIGN_OR_RETURN(
+      CelValue result,
+      internal::CreateValueFromSingleField(message, field_desc, unboxing_option,
+                                           &MessageCelValueFactory, arena));
+  return result;
 }
 
 // Shared implementation for GetField.
@@ -133,23 +175,76 @@ absl::StatusOr<CelValue> GetFieldImpl(const google::protobuf::Message* message,
 
   google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
 
-  if (field_desc->is_map()) {
-    auto* map = google::protobuf::Arena::Create<internal::FieldBackedMapImpl>(
-        arena, message, field_desc, &MessageCelValueFactory, arena);
+  return CreateCelValueFromField(message, field_desc, unboxing_option, arena);
+}
 
-    return CelValue::CreateMap(map);
-  }
-  if (field_desc->is_repeated()) {
-    auto* list = google::protobuf::Arena::Create<internal::FieldBackedListImpl>(
-        arena, message, field_desc, &MessageCelValueFactory, arena);
-    return CelValue::CreateList(list);
+absl::StatusOr<CelValue> QualifyImpl(
+    const google::protobuf::Message* message, const google::protobuf::Descriptor* descriptor,
+    absl::Span<const cel::SelectQualifier> path,
+    ProtoWrapperTypeOptions unboxing_option, bool presence_test,
+    cel::MemoryManager& memory_manager) {
+  google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
+  const google::protobuf::Message* select_path_elem = message;
+  const google::protobuf::FieldDescriptor* field_desc = nullptr;
+  ABSL_ASSERT(descriptor == message->GetDescriptor());
+  const google::protobuf::Reflection* reflection;
+
+  for (int i = 0; i < path.size(); ++i) {
+    const auto& qualifier = path[i];
+    if (!absl::holds_alternative<cel::FieldSpecifier>(qualifier)) {
+      return absl::UnimplementedError(
+          "Select optimization only supports message traversal.");
+    }
+    const auto& field_specifier = absl::get<cel::FieldSpecifier>(qualifier);
+
+    if (select_path_elem == nullptr) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Select overflow. Check message definition for ",
+                       descriptor->full_name(), ".", field_specifier.name));
+    }
+
+    const google::protobuf::Descriptor* descriptor = select_path_elem->GetDescriptor();
+    reflection = select_path_elem->GetReflection();
+
+    field_desc = descriptor->FindFieldByNumber(field_specifier.number);
+    if (field_desc == nullptr && reflection != nullptr) {
+      field_desc =
+          reflection->FindKnownExtensionByNumber(field_specifier.number);
+    }
+
+    if (field_desc == nullptr) {
+      return CreateNoSuchFieldError(memory_manager, field_specifier.name);
+    }
+
+    if (field_desc->is_repeated()) {
+      return absl::UnimplementedError(
+          "Select optimization only supports singular field traversal.");
+    }
+
+    if (i == path.size() - 1) {
+      // for last step, delegate the reflection-based field access operation to
+      // the value creation helper.
+      break;
+    }
+
+    switch (field_desc->type()) {
+      case FieldDescriptor::TYPE_MESSAGE:
+        select_path_elem =
+            &reflection->GetMessage(*select_path_elem, field_desc);
+        break;
+      default:
+        select_path_elem = nullptr;
+        break;
+    }
   }
 
-  CEL_ASSIGN_OR_RETURN(
-      CelValue result,
-      internal::CreateValueFromSingleField(message, field_desc, unboxing_option,
-                                           &MessageCelValueFactory, arena));
-  return result;
+  if (presence_test) {
+    return CelValue::CreateBool(
+        CelFieldIsPresent(select_path_elem, field_desc, reflection));
+  }
+
+  return CreateCelValueFromField(select_path_elem, field_desc, unboxing_option,
+                                 arena);
 }
 
 std::vector<absl::string_view> ListFieldsImpl(
@@ -191,6 +286,18 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
                          UnwrapMessage(instance, "GetField"));
     return GetFieldImpl(message, message->GetDescriptor(), field_name,
                         unboxing_option, memory_manager);
+  }
+
+  absl::StatusOr<CelValue> Qualify(
+      absl::Span<const cel::SelectQualifier> qualifiers,
+      const CelValue::MessageWrapper& instance,
+      ProtoWrapperTypeOptions unboxing_option, bool presence_test,
+      cel::MemoryManager& memory_manager) const override {
+    CEL_ASSIGN_OR_RETURN(const google::protobuf::Message* message,
+                         UnwrapMessage(instance, "Qualify"));
+
+    return QualifyImpl(message, message->GetDescriptor(), qualifiers,
+                       unboxing_option, presence_test, memory_manager);
   }
 
   bool IsEqualTo(
@@ -396,6 +503,18 @@ absl::StatusOr<CelValue> ProtoMessageTypeAdapter::GetField(
 
   return GetFieldImpl(message, descriptor_, field_name, unboxing_option,
                       memory_manager);
+}
+
+absl::StatusOr<CelValue> ProtoMessageTypeAdapter::Qualify(
+    absl::Span<const cel::SelectQualifier> qualifiers,
+    const CelValue::MessageWrapper& instance,
+    ProtoWrapperTypeOptions unboxing_option, bool presence_test,
+    cel::MemoryManager& memory_manager) const {
+  CEL_ASSIGN_OR_RETURN(const google::protobuf::Message* message,
+                       UnwrapMessage(instance, "Qualify"));
+
+  return QualifyImpl(message, descriptor_, qualifiers, unboxing_option,
+                     presence_test, memory_manager);
 }
 
 absl::Status ProtoMessageTypeAdapter::SetField(

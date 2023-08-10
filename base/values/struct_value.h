@@ -24,8 +24,11 @@
 #include "absl/base/attributes.h"
 #include "absl/hash/hash.h"
 #include "absl/log/absl_check.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/variant.h"
+#include "base/attribute.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
@@ -45,6 +48,13 @@ struct LegacyStructValueAccess;
 class ValueFactory;
 class StructValueBuilder;
 class StructValueBuilderInterface;
+
+struct FieldSpecifier {
+  int64_t number;
+  std::string name;
+};
+
+using SelectQualifier = absl::variant<FieldSpecifier, AttributeQualifier>;
 
 // StructValue represents an instance of cel::StructType.
 class StructValue : public Value {
@@ -103,6 +113,17 @@ class StructValue : public Value {
 
   absl::StatusOr<Handle<Value>> GetFieldByNumber(const GetFieldContext& context,
                                                  int64_t number) const;
+
+  // Apply a series of qualifications (representing field traversals) to the
+  // given struct.
+  //
+  // absl::StatusCode::kUnimplemented has special meaning: if returned the
+  // evaluator will attempt to apply the operation using the standard Get/Has
+  // operations.
+  absl::StatusOr<Handle<Value>> Qualify(
+      const GetFieldContext& context,
+      absl::Span<const SelectQualifier> select_qualifiers,
+      bool presence_test) const;
 
   class HasFieldContext final {
    public:
@@ -217,6 +238,10 @@ ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool> MessageValueHasFieldByName(
 ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> MessageValueGetFieldByNumber(
     uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
     int64_t number, bool unbox_null_wrapper_types);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> MessageValueQualify(
+    uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
+    absl::Span<const SelectQualifier> qualifiers, bool unbox_null_wrapper_types,
+    bool presence_test);
 ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> MessageValueGetFieldByName(
     uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
     absl::string_view name, bool unbox_null_wrapper_types);
@@ -251,6 +276,11 @@ class LegacyStructValue final : public StructValue, public InlineData {
 
   absl::StatusOr<Handle<Value>> GetFieldByNumber(const GetFieldContext& context,
                                                  int64_t number) const;
+
+  absl::StatusOr<Handle<Value>> Qualify(
+      const GetFieldContext& context,
+      absl::Span<const SelectQualifier> select_qualifiers,
+      bool presence_test) const;
 
   absl::StatusOr<bool> HasFieldByName(const HasFieldContext& context,
                                       absl::string_view name) const;
@@ -334,6 +364,13 @@ class AbstractStructValue : public StructValue,
 
   virtual absl::StatusOr<Handle<Value>> GetFieldByNumber(
       const GetFieldContext& context, int64_t number) const = 0;
+
+  virtual absl::StatusOr<Handle<Value>> Qualify(
+      const GetFieldContext& context,
+      absl::Span<const SelectQualifier> select_qualifiers,
+      bool presence_test) const {
+    return absl::UnimplementedError("Qualify not supported.");
+  }
 
   virtual absl::StatusOr<bool> HasFieldByName(const HasFieldContext& context,
                                               absl::string_view name) const = 0;
