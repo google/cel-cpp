@@ -141,7 +141,6 @@ cc_library(
         "//eval/eval:expression_step_base",
         "//eval/public:ast_rewrite_native",
         "//eval/public:source_position_native",
-        "//internal:overflow",
         "//internal:overloaded",
         "//internal:status_macros",
         "//runtime:runtime_options",

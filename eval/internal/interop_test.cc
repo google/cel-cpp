@@ -742,20 +742,16 @@ TEST(ValueInterop, StructFromLegacy) {
   EXPECT_EQ(value->kind(), Kind::kStruct);
   EXPECT_EQ(value->type()->kind(), Kind::kStruct);
   EXPECT_EQ(value->type()->name(), "google.protobuf.Api");
-  EXPECT_THAT(value.As<StructValue>()->HasFieldByName(
-                  StructValue::HasFieldContext(type_manager), "name"),
+  EXPECT_THAT(value.As<StructValue>()->HasFieldByName(type_manager, "name"),
               IsOkAndHolds(Eq(true)));
-  EXPECT_THAT(value.As<StructValue>()->HasFieldByNumber(
-                  StructValue::HasFieldContext(type_manager), 1),
+  EXPECT_THAT(value.As<StructValue>()->HasFieldByNumber(type_manager, 1),
               StatusIs(absl::StatusCode::kUnimplemented));
   ASSERT_OK_AND_ASSIGN(
       auto value_name_field,
-      value.As<StructValue>()->GetFieldByName(
-          StructValue::GetFieldContext(value_factory), "name"));
+      value.As<StructValue>()->GetFieldByName(value_factory, "name"));
   ASSERT_TRUE(value_name_field->Is<StringValue>());
   EXPECT_EQ(value_name_field.As<StringValue>()->ToString(), "foo");
-  EXPECT_THAT(value.As<StructValue>()->GetFieldByNumber(
-                  StructValue::GetFieldContext(value_factory), 1),
+  EXPECT_THAT(value.As<StructValue>()->GetFieldByNumber(value_factory, 1),
               StatusIs(absl::StatusCode::kUnimplemented));
   auto value_wrapper = LegacyStructValueAccess::ToMessageWrapper(
       *value.As<base_internal::LegacyStructValue>());
@@ -782,11 +778,9 @@ TEST(ValueInterop, StructFromLegacyMessageLite) {
   EXPECT_EQ(value->type()->kind(), Kind::kStruct);
   EXPECT_EQ(value->type()->name(), "opaque type");
   EXPECT_THAT(
-      value.As<StructValue>()->HasFieldByName(
-          StructValue::HasFieldContext(type_manager), "name"),
+      value.As<StructValue>()->HasFieldByName(type_manager, "name"),
       StatusIs(absl::StatusCode::kNotFound, HasSubstr("no_such_field")));
-  EXPECT_THAT(value.As<StructValue>()->HasFieldByNumber(
-                  StructValue::HasFieldContext(type_manager), 1),
+  EXPECT_THAT(value.As<StructValue>()->HasFieldByNumber(type_manager, 1),
               StatusIs(absl::StatusCode::kUnimplemented));
   EXPECT_EQ(value.As<StructValue>()->DebugString(), "opaque type");
   auto value_wrapper = LegacyStructValueAccess::ToMessageWrapper(
@@ -949,14 +943,13 @@ TEST(ValueInterop, LegacyStructNewFieldIteratorIds) {
       FromLegacyValue(&arena, CelProtoWrapper::CreateMessage(&api, &arena)));
   EXPECT_EQ(value->As<StructValue>().field_count(), 2);
   ASSERT_OK_AND_ASSIGN(
-      auto iterator, value->As<StructValue>().NewFieldIterator(memory_manager));
+      auto iterator, value->As<StructValue>().NewFieldIterator(value_factory));
   std::set<StructType::FieldId> actual_ids;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(
-        auto id, iterator->NextId(StructValue::GetFieldContext(value_factory)));
+    ASSERT_OK_AND_ASSIGN(auto id, iterator->NextId());
     actual_ids.insert(id);
   }
-  EXPECT_THAT(iterator->NextId(StructValue::GetFieldContext(value_factory)),
+  EXPECT_THAT(iterator->NextId(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   std::set<StructType::FieldId> expected_ids = {
       FieldIdFactory::Make("name"), FieldIdFactory::Make("version")};
@@ -977,15 +970,13 @@ TEST(ValueInterop, LegacyStructNewFieldIteratorValues) {
       FromLegacyValue(&arena, CelProtoWrapper::CreateMessage(&api, &arena)));
   EXPECT_EQ(value->As<StructValue>().field_count(), 2);
   ASSERT_OK_AND_ASSIGN(
-      auto iterator, value->As<StructValue>().NewFieldIterator(memory_manager));
+      auto iterator, value->As<StructValue>().NewFieldIterator(value_factory));
   std::set<std::string> actual_values;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(
-        auto value,
-        iterator->NextValue(StructValue::GetFieldContext(value_factory)));
+    ASSERT_OK_AND_ASSIGN(auto value, iterator->NextValue());
     actual_values.insert(value->As<StringValue>().ToString());
   }
-  EXPECT_THAT(iterator->NextId(StructValue::GetFieldContext(value_factory)),
+  EXPECT_THAT(iterator->NextId(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   std::set<std::string> expected_values = {"bar", "foo"};
   EXPECT_EQ(actual_values, expected_values);

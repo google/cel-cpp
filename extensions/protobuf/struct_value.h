@@ -250,19 +250,19 @@ class ParsedProtoStructValue : public ProtoStructValue {
   size_t field_count() const final;
 
   absl::StatusOr<Handle<Value>> GetFieldByName(
-      const GetFieldContext& context, absl::string_view name) const final;
+      ValueFactory& value_factory, absl::string_view name) const final;
 
-  absl::StatusOr<Handle<Value>> GetFieldByNumber(const GetFieldContext& context,
+  absl::StatusOr<Handle<Value>> GetFieldByNumber(ValueFactory& value_factory,
                                                  int64_t number) const final;
 
-  absl::StatusOr<bool> HasFieldByName(const HasFieldContext& context,
+  absl::StatusOr<bool> HasFieldByName(TypeManager& type_manager,
                                       absl::string_view name) const final;
 
-  absl::StatusOr<bool> HasFieldByNumber(const HasFieldContext& context,
+  absl::StatusOr<bool> HasFieldByNumber(TypeManager& type_manager,
                                         int64_t number) const final;
 
   absl::StatusOr<UniqueRef<StructValue::FieldIterator>> NewFieldIterator(
-      MemoryManager& memory_manager) const final;
+      ValueFactory& value_factory) const final;
 
   using ProtoStructValue::value;
 
@@ -281,21 +281,21 @@ class ParsedProtoStructValue : public ProtoStructValue {
   google::protobuf::Message* ValuePointer(google::protobuf::MessageFactory& message_factory,
                                 google::protobuf::Arena* arena) const final;
 
-  absl::StatusOr<Handle<Value>> GetField(const GetFieldContext& context,
+  absl::StatusOr<Handle<Value>> GetField(ValueFactory& value_factory,
                                          const StructType::Field& field) const;
 
   absl::StatusOr<Handle<Value>> GetMapField(
-      const GetFieldContext& context, const StructType::Field& field,
+      ValueFactory& value_factory, const StructType::Field& field,
       const google::protobuf::Reflection& reflect,
       const google::protobuf::FieldDescriptor& field_desc) const;
 
   absl::StatusOr<Handle<Value>> GetRepeatedField(
-      const GetFieldContext& context, const StructType::Field& field,
+      ValueFactory& value_factory, const StructType::Field& field,
       const google::protobuf::Reflection& reflect,
       const google::protobuf::FieldDescriptor& field_desc) const;
 
   absl::StatusOr<Handle<Value>> GetSingularField(
-      const GetFieldContext& context, const StructType::Field& field,
+      ValueFactory& value_factory, const StructType::Field& field,
       const google::protobuf::Reflection& reflect,
       const google::protobuf::FieldDescriptor& field_desc) const;
 

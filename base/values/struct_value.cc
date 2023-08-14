@@ -33,6 +33,7 @@
 #include "base/memory.h"
 #include "base/types/struct_type.h"
 #include "base/value.h"
+#include "base/value_factory.h"
 #include "common/any.h"
 #include "common/json.h"
 #include "internal/rtti.h"
@@ -72,35 +73,44 @@ absl::StatusOr<Json> StructValue::ConvertToJson(
 }
 
 absl::StatusOr<Handle<Value>> StructValue::GetFieldByName(
-    const GetFieldContext& context, absl::string_view name) const {
-  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(GetFieldByName, context, name);
+    ValueFactory& value_factory, absl::string_view name) const {
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(GetFieldByName, value_factory,
+                                            name);
 }
 
 absl::StatusOr<Handle<Value>> StructValue::GetFieldByNumber(
-    const GetFieldContext& context, int64_t number) const {
-  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(GetFieldByNumber, context, number);
+    ValueFactory& value_factory, int64_t number) const {
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(GetFieldByNumber, value_factory,
+                                            number);
 }
 
 absl::StatusOr<Handle<Value>> StructValue::Qualify(
-    const GetFieldContext& context,
-    absl::Span<const SelectQualifier> qualifiers, bool presence_test) const {
-  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(Qualify, context, qualifiers,
+    ValueFactory& value_factory, absl::Span<const SelectQualifier> qualifiers,
+    bool presence_test) const {
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(Qualify, value_factory, qualifiers,
                                             presence_test);
 }
 
-absl::StatusOr<bool> StructValue::HasFieldByName(const HasFieldContext& context,
+absl::StatusOr<bool> StructValue::HasFieldByName(TypeManager& type_manager,
                                                  absl::string_view name) const {
-  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(HasFieldByName, context, name);
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(HasFieldByName, type_manager, name);
 }
 
-absl::StatusOr<bool> StructValue::HasFieldByNumber(
-    const HasFieldContext& context, int64_t number) const {
-  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(HasFieldByNumber, context, number);
+absl::StatusOr<bool> StructValue::HasFieldByNumber(TypeManager& type_manager,
+                                                   int64_t number) const {
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(HasFieldByNumber, type_manager,
+                                            number);
 }
 
 absl::StatusOr<UniqueRef<StructValue::FieldIterator>>
-StructValue::NewFieldIterator(MemoryManager& memory_manager) const {
-  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(NewFieldIterator, memory_manager);
+StructValue::NewFieldIterator(ValueFactory& value_factory) const {
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(NewFieldIterator, value_factory);
+}
+
+absl::StatusOr<Handle<Value>> StructValue::GetWrappedFieldByName(
+    ValueFactory& value_factory, absl::string_view name) const {
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(GetWrappedFieldByName,
+                                            value_factory, name);
 }
 
 internal::TypeInfo StructValue::TypeId() const {
@@ -111,49 +121,47 @@ internal::TypeInfo StructValue::TypeId() const {
 
 struct StructValue::GetFieldVisitor final {
   const StructValue& struct_value;
-  const GetFieldContext& context;
+  ValueFactory& value_factory;
 
   absl::StatusOr<Handle<Value>> operator()(absl::string_view name) const {
-    return struct_value.GetFieldByName(context, name);
+    return struct_value.GetFieldByName(value_factory, name);
   }
 
   absl::StatusOr<Handle<Value>> operator()(int64_t number) const {
-    return struct_value.GetFieldByNumber(context, number);
+    return struct_value.GetFieldByNumber(value_factory, number);
   }
 };
 
 struct StructValue::HasFieldVisitor final {
   const StructValue& struct_value;
-  const HasFieldContext& context;
+  TypeManager& type_manager;
 
   absl::StatusOr<bool> operator()(absl::string_view name) const {
-    return struct_value.HasFieldByName(context, name);
+    return struct_value.HasFieldByName(type_manager, name);
   }
 
   absl::StatusOr<bool> operator()(int64_t number) const {
-    return struct_value.HasFieldByNumber(context, number);
+    return struct_value.HasFieldByNumber(type_manager, number);
   }
 };
 
-absl::StatusOr<Handle<Value>> StructValue::GetField(
-    const GetFieldContext& context, FieldId field) const {
-  return absl::visit(GetFieldVisitor{*this, context}, field.data_);
+absl::StatusOr<Handle<Value>> StructValue::GetField(ValueFactory& value_factory,
+                                                    FieldId field) const {
+  return absl::visit(GetFieldVisitor{*this, value_factory}, field.data_);
 }
 
-absl::StatusOr<bool> StructValue::HasField(const HasFieldContext& context,
+absl::StatusOr<bool> StructValue::HasField(TypeManager& type_manager,
                                            FieldId field) const {
-  return absl::visit(HasFieldVisitor{*this, context}, field.data_);
+  return absl::visit(HasFieldVisitor{*this, type_manager}, field.data_);
 }
 
-absl::StatusOr<StructValue::FieldId> StructValue::FieldIterator::NextId(
-    const StructValue::GetFieldContext& context) {
-  CEL_ASSIGN_OR_RETURN(auto entry, Next(context));
+absl::StatusOr<StructValue::FieldId> StructValue::FieldIterator::NextId() {
+  CEL_ASSIGN_OR_RETURN(auto entry, Next());
   return entry.id;
 }
 
-absl::StatusOr<Handle<Value>> StructValue::FieldIterator::NextValue(
-    const StructValue::GetFieldContext& context) {
-  CEL_ASSIGN_OR_RETURN(auto entry, Next(context));
+absl::StatusOr<Handle<Value>> StructValue::FieldIterator::NextValue() {
+  CEL_ASSIGN_OR_RETURN(auto entry, Next());
   return std::move(entry.value);
 }
 
@@ -161,15 +169,16 @@ namespace base_internal {
 
 class LegacyStructValueFieldIterator final : public StructValue::FieldIterator {
  public:
-  LegacyStructValueFieldIterator(uintptr_t msg, uintptr_t type_info)
-      : msg_(msg),
+  LegacyStructValueFieldIterator(ValueFactory& value_factory, uintptr_t msg,
+                                 uintptr_t type_info)
+      : value_factory_(value_factory),
+        msg_(msg),
         type_info_(type_info),
         field_names_(MessageValueListFields(msg_, type_info_)) {}
 
   bool HasNext() override { return index_ < field_names_.size(); }
 
-  absl::StatusOr<Field> Next(
-      const StructValue::GetFieldContext& context) override {
+  absl::StatusOr<Field> Next() override {
     if (ABSL_PREDICT_FALSE(index_ >= field_names_.size())) {
       return absl::FailedPreconditionError(
           "StructValue::FieldIterator::Next() called when "
@@ -177,15 +186,13 @@ class LegacyStructValueFieldIterator final : public StructValue::FieldIterator {
     }
     const auto& field_name = field_names_[index_];
     CEL_ASSIGN_OR_RETURN(
-        auto value, MessageValueGetFieldByName(
-                        msg_, type_info_, context.value_factory(), field_name,
-                        context.unbox_null_wrapper_types()));
+        auto value, MessageValueGetFieldByName(msg_, type_info_, value_factory_,
+                                               field_name, true));
     ++index_;
     return Field(LegacyStructType::MakeFieldId(field_name), std::move(value));
   }
 
-  absl::StatusOr<StructValue::FieldId> NextId(
-      const StructValue::GetFieldContext& context) override {
+  absl::StatusOr<StructValue::FieldId> NextId() override {
     if (ABSL_PREDICT_FALSE(index_ >= field_names_.size())) {
       return absl::FailedPreconditionError(
           "StructValue::FieldIterator::Next() called when "
@@ -195,6 +202,7 @@ class LegacyStructValueFieldIterator final : public StructValue::FieldIterator {
   }
 
  private:
+  ValueFactory& value_factory_;
   const uintptr_t msg_;
   const uintptr_t type_info_;
   const std::vector<absl::string_view> field_names_;
@@ -233,40 +241,44 @@ absl::StatusOr<Json> LegacyStructValue::ConvertToJson(
 }
 
 absl::StatusOr<Handle<Value>> LegacyStructValue::GetFieldByName(
-    const GetFieldContext& context, absl::string_view name) const {
-  return MessageValueGetFieldByName(msg_, type_info_, context.value_factory(),
-                                    name, context.unbox_null_wrapper_types());
+    ValueFactory& value_factory, absl::string_view name) const {
+  return MessageValueGetFieldByName(msg_, type_info_, value_factory, name,
+                                    true);
 }
 
 absl::StatusOr<Handle<Value>> LegacyStructValue::GetFieldByNumber(
-    const GetFieldContext& context, int64_t number) const {
-  return MessageValueGetFieldByNumber(msg_, type_info_, context.value_factory(),
-                                      number,
-                                      context.unbox_null_wrapper_types());
+    ValueFactory& value_factory, int64_t number) const {
+  return MessageValueGetFieldByNumber(msg_, type_info_, value_factory, number,
+                                      true);
 }
 
 absl::StatusOr<Handle<Value>> LegacyStructValue::Qualify(
-    const GetFieldContext& context,
-    absl::Span<const SelectQualifier> qualifiers, bool presence_test) const {
-  return MessageValueQualify(msg_, type_info_, context.value_factory(),
-                             qualifiers, context.unbox_null_wrapper_types(),
+    ValueFactory& value_factory, absl::Span<const SelectQualifier> qualifiers,
+    bool presence_test) const {
+  return MessageValueQualify(msg_, type_info_, value_factory, qualifiers, true,
                              presence_test);
 }
 
 absl::StatusOr<bool> LegacyStructValue::HasFieldByName(
-    const HasFieldContext& context, absl::string_view name) const {
+    TypeManager& type_manager, absl::string_view name) const {
   return MessageValueHasFieldByName(msg_, type_info_, name);
 }
 
 absl::StatusOr<bool> LegacyStructValue::HasFieldByNumber(
-    const HasFieldContext& context, int64_t number) const {
+    TypeManager& type_manager, int64_t number) const {
   return MessageValueHasFieldByNumber(msg_, type_info_, number);
 }
 
+absl::StatusOr<Handle<Value>> LegacyStructValue::GetWrappedFieldByName(
+    ValueFactory& value_factory, absl::string_view name) const {
+  return MessageValueGetFieldByName(msg_, type_info_, value_factory, name,
+                                    false);
+}
+
 absl::StatusOr<UniqueRef<StructValue::FieldIterator>>
-LegacyStructValue::NewFieldIterator(MemoryManager& memory_manager) const {
-  return MakeUnique<LegacyStructValueFieldIterator>(memory_manager, msg_,
-                                                    type_info_);
+LegacyStructValue::NewFieldIterator(ValueFactory& value_factory) const {
+  return MakeUnique<LegacyStructValueFieldIterator>(
+      value_factory.memory_manager(), value_factory, msg_, type_info_);
 }
 
 AbstractStructValue::AbstractStructValue(Handle<StructType> type)
@@ -275,6 +287,42 @@ AbstractStructValue::AbstractStructValue(Handle<StructType> type)
   ABSL_ASSERT(
       reinterpret_cast<uintptr_t>(static_cast<Value*>(this)) ==
       reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
+}
+
+absl::StatusOr<Handle<Value>> AbstractStructValue::GetWrappedFieldByName(
+    ValueFactory& value_factory, absl::string_view name) const {
+  CEL_ASSIGN_OR_RETURN(auto field, GetFieldByName(value_factory, name));
+  if (field->Is<NullValue>()) {
+    // Ugh. Somebody is still using the broken behavior of not unboxing wrapper
+    // values. We need to synthesize it.
+    CEL_ASSIGN_OR_RETURN(
+        auto field_type,
+        type()->FindFieldByName(value_factory.type_manager(), name));
+    if (!field_type.has_value()) {
+      return absl::InternalError(absl::StrCat(
+          "field exists on value but not on type: ", type()->name(), name));
+    }
+    if ((*field_type).type->Is<WrapperType>()) {
+      switch ((*field_type).type->kind()) {
+        case TypeKind::kBool:
+          return value_factory.CreateBoolValue(false);
+        case TypeKind::kInt:
+          return value_factory.CreateIntValue(0);
+        case TypeKind::kUint:
+          return value_factory.CreateUintValue(0);
+        case TypeKind::kDouble:
+          return value_factory.CreateDoubleValue(0.0);
+        case TypeKind::kString:
+          return value_factory.GetStringValue();
+        case TypeKind::kBytes:
+          return value_factory.GetBytesValue();
+        default:
+          // There are only 6 wrapper types.
+          ABSL_UNREACHABLE();
+      }
+    }
+  }
+  return field;
 }
 
 absl::StatusOr<Any> AbstractStructValue::ConvertToAny(

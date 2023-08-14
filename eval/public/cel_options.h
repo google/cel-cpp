@@ -144,6 +144,10 @@ struct InterpreterOptions {
   // This assumes that the type information at check time agrees with the
   // configured types at runtime.
   //
+  // Important: The select optimization ignores
+  // `enable_empty_wrapper_null_unboxing` and always operates as though it is
+  // `true`.
+  //
   // Note: implementation in progress -- please consult the CEL team before
   // enabling in an existing environment.
   bool enable_select_optimization = false;

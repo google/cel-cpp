@@ -297,9 +297,8 @@ class OptimizedSelectStep : public ExpressionStepBase {
 
   // Slow implementation if the Qualify operation isn't provided for the struct
   // implementation at runtime.
-  absl::StatusOr<Handle<Value>> FallbackSelect(
-      ExecutionFrame* frame, const StructValue& root,
-      const StructValue::GetFieldContext& get_context) const;
+  absl::StatusOr<Handle<Value>> FallbackSelect(ExecutionFrame* frame,
+                                               const StructValue& root) const;
 
   // Get the effective attribute for the optimized select expression.
   // Assumes the operand is the top of stack if the attribute wasn't known at
@@ -364,11 +363,9 @@ AttributeTrail OptimizedSelectStep::GetAttributeTrail(
 }
 
 absl::StatusOr<Handle<Value>> OptimizedSelectStep::FallbackSelect(
-    ExecutionFrame* frame, const StructValue& root,
-    const StructValue::GetFieldContext& get_context) const {
+    ExecutionFrame* frame, const StructValue& root) const {
   const StructValue* elem = &root;
   Handle<Value> result;
-  StructValue::HasFieldContext has_context(frame->type_manager());
 
   for (const auto& instruction : select_path_) {
     if (elem == nullptr) {
@@ -388,13 +385,13 @@ absl::StatusOr<Handle<Value>> OptimizedSelectStep::FallbackSelect(
       // https://github.com/google/cel-spec/blob/master/doc/langdef.md#field-selection).
       CEL_ASSIGN_OR_RETURN(
           bool has_field,
-          elem->HasFieldByName(has_context, field_specifier.name));
+          elem->HasFieldByName(frame->type_manager(), field_specifier.name));
       if (!has_field) {
         return frame->value_factory().CreateBoolValue(false);
       }
     }
-    CEL_ASSIGN_OR_RETURN(
-        result, elem->GetFieldByName(get_context, field_specifier.name));
+    CEL_ASSIGN_OR_RETURN(result, elem->GetFieldByName(frame->value_factory(),
+                                                      field_specifier.name));
     if (result->Is<StructValue>()) {
       elem = &result->As<StructValue>();
     }
@@ -407,19 +404,17 @@ absl::StatusOr<Handle<Value>> OptimizedSelectStep::FallbackSelect(
 
 absl::StatusOr<Handle<Value>> OptimizedSelectStep::ApplySelect(
     ExecutionFrame* frame, const StructValue& struct_value) const {
-  StructValue::GetFieldContext get_context(frame->value_factory());
-  get_context.set_unbox_null_wrapper_types(enable_wrapper_type_null_unboxing_);
-
   absl::StatusOr<Handle<Value>> value_or =
       (options_.force_fallback_implementation)
           ? absl::UnimplementedError("Forced fallback impl")
-          : struct_value.Qualify(get_context, select_path_, presence_test_);
+          : struct_value.Qualify(frame->value_factory(), select_path_,
+                                 presence_test_);
 
   if (value_or.status().code() != absl::StatusCode::kUnimplemented) {
     return value_or;
   }
 
-  return FallbackSelect(frame, struct_value, get_context);
+  return FallbackSelect(frame, struct_value);
 }
 
 absl::Status OptimizedSelectStep::Evaluate(ExecutionFrame* frame) const {

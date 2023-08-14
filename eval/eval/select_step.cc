@@ -5,10 +5,14 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/optimization.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "base/handle.h"
+#include "base/kind.h"
+#include "base/types/wrapper_type.h"
 #include "base/value_factory.h"
 #include "base/values/error_value.h"
 #include "base/values/map_value.h"
@@ -49,43 +53,6 @@ absl::Status InvalidSelectTargetError() {
                       "Applying SELECT to non-message type");
 }
 
-// SelectStep performs message field access specified by Expr::Select
-// message.
-class SelectStep : public ExpressionStepBase {
- public:
-  SelectStep(Handle<StringValue> value, bool test_field_presence,
-             int64_t expr_id, absl::string_view select_path,
-             bool enable_wrapper_type_null_unboxing)
-      : ExpressionStepBase(expr_id),
-        field_value_(std::move(value)),
-        field_(field_value_->ToString()),
-        test_field_presence_(test_field_presence),
-        select_path_(select_path),
-        unboxing_option_(enable_wrapper_type_null_unboxing
-                             ? ProtoWrapperTypeOptions::kUnsetNull
-                             : ProtoWrapperTypeOptions::kUnsetProtoDefault) {}
-
-  absl::Status Evaluate(ExecutionFrame* frame) const override;
-
- private:
-  absl::StatusOr<Handle<Value>> CreateValueFromField(
-      const Handle<StructValue>& msg, ExecutionFrame* frame) const;
-  cel::Handle<StringValue> field_value_;
-  std::string field_;
-  bool test_field_presence_;
-  std::string select_path_;
-  ProtoWrapperTypeOptions unboxing_option_;
-};
-
-absl::StatusOr<Handle<Value>> SelectStep::CreateValueFromField(
-    const Handle<StructValue>& msg, ExecutionFrame* frame) const {
-  return msg->GetFieldByName(
-      StructValue::GetFieldContext(frame->value_factory())
-          .set_unbox_null_wrapper_types(unboxing_option_ ==
-                                        ProtoWrapperTypeOptions::kUnsetNull),
-      field_);
-}
-
 absl::optional<Handle<Value>> CheckForMarkedAttributes(
     const AttributeTrail& trail, ExecutionFrame* frame) {
   if (frame->enable_unknowns() &&
@@ -116,8 +83,8 @@ absl::optional<Handle<Value>> CheckForMarkedAttributes(
 Handle<Value> TestOnlySelect(const Handle<StructValue>& msg,
                              const std::string& field,
                              cel::ValueFactory& value_factory) {
-  absl::StatusOr<bool> result = msg->HasFieldByName(
-      StructValue::HasFieldContext(value_factory.type_manager()), field);
+  absl::StatusOr<bool> result =
+      msg->HasFieldByName(value_factory.type_manager(), field);
 
   if (!result.ok()) {
     return value_factory.CreateErrorValue(std::move(result).status());
@@ -137,6 +104,45 @@ Handle<Value> TestOnlySelect(const Handle<MapValue>& map,
   }
 
   return value_factory.CreateBoolValue(*presence);
+}
+
+}  // namespace
+
+// SelectStep performs message field access specified by Expr::Select
+// message.
+class SelectStep : public ExpressionStepBase {
+ public:
+  SelectStep(Handle<StringValue> value, bool test_field_presence,
+             int64_t expr_id, absl::string_view select_path,
+             bool enable_wrapper_type_null_unboxing)
+      : ExpressionStepBase(expr_id),
+        field_value_(std::move(value)),
+        field_(field_value_->ToString()),
+        test_field_presence_(test_field_presence),
+        select_path_(select_path),
+        unboxing_option_(enable_wrapper_type_null_unboxing
+                             ? ProtoWrapperTypeOptions::kUnsetNull
+                             : ProtoWrapperTypeOptions::kUnsetProtoDefault) {}
+
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
+
+ private:
+  absl::StatusOr<Handle<Value>> CreateValueFromField(
+      const Handle<StructValue>& msg, ExecutionFrame* frame) const;
+  cel::Handle<StringValue> field_value_;
+  std::string field_;
+  bool test_field_presence_;
+  std::string select_path_;
+  ProtoWrapperTypeOptions unboxing_option_;
+};
+
+absl::StatusOr<Handle<Value>> SelectStep::CreateValueFromField(
+    const Handle<StructValue>& msg, ExecutionFrame* frame) const {
+  if (unboxing_option_ == ProtoWrapperTypeOptions::kUnsetProtoDefault) {
+    return msg->GetWrappedFieldByName(frame->value_factory(), field_);
+  } else {
+    return msg->GetFieldByName(frame->value_factory(), field_);
+  }
 }
 
 absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
@@ -225,8 +231,6 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
       return InvalidSelectTargetError();
   }
 }
-
-}  // namespace
 
 // Factory method for Select - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(

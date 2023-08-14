@@ -39,6 +39,10 @@
 #include "base/value.h"
 #include "internal/rtti.h"
 
+namespace google::api::expr::runtime {
+class SelectStep;
+}
+
 namespace cel {
 
 namespace interop_internal {
@@ -85,33 +89,13 @@ class StructValue : public Value {
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
 
-  class GetFieldContext final {
-   public:
-    explicit GetFieldContext(ValueFactory& value_factory)
-        : value_factory_(value_factory) {}
-
-    ValueFactory& value_factory() const { return value_factory_; }
-
-    bool unbox_null_wrapper_types() const { return unbox_null_wrapper_types_; }
-
-    GetFieldContext& set_unbox_null_wrapper_types(
-        bool unbox_null_wrapper_types) {
-      unbox_null_wrapper_types_ = unbox_null_wrapper_types;
-      return *this;
-    }
-
-   private:
-    ValueFactory& value_factory_;
-    bool unbox_null_wrapper_types_ = false;
-  };
-
-  absl::StatusOr<Handle<Value>> GetField(const GetFieldContext& context,
+  absl::StatusOr<Handle<Value>> GetField(ValueFactory& value_factory,
                                          FieldId field) const;
 
-  absl::StatusOr<Handle<Value>> GetFieldByName(const GetFieldContext& context,
+  absl::StatusOr<Handle<Value>> GetFieldByName(ValueFactory& value_factory,
                                                absl::string_view name) const;
 
-  absl::StatusOr<Handle<Value>> GetFieldByNumber(const GetFieldContext& context,
+  absl::StatusOr<Handle<Value>> GetFieldByNumber(ValueFactory& value_factory,
                                                  int64_t number) const;
 
   // Apply a series of qualifications (representing field traversals) to the
@@ -121,34 +105,22 @@ class StructValue : public Value {
   // evaluator will attempt to apply the operation using the standard Get/Has
   // operations.
   absl::StatusOr<Handle<Value>> Qualify(
-      const GetFieldContext& context,
+      ValueFactory& value_factory,
       absl::Span<const SelectQualifier> select_qualifiers,
       bool presence_test) const;
 
-  class HasFieldContext final {
-   public:
-    explicit HasFieldContext(TypeManager& type_manager)
-        : type_manager_(type_manager) {}
+  absl::StatusOr<bool> HasField(TypeManager& type_manager, FieldId field) const;
 
-    TypeManager& type_manager() const { return type_manager_; }
-
-   private:
-    TypeManager& type_manager_;
-  };
-
-  absl::StatusOr<bool> HasField(const HasFieldContext& context,
-                                FieldId field) const;
-
-  absl::StatusOr<bool> HasFieldByName(const HasFieldContext& context,
+  absl::StatusOr<bool> HasFieldByName(TypeManager& type_manager,
                                       absl::string_view name) const;
 
-  absl::StatusOr<bool> HasFieldByNumber(const HasFieldContext& context,
+  absl::StatusOr<bool> HasFieldByNumber(TypeManager& type_manager,
                                         int64_t number) const;
 
   class FieldIterator;
 
   absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ValueFactory& value_factory) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   struct Field final {
     Field(FieldId id, Handle<Value> value) : id(id), value(std::move(value)) {}
@@ -187,8 +159,12 @@ class StructValue : public Value {
   friend class base_internal::ValueHandle;
   friend class base_internal::LegacyStructValue;
   friend class base_internal::AbstractStructValue;
+  friend class google::api::expr::runtime::SelectStep;
 
   StructValue() = default;
+
+  absl::StatusOr<Handle<Value>> GetWrappedFieldByName(
+      ValueFactory& value_factory, absl::string_view name) const;
 
   // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
   internal::TypeInfo TypeId() const;
@@ -203,14 +179,11 @@ class StructValue::FieldIterator {
 
   ABSL_MUST_USE_RESULT virtual bool HasNext() = 0;
 
-  virtual absl::StatusOr<Field> Next(
-      const StructValue::GetFieldContext& context) = 0;
+  virtual absl::StatusOr<Field> Next() = 0;
 
-  virtual absl::StatusOr<FieldId> NextId(
-      const StructValue::GetFieldContext& context);
+  virtual absl::StatusOr<FieldId> NextId();
 
-  virtual absl::StatusOr<Handle<Value>> NextValue(
-      const StructValue::GetFieldContext& context);
+  virtual absl::StatusOr<Handle<Value>> NextValue();
 };
 
 CEL_INTERNAL_VALUE_DECL(StructValue);
@@ -271,25 +244,25 @@ class LegacyStructValue final : public StructValue, public InlineData {
 
   size_t field_count() const;
 
-  absl::StatusOr<Handle<Value>> GetFieldByName(const GetFieldContext& context,
+  absl::StatusOr<Handle<Value>> GetFieldByName(ValueFactory& value_factory,
                                                absl::string_view name) const;
 
-  absl::StatusOr<Handle<Value>> GetFieldByNumber(const GetFieldContext& context,
+  absl::StatusOr<Handle<Value>> GetFieldByNumber(ValueFactory& value_factory,
                                                  int64_t number) const;
 
   absl::StatusOr<Handle<Value>> Qualify(
-      const GetFieldContext& context,
+      ValueFactory& value_factory,
       absl::Span<const SelectQualifier> select_qualifiers,
       bool presence_test) const;
 
-  absl::StatusOr<bool> HasFieldByName(const HasFieldContext& context,
+  absl::StatusOr<bool> HasFieldByName(TypeManager& type_manager,
                                       absl::string_view name) const;
 
-  absl::StatusOr<bool> HasFieldByNumber(const HasFieldContext& context,
+  absl::StatusOr<bool> HasFieldByNumber(TypeManager& type_manager,
                                         int64_t number) const;
 
   absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ValueFactory& value_factory) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   struct GetFieldVisitor;
@@ -319,6 +292,9 @@ class LegacyStructValue final : public StructValue, public InlineData {
 
   LegacyStructValue(const LegacyStructValue&) = delete;
   LegacyStructValue(LegacyStructValue&&) = delete;
+
+  absl::StatusOr<Handle<Value>> GetWrappedFieldByName(
+      ValueFactory& value_factory, absl::string_view name) const;
 
   // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
   internal::TypeInfo TypeId() const {
@@ -360,26 +336,26 @@ class AbstractStructValue : public StructValue,
   virtual absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
 
   virtual absl::StatusOr<Handle<Value>> GetFieldByName(
-      const GetFieldContext& context, absl::string_view name) const = 0;
+      ValueFactory& value_factory, absl::string_view name) const = 0;
 
   virtual absl::StatusOr<Handle<Value>> GetFieldByNumber(
-      const GetFieldContext& context, int64_t number) const = 0;
+      ValueFactory& value_factory, int64_t number) const = 0;
 
   virtual absl::StatusOr<Handle<Value>> Qualify(
-      const GetFieldContext& context,
+      ValueFactory& value_factory,
       absl::Span<const SelectQualifier> select_qualifiers,
       bool presence_test) const {
     return absl::UnimplementedError("Qualify not supported.");
   }
 
-  virtual absl::StatusOr<bool> HasFieldByName(const HasFieldContext& context,
+  virtual absl::StatusOr<bool> HasFieldByName(TypeManager& type_manager,
                                               absl::string_view name) const = 0;
 
-  virtual absl::StatusOr<bool> HasFieldByNumber(const HasFieldContext& context,
+  virtual absl::StatusOr<bool> HasFieldByNumber(TypeManager& type_manager,
                                                 int64_t number) const = 0;
 
   virtual absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
+      ValueFactory& value_factory) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
  protected:
   explicit AbstractStructValue(Handle<StructType> type);
@@ -400,6 +376,9 @@ class AbstractStructValue : public StructValue,
 
   AbstractStructValue(const AbstractStructValue&) = delete;
   AbstractStructValue(AbstractStructValue&&) = delete;
+
+  absl::StatusOr<Handle<Value>> GetWrappedFieldByName(
+      ValueFactory& value_factory, absl::string_view name) const;
 
   // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
