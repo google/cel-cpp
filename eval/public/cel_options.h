@@ -114,7 +114,7 @@ struct InterpreterOptions {
   // expression access a field of type google.protobuf.Int64Value that is unset,
   // that will result in a Null cel value, as opposed to returning the
   // cel representation of the proto defined default int64_t: 0.
-  bool enable_empty_wrapper_null_unboxing = false;
+  bool enable_empty_wrapper_null_unboxing = true;
 
   // Enables expression rewrites to disambiguate namespace qualified identifiers
   // from container access for variables and receiver-style calls for functions.
