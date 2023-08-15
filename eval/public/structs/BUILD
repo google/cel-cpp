@@ -250,6 +250,7 @@ cc_library(
         "//internal:casts",
         "//internal:no_destructor",
         "//internal:status_macros",
+        "//runtime:runtime_options",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",

@@ -246,8 +246,7 @@ absl::StatusOr<Handle<Value>> LegacyStructGetFieldImpl(
 
 absl::StatusOr<Handle<Value>> LegacyStructQualifyImpl(
     const MessageWrapper& wrapper, absl::Span<const cel::SelectQualifier> path,
-    bool unbox_null_wrapper_types, bool presence_test,
-    MemoryManager& memory_manager) {
+    bool presence_test, MemoryManager& memory_manager) {
   if (path.empty()) {
     return absl::InvalidArgumentError("invalid select qualifier path.");
   }
@@ -273,9 +272,6 @@ absl::StatusOr<Handle<Value>> LegacyStructQualifyImpl(
   CEL_ASSIGN_OR_RETURN(
       auto legacy_value,
       access_api->Qualify(path, wrapper,
-                          unbox_null_wrapper_types
-                              ? ProtoWrapperTypeOptions::kUnsetNull
-                              : ProtoWrapperTypeOptions::kUnsetProtoDefault,
                           presence_test, memory_manager));
 
   return FromLegacyValue(arena, legacy_value);
@@ -888,13 +884,11 @@ absl::StatusOr<Handle<Value>> MessageValueGetFieldByName(
 
 absl::StatusOr<Handle<Value>> MessageValueQualify(
     uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
-    absl::Span<const SelectQualifier> qualifiers, bool unbox_null_wrapper_types,
-    bool presence_test) {
+    absl::Span<const SelectQualifier> qualifiers, bool presence_test) {
   auto wrapper = MessageWrapperAccess::Make(msg, type_info);
 
   return interop_internal::LegacyStructQualifyImpl(
-      wrapper, qualifiers, unbox_null_wrapper_types, presence_test,
-      value_factory.memory_manager());
+      wrapper, qualifiers, presence_test, value_factory.memory_manager());
 }
 
 absl::StatusOr<Handle<Value>> LegacyListValueGet(uintptr_t impl,

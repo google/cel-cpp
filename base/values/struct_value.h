@@ -213,8 +213,7 @@ ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> MessageValueGetFieldByNumber(
     int64_t number, bool unbox_null_wrapper_types);
 ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> MessageValueQualify(
     uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
-    absl::Span<const SelectQualifier> qualifiers, bool unbox_null_wrapper_types,
-    bool presence_test);
+    absl::Span<const SelectQualifier> qualifiers, bool presence_test);
 ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> MessageValueGetFieldByName(
     uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
     absl::string_view name, bool unbox_null_wrapper_types);
