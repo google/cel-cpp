@@ -40,6 +40,7 @@
 #include "internal/casts.h"
 #include "internal/no_destructor.h"
 #include "internal/status_macros.h"
+#include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -180,8 +181,7 @@ absl::StatusOr<CelValue> GetFieldImpl(const google::protobuf::Message* message,
 
 absl::StatusOr<CelValue> QualifyImpl(
     const google::protobuf::Message* message, const google::protobuf::Descriptor* descriptor,
-    absl::Span<const cel::SelectQualifier> path,
-    ProtoWrapperTypeOptions unboxing_option, bool presence_test,
+    absl::Span<const cel::SelectQualifier> path, bool presence_test,
     cel::MemoryManager& memory_manager) {
   google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
   const google::protobuf::Message* select_path_elem = message;
@@ -243,8 +243,11 @@ absl::StatusOr<CelValue> QualifyImpl(
         CelFieldIsPresent(select_path_elem, field_desc, reflection));
   }
 
-  return CreateCelValueFromField(select_path_elem, field_desc, unboxing_option,
-                                 arena);
+  // For simplicity, qualify only supports the spec behavior for wrapper types.
+  // The optimization is opt-in, so should not affect clients depening on the
+  // legacy behavior.
+  return CreateCelValueFromField(select_path_elem, field_desc,
+                                 ProtoWrapperTypeOptions::kUnsetNull, arena);
 }
 
 std::vector<absl::string_view> ListFieldsImpl(
@@ -290,14 +293,13 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
 
   absl::StatusOr<CelValue> Qualify(
       absl::Span<const cel::SelectQualifier> qualifiers,
-      const CelValue::MessageWrapper& instance,
-      ProtoWrapperTypeOptions unboxing_option, bool presence_test,
+      const CelValue::MessageWrapper& instance, bool presence_test,
       cel::MemoryManager& memory_manager) const override {
     CEL_ASSIGN_OR_RETURN(const google::protobuf::Message* message,
                          UnwrapMessage(instance, "Qualify"));
 
     return QualifyImpl(message, message->GetDescriptor(), qualifiers,
-                       unboxing_option, presence_test, memory_manager);
+                       presence_test, memory_manager);
   }
 
   bool IsEqualTo(
@@ -507,14 +509,13 @@ absl::StatusOr<CelValue> ProtoMessageTypeAdapter::GetField(
 
 absl::StatusOr<CelValue> ProtoMessageTypeAdapter::Qualify(
     absl::Span<const cel::SelectQualifier> qualifiers,
-    const CelValue::MessageWrapper& instance,
-    ProtoWrapperTypeOptions unboxing_option, bool presence_test,
+    const CelValue::MessageWrapper& instance, bool presence_test,
     cel::MemoryManager& memory_manager) const {
   CEL_ASSIGN_OR_RETURN(const google::protobuf::Message* message,
                        UnwrapMessage(instance, "Qualify"));
 
-  return QualifyImpl(message, descriptor_, qualifiers, unboxing_option,
-                     presence_test, memory_manager);
+  return QualifyImpl(message, descriptor_, qualifiers, presence_test,
+                     memory_manager);
 }
 
 absl::Status ProtoMessageTypeAdapter::SetField(

@@ -255,7 +255,7 @@ absl::StatusOr<Handle<Value>> LegacyStructValue::GetFieldByNumber(
 absl::StatusOr<Handle<Value>> LegacyStructValue::Qualify(
     ValueFactory& value_factory, absl::Span<const SelectQualifier> qualifiers,
     bool presence_test) const {
-  return MessageValueQualify(msg_, type_info_, value_factory, qualifiers, true,
+  return MessageValueQualify(msg_, type_info_, value_factory, qualifiers,
                              presence_test);
 }
 

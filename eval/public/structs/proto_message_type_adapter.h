@@ -88,8 +88,7 @@ class ProtoMessageTypeAdapter : public LegacyTypeInfoApis,
 
   absl::StatusOr<CelValue> Qualify(
       absl::Span<const cel::SelectQualifier> qualifiers,
-      const CelValue::MessageWrapper& instance,
-      ProtoWrapperTypeOptions unboxing_option, bool presence_test,
+      const CelValue::MessageWrapper& instance, bool presence_test,
       cel::MemoryManager& memory_manager) const override;
 
   bool IsEqualTo(const CelValue::MessageWrapper& instance,

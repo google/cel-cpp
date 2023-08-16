@@ -96,14 +96,12 @@ class LegacyTypeAccessApis {
   // absl::StatusCode::kUnimplemented signals that Qualify is unsupported and
   // the evaluator should emulate the default select behavior.
   //
-  // - unboxing_option controls the field access behavior for wrapper WKTs.
   // - presence_test controls whether to treat the call as a 'has' call,
   // returning
   //   whether the leaf field is set to a non-default value.
   virtual absl::StatusOr<CelValue> Qualify(
       absl::Span<const cel::SelectQualifier>,
-      const CelValue::MessageWrapper& instance,
-      ProtoWrapperTypeOptions unboxing_option, bool presence_test,
+      const CelValue::MessageWrapper& instance, bool presence_test,
       cel::MemoryManager& memory_manager) const {
     return absl::UnimplementedError("Qualify unsupported.");
   }

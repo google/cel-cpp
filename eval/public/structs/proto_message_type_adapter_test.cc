@@ -781,10 +781,9 @@ TEST(ProtoMesssageTypeAdapter, Qualify) {
   std::vector<cel::SelectQualifier> qualfiers{
       cel::FieldSpecifier{12, "message_value"},
       cel::FieldSpecifier{2, "int64_value"}};
-  EXPECT_THAT(
-      api->Qualify(qualfiers, wrapped, ProtoWrapperTypeOptions::kUnsetNull,
-                   /*presence_test=*/false, manager),
-      IsOkAndHolds(test::IsCelInt64(42)));
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/false, manager),
+              IsOkAndHolds(test::IsCelInt64(42)));
 }
 
 TEST(ProtoMesssageTypeAdapter, QualifyMapsNotYetSupported) {
@@ -806,10 +805,9 @@ TEST(ProtoMesssageTypeAdapter, QualifyMapsNotYetSupported) {
       cel::AttributeQualifier::OfString("@key"),
       cel::FieldSpecifier{2, "int64_value"}};
 
-  EXPECT_THAT(
-      api->Qualify(qualfiers, wrapped, cel::ProtoWrapperTypeOptions::kUnsetNull,
-                   /*presence_test=*/false, manager),
-      StatusIs(absl::StatusCode::kUnimplemented));
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/false, manager),
+              StatusIs(absl::StatusCode::kUnimplemented));
 }
 
 }  // namespace
