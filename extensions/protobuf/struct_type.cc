@@ -1674,4 +1674,32 @@ ProtoStructType::NewValueBuilder(ValueFactory& value_factory) const {
       handle_from_this().As<ProtoStructType>(), factory_, message);
 }
 
+absl::StatusOr<Handle<StructValue>> ProtoStructType::NewValueFromAny(
+    ValueFactory& value_factory, const absl::Cord& value) const {
+  const auto* prototype = factory_->GetPrototype(&descriptor());
+  if (prototype == nullptr) {
+    return absl::FailedPreconditionError(
+        absl::StrCat("Unable to retrieve prototype from protocol buffer "
+                     "message factory for type ",
+                     descriptor().full_name()));
+  }
+  google::protobuf::Message* message;
+  bool arena_based = ProtoMemoryManager::Is(value_factory.memory_manager());
+  if (arena_based) {
+    message = prototype->New(
+        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager()));
+  } else {
+    message = prototype->New();
+  }
+  if (!message->ParsePartialFromCord(value)) {
+    return absl::InvalidArgumentError(absl::StrCat("Failed to parse ", name()));
+  }
+  auto status_or_value = protobuf_internal::ParsedProtoStructValue::Create(
+      value_factory, std::move(*message));
+  if (!arena_based) {
+    delete message;
+  }
+  return status_or_value;
+}
+
 }  // namespace cel::extensions

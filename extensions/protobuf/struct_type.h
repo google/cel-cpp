@@ -76,6 +76,9 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
   absl::StatusOr<UniqueRef<StructValueBuilderInterface>> NewValueBuilder(
       ValueFactory& value_factory) const override;
 
+  absl::StatusOr<Handle<StructValue>> NewValueFromAny(
+      ValueFactory& value_factory, const absl::Cord& value) const override;
+
   const google::protobuf::Descriptor& descriptor() const { return *descriptor_; }
 
  private:

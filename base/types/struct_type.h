@@ -341,7 +341,7 @@ class AbstractStructType
   NewValueBuilder(ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND)
       const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::StatusOr<Handle<StructValue>> NewValueFromAny(
+  virtual absl::StatusOr<Handle<StructValue>> NewValueFromAny(
       ValueFactory& value_factory, const absl::Cord& value) const;
 
  protected:

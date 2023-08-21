@@ -316,6 +316,19 @@ TEST_P(ProtoStructTypeTest, NewValueBuilder) {
               EqualsProto(TestAllTypes::default_instance()));
 }
 
+TEST_P(ProtoStructTypeTest, NewValueFromAny) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  auto proto = ParseTextOrDie<TestAllTypes>(R"pb(single_bool: true)pb");
+  ASSERT_OK_AND_ASSIGN(auto type,
+                       ProtoType::Resolve<TestAllTypes>(type_manager));
+  ASSERT_OK_AND_ASSIGN(auto value, type.As<Type>()->NewValueFromAny(
+                                       value_factory, proto.SerializeAsCord()));
+  EXPECT_THAT(*value->As<ProtoStructValue>().value(), EqualsProto(proto));
+}
+
 INSTANTIATE_TEST_SUITE_P(ProtoStructTypeTest, ProtoStructTypeTest,
                          cel::base_internal::MemoryManagerTestModeAll(),
                          cel::base_internal::MemoryManagerTestModeTupleName);

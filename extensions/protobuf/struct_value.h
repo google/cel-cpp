@@ -47,6 +47,7 @@
 
 namespace cel::extensions {
 
+class ProtoStructType;
 class ProtoValue;
 class ProtoStructValueBuilder;
 
@@ -150,6 +151,7 @@ class ProtoStructValue : public CEL_STRUCT_VALUE_CLASS {
                                         google::protobuf::Arena* arena) const = 0;
 
  private:
+  friend class ProtoStructType;
   friend class ProtoValue;
   friend class ProtoStructValueBuilder;
 
