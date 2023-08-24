@@ -195,18 +195,13 @@ LegacyStructType::FindFieldByNumber(TypeManager& type_manager,
 absl::StatusOr<UniqueRef<StructValueBuilderInterface>>
 LegacyStructType::NewValueBuilder(ValueFactory& value_factory) const {
   return absl::UnimplementedError(
-      "StructType::NewValueBuilder is unimplemented. Perhaps the value library "
-      "is not linked into your binary or StructType::NewValueBuilder was not "
-      "overridden?");
+      "Legacy struct type does not support type reflection");
 }
 
 absl::StatusOr<Handle<StructValue>> LegacyStructType::NewValueFromAny(
     ValueFactory& value_factory, const absl::Cord& value) const {
   return absl::UnimplementedError(
-      "LegacyStructType::NewValueFromAny is unimplemented. Perhaps the value "
-      "library "
-      "is not linked into your binary or StructType::NewValueFromAny was not "
-      "overridden?");
+      "Legacy struct type does not support type reflection");
 }
 
 AbstractStructType::AbstractStructType()

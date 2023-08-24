@@ -55,6 +55,10 @@
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
 
+namespace google::api::expr::runtime {
+ABSL_ATTRIBUTE_WEAK const LegacyTypeInfoApis& GetGenericProtoTypeInfoInstance();
+}
+
 namespace cel::interop_internal {
 
 ABSL_ATTRIBUTE_WEAK absl::optional<google::api::expr::runtime::MessageWrapper>
@@ -72,11 +76,71 @@ using ::cel::runtime_internal::kDurationLow;
 using ::google::api::expr::runtime::CelList;
 using ::google::api::expr::runtime::CelMap;
 using ::google::api::expr::runtime::CelValue;
+using MessageWrapper = ::google::api::expr::runtime::CelValue::MessageWrapper;
+using extensions::ProtoMemoryManager;
 using ::google::api::expr::runtime::LegacyTypeAccessApis;
 using ::google::api::expr::runtime::LegacyTypeInfoApis;
-using ::google::api::expr::runtime::MessageWrapper;
+using ::google::api::expr::runtime::LegacyTypeMutationApis;
 using ::google::api::expr::runtime::ProtoWrapperTypeOptions;
 using ::google::api::expr::runtime::UnknownSet;
+
+// Implementation of `StructValueBuilderInterface` for legacy struct types.
+class LegacyAbstractStructValueBuilder final
+    : public StructValueBuilderInterface {
+ public:
+  LegacyAbstractStructValueBuilder(ValueFactory& value_factory,
+                                   const LegacyTypeInfoApis& type_info,
+                                   const LegacyTypeMutationApis& mutation,
+                                   MessageWrapper instance,
+                                   MessageWrapper::Builder builder)
+      : value_factory_(value_factory),
+        type_info_(type_info),
+        mutation_(mutation),
+        instance_(instance),
+        builder_(std::move(builder)) {}
+
+  absl::Status SetFieldByName(absl::string_view name,
+                              Handle<Value> value) override {
+    CEL_ASSIGN_OR_RETURN(auto arg,
+                         ToLegacyValue(ProtoMemoryManager::CastToProtoArena(
+                                           value_factory_.memory_manager()),
+                                       value, true));
+    return mutation_.SetField(name, arg, value_factory_.memory_manager(),
+                              builder_);
+  }
+
+  absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
+    CEL_ASSIGN_OR_RETURN(auto arg,
+                         ToLegacyValue(ProtoMemoryManager::CastToProtoArena(
+                                           value_factory_.memory_manager()),
+                                       value, true));
+    return mutation_.SetFieldByNumber(
+        number, arg, value_factory_.memory_manager(), builder_);
+  }
+
+  absl::StatusOr<cel::Handle<cel::StructValue>> Build() && override {
+    CEL_ASSIGN_OR_RETURN(
+        auto legacy, mutation_.AdaptFromWellKnownType(
+                         value_factory_.memory_manager(), std::move(builder_)));
+    if (!legacy.IsMessage()) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Expected struct/message when parsing and adapting ",
+          type_info_.GetTypename(instance_), ": ", legacy.DebugString()));
+    }
+    CEL_ASSIGN_OR_RETURN(auto modern,
+                         FromLegacyValue(ProtoMemoryManager::CastToProtoArena(
+                                             value_factory_.memory_manager()),
+                                         legacy, true));
+    return std::move(modern).As<StructValue>();
+  }
+
+ private:
+  ValueFactory& value_factory_;
+  const LegacyTypeInfoApis& type_info_;
+  const LegacyTypeMutationApis& mutation_;
+  MessageWrapper instance_;
+  MessageWrapper::Builder builder_;
+};
 
 class LegacyCelList final : public CelList {
  public:
@@ -271,8 +335,7 @@ absl::StatusOr<Handle<Value>> LegacyStructQualifyImpl(
 
   CEL_ASSIGN_OR_RETURN(
       auto legacy_value,
-      access_api->Qualify(path, wrapper,
-                          presence_test, memory_manager));
+      access_api->Qualify(path, wrapper, presence_test, memory_manager));
 
   return FromLegacyValue(arena, legacy_value);
 }
@@ -320,8 +383,43 @@ LegacyAbstractStructType::NewFieldIterator(TypeManager& type_manager) const {
 absl::StatusOr<UniqueRef<StructValueBuilderInterface>>
 LegacyAbstractStructType::NewValueBuilder(
     ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND) const {
-  return absl::UnimplementedError(
-      "NewValueBuilder not implemented for legacy struct types");
+  const auto* mutation = type_info_.GetMutationApis(MessageWrapper());
+  if (mutation == nullptr) {
+    return absl::FailedPreconditionError(
+        absl::StrCat("Missing mutation APIs for ", name()));
+  }
+  CEL_ASSIGN_OR_RETURN(auto builder,
+                       mutation->NewInstance(value_factory.memory_manager()));
+  return MakeUnique<LegacyAbstractStructValueBuilder>(
+      value_factory.memory_manager(), value_factory, type_info_, *mutation,
+      MessageWrapper(), std::move(builder));
+}
+
+absl::StatusOr<Handle<StructValue>> LegacyAbstractStructType::NewValueFromAny(
+    ValueFactory& value_factory, const absl::Cord& value) const {
+  const auto* mutation = type_info_.GetMutationApis(MessageWrapper());
+  if (mutation == nullptr) {
+    return absl::FailedPreconditionError(
+        absl::StrCat("Missing mutation APIs for ", name()));
+  }
+  CEL_ASSIGN_OR_RETURN(auto builder,
+                       mutation->NewInstance(value_factory.memory_manager()));
+  if (!builder.message_ptr()->ParsePartialFromCord(value)) {
+    return absl::InvalidArgumentError(absl::StrCat("Failed to parse ", name()));
+  }
+  CEL_ASSIGN_OR_RETURN(auto legacy,
+                       mutation->AdaptFromWellKnownType(
+                           value_factory.memory_manager(), builder));
+  if (!legacy.IsMessage()) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Expected struct/message when parsing and adapting ",
+                     name(), ": ", legacy.DebugString()));
+  }
+  CEL_ASSIGN_OR_RETURN(auto modern,
+                       FromLegacyValue(ProtoMemoryManager::CastToProtoArena(
+                                           value_factory.memory_manager()),
+                                       legacy, true));
+  return std::move(modern).As<StructValue>();
 }
 
 internal::TypeInfo CelListAccess::TypeId(const CelList& list) {
@@ -773,9 +871,9 @@ using ::cel::interop_internal::ToLegacyValue;
 using ::google::api::expr::runtime::CelList;
 using ::google::api::expr::runtime::CelMap;
 using ::google::api::expr::runtime::CelValue;
+using MessageWrapper = ::google::api::expr::runtime::CelValue::MessageWrapper;
 using ::google::api::expr::runtime::LegacyTypeAccessApis;
 using ::google::api::expr::runtime::LegacyTypeInfoApis;
-using ::google::api::expr::runtime::MessageWrapper;
 
 }  // namespace
 

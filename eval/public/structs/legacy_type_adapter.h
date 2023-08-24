@@ -18,6 +18,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_LEGACY_TYPE_ADPATER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_LEGACY_TYPE_ADPATER_H_
 
+#include <cstdint>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -62,6 +63,13 @@ class LegacyTypeMutationApis {
       absl::string_view field_name, const CelValue& value,
       cel::MemoryManager& memory_manager,
       CelValue::MessageWrapper::Builder& instance) const = 0;
+
+  virtual absl::Status SetFieldByNumber(
+      int64_t field_number, const CelValue& value,
+      cel::MemoryManager& memory_manager,
+      CelValue::MessageWrapper::Builder& instance) const {
+    return absl::UnimplementedError("SetFieldByNumber is not yet implemented");
+  }
 };
 
 // Interface for access apis.

@@ -41,7 +41,7 @@ namespace cel::interop_internal {
 // Implementation of cel::StructType that adapts modern APIs from legacy APIs.
 //
 // This implements a subset of type APIs needed for describing the type for
-// extensions. Value creation and field iteration are unsupported (return
+// extensions. Field iteration is unsupported (return
 // absl::StatusCode::kUnimplemented or default values).
 //
 // This implementation is distinct from LegacyStructType (which supports
@@ -72,6 +72,9 @@ class LegacyAbstractStructType : public base_internal::AbstractStructType {
 
   absl::StatusOr<UniqueRef<StructValueBuilderInterface>> NewValueBuilder(
       ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND) const override;
+
+  absl::StatusOr<Handle<StructValue>> NewValueFromAny(
+      ValueFactory& value_factory, const absl::Cord& value) const override;
 
  private:
   internal::TypeInfo TypeId() const override {

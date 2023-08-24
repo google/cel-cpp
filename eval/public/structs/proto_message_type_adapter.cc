@@ -14,6 +14,7 @@
 
 #include "eval/public/structs/proto_message_type_adapter.h"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -519,6 +520,66 @@ absl::StatusOr<CelValue> ProtoMessageTypeAdapter::Qualify(
 }
 
 absl::Status ProtoMessageTypeAdapter::SetField(
+    const google::protobuf::FieldDescriptor* field, const CelValue& value,
+    google::protobuf::Arena* arena, google::protobuf::Message* message) const {
+  if (field->is_map()) {
+    constexpr int kKeyField = 1;
+    constexpr int kValueField = 2;
+
+    const CelMap* cel_map;
+    CEL_RETURN_IF_ERROR(ValidateSetFieldOp(
+        value.GetValue<const CelMap*>(&cel_map) && cel_map != nullptr,
+        field->name(), "value is not CelMap"));
+
+    auto entry_descriptor = field->message_type();
+
+    CEL_RETURN_IF_ERROR(
+        ValidateSetFieldOp(entry_descriptor != nullptr, field->name(),
+                           "failed to find map entry descriptor"));
+    auto key_field_descriptor = entry_descriptor->FindFieldByNumber(kKeyField);
+    auto value_field_descriptor =
+        entry_descriptor->FindFieldByNumber(kValueField);
+
+    CEL_RETURN_IF_ERROR(
+        ValidateSetFieldOp(key_field_descriptor != nullptr, field->name(),
+                           "failed to find key field descriptor"));
+
+    CEL_RETURN_IF_ERROR(
+        ValidateSetFieldOp(value_field_descriptor != nullptr, field->name(),
+                           "failed to find value field descriptor"));
+
+    CEL_ASSIGN_OR_RETURN(const CelList* key_list, cel_map->ListKeys(arena));
+    for (int i = 0; i < key_list->size(); i++) {
+      CelValue key = (*key_list).Get(arena, i);
+
+      auto value = (*cel_map).Get(arena, key);
+      CEL_RETURN_IF_ERROR(ValidateSetFieldOp(value.has_value(), field->name(),
+                                             "error serializing CelMap"));
+      Message* entry_msg = message->GetReflection()->AddMessage(message, field);
+      CEL_RETURN_IF_ERROR(internal::SetValueToSingleField(
+          key, key_field_descriptor, entry_msg, arena));
+      CEL_RETURN_IF_ERROR(internal::SetValueToSingleField(
+          value.value(), value_field_descriptor, entry_msg, arena));
+    }
+
+  } else if (field->is_repeated()) {
+    const CelList* cel_list;
+    CEL_RETURN_IF_ERROR(ValidateSetFieldOp(
+        value.GetValue<const CelList*>(&cel_list) && cel_list != nullptr,
+        field->name(), "expected CelList value"));
+
+    for (int i = 0; i < cel_list->size(); i++) {
+      CEL_RETURN_IF_ERROR(internal::AddValueToRepeatedField(
+          (*cel_list).Get(arena, i), field, message, arena));
+    }
+  } else {
+    CEL_RETURN_IF_ERROR(
+        internal::SetValueToSingleField(value, field, message, arena));
+  }
+  return absl::OkStatus();
+}
+
+absl::Status ProtoMessageTypeAdapter::SetField(
     absl::string_view field_name, const CelValue& value,
     cel::MemoryManager& memory_manager,
     CelValue::MessageWrapper::Builder& instance) const {
@@ -534,62 +595,26 @@ absl::Status ProtoMessageTypeAdapter::SetField(
   CEL_RETURN_IF_ERROR(
       ValidateSetFieldOp(field_descriptor != nullptr, field_name, "not found"));
 
-  if (field_descriptor->is_map()) {
-    constexpr int kKeyField = 1;
-    constexpr int kValueField = 2;
+  return SetField(field_descriptor, value, arena, mutable_message);
+}
 
-    const CelMap* cel_map;
-    CEL_RETURN_IF_ERROR(ValidateSetFieldOp(
-        value.GetValue<const CelMap*>(&cel_map) && cel_map != nullptr,
-        field_name, "value is not CelMap"));
+absl::Status ProtoMessageTypeAdapter::SetFieldByNumber(
+    int64_t field_number, const CelValue& value,
+    cel::MemoryManager& memory_manager,
+    CelValue::MessageWrapper::Builder& instance) const {
+  // Assume proto arena implementation if this provider is used.
+  google::protobuf::Arena* arena =
+      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager);
 
-    auto entry_descriptor = field_descriptor->message_type();
+  CEL_ASSIGN_OR_RETURN(google::protobuf::Message * mutable_message,
+                       UnwrapMessage(instance, "SetField"));
 
-    CEL_RETURN_IF_ERROR(
-        ValidateSetFieldOp(entry_descriptor != nullptr, field_name,
-                           "failed to find map entry descriptor"));
-    auto key_field_descriptor = entry_descriptor->FindFieldByNumber(kKeyField);
-    auto value_field_descriptor =
-        entry_descriptor->FindFieldByNumber(kValueField);
+  const google::protobuf::FieldDescriptor* field_descriptor =
+      descriptor_->FindFieldByNumber(field_number);
+  CEL_RETURN_IF_ERROR(ValidateSetFieldOp(
+      field_descriptor != nullptr, absl::StrCat(field_number), "not found"));
 
-    CEL_RETURN_IF_ERROR(
-        ValidateSetFieldOp(key_field_descriptor != nullptr, field_name,
-                           "failed to find key field descriptor"));
-
-    CEL_RETURN_IF_ERROR(
-        ValidateSetFieldOp(value_field_descriptor != nullptr, field_name,
-                           "failed to find value field descriptor"));
-
-    CEL_ASSIGN_OR_RETURN(const CelList* key_list, cel_map->ListKeys(arena));
-    for (int i = 0; i < key_list->size(); i++) {
-      CelValue key = (*key_list).Get(arena, i);
-
-      auto value = (*cel_map).Get(arena, key);
-      CEL_RETURN_IF_ERROR(ValidateSetFieldOp(value.has_value(), field_name,
-                                             "error serializing CelMap"));
-      Message* entry_msg = mutable_message->GetReflection()->AddMessage(
-          mutable_message, field_descriptor);
-      CEL_RETURN_IF_ERROR(internal::SetValueToSingleField(
-          key, key_field_descriptor, entry_msg, arena));
-      CEL_RETURN_IF_ERROR(internal::SetValueToSingleField(
-          value.value(), value_field_descriptor, entry_msg, arena));
-    }
-
-  } else if (field_descriptor->is_repeated()) {
-    const CelList* cel_list;
-    CEL_RETURN_IF_ERROR(ValidateSetFieldOp(
-        value.GetValue<const CelList*>(&cel_list) && cel_list != nullptr,
-        field_name, "expected CelList value"));
-
-    for (int i = 0; i < cel_list->size(); i++) {
-      CEL_RETURN_IF_ERROR(internal::AddValueToRepeatedField(
-          (*cel_list).Get(arena, i), field_descriptor, mutable_message, arena));
-    }
-  } else {
-    CEL_RETURN_IF_ERROR(internal::SetValueToSingleField(
-        value, field_descriptor, mutable_message, arena));
-  }
-  return absl::OkStatus();
+  return SetField(field_descriptor, value, arena, mutable_message);
 }
 
 absl::StatusOr<CelValue> ProtoMessageTypeAdapter::AdaptFromWellKnownType(

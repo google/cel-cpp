@@ -72,6 +72,11 @@ class ProtoMessageTypeAdapter : public LegacyTypeInfoApis,
       cel::MemoryManager& memory_manager,
       CelValue::MessageWrapper::Builder& instance) const override;
 
+  absl::Status SetFieldByNumber(
+      int64_t field_number, const CelValue& value,
+      cel::MemoryManager& memory_manager,
+      CelValue::MessageWrapper::Builder& instance) const override;
+
   absl::StatusOr<CelValue> AdaptFromWellKnownType(
       cel::MemoryManager& memory_manager,
       CelValue::MessageWrapper::Builder instance) const override;
@@ -101,6 +106,10 @@ class ProtoMessageTypeAdapter : public LegacyTypeInfoApis,
   // Helper for standardizing error messages for SetField operation.
   absl::Status ValidateSetFieldOp(bool assertion, absl::string_view field,
                                   absl::string_view detail) const;
+
+  absl::Status SetField(const google::protobuf::FieldDescriptor* field,
+                        const CelValue& value, google::protobuf::Arena* arena,
+                        google::protobuf::Message* message) const;
 
   google::protobuf::MessageFactory* message_factory_;
   const google::protobuf::Descriptor* descriptor_;

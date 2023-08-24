@@ -810,7 +810,9 @@ TEST(ValueInterop, StructTypeFromLegacyTypeInfo) {
 }
 
 TEST(ValueInterop, AbstractStructTypeFromLegacyTypeInfo) {
-  TypeFactory type_factory(MemoryManager::Global());
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   google::protobuf::LinkMessageReflection<google::api::expr::runtime::TestMessage>();
@@ -834,8 +836,12 @@ TEST(ValueInterop, AbstractStructTypeFromLegacyTypeInfo) {
 
   EXPECT_THAT(type->As<StructType>().FindFieldByNumber(type_manager, 7),
               StatusIs(absl::StatusCode::kUnimplemented));
-  EXPECT_THAT(type->As<StructType>().NewValueBuilder(value_factory),
-              StatusIs(absl::StatusCode::kUnimplemented));
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       type->As<StructType>().NewValueBuilder(value_factory));
+  EXPECT_OK(
+      builder->SetFieldByName("string_value", value_factory.GetStringValue()));
+  EXPECT_OK(builder->SetFieldByNumber(7, value_factory.GetStringValue()));
+  ASSERT_OK_AND_ASSIGN(auto value, std::move(*builder).Build());
   EXPECT_EQ(type->As<StructType>().field_count(), 0);
   EXPECT_THAT(type->As<StructType>().NewFieldIterator(type_manager),
               StatusIs(absl::StatusCode::kUnimplemented));
