@@ -25,6 +25,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/variant.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
@@ -97,6 +98,13 @@ class StringValue : public Value {
   void HashValue(absl::HashState state) const;
 
   bool Equals(const Value& other) const;
+
+  // Visit the underlying value representation. It must accept `const
+  // absl::Cord&` and `absl::string_view`.
+  template <typename Visitor>
+  auto Visit(Visitor&& visitor) const {
+    return absl::visit(std::forward<Visitor>(visitor), rep());
+  }
 
  private:
   friend class base_internal::ValueHandle;
@@ -174,10 +182,10 @@ class InlinedStringViewStringValue final : public StringValue,
   // Constructs `InlinedStringViewStringValue` backed by `value` which is owned
   // by `owner`. `owner` may be nullptr, in which case `value` has no owner and
   // must live for the duration of the underlying `MemoryManager`.
-  InlinedStringViewStringValue(absl::string_view value, const Value* owner)
+  InlinedStringViewStringValue(absl::string_view value, const cel::Value* owner)
       : InlinedStringViewStringValue(value, owner, owner == nullptr) {}
 
-  InlinedStringViewStringValue(absl::string_view value, const Value* owner,
+  InlinedStringViewStringValue(absl::string_view value, const cel::Value* owner,
                                bool trivial)
       : InlineData(kMetadata | (trivial ? kTrivial : uintptr_t{0}) |
                    AsInlineVariant(InlinedStringValueVariant::kStringView)),
@@ -216,7 +224,7 @@ class InlinedStringViewStringValue final : public StringValue,
   InlinedStringViewStringValue& operator=(InlinedStringViewStringValue&& other);
 
   absl::string_view value_;
-  const Value* owner_;
+  const cel::Value* owner_;
 };
 
 // Implementation of StringValue that uses std::string and is allocated on the

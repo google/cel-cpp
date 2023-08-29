@@ -233,7 +233,7 @@ absl::Cord BytesValue::ToCord() const {
                        this)
                 ->value_;
           case base_internal::InlinedBytesValueVariant::kStringView: {
-            const Value* owner =
+            const auto* owner =
                 static_cast<const base_internal::InlinedStringViewBytesValue*>(
                     this)
                     ->owner_;
@@ -295,7 +295,7 @@ absl::StatusOr<Json> BytesValue::ConvertToJson(ValueFactory&) const {
       rep());
 }
 
-bool BytesValue::Equals(const Value& other) const {
+bool BytesValue::Equals(const cel::Value& other) const {
   return kind() == other.kind() &&
          absl::visit(EqualsVisitor<BytesValue>(*this),
                      static_cast<const BytesValue&>(other).rep());
@@ -352,7 +352,7 @@ StringBytesValue::StringBytesValue(std::string value)
     : base_internal::HeapData(kKind), value_(std::move(value)) {
   // Ensure `Value*` and `base_internal::HeapData*` are not thunked.
   ABSL_ASSERT(
-      reinterpret_cast<uintptr_t>(static_cast<Value*>(this)) ==
+      reinterpret_cast<uintptr_t>(static_cast<cel::Value*>(this)) ==
       reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
 }
 

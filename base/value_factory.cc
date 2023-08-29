@@ -21,9 +21,14 @@
 #include "absl/base/optimization.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "absl/types/variant.h"
 #include "base/handle.h"
 #include "base/value.h"
+#include "base/values/list_value.h"
 #include "base/values/string_value.h"
+#include "common/json.h"
+#include "internal/overloaded.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
 #include "internal/utf8.h"
@@ -211,6 +216,212 @@ absl::StatusOr<Handle<BytesValue>> ValueFactory::CreateBytesValueFromView(
 absl::StatusOr<Handle<StringValue>> ValueFactory::CreateStringValueFromView(
     absl::string_view value) {
   return HandleFactory<StringValue>::Make<InlinedStringViewStringValue>(value);
+}
+
+absl::StatusOr<Handle<Value>> ValueFactory::CreateValueFromJson(Json json) {
+  return absl::visit(
+      internal::Overloaded{
+          [this](JsonNull) -> absl::StatusOr<Handle<Value>> {
+            return GetNullValue();
+          },
+          [this](JsonBool value) -> absl::StatusOr<Handle<Value>> {
+            return CreateBoolValue(value);
+          },
+          [this](JsonNumber value) -> absl::StatusOr<Handle<Value>> {
+            return CreateDoubleValue(value);
+          },
+          [this](JsonString value) -> absl::StatusOr<Handle<Value>> {
+            return CreateUncheckedStringValue(std::move(value));
+          },
+          [this](JsonArray value) -> absl::StatusOr<Handle<Value>> {
+            return CreateListValueFromJson(std::move(value));
+          },
+          [this](JsonObject value) -> absl::StatusOr<Handle<Value>> {
+            return CreateMapValueFromJson(std::move(value));
+          }},
+      std::move(json));
+}
+
+namespace {
+
+void JsonAppendDebugString(const Json& json, std::string& out);
+
+void JsonArrayAppendDebugString(const JsonArray& array, std::string& out) {
+  auto begin = array.begin();
+  auto end = array.end();
+  out.push_back('[');
+  if (begin != end) {
+    JsonAppendDebugString(*begin++, out);
+    for (; begin != end; ++begin) {
+      out.append(", ");
+      JsonAppendDebugString(*begin, out);
+    }
+  }
+  out.push_back(']');
+}
+
+void JsonObjectAppendDebugString(const JsonObject& object, std::string& out) {
+  auto begin = object.begin();
+  auto end = object.end();
+  out.push_back('{');
+  if (begin != end) {
+    out.append(StringValue::DebugString(begin->first));
+    out.append(": ");
+    JsonAppendDebugString(begin->second, out);
+    ++begin;
+    for (; begin != end; ++begin) {
+      out.append(", ");
+      out.append(StringValue::DebugString(begin->first));
+      out.append(": ");
+      JsonAppendDebugString(begin->second, out);
+    }
+  }
+  out.push_back('}');
+}
+
+void JsonAppendDebugString(const Json& json, std::string& out) {
+  absl::visit(
+      internal::Overloaded{
+          [&out](JsonNull) { out.append("null"); },
+          [&out](JsonBool value) { out.append(value ? "true" : "false"); },
+          [&out](JsonNumber value) {
+            out.append(DoubleValue::DebugString(value));
+          },
+          [&out](const JsonString& value) {
+            out.append(StringValue::DebugString(value));
+          },
+          [&out](const JsonArray& value) {
+            JsonArrayAppendDebugString(value, out);
+          },
+          [&out](const JsonObject& value) {
+            JsonObjectAppendDebugString(value, out);
+          }},
+      json);
+}
+
+std::string JsonArrayDebugString(const JsonArray& array) {
+  std::string out;
+  JsonArrayAppendDebugString(array, out);
+  return out;
+}
+
+std::string JsonObjectDebugString(const JsonObject& object) {
+  std::string out;
+  JsonObjectAppendDebugString(object, out);
+  return out;
+}
+
+class JsonListValue final : public CEL_LIST_VALUE_CLASS {
+ public:
+  JsonListValue(Handle<ListType> type, JsonArray array)
+      : CEL_LIST_VALUE_CLASS(std::move(type)), array_(std::move(array)) {}
+
+  std::string DebugString() const override {
+    return JsonArrayDebugString(array_);
+  }
+
+  absl::StatusOr<JsonArray> ConvertToJsonArray(ValueFactory&) const override {
+    return array_;
+  }
+
+  size_t size() const override { return array_.size(); }
+
+  bool empty() const override { return array_.empty(); }
+
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+                                    size_t index) const override {
+    if (ABSL_PREDICT_FALSE(index >= size())) {
+      return absl::InvalidArgumentError("index out of bounds");
+    }
+    return value_factory.CreateValueFromJson(array_[index]);
+  }
+
+ private:
+  internal::TypeInfo TypeId() const override {
+    return internal::TypeId<JsonListValue>();
+  }
+
+  const JsonArray array_;
+};
+
+class JsonMapValue final : public CEL_MAP_VALUE_CLASS {
+ public:
+  JsonMapValue(Handle<MapType> type, JsonObject object)
+      : CEL_MAP_VALUE_CLASS(std::move(type)), object_(std::move(object)) {}
+
+  std::string DebugString() const override {
+    return JsonObjectDebugString(object_);
+  }
+
+  absl::StatusOr<JsonObject> ConvertToJsonObject(ValueFactory&) const override {
+    return object_;
+  }
+
+  size_t size() const override { return object_.size(); }
+
+  bool empty() const override { return object_.empty(); }
+
+  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
+    if (!key->Is<StringValue>()) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Expected key to be string type: ", key->type()->DebugString()));
+    }
+    return key->As<StringValue>().Visit(
+        [this, &value_factory](const auto& value)
+            -> absl::StatusOr<absl::optional<Handle<Value>>> {
+          if (auto it = object_.find(value); it != object_.end()) {
+            return value_factory.CreateValueFromJson(it->second);
+          }
+          return absl::nullopt;
+        });
+  }
+
+  absl::StatusOr<bool> Has(const Handle<Value>& key) const override {
+    if (!key->Is<StringValue>()) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Expected key to be string type: ", key->type()->DebugString()));
+    }
+    return key->As<StringValue>().Visit([this](const auto& value) -> bool {
+      return object_.find(value) != object_.end();
+    });
+  }
+
+  absl::StatusOr<Handle<ListValue>> ListKeys(
+      ValueFactory& value_factory) const override {
+    CEL_ASSIGN_OR_RETURN(auto type,
+                         value_factory.type_factory().CreateListType(
+                             value_factory.type_factory().GetStringType()));
+    JsonArrayBuilder builder;
+    builder.reserve(object_.size());
+    for (const auto& entry : object_) {
+      builder.push_back(entry.first);
+    }
+    return HandleFactory<ListValue>::Make<JsonListValue>(
+        value_factory.memory_manager(), std::move(type),
+        std::move(builder).Build());
+  }
+
+ private:
+  internal::TypeInfo TypeId() const override {
+    return internal::TypeId<JsonMapValue>();
+  }
+
+  const JsonObject object_;
+};
+
+}  // namespace
+
+absl::StatusOr<Handle<ListValue>> ValueFactory::CreateListValueFromJson(
+    JsonArray array) {
+  return HandleFactory<ListValue>::Make<JsonListValue>(
+      memory_manager(), type_factory().GetJsonListType(), std::move(array));
+}
+
+absl::StatusOr<Handle<MapValue>> ValueFactory::CreateMapValueFromJson(
+    JsonObject object) {
+  return HandleFactory<MapValue>::Make<JsonMapValue>(
+      memory_manager(), type_factory().GetJsonMapType(), std::move(object));
 }
 
 }  // namespace cel
