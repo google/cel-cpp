@@ -1,13 +1,15 @@
 #include "eval/public/cel_function.h"
 
-#include <algorithm>
-#include <memory>
-#include <string>
-#include <utility>
+#include <cstddef>
 #include <vector>
 
+#include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "base/function.h"
+#include "base/handle.h"
+#include "base/value.h"
 #include "eval/internal/interop.h"
+#include "eval/public/cel_value.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
@@ -18,7 +20,7 @@ using ::cel::FunctionEvaluationContext;
 using ::cel::Handle;
 using ::cel::Value;
 using ::cel::extensions::ProtoMemoryManager;
-using ::cel::interop_internal::ModernValueToLegacyValueOrDie;
+using ::cel::interop_internal::ToLegacyValue;
 
 bool CelFunction::MatchArguments(absl::Span<const CelValue> arguments) const {
   auto types_size = descriptor().types().size();
@@ -60,8 +62,18 @@ absl::StatusOr<Handle<Value>> CelFunction::Invoke(
     absl::Span<const Handle<Value>> arguments) const {
   google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(
       context.value_factory().memory_manager());
-  std::vector<CelValue> legacy_args = ModernValueToLegacyValueOrDie(
-      context.value_factory().memory_manager(), arguments, true);
+  std::vector<CelValue> legacy_args;
+  legacy_args.reserve(arguments.size());
+
+  // Users shouldn't be able to create expressions that call registered
+  // functions with unconvertible types, but it's possible to create an AST that
+  // can trigger this by making an unexpected call on a value that the
+  // interpreter expects to only be used with internal program steps.
+  for (const auto& arg : arguments) {
+    CEL_ASSIGN_OR_RETURN(legacy_args.emplace_back(),
+                         ToLegacyValue(arena, arg, true));
+  }
+
   CelValue legacy_result;
 
   CEL_RETURN_IF_ERROR(Evaluate(legacy_args, &legacy_result, arena));
