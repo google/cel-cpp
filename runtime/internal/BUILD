@@ -20,25 +20,6 @@ package(
 licenses(["notice"])
 
 cc_library(
-    name = "number",
-    hdrs = ["number.h"],
-    deps = [
-        "@com_google_absl//absl/types:optional",
-        "@com_google_absl//absl/types:variant",
-    ],
-)
-
-cc_test(
-    name = "number_test",
-    srcs = ["number_test.cc"],
-    deps = [
-        ":number",
-        "//internal:testing",
-        "@com_google_absl//absl/types:optional",
-    ],
-)
-
-cc_library(
     name = "composed_type_provider",
     srcs = ["composed_type_provider.cc"],
     hdrs = ["composed_type_provider.h"],

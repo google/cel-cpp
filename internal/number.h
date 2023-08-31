@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_NUMBER_H_
-#define THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_NUMBER_H_
+#ifndef THIRD_PARTY_CEL_CPP_INTERNAL_NUMBER_H_
+#define THIRD_PARTY_CEL_CPP_INTERNAL_NUMBER_H_
 
 #include <cmath>
 #include <cstdint>
@@ -21,7 +21,7 @@
 
 #include "absl/types/variant.h"
 
-namespace cel::runtime_internal {
+namespace cel::internal {
 
 constexpr int64_t kInt64Max = std::numeric_limits<int64_t>::max();
 constexpr int64_t kInt64Min = std::numeric_limits<int64_t>::lowest();
@@ -45,8 +45,6 @@ constexpr double kMaxDoubleRepresentableAsUint =
     static_cast<double>(kUint64Max - RoundingError<uint64_t>());
 
 #define CEL_ABSL_VISIT_CONSTEXPR
-
-namespace internal {
 
 using NumberVariant = absl::variant<double, uint64_t, int64_t>;
 
@@ -204,8 +202,6 @@ struct LosslessConvertibleToUintVisitor {
   constexpr bool operator()(int64_t value) const { return value >= 0; }
 };
 
-}  // namespace internal
-
 // Utility class for CEL number operations.
 //
 // In CEL expressions, comparisons between different numeric types are treated
@@ -299,6 +295,6 @@ class Number {
   }
 };
 
-}  // namespace cel::runtime_internal
+}  // namespace cel::internal
 
-#endif  // THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_NUMBER_H_
+#endif  // THIRD_PARTY_CEL_CPP_INTERNAL_NUMBER_H_

@@ -20,8 +20,8 @@
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
+#include "internal/number.h"
 #include "internal/status_macros.h"
-#include "runtime/internal/number.h"
 
 namespace google::api::expr::runtime {
 
@@ -39,8 +39,8 @@ using ::cel::UintValue;
 using ::cel::Value;
 using ::cel::ValueKind;
 using ::cel::ValueKindToString;
+using ::cel::internal::Number;
 using ::cel::runtime_internal::CreateNoSuchKeyError;
-using ::cel::runtime_internal::Number;
 
 inline constexpr int kNumContainerAccessArguments = 2;
 

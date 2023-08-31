@@ -1236,7 +1236,7 @@ cc_library(
     hdrs = ["cel_number.h"],
     deps = [
         ":cel_value",
-        "//runtime/internal:number",
+        "//internal:number",
         "@com_google_absl//absl/types:optional",
     ],
 )

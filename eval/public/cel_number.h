@@ -21,11 +21,11 @@
 
 #include "absl/types/optional.h"
 #include "eval/public/cel_value.h"
-#include "runtime/internal/number.h"
+#include "internal/number.h"
 
 namespace google::api::expr::runtime {
 
-using CelNumber = cel::runtime_internal::Number;
+using CelNumber = cel::internal::Number;
 
 // Return a CelNumber if the value holds a numeric type, otherwise return
 // nullopt.

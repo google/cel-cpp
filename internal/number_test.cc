@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "runtime/internal/number.h"
+#include "internal/number.h"
 
 #include <cstdint>
 #include <limits>
 
 #include "internal/testing.h"
 
-namespace cel::runtime_internal {
+namespace cel::internal {
 namespace {
 
 constexpr double kNan = std::numeric_limits<double>::quiet_NaN();
@@ -64,4 +64,4 @@ TEST(Number, Conversions) {
 }
 
 }  // namespace
-}  // namespace cel::runtime_internal
+}  // namespace cel::internal

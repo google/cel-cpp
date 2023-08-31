@@ -24,16 +24,16 @@
 #include "base/value_factory.h"
 #include "base/values/bytes_value.h"
 #include "base/values/string_value.h"
+#include "internal/number.h"
 #include "internal/status_macros.h"
 #include "runtime/function_registry.h"
-#include "runtime/internal/number.h"
 #include "runtime/runtime_options.h"
 
 namespace cel {
 
 namespace {
 
-using ::cel::runtime_internal::Number;
+using ::cel::internal::Number;
 
 // Comparison template functions
 template <class Type>

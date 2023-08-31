@@ -92,6 +92,22 @@ cc_test(
 )
 
 cc_library(
+    name = "number",
+    hdrs = ["number.h"],
+    deps = ["@com_google_absl//absl/types:variant"],
+)
+
+cc_test(
+    name = "number_test",
+    srcs = ["number_test.cc"],
+    deps = [
+        ":number",
+        ":testing",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_library(
     name = "overloaded",
     hdrs = ["overloaded.h"],
 )
