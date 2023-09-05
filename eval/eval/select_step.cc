@@ -175,7 +175,10 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   }
 
   if (!(arg->Is<MapValue>() || arg->Is<StructValue>())) {
-    return InvalidSelectTargetError();
+    frame->value_stack().PopAndPush(
+        frame->value_factory().CreateErrorValue(InvalidSelectTargetError()),
+        std::move(result_trail));
+    return absl::OkStatus();
   }
 
   absl::optional<Handle<Value>> marked_attribute_check =
@@ -198,6 +201,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
             arg.As<StructValue>(), field_, frame->value_factory()));
         return absl::OkStatus();
       default:
+        // Control flow should have returned earlier.
         return InvalidSelectTargetError();
     }
   }
@@ -228,6 +232,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
       return absl::OkStatus();
     }
     default:
+      // Control flow should have returned earlier.
       return InvalidSelectTargetError();
   }
 }

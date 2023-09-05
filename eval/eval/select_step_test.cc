@@ -178,6 +178,22 @@ TEST_P(SelectStepConformanceTest, SelectMessageIsNull) {
   ASSERT_TRUE(result.IsError());
 }
 
+TEST_P(SelectStepConformanceTest, SelectTargetNotStructOrMap) {
+  RunExpressionOptions options;
+  options.enable_unknowns = GetParam();
+
+  ASSERT_OK_AND_ASSIGN(
+      CelValue result,
+      RunExpression(CelValue::CreateStringView("some_value"), "some_field",
+                    /*test=*/false,
+                    /*unknown_path=*/"", options));
+
+  ASSERT_TRUE(result.IsError());
+  EXPECT_THAT(*result.ErrorOrDie(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Applying SELECT to non-message type")));
+}
+
 TEST_P(SelectStepConformanceTest, PresenseIsFalseTest) {
   TestMessage message;
   RunExpressionOptions options;
