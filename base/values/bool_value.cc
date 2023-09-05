@@ -18,6 +18,7 @@
 #include <utility>
 
 #include "absl/strings/cord.h"
+#include "base/value_factory.h"
 #include "common/any.h"
 #include "internal/proto_wire.h"
 #include "internal/status_macros.h"
@@ -56,6 +57,12 @@ absl::StatusOr<Any> BoolValue::ConvertToAny(ValueFactory&) const {
 
 absl::StatusOr<Json> BoolValue::ConvertToJson(ValueFactory&) const {
   return value();
+}
+
+absl::StatusOr<Handle<Value>> BoolValue::Equals(ValueFactory& value_factory,
+                                                const Value& other) const {
+  return value_factory.CreateBoolValue(
+      other.Is<BoolValue>() && value() == other.As<BoolValue>().value());
 }
 
 }  // namespace cel

@@ -19,6 +19,7 @@
 
 #include "absl/strings/cord.h"
 #include "absl/time/time.h"
+#include "base/value_factory.h"
 #include "common/any.h"
 #include "internal/proto_wire.h"
 #include "internal/status_macros.h"
@@ -71,6 +72,13 @@ absl::StatusOr<Json> TimestampValue::ConvertToJson(ValueFactory&) const {
   CEL_ASSIGN_OR_RETURN(auto formatted,
                        internal::EncodeTimestampToJson(value()));
   return JsonString(std::move(formatted));
+}
+
+absl::StatusOr<Handle<Value>> TimestampValue::Equals(
+    ValueFactory& value_factory, const Value& other) const {
+  return value_factory.CreateBoolValue(other.Is<TimestampValue>() &&
+                                       value() ==
+                                           other.As<TimestampValue>().value());
 }
 
 }  // namespace cel

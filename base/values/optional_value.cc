@@ -76,6 +76,24 @@ absl::StatusOr<Json> OptionalValue::ConvertToJson(
   return value()->ConvertToJson(value_factory);
 }
 
+absl::StatusOr<Handle<Value>> OptionalValue::Equals(ValueFactory& value_factory,
+                                                    const Value& other) const {
+  const auto has_value = this->has_value();
+  if (other.Is<OptionalValue>()) {
+    if (has_value != other.As<OptionalValue>().has_value()) {
+      return value_factory.CreateBoolValue(false);
+    }
+    if (!has_value) {
+      return value_factory.CreateBoolValue(true);
+    }
+    return value()->Equals(value_factory, *other.As<OptionalValue>().value());
+  }
+  if (!has_value) {
+    return value_factory.CreateBoolValue(false);
+  }
+  return value()->Equals(value_factory, other);
+}
+
 namespace base_internal {
 
 const Handle<Value>& EmptyOptionalValue::value() const {

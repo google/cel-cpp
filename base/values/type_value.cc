@@ -17,8 +17,10 @@
 #include <string>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "base/internal/data.h"
+#include "base/value_factory.h"
 
 namespace cel {
 
@@ -33,8 +35,10 @@ CEL_INTERNAL_VALUE_IMPL(TypeValue);
 
 std::string TypeValue::DebugString() const { return std::string(name()); }
 
-bool TypeValue::Equals(const TypeValue& other) const {
-  return name() == static_cast<const TypeValue&>(other).name();
+absl::StatusOr<Handle<Value>> TypeValue::Equals(ValueFactory& value_factory,
+                                                const Value& other) const {
+  return value_factory.CreateBoolValue(other.Is<TypeValue>() &&
+                                       name() == other.As<TypeValue>().name());
 }
 
 absl::string_view TypeValue::name() const {

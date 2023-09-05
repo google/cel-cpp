@@ -18,9 +18,11 @@
 #include <utility>
 
 #include "absl/base/macros.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "base/types/string_type.h"
+#include "base/value_factory.h"
 #include "common/any.h"
 #include "internal/proto_wire.h"
 #include "internal/status_macros.h"
@@ -216,6 +218,12 @@ bool StringValue::Equals(const StringValue& string) const {
   return absl::visit(EqualsVisitor<StringValue>(*this), string.rep());
 }
 
+absl::StatusOr<Handle<Value>> StringValue::Equals(ValueFactory& value_factory,
+                                                  const Value& other) const {
+  return value_factory.CreateBoolValue(other.Is<StringValue>() &&
+                                       Equals(other.As<StringValue>()));
+}
+
 int StringValue::Compare(absl::string_view string) const {
   return absl::visit(CompareVisitor<absl::string_view>(string), rep());
 }
@@ -311,12 +319,6 @@ absl::StatusOr<Any> StringValue::ConvertToAny(ValueFactory&) const {
 
 absl::StatusOr<Json> StringValue::ConvertToJson(ValueFactory&) const {
   return ToCord();
-}
-
-bool StringValue::Equals(const cel::Value& other) const {
-  return kind() == other.kind() &&
-         absl::visit(EqualsVisitor<StringValue>(*this),
-                     static_cast<const StringValue&>(other).rep());
 }
 
 void StringValue::HashValue(absl::HashState state) const {

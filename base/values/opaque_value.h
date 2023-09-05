@@ -50,6 +50,9 @@ class OpaqueValue : public Value, public base_internal::HeapData {
 
   virtual absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
 
+  virtual absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                               const Value& other) const;
+
  protected:
   static internal::TypeInfo TypeId(const OpaqueValue& value) {
     return value.TypeId();

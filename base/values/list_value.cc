@@ -20,6 +20,7 @@
 
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
@@ -80,6 +81,16 @@ absl::StatusOr<UniqueRef<ListValue::Iterator>> ListValue::NewIterator(
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(NewIterator, value_factory);
 }
 
+absl::StatusOr<Handle<Value>> ListValue::Equals(ValueFactory& value_factory,
+                                                const Value& other) const {
+  return CEL_INTERNAL_LIST_VALUE_DISPATCH(Equals, value_factory, other);
+}
+
+absl::StatusOr<Handle<Value>> ListValue::Contains(ValueFactory& value_factory,
+                                                  const Value& other) const {
+  return CEL_INTERNAL_LIST_VALUE_DISPATCH(Contains, value_factory, other);
+}
+
 internal::TypeInfo ListValue::TypeId() const {
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(TypeId);
 }
@@ -95,6 +106,64 @@ absl::StatusOr<Handle<Value>> ListValue::Iterator::NextValue() {
   CEL_ASSIGN_OR_RETURN(auto element, Next());
   return std::move(element.value);
 }
+
+namespace {
+
+absl::StatusOr<Handle<Value>> GenericListValueEquals(
+    ValueFactory& value_factory, const ListValue& lhs, const ListValue& rhs) {
+  if (&lhs == &rhs) {
+    return value_factory.CreateBoolValue(true);
+  }
+  const auto lhs_size = lhs.size();
+  if (lhs_size != rhs.size()) {
+    return value_factory.CreateBoolValue(false);
+  }
+  if (lhs_size == 0) {
+    return value_factory.CreateBoolValue(true);
+  }
+  CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator(value_factory));
+  CEL_ASSIGN_OR_RETURN(auto rhs_iterator, rhs.NewIterator(value_factory));
+  for (size_t index = 0; index < lhs_size; ++index) {
+    if (ABSL_PREDICT_FALSE(!lhs_iterator->HasNext() ||
+                           !rhs_iterator->HasNext())) {
+      return absl::InternalError(
+          "ListValue::Iterator has less elements than ListValue");
+    }
+    CEL_ASSIGN_OR_RETURN(auto lhs_element, lhs_iterator->NextValue());
+    CEL_ASSIGN_OR_RETURN(auto rhs_element, rhs_iterator->NextValue());
+    CEL_ASSIGN_OR_RETURN(auto equal,
+                         lhs_element->Equals(value_factory, *rhs_element));
+    if (equal->Is<BoolValue>() && !equal->As<BoolValue>().value()) {
+      return equal;
+    }
+  }
+  if (ABSL_PREDICT_FALSE(lhs_iterator->HasNext() || rhs_iterator->HasNext())) {
+    return absl::InternalError(
+        "ListValue::Iterator has more elements than ListValue");
+  }
+  return value_factory.CreateBoolValue(true);
+}
+
+absl::StatusOr<Handle<Value>> GenericListValueContains(
+    ValueFactory& value_factory, const ListValue& haystack,
+    const Value& needle) {
+  if (haystack.empty()) {
+    return value_factory.CreateBoolValue(false);
+  }
+  CEL_ASSIGN_OR_RETURN(auto haystack_iterator,
+                       haystack.NewIterator(value_factory));
+  while (haystack_iterator->HasNext()) {
+    CEL_ASSIGN_OR_RETURN(auto haystack_element, haystack_iterator->NextValue());
+    CEL_ASSIGN_OR_RETURN(auto equal,
+                         needle.Equals(value_factory, *haystack_element));
+    if (equal->Is<BoolValue>() && equal->As<BoolValue>().value()) {
+      return equal;
+    }
+  }
+  return value_factory.CreateBoolValue(false);
+}
+
+}  // namespace
 
 namespace base_internal {
 
@@ -223,6 +292,19 @@ absl::StatusOr<Handle<Value>> LegacyListValue::Get(ValueFactory& value_factory,
   return LegacyListValueGet(impl_, value_factory, index);
 }
 
+absl::StatusOr<Handle<Value>> LegacyListValue::Equals(
+    ValueFactory& value_factory, const Value& other) const {
+  if (!other.Is<ListValue>()) {
+    return value_factory.CreateBoolValue(false);
+  }
+  return GenericListValueEquals(value_factory, *this, other.As<ListValue>());
+}
+
+absl::StatusOr<Handle<Value>> LegacyListValue::Contains(
+    ValueFactory& value_factory, const Value& other) const {
+  return GenericListValueContains(value_factory, *this, other);
+}
+
 AbstractListValue::AbstractListValue(Handle<ListType> type)
     : HeapData(kKind), type_(std::move(type)) {
   // Ensure `Value*` and `HeapData*` are not thunked.
@@ -244,6 +326,19 @@ absl::StatusOr<UniqueRef<ListValue::Iterator>> AbstractListValue::NewIterator(
     ValueFactory& value_factory) const {
   return MakeUnique<AbstractListValueIterator>(value_factory.memory_manager(),
                                                value_factory, this);
+}
+
+absl::StatusOr<Handle<Value>> AbstractListValue::Equals(
+    ValueFactory& value_factory, const Value& other) const {
+  if (!other.Is<ListValue>()) {
+    return value_factory.CreateBoolValue(false);
+  }
+  return GenericListValueEquals(value_factory, *this, other.As<ListValue>());
+}
+
+absl::StatusOr<Handle<Value>> AbstractListValue::Contains(
+    ValueFactory& value_factory, const Value& other) const {
+  return GenericListValueContains(value_factory, *this, other);
 }
 
 }  // namespace base_internal

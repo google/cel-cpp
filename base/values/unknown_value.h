@@ -57,6 +57,9 @@ class UnknownValue final : public Value, public base_internal::InlineData {
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
 
+  absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                       const Value& other) const;
+
   const AttributeSet& attribute_set() const;
 
   const FunctionResultSet& function_result_set() const;

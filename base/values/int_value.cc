@@ -19,8 +19,12 @@
 
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
+#include "base/value_factory.h"
+#include "base/values/double_value.h"
+#include "base/values/uint_value.h"
 #include "common/any.h"
 #include "common/json.h"
+#include "internal/number.h"
 #include "internal/proto_wire.h"
 #include "internal/status_macros.h"
 
@@ -56,6 +60,26 @@ absl::StatusOr<Any> IntValue::ConvertToAny(ValueFactory&) const {
 
 absl::StatusOr<Json> IntValue::ConvertToJson(ValueFactory&) const {
   return JsonInt(value());
+}
+
+absl::StatusOr<Handle<Value>> IntValue::Equals(ValueFactory& value_factory,
+                                               const Value& other) const {
+  switch (other.kind()) {
+    case ValueKind::kInt:
+      return value_factory.CreateBoolValue(
+          internal::Number::FromInt64(value()) ==
+          internal::Number::FromInt64(other.As<IntValue>().value()));
+    case ValueKind::kUint:
+      return value_factory.CreateBoolValue(
+          internal::Number::FromInt64(value()) ==
+          internal::Number::FromUint64(other.As<UintValue>().value()));
+    case ValueKind::kDouble:
+      return value_factory.CreateBoolValue(
+          internal::Number::FromInt64(value()) ==
+          internal::Number::FromDouble(other.As<DoubleValue>().value()));
+    default:
+      return value_factory.CreateBoolValue(false);
+  }
 }
 
 }  // namespace cel

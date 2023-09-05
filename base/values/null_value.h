@@ -43,6 +43,9 @@ class NullValue final : public base_internal::SimpleValue<NullType, void> {
 
   static Handle<NullValue> Get(ValueFactory& value_factory);
 
+  absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                       const Value& other) const;
+
   using Base::kind;
 
   using Base::type;

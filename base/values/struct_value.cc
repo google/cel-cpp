@@ -22,6 +22,7 @@
 
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -107,6 +108,11 @@ StructValue::NewFieldIterator(ValueFactory& value_factory) const {
   return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(NewFieldIterator, value_factory);
 }
 
+absl::StatusOr<Handle<Value>> StructValue::Equals(ValueFactory& value_factory,
+                                                  const Value& other) const {
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(Equals, value_factory, other);
+}
+
 absl::StatusOr<Handle<Value>> StructValue::GetWrappedFieldByName(
     ValueFactory& value_factory, absl::string_view name) const {
   return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(GetWrappedFieldByName,
@@ -163,6 +169,68 @@ absl::StatusOr<StructValue::FieldId> StructValue::FieldIterator::NextId() {
 absl::StatusOr<Handle<Value>> StructValue::FieldIterator::NextValue() {
   CEL_ASSIGN_OR_RETURN(auto entry, Next());
   return std::move(entry.value);
+}
+
+absl::StatusOr<Handle<Value>> GenericStructValueEquals(
+    ValueFactory& value_factory, const StructValue& lhs,
+    const StructValue& rhs) {
+  if (&lhs == &rhs) {
+    return value_factory.CreateBoolValue(true);
+  }
+  if (!lhs.type()->Equals(*rhs.type())) {
+    return value_factory.CreateBoolValue(false);
+  }
+  const auto lhs_size = lhs.field_count();
+  if (lhs_size != rhs.field_count()) {
+    return value_factory.CreateBoolValue(false);
+  }
+  if (lhs_size == 0) {
+    return value_factory.CreateBoolValue(true);
+  }
+  absl::flat_hash_set<StructValue::FieldId> field_ids;
+  {
+    CEL_ASSIGN_OR_RETURN(auto lhs_iterator,
+                         lhs.NewFieldIterator(value_factory));
+    CEL_ASSIGN_OR_RETURN(auto rhs_iterator,
+                         rhs.NewFieldIterator(value_factory));
+    field_ids.reserve(lhs_size);
+    for (size_t index = 0; index < lhs_size; ++index) {
+      if (ABSL_PREDICT_FALSE(!lhs_iterator->HasNext())) {
+        return absl::InternalError(
+            "StructValue::FieldIterator has less fields than StructValue");
+      }
+      CEL_ASSIGN_OR_RETURN(auto field_id, lhs_iterator->NextId());
+      field_ids.insert(field_id);
+    }
+    if (ABSL_PREDICT_FALSE(lhs_iterator->HasNext())) {
+      return absl::InternalError(
+          "StructValue::FieldIterator has more fields than StructValue");
+    }
+    for (size_t index = 0; index < lhs_size; ++index) {
+      if (ABSL_PREDICT_FALSE(!rhs_iterator->HasNext())) {
+        return absl::InternalError(
+            "StructValue::FieldIterator has less fields than StructValue");
+      }
+      CEL_ASSIGN_OR_RETURN(auto field_id, rhs_iterator->NextId());
+      if (!field_ids.contains(field_id)) {
+        return value_factory.CreateBoolValue(false);
+      }
+    }
+    if (ABSL_PREDICT_FALSE(rhs_iterator->HasNext())) {
+      return absl::InternalError(
+          "StructValue::FieldIterator has more fields than StructValue");
+    }
+  }
+  for (const auto& field_id : field_ids) {
+    CEL_ASSIGN_OR_RETURN(auto lhs_field, lhs.GetField(value_factory, field_id));
+    CEL_ASSIGN_OR_RETURN(auto rhs_field, rhs.GetField(value_factory, field_id));
+    CEL_ASSIGN_OR_RETURN(auto equal,
+                         lhs_field->Equals(value_factory, *rhs_field));
+    if (equal->Is<BoolValue>() && !equal->As<BoolValue>().value()) {
+      return equal;
+    }
+  }
+  return value_factory.CreateBoolValue(true);
 }
 
 namespace base_internal {
@@ -281,6 +349,15 @@ LegacyStructValue::NewFieldIterator(ValueFactory& value_factory) const {
       value_factory.memory_manager(), value_factory, msg_, type_info_);
 }
 
+absl::StatusOr<Handle<Value>> LegacyStructValue::Equals(
+    ValueFactory& value_factory, const Value& other) const {
+  if (!other.Is<StructValue>()) {
+    return value_factory.CreateBoolValue(false);
+  }
+  return GenericStructValueEquals(value_factory, *this,
+                                  other.As<StructValue>());
+}
+
 AbstractStructValue::AbstractStructValue(Handle<StructType> type)
     : StructValue(), base_internal::HeapData(kKind), type_(std::move(type)) {
   // Ensure `Value*` and `base_internal::HeapData*` are not thunked.
@@ -335,6 +412,15 @@ absl::StatusOr<Json> AbstractStructValue::ConvertToJson(
     ValueFactory& value_factory) const {
   return absl::UnimplementedError(
       "AbstractStructValue::ConvertToJson is not yet implemented");
+}
+
+absl::StatusOr<Handle<Value>> AbstractStructValue::Equals(
+    ValueFactory& value_factory, const Value& other) const {
+  if (!other.Is<StructValue>()) {
+    return value_factory.CreateBoolValue(false);
+  }
+  return GenericStructValueEquals(value_factory, *this,
+                                  other.As<StructValue>());
 }
 
 }  // namespace base_internal

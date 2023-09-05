@@ -153,3 +153,37 @@ cc_library(
         "@com_google_absl//absl/types:variant",
     ],
 )
+
+cc_library(
+    name = "sets_functions",
+    srcs = ["sets_functions.cc"],
+    hdrs = ["sets_functions.h"],
+    deps = [
+        "//base:data",
+        "//base:function_adapter",
+        "//internal:status_macros",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_test(
+    name = "sets_functions_test",
+    srcs = ["sets_functions_test.cc"],
+    deps = [
+        ":sets_functions",
+        "//eval/public:activation",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_expr_builder_factory",
+        "//eval/public:cel_expression",
+        "//eval/public:cel_function_adapter",
+        "//eval/public:cel_options",
+        "//internal:testing",
+        "//parser",
+        "//runtime:runtime_options",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)

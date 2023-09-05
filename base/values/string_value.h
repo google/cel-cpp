@@ -77,6 +77,9 @@ class StringValue : public Value {
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
 
+  absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                       const Value& other) const;
+
   size_t size() const;
 
   bool empty() const;
@@ -96,8 +99,6 @@ class StringValue : public Value {
   absl::Cord ToCord() const;
 
   void HashValue(absl::HashState state) const;
-
-  bool Equals(const Value& other) const;
 
   // Visit the underlying value representation. It must accept `const
   // absl::Cord&` and `absl::string_view`.

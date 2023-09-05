@@ -19,10 +19,12 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "base/internal/data.h"
 #include "base/types/bytes_type.h"
+#include "base/value_factory.h"
 #include "common/any.h"
 #include "internal/overloaded.h"
 #include "internal/proto_wire.h"
@@ -199,6 +201,12 @@ bool BytesValue::Equals(const BytesValue& bytes) const {
   return absl::visit(EqualsVisitor<BytesValue>(*this), bytes.rep());
 }
 
+absl::StatusOr<Handle<Value>> BytesValue::Equals(ValueFactory& value_factory,
+                                                 const Value& other) const {
+  return value_factory.CreateBoolValue(other.Is<BytesValue>() &&
+                                       Equals(other.As<BytesValue>()));
+}
+
 int BytesValue::Compare(absl::string_view bytes) const {
   return absl::visit(CompareVisitor<absl::string_view>(bytes), rep());
 }
@@ -293,12 +301,6 @@ absl::StatusOr<Json> BytesValue::ConvertToJson(ValueFactory&) const {
           [](absl::string_view value) { return JsonBytes(value); },
           [](const absl::Cord& value) { return JsonBytes(value); }},
       rep());
-}
-
-bool BytesValue::Equals(const cel::Value& other) const {
-  return kind() == other.kind() &&
-         absl::visit(EqualsVisitor<BytesValue>(*this),
-                     static_cast<const BytesValue&>(other).rep());
 }
 
 void BytesValue::HashValue(absl::HashState state) const {

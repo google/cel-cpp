@@ -76,6 +76,9 @@ class MapValue : public Value {
   absl::StatusOr<JsonObject> ConvertToJsonObject(
       ValueFactory& value_factory) const;
 
+  absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                       const Value& other) const;
+
   size_t size() const;
 
   bool empty() const;
@@ -188,6 +191,9 @@ class LegacyMapValue final : public MapValue, public InlineData {
       ValueFactory& value_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+  absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                       const Value& other) const;
+
   constexpr uintptr_t value() const { return impl_; }
 
  private:
@@ -249,6 +255,9 @@ class AbstractMapValue : public MapValue,
   virtual absl::StatusOr<UniqueRef<Iterator>> NewIterator(
       ValueFactory& value_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  virtual absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                               const Value& other) const;
 
  protected:
   explicit AbstractMapValue(Handle<MapType> type);

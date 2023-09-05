@@ -53,9 +53,10 @@ class TypeValue : public Value {
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
 
-  absl::string_view name() const;
+  absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                       const Value& other) const;
 
-  bool Equals(const TypeValue& other) const;
+  absl::string_view name() const;
 
  private:
   friend class ValueHandle;

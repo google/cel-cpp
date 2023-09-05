@@ -19,6 +19,7 @@
 
 #include "absl/base/optimization.h"
 #include "absl/strings/cord.h"
+#include "base/value_factory.h"
 #include "common/any.h"
 #include "internal/proto_wire.h"
 #include "internal/status_macros.h"
@@ -80,6 +81,13 @@ absl::StatusOr<Any> EnumValue::ConvertToAny(ValueFactory&) const {
 
 absl::StatusOr<Json> EnumValue::ConvertToJson(ValueFactory&) const {
   return JsonInt(number());
+}
+
+absl::StatusOr<Handle<Value>> EnumValue::Equals(ValueFactory& value_factory,
+                                                const Value& other) const {
+  return value_factory.CreateBoolValue(
+      other.Is<EnumValue>() && type() == other.As<EnumValue>().type() &&
+      number() == other.As<EnumValue>().number());
 }
 
 }  // namespace cel

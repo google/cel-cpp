@@ -219,6 +219,55 @@ absl::StatusOr<Json> Value::ConvertToJson(ValueFactory& value_factory) const {
   }
 }
 
+absl::StatusOr<Handle<Value>> Value::Equals(ValueFactory& value_factory,
+                                            const Value& other) const {
+  switch (kind()) {
+    case ValueKind::kNullType:
+      return static_cast<const NullValue*>(this)->Equals(value_factory, other);
+    case ValueKind::kError:
+      return static_cast<const ErrorValue*>(this)->Equals(value_factory, other);
+    case ValueKind::kType:
+      return static_cast<const TypeValue*>(this)->Equals(value_factory, other);
+    case ValueKind::kBool:
+      return static_cast<const BoolValue*>(this)->Equals(value_factory, other);
+    case ValueKind::kInt:
+      return static_cast<const IntValue*>(this)->Equals(value_factory, other);
+    case ValueKind::kUint:
+      return static_cast<const UintValue*>(this)->Equals(value_factory, other);
+    case ValueKind::kDouble:
+      return static_cast<const DoubleValue*>(this)->Equals(value_factory,
+                                                           other);
+    case ValueKind::kString:
+      return static_cast<const StringValue*>(this)->Equals(value_factory,
+                                                           other);
+    case ValueKind::kBytes:
+      return static_cast<const BytesValue*>(this)->Equals(value_factory, other);
+    case ValueKind::kEnum:
+      return static_cast<const EnumValue*>(this)->Equals(value_factory, other);
+    case ValueKind::kDuration:
+      return static_cast<const DurationValue*>(this)->Equals(value_factory,
+                                                             other);
+    case ValueKind::kTimestamp:
+      return static_cast<const TimestampValue*>(this)->Equals(value_factory,
+                                                              other);
+    case ValueKind::kList:
+      return static_cast<const ListValue*>(this)->Equals(value_factory, other);
+    case ValueKind::kMap:
+      return static_cast<const MapValue*>(this)->Equals(value_factory, other);
+    case ValueKind::kStruct:
+      return static_cast<const StructValue*>(this)->Equals(value_factory,
+                                                           other);
+    case ValueKind::kUnknown:
+      return static_cast<const UnknownValue*>(this)->Equals(value_factory,
+                                                            other);
+    case ValueKind::kOpaque:
+      return static_cast<const OpaqueValue*>(this)->Equals(value_factory,
+                                                           other);
+    default:
+      ABSL_UNREACHABLE();
+  }
+}
+
 namespace base_internal {
 
 bool ValueHandle::Equals(const Value& lhs, const Value& rhs, ValueKind kind) {
@@ -229,8 +278,8 @@ bool ValueHandle::Equals(const Value& lhs, const Value& rhs, ValueKind kind) {
       return static_cast<const ErrorValue&>(lhs).value() ==
              static_cast<const ErrorValue&>(rhs).value();
     case ValueKind::kType:
-      return static_cast<const TypeValue&>(lhs).Equals(
-          static_cast<const TypeValue&>(rhs));
+      return static_cast<const TypeValue&>(lhs).name() ==
+             static_cast<const TypeValue&>(rhs).name();
     case ValueKind::kBool:
       return static_cast<const BoolValue&>(lhs).value() ==
              static_cast<const BoolValue&>(rhs).value();

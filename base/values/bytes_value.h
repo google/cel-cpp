@@ -94,7 +94,8 @@ class BytesValue : public Value {
 
   void HashValue(absl::HashState state) const;
 
-  bool Equals(const Value& other) const;
+  absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                       const Value& other) const;
 
   // Visit the underlying value representation. It must accept `const
   // absl::Cord&` and `absl::string_view`.

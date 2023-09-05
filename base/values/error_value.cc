@@ -18,6 +18,7 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "base/value_factory.h"
 
 namespace cel {
 
@@ -41,6 +42,11 @@ absl::StatusOr<Any> ErrorValue::ConvertToAny(ValueFactory&) const {
 absl::StatusOr<Json> ErrorValue::ConvertToJson(ValueFactory&) const {
   return absl::FailedPreconditionError(absl::StrCat(
       type()->name(), " cannot be serialized as google.protobuf.Value"));
+}
+
+absl::StatusOr<Handle<Value>> ErrorValue::Equals(ValueFactory& value_factory,
+                                                 const Value&) const {
+  return value_factory.CreateErrorValue(value());
 }
 
 }  // namespace cel

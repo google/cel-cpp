@@ -21,6 +21,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
 #include "absl/time/time.h"
+#include "base/value_factory.h"
 #include "common/any.h"
 #include "internal/proto_wire.h"
 #include "internal/status_macros.h"
@@ -72,6 +73,13 @@ absl::StatusOr<Any> DurationValue::ConvertToAny(ValueFactory&) const {
 absl::StatusOr<Json> DurationValue::ConvertToJson(ValueFactory&) const {
   CEL_ASSIGN_OR_RETURN(auto formatted, internal::EncodeDurationToJson(value()));
   return JsonString(std::move(formatted));
+}
+
+absl::StatusOr<Handle<Value>> DurationValue::Equals(ValueFactory& value_factory,
+                                                    const Value& other) const {
+  return value_factory.CreateBoolValue(other.Is<DurationValue>() &&
+                                       value() ==
+                                           other.As<DurationValue>().value());
 }
 
 }  // namespace cel

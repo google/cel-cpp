@@ -91,6 +91,9 @@ class Value : public base_internal::Data {
     return T::Cast(*this);
   }
 
+  absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                       const Value& other) const;
+
   template <typename Sink>
   friend void AbslStringify(Sink& sink, const Value& value) {
     sink.Append(value.DebugString());

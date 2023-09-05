@@ -90,6 +90,11 @@ absl::StatusOr<UniqueRef<MapValue::Iterator>> MapValue::NewIterator(
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(NewIterator, value_factory);
 }
 
+absl::StatusOr<Handle<Value>> MapValue::Equals(ValueFactory& value_factory,
+                                               const Value& other) const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Equals, value_factory, other);
+}
+
 internal::TypeInfo MapValue::TypeId() const {
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(TypeId);
 }
@@ -104,6 +109,43 @@ absl::StatusOr<Handle<Value>> MapValue::Iterator::NextKey() {
 absl::StatusOr<Handle<Value>> MapValue::Iterator::NextValue() {
   CEL_ASSIGN_OR_RETURN(auto entry, Next());
   return std::move(entry.value);
+}
+
+absl::StatusOr<Handle<Value>> GenericMapValueEquals(ValueFactory& value_factory,
+                                                    const MapValue& lhs,
+                                                    const MapValue& rhs) {
+  if (&lhs == &rhs) {
+    return value_factory.CreateBoolValue(true);
+  }
+  const auto lhs_size = lhs.size();
+  if (lhs_size != rhs.size()) {
+    return value_factory.CreateBoolValue(false);
+  }
+  if (lhs_size == 0) {
+    return value_factory.CreateBoolValue(true);
+  }
+  CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator(value_factory));
+  for (size_t index = 0; index < lhs_size; ++index) {
+    if (ABSL_PREDICT_FALSE(!lhs_iterator->HasNext())) {
+      return absl::InternalError(
+          "MapValue::Iterator has less entries than MapValue");
+    }
+    CEL_ASSIGN_OR_RETURN(auto lhs_entry, lhs_iterator->Next());
+    CEL_ASSIGN_OR_RETURN(auto rhs_entry, rhs.Get(value_factory, lhs_entry.key));
+    if (!rhs_entry.has_value()) {
+      return value_factory.CreateBoolValue(false);
+    }
+    CEL_ASSIGN_OR_RETURN(auto equal,
+                         lhs_entry.value->Equals(value_factory, **rhs_entry));
+    if (equal->Is<BoolValue>() && !equal->As<BoolValue>().value()) {
+      return equal;
+    }
+  }
+  if (ABSL_PREDICT_FALSE(lhs_iterator->HasNext())) {
+    return absl::InternalError(
+        "MapValue::Iterator has more entries than MapValue");
+  }
+  return value_factory.CreateBoolValue(true);
 }
 
 namespace base_internal {
@@ -310,6 +352,14 @@ absl::StatusOr<UniqueRef<MapValue::Iterator>> LegacyMapValue::NewIterator(
                                             value_factory, impl_);
 }
 
+absl::StatusOr<Handle<Value>> LegacyMapValue::Equals(
+    ValueFactory& value_factory, const Value& other) const {
+  if (!other.Is<MapValue>()) {
+    return value_factory.CreateBoolValue(false);
+  }
+  return GenericMapValueEquals(value_factory, *this, other.As<MapValue>());
+}
+
 AbstractMapValue::AbstractMapValue(Handle<MapType> type)
     : HeapData(kKind), type_(std::move(type)) {
   // Ensure `Value*` and `HeapData*` are not thunked.
@@ -331,6 +381,14 @@ absl::StatusOr<UniqueRef<MapValue::Iterator>> AbstractMapValue::NewIterator(
     ValueFactory& value_factory) const {
   return MakeUnique<AbstractMapValueIterator>(value_factory.memory_manager(),
                                               value_factory, this);
+}
+
+absl::StatusOr<Handle<Value>> AbstractMapValue::Equals(
+    ValueFactory& value_factory, const Value& other) const {
+  if (!other.Is<MapValue>()) {
+    return value_factory.CreateBoolValue(false);
+  }
+  return GenericMapValueEquals(value_factory, *this, other.As<MapValue>());
 }
 
 }  // namespace base_internal

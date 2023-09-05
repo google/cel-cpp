@@ -41,10 +41,10 @@ TEST(ListValueBuilder, Unspecialized) {
   EXPECT_EQ(list->DebugString(), "[b\"\", b\"\"]");
   ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<BytesValue>());
-  EXPECT_TRUE(element.As<BytesValue>()->Equals(*value));
+  EXPECT_TRUE(element.As<BytesValue>()->Equals(value->As<BytesValue>()));
   ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 1));
   EXPECT_TRUE(element->Is<BytesValue>());
-  EXPECT_TRUE(element.As<BytesValue>()->Equals(*value));
+  EXPECT_TRUE(element.As<BytesValue>()->Equals(value->As<BytesValue>()));
 }
 
 TEST(ListValueBuilder, Value) {
@@ -62,10 +62,10 @@ TEST(ListValueBuilder, Value) {
   EXPECT_EQ(list->DebugString(), "[b\"\", b\"\"]");
   ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<BytesValue>());
-  EXPECT_TRUE(element.As<BytesValue>()->Equals(*value));
+  EXPECT_TRUE(element.As<BytesValue>()->Equals(value->As<BytesValue>()));
   ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 1));
   EXPECT_TRUE(element->Is<BytesValue>());
-  EXPECT_TRUE(element.As<BytesValue>()->Equals(*value));
+  EXPECT_TRUE(element.As<BytesValue>()->Equals(value->As<BytesValue>()));
 }
 
 TEST(ListValueBuilder, Bool) {

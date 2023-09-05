@@ -69,6 +69,12 @@ class ListValue : public Value {
 
   std::string DebugString() const;
 
+  absl::StatusOr<Handle<Value>> Contains(ValueFactory& value_factory,
+                                         const Value& other) const;
+
+  absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                       const Value& other) const;
+
   absl::StatusOr<Any> ConvertToAny(ValueFactory& value_factory) const;
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
@@ -96,8 +102,6 @@ class ListValue : public Value {
   absl::StatusOr<UniqueRef<Iterator>> NewIterator(
       ValueFactory& value_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  bool Equals(const Value& other) const;
 
   void HashValue(absl::HashState state) const;
 
@@ -176,6 +180,12 @@ class LegacyListValue final : public ListValue, public InlineData {
       ValueFactory& value_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+  absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                       const Value& other) const;
+
+  absl::StatusOr<Handle<Value>> Contains(ValueFactory& value_factory,
+                                         const Value& other) const;
+
  private:
   friend class ValueHandle;
   friend class cel::ListValue;
@@ -232,6 +242,12 @@ class AbstractListValue : public ListValue,
   virtual absl::StatusOr<UniqueRef<Iterator>> NewIterator(
       ValueFactory& value_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  virtual absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                               const Value& other) const;
+
+  virtual absl::StatusOr<Handle<Value>> Contains(ValueFactory& value_factory,
+                                                 const Value& other) const;
 
  protected:
   explicit AbstractListValue(Handle<ListType> type);

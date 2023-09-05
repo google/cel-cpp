@@ -65,6 +65,9 @@ class EnumValue final : public Value, public base_internal::InlineData {
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
 
+  absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                       const Value& other) const;
+
   constexpr int64_t number() const { return number_; }
 
   absl::string_view name() const;

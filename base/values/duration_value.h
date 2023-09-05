@@ -56,6 +56,9 @@ class DurationValue final
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
 
+  absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                       const Value& other) const;
+
   using Base::value;
 
  private:

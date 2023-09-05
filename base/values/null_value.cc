@@ -18,6 +18,7 @@
 
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "base/value_factory.h"
 #include "common/any.h"
 
 namespace cel {
@@ -33,6 +34,11 @@ absl::StatusOr<Any> NullValue::ConvertToAny(ValueFactory&) const {
 
 absl::StatusOr<Json> NullValue::ConvertToJson(ValueFactory&) const {
   return kJsonNull;
+}
+
+absl::StatusOr<Handle<Value>> NullValue::Equals(ValueFactory& value_factory,
+                                                const Value& other) const {
+  return value_factory.CreateBoolValue(other.Is<NullValue>());
 }
 
 }  // namespace cel

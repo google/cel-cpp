@@ -57,6 +57,9 @@ class ErrorValue final : public Value, public base_internal::InlineData {
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
 
+  absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                       const Value& other) const;
+
   const absl::Status& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:

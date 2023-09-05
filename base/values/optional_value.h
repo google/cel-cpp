@@ -72,6 +72,9 @@ class OptionalValue : public OpaqueValue {
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const final;
 
+  absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                       const Value& other) const final;
+
   virtual bool has_value() const = 0;
 
   // Requires `OptionalValue::has_value()` be true, otherwise behavior is

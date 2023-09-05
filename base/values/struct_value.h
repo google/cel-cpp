@@ -85,6 +85,9 @@ class StructValue : public Value {
 
   std::string DebugString() const;
 
+  absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                       const Value& other) const;
+
   absl::StatusOr<Any> ConvertToAny(ValueFactory& value_factory) const;
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
@@ -263,6 +266,9 @@ class LegacyStructValue final : public StructValue, public InlineData {
   absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
       ValueFactory& value_factory) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+  absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                       const Value& other) const;
+
  private:
   struct GetFieldVisitor;
   struct HasFieldVisitor;
@@ -355,6 +361,9 @@ class AbstractStructValue : public StructValue,
 
   virtual absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
       ValueFactory& value_factory) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
+
+  virtual absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                               const Value& other) const;
 
  protected:
   explicit AbstractStructValue(Handle<StructType> type);

@@ -52,6 +52,9 @@ class IntValue final : public base_internal::SimpleValue<IntType, int64_t> {
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
 
+  absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
+                                       const Value& other) const;
+
   using Base::value;
 
  private:
