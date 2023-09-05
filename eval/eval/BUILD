@@ -15,7 +15,6 @@ cc_library(
         "evaluator_core.h",
     ],
     deps = [
-        ":attribute_trail",
         ":attribute_utility",
         ":comprehension_slots",
         ":evaluator_stack",
@@ -26,6 +25,7 @@ cc_library(
         "//internal:status_macros",
         "//runtime:activation_interface",
         "//runtime:runtime_options",
+        "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -399,7 +399,6 @@ cc_test(
         "evaluator_core_test.cc",
     ],
     deps = [
-        ":attribute_trail",
         ":cel_expression_flat_impl",
         ":evaluator_core",
         "//base:data",
@@ -407,7 +406,6 @@ cc_test(
         "//eval/internal:interop",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
-        "//eval/public:cel_attribute",
         "//eval/public:cel_value",
         "//extensions/protobuf:memory_manager",
         "//internal:testing",

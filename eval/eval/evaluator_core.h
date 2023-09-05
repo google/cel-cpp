@@ -1,9 +1,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_CORE_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_CORE_H_
 
-#include <stddef.h>
-#include <stdint.h>
-
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -22,7 +19,6 @@
 #include "base/type_provider.h"
 #include "base/value.h"
 #include "base/value_factory.h"
-#include "eval/eval/attribute_trail.h"
 #include "eval/eval/attribute_utility.h"
 #include "eval/eval/comprehension_slots.h"
 #include "eval/eval/evaluator_stack.h"
@@ -77,18 +73,6 @@ using ExecutionPathView =
 // evaluation. This can be reused to save on allocations.
 class FlatExpressionEvaluatorState {
  public:
-  struct ComprehensionVarEntry {
-    absl::string_view name;
-    // present if we're in part of the loop context where this can be accessed.
-    cel::Handle<cel::Value> value;
-    AttributeTrail attr_trail;
-  };
-
-  struct IterFrame {
-    ComprehensionVarEntry iter_var;
-    ComprehensionVarEntry accu_var;
-  };
-
   FlatExpressionEvaluatorState(size_t value_stack_size,
                                size_t comprehension_slot_count,
                                const cel::TypeProvider& type_provider,
@@ -99,10 +83,6 @@ class FlatExpressionEvaluatorState {
   EvaluatorStack& value_stack() { return value_stack_; }
 
   ComprehensionSlots& comprehension_slots() { return comprehension_slots_; }
-
-  std::vector<IterFrame>& iter_stack() { return iter_stack_; }
-
-  IterFrame& IterStackTop() { return iter_stack_[iter_stack().size() - 1]; }
 
   cel::MemoryManager& memory_manager() {
     return value_factory_.memory_manager();
@@ -117,7 +97,6 @@ class FlatExpressionEvaluatorState {
  private:
   EvaluatorStack value_stack_;
   ComprehensionSlots comprehension_slots_;
-  std::vector<IterFrame> iter_stack_;
   cel::TypeFactory type_factory_;
   cel::TypeManager type_manager_;
   cel::ValueFactory value_factory_;
@@ -216,35 +195,6 @@ class ExecutionFrame {
   const cel::ActivationInterface& modern_activation() const {
     return activation_;
   }
-
-  // Creates a new frame for the iteration variables identified by iter_var_name
-  // and accu_var_name.
-  absl::Status PushIterFrame(absl::string_view iter_var_name,
-                             absl::string_view accu_var_name);
-
-  // Discards the top frame for iteration variables.
-  absl::Status PopIterFrame();
-
-  // Sets the value of the accumulation variable
-  absl::Status SetAccuVar(cel::Handle<cel::Value> value);
-
-  // Sets the value of the accumulation variable
-  absl::Status SetAccuVar(cel::Handle<cel::Value> value, AttributeTrail trail);
-
-  // Sets the value of the iteration variable
-  absl::Status SetIterVar(cel::Handle<cel::Value> value);
-
-  // Sets the value of the iteration variable
-  absl::Status SetIterVar(cel::Handle<cel::Value> value, AttributeTrail trail);
-
-  // Clears the value of the iteration variable
-  absl::Status ClearIterVar();
-
-  // Gets the current value of either an iteration variable or accumulation
-  // variable.
-  // Returns false if the variable is not yet set or has been cleared.
-  bool GetIterVar(absl::string_view name, cel::Handle<cel::Value>* value,
-                  AttributeTrail* trail) const;
 
   // Increment iterations and return an error if the iteration budget is
   // exceeded

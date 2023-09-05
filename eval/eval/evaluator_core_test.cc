@@ -1,18 +1,15 @@
 #include "eval/eval/evaluator_core.h"
 
 #include <memory>
-#include <string>
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "base/type_provider.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
-#include "eval/eval/attribute_trail.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/internal/interop.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
-#include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
@@ -96,69 +93,6 @@ TEST(EvaluatorCoreTest, ExecutionFrameNext) {
   EXPECT_THAT(frame.Next(), Eq(path[1].get()));
   EXPECT_THAT(frame.Next(), Eq(path[2].get()));
   EXPECT_THAT(frame.Next(), Eq(nullptr));
-}
-
-// Test the set, get, and clear functions for "IterVar" on ExecutionFrame
-TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
-  const std::string test_iter_var = "test_iter_var";
-  const std::string test_accu_var = "test_accu_var";
-  const int64_t test_value = 0xF00F00;
-
-  cel::Activation activation;
-  google::protobuf::Arena arena;
-  ProtoMemoryManager manager(&arena);
-  ExecutionPath path;
-  FlatExpressionEvaluatorState state(path.size(),
-                                     /*comprehension_slots_size=*/0,
-                                     TypeProvider::Builtin(), manager);
-  cel::RuntimeOptions options;
-  options.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
-  ExecutionFrame frame(path, activation, options, state);
-
-  auto original = cel::interop_internal::CreateIntValue(test_value);
-  Expr ident;
-  ident.mutable_ident_expr()->set_name("var");
-
-  AttributeTrail original_trail = AttributeTrail("var").Step(
-      CreateCelAttributeQualifier(CelValue::CreateInt64(1)));
-  cel::Handle<cel::Value> result;
-  AttributeTrail trail;
-
-  ASSERT_OK(frame.PushIterFrame(test_iter_var, test_accu_var));
-
-  // Nothing is there yet
-  ASSERT_FALSE(frame.GetIterVar(test_iter_var, &result, nullptr));
-  ASSERT_OK(frame.SetIterVar(original, original_trail));
-
-  // Nothing is there yet
-  ASSERT_FALSE(frame.GetIterVar(test_accu_var, &result, nullptr));
-  ASSERT_OK(frame.SetAccuVar(cel::interop_internal::CreateBoolValue(true)));
-  ASSERT_TRUE(frame.GetIterVar(test_accu_var, &result, nullptr));
-  ASSERT_TRUE(result->Is<cel::BoolValue>());
-  EXPECT_EQ(result.As<cel::BoolValue>()->value(), true);
-
-  // Make sure its now there
-  ASSERT_TRUE(frame.GetIterVar(test_iter_var, &result, &trail));
-
-  int64_t result_value = result.As<cel::IntValue>()->value();
-  EXPECT_EQ(test_value, result_value);
-  ASSERT_TRUE(trail.attribute().has_variable_name());
-  ASSERT_EQ(trail.attribute().variable_name(), "var");
-
-  // Test that it goes away properly
-  ASSERT_OK(frame.ClearIterVar());
-  ASSERT_FALSE(frame.GetIterVar(test_iter_var, &result, &trail));
-
-  ASSERT_OK(frame.PopIterFrame());
-
-  // Access on empty stack ok, but no value.
-  ASSERT_FALSE(frame.GetIterVar(test_iter_var, &result, nullptr));
-
-  // Pop empty stack
-  ASSERT_FALSE(frame.PopIterFrame().ok());
-
-  // Updates on empty stack not ok.
-  ASSERT_FALSE(frame.SetIterVar(original).ok());
 }
 
 TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
