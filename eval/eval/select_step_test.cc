@@ -112,8 +112,9 @@ class SelectStepTest : public testing::Test {
       runtime_options.unknown_processing =
           cel::UnknownProcessingOptions::kAttributeOnly;
     }
-    CelExpressionFlatImpl cel_expr(FlatExpression(
-        std::move(path), TypeProvider::Builtin(), runtime_options));
+    CelExpressionFlatImpl cel_expr(
+        FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                       TypeProvider::Builtin(), runtime_options));
     Activation activation;
     activation.InsertValue("target", target);
 
@@ -294,8 +295,9 @@ TEST_F(SelectStepTest, MapPresenseIsErrorTest) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
   path.push_back(std::move(step2));
-  CelExpressionFlatImpl cel_expr(FlatExpression(
-      std::move(path), TypeProvider::Builtin(), cel::RuntimeOptions{}));
+  CelExpressionFlatImpl cel_expr(
+      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                     TypeProvider::Builtin(), cel::RuntimeOptions{}));
   Activation activation;
   activation.InsertValue("target",
                          CelProtoWrapper::CreateMessage(&message, &arena_));
@@ -801,7 +803,8 @@ TEST_P(SelectStepConformanceTest, CelErrorAsArgument) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
   CelExpressionFlatImpl cel_expr(
-      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
+      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                     TypeProvider::Builtin(), options));
   Activation activation;
   activation.InsertValue("message", CelValue::CreateError(&error));
 
@@ -834,8 +837,9 @@ TEST_F(SelectStepTest, DisableMissingAttributeOK) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(FlatExpression(
-      std::move(path), TypeProvider::Builtin(), cel::RuntimeOptions{}));
+  CelExpressionFlatImpl cel_expr(
+      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                     TypeProvider::Builtin(), cel::RuntimeOptions{}));
   Activation activation;
   activation.InsertValue("message",
                          CelProtoWrapper::CreateMessage(&message, &arena_));
@@ -878,7 +882,8 @@ TEST_F(SelectStepTest, UnrecoverableUnknownValueProducesError) {
   cel::RuntimeOptions options;
   options.enable_missing_attribute_errors = true;
   CelExpressionFlatImpl cel_expr(
-      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
+      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                     TypeProvider::Builtin(), options));
   Activation activation;
   activation.InsertValue("message",
                          CelProtoWrapper::CreateMessage(&message, &arena_));
@@ -926,7 +931,8 @@ TEST_F(SelectStepTest, UnknownPatternResolvesToUnknown) {
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   CelExpressionFlatImpl cel_expr(
-      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
+      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                     TypeProvider::Builtin(), options));
 
   {
     std::vector<CelAttributePattern> unknown_patterns;

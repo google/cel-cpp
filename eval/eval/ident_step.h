@@ -14,6 +14,11 @@ namespace google::api::expr::runtime {
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
     const cel::ast_internal::Ident& ident, int64_t expr_id);
 
+// Factory method for identifier that has been assigned to a slot.
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStepForSlot(
+    const cel::ast_internal::Ident& ident_expr, size_t slot_index,
+    int64_t expr_id);
+
 }  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_EVAL_IDENT_STEP_H_

@@ -1,5 +1,6 @@
 #include "eval/eval/evaluator_core.h"
 
+#include <cstddef>
 #include <memory>
 #include <utility>
 
@@ -24,9 +25,10 @@ absl::Status InvalidIterationStateError() {
 }  // namespace
 
 FlatExpressionEvaluatorState::FlatExpressionEvaluatorState(
-    size_t value_stack_size, const cel::TypeProvider& type_provider,
-    cel::MemoryManager& memory_manager)
+    size_t value_stack_size, size_t comprehension_slot_count,
+    const cel::TypeProvider& type_provider, cel::MemoryManager& memory_manager)
     : value_stack_(value_stack_size),
+      comprehension_slots_(comprehension_slot_count),
       type_factory_(memory_manager),
       type_manager_(type_factory_, type_provider),
       value_factory_(type_manager_) {}
@@ -34,6 +36,7 @@ FlatExpressionEvaluatorState::FlatExpressionEvaluatorState(
 void FlatExpressionEvaluatorState::Reset() {
   value_stack_.Clear();
   iter_stack_.clear();
+  comprehension_slots_.Reset();
 }
 
 const ExpressionStep* ExecutionFrame::Next() {
@@ -165,7 +168,8 @@ absl::StatusOr<cel::Handle<cel::Value>> ExecutionFrame::Evaluate(
 
 FlatExpressionEvaluatorState FlatExpression::MakeEvaluatorState(
     cel::MemoryManager& manager) const {
-  return FlatExpressionEvaluatorState(path_.size(), type_provider_, manager);
+  return FlatExpressionEvaluatorState(path_.size(), comprehension_slots_size_,
+                                      type_provider_, manager);
 }
 
 absl::StatusOr<cel::Handle<cel::Value>> FlatExpression::EvaluateWithCallback(

@@ -1,5 +1,6 @@
 #include "eval/eval/ident_step.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -9,6 +10,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "eval/eval/attribute_trail.h"
+#include "eval/eval/comprehension_slots.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
@@ -44,23 +46,17 @@ class IdentStep : public ExpressionStepBase {
 absl::StatusOr<IdentStep::IdentResult> IdentStep::DoEvaluate(
     ExecutionFrame* frame) const {
   IdentResult result;
-
-  // Special case - comprehension variables mask any activation vars.
-  bool iter_var = frame->GetIterVar(name_, &result.value, &result.trail);
-
   // Populate trails if either MissingAttributeError or UnknownPattern
   // is enabled.
-  if (!iter_var) {
-    if (frame->enable_missing_attribute_errors() || frame->enable_unknowns()) {
-      result.trail = AttributeTrail(name_);
-    }
+  if (frame->enable_missing_attribute_errors() || frame->enable_unknowns()) {
+    result.trail = AttributeTrail(name_);
+  }
 
-    if (frame->enable_missing_attribute_errors() && !name_.empty() &&
-        frame->attribute_utility().CheckForMissingAttribute(result.trail)) {
-      result.value = frame->value_factory().CreateErrorValue(
-          CreateMissingAttributeError(name_));
-      return result;
-    }
+  if (frame->enable_missing_attribute_errors() && !name_.empty() &&
+      frame->attribute_utility().CheckForMissingAttribute(result.trail)) {
+    result.value = frame->value_factory().CreateErrorValue(
+        CreateMissingAttributeError(name_));
+    return result;
   }
 
   if (frame->enable_unknowns()) {
@@ -70,9 +66,6 @@ absl::StatusOr<IdentStep::IdentResult> IdentStep::DoEvaluate(
       result.value = std::move(unknown_set);
       return result;
     }
-  }
-  if (iter_var) {
-    return result;
   }
 
   CEL_ASSIGN_OR_RETURN(auto value, frame->modern_activation().FindVariable(
@@ -97,11 +90,60 @@ absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
   return absl::OkStatus();
 }
 
+class SlotStep : public ExpressionStepBase {
+ public:
+  SlotStep(absl::string_view name, size_t slot_index, int64_t expr_id)
+      : ExpressionStepBase(expr_id), name_(name), slot_index_(slot_index) {}
+
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
+
+ private:
+  std::string name_;
+
+  size_t slot_index_;
+};
+
+absl::Status SlotStep::Evaluate(ExecutionFrame* frame) const {
+  const ComprehensionSlots::Slot* slot =
+      frame->comprehension_slots().Get(slot_index_);
+  if (slot == nullptr) {
+    return absl::InternalError(
+        absl::StrCat("Comprehension variable accessed out of scope: ", name_));
+  }
+
+  const auto& attribute_trail = slot->attribute;
+
+  if (frame->enable_missing_attribute_errors() &&
+      frame->attribute_utility().CheckForMissingAttribute(attribute_trail)) {
+    frame->value_stack().Push(frame->value_factory().CreateErrorValue(
+        CreateMissingAttributeError(name_)));
+    return absl::OkStatus();
+  }
+
+  if (frame->enable_unknowns()) {
+    if (frame->attribute_utility().CheckForUnknown(attribute_trail, false)) {
+      auto unknown_set = frame->attribute_utility().CreateUnknownSet(
+          attribute_trail.attribute());
+      frame->value_stack().Push(std::move(unknown_set));
+      return absl::OkStatus();
+    }
+  }
+
+  frame->value_stack().Push(slot->value, attribute_trail);
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
     const cel::ast_internal::Ident& ident_expr, int64_t expr_id) {
   return std::make_unique<IdentStep>(ident_expr.name(), expr_id);
+}
+
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStepForSlot(
+    const cel::ast_internal::Ident& ident_expr, size_t slot_index,
+    int64_t expr_id) {
+  return std::make_unique<SlotStep>(ident_expr.name(), slot_index, expr_id);
 }
 
 }  // namespace google::api::expr::runtime

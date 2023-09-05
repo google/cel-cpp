@@ -17,6 +17,7 @@ cc_library(
     deps = [
         ":attribute_trail",
         ":attribute_utility",
+        ":comprehension_slots",
         ":evaluator_stack",
         "//base:data",
         "//base:handle",
@@ -47,6 +48,36 @@ cc_library(
         "//eval/public:cel_expression",
         "//extensions/protobuf:memory_manager",
         "@com_google_absl//absl/status",
+    ],
+)
+
+cc_library(
+    name = "comprehension_slots",
+    hdrs = [
+        "comprehension_slots.h",
+    ],
+    deps = [
+        ":attribute_trail",
+        "//base:data",
+        "//base:handle",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_test(
+    name = "comprehension_slots_test",
+    srcs = [
+        "comprehension_slots_test.cc",
+    ],
+    deps = [
+        ":attribute_trail",
+        ":comprehension_slots",
+        "//base:attributes",
+        "//base:data",
+        "//base:handle",
+        "//base:memory",
+        "//internal:testing",
     ],
 )
 
@@ -158,6 +189,7 @@ cc_library(
     ],
     deps = [
         ":attribute_trail",
+        ":comprehension_slots",
         ":evaluator_core",
         ":expression_step_base",
         "//base/ast_internal:expr",
@@ -323,6 +355,7 @@ cc_library(
     ],
     deps = [
         ":attribute_trail",
+        ":comprehension_slots",
         ":evaluator_core",
         ":expression_step_base",
         "//base:data",
@@ -403,6 +436,7 @@ cc_test(
         "//extensions/protobuf:memory_manager",
         "//internal:status_macros",
         "//internal:testing",
+        "//runtime:runtime_options",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/time",
@@ -784,6 +818,7 @@ cc_test(
         "//eval/public:cel_value",
         "//internal:status_macros",
         "//internal:testing",
+        "//runtime:runtime_options",
         "@com_google_absl//absl/status:statusor",
     ],
 )

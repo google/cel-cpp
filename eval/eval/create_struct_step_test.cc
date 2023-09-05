@@ -84,7 +84,8 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
   CelExpressionFlatImpl cel_expr(
-      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
+      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                     TypeProvider::Builtin(), options));
   Activation activation;
   activation.InsertValue("message", value);
 
@@ -176,7 +177,8 @@ absl::StatusOr<CelValue> RunCreateMapExpression(
   }
 
   CelExpressionFlatImpl cel_expr(
-      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
+      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                     TypeProvider::Builtin(), options));
   return cel_expr.Evaluate(activation, arena);
 }
 
@@ -206,7 +208,8 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
   CelExpressionFlatImpl cel_expr(
-      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
+      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                     TypeProvider::Builtin(), options));
   Activation activation;
 
   google::protobuf::Arena arena;

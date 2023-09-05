@@ -1,5 +1,6 @@
 #include "eval/eval/comprehension_step.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -10,6 +11,7 @@
 #include "base/kind.h"
 #include "base/values/unknown_value.h"
 #include "eval/eval/attribute_trail.h"
+#include "eval/eval/comprehension_slots.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/internal/errors.h"
 #include "internal/status_macros.h"
@@ -44,12 +46,11 @@ using ::cel::runtime_internal::MutableListValue;
 // 10. result                  (dep) 2
 // 11. ComprehensionFinish           1
 
-ComprehensionNextStep::ComprehensionNextStep(const std::string& accu_var,
-                                             const std::string& iter_var,
+ComprehensionNextStep::ComprehensionNextStep(size_t slot_offset_,
                                              int64_t expr_id)
     : ExpressionStepBase(expr_id, false),
-      accu_var_(accu_var),
-      iter_var_(iter_var) {}
+      iter_slot_(slot_offset_ + kComprehensionSlotsIterOffset),
+      accu_slot_(slot_offset_ + kComprehensionSlotsAccuOffset) {}
 
 void ComprehensionNextStep::set_jump_offset(int offset) {
   jump_offset_ = offset;
@@ -120,9 +121,6 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   CEL_RETURN_IF_ERROR(frame->IncrementIterations());
 
   int64_t current_index = current_index_value.As<cel::IntValue>()->value();
-  if (current_index == -1) {
-    CEL_RETURN_IF_ERROR(frame->PushIterFrame(iter_var_, accu_var_));
-  }
 
   AttributeTrail iter_range_attr;
   AttributeTrail iter_trail;
@@ -137,10 +135,12 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   Handle<Value> loop_step = state[POS_LOOP_STEP];
   frame->value_stack().Pop(5);
   frame->value_stack().Push(loop_step);
-  CEL_RETURN_IF_ERROR(frame->SetAccuVar(std::move(loop_step)));
+  frame->comprehension_slots().Set(accu_slot_, std::move(loop_step));
+
+  // Make sure the iter var is out of scope.
   if (current_index >=
       static_cast<int64_t>(iter_range.As<cel::ListValue>()->size()) - 1) {
-    CEL_RETURN_IF_ERROR(frame->ClearIterVar());
+    frame->comprehension_slots().ClearSlot(iter_slot_);
     return frame->JumpTo(jump_offset_);
   }
   frame->value_stack().Push(iter_range, std::move(iter_range_attr));
@@ -153,16 +153,17 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   frame->value_stack().Push(
       frame->value_factory().CreateIntValue(current_index));
   frame->value_stack().Push(current_value, iter_trail);
-  CEL_RETURN_IF_ERROR(frame->SetIterVar(current_value, std::move(iter_trail)));
+  frame->comprehension_slots().Set(iter_slot_, std::move(current_value),
+                                   std::move(iter_trail));
   return absl::OkStatus();
 }
 
-ComprehensionCondStep::ComprehensionCondStep(const std::string&,
-                                             const std::string& iter_var,
+ComprehensionCondStep::ComprehensionCondStep(size_t slot_offset_,
                                              bool shortcircuiting,
                                              int64_t expr_id)
     : ExpressionStepBase(expr_id, false),
-      iter_var_(iter_var),
+      iter_slot_(slot_offset_ + kComprehensionSlotsIterOffset),
+      accu_slot_(slot_offset_ + kComprehensionSlotsAccuOffset),
       shortcircuiting_(shortcircuiting) {}
 
 void ComprehensionCondStep::set_jump_offset(int offset) {
@@ -194,7 +195,8 @@ absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
     }
     // The error jump skips the ComprehensionFinish clean-up step, so we
     // need to update the iteration variable stack here.
-    CEL_RETURN_IF_ERROR(frame->PopIterFrame());
+    frame->comprehension_slots().ClearSlot(iter_slot_);
+    frame->comprehension_slots().ClearSlot(accu_slot_);
     return frame->JumpTo(error_jump_offset_);
   }
   bool loop_condition = loop_condition_value.As<cel::BoolValue>()->value();
@@ -206,9 +208,9 @@ absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
   return absl::OkStatus();
 }
 
-ComprehensionFinish::ComprehensionFinish(const std::string& accu_var,
-                                         const std::string&, int64_t expr_id)
-    : ExpressionStepBase(expr_id), accu_var_(accu_var) {}
+ComprehensionFinish::ComprehensionFinish(size_t slot_offset_, int64_t expr_id)
+    : ExpressionStepBase(expr_id),
+      accu_slot_(slot_offset_ + kComprehensionSlotsAccuOffset) {}
 
 // Stack changes of ComprehensionFinish.
 //
@@ -230,7 +232,7 @@ absl::Status ComprehensionFinish::Evaluate(ExecutionFrame* frame) const {
     CEL_ASSIGN_OR_RETURN(result, std::move(list_value).Build());
   }
   frame->value_stack().Push(std::move(result));
-  CEL_RETURN_IF_ERROR(frame->PopIterFrame());
+  frame->comprehension_slots().ClearSlot(accu_slot_);
   return absl::OkStatus();
 }
 

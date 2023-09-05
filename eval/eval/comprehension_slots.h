@@ -1,0 +1,96 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_COMPREHENSION_SLOTS_H_
+#define THIRD_PARTY_CEL_CPP_EVAL_EVAL_COMPREHENSION_SLOTS_H_
+
+#include <cstddef>
+#include <utility>
+#include <vector>
+
+#include "absl/base/macros.h"
+#include "absl/types/optional.h"
+#include "base/handle.h"
+#include "base/value.h"
+#include "eval/eval/attribute_trail.h"
+
+namespace google::api::expr::runtime {
+
+// Comprehensions typically define a iter_var and an accu_var, so in general
+// comprehensions will use exactly two slots.
+constexpr size_t kComprehensionSlotsSize = 2;
+constexpr size_t kComprehensionSlotsIterOffset = 0;
+constexpr size_t kComprehensionSlotsAccuOffset = 1;
+
+// Simple manager for comprehension variables.
+//
+// At plan time, each comprehension variable is assigned a slot by index.
+// This is used instead of looking up the variable identifier by name in a
+// runtime stack.
+//
+// Callers must handle range checking.
+class ComprehensionSlots {
+ public:
+  struct Slot {
+    cel::Handle<cel::Value> value;
+    AttributeTrail attribute;
+  };
+
+  explicit ComprehensionSlots(size_t size) : size_(size), slots_(size) {}
+
+  // Move only
+  ComprehensionSlots(const ComprehensionSlots&) = delete;
+  ComprehensionSlots& operator=(const ComprehensionSlots&) = delete;
+  ComprehensionSlots(ComprehensionSlots&&) = default;
+  ComprehensionSlots& operator=(ComprehensionSlots&&) = default;
+
+  // Return ptr to slot at index.
+  // If not set, returns nullptr.
+  Slot* Get(size_t index) {
+    ABSL_ASSERT(index >= 0 && index < slots_.size());
+    auto& slot = slots_[index];
+    if (!slot.has_value()) return nullptr;
+    return &slot.value();
+  }
+
+  void Reset() {
+    slots_.clear();
+    slots_.resize(size_);
+  }
+
+  void ClearSlot(size_t index) {
+    ABSL_ASSERT(index >= 0 && index < slots_.size());
+    slots_[index] = absl::nullopt;
+  }
+
+  void Set(size_t index, cel::Handle<cel::Value> value) {
+    Set(index, std::move(value), AttributeTrail());
+  }
+
+  void Set(size_t index, cel::Handle<cel::Value> value,
+           AttributeTrail attribute) {
+    ABSL_ASSERT(index >= 0 && index < slots_.size());
+    slots_[index] = Slot{std::move(value), std::move(attribute)};
+  }
+
+  size_t size() const { return slots_.size(); }
+
+ private:
+  size_t size_;
+  std::vector<absl::optional<Slot>> slots_;
+};
+
+}  // namespace google::api::expr::runtime
+
+#endif  // THIRD_PARTY_CEL_CPP_EVAL_EVAL_COMPREHENSION_SLOTS_H_

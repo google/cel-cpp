@@ -73,7 +73,8 @@ CelValue EvaluateAttributeHelper(
   options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   options.enable_heterogeneous_equality = false;
   CelExpressionFlatImpl cel_expr(
-      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
+      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                     TypeProvider::Builtin(), options));
   Activation activation;
 
   activation.InsertValue("container", container);

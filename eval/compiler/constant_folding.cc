@@ -94,7 +94,8 @@ class ConstantFoldingExtension : public ProgramOptimizer {
                                     const TypeProvider& type_provider)
       : arena_(arena),
         memory_manager_(arena),
-        state_(kDefaultStackLimit, type_provider, memory_manager_) {}
+        state_(kDefaultStackLimit, kComprehensionSlotCount, type_provider,
+               memory_manager_) {}
 
   absl::Status OnPreVisit(google::api::expr::runtime::PlannerContext& context,
                           const Expr& node) override;
@@ -109,6 +110,10 @@ class ConstantFoldingExtension : public ProgramOptimizer {
   // Most constant folding evaluations are simple
   // binary operators.
   static constexpr size_t kDefaultStackLimit = 4;
+
+  // Comprehensions are not evaluated -- the current implementation can't detect
+  // if the comprehension variables are only used in a const way.
+  static constexpr size_t kComprehensionSlotCount = 0;
 
   google::protobuf::Arena* arena_;
   ProtoMemoryManager memory_manager_;

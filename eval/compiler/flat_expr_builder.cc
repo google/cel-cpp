@@ -17,6 +17,7 @@
 #include "eval/compiler/flat_expr_builder.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <memory>
@@ -45,6 +46,7 @@
 #include "base/value_factory.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
+#include "eval/eval/comprehension_slots.h"
 #include "eval/eval/comprehension_step.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/container_access_step.h"
@@ -169,16 +171,18 @@ class ExhaustiveTernaryCondVisitor : public CondVisitor {
   FlatExprVisitor* visitor_;
 };
 
-// Visitor Comprehension expression.
+// Visitor for Comprehension expressions.
 class ComprehensionVisitor {
  public:
   explicit ComprehensionVisitor(FlatExprVisitor* visitor, bool short_circuiting,
-                                bool enable_vulnerability_check)
+                                bool enable_vulnerability_check,
+                                size_t slot_offset)
       : visitor_(visitor),
         next_step_(nullptr),
         cond_step_(nullptr),
         short_circuiting_(short_circuiting),
-        enable_vulnerability_check_(enable_vulnerability_check) {}
+        enable_vulnerability_check_(enable_vulnerability_check),
+        slot_offset_(slot_offset) {}
 
   void PreVisit(const cel::ast_internal::Expr* expr);
   void PostVisitArg(cel::ast_internal::ComprehensionArg arg_num,
@@ -193,6 +197,7 @@ class ComprehensionVisitor {
   int cond_step_pos_;
   bool short_circuiting_;
   bool enable_vulnerability_check_;
+  size_t slot_offset_;
 };
 
 class FlatExprVisitor : public cel::ast_internal::AstVisitor {
@@ -213,6 +218,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
         resolved_select_expr_(nullptr),
         parent_expr_(nullptr),
         options_(options),
+        max_comprehension_depth_(0),
         enable_comprehension_vulnerability_check_(
             enable_comprehension_vulnerability_check),
         program_optimizers_(program_optimizers),
@@ -326,6 +332,29 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     if (const_value) {
       AddStep(
           CreateShadowableValueStep(path, std::move(const_value), expr->id()));
+      return;
+    }
+
+    // If this is a comprehension variable, check for the assigned slot.
+    int slot = -1;
+    if (!comprehension_stack_.empty()) {
+      for (int i = comprehension_stack_.size() - 1; i >= 0; i--) {
+        auto offset = kComprehensionSlotsSize * i;
+        if (comprehension_stack_[i].iter_var_in_scope &&
+            comprehension_stack_[i].comprehension->iter_var() == path) {
+          slot = offset + kComprehensionSlotsIterOffset;
+          break;
+        }
+        if (comprehension_stack_[i].accu_var_in_scope &&
+            comprehension_stack_[i].comprehension->accu_var() == path) {
+          slot = offset + kComprehensionSlotsAccuOffset;
+          break;
+        }
+      }
+    }
+
+    if (slot >= 0) {
+      AddStep(CreateIdentStepForSlot(*ident_expr, slot, expr->id()));
       return;
     }
 
@@ -467,11 +496,11 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     // Check to see if this is a special case of add that should really be
     // treated as a list append
     if (!comprehension_stack_.empty() &&
-        comprehension_stack_.top().is_optimizable_list_append) {
+        comprehension_stack_.back().is_optimizable_list_append) {
       // Already checked that this is an optimizeable comprehension,
       // check that this is the correct list append node.
       const cel::ast_internal::Comprehension* comprehension =
-          comprehension_stack_.top().comprehension;
+          comprehension_stack_.back().comprehension;
       const cel::ast_internal::Expr& loop_step = comprehension->loop_step();
       // Macro loop_step for a map() will contain a list concat operation:
       //   accu_var + [elem]
@@ -586,14 +615,20 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
                     "Invalid comprehension: 'loop_step' must be set");
     ValidateOrError(comprehension->has_result(),
                     "Invalid comprehension: 'result' must be set");
-    comprehension_stack_.push(
+    size_t slot_offset = comprehension_stack_.size() * kComprehensionSlotsSize;
+    comprehension_stack_.push_back(
         {expr, comprehension,
          IsOptimizableListAppend(comprehension,
                                  options_.enable_comprehension_list_append),
+         /*.iter_var_in_scope=*/false,
+         /*.accu_var_in_scope=*/false,
          std::make_unique<ComprehensionVisitor>(
              this, options_.short_circuiting,
-             enable_comprehension_vulnerability_check_)});
-    comprehension_stack_.top().visitor->PreVisit(expr);
+             enable_comprehension_vulnerability_check_, slot_offset)});
+    if (comprehension_stack_.size() > max_comprehension_depth_) {
+      max_comprehension_depth_ = comprehension_stack_.size();
+    }
+    comprehension_stack_.back().visitor->PreVisit(expr);
   }
 
   // Invoked after all child nodes are processed.
@@ -606,12 +641,57 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     }
 
     if (comprehension_stack_.empty() ||
-        comprehension_stack_.top().comprehension != comprehension_expr) {
+        comprehension_stack_.back().comprehension != comprehension_expr) {
       return;
     }
 
-    comprehension_stack_.top().visitor->PostVisit(expr);
-    comprehension_stack_.pop();
+    comprehension_stack_.back().visitor->PostVisit(expr);
+    comprehension_stack_.pop_back();
+  }
+
+  void PreVisitComprehensionSubexpression(
+      const cel::ast_internal::Expr* subexpr,
+      const cel::ast_internal::Comprehension* compr,
+      cel::ast_internal::ComprehensionArg comprehension_arg,
+      const cel::ast_internal::SourcePosition*) override {
+    if (!progress_status_.ok()) {
+      return;
+    }
+
+    if (comprehension_stack_.empty() ||
+        comprehension_stack_.back().comprehension != compr) {
+      return;
+    }
+
+    ComprehensionStackRecord& record = comprehension_stack_.back();
+
+    switch (comprehension_arg) {
+      case cel::ast_internal::ITER_RANGE: {
+        record.iter_var_in_scope = false;
+        record.accu_var_in_scope = false;
+        break;
+      }
+      case cel::ast_internal::ACCU_INIT: {
+        record.iter_var_in_scope = false;
+        record.accu_var_in_scope = false;
+        break;
+      }
+      case cel::ast_internal::LOOP_CONDITION: {
+        record.iter_var_in_scope = true;
+        record.accu_var_in_scope = true;
+        break;
+      }
+      case cel::ast_internal::LOOP_STEP: {
+        record.iter_var_in_scope = true;
+        record.accu_var_in_scope = true;
+        break;
+      }
+      case cel::ast_internal::RESULT: {
+        record.iter_var_in_scope = false;
+        record.accu_var_in_scope = true;
+        break;
+      }
+    }
   }
 
   void PostVisitComprehensionSubexpression(
@@ -624,12 +704,12 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     }
 
     if (comprehension_stack_.empty() ||
-        comprehension_stack_.top().comprehension != compr) {
+        comprehension_stack_.back().comprehension != compr) {
       return;
     }
 
-    comprehension_stack_.top().visitor->PostVisitArg(
-        comprehension_arg, comprehension_stack_.top().expr);
+    comprehension_stack_.back().visitor->PostVisitArg(
+        comprehension_arg, comprehension_stack_.back().expr);
   }
 
   // Invoked after each argument node processed.
@@ -658,7 +738,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     }
     if (!comprehension_stack_.empty()) {
       const ComprehensionStackRecord& comprehension =
-          comprehension_stack_.top();
+          comprehension_stack_.back();
       if (comprehension.is_optimizable_list_append &&
           &(comprehension.comprehension->accu_init()) == expr) {
         AddStep(CreateCreateMutableListStep(*list_expr, expr->id()));
@@ -744,6 +824,10 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     return (latest.first == expr) ? latest.second.get() : nullptr;
   }
 
+  size_t slot_count() const {
+    return max_comprehension_depth_ * kComprehensionSlotsSize;
+  }
+
   // Tests the boolean predicate, and if false produces an InvalidArgumentError
   // which concatenates the error_message and any optional message_parts as the
   // error status message.
@@ -763,6 +847,8 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     const cel::ast_internal::Expr* expr;
     const cel::ast_internal::Comprehension* comprehension;
     bool is_optimizable_list_append;
+    bool iter_var_in_scope;
+    bool accu_var_in_scope;
     std::unique_ptr<ComprehensionVisitor> visitor;
   };
 
@@ -793,7 +879,8 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
 
   const cel::RuntimeOptions& options_;
 
-  std::stack<ComprehensionStackRecord> comprehension_stack_;
+  std::vector<ComprehensionStackRecord> comprehension_stack_;
+  int max_comprehension_depth_;
 
   bool enable_comprehension_vulnerability_check_;
 
@@ -1115,9 +1202,6 @@ void ComprehensionVisitor::PreVisit(const cel::ast_internal::Expr*) {
 void ComprehensionVisitor::PostVisitArg(
     cel::ast_internal::ComprehensionArg arg_num,
     const cel::ast_internal::Expr* expr) {
-  const auto* comprehension = &expr->comprehension_expr();
-  const auto& accu_var = comprehension->accu_var();
-  const auto& iter_var = comprehension->iter_var();
   // TODO(issues/20): Consider refactoring the comprehension prologue step.
   switch (arg_num) {
     case cel::ast_internal::ITER_RANGE: {
@@ -1136,14 +1220,14 @@ void ComprehensionVisitor::PostVisitArg(
     }
     case cel::ast_internal::ACCU_INIT: {
       next_step_pos_ = visitor_->GetCurrentIndex();
-      next_step_ = new ComprehensionNextStep(accu_var, iter_var, expr->id());
+      next_step_ = new ComprehensionNextStep(slot_offset_, expr->id());
       visitor_->AddStep(std::unique_ptr<ExpressionStep>(next_step_));
       break;
     }
     case cel::ast_internal::LOOP_CONDITION: {
       cond_step_pos_ = visitor_->GetCurrentIndex();
-      cond_step_ = new ComprehensionCondStep(accu_var, iter_var,
-                                             short_circuiting_, expr->id());
+      cond_step_ = new ComprehensionCondStep(slot_offset_, short_circuiting_,
+                                             expr->id());
       visitor_->AddStep(std::unique_ptr<ExpressionStep>(cond_step_));
       break;
     }
@@ -1162,7 +1246,7 @@ void ComprehensionVisitor::PostVisitArg(
     }
     case cel::ast_internal::RESULT: {
       visitor_->AddStep(std::unique_ptr<ExpressionStep>(
-          new ComprehensionFinish(accu_var, iter_var, expr->id())));
+          new ComprehensionFinish(slot_offset_, expr->id())));
       next_step_->set_error_jump_offset(visitor_->GetCurrentIndex() -
                                         next_step_pos_ - 1);
       cond_step_->set_error_jump_offset(visitor_->GetCurrentIndex() -
@@ -1185,8 +1269,6 @@ void ComprehensionVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
 
 }  // namespace
 
-// TODO(uncreated-issue/31): move ast conversion to client responsibility and
-// update pre-processing steps to work without mutating the input AST.
 absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
     std::unique_ptr<Ast> ast, std::vector<absl::Status>* warnings) const {
   ExecutionPath execution_path;
@@ -1240,7 +1322,7 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
     *warnings = std::move(warnings_builder).warnings();
   }
 
-  return FlatExpression(std::move(execution_path),
+  return FlatExpression(std::move(execution_path), visitor.slot_count(),
                         type_registry_.GetTypeProvider(), options_);
 }
 

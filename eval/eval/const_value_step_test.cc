@@ -19,6 +19,7 @@
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
@@ -42,8 +43,9 @@ absl::StatusOr<CelValue> RunConstantExpression(
   google::api::expr::runtime::ExecutionPath path;
   path.push_back(std::move(step));
 
-  CelExpressionFlatImpl impl(FlatExpression(
-      std::move(path), TypeProvider::Builtin(), cel::RuntimeOptions{}));
+  CelExpressionFlatImpl impl(
+      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                     TypeProvider::Builtin(), cel::RuntimeOptions{}));
 
   google::api::expr::runtime::Activation activation;
 

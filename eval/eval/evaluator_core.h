@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -23,6 +24,7 @@
 #include "base/value_factory.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/attribute_utility.h"
+#include "eval/eval/comprehension_slots.h"
 #include "eval/eval/evaluator_stack.h"
 #include "internal/rtti.h"
 #include "runtime/activation_interface.h"
@@ -88,12 +90,15 @@ class FlatExpressionEvaluatorState {
   };
 
   FlatExpressionEvaluatorState(size_t value_stack_size,
+                               size_t comprehension_slot_count,
                                const cel::TypeProvider& type_provider,
                                cel::MemoryManager& memory_manager);
 
   void Reset();
 
   EvaluatorStack& value_stack() { return value_stack_; }
+
+  ComprehensionSlots& comprehension_slots() { return comprehension_slots_; }
 
   std::vector<IterFrame>& iter_stack() { return iter_stack_; }
 
@@ -111,6 +116,7 @@ class FlatExpressionEvaluatorState {
 
  private:
   EvaluatorStack value_stack_;
+  ComprehensionSlots comprehension_slots_;
   std::vector<IterFrame> iter_stack_;
   cel::TypeFactory type_factory_;
   cel::TypeManager type_manager_;
@@ -162,6 +168,9 @@ class ExecutionFrame {
   }
 
   EvaluatorStack& value_stack() { return state_.value_stack(); }
+  ComprehensionSlots& comprehension_slots() {
+    return state_.comprehension_slots();
+  }
 
   bool enable_attribute_tracking() const {
     return options_.unknown_processing !=
@@ -268,9 +277,11 @@ class FlatExpression {
   // path is flat execution path that is based upon the flattened AST tree
   // type_provider is the configured type system that should be used for
   //   value creation in evaluation
-  FlatExpression(ExecutionPath path, const cel::TypeProvider& type_provider,
+  FlatExpression(ExecutionPath path, size_t comprehension_slots_size,
+                 const cel::TypeProvider& type_provider,
                  const cel::RuntimeOptions& options)
       : path_(std::move(path)),
+        comprehension_slots_size_(comprehension_slots_size),
         type_provider_(type_provider),
         options_(options) {}
 
@@ -300,6 +311,7 @@ class FlatExpression {
 
  private:
   ExecutionPath path_;
+  size_t comprehension_slots_size_;
   const cel::TypeProvider& type_provider_;
   cel::RuntimeOptions options_;
 };

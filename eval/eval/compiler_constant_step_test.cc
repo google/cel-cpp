@@ -39,7 +39,7 @@ class CompilerConstantStepTest : public testing::Test {
         type_factory_(memory_manager_),
         type_manager_(type_factory_, cel::TypeProvider::Builtin()),
         value_factory_(type_manager_),
-        state_(2, cel::TypeProvider::Builtin(), memory_manager_) {}
+        state_(2, 0, cel::TypeProvider::Builtin(), memory_manager_) {}
 
  protected:
   google::protobuf::Arena arena_;

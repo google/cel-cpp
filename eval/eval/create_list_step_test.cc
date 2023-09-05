@@ -56,7 +56,9 @@ absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
   }
   CelExpressionFlatImpl cel_expr(
 
-      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
+      FlatExpression(std::move(path),
+                     /*comprehension_slot_count=*/0, TypeProvider::Builtin(),
+                     options));
   Activation activation;
 
   return cel_expr.Evaluate(activation, arena);
@@ -94,7 +96,8 @@ absl::StatusOr<CelValue> RunExpressionWithCelValues(
   }
 
   CelExpressionFlatImpl cel_expr(
-      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
+      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                     TypeProvider::Builtin(), options));
 
   return cel_expr.Evaluate(activation, arena);
 }
@@ -115,8 +118,9 @@ TEST(CreateListStepTest, TestCreateListStackUnderflow) {
                        CreateCreateListStep(create_list, dummy_expr.id()));
   path.push_back(std::move(step0));
 
-  CelExpressionFlatImpl cel_expr(FlatExpression(
-      std::move(path), TypeProvider::Builtin(), cel::RuntimeOptions{}));
+  CelExpressionFlatImpl cel_expr(
+      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                     TypeProvider::Builtin(), cel::RuntimeOptions{}));
   Activation activation;
 
   google::protobuf::Arena arena;
