@@ -58,6 +58,16 @@ class ListKeysStepTest : public testing::Test {
   Expr dummy_expr_;
 };
 
+class GetListKeysResultStep : public ExpressionStepBase {
+ public:
+  GetListKeysResultStep() : ExpressionStepBase(-1, false) {}
+
+  absl::Status Evaluate(ExecutionFrame* frame) const override {
+    frame->value_stack().Pop(1);
+    return absl::OkStatus();
+  }
+};
+
 MATCHER_P(CelStringValue, val, "") {
   const CelValue& to_match = arg;
   absl::string_view value = val;
@@ -70,9 +80,10 @@ TEST_F(ListKeysStepTest, ListPassedThrough) {
   auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
-  result = CreateListKeysStep(1);
+  result = CreateComprehensionInitStep(1);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
+  path.push_back(std::make_unique<GetListKeysResultStep>());
 
   auto expression = MakeExpression(std::move(path));
 
@@ -97,9 +108,10 @@ TEST_F(ListKeysStepTest, MapToKeyList) {
   auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
-  result = CreateListKeysStep(1);
+  result = CreateComprehensionInitStep(1);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
+  path.push_back(std::make_unique<GetListKeysResultStep>());
 
   auto expression = MakeExpression(std::move(path));
 
@@ -133,9 +145,10 @@ TEST_F(ListKeysStepTest, MapPartiallyUnknown) {
   auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
-  result = CreateListKeysStep(1);
+  result = CreateComprehensionInitStep(1);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
+  path.push_back(std::make_unique<GetListKeysResultStep>());
 
   auto expression =
       MakeExpression(std::move(path), /*unknown_attributes=*/true);
@@ -171,9 +184,10 @@ TEST_F(ListKeysStepTest, ErrorPassedThrough) {
   auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
-  result = CreateListKeysStep(1);
+  result = CreateComprehensionInitStep(1);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
+  path.push_back(std::make_unique<GetListKeysResultStep>());
 
   auto expression = MakeExpression(std::move(path));
 
@@ -196,9 +210,10 @@ TEST_F(ListKeysStepTest, UnknownSetPassedThrough) {
   auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
-  result = CreateListKeysStep(1);
+  result = CreateComprehensionInitStep(1);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
+  path.push_back(std::make_unique<GetListKeysResultStep>());
 
   auto expression =
       MakeExpression(std::move(path), /*unknown_attributes=*/true);

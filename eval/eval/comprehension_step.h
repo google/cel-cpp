@@ -45,19 +45,15 @@ class ComprehensionCondStep : public ExpressionStepBase {
   bool shortcircuiting_;
 };
 
-class ComprehensionFinish : public ExpressionStepBase {
- public:
-  ComprehensionFinish(size_t slot_offset, int64_t expr_id);
+// Creates a cleanup step for the comprehension.
+// Removes the comprehension context then pushes the 'result' sub expression to
+// the top of the stack.
+std::unique_ptr<ExpressionStep> CreateComprehensionFinishStep(
+    size_t slot_offset, int64_t expr_id);
 
-  absl::Status Evaluate(ExecutionFrame* frame) const override;
-
- private:
-  size_t accu_slot_;
-};
-
-// Creates a step that lists the map keys if the top of the stack is a map,
-// otherwise it's a no-op.
-std::unique_ptr<ExpressionStep> CreateListKeysStep(int64_t expr_id);
+// Creates a step that checks that the input is iterable and setups the loop
+// context for the comprehension.
+std::unique_ptr<ExpressionStep> CreateComprehensionInitStep(int64_t expr_id);
 
 }  // namespace google::api::expr::runtime
 

@@ -1192,30 +1192,16 @@ int ComprehensionAccumulationReferences(const cel::ast_internal::Expr& expr,
   return absl::visit(handler, expr.expr_kind());
 }
 
-void ComprehensionVisitor::PreVisit(const cel::ast_internal::Expr*) {
-  constexpr int64_t kLoopStepPlaceholder = -10;
-  visitor_->AddStep(CreateConstValueStep(
-      visitor_->value_factory().CreateIntValue(kLoopStepPlaceholder),
-      kExprIdNotFromAst, false));
-}
+void ComprehensionVisitor::PreVisit(const cel::ast_internal::Expr*) {}
 
 void ComprehensionVisitor::PostVisitArg(
     cel::ast_internal::ComprehensionArg arg_num,
     const cel::ast_internal::Expr* expr) {
-  // TODO(issues/20): Consider refactoring the comprehension prologue step.
   switch (arg_num) {
     case cel::ast_internal::ITER_RANGE: {
-      // Post-process iter_range to list its keys if it's a map.
-      visitor_->AddStep(CreateListKeysStep(expr->id()));
-      // Setup index stack position
-      visitor_->AddStep(
-          CreateConstValueStep(visitor_->value_factory().CreateIntValue(-1),
-                               kExprIdNotFromAst, false));
-      // Element at index.
-      constexpr int64_t kCurrentValuePlaceholder = -20;
-      visitor_->AddStep(CreateConstValueStep(
-          visitor_->value_factory().CreateIntValue(kCurrentValuePlaceholder),
-          kExprIdNotFromAst, false));
+      // post process iter_range to list its keys if it's a map
+      // and initialize the loop index.
+      visitor_->AddStep(CreateComprehensionInitStep(expr->id()));
       break;
     }
     case cel::ast_internal::ACCU_INIT: {
@@ -1245,8 +1231,8 @@ void ComprehensionVisitor::PostVisitArg(
       break;
     }
     case cel::ast_internal::RESULT: {
-      visitor_->AddStep(std::unique_ptr<ExpressionStep>(
-          new ComprehensionFinish(slot_offset_, expr->id())));
+      visitor_->AddStep(
+          CreateComprehensionFinishStep(slot_offset_, expr->id()));
       next_step_->set_error_jump_offset(visitor_->GetCurrentIndex() -
                                         next_step_pos_ - 1);
       cond_step_->set_error_jump_offset(visitor_->GetCurrentIndex() -
