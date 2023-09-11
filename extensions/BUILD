@@ -187,3 +187,24 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_test(
+    name = "sets_functions_benchmark_test",
+    srcs = ["sets_functions_benchmark_test.cc"],
+    deps = [
+        ":sets_functions",
+        "//eval/public:activation",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_expr_builder_factory",
+        "//eval/public:cel_expression",
+        "//eval/public:cel_options",
+        "//eval/public:cel_value",
+        "//eval/public/containers:container_backed_list_impl",
+        "//internal:benchmark",
+        "//internal:testing",
+        "//parser",
+        "//runtime:runtime_options",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)

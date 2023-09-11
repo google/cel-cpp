@@ -118,6 +118,7 @@ INSTANTIATE_TEST_SUITE_P(
         {"sets.equivalent([], [])"},
         {"sets.equivalent([1], [1])"},
         {"sets.equivalent([1], [1, 1])"},
+        {"sets.equivalent([1, 1, 2], [2, 2, 1])"},
         {"sets.equivalent([1, 1], [1])"},
         {"sets.equivalent([1], [1u, 1.0])"},
         {"sets.equivalent([1], [1u, 1.0])"},
