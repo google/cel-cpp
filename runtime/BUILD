@@ -96,6 +96,17 @@ cc_test(
 )
 
 cc_library(
+    name = "register_function_helper",
+    hdrs = ["register_function_helper.h"],
+    deps =
+        [
+            ":function_registry",
+            "@com_google_absl//absl/status",
+            "@com_google_absl//absl/strings",
+        ],
+)
+
+cc_library(
     name = "function_registry",
     srcs = ["function_registry.cc"],
     hdrs = ["function_registry.h"],

@@ -73,6 +73,7 @@ cc_library(
         "//eval/internal:errors",
         "//internal:status_macros",
         "//runtime:function_registry",
+        "//runtime:register_function_helper",
         "//runtime:runtime_options",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",

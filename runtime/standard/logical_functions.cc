@@ -26,6 +26,7 @@
 #include "base/values/unknown_value.h"
 #include "eval/internal/errors.h"
 #include "internal/status_macros.h"
+#include "runtime/register_function_helper.h"
 
 namespace cel {
 namespace {
@@ -52,26 +53,19 @@ Handle<Value> NotStrictlyFalseImpl(ValueFactory& value_factory,
 absl::Status RegisterLogicalFunctions(FunctionRegistry& registry,
                                       const RuntimeOptions& options) {
   // logical NOT
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<bool, bool>::CreateDescriptor(builtin::kNot, false),
-      UnaryFunctionAdapter<bool, bool>::WrapFunction(
-          [](ValueFactory&, bool value) -> bool { return !value; })));
+  CEL_RETURN_IF_ERROR(
+      (RegisterHelper<UnaryFunctionAdapter<bool, bool>>::RegisterGlobalOverload(
+          builtin::kNot,
+          [](ValueFactory&, bool value) -> bool { return !value; }, registry)));
 
   // Strictness
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Handle<Value>, Handle<Value>>::CreateDescriptor(
-          builtin::kNotStrictlyFalse, /*receiver_style=*/false,
-          /*is_strict=*/false),
-      UnaryFunctionAdapter<Handle<Value>, Handle<Value>>::WrapFunction(
-          &NotStrictlyFalseImpl)));
+  using StrictnessHelper =
+      RegisterHelper<UnaryFunctionAdapter<Handle<Value>, Handle<Value>>>;
+  CEL_RETURN_IF_ERROR(StrictnessHelper::RegisterNonStrictOverload(
+      builtin::kNotStrictlyFalse, &NotStrictlyFalseImpl, registry));
 
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Handle<Value>, Handle<Value>>::CreateDescriptor(
-          builtin::kNotStrictlyFalseDeprecated, /*receiver_style=*/false,
-          /*is_strict=*/false),
-
-      UnaryFunctionAdapter<Handle<Value>, Handle<Value>>::WrapFunction(
-          &NotStrictlyFalseImpl)));
+  CEL_RETURN_IF_ERROR(StrictnessHelper::RegisterNonStrictOverload(
+      builtin::kNotStrictlyFalseDeprecated, &NotStrictlyFalseImpl, registry));
 
   return absl::OkStatus();
 }
