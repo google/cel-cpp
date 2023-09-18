@@ -38,7 +38,7 @@ using ::google::api::expr::runtime::BuilderWarnings;
 using ::google::api::expr::runtime::CelTypeRegistry;
 using ::google::api::expr::runtime::CreateConstValueStep;
 using ::google::api::expr::runtime::CreateCreateListStep;
-using ::google::api::expr::runtime::CreateCreateStructStep;
+using ::google::api::expr::runtime::CreateCreateStructStepForMap;
 using ::google::api::expr::runtime::ExecutionPath;
 using ::google::api::expr::runtime::PlannerContext;
 using ::google::api::expr::runtime::ProgramOptimizer;
@@ -399,8 +399,8 @@ TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
       CreateConstValueStep(value_factory_.CreateIntValue(2L), 2));
 
   // Insert the map creation step
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateCreateStructStep(create_map.struct_expr(), 3));
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(), CreateCreateStructStepForMap(
+                                                create_map.struct_expr(), 3));
 
   PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);
@@ -460,8 +460,8 @@ TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
       CreateConstValueStep(value_factory_.CreateIntValue(2L), 2));
 
   // Insert the map creation step
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateCreateStructStep(create_map.struct_expr(), 3));
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(), CreateCreateStructStepForMap(
+                                                create_map.struct_expr(), 3));
 
   PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);

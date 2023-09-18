@@ -359,10 +359,16 @@ LegacyAbstractStructType::FindFieldByName(TypeManager& type_manager,
       type_info_.FindFieldByName(name);
 
   if (!maybe_field.has_value()) {
-    return absl::nullopt;
+    const auto* mutation = type_info_.GetMutationApis(MessageWrapper());
+    if (mutation == nullptr || !mutation->DefinesField(name)) {
+      return absl::nullopt;
+    }
+    return StructType::Field(StructType::MakeFieldId(name), name, 0,
+                             type_manager.type_factory().GetDynType());
   }
-
-  return StructType::Field(StructType::MakeFieldId(maybe_field->number),
+  return StructType::Field(maybe_field->number != 0
+                               ? StructType::MakeFieldId(maybe_field->number)
+                               : StructType::MakeFieldId(maybe_field->name),
                            maybe_field->name, maybe_field->number,
                            type_manager.type_factory().GetDynType());
 }

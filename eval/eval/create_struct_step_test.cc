@@ -9,7 +9,9 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "base/type_manager.h"
 #include "base/type_provider.h"
+#include "base/value_factory.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
@@ -21,6 +23,7 @@
 #include "eval/public/structs/proto_message_type_adapter.h"
 #include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "eval/testutil/test_message.pb.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "runtime/runtime_options.h"
@@ -53,6 +56,9 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
+  cel::extensions::ProtoMemoryManager memory_manager(arena);
+  cel::TypeFactory type_factory(memory_manager);
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
 
   Expr expr0;
   Expr expr1;
@@ -67,14 +73,16 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
   auto& entry = create_struct.mutable_entries().emplace_back();
   entry.set_field_key(std::string(field));
 
-  auto adapter = type_registry.FindTypeAdapter(create_struct.message_name());
-  if (!adapter.has_value() || adapter->mutation_apis() == nullptr) {
+  CEL_ASSIGN_OR_RETURN(auto maybe_type,
+                       type_manager.ResolveType(create_struct.message_name()));
+  if (!maybe_type.has_value()) {
     return absl::Status(absl::StatusCode::kFailedPrecondition,
                         "missing proto message type");
   }
-  CEL_ASSIGN_OR_RETURN(
-      auto step1, CreateCreateStructStep(create_struct,
-                                         adapter->mutation_apis(), expr1.id()));
+  CEL_ASSIGN_OR_RETURN(auto step1,
+                       CreateCreateStructStepForStruct(
+                           create_struct, "google.api.expr.runtime.TestMessage",
+                           std::move((*maybe_type)), expr1.id(), type_manager));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
@@ -168,7 +176,7 @@ absl::StatusOr<CelValue> RunCreateMapExpression(
   }
 
   CEL_ASSIGN_OR_RETURN(auto step1,
-                       CreateCreateStructStep(create_struct, expr1.id()));
+                       CreateCreateStructStepForMap(create_struct, expr1.id()));
   path.push_back(std::move(step1));
 
   cel::RuntimeOptions options;
@@ -191,6 +199,10 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
+  google::protobuf::Arena arena;
+  cel::extensions::ProtoMemoryManager memory_manager(&arena);
+  cel::TypeFactory type_factory(memory_manager);
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
   Expr expr1;
 
   auto& create_struct = expr1.mutable_struct_expr();
@@ -198,9 +210,13 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   auto adapter = type_registry.FindTypeAdapter(create_struct.message_name());
   ASSERT_TRUE(adapter.has_value() && adapter->mutation_apis() != nullptr);
 
-  ASSERT_OK_AND_ASSIGN(
-      auto step, CreateCreateStructStep(create_struct, adapter->mutation_apis(),
-                                        expr1.id()));
+  ASSERT_OK_AND_ASSIGN(auto maybe_type,
+                       type_manager.ResolveType(create_struct.message_name()));
+  ASSERT_TRUE(maybe_type.has_value());
+  ASSERT_OK_AND_ASSIGN(auto step,
+                       CreateCreateStructStepForStruct(
+                           create_struct, "google.api.expr.runtime.TestMessage",
+                           std::move((*maybe_type)), expr1.id(), type_manager));
   path.push_back(std::move(step));
 
   cel::RuntimeOptions options;
@@ -211,8 +227,6 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
       FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
                      TypeProvider::Builtin(), options));
   Activation activation;
-
-  google::protobuf::Arena arena;
 
   ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr.Evaluate(activation, &arena));
   ASSERT_TRUE(result.IsMessage());
@@ -229,6 +243,10 @@ TEST_P(CreateCreateStructStepTest, TestMessageCreationBadField) {
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
+  google::protobuf::Arena arena;
+  cel::extensions::ProtoMemoryManager memory_manager(&arena);
+  cel::TypeFactory type_factory(memory_manager);
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
   Expr expr1;
 
   auto& create_struct = expr1.mutable_struct_expr();
@@ -240,8 +258,12 @@ TEST_P(CreateCreateStructStepTest, TestMessageCreationBadField) {
   auto adapter = type_registry.FindTypeAdapter(create_struct.message_name());
   ASSERT_TRUE(adapter.has_value() && adapter->mutation_apis() != nullptr);
 
-  EXPECT_THAT(CreateCreateStructStep(create_struct, adapter->mutation_apis(),
-                                     expr1.id())
+  ASSERT_OK_AND_ASSIGN(auto maybe_type,
+                       type_manager.ResolveType(create_struct.message_name()));
+  ASSERT_TRUE(maybe_type.has_value());
+  EXPECT_THAT(CreateCreateStructStepForStruct(
+                  create_struct, "google.api.expr.runtime.TestMessage",
+                  std::move(*(maybe_type)), expr1.id(), type_manager)
                   .status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        testing::HasSubstr("'bad_field'")));

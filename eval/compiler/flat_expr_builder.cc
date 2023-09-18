@@ -765,25 +765,25 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
         ValidateOrError(entry.has_map_key(), "Map entry missing key");
         ValidateOrError(entry.has_value(), "Map entry missing value");
       }
-      AddStep(CreateCreateStructStep(*struct_expr, expr->id()));
+      AddStep(CreateCreateStructStepForMap(*struct_expr, expr->id()));
       return;
     }
 
     // If the message name is not empty, then the message name must be resolved
     // within the container, and if a descriptor is found, then a proto message
     // creation step will be created.
-    auto type_adapter = resolver_.FindTypeAdapter(message_name, expr->id());
-    if (ValidateOrError(type_adapter.has_value() &&
-                            type_adapter->mutation_apis() != nullptr,
+    auto status_or_maybe_type = resolver_.FindType(message_name, expr->id());
+    if (!status_or_maybe_type.ok()) {
+      SetProgressStatusError(status_or_maybe_type.status());
+      return;
+    }
+    if (ValidateOrError(status_or_maybe_type->has_value(),
                         "Invalid struct creation: missing type info for '",
                         message_name, "'")) {
-      for (const auto& entry : struct_expr->entries()) {
-        ValidateOrError(entry.has_field_key(),
-                        "Struct entry missing field name");
-        ValidateOrError(entry.has_value(), "Struct entry missing value");
-      }
-      AddStep(CreateCreateStructStep(
-          *struct_expr, type_adapter->mutation_apis(), expr->id()));
+      AddStep(CreateCreateStructStepForStruct(
+          *struct_expr, (*status_or_maybe_type)->first,
+          std::move((*status_or_maybe_type)->second), expr->id(),
+          value_factory().type_manager()));
     }
   }
 

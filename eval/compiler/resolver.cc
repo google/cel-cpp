@@ -14,6 +14,7 @@
 #include "base/values/enum_value.h"
 #include "eval/internal/interop.h"
 #include "eval/public/structs/legacy_type_adapter.h"
+#include "internal/status_macros.h"
 #include "runtime/function_registry.h"
 
 namespace google::api::expr::runtime {
@@ -186,6 +187,19 @@ absl::optional<LegacyTypeAdapter> Resolver::FindTypeAdapter(
     auto maybe_adapter = type_registry_->FindTypeAdapter(name);
     if (maybe_adapter.has_value()) {
       return maybe_adapter;
+    }
+  }
+  return absl::nullopt;
+}
+
+absl::StatusOr<absl::optional<std::pair<std::string, cel::Handle<cel::Type>>>>
+Resolver::FindType(absl::string_view name, int64_t expr_id) const {
+  auto names = FullyQualifiedNames(name, expr_id);
+  for (auto& name : names) {
+    CEL_ASSIGN_OR_RETURN(auto maybe_type,
+                         value_factory_.type_manager().ResolveType(name));
+    if (maybe_type.has_value()) {
+      return std::make_pair(std::move(name), std::move(*maybe_type));
     }
   }
   return absl::nullopt;

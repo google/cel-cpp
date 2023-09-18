@@ -5,23 +5,25 @@
 #include <memory>
 
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "base/ast_internal/expr.h"
+#include "base/handle.h"
+#include "base/type.h"
+#include "base/types/struct_type.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/public/structs/legacy_type_adapter.h"
 
 namespace google::api::expr::runtime {
 
-// Factory method for CreateStruct - based Execution step
-absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
+// Creates an `ExpressionStep` which performs `CreateStruct` for a
+// message/struct.
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStepForStruct(
     const cel::ast_internal::CreateStruct& create_struct_expr,
-    const LegacyTypeMutationApis* type_adapter, int64_t expr_id);
+    absl::string_view type_name, cel::Handle<cel::Type> type, int64_t expr_id,
+    cel::TypeManager& type_manager);
 
-inline absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
-    const cel::ast_internal::CreateStruct& create_struct_expr,
-    int64_t expr_id) {
-  return CreateCreateStructStep(create_struct_expr,
-                                /*type_adapter=*/nullptr, expr_id);
-}
+// Creates an `ExpressionStep` which performs `CreateStruct` for a map.
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStepForMap(
+    const cel::ast_internal::CreateStruct& create_struct_expr, int64_t expr_id);
 
 }  // namespace google::api::expr::runtime
 

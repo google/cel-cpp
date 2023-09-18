@@ -237,9 +237,28 @@ class FieldImpl<MessageT, Int64Value> : public ProtoField<MessageT> {
 // Simple type system for Testing.
 class DemoTypeProvider;
 
-class DemoTimestamp : public LegacyTypeMutationApis {
+class DemoTimestamp : public LegacyTypeInfoApis, public LegacyTypeMutationApis {
  public:
   DemoTimestamp() {}
+
+  std::string DebugString(
+      const MessageWrapper& wrapped_message) const override {
+    return GetTypename(wrapped_message);
+  }
+
+  const std::string& GetTypename(
+      const MessageWrapper& wrapped_message) const override {
+    static const std::string* kTypename = []() {
+      return new std::string("google.protobuf.Timestamp");
+    }();
+    return *kTypename;
+  }
+
+  const LegacyTypeAccessApis* GetAccessApis(
+      const MessageWrapper& wrapped_message) const override {
+    return nullptr;
+  }
+
   bool DefinesField(absl::string_view field_name) const override {
     return field_name == "seconds" || field_name == "nanos";
   }
@@ -281,10 +300,42 @@ class DemoTypeInfo : public LegacyTypeInfoApis {
   const DemoTypeProvider& owning_provider_;
 };
 
-class DemoTestMessage : public LegacyTypeMutationApis,
+class DemoTestMessage : public LegacyTypeInfoApis,
+                        public LegacyTypeMutationApis,
                         public LegacyTypeAccessApis {
  public:
   explicit DemoTestMessage(const DemoTypeProvider* owning_provider);
+
+  std::string DebugString(
+      const MessageWrapper& wrapped_message) const override {
+    return GetTypename(wrapped_message);
+  }
+
+  const std::string& GetTypename(
+      const MessageWrapper& wrapped_message) const override {
+    static const std::string* kTypename = []() {
+      return new std::string("google.api.expr.runtime.TestMessage");
+    }();
+    return *kTypename;
+  }
+
+  const LegacyTypeAccessApis* GetAccessApis(
+      const MessageWrapper& wrapped_message) const override {
+    return this;
+  }
+
+  const LegacyTypeMutationApis* GetMutationApis(
+      const MessageWrapper& wrapped_message) const override {
+    return this;
+  }
+
+  absl::optional<FieldDescription> FindFieldByName(
+      absl::string_view name) const override {
+    if (auto it = fields_.find(name); it != fields_.end()) {
+      return FieldDescription{0, name};
+    }
+    return absl::nullopt;
+  }
 
   bool DefinesField(absl::string_view field_name) const override {
     return fields_.contains(field_name);
@@ -338,6 +389,16 @@ class DemoTypeProvider : public LegacyTypeProvider {
       return LegacyTypeAdapter(nullptr, &timestamp_type_);
     } else if (name == "google.api.expr.runtime.TestMessage") {
       return LegacyTypeAdapter(&test_message_, &test_message_);
+    }
+    return absl::nullopt;
+  }
+
+  absl::optional<const LegacyTypeInfoApis*> ProvideLegacyTypeInfo(
+      absl::string_view name) const override {
+    if (name == "google.protobuf.Timestamp") {
+      return &timestamp_type_;
+    } else if (name == "google.api.expr.runtime.TestMessage") {
+      return &test_message_;
     }
     return absl::nullopt;
   }

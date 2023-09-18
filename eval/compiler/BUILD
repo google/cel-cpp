@@ -321,6 +321,7 @@ cc_library(
         "//eval/internal:interop",
         "//eval/public:cel_type_registry",
         "//eval/public/structs:legacy_type_adapter",
+        "//internal:status_macros",
         "//runtime:function_overload_reference",
         "//runtime:function_registry",
         "@com_google_absl//absl/container:flat_hash_map",

@@ -54,6 +54,17 @@ class Resolver {
   absl::optional<LegacyTypeAdapter> FindTypeAdapter(absl::string_view name,
                                                     int64_t expr_id) const;
 
+  // FindType returns the type and resolved type name for the given potentially
+  // unqualified type name if one exists, following resolution rules for the
+  // expression container.
+  //
+  // NOTE: The resolved type name is not necessarily the same as returned by
+  // `cel::Type::name`, especially for some of the well known types. For example
+  // `google.protobuf.Int32Value` and `google.protobuf.Int64Value` both resolve
+  // to `IntWrapperType`.
+  absl::StatusOr<absl::optional<std::pair<std::string, cel::Handle<cel::Type>>>>
+  FindType(absl::string_view name, int64_t expr_id) const;
+
   // FindLazyOverloads returns the set, possibly empty, of lazy overloads
   // matching the given function signature.
   std::vector<cel::FunctionRegistry::LazyOverload> FindLazyOverloads(
