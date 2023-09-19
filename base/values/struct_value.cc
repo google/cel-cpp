@@ -354,6 +354,10 @@ absl::StatusOr<Handle<Value>> LegacyStructValue::Equals(
   if (!other.Is<StructValue>()) {
     return value_factory.CreateBoolValue(false);
   }
+  if (other.Is<LegacyStructValue>()) {
+    return value_factory.CreateBoolValue(
+        MessageValueEquals(msg_, type_info_, other));
+  }
   return GenericStructValueEquals(value_factory, *this,
                                   other.As<StructValue>());
 }

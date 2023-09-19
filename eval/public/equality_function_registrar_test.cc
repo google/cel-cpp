@@ -53,6 +53,7 @@
 #include "eval/public/structs/trivial_legacy_type_info.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/testutil/test_message.pb.h"  // IWYU pragma: keep
+#include "internal/benchmark.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
@@ -692,6 +693,43 @@ INSTANTIATE_TEST_SUITE_P(
             // heterogeneous equality enabled
             testing::Bool()));
 
+INSTANTIATE_TEST_SUITE_P(HeterogeneousNumericContainers, EqualityFunctionTest,
+                         Combine(testing::ValuesIn<EqualityTestCase>({
+                                     {"{1: 2} == {1u: 2}", true},
+                                     {"{1: 2} == {2u: 2}", false},
+                                     {"{1: 2} == {true: 2}", false},
+                                     {"{1: 2} != {1u: 2}", false},
+                                     {"{1: 2} != {2u: 2}", true},
+                                     {"{1: 2} != {true: 2}", true},
+                                     {"[1u, 2u, 3.0] != [1, 2.0, 3]", false},
+                                     {"[1u, 2u, 3.0] == [1, 2.0, 3]", true},
+                                     {"[1u, 2u, 3.0] != [1, 2.1, 3]", true},
+                                     {"[1u, 2u, 3.0] == [1, 2.1, 3]", false},
+                                 }),
+                                 // heterogeneous equality enabled
+                                 testing::Values(true)));
+
+INSTANTIATE_TEST_SUITE_P(
+    HomogenousNumericContainers, EqualityFunctionTest,
+    Combine(testing::ValuesIn<EqualityTestCase>({
+                {"{1: 2} == {1u: 2}", false},
+                {"{1: 2} == {2u: 2}", false},
+                {"{1: 2} == {true: 2}", false},
+                {"{1: 2} != {1u: 2}", true},
+                {"{1: 2} != {2u: 2}", true},
+                {"{1: 2} != {true: 2}", true},
+                {"[1u, 2u, 3.0] != [1, 2.0, 3]",
+                 EqualityTestCase::ErrorKind::kMissingOverload},
+                {"[1u, 2u, 3.0] == [1, 2.0, 3]",
+                 EqualityTestCase::ErrorKind::kMissingOverload},
+                {"[1u, 2u, 3.0] != [1, 2.1, 3]",
+                 EqualityTestCase::ErrorKind::kMissingOverload},
+                {"[1u, 2u, 3.0] == [1, 2.1, 3]",
+                 EqualityTestCase::ErrorKind::kMissingOverload},
+            }),
+            // heterogeneous equality enabled
+            testing::Values(false)));
+
 INSTANTIATE_TEST_SUITE_P(
     NullInequalityLegacy, EqualityFunctionTest,
     Combine(testing::ValuesIn<EqualityTestCase>(
@@ -817,6 +855,82 @@ INSTANTIATE_TEST_SUITE_P(
             }),
             // heterogeneous equality enabled
             testing::Values<bool>(true)));
+
+void RunBenchmark(absl::string_view expr, benchmark::State& benchmark) {
+  InterpreterOptions opts;
+  auto builder = CreateCelExpressionBuilder(opts);
+  ASSERT_OK(RegisterEqualityFunctions(builder->GetRegistry(), opts));
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(expr));
+  google::protobuf::Arena arena;
+  Activation activation;
+
+  ASSERT_OK_AND_ASSIGN(auto plan,
+                       builder->CreateExpression(&parsed_expr.expr(),
+                                                 &parsed_expr.source_info()));
+
+  for (auto _ : benchmark) {
+    ASSERT_OK_AND_ASSIGN(auto result, plan->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsBool());
+  }
+}
+
+void RunIdentBenchmark(const CelValue& lhs, const CelValue& rhs,
+                       benchmark::State& benchmark) {
+  InterpreterOptions opts;
+  auto builder = CreateCelExpressionBuilder(opts);
+  ASSERT_OK(RegisterEqualityFunctions(builder->GetRegistry(), opts));
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("lhs == rhs"));
+  google::protobuf::Arena arena;
+  Activation activation;
+  activation.InsertValue("lhs", lhs);
+  activation.InsertValue("rhs", rhs);
+
+  ASSERT_OK_AND_ASSIGN(auto plan,
+                       builder->CreateExpression(&parsed_expr.expr(),
+                                                 &parsed_expr.source_info()));
+
+  for (auto _ : benchmark) {
+    ASSERT_OK_AND_ASSIGN(auto result, plan->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsBool());
+  }
+}
+
+void BM_EqualsInt(benchmark::State& s) { RunBenchmark("42 == 43", s); }
+
+BENCHMARK(BM_EqualsInt);
+
+void BM_EqualsString(benchmark::State& s) {
+  RunBenchmark("'1234' == '1235'", s);
+}
+
+BENCHMARK(BM_EqualsString);
+
+void BM_EqualsCreatedList(benchmark::State& s) {
+  RunBenchmark("[1, 2, 3, 4, 5] == [1, 2, 3, 4, 6]", s);
+}
+
+BENCHMARK(BM_EqualsCreatedList);
+
+void BM_EqualsBoundLegacyList(benchmark::State& s) {
+  ContainerBackedListImpl lhs(
+      {CelValue::CreateInt64(1), CelValue::CreateInt64(2),
+       CelValue::CreateInt64(3), CelValue::CreateInt64(4),
+       CelValue::CreateInt64(5)});
+  ContainerBackedListImpl rhs(
+      {CelValue::CreateInt64(1), CelValue::CreateInt64(2),
+       CelValue::CreateInt64(3), CelValue::CreateInt64(4),
+       CelValue::CreateInt64(6)});
+
+  RunIdentBenchmark(CelValue::CreateList(&lhs), CelValue::CreateList(&rhs), s);
+}
+
+BENCHMARK(BM_EqualsBoundLegacyList);
+
+void BM_EqualsCreatedMap(benchmark::State& s) {
+  RunBenchmark("{1: 2, 2: 3, 3: 6} == {1: 2, 2: 3, 3: 6}", s);
+}
+
+BENCHMARK(BM_EqualsCreatedMap);
 
 }  // namespace
 }  // namespace google::api::expr::runtime

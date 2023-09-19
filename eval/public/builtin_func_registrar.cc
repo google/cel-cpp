@@ -34,6 +34,7 @@
 #include "runtime/standard/arithmetic_functions.h"
 #include "runtime/standard/comparison_functions.h"
 #include "runtime/standard/container_functions.h"
+#include "runtime/standard/equality_functions.h"
 #include "runtime/standard/logical_functions.h"
 #include "runtime/standard/regex_functions.h"
 #include "runtime/standard/string_functions.h"
@@ -304,10 +305,11 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
       cel::RegisterStringFunctions(modern_registry, runtime_options));
   CEL_RETURN_IF_ERROR(
       cel::RegisterRegexFunctions(modern_registry, runtime_options));
+  CEL_RETURN_IF_ERROR(
+      cel::RegisterEqualityFunctions(modern_registry, runtime_options));
 
   return registry->RegisterAll(
       {
-          &RegisterEqualityFunctions,
           &RegisterSetMembershipFunctions,
       },
       options);

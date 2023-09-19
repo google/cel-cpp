@@ -58,6 +58,48 @@ cc_test(
 )
 
 cc_library(
+    name = "equality_functions",
+    srcs = ["equality_functions.cc"],
+    hdrs = ["equality_functions.h"],
+    deps = [
+        "//base:builtins",
+        "//base:data",
+        "//base:function_adapter",
+        "//base:handle",
+        "//base:kind",
+        "//eval/internal:errors",
+        "//internal:number",
+        "//internal:status_macros",
+        "//runtime:function_registry",
+        "//runtime:register_function_helper",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/functional:function_ref",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_test(
+    name = "equality_functions_test",
+    size = "small",
+    srcs = [
+        "equality_functions_test.cc",
+    ],
+    deps = [
+        ":equality_functions",
+        "//base:builtins",
+        "//base:function_descriptor",
+        "//base:kind",
+        "//internal:testing",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+    ],
+)
+
+cc_library(
     name = "logical_functions",
     srcs = [
         "logical_functions.cc",
