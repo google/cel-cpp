@@ -373,21 +373,11 @@ cc_library(
     ],
     deps = [
         ":cel_function_registry",
-        ":cel_number",
         ":cel_options",
-        ":cel_value",
-        ":message_wrapper",
-        "//base:kind",
-        "//eval/public/structs:legacy_type_adapter",
-        "//eval/public/structs:legacy_type_info_apis",
-        "//internal:number",
+        "//eval/internal:cel_value_equal",
         "//runtime:runtime_options",
         "//runtime/standard:equality_functions",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/time",
-        "@com_google_absl//absl/types:optional",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 

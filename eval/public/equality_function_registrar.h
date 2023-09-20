@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_EQUALITY_FUNCTION_REGISTRAR_H_
 
 #include "absl/status/status.h"
+#include "eval/internal/cel_value_equal.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 
@@ -26,7 +27,7 @@ namespace google::api::expr::runtime {
 //
 // Returns nullopt if the comparison is undefined between differently typed
 // values.
-absl::optional<bool> CelValueEqualImpl(const CelValue& v1, const CelValue& v2);
+using cel::interop_internal::CelValueEqualImpl;
 
 // Register built in comparison functions (==, !=).
 //
