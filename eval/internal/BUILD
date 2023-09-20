@@ -21,6 +21,7 @@ cc_library(
     srcs = ["interop.cc"],
     hdrs = ["interop.h"],
     deps = [
+        ":cel_value_equal",
         ":errors",
         "//base:attributes",
         "//base:data",

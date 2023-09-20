@@ -86,8 +86,8 @@ absl::StatusOr<Handle<Value>> ListValue::Equals(ValueFactory& value_factory,
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(Equals, value_factory, other);
 }
 
-absl::StatusOr<Handle<Value>> ListValue::Contains(ValueFactory& value_factory,
-                                                  const Value& other) const {
+absl::StatusOr<Handle<Value>> ListValue::Contains(
+    ValueFactory& value_factory, const Handle<Value>& other) const {
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(Contains, value_factory, other);
 }
 
@@ -301,8 +301,8 @@ absl::StatusOr<Handle<Value>> LegacyListValue::Equals(
 }
 
 absl::StatusOr<Handle<Value>> LegacyListValue::Contains(
-    ValueFactory& value_factory, const Value& other) const {
-  return GenericListValueContains(value_factory, *this, other);
+    ValueFactory& value_factory, const Handle<Value>& other) const {
+  return LegacyListValueContains(value_factory, impl_, other);
 }
 
 AbstractListValue::AbstractListValue(Handle<ListType> type)
@@ -337,8 +337,8 @@ absl::StatusOr<Handle<Value>> AbstractListValue::Equals(
 }
 
 absl::StatusOr<Handle<Value>> AbstractListValue::Contains(
-    ValueFactory& value_factory, const Value& other) const {
-  return GenericListValueContains(value_factory, *this, other);
+    ValueFactory& value_factory, const Handle<Value>& other) const {
+  return GenericListValueContains(value_factory, *this, *other);
 }
 
 }  // namespace base_internal

@@ -17,6 +17,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/function_adapter.h"
+#include "base/handle.h"
 #include "base/value_factory.h"
 #include "base/values/bytes_value.h"
 #include "base/values/list_value.h"
@@ -37,7 +38,7 @@ absl::StatusOr<Handle<Value>> SetsContains(ValueFactory& value_factory,
   while (sublist_iterator->HasNext()) {
     CEL_ASSIGN_OR_RETURN(auto sublist_element, sublist_iterator->NextValue());
     CEL_ASSIGN_OR_RETURN(auto contains,
-                         list.Contains(value_factory, *sublist_element));
+                         list.Contains(value_factory, sublist_element));
     if (contains->Is<BoolValue>() && !contains->As<BoolValue>().value()) {
       return contains;
     }
@@ -52,7 +53,7 @@ absl::StatusOr<Handle<Value>> SetsIntersects(ValueFactory& value_factory,
   while (list_iterator->HasNext()) {
     CEL_ASSIGN_OR_RETURN(auto list_element, list_iterator->NextValue());
     CEL_ASSIGN_OR_RETURN(auto contains,
-                         sublist.Contains(value_factory, *list_element));
+                         sublist.Contains(value_factory, list_element));
     if (contains->Is<BoolValue>() && contains->As<BoolValue>().value()) {
       return contains;
     }

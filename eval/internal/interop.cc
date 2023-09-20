@@ -40,6 +40,7 @@
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
 #include "base/values/struct_value.h"
+#include "eval/internal/cel_value_equal.h"
 #include "eval/internal/errors.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
@@ -1002,6 +1003,29 @@ absl::StatusOr<Handle<Value>> LegacyListValueGet(uintptr_t impl,
       value_factory.memory_manager());
   return FromLegacyValue(arena, reinterpret_cast<const CelList*>(impl)->Get(
                                     arena, static_cast<int>(index)));
+}
+
+absl::StatusOr<Handle<Value>> LegacyListValueContains(
+    ValueFactory& value_factory, uintptr_t impl, const Handle<Value>& other) {
+  // Specialization for contains on a legacy list. It's cheaper to convert the
+  // search element to legacy type than to convert all of the elements of
+  // the legacy list for 'in' checks.
+  auto* arena = extensions::ProtoMemoryManager::CastToProtoArena(
+      value_factory.memory_manager());
+  CEL_ASSIGN_OR_RETURN(auto legacy_value, ToLegacyValue(arena, other));
+  const auto* list = reinterpret_cast<const CelList*>(impl);
+
+  for (int i = 0; i < list->size(); i++) {
+    CelValue element = list->Get(arena, i);
+    absl::optional<bool> equal =
+        interop_internal::CelValueEqualImpl(element, legacy_value);
+    // Heterogenous equality behavior is to just return false if equality
+    // undefined.
+    if (equal.has_value() && *equal) {
+      return value_factory.CreateBoolValue(true);
+    }
+  }
+  return value_factory.CreateBoolValue(false);
 }
 
 size_t LegacyListValueSize(uintptr_t impl) {

@@ -161,6 +161,7 @@ cc_library(
     deps = [
         "//base:data",
         "//base:function_adapter",
+        "//base:handle",
         "//internal:status_macros",
         "//runtime:function_registry",
         "//runtime:runtime_options",

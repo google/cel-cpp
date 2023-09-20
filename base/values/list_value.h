@@ -70,7 +70,7 @@ class ListValue : public Value {
   std::string DebugString() const;
 
   absl::StatusOr<Handle<Value>> Contains(ValueFactory& value_factory,
-                                         const Value& other) const;
+                                         const Handle<Value>& other) const;
 
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;
@@ -142,6 +142,8 @@ ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> LegacyListValueGet(
     uintptr_t impl, ValueFactory& value_factory, size_t index);
 ABSL_ATTRIBUTE_WEAK size_t LegacyListValueSize(uintptr_t impl);
 ABSL_ATTRIBUTE_WEAK bool LegacyListValueEmpty(uintptr_t impl);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> LegacyListValueContains(
+    ValueFactory& value_factory, uintptr_t impl, const Handle<Value>& other);
 
 class LegacyListValue final : public ListValue, public InlineData {
  public:
@@ -184,7 +186,7 @@ class LegacyListValue final : public ListValue, public InlineData {
                                        const Value& other) const;
 
   absl::StatusOr<Handle<Value>> Contains(ValueFactory& value_factory,
-                                         const Value& other) const;
+                                         const Handle<Value>& other) const;
 
  private:
   friend class ValueHandle;
@@ -246,8 +248,8 @@ class AbstractListValue : public ListValue,
   virtual absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                                const Value& other) const;
 
-  virtual absl::StatusOr<Handle<Value>> Contains(ValueFactory& value_factory,
-                                                 const Value& other) const;
+  virtual absl::StatusOr<Handle<Value>> Contains(
+      ValueFactory& value_factory, const Handle<Value>& other) const;
 
  protected:
   explicit AbstractListValue(Handle<ListType> type);
