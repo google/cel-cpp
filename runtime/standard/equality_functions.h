@@ -16,10 +16,25 @@
 #define THIRD_PARTY_CEL_CPP_RUNTIME_STANDARD_EQUALITY_FUNCTIONS_H_
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/types/optional.h"
+#include "base/handle.h"
+#include "base/value.h"
+#include "base/value_factory.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
 
 namespace cel {
+namespace runtime_internal {
+// Exposed implementation for == operator. This is used to implement other
+// runtime functions.
+//
+// Nullopt is returned if the comparison is undefined (e.g. special value types
+// error and unknown).
+absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueFactory& value_factory,
+                                                    const Handle<Value>& v1,
+                                                    const Handle<Value>& v2);
+}  // namespace runtime_internal
 
 // Register equality functions
 // ==, !=
@@ -30,7 +45,7 @@ namespace cel {
 // For legacy equality (.enable_heterogeneous_equality = false), equality is
 // defined between same-typed values only.
 //
-// For the CEL Specification's definition of equality
+// For the CEL specification's definition of equality
 // (.enable_heterogeneous_equality = true), equality is defined between most
 // types, with false returned if the two different types are incomparable.
 absl::Status RegisterEqualityFunctions(FunctionRegistry& registry,

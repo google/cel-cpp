@@ -58,6 +58,50 @@ cc_test(
 )
 
 cc_library(
+    name = "container_membership_functions",
+    srcs = [
+        "container_membership_functions.cc",
+    ],
+    hdrs = [
+        "container_membership_functions.h",
+    ],
+    deps = [
+        ":equality_functions",
+        "//base:builtins",
+        "//base:data",
+        "//base:function_adapter",
+        "//base:handle",
+        "//internal:number",
+        "//internal:status_macros",
+        "//runtime:function_registry",
+        "//runtime:register_function_helper",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_test(
+    name = "container_membership_functions_test",
+    size = "small",
+    srcs = [
+        "container_membership_functions_test.cc",
+    ],
+    deps = [
+        ":container_membership_functions",
+        "//base:builtins",
+        "//base:function_descriptor",
+        "//base:kind",
+        "//internal:testing",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
     name = "equality_functions",
     srcs = ["equality_functions.cc"],
     hdrs = ["equality_functions.h"],

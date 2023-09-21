@@ -62,6 +62,7 @@ using ::cel::internal::Number;
 
 // Declaration for the functors for generic equality operator.
 // Equal only defined for same-typed values.
+// Nullopt is returned if equality is not defined.
 struct HomogenousEqualProvider {
   static constexpr bool kIsHeterogeneous = false;
   absl::StatusOr<absl::optional<bool>> operator()(
@@ -70,6 +71,7 @@ struct HomogenousEqualProvider {
 };
 
 // Equal defined between compatible types.
+// Nullopt is returned if equality is not defined.
 struct HeterogeneousEqualProvider {
   static constexpr bool kIsHeterogeneous = true;
 
@@ -448,6 +450,60 @@ absl::StatusOr<absl::optional<bool>> HomogenousValueEqual(
   }
 }
 
+absl::StatusOr<Handle<Value>> EqualOverloadImpl(ValueFactory& factory,
+                                                const Handle<Value>& lhs,
+                                                const Handle<Value>& rhs) {
+  CEL_ASSIGN_OR_RETURN(absl::optional<bool> result,
+                       runtime_internal::ValueEqualImpl(factory, lhs, rhs));
+  if (result.has_value()) {
+    return factory.CreateBoolValue(*result);
+  }
+  return factory.CreateErrorValue(
+      cel::runtime_internal::CreateNoMatchingOverloadError(kEqual));
+}
+
+absl::StatusOr<Handle<Value>> InequalOverloadImpl(ValueFactory& factory,
+                                                  const Handle<Value>& lhs,
+                                                  const Handle<Value>& rhs) {
+  CEL_ASSIGN_OR_RETURN(absl::optional<bool> result,
+                       runtime_internal::ValueEqualImpl(factory, lhs, rhs));
+  if (result.has_value()) {
+    return factory.CreateBoolValue(!*result);
+  }
+  return factory.CreateErrorValue(
+      cel::runtime_internal::CreateNoMatchingOverloadError(kInequal));
+}
+
+absl::Status RegisterHeterogeneousEqualityFunctions(
+    cel::FunctionRegistry& registry) {
+  using Adapter = cel::RegisterHelper<
+      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, const Handle<Value>&,
+                            const Handle<Value>&>>;
+  CEL_RETURN_IF_ERROR(
+      Adapter::RegisterGlobalOverload(kEqual, &EqualOverloadImpl, registry));
+
+  CEL_RETURN_IF_ERROR(Adapter::RegisterGlobalOverload(
+      kInequal, &InequalOverloadImpl, registry));
+
+  return absl::OkStatus();
+}
+
+absl::StatusOr<absl::optional<bool>> HomogenousEqualProvider::operator()(
+    ValueFactory& factory, const Handle<Value>& lhs,
+    const Handle<Value>& rhs) const {
+  return HomogenousValueEqual<HomogenousEqualProvider>(factory, lhs, rhs);
+}
+
+absl::StatusOr<absl::optional<bool>> HeterogeneousEqualProvider::operator()(
+    ValueFactory& factory, const Handle<Value>& lhs,
+    const Handle<Value>& rhs) const {
+  return runtime_internal::ValueEqualImpl(factory, lhs, rhs);
+}
+
+}  // namespace
+
+namespace runtime_internal {
+
 absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueFactory& value_factory,
                                                     const Handle<Value>& v1,
                                                     const Handle<Value>& v2) {
@@ -483,57 +539,7 @@ absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueFactory& value_factory,
   return false;
 }
 
-absl::StatusOr<absl::optional<bool>> HomogenousEqualProvider::operator()(
-    ValueFactory& factory, const Handle<Value>& lhs,
-    const Handle<Value>& rhs) const {
-  return HomogenousValueEqual<HomogenousEqualProvider>(factory, lhs, rhs);
-}
-
-absl::StatusOr<absl::optional<bool>> HeterogeneousEqualProvider::operator()(
-    ValueFactory& factory, const Handle<Value>& lhs,
-    const Handle<Value>& rhs) const {
-  return ValueEqualImpl(factory, lhs, rhs);
-}
-
-absl::StatusOr<Handle<Value>> EqualOverloadImpl(ValueFactory& factory,
-                                                const Handle<Value>& lhs,
-                                                const Handle<Value>& rhs) {
-  CEL_ASSIGN_OR_RETURN(absl::optional<bool> result,
-                       ValueEqualImpl(factory, lhs, rhs));
-  if (result.has_value()) {
-    return factory.CreateBoolValue(*result);
-  }
-  return factory.CreateErrorValue(
-      cel::runtime_internal::CreateNoMatchingOverloadError(kEqual));
-}
-
-absl::StatusOr<Handle<Value>> InequalOverloadImpl(ValueFactory& factory,
-                                                  const Handle<Value>& lhs,
-                                                  const Handle<Value>& rhs) {
-  CEL_ASSIGN_OR_RETURN(absl::optional<bool> result,
-                       ValueEqualImpl(factory, lhs, rhs));
-  if (result.has_value()) {
-    return factory.CreateBoolValue(!*result);
-  }
-  return factory.CreateErrorValue(
-      cel::runtime_internal::CreateNoMatchingOverloadError(kInequal));
-}
-
-absl::Status RegisterHeterogeneousEqualityFunctions(
-    cel::FunctionRegistry& registry) {
-  using Adapter = cel::RegisterHelper<
-      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, const Handle<Value>&,
-                            const Handle<Value>&>>;
-  CEL_RETURN_IF_ERROR(
-      Adapter::RegisterGlobalOverload(kEqual, &EqualOverloadImpl, registry));
-
-  CEL_RETURN_IF_ERROR(Adapter::RegisterGlobalOverload(
-      kInequal, &InequalOverloadImpl, registry));
-
-  return absl::OkStatus();
-}
-
-}  // namespace
+}  // namespace runtime_internal
 
 absl::Status RegisterEqualityFunctions(FunctionRegistry& registry,
                                        const RuntimeOptions& options) {

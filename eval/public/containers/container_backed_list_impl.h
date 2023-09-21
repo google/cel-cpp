@@ -1,8 +1,11 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CONTAINERS_CONTAINER_BACKED_LIST_IMPL_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CONTAINERS_CONTAINER_BACKED_LIST_IMPL_H_
 
+#include <utility>
+#include <vector>
+
 #include "eval/public/cel_value.h"
-#include "absl/types/span.h"
+#include "google/protobuf/arena.h"
 
 namespace google {
 namespace api {
@@ -23,6 +26,11 @@ class ContainerBackedListImpl : public CelList {
 
   // List element access operator.
   CelValue operator[](int index) const override { return values_[index]; }
+
+  // List element access operator.
+  CelValue Get(google::protobuf::Arena*, int index) const override {
+    return values_[index];
+  }
 
  private:
   std::vector<CelValue> values_;
