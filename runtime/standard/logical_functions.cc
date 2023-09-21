@@ -24,8 +24,8 @@
 #include "base/values/bool_value.h"
 #include "base/values/error_value.h"
 #include "base/values/unknown_value.h"
-#include "eval/internal/errors.h"
 #include "internal/status_macros.h"
+#include "runtime/internal/errors.h"
 #include "runtime/register_function_helper.h"
 
 namespace cel {

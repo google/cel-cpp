@@ -124,6 +124,7 @@ cc_library(
     srcs = ["errors.cc"],
     hdrs = ["errors.h"],
     deps = [
+        "//runtime/internal:errors",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",

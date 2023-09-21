@@ -15,56 +15,11 @@
 #include "eval/internal/errors.h"
 
 #include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "runtime/internal/errors.h"
 #include "google/protobuf/arena.h"
 
 namespace cel {
-namespace runtime_internal {
-
-const absl::Status* DurationOverflowError() {
-  static const auto* const kDurationOverflow = new absl::Status(
-      absl::StatusCode::kInvalidArgument, "Duration is out of range");
-  return kDurationOverflow;
-}
-
-absl::Status CreateNoMatchingOverloadError(absl::string_view fn) {
-  return absl::UnknownError(
-      absl::StrCat(kErrNoMatchingOverload, fn.empty() ? "" : " : ", fn));
-}
-
-absl::Status CreateNoSuchFieldError(absl::string_view field) {
-  return absl::Status(
-      absl::StatusCode::kNotFound,
-      absl::StrCat(kErrNoSuchField, field.empty() ? "" : " : ", field));
-}
-
-absl::Status CreateMissingAttributeError(
-    absl::string_view missing_attribute_path) {
-  absl::Status result = absl::InvalidArgumentError(
-      absl::StrCat(kErrMissingAttribute, missing_attribute_path));
-  result.SetPayload(kPayloadUrlMissingAttributePath,
-                    absl::Cord(missing_attribute_path));
-  return result;
-}
-
-absl::Status CreateNoSuchKeyError(absl::string_view key) {
-  return absl::NotFoundError(absl::StrCat(kErrNoSuchKey, " : ", key));
-}
-
-absl::Status CreateUnknownFunctionResultError(absl::string_view help_message) {
-  absl::Status result = absl::UnavailableError(
-      absl::StrCat("Unknown function result: ", help_message));
-  result.SetPayload(kPayloadUrlUnknownFunctionResult, absl::Cord("true"));
-  return result;
-}
-
-absl::Status CreateError(absl::string_view message, absl::StatusCode code) {
-  return absl::Status(code, message);
-}
-
-}  // namespace runtime_internal
-
 namespace interop_internal {
 
 using ::google::protobuf::Arena;
