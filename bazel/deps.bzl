@@ -122,10 +122,10 @@ def cel_spec_deps():
         ],
     )
 
-    CEL_SPEC_GIT_SHA = "51af45e2b75a8aa2b3108b00f0e91cd172cfbea1"  # 5/30/2023
+    CEL_SPEC_GIT_SHA = "dd5373cc157f6325421470139b5d55baed09935a"  # 9/20/2023
     http_archive(
         name = "com_google_cel_spec",
-        sha256 = "619ae983a6d87e081aec641c3b1c61154179c5b29ac8bc2ad8cee97ae00f62b8",
+        sha256 = "2abfa4729ed4de6077a4623adb591bc1702d253c9e5f32730604c832cf9e1b38",
         strip_prefix = "cel-spec-" + CEL_SPEC_GIT_SHA,
         urls = ["https://github.com/google/cel-spec/archive/" + CEL_SPEC_GIT_SHA + ".zip"],
     )

@@ -36,6 +36,7 @@ ALL_TESTS = [
     "@com_google_cel_spec//tests/simple:testdata/string.textproto",
     "@com_google_cel_spec//tests/simple:testdata/timestamps.textproto",
     "@com_google_cel_spec//tests/simple:testdata/unknowns.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/wrappers.textproto",
 ]
 
 cc_binary(
@@ -91,6 +92,9 @@ cc_binary(
             "--skip_test=namespace/namespace/self_eval_container_lookup,self_eval_container_lookup_unchecked",
             # TODO(issues/117): Integer overflow on enum assignments should error.
             "--skip_test=enums/legacy_proto2/select_big,select_neg",
+
+            # Skip until fixed.
+            "--skip_test=wrappers/field_mask/to_json",
 
             # Future features for CEL 1.0
             # TODO(issues/119): Strong typing support for enums, specified but not implemented.
