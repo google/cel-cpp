@@ -33,32 +33,40 @@ namespace {
 absl::StatusOr<Handle<Value>> SetsContains(ValueFactory& value_factory,
                                            const ListValue& list,
                                            const ListValue& sublist) {
-  CEL_ASSIGN_OR_RETURN(auto sublist_iterator,
-                       sublist.NewIterator(value_factory));
-  while (sublist_iterator->HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto sublist_element, sublist_iterator->NextValue());
-    CEL_ASSIGN_OR_RETURN(auto contains,
-                         list.Contains(value_factory, sublist_element));
-    if (contains->Is<BoolValue>() && !contains->As<BoolValue>().value()) {
-      return contains;
-    }
-  }
-  return value_factory.CreateBoolValue(true);
+  CEL_ASSIGN_OR_RETURN(
+      bool any_missing,
+      sublist.AnyOf(
+          value_factory,
+          [&list, &value_factory](
+              const Handle<Value>& sublist_element) -> absl::StatusOr<bool> {
+            CEL_ASSIGN_OR_RETURN(auto contains,
+                                 list.Contains(value_factory, sublist_element));
+
+            // Treat CEL error as missing
+            return !contains->Is<BoolValue>() ||
+                   !contains->As<BoolValue>().value();
+          }));
+  return value_factory.CreateBoolValue(!any_missing);
 }
 
 absl::StatusOr<Handle<Value>> SetsIntersects(ValueFactory& value_factory,
                                              const ListValue& list,
                                              const ListValue& sublist) {
-  CEL_ASSIGN_OR_RETURN(auto list_iterator, list.NewIterator(value_factory));
-  while (list_iterator->HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto list_element, list_iterator->NextValue());
-    CEL_ASSIGN_OR_RETURN(auto contains,
-                         sublist.Contains(value_factory, list_element));
-    if (contains->Is<BoolValue>() && contains->As<BoolValue>().value()) {
-      return contains;
-    }
-  }
-  return value_factory.CreateBoolValue(false);
+  CEL_ASSIGN_OR_RETURN(
+      bool exists,
+      list.AnyOf(
+          value_factory,
+          [&value_factory, &sublist](
+              const Handle<Value>& list_element) -> absl::StatusOr<bool> {
+            CEL_ASSIGN_OR_RETURN(auto contains,
+                                 sublist.Contains(value_factory, list_element));
+            // Treat contains return CEL error as false for the sake of
+            // intersecting.
+            return contains->Is<BoolValue>() &&
+                   contains->As<BoolValue>().value();
+          }));
+
+  return value_factory.CreateBoolValue(exists);
 }
 
 absl::StatusOr<Handle<Value>> SetsEquivalent(ValueFactory& value_factory,

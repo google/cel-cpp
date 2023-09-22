@@ -111,23 +111,24 @@ absl::StatusOr<Handle<Value>> HeterogeneousEqualityIn(
   if (list.Is<base_internal::LegacyListValue>()) {
     return list.Contains(value_factory, value);
   }
-  size_t size = list.size();
-  for (int i = 0; i < size; i++) {
-    auto elem = list.Get(value_factory, i);
-    if (!elem.ok()) return elem.status();
-    CEL_ASSIGN_OR_RETURN(
-        absl::optional<bool> element_equals,
-        runtime_internal::ValueEqualImpl(value_factory, *elem, value));
+  CEL_ASSIGN_OR_RETURN(
+      bool exists,
+      list.AnyOf(value_factory,
+                 [&value, &value_factory](
+                     const Handle<Value>& elem) -> absl::StatusOr<bool> {
+                   CEL_ASSIGN_OR_RETURN(absl::optional<bool> element_equals,
+                                        runtime_internal::ValueEqualImpl(
+                                            value_factory, elem, value));
 
-    // If equality is undefined, just consider the comparison as false and
-    // continue searching (as opposed to returning error as in element-wise
-    // equal).
-    if (element_equals.has_value() && *element_equals) {
-      return value_factory.CreateBoolValue(true);
-    }
-  }
-
-  return value_factory.CreateBoolValue(false);
+                   // If equality is undefined, just consider the comparison
+                   // as false and continue searching (as opposed to returning
+                   // error as in element-wise equal).
+                   if (!element_equals.has_value()) {
+                     return false;  // continue
+                   }
+                   return *element_equals;
+                 }));
+  return value_factory.CreateBoolValue(exists);
 }
 
 absl::Status RegisterListMembershipFunctions(FunctionRegistry& registry,

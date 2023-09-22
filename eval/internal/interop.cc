@@ -1036,6 +1036,26 @@ bool LegacyListValueEmpty(uintptr_t impl) {
   return reinterpret_cast<const CelList*>(impl)->empty();
 }
 
+absl::StatusOr<bool> LegacyListValueAnyOf(ValueFactory& value_factory,
+                                          uintptr_t impl,
+                                          ListValue::AnyOfCallback cb) {
+  const auto* list = reinterpret_cast<const CelList*>(impl);
+  auto* arena = extensions::ProtoMemoryManager::CastToProtoArena(
+      value_factory.memory_manager());
+  for (int i = 0; i < list->size(); ++i) {
+    absl::StatusOr<Handle<Value>> value =
+        FromLegacyValue(arena, list->Get(arena, i));
+    if (!value.ok()) {
+      return value.status();
+    }
+    auto condition = cb(*value);
+    if (!condition.ok() || *condition) {
+      return condition;
+    }
+  }
+  return false;
+}
+
 size_t LegacyMapValueSize(uintptr_t impl) {
   return reinterpret_cast<const CelMap*>(impl)->size();
 }

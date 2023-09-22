@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "absl/base/attributes.h"
+#include "absl/functional/function_ref.h"
 #include "absl/hash/hash.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
@@ -33,7 +34,9 @@
 #include "base/type.h"
 #include "base/types/list_type.h"
 #include "base/value.h"
+#include "internal/no_destructor.h"
 #include "internal/rtti.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -105,6 +108,19 @@ class ListValue : public Value {
 
   void HashValue(absl::HashState state) const;
 
+  using AnyOfCallback =
+      absl::FunctionRef<absl::StatusOr<bool>(const Handle<Value>&)>;
+
+  // AnyOf applies the given predicate to each element in the list.
+  // If the callback returns true or returns an error, the loop ends early.
+  // Otherwise, AnyOf returns false.
+  // Where possible, this avoids implicitly copying the underlying element.
+  // The value parameter provided to the callback is not guaranteed to be backed
+  // by the list, so it has no lifecycle guarantees beyond the callback
+  // invocation.
+  absl::StatusOr<bool> AnyOf(ValueFactory& value_factory,
+                             AnyOfCallback cb) const;
+
  private:
   friend class base_internal::LegacyListValue;
   friend class base_internal::AbstractListValue;
@@ -142,6 +158,8 @@ ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> LegacyListValueGet(
     uintptr_t impl, ValueFactory& value_factory, size_t index);
 ABSL_ATTRIBUTE_WEAK size_t LegacyListValueSize(uintptr_t impl);
 ABSL_ATTRIBUTE_WEAK bool LegacyListValueEmpty(uintptr_t impl);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool> LegacyListValueAnyOf(
+    ValueFactory& value_factory, uintptr_t impl, ListValue::AnyOfCallback cb);
 ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> LegacyListValueContains(
     ValueFactory& value_factory, uintptr_t impl, const Handle<Value>& other);
 
@@ -187,6 +205,9 @@ class LegacyListValue final : public ListValue, public InlineData {
 
   absl::StatusOr<Handle<Value>> Contains(ValueFactory& value_factory,
                                          const Handle<Value>& other) const;
+
+  absl::StatusOr<bool> AnyOf(ValueFactory& value_factory,
+                             AnyOfCallback cb) const;
 
  private:
   friend class ValueHandle;
@@ -251,6 +272,9 @@ class AbstractListValue : public ListValue,
   virtual absl::StatusOr<Handle<Value>> Contains(
       ValueFactory& value_factory, const Handle<Value>& other) const;
 
+  virtual absl::StatusOr<bool> AnyOf(ValueFactory& value_factory,
+                                     AnyOfCallback cb) const;
+
  protected:
   explicit AbstractListValue(Handle<ListType> type);
 
@@ -304,6 +328,9 @@ class DynamicListValue final : public AbstractListValue {
   internal::TypeInfo TypeId() const override {
     return internal::TypeId<DynamicListValue>();
   }
+
+  absl::StatusOr<bool> AnyOf(ValueFactory& value_factory,
+                             AnyOfCallback cb) const override;
 
  private:
   std::vector<Handle<Value>, Allocator<Handle<Value>>> storage_;

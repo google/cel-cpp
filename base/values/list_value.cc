@@ -27,6 +27,7 @@
 #include "base/type.h"
 #include "base/types/list_type.h"
 #include "base/value_factory.h"
+#include "base/values/bool_value.h"
 #include "internal/rtti.h"
 #include "internal/status_macros.h"
 
@@ -91,6 +92,11 @@ absl::StatusOr<Handle<Value>> ListValue::Contains(
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(Contains, value_factory, other);
 }
 
+absl::StatusOr<bool> ListValue::AnyOf(ValueFactory& value_factory,
+                                      AnyOfCallback cb) const {
+  return CEL_INTERNAL_LIST_VALUE_DISPATCH(AnyOf, value_factory, cb);
+}
+
 internal::TypeInfo ListValue::TypeId() const {
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(TypeId);
 }
@@ -147,20 +153,21 @@ absl::StatusOr<Handle<Value>> GenericListValueEquals(
 absl::StatusOr<Handle<Value>> GenericListValueContains(
     ValueFactory& value_factory, const ListValue& haystack,
     const Value& needle) {
-  if (haystack.empty()) {
-    return value_factory.CreateBoolValue(false);
-  }
-  CEL_ASSIGN_OR_RETURN(auto haystack_iterator,
-                       haystack.NewIterator(value_factory));
-  while (haystack_iterator->HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto haystack_element, haystack_iterator->NextValue());
-    CEL_ASSIGN_OR_RETURN(auto equal,
-                         needle.Equals(value_factory, *haystack_element));
-    if (equal->Is<BoolValue>() && equal->As<BoolValue>().value()) {
-      return equal;
-    }
-  }
-  return value_factory.CreateBoolValue(false);
+  CEL_ASSIGN_OR_RETURN(
+      bool found,
+      haystack.AnyOf(value_factory,
+                     [&needle, &value_factory](
+                         const Handle<Value>& element) -> absl::StatusOr<bool> {
+                       CEL_ASSIGN_OR_RETURN(
+                           auto equal, needle.Equals(value_factory, *element));
+                       if (equal->Is<BoolValue>() &&
+                           equal->As<BoolValue>().value()) {
+                         return true;
+                       }
+                       return false;
+                     }));
+
+  return value_factory.CreateBoolValue(found);
 }
 
 }  // namespace
@@ -305,6 +312,11 @@ absl::StatusOr<Handle<Value>> LegacyListValue::Contains(
   return LegacyListValueContains(value_factory, impl_, other);
 }
 
+absl::StatusOr<bool> LegacyListValue::AnyOf(ValueFactory& value_factory,
+                                            AnyOfCallback cb) const {
+  return LegacyListValueAnyOf(value_factory, impl_, cb);
+}
+
 AbstractListValue::AbstractListValue(Handle<ListType> type)
     : HeapData(kKind), type_(std::move(type)) {
   // Ensure `Value*` and `HeapData*` are not thunked.
@@ -339,6 +351,27 @@ absl::StatusOr<Handle<Value>> AbstractListValue::Equals(
 absl::StatusOr<Handle<Value>> AbstractListValue::Contains(
     ValueFactory& value_factory, const Handle<Value>& other) const {
   return GenericListValueContains(value_factory, *this, *other);
+}
+
+absl::StatusOr<bool> AbstractListValue::AnyOf(ValueFactory& value_factory,
+                                              AnyOfCallback cb) const {
+  for (size_t i = 0; i < size(); ++i) {
+    absl::StatusOr<Handle<Value>> value = Get(value_factory, i);
+    auto condition = cb(*value);
+    if (!condition.ok() || *condition) {
+      return condition;
+    }
+  }
+  return false;
+}
+
+absl::StatusOr<bool> DynamicListValue::AnyOf(ValueFactory& value_factory,
+                                             AnyOfCallback cb) const {
+  for (size_t i = 0; i < storage_.size(); i++) {
+    auto condition = cb(storage_[i]);
+    if (!condition.ok() || *condition) return condition;
+  }
+  return false;
 }
 
 }  // namespace base_internal

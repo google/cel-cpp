@@ -14,10 +14,12 @@
 
 #include "base/values/list_value_builder.h"
 
+#include "absl/status/status.h"
 #include "absl/time/time.h"
 #include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_provider.h"
+#include "base/values/int_value.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -25,6 +27,8 @@ namespace {
 
 using testing::NotNull;
 using testing::WhenDynamicCastTo;
+using cel::internal::IsOkAndHolds;
+using cel::internal::StatusIs;
 
 TEST(ListValueBuilder, Unspecialized) {
   TypeFactory type_factory(MemoryManager::Global());
@@ -39,6 +43,25 @@ TEST(ListValueBuilder, Unspecialized) {
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
   EXPECT_EQ(list->size(), 2);
   EXPECT_EQ(list->DebugString(), "[b\"\", b\"\"]");
+  EXPECT_THAT(list->AnyOf(value_factory,
+                          [](const Handle<Value>& v) -> absl::StatusOr<bool> {
+                            return v->Is<BytesValue>() &&
+                                   v->As<BytesValue>().DebugString() ==
+                                       R"(b"")";
+                          }),
+              IsOkAndHolds(true));
+  EXPECT_THAT(list->AnyOf(value_factory,
+                          [](const Handle<Value>& v) -> absl::StatusOr<bool> {
+                            return v->Is<BytesValue>() &&
+                                   v->As<BytesValue>().DebugString() ==
+                                       R"(b"1234")";
+                          }),
+              IsOkAndHolds(false));
+  EXPECT_THAT(list->AnyOf(value_factory,
+                          [](const Handle<Value>& v) -> absl::StatusOr<bool> {
+                            return absl::InternalError("test");
+                          }),
+              StatusIs(absl::StatusCode::kInternal, "test"));
   ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<BytesValue>());
   EXPECT_TRUE(element.As<BytesValue>()->Equals(value->As<BytesValue>()));
@@ -109,6 +132,23 @@ TEST(ListValueBuilder, Int) {
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
   EXPECT_EQ(list->size(), 3);
   EXPECT_EQ(list->DebugString(), "[0, 1, 2]");
+  EXPECT_THAT(list->AnyOf(value_factory,
+                          [](const Handle<Value>& v) -> absl::StatusOr<bool> {
+                            return v->Is<IntValue>() &&
+                                   v->As<IntValue>().value() > 2;
+                          }),
+              IsOkAndHolds(false));
+  EXPECT_THAT(list->AnyOf(value_factory,
+                          [](const Handle<Value>& v) -> absl::StatusOr<bool> {
+                            return v->Is<IntValue>() &&
+                                   v->As<IntValue>().value() < 2;
+                          }),
+              IsOkAndHolds(true));
+  EXPECT_THAT(list->AnyOf(value_factory,
+                          [](const Handle<Value>& v) -> absl::StatusOr<bool> {
+                            return absl::InternalError("test");
+                          }),
+              StatusIs(absl::StatusCode::kInternal, "test"));
   ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<IntValue>());
   EXPECT_EQ(element.As<IntValue>()->value(), 0);

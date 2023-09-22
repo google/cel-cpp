@@ -32,6 +32,7 @@
 #include "base/value.h"
 #include "base/value_factory.h"
 #include "base/values/error_value.h"
+#include "base/values/int_value.h"
 #include "base/values/struct_value.h"
 #include "eval/internal/errors.h"
 #include "eval/public/cel_value.h"
@@ -386,10 +387,42 @@ TEST(ValueInterop, ListFromLegacy) {
   auto legacy_value =
       CelValue::CreateList(google::protobuf::Arena::Create<
                            google::api::expr::runtime::ContainerBackedListImpl>(
-          &arena, std::vector<CelValue>{CelValue::CreateInt64(0)}));
+          &arena, std::vector<CelValue>{CelValue::CreateInt64(0),
+                                        CelValue::CreateInt64(1)}));
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
-  EXPECT_TRUE(value->Is<ListValue>());
-  EXPECT_EQ(value.As<ListValue>()->size(), 1);
+  ASSERT_TRUE(value->Is<ListValue>());
+  EXPECT_THAT(
+      value->As<ListValue>().AnyOf(value_factory,
+                                   [](const Handle<Value>& value) {
+                                     return value->Is<IntValue>() &&
+                                            value->As<IntValue>().value() == 1;
+                                   }),
+      IsOkAndHolds(true));
+  EXPECT_THAT(
+      value->As<ListValue>().AnyOf(value_factory,
+                                   [](const Handle<Value>& value) {
+                                     return value->Is<IntValue>() &&
+                                            value->As<IntValue>().value() > 1;
+                                   }),
+      IsOkAndHolds(false));
+  EXPECT_THAT(value->As<ListValue>().AnyOf(value_factory,
+                                           [](const Handle<Value>& value) {
+                                             return absl::InternalError("test");
+                                           }),
+              StatusIs(absl::StatusCode::kInternal, "test"));
+  EXPECT_THAT(value->As<ListValue>().Contains(value_factory,
+                                              value_factory.CreateIntValue(1)),
+              IsOkAndHolds(Truly([](const Handle<Value>& value) {
+                return value->Is<BoolValue>() &&
+                       value->As<BoolValue>().value() == true;
+              })));
+  EXPECT_THAT(value->As<ListValue>().Contains(value_factory,
+                                              value_factory.CreateIntValue(42)),
+              IsOkAndHolds(Truly([](const Handle<Value>& value) {
+                return value->Is<BoolValue>() &&
+                       value->As<BoolValue>().value() == false;
+              })));
+  EXPECT_EQ(value.As<ListValue>()->size(), 2);
   ASSERT_OK_AND_ASSIGN(auto element,
                        value.As<ListValue>()->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<IntValue>());
