@@ -14,10 +14,15 @@
 
 #include "eval/compiler/regex_precompilation_optimization.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
@@ -25,9 +30,11 @@
 #include "base/values/string_value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/compiler_constant_step.h"
+#include "eval/eval/evaluator_core.h"
 #include "eval/eval/regex_match_step.h"
 #include "internal/casts.h"
 #include "internal/rtti.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 namespace {
@@ -41,11 +48,9 @@ using cel::internal::TypeId;
 
 using ReferenceMap = absl::flat_hash_map<int64_t, Reference>;
 
-bool IsFunctionOverload(
-    const Expr& expr, absl::string_view function, absl::string_view overload,
-    size_t arity,
-    const absl::flat_hash_map<int64_t, cel::ast_internal::Reference>&
-        reference_map) {
+bool IsFunctionOverload(const Expr& expr, absl::string_view function,
+                        absl::string_view overload, size_t arity,
+                        const ReferenceMap& reference_map) {
   if (!expr.has_call_expr()) {
     return false;
   }
@@ -56,6 +61,14 @@ bool IsFunctionOverload(
   if (call_expr.args().size() + (call_expr.has_target() ? 1 : 0) != arity) {
     return false;
   }
+
+  // If parse-only and opted in to the optimization, assume this is the intended
+  // overload. This will still only change the evaluation plan if the second arg
+  // is a constant string.
+  if (reference_map.empty()) {
+    return true;
+  }
+
   auto reference = reference_map.find(expr.id());
   if (reference != reference_map.end() &&
       reference->second.overload_id().size() == 1 &&
@@ -87,7 +100,8 @@ class RegexProgramBuilder final {
       return absl::InvalidArgumentError("exceeded RE2 max program size");
     }
     if (!program->ok()) {
-      return absl::InvalidArgumentError("invalid_argument");
+      return absl::InvalidArgumentError(
+          "invalid_argument unsupported RE2 pattern for matches");
     }
     programs_.insert({std::move(pattern), program});
     return program;
@@ -110,11 +124,6 @@ class RegexPrecompilationOptimization : public ProgramOptimizer {
   }
 
   absl::Status OnPostVisit(PlannerContext& context, const Expr& node) override {
-    // Do not consider parse-only expressions.
-    if (reference_map_.empty()) {
-      return absl::OkStatus();
-    }
-
     // Check that this is the correct matches overload instead of a user defined
     // overload.
     if (!IsFunctionOverload(node, cel::builtin::kRegexMatch, "matches_string",
@@ -136,6 +145,12 @@ class RegexPrecompilationOptimization : public ProgramOptimizer {
 
     const Expr& subject_expr =
         call_expr.has_target() ? call_expr.target() : call_expr.args().front();
+
+    if (context.GetSubplan(subject_expr).empty()) {
+      // This subexpression was already optimized, nothing to do.
+      return absl::OkStatus();
+    }
+
     CEL_ASSIGN_OR_RETURN(ExecutionPath new_plan,
                          context.ExtractSubplan(subject_expr));
     CEL_ASSIGN_OR_RETURN(new_plan.emplace_back(),

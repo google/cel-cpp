@@ -32,6 +32,7 @@ namespace {
 using google::api::expr::v1alpha1::CheckedExpr;
 using google::api::expr::v1alpha1::Reference;
 using testing::Eq;
+using testing::HasSubstr;
 using cel::internal::StatusIs;
 
 Reference MakeMatchesStringOverload() {
@@ -74,9 +75,9 @@ TEST(RegexMatchStep, PrecompiledInvalidRegex) {
   options.enable_regex_precompilation = true;
   auto expr_builder = CreateCelExpressionBuilder(options);
   ASSERT_OK(RegisterBuiltinFunctions(expr_builder->GetRegistry(), options));
-  EXPECT_THAT(
-      expr_builder->CreateExpression(&checked_expr),
-      StatusIs(absl::StatusCode::kInvalidArgument, Eq("invalid_argument")));
+  EXPECT_THAT(expr_builder->CreateExpression(&checked_expr),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("invalid_argument")));
 }
 
 TEST(RegexMatchStep, PrecompiledInvalidProgramTooLarge) {

@@ -125,7 +125,7 @@ TEST_F(RegexPrecompilationExtensionTest, OptimizeableExpression) {
   EXPECT_THAT(plan, ExpressionPlanSizeIs(2));
 }
 
-TEST_F(RegexPrecompilationExtensionTest, DoesNotOptimizeParsedExpr) {
+TEST_F(RegexPrecompilationExtensionTest, OptimizeParsedExpr) {
   builder_.flat_expr_builder().AddProgramOptimizer(
       CreateRegexPrecompilationExtension(options_.regex_max_program_size));
 
@@ -136,7 +136,7 @@ TEST_F(RegexPrecompilationExtensionTest, DoesNotOptimizeParsedExpr) {
       std::unique_ptr<CelExpression> plan,
       builder_.CreateExpression(&expr.expr(), &expr.source_info()));
 
-  EXPECT_THAT(plan, ExpressionPlanSizeIs(3));
+  EXPECT_THAT(plan, ExpressionPlanSizeIs(2));
 }
 
 TEST_F(RegexPrecompilationExtensionTest, DoesNotOptimizeNonConstRegex) {
