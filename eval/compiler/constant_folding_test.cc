@@ -1,8 +1,26 @@
+// Copyright 2019 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "eval/compiler/constant_folding.h"
 
 #include <memory>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
+#include "base/ast.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "base/memory.h"
@@ -18,7 +36,6 @@
 #include "eval/eval/create_struct_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_build_warning.h"
-#include "eval/public/cel_type_registry.h"
 #include "extensions/protobuf/ast_converters.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
@@ -26,6 +43,8 @@
 #include "parser/parser.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
+#include "runtime/type_registry.h"
+#include "google/protobuf/arena.h"
 
 namespace cel::ast_internal {
 
@@ -35,7 +54,6 @@ using ::cel::extensions::ProtoMemoryManager;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::runtime::BuilderWarnings;
-using ::google::api::expr::runtime::CelTypeRegistry;
 using ::google::api::expr::runtime::CreateConstValueStep;
 using ::google::api::expr::runtime::CreateCreateListStep;
 using ::google::api::expr::runtime::CreateCreateStructStepForMap;
@@ -44,7 +62,6 @@ using ::google::api::expr::runtime::PlannerContext;
 using ::google::api::expr::runtime::ProgramOptimizer;
 using ::google::api::expr::runtime::ProgramOptimizerFactory;
 using ::google::api::expr::runtime::Resolver;
-using ::google::protobuf::Arena;
 using testing::SizeIs;
 using cel::internal::StatusIs;
 
@@ -57,7 +74,7 @@ class ConstantFoldingTestWithValueFactory : public testing::Test {
         value_factory_(type_manager_) {}
 
  protected:
-  Arena arena_;
+  google::protobuf::Arena arena_;
   ProtoMemoryManager memory_manager_;
   TypeFactory type_factory_;
   TypeManager type_manager_;
@@ -68,14 +85,14 @@ class UpdatedConstantFoldingTest : public testing::Test {
  public:
   UpdatedConstantFoldingTest()
       : type_factory_(MemoryManager::Global()),
-        type_manager_(type_factory_, type_registry_.GetTypeProvider()),
+        type_manager_(type_factory_, type_registry_.GetComposedTypeProvider()),
         value_factory_(type_manager_),
-        resolver_("", function_registry_, &type_registry_, value_factory_,
+        resolver_("", function_registry_, type_registry_, value_factory_,
                   type_registry_.resolveable_enums()) {}
 
  protected:
   cel::FunctionRegistry function_registry_;
-  CelTypeRegistry type_registry_;
+  cel::TypeRegistry type_registry_;
   cel::TypeFactory type_factory_;
   cel::TypeManager type_manager_;
   cel::ValueFactory value_factory_;

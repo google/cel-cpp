@@ -1262,11 +1262,12 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
   // These objects are expected to remain scoped to one build call -- references
   // to them shouldn't be persisted in any part of the result expression.
   TypeFactory type_factory(cel::MemoryManager::Global());
-  TypeManager type_manager(type_factory, type_registry_.GetTypeProvider());
+  TypeManager type_manager(type_factory,
+                           type_registry_.GetComposedTypeProvider());
   ValueFactory value_factory(type_manager);
 
   BuilderWarnings warnings_builder(options_.fail_on_warnings);
-  Resolver resolver(container_, function_registry_, &type_registry_,
+  Resolver resolver(container_, function_registry_, type_registry_,
                     value_factory, type_registry_.resolveable_enums(),
                     options_.enable_qualified_type_identifiers);
 
@@ -1309,7 +1310,7 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
   }
 
   return FlatExpression(std::move(execution_path), visitor.slot_count(),
-                        type_registry_.GetTypeProvider(), options_);
+                        type_registry_.GetComposedTypeProvider(), options_);
 }
 
 }  // namespace google::api::expr::runtime

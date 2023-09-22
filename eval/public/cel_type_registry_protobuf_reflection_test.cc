@@ -131,28 +131,5 @@ TEST(CelTypeRegistryTypeProviderTest, StructTypes) {
   EXPECT_THAT(struct_type, Optional(TypeNameIs("map")));
 }
 
-TEST(CelTypeRegistryTypeProviderTest, RegisteredEnumsOverride) {
-  CelTypeRegistry registry;
-  google::protobuf::LinkMessageReflection<TestMessage>();
-
-  registry.RegisterEnum("google.api.expr.runtime.TestMessage",
-                        {{"MY_ENUM_VALUE1", 1}});
-
-  registry.RegisterTypeProvider(std::make_unique<ProtobufDescriptorProvider>(
-      google::protobuf::DescriptorPool::generated_pool(),
-      google::protobuf::MessageFactory::generated_factory()));
-
-  cel::TypeFactory type_factory(MemoryManager::Global());
-  cel::TypeManager type_manager(type_factory, registry.GetTypeProvider());
-
-  ASSERT_OK_AND_ASSIGN(
-      absl::optional<cel::Handle<Type>> enum_type,
-      type_manager.ResolveType("google.api.expr.runtime.TestMessage"));
-  ASSERT_TRUE(enum_type.has_value());
-  ASSERT_TRUE((*enum_type)->Is<EnumType>()) << (*enum_type)->DebugString();
-  EXPECT_THAT(enum_type->As<EnumType>()->name(),
-              Eq("google.api.expr.runtime.TestMessage"));
-}
-
 }  // namespace
 }  // namespace google::api::expr::runtime

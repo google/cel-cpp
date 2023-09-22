@@ -318,29 +318,6 @@ TEST(CelTypeRegistryTypeProviderTest, Builtins) {
   EXPECT_THAT(any_type, Optional(TypeNameIs("google.protobuf.Any")));
 }
 
-TEST(CelTypeRegistryTypeProviderTest, Enums) {
-  CelTypeRegistry registry;
-
-  registry.RegisterEnum("com.example.MyEnum", {{"MY_ENUM_VALUE1", 1}});
-  registry.RegisterEnum("google.protobuf.Struct", {});
-
-  cel::TypeFactory type_factory(MemoryManager::Global());
-  cel::TypeManager type_manager(type_factory, registry.GetTypeProvider());
-
-  ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> enum_type,
-                       type_manager.ResolveType("com.example.MyEnum"));
-  EXPECT_THAT(enum_type, Optional(TypeNameIs("com.example.MyEnum")));
-  ASSERT_TRUE((*enum_type)->Is<EnumType>());
-  EXPECT_THAT((*enum_type)->As<EnumType>().FindConstantByNumber(1),
-              IsOkAndHolds(Optional(
-                  Field((&EnumType::Constant::name), Eq("MY_ENUM_VALUE1")))));
-
-  // Can't override builtins.
-  ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> struct_type,
-                       type_manager.ResolveType("google.protobuf.Struct"));
-  EXPECT_THAT(struct_type, Optional(TypeNameIs("map")));
-}
-
 }  // namespace
 
 }  // namespace google::api::expr::runtime

@@ -25,8 +25,10 @@
 #include "absl/status/statusor.h"
 #include "base/ast.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
+#include "eval/public/cel_type_registry.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
+#include "runtime/type_registry.h"
 
 namespace google::api::expr::runtime {
 
@@ -39,6 +41,13 @@ class FlatExprBuilder {
                   const cel::RuntimeOptions& options)
       : options_(options),
         function_registry_(function_registry),
+        type_registry_(type_registry.InternalGetModernRegistry()) {}
+
+  FlatExprBuilder(const cel::FunctionRegistry& function_registry,
+                  const cel::TypeRegistry& type_registry,
+                  const cel::RuntimeOptions& options)
+      : options_(options),
+        function_registry_(function_registry),
         type_registry_(type_registry) {}
 
   // Create a flat expr builder with defaulted options.
@@ -46,7 +55,7 @@ class FlatExprBuilder {
                   const CelTypeRegistry& type_registry)
       : options_(cel::RuntimeOptions()),
         function_registry_(function_registry),
-        type_registry_(type_registry) {}
+        type_registry_(type_registry.InternalGetModernRegistry()) {}
 
   // set_enable_comprehension_vulnerability_check inspects comprehension
   // sub-expressions for the presence of potential memory exhaustion.
@@ -83,7 +92,7 @@ class FlatExprBuilder {
   // TODO(uncreated-issue/45): evaluate whether we should use a shared_ptr here to
   // allow built expressions to keep the registries alive.
   const cel::FunctionRegistry& function_registry_;
-  const CelTypeRegistry& type_registry_;
+  const cel::TypeRegistry& type_registry_;
   std::vector<std::unique_ptr<AstTransform>> ast_transforms_;
   std::vector<ProgramOptimizerFactory> program_optimizers_;
 

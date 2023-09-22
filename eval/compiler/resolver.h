@@ -1,26 +1,43 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_COMPILER_RESOLVER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_RESOLVER_H_
 
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "base/handle.h"
 #include "base/kind.h"
-#include "base/type_provider.h"
+#include "base/value.h"
 #include "base/value_factory.h"
-#include "eval/public/cel_type_registry.h"
 #include "runtime/function_overload_reference.h"
 #include "runtime/function_registry.h"
+#include "runtime/type_registry.h"
 
 namespace google::api::expr::runtime {
 
 // Resolver assists with finding functions and types within a container.
 //
-// This class builds on top of the CelFunctionRegistry and CelTypeRegistry by
-// layering on the namespace resolution rules of CEL onto the calls provided
+// This class builds on top of the cel::FunctionRegistry and cel::TypeRegistry
+// by layering on the namespace resolution rules of CEL onto the calls provided
 // by each of these libraries.
 //
 // TODO(issues/105): refactor the Resolver to consider CheckedExpr metadata
@@ -29,7 +46,7 @@ class Resolver {
  public:
   Resolver(absl::string_view container,
            const cel::FunctionRegistry& function_registry,
-           const CelTypeRegistry* type_registry,
+           const cel::TypeRegistry& type_registry,
            cel::ValueFactory& value_factory,
            const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
                resolveable_enums,
@@ -48,11 +65,6 @@ class Resolver {
   // provided value.
   cel::Handle<cel::Value> FindConstant(absl::string_view name,
                                        int64_t expr_id) const;
-
-  // FindTypeAdapter returns the adapter for the given type name if one exists,
-  // following resolution rules for the expression container.
-  absl::optional<LegacyTypeAdapter> FindTypeAdapter(absl::string_view name,
-                                                    int64_t expr_id) const;
 
   // FindType returns the type and resolved type name for the given potentially
   // unqualified type name if one exists, following resolution rules for the
@@ -86,7 +98,7 @@ class Resolver {
   std::vector<std::string> namespace_prefixes_;
   absl::flat_hash_map<std::string, cel::Handle<cel::Value>> enum_value_map_;
   const cel::FunctionRegistry& function_registry_;
-  const CelTypeRegistry* type_registry_;
+  const cel::TypeRegistry& type_registry_;
   cel::ValueFactory& value_factory_;
   const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
       resolveable_enums_;

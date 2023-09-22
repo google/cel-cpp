@@ -40,13 +40,13 @@ class PlannerContextTest : public testing::Test {
       : type_registry_(),
         function_registry_(),
         type_factory_(cel::MemoryManager::Global()),
-        type_manager_(type_factory_, type_registry_.GetTypeProvider()),
+        type_manager_(type_factory_, type_registry_.GetComposedTypeProvider()),
         value_factory_(type_manager_),
-        resolver_("", function_registry_, &type_registry_, value_factory_,
+        resolver_("", function_registry_, type_registry_, value_factory_,
                   type_registry_.resolveable_enums()) {}
 
  protected:
-  CelTypeRegistry type_registry_;
+  cel::TypeRegistry type_registry_;
   cel::FunctionRegistry function_registry_;
   cel::RuntimeOptions options_;
   cel::TypeFactory type_factory_;

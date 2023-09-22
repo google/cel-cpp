@@ -53,8 +53,9 @@ class RegexPrecompilationExtensionTest : public testing::Test {
         type_factory_(cel::MemoryManager::Global()),
         type_manager_(type_factory_, type_registry_.GetTypeProvider()),
         value_factory_(type_manager_),
-        resolver_("", function_registry_.InternalGetRegistry(), &type_registry_,
-                  value_factory_, type_registry_.resolveable_enums()) {
+        resolver_("", function_registry_.InternalGetRegistry(),
+                  type_registry_.InternalGetModernRegistry(), value_factory_,
+                  type_registry_.resolveable_enums()) {
     options_.enable_regex = true;
     options_.regex_max_program_size = 100;
     options_.enable_regex_precompilation = true;

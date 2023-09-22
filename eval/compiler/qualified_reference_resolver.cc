@@ -1,3 +1,17 @@
+// Copyright 2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "eval/compiler/qualified_reference_resolver.h"
 
 #include <cstdint>
@@ -6,6 +20,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -14,7 +29,9 @@
 #include "base/ast.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/builtins.h"
+#include "base/kind.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
+#include "eval/compiler/resolver.h"
 #include "eval/eval/expression_build_warning.h"
 #include "eval/public/ast_rewrite_native.h"
 #include "eval/public/source_position_native.h"
@@ -37,7 +54,7 @@ bool IsSpecialFunction(absl::string_view function_name) {
 }
 
 bool OverloadExists(const Resolver& resolver, absl::string_view name,
-                    const std::vector<CelValue::Type>& arguments_matcher,
+                    const std::vector<cel::Kind>& arguments_matcher,
                     bool receiver_style = false) {
   return !resolver.FindOverloads(name, receiver_style, arguments_matcher)
               .empty() ||

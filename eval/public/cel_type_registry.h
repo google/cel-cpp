@@ -1,3 +1,17 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_TYPE_REGISTRY_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_TYPE_REGISTRY_H_
 
@@ -13,6 +27,7 @@
 #include "base/types/enum_type.h"
 #include "eval/public/structs/legacy_type_provider.h"
 #include "runtime/internal/composed_type_provider.h"
+#include "runtime/type_registry.h"
 
 namespace google::api::expr::runtime {
 
@@ -31,10 +46,7 @@ namespace google::api::expr::runtime {
 class CelTypeRegistry {
  public:
   // Representation of an enum constant.
-  struct Enumerator {
-    std::string name;
-    int64_t number;
-  };
+  using Enumerator = cel::TypeRegistry::Enumerator;
 
   CelTypeRegistry();
 
@@ -67,7 +79,7 @@ class CelTypeRegistry {
   // - custom enumerations
   // - registered extension type providers in the order registered.
   const cel::TypeProvider& GetTypeProvider() const {
-    return type_provider_impl_;
+    return modern_type_registry_.GetComposedTypeProvider();
   }
 
   // Register an additional type provider with the registry.
@@ -76,7 +88,7 @@ class CelTypeRegistry {
   // but users should prefer to use the composed type provider from
   // GetTypeProvider()
   void RegisterModernTypeProvider(std::unique_ptr<cel::TypeProvider> provider) {
-    return type_provider_impl_.AddTypeProvider(std::move(provider));
+    return modern_type_registry_.AddTypeProvider(std::move(provider));
   }
 
   // Find a type adapter given a fully qualified type name.
@@ -89,7 +101,7 @@ class CelTypeRegistry {
   // internal format that can be identified as int constants at plan time.
   const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
   resolveable_enums() const {
-    return resolveable_enums_;
+    return modern_type_registry_.resolveable_enums();
   }
 
   // Return the registered enums configured within the type registry.
@@ -99,21 +111,33 @@ class CelTypeRegistry {
   //
   // Invalidated whenever registered enums are updated.
   absl::flat_hash_set<absl::string_view> ListResolveableEnums() const {
+    const auto& enums = resolveable_enums();
     absl::flat_hash_set<absl::string_view> result;
-    result.reserve(resolveable_enums_.size());
+    result.reserve(enums.size());
 
-    for (const auto& entry : resolveable_enums_) {
+    for (const auto& entry : enums) {
       result.insert(entry.first);
     }
 
     return result;
   }
 
+  // Accessor for underlying modern registry.
+  //
+  // This is exposed for migrating runtime internals, CEL users should not call
+  // this.
+  cel::TypeRegistry& InternalGetModernRegistry() {
+    return modern_type_registry_;
+  }
+
+  const cel::TypeRegistry& InternalGetModernRegistry() const {
+    return modern_type_registry_;
+  }
+
  private:
-  // Internal representation for enums.
-  absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>
-      resolveable_enums_;
-  cel::runtime_internal::ComposedTypeProvider type_provider_impl_;
+  // Internal modern registry.
+  cel::TypeRegistry modern_type_registry_;
+
   // TODO(uncreated-issue/44): This is needed to inspect the registered legacy type
   // providers for client tests. This can be removed when they are migrated to
   // use the modern APIs.

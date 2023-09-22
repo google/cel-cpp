@@ -1,3 +1,17 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "eval/compiler/resolver.h"
 
 #include <cstdint>
@@ -5,17 +19,26 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
+#include "absl/strings/strip.h"
+#include "absl/types/optional.h"
+#include "base/handle.h"
+#include "base/kind.h"
+#include "base/memory.h"
+#include "base/types/enum_type.h"
 #include "base/types/struct_type.h"
+#include "base/value.h"
 #include "base/value_factory.h"
 #include "base/values/enum_value.h"
-#include "eval/internal/interop.h"
-#include "eval/public/structs/legacy_type_adapter.h"
 #include "internal/status_macros.h"
+#include "runtime/function_overload_reference.h"
 #include "runtime/function_registry.h"
+#include "runtime/type_registry.h"
 
 namespace google::api::expr::runtime {
 
@@ -23,11 +46,10 @@ using ::cel::EnumType;
 using ::cel::Handle;
 using ::cel::MemoryManager;
 using ::cel::Value;
-using ::cel::interop_internal::CreateIntValue;
 
 Resolver::Resolver(
     absl::string_view container, const cel::FunctionRegistry& function_registry,
-    const CelTypeRegistry* type_registry, cel::ValueFactory& value_factory,
+    const cel::TypeRegistry& type_registry, cel::ValueFactory& value_factory,
     const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
         resolveable_enums,
     bool resolve_qualified_type_identifiers)
@@ -87,7 +109,7 @@ Resolver::Resolver(
         // it will be resolved to "a.b.c.Name".
         auto key = absl::StrCat(remainder, !remainder.empty() ? "." : "",
                                 constant->name);
-        enum_value_map_[key] = CreateIntValue(constant->number);
+        enum_value_map_[key] = value_factory.CreateIntValue(constant->number);
       }
     }
   }
@@ -174,22 +196,6 @@ std::vector<cel::FunctionRegistry::LazyOverload> Resolver::FindLazyOverloads(
     }
   }
   return funcs;
-}
-
-absl::optional<LegacyTypeAdapter> Resolver::FindTypeAdapter(
-    absl::string_view name, int64_t expr_id) const {
-  // Resolve the fully qualified names and then defer to the type registry
-  // for possible matches.
-  // TODO(uncreated-issue/44): update to modern apis when wrapper type creation is
-  // supported.
-  auto names = FullyQualifiedNames(name, expr_id);
-  for (const auto& name : names) {
-    auto maybe_adapter = type_registry_->FindTypeAdapter(name);
-    if (maybe_adapter.has_value()) {
-      return maybe_adapter;
-    }
-  }
-  return absl::nullopt;
 }
 
 absl::StatusOr<absl::optional<std::pair<std::string, cel::Handle<cel::Type>>>>

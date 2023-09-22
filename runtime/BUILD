@@ -150,3 +150,24 @@ cc_library(
     name = "runtime_options",
     hdrs = ["runtime_options.h"],
 )
+
+cc_library(
+    name = "type_registry",
+    srcs = ["type_registry.cc"],
+    hdrs = ["type_registry.h"],
+    deps = [
+        "//base:data",
+        "//base:handle",
+        "//base:memory",
+        "//internal:status_macros",
+        "//runtime/internal:composed_type_provider",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
+    ],
+)
