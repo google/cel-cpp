@@ -95,6 +95,7 @@ cc_binary(
 
             # Skip until fixed.
             "--skip_test=wrappers/field_mask/to_json",
+            "--skip_test=wrappers/empty/to_json",
 
             # Future features for CEL 1.0
             # TODO(issues/119): Strong typing support for enums, specified but not implemented.

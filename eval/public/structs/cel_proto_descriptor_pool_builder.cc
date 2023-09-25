@@ -20,6 +20,7 @@
 
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/duration.pb.h"
+#include "google/protobuf/empty.pb.h"
 #include "google/protobuf/field_mask.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
@@ -96,6 +97,8 @@ absl::Status AddStandardMessageTypesToDescriptorPool(
       AddOrValidateMessageType<google::protobuf::Value>(descriptor_pool));
   CEL_RETURN_IF_ERROR(
       AddOrValidateMessageType<google::protobuf::FieldMask>(descriptor_pool));
+  CEL_RETURN_IF_ERROR(
+      AddOrValidateMessageType<google::protobuf::Empty>(descriptor_pool));
   return absl::OkStatus();
 }
 
@@ -120,6 +123,7 @@ google::protobuf::FileDescriptorSet GetStandardMessageTypesFileDescriptorSet() {
   AddStandardMessageTypeToMap<google::protobuf::UInt64Value>(files);
   AddStandardMessageTypeToMap<google::protobuf::Value>(files);
   AddStandardMessageTypeToMap<google::protobuf::FieldMask>(files);
+  AddStandardMessageTypeToMap<google::protobuf::Empty>(files);
   google::protobuf::FileDescriptorSet fdset;
   for (const auto& [name, fdproto] : files) {
     *fdset.add_file() = fdproto;

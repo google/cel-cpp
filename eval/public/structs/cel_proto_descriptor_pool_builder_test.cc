@@ -109,6 +109,8 @@ TEST(DescriptorPoolUtilsTest, PopulatesEmptyDescriptorPool) {
             nullptr);
   EXPECT_NE(descriptor_pool.FindMessageTypeByName("google.protobuf.FieldMask"),
             nullptr);
+  EXPECT_NE(descriptor_pool.FindMessageTypeByName("google.protobuf.Empty"),
+            nullptr);
 }
 
 TEST(DescriptorPoolUtilsTest, AcceptsPreAddedStandardTypes) {
@@ -122,7 +124,8 @@ TEST(DescriptorPoolUtilsTest, AcceptsPreAddedStandardTypes) {
            "google.protobuf.ListValue", "google.protobuf.StringValue",
            "google.protobuf.Struct", "google.protobuf.Timestamp",
            "google.protobuf.UInt32Value", "google.protobuf.UInt64Value",
-           "google.protobuf.Value", "google.protobuf.FieldMask"}) {
+           "google.protobuf.Value", "google.protobuf.FieldMask",
+           "google.protobuf.Empty"}) {
     const google::protobuf::Descriptor* descriptor =
         google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
             proto_name);
@@ -170,13 +173,13 @@ TEST(DescriptorPoolUtilsTest, GetStandardMessageTypesFileDescriptorSet) {
   for (int i = 0; i < fdset.file_size(); ++i) {
     file_names.push_back(fdset.file(i).name());
   }
-  EXPECT_THAT(file_names,
-              UnorderedElementsAre("google/protobuf/any.proto",
-                                   "google/protobuf/struct.proto",
-                                   "google/protobuf/wrappers.proto",
-                                   "google/protobuf/timestamp.proto",
-                                   "google/protobuf/duration.proto",
-                                   "google/protobuf/field_mask.proto"));
+  EXPECT_THAT(
+      file_names,
+      UnorderedElementsAre(
+          "google/protobuf/any.proto", "google/protobuf/struct.proto",
+          "google/protobuf/wrappers.proto", "google/protobuf/timestamp.proto",
+          "google/protobuf/duration.proto", "google/protobuf/field_mask.proto",
+          "google/protobuf/empty.proto"));
 }
 
 }  // namespace
