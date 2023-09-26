@@ -171,3 +171,37 @@ cc_library(
         "@com_google_absl//absl/types:span",
     ],
 )
+
+cc_library(
+    name = "runtime",
+    hdrs = ["runtime.h"],
+    deps = [
+        ":activation_interface",
+        "//base:ast",
+        "//base:data",
+        "//base:handle",
+        "@com_google_absl//absl/functional:any_invocable",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_library(
+    name = "runtime_builder",
+    hdrs = ["runtime_builder.h"],
+    deps = [
+        ":function_registry",
+        ":runtime",
+        ":type_registry",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_library(
+    name = "managed_value_factory",
+    hdrs = ["managed_value_factory.h"],
+    deps = [
+        "//base:data",
+        "//base:memory",
+    ],
+)
