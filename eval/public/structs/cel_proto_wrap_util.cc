@@ -603,7 +603,14 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, Struct* json_
     return nullptr;
   }
   const CelMap& map = *value.MapOrDie();
-  const auto& keys = *map.ListKeys(arena).value();
+  absl::StatusOr<const CelList*> keys_or = map.ListKeys(arena);
+  if (!keys_or.ok()) {
+    // If map doesn't support listing keys, it can't pack into a Struct value.
+    // This will surface as a CEL error when the object creation expression
+    // fails.
+    return nullptr;
+  }
+  const CelList& keys = **keys_or;
   auto fields = json_struct->mutable_fields();
   for (int i = 0; i < keys.size(); i++) {
     auto k = keys.Get(arena, i);

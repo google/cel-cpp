@@ -835,6 +835,24 @@ TEST_F(CelProtoWrapperTest, WrapFailureStructBadValueType) {
   ExpectNotWrapped(cel_value, json);
 }
 
+class TestMap : public CelMapBuilder {
+ public:
+  absl::StatusOr<const CelList*> ListKeys() const override {
+    return absl::UnimplementedError("test");
+  }
+};
+
+TEST_F(CelProtoWrapperTest, WrapFailureStructListKeysUnimplemented) {
+  const std::string kField1 = "field1";
+  TestMap map;
+  ASSERT_OK(map.Add(CelValue::CreateString(CelValue::StringHolder(&kField1)),
+                    CelValue::CreateString(CelValue::StringHolder(&kField1))));
+
+  auto cel_value = CelValue::CreateMap(&map);
+  Value json;
+  ExpectNotWrapped(cel_value, json);
+}
+
 TEST_F(CelProtoWrapperTest, WrapFailureWrongType) {
   auto cel_value = CelValue::CreateNull();
   std::vector<const google::protobuf::Message*> wrong_types = {
