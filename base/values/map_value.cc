@@ -38,6 +38,22 @@ namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(MapValue);
 
+absl::Status MapValue::CheckKey(const Value& value) {
+  switch (value.kind()) {
+    case ValueKind::kBool:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kInt:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kUint:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kString:
+      return absl::OkStatus();
+    default:
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Invalid map key type: '", ValueKindToString(value.kind()), "'"));
+  }
+}
+
 #define CEL_INTERNAL_MAP_VALUE_DISPATCH(method, ...)                       \
   base_internal::Metadata::IsStoredInline(*this)                           \
       ? static_cast<const base_internal::LegacyMapValue&>(*this).method(   \

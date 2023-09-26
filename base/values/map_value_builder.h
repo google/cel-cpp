@@ -21,13 +21,13 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
 #include "absl/types/variant.h"
 #include "base/memory.h"
 #include "base/value_factory.h"
 #include "base/values/list_value_builder.h"
 #include "base/values/map_value.h"
-#include "internal/linked_hash_map.h"
 #include "internal/overloaded.h"
 #include "internal/status_macros.h"
 
@@ -65,6 +65,8 @@ class MapValueBuilderInterface {
   virtual size_t size() const = 0;
 
   virtual bool empty() const { return size() == 0; }
+
+  virtual void reserve(size_t size) {}
 
   virtual absl::StatusOr<Handle<MapValue>> Build() && = 0;
 
@@ -191,7 +193,7 @@ std::string ComposeMapValueDebugString(
 // represented as Value and not some C++ primitive.
 class DynamicMapValue final : public AbstractMapValue {
  public:
-  using storage_type = internal::LinkedHashMap<
+  using storage_type = absl::flat_hash_map<
       Handle<Value>, Handle<Value>, MapKeyHasher<Handle<Value>>,
       MapKeyEqualer<Handle<Value>>,
       Allocator<std::pair<const Handle<Value>, Handle<Value>>>>;
@@ -253,9 +255,10 @@ class StaticMapValue<K, void> final : public AbstractMapValue {
   using underlying_key_type = typename ValueTraits<K>::underlying_type;
   using key_type = std::conditional_t<std::is_void_v<underlying_key_type>,
                                       Handle<Value>, underlying_key_type>;
-  using hash_map_type = internal::LinkedHashMap<
-      key_type, Handle<Value>, MapKeyHasher<key_type>, MapKeyEqualer<key_type>,
-      Allocator<std::pair<const key_type, Handle<Value>>>>;
+  using hash_map_type =
+      absl::flat_hash_map<key_type, Handle<Value>, MapKeyHasher<key_type>,
+                          MapKeyEqualer<key_type>,
+                          Allocator<std::pair<const key_type, Handle<Value>>>>;
 
   StaticMapValue(Handle<MapType> type, hash_map_type storage)
       : AbstractMapValue(std::move(type)), storage_(std::move(storage)) {}
@@ -313,7 +316,7 @@ class StaticMapValue<void, V> final : public AbstractMapValue {
   using underlying_value_type = typename ValueTraits<V>::underlying_type;
   using value_type = std::conditional_t<std::is_void_v<underlying_value_type>,
                                         Handle<Value>, underlying_value_type>;
-  using hash_map_type = internal::LinkedHashMap<
+  using hash_map_type = absl::flat_hash_map<
       Handle<Value>, value_type, MapKeyHasher<Handle<Value>>,
       MapKeyEqualer<Handle<Value>>,
       Allocator<std::pair<const Handle<Value>, value_type>>>;
@@ -376,9 +379,9 @@ class StaticMapValue final : public AbstractMapValue {
   using value_type = std::conditional_t<std::is_void_v<underlying_value_type>,
                                         Handle<Value>, underlying_value_type>;
   using hash_map_type =
-      internal::LinkedHashMap<key_type, value_type, MapKeyHasher<key_type>,
-                              MapKeyEqualer<key_type>,
-                              Allocator<std::pair<const key_type, value_type>>>;
+      absl::flat_hash_map<key_type, value_type, MapKeyHasher<key_type>,
+                          MapKeyEqualer<key_type>,
+                          Allocator<std::pair<const key_type, value_type>>>;
 
   StaticMapValue(Handle<MapType> type, hash_map_type storage)
       : AbstractMapValue(std::move(type)), storage_(std::move(storage)) {}
@@ -533,6 +536,8 @@ class MapValueBuilderImpl<K, V, void, void> : public MapValueBuilderInterface {
 
   bool empty() const override { return storage_.empty(); }
 
+  void reserve(size_t size) override { storage_.reserve(size); }
+
   absl::StatusOr<Handle<MapValue>> Build() && override {
     CEL_ASSIGN_OR_RETURN(auto type,
                          ComposeMapType(value_factory(), std::move(type_)));
@@ -544,10 +549,9 @@ class MapValueBuilderImpl<K, V, void, void> : public MapValueBuilderInterface {
   ComposableMapType<typename ValueTraits<K>::type_type,
                     typename ValueTraits<V>::type_type>
       type_;
-  internal::LinkedHashMap<
-      Handle<Value>, Handle<Value>, MapKeyHasher<Handle<Value>>,
-      MapKeyEqualer<Handle<Value>>,
-      Allocator<std::pair<const Handle<Value>, Handle<Value>>>>
+  absl::flat_hash_map<Handle<Value>, Handle<Value>, MapKeyHasher<Handle<Value>>,
+                      MapKeyEqualer<Handle<Value>>,
+                      Allocator<std::pair<const Handle<Value>, Handle<Value>>>>
       storage_;
 };
 
@@ -617,6 +621,8 @@ class MapValueBuilderImpl<K, Value, void, void>
 
   bool empty() const override { return storage_.empty(); }
 
+  void reserve(size_t size) override { storage_.reserve(size); }
+
   absl::StatusOr<Handle<MapValue>> Build() && override {
     CEL_ASSIGN_OR_RETURN(
         auto type, value_factory().type_factory().CreateMapType(key_, value_));
@@ -627,10 +633,9 @@ class MapValueBuilderImpl<K, Value, void, void>
  private:
   Handle<typename ValueTraits<K>::type_type> key_;
   Handle<Type> value_;
-  internal::LinkedHashMap<
-      Handle<Value>, Handle<Value>, MapKeyHasher<Handle<Value>>,
-      MapKeyEqualer<Handle<Value>>,
-      Allocator<std::pair<const Handle<Value>, Handle<Value>>>>
+  absl::flat_hash_map<Handle<Value>, Handle<Value>, MapKeyHasher<Handle<Value>>,
+                      MapKeyEqualer<Handle<Value>>,
+                      Allocator<std::pair<const Handle<Value>, Handle<Value>>>>
       storage_;
 };
 
@@ -698,6 +703,8 @@ class MapValueBuilderImpl<Value, V, void, void>
 
   bool empty() const override { return storage_.empty(); }
 
+  void reserve(size_t size) override { storage_.reserve(size); }
+
   absl::StatusOr<Handle<MapValue>> Build() && override {
     CEL_ASSIGN_OR_RETURN(
         auto type, value_factory().type_factory().CreateMapType(key_, value_));
@@ -708,10 +715,9 @@ class MapValueBuilderImpl<Value, V, void, void>
  private:
   Handle<Type> key_;
   Handle<typename ValueTraits<V>::type_type> value_;
-  internal::LinkedHashMap<
-      Handle<Value>, Handle<Value>, MapKeyHasher<Handle<Value>>,
-      MapKeyEqualer<Handle<Value>>,
-      Allocator<std::pair<const Handle<Value>, Handle<Value>>>>
+  absl::flat_hash_map<Handle<Value>, Handle<Value>, MapKeyHasher<Handle<Value>>,
+                      MapKeyEqualer<Handle<Value>>,
+                      Allocator<std::pair<const Handle<Value>, Handle<Value>>>>
       storage_;
 };
 
@@ -797,6 +803,8 @@ class MapValueBuilderImpl<Value, V, void, UV>
 
   bool empty() const override { return storage_.empty(); }
 
+  void reserve(size_t size) override { storage_.reserve(size); }
+
   absl::StatusOr<Handle<MapValue>> Build() && override {
     CEL_ASSIGN_OR_RETURN(auto type,
                          ComposeMapType(value_factory(), std::move(type_)));
@@ -806,9 +814,9 @@ class MapValueBuilderImpl<Value, V, void, UV>
 
  private:
   ComposableMapType<Type, typename ValueTraits<V>::type_type> type_;
-  internal::LinkedHashMap<Handle<Value>, UV, MapKeyHasher<Handle<Value>>,
-                          MapKeyEqualer<Handle<Value>>,
-                          Allocator<std::pair<const Handle<Value>, UV>>>
+  absl::flat_hash_map<Handle<Value>, UV, MapKeyHasher<Handle<Value>>,
+                      MapKeyEqualer<Handle<Value>>,
+                      Allocator<std::pair<const Handle<Value>, UV>>>
       storage_;
 };
 
@@ -866,6 +874,8 @@ class MapValueBuilderImpl<Value, Value, void, void>
 
   bool empty() const override { return storage_.empty(); }
 
+  void reserve(size_t size) override { storage_.reserve(size); }
+
   absl::StatusOr<Handle<MapValue>> Build() && override {
     CEL_ASSIGN_OR_RETURN(auto type,
                          ComposeMapType(value_factory(), std::move(type_)));
@@ -875,10 +885,9 @@ class MapValueBuilderImpl<Value, Value, void, void>
 
  private:
   ComposableMapType<Type, Type> type_;
-  internal::LinkedHashMap<
-      Handle<Value>, Handle<Value>, MapKeyHasher<Handle<Value>>,
-      MapKeyEqualer<Handle<Value>>,
-      Allocator<std::pair<const Handle<Value>, Handle<Value>>>>
+  absl::flat_hash_map<Handle<Value>, Handle<Value>, MapKeyHasher<Handle<Value>>,
+                      MapKeyEqualer<Handle<Value>>,
+                      Allocator<std::pair<const Handle<Value>, Handle<Value>>>>
       storage_;
 };
 
@@ -967,6 +976,8 @@ class MapValueBuilderImpl<K, V, UK, void> : public MapValueBuilderInterface {
 
   bool empty() const override { return storage_.empty(); }
 
+  void reserve(size_t size) override { storage_.reserve(size); }
+
   absl::StatusOr<Handle<MapValue>> Build() && override {
     CEL_ASSIGN_OR_RETURN(auto type,
                          ComposeMapType(value_factory(), std::move(type_)));
@@ -978,9 +989,8 @@ class MapValueBuilderImpl<K, V, UK, void> : public MapValueBuilderInterface {
   ComposableMapType<typename ValueTraits<K>::type_type,
                     typename ValueTraits<V>::type_type>
       type_;
-  internal::LinkedHashMap<UK, Handle<Value>, MapKeyHasher<UK>,
-                          MapKeyEqualer<UK>,
-                          Allocator<std::pair<const UK, Handle<Value>>>>
+  absl::flat_hash_map<UK, Handle<Value>, MapKeyHasher<UK>, MapKeyEqualer<UK>,
+                      Allocator<std::pair<const UK, Handle<Value>>>>
       storage_;
 };
 
@@ -1069,6 +1079,8 @@ class MapValueBuilderImpl<K, V, void, UV> : public MapValueBuilderInterface {
 
   bool empty() const override { return storage_.empty(); }
 
+  void reserve(size_t size) override { storage_.reserve(size); }
+
   absl::StatusOr<Handle<MapValue>> Build() && override {
     CEL_ASSIGN_OR_RETURN(auto type,
                          ComposeMapType(value_factory(), std::move(type_)));
@@ -1080,9 +1092,9 @@ class MapValueBuilderImpl<K, V, void, UV> : public MapValueBuilderInterface {
   ComposableMapType<typename ValueTraits<K>::type_type,
                     typename ValueTraits<V>::type_type>
       type_;
-  internal::LinkedHashMap<Handle<Value>, UV, MapKeyHasher<Handle<Value>>,
-                          MapKeyEqualer<Handle<Value>>,
-                          Allocator<std::pair<const Handle<Value>, UV>>>
+  absl::flat_hash_map<Handle<Value>, UV, MapKeyHasher<Handle<Value>>,
+                      MapKeyEqualer<Handle<Value>>,
+                      Allocator<std::pair<const Handle<Value>, UV>>>
       storage_;
 };
 
@@ -1196,6 +1208,8 @@ class MapValueBuilderImpl : public MapValueBuilderInterface {
 
   bool empty() const override { return storage_.empty(); }
 
+  void reserve(size_t size) override { storage_.reserve(size); }
+
   absl::StatusOr<Handle<MapValue>> Build() && override {
     CEL_ASSIGN_OR_RETURN(auto type,
                          ComposeMapType(value_factory(), std::move(type_)));
@@ -1207,8 +1221,8 @@ class MapValueBuilderImpl : public MapValueBuilderInterface {
   ComposableMapType<typename ValueTraits<K>::type_type,
                     typename ValueTraits<V>::type_type>
       type_;
-  internal::LinkedHashMap<UK, UV, MapKeyHasher<UK>, MapKeyEqualer<UK>,
-                          Allocator<std::pair<const UK, UV>>>
+  absl::flat_hash_map<UK, UV, MapKeyHasher<UK>, MapKeyEqualer<UK>,
+                      Allocator<std::pair<const UK, UV>>>
       storage_;
 };
 

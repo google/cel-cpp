@@ -21,6 +21,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -43,6 +44,10 @@ class MapValueBuilderInterface;
 class MapType : public Type,
                 public base_internal::EnableHandleFromThis<MapType, MapType> {
  public:
+  /** Checks whether `type` is valid for use as a map key. Returns
+   * `INVALID_ARGUMENT` is it is not, otherwise `OK`. */
+  static absl::Status CheckKey(const Type& type);
+
   static constexpr TypeKind kKind = TypeKind::kMap;
 
   static bool Is(const Type& type) { return type.kind() == kKind; }

@@ -14,6 +14,11 @@
 
 #include "base/values/map_value_builder.h"
 
+#include <string>
+#include <vector>
+
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "base/memory.h"
 #include "base/type_factory.h"
@@ -23,11 +28,52 @@
 namespace cel {
 namespace {
 
+using testing::AnyOfArray;
 using testing::IsFalse;
 using testing::IsTrue;
 using testing::NotNull;
 using testing::WhenDynamicCastTo;
 using cel::internal::IsOkAndHolds;
+
+std::vector<std::string> MakeListDebugStringFor(absl::string_view first,
+                                                absl::string_view second,
+                                                absl::string_view third) {
+  std::vector<std::string> debug_strings;
+  debug_strings.reserve(6);
+  debug_strings.push_back(
+      absl::StrCat("[", first, ", ", second, ", ", third, "]"));
+  debug_strings.push_back(
+      absl::StrCat("[", first, ", ", third, ", ", second, "]"));
+  debug_strings.push_back(
+      absl::StrCat("[", second, ", ", first, ", ", third, "]"));
+  debug_strings.push_back(
+      absl::StrCat("[", second, ", ", third, ", ", first, "]"));
+  debug_strings.push_back(
+      absl::StrCat("[", third, ", ", first, ", ", second, "]"));
+  debug_strings.push_back(
+      absl::StrCat("[", third, ", ", second, ", ", first, "]"));
+  return debug_strings;
+}
+
+std::vector<std::string> MakeMapDebugStringFor(absl::string_view first,
+                                               absl::string_view second,
+                                               absl::string_view third) {
+  std::vector<std::string> debug_strings;
+  debug_strings.reserve(6);
+  debug_strings.push_back(
+      absl::StrCat("{", first, ", ", second, ", ", third, "}"));
+  debug_strings.push_back(
+      absl::StrCat("{", first, ", ", third, ", ", second, "}"));
+  debug_strings.push_back(
+      absl::StrCat("{", second, ", ", first, ", ", third, "}"));
+  debug_strings.push_back(
+      absl::StrCat("{", second, ", ", third, ", ", first, "}"));
+  debug_strings.push_back(
+      absl::StrCat("{", third, ", ", first, ", ", second, "}"));
+  debug_strings.push_back(
+      absl::StrCat("{", third, ", ", second, ", ", first, "}"));
+  return debug_strings;
+}
 
 TEST(MapValueBuilder, UnspecializedUnspecialized) {
   TypeFactory type_factory(MemoryManager::Global());
@@ -72,8 +118,9 @@ TEST(MapValueBuilder, UnspecializedUnspecialized) {
   EXPECT_TRUE(map_builder.Has(key));
   EXPECT_FALSE(map_builder.empty());
   EXPECT_EQ(map_builder.size(), 3);
-  EXPECT_EQ(map_builder.DebugString(),
-            "{\"\": b\"\", \"foo\": b\"\", \"bar\": b\"baz\"}");
+  EXPECT_THAT(map_builder.DebugString(),
+              AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
+                                               "\"bar\": b\"baz\"")));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
@@ -86,12 +133,14 @@ TEST(MapValueBuilder, UnspecializedUnspecialized) {
   ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("bar")));
   EXPECT_TRUE((*entry)->Is<BytesValue>());
   EXPECT_EQ((*entry).As<BytesValue>()->ToString(), "baz");
-  EXPECT_EQ(map->DebugString(),
-            "{\"\": b\"\", \"foo\": b\"\", \"bar\": b\"baz\"}");
+  EXPECT_THAT(map->DebugString(),
+              AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
+                                               "\"bar\": b\"baz\"")));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(keys->size(), 3);
-  EXPECT_EQ(keys->DebugString(), "[\"\", \"foo\", \"bar\"]");
+  EXPECT_THAT(keys->DebugString(),
+              AnyOfArray(MakeListDebugStringFor("\"\"", "\"foo\"", "\"bar\"")));
 }
 
 TEST(MapValueBuilder, UnspecializedGeneric) {
@@ -137,8 +186,9 @@ TEST(MapValueBuilder, UnspecializedGeneric) {
   EXPECT_TRUE(map_builder.Has(key));
   EXPECT_FALSE(map_builder.empty());
   EXPECT_EQ(map_builder.size(), 3);
-  EXPECT_EQ(map_builder.DebugString(),
-            "{\"\": b\"\", \"foo\": b\"\", \"bar\": b\"baz\"}");
+  EXPECT_THAT(map_builder.DebugString(),
+              AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
+                                               "\"bar\": b\"baz\"")));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
@@ -151,12 +201,14 @@ TEST(MapValueBuilder, UnspecializedGeneric) {
   ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("bar")));
   EXPECT_TRUE((*entry)->Is<BytesValue>());
   EXPECT_EQ((*entry).As<BytesValue>()->ToString(), "baz");
-  EXPECT_EQ(map->DebugString(),
-            "{\"\": b\"\", \"foo\": b\"\", \"bar\": b\"baz\"}");
+  EXPECT_THAT(map->DebugString(),
+              AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
+                                               "\"bar\": b\"baz\"")));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(keys->size(), 3);
-  EXPECT_EQ(keys->DebugString(), "[\"\", \"foo\", \"bar\"]");
+  EXPECT_THAT(keys->DebugString(),
+              AnyOfArray(MakeListDebugStringFor("\"\"", "\"foo\"", "\"bar\"")));
 }
 
 TEST(MapValueBuilder, GenericUnspecialized) {
@@ -202,8 +254,9 @@ TEST(MapValueBuilder, GenericUnspecialized) {
   EXPECT_TRUE(map_builder.Has(key));
   EXPECT_FALSE(map_builder.empty());
   EXPECT_EQ(map_builder.size(), 3);
-  EXPECT_EQ(map_builder.DebugString(),
-            "{\"\": b\"\", \"foo\": b\"\", \"bar\": b\"baz\"}");
+  EXPECT_THAT(map_builder.DebugString(),
+              AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
+                                               "\"bar\": b\"baz\"")));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
@@ -216,12 +269,14 @@ TEST(MapValueBuilder, GenericUnspecialized) {
   ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("bar")));
   EXPECT_TRUE((*entry)->Is<BytesValue>());
   EXPECT_EQ((*entry).As<BytesValue>()->ToString(), "baz");
-  EXPECT_EQ(map->DebugString(),
-            "{\"\": b\"\", \"foo\": b\"\", \"bar\": b\"baz\"}");
+  EXPECT_THAT(map->DebugString(),
+              AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
+                                               "\"bar\": b\"baz\"")));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(keys->size(), 3);
-  EXPECT_EQ(keys->DebugString(), "[\"\", \"foo\", \"bar\"]");
+  EXPECT_THAT(keys->DebugString(),
+              AnyOfArray(MakeListDebugStringFor("\"\"", "\"foo\"", "\"bar\"")));
 }
 
 TEST(MapValueBuilder, GenericGeneric) {
@@ -267,8 +322,9 @@ TEST(MapValueBuilder, GenericGeneric) {
   EXPECT_TRUE(map_builder.Has(key));
   EXPECT_FALSE(map_builder.empty());
   EXPECT_EQ(map_builder.size(), 3);
-  EXPECT_EQ(map_builder.DebugString(),
-            "{\"\": b\"\", \"foo\": b\"\", \"bar\": b\"baz\"}");
+  EXPECT_THAT(map_builder.DebugString(),
+              AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
+                                               "\"bar\": b\"baz\"")));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
@@ -281,12 +337,14 @@ TEST(MapValueBuilder, GenericGeneric) {
   ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("bar")));
   EXPECT_TRUE((*entry)->Is<BytesValue>());
   EXPECT_EQ((*entry).As<BytesValue>()->ToString(), "baz");
-  EXPECT_EQ(map->DebugString(),
-            "{\"\": b\"\", \"foo\": b\"\", \"bar\": b\"baz\"}");
+  EXPECT_THAT(map->DebugString(),
+              AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
+                                               "\"bar\": b\"baz\"")));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(keys->size(), 3);
-  EXPECT_EQ(keys->DebugString(), "[\"\", \"foo\", \"bar\"]");
+  EXPECT_THAT(keys->DebugString(),
+              AnyOfArray(MakeListDebugStringFor("\"\"", "\"foo\"", "\"bar\"")));
 }
 
 TEST(MapValueBuilder, UnspecializedSpecialized) {
@@ -331,7 +389,9 @@ TEST(MapValueBuilder, UnspecializedSpecialized) {
   EXPECT_TRUE(map_builder.Has(key));
   EXPECT_FALSE(map_builder.empty());
   EXPECT_EQ(map_builder.size(), 3);
-  EXPECT_EQ(map_builder.DebugString(), "{\"\": 0, \"foo\": 0, \"bar\": 1}");
+  EXPECT_THAT(
+      map_builder.DebugString(),
+      AnyOfArray(MakeMapDebugStringFor("\"\": 0", "\"foo\": 0", "\"bar\": 1")));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
@@ -344,11 +404,13 @@ TEST(MapValueBuilder, UnspecializedSpecialized) {
   ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("bar")));
   EXPECT_TRUE((*entry)->Is<IntValue>());
   EXPECT_EQ((*entry).As<IntValue>()->value(), 1);
-  EXPECT_EQ(map->DebugString(), "{\"\": 0, \"foo\": 0, \"bar\": 1}");
+  EXPECT_THAT(map->DebugString(), AnyOfArray(MakeMapDebugStringFor(
+                                      "\"\": 0", "\"foo\": 0", "\"bar\": 1")));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(keys->size(), 3);
-  EXPECT_EQ(keys->DebugString(), "[\"\", \"foo\", \"bar\"]");
+  EXPECT_THAT(keys->DebugString(),
+              AnyOfArray(MakeListDebugStringFor("\"\"", "\"foo\"", "\"bar\"")));
 }
 
 TEST(MapValueBuilder, GenericSpecialized) {
@@ -393,7 +455,9 @@ TEST(MapValueBuilder, GenericSpecialized) {
   EXPECT_TRUE(map_builder.Has(key));
   EXPECT_FALSE(map_builder.empty());
   EXPECT_EQ(map_builder.size(), 3);
-  EXPECT_EQ(map_builder.DebugString(), "{\"\": 0, \"foo\": 0, \"bar\": 1}");
+  EXPECT_THAT(
+      map_builder.DebugString(),
+      AnyOfArray(MakeMapDebugStringFor("\"\": 0", "\"foo\": 0", "\"bar\": 1")));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
@@ -406,11 +470,13 @@ TEST(MapValueBuilder, GenericSpecialized) {
   ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("bar")));
   EXPECT_TRUE((*entry)->Is<IntValue>());
   EXPECT_EQ((*entry).As<IntValue>()->value(), 1);
-  EXPECT_EQ(map->DebugString(), "{\"\": 0, \"foo\": 0, \"bar\": 1}");
+  EXPECT_THAT(map->DebugString(), AnyOfArray(MakeMapDebugStringFor(
+                                      "\"\": 0", "\"foo\": 0", "\"bar\": 1")));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(keys->size(), 3);
-  EXPECT_EQ(keys->DebugString(), "[\"\", \"foo\", \"bar\"]");
+  EXPECT_THAT(keys->DebugString(),
+              AnyOfArray(MakeListDebugStringFor("\"\"", "\"foo\"", "\"bar\"")));
 }
 
 TEST(MapValueBuilder, SpecializedUnspecialized) {
@@ -455,7 +521,9 @@ TEST(MapValueBuilder, SpecializedUnspecialized) {
   EXPECT_TRUE(map_builder.Has(key));
   EXPECT_FALSE(map_builder.empty());
   EXPECT_EQ(map_builder.size(), 3);
-  EXPECT_EQ(map_builder.DebugString(), "{0: \"\", 1: \"\", 2: \"foo\"}");
+  EXPECT_THAT(
+      map_builder.DebugString(),
+      AnyOfArray(MakeMapDebugStringFor("0: \"\"", "1: \"\"", "2: \"foo\"")));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
@@ -468,11 +536,13 @@ TEST(MapValueBuilder, SpecializedUnspecialized) {
   ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key(2)));
   EXPECT_TRUE((*entry)->Is<StringValue>());
   EXPECT_EQ((*entry).As<StringValue>()->ToString(), "foo");
-  EXPECT_EQ(map->DebugString(), "{0: \"\", 1: \"\", 2: \"foo\"}");
+  EXPECT_THAT(map->DebugString(), AnyOfArray(MakeMapDebugStringFor(
+                                      "0: \"\"", "1: \"\"", "2: \"foo\"")));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(keys->size(), 3);
-  EXPECT_EQ(keys->DebugString(), "[0, 1, 2]");
+  EXPECT_THAT(keys->DebugString(),
+              AnyOfArray(MakeListDebugStringFor("0", "1", "2")));
 }
 
 TEST(MapValueBuilder, SpecializedGeneric) {
@@ -517,7 +587,9 @@ TEST(MapValueBuilder, SpecializedGeneric) {
   EXPECT_TRUE(map_builder.Has(key));
   EXPECT_FALSE(map_builder.empty());
   EXPECT_EQ(map_builder.size(), 3);
-  EXPECT_EQ(map_builder.DebugString(), "{0: \"\", 1: \"\", 2: \"foo\"}");
+  EXPECT_THAT(
+      map_builder.DebugString(),
+      AnyOfArray(MakeMapDebugStringFor("0: \"\"", "1: \"\"", "2: \"foo\"")));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
@@ -530,20 +602,23 @@ TEST(MapValueBuilder, SpecializedGeneric) {
   ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key(2)));
   EXPECT_TRUE((*entry)->Is<StringValue>());
   EXPECT_EQ((*entry).As<StringValue>()->ToString(), "foo");
-  EXPECT_EQ(map->DebugString(), "{0: \"\", 1: \"\", 2: \"foo\"}");
+  EXPECT_THAT(map->DebugString(), AnyOfArray(MakeMapDebugStringFor(
+                                      "0: \"\"", "1: \"\"", "2: \"foo\"")));
 }
 
 template <typename Key, typename Value, typename GetKey, typename GetValue,
           typename MakeKey, typename MakeValue>
 void TestMapBuilder(GetKey get_key, GetValue get_value, MakeKey make_key1,
                     MakeKey make_key2, MakeKey make_key3, MakeValue make_value1,
-                    MakeValue make_value2, absl::string_view debug_string,
-                    absl::string_view keys_debug_string) {
+                    MakeValue make_value2,
+                    const std::vector<std::string>& debug_string,
+                    const std::vector<std::string>& keys_debug_string) {
   TypeFactory type_factory(MemoryManager::Global());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto map_builder = MapValueBuilder<Key, Value>(
       value_factory, (type_factory.*get_key)(), (type_factory.*get_value)());
+  map_builder.reserve(3);
   auto key = make_key1(value_factory);
   auto value = make_value1(value_factory);
   EXPECT_THAT(map_builder.Update(key, value),
@@ -575,7 +650,7 @@ void TestMapBuilder(GetKey get_key, GetValue get_value, MakeKey make_key1,
   EXPECT_TRUE(map_builder.Has(key));
   EXPECT_FALSE(map_builder.empty());
   EXPECT_EQ(map_builder.size(), 3);
-  EXPECT_EQ(map_builder.DebugString(), debug_string);
+  EXPECT_THAT(map_builder.DebugString(), AnyOfArray(debug_string));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());
   EXPECT_EQ(map->size(), 3);
@@ -593,19 +668,11 @@ void TestMapBuilder(GetKey get_key, GetValue get_value, MakeKey make_key1,
   EXPECT_TRUE((*entry)->template Is<Value>());
   EXPECT_EQ(*((*entry).template As<Value>()),
             *((make_value2(value_factory)).template As<Value>()));
-  EXPECT_EQ(map->DebugString(), debug_string);
+  EXPECT_THAT(map->DebugString(), AnyOfArray(debug_string));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(keys->size(), 3);
-  ASSERT_OK_AND_ASSIGN(auto element, keys->Get(value_factory, 0));
-  EXPECT_EQ((*element).template As<Key>(), (*key).template As<Key>());
-  ASSERT_OK_AND_ASSIGN(element, keys->Get(value_factory, 1));
-  EXPECT_EQ((*element).template As<Key>(),
-            (*make_key2(value_factory)).template As<Key>());
-  ASSERT_OK_AND_ASSIGN(element, keys->Get(value_factory, 2));
-  EXPECT_EQ((*element).template As<Key>(),
-            (*make_key3(value_factory)).template As<Key>());
-  EXPECT_EQ(keys->DebugString(), keys_debug_string);
+  EXPECT_THAT(keys->DebugString(), AnyOfArray(keys_debug_string));
 }
 
 template <bool C>
@@ -645,35 +712,42 @@ TEST(MapValueBuilder, IntBool) {
   TestMapBuilder<IntValue, BoolValue>(
       &TypeFactory::GetIntType, &TypeFactory::GetBoolType, MakeIntValue<0>,
       MakeIntValue<1>, MakeIntValue<2>, MakeBoolValue<false>,
-      MakeBoolValue<true>, "{0: false, 1: false, 2: true}", "[0, 1, 2]");
+      MakeBoolValue<true>,
+      MakeMapDebugStringFor("0: false", "1: false", "2: true"),
+      MakeListDebugStringFor("0", "1", "2"));
 }
 
 TEST(MapValueBuilder, IntInt) {
   TestMapBuilder<IntValue, IntValue>(
       &TypeFactory::GetIntType, &TypeFactory::GetIntType, MakeIntValue<0>,
       MakeIntValue<1>, MakeIntValue<2>, MakeIntValue<0>, MakeIntValue<1>,
-      "{0: 0, 1: 0, 2: 1}", "[0, 1, 2]");
+      MakeMapDebugStringFor("0: 0", "1: 0", "2: 1"),
+      MakeListDebugStringFor("0", "1", "2"));
 }
 
 TEST(MapValueBuilder, IntUint) {
   TestMapBuilder<IntValue, UintValue>(
       &TypeFactory::GetIntType, &TypeFactory::GetUintType, MakeIntValue<0>,
       MakeIntValue<1>, MakeIntValue<2>, MakeUintValue<0>, MakeUintValue<1>,
-      "{0: 0u, 1: 0u, 2: 1u}", "[0, 1, 2]");
+      MakeMapDebugStringFor("0: 0u", "1: 0u", "2: 1u"),
+      MakeListDebugStringFor("0", "1", "2"));
 }
 
 TEST(MapValueBuilder, IntDouble) {
   TestMapBuilder<IntValue, DoubleValue>(
       &TypeFactory::GetIntType, &TypeFactory::GetDoubleType, MakeIntValue<0>,
       MakeIntValue<1>, MakeIntValue<2>, MakeDoubleValue(0.0),
-      MakeDoubleValue(1.0), "{0: 0.0, 1: 0.0, 2: 1.0}", "[0, 1, 2]");
+      MakeDoubleValue(1.0), MakeMapDebugStringFor("0: 0.0", "1: 0.0", "2: 1.0"),
+      MakeListDebugStringFor("0", "1", "2"));
 }
 
 TEST(MapValueBuilder, IntDuration) {
   TestMapBuilder<IntValue, DurationValue>(
       &TypeFactory::GetIntType, &TypeFactory::GetDurationType, MakeIntValue<0>,
       MakeIntValue<1>, MakeIntValue<2>, MakeDurationValue(absl::ZeroDuration()),
-      MakeDurationValue(absl::Seconds(1)), "{0: 0, 1: 0, 2: 1s}", "[0, 1, 2]");
+      MakeDurationValue(absl::Seconds(1)),
+      MakeMapDebugStringFor("0: 0", "1: 0", "2: 1s"),
+      MakeListDebugStringFor("0", "1", "2"));
 }
 
 TEST(MapValueBuilder, IntTimestamp) {
@@ -681,37 +755,44 @@ TEST(MapValueBuilder, IntTimestamp) {
       &TypeFactory::GetIntType, &TypeFactory::GetTimestampType, MakeIntValue<0>,
       MakeIntValue<1>, MakeIntValue<2>, MakeTimestampValue(absl::UnixEpoch()),
       MakeTimestampValue(absl::UnixEpoch() + absl::Seconds(1)),
-      "{0: 1970-01-01T00:00:00Z, 1: 1970-01-01T00:00:00Z, 2: "
-      "1970-01-01T00:00:01Z}",
-      "[0, 1, 2]");
+      MakeMapDebugStringFor("0: 1970-01-01T00:00:00Z",
+                            "1: 1970-01-01T00:00:00Z",
+                            "2: 1970-01-01T00:00:01Z"),
+      MakeListDebugStringFor("0", "1", "2"));
 }
 
 TEST(MapValueBuilder, UintBool) {
   TestMapBuilder<UintValue, BoolValue>(
       &TypeFactory::GetUintType, &TypeFactory::GetBoolType, MakeUintValue<0>,
       MakeUintValue<1>, MakeUintValue<2>, MakeBoolValue<false>,
-      MakeBoolValue<true>, "{0u: false, 1u: false, 2u: true}", "[0u, 1u, 2u]");
+      MakeBoolValue<true>,
+      MakeMapDebugStringFor("0u: false", "1u: false", "2u: true"),
+      MakeListDebugStringFor("0u", "1u", "2u"));
 }
 
 TEST(MapValueBuilder, UintInt) {
   TestMapBuilder<UintValue, IntValue>(
       &TypeFactory::GetUintType, &TypeFactory::GetIntType, MakeUintValue<0>,
       MakeUintValue<1>, MakeUintValue<2>, MakeIntValue<0>, MakeIntValue<1>,
-      "{0u: 0, 1u: 0, 2u: 1}", "[0u, 1u, 2u]");
+      MakeMapDebugStringFor("0u: 0", "1u: 0", "2u: 1"),
+      MakeListDebugStringFor("0u", "1u", "2u"));
 }
 
 TEST(MapValueBuilder, UintUint) {
   TestMapBuilder<UintValue, UintValue>(
       &TypeFactory::GetUintType, &TypeFactory::GetUintType, MakeUintValue<0>,
       MakeUintValue<1>, MakeUintValue<2>, MakeUintValue<0>, MakeUintValue<1>,
-      "{0u: 0u, 1u: 0u, 2u: 1u}", "[0u, 1u, 2u]");
+      MakeMapDebugStringFor("0u: 0u", "1u: 0u", "2u: 1u"),
+      MakeListDebugStringFor("0u", "1u", "2u"));
 }
 
 TEST(MapValueBuilder, UintDouble) {
   TestMapBuilder<UintValue, DoubleValue>(
       &TypeFactory::GetUintType, &TypeFactory::GetDoubleType, MakeUintValue<0>,
       MakeUintValue<1>, MakeUintValue<2>, MakeDoubleValue(0.0),
-      MakeDoubleValue(1.0), "{0u: 0.0, 1u: 0.0, 2u: 1.0}", "[0u, 1u, 2u]");
+      MakeDoubleValue(1.0),
+      MakeMapDebugStringFor("0u: 0.0", "1u: 0.0", "2u: 1.0"),
+      MakeListDebugStringFor("0u", "1u", "2u"));
 }
 
 TEST(MapValueBuilder, UintDuration) {
@@ -719,8 +800,9 @@ TEST(MapValueBuilder, UintDuration) {
       &TypeFactory::GetUintType, &TypeFactory::GetDurationType,
       MakeUintValue<0>, MakeUintValue<1>, MakeUintValue<2>,
       MakeDurationValue(absl::ZeroDuration()),
-      MakeDurationValue(absl::Seconds(1)), "{0u: 0, 1u: 0, 2u: 1s}",
-      "[0u, 1u, 2u]");
+      MakeDurationValue(absl::Seconds(1)),
+      MakeMapDebugStringFor("0u: 0", "1u: 0", "2u: 1s"),
+      MakeListDebugStringFor("0u", "1u", "2u"));
 }
 
 TEST(MapValueBuilder, UintTimestamp) {
@@ -729,9 +811,10 @@ TEST(MapValueBuilder, UintTimestamp) {
       MakeUintValue<0>, MakeUintValue<1>, MakeUintValue<2>,
       MakeTimestampValue(absl::UnixEpoch()),
       MakeTimestampValue(absl::UnixEpoch() + absl::Seconds(1)),
-      "{0u: 1970-01-01T00:00:00Z, 1u: 1970-01-01T00:00:00Z, 2u: "
-      "1970-01-01T00:00:01Z}",
-      "[0u, 1u, 2u]");
+      MakeMapDebugStringFor("0u: 1970-01-01T00:00:00Z",
+                            "1u: 1970-01-01T00:00:00Z",
+                            "2u: 1970-01-01T00:00:01Z"),
+      MakeListDebugStringFor("0u", "1u", "2u"));
 }
 
 template <typename I, typename K, typename V>

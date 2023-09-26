@@ -17,6 +17,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
@@ -41,6 +42,24 @@ using internal::ProtoWireDecoder;
 using internal::ProtoWireType;
 
 }  // namespace
+
+absl::Status MapType::CheckKey(const Type& type) {
+  switch (type.kind()) {
+    case TypeKind::kDyn:
+      ABSL_FALLTHROUGH_INTENDED;
+    case TypeKind::kBool:
+      ABSL_FALLTHROUGH_INTENDED;
+    case TypeKind::kInt:
+      ABSL_FALLTHROUGH_INTENDED;
+    case TypeKind::kUint:
+      ABSL_FALLTHROUGH_INTENDED;
+    case TypeKind::kString:
+      return absl::OkStatus();
+    default:
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Invalid map key type: '", TypeKindToString(type.kind()), "'"));
+  }
+}
 
 CEL_INTERNAL_TYPE_IMPL(MapType);
 

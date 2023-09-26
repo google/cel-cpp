@@ -22,6 +22,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "base/handle.h"
@@ -50,6 +51,10 @@ class MapValue : public Value {
   using BuilderInterface = MapValueBuilderInterface;
   template <typename K, typename V>
   using Builder = MapValueBuilder<K, V>;
+
+  /** Checks whether `value` is valid for use as a map key. Returns
+   * `INVALID_ARGUMENT` is it is not, otherwise `OK`. */
+  static absl::Status CheckKey(const Value& value);
 
   static constexpr ValueKind kKind = ValueKind::kMap;
 

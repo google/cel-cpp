@@ -36,6 +36,7 @@ namespace {
 
 using testing::ElementsAre;
 using testing::Eq;
+using cel::internal::IsOk;
 using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
@@ -596,6 +597,23 @@ TEST_P(StructTypeTest, FindField) {
 }
 
 INSTANTIATE_TEST_SUITE_P(StructTypeTest, StructTypeTest,
+                         base_internal::MemoryManagerTestModeAll(),
+                         base_internal::MemoryManagerTestModeName);
+
+class MapTypeTest : public TypeTest {};
+
+TEST_P(MapTypeTest, CheckKey) {
+  TypeFactory type_factory(memory_manager());
+  EXPECT_THAT(MapType::CheckKey(*type_factory.GetDynType()), IsOk());
+  EXPECT_THAT(MapType::CheckKey(*type_factory.GetBoolType()), IsOk());
+  EXPECT_THAT(MapType::CheckKey(*type_factory.GetIntType()), IsOk());
+  EXPECT_THAT(MapType::CheckKey(*type_factory.GetUintType()), IsOk());
+  EXPECT_THAT(MapType::CheckKey(*type_factory.GetStringType()), IsOk());
+  EXPECT_THAT(MapType::CheckKey(*type_factory.GetDoubleType()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+INSTANTIATE_TEST_SUITE_P(MapTypeTest, MapTypeTest,
                          base_internal::MemoryManagerTestModeAll(),
                          base_internal::MemoryManagerTestModeName);
 

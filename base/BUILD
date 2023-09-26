@@ -187,7 +187,6 @@ cc_library(
         "//common:any",
         "//common:json",
         "//internal:casts",
-        "//internal:linked_hash_map",
         "//internal:no_destructor",
         "//internal:number",
         "//internal:overloaded",

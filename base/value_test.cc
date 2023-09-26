@@ -52,6 +52,7 @@ namespace {
 using testing::Eq;
 using testing::IsEmpty;
 using testing::VariantWith;
+using cel::internal::IsOk;
 using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
@@ -2859,6 +2860,19 @@ TEST_P(ValueTest, Map) {
 }
 
 using MapValueTest = ValueTest;
+
+TEST_P(MapValueTest, CheckKeyType) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  EXPECT_THAT(MapValue::CheckKey(*value_factory.CreateBoolValue(false)),
+              IsOk());
+  EXPECT_THAT(MapValue::CheckKey(*value_factory.CreateIntValue(0)), IsOk());
+  EXPECT_THAT(MapValue::CheckKey(*value_factory.CreateUintValue(0)), IsOk());
+  EXPECT_THAT(MapValue::CheckKey(*value_factory.GetStringValue()), IsOk());
+  EXPECT_THAT(MapValue::CheckKey(*value_factory.CreateDoubleValue(0.0)),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
 
 TEST_P(MapValueTest, DebugString) {
   TypeFactory type_factory(memory_manager());
