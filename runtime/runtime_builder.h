@@ -21,9 +21,13 @@
 #include "absl/status/statusor.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime.h"
+#include "runtime/runtime_options.h"
 #include "runtime/type_registry.h"
 
 namespace cel {
+
+class RuntimeBuilder;
+RuntimeBuilder CreateRuntimeBuilder(const RuntimeOptions&);
 
 // RuntimeBuilder provides mutable accessors to configure a new runtime.
 //
@@ -49,6 +53,8 @@ class RuntimeBuilder {
   }
 
  private:
+  friend RuntimeBuilder CreateRuntimeBuilder(const RuntimeOptions&);
+
   // Constructor for a new runtime builder.
   //
   // It's assumed that the type registry and function registry are managed by

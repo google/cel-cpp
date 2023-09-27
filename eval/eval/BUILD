@@ -1,3 +1,17 @@
+# Copyright 2017 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # This package contains implementation of expression evaluator
 # internals.
 package(default_visibility = ["//visibility:public"])
@@ -23,12 +37,17 @@ cc_library(
         "//base:memory",
         "//internal:rtti",
         "//internal:status_macros",
+        "//runtime",
         "//runtime:activation_interface",
+        "//runtime:managed_value_factory",
         "//runtime:runtime_options",
         "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/utility",
     ],
 )
 
@@ -46,8 +65,10 @@ cc_library(
         "//eval/internal:adapter_activation_impl",
         "//eval/internal:interop",
         "//eval/public:cel_expression",
+        "//eval/public:cel_value",
         "//extensions/protobuf:memory_manager",
         "@com_google_absl//absl/status",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

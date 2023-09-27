@@ -14,6 +14,7 @@
 
 #include "eval/eval/cel_expression_flat_impl.h"
 
+#include <cstdint>
 #include <memory>
 
 #include "absl/status/status.h"
@@ -24,7 +25,9 @@
 #include "eval/internal/adapter_activation_impl.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_expression.h"
+#include "eval/public/cel_value.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 namespace {

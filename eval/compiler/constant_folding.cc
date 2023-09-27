@@ -1,3 +1,17 @@
+// Copyright 2019 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "eval/compiler/constant_folding.h"
 
 #include <cstdint>
@@ -118,7 +132,6 @@ class ConstantFoldingExtension : public ProgramOptimizer {
   google::protobuf::Arena* arena_;
   ProtoMemoryManager memory_manager_;
   Activation empty_;
-  EvaluationListener null_listener_;
   FlatExpressionEvaluatorState state_;
 
   std::vector<IsConst> is_const_;
@@ -219,7 +232,7 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
     // the current capacity.
     state_.value_stack().SetMaxSize(subplan.size());
 
-    auto result = frame.Evaluate(null_listener_);
+    auto result = frame.Evaluate(EvaluationListener());
     // If this would be a runtime error, then don't adjust the program plan, but
     // rather allow the error to occur at runtime to preserve the evaluation
     // contract with non-constant folding use cases.

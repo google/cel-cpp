@@ -1,9 +1,22 @@
+// Copyright 2017 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_CORE_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_CORE_H_
 
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -12,6 +25,8 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
+#include "absl/types/span.h"
 #include "base/handle.h"
 #include "base/memory.h"
 #include "base/type_factory.h"
@@ -24,6 +39,8 @@
 #include "eval/eval/evaluator_stack.h"
 #include "internal/rtti.h"
 #include "runtime/activation_interface.h"
+#include "runtime/managed_value_factory.h"
+#include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
@@ -31,8 +48,7 @@ namespace google::api::expr::runtime {
 // Forward declaration of ExecutionFrame, to resolve circular dependency.
 class ExecutionFrame;
 
-using EvaluationListener = std::function<absl::Status(
-    int64_t expr_id, const cel::Handle<cel::Value>&, cel::ValueFactory&)>;
+using EvaluationListener = cel::TraceableProgram::EvaluationListener;
 
 // Class Expression represents single execution step.
 class ExpressionStep {
@@ -78,6 +94,10 @@ class FlatExpressionEvaluatorState {
                                const cel::TypeProvider& type_provider,
                                cel::MemoryManager& memory_manager);
 
+  FlatExpressionEvaluatorState(size_t value_stack_size,
+                               size_t comprehension_slot_count,
+                               cel::ValueFactory& value_factory);
+
   void Reset();
 
   EvaluatorStack& value_stack() { return value_stack_; }
@@ -85,21 +105,20 @@ class FlatExpressionEvaluatorState {
   ComprehensionSlots& comprehension_slots() { return comprehension_slots_; }
 
   cel::MemoryManager& memory_manager() {
-    return value_factory_.memory_manager();
+    return value_factory_->memory_manager();
   }
 
-  cel::TypeFactory& type_factory() { return type_factory_; }
+  cel::TypeFactory& type_factory() { return value_factory_->type_factory(); }
 
-  cel::TypeManager& type_manager() { return type_manager_; }
+  cel::TypeManager& type_manager() { return value_factory_->type_manager(); }
 
-  cel::ValueFactory& value_factory() { return value_factory_; }
+  cel::ValueFactory& value_factory() { return *value_factory_; }
 
  private:
   EvaluatorStack value_stack_;
   ComprehensionSlots comprehension_slots_;
-  cel::TypeFactory type_factory_;
-  cel::TypeManager type_manager_;
-  cel::ValueFactory value_factory_;
+  absl::optional<cel::ManagedValueFactory> managed_value_factory_;
+  cel::ValueFactory* value_factory_;
 };
 
 // ExecutionFrame manages the context needed for expression evaluation.
@@ -130,8 +149,7 @@ class ExecutionFrame {
   const ExpressionStep* Next();
 
   // Evaluate the execution frame to completion.
-  absl::StatusOr<cel::Handle<cel::Value>> Evaluate(
-      const EvaluationListener& listener);
+  absl::StatusOr<cel::Handle<cel::Value>> Evaluate(EvaluationListener listener);
 
   // Intended for use only in conditionals.
   absl::Status JumpTo(int offset) {
@@ -243,6 +261,8 @@ class FlatExpression {
   // provider.
   FlatExpressionEvaluatorState MakeEvaluatorState(
       cel::MemoryManager& memory_manager) const;
+  FlatExpressionEvaluatorState MakeEvaluatorState(
+      cel::ValueFactory& value_factory) const;
 
   // Evaluate the expression.
   //
@@ -253,8 +273,7 @@ class FlatExpression {
   // that correlates to an AST node. The value passed to the will be the top of
   // the evaluation stack, corresponding to the result of the subexpression.
   absl::StatusOr<cel::Handle<cel::Value>> EvaluateWithCallback(
-      const cel::ActivationInterface& activation,
-      const EvaluationListener& listener,
+      const cel::ActivationInterface& activation, EvaluationListener listener,
       FlatExpressionEvaluatorState& state) const;
 
   const ExecutionPath& path() const { return path_; }

@@ -211,3 +211,17 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "runtime_adapter",
+    srcs = ["runtime_adapter.cc"],
+    hdrs = ["runtime_adapter.h"],
+    deps = [
+        ":ast_converters",
+        "//internal:status_macros",
+        "//runtime",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)

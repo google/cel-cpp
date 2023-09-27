@@ -192,6 +192,7 @@ cc_library(
     deps = [
         ":function_registry",
         ":runtime",
+        ":runtime_options",
         ":type_registry",
         "@com_google_absl//absl/status:statusor",
     ],
@@ -203,5 +204,78 @@ cc_library(
     deps = [
         "//base:data",
         "//base:memory",
+    ],
+)
+
+cc_library(
+    name = "runtime_builder_factory",
+    srcs = ["runtime_builder_factory.cc"],
+    hdrs = ["runtime_builder_factory.h"],
+    deps = [
+        ":runtime_builder",
+        ":runtime_options",
+        "//runtime/internal:runtime_impl",
+    ],
+)
+
+cc_library(
+    name = "standard_runtime_builder_factory",
+    srcs = ["standard_runtime_builder_factory.cc"],
+    hdrs = ["standard_runtime_builder_factory.h"],
+    deps = [
+        ":runtime_builder",
+        ":runtime_builder_factory",
+        ":runtime_options",
+        ":standard_functions",
+        "//internal:status_macros",
+        "//runtime/internal:runtime_impl",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_test(
+    name = "standard_runtime_builder_factory_test",
+    srcs = ["standard_runtime_builder_factory_test.cc"],
+    deps = [
+        ":activation",
+        ":runtime",
+        ":runtime_options",
+        ":standard_runtime_builder_factory",
+        "//base:data",
+        "//base:handle",
+        "//base:memory",
+        "//extensions:bindings_ext",
+        "//extensions/protobuf:memory_manager",
+        "//extensions/protobuf:runtime_adapter",
+        "//internal:no_destructor",
+        "//internal:testing",
+        "//parser",
+        "//parser:macro",
+        "@com_google_absl//absl/algorithm:container",
+        "@com_google_absl//absl/status",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "standard_functions",
+    srcs = ["standard_functions.cc"],
+    hdrs = ["standard_functions.h"],
+    deps = [
+        ":function_registry",
+        ":runtime_options",
+        "//internal:status_macros",
+        "//runtime/standard:arithmetic_functions",
+        "//runtime/standard:comparison_functions",
+        "//runtime/standard:container_functions",
+        "//runtime/standard:container_membership_functions",
+        "//runtime/standard:equality_functions",
+        "//runtime/standard:logical_functions",
+        "//runtime/standard:regex_functions",
+        "//runtime/standard:string_functions",
+        "//runtime/standard:time_functions",
+        "//runtime/standard:type_conversion_functions",
+        "@com_google_absl//absl/status",
     ],
 )
