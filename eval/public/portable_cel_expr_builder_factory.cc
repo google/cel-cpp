@@ -19,22 +19,48 @@
 #include <memory>
 #include <utility>
 
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "base/ast_internal/ast_impl.h"
+#include "base/kind.h"
+#include "base/memory.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder.h"
+#include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/qualified_reference_resolver.h"
 #include "eval/compiler/regex_precompilation_optimization.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_options.h"
+#include "eval/public/structs/legacy_type_provider.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "extensions/select_optimization.h"
 #include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
+namespace {
 
-using cel::extensions::CreateSelectOptimizationProgramOptimizer;
-using cel::extensions::SelectOptimizationAstUpdater;
+using ::cel::MemoryManager;
+using ::cel::ast_internal::AstImpl;
+using ::cel::extensions::CreateSelectOptimizationProgramOptimizer;
+using ::cel::extensions::ProtoMemoryManager;
+using ::cel::extensions::SelectOptimizationAstUpdater;
+using ::cel::runtime_internal::CreateConstantFoldingOptimizer;
+
+// Adapter for a raw arena* pointer. Manages a MemoryManager object for the
+// constant folding extension.
+struct ArenaBackedConstfoldingFactory {
+  std::unique_ptr<MemoryManager> memory_manager;
+
+  absl::StatusOr<std::unique_ptr<ProgramOptimizer>> operator()(
+      PlannerContext& ctx, const AstImpl& ast) const {
+    return CreateConstantFoldingOptimizer(*memory_manager)(ctx, ast);
+  }
+};
+
+}  // namespace
 
 std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
     std::unique_ptr<LegacyTypeProvider> type_provider,
@@ -63,8 +89,8 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
 
   if (options.constant_folding) {
     builder->flat_expr_builder().AddProgramOptimizer(
-        cel::ast_internal::CreateConstantFoldingExtension(
-            options.constant_arena));
+        ArenaBackedConstfoldingFactory{
+            std::make_unique<ProtoMemoryManager>(options.constant_arena)});
   }
 
   if (options.enable_regex_precompilation) {

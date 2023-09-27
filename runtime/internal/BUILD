@@ -76,6 +76,21 @@ cc_library(
 )
 
 cc_library(
+    name = "convert_constant",
+    srcs = ["convert_constant.cc"],
+    hdrs = ["convert_constant.h"],
+    deps = [
+        "//base:data",
+        "//base:handle",
+        "//base/ast_internal:expr",
+        "//eval/internal:errors",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_library(
     name = "errors",
     srcs = ["errors.cc"],
     hdrs = ["errors.h"],

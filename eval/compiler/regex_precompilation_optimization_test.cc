@@ -181,7 +181,8 @@ class RegexConstFoldInteropTest : public RegexPrecompilationExtensionTest {
  public:
   RegexConstFoldInteropTest() : RegexPrecompilationExtensionTest() {
     builder_.flat_expr_builder().AddProgramOptimizer(
-        cel::ast_internal::CreateConstantFoldingExtension(&arena_));
+        cel::runtime_internal::CreateConstantFoldingOptimizer(
+            cel::MemoryManager::Global()));
   }
 
  protected:

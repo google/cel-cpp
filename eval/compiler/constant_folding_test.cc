@@ -46,11 +46,12 @@
 #include "runtime/type_registry.h"
 #include "google/protobuf/arena.h"
 
-namespace cel::ast_internal {
+namespace cel::runtime_internal {
 
 namespace {
 
-using ::cel::extensions::ProtoMemoryManager;
+using ::cel::ast_internal::AstImpl;
+using ::cel::ast_internal::Expr;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::runtime::BuilderWarnings;
@@ -65,32 +66,19 @@ using ::google::api::expr::runtime::Resolver;
 using testing::SizeIs;
 using cel::internal::StatusIs;
 
-class ConstantFoldingTestWithValueFactory : public testing::Test {
- public:
-  ConstantFoldingTestWithValueFactory()
-      : memory_manager_(&arena_),
-        type_factory_(memory_manager_),
-        type_manager_(type_factory_, cel::TypeProvider::Builtin()),
-        value_factory_(type_manager_) {}
-
- protected:
-  google::protobuf::Arena arena_;
-  ProtoMemoryManager memory_manager_;
-  TypeFactory type_factory_;
-  TypeManager type_manager_;
-  ValueFactory value_factory_;
-};
-
 class UpdatedConstantFoldingTest : public testing::Test {
  public:
   UpdatedConstantFoldingTest()
-      : type_factory_(MemoryManager::Global()),
+      : memory_manager_(&arena_),
+        type_factory_(MemoryManager::Global()),
         type_manager_(type_factory_, type_registry_.GetComposedTypeProvider()),
         value_factory_(type_manager_),
         resolver_("", function_registry_, type_registry_, value_factory_,
                   type_registry_.resolveable_enums()) {}
 
  protected:
+  google::protobuf::Arena arena_;
+  cel::extensions::ProtoMemoryManager memory_manager_;
   cel::FunctionRegistry function_registry_;
   cel::TypeRegistry type_registry_;
   cel::TypeFactory type_factory_;
@@ -170,7 +158,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsTernary) {
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingExtension(&arena);
+      CreateConstantFoldingOptimizer(memory_manager_);
 
   // Act
   // Issue the visitation calls.
@@ -237,7 +225,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingExtension(&arena);
+      CreateConstantFoldingOptimizer(memory_manager_);
 
   // Act
   // Issue the visitation calls.
@@ -302,7 +290,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingExtension(&arena);
+      CreateConstantFoldingOptimizer(memory_manager_);
 
   // Act
   // Issue the visitation calls.
@@ -363,7 +351,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesList) {
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingExtension(&arena);
+      CreateConstantFoldingOptimizer(memory_manager_);
 
   // Act
   // Issue the visitation calls.
@@ -424,7 +412,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingExtension(&arena);
+      CreateConstantFoldingOptimizer(memory_manager_);
 
   // Act
   // Issue the visitation calls.
@@ -485,7 +473,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingExtension(&arena);
+      CreateConstantFoldingOptimizer(memory_manager_);
 
   // Act
   // Issue the visitation calls.
@@ -550,7 +538,7 @@ TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingExtension(&arena);
+      CreateConstantFoldingOptimizer(memory_manager_);
 
   // Act / Assert
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
@@ -561,4 +549,4 @@ TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
 
 }  // namespace
 
-}  // namespace cel::ast_internal
+}  // namespace cel::runtime_internal

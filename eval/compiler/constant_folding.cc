@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      https://www.apache.org/licenses/LICENSE-2.0
+//     https://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,14 +14,14 @@
 
 #include "eval/compiler/constant_folding.h"
 
-#include <cstdint>
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/status/status.h"
-#include "absl/time/time.h"
+#include "absl/status/statusor.h"
 #include "absl/types/variant.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
@@ -30,25 +30,34 @@
 #include "base/kind.h"
 #include "base/type_provider.h"
 #include "base/value.h"
+#include "base/value_factory.h"
 #include "base/values/unknown_value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/internal/interop.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "runtime/activation.h"
-#include "google/protobuf/arena.h"
+#include "runtime/internal/convert_constant.h"
 
-namespace cel::ast_internal {
+namespace cel::runtime_internal {
 
 namespace {
 
+using ::cel::ast_internal::AstImpl;
+using ::cel::ast_internal::Call;
+using ::cel::ast_internal::Comprehension;
+using ::cel::ast_internal::Constant;
+using ::cel::ast_internal::CreateList;
+using ::cel::ast_internal::CreateStruct;
+using ::cel::ast_internal::Expr;
+using ::cel::ast_internal::Ident;
+using ::cel::ast_internal::Select;
 using ::cel::builtin::kAnd;
 using ::cel::builtin::kOr;
 using ::cel::builtin::kTernary;
-using ::cel::extensions::ProtoMemoryManager;
+using ::cel::runtime_internal::ConvertConstant;
+
 using ::google::api::expr::runtime::EvaluationListener;
 using ::google::api::expr::runtime::ExecutionFrame;
 using ::google::api::expr::runtime::ExecutionPath;
@@ -56,58 +65,14 @@ using ::google::api::expr::runtime::ExecutionPathView;
 using ::google::api::expr::runtime::FlatExpressionEvaluatorState;
 using ::google::api::expr::runtime::PlannerContext;
 using ::google::api::expr::runtime::ProgramOptimizer;
+using ::google::api::expr::runtime::ProgramOptimizerFactory;
 using ::google::api::expr::runtime::Resolver;
-
-using ::google::protobuf::Arena;
-
-struct MakeConstantArenaSafeVisitor {
-  // TODO(uncreated-issue/33): make the AST to runtime Value conversion work with
-  // non-arena based cel::MemoryManager.
-  google::protobuf::Arena* arena;
-
-  Handle<Value> operator()(const cel::ast_internal::NullValue& value) {
-    return cel::interop_internal::CreateNullValue();
-  }
-  Handle<Value> operator()(bool value) {
-    return cel::interop_internal::CreateBoolValue(value);
-  }
-  Handle<Value> operator()(int64_t value) {
-    return cel::interop_internal::CreateIntValue(value);
-  }
-  Handle<Value> operator()(uint64_t value) {
-    return cel::interop_internal::CreateUintValue(value);
-  }
-  Handle<Value> operator()(double value) {
-    return cel::interop_internal::CreateDoubleValue(value);
-  }
-  Handle<Value> operator()(const std::string& value) {
-    const auto* arena_copy = Arena::Create<std::string>(arena, value);
-    return cel::interop_internal::CreateStringValueFromView(*arena_copy);
-  }
-  Handle<Value> operator()(const cel::ast_internal::Bytes& value) {
-    const auto* arena_copy = Arena::Create<std::string>(arena, value.bytes);
-    return cel::interop_internal::CreateBytesValueFromView(*arena_copy);
-  }
-  Handle<Value> operator()(const absl::Duration duration) {
-    return cel::interop_internal::CreateDurationValue(duration);
-  }
-  Handle<Value> operator()(const absl::Time timestamp) {
-    return cel::interop_internal::CreateTimestampValue(timestamp);
-  }
-};
-
-Handle<Value> MakeConstantArenaSafe(
-    google::protobuf::Arena* arena, const cel::ast_internal::Constant& const_expr) {
-  return absl::visit(MakeConstantArenaSafeVisitor{arena},
-                     const_expr.constant_kind());
-}
 
 class ConstantFoldingExtension : public ProgramOptimizer {
  public:
-  explicit ConstantFoldingExtension(google::protobuf::Arena* arena,
-                                    const TypeProvider& type_provider)
-      : arena_(arena),
-        memory_manager_(arena),
+  ConstantFoldingExtension(MemoryManager& memory_manager,
+                           const TypeProvider& type_provider)
+      : memory_manager_(memory_manager),
         state_(kDefaultStackLimit, kComprehensionSlotCount, type_provider,
                memory_manager_) {}
 
@@ -129,8 +94,7 @@ class ConstantFoldingExtension : public ProgramOptimizer {
   // if the comprehension variables are only used in a const way.
   static constexpr size_t kComprehensionSlotCount = 0;
 
-  google::protobuf::Arena* arena_;
-  ProtoMemoryManager memory_manager_;
+  MemoryManager& memory_manager_;
   Activation empty_;
   FlatExpressionEvaluatorState state_;
 
@@ -217,12 +181,11 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
     }
     return absl::OkStatus();
   }
-
-  // copy string to arena if backed by the original program.
+  // copy string to managed handle if backed by the original program.
   Handle<Value> value;
   if (node.has_const_expr()) {
-    value = absl::visit(MakeConstantArenaSafeVisitor{arena_},
-                        node.const_expr().constant_kind());
+    CEL_ASSIGN_OR_RETURN(
+        value, ConvertConstant(node.const_expr(), state_.value_factory()));
   } else {
     ExecutionPathView subplan = context.GetSubplan(node);
     ExecutionFrame frame(subplan, empty_, context.options(), state_);
@@ -255,12 +218,13 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
 
 }  // namespace
 
-google::api::expr::runtime::ProgramOptimizerFactory
-CreateConstantFoldingExtension(google::protobuf::Arena* arena) {
-  return [=](PlannerContext& ctx, const AstImpl&) {
+ProgramOptimizerFactory CreateConstantFoldingOptimizer(
+    MemoryManager& memory_manager) {
+  return [&memory_manager](PlannerContext& ctx, const AstImpl&)
+             -> absl::StatusOr<std::unique_ptr<ProgramOptimizer>> {
     return std::make_unique<ConstantFoldingExtension>(
-        arena, ctx.value_factory().type_provider());
+        memory_manager, ctx.value_factory().type_provider());
   };
 }
 
-}  // namespace cel::ast_internal
+}  // namespace cel::runtime_internal

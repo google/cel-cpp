@@ -60,6 +60,7 @@
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 #include "eval/testutil/test_message.pb.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
@@ -1187,8 +1188,9 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapAndConstantFolding) {
   builder.flat_expr_builder().AddAstTransform(
       NewReferenceResolverExtension(ReferenceResolverOption::kCheckedOnly));
   google::protobuf::Arena arena;
+  cel::extensions::ProtoMemoryManager memory_manager(&arena);
   builder.flat_expr_builder().AddProgramOptimizer(
-      cel::ast_internal::CreateConstantFoldingExtension(&arena));
+      cel::runtime_internal::CreateConstantFoldingOptimizer(memory_manager));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(&expr));
 

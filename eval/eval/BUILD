@@ -155,9 +155,9 @@ cc_library(
         "//base:data",
         "//base:handle",
         "//base/ast_internal:expr",
-        "//eval/internal:errors",
+        "//internal:status_macros",
+        "//runtime/internal:convert_constant",
         "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/time",
     ],
 )
 
