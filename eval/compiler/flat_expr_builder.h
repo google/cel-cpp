@@ -86,6 +86,8 @@ class FlatExprBuilder {
   absl::StatusOr<FlatExpression> CreateExpressionImpl(
       std::unique_ptr<cel::Ast> ast, std::vector<absl::Status>* warnings) const;
 
+  const cel::RuntimeOptions& options() const { return options_; }
+
  private:
   cel::RuntimeOptions options_;
   std::string container_;
