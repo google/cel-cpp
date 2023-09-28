@@ -112,9 +112,8 @@ absl::StatusOr<Handle<Value>> MapValue::ConvertToType(
     default:
       break;
   }
-  return value_factory.CreateErrorValue(absl::InvalidArgumentError(
-      absl::StrCat("type conversion error from '", this->type()->DebugString(),
-                   "' to '", type->DebugString(), "'")));
+  return value_factory.CreateErrorValue(
+      base_internal::TypeConversionError(*this->type(), *type));
 }
 
 size_t MapValue::size() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(size); }

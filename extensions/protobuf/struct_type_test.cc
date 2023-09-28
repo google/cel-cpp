@@ -60,8 +60,8 @@ T ParseTextOrDie(absl::string_view text) {
 
 absl::StatusOr<Handle<ListValue>> CreateJsonListValue(
     ValueFactory& value_factory, Handle<Value> element) {
-  ListValueBuilder<Value> builder(
-      value_factory, value_factory.type_factory().GetJsonListType());
+  ListValueBuilder<Value> builder(value_factory,
+                                  value_factory.type_factory().GetDynType());
   CEL_RETURN_IF_ERROR(builder.Add(std::move(element)));
   return std::move(builder).Build();
 }

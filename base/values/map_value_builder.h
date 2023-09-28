@@ -228,7 +228,7 @@ class DynamicMapValue final : public AbstractMapValue {
   absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const override {
     ListValueBuilder<Value> keys(value_factory, type()->key());
-    keys.reserve(size());
+    keys.Reserve(size());
     for (const auto& current : storage_) {
       CEL_RETURN_IF_ERROR(keys.Add(current.first));
     }
@@ -294,7 +294,7 @@ class StaticMapValue<K, void> final : public AbstractMapValue {
     ListValueBuilder<K> keys(
         value_factory,
         type()->key().template As<typename ValueTraits<K>::type_type>());
-    keys.reserve(size());
+    keys.Reserve(size());
     for (const auto& current : storage_) {
       CEL_RETURN_IF_ERROR(keys.Add(current.first));
     }
@@ -353,7 +353,7 @@ class StaticMapValue<void, V> final : public AbstractMapValue {
   absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const override {
     ListValueBuilder<Value> keys(value_factory, type()->key());
-    keys.reserve(size());
+    keys.Reserve(size());
     for (const auto& current : storage_) {
       CEL_RETURN_IF_ERROR(keys.Add(current.first));
     }
@@ -419,7 +419,7 @@ class StaticMapValue final : public AbstractMapValue {
     ListValueBuilder<K> keys(
         value_factory,
         type()->key().template As<typename ValueTraits<K>::type_type>());
-    keys.reserve(size());
+    keys.Reserve(size());
     for (const auto& current : storage_) {
       CEL_RETURN_IF_ERROR(keys.Add(current.first));
     }

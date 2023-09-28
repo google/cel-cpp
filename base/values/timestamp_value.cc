@@ -22,7 +22,6 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "base/handle.h"
@@ -103,9 +102,7 @@ absl::StatusOr<Handle<Value>> TimestampValue::ConvertToType(
     }
     default:
       return value_factory.CreateErrorValue(
-          absl::InvalidArgumentError(absl::StrCat(
-              "type conversion error from '", this->type()->DebugString(),
-              "' to '", type->DebugString(), "'")));
+          base_internal::TypeConversionError(*this->type(), *type));
   }
 }
 

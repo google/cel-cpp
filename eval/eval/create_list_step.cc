@@ -83,7 +83,7 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
   CEL_ASSIGN_OR_RETURN(UniqueRef<ListValueBuilderInterface> builder,
                        type->NewValueBuilder(frame->value_factory()));
 
-  builder->reserve(args.size());
+  builder->Reserve(args.size());
   for (const auto& arg : args) {
     CEL_RETURN_IF_ERROR(builder->Add(arg));
   }

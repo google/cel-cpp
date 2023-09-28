@@ -515,6 +515,12 @@ void TypeHandle::Delete() const {
   }
 }
 
+absl::Status TypeConversionError(const Type& from, const Type& to) {
+  return absl::InvalidArgumentError(absl::StrCat("type conversion error from '",
+                                                 from.DebugString(), "' to '",
+                                                 to.DebugString(), "'"));
+}
+
 }  // namespace base_internal
 
 }  // namespace cel

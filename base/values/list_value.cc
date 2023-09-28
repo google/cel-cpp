@@ -23,7 +23,6 @@
 #include "absl/base/optimization.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
@@ -88,9 +87,8 @@ absl::StatusOr<Handle<Value>> ListValue::ConvertToType(
     default:
       break;
   }
-  return value_factory.CreateErrorValue(absl::InvalidArgumentError(
-      absl::StrCat("type conversion error from '", this->type()->DebugString(),
-                   "' to '", type->DebugString(), "'")));
+  return value_factory.CreateErrorValue(
+      base_internal::TypeConversionError(*this->type(), *type));
 }
 
 size_t ListValue::size() const {

@@ -17,10 +17,8 @@
 #include <string>
 #include <utility>
 
-#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "base/handle.h"
 #include "base/kind.h"
@@ -79,9 +77,7 @@ absl::StatusOr<Handle<Value>> BoolValue::ConvertToType(
       return value_factory.CreateStringValue(value() ? "true" : "false");
     default:
       return value_factory.CreateErrorValue(
-          absl::InvalidArgumentError(absl::StrCat(
-              "type conversion error from '", this->type()->DebugString(),
-              "' to '", type->DebugString(), "'")));
+          base_internal::TypeConversionError(*this->type(), *type));
   }
 }
 

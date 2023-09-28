@@ -960,15 +960,14 @@ TEST_P(ValueConvertToAnyTest, UnknownValue) {
 TEST_P(ValueConvertToAnyTest, ListValue) {
   {
     ListValueBuilder<Value> builder(value_factory(),
-                                    type_factory().GetJsonListType());
+                                    type_factory().GetDynType());
     ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
     ASSERT_OK_AND_ASSIGN(auto any,
                          value.As<Value>()->ConvertToAny(value_factory()));
     EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.ListValue");
     EXPECT_THAT(any.value(), IsEmpty());
   }
-  ListValueBuilder<Value> builder(value_factory(),
-                                  type_factory().GetJsonListType());
+  ListValueBuilder<Value> builder(value_factory(), type_factory().GetDynType());
   EXPECT_OK(builder.Add(value_factory().CreateIntValue(1)));
   ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
   ASSERT_OK_AND_ASSIGN(auto any,
@@ -1187,14 +1186,13 @@ TEST_P(ValueConvertToJsonTest, UnknownValue) {
 TEST_P(ValueConvertToJsonTest, ListValue) {
   {
     ListValueBuilder<Value> builder(value_factory(),
-                                    type_factory().GetJsonListType());
+                                    type_factory().GetDynType());
     ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
     ASSERT_OK_AND_ASSIGN(auto json,
                          value.As<Value>()->ConvertToJson(value_factory()));
     EXPECT_THAT(json, VariantWith<JsonArray>(JsonArray()));
   }
-  ListValueBuilder<Value> builder(value_factory(),
-                                  type_factory().GetJsonListType());
+  ListValueBuilder<Value> builder(value_factory(), type_factory().GetDynType());
   EXPECT_OK(builder.Add(value_factory().CreateIntValue(1)));
   ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
   ASSERT_OK_AND_ASSIGN(auto json,

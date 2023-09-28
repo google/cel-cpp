@@ -182,8 +182,8 @@ absl::StatusOr<std::unique_ptr<ListStorage>> RegisterModernLists(
   CEL_ASSIGN_OR_RETURN(cel::UniqueRef<cel::ListValueBuilderInterface> y_builder,
                        list_type->NewValueBuilder(value_factory));
 
-  x_builder->reserve(len + 1);
-  y_builder->reserve(len + 1);
+  x_builder->Reserve(len + 1);
+  y_builder->Reserve(len + 1);
 
   if (overlap) {
     CEL_RETURN_IF_ERROR(x_builder->Add(value_factory.CreateIntValue(2)));

@@ -193,12 +193,6 @@ std::string MakeAnyTypeUrl(absl::string_view type_name) {
   return absl::StrCat("type.googleapis.com/", type_name);
 }
 
-absl::Status TypeConversionError(const Type& from, const Type& to) {
-  return absl::InvalidArgumentError(absl::StrCat("type conversion error from ",
-                                                 from.DebugString(), " to ",
-                                                 to.DebugString()));
-}
-
 }  // namespace
 
 class ProtoStructTypeFieldIterator final : public StructType::FieldIterator {

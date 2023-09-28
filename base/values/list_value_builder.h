@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUES_LIST_VALUE_BUILDER_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_LIST_VALUE_BUILDER_H_
 
+#include <cstddef>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -25,10 +26,14 @@
 #include "absl/status/statusor.h"
 #include "absl/types/variant.h"
 #include "absl/utility/utility.h"
+#include "base/handle.h"
 #include "base/memory.h"
+#include "base/types/list_type.h"
+#include "base/value.h"
 #include "base/value_factory.h"
 #include "base/values/list_value.h"
 #include "internal/overloaded.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -40,16 +45,34 @@ class ListValueBuilderInterface {
  public:
   virtual ~ListValueBuilderInterface() = default;
 
+  // Returns a human readable representation of the elements in this list
+  // builder. The output is not guaranteed to be stable across processes and
+  // should only be used for debugging purposes.
   virtual std::string DebugString() const = 0;
 
+  // Append value to the end of the list, increasing its size by 1. Returns OK
+  // if the value was added successfully, an error otherwise. Errors occur when
+  // the type of the value does not match the expected element type of the list
+  // being built. The type of the value being added matches if the expected list
+  // element type is the same or is dyn.
+  //
+  // NOTE: Any error returned should be treated as fatal to any ongoing
+  // evaluation, that is the evaluation should stop. The returned error should
+  // not be used for short-circuiting.
   virtual absl::Status Add(Handle<Value> value) = 0;
 
-  virtual size_t size() const = 0;
+  // Returns the number of elements in the list.
+  virtual size_t Size() const = 0;
 
-  virtual bool empty() const { return size() == 0; }
+  // Determines whether there are elements in the list. This is equivalent to
+  // `Size() == 0`, but may be more efficient for some implementations.
+  virtual bool IsEmpty() const { return Size() == 0; }
 
-  virtual void reserve(size_t size) = 0;
+  // Hint to the implementation on what the minimum capacity of the backing
+  // storage should be.
+  virtual void Reserve(size_t size) = 0;
 
+  // Build the new list value, invalidating this builder.
   virtual absl::StatusOr<Handle<ListValue>> Build() && = 0;
 
  protected:
@@ -101,6 +124,18 @@ absl::StatusOr<Handle<ListType>> ComposeListType(
       std::move(composable));
 }
 
+template <typename T>
+const Type& ComposableListTypeElement(const ComposableListType<T>& composable) {
+  return absl::visit(
+      internal::Overloaded{
+          [](const Handle<T>& element) -> const Type& { return *element; },
+          [](const Handle<ListType>& list) -> const Type& {
+            return *list->element();
+          },
+      },
+      composable);
+}
+
 template <typename List, typename DebugStringer>
 std::string ComposeListValueDebugString(const List& list,
                                         const DebugStringer& debug_stringer) {
@@ -118,6 +153,8 @@ std::string ComposeListValueDebugString(const List& list,
   out.push_back(']');
   return out;
 }
+
+absl::Status CheckListElement(const Type& expected_type, const Value& value);
 
 struct ComposedListType {
   explicit ComposedListType() = default;
@@ -161,6 +198,8 @@ class ListValueBuilderImpl<T, void> : public ListValueBuilderInterface {
   }
 
   absl::Status Add(Handle<Value> value) override {
+    CEL_RETURN_IF_ERROR(
+        CheckListElement(ComposableListTypeElement(type_), *value));
     return Add(std::move(value).As<T>());
   }
 
@@ -169,11 +208,11 @@ class ListValueBuilderImpl<T, void> : public ListValueBuilderInterface {
     return absl::OkStatus();
   }
 
-  size_t size() const override { return storage_.size(); }
+  size_t Size() const override { return storage_.size(); }
 
-  bool empty() const override { return storage_.empty(); }
+  bool IsEmpty() const override { return storage_.empty(); }
 
-  void reserve(size_t size) override { storage_.reserve(size); }
+  void Reserve(size_t size) override { storage_.reserve(size); }
 
   absl::StatusOr<Handle<ListValue>> Build() && override {
     CEL_ASSIGN_OR_RETURN(auto type,
@@ -215,15 +254,17 @@ class ListValueBuilderImpl<Value, void> : public ListValueBuilderInterface {
   }
 
   absl::Status Add(Handle<Value> value) override {
+    CEL_RETURN_IF_ERROR(
+        CheckListElement(ComposableListTypeElement(type_), *value));
     storage_.push_back(std::move(value));
     return absl::OkStatus();
   }
 
-  size_t size() const override { return storage_.size(); }
+  size_t Size() const override { return storage_.size(); }
 
-  bool empty() const override { return storage_.empty(); }
+  bool IsEmpty() const override { return storage_.empty(); }
 
-  void reserve(size_t size) override { storage_.reserve(size); }
+  void Reserve(size_t size) override { storage_.reserve(size); }
 
   absl::StatusOr<Handle<ListValue>> Build() && override {
     CEL_ASSIGN_OR_RETURN(auto type,
@@ -266,21 +307,26 @@ class ListValueBuilderImpl : public ListValueBuilderInterface {
   }
 
   absl::Status Add(Handle<Value> value) override {
+    CEL_RETURN_IF_ERROR(
+        CheckListElement(ComposableListTypeElement(type_), *value));
     return Add(std::move(value).As<T>());
   }
 
-  absl::Status Add(const Handle<T>& value) { return Add(value->value()); }
+  absl::Status Add(const Handle<T>& value) {
+    Add(value->value());
+    return absl::OkStatus();
+  }
 
   absl::Status Add(U value) {
     storage_.push_back(std::move(value));
     return absl::OkStatus();
   }
 
-  size_t size() const override { return storage_.size(); }
+  size_t Size() const override { return storage_.size(); }
 
-  bool empty() const override { return storage_.empty(); }
+  bool IsEmpty() const override { return storage_.empty(); }
 
-  void reserve(size_t size) override { storage_.reserve(size); }
+  void Reserve(size_t size) override { storage_.reserve(size); }
 
   absl::StatusOr<Handle<ListValue>> Build() && override {
     CEL_ASSIGN_OR_RETURN(auto type,

@@ -36,6 +36,8 @@ TEST(ListValueBuilder, Unspecialized) {
   ValueFactory value_factory(type_manager);
   auto list_builder =
       ListValueBuilder<BytesValue>(value_factory, type_factory.GetBytesType());
+  list_builder.Reserve(2);
+  EXPECT_TRUE(list_builder.IsEmpty());
   auto value = value_factory.GetBytesValue().As<Value>();
   EXPECT_OK(list_builder.Add(value));                          // lvalue
   EXPECT_OK(list_builder.Add(value_factory.GetBytesValue()));  // rvalue
@@ -76,9 +78,15 @@ TEST(ListValueBuilder, Value) {
   ValueFactory value_factory(type_manager);
   auto list_builder =
       ListValueBuilder<Value>(value_factory, type_factory.GetBytesType());
+  list_builder.Reserve(2);
+  EXPECT_TRUE(list_builder.IsEmpty());
   auto value = value_factory.GetBytesValue().As<Value>();
   EXPECT_OK(list_builder.Add(value));                          // lvalue
   EXPECT_OK(list_builder.Add(value_factory.GetBytesValue()));  // rvalue
+  EXPECT_THAT(
+      list_builder.Add(value_factory.CreateErrorValue(absl::CancelledError())),
+      StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_EQ(list_builder.Size(), 2);
   EXPECT_EQ(list_builder.DebugString(), "[b\"\", b\"\"]");
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
   EXPECT_EQ(list->size(), 2);
@@ -97,11 +105,14 @@ TEST(ListValueBuilder, Bool) {
   ValueFactory value_factory(type_manager);
   auto list_builder =
       ListValueBuilder<BoolValue>(value_factory, type_factory.GetBoolType());
+  list_builder.Reserve(3);
+  EXPECT_TRUE(list_builder.IsEmpty());
   auto value = value_factory.CreateBoolValue(true).As<Value>();
   EXPECT_OK(list_builder.Add(false));
   EXPECT_OK(list_builder.Add(value));  // lvalue
   EXPECT_OK(list_builder.Add(
       value_factory.CreateBoolValue(false).As<Value>()));  // rvalue
+  EXPECT_EQ(list_builder.Size(), 3);
   EXPECT_EQ(list_builder.DebugString(), "[false, true, false]");
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
   EXPECT_EQ(list->size(), 3);
@@ -123,11 +134,14 @@ TEST(ListValueBuilder, Int) {
   ValueFactory value_factory(type_manager);
   auto list_builder =
       ListValueBuilder<IntValue>(value_factory, type_factory.GetIntType());
+  list_builder.Reserve(3);
+  EXPECT_TRUE(list_builder.IsEmpty());
   auto value = value_factory.CreateIntValue(1).As<Value>();
   EXPECT_OK(list_builder.Add(0));
   EXPECT_OK(list_builder.Add(value));  // lvalue
   EXPECT_OK(
       list_builder.Add(value_factory.CreateIntValue(2).As<Value>()));  // rvalue
+  EXPECT_EQ(list_builder.Size(), 3);
   EXPECT_EQ(list_builder.DebugString(), "[0, 1, 2]");
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
   EXPECT_EQ(list->size(), 3);
@@ -166,11 +180,14 @@ TEST(ListValueBuilder, Uint) {
   ValueFactory value_factory(type_manager);
   auto list_builder =
       ListValueBuilder<UintValue>(value_factory, type_factory.GetUintType());
+  list_builder.Reserve(3);
+  EXPECT_TRUE(list_builder.IsEmpty());
   auto value = value_factory.CreateUintValue(1).As<Value>();
   EXPECT_OK(list_builder.Add(0));
   EXPECT_OK(list_builder.Add(value));  // lvalue
   EXPECT_OK(list_builder.Add(
       value_factory.CreateUintValue(2).As<Value>()));  // rvalue
+  EXPECT_EQ(list_builder.Size(), 3);
   EXPECT_EQ(list_builder.DebugString(), "[0u, 1u, 2u]");
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
   EXPECT_EQ(list->size(), 3);
@@ -192,11 +209,14 @@ TEST(ListValueBuilder, Double) {
   ValueFactory value_factory(type_manager);
   auto list_builder = ListValueBuilder<DoubleValue>(
       value_factory, type_factory.GetDoubleType());
+  list_builder.Reserve(3);
+  EXPECT_TRUE(list_builder.IsEmpty());
   auto value = value_factory.CreateDoubleValue(1.0).As<Value>();
   EXPECT_OK(list_builder.Add(0.0));
   EXPECT_OK(list_builder.Add(value));  // lvalue
   EXPECT_OK(list_builder.Add(
       value_factory.CreateDoubleValue(2.0).As<Value>()));  // rvalue
+  EXPECT_EQ(list_builder.Size(), 3);
   EXPECT_EQ(list_builder.DebugString(), "[0.0, 1.0, 2.0]");
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
   EXPECT_EQ(list->size(), 3);
@@ -218,6 +238,8 @@ TEST(ListValueBuilder, Duration) {
   ValueFactory value_factory(type_manager);
   auto list_builder = ListValueBuilder<DurationValue>(
       value_factory, type_factory.GetDurationType());
+  list_builder.Reserve(3);
+  EXPECT_TRUE(list_builder.IsEmpty());
   auto value =
       value_factory.CreateUncheckedDurationValue(absl::Seconds(1)).As<Value>();
   EXPECT_OK(list_builder.Add(absl::ZeroDuration()));
@@ -225,6 +247,7 @@ TEST(ListValueBuilder, Duration) {
   EXPECT_OK(list_builder.Add(
       value_factory.CreateUncheckedDurationValue(absl::Minutes(1))
           .As<Value>()));  // rvalue
+  EXPECT_EQ(list_builder.Size(), 3);
   EXPECT_EQ(list_builder.DebugString(), "[0, 1s, 1m]");
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
   EXPECT_EQ(list->size(), 3);
@@ -246,6 +269,8 @@ TEST(ListValueBuilder, Timestamp) {
   ValueFactory value_factory(type_manager);
   auto list_builder = ListValueBuilder<TimestampValue>(
       value_factory, type_factory.GetTimestampType());
+  list_builder.Reserve(3);
+  EXPECT_TRUE(list_builder.IsEmpty());
   auto value =
       value_factory
           .CreateUncheckedTimestampValue(absl::UnixEpoch() + absl::Seconds(1))
@@ -256,6 +281,7 @@ TEST(ListValueBuilder, Timestamp) {
       value_factory
           .CreateUncheckedTimestampValue(absl::UnixEpoch() + absl::Minutes(1))
           .As<Value>()));  // rvalue
+  EXPECT_EQ(list_builder.Size(), 3);
   EXPECT_EQ(
       list_builder.DebugString(),
       "[1970-01-01T00:00:00Z, 1970-01-01T00:00:01Z, 1970-01-01T00:01:00Z]");

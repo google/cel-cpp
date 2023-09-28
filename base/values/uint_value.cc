@@ -93,9 +93,7 @@ absl::StatusOr<Handle<Value>> UintValue::ConvertToType(
       return value_factory.CreateStringValue(absl::StrCat(value()));
     default:
       return value_factory.CreateErrorValue(
-          absl::InvalidArgumentError(absl::StrCat(
-              "type conversion error from '", this->type()->DebugString(),
-              "' to '", type->DebugString(), "'")));
+          base_internal::TypeConversionError(*this->type(), *type));
   }
 }
 

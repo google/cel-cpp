@@ -23,6 +23,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/optimization.h"
 #include "absl/hash/hash.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
@@ -368,6 +369,8 @@ struct TypeTraits<Type> {
 
   using value_type = Value;
 };
+
+absl::Status TypeConversionError(const Type& from, const Type& to);
 
 }  // namespace base_internal
 

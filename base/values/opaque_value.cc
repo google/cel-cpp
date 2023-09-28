@@ -54,9 +54,8 @@ absl::StatusOr<Handle<Value>> OpaqueValue::ConvertToType(
     default:
       break;
   }
-  return value_factory.CreateErrorValue(absl::InvalidArgumentError(
-      absl::StrCat("type conversion error from '", this->type()->DebugString(),
-                   "' to '", type->DebugString(), "'")));
+  return value_factory.CreateErrorValue(
+      base_internal::TypeConversionError(*this->type(), *type));
 }
 
 absl::StatusOr<Handle<Value>> OpaqueValue::Equals(ValueFactory& value_factory,

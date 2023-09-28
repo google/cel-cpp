@@ -62,7 +62,7 @@ absl::StatusOr<Handle<ListValue>> ConcatList(ValueFactory& factory,
                            factory.type_factory().GetDynType()));
   CEL_ASSIGN_OR_RETURN(auto list_builder, list_type->NewValueBuilder(factory));
 
-  list_builder->reserve(size1 + size2);
+  list_builder->Reserve(size1 + size2);
 
   for (int i = 0; i < size1; i++) {
     CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value1->Get(factory, i));
