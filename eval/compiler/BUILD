@@ -1,5 +1,6 @@
 DEFAULT_VISIBILITY = [
     "//eval:__subpackages__",
+    "//runtime:__subpackages__",
     "//extensions:__subpackages__",
 ]
 

@@ -28,9 +28,14 @@
 #include "base/type_provider.h"
 #include "base/value.h"
 #include "base/value_factory.h"
+#include "internal/rtti.h"
 #include "runtime/activation_interface.h"
 
 namespace cel {
+
+namespace runtime_internal {
+class RuntimeFriendAccess;
+}  // namespace runtime_internal
 
 // Representation of an evaluable CEL expression.
 //
@@ -118,6 +123,11 @@ class Runtime {
   CreateTraceableProgram(std::unique_ptr<cel::Ast> ast) const = 0;
 
   virtual const TypeProvider& GetTypeProvider() const = 0;
+
+ private:
+  friend class runtime_internal::RuntimeFriendAccess;
+
+  virtual internal::TypeInfo TypeId() const = 0;
 };
 
 }  // namespace cel

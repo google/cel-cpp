@@ -26,6 +26,12 @@
 
 namespace cel {
 
+// Forward declare for friend access to avoid requiring a link dependency on the
+// standard implementation and some extensions.
+namespace runtime_internal {
+class RuntimeFriendAccess;
+}  // namespace runtime_internal
+
 class RuntimeBuilder;
 RuntimeBuilder CreateRuntimeBuilder(const RuntimeOptions&);
 
@@ -53,6 +59,7 @@ class RuntimeBuilder {
   }
 
  private:
+  friend class runtime_internal::RuntimeFriendAccess;
   friend RuntimeBuilder CreateRuntimeBuilder(const RuntimeOptions&);
 
   // Constructor for a new runtime builder.

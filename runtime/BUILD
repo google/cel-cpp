@@ -180,6 +180,7 @@ cc_library(
         "//base:ast",
         "//base:data",
         "//base:handle",
+        "//internal:rtti",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -277,5 +278,49 @@ cc_library(
         "//runtime/standard:time_functions",
         "//runtime/standard:type_conversion_functions",
         "@com_google_absl//absl/status",
+    ],
+)
+
+cc_library(
+    name = "constant_folding",
+    srcs = ["constant_folding.cc"],
+    hdrs = ["constant_folding.h"],
+    deps = [
+        ":runtime",
+        ":runtime_builder",
+        "//base:memory",
+        "//eval/compiler:constant_folding",
+        "//internal:casts",
+        "//internal:rtti",
+        "//internal:status_macros",
+        "//runtime/internal:runtime_friend_access",
+        "//runtime/internal:runtime_impl",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_test(
+    name = "constant_folding_test",
+    srcs = ["constant_folding_test.cc"],
+    deps = [
+        ":activation",
+        ":constant_folding",
+        ":managed_value_factory",
+        ":register_function_helper",
+        ":runtime_builder",
+        ":runtime_options",
+        ":standard_runtime_builder_factory",
+        "//base:data",
+        "//base:function_adapter",
+        "//base:handle",
+        "//extensions/protobuf:runtime_adapter",
+        "//internal:testing",
+        "//parser",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )

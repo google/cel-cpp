@@ -21,6 +21,7 @@
 #include "base/ast.h"
 #include "base/type_provider.h"
 #include "eval/compiler/flat_expr_builder.h"
+#include "internal/rtti.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
@@ -63,7 +64,15 @@ class RuntimeImpl : public Runtime {
     return environment_->type_registry.GetComposedTypeProvider();
   }
 
+  // exposed for extensions access
+  google::api::expr::runtime::FlatExprBuilder& expr_builder() {
+    return expr_builder_;
+  }
+
  private:
+  internal::TypeInfo TypeId() const override {
+    return internal::TypeId<RuntimeImpl>();
+  }
   // Note: this is mutable, but should only be accessed in a const context after
   // building is complete.
   //

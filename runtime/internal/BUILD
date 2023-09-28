@@ -56,6 +56,16 @@ cc_test(
 )
 
 cc_library(
+    name = "runtime_friend_access",
+    hdrs = ["runtime_friend_access.h"],
+    deps = [
+        "//internal:rtti",
+        "//runtime",
+        "//runtime:runtime_builder",
+    ],
+)
+
+cc_library(
     name = "runtime_impl",
     srcs = ["runtime_impl.cc"],
     hdrs = ["runtime_impl.h"],
@@ -65,6 +75,7 @@ cc_library(
         "//base:handle",
         "//eval/compiler:flat_expr_builder",
         "//eval/eval:evaluator_core",
+        "//internal:rtti",
         "//internal:status_macros",
         "//runtime",
         "//runtime:activation_interface",
