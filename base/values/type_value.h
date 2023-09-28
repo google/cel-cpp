@@ -15,17 +15,23 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUES_TYPE_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_TYPE_VALUE_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <type_traits>
 #include <utility>
 
 #include "absl/log/absl_check.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
+#include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
 #include "base/types/type_type.h"
 #include "base/value.h"
+#include "common/any.h"
+#include "common/json.h"
 
 namespace cel {
 
@@ -52,6 +58,9 @@ class TypeValue : public Value {
   absl::StatusOr<Any> ConvertToAny(ValueFactory&) const;
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
+
+  absl::StatusOr<Handle<Value>> ConvertToType(ValueFactory& value_factory,
+                                              const Handle<Type>& type) const;
 
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;

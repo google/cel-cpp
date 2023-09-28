@@ -15,6 +15,7 @@
 #include "base/values/list_value.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <utility>
 
@@ -22,12 +23,18 @@
 #include "absl/base/optimization.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
+#include "base/kind.h"
+#include "base/memory.h"
 #include "base/type.h"
 #include "base/types/list_type.h"
+#include "base/value.h"
 #include "base/value_factory.h"
 #include "base/values/bool_value.h"
+#include "common/any.h"
+#include "common/json.h"
 #include "internal/rtti.h"
 #include "internal/status_macros.h"
 
@@ -62,6 +69,28 @@ absl::StatusOr<Json> ListValue::ConvertToJson(
 absl::StatusOr<JsonArray> ListValue::ConvertToJsonArray(
     ValueFactory& value_factory) const {
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(ConvertToJsonArray, value_factory);
+}
+
+absl::StatusOr<Handle<Value>> ListValue::ConvertToType(
+    ValueFactory& value_factory, const Handle<Type>& type) const {
+  switch (type->kind()) {
+    case TypeKind::kList:
+      // At runtime, a list is a list. In C++ we currently attempt to propagate
+      // the type if we know all the values have the same type, otherwise we use
+      // dyn.
+      if (!Value::IsRuntimeConvertible(*this->type()->element(),
+                                       *type->As<ListType>().element())) {
+        break;
+      }
+      return handle_from_this();
+    case TypeKind::kType:
+      return value_factory.CreateTypeValue(this->type());
+    default:
+      break;
+  }
+  return value_factory.CreateErrorValue(absl::InvalidArgumentError(
+      absl::StrCat("type conversion error from '", this->type()->DebugString(),
+                   "' to '", type->DebugString(), "'")));
 }
 
 size_t ListValue::size() const {

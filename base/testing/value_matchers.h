@@ -15,18 +15,28 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TESTING_VALUE_MATCHERS_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TESTING_VALUE_MATCHERS_H_
 
+#include <cstdint>
 #include <ostream>
 #include <type_traits>
 #include <utility>
 
 #include "absl/log/absl_check.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "base/handle.h"
 #include "base/testing/handle_matchers.h"
 #include "base/value.h"
 #include "base/value_factory.h"
+#include "base/values/bool_value.h"
+#include "base/values/double_value.h"
+#include "base/values/duration_value.h"
+#include "base/values/int_value.h"
+#include "base/values/null_value.h"
+#include "base/values/timestamp_value.h"
+#include "base/values/uint_value.h"
 #include "internal/testing.h"
 
 namespace cel_testing {
@@ -200,6 +210,30 @@ struct ValueOfTraits<cel::UintValue, void> {
   }
 
   static bool Equals(const cel::UintValue& lhs, const cel::UintValue& rhs) {
+    return lhs.value() == rhs.value();
+  }
+};
+
+template <>
+struct ValueOfTraits<cel::TypeValue, void> {
+  static absl::StatusOr<cel::Handle<cel::TypeValue>> Create(
+      cel::ValueFactory& value_factory, cel::Handle<cel::Type> type) {
+    return value_factory.CreateTypeValue(std::move(type));
+  }
+
+  static bool Equals(const cel::TypeValue& lhs, const cel::TypeValue& rhs) {
+    return lhs.name() == rhs.name();
+  }
+};
+
+template <>
+struct ValueOfTraits<cel::ErrorValue, void> {
+  static absl::StatusOr<cel::Handle<cel::ErrorValue>> Create(
+      cel::ValueFactory& value_factory, absl::Status status) {
+    return value_factory.CreateErrorValue(std::move(status));
+  }
+
+  static bool Equals(const cel::ErrorValue& lhs, const cel::ErrorValue& rhs) {
     return lhs.value() == rhs.value();
   }
 };

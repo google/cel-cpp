@@ -15,8 +15,15 @@
 #include "base/values/opaque_value.h"
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "base/handle.h"
+#include "base/kind.h"
+#include "base/type.h"
+#include "base/value.h"
 #include "base/value_factory.h"
+#include "common/any.h"
+#include "common/json.h"
 
 namespace cel {
 
@@ -32,6 +39,24 @@ absl::StatusOr<Json> OpaqueValue::ConvertToJson(
     ValueFactory& value_factory) const {
   return absl::FailedPreconditionError(absl::StrCat(
       type()->name(), " cannot be serialized as google.protobuf.Value"));
+}
+
+absl::StatusOr<Handle<Value>> OpaqueValue::ConvertToType(
+    ValueFactory& value_factory, const Handle<Type>& type) const {
+  switch (type->kind()) {
+    case TypeKind::kOpaque:
+      if (this->type() != type) {
+        break;
+      }
+      return handle_from_this();
+    case TypeKind::kType:
+      return value_factory.CreateTypeValue(this->type());
+    default:
+      break;
+  }
+  return value_factory.CreateErrorValue(absl::InvalidArgumentError(
+      absl::StrCat("type conversion error from '", this->type()->DebugString(),
+                   "' to '", type->DebugString(), "'")));
 }
 
 absl::StatusOr<Handle<Value>> OpaqueValue::Equals(ValueFactory& value_factory,

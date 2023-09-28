@@ -14,13 +14,24 @@
 
 #include "base/values/enum_value.h"
 
+#include <cstdint>
 #include <string>
 #include <utility>
 
 #include "absl/base/optimization.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "base/handle.h"
+#include "base/kind.h"
+#include "base/type.h"
+#include "base/types/enum_type.h"
+#include "base/value.h"
 #include "base/value_factory.h"
 #include "common/any.h"
+#include "common/json.h"
 #include "internal/proto_wire.h"
 #include "internal/status_macros.h"
 
@@ -81,6 +92,28 @@ absl::StatusOr<Any> EnumValue::ConvertToAny(ValueFactory&) const {
 
 absl::StatusOr<Json> EnumValue::ConvertToJson(ValueFactory&) const {
   return JsonInt(number());
+}
+
+absl::StatusOr<Handle<Value>> EnumValue::ConvertToType(
+    ValueFactory& value_factory, const Handle<Type>& type) const {
+  switch (type->kind()) {
+    case TypeKind::kEnum:
+      if (this->type() != type) {
+        break;
+      }
+      return handle_from_this();
+    case TypeKind::kType:
+      return value_factory.CreateTypeValue(this->type());
+    case TypeKind::kInt:
+      return value_factory.CreateIntValue(number());
+    case TypeKind::kString:
+      return value_factory.CreateStringValue(absl::StrCat(number()));
+    default:
+      break;
+  }
+  return value_factory.CreateErrorValue(absl::InvalidArgumentError(
+      absl::StrCat("type conversion error from '", this->type()->DebugString(),
+                   "' to '", type->DebugString(), "'")));
 }
 
 absl::StatusOr<Handle<Value>> EnumValue::Equals(ValueFactory& value_factory,

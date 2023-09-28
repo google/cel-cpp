@@ -15,32 +15,58 @@
 #include "base/value.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <limits>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
+#include "absl/base/macros.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "absl/types/optional.h"
+#include "base/handle.h"
+#include "base/internal/data.h"
 #include "base/internal/memory_manager_testing.h"
+#include "base/kind.h"
 #include "base/memory.h"
+#include "base/testing/value_matchers.h"
 #include "base/type.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
+#include "base/types/enum_type.h"
+#include "base/types/int_type.h"
+#include "base/types/string_type.h"
+#include "base/types/struct_type.h"
 #include "base/value_factory.h"
+#include "base/values/bool_value.h"
+#include "base/values/double_value.h"
+#include "base/values/duration_value.h"
+#include "base/values/int_value.h"
+#include "base/values/list_value.h"
 #include "base/values/list_value_builder.h"
+#include "base/values/map_value.h"
 #include "base/values/map_value_builder.h"
+#include "base/values/null_value.h"
 #include "base/values/optional_value.h"
+#include "base/values/struct_value.h"
+#include "base/values/timestamp_value.h"
+#include "base/values/uint_value.h"
+#include "common/json.h"
 #include "internal/benchmark.h"
+#include "internal/status_macros.h"
 #include "internal/strings.h"
 #include "internal/testing.h"
 #include "internal/time.h"
@@ -49,6 +75,7 @@ namespace cel {
 
 namespace {
 
+using ::cel_testing::ValueOf;
 using testing::Eq;
 using testing::IsEmpty;
 using testing::VariantWith;
@@ -2997,6 +3024,351 @@ TEST(TypeValue, SkippableDestructor) {
   auto type_value = value_factory.CreateTypeValue(type_factory.GetBoolType());
   EXPECT_TRUE(base_internal::Metadata::IsDestructorSkippable(*type_value));
 }
+
+using ValueConvertToTypeTest = BaseValueTest<>;
+
+TEST_P(ValueConvertToTypeTest, Bool) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  auto value = value_factory.CreateBoolValue(true);
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetBoolType()),
+              IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetStringType()),
+              IsOkAndHolds(ValueOf<StringValue>(value_factory, "true")));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetTypeType()),
+              IsOkAndHolds(ValueOf<TypeValue>(value_factory,
+                                              type_factory.GetBoolType())));
+  ASSERT_OK_AND_ASSIGN(auto error,
+                       value.As<Value>()->ConvertToType(
+                           value_factory, type_factory.GetErrorType()));
+  ASSERT_TRUE(error->Is<ErrorValue>());
+  EXPECT_THAT(error->As<ErrorValue>().value(),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST_P(ValueConvertToTypeTest, Bytes) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value, value_factory.CreateBytesValue("foo"));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetBytesType()),
+              IsOkAndHolds(ValueOf<BytesValue>(value_factory, "foo")));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetStringType()),
+              IsOkAndHolds(ValueOf<StringValue>(value_factory, "foo")));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetTypeType()),
+              IsOkAndHolds(ValueOf<TypeValue>(value_factory,
+                                              type_factory.GetBytesType())));
+  ASSERT_OK_AND_ASSIGN(auto error,
+                       value.As<Value>()->ConvertToType(
+                           value_factory, type_factory.GetErrorType()));
+  ASSERT_TRUE(error->Is<ErrorValue>());
+  EXPECT_THAT(error->As<ErrorValue>().value(),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST_P(ValueConvertToTypeTest, Double) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  auto value = value_factory.CreateDoubleValue(1.0);
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetDoubleType()),
+              IsOkAndHolds(ValueOf<DoubleValue>(value_factory, 1.0)));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetIntType()),
+              IsOkAndHolds(ValueOf<IntValue>(value_factory, 1)));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetUintType()),
+              IsOkAndHolds(ValueOf<UintValue>(value_factory, 1)));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetStringType()),
+              IsOkAndHolds(ValueOf<StringValue>(value_factory, "1.0")));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetTypeType()),
+              IsOkAndHolds(ValueOf<TypeValue>(value_factory,
+                                              type_factory.GetDoubleType())));
+  ASSERT_OK_AND_ASSIGN(auto error,
+                       value.As<Value>()->ConvertToType(
+                           value_factory, type_factory.GetErrorType()));
+  ASSERT_TRUE(error->Is<ErrorValue>());
+  EXPECT_THAT(error->As<ErrorValue>().value(),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST_P(ValueConvertToTypeTest, Duration) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       value_factory.CreateDurationValue(absl::Seconds(1)));
+  EXPECT_THAT(
+      value.As<Value>()->ConvertToType(value_factory,
+                                       type_factory.GetDurationType()),
+      IsOkAndHolds(ValueOf<DurationValue>(value_factory, absl::Seconds(1))));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetStringType()),
+              IsOkAndHolds(ValueOf<StringValue>(value_factory, "1s")));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetTypeType()),
+              IsOkAndHolds(ValueOf<TypeValue>(value_factory,
+                                              type_factory.GetDurationType())));
+  ASSERT_OK_AND_ASSIGN(auto error,
+                       value.As<Value>()->ConvertToType(
+                           value_factory, type_factory.GetErrorType()));
+  ASSERT_TRUE(error->Is<ErrorValue>());
+  EXPECT_THAT(error->As<ErrorValue>().value(),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST_P(ValueConvertToTypeTest, Error) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  auto value = value_factory.CreateErrorValue(absl::CancelledError());
+  ASSERT_OK_AND_ASSIGN(auto result,
+                       value.As<Value>()->ConvertToType(
+                           value_factory, type_factory.GetStringType()));
+  ASSERT_TRUE(result->Is<ErrorValue>());
+  EXPECT_EQ(value->value(), result.As<ErrorValue>()->value());
+}
+
+TEST_P(ValueConvertToTypeTest, Int) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  auto value = value_factory.CreateIntValue(1);
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetDoubleType()),
+              IsOkAndHolds(ValueOf<DoubleValue>(value_factory, 1.0)));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetIntType()),
+              IsOkAndHolds(ValueOf<IntValue>(value_factory, 1)));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetUintType()),
+              IsOkAndHolds(ValueOf<UintValue>(value_factory, 1)));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetStringType()),
+              IsOkAndHolds(ValueOf<StringValue>(value_factory, "1")));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetTimestampType()),
+              IsOkAndHolds(ValueOf<TimestampValue>(value_factory,
+                                                   absl::FromUnixSeconds(1))));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetTypeType()),
+              IsOkAndHolds(ValueOf<TypeValue>(value_factory,
+                                              type_factory.GetIntType())));
+  ASSERT_OK_AND_ASSIGN(auto error,
+                       value.As<Value>()->ConvertToType(
+                           value_factory, type_factory.GetErrorType()));
+  ASSERT_TRUE(error->Is<ErrorValue>());
+  EXPECT_THAT(error->As<ErrorValue>().value(),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST_P(ValueConvertToTypeTest, Null) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  auto value = value_factory.GetNullValue();
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetNullType()),
+              IsOkAndHolds(ValueOf<NullValue>(value_factory)));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetStringType()),
+              IsOkAndHolds(ValueOf<StringValue>(value_factory, "null")));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetTypeType()),
+              IsOkAndHolds(ValueOf<TypeValue>(value_factory,
+                                              type_factory.GetNullType())));
+  ASSERT_OK_AND_ASSIGN(auto error,
+                       value.As<Value>()->ConvertToType(
+                           value_factory, type_factory.GetErrorType()));
+  ASSERT_TRUE(error->Is<ErrorValue>());
+  EXPECT_THAT(error->As<ErrorValue>().value(),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST_P(ValueConvertToTypeTest, String) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value, value_factory.CreateStringValue("foo"));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetStringType()),
+              IsOkAndHolds(ValueOf<StringValue>(value_factory, "foo")));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetBytesType()),
+              IsOkAndHolds(ValueOf<BytesValue>(value_factory, "foo")));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetTypeType()),
+              IsOkAndHolds(ValueOf<TypeValue>(value_factory,
+                                              type_factory.GetStringType())));
+  ASSERT_OK_AND_ASSIGN(value, value_factory.CreateStringValue("1"));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetIntType()),
+              IsOkAndHolds(ValueOf<IntValue>(value_factory, 1)));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetUintType()),
+              IsOkAndHolds(ValueOf<UintValue>(value_factory, 1)));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetDoubleType()),
+              IsOkAndHolds(ValueOf<DoubleValue>(value_factory, 1.0)));
+  ASSERT_OK_AND_ASSIGN(value, value_factory.CreateStringValue("1s"));
+  EXPECT_THAT(
+      value.As<Value>()->ConvertToType(value_factory,
+                                       type_factory.GetDurationType()),
+      IsOkAndHolds(ValueOf<DurationValue>(value_factory, absl::Seconds(1))));
+  ASSERT_OK_AND_ASSIGN(value,
+                       value_factory.CreateStringValue("1970-01-01T00:00:01Z"));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetTimestampType()),
+              IsOkAndHolds(ValueOf<TimestampValue>(value_factory,
+                                                   absl::FromUnixSeconds(1))));
+  ASSERT_OK_AND_ASSIGN(auto error,
+                       value.As<Value>()->ConvertToType(
+                           value_factory, type_factory.GetErrorType()));
+  ASSERT_TRUE(error->Is<ErrorValue>());
+  EXPECT_THAT(error->As<ErrorValue>().value(),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST_P(ValueConvertToTypeTest, Timestamp) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto value, value_factory.CreateTimestampValue(absl::FromUnixSeconds(1)));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetTimestampType()),
+              IsOkAndHolds(ValueOf<TimestampValue>(value_factory,
+                                                   absl::FromUnixSeconds(1))));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetStringType()),
+              IsOkAndHolds(
+                  ValueOf<StringValue>(value_factory, "1970-01-01T00:00:01Z")));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetIntType()),
+              IsOkAndHolds(ValueOf<IntValue>(value_factory, 1)));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetTypeType()),
+              IsOkAndHolds(ValueOf<TypeValue>(
+                  value_factory, type_factory.GetTimestampType())));
+  ASSERT_OK_AND_ASSIGN(auto error,
+                       value.As<Value>()->ConvertToType(
+                           value_factory, type_factory.GetErrorType()));
+  ASSERT_TRUE(error->Is<ErrorValue>());
+  EXPECT_THAT(error->As<ErrorValue>().value(),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST_P(ValueConvertToTypeTest, Type) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  auto value = value_factory.CreateTypeValue(type_factory.GetIntType());
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetStringType()),
+              IsOkAndHolds(ValueOf<StringValue>(value_factory, "int")));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetTypeType()),
+              IsOkAndHolds(ValueOf<TypeValue>(value_factory,
+                                              type_factory.GetTypeType())));
+  ASSERT_OK_AND_ASSIGN(auto error,
+                       value.As<Value>()->ConvertToType(
+                           value_factory, type_factory.GetErrorType()));
+  ASSERT_TRUE(error->Is<ErrorValue>());
+  EXPECT_THAT(error->As<ErrorValue>().value(),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST_P(ValueConvertToTypeTest, Uint) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  auto value = value_factory.CreateUintValue(1);
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetDoubleType()),
+              IsOkAndHolds(ValueOf<DoubleValue>(value_factory, 1.0)));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetIntType()),
+              IsOkAndHolds(ValueOf<IntValue>(value_factory, 1)));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetUintType()),
+              IsOkAndHolds(ValueOf<UintValue>(value_factory, 1)));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetStringType()),
+              IsOkAndHolds(ValueOf<StringValue>(value_factory, "1")));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetTypeType()),
+              IsOkAndHolds(ValueOf<TypeValue>(value_factory,
+                                              type_factory.GetUintType())));
+  ASSERT_OK_AND_ASSIGN(auto error,
+                       value.As<Value>()->ConvertToType(
+                           value_factory, type_factory.GetErrorType()));
+  ASSERT_TRUE(error->Is<ErrorValue>());
+  EXPECT_THAT(error->As<ErrorValue>().value(),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST_P(ValueConvertToTypeTest, List) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      (ListValueBuilder<Value>(value_factory, type_factory.GetDynType())
+           .Build()));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetTypeType()),
+              IsOkAndHolds(ValueOf<TypeValue>(value_factory, value->type())));
+  ASSERT_OK_AND_ASSIGN(auto converted, value.As<Value>()->ConvertToType(
+                                           value_factory, value->type()));
+  // Cheat, should be the exact same object.
+  EXPECT_EQ(converted.operator->(), value.operator->());
+  ASSERT_OK_AND_ASSIGN(auto error,
+                       value.As<Value>()->ConvertToType(
+                           value_factory, type_factory.GetErrorType()));
+  ASSERT_TRUE(error->Is<ErrorValue>());
+  EXPECT_THAT(error->As<ErrorValue>().value(),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST_P(ValueConvertToTypeTest, Map) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      (MapValueBuilder<Value, Value>(value_factory, type_factory.GetDynType(),
+                                     type_factory.GetDynType())
+           .Build()));
+  EXPECT_THAT(value.As<Value>()->ConvertToType(value_factory,
+                                               type_factory.GetTypeType()),
+              IsOkAndHolds(ValueOf<TypeValue>(value_factory, value->type())));
+  ASSERT_OK_AND_ASSIGN(auto converted, value.As<Value>()->ConvertToType(
+                                           value_factory, value->type()));
+  // Cheat, should be the exact same object.
+  EXPECT_EQ(converted.operator->(), value.operator->());
+  ASSERT_OK_AND_ASSIGN(auto error,
+                       value.As<Value>()->ConvertToType(
+                           value_factory, type_factory.GetErrorType()));
+  ASSERT_TRUE(error->Is<ErrorValue>());
+  EXPECT_THAT(error->As<ErrorValue>().value(),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+// TODO(uncreated-issue/59): add ConvertToType tests for remainders
+
+INSTANTIATE_TEST_SUITE_P(ValueConvertToTypeTest, ValueConvertToTypeTest,
+                         base_internal::MemoryManagerTestModeAll(),
+                         base_internal::MemoryManagerTestModeTupleName);
 
 Handle<NullValue> DefaultNullValue(ValueFactory& value_factory) {
   return value_factory.GetNullValue();

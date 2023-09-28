@@ -15,15 +15,24 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUES_UNKNOWN_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_UNKNOWN_VALUE_H_
 
+#include <cstddef>
+#include <cstdint>
 #include <string>
 #include <utility>
 
+#include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
+#include "absl/status/statusor.h"
 #include "base/attribute_set.h"
 #include "base/function_result_set.h"
+#include "base/handle.h"
+#include "base/internal/data.h"
 #include "base/internal/unknown_set.h"
+#include "base/kind.h"
 #include "base/types/unknown_type.h"
 #include "base/value.h"
+#include "common/any.h"
+#include "common/json.h"
 
 namespace cel {
 
@@ -33,7 +42,10 @@ namespace cel {
 // of the unknown inputs are determined to be required, they are accumulated in
 // UnknownValue with set semantics. See Attribute and FunctionResult for
 // the representation for unknown values.
-class UnknownValue final : public Value, public base_internal::InlineData {
+class UnknownValue final
+    : public Value,
+      public base_internal::InlineData,
+      public base_internal::EnableHandleFromThis<UnknownValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kUnknown;
 
@@ -56,6 +68,9 @@ class UnknownValue final : public Value, public base_internal::InlineData {
   absl::StatusOr<Any> ConvertToAny(ValueFactory&) const;
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
+
+  absl::StatusOr<Handle<Value>> ConvertToType(ValueFactory&,
+                                              const Handle<Type>&) const;
 
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;

@@ -19,12 +19,17 @@
 
 #include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
+#include "absl/status/statusor.h"
+#include "base/handle.h"
 #include "base/types/bool_type.h"
 #include "base/value.h"
+#include "common/any.h"
+#include "common/json.h"
 
 namespace cel {
 
-class BoolValue final : public base_internal::SimpleValue<BoolType, bool> {
+class BoolValue final : public base_internal::SimpleValue<BoolType, bool>,
+                        public base_internal::EnableHandleFromThis<BoolValue> {
  private:
   using Base = base_internal::SimpleValue<BoolType, bool>;
 
@@ -54,6 +59,9 @@ class BoolValue final : public base_internal::SimpleValue<BoolType, bool> {
   absl::StatusOr<Any> ConvertToAny(ValueFactory&) const;
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
+
+  absl::StatusOr<Handle<Value>> ConvertToType(ValueFactory& value_factory,
+                                              const Handle<Type>& type) const;
 
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;

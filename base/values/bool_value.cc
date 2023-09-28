@@ -17,9 +17,18 @@
 #include <string>
 #include <utility>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "base/handle.h"
+#include "base/kind.h"
+#include "base/type.h"
+#include "base/value.h"
 #include "base/value_factory.h"
 #include "common/any.h"
+#include "common/json.h"
 #include "internal/proto_wire.h"
 #include "internal/status_macros.h"
 
@@ -57,6 +66,23 @@ absl::StatusOr<Any> BoolValue::ConvertToAny(ValueFactory&) const {
 
 absl::StatusOr<Json> BoolValue::ConvertToJson(ValueFactory&) const {
   return value();
+}
+
+absl::StatusOr<Handle<Value>> BoolValue::ConvertToType(
+    ValueFactory& value_factory, const Handle<Type>& type) const {
+  switch (type->kind()) {
+    case TypeKind::kBool:
+      return handle_from_this();
+    case TypeKind::kType:
+      return value_factory.CreateTypeValue(this->type());
+    case TypeKind::kString:
+      return value_factory.CreateStringValue(value() ? "true" : "false");
+    default:
+      return value_factory.CreateErrorValue(
+          absl::InvalidArgumentError(absl::StrCat(
+              "type conversion error from '", this->type()->DebugString(),
+              "' to '", type->DebugString(), "'")));
+  }
 }
 
 absl::StatusOr<Handle<Value>> BoolValue::Equals(ValueFactory& value_factory,

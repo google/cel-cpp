@@ -98,6 +98,7 @@ class Type : public base_internal::Data {
   }
 
  private:
+  friend class Value;
   friend class TypeManager;
   friend class EnumType;
   friend class StructType;

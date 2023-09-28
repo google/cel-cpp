@@ -19,8 +19,14 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "base/handle.h"
 #include "base/internal/data.h"
+#include "base/kind.h"
+#include "base/value.h"
 #include "base/value_factory.h"
+#include "common/any.h"
+#include "common/json.h"
 
 namespace cel {
 
@@ -58,6 +64,21 @@ absl::StatusOr<Any> TypeValue::ConvertToAny(ValueFactory&) const {
 absl::StatusOr<Json> TypeValue::ConvertToJson(ValueFactory&) const {
   return absl::FailedPreconditionError(absl::StrCat(
       type()->name(), " cannot be serialized as google.protobuf.Value"));
+}
+
+absl::StatusOr<Handle<Value>> TypeValue::ConvertToType(
+    ValueFactory& value_factory, const Handle<Type>& type) const {
+  switch (type->kind()) {
+    case TypeKind::kType:
+      return value_factory.CreateTypeValue(this->type());
+    case TypeKind::kString:
+      return value_factory.CreateStringValue(name());
+    default:
+      return value_factory.CreateErrorValue(
+          absl::InvalidArgumentError(absl::StrCat(
+              "type conversion error from '", this->type()->DebugString(),
+              "' to '", type->DebugString(), "'")));
+  }
 }
 
 }  // namespace cel

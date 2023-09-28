@@ -19,7 +19,9 @@
 
 #include "absl/base/optimization.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "base/handle.h"
+#include "base/internal/data.h"
 #include "base/internal/message_wrapper.h"
 #include "base/kind.h"
 #include "base/type.h"
@@ -40,6 +42,8 @@
 #include "base/values/type_value.h"
 #include "base/values/uint_value.h"
 #include "base/values/unknown_value.h"
+#include "common/any.h"
+#include "common/json.h"
 
 namespace cel {
 
@@ -217,6 +221,72 @@ absl::StatusOr<Json> Value::ConvertToJson(ValueFactory& value_factory) const {
     default:
       ABSL_UNREACHABLE();
   }
+}
+
+absl::StatusOr<Handle<Value>> Value::ConvertToType(
+    ValueFactory& value_factory, const Handle<Type>& type) const {
+  switch (kind()) {
+    case ValueKind::kNullType:
+      return static_cast<const NullValue*>(this)->ConvertToType(value_factory,
+                                                                type);
+    case ValueKind::kError:
+      return static_cast<const ErrorValue*>(this)->ConvertToType(value_factory,
+                                                                 type);
+    case ValueKind::kType:
+      return static_cast<const TypeValue*>(this)->ConvertToType(value_factory,
+                                                                type);
+    case ValueKind::kBool:
+      return static_cast<const BoolValue*>(this)->ConvertToType(value_factory,
+                                                                type);
+    case ValueKind::kInt:
+      return static_cast<const IntValue*>(this)->ConvertToType(value_factory,
+                                                               type);
+    case ValueKind::kUint:
+      return static_cast<const UintValue*>(this)->ConvertToType(value_factory,
+                                                                type);
+    case ValueKind::kDouble:
+      return static_cast<const DoubleValue*>(this)->ConvertToType(value_factory,
+                                                                  type);
+    case ValueKind::kString:
+      return static_cast<const StringValue*>(this)->ConvertToType(value_factory,
+                                                                  type);
+    case ValueKind::kBytes:
+      return static_cast<const BytesValue*>(this)->ConvertToType(value_factory,
+                                                                 type);
+    case ValueKind::kEnum:
+      return static_cast<const EnumValue*>(this)->ConvertToType(value_factory,
+                                                                type);
+    case ValueKind::kDuration:
+      return static_cast<const DurationValue*>(this)->ConvertToType(
+          value_factory, type);
+    case ValueKind::kTimestamp:
+      return static_cast<const TimestampValue*>(this)->ConvertToType(
+          value_factory, type);
+    case ValueKind::kList:
+      return static_cast<const ListValue*>(this)->ConvertToType(value_factory,
+                                                                type);
+    case ValueKind::kMap:
+      return static_cast<const MapValue*>(this)->ConvertToType(value_factory,
+                                                               type);
+    case ValueKind::kStruct:
+      return static_cast<const StructValue*>(this)->ConvertToType(value_factory,
+                                                                  type);
+    case ValueKind::kUnknown:
+      return static_cast<const UnknownValue*>(this)->ConvertToType(
+          value_factory, type);
+    case ValueKind::kOpaque:
+      return static_cast<const OpaqueValue*>(this)->ConvertToType(value_factory,
+                                                                  type);
+    default:
+      ABSL_UNREACHABLE();
+  }
+}
+
+bool Value::IsRuntimeConvertible(const Type& from, const Type& to) {
+  if (from.kind() == TypeKind::kDyn) {
+    return to.kind() == TypeKind::kDyn;
+  }
+  return to.kind() == TypeKind::kDyn || Type::Equals(from, to);
 }
 
 absl::StatusOr<Handle<Value>> Value::Equals(ValueFactory& value_factory,

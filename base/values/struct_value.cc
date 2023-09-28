@@ -25,16 +25,21 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/internal/message_wrapper.h"
+#include "base/kind.h"
 #include "base/memory.h"
 #include "base/types/struct_type.h"
+#include "base/types/wrapper_type.h"
 #include "base/value.h"
 #include "base/value_factory.h"
+#include "base/values/bool_value.h"
+#include "base/values/null_value.h"
 #include "common/any.h"
 #include "common/json.h"
 #include "internal/rtti.h"
@@ -71,6 +76,24 @@ absl::StatusOr<Any> StructValue::ConvertToAny(
 absl::StatusOr<Json> StructValue::ConvertToJson(
     ValueFactory& value_factory) const {
   return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(ConvertToJson, value_factory);
+}
+
+absl::StatusOr<Handle<Value>> StructValue::ConvertToType(
+    ValueFactory& value_factory, const Handle<Type>& type) const {
+  switch (type->kind()) {
+    case TypeKind::kStruct:
+      if (this->type()->name() != type->name()) {
+        break;
+      }
+      return handle_from_this();
+    case TypeKind::kType:
+      return value_factory.CreateTypeValue(this->type());
+    default:
+      break;
+  }
+  return value_factory.CreateErrorValue(absl::InvalidArgumentError(
+      absl::StrCat("type conversion error from '", this->type()->DebugString(),
+                   "' to '", type->DebugString(), "'")));
 }
 
 absl::StatusOr<Handle<Value>> StructValue::GetFieldByName(

@@ -15,17 +15,26 @@
 #include "base/values/double_value.h"
 
 #include <cmath>
+#include <cstdint>
 #include <string>
 #include <utility>
 
 #include "absl/base/casts.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "base/handle.h"
+#include "base/kind.h"
+#include "base/type.h"
+#include "base/value.h"
 #include "base/value_factory.h"
 #include "base/values/int_value.h"
 #include "base/values/uint_value.h"
 #include "common/any.h"
+#include "common/json.h"
 #include "internal/number.h"
 #include "internal/proto_wire.h"
 #include "internal/status_macros.h"
@@ -40,9 +49,7 @@ using internal::ProtoWireEncoder;
 using internal::ProtoWireTag;
 using internal::ProtoWireType;
 
-}  // namespace
-
-std::string DoubleValue::DebugString(double value) {
+std::string DoubleToString(double value) {
   if (std::isfinite(value)) {
     if (std::floor(value) != value) {
       // The double is not representable as a whole number, so use
@@ -69,6 +76,12 @@ std::string DoubleValue::DebugString(double value) {
   return "+infinity";
 }
 
+}  // namespace
+
+std::string DoubleValue::DebugString(double value) {
+  return DoubleToString(value);
+}
+
 std::string DoubleValue::DebugString() const { return DebugString(value()); }
 
 absl::StatusOr<Any> DoubleValue::ConvertToAny(ValueFactory&) const {
@@ -87,6 +100,39 @@ absl::StatusOr<Any> DoubleValue::ConvertToAny(ValueFactory&) const {
 
 absl::StatusOr<Json> DoubleValue::ConvertToJson(ValueFactory&) const {
   return value();
+}
+
+absl::StatusOr<Handle<Value>> DoubleValue::ConvertToType(
+    ValueFactory& value_factory, const Handle<Type>& type) const {
+  switch (type->kind()) {
+    case TypeKind::kDouble:
+      return handle_from_this();
+    case TypeKind::kInt: {
+      auto number = internal::Number::FromDouble(value());
+      if (!number.LosslessConvertibleToInt()) {
+        return value_factory.CreateErrorValue(
+            absl::OutOfRangeError("integer overflow"));
+      }
+      return value_factory.CreateIntValue(number.AsInt());
+    }
+    case TypeKind::kUint: {
+      auto number = internal::Number::FromDouble(value());
+      if (!number.LosslessConvertibleToUint()) {
+        return value_factory.CreateErrorValue(
+            absl::OutOfRangeError("unsigned integer overflow"));
+      }
+      return value_factory.CreateUintValue(number.AsUint());
+    }
+    case TypeKind::kType:
+      return value_factory.CreateTypeValue(this->type());
+    case TypeKind::kString:
+      return value_factory.CreateStringValue(DoubleToString(value()));
+    default:
+      return value_factory.CreateErrorValue(
+          absl::InvalidArgumentError(absl::StrCat(
+              "type conversion error from '", this->type()->DebugString(),
+              "' to '", type->DebugString(), "'")));
+  }
 }
 
 absl::StatusOr<Handle<Value>> DoubleValue::Equals(ValueFactory& value_factory,

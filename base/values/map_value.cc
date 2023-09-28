@@ -15,22 +15,32 @@
 #include "base/values/map_value.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
+#include "base/kind.h"
+#include "base/memory.h"
 #include "base/types/map_type.h"
 #include "base/value.h"
 #include "base/value_factory.h"
+#include "base/values/bool_value.h"
+#include "base/values/int_value.h"
 #include "base/values/list_value.h"
+#include "base/values/uint_value.h"
+#include "common/any.h"
+#include "common/json.h"
 #include "internal/rtti.h"
 #include "internal/status_macros.h"
 
@@ -81,6 +91,30 @@ absl::StatusOr<Json> MapValue::ConvertToJson(
 absl::StatusOr<JsonObject> MapValue::ConvertToJsonObject(
     ValueFactory& value_factory) const {
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(ConvertToJsonObject, value_factory);
+}
+
+absl::StatusOr<Handle<Value>> MapValue::ConvertToType(
+    ValueFactory& value_factory, const Handle<Type>& type) const {
+  switch (type->kind()) {
+    case TypeKind::kMap:
+      // At runtime, a map is a map. In C++ we currently attempt to propagate
+      // the type if we know all the values have the same type, otherwise we use
+      // dyn.
+      if (!Value::IsRuntimeConvertible(*this->type()->key(),
+                                       *type->As<MapType>().key()) ||
+          !Value::IsRuntimeConvertible(*this->type()->value(),
+                                       *type->As<MapType>().value())) {
+        break;
+      }
+      return handle_from_this();
+    case TypeKind::kType:
+      return value_factory.CreateTypeValue(this->type());
+    default:
+      break;
+  }
+  return value_factory.CreateErrorValue(absl::InvalidArgumentError(
+      absl::StrCat("type conversion error from '", this->type()->DebugString(),
+                   "' to '", type->DebugString(), "'")));
 }
 
 size_t MapValue::size() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(size); }

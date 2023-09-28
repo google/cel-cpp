@@ -19,12 +19,17 @@
 
 #include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
+#include "absl/status/statusor.h"
+#include "base/handle.h"
 #include "base/types/null_type.h"
 #include "base/value.h"
+#include "common/any.h"
+#include "common/json.h"
 
 namespace cel {
 
-class NullValue final : public base_internal::SimpleValue<NullType, void> {
+class NullValue final : public base_internal::SimpleValue<NullType, void>,
+                        public base_internal::EnableHandleFromThis<NullValue> {
  private:
   using Base = base_internal::SimpleValue<NullType, void>;
 
@@ -53,6 +58,9 @@ class NullValue final : public base_internal::SimpleValue<NullType, void> {
   absl::StatusOr<Any> ConvertToAny(ValueFactory&) const;
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
+
+  absl::StatusOr<Handle<Value>> ConvertToType(ValueFactory& value_factory,
+                                              const Handle<Type>& type) const;
 
  private:
   NullValue() = default;

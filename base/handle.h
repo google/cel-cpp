@@ -16,7 +16,6 @@
 #define THIRD_PARTY_CEL_CPP_BASE_HANDLE_H_
 
 #include <memory>
-#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -345,7 +344,7 @@ struct HandleFactory {
   }
 };
 
-template <typename BaseT, typename DerivedT>
+template <typename BaseT, typename DerivedT = BaseT>
 struct EnableHandleFromThis {
  protected:
   Handle<BaseT> handle_from_this() const {

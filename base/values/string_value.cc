@@ -14,19 +14,37 @@
 
 #include "base/values/string_value.h"
 
+#include <cstddef>
+#include <cstdint>
+#include <functional>
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/base/macros.h"
+#include "absl/base/optimization.h"
+#include "absl/hash/hash.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/numbers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/variant.h"
+#include "base/handle.h"
+#include "base/internal/data.h"
+#include "base/kind.h"
+#include "base/type.h"
 #include "base/types/string_type.h"
+#include "base/value.h"
 #include "base/value_factory.h"
+#include "base/values/bytes_value.h"
 #include "common/any.h"
+#include "common/json.h"
 #include "internal/proto_wire.h"
 #include "internal/status_macros.h"
 #include "internal/strings.h"
+#include "internal/time.h"
 #include "internal/utf8.h"
 
 namespace cel {
@@ -364,6 +382,153 @@ base_internal::StringValueRep StringValue::rep() const {
           absl::string_view(
               static_cast<const base_internal::StringStringValue*>(this)
                   ->value_));
+  }
+}
+
+namespace {
+
+struct FlattenStringValue {
+  std::string& scratch;
+
+  absl::string_view operator()(absl::string_view string) const {
+    return string;
+  }
+
+  absl::string_view operator()(const absl::Cord& string) const {
+    if (auto flat = string.TryFlat(); flat) {
+      return *flat;
+    }
+    scratch = static_cast<std::string>(string);
+    return absl::string_view(scratch);
+  }
+};
+
+}  // namespace
+
+absl::string_view StringValue::Flat(std::string& scratch) const {
+  return absl::visit(FlattenStringValue{scratch}, rep());
+}
+
+absl::StatusOr<Handle<Value>> StringValue::ConvertToType(
+    ValueFactory& value_factory, const Handle<Type>& type) const {
+  switch (type->kind()) {
+    case TypeKind::kString:
+      return handle_from_this();
+    case TypeKind::kBytes:
+      return AsBytes(value_factory);
+    case TypeKind::kType:
+      return value_factory.CreateTypeValue(this->type());
+    case TypeKind::kInt: {
+      std::string scratch;
+      int64_t number;
+      if (!absl::SimpleAtoi(Flat(scratch), &number)) {
+        break;
+      }
+      return value_factory.CreateIntValue(number);
+    }
+    case TypeKind::kUint: {
+      std::string scratch;
+      uint64_t number;
+      if (!absl::SimpleAtoi(Flat(scratch), &number)) {
+        break;
+      }
+      return value_factory.CreateUintValue(number);
+    }
+    case TypeKind::kDouble: {
+      std::string scratch;
+      double number;
+      if (!absl::SimpleAtod(Flat(scratch), &number)) {
+        break;
+      }
+      return value_factory.CreateDoubleValue(number);
+    }
+    case TypeKind::kDuration: {
+      std::string scratch;
+      auto status_or_duration = internal::ParseDuration(Flat(scratch));
+      if (!status_or_duration.ok()) {
+        return value_factory.CreateErrorValue(status_or_duration.status());
+      }
+      auto status_or_duration_value =
+          value_factory.CreateDurationValue(*status_or_duration);
+      if (!status_or_duration_value.ok()) {
+        return value_factory.CreateErrorValue(
+            status_or_duration_value.status());
+      }
+      return std::move(*status_or_duration_value);
+    }
+    case TypeKind::kTimestamp: {
+      std::string scratch;
+      auto status_or_timestamp = internal::ParseTimestamp(Flat(scratch));
+      if (!status_or_timestamp.ok()) {
+        return value_factory.CreateErrorValue(status_or_timestamp.status());
+      }
+      auto status_or_timestamp_value =
+          value_factory.CreateTimestampValue(*status_or_timestamp);
+      if (!status_or_timestamp_value.ok()) {
+        return value_factory.CreateErrorValue(
+            status_or_timestamp_value.status());
+      }
+      return std::move(*status_or_timestamp_value);
+    }
+    default:
+      break;
+  }
+  return value_factory.CreateErrorValue(absl::InvalidArgumentError(
+      absl::StrCat("type conversion error from '", this->type()->DebugString(),
+                   "' to '", type->DebugString(), "'")));
+}
+
+absl::StatusOr<Handle<BytesValue>> StringValue::AsBytes(
+    ValueFactory& value_factory) const {
+  // Here be dragons.
+  //
+  // StringValue and BytesValue have equivalent representations underneath the
+  // covers. For every StringValue implementation there is an analogous
+  // BytesValue implementation, and vice versa. Figure out which one it is and
+  // create the analogous, handling reference counting and etc.
+  switch (base_internal::Metadata::Locality(*this)) {
+    case base_internal::DataLocality::kNull:
+      return value_factory.GetBytesValue();
+    case base_internal::DataLocality::kStoredInline:
+      switch (base_internal::Metadata::GetInlineVariant<
+              base_internal::InlinedStringValueVariant>(*this)) {
+        case base_internal::InlinedStringValueVariant::kCord:
+          return base_internal::HandleFactory<BytesValue>::Make<
+              base_internal::InlinedCordBytesValue>(
+              static_cast<const base_internal::InlinedCordStringValue*>(this)
+                  ->value_);
+        case base_internal::InlinedStringValueVariant::kStringView:
+          if (static_cast<const base_internal::InlinedStringViewStringValue*>(
+                  this)
+                  ->owner_ != nullptr) {
+            base_internal::Metadata::Ref(
+                *static_cast<
+                     const base_internal::InlinedStringViewStringValue*>(this)
+                     ->owner_);
+          }
+          return base_internal::HandleFactory<BytesValue>::Make<
+              base_internal::InlinedStringViewBytesValue>(
+              static_cast<const base_internal::InlinedStringViewStringValue*>(
+                  this)
+                  ->value_,
+              static_cast<const base_internal::InlinedStringViewStringValue*>(
+                  this)
+                  ->owner_);
+      }
+    case base_internal::DataLocality::kReferenceCounted:
+      base_internal::Metadata::Ref(*this);
+      return base_internal::HandleFactory<BytesValue>::Make<
+          base_internal::InlinedCordBytesValue>(absl::MakeCordFromExternal(
+          static_cast<const base_internal::StringStringValue*>(this)->value_,
+          [this]() {
+            if (base_internal::Metadata::Unref(*this)) {
+              delete static_cast<const base_internal::StringStringValue*>(this);
+            }
+          }));
+    case base_internal::DataLocality::kArenaAllocated:
+      return base_internal::HandleFactory<BytesValue>::Make<
+          base_internal::InlinedStringViewBytesValue>(absl::string_view(
+          static_cast<const base_internal::StringStringValue*>(this)->value_));
   }
 }
 

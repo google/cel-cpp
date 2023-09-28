@@ -22,19 +22,25 @@
 #include <utility>
 
 #include "absl/log/absl_check.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
 #include "base/types/enum_type.h"
 #include "base/value.h"
+#include "common/any.h"
+#include "common/json.h"
 
 namespace cel {
 
 class ValueFactory;
 
 // EnumValue represents a single constant belonging to cel::EnumType.
-class EnumValue final : public Value, public base_internal::InlineData {
+class EnumValue final : public Value,
+                        public base_internal::InlineData,
+                        public base_internal::EnableHandleFromThis<EnumValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kEnum;
 
@@ -64,6 +70,9 @@ class EnumValue final : public Value, public base_internal::InlineData {
   absl::StatusOr<Any> ConvertToAny(ValueFactory&) const;
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
+
+  absl::StatusOr<Handle<Value>> ConvertToType(ValueFactory& value_factory,
+                                              const Handle<Type>& type) const;
 
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;

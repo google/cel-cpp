@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_STRING_VALUE_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <utility>
 
@@ -26,19 +27,24 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
 #include "base/types/string_type.h"
 #include "base/value.h"
+#include "common/any.h"
+#include "common/json.h"
 #include "re2/re2.h"
 
 namespace cel {
 
 class MemoryManager;
 class ValueFactory;
+class BytesValue;
 
-class StringValue : public Value {
+class StringValue : public Value,
+                    public base_internal::EnableHandleFromThis<StringValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kString;
 
@@ -77,6 +83,9 @@ class StringValue : public Value {
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
 
+  absl::StatusOr<Handle<Value>> ConvertToType(ValueFactory& value_factory,
+                                              const Handle<Type>& type) const;
+
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;
 
@@ -108,6 +117,7 @@ class StringValue : public Value {
   }
 
  private:
+  friend class BytesValue;
   friend class base_internal::ValueHandle;
   friend class base_internal::InlinedCordStringValue;
   friend class base_internal::InlinedStringViewStringValue;
@@ -124,6 +134,11 @@ class StringValue : public Value {
   // Get the contents of this StringValue as either absl::string_view or const
   // absl::Cord&.
   base_internal::StringValueRep rep() const;
+
+  absl::string_view Flat(std::string& scratch) const;
+
+  // Reinterpret this string value as a bytes value as efficiently as possible.
+  absl::StatusOr<Handle<BytesValue>> AsBytes(ValueFactory& value_factory) const;
 };
 
 CEL_INTERNAL_VALUE_DECL(StringValue);
@@ -146,6 +161,7 @@ namespace base_internal {
 class InlinedCordStringValue final : public StringValue, public InlineData {
  private:
   friend class StringValue;
+  friend class BytesValue;
   friend class ValueFactory;
   template <size_t Size, size_t Align>
   friend struct AnyData;
@@ -171,11 +187,13 @@ class InlinedStringViewStringValue final : public StringValue,
                                            public InlineData {
  private:
   friend class StringValue;
+  friend class BytesValue;
   template <size_t Size, size_t Align>
   friend struct AnyData;
 
   static constexpr uintptr_t kMetadata =
-      kStoredInline | (static_cast<uintptr_t>(kKind) << kKindShift);
+      kStoredInline | AsInlineVariant(InlinedStringValueVariant::kStringView) |
+      (static_cast<uintptr_t>(kKind) << kKindShift);
 
   explicit InlinedStringViewStringValue(absl::string_view value)
       : InlinedStringViewStringValue(value, nullptr) {}
@@ -188,17 +206,13 @@ class InlinedStringViewStringValue final : public StringValue,
 
   InlinedStringViewStringValue(absl::string_view value, const cel::Value* owner,
                                bool trivial)
-      : InlineData(kMetadata | (trivial ? kTrivial : uintptr_t{0}) |
-                   AsInlineVariant(InlinedStringValueVariant::kStringView)),
+      : InlineData(kMetadata | (trivial ? kTrivial : uintptr_t{0})),
         value_(value),
         owner_(trivial ? nullptr : owner) {}
 
   // Only called when owner_ was, at some point, not nullptr.
   InlinedStringViewStringValue(const InlinedStringViewStringValue& other)
-      : InlineData(kMetadata |
-                   AsInlineVariant(InlinedStringValueVariant::kStringView)),
-        value_(other.value_),
-        owner_(other.owner_) {
+      : InlineData(kMetadata), value_(other.value_), owner_(other.owner_) {
     if (owner_ != nullptr) {
       Metadata::Ref(*owner_);
     }
@@ -206,10 +220,7 @@ class InlinedStringViewStringValue final : public StringValue,
 
   // Only called when owner_ was, at some point, not nullptr.
   InlinedStringViewStringValue(InlinedStringViewStringValue&& other)
-      : InlineData(kMetadata |
-                   AsInlineVariant(InlinedStringValueVariant::kStringView)),
-        value_(other.value_),
-        owner_(other.owner_) {
+      : InlineData(kMetadata), value_(other.value_), owner_(other.owner_) {
     other.value_ = absl::string_view();
     other.owner_ = nullptr;
   }
@@ -233,6 +244,7 @@ class InlinedStringViewStringValue final : public StringValue,
 class StringStringValue final : public StringValue, public HeapData {
  private:
   friend class cel::MemoryManager;
+  friend class BytesValue;
   friend class StringValue;
   friend class ValueFactory;
 

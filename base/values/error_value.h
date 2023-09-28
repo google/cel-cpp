@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUES_ERROR_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_ERROR_VALUE_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -23,14 +24,22 @@
 #include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "base/handle.h"
+#include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
 #include "base/types/error_type.h"
 #include "base/value.h"
+#include "common/any.h"
+#include "common/json.h"
 
 namespace cel {
 
-class ErrorValue final : public Value, public base_internal::InlineData {
+class ErrorValue final
+    : public Value,
+      public base_internal::InlineData,
+      public base_internal::EnableHandleFromThis<ErrorValue> {
  public:
   ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(
       const absl::Status& value);
@@ -56,6 +65,9 @@ class ErrorValue final : public Value, public base_internal::InlineData {
   absl::StatusOr<Any> ConvertToAny(ValueFactory&) const;
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
+
+  absl::StatusOr<Handle<Value>> ConvertToType(ValueFactory&,
+                                              const Handle<Type>&) const;
 
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;

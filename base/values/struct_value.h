@@ -18,15 +18,18 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
 #include "absl/base/attributes.h"
+#include "absl/base/macros.h"
 #include "absl/hash/hash.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/attribute.h"
 #include "base/handle.h"
@@ -37,6 +40,8 @@
 #include "base/type.h"
 #include "base/types/struct_type.h"
 #include "base/value.h"
+#include "common/any.h"
+#include "common/json.h"
 #include "internal/rtti.h"
 
 namespace google::api::expr::runtime {
@@ -61,7 +66,8 @@ struct FieldSpecifier {
 using SelectQualifier = absl::variant<FieldSpecifier, AttributeQualifier>;
 
 // StructValue represents an instance of cel::StructType.
-class StructValue : public Value {
+class StructValue : public Value,
+                    public base_internal::EnableHandleFromThis<StructValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kStruct;
 
@@ -91,6 +97,9 @@ class StructValue : public Value {
   absl::StatusOr<Any> ConvertToAny(ValueFactory& value_factory) const;
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
+
+  absl::StatusOr<Handle<Value>> ConvertToType(ValueFactory& value_factory,
+                                              const Handle<Type>& type) const;
 
   absl::StatusOr<Handle<Value>> GetField(ValueFactory& value_factory,
                                          FieldId field) const;

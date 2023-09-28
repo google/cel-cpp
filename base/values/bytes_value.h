@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_BYTES_VALUE_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <utility>
 
@@ -26,18 +27,23 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
 #include "base/types/bytes_type.h"
 #include "base/value.h"
+#include "common/any.h"
+#include "common/json.h"
 
 namespace cel {
 
 class MemoryManager;
 class ValueFactory;
+class StringValue;
 
-class BytesValue : public Value {
+class BytesValue : public Value,
+                   public base_internal::EnableHandleFromThis<BytesValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kBytes;
 
@@ -76,6 +82,9 @@ class BytesValue : public Value {
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
 
+  absl::StatusOr<Handle<Value>> ConvertToType(ValueFactory& value_factory,
+                                              const Handle<Type>& type) const;
+
   size_t size() const;
 
   bool empty() const;
@@ -105,6 +114,7 @@ class BytesValue : public Value {
   }
 
  private:
+  friend class StringValue;
   friend class base_internal::ValueHandle;
   friend class base_internal::InlinedCordBytesValue;
   friend class base_internal::InlinedStringViewBytesValue;
@@ -121,6 +131,11 @@ class BytesValue : public Value {
   // Get the contents of this BytesValue as either absl::string_view or const
   // absl::Cord&.
   base_internal::BytesValueRep rep() const;
+
+  // Assuming the contained bytes are valid UTF-8, reinterpret this bytes value
+  // as a string value as efficiently as possible.
+  absl::StatusOr<Handle<StringValue>> AsString(
+      ValueFactory& value_factory) const;
 };
 
 CEL_INTERNAL_VALUE_DECL(BytesValue);
@@ -133,6 +148,7 @@ namespace base_internal {
 class InlinedCordBytesValue final : public BytesValue, public InlineData {
  private:
   friend class BytesValue;
+  friend class StringValue;
   template <size_t Size, size_t Align>
   friend struct AnyData;
 
@@ -156,6 +172,7 @@ class InlinedCordBytesValue final : public BytesValue, public InlineData {
 class InlinedStringViewBytesValue final : public BytesValue, public InlineData {
  private:
   friend class BytesValue;
+  friend class StringValue;
   template <size_t Size, size_t Align>
   friend struct AnyData;
 
@@ -219,6 +236,7 @@ class StringBytesValue final : public BytesValue, public HeapData {
  private:
   friend class cel::MemoryManager;
   friend class BytesValue;
+  friend class StringValue;
 
   explicit StringBytesValue(std::string value);
 

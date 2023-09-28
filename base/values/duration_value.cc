@@ -14,15 +14,24 @@
 
 #include "base/values/duration_value.h"
 
+#include <cstdint>
 #include <string>
 #include <utility>
 
 #include "absl/base/optimization.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "base/handle.h"
+#include "base/kind.h"
+#include "base/type.h"
+#include "base/value.h"
 #include "base/value_factory.h"
 #include "common/any.h"
+#include "common/json.h"
 #include "internal/proto_wire.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
@@ -73,6 +82,28 @@ absl::StatusOr<Any> DurationValue::ConvertToAny(ValueFactory&) const {
 absl::StatusOr<Json> DurationValue::ConvertToJson(ValueFactory&) const {
   CEL_ASSIGN_OR_RETURN(auto formatted, internal::EncodeDurationToJson(value()));
   return JsonString(std::move(formatted));
+}
+
+absl::StatusOr<Handle<Value>> DurationValue::ConvertToType(
+    ValueFactory& value_factory, const Handle<Type>& type) const {
+  switch (type->kind()) {
+    case TypeKind::kDuration:
+      return handle_from_this();
+    case TypeKind::kType:
+      return value_factory.CreateTypeValue(this->type());
+    case TypeKind::kString: {
+      auto status_or_string = internal::EncodeDurationToJson(value());
+      if (!status_or_string.ok()) {
+        return value_factory.CreateErrorValue(status_or_string.status());
+      }
+      return value_factory.CreateStringValue(std::move(*status_or_string));
+    }
+    default:
+      return value_factory.CreateErrorValue(
+          absl::InvalidArgumentError(absl::StrCat(
+              "type conversion error from '", this->type()->DebugString(),
+              "' to '", type->DebugString(), "'")));
+  }
 }
 
 absl::StatusOr<Handle<Value>> DurationValue::Equals(ValueFactory& value_factory,

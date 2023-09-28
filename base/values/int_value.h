@@ -19,13 +19,19 @@
 #include <string>
 
 #include "absl/base/attributes.h"
+#include "absl/base/casts.h"
 #include "absl/log/absl_check.h"
+#include "absl/status/statusor.h"
+#include "base/handle.h"
 #include "base/types/int_type.h"
 #include "base/value.h"
+#include "common/any.h"
+#include "common/json.h"
 
 namespace cel {
 
-class IntValue final : public base_internal::SimpleValue<IntType, int64_t> {
+class IntValue final : public base_internal::SimpleValue<IntType, int64_t>,
+                       public base_internal::EnableHandleFromThis<IntValue> {
  private:
   using Base = base_internal::SimpleValue<IntType, int64_t>;
 
@@ -52,6 +58,9 @@ class IntValue final : public base_internal::SimpleValue<IntType, int64_t> {
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory&) const;
 
+  absl::StatusOr<Handle<Value>> ConvertToType(ValueFactory& value_factory,
+                                              const Handle<Type>& type) const;
+
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;
 
@@ -67,7 +76,10 @@ CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(IntValue);
 
 template <typename H>
 H AbslHashValue(H state, const IntValue& value) {
-  return H::combine(std::move(state), value.value());
+  // Due to heterogeneous lookup, we need to ensure hashing IntValue and
+  // UintValue produces the same result when they are heterogeneously equal. We
+  // do this by bit casting int64_t to uint64_t here.
+  return H::combine(std::move(state), absl::bit_cast<uint64_t>(value.value()));
 }
 
 inline bool operator==(const IntValue& lhs, const IntValue& rhs) {

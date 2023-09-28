@@ -19,14 +19,21 @@
 #include <utility>
 
 #include "absl/log/absl_check.h"
+#include "absl/status/statusor.h"
+#include "base/handle.h"
+#include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/types/opaque_type.h"
 #include "base/value.h"
+#include "common/any.h"
+#include "common/json.h"
 #include "internal/rtti.h"
 
 namespace cel {
 
-class OpaqueValue : public Value, public base_internal::HeapData {
+class OpaqueValue : public Value,
+                    public base_internal::HeapData,
+                    public base_internal::EnableHandleFromThis<OpaqueValue> {
  public:
   static constexpr ValueKind kKind = ValueKind::kOpaque;
 
@@ -49,6 +56,9 @@ class OpaqueValue : public Value, public base_internal::HeapData {
   virtual absl::StatusOr<Any> ConvertToAny(ValueFactory& value_factory) const;
 
   virtual absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
+
+  absl::StatusOr<Handle<Value>> ConvertToType(ValueFactory& value_factory,
+                                              const Handle<Type>& type) const;
 
   virtual absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                                const Value& other) const;

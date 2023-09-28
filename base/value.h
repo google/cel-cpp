@@ -24,6 +24,7 @@
 #include "absl/base/optimization.h"
 #include "absl/status/statusor.h"
 #include "base/handle.h"
+#include "base/internal/data.h"
 #include "base/internal/value.h"  // IWYU pragma: export
 #include "base/kind.h"
 #include "base/type.h"
@@ -71,6 +72,13 @@ class Value : public base_internal::Data {
 
   absl::StatusOr<Json> ConvertToJson(ValueFactory& value_factory) const;
 
+  // Attempts to convert the value to the specified type. This follows language
+  // rules and adheres to type conversion per the specification. The resulting
+  // value will either be an appropriate instance of type, an error value, or an
+  // unknown value.
+  absl::StatusOr<Handle<Value>> ConvertToType(ValueFactory& value_factory,
+                                              const Handle<Type>& type) const;
+
   template <typename T>
   bool Is() const {
     static_assert(!std::is_const_v<T>, "T must not be const");
@@ -113,6 +121,11 @@ class Value : public base_internal::Data {
   friend class base_internal::ValueHandle;
   template <typename T, typename U>
   friend class base_internal::SimpleValue;
+
+  // Determines whether a value with type `from` can be implicitly converted to
+  // type `to`. If `from` is dyn then `to` must also be dyn, otherwise `to` must
+  // be the same as `from` or `to` must be dyn.
+  static bool IsRuntimeConvertible(const Type& from, const Type& to);
 
   Value() = default;
   Value(const Value&) = default;

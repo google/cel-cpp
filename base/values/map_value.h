@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/macros.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -34,6 +35,8 @@
 #include "base/types/map_type.h"
 #include "base/value.h"
 #include "base/values/list_value.h"
+#include "common/any.h"
+#include "common/json.h"
 #include "internal/rtti.h"
 
 namespace cel {
@@ -46,7 +49,8 @@ template <typename K, typename V>
 class MapValueBuilder;
 
 // MapValue represents an instance of cel::MapType.
-class MapValue : public Value {
+class MapValue : public Value,
+                 public base_internal::EnableHandleFromThis<MapValue> {
  public:
   using BuilderInterface = MapValueBuilderInterface;
   template <typename K, typename V>
@@ -80,6 +84,9 @@ class MapValue : public Value {
 
   absl::StatusOr<JsonObject> ConvertToJsonObject(
       ValueFactory& value_factory) const;
+
+  absl::StatusOr<Handle<Value>> ConvertToType(ValueFactory& value_factory,
+                                              const Handle<Type>& type) const;
 
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;

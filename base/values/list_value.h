@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "absl/base/attributes.h"
+#include "absl/base/macros.h"
 #include "absl/functional/function_ref.h"
 #include "absl/hash/hash.h"
 #include "absl/log/absl_check.h"
@@ -34,9 +35,9 @@
 #include "base/type.h"
 #include "base/types/list_type.h"
 #include "base/value.h"
-#include "internal/no_destructor.h"
+#include "common/any.h"
+#include "common/json.h"
 #include "internal/rtti.h"
-#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -46,7 +47,8 @@ template <typename T>
 class ListValueBuilder;
 
 // ListValue represents an instance of cel::ListType.
-class ListValue : public Value {
+class ListValue : public Value,
+                  public base_internal::EnableHandleFromThis<ListValue> {
  public:
   using BuilderInterface = ListValueBuilderInterface;
   template <typename T>
@@ -84,6 +86,9 @@ class ListValue : public Value {
 
   absl::StatusOr<JsonArray> ConvertToJsonArray(
       ValueFactory& value_factory) const;
+
+  absl::StatusOr<Handle<Value>> ConvertToType(ValueFactory& value_factory,
+                                              const Handle<Type>& type) const;
 
   size_t size() const;
 

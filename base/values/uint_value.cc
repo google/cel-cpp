@@ -14,11 +14,19 @@
 
 #include "base/values/uint_value.h"
 
+#include <cstdint>
 #include <string>
 #include <utility>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "base/handle.h"
+#include "base/kind.h"
+#include "base/type.h"
+#include "base/value.h"
 #include "base/value_factory.h"
 #include "base/values/double_value.h"
 #include "base/values/int_value.h"
@@ -62,6 +70,33 @@ absl::StatusOr<Any> UintValue::ConvertToAny(ValueFactory&) const {
 
 absl::StatusOr<Json> UintValue::ConvertToJson(ValueFactory&) const {
   return JsonUint(value());
+}
+
+absl::StatusOr<Handle<Value>> UintValue::ConvertToType(
+    ValueFactory& value_factory, const Handle<Type>& type) const {
+  switch (type->kind()) {
+    case TypeKind::kUint:
+      return handle_from_this();
+    case TypeKind::kDouble:
+      return value_factory.CreateDoubleValue(static_cast<double>(value()));
+    case TypeKind::kInt: {
+      auto number = internal::Number::FromUint64(value());
+      if (!number.LosslessConvertibleToInt()) {
+        return value_factory.CreateErrorValue(
+            absl::OutOfRangeError("integer overflow"));
+      }
+      return value_factory.CreateIntValue(number.AsInt());
+    }
+    case TypeKind::kType:
+      return value_factory.CreateTypeValue(this->type());
+    case TypeKind::kString:
+      return value_factory.CreateStringValue(absl::StrCat(value()));
+    default:
+      return value_factory.CreateErrorValue(
+          absl::InvalidArgumentError(absl::StrCat(
+              "type conversion error from '", this->type()->DebugString(),
+              "' to '", type->DebugString(), "'")));
+  }
 }
 
 absl::StatusOr<Handle<Value>> UintValue::Equals(ValueFactory& value_factory,
