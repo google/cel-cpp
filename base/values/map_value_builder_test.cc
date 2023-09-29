@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
@@ -29,11 +30,10 @@ namespace cel {
 namespace {
 
 using testing::AnyOfArray;
-using testing::IsFalse;
-using testing::IsTrue;
 using testing::NotNull;
 using testing::WhenDynamicCastTo;
-using cel::internal::IsOkAndHolds;
+using cel::internal::IsOk;
+using cel::internal::StatusIs;
 
 std::vector<std::string> MakeListDebugStringFor(absl::string_view first,
                                                 absl::string_view second,
@@ -91,33 +91,20 @@ TEST(MapValueBuilder, UnspecializedUnspecialized) {
     return value_factory.CreateBytesValue(value).value();
   };
   auto value = make_value();
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Insert(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(make_key("foo"), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
-  EXPECT_THAT(map_builder.Insert(make_key("foo"), make_value()),
-              IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value()),
-              IsOkAndHolds(IsTrue()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key("bar"), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key("bar"), make_value("baz")),
-              IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_TRUE(map_builder.Has(key));
-  EXPECT_FALSE(map_builder.empty());
-  EXPECT_EQ(map_builder.size(), 3);
+  EXPECT_THAT(map_builder.Put(key, value),
+              IsOk());  // lvalue, lvalue
+  EXPECT_THAT(map_builder.Put(key, make_value()),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // lvalue, rvalue
+  EXPECT_THAT(map_builder.Put(make_key("foo"), value),
+              IsOk());  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(make_key("foo"), make_value()),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_THAT(map_builder.Put(make_key("bar"), make_value("baz")),
+              IsOk());  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(make_key("bar"), value),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_FALSE(map_builder.IsEmpty());
+  EXPECT_EQ(map_builder.Size(), 3);
   EXPECT_THAT(map_builder.DebugString(),
               AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
                                                "\"bar\": b\"baz\"")));
@@ -159,33 +146,20 @@ TEST(MapValueBuilder, UnspecializedGeneric) {
     return value_factory.CreateBytesValue(value).value();
   };
   auto value = make_value();
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Insert(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(make_key("foo"), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
-  EXPECT_THAT(map_builder.Insert(make_key("foo"), make_value()),
-              IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value()),
-              IsOkAndHolds(IsTrue()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key("bar"), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key("bar"), make_value("baz")),
-              IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_TRUE(map_builder.Has(key));
-  EXPECT_FALSE(map_builder.empty());
-  EXPECT_EQ(map_builder.size(), 3);
+  EXPECT_THAT(map_builder.Put(key, value),
+              IsOk());  // lvalue, lvalue
+  EXPECT_THAT(map_builder.Put(key, make_value()),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // lvalue, rvalue
+  EXPECT_THAT(map_builder.Put(make_key("foo"), value),
+              IsOk());  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(make_key("foo"), make_value()),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_THAT(map_builder.Put(make_key("bar"), make_value("baz")),
+              IsOk());  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(make_key("bar"), value),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_FALSE(map_builder.IsEmpty());
+  EXPECT_EQ(map_builder.Size(), 3);
   EXPECT_THAT(map_builder.DebugString(),
               AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
                                                "\"bar\": b\"baz\"")));
@@ -227,33 +201,20 @@ TEST(MapValueBuilder, GenericUnspecialized) {
     return value_factory.CreateBytesValue(value).value();
   };
   auto value = make_value();
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Insert(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(make_key("foo"), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
-  EXPECT_THAT(map_builder.Insert(make_key("foo"), make_value()),
-              IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value()),
-              IsOkAndHolds(IsTrue()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key("bar"), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key("bar"), make_value("baz")),
-              IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_TRUE(map_builder.Has(key));
-  EXPECT_FALSE(map_builder.empty());
-  EXPECT_EQ(map_builder.size(), 3);
+  EXPECT_THAT(map_builder.Put(key, value),
+              IsOk());  // lvalue, lvalue
+  EXPECT_THAT(map_builder.Put(key, make_value()),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // lvalue, rvalue
+  EXPECT_THAT(map_builder.Put(make_key("foo"), value),
+              IsOk());  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(make_key("foo"), make_value()),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_THAT(map_builder.Put(make_key("bar"), make_value("baz")),
+              IsOk());  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(make_key("bar"), value),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_FALSE(map_builder.IsEmpty());
+  EXPECT_EQ(map_builder.Size(), 3);
   EXPECT_THAT(map_builder.DebugString(),
               AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
                                                "\"bar\": b\"baz\"")));
@@ -295,33 +256,20 @@ TEST(MapValueBuilder, GenericGeneric) {
     return value_factory.CreateBytesValue(value).value();
   };
   auto value = make_value();
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Insert(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(make_key("foo"), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
-  EXPECT_THAT(map_builder.Insert(make_key("foo"), make_value()),
-              IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value()),
-              IsOkAndHolds(IsTrue()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key("bar"), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key("bar"), make_value("baz")),
-              IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_TRUE(map_builder.Has(key));
-  EXPECT_FALSE(map_builder.empty());
-  EXPECT_EQ(map_builder.size(), 3);
+  EXPECT_THAT(map_builder.Put(key, value),
+              IsOk());  // lvalue, lvalue
+  EXPECT_THAT(map_builder.Put(key, make_value()),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // lvalue, rvalue
+  EXPECT_THAT(map_builder.Put(make_key("foo"), value),
+              IsOk());  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(make_key("foo"), make_value()),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_THAT(map_builder.Put(make_key("bar"), make_value("baz")),
+              IsOk());  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(make_key("bar"), value),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_FALSE(map_builder.IsEmpty());
+  EXPECT_EQ(map_builder.Size(), 3);
   EXPECT_THAT(map_builder.DebugString(),
               AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
                                                "\"bar\": b\"baz\"")));
@@ -362,33 +310,20 @@ TEST(MapValueBuilder, UnspecializedSpecialized) {
     return value_factory.CreateIntValue(value);
   };
   auto value = make_value();
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Insert(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(make_key("foo"), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
-  EXPECT_THAT(map_builder.Insert(make_key("foo"), make_value()),
-              IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value()),
-              IsOkAndHolds(IsTrue()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key("bar"), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key("bar"), make_value(1)),
-              IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_TRUE(map_builder.Has(key));
-  EXPECT_FALSE(map_builder.empty());
-  EXPECT_EQ(map_builder.size(), 3);
+  EXPECT_THAT(map_builder.Put(key, value),
+              IsOk());  // lvalue, lvalue
+  EXPECT_THAT(map_builder.Put(key, make_value()),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // lvalue, rvalue
+  EXPECT_THAT(map_builder.Put(make_key("foo"), value),
+              IsOk());  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(make_key("foo"), make_value()),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_THAT(map_builder.Put(make_key("bar"), make_value(1)),
+              IsOk());  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(make_key("bar"), value),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_FALSE(map_builder.IsEmpty());
+  EXPECT_EQ(map_builder.Size(), 3);
   EXPECT_THAT(
       map_builder.DebugString(),
       AnyOfArray(MakeMapDebugStringFor("\"\": 0", "\"foo\": 0", "\"bar\": 1")));
@@ -428,33 +363,20 @@ TEST(MapValueBuilder, GenericSpecialized) {
     return value_factory.CreateIntValue(value);
   };
   auto value = make_value();
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Insert(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(make_key("foo"), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
-  EXPECT_THAT(map_builder.Insert(make_key("foo"), make_value()),
-              IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value()),
-              IsOkAndHolds(IsTrue()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key("bar"), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key("bar"), make_value(1)),
-              IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_TRUE(map_builder.Has(key));
-  EXPECT_FALSE(map_builder.empty());
-  EXPECT_EQ(map_builder.size(), 3);
+  EXPECT_THAT(map_builder.Put(key, value),
+              IsOk());  // lvalue, lvalue
+  EXPECT_THAT(map_builder.Put(key, make_value()),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // lvalue, rvalue
+  EXPECT_THAT(map_builder.Put(make_key("foo"), value),
+              IsOk());  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(make_key("foo"), make_value()),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_THAT(map_builder.Put(make_key("bar"), make_value(1)),
+              IsOk());  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(make_key("bar"), value),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_FALSE(map_builder.IsEmpty());
+  EXPECT_EQ(map_builder.Size(), 3);
   EXPECT_THAT(
       map_builder.DebugString(),
       AnyOfArray(MakeMapDebugStringFor("\"\": 0", "\"foo\": 0", "\"bar\": 1")));
@@ -494,33 +416,20 @@ TEST(MapValueBuilder, SpecializedUnspecialized) {
     return value_factory.CreateStringValue(value).value();
   };
   auto value = make_value();
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Insert(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(make_key(1), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
-  EXPECT_THAT(map_builder.Insert(make_key(1), make_value()),
-              IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value()),
-              IsOkAndHolds(IsTrue()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key(2), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key(2), make_value("foo")),
-              IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_TRUE(map_builder.Has(key));
-  EXPECT_FALSE(map_builder.empty());
-  EXPECT_EQ(map_builder.size(), 3);
+  EXPECT_THAT(map_builder.Put(key, value),
+              IsOk());  // lvalue, lvalue
+  EXPECT_THAT(map_builder.Put(key, make_value()),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // lvalue, rvalue
+  EXPECT_THAT(map_builder.Put(make_key(1), value),
+              IsOk());  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(make_key(1), make_value()),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_THAT(map_builder.Put(make_key(2), make_value("foo")),
+              IsOk());  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(make_key(2), value),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_FALSE(map_builder.IsEmpty());
+  EXPECT_EQ(map_builder.Size(), 3);
   EXPECT_THAT(
       map_builder.DebugString(),
       AnyOfArray(MakeMapDebugStringFor("0: \"\"", "1: \"\"", "2: \"foo\"")));
@@ -560,33 +469,20 @@ TEST(MapValueBuilder, SpecializedGeneric) {
     return value_factory.CreateStringValue(value).value();
   };
   auto value = make_value();
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Insert(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(make_key(1), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
-  EXPECT_THAT(map_builder.Insert(make_key(1), make_value()),
-              IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value()),
-              IsOkAndHolds(IsTrue()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, make_value()),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key(2), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key(2), make_value("foo")),
-              IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_TRUE(map_builder.Has(key));
-  EXPECT_FALSE(map_builder.empty());
-  EXPECT_EQ(map_builder.size(), 3);
+  EXPECT_THAT(map_builder.Put(key, value),
+              IsOk());  // lvalue, lvalue
+  EXPECT_THAT(map_builder.Put(key, make_value()),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // lvalue, rvalue
+  EXPECT_THAT(map_builder.Put(make_key(1), value),
+              IsOk());  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(make_key(1), make_value()),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_THAT(map_builder.Put(make_key(2), make_value("foo")),
+              IsOk());  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(make_key(2), value),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_FALSE(map_builder.IsEmpty());
+  EXPECT_EQ(map_builder.Size(), 3);
   EXPECT_THAT(
       map_builder.DebugString(),
       AnyOfArray(MakeMapDebugStringFor("0: \"\"", "1: \"\"", "2: \"foo\"")));
@@ -618,38 +514,25 @@ void TestMapBuilder(GetKey get_key, GetValue get_value, MakeKey make_key1,
   ValueFactory value_factory(type_manager);
   auto map_builder = MapValueBuilder<Key, Value>(
       value_factory, (type_factory.*get_key)(), (type_factory.*get_value)());
-  map_builder.reserve(3);
+  map_builder.Reserve(3);
   auto key = make_key1(value_factory);
   auto value = make_value1(value_factory);
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value1(value_factory)),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Insert(key, make_value1(value_factory)),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.Insert(make_key2(value_factory), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(key, make_value1(value_factory)),
+              IsOk());  // lvalue, lvalue
+  EXPECT_THAT(map_builder.Put(key, value),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // lvalue, rvalue
+  EXPECT_THAT(map_builder.Put(make_key2(value_factory), value),
+              IsOk());  // rvalue, lvalue
   EXPECT_THAT(
-      map_builder.Insert(make_key2(value_factory), make_value1(value_factory)),
-      IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_THAT(map_builder.Update(key, value),
-              IsOkAndHolds(IsTrue()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.Update(key, make_value1(value_factory)),
-              IsOkAndHolds(IsTrue()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, value),
-              IsOkAndHolds(IsFalse()));  // lvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(key, make_value1(value_factory)),
-              IsOkAndHolds(IsFalse()));  // lvalue, rvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key3(value_factory), value),
-              IsOkAndHolds(IsTrue()));  // rvalue, lvalue
-  EXPECT_THAT(map_builder.InsertOrAssign(make_key3(value_factory),
-                                         make_value2(value_factory)),
-              IsOkAndHolds(IsFalse()));  // rvalue, rvalue
-  EXPECT_TRUE(map_builder.Has(key));
-  EXPECT_FALSE(map_builder.empty());
-  EXPECT_EQ(map_builder.size(), 3);
+      map_builder.Put(make_key2(value_factory), make_value1(value_factory)),
+      StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_THAT(
+      map_builder.Put(make_key3(value_factory), make_value2(value_factory)),
+      IsOk());  // rvalue, lvalue
+  EXPECT_THAT(map_builder.Put(make_key3(value_factory), value),
+              StatusIs(absl::StatusCode::kAlreadyExists));  // rvalue, rvalue
+  EXPECT_FALSE(map_builder.IsEmpty());
+  EXPECT_EQ(map_builder.Size(), 3);
   EXPECT_THAT(map_builder.DebugString(), AnyOfArray(debug_string));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
   EXPECT_FALSE(map->empty());

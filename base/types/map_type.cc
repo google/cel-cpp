@@ -107,8 +107,7 @@ absl::StatusOr<Handle<MapValue>> MapType::NewValueFromAny(
       }
       fields_decoder.EnsureFullyDecoded();
       CEL_RETURN_IF_ERROR(
-          builder->InsertOrAssign(std::move(field_name), std::move(field_value))
-              .status());
+          builder->Put(std::move(field_name), std::move(field_value)));
       continue;
     }
     CEL_RETURN_IF_ERROR(decoder.SkipLengthValue());

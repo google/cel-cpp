@@ -993,9 +993,7 @@ TEST_P(ValueConvertToAnyTest, MapValue) {
                                               type_factory().GetStringType(),
                                               type_factory().GetDynType());
   ASSERT_OK_AND_ASSIGN(auto key, value_factory().CreateStringValue("foo"));
-  EXPECT_OK(
-      builder.InsertOrAssign(std::move(key), value_factory().CreateIntValue(1))
-          .status());
+  EXPECT_OK(builder.Put(std::move(key), value_factory().CreateIntValue(1)));
   ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
   ASSERT_OK_AND_ASSIGN(auto any,
                        value.As<Value>()->ConvertToAny(value_factory()));
@@ -1217,10 +1215,7 @@ TEST_P(ValueConvertToJsonTest, MapValue) {
                                                 type_factory().GetStringType(),
                                                 type_factory().GetDynType());
     ASSERT_OK_AND_ASSIGN(auto key, value_factory().CreateStringValue("foo"));
-    EXPECT_OK(
-        builder
-            .InsertOrAssign(std::move(key), value_factory().CreateIntValue(1))
-            .status());
+    EXPECT_OK(builder.Put(std::move(key), value_factory().CreateIntValue(1)));
     ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
     ASSERT_OK_AND_ASSIGN(auto json,
                          value.As<Value>()->ConvertToJson(value_factory()));
@@ -1232,10 +1227,8 @@ TEST_P(ValueConvertToJsonTest, MapValue) {
     MapValueBuilder<Value, Value> builder(value_factory(),
                                           type_factory().GetDynType(),
                                           type_factory().GetDynType());
-    EXPECT_OK(builder
-                  .InsertOrAssign(value_factory().CreateBoolValue(true),
-                                  value_factory().CreateIntValue(1))
-                  .status());
+    EXPECT_OK(builder.Put(value_factory().CreateBoolValue(true),
+                          value_factory().CreateIntValue(1)));
     ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
     ASSERT_OK_AND_ASSIGN(auto json,
                          value.As<Value>()->ConvertToJson(value_factory()));
@@ -1247,10 +1240,8 @@ TEST_P(ValueConvertToJsonTest, MapValue) {
     MapValueBuilder<Value, Value> builder(value_factory(),
                                           type_factory().GetDynType(),
                                           type_factory().GetDynType());
-    EXPECT_OK(builder
-                  .InsertOrAssign(value_factory().CreateIntValue(1),
-                                  value_factory().CreateIntValue(1))
-                  .status());
+    EXPECT_OK(builder.Put(value_factory().CreateIntValue(1),
+                          value_factory().CreateIntValue(1)));
     ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
     ASSERT_OK_AND_ASSIGN(auto json,
                          value.As<Value>()->ConvertToJson(value_factory()));
@@ -1262,10 +1253,8 @@ TEST_P(ValueConvertToJsonTest, MapValue) {
     MapValueBuilder<Value, Value> builder(value_factory(),
                                           type_factory().GetDynType(),
                                           type_factory().GetDynType());
-    EXPECT_OK(builder
-                  .InsertOrAssign(value_factory().CreateUintValue(1),
-                                  value_factory().CreateIntValue(1))
-                  .status());
+    EXPECT_OK(builder.Put(value_factory().CreateUintValue(1),
+                          value_factory().CreateIntValue(1)));
     ASSERT_OK_AND_ASSIGN(auto value, std::move(builder).Build());
     ASSERT_OK_AND_ASSIGN(auto json,
                          value.As<Value>()->ConvertToJson(value_factory()));

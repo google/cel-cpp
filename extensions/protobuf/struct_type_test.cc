@@ -72,8 +72,7 @@ absl::StatusOr<Handle<MapValue>> CreateJsonMapValue(ValueFactory& value_factory,
   MapValueBuilder<IntValue, Value> builder(
       value_factory, value_factory.type_factory().GetIntType(),
       value_factory.type_factory().GetDynType());
-  CEL_RETURN_IF_ERROR(
-      builder.InsertOrAssign(std::move(key), std::move(value)).status());
+  CEL_RETURN_IF_ERROR(builder.Put(std::move(key), std::move(value)));
   return std::move(builder).Build();
 }
 
@@ -1168,8 +1167,8 @@ TEST_P(ProtoStructValueBuilderTest, MapBoolInt) {
         MapValueBuilder<BoolValue, IntValue> builder(
             value_factory, value_factory.type_factory().GetBoolType(),
             value_factory.type_factory().GetIntType());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(true, 0).status());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(false, 1).status());
+        CEL_RETURN_IF_ERROR(builder.Put(true, 0));
+        CEL_RETURN_IF_ERROR(builder.Put(false, 1));
         return std::move(builder).Build();
       },
       R"pb(map_bool_int64: { key: true, value: 0 },
@@ -1180,8 +1179,8 @@ TEST_P(ProtoStructValueBuilderTest, MapBoolInt) {
         MapValueBuilder<BoolValue, IntValue> builder(
             value_factory, value_factory.type_factory().GetBoolType(),
             value_factory.type_factory().GetIntType());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(true, 0).status());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(false, 1).status());
+        CEL_RETURN_IF_ERROR(builder.Put(true, 0));
+        CEL_RETURN_IF_ERROR(builder.Put(false, 1));
         return std::move(builder).Build();
       },
       R"pb(map_bool_int32: { key: true, value: 0 },
@@ -1195,8 +1194,8 @@ TEST_P(ProtoStructValueBuilderTest, MapIntBool) {
         MapValueBuilder<IntValue, BoolValue> builder(
             value_factory, value_factory.type_factory().GetIntType(),
             value_factory.type_factory().GetBoolType());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, false).status());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, true).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, false));
+        CEL_RETURN_IF_ERROR(builder.Put(0, true));
         return std::move(builder).Build();
       },
       R"pb(map_int64_bool: { key: 1, value: false },
@@ -1207,8 +1206,8 @@ TEST_P(ProtoStructValueBuilderTest, MapIntBool) {
         MapValueBuilder<IntValue, BoolValue> builder(
             value_factory, value_factory.type_factory().GetIntType(),
             value_factory.type_factory().GetBoolType());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, false).status());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, true).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, false));
+        CEL_RETURN_IF_ERROR(builder.Put(0, true));
         return std::move(builder).Build();
       },
       R"pb(map_int32_bool: { key: 1, value: false },
@@ -1222,8 +1221,8 @@ TEST_P(ProtoStructValueBuilderTest, MapUintDouble) {
         MapValueBuilder<UintValue, DoubleValue> builder(
             value_factory, value_factory.type_factory().GetUintType(),
             value_factory.type_factory().GetDoubleType());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, 0));
+        CEL_RETURN_IF_ERROR(builder.Put(0, 1));
         return std::move(builder).Build();
       },
       R"pb(map_uint64_double: { key: 1, value: 0 },
@@ -1234,8 +1233,8 @@ TEST_P(ProtoStructValueBuilderTest, MapUintDouble) {
         MapValueBuilder<UintValue, DoubleValue> builder(
             value_factory, value_factory.type_factory().GetUintType(),
             value_factory.type_factory().GetDoubleType());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, 0));
+        CEL_RETURN_IF_ERROR(builder.Put(0, 1));
         return std::move(builder).Build();
       },
       R"pb(map_uint32_double: { key: 1, value: 0 },
@@ -1246,8 +1245,8 @@ TEST_P(ProtoStructValueBuilderTest, MapUintDouble) {
         MapValueBuilder<UintValue, DoubleValue> builder(
             value_factory, value_factory.type_factory().GetUintType(),
             value_factory.type_factory().GetDoubleType());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, 0));
+        CEL_RETURN_IF_ERROR(builder.Put(0, 1));
         return std::move(builder).Build();
       },
       R"pb(map_uint64_float: { key: 1, value: 0 },
@@ -1262,15 +1261,9 @@ TEST_P(ProtoStructValueBuilderTest, MapStringUint) {
             value_factory, value_factory.type_factory().GetStringType(),
             value_factory.type_factory().GetUintType());
         CEL_RETURN_IF_ERROR(
-            builder
-                .InsertOrAssign(value_factory.CreateUncheckedStringValue("bar"),
-                                0)
-                .status());
+            builder.Put(value_factory.CreateUncheckedStringValue("bar"), 0));
         CEL_RETURN_IF_ERROR(
-            builder
-                .InsertOrAssign(value_factory.CreateUncheckedStringValue("foo"),
-                                1)
-                .status());
+            builder.Put(value_factory.CreateUncheckedStringValue("foo"), 1));
         return std::move(builder).Build();
       },
       R"pb(map_string_uint64: { key: "bar", value: 0 },
@@ -1282,15 +1275,9 @@ TEST_P(ProtoStructValueBuilderTest, MapStringUint) {
             value_factory, value_factory.type_factory().GetStringType(),
             value_factory.type_factory().GetUintType());
         CEL_RETURN_IF_ERROR(
-            builder
-                .InsertOrAssign(value_factory.CreateUncheckedStringValue("bar"),
-                                0)
-                .status());
+            builder.Put(value_factory.CreateUncheckedStringValue("bar"), 0));
         CEL_RETURN_IF_ERROR(
-            builder
-                .InsertOrAssign(value_factory.CreateUncheckedStringValue("foo"),
-                                1)
-                .status());
+            builder.Put(value_factory.CreateUncheckedStringValue("foo"), 1));
         return std::move(builder).Build();
       },
       R"pb(map_string_uint32: { key: "bar", value: 0 },
@@ -1305,15 +1292,11 @@ TEST_P(ProtoStructValueBuilderTest, MapStringString) {
             value_factory, value_factory.type_factory().GetStringType(),
             value_factory.type_factory().GetStringType());
         CEL_RETURN_IF_ERROR(
-            builder
-                .InsertOrAssign(value_factory.CreateUncheckedStringValue("bar"),
-                                value_factory.CreateUncheckedStringValue("foo"))
-                .status());
+            builder.Put(value_factory.CreateUncheckedStringValue("bar"),
+                        value_factory.CreateUncheckedStringValue("foo")));
         CEL_RETURN_IF_ERROR(
-            builder
-                .InsertOrAssign(value_factory.CreateUncheckedStringValue("foo"),
-                                value_factory.CreateUncheckedStringValue("bar"))
-                .status());
+            builder.Put(value_factory.CreateUncheckedStringValue("foo"),
+                        value_factory.CreateUncheckedStringValue("bar")));
         return std::move(builder).Build();
       },
       R"pb(map_string_string: { key: "bar", value: "foo" },
@@ -1328,9 +1311,9 @@ TEST_P(ProtoStructValueBuilderTest, MapIntBytes) {
             value_factory, value_factory.type_factory().GetIntType(),
             value_factory.type_factory().GetBytesType());
         CEL_ASSIGN_OR_RETURN(auto value, value_factory.CreateBytesValue("foo"));
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, value).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, value));
         CEL_ASSIGN_OR_RETURN(value, value_factory.CreateBytesValue("bar"));
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, value).status());
+        CEL_RETURN_IF_ERROR(builder.Put(0, value));
         return std::move(builder).Build();
       },
       R"pb(map_int64_bytes: { key: 1, value: "foo" },
@@ -1344,8 +1327,8 @@ TEST_P(ProtoStructValueBuilderTest, MapIntBoolWrapper) {
         MapValueBuilder<IntValue, BoolValue> builder(
             value_factory, value_factory.type_factory().GetIntType(),
             value_factory.type_factory().GetBoolType());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, false).status());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, true).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, false));
+        CEL_RETURN_IF_ERROR(builder.Put(0, true));
         return std::move(builder).Build();
       },
       R"pb(map_int64_bool_wrapper: {
@@ -1365,8 +1348,8 @@ TEST_P(ProtoStructValueBuilderTest, MapIntIntWrapper) {
         MapValueBuilder<IntValue, IntValue> builder(
             value_factory, value_factory.type_factory().GetIntType(),
             value_factory.type_factory().GetIntType());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, 0));
+        CEL_RETURN_IF_ERROR(builder.Put(0, 1));
         return std::move(builder).Build();
       },
       R"pb(map_int64_int64_wrapper: {
@@ -1383,8 +1366,8 @@ TEST_P(ProtoStructValueBuilderTest, MapIntIntWrapper) {
         MapValueBuilder<IntValue, IntValue> builder(
             value_factory, value_factory.type_factory().GetIntType(),
             value_factory.type_factory().GetIntType());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, 0));
+        CEL_RETURN_IF_ERROR(builder.Put(0, 1));
         return std::move(builder).Build();
       },
       R"pb(map_int64_int32_wrapper: {
@@ -1404,8 +1387,8 @@ TEST_P(ProtoStructValueBuilderTest, MapIntUintWrapper) {
         MapValueBuilder<IntValue, UintValue> builder(
             value_factory, value_factory.type_factory().GetIntType(),
             value_factory.type_factory().GetUintType());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, 0));
+        CEL_RETURN_IF_ERROR(builder.Put(0, 1));
         return std::move(builder).Build();
       },
       R"pb(map_int64_uint64_wrapper: {
@@ -1422,8 +1405,8 @@ TEST_P(ProtoStructValueBuilderTest, MapIntUintWrapper) {
         MapValueBuilder<IntValue, UintValue> builder(
             value_factory, value_factory.type_factory().GetIntType(),
             value_factory.type_factory().GetUintType());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, 0));
+        CEL_RETURN_IF_ERROR(builder.Put(0, 1));
         return std::move(builder).Build();
       },
       R"pb(map_int64_uint32_wrapper: {
@@ -1443,8 +1426,8 @@ TEST_P(ProtoStructValueBuilderTest, MapIntDoubleWrapper) {
         MapValueBuilder<IntValue, DoubleValue> builder(
             value_factory, value_factory.type_factory().GetIntType(),
             value_factory.type_factory().GetDoubleType());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, 0));
+        CEL_RETURN_IF_ERROR(builder.Put(0, 1));
         return std::move(builder).Build();
       },
       R"pb(map_int64_double_wrapper: {
@@ -1461,8 +1444,8 @@ TEST_P(ProtoStructValueBuilderTest, MapIntDoubleWrapper) {
         MapValueBuilder<IntValue, DoubleValue> builder(
             value_factory, value_factory.type_factory().GetIntType(),
             value_factory.type_factory().GetDoubleType());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, 0));
+        CEL_RETURN_IF_ERROR(builder.Put(0, 1));
         return std::move(builder).Build();
       },
       R"pb(map_int64_float_wrapper: {
@@ -1483,9 +1466,9 @@ TEST_P(ProtoStructValueBuilderTest, MapIntBytesWrapper) {
             value_factory, value_factory.type_factory().GetIntType(),
             value_factory.type_factory().GetBytesType());
         CEL_ASSIGN_OR_RETURN(auto value, value_factory.CreateBytesValue("foo"));
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, value).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, value));
         CEL_ASSIGN_OR_RETURN(value, value_factory.CreateBytesValue("bar"));
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, value).status());
+        CEL_RETURN_IF_ERROR(builder.Put(0, value));
         return std::move(builder).Build();
       },
       R"pb(map_int64_bytes_wrapper: {
@@ -1507,9 +1490,9 @@ TEST_P(ProtoStructValueBuilderTest, MapIntStringWrapper) {
             value_factory.type_factory().GetStringType());
         CEL_ASSIGN_OR_RETURN(auto value,
                              value_factory.CreateStringValue("foo"));
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, value).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, value));
         CEL_ASSIGN_OR_RETURN(value, value_factory.CreateStringValue("bar"));
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, value).status());
+        CEL_RETURN_IF_ERROR(builder.Put(0, value));
         return std::move(builder).Build();
       },
       R"pb(map_int64_string_wrapper: {
@@ -1529,11 +1512,9 @@ TEST_P(ProtoStructValueBuilderTest, MapIntDuration) {
         MapValueBuilder<IntValue, DurationValue> builder(
             value_factory, value_factory.type_factory().GetIntType(),
             value_factory.type_factory().GetDurationType());
+        CEL_RETURN_IF_ERROR(builder.Put(1, absl::ZeroDuration()));
         CEL_RETURN_IF_ERROR(
-            builder.InsertOrAssign(1, absl::ZeroDuration()).status());
-        CEL_RETURN_IF_ERROR(
-            builder.InsertOrAssign(0, absl::Seconds(1) + absl::Nanoseconds(1))
-                .status());
+            builder.Put(0, absl::Seconds(1) + absl::Nanoseconds(1)));
         return std::move(builder).Build();
       },
       R"pb(map_int64_duration: {
@@ -1554,13 +1535,9 @@ TEST_P(ProtoStructValueBuilderTest, MapIntTimestamp) {
             value_factory, value_factory.type_factory().GetIntType(),
             value_factory.type_factory().GetTimestampType());
         CEL_RETURN_IF_ERROR(
-            builder.InsertOrAssign(1, absl::UnixEpoch() + absl::ZeroDuration())
-                .status());
-        CEL_RETURN_IF_ERROR(builder
-                                .InsertOrAssign(0, absl::UnixEpoch() +
-                                                       absl::Seconds(1) +
-                                                       absl::Nanoseconds(1))
-                                .status());
+            builder.Put(1, absl::UnixEpoch() + absl::ZeroDuration()));
+        CEL_RETURN_IF_ERROR(builder.Put(
+            0, absl::UnixEpoch() + absl::Seconds(1) + absl::Nanoseconds(1)));
         return std::move(builder).Build();
       },
       R"pb(map_int64_timestamp: {
@@ -1583,10 +1560,8 @@ TEST_P(ProtoStructValueBuilderTest, MapIntNull) {
         MapValueBuilder<IntValue, NullValue> builder(
             value_factory, value_factory.type_factory().GetIntType(),
             value_factory.type_factory().GetNullType());
-        CEL_RETURN_IF_ERROR(
-            builder.InsertOrAssign(1, value_factory.GetNullValue()).status());
-        CEL_RETURN_IF_ERROR(
-            builder.InsertOrAssign(0, value_factory.GetNullValue()).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, value_factory.GetNullValue()));
+        CEL_RETURN_IF_ERROR(builder.Put(0, value_factory.GetNullValue()));
         return std::move(builder).Build();
       },
       R"pb(map_int64_null_value: { key: 1, value: 0 },
@@ -1605,12 +1580,10 @@ TEST_P(ProtoStructValueBuilderTest, MapIntEnum) {
             std::move(type));
         CEL_ASSIGN_OR_RETURN(
             auto value, ProtoValue::Create(value_factory, TestAllTypes::FOO));
-        CEL_RETURN_IF_ERROR(
-            builder.InsertOrAssign(1, std::move(value)).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, std::move(value)));
         CEL_ASSIGN_OR_RETURN(
             value, ProtoValue::Create(value_factory, TestAllTypes::BAR));
-        CEL_RETURN_IF_ERROR(
-            builder.InsertOrAssign(0, std::move(value)).status());
+        CEL_RETURN_IF_ERROR(builder.Put(0, std::move(value)));
         return std::move(builder).Build();
       },
       R"pb(map_int64_enum: { key: 1, value: 0 },
@@ -1624,8 +1597,8 @@ TEST_P(ProtoStructValueBuilderTest, MapIntEnum) {
         MapValueBuilder<IntValue, IntValue> builder(
             value_factory, value_factory.type_factory().GetIntType(),
             value_factory.type_factory().GetIntType());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, 0));
+        CEL_RETURN_IF_ERROR(builder.Put(0, 1));
         return std::move(builder).Build();
       },
       R"pb(map_int64_enum: { key: 1, value: 0 },
@@ -1645,13 +1618,11 @@ TEST_P(ProtoStructValueBuilderTest, MapIntMessage) {
         TestAllTypes::NestedMessage message;
         CEL_ASSIGN_OR_RETURN(auto value,
                              ProtoValue::Create(value_factory, message));
-        CEL_RETURN_IF_ERROR(
-            builder.InsertOrAssign(1, std::move(value)).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, std::move(value)));
         message.Clear();
         message.set_bb(1);
         CEL_ASSIGN_OR_RETURN(value, ProtoValue::Create(value_factory, message));
-        CEL_RETURN_IF_ERROR(
-            builder.InsertOrAssign(0, std::move(value)).status());
+        CEL_RETURN_IF_ERROR(builder.Put(0, std::move(value)));
         return std::move(builder).Build();
       },
       R"pb(map_int64_message: {
@@ -1671,8 +1642,8 @@ TEST_P(ProtoStructValueBuilderTest, MapIntAny) {
         MapValueBuilder<IntValue, IntValue> builder(
             value_factory, value_factory.type_factory().GetIntType(),
             value_factory.type_factory().GetIntType());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
-        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, 0));
+        CEL_RETURN_IF_ERROR(builder.Put(0, 1));
         return std::move(builder).Build();
       },
       R"pb(map_int64_any: {
@@ -1696,11 +1667,8 @@ TEST_P(ProtoStructValueBuilderTest, MapIntValue) {
         MapValueBuilder<IntValue, Value> builder(
             value_factory, value_factory.type_factory().GetIntType(),
             value_factory.type_factory().GetDynType());
-        CEL_RETURN_IF_ERROR(
-            builder.InsertOrAssign(1, value_factory.CreateIntValue(0))
-                .status());
-        CEL_RETURN_IF_ERROR(
-            builder.InsertOrAssign(0, value_factory.GetNullValue()).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, value_factory.CreateIntValue(0)));
+        CEL_RETURN_IF_ERROR(builder.Put(0, value_factory.GetNullValue()));
         return std::move(builder).Build();
       },
       R"pb(map_int64_value: {
@@ -1723,13 +1691,11 @@ TEST_P(ProtoStructValueBuilderTest, MapIntList) {
         CEL_ASSIGN_OR_RETURN(
             auto value1, CreateJsonListValue(value_factory,
                                              value_factory.CreateIntValue(0)));
-        CEL_RETURN_IF_ERROR(
-            builder.InsertOrAssign(1, std::move(value1)).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, std::move(value1)));
         CEL_ASSIGN_OR_RETURN(
             auto value2,
             CreateJsonListValue(value_factory, value_factory.GetNullValue()));
-        CEL_RETURN_IF_ERROR(
-            builder.InsertOrAssign(0, std::move(value2)).status());
+        CEL_RETURN_IF_ERROR(builder.Put(0, std::move(value2)));
         return std::move(builder).Build();
       },
       R"pb(map_int64_list_value: {
@@ -1753,14 +1719,12 @@ TEST_P(ProtoStructValueBuilderTest, MapIntStruct) {
             auto value1,
             CreateJsonMapValue(value_factory, value_factory.CreateIntValue(0),
                                value_factory.CreateIntValue(1)));
-        CEL_RETURN_IF_ERROR(
-            builder.InsertOrAssign(1, std::move(value1)).status());
+        CEL_RETURN_IF_ERROR(builder.Put(1, std::move(value1)));
         CEL_ASSIGN_OR_RETURN(
             auto value2,
             CreateJsonMapValue(value_factory, value_factory.CreateIntValue(1),
                                value_factory.CreateIntValue(0)));
-        CEL_RETURN_IF_ERROR(
-            builder.InsertOrAssign(0, std::move(value2)).status());
+        CEL_RETURN_IF_ERROR(builder.Put(0, std::move(value2)));
         return std::move(builder).Build();
       },
       R"pb(map_int64_struct: {

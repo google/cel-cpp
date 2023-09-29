@@ -521,6 +521,10 @@ absl::Status TypeConversionError(const Type& from, const Type& to) {
                                                  to.DebugString(), "'"));
 }
 
+absl::Status DuplicateKeyError() {
+  return absl::AlreadyExistsError("duplicate key error");
+}
+
 }  // namespace base_internal
 
 }  // namespace cel

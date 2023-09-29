@@ -374,6 +374,8 @@ struct TypeTraits<Type> {
 
 absl::Status TypeConversionError(const Type& from, const Type& to);
 
+absl::Status DuplicateKeyError();
+
 }  // namespace base_internal
 
 CEL_INTERNAL_TYPE_DECL(Type);
