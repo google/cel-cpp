@@ -378,7 +378,7 @@ template <typename T>
 using SelectMetadata = typename SelectMetadataImpl<T>::type;
 
 template <size_t Size, size_t Align>
-union alignas(Align) AnyDataStorage final {
+union alignas(Align) ABSL_ATTRIBUTE_TRIVIAL_ABI AnyDataStorage final {
 #ifdef NDEBUG
   // Only need to clear the pointer for this to appear as empty.
   AnyDataStorage() : pointer(0) {}
@@ -397,7 +397,7 @@ union alignas(Align) AnyDataStorage final {
 // dereference our stored pointers as it may have already been deleted. Thus we
 // need to know if it was arena allocated without dereferencing the pointer.
 template <size_t Size, size_t Align>
-struct AnyData final {
+struct ABSL_ATTRIBUTE_TRIVIAL_ABI AnyData final {
   static_assert(Size >= sizeof(uintptr_t),
                 "Size must be at least sizeof(uintptr_t)");
   static_assert(Align >= alignof(uintptr_t),

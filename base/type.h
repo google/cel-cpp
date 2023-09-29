@@ -159,7 +159,9 @@ class TypeMetadata final {
   static bool IsReferenceCounted(const Type& type);
 };
 
-class TypeHandle final {
+// Handles for types are okay to be trivially relocated. Implementations that
+// are stored in the handle do not rely on the addresses of their members.
+class ABSL_ATTRIBUTE_TRIVIAL_ABI TypeHandle final {
  public:
   using base_type = Type;
 

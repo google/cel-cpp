@@ -34,7 +34,8 @@ class MemoryManager;
 // so long as there are 1 or more handles pointing to `T` and the
 // `AllocationManager` that constructed it is alive.
 template <typename T>
-class Handle final : private base_internal::HandlePolicy<T> {
+class ABSL_ATTRIBUTE_TRIVIAL_ABI Handle final
+    : private base_internal::HandlePolicy<T> {
  private:
   using Traits = base_internal::HandleTraits<T>;
   using Impl = typename Traits::handle_type;
