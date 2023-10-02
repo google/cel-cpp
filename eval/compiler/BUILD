@@ -309,6 +309,7 @@ cc_library(
         "//base:builtins",
         "//base:kind",
         "//base/ast_internal:ast_impl",
+        "//base/ast_internal:expr",
         "//eval/eval:expression_build_warning",
         "//eval/public:ast_rewrite_native",
         "//eval/public:source_position_native",

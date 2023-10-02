@@ -369,3 +369,48 @@ cc_test(
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
+
+cc_library(
+    name = "reference_resolver",
+    srcs = ["reference_resolver.cc"],
+    hdrs = ["reference_resolver.h"],
+    deps = [
+        ":runtime",
+        ":runtime_builder",
+        "//eval/compiler:qualified_reference_resolver",
+        "//internal:casts",
+        "//internal:rtti",
+        "//internal:status_macros",
+        "//runtime/internal:runtime_friend_access",
+        "//runtime/internal:runtime_impl",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_test(
+    name = "reference_resolver_test",
+    srcs = ["reference_resolver_test.cc"],
+    deps = [
+        ":activation",
+        ":managed_value_factory",
+        ":reference_resolver",
+        ":register_function_helper",
+        ":runtime_builder",
+        ":runtime_options",
+        ":standard_runtime_builder_factory",
+        "//base:data",
+        "//base:function_adapter",
+        "//base:handle",
+        "//extensions/protobuf:runtime_adapter",
+        "//internal:testing",
+        "//parser",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)

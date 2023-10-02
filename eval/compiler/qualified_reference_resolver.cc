@@ -28,6 +28,7 @@
 #include "absl/types/optional.h"
 #include "base/ast.h"
 #include "base/ast_internal/ast_impl.h"
+#include "base/ast_internal/expr.h"
 #include "base/builtins.h"
 #include "base/kind.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
