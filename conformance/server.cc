@@ -1,4 +1,5 @@
 #include <iostream>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -12,30 +13,27 @@
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/rpc/code.pb.h"
-#include "google/protobuf/util/json_util.h"
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/status/status.h"
 #include "absl/strings/escaping.h"
-#include "absl/strings/str_split.h"
+#include "absl/strings/string_view.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
-#include "eval/public/containers/container_backed_list_impl.h"
-#include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/cel_expression.h"
+#include "eval/public/cel_options.h"
+#include "eval/public/cel_value.h"
 #include "eval/public/transform_utility.h"
-#include "internal/proto_util.h"
 #include "parser/parser.h"
 #include "proto/test/v1/proto2/test_all_types.pb.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "google/protobuf/arena.h"
 
 
 using ::google::protobuf::Arena;
-using ::google::protobuf::util::JsonStringToMessage;
-using ::google::protobuf::util::MessageToJsonString;
 
 ABSL_FLAG(bool, opt, false, "Enable optimizations (constant folding)");
-ABSL_FLAG(bool, base64_encode, false, "Enable base64 encoding in pipe mode.");
 
 namespace google::api::expr::runtime {
 
@@ -150,56 +148,31 @@ class ConformanceServiceImpl {
   const google::api::expr::test::v1::proto3::TestAllTypes* proto3_tests_;
 };
 
-absl::Status Base64DecodeToMessage(absl::string_view b64_data,
-                                   google::protobuf::Message* out) {
-  std::string data;
-  if (!absl::Base64Unescape(b64_data, &data)) {
-    return absl::InvalidArgumentError("invalid base64");
-  }
-  if (!out->ParseFromString(data)) {
-    return absl::InvalidArgumentError("invalid proto bytes");
-  }
-  return absl::OkStatus();
-}
-
-absl::Status Base64EncodeFromMessage(const google::protobuf::Message& msg,
-                                     std::string* out) {
-  std::string data = msg.SerializeAsString();
-  *out = absl::Base64Escape(data);
-  return absl::OkStatus();
-}
-
 class PipeCodec {
  public:
-  explicit PipeCodec(bool base64_encoded) : base64_encoded_(base64_encoded) {}
+  PipeCodec() = default;
 
   absl::Status Decode(const std::string& data, google::protobuf::Message* out) {
-    if (base64_encoded_) {
-      return Base64DecodeToMessage(data, out);
-    } else {
-      return JsonStringToMessage(data, out).ok()
-                 ? absl::OkStatus()
-                 : absl::InvalidArgumentError("bad input");
+    std::string proto_bytes;
+    if (!absl::Base64Unescape(data, &proto_bytes)) {
+      return absl::InvalidArgumentError("invalid base64");
     }
+    if (!out->ParseFromString(proto_bytes)) {
+      return absl::InvalidArgumentError("invalid proto bytes");
+    }
+    return absl::OkStatus();
   }
 
   absl::Status Encode(const google::protobuf::Message& msg, std::string* out) {
-    if (base64_encoded_) {
-      return Base64EncodeFromMessage(msg, out);
-    } else {
-      return MessageToJsonString(msg, out).ok()
-                 ? absl::OkStatus()
-                 : absl::InvalidArgumentError("bad input");
-    }
+    std::string data = msg.SerializeAsString();
+    *out = absl::Base64Escape(data);
+    return absl::OkStatus();
   }
-
- private:
-  bool base64_encoded_;
 };
 
-int RunServer(bool optimize, bool base64_encoded) {
+int RunServer(bool optimize) {
   google::protobuf::Arena arena;
-  PipeCodec pipe_codec(base64_encoded);
+  PipeCodec pipe_codec;
   InterpreterOptions options;
   options.enable_qualified_type_identifiers = true;
   options.enable_timestamp_duration_overflow_errors = true;
@@ -235,8 +208,8 @@ int RunServer(bool optimize, bool base64_encoded) {
 
   // Implementation of a simple pipe protocol:
   // INPUT LINE 1: parse/check/eval
-  // INPUT LINE 2: JSON of the corresponding request protobuf
-  // OUTPUT LINE 1: JSON of the corresponding response protobuf
+  // INPUT LINE 2: base64 wire format of the corresponding request protobuf
+  // OUTPUT LINE 1: base64 wire format of the corresponding response protobuf
   while (true) {
     std::string cmd, input, output;
     std::getline(std::cin, cmd);
@@ -245,24 +218,24 @@ int RunServer(bool optimize, bool base64_encoded) {
       conformance::v1alpha1::ParseRequest request;
       conformance::v1alpha1::ParseResponse response;
       if (!pipe_codec.Decode(input, &request).ok()) {
-        std::cerr << "Failed to parse JSON" << std::endl;
+        std::cerr << "Failed to decode ParseRequest: " << std::endl;
       }
       service.Parse(&request, &response);
       auto status = pipe_codec.Encode(response, &output);
       if (!status.ok()) {
-        std::cerr << "Failed to convert to JSON:" << status.ToString()
+        std::cerr << "Failed to encode ParseResponse: " << status.ToString()
                   << std::endl;
       }
     } else if (cmd == "eval") {
       conformance::v1alpha1::EvalRequest request;
       conformance::v1alpha1::EvalResponse response;
       if (!pipe_codec.Decode(input, &request).ok()) {
-        std::cerr << "Failed to parse JSON" << std::endl;
+        std::cerr << "Failed to decode EvalRequest" << std::endl;
       }
       service.Eval(&request, &response);
       auto status = pipe_codec.Encode(response, &output);
       if (!status.ok()) {
-        std::cerr << "Failed to convert to JSON:" << status.ToString()
+        std::cerr << "Failed to encode ParseResponse:" << status.ToString()
                   << std::endl;
       }
     } else if (cmd.empty()) {
@@ -281,6 +254,5 @@ int RunServer(bool optimize, bool base64_encoded) {
 
 int main(int argc, char** argv) {
   absl::ParseCommandLine(argc, argv);
-  return google::api::expr::runtime::RunServer(
-      absl::GetFlag(FLAGS_opt), absl::GetFlag(FLAGS_base64_encode));
+  return google::api::expr::runtime::RunServer(absl::GetFlag(FLAGS_opt));
 }

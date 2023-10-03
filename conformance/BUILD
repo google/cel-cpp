@@ -47,10 +47,10 @@ cc_binary(
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",
+        "//eval/public:cel_expression",
+        "//eval/public:cel_options",
+        "//eval/public:cel_value",
         "//eval/public:transform_utility",
-        "//eval/public/containers:container_backed_list_impl",
-        "//eval/public/containers:container_backed_map_impl",
-        "//internal:proto_util",
         "//parser",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
@@ -72,7 +72,7 @@ cc_binary(
         srcs = ["@com_google_cel_spec//tests:conftest.sh"],
         args = [
             "$(location @com_google_cel_spec//tests/simple:simple_test)",
-            "--server=\"$(location :server) --base64_encode " + arg + "\"",
+            "--server=\"$(location :server) " + arg + "\"",
             "--skip_check",
             "--pipe",
             "--pipe_base64",
@@ -118,7 +118,7 @@ sh_test(
     srcs = ["@com_google_cel_spec//tests:conftest-nofail.sh"],
     args = [
         "$(location @com_google_cel_spec//tests/simple:simple_test)",
-        "--server=\"$(location :server) --base64_encode\"",
+        "--server=\"$(location :server)\"",
         "--skip_check",
         # TODO(issues/119): Strong typing support for enums, specified but not implemented.
         "--skip_test=enums/strong_proto2",
