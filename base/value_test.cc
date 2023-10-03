@@ -393,7 +393,8 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
     return value_factory.CreateIntValue(entry->second);
   }
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const override {
+  absl::StatusOr<bool> Has(ValueFactory& value_factory,
+                           const Handle<Value>& key) const override {
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError("");
     }
@@ -2928,24 +2929,28 @@ TEST_P(MapValueTest, GetAndHas) {
   EXPECT_EQ(Must(map_value->Get(value_factory,
                                 Must(value_factory.CreateStringValue("foo")))),
             value_factory.CreateIntValue(1));
-  EXPECT_THAT(map_value->Has(Must(value_factory.CreateStringValue("foo"))),
+  EXPECT_THAT(map_value->Has(value_factory,
+                             Must(value_factory.CreateStringValue("foo"))),
               IsOkAndHolds(true));
   EXPECT_EQ(Must(map_value->Get(value_factory,
                                 Must(value_factory.CreateStringValue("bar")))),
             value_factory.CreateIntValue(2));
-  EXPECT_THAT(map_value->Has(Must(value_factory.CreateStringValue("bar"))),
+  EXPECT_THAT(map_value->Has(value_factory,
+                             Must(value_factory.CreateStringValue("bar"))),
               IsOkAndHolds(true));
   EXPECT_EQ(Must(map_value->Get(value_factory,
                                 Must(value_factory.CreateStringValue("baz")))),
             value_factory.CreateIntValue(3));
-  EXPECT_THAT(map_value->Has(Must(value_factory.CreateStringValue("baz"))),
+  EXPECT_THAT(map_value->Has(value_factory,
+                             Must(value_factory.CreateStringValue("baz"))),
               IsOkAndHolds(true));
   EXPECT_THAT(map_value->Get(value_factory, value_factory.CreateIntValue(0)),
               StatusIs(absl::StatusCode::kInvalidArgument));
   EXPECT_THAT(map_value->Get(value_factory,
                              Must(value_factory.CreateStringValue("missing"))),
               IsOkAndHolds(Eq(absl::nullopt)));
-  EXPECT_THAT(map_value->Has(Must(value_factory.CreateStringValue("missing"))),
+  EXPECT_THAT(map_value->Has(value_factory,
+                             Must(value_factory.CreateStringValue("missing"))),
               IsOkAndHolds(false));
 }
 

@@ -377,7 +377,8 @@ class JsonMapValue final : public CEL_MAP_VALUE_CLASS {
         });
   }
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const override {
+  absl::StatusOr<bool> Has(ValueFactory& value_factory,
+                           const Handle<Value>& key) const override {
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError(absl::StrCat(
           "Expected key to be string type: ", key->type()->DebugString()));

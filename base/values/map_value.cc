@@ -125,8 +125,9 @@ absl::StatusOr<absl::optional<Handle<Value>>> MapValue::Get(
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(Get, value_factory, key);
 }
 
-absl::StatusOr<bool> MapValue::Has(const Handle<Value>& key) const {
-  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Has, key);
+absl::StatusOr<bool> MapValue::Has(ValueFactory& value_factory,
+                                   const Handle<Value>& key) const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Has, value_factory, key);
 }
 
 absl::StatusOr<Handle<ListValue>> MapValue::ListKeys(
@@ -386,7 +387,8 @@ absl::StatusOr<absl::optional<Handle<Value>>> LegacyMapValue::Get(
   return LegacyMapValueGet(impl_, value_factory, key);
 }
 
-absl::StatusOr<bool> LegacyMapValue::Has(const Handle<Value>& key) const {
+absl::StatusOr<bool> LegacyMapValue::Has(ValueFactory& value_factory,
+                                         const Handle<Value>& key) const {
   return LegacyMapValueHas(impl_, key);
 }
 

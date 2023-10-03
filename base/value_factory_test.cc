@@ -116,9 +116,10 @@ TEST(ValueFactory, JsonObject) {
   ASSERT_TRUE(entry.has_value());
   ASSERT_TRUE((*entry)->Is<BoolValue>());
   EXPECT_TRUE((*entry)->As<BoolValue>().value());
-  EXPECT_THAT(value->As<MapValue>().Has(
-                  value_factory.CreateUncheckedStringValue("foo")),
-              IsOkAndHolds(IsTrue()));
+  EXPECT_THAT(
+      value->As<MapValue>().Has(
+          value_factory, value_factory.CreateUncheckedStringValue("foo")),
+      IsOkAndHolds(IsTrue()));
   ASSERT_OK_AND_ASSIGN(
       auto json, value->As<MapValue>().ConvertToJsonObject(value_factory));
   EXPECT_EQ(json, object);

@@ -1704,9 +1704,9 @@ void TestMapGetField(MemoryManager& memory_manager,
     EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(),
               ProtoToNative(pair1.second));
   }
-  EXPECT_THAT(
-      field.As<MapValue>()->Has(Must((value_factory.*creator)(pair1.first))),
-      IsOkAndHolds(Eq(true)));
+  EXPECT_THAT(field.As<MapValue>()->Has(
+                  value_factory, Must((value_factory.*creator)(pair1.first))),
+              IsOkAndHolds(Eq(true)));
   ASSERT_OK_AND_ASSIGN(
       field_value,
       field.As<MapValue>()->Get(value_factory,
@@ -1720,9 +1720,9 @@ void TestMapGetField(MemoryManager& memory_manager,
     EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(),
               ProtoToNative(pair2.second));
   }
-  EXPECT_THAT(
-      field.As<MapValue>()->Has(Must((value_factory.*creator)(pair2.first))),
-      IsOkAndHolds(Eq(true)));
+  EXPECT_THAT(field.As<MapValue>()->Has(
+                  value_factory, Must((value_factory.*creator)(pair2.first))),
+              IsOkAndHolds(Eq(true)));
   if constexpr (!std::is_null_pointer_v<Key>) {
     EXPECT_THAT(field.As<MapValue>()->Get(
                     value_factory, Must((value_factory.*creator)(missing_key))),
@@ -1733,6 +1733,7 @@ void TestMapGetField(MemoryManager& memory_manager,
                   value_factory.CreateErrorValue(absl::CancelledError())),
               StatusIs(absl::StatusCode::kInvalidArgument));
   EXPECT_THAT(field.As<MapValue>()->Has(
+                  value_factory,
                   value_factory.CreateErrorValue(absl::CancelledError())),
               StatusIs(absl::StatusCode::kInvalidArgument));
   ASSERT_OK_AND_ASSIGN(auto keys,
@@ -1790,9 +1791,10 @@ void TestStringMapGetField(MemoryManager& memory_manager,
     EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(),
               ProtoToNative(pair1.second));
   }
-  EXPECT_THAT(field.As<MapValue>()->Has(
-                  Must(value_factory.CreateStringValue(pair1.first))),
-              IsOkAndHolds(Eq(true)));
+  EXPECT_THAT(
+      field.As<MapValue>()->Has(
+          value_factory, Must(value_factory.CreateStringValue(pair1.first))),
+      IsOkAndHolds(Eq(true)));
   ASSERT_OK_AND_ASSIGN(
       field_value,
       field.As<MapValue>()->Get(
@@ -1806,9 +1808,10 @@ void TestStringMapGetField(MemoryManager& memory_manager,
     EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(),
               ProtoToNative(pair2.second));
   }
-  EXPECT_THAT(field.As<MapValue>()->Has(
-                  Must(value_factory.CreateStringValue(pair2.first))),
-              IsOkAndHolds(Eq(true)));
+  EXPECT_THAT(
+      field.As<MapValue>()->Has(
+          value_factory, Must(value_factory.CreateStringValue(pair2.first))),
+      IsOkAndHolds(Eq(true)));
   EXPECT_THAT(
       field.As<MapValue>()->Get(
           value_factory, Must(value_factory.CreateStringValue(missing_key))),
@@ -1818,6 +1821,7 @@ void TestStringMapGetField(MemoryManager& memory_manager,
                   value_factory.CreateErrorValue(absl::CancelledError())),
               StatusIs(absl::StatusCode::kInvalidArgument));
   EXPECT_THAT(field.As<MapValue>()->Has(
+                  value_factory,
                   value_factory.CreateErrorValue(absl::CancelledError())),
               StatusIs(absl::StatusCode::kInvalidArgument));
   ASSERT_OK_AND_ASSIGN(auto keys,

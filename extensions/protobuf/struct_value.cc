@@ -1682,7 +1682,8 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
     }
   }
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const final {
+  absl::StatusOr<bool> Has(ValueFactory& value_factory,
+                           const Handle<Value>& key) const final {
     if (ABSL_PREDICT_FALSE(type()->key() != key->type())) {
       return absl::InvalidArgumentError(absl::StrCat(
           "map key type mismatch, expected: ", type()->key()->DebugString(),

@@ -97,7 +97,7 @@ Handle<Value> TestOnlySelect(const Handle<MapValue>& map,
                              cel::ValueFactory& value_factory) {
   // Field presence only supports string keys containing valid identifier
   // characters.
-  auto presence = map->Has(field_name);
+  auto presence = map->Has(value_factory, field_name);
 
   if (!presence.ok()) {
     return value_factory.CreateErrorValue(std::move(presence).status());

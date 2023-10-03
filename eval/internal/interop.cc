@@ -245,8 +245,12 @@ class LegacyCelMap final : public CelMap {
     // interoperation, because we know that references to the below should not
     // persist past the return value.
     google::protobuf::Arena arena;
+    extensions::ProtoMemoryManager memory_manager(&arena);
+    TypeFactory type_factory(memory_manager);
+    TypeManager type_manager(type_factory, TypeProvider::Builtin());
+    ValueFactory value_factory(type_manager);
     CEL_ASSIGN_OR_RETURN(auto modern_key, FromLegacyValue(&arena, key));
-    return impl_->Has(modern_key);
+    return impl_->Has(value_factory, modern_key);
   }
 
   int size() const override { return static_cast<int>(impl_->size()); }

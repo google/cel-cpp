@@ -101,7 +101,8 @@ class MapValue : public Value,
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
       ValueFactory& value_factory, const Handle<Value>& key) const;
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const;
+  absl::StatusOr<bool> Has(ValueFactory& value_factory,
+                           const Handle<Value>& key) const;
 
   absl::StatusOr<Handle<ListValue>> ListKeys(ValueFactory& value_factory) const;
 
@@ -195,7 +196,8 @@ class LegacyMapValue final : public MapValue, public InlineData {
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
       ValueFactory& value_factory, const Handle<Value>& key) const;
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const;
+  absl::StatusOr<bool> Has(ValueFactory& value_factory,
+                           const Handle<Value>& key) const;
 
   absl::StatusOr<Handle<ListValue>> ListKeys(ValueFactory& value_factory) const;
 
@@ -259,7 +261,8 @@ class AbstractMapValue : public MapValue,
   virtual absl::StatusOr<absl::optional<Handle<Value>>> Get(
       ValueFactory& value_factory, const Handle<Value>& key) const = 0;
 
-  virtual absl::StatusOr<bool> Has(const Handle<Value>& key) const = 0;
+  virtual absl::StatusOr<bool> Has(ValueFactory& value_factory,
+                                   const Handle<Value>& key) const = 0;
 
   virtual absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const = 0;

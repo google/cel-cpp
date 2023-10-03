@@ -281,7 +281,8 @@ class StaticProtoJsonMapValue : public CEL_MAP_VALUE_CLASS {
     });
   }
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const final {
+  absl::StatusOr<bool> Has(ValueFactory& value_factory,
+                           const Handle<Value>& key) const final {
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError("expected key to be string value");
     }
@@ -342,7 +343,8 @@ class ArenaStaticProtoJsonMapValue : public CEL_MAP_VALUE_CLASS {
     });
   }
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const final {
+  absl::StatusOr<bool> Has(ValueFactory& value_factory,
+                           const Handle<Value>& key) const final {
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError("expected key to be string value");
     }

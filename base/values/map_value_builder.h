@@ -219,7 +219,8 @@ class DynamicMapValue final : public AbstractMapValue {
     return existing->second;
   }
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const override {
+  absl::StatusOr<bool> Has(ValueFactory& value_factory,
+                           const Handle<Value>& key) const override {
     return storage_.find(key) != storage_.end();
   }
 
@@ -283,7 +284,8 @@ class StaticMapValue<K, void> final : public AbstractMapValue {
     return existing->second;
   }
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const override {
+  absl::StatusOr<bool> Has(ValueFactory& value_factory,
+                           const Handle<Value>& key) const override {
     return storage_.find(key.As<K>()->value()) != storage_.end();
   }
 
@@ -344,7 +346,8 @@ class StaticMapValue<void, V> final : public AbstractMapValue {
     return ValueTraits<V>::Wrap(value_factory, existing->second);
   }
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const override {
+  absl::StatusOr<bool> Has(ValueFactory& value_factory,
+                           const Handle<Value>& key) const override {
     return storage_.find(key) != storage_.end();
   }
 
@@ -408,7 +411,8 @@ class StaticMapValue final : public AbstractMapValue {
     return ValueTraits<V>::Wrap(value_factory, existing->second);
   }
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const override {
+  absl::StatusOr<bool> Has(ValueFactory& value_factory,
+                           const Handle<Value>& key) const override {
     return storage_.find(key.As<K>()->value()) != storage_.end();
   }
 

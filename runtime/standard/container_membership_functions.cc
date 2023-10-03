@@ -179,7 +179,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
       [enable_heterogeneous_equality](
           ValueFactory& factory, bool key,
           const MapValue& map_value) -> absl::StatusOr<Handle<Value>> {
-    auto result = map_value.Has(factory.CreateBoolValue(key));
+    auto result = map_value.Has(factory, factory.CreateBoolValue(key));
     if (result.ok()) {
       return factory.CreateBoolValue(*result);
     }
@@ -194,7 +194,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
           ValueFactory& factory, int64_t key,
           const MapValue& map_value) -> absl::StatusOr<Handle<Value>> {
     Handle<Value> int_key = factory.CreateIntValue(key);
-    auto result = map_value.Has(int_key);
+    auto result = map_value.Has(factory, int_key);
     if (enable_heterogeneous_equality) {
       if (result.ok() && *result) {
         return factory.CreateBoolValue(*result);
@@ -202,7 +202,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
       Number number = Number::FromInt64(key);
       if (number.LosslessConvertibleToUint()) {
         const auto& result =
-            map_value.Has(factory.CreateUintValue(number.AsUint()));
+            map_value.Has(factory, factory.CreateUintValue(number.AsUint()));
         if (result.ok() && *result) {
           return factory.CreateBoolValue(*result);
         }
@@ -219,7 +219,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
       [enable_heterogeneous_equality](
           ValueFactory& factory, const Handle<StringValue>& key,
           const MapValue& map_value) -> absl::StatusOr<Handle<Value>> {
-    auto result = map_value.Has(key);
+    auto result = map_value.Has(factory, key);
     if (result.ok()) {
       return factory.CreateBoolValue(*result);
     }
@@ -234,7 +234,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
           ValueFactory& factory, uint64_t key,
           const MapValue& map_value) -> absl::StatusOr<Handle<Value>> {
     Handle<Value> uint_key = factory.CreateUintValue(key);
-    const auto& result = map_value.Has(uint_key);
+    const auto& result = map_value.Has(factory, uint_key);
     if (enable_heterogeneous_equality) {
       if (result.ok() && *result) {
         return factory.CreateBoolValue(*result);
@@ -242,7 +242,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
       Number number = Number::FromUint64(key);
       if (number.LosslessConvertibleToInt()) {
         const auto& result =
-            map_value.Has(factory.CreateIntValue(number.AsInt()));
+            map_value.Has(factory, factory.CreateIntValue(number.AsInt()));
         if (result.ok() && *result) {
           return factory.CreateBoolValue(*result);
         }
@@ -261,14 +261,14 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
     Number number = Number::FromDouble(key);
     if (number.LosslessConvertibleToInt()) {
       const auto& result =
-          map_value.Has(factory.CreateIntValue(number.AsInt()));
+          map_value.Has(factory, factory.CreateIntValue(number.AsInt()));
       if (result.ok() && *result) {
         return factory.CreateBoolValue(*result);
       }
     }
     if (number.LosslessConvertibleToUint()) {
       const auto& result =
-          map_value.Has(factory.CreateUintValue(number.AsUint()));
+          map_value.Has(factory, factory.CreateUintValue(number.AsUint()));
       if (result.ok() && *result) {
         return factory.CreateBoolValue(*result);
       }
