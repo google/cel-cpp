@@ -19,6 +19,7 @@
 #include <optional>
 #include <utility>
 
+#include "absl/base/macros.h"
 #include "absl/functional/function_ref.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -214,22 +215,26 @@ absl::StatusOr<absl::optional<bool>> MapEqual(ValueFactory& value_factory,
   CEL_ASSIGN_OR_RETURN(auto iter, lhs.NewIterator(value_factory));
 
   while (iter->HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto element, iter->Next());
+    CEL_ASSIGN_OR_RETURN(auto lhs_key, iter->Next());
 
     absl::optional<Handle<Value>> rhs_value;
-    CEL_ASSIGN_OR_RETURN(rhs_value, rhs.Get(value_factory, element.key));
+    CEL_ASSIGN_OR_RETURN(rhs_value, rhs.Get(value_factory, lhs_key));
 
     if (!rhs_value.has_value() && EqualsProvider::kIsHeterogeneous) {
-      CEL_ASSIGN_OR_RETURN(rhs_value, CheckAlternativeNumericType(
-                                          value_factory, element.key, rhs));
+      CEL_ASSIGN_OR_RETURN(
+          rhs_value, CheckAlternativeNumericType(value_factory, lhs_key, rhs));
     }
     if (!rhs_value.has_value()) {
       return false;
     }
 
+    absl::optional<Handle<Value>> lhs_value;
+    CEL_ASSIGN_OR_RETURN(lhs_value, lhs.Get(value_factory, lhs_key));
+    // Temporary during refactor, optional will be removed.
+    ABSL_ASSERT(lhs_value.has_value());
     CEL_ASSIGN_OR_RETURN(
         absl::optional<bool> eq,
-        EqualsProvider()(value_factory, element.value, *rhs_value));
+        EqualsProvider()(value_factory, *lhs_value, *rhs_value));
 
     if (!eq.has_value() || !*eq) {
       return eq;

@@ -117,6 +117,7 @@ cc_library(
         "//runtime:register_function_helper",
         "//runtime:runtime_options",
         "//runtime/internal:errors",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",

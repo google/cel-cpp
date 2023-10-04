@@ -106,14 +106,6 @@ class MapValue : public Value,
 
   absl::StatusOr<Handle<ListValue>> ListKeys(ValueFactory& value_factory) const;
 
-  struct Entry final {
-    Entry(Handle<Value> key, Handle<Value> value)
-        : key(std::move(key)), value(std::move(value)) {}
-
-    Handle<Value> key;
-    Handle<Value> value;
-  };
-
   class Iterator;
 
   absl::StatusOr<UniqueRef<Iterator>> NewIterator(
@@ -138,17 +130,11 @@ class MapValue : public Value,
 // it is likely not as efficient as providing your own implementation.
 class MapValue::Iterator {
  public:
-  using Entry = MapValue::Entry;
-
   virtual ~Iterator() = default;
 
   ABSL_MUST_USE_RESULT virtual bool HasNext() = 0;
 
-  virtual absl::StatusOr<Entry> Next() = 0;
-
-  virtual absl::StatusOr<Handle<Value>> NextKey();
-
-  virtual absl::StatusOr<Handle<Value>> NextValue();
+  virtual absl::StatusOr<Handle<Value>> Next() = 0;
 };
 
 CEL_INTERNAL_VALUE_DECL(MapValue);

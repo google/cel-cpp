@@ -130,16 +130,6 @@ internal::TypeInfo ListValue::TypeId() const {
 
 #undef CEL_INTERNAL_LIST_VALUE_DISPATCH
 
-absl::StatusOr<size_t> ListValue::Iterator::NextIndex() {
-  CEL_ASSIGN_OR_RETURN(auto element, Next());
-  return element.index;
-}
-
-absl::StatusOr<Handle<Value>> ListValue::Iterator::NextValue() {
-  CEL_ASSIGN_OR_RETURN(auto element, Next());
-  return std::move(element.value);
-}
-
 namespace {
 
 absl::StatusOr<Handle<Value>> GenericListValueEquals(
@@ -162,8 +152,8 @@ absl::StatusOr<Handle<Value>> GenericListValueEquals(
       return absl::InternalError(
           "ListValue::Iterator has less elements than ListValue");
     }
-    CEL_ASSIGN_OR_RETURN(auto lhs_element, lhs_iterator->NextValue());
-    CEL_ASSIGN_OR_RETURN(auto rhs_element, rhs_iterator->NextValue());
+    CEL_ASSIGN_OR_RETURN(auto lhs_element, lhs_iterator->Next());
+    CEL_ASSIGN_OR_RETURN(auto rhs_element, rhs_iterator->Next());
     CEL_ASSIGN_OR_RETURN(auto equal,
                          lhs_element->Equals(value_factory, *rhs_element));
     if (equal->Is<BoolValue>() && !equal->As<BoolValue>().value()) {
@@ -212,24 +202,13 @@ class LegacyListValueIterator final : public ListValue::Iterator {
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::StatusOr<Element> Next() override {
+  absl::StatusOr<Handle<Value>> Next() override {
     if (ABSL_PREDICT_FALSE(index_ >= size_)) {
       return absl::FailedPreconditionError(
           "ListValue::Iterator::Next() called when "
           "ListValue::Iterator::HasNext() returns false");
     }
-    CEL_ASSIGN_OR_RETURN(auto value,
-                         LegacyListValueGet(impl_, value_factory_, index_));
-    return Element(index_++, std::move(value));
-  }
-
-  absl::StatusOr<size_t> NextIndex() override {
-    if (ABSL_PREDICT_FALSE(index_ >= size_)) {
-      return absl::FailedPreconditionError(
-          "ListValue::Iterator::Next() called when "
-          "ListValue::Iterator::HasNext() returns false");
-    }
-    return index_++;
+    return LegacyListValueGet(impl_, value_factory_, index_++);
   }
 
  private:
@@ -247,23 +226,13 @@ class AbstractListValueIterator final : public ListValue::Iterator {
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::StatusOr<Element> Next() override {
+  absl::StatusOr<Handle<Value>> Next() override {
     if (ABSL_PREDICT_FALSE(index_ >= size_)) {
       return absl::FailedPreconditionError(
           "ListValue::Iterator::Next() called when "
           "ListValue::Iterator::HasNext() returns false");
     }
-    CEL_ASSIGN_OR_RETURN(auto value, value_->Get(value_factory_, index_));
-    return Element(index_++, std::move(value));
-  }
-
-  absl::StatusOr<size_t> NextIndex() override {
-    if (ABSL_PREDICT_FALSE(index_ >= size_)) {
-      return absl::FailedPreconditionError(
-          "ListValue::Iterator::Next() called when "
-          "ListValue::Iterator::HasNext() returns false");
-    }
-    return index_++;
+    return value_->Get(value_factory_, index_++);
   }
 
  private:
@@ -285,7 +254,7 @@ absl::StatusOr<JsonArray> GenericListValueConvertToJsonArray(
   builder.reserve(value.size());
   CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_factory));
   while (iterator->HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto element, iterator->NextValue());
+    CEL_ASSIGN_OR_RETURN(auto element, iterator->Next());
     CEL_ASSIGN_OR_RETURN(auto element_json,
                          element->ConvertToJson(value_factory));
     builder.push_back(std::move(element_json));

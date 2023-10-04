@@ -97,14 +97,6 @@ class ListValue : public Value,
   absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const;
 
-  struct Element final {
-    Element(size_t index, Handle<Value> value)
-        : index(index), value(std::move(value)) {}
-
-    size_t index;
-    Handle<Value> value;
-  };
-
   class Iterator;
 
   absl::StatusOr<UniqueRef<Iterator>> NewIterator(
@@ -144,17 +136,11 @@ class ListValue : public Value,
 // however it is likely not as efficient as providing your own implementation.
 class ListValue::Iterator {
  public:
-  using Element = ListValue::Element;
-
   virtual ~Iterator() = default;
 
   ABSL_MUST_USE_RESULT virtual bool HasNext() = 0;
 
-  virtual absl::StatusOr<Element> Next() = 0;
-
-  virtual absl::StatusOr<size_t> NextIndex();
-
-  virtual absl::StatusOr<Handle<Value>> NextValue();
+  virtual absl::StatusOr<Handle<Value>> Next() = 0;
 };
 
 namespace base_internal {

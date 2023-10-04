@@ -151,16 +151,6 @@ internal::TypeInfo MapValue::TypeId() const {
 
 #undef CEL_INTERNAL_MAP_VALUE_DISPATCH
 
-absl::StatusOr<Handle<Value>> MapValue::Iterator::NextKey() {
-  CEL_ASSIGN_OR_RETURN(auto entry, Next());
-  return std::move(entry.key);
-}
-
-absl::StatusOr<Handle<Value>> MapValue::Iterator::NextValue() {
-  CEL_ASSIGN_OR_RETURN(auto entry, Next());
-  return std::move(entry.value);
-}
-
 absl::StatusOr<Handle<Value>> GenericMapValueEquals(ValueFactory& value_factory,
                                                     const MapValue& lhs,
                                                     const MapValue& rhs) {
@@ -180,13 +170,18 @@ absl::StatusOr<Handle<Value>> GenericMapValueEquals(ValueFactory& value_factory,
       return absl::InternalError(
           "MapValue::Iterator has less entries than MapValue");
     }
-    CEL_ASSIGN_OR_RETURN(auto lhs_entry, lhs_iterator->Next());
-    CEL_ASSIGN_OR_RETURN(auto rhs_entry, rhs.Get(value_factory, lhs_entry.key));
-    if (!rhs_entry.has_value()) {
+    CEL_ASSIGN_OR_RETURN(auto lhs_key, lhs_iterator->Next());
+    CEL_ASSIGN_OR_RETURN(auto rhs_value, rhs.Get(value_factory, lhs_key));
+    if (!rhs_value.has_value()) {
       return value_factory.CreateBoolValue(false);
     }
+    CEL_ASSIGN_OR_RETURN(auto lhs_value, lhs.Get(value_factory, lhs_key));
+    if (!lhs_value.has_value()) {
+      return absl::InternalError(
+          "map key returned by iterator but not present in map");
+    }
     CEL_ASSIGN_OR_RETURN(auto equal,
-                         lhs_entry.value->Equals(value_factory, **rhs_entry));
+                         (*lhs_value)->Equals(value_factory, **rhs_value));
     if (equal->Is<BoolValue>() && !equal->As<BoolValue>().value()) {
       return equal;
     }
@@ -215,38 +210,9 @@ class LegacyMapValueIterator final : public MapValue::Iterator {
     return (*keys_iterator_)->HasNext();
   }
 
-  absl::StatusOr<Entry> Next() override {
+  absl::StatusOr<Handle<Value>> Next() override {
     CEL_RETURN_IF_ERROR(OnNext());
-    CEL_ASSIGN_OR_RETURN(auto key, (*keys_iterator_)->NextValue());
-    CEL_ASSIGN_OR_RETURN(auto value,
-                         LegacyMapValueGet(impl_, value_factory_, key));
-    if (ABSL_PREDICT_FALSE(!value.has_value())) {
-      // Something is seriously wrong. The list of keys from the map is not
-      // consistent with what the map believes is set.
-      return absl::InternalError(
-          "inconsistency between list of map keys and map");
-    }
-    return Entry(std::move(key), std::move(value).value());
-  }
-
-  absl::StatusOr<Handle<Value>> NextKey() override {
-    CEL_RETURN_IF_ERROR(OnNext());
-    CEL_ASSIGN_OR_RETURN(auto key, (*keys_iterator_)->NextValue());
-    return key;
-  }
-
-  absl::StatusOr<Handle<Value>> NextValue() override {
-    CEL_RETURN_IF_ERROR(OnNext());
-    CEL_ASSIGN_OR_RETURN(auto key, (*keys_iterator_)->NextValue());
-    CEL_ASSIGN_OR_RETURN(auto value,
-                         LegacyMapValueGet(impl_, value_factory_, key));
-    if (ABSL_PREDICT_FALSE(!value.has_value())) {
-      // Something is seriously wrong. The list of keys from the map is not
-      // consistent with what the map believes is set.
-      return absl::InternalError(
-          "inconsistency between list of map keys and map");
-    }
-    return std::move(value).value();
+    return (*keys_iterator_)->Next();
   }
 
  private:
@@ -280,23 +246,9 @@ class AbstractMapValueIterator final : public MapValue::Iterator {
     return (*keys_iterator_)->HasNext();
   }
 
-  absl::StatusOr<Entry> Next() override {
+  absl::StatusOr<Handle<Value>> Next() override {
     CEL_RETURN_IF_ERROR(OnNext());
-    CEL_ASSIGN_OR_RETURN(auto key, (*keys_iterator_)->NextValue());
-    CEL_ASSIGN_OR_RETURN(auto value, value_->Get(value_factory_, key));
-    if (ABSL_PREDICT_FALSE(!value.has_value())) {
-      // Something is seriously wrong. The list of keys from the map is not
-      // consistent with what the map believes is set.
-      return absl::InternalError(
-          "inconsistency between list of map keys and map");
-    }
-    return Entry(std::move(key), std::move(value).value());
-  }
-
-  absl::StatusOr<Handle<Value>> NextKey() override {
-    CEL_RETURN_IF_ERROR(OnNext());
-    CEL_ASSIGN_OR_RETURN(auto key, (*keys_iterator_)->NextValue());
-    return key;
+    return (*keys_iterator_)->Next();
   }
 
  private:
@@ -327,34 +279,39 @@ absl::StatusOr<JsonObject> GenericMapValueConvertToJsonObject(
   builder.reserve(value.size());
   CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_factory));
   while (iterator->HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto entry, iterator->Next());
+    CEL_ASSIGN_OR_RETURN(auto key, iterator->Next());
     absl::Cord key_json;
-    if (entry.key->Is<BoolValue>()) {
-      if (entry.key->As<BoolValue>().value()) {
+    if (key->Is<BoolValue>()) {
+      if (key->As<BoolValue>().value()) {
         key_json = "true";
       } else {
         key_json = "false";
       }
-    } else if (entry.key->Is<IntValue>()) {
-      key_json = absl::StrCat(entry.key->As<IntValue>().value());
-    } else if (entry.key->Is<UintValue>()) {
-      key_json = absl::StrCat(entry.key->As<UintValue>().value());
-    } else if (entry.key->Is<StringValue>()) {
-      key_json = entry.key->As<StringValue>().ToCord();
+    } else if (key->Is<IntValue>()) {
+      key_json = absl::StrCat(key->As<IntValue>().value());
+    } else if (key->Is<UintValue>()) {
+      key_json = absl::StrCat(key->As<UintValue>().value());
+    } else if (key->Is<StringValue>()) {
+      key_json = key->As<StringValue>().ToCord();
     } else {
       return absl::FailedPreconditionError(absl::StrCat(
-          "cannot serialize map with key of type ",
-          entry.key->type()->DebugString(), " to google.protobuf.Value"));
+          "cannot serialize map with key of type ", key->type()->DebugString(),
+          " to google.protobuf.Value"));
+    }
+    CEL_ASSIGN_OR_RETURN(auto value, value.Get(value_factory, key));
+    if (!value.has_value()) {
+      return absl::InternalError(
+          "map key returned by iterator but not present in map");
     }
     CEL_ASSIGN_OR_RETURN(auto value_json,
-                         entry.value->ConvertToJson(value_factory));
+                         (*value)->ConvertToJson(value_factory));
     if (ABSL_PREDICT_FALSE(
             !builder
                  .insert_or_assign(std::move(key_json), std::move(value_json))
                  .second)) {
       return absl::FailedPreconditionError(absl::StrCat(
           "cannot serialize map with duplicate keys ",
-          entry.key->type()->DebugString(), " to google.protobuf.Value"));
+          key->type()->DebugString(), " to google.protobuf.Value"));
     }
   }
   return std::move(builder).Build();
