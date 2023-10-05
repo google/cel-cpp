@@ -16,7 +16,9 @@
 #include "google/rpc/code.pb.h"
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
+#include "absl/memory/memory.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/escaping.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/activation.h"
@@ -26,6 +28,7 @@
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/transform_utility.h"
+#include "internal/status_macros.h"
 #include "parser/parser.h"
 #include "proto/test/v1/proto2/test_all_types.pb.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
@@ -38,17 +41,66 @@ ABSL_FLAG(bool, opt, false, "Enable optimizations (constant folding)");
 
 namespace google::api::expr::runtime {
 
-class ConformanceServiceImpl {
+class ConformanceServiceInterface {
  public:
-  explicit ConformanceServiceImpl(std::unique_ptr<CelExpressionBuilder> builder)
-      : builder_(std::move(builder)),
-        proto2_tests_(&google::api::expr::test::v1::proto2::TestAllTypes::
-                          default_instance()),
-        proto3_tests_(&google::api::expr::test::v1::proto3::TestAllTypes::
-                          default_instance()) {}
+  virtual ~ConformanceServiceInterface() = default;
+
+  virtual void Parse(const conformance::v1alpha1::ParseRequest* request,
+                     conformance::v1alpha1::ParseResponse* response) = 0;
+
+  virtual void Check(const conformance::v1alpha1::CheckRequest* request,
+                     conformance::v1alpha1::CheckResponse* response) = 0;
+
+  virtual void Eval(const conformance::v1alpha1::EvalRequest* request,
+                    conformance::v1alpha1::EvalResponse* response) = 0;
+};
+
+class ConformanceServiceImpl : public ConformanceServiceInterface {
+ public:
+  static absl::StatusOr<std::unique_ptr<ConformanceServiceImpl>> Create(
+      bool optimize) {
+    static auto* constant_arena = new Arena();
+
+    google::protobuf::LinkMessageReflection<
+        google::api::expr::test::v1::proto3::TestAllTypes>();
+    google::protobuf::LinkMessageReflection<
+        google::api::expr::test::v1::proto2::TestAllTypes>();
+    google::protobuf::LinkMessageReflection<
+        google::api::expr::test::v1::proto3::NestedTestAllTypes>();
+    google::protobuf::LinkMessageReflection<
+        google::api::expr::test::v1::proto2::NestedTestAllTypes>();
+
+    InterpreterOptions options;
+    options.enable_qualified_type_identifiers = true;
+    options.enable_timestamp_duration_overflow_errors = true;
+    options.enable_heterogeneous_equality = true;
+    options.enable_empty_wrapper_null_unboxing = true;
+
+    if (optimize) {
+      std::cerr << "Enabling optimizations" << std::endl;
+      options.constant_folding = true;
+      options.constant_arena = constant_arena;
+    }
+
+    std::unique_ptr<CelExpressionBuilder> builder =
+        CreateCelExpressionBuilder(options);
+    auto type_registry = builder->GetTypeRegistry();
+    type_registry->Register(
+        google::api::expr::test::v1::proto2::GlobalEnum_descriptor());
+    type_registry->Register(
+        google::api::expr::test::v1::proto3::GlobalEnum_descriptor());
+    type_registry->Register(google::api::expr::test::v1::proto2::TestAllTypes::
+                                NestedEnum_descriptor());
+    type_registry->Register(google::api::expr::test::v1::proto3::TestAllTypes::
+                                NestedEnum_descriptor());
+    CEL_RETURN_IF_ERROR(
+        RegisterBuiltinFunctions(builder->GetRegistry(), options));
+
+    return absl::WrapUnique(new ConformanceServiceImpl(std::move(builder)));
+  }
 
   void Parse(const conformance::v1alpha1::ParseRequest* request,
-             conformance::v1alpha1::ParseResponse* response) {
+             conformance::v1alpha1::ParseResponse* response) override {
     if (request->cel_source().empty()) {
       auto issue = response->add_issues();
       issue->set_message("No source code");
@@ -68,14 +120,14 @@ class ConformanceServiceImpl {
   }
 
   void Check(const conformance::v1alpha1::CheckRequest* request,
-             conformance::v1alpha1::CheckResponse* response) {
+             conformance::v1alpha1::CheckResponse* response) override {
     auto issue = response->add_issues();
     issue->set_message("Check is not supported");
     issue->set_code(google::rpc::Code::UNIMPLEMENTED);
   }
 
   void Eval(const conformance::v1alpha1::EvalRequest* request,
-            conformance::v1alpha1::EvalResponse* response) {
+            conformance::v1alpha1::EvalResponse* response) override {
     const v1alpha1::Expr* expr = nullptr;
     if (request->has_parsed_expr()) {
       expr = &request->parsed_expr().expr();
@@ -144,9 +196,10 @@ class ConformanceServiceImpl {
   }
 
  private:
+  explicit ConformanceServiceImpl(std::unique_ptr<CelExpressionBuilder> builder)
+      : builder_(std::move(builder)) {}
+
   std::unique_ptr<CelExpressionBuilder> builder_;
-  const google::api::expr::test::v1::proto2::TestAllTypes* proto2_tests_;
-  const google::api::expr::test::v1::proto3::TestAllTypes* proto3_tests_;
 };
 
 class PipeCodec {
@@ -172,41 +225,18 @@ class PipeCodec {
 };
 
 int RunServer(bool optimize) {
-  google::protobuf::Arena arena;
-  PipeCodec pipe_codec;
-  InterpreterOptions options;
-  options.enable_qualified_type_identifiers = true;
-  options.enable_timestamp_duration_overflow_errors = true;
-  options.enable_heterogeneous_equality = true;
-  options.enable_empty_wrapper_null_unboxing = true;
+  absl::StatusOr<std::unique_ptr<ConformanceServiceInterface>> service_or =
+      ConformanceServiceImpl::Create(optimize);
 
-  if (optimize) {
-    std::cerr << "Enabling optimizations" << std::endl;
-    options.constant_folding = true;
-    options.constant_arena = &arena;
-  }
-
-  std::unique_ptr<CelExpressionBuilder> builder =
-      CreateCelExpressionBuilder(options);
-  auto type_registry = builder->GetTypeRegistry();
-  type_registry->Register(
-      google::api::expr::test::v1::proto2::GlobalEnum_descriptor());
-  type_registry->Register(
-      google::api::expr::test::v1::proto3::GlobalEnum_descriptor());
-  type_registry->Register(google::api::expr::test::v1::proto2::TestAllTypes::
-                              NestedEnum_descriptor());
-  type_registry->Register(google::api::expr::test::v1::proto3::TestAllTypes::
-                              NestedEnum_descriptor());
-  auto register_status =
-      RegisterBuiltinFunctions(builder->GetRegistry(), options);
-  if (!register_status.ok()) {
-    std::cerr << "Failed to initialize: " << register_status.ToString()
+  if (!service_or.ok()) {
+    std::cerr << "failed to create conformance service " << service_or.status()
               << std::endl;
     return 1;
   }
 
-  ConformanceServiceImpl service(std::move(builder));
+  auto conformance_service = std::move(service_or).value();
 
+  PipeCodec pipe_codec;
   // Implementation of a simple pipe protocol:
   // INPUT LINE 1: parse/check/eval
   // INPUT LINE 2: base64 wire format of the corresponding request protobuf
@@ -221,7 +251,7 @@ int RunServer(bool optimize) {
       if (!pipe_codec.Decode(input, &request).ok()) {
         std::cerr << "Failed to decode ParseRequest: " << std::endl;
       }
-      service.Parse(&request, &response);
+      conformance_service->Parse(&request, &response);
       auto status = pipe_codec.Encode(response, &output);
       if (!status.ok()) {
         std::cerr << "Failed to encode ParseResponse: " << status.ToString()
@@ -233,7 +263,7 @@ int RunServer(bool optimize) {
       if (!pipe_codec.Decode(input, &request).ok()) {
         std::cerr << "Failed to decode EvalRequest" << std::endl;
       }
-      service.Eval(&request, &response);
+      conformance_service->Eval(&request, &response);
       auto status = pipe_codec.Encode(response, &output);
       if (!status.ok()) {
         std::cerr << "Failed to encode EvalResponse:" << status.ToString()
