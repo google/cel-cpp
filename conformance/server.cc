@@ -10,6 +10,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/api/expr/v1alpha1/value.pb.h"
 #include "google/protobuf/duration.pb.h"
+#include "google/protobuf/empty.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/rpc/code.pb.h"
@@ -235,7 +236,17 @@ int RunServer(bool optimize) {
       service.Eval(&request, &response);
       auto status = pipe_codec.Encode(response, &output);
       if (!status.ok()) {
-        std::cerr << "Failed to encode ParseResponse:" << status.ToString()
+        std::cerr << "Failed to encode EvalResponse:" << status.ToString()
+                  << std::endl;
+      }
+    } else if (cmd == "ping") {
+      protobuf::Empty request, response;
+      if (!pipe_codec.Decode(input, &request).ok()) {
+        std::cerr << "Failed to decode PingRequest: " << std::endl;
+      }
+      auto status = pipe_codec.Encode(response, &output);
+      if (!status.ok()) {
+        std::cerr << "Failed to encode PingResponse: " << status.ToString()
                   << std::endl;
       }
     } else if (cmd.empty()) {

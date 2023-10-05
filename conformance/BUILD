@@ -75,7 +75,7 @@ cc_binary(
             "--server=\"$(location :server) " + arg + "\"",
             "--skip_check",
             "--pipe",
-            "--pipe_base64",
+            "--pipe_pings",
 
             # Tests which require spec changes.
             # TODO(issues/93): Deprecate Duration.getMilliseconds.
@@ -125,7 +125,7 @@ sh_test(
         "--skip_test=enums/strong_proto2",
         "--skip_test=enums/strong_proto3",
         "--pipe",
-        "--pipe_base64",
+        "--pipe_pings",
     ] + ["$(location " + test + ")" for test in ALL_TESTS],
     data = [
         ":server",
