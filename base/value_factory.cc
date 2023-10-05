@@ -218,25 +218,23 @@ absl::StatusOr<Handle<StringValue>> ValueFactory::CreateStringValueFromView(
   return HandleFactory<StringValue>::Make<InlinedStringViewStringValue>(value);
 }
 
-absl::StatusOr<Handle<Value>> ValueFactory::CreateValueFromJson(Json json) {
+Handle<Value> ValueFactory::CreateValueFromJson(Json json) {
   return absl::visit(
       internal::Overloaded{
-          [this](JsonNull) -> absl::StatusOr<Handle<Value>> {
-            return GetNullValue();
-          },
-          [this](JsonBool value) -> absl::StatusOr<Handle<Value>> {
+          [this](JsonNull) -> Handle<Value> { return GetNullValue(); },
+          [this](JsonBool value) -> Handle<Value> {
             return CreateBoolValue(value);
           },
-          [this](JsonNumber value) -> absl::StatusOr<Handle<Value>> {
+          [this](JsonNumber value) -> Handle<Value> {
             return CreateDoubleValue(value);
           },
-          [this](JsonString value) -> absl::StatusOr<Handle<Value>> {
+          [this](JsonString value) -> Handle<Value> {
             return CreateUncheckedStringValue(std::move(value));
           },
-          [this](JsonArray value) -> absl::StatusOr<Handle<Value>> {
+          [this](JsonArray value) -> Handle<Value> {
             return CreateListValueFromJson(std::move(value));
           },
-          [this](JsonObject value) -> absl::StatusOr<Handle<Value>> {
+          [this](JsonObject value) -> Handle<Value> {
             return CreateMapValueFromJson(std::move(value));
           }},
       std::move(json));
@@ -361,31 +359,41 @@ class JsonMapValue final : public CEL_MAP_VALUE_CLASS {
 
   bool empty() const override { return object_.empty(); }
 
-  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+  absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
       ValueFactory& value_factory, const Handle<Value>& key) const override {
+    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
+      return std::make_pair(key, false);
+    }
+    // TODO(uncreated-issue/32): fix this for heterogeneous equality
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError(absl::StrCat(
           "Expected key to be string type: ", key->type()->DebugString()));
     }
     return key->As<StringValue>().Visit(
-        [this, &value_factory](const auto& value)
-            -> absl::StatusOr<absl::optional<Handle<Value>>> {
+        [this, &value_factory, &key](const auto& value)
+            -> absl::StatusOr<std::pair<Handle<Value>, bool>> {
           if (auto it = object_.find(value); it != object_.end()) {
-            return value_factory.CreateValueFromJson(it->second);
+            return std::make_pair(value_factory.CreateValueFromJson(it->second),
+                                  true);
           }
-          return absl::nullopt;
+          return std::make_pair(Handle<Value>(), false);
         });
   }
 
-  absl::StatusOr<bool> Has(ValueFactory& value_factory,
-                           const Handle<Value>& key) const override {
+  absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
+                                    const Handle<Value>& key) const override {
+    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
+      return key;
+    }
+    // TODO(uncreated-issue/32): fix this for heterogeneous equality
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError(absl::StrCat(
           "Expected key to be string type: ", key->type()->DebugString()));
     }
-    return key->As<StringValue>().Visit([this](const auto& value) -> bool {
-      return object_.find(value) != object_.end();
-    });
+    return value_factory.CreateBoolValue(
+        key->As<StringValue>().Visit([this](const auto& value) -> bool {
+          return object_.find(value) != object_.end();
+        }));
   }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
@@ -413,14 +421,12 @@ class JsonMapValue final : public CEL_MAP_VALUE_CLASS {
 
 }  // namespace
 
-absl::StatusOr<Handle<ListValue>> ValueFactory::CreateListValueFromJson(
-    JsonArray array) {
+Handle<ListValue> ValueFactory::CreateListValueFromJson(JsonArray array) {
   return HandleFactory<ListValue>::Make<JsonListValue>(
       memory_manager(), type_factory().GetJsonListType(), std::move(array));
 }
 
-absl::StatusOr<Handle<MapValue>> ValueFactory::CreateMapValueFromJson(
-    JsonObject object) {
+Handle<MapValue> ValueFactory::CreateMapValueFromJson(JsonObject object) {
   return HandleFactory<MapValue>::Make<JsonMapValue>(
       memory_manager(), type_factory().GetJsonMapType(), std::move(object));
 }

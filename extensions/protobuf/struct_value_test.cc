@@ -55,8 +55,11 @@ namespace {
 using FieldId = ::cel::extensions::ProtoStructType::FieldId;
 using ::cel_testing::ValueOf;
 using google::api::expr::testutil::EqualsProto;
+using testing::_;
 using testing::Eq;
+using testing::IsFalse;
 using testing::Optional;
+using testing::Pair;
 using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
@@ -956,9 +959,8 @@ TEST_P(ProtoStructValueTest, StructGetField) {
         ASSERT_TRUE(field->Is<MapValue>());
         EXPECT_EQ(field->As<MapValue>().size(), 1);
         ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
-        EXPECT_THAT(
-            field->As<MapValue>().Get(value_factory, key),
-            IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
+        EXPECT_THAT(field->As<MapValue>().Get(value_factory, key),
+                    IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
       });
 }
 
@@ -1696,46 +1698,48 @@ void TestMapGetField(MemoryManager& memory_manager,
       field.As<MapValue>()->Get(value_factory,
                                 Must((value_factory.*creator)(pair1.first))));
   if constexpr (std::is_same_v<T, ProtoStructValue>) {
-    EXPECT_THAT(*((*field_value).template As<ProtoStructValue>()->value()),
+    EXPECT_THAT(*(field_value.template As<ProtoStructValue>()->value()),
                 EqualsProto(pair1.second));
   } else if constexpr (std::is_same_v<T, NullValue>) {
-    EXPECT_TRUE((*field_value)->template Is<NullValue>());
+    EXPECT_TRUE(field_value->template Is<NullValue>());
   } else {
-    EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(),
+    EXPECT_EQ(((*field_value.template As<T>()).*valuer)(),
               ProtoToNative(pair1.second));
   }
   EXPECT_THAT(field.As<MapValue>()->Has(
                   value_factory, Must((value_factory.*creator)(pair1.first))),
-              IsOkAndHolds(Eq(true)));
+              IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
   ASSERT_OK_AND_ASSIGN(
       field_value,
       field.As<MapValue>()->Get(value_factory,
                                 Must((value_factory.*creator)(pair2.first))));
   if constexpr (std::is_same_v<T, ProtoStructValue>) {
-    EXPECT_THAT(*((*field_value).template As<ProtoStructValue>()->value()),
+    EXPECT_THAT(*(field_value.template As<ProtoStructValue>()->value()),
                 EqualsProto(pair2.second));
   } else if constexpr (std::is_same_v<T, NullValue>) {
-    EXPECT_TRUE((*field_value)->template Is<NullValue>());
+    EXPECT_TRUE(field_value->template Is<NullValue>());
   } else {
-    EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(),
+    EXPECT_EQ((*(field_value.template As<T>()).*valuer)(),
               ProtoToNative(pair2.second));
   }
   EXPECT_THAT(field.As<MapValue>()->Has(
                   value_factory, Must((value_factory.*creator)(pair2.first))),
-              IsOkAndHolds(Eq(true)));
+              IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
   if constexpr (!std::is_null_pointer_v<Key>) {
-    EXPECT_THAT(field.As<MapValue>()->Get(
-                    value_factory, Must((value_factory.*creator)(missing_key))),
-                IsOkAndHolds(Eq(absl::nullopt)));
+    ASSERT_OK_AND_ASSIGN(
+        auto missing_value,
+        (field.As<MapValue>()->Find(
+            value_factory, Must((value_factory.*creator)(missing_key)))));
+    EXPECT_FALSE(missing_value.first);
+    EXPECT_FALSE(missing_value.second);
   }
-  EXPECT_THAT(field.As<MapValue>()->Get(
-                  value_factory,
-                  value_factory.CreateErrorValue(absl::CancelledError())),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(field.As<MapValue>()->Has(
-                  value_factory,
-                  value_factory.CreateErrorValue(absl::CancelledError())),
-              StatusIs(absl::StatusCode::kInvalidArgument));
+  auto status = absl::CancelledError();
+  EXPECT_THAT(field.As<MapValue>()->Get(value_factory,
+                                        value_factory.CreateErrorValue(status)),
+              IsOkAndHolds(ValueOf<ErrorValue>(value_factory, status)));
+  EXPECT_THAT(field.As<MapValue>()->Has(value_factory,
+                                        value_factory.CreateErrorValue(status)),
+              IsOkAndHolds(ValueOf<ErrorValue>(value_factory, status)));
   ASSERT_OK_AND_ASSIGN(auto keys,
                        field.As<MapValue>()->ListKeys(value_factory));
   EXPECT_EQ(keys->size(), 2);
@@ -1783,47 +1787,48 @@ void TestStringMapGetField(MemoryManager& memory_manager,
       field.As<MapValue>()->Get(
           value_factory, Must(value_factory.CreateStringValue(pair1.first))));
   if constexpr (std::is_same_v<T, ProtoStructValue>) {
-    EXPECT_THAT(*((*field_value).template As<ProtoStructValue>()->value()),
+    EXPECT_THAT(*(field_value.template As<ProtoStructValue>()->value()),
                 EqualsProto(pair1.second));
   } else if constexpr (std::is_same_v<T, NullValue>) {
-    EXPECT_TRUE((*field_value)->template Is<NullValue>());
+    EXPECT_TRUE(field_value->template Is<NullValue>());
   } else {
-    EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(),
+    EXPECT_EQ(((*field_value.template As<T>()).*valuer)(),
               ProtoToNative(pair1.second));
   }
   EXPECT_THAT(
       field.As<MapValue>()->Has(
           value_factory, Must(value_factory.CreateStringValue(pair1.first))),
-      IsOkAndHolds(Eq(true)));
+      IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
   ASSERT_OK_AND_ASSIGN(
       field_value,
       field.As<MapValue>()->Get(
           value_factory, Must(value_factory.CreateStringValue(pair2.first))));
   if constexpr (std::is_same_v<T, ProtoStructValue>) {
-    EXPECT_THAT(*((*field_value).template As<ProtoStructValue>()->value()),
+    EXPECT_THAT(*(field_value.template As<ProtoStructValue>()->value()),
                 EqualsProto(pair2.second));
   } else if constexpr (std::is_same_v<T, NullValue>) {
-    EXPECT_TRUE((*field_value)->template Is<NullValue>());
+    EXPECT_TRUE(field_value->template Is<NullValue>());
   } else {
-    EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(),
+    EXPECT_EQ(((*field_value.template As<T>()).*valuer)(),
               ProtoToNative(pair2.second));
   }
   EXPECT_THAT(
       field.As<MapValue>()->Has(
           value_factory, Must(value_factory.CreateStringValue(pair2.first))),
-      IsOkAndHolds(Eq(true)));
-  EXPECT_THAT(
-      field.As<MapValue>()->Get(
-          value_factory, Must(value_factory.CreateStringValue(missing_key))),
-      IsOkAndHolds(Eq(absl::nullopt)));
-  EXPECT_THAT(field.As<MapValue>()->Get(
-                  value_factory,
-                  value_factory.CreateErrorValue(absl::CancelledError())),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(field.As<MapValue>()->Has(
-                  value_factory,
-                  value_factory.CreateErrorValue(absl::CancelledError())),
-              StatusIs(absl::StatusCode::kInvalidArgument));
+      IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
+  ASSERT_OK_AND_ASSIGN(
+      auto missing_value,
+      (field.As<MapValue>()->Find(
+          value_factory, Must(value_factory.CreateStringValue(missing_key)))));
+  EXPECT_FALSE(missing_value.first);
+  EXPECT_FALSE(missing_value.second);
+  auto status = absl::CancelledError();
+  EXPECT_THAT(field.As<MapValue>()->Get(value_factory,
+                                        value_factory.CreateErrorValue(status)),
+              IsOkAndHolds(ValueOf<ErrorValue>(value_factory, status)));
+  EXPECT_THAT(field.As<MapValue>()->Has(value_factory,
+                                        value_factory.CreateErrorValue(status)),
+              IsOkAndHolds(ValueOf<ErrorValue>(value_factory, status)));
   ASSERT_OK_AND_ASSIGN(auto keys,
                        field.As<MapValue>()->ListKeys(value_factory));
   EXPECT_EQ(keys->size(), 2);
@@ -2947,15 +2952,15 @@ TEST_P(ProtoStructValueTest, BoolStructMapGetField) {
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
-        ASSERT_TRUE((*value)->Is<MapValue>());
-        EXPECT_EQ((*value).As<MapValue>()->size(), 1);
+        ASSERT_TRUE(value->Is<MapValue>());
+        EXPECT_EQ(value.As<MapValue>()->size(), 1);
         ASSERT_OK_AND_ASSIGN(
             auto subvalue,
-            (*value).As<MapValue>()->Get(
+            value.As<MapValue>()->Get(
                 value_factory, Must(value_factory.CreateStringValue("foo"))));
         ASSERT_TRUE(subvalue);
-        ASSERT_TRUE((*subvalue)->Is<BoolValue>());
-        EXPECT_FALSE((*subvalue)->As<BoolValue>().value());
+        ASSERT_TRUE(subvalue->Is<BoolValue>());
+        EXPECT_FALSE(subvalue->As<BoolValue>().value());
       });
 }
 
@@ -2974,8 +2979,8 @@ TEST_P(ProtoStructValueTest, BoolValueMapGetField) {
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
-        ASSERT_TRUE((*value)->Is<BoolValue>());
-        EXPECT_TRUE((*value)->As<BoolValue>().value());
+        ASSERT_TRUE(value->Is<BoolValue>());
+        EXPECT_TRUE(value->As<BoolValue>().value());
       });
 }
 
@@ -2994,11 +2999,11 @@ TEST_P(ProtoStructValueTest, BoolListValueMapGetField) {
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
-        ASSERT_TRUE((*value)->Is<ListValue>());
-        EXPECT_FALSE((*value)->As<ListValue>().empty());
-        EXPECT_EQ((*value)->As<ListValue>().size(), 1);
+        ASSERT_TRUE(value->Is<ListValue>());
+        EXPECT_FALSE(value->As<ListValue>().empty());
+        EXPECT_EQ(value->As<ListValue>().size(), 1);
         ASSERT_OK_AND_ASSIGN(auto element,
-                             (*value)->As<ListValue>().Get(value_factory, 0));
+                             value->As<ListValue>().Get(value_factory, 0));
         ASSERT_TRUE(element->Is<NullValue>());
       });
 }
@@ -3018,8 +3023,8 @@ TEST_P(ProtoStructValueTest, BoolBoolWrapperMapGetField) {
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
-        ASSERT_TRUE((*value)->Is<BoolValue>());
-        EXPECT_TRUE((*value)->As<BoolValue>().value());
+        ASSERT_TRUE(value->Is<BoolValue>());
+        EXPECT_TRUE(value->As<BoolValue>().value());
       });
 }
 
@@ -3038,8 +3043,8 @@ TEST_P(ProtoStructValueTest, BoolInt32WrapperMapGetField) {
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
-        ASSERT_TRUE((*value)->Is<IntValue>());
-        EXPECT_EQ((*value)->As<IntValue>().value(), 1);
+        ASSERT_TRUE(value->Is<IntValue>());
+        EXPECT_EQ(value->As<IntValue>().value(), 1);
       });
 }
 
@@ -3058,8 +3063,8 @@ TEST_P(ProtoStructValueTest, BoolInt64WrapperMapGetField) {
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
-        ASSERT_TRUE((*value)->Is<IntValue>());
-        EXPECT_EQ((*value)->As<IntValue>().value(), 1);
+        ASSERT_TRUE(value->Is<IntValue>());
+        EXPECT_EQ(value->As<IntValue>().value(), 1);
       });
 }
 
@@ -3078,8 +3083,8 @@ TEST_P(ProtoStructValueTest, BoolUInt32WrapperMapGetField) {
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
-        ASSERT_TRUE((*value)->Is<UintValue>());
-        EXPECT_EQ((*value)->As<UintValue>().value(), 1);
+        ASSERT_TRUE(value->Is<UintValue>());
+        EXPECT_EQ(value->As<UintValue>().value(), 1);
       });
 }
 
@@ -3098,8 +3103,8 @@ TEST_P(ProtoStructValueTest, BoolUInt64WrapperMapGetField) {
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
-        ASSERT_TRUE((*value)->Is<UintValue>());
-        EXPECT_EQ((*value)->As<UintValue>().value(), 1);
+        ASSERT_TRUE(value->Is<UintValue>());
+        EXPECT_EQ(value->As<UintValue>().value(), 1);
       });
 }
 
@@ -3118,8 +3123,8 @@ TEST_P(ProtoStructValueTest, BoolFloatWrapperMapGetField) {
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
-        ASSERT_TRUE((*value)->Is<DoubleValue>());
-        EXPECT_EQ((*value)->As<DoubleValue>().value(), 1);
+        ASSERT_TRUE(value->Is<DoubleValue>());
+        EXPECT_EQ(value->As<DoubleValue>().value(), 1);
       });
 }
 
@@ -3138,8 +3143,8 @@ TEST_P(ProtoStructValueTest, BoolDoubleWrapperMapGetField) {
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
-        ASSERT_TRUE((*value)->Is<DoubleValue>());
-        EXPECT_EQ((*value)->As<DoubleValue>().value(), 1);
+        ASSERT_TRUE(value->Is<DoubleValue>());
+        EXPECT_EQ(value->As<DoubleValue>().value(), 1);
       });
 }
 
@@ -3158,8 +3163,8 @@ TEST_P(ProtoStructValueTest, BoolBytesWrapperMapGetField) {
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
-        ASSERT_TRUE((*value)->Is<BytesValue>());
-        EXPECT_EQ((*value)->As<BytesValue>().ToString(), "foo");
+        ASSERT_TRUE(value->Is<BytesValue>());
+        EXPECT_EQ(value->As<BytesValue>().ToString(), "foo");
       });
 }
 
@@ -3178,8 +3183,8 @@ TEST_P(ProtoStructValueTest, BoolStringWrapperMapGetField) {
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
-        ASSERT_TRUE((*value)->Is<StringValue>());
-        EXPECT_EQ((*value)->As<StringValue>().ToString(), "foo");
+        ASSERT_TRUE(value->Is<StringValue>());
+        EXPECT_EQ(value->As<StringValue>().ToString(), "foo");
       });
 }
 

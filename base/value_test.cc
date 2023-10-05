@@ -75,6 +75,7 @@ namespace cel {
 
 namespace {
 
+using ::cel_testing::ValueIs;
 using ::cel_testing::ValueOf;
 using testing::Eq;
 using testing::IsEmpty;
@@ -381,28 +382,33 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
 
   size_t size() const override { return entries_.size(); }
 
-  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+  absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
       ValueFactory& value_factory, const Handle<Value>& key) const override {
+    if (key->Is<ErrorValue>() || key->Is<UnknownValue>()) {
+      return std::make_pair(key, false);
+    }
+    // TODO(uncreated-issue/32): fix for homogeneous equality
     if (!key->Is<StringValue>()) {
-      return absl::InvalidArgumentError("");
+      return std::make_pair(Handle<Value>(), false);
     }
     auto entry = entries_.find(key.As<StringValue>()->ToString());
     if (entry == entries_.end()) {
-      return absl::nullopt;
+      return std::make_pair(Handle<Value>(), false);
     }
-    return value_factory.CreateIntValue(entry->second);
+    return std::make_pair(value_factory.CreateIntValue(entry->second), true);
   }
 
-  absl::StatusOr<bool> Has(ValueFactory& value_factory,
-                           const Handle<Value>& key) const override {
+  absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
+                                    const Handle<Value>& key) const override {
+    // TODO(uncreated-issue/32): fix for homogeneous equality
     if (!key->Is<StringValue>()) {
-      return absl::InvalidArgumentError("");
+      return value_factory.CreateBoolValue(false);
     }
     auto entry = entries_.find(key.As<StringValue>()->ToString());
     if (entry == entries_.end()) {
-      return false;
+      return value_factory.CreateBoolValue(false);
     }
-    return true;
+    return value_factory.CreateBoolValue(true);
   }
 
   std::string DebugString() const override {
@@ -2910,27 +2916,27 @@ TEST_P(MapValueTest, GetAndHas) {
             value_factory.CreateIntValue(1));
   EXPECT_THAT(map_value->Has(value_factory,
                              Must(value_factory.CreateStringValue("foo"))),
-              IsOkAndHolds(true));
+              IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
   EXPECT_EQ(Must(map_value->Get(value_factory,
                                 Must(value_factory.CreateStringValue("bar")))),
             value_factory.CreateIntValue(2));
   EXPECT_THAT(map_value->Has(value_factory,
                              Must(value_factory.CreateStringValue("bar"))),
-              IsOkAndHolds(true));
+              IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
   EXPECT_EQ(Must(map_value->Get(value_factory,
                                 Must(value_factory.CreateStringValue("baz")))),
             value_factory.CreateIntValue(3));
   EXPECT_THAT(map_value->Has(value_factory,
                              Must(value_factory.CreateStringValue("baz"))),
-              IsOkAndHolds(true));
+              IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
   EXPECT_THAT(map_value->Get(value_factory, value_factory.CreateIntValue(0)),
-              StatusIs(absl::StatusCode::kInvalidArgument));
+              IsOkAndHolds(ValueIs<ErrorValue>()));
   EXPECT_THAT(map_value->Get(value_factory,
                              Must(value_factory.CreateStringValue("missing"))),
-              IsOkAndHolds(Eq(absl::nullopt)));
+              IsOkAndHolds(ValueIs<ErrorValue>()));
   EXPECT_THAT(map_value->Has(value_factory,
                              Must(value_factory.CreateStringValue("missing"))),
-              IsOkAndHolds(false));
+              IsOkAndHolds(ValueOf<BoolValue>(value_factory, false)));
 }
 
 TEST_P(MapValueTest, NewIteratorKeys) {

@@ -120,31 +120,38 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInMap(
       // Consider uint as uint first then try coercion (prefer matching the
       // original type of the key value).
       if (key->Is<UintValue>()) {
-        CEL_ASSIGN_OR_RETURN(auto maybe_value,
-                             cel_map->Get(frame->value_factory(), key));
-        if (maybe_value.has_value()) {
-          return std::move(maybe_value).value();
+        Handle<Value> value;
+        bool ok;
+        CEL_ASSIGN_OR_RETURN(std::tie(value, ok),
+                             cel_map->Find(frame->value_factory(), key));
+        if (ok) {
+          return value;
         }
       }
       // double / int / uint -> int
       if (number->LosslessConvertibleToInt()) {
-        CEL_ASSIGN_OR_RETURN(auto maybe_value,
-                             cel_map->Get(frame->value_factory(),
-                                          frame->value_factory().CreateIntValue(
-                                              number->AsInt())));
-        if (maybe_value.has_value()) {
-          return std::move(maybe_value).value();
+        Handle<Value> value;
+        bool ok;
+        CEL_ASSIGN_OR_RETURN(
+            std::tie(value, ok),
+            cel_map->Find(
+                frame->value_factory(),
+                frame->value_factory().CreateIntValue(number->AsInt())));
+        if (ok) {
+          return value;
         }
       }
       // double / int -> uint
       if (number->LosslessConvertibleToUint()) {
+        Handle<Value> value;
+        bool ok;
         CEL_ASSIGN_OR_RETURN(
-            auto maybe_value,
-            cel_map->Get(
+            std::tie(value, ok),
+            cel_map->Find(
                 frame->value_factory(),
                 frame->value_factory().CreateUintValue(number->AsUint())));
-        if (maybe_value.has_value()) {
-          return std::move(maybe_value).value();
+        if (ok) {
+          return value;
         }
       }
       return frame->value_factory().CreateErrorValue(
@@ -154,14 +161,7 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInMap(
 
   CEL_RETURN_IF_ERROR(CheckMapKeyType(key));
 
-  CEL_ASSIGN_OR_RETURN(auto maybe_value,
-                       cel_map->Get(frame->value_factory(), key));
-  if (maybe_value.has_value()) {
-    return std::move(maybe_value).value();
-  }
-
-  return frame->value_factory().CreateErrorValue(
-      CreateNoSuchKeyError(key->DebugString()));
+  return cel_map->Get(frame->value_factory(), key);
 }
 
 absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInList(

@@ -107,6 +107,7 @@ cc_library(
     srcs = ["errors.cc"],
     hdrs = ["errors.h"],
     deps = [
+        "//base:data",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",

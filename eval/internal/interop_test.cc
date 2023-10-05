@@ -27,6 +27,7 @@
 #include "absl/strings/escaping.h"
 #include "absl/time/time.h"
 #include "base/memory.h"
+#include "base/testing/value_matchers.h"
 #include "base/type.h"
 #include "base/type_manager.h"
 #include "base/value.h"
@@ -54,6 +55,7 @@
 namespace cel::interop_internal {
 namespace {
 
+using ::cel_testing::ValueOf;
 using ::google::api::expr::runtime::CelProtoWrapper;
 using ::google::api::expr::runtime::CelValue;
 using ::google::api::expr::runtime::ContainerBackedListImpl;
@@ -554,11 +556,11 @@ TEST(ValueInterop, MapFromLegacy) {
   EXPECT_EQ(value.As<MapValue>()->size(), 1);
   auto entry_key = value_factory.CreateIntValue(1);
   EXPECT_THAT(value.As<MapValue>()->Has(value_factory, entry_key),
-              IsOkAndHolds(Eq(true)));
+              IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
   ASSERT_OK_AND_ASSIGN(auto entry_value,
                        value.As<MapValue>()->Get(value_factory, entry_key));
-  EXPECT_TRUE((*entry_value)->Is<StringValue>());
-  EXPECT_EQ((*entry_value).As<StringValue>()->ToString(), "foo");
+  EXPECT_TRUE(entry_value->Is<StringValue>());
+  EXPECT_EQ(entry_value.As<StringValue>()->ToString(), "foo");
 }
 
 class TestMapValue final : public CEL_MAP_VALUE_CLASS {
@@ -585,18 +587,26 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
 
   bool empty() const override { return entries_.empty(); }
 
-  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+  absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
       ValueFactory& value_factory, const Handle<Value>& key) const override {
+    if (key->Is<ErrorValue>() || key->Is<UnknownValue>()) {
+      return std::make_pair(key, false);
+    }
     auto existing = entries_.find(key.As<IntValue>()->value());
     if (existing == entries_.end()) {
-      return absl::nullopt;
+      return std::make_pair(Handle<Value>(), false);
     }
-    return value_factory.CreateStringValue(existing->second);
+    return std::make_pair(
+        value_factory.CreateUncheckedStringValue(existing->second), true);
   }
 
-  absl::StatusOr<bool> Has(ValueFactory& value_factory,
-                           const Handle<Value>& key) const override {
-    return entries_.find(key.As<IntValue>()->value()) != entries_.end();
+  absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
+                                    const Handle<Value>& key) const override {
+    if (key->Is<ErrorValue>() || key->Is<UnknownValue>()) {
+      return key;
+    }
+    return value_factory.CreateBoolValue(
+        entries_.find(key.As<IntValue>()->value()) != entries_.end());
   }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(

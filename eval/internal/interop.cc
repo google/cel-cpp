@@ -224,15 +224,15 @@ class LegacyCelMap final : public CelMap {
     TypeFactory type_factory(memory_manager);
     TypeManager type_manager(type_factory, TypeProvider::Builtin());
     ValueFactory value_factory(type_manager);
-    auto modern_value = impl_->Get(value_factory, *modern_key);
+    auto modern_value = impl_->Find(value_factory, *modern_key);
     if (!modern_value.ok()) {
       return CelValue::CreateError(
           google::protobuf::Arena::Create<absl::Status>(arena, modern_value.status()));
     }
-    if (!(*modern_value).has_value()) {
+    if (!(*modern_value).second) {
       return absl::nullopt;
     }
-    auto legacy_value = ToLegacyValue(arena, **modern_value);
+    auto legacy_value = ToLegacyValue(arena, (*modern_value).first);
     if (!legacy_value.ok()) {
       return CelValue::CreateError(
           google::protobuf::Arena::Create<absl::Status>(arena, legacy_value.status()));
@@ -250,7 +250,8 @@ class LegacyCelMap final : public CelMap {
     TypeManager type_manager(type_factory, TypeProvider::Builtin());
     ValueFactory value_factory(type_manager);
     CEL_ASSIGN_OR_RETURN(auto modern_key, FromLegacyValue(&arena, key));
-    return impl_->Has(value_factory, modern_key);
+    CEL_ASSIGN_OR_RETURN(auto has, impl_->Has(value_factory, modern_key));
+    return has->Is<BoolValue>() && has->As<BoolValue>().value();
   }
 
   int size() const override { return static_cast<int>(impl_->size()); }

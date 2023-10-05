@@ -25,6 +25,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
@@ -96,13 +97,20 @@ class MapValue : public Value,
   bool empty() const;
 
   // Retrieves the value corresponding to the given key. If the key does not
-  // exist, an empty optional is returned. If the given key type is not
-  // compatible with the expected key type, an error is returned.
-  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+  // exist, an error value is returned. If the given key type is not
+  // compatible with the expected key type, an error value is returned.
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+                                    const Handle<Value>& key) const;
+
+  // Retrieves the value corresponding to the given key. If the key does not
+  // exist but the key is otherwise valid, an empty handle and false are
+  // returned. If the key is an error or unknown, the key is returned along with
+  // false. Otherwise the corresponding value and true are returned.
+  absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
       ValueFactory& value_factory, const Handle<Value>& key) const;
 
-  absl::StatusOr<bool> Has(ValueFactory& value_factory,
-                           const Handle<Value>& key) const;
+  absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
+                                    const Handle<Value>& key) const;
 
   absl::StatusOr<Handle<ListValue>> ListKeys(ValueFactory& value_factory) const;
 
@@ -151,6 +159,11 @@ ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool> LegacyMapValueHas(
 ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<ListValue>> LegacyMapValueListKeys(
     uintptr_t impl, ValueFactory& value_factory);
 
+constexpr absl::string_view kErrNoSuchKey = "Key not found in map";
+
+absl::Status CreateNoSuchKeyError(absl::string_view key);
+absl::Status CreateNoSuchKeyError(const Value& value);
+
 class LegacyMapValue final : public MapValue, public InlineData {
  public:
   static bool Is(const Value& value) {
@@ -179,11 +192,11 @@ class LegacyMapValue final : public MapValue, public InlineData {
 
   bool empty() const;
 
-  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+  absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
       ValueFactory& value_factory, const Handle<Value>& key) const;
 
-  absl::StatusOr<bool> Has(ValueFactory& value_factory,
-                           const Handle<Value>& key) const;
+  absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
+                                    const Handle<Value>& key) const;
 
   absl::StatusOr<Handle<ListValue>> ListKeys(ValueFactory& value_factory) const;
 
@@ -244,11 +257,11 @@ class AbstractMapValue : public MapValue,
 
   virtual bool empty() const { return size() == 0; }
 
-  virtual absl::StatusOr<absl::optional<Handle<Value>>> Get(
+  virtual absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
       ValueFactory& value_factory, const Handle<Value>& key) const = 0;
 
-  virtual absl::StatusOr<bool> Has(ValueFactory& value_factory,
-                                   const Handle<Value>& key) const = 0;
+  virtual absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
+                                            const Handle<Value>& key) const = 0;
 
   virtual absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const = 0;

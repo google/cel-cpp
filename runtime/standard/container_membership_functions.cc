@@ -181,7 +181,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
           const MapValue& map_value) -> absl::StatusOr<Handle<Value>> {
     auto result = map_value.Has(factory, factory.CreateBoolValue(key));
     if (result.ok()) {
-      return factory.CreateBoolValue(*result);
+      return std::move(*result);
     }
     if (enable_heterogeneous_equality) {
       return factory.CreateBoolValue(false);
@@ -196,15 +196,17 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
     Handle<Value> int_key = factory.CreateIntValue(key);
     auto result = map_value.Has(factory, int_key);
     if (enable_heterogeneous_equality) {
-      if (result.ok() && *result) {
-        return factory.CreateBoolValue(*result);
+      if (result.ok() && (*result)->Is<BoolValue>() &&
+          (*result)->As<BoolValue>().value()) {
+        return std::move(*result);
       }
       Number number = Number::FromInt64(key);
       if (number.LosslessConvertibleToUint()) {
         const auto& result =
             map_value.Has(factory, factory.CreateUintValue(number.AsUint()));
-        if (result.ok() && *result) {
-          return factory.CreateBoolValue(*result);
+        if (result.ok() && (*result)->Is<BoolValue>() &&
+            (*result)->As<BoolValue>().value()) {
+          return std::move(*result);
         }
       }
       return factory.CreateBoolValue(false);
@@ -212,7 +214,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
     if (!result.ok()) {
       return factory.CreateErrorValue(result.status());
     }
-    return factory.CreateBoolValue(*result);
+    return std::move(*result);
   };
 
   auto stringKeyInSet =
@@ -221,7 +223,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
           const MapValue& map_value) -> absl::StatusOr<Handle<Value>> {
     auto result = map_value.Has(factory, key);
     if (result.ok()) {
-      return factory.CreateBoolValue(*result);
+      return std::move(*result);
     }
     if (enable_heterogeneous_equality) {
       return factory.CreateBoolValue(false);
@@ -236,15 +238,17 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
     Handle<Value> uint_key = factory.CreateUintValue(key);
     const auto& result = map_value.Has(factory, uint_key);
     if (enable_heterogeneous_equality) {
-      if (result.ok() && *result) {
-        return factory.CreateBoolValue(*result);
+      if (result.ok() && (*result)->Is<BoolValue>() &&
+          (*result)->As<BoolValue>().value()) {
+        return std::move(*result);
       }
       Number number = Number::FromUint64(key);
       if (number.LosslessConvertibleToInt()) {
         const auto& result =
             map_value.Has(factory, factory.CreateIntValue(number.AsInt()));
-        if (result.ok() && *result) {
-          return factory.CreateBoolValue(*result);
+        if (result.ok() && (*result)->Is<BoolValue>() &&
+            (*result)->As<BoolValue>().value()) {
+          return std::move(*result);
         }
       }
       return factory.CreateBoolValue(false);
@@ -252,7 +256,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
     if (!result.ok()) {
       return factory.CreateErrorValue(result.status());
     }
-    return factory.CreateBoolValue(*result);
+    return std::move(*result);
   };
 
   auto doubleKeyInSet =
@@ -262,15 +266,17 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
     if (number.LosslessConvertibleToInt()) {
       const auto& result =
           map_value.Has(factory, factory.CreateIntValue(number.AsInt()));
-      if (result.ok() && *result) {
-        return factory.CreateBoolValue(*result);
+      if (result.ok() && (*result)->Is<BoolValue>() &&
+          (*result)->As<BoolValue>().value()) {
+        return std::move(*result);
       }
     }
     if (number.LosslessConvertibleToUint()) {
       const auto& result =
           map_value.Has(factory, factory.CreateUintValue(number.AsUint()));
-      if (result.ok() && *result) {
-        return factory.CreateBoolValue(*result);
+      if (result.ok() && (*result)->Is<BoolValue>() &&
+          (*result)->As<BoolValue>().value()) {
+        return std::move(*result);
       }
     }
     return factory.CreateBoolValue(false);

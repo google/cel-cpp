@@ -899,14 +899,13 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
       CEL_ASSIGN_OR_RETURN(auto entry_key, iterator->Next());
       CEL_ASSIGN_OR_RETURN(auto entry_value,
                            value->Get(value_factory_, entry_key));
-      ABSL_ASSERT(entry_value.has_value());
       google::protobuf::MapKey map_key;
       CEL_RETURN_IF_ERROR(key_converter(*entry_key, map_key));
       google::protobuf::MapValueRef map_value;
       protobuf_internal::InsertOrLookupMapValue(reflect, message_, field_desc,
                                                 map_key, &map_value);
       CEL_RETURN_IF_ERROR(
-          value_converter(value_factory_, **entry_value, map_value));
+          value_converter(value_factory_, *entry_value, map_value));
     }
     return absl::OkStatus();
   }

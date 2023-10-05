@@ -451,13 +451,12 @@ class ValueFactory final {
                                           FunctionResultSet function_result_set)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::StatusOr<Handle<Value>> CreateValueFromJson(Json json)
+  Handle<Value> CreateValueFromJson(Json json) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  Handle<ListValue> CreateListValueFromJson(JsonArray array)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::StatusOr<Handle<ListValue>> CreateListValueFromJson(JsonArray array)
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  absl::StatusOr<Handle<MapValue>> CreateMapValueFromJson(JsonObject object)
+  Handle<MapValue> CreateMapValueFromJson(JsonObject object)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   MemoryManager& memory_manager() const {

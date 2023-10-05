@@ -998,9 +998,8 @@ TEST_P(TypeNewValueFromAnyTest, DynType) {
   ASSERT_OK_AND_ASSIGN(auto key, value_factory().CreateStringValue("foo"));
   ASSERT_OK_AND_ASSIGN(auto entry,
                        value->As<MapValue>().Get(value_factory(), key));
-  ASSERT_TRUE(entry.has_value());
-  ASSERT_TRUE((*entry)->Is<BoolValue>());
-  EXPECT_TRUE((*entry)->As<BoolValue>().value());
+  ASSERT_TRUE(entry->Is<BoolValue>());
+  EXPECT_TRUE(entry->As<BoolValue>().value());
 
   ASSERT_OK_AND_ASSIGN(
       value, type_factory().GetDynType().As<Type>()->NewValueFromAny(

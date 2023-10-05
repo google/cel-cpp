@@ -58,6 +58,7 @@ cc_test(
         ":interop",
         "//base:data",
         "//base:memory",
+        "//base/testing:value_matchers",
         "//eval/public:cel_value",
         "//eval/public:message_wrapper",
         "//eval/public:unknown_set",

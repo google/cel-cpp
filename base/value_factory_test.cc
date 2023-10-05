@@ -16,11 +16,13 @@
 
 #include "absl/status/status.h"
 #include "base/memory.h"
+#include "base/testing/value_matchers.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
 
+using ::cel_testing::ValueOf;
 using testing::IsTrue;
 using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
@@ -47,8 +49,7 @@ TEST(ValueFactory, JsonNull) {
   TypeFactory type_factory(MemoryManager::Global());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       value_factory.CreateValueFromJson(kJsonNull));
+  auto value = value_factory.CreateValueFromJson(kJsonNull);
   EXPECT_TRUE(value->Is<NullValue>());
 }
 
@@ -56,7 +57,7 @@ TEST(ValueFactory, JsonBool) {
   TypeFactory type_factory(MemoryManager::Global());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value, value_factory.CreateValueFromJson(true));
+  auto value = value_factory.CreateValueFromJson(true);
   ASSERT_TRUE(value->Is<BoolValue>());
   EXPECT_TRUE(value->As<BoolValue>().value());
 }
@@ -65,7 +66,7 @@ TEST(ValueFactory, JsonNumber) {
   TypeFactory type_factory(MemoryManager::Global());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value, value_factory.CreateValueFromJson(1.0));
+  auto value = value_factory.CreateValueFromJson(1.0);
   ASSERT_TRUE(value->Is<DoubleValue>());
   EXPECT_EQ(value->As<DoubleValue>().value(), 1.0);
 }
@@ -74,8 +75,7 @@ TEST(ValueFactory, JsonString) {
   TypeFactory type_factory(MemoryManager::Global());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       value_factory.CreateValueFromJson(JsonString("foo")));
+  auto value = value_factory.CreateValueFromJson(JsonString("foo"));
   ASSERT_TRUE(value->Is<StringValue>());
   EXPECT_EQ(value->As<StringValue>().ToCord(), "foo");
 }
@@ -85,7 +85,7 @@ TEST(ValueFactory, JsonArray) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto array = MakeJsonArray({JsonString("foo")});
-  ASSERT_OK_AND_ASSIGN(auto value, value_factory.CreateValueFromJson(array));
+  auto value = value_factory.CreateValueFromJson(array);
   ASSERT_TRUE(value->Is<ListValue>());
   EXPECT_FALSE(value->As<ListValue>().empty());
   EXPECT_EQ(value->As<ListValue>().size(), 1);
@@ -104,7 +104,7 @@ TEST(ValueFactory, JsonObject) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto object = MakeJsonObject({{JsonString("foo"), true}});
-  ASSERT_OK_AND_ASSIGN(auto value, value_factory.CreateValueFromJson(object));
+  auto value = value_factory.CreateValueFromJson(object);
   ASSERT_TRUE(value->Is<MapValue>());
   EXPECT_FALSE(value->As<MapValue>().empty());
   EXPECT_EQ(value->As<MapValue>().size(), 1);
@@ -113,13 +113,12 @@ TEST(ValueFactory, JsonObject) {
       auto entry,
       value->As<MapValue>().Get(
           value_factory, value_factory.CreateUncheckedStringValue("foo")));
-  ASSERT_TRUE(entry.has_value());
-  ASSERT_TRUE((*entry)->Is<BoolValue>());
-  EXPECT_TRUE((*entry)->As<BoolValue>().value());
+  ASSERT_TRUE(entry->Is<BoolValue>());
+  EXPECT_TRUE(entry->As<BoolValue>().value());
   EXPECT_THAT(
       value->As<MapValue>().Has(
           value_factory, value_factory.CreateUncheckedStringValue("foo")),
-      IsOkAndHolds(IsTrue()));
+      IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
   ASSERT_OK_AND_ASSIGN(
       auto json, value->As<MapValue>().ConvertToJsonObject(value_factory));
   EXPECT_EQ(json, object);

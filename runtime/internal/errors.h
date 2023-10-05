@@ -19,13 +19,14 @@
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "base/values/map_value.h"
 
 namespace cel::runtime_internal {
 
 constexpr absl::string_view kErrNoMatchingOverload =
     "No matching overloads found";
 constexpr absl::string_view kErrNoSuchField = "no_such_field";
-constexpr absl::string_view kErrNoSuchKey = "Key not found in map";
+using base_internal::kErrNoSuchKey;
 // Error name for MissingAttributeError indicating that evaluation has
 // accessed an attribute whose value is undefined. go/terminal-unknown
 constexpr absl::string_view kErrMissingAttribute = "MissingAttributeError: ";
@@ -47,7 +48,7 @@ absl::Status CreateNoMatchingOverloadError(absl::string_view fn);
 absl::Status CreateNoSuchFieldError(absl::string_view field);
 
 // No such key for map access.
-absl::Status CreateNoSuchKeyError(absl::string_view key);
+using base_internal::CreateNoSuchKeyError;
 
 // A missing attribute was accessed. Attributes may be declared as missing to
 // they are not well defined at evaluation time.

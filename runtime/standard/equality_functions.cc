@@ -179,19 +179,23 @@ absl::StatusOr<absl::optional<Handle<Value>>> CheckAlternativeNumericType(
   }
 
   if (!key->Is<IntValue>() && number->LosslessConvertibleToInt()) {
+    Handle<Value> entry;
+    bool ok;
     CEL_ASSIGN_OR_RETURN(
-        auto entry,
-        rhs.Get(value_factory, value_factory.CreateIntValue(number->AsInt())));
-    if (entry.has_value()) {
+        std::tie(entry, ok),
+        rhs.Find(value_factory, value_factory.CreateIntValue(number->AsInt())));
+    if (ok) {
       return entry;
     }
   }
 
   if (!key->Is<UintValue>() && number->LosslessConvertibleToUint()) {
-    CEL_ASSIGN_OR_RETURN(
-        auto entry, rhs.Get(value_factory,
-                            value_factory.CreateUintValue(number->AsUint())));
-    if (entry.has_value()) {
+    Handle<Value> entry;
+    bool ok;
+    CEL_ASSIGN_OR_RETURN(std::tie(entry, ok),
+                         rhs.Find(value_factory, value_factory.CreateUintValue(
+                                                     number->AsUint())));
+    if (ok) {
       return entry;
     }
   }
@@ -217,24 +221,27 @@ absl::StatusOr<absl::optional<bool>> MapEqual(ValueFactory& value_factory,
   while (iter->HasNext()) {
     CEL_ASSIGN_OR_RETURN(auto lhs_key, iter->Next());
 
-    absl::optional<Handle<Value>> rhs_value;
-    CEL_ASSIGN_OR_RETURN(rhs_value, rhs.Get(value_factory, lhs_key));
+    Handle<Value> rhs_value;
+    bool rhs_ok;
+    CEL_ASSIGN_OR_RETURN(std::tie(rhs_value, rhs_ok),
+                         rhs.Find(value_factory, lhs_key));
 
-    if (!rhs_value.has_value() && EqualsProvider::kIsHeterogeneous) {
+    if (!rhs_ok && EqualsProvider::kIsHeterogeneous) {
       CEL_ASSIGN_OR_RETURN(
-          rhs_value, CheckAlternativeNumericType(value_factory, lhs_key, rhs));
+          auto maybe_rhs_value,
+          CheckAlternativeNumericType(value_factory, lhs_key, rhs));
+      rhs_ok = maybe_rhs_value.has_value();
+      if (rhs_ok) {
+        rhs_value = std::move(*maybe_rhs_value);
+      }
     }
-    if (!rhs_value.has_value()) {
+    if (!rhs_ok) {
       return false;
     }
 
-    absl::optional<Handle<Value>> lhs_value;
-    CEL_ASSIGN_OR_RETURN(lhs_value, lhs.Get(value_factory, lhs_key));
-    // Temporary during refactor, optional will be removed.
-    ABSL_ASSERT(lhs_value.has_value());
-    CEL_ASSIGN_OR_RETURN(
-        absl::optional<bool> eq,
-        EqualsProvider()(value_factory, *lhs_value, *rhs_value));
+    CEL_ASSIGN_OR_RETURN(auto lhs_value, lhs.Get(value_factory, lhs_key));
+    CEL_ASSIGN_OR_RETURN(absl::optional<bool> eq,
+                         EqualsProvider()(value_factory, lhs_value, rhs_value));
 
     if (!eq.has_value() || !*eq) {
       return eq;

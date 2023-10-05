@@ -267,26 +267,37 @@ class StaticProtoJsonMapValue : public CEL_MAP_VALUE_CLASS {
 
   size_t size() const final { return value_.fields_size(); }
 
-  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+  absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
       ValueFactory& value_factory, const Handle<Value>& key) const final {
+    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
+      return std::make_pair(key, false);
+    }
+    // TODO(uncreated-issue/32): fix this for heterogeneous equality
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError("expected key to be string value");
     }
     auto it = value_.fields().find(key->As<StringValue>().ToString());
     if (it == value_.fields().end()) {
-      return absl::nullopt;
+      return std::make_pair(Handle<Value>(), false);
     }
-    return CreateMemberJsonValue(value_factory, it->second, [this]() mutable {
-      return owner_from_this();
-    });
+    CEL_ASSIGN_OR_RETURN(
+        auto value,
+        CreateMemberJsonValue(value_factory, it->second,
+                              [this]() mutable { return owner_from_this(); }));
+    return std::make_pair(std::move(value), true);
   }
 
-  absl::StatusOr<bool> Has(ValueFactory& value_factory,
-                           const Handle<Value>& key) const final {
+  absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
+                                    const Handle<Value>& key) const final {
+    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
+      return key;
+    }
+    // TODO(uncreated-issue/32): fix this for heterogeneous equality
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError("expected key to be string value");
     }
-    return value_.fields().contains(key->As<StringValue>().ToString());
+    return value_factory.CreateBoolValue(
+        value_.fields().contains(key->As<StringValue>().ToString()));
   }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
@@ -329,26 +340,37 @@ class ArenaStaticProtoJsonMapValue : public CEL_MAP_VALUE_CLASS {
 
   size_t size() const final { return value_->fields_size(); }
 
-  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+  absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
       ValueFactory& value_factory, const Handle<Value>& key) const final {
+    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
+      return std::make_pair(key, false);
+    }
+    // TODO(uncreated-issue/32): fix this for heterogeneous equality
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError("expected key to be string value");
     }
     auto it = value_->fields().find(key->As<StringValue>().ToString());
     if (it == value_->fields().end()) {
-      return absl::nullopt;
+      return std::make_pair(Handle<Value>(), false);
     }
-    return CreateMemberJsonValue(value_factory, it->second, [this]() mutable {
-      return owner_from_this();
-    });
+    CEL_ASSIGN_OR_RETURN(
+        auto value,
+        CreateMemberJsonValue(value_factory, it->second,
+                              [this]() mutable { return owner_from_this(); }));
+    return std::make_pair(std::move(value), true);
   }
 
-  absl::StatusOr<bool> Has(ValueFactory& value_factory,
-                           const Handle<Value>& key) const final {
+  absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
+                                    const Handle<Value>& key) const final {
+    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
+      return key;
+    }
+    // TODO(uncreated-issue/32): fix this for heterogeneous equality
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError("expected key to be string value");
     }
-    return value_->fields().contains(key->As<StringValue>().ToString());
+    return value_factory.CreateBoolValue(
+        value_->fields().contains(key->As<StringValue>().ToString()));
   }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(

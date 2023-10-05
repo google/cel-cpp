@@ -120,13 +120,32 @@ size_t MapValue::size() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(size); }
 
 bool MapValue::empty() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(empty); }
 
-absl::StatusOr<absl::optional<Handle<Value>>> MapValue::Get(
-    ValueFactory& value_factory, const Handle<Value>& key) const {
-  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Get, value_factory, key);
+absl::StatusOr<Handle<Value>> MapValue::Get(ValueFactory& value_factory,
+                                            const Handle<Value>& key) const {
+  Handle<Value> value;
+  bool ok;
+  CEL_ASSIGN_OR_RETURN(std::tie(value, ok), Find(value_factory, key));
+  if (!ok) {
+    if (ABSL_PREDICT_FALSE(value)) {
+      ABSL_DCHECK(value->Is<ErrorValue>() || value->Is<UnknownValue>());
+      return value;
+    }
+    return value_factory.CreateErrorValue(
+        base_internal::CreateNoSuchKeyError(*key));
+  }
+  // Returning an empty handle when the key was found is invalid.
+  ABSL_DCHECK(value) << "empty handle returned for allegedly present key: "
+                     << key->DebugString();
+  return value;
 }
 
-absl::StatusOr<bool> MapValue::Has(ValueFactory& value_factory,
-                                   const Handle<Value>& key) const {
+absl::StatusOr<std::pair<Handle<Value>, bool>> MapValue::Find(
+    ValueFactory& value_factory, const Handle<Value>& key) const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Find, value_factory, key);
+}
+
+absl::StatusOr<Handle<Value>> MapValue::Has(ValueFactory& value_factory,
+                                            const Handle<Value>& key) const {
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(Has, value_factory, key);
 }
 
@@ -172,16 +191,13 @@ absl::StatusOr<Handle<Value>> GenericMapValueEquals(ValueFactory& value_factory,
     }
     CEL_ASSIGN_OR_RETURN(auto lhs_key, lhs_iterator->Next());
     CEL_ASSIGN_OR_RETURN(auto rhs_value, rhs.Get(value_factory, lhs_key));
-    if (!rhs_value.has_value()) {
+    if (rhs_value->Is<ErrorValue>() || rhs_value->Is<UnknownValue>()) {
       return value_factory.CreateBoolValue(false);
     }
     CEL_ASSIGN_OR_RETURN(auto lhs_value, lhs.Get(value_factory, lhs_key));
-    if (!lhs_value.has_value()) {
-      return absl::InternalError(
-          "map key returned by iterator but not present in map");
-    }
     CEL_ASSIGN_OR_RETURN(auto equal,
-                         (*lhs_value)->Equals(value_factory, **rhs_value));
+                         lhs_value->Equals(value_factory, *rhs_value));
+    // TODO(uncreated-issue/32): fix this for homogeneous equality
     if (equal->Is<BoolValue>() && !equal->As<BoolValue>().value()) {
       return equal;
     }
@@ -194,6 +210,14 @@ absl::StatusOr<Handle<Value>> GenericMapValueEquals(ValueFactory& value_factory,
 }
 
 namespace base_internal {
+
+absl::Status CreateNoSuchKeyError(absl::string_view key) {
+  return absl::NotFoundError(absl::StrCat(kErrNoSuchKey, " : ", key));
+}
+
+absl::Status CreateNoSuchKeyError(const Value& value) {
+  return CreateNoSuchKeyError(value.DebugString());
+}
 
 namespace {
 
@@ -299,12 +323,7 @@ absl::StatusOr<JsonObject> GenericMapValueConvertToJsonObject(
           " to google.protobuf.Value"));
     }
     CEL_ASSIGN_OR_RETURN(auto value, value.Get(value_factory, key));
-    if (!value.has_value()) {
-      return absl::InternalError(
-          "map key returned by iterator but not present in map");
-    }
-    CEL_ASSIGN_OR_RETURN(auto value_json,
-                         (*value)->ConvertToJson(value_factory));
+    CEL_ASSIGN_OR_RETURN(auto value_json, value->ConvertToJson(value_factory));
     if (ABSL_PREDICT_FALSE(
             !builder
                  .insert_or_assign(std::move(key_json), std::move(value_json))
@@ -339,14 +358,26 @@ size_t LegacyMapValue::size() const { return LegacyMapValueSize(impl_); }
 
 bool LegacyMapValue::empty() const { return LegacyMapValueEmpty(impl_); }
 
-absl::StatusOr<absl::optional<Handle<Value>>> LegacyMapValue::Get(
+absl::StatusOr<std::pair<Handle<Value>, bool>> LegacyMapValue::Find(
     ValueFactory& value_factory, const Handle<Value>& key) const {
-  return LegacyMapValueGet(impl_, value_factory, key);
+  if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
+    return std::make_pair(key, false);
+  }
+  CEL_ASSIGN_OR_RETURN(auto value,
+                       LegacyMapValueGet(impl_, value_factory, key));
+  if (!value.has_value()) {
+    return std::make_pair(Handle<Value>(), false);
+  }
+  return std::make_pair(std::move(*value), true);
 }
 
-absl::StatusOr<bool> LegacyMapValue::Has(ValueFactory& value_factory,
-                                         const Handle<Value>& key) const {
-  return LegacyMapValueHas(impl_, key);
+absl::StatusOr<Handle<Value>> LegacyMapValue::Has(
+    ValueFactory& value_factory, const Handle<Value>& key) const {
+  if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
+    return key;
+  }
+  CEL_ASSIGN_OR_RETURN(auto has, LegacyMapValueHas(impl_, key));
+  return value_factory.CreateBoolValue(has);
 }
 
 absl::StatusOr<Handle<ListValue>> LegacyMapValue::ListKeys(

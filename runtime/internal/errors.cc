@@ -46,10 +46,6 @@ absl::Status CreateMissingAttributeError(
   return result;
 }
 
-absl::Status CreateNoSuchKeyError(absl::string_view key) {
-  return absl::NotFoundError(absl::StrCat(kErrNoSuchKey, " : ", key));
-}
-
 absl::Status CreateUnknownFunctionResultError(absl::string_view help_message) {
   absl::Status result = absl::UnavailableError(
       absl::StrCat("Unknown function result: ", help_message));

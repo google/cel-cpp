@@ -103,7 +103,7 @@ Handle<Value> TestOnlySelect(const Handle<MapValue>& map,
     return value_factory.CreateErrorValue(std::move(presence).status());
   }
 
-  return value_factory.CreateBoolValue(*presence);
+  return std::move(*presence);
 }
 
 }  // namespace
@@ -221,13 +221,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
       const auto& cel_map = arg.As<MapValue>();
       CEL_ASSIGN_OR_RETURN(auto result,
                            cel_map->Get(frame->value_factory(), field_value_));
-
-      // If object is not found, we return Error, per CEL specification.
-      if (!result.has_value()) {
-        result = frame->value_factory().CreateErrorValue(
-            CreateNoSuchKeyError(field_));
-      }
-      frame->value_stack().PopAndPush(std::move(result).value(),
+      frame->value_stack().PopAndPush(std::move(result),
                                       std::move(result_trail));
       return absl::OkStatus();
     }

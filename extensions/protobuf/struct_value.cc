@@ -1512,13 +1512,18 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
     return protobuf_internal::MapSize(reflection(), message_, field_);
   }
 
-  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+  absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
       ValueFactory& value_factory, const Handle<Value>& key) const final {
+    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
+      return std::make_pair(key, false);
+    }
+    // TODO(uncreated-issue/32): fix this for heterogeneous equality
     if (ABSL_PREDICT_FALSE(type()->key() != key->type())) {
       return absl::InvalidArgumentError(absl::StrCat(
           "map key type mismatch, expected: ", type()->key()->DebugString(),
           " got: ", key->type()->DebugString()));
     }
+    // TODO(uncreated-issue/32): fix this for heterogeneous equality
     google::protobuf::MapKey proto_key;
     if (ABSL_PREDICT_FALSE(!ToProtoMapKey(proto_key, key, field_))) {
       return absl::InvalidArgumentError(
@@ -1527,31 +1532,43 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
     google::protobuf::MapValueConstRef proto_value;
     if (!protobuf_internal::LookupMapValue(reflection(), message_, field_,
                                            proto_key, &proto_value)) {
-      return absl::nullopt;
+      return std::make_pair(Handle<Value>(), false);
     }
     const auto* value_desc = field_.message_type()->map_value();
     switch (value_desc->cpp_type()) {
       case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
-        return value_factory.CreateBoolValue(proto_value.GetBoolValue());
+        return std::make_pair(
+            value_factory.CreateBoolValue(proto_value.GetBoolValue()), true);
       case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
-        return value_factory.CreateIntValue(proto_value.GetInt64Value());
+        return std::make_pair(
+            value_factory.CreateIntValue(proto_value.GetInt64Value()), true);
       case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
-        return value_factory.CreateIntValue(proto_value.GetInt32Value());
+        return std::make_pair(
+            value_factory.CreateIntValue(proto_value.GetInt32Value()), true);
       case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
-        return value_factory.CreateUintValue(proto_value.GetUInt64Value());
+        return std::make_pair(
+            value_factory.CreateUintValue(proto_value.GetUInt64Value()), true);
       case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
-        return value_factory.CreateUintValue(proto_value.GetUInt32Value());
+        return std::make_pair(
+            value_factory.CreateUintValue(proto_value.GetUInt32Value()), true);
       case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
-        return value_factory.CreateDoubleValue(proto_value.GetFloatValue());
+        return std::make_pair(
+            value_factory.CreateDoubleValue(proto_value.GetFloatValue()), true);
       case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
-        return value_factory.CreateDoubleValue(proto_value.GetDoubleValue());
+        return std::make_pair(
+            value_factory.CreateDoubleValue(proto_value.GetDoubleValue()),
+            true);
       case google::protobuf::FieldDescriptor::CPPTYPE_STRING: {
         if (value_desc->type() == google::protobuf::FieldDescriptor::TYPE_BYTES) {
-          return value_factory.CreateBorrowedBytesValue(
-              owner_from_this(), proto_value.GetStringValue());
+          CEL_ASSIGN_OR_RETURN(
+              auto value, value_factory.CreateBorrowedBytesValue(
+                              owner_from_this(), proto_value.GetStringValue()));
+          return std::make_pair(std::move(value), true);
         } else {
-          return value_factory.CreateBorrowedStringValue(
-              owner_from_this(), proto_value.GetStringValue());
+          CEL_ASSIGN_OR_RETURN(
+              auto value, value_factory.CreateBorrowedStringValue(
+                              owner_from_this(), proto_value.GetStringValue()));
+          return std::make_pair(std::move(value), true);
         }
       }
       case google::protobuf::FieldDescriptor::CPPTYPE_ENUM: {
@@ -1560,11 +1577,14 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                                                 *value_desc->enum_type()));
         switch (type->kind()) {
           case TypeKind::kNullType:
-            return value_factory.GetNullValue();
-          case TypeKind::kEnum:
-            return value_factory.CreateEnumValue(
-                std::move(type).As<ProtoEnumType>(),
-                proto_value.GetEnumValue());
+            return std::make_pair(value_factory.GetNullValue(), true);
+          case TypeKind::kEnum: {
+            CEL_ASSIGN_OR_RETURN(auto value,
+                                 value_factory.CreateEnumValue(
+                                     std::move(type).As<ProtoEnumType>(),
+                                     proto_value.GetEnumValue()));
+            return std::make_pair(std::move(value), true);
+          }
           default:
             return absl::InternalError(absl::StrCat(
                 "Unexpected protocol buffer type implementation for \"",
@@ -1581,32 +1601,47 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
             CEL_ASSIGN_OR_RETURN(auto duration,
                                  protobuf_internal::UnwrapDynamicDurationProto(
                                      proto_value.GetMessageValue()));
-            return value_factory.CreateUncheckedDurationValue(duration);
+            return std::make_pair(
+                value_factory.CreateUncheckedDurationValue(duration), true);
           }
           case TypeKind::kTimestamp: {
             CEL_ASSIGN_OR_RETURN(auto time,
                                  protobuf_internal::UnwrapDynamicTimestampProto(
                                      proto_value.GetMessageValue()));
-            return value_factory.CreateUncheckedTimestampValue(time);
+            return std::make_pair(
+                value_factory.CreateUncheckedTimestampValue(time), true);
           }
-          case TypeKind::kList:
+          case TypeKind::kList: {
             // google.protobuf.ListValue
-            return protobuf_internal::CreateBorrowedListValue(
-                owner_from_this(), value_factory,
-                proto_value.GetMessageValue());
-          case TypeKind::kMap:
+            CEL_ASSIGN_OR_RETURN(auto value,
+                                 protobuf_internal::CreateBorrowedListValue(
+                                     owner_from_this(), value_factory,
+                                     proto_value.GetMessageValue()));
+            return std::make_pair(std::move(value), true);
+          }
+          case TypeKind::kMap: {
             // google.protobuf.Struct
-            return protobuf_internal::CreateBorrowedStruct(
-                owner_from_this(), value_factory,
-                proto_value.GetMessageValue());
-          case TypeKind::kDyn:
+            CEL_ASSIGN_OR_RETURN(auto value,
+                                 protobuf_internal::CreateBorrowedStruct(
+                                     owner_from_this(), value_factory,
+                                     proto_value.GetMessageValue()));
+            return std::make_pair(std::move(value), true);
+          }
+          case TypeKind::kDyn: {
             // google.protobuf.Value
-            return protobuf_internal::CreateBorrowedValue(
-                owner_from_this(), value_factory,
-                proto_value.GetMessageValue());
-          case TypeKind::kAny:
-            return ProtoValue::Create(value_factory,
-                                      proto_value.GetMessageValue());
+            CEL_ASSIGN_OR_RETURN(auto value,
+                                 protobuf_internal::CreateBorrowedValue(
+                                     owner_from_this(), value_factory,
+                                     proto_value.GetMessageValue()));
+            return std::make_pair(std::move(value), true);
+          }
+          case TypeKind::kAny: {
+            // google.protobuf.Any
+            CEL_ASSIGN_OR_RETURN(
+                auto value, ProtoValue::Create(value_factory,
+                                               proto_value.GetMessageValue()));
+            return std::make_pair(std::move(value), true);
+          }
           case TypeKind::kWrapper:
             switch (type->As<WrapperType>().wrapped()->kind()) {
               case TypeKind::kBool: {
@@ -1616,7 +1651,8 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                     auto wrapped,
                     protobuf_internal::UnwrapDynamicBoolValueProto(
                         proto_value.GetMessageValue()));
-                return value_factory.CreateBoolValue(wrapped);
+                return std::make_pair(value_factory.CreateBoolValue(wrapped),
+                                      true);
               }
               case TypeKind::kBytes: {
                 // google.protobuf.BytesValue, mapped to CEL primitive bytes
@@ -1625,7 +1661,9 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                     auto wrapped,
                     protobuf_internal::UnwrapDynamicBytesValueProto(
                         proto_value.GetMessageValue()));
-                return value_factory.CreateBytesValue(std::move(wrapped));
+                CEL_ASSIGN_OR_RETURN(auto value, value_factory.CreateBytesValue(
+                                                     std::move(wrapped)));
+                return std::make_pair(std::move(value), true);
               }
               case TypeKind::kDouble: {
                 // google.protobuf.{FloatValue,DoubleValue}, mapped to CEL
@@ -1634,7 +1672,8 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                     auto wrapped,
                     protobuf_internal::UnwrapDynamicFloatingPointValueProto(
                         proto_value.GetMessageValue()));
-                return value_factory.CreateDoubleValue(wrapped);
+                return std::make_pair(value_factory.CreateDoubleValue(wrapped),
+                                      true);
               }
               case TypeKind::kInt: {
                 // google.protobuf.{Int32Value,Int64Value}, mapped to CEL
@@ -1643,7 +1682,8 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                     auto wrapped,
                     protobuf_internal::UnwrapDynamicSignedIntegralValueProto(
                         proto_value.GetMessageValue()));
-                return value_factory.CreateIntValue(wrapped);
+                return std::make_pair(value_factory.CreateIntValue(wrapped),
+                                      true);
               }
               case TypeKind::kString: {
                 // google.protobuf.StringValue, mapped to CEL primitive bytes
@@ -1652,8 +1692,9 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                     auto wrapped,
                     protobuf_internal::UnwrapDynamicStringValueProto(
                         proto_value.GetMessageValue()));
-                return value_factory.CreateUncheckedStringValue(
-                    std::move(wrapped));
+                return std::make_pair(value_factory.CreateUncheckedStringValue(
+                                          std::move(wrapped)),
+                                      true);
               }
               case TypeKind::kUint: {
                 // google.protobuf.{UInt32Value,UInt64Value}, mapped to CEL
@@ -1662,16 +1703,21 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                     auto wrapped,
                     protobuf_internal::UnwrapDynamicUnsignedIntegralValueProto(
                         proto_value.GetMessageValue()));
-                return value_factory.CreateUintValue(wrapped);
+                return std::make_pair(value_factory.CreateUintValue(wrapped),
+                                      true);
               }
               default:
                 ABSL_UNREACHABLE();
             }
-          case TypeKind::kStruct:
-            return value_factory.CreateBorrowedStructValue<
-                protobuf_internal::DynamicMemberParsedProtoStructValue>(
-                owner_from_this(), std::move(type).As<ProtoStructType>(),
-                &proto_value.GetMessageValue());
+          case TypeKind::kStruct: {
+            CEL_ASSIGN_OR_RETURN(
+                auto value,
+                value_factory.CreateBorrowedStructValue<
+                    protobuf_internal::DynamicMemberParsedProtoStructValue>(
+                    owner_from_this(), std::move(type).As<ProtoStructType>(),
+                    &proto_value.GetMessageValue()));
+            return std::make_pair(std::move(value), true);
+          }
           default:
             return absl::InternalError(absl::StrCat(
                 "Unexpected protocol buffer type implementation for \"",
@@ -1682,20 +1728,25 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
     }
   }
 
-  absl::StatusOr<bool> Has(ValueFactory& value_factory,
-                           const Handle<Value>& key) const final {
+  absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
+                                    const Handle<Value>& key) const final {
+    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
+      return key;
+    }
+    // TODO(uncreated-issue/32): fix this for heterogeneous equality
     if (ABSL_PREDICT_FALSE(type()->key() != key->type())) {
       return absl::InvalidArgumentError(absl::StrCat(
           "map key type mismatch, expected: ", type()->key()->DebugString(),
           " got: ", type()->value()->DebugString()));
     }
+    // TODO(uncreated-issue/32): fix this for heterogeneous equality
     google::protobuf::MapKey proto_key;
     if (ABSL_PREDICT_FALSE(!ToProtoMapKey(proto_key, key, field_))) {
       return absl::InvalidArgumentError(
           "unable to convert value to protocol buffer map key");
     }
-    return protobuf_internal::ContainsMapKey(reflection(), message_, field_,
-                                             proto_key);
+    return value_factory.CreateBoolValue(protobuf_internal::ContainsMapKey(
+        reflection(), message_, field_, proto_key));
   }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
