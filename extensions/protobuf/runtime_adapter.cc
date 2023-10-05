@@ -47,4 +47,5 @@ ProtobufRuntimeAdapter::CreateProgram(
   CEL_ASSIGN_OR_RETURN(auto ast, CreateAstFromParsedExpr(expr, source_info));
   return runtime.CreateTraceableProgram(std::move(ast));
 }
+
 }  // namespace cel::extensions

@@ -923,10 +923,7 @@ absl::Status CreateStructStepForStruct::Evaluate(ExecutionFrame* frame) const {
   if (status_or_result.ok()) {
     result = std::move(status_or_result).value();
   } else {
-    result = CreateErrorValueFromView(google::protobuf::Arena::Create<absl::Status>(
-        cel::extensions::ProtoMemoryManager::CastToProtoArena(
-            frame->memory_manager()),
-        status_or_result.status()));
+    result = frame->value_factory().CreateErrorValue(status_or_result.status());
   }
   frame->value_stack().Pop(entries_.size());
   frame->value_stack().Push(std::move(result));
@@ -973,10 +970,7 @@ absl::Status CreateStructStepForWellKnownType::Evaluate(
   if (status_or_result.ok()) {
     result = std::move(status_or_result).value();
   } else {
-    result = CreateErrorValueFromView(google::protobuf::Arena::Create<absl::Status>(
-        cel::extensions::ProtoMemoryManager::CastToProtoArena(
-            frame->memory_manager()),
-        status_or_result.status()));
+    result = frame->value_factory().CreateErrorValue(status_or_result.status());
   }
   frame->value_stack().Pop(entries_.size());
   frame->value_stack().Push(std::move(result));

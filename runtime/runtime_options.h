@@ -17,6 +17,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_RUNTIME_RUNTIME_OPTIONS_H_
 #define THIRD_PARTY_CEL_CPP_RUNTIME_RUNTIME_OPTIONS_H_
 
+#include <string>
+
 namespace cel {
 
 // Options for unknown processing.
@@ -48,6 +50,10 @@ enum class ProtoWrapperTypeOptions {
 // Optimizations or features that have a heavy footprint should be added via an
 // extension API.
 struct RuntimeOptions {
+  // Default container for resolving variables, types, and functions.
+  // Follows protobuf namespace rules.
+  std::string container = "";
+
   // Level of unknown support enabled.
   UnknownProcessingOptions unknown_processing =
       UnknownProcessingOptions::kDisabled;

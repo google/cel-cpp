@@ -220,8 +220,51 @@ cc_library(
         ":ast_converters",
         "//internal:status_macros",
         "//runtime",
+        "//runtime:runtime_builder",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "enum_adapter",
+    srcs = ["enum_adapter.cc"],
+    hdrs = ["enum_adapter.h"],
+    deps = [
+        "//runtime:type_registry",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "type_provider_end_to_end_test",
+    srcs = ["type_provider_end_to_end_test.cc"],
+    deps = [
+        ":data",
+        ":enum_adapter",
+        ":memory_manager",
+        ":runtime_adapter",
+        "//base:data",
+        "//base:handle",
+        "//base:memory",
+        "//internal:testing",
+        "//parser",
+        "//runtime",
+        "//runtime:activation",
+        "//runtime:managed_value_factory",
+        "//runtime:runtime_builder",
+        "//runtime:runtime_options",
+        "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )

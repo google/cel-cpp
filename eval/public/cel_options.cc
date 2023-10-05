@@ -20,6 +20,7 @@ namespace google::api::expr::runtime {
 
 cel::RuntimeOptions ConvertToRuntimeOptions(const InterpreterOptions& options) {
   return cel::RuntimeOptions{
+      /*.container=*/"",
       options.unknown_processing,
       options.enable_missing_attribute_errors,
       options.enable_timestamp_duration_overflow_errors,

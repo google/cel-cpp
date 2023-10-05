@@ -83,6 +83,7 @@ cc_library(
         "//runtime:runtime_options",
         "//runtime:type_registry",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
     ],
 )
 

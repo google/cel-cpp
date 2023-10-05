@@ -19,8 +19,11 @@
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "runtime/runtime.h"
+#include "runtime/runtime_builder.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel::extensions {
 

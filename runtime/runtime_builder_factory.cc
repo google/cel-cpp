@@ -30,6 +30,7 @@ RuntimeBuilder CreateRuntimeBuilder(const RuntimeOptions& options) {
   // vector<status> overloads).
   auto mutable_runtime =
       std::make_unique<runtime_internal::RuntimeImpl>(options);
+  mutable_runtime->expr_builder().set_container(options.container);
 
   auto& type_registry = mutable_runtime->type_registry();
   auto& function_registry = mutable_runtime->function_registry();

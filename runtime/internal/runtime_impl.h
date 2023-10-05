@@ -16,8 +16,10 @@
 #define THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_RUNTIME_IMPL_H_
 
 #include <memory>
+#include <string>
 
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "base/ast.h"
 #include "base/type_provider.h"
 #include "eval/compiler/flat_expr_builder.h"
