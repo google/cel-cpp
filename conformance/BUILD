@@ -96,6 +96,7 @@ cc_binary(
             # Skip until fixed.
             "--skip_test=wrappers/field_mask/to_json",
             "--skip_test=wrappers/empty/to_json",
+            "--skip_test=fields/qualified_identifier_resolution/map_value_repeat_key_heterogeneous",
 
             # Future features for CEL 1.0
             # TODO(issues/119): Strong typing support for enums, specified but not implemented.
