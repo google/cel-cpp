@@ -633,6 +633,7 @@ cc_library(
     ],
     deps = [
         "//runtime:runtime_options",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_protobuf//:protobuf",
     ],
 )

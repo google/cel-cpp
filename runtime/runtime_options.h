@@ -19,6 +19,8 @@
 
 #include <string>
 
+#include "absl/base/attributes.h"
+
 namespace cel {
 
 // Options for unknown processing.
@@ -116,6 +118,9 @@ struct RuntimeOptions {
   bool enable_qualified_type_identifiers = false;
 
   // Enable heterogeneous comparisons (e.g. support for cross-type comparisons).
+  ABSL_DEPRECATED(
+      "The ability to disable heterogeneous equality is being removed in the "
+      "near future")
   bool enable_heterogeneous_equality = true;
 
   // Enables unwrapping proto wrapper types to null if unset. e.g. if an
