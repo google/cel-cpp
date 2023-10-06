@@ -382,35 +382,6 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
 
   size_t size() const override { return entries_.size(); }
 
-  absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
-      ValueFactory& value_factory, const Handle<Value>& key) const override {
-    if (key->Is<ErrorValue>() || key->Is<UnknownValue>()) {
-      return std::make_pair(key, false);
-    }
-    // TODO(uncreated-issue/32): fix for homogeneous equality
-    if (!key->Is<StringValue>()) {
-      return std::make_pair(Handle<Value>(), false);
-    }
-    auto entry = entries_.find(key.As<StringValue>()->ToString());
-    if (entry == entries_.end()) {
-      return std::make_pair(Handle<Value>(), false);
-    }
-    return std::make_pair(value_factory.CreateIntValue(entry->second), true);
-  }
-
-  absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
-                                    const Handle<Value>& key) const override {
-    // TODO(uncreated-issue/32): fix for homogeneous equality
-    if (!key->Is<StringValue>()) {
-      return value_factory.CreateBoolValue(false);
-    }
-    auto entry = entries_.find(key.As<StringValue>()->ToString());
-    if (entry == entries_.end()) {
-      return value_factory.CreateBoolValue(false);
-    }
-    return value_factory.CreateBoolValue(true);
-  }
-
   std::string DebugString() const override {
     std::vector<std::string> parts;
     for (const auto& entry : entries_) {
@@ -437,6 +408,32 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
   const std::map<std::string, int64_t>& value() const { return entries_; }
 
  private:
+  absl::StatusOr<std::pair<Handle<Value>, bool>> FindImpl(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
+    // TODO(uncreated-issue/32): fix for homogeneous equality
+    if (!key->Is<StringValue>()) {
+      return std::make_pair(Handle<Value>(), false);
+    }
+    auto entry = entries_.find(key.As<StringValue>()->ToString());
+    if (entry == entries_.end()) {
+      return std::make_pair(Handle<Value>(), false);
+    }
+    return std::make_pair(value_factory.CreateIntValue(entry->second), true);
+  }
+
+  absl::StatusOr<Handle<Value>> HasImpl(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
+    // TODO(uncreated-issue/32): fix for homogeneous equality
+    if (!key->Is<StringValue>()) {
+      return value_factory.CreateBoolValue(false);
+    }
+    auto entry = entries_.find(key.As<StringValue>()->ToString());
+    if (entry == entries_.end()) {
+      return value_factory.CreateBoolValue(false);
+    }
+    return value_factory.CreateBoolValue(true);
+  }
+
   std::map<std::string, int64_t> entries_;
 
   CEL_DECLARE_MAP_VALUE(TestMapValue);

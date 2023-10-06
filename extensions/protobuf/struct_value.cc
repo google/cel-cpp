@@ -1512,11 +1512,26 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
     return protobuf_internal::MapSize(reflection(), message_, field_);
   }
 
-  absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
-      ValueFactory& value_factory, const Handle<Value>& key) const final {
-    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
-      return std::make_pair(key, false);
+  absl::StatusOr<Handle<ListValue>> ListKeys(
+      ValueFactory& value_factory) const final {
+    CEL_ASSIGN_OR_RETURN(
+        auto list_type,
+        value_factory.type_factory().CreateListType(type()->key()));
+    std::vector<google::protobuf::MapKey, Allocator<google::protobuf::MapKey>> keys(
+        Allocator<google::protobuf::MapKey>(value_factory.memory_manager()));
+    keys.reserve(size());
+    auto begin = protobuf_internal::MapBegin(reflection(), message_, field_);
+    auto end = protobuf_internal::MapEnd(reflection(), message_, field_);
+    for (; begin != end; ++begin) {
+      keys.push_back(begin.GetKey());
     }
+    return value_factory.CreateBorrowedListValue<ParsedProtoMapValueKeysList>(
+        owner_from_this(), std::move(list_type), std::move(keys));
+  }
+
+ private:
+  absl::StatusOr<std::pair<Handle<Value>, bool>> FindImpl(
+      ValueFactory& value_factory, const Handle<Value>& key) const final {
     // TODO(uncreated-issue/32): fix this for heterogeneous equality
     if (ABSL_PREDICT_FALSE(type()->key() != key->type())) {
       return absl::InvalidArgumentError(absl::StrCat(
@@ -1728,11 +1743,8 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
     }
   }
 
-  absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
-                                    const Handle<Value>& key) const final {
-    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
-      return key;
-    }
+  absl::StatusOr<Handle<Value>> HasImpl(ValueFactory& value_factory,
+                                        const Handle<Value>& key) const final {
     // TODO(uncreated-issue/32): fix this for heterogeneous equality
     if (ABSL_PREDICT_FALSE(type()->key() != key->type())) {
       return absl::InvalidArgumentError(absl::StrCat(
@@ -1749,24 +1761,6 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
         reflection(), message_, field_, proto_key));
   }
 
-  absl::StatusOr<Handle<ListValue>> ListKeys(
-      ValueFactory& value_factory) const final {
-    CEL_ASSIGN_OR_RETURN(
-        auto list_type,
-        value_factory.type_factory().CreateListType(type()->key()));
-    std::vector<google::protobuf::MapKey, Allocator<google::protobuf::MapKey>> keys(
-        Allocator<google::protobuf::MapKey>(value_factory.memory_manager()));
-    keys.reserve(size());
-    auto begin = protobuf_internal::MapBegin(reflection(), message_, field_);
-    auto end = protobuf_internal::MapEnd(reflection(), message_, field_);
-    for (; begin != end; ++begin) {
-      keys.push_back(begin.GetKey());
-    }
-    return value_factory.CreateBorrowedListValue<ParsedProtoMapValueKeysList>(
-        owner_from_this(), std::move(list_type), std::move(keys));
-  }
-
- private:
   internal::TypeInfo TypeId() const final {
     return internal::TypeId<ParsedProtoMapValue>();
   }

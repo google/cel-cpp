@@ -141,12 +141,18 @@ absl::StatusOr<Handle<Value>> MapValue::Get(ValueFactory& value_factory,
 
 absl::StatusOr<std::pair<Handle<Value>, bool>> MapValue::Find(
     ValueFactory& value_factory, const Handle<Value>& key) const {
-  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Find, value_factory, key);
+  if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
+    return std::make_pair(key, false);
+  }
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(FindImpl, value_factory, key);
 }
 
 absl::StatusOr<Handle<Value>> MapValue::Has(ValueFactory& value_factory,
                                             const Handle<Value>& key) const {
-  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Has, value_factory, key);
+  if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
+    return key;
+  }
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(HasImpl, value_factory, key);
 }
 
 absl::StatusOr<Handle<ListValue>> MapValue::ListKeys(
@@ -358,11 +364,8 @@ size_t LegacyMapValue::size() const { return LegacyMapValueSize(impl_); }
 
 bool LegacyMapValue::empty() const { return LegacyMapValueEmpty(impl_); }
 
-absl::StatusOr<std::pair<Handle<Value>, bool>> LegacyMapValue::Find(
+absl::StatusOr<std::pair<Handle<Value>, bool>> LegacyMapValue::FindImpl(
     ValueFactory& value_factory, const Handle<Value>& key) const {
-  if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
-    return std::make_pair(key, false);
-  }
   CEL_ASSIGN_OR_RETURN(auto value,
                        LegacyMapValueGet(impl_, value_factory, key));
   if (!value.has_value()) {
@@ -371,11 +374,8 @@ absl::StatusOr<std::pair<Handle<Value>, bool>> LegacyMapValue::Find(
   return std::make_pair(std::move(*value), true);
 }
 
-absl::StatusOr<Handle<Value>> LegacyMapValue::Has(
+absl::StatusOr<Handle<Value>> LegacyMapValue::HasImpl(
     ValueFactory& value_factory, const Handle<Value>& key) const {
-  if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
-    return key;
-  }
   CEL_ASSIGN_OR_RETURN(auto has, LegacyMapValueHas(impl_, key));
   return value_factory.CreateBoolValue(has);
 }

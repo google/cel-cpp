@@ -192,12 +192,6 @@ class LegacyMapValue final : public MapValue, public InlineData {
 
   bool empty() const;
 
-  absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
-      ValueFactory& value_factory, const Handle<Value>& key) const;
-
-  absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
-                                    const Handle<Value>& key) const;
-
   absl::StatusOr<Handle<ListValue>> ListKeys(ValueFactory& value_factory) const;
 
   absl::StatusOr<UniqueRef<Iterator>> NewIterator(
@@ -224,6 +218,13 @@ class LegacyMapValue final : public MapValue, public InlineData {
   internal::TypeInfo TypeId() const {
     return internal::TypeId<LegacyMapValue>();
   }
+
+  absl::StatusOr<std::pair<Handle<Value>, bool>> FindImpl(
+      ValueFactory& value_factory, const Handle<Value>& key) const;
+
+  absl::StatusOr<Handle<Value>> HasImpl(ValueFactory& value_factory,
+                                        const Handle<Value>& key) const;
+
   uintptr_t impl_;
 };
 
@@ -257,12 +258,6 @@ class AbstractMapValue : public MapValue,
 
   virtual bool empty() const { return size() == 0; }
 
-  virtual absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
-      ValueFactory& value_factory, const Handle<Value>& key) const = 0;
-
-  virtual absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
-                                            const Handle<Value>& key) const = 0;
-
   virtual absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const = 0;
 
@@ -279,6 +274,12 @@ class AbstractMapValue : public MapValue,
  private:
   friend class cel::MapValue;
   friend class base_internal::ValueHandle;
+
+  virtual absl::StatusOr<std::pair<Handle<Value>, bool>> FindImpl(
+      ValueFactory& value_factory, const Handle<Value>& key) const = 0;
+
+  virtual absl::StatusOr<Handle<Value>> HasImpl(
+      ValueFactory& value_factory, const Handle<Value>& key) const = 0;
 
   // Called by CEL_IMPLEMENT_MAP_VALUE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;

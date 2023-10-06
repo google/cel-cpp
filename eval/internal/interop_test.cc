@@ -587,28 +587,6 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
 
   bool empty() const override { return entries_.empty(); }
 
-  absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
-      ValueFactory& value_factory, const Handle<Value>& key) const override {
-    if (key->Is<ErrorValue>() || key->Is<UnknownValue>()) {
-      return std::make_pair(key, false);
-    }
-    auto existing = entries_.find(key.As<IntValue>()->value());
-    if (existing == entries_.end()) {
-      return std::make_pair(Handle<Value>(), false);
-    }
-    return std::make_pair(
-        value_factory.CreateUncheckedStringValue(existing->second), true);
-  }
-
-  absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
-                                    const Handle<Value>& key) const override {
-    if (key->Is<ErrorValue>() || key->Is<UnknownValue>()) {
-      return key;
-    }
-    return value_factory.CreateBoolValue(
-        entries_.find(key.As<IntValue>()->value()) != entries_.end());
-  }
-
   absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const override {
     CEL_ASSIGN_OR_RETURN(auto type,
@@ -623,6 +601,22 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
   }
 
  private:
+  absl::StatusOr<std::pair<Handle<Value>, bool>> FindImpl(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
+    auto existing = entries_.find(key.As<IntValue>()->value());
+    if (existing == entries_.end()) {
+      return std::make_pair(Handle<Value>(), false);
+    }
+    return std::make_pair(
+        value_factory.CreateUncheckedStringValue(existing->second), true);
+  }
+
+  absl::StatusOr<Handle<Value>> HasImpl(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
+    return value_factory.CreateBoolValue(
+        entries_.find(key.As<IntValue>()->value()) != entries_.end());
+  }
+
   std::map<int64_t, std::string> entries_;
 
   CEL_DECLARE_MAP_VALUE(TestMapValue);

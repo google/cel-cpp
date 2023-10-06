@@ -359,43 +359,6 @@ class JsonMapValue final : public CEL_MAP_VALUE_CLASS {
 
   bool empty() const override { return object_.empty(); }
 
-  absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
-      ValueFactory& value_factory, const Handle<Value>& key) const override {
-    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
-      return std::make_pair(key, false);
-    }
-    // TODO(uncreated-issue/32): fix this for heterogeneous equality
-    if (!key->Is<StringValue>()) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Expected key to be string type: ", key->type()->DebugString()));
-    }
-    return key->As<StringValue>().Visit(
-        [this, &value_factory, &key](const auto& value)
-            -> absl::StatusOr<std::pair<Handle<Value>, bool>> {
-          if (auto it = object_.find(value); it != object_.end()) {
-            return std::make_pair(value_factory.CreateValueFromJson(it->second),
-                                  true);
-          }
-          return std::make_pair(Handle<Value>(), false);
-        });
-  }
-
-  absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
-                                    const Handle<Value>& key) const override {
-    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
-      return key;
-    }
-    // TODO(uncreated-issue/32): fix this for heterogeneous equality
-    if (!key->Is<StringValue>()) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Expected key to be string type: ", key->type()->DebugString()));
-    }
-    return value_factory.CreateBoolValue(
-        key->As<StringValue>().Visit([this](const auto& value) -> bool {
-          return object_.find(value) != object_.end();
-        }));
-  }
-
   absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const override {
     CEL_ASSIGN_OR_RETURN(auto type,
@@ -412,6 +375,37 @@ class JsonMapValue final : public CEL_MAP_VALUE_CLASS {
   }
 
  private:
+  absl::StatusOr<std::pair<Handle<Value>, bool>> FindImpl(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
+    // TODO(uncreated-issue/32): fix this for heterogeneous equality
+    if (!key->Is<StringValue>()) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Expected key to be string type: ", key->type()->DebugString()));
+    }
+    return key->As<StringValue>().Visit(
+        [this, &value_factory, &key](const auto& value)
+            -> absl::StatusOr<std::pair<Handle<Value>, bool>> {
+          if (auto it = object_.find(value); it != object_.end()) {
+            return std::make_pair(value_factory.CreateValueFromJson(it->second),
+                                  true);
+          }
+          return std::make_pair(Handle<Value>(), false);
+        });
+  }
+
+  absl::StatusOr<Handle<Value>> HasImpl(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
+    // TODO(uncreated-issue/32): fix this for heterogeneous equality
+    if (!key->Is<StringValue>()) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Expected key to be string type: ", key->type()->DebugString()));
+    }
+    return value_factory.CreateBoolValue(
+        key->As<StringValue>().Visit([this](const auto& value) -> bool {
+          return object_.find(value) != object_.end();
+        }));
+  }
+
   internal::TypeInfo TypeId() const override {
     return internal::TypeId<JsonMapValue>();
   }

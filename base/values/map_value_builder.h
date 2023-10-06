@@ -210,11 +210,8 @@ class DynamicMapValue final : public AbstractMapValue {
 
   bool empty() const override { return storage_.empty(); }
 
-  absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
+  absl::StatusOr<std::pair<Handle<Value>, bool>> FindImpl(
       ValueFactory& value_factory, const Handle<Value>& key) const override {
-    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
-      return std::make_pair(key, false);
-    }
     auto existing = storage_.find(key);
     if (existing == storage_.end()) {
       return std::make_pair(Handle<Value>(), false);
@@ -222,11 +219,8 @@ class DynamicMapValue final : public AbstractMapValue {
     return std::make_pair(existing->second, true);
   }
 
-  absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
-                                    const Handle<Value>& key) const override {
-    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
-      return key;
-    }
+  absl::StatusOr<Handle<Value>> HasImpl(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
     return value_factory.CreateBoolValue(storage_.find(key) != storage_.end());
   }
 
@@ -281,27 +275,6 @@ class StaticMapValue<K, void> final : public AbstractMapValue {
 
   bool empty() const override { return storage_.empty(); }
 
-  absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
-      ValueFactory& value_factory, const Handle<Value>& key) const override {
-    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
-      return std::make_pair(key, false);
-    }
-    auto existing = storage_.find(key.As<K>()->value());
-    if (existing == storage_.end()) {
-      return std::make_pair(Handle<Value>(), false);
-    }
-    return std::make_pair(existing->second, true);
-  }
-
-  absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
-                                    const Handle<Value>& key) const override {
-    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
-      return key;
-    }
-    return value_factory.CreateBoolValue(storage_.find(key.As<K>()->value()) !=
-                                         storage_.end());
-  }
-
   absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const override {
     ListValueBuilder<K> keys(
@@ -319,6 +292,21 @@ class StaticMapValue<K, void> final : public AbstractMapValue {
   }
 
  private:
+  absl::StatusOr<std::pair<Handle<Value>, bool>> FindImpl(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
+    auto existing = storage_.find(key.As<K>()->value());
+    if (existing == storage_.end()) {
+      return std::make_pair(Handle<Value>(), false);
+    }
+    return std::make_pair(existing->second, true);
+  }
+
+  absl::StatusOr<Handle<Value>> HasImpl(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
+    return value_factory.CreateBoolValue(storage_.find(key.As<K>()->value()) !=
+                                         storage_.end());
+  }
+
   hash_map_type storage_;
 };
 
@@ -350,27 +338,6 @@ class StaticMapValue<void, V> final : public AbstractMapValue {
 
   bool empty() const override { return storage_.empty(); }
 
-  absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
-      ValueFactory& value_factory, const Handle<Value>& key) const override {
-    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
-      return std::make_pair(key, false);
-    }
-    auto existing = storage_.find(key);
-    if (existing == storage_.end()) {
-      return std::make_pair(Handle<Value>(), false);
-    }
-    return std::make_pair(ValueTraits<V>::Wrap(value_factory, existing->second),
-                          true);
-  }
-
-  absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
-                                    const Handle<Value>& key) const override {
-    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
-      return key;
-    }
-    return value_factory.CreateBoolValue(storage_.find(key) != storage_.end());
-  }
-
   absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const override {
     ListValueBuilder<Value> keys(value_factory, type()->key());
@@ -386,6 +353,21 @@ class StaticMapValue<void, V> final : public AbstractMapValue {
   }
 
  private:
+  absl::StatusOr<std::pair<Handle<Value>, bool>> FindImpl(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
+    auto existing = storage_.find(key);
+    if (existing == storage_.end()) {
+      return std::make_pair(Handle<Value>(), false);
+    }
+    return std::make_pair(ValueTraits<V>::Wrap(value_factory, existing->second),
+                          true);
+  }
+
+  absl::StatusOr<Handle<Value>> HasImpl(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
+    return value_factory.CreateBoolValue(storage_.find(key) != storage_.end());
+  }
+
   hash_map_type storage_;
 };
 
@@ -422,28 +404,6 @@ class StaticMapValue final : public AbstractMapValue {
 
   bool empty() const override { return storage_.empty(); }
 
-  absl::StatusOr<std::pair<Handle<Value>, bool>> Find(
-      ValueFactory& value_factory, const Handle<Value>& key) const override {
-    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
-      return std::make_pair(key, false);
-    }
-    auto existing = storage_.find(key.As<K>()->value());
-    if (existing == storage_.end()) {
-      return std::make_pair(Handle<Value>(), false);
-    }
-    return std::make_pair(ValueTraits<V>::Wrap(value_factory, existing->second),
-                          true);
-  }
-
-  absl::StatusOr<Handle<Value>> Has(ValueFactory& value_factory,
-                                    const Handle<Value>& key) const override {
-    if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
-      return key;
-    }
-    return value_factory.CreateBoolValue(storage_.find(key.As<K>()->value()) !=
-                                         storage_.end());
-  }
-
   absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const override {
     ListValueBuilder<K> keys(
@@ -461,6 +421,22 @@ class StaticMapValue final : public AbstractMapValue {
   }
 
  private:
+  absl::StatusOr<std::pair<Handle<Value>, bool>> FindImpl(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
+    auto existing = storage_.find(key.As<K>()->value());
+    if (existing == storage_.end()) {
+      return std::make_pair(Handle<Value>(), false);
+    }
+    return std::make_pair(ValueTraits<V>::Wrap(value_factory, existing->second),
+                          true);
+  }
+
+  absl::StatusOr<Handle<Value>> HasImpl(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
+    return value_factory.CreateBoolValue(storage_.find(key.As<K>()->value()) !=
+                                         storage_.end());
+  }
+
   hash_map_type storage_;
 };
 
