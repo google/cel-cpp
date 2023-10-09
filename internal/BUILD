@@ -234,15 +234,9 @@ cc_test(
 cc_library(
     name = "rtti",
     hdrs = ["rtti.h"],
-)
-
-cc_test(
-    name = "rtti_test",
-    srcs = ["rtti_test.cc"],
     deps = [
-        ":rtti",
-        "//internal:testing",
-        "@com_google_absl//absl/hash:hash_testing",
+        "//common:native_type",
+        "@com_google_absl//absl/base:core_headers",
     ],
 )
 

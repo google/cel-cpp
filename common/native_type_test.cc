@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2023 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,24 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "internal/rtti.h"
+#include "common/native_type.h"
 
 #include "absl/hash/hash_testing.h"
 #include "internal/testing.h"
 
-namespace cel::internal {
+namespace cel {
 namespace {
+
+using testing::IsEmpty;
+using testing::Not;
 
 struct Type1 {};
 
 struct Type2 {};
 
-TEST(TypeInfo, Default) { EXPECT_EQ(TypeInfo(), TypeInfo()); }
+struct Type3 {};
 
-TEST(TypeId, SupportsAbslHash) {
+TEST(NativeTypeId, ImplementsAbslHashCorrectly) {
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly(
-      {TypeInfo(), TypeId<Type1>(), TypeId<Type2>()}));
+      {NativeTypeId(), NativeTypeId::For<Type1>(), NativeTypeId::For<Type2>(),
+       NativeTypeId::For<Type3>()}));
+}
+
+TEST(NativeTypeId, DebugString) {
+  EXPECT_THAT(NativeTypeId().DebugString(), IsEmpty());
+  EXPECT_THAT(NativeTypeId::For<Type1>().DebugString(), Not(IsEmpty()));
 }
 
 }  // namespace
-}  // namespace cel::internal
+}  // namespace cel

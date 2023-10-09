@@ -113,3 +113,25 @@ cc_test(
         "@com_google_absl//absl/types:optional",
     ],
 )
+
+cc_library(
+    name = "native_type",
+    srcs = ["native_type.cc"],
+    hdrs = ["native_type.h"],
+    deps = [
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:config",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "native_type_test",
+    srcs = ["native_type_test.cc"],
+    deps = [
+        ":native_type",
+        "//internal:testing",
+        "@com_google_absl//absl/hash:hash_testing",
+    ],
+)
