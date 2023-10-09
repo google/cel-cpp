@@ -713,7 +713,7 @@ TEST(MapValueBuilder, Dynamic) {
   TypeFactory type_factory(MemoryManager::Global());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-#ifdef ABSL_INTERNAL_HAS_RTTI
+#ifdef ABSL_HAVE_RTTI
   // (BoolValue, ...)
   ASSERT_NO_FATAL_FAILURE(
       (TestMapValueBuilderImpl<MapValueBuilder<BoolValue, BoolValue>>(
