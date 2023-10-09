@@ -42,8 +42,16 @@ ALL_TESTS = [
 cc_binary(
     name = "server",
     testonly = 1,
-    srcs = ["server.cc"],
+    srcs = [
+        "server.cc",
+        "value_conversion.cc",
+        "value_conversion.h",
+    ],
     deps = [
+        "//base:data",
+        "//base:handle",
+        "//base:kind",
+        "//base:memory",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",
@@ -51,8 +59,20 @@ cc_binary(
         "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//eval/public:transform_utility",
+        "//eval/public:unknown_set",
+        "//extensions/protobuf:data",
+        "//extensions/protobuf:enum_adapter",
+        "//extensions/protobuf:memory_manager",
+        "//extensions/protobuf:runtime_adapter",
+        "//internal:proto_time_encoding",
         "//internal:status_macros",
         "//parser",
+        "//runtime",
+        "//runtime:activation",
+        "//runtime:constant_folding",
+        "//runtime:managed_value_factory",
+        "//runtime:runtime_options",
+        "//runtime:standard_runtime_builder_factory",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/memory",
@@ -64,6 +84,7 @@ cc_binary(
         "@com_google_googleapis//google/api/expr/conformance/v1alpha1:conformance_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:value_cc_proto",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
@@ -71,11 +92,11 @@ cc_binary(
 
 [
     sh_test(
-        name = "simple" + arg.replace("--", "_"),
+        name = "simple" + "".join([arg.replace("--", "_") for arg in args]),
         srcs = ["@com_google_cel_spec//tests:conftest.sh"],
         args = [
             "$(location @com_google_cel_spec//tests/simple:simple_test)",
-            "--server=\"$(location :server) " + arg + "\"",
+            "--server=\"$(location :server) " + " ".join(args) + "\"",
             "--skip_check",
             "--pipe",
             "--pipe_pings",
@@ -111,31 +132,44 @@ cc_binary(
             "@com_google_cel_spec//tests/simple:simple_test",
         ] + ALL_TESTS,
     )
-    for arg in [
-        "",
-        "--opt",
+    for args in [
+        [],
+        ["--opt"],
     ]
 ]
 
-sh_test(
-    name = "simple-dashboard-test.sh",
-    srcs = ["@com_google_cel_spec//tests:conftest-nofail.sh"],
-    args = [
-        "$(location @com_google_cel_spec//tests/simple:simple_test)",
-        "--server=\"$(location :server)\"",
-        "--skip_check",
-        # TODO(issues/119): Strong typing support for enums, specified but not implemented.
-        "--skip_test=enums/strong_proto2",
-        "--skip_test=enums/strong_proto3",
-        "--pipe",
-        "--pipe_pings",
-    ] + ["$(location " + test + ")" for test in ALL_TESTS],
-    data = [
-        ":server",
-        "@com_google_cel_spec//tests/simple:simple_test",
-    ] + ALL_TESTS,
-    visibility = [
-        "//:__subpackages__",
-        "//third_party/cel:__pkg__",
-    ],
-)
+[
+    sh_test(
+        name = "simple_dashboard" + "".join([arg.replace("--", "_") for arg in args]),
+        srcs = ["@com_google_cel_spec//tests:conftest-nofail.sh"],
+        args = [
+            "$(location @com_google_cel_spec//tests/simple:simple_test)",
+            "--server=\"$(location :server) " + " ".join(args) + "\"",
+            "--skip_check",
+            # TODO(issues/119): Strong typing support for enums, specified but not implemented.
+            "--skip_test=enums/strong_proto2",
+            "--skip_test=enums/strong_proto3",
+            "--pipe",
+            "--pipe_pings",
+        ] + ["$(location " + test + ")" for test in ALL_TESTS],
+        data = [
+            ":server",
+            "@com_google_cel_spec//tests/simple:simple_test",
+        ] + ALL_TESTS,
+        visibility = [
+            "//:__subpackages__",
+            "//third_party/cel:__pkg__",
+        ],
+    )
+    for args in [
+        [],
+        [
+            "--modern",
+            "--arena",
+        ],
+        [
+            "--modern",
+            "--noarena",
+        ],
+    ]
+]
