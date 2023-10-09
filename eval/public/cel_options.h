@@ -18,6 +18,7 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_OPTIONS_H_
 
 #include "google/protobuf/arena.h"
+#include "absl/base/attributes.h"
 #include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
@@ -108,6 +109,9 @@ struct InterpreterOptions {
   bool enable_comprehension_vulnerability_check = false;
 
   // Enable heterogeneous comparisons (e.g. support for cross-type comparisons).
+  ABSL_DEPRECATED(
+      "The ability to disable heterogeneous equality is being removed in the "
+      "near future")
   bool enable_heterogeneous_equality = true;
 
   // Enables unwrapping proto wrapper types to null if unset. e.g. if an
