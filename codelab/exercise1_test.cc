@@ -16,7 +16,7 @@
 
 #include "internal/testing.h"
 
-namespace google::api::expr::codelab {
+namespace cel_codelab {
 namespace {
 
 using cel::internal::IsOkAndHolds;
@@ -39,4 +39,4 @@ TEST(Exercise1, Conditional) {
 }
 
 }  // namespace
-}  // namespace google::api::expr::codelab
+}  // namespace cel_codelab

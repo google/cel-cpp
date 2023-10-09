@@ -20,13 +20,13 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 
-namespace google::api::expr::codelab {
+namespace cel_codelab {
 
 // Parse a cel expression and evaluate it. This assumes no special setup for
 // the evaluation environment, and that the expression results in a string
 // value.
 absl::StatusOr<std::string> ParseAndEvaluate(absl::string_view cel_expr);
 
-}  // namespace google::api::expr::codelab
+}  // namespace cel_codelab
 
 #endif  // THIRD_PARTY_CEL_CPP_CODELAB_EXERCISE1_H_
