@@ -123,6 +123,10 @@ class Macro final {
 
   static std::vector<Macro> AllMacros();
 
+  static Macro OptMap();
+
+  static Macro OptFlatMap();
+
  private:
   std::string key_;
   size_t arg_count_;

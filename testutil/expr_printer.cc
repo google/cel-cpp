@@ -119,6 +119,11 @@ class Writer {
           append(",");
           appendLine();
         }
+        if (std::find(list.optional_indices().begin(),
+                      list.optional_indices().end(), static_cast<int32_t>(i)) !=
+            list.optional_indices().end()) {
+          append("?");
+        }
         appendExpr(elem);
       }
       removeIndent();
@@ -146,6 +151,9 @@ class Writer {
           append(",");
           appendLine();
         }
+        if (entry.optional_entry()) {
+          append("?");
+        }
         appendExpr(entry.map_key());
         append(":");
         appendExpr(entry.value());
@@ -168,6 +176,9 @@ class Writer {
         if (i > 0) {
           append(",");
           appendLine();
+        }
+        if (entry.optional_entry()) {
+          append("?");
         }
         append(entry.field_key());
         append(":");
@@ -293,9 +304,7 @@ class Writer {
 
 }  // namespace
 
-const ExpressionAdorner& empty_adorner() {
-  return the_empty_adorner;
-}
+const ExpressionAdorner& empty_adorner() { return the_empty_adorner; }
 
 std::string ExprPrinter::print(const Expr& expr) const {
   Writer w(adorner_);

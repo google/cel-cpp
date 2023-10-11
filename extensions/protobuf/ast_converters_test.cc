@@ -37,6 +37,7 @@ namespace {
 using ::cel::ast_internal::NullValue;
 using ::cel::ast_internal::PrimitiveType;
 using ::cel::ast_internal::WellKnownType;
+using testing::ElementsAreArray;
 using cel::internal::StatusIs;
 
 TEST(AstConvertersTest, IdentToNative) {
@@ -110,6 +111,7 @@ TEST(AstConvertersTest, CreateListToNative) {
         list_expr {
           elements { ident_expr { name: "elem1" } }
           elements { ident_expr { name: "elem2" } }
+          optional_indices: [ 0 ]
         }
       )pb",
       &expr));
@@ -124,6 +126,8 @@ TEST(AstConvertersTest, CreateListToNative) {
   auto& native_elem2 = native_create_list.elements()[1];
   ASSERT_TRUE(native_elem2.has_ident_expr());
   ASSERT_EQ(native_elem2.ident_expr().name(), "elem2");
+  ASSERT_THAT(native_create_list.optional_indices(),
+              ElementsAreArray(expr.list_expr().optional_indices()));
 }
 
 TEST(AstConvertersTest, CreateStructToNative) {
@@ -135,6 +139,7 @@ TEST(AstConvertersTest, CreateStructToNative) {
             id: 1
             field_key: "key1"
             value { ident_expr { name: "value1" } }
+            optional_entry: true
           }
           entries {
             id: 2
@@ -155,6 +160,7 @@ TEST(AstConvertersTest, CreateStructToNative) {
   ASSERT_EQ(native_entry1.field_key(), "key1");
   ASSERT_TRUE(native_entry1.value().has_ident_expr());
   ASSERT_EQ(native_entry1.value().ident_expr().name(), "value1");
+  ASSERT_TRUE(native_entry1.optional_entry());
   auto& native_entry2 = native_struct.entries()[1];
   EXPECT_EQ(native_entry2.id(), 2);
   ASSERT_TRUE(native_entry2.has_map_key());

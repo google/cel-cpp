@@ -237,7 +237,8 @@ class ParserVisitor final : public CelBaseVisitor,
   ParserVisitor(absl::string_view description, absl::string_view expression,
                 const int max_recursion_depth,
                 const std::vector<Macro>& macros = {},
-                const bool add_macro_calls = false);
+                const bool add_macro_calls = false,
+                bool enable_optional_syntax = false);
   ~ParserVisitor() override;
 
   antlrcpp::Any visit(antlr4::tree::ParseTree* tree) override;
@@ -264,8 +265,8 @@ class ParserVisitor final : public CelBaseVisitor,
       CelParser::IdentOrGlobalCallContext* ctx) override;
   antlrcpp::Any visitNested(CelParser::NestedContext* ctx) override;
   antlrcpp::Any visitCreateList(CelParser::CreateListContext* ctx) override;
-  std::vector<google::api::expr::v1alpha1::Expr> visitList(
-      CelParser::ListInitContext* ctx);
+  std::pair<std::vector<google::api::expr::v1alpha1::Expr>, std::vector<int64_t>>
+  visitList(CelParser::ListInitContext* ctx);
   std::vector<google::api::expr::v1alpha1::Expr> visitList(
       CelParser::ExprListContext* ctx);
   antlrcpp::Any visitCreateStruct(CelParser::CreateStructContext* ctx) override;
@@ -312,19 +313,22 @@ class ParserVisitor final : public CelBaseVisitor,
   int recursion_depth_;
   const int max_recursion_depth_;
   const bool add_macro_calls_;
+  const bool enable_optional_syntax_;
 };
 
 ParserVisitor::ParserVisitor(absl::string_view description,
                              absl::string_view expression,
                              const int max_recursion_depth,
                              const std::vector<Macro>& macros,
-                             const bool add_macro_calls)
+                             const bool add_macro_calls,
+                             bool enable_optional_syntax)
     : description_(description),
       expression_(expression),
       sf_(std::make_shared<SourceFactory>(expression)),
       recursion_depth_(0),
       max_recursion_depth_(max_recursion_depth),
-      add_macro_calls_(add_macro_calls) {
+      add_macro_calls_(add_macro_calls),
+      enable_optional_syntax_(enable_optional_syntax) {
   for (const auto& m : macros) {
     macros_.emplace(m.key(), m);
   }
@@ -547,15 +551,19 @@ antlrcpp::Any ParserVisitor::visitNegate(CelParser::NegateContext* ctx) {
 }
 
 antlrcpp::Any ParserVisitor::visitSelect(CelParser::SelectContext* ctx) {
-  if (ctx->opt) {
-    return sf_->ReportError(ctx, "support for optional is not yet implemented");
-  }
   auto operand = std::any_cast<Expr>(visit(ctx->member()));
   // Handle the error case where no valid identifier is specified.
-  if (!ctx->id) {
+  if (!ctx->id || !ctx->op) {
     return sf_->NewExpr(ctx);
   }
   auto id = ctx->id->getText();
+  if (ctx->opt != nullptr) {
+    if (!enable_optional_syntax_) {
+      return sf_->ReportError(ctx, "unsupported syntax '.?'");
+    }
+    return sf_->NewGlobalCall(sf_->Id(ctx->op), "_?._",
+                              {operand, sf_->NewLiteralString(ctx, id)});
+  }
   return sf_->NewSelect(ctx, operand, id);
 }
 
@@ -572,13 +580,15 @@ antlrcpp::Any ParserVisitor::visitMemberCall(
 }
 
 antlrcpp::Any ParserVisitor::visitIndex(CelParser::IndexContext* ctx) {
-  if (ctx->opt) {
-    return sf_->ReportError(ctx, "support for optional is not yet implemented");
-  }
   auto target = std::any_cast<Expr>(visit(ctx->member()));
   int64_t op_id = sf_->Id(ctx->op);
   auto index = std::any_cast<Expr>(visit(ctx->index));
-  return GlobalCallOrMacro(op_id, CelOperator::INDEX, {target, index});
+  if (!enable_optional_syntax_ && ctx->opt != nullptr) {
+    return sf_->ReportError(ctx, "unsupported syntax '.?'");
+  }
+  return GlobalCallOrMacro(op_id,
+                           ctx->opt != nullptr ? "_[?_]" : CelOperator::INDEX,
+                           {target, index});
 }
 
 antlrcpp::Any ParserVisitor::visitCreateMessage(
@@ -622,13 +632,13 @@ antlrcpp::Any ParserVisitor::visitFieldInitializerList(
     }
     int64_t init_id = sf_->Id(ctx->cols[i]);
     Expr value;
-    if (f->opt) {
-      value =
-          sf_->ReportError(ctx, "support for optional is not yet implemented");
-    } else {
-      value = std::any_cast<Expr>(visit(ctx->values[i]));
+    if (!enable_optional_syntax_ && f->opt) {
+      sf_->ReportError(ctx, "unsupported syntax '?'");
+      continue;
     }
-    auto field = sf_->NewObjectField(init_id, f->id->getText(), value);
+    value = std::any_cast<Expr>(visit(ctx->values[i]));
+    auto field = sf_->NewObjectField(init_id, f->id->getText(), value,
+                                     f->opt != nullptr);
     res[i] = field;
   }
 
@@ -664,21 +674,31 @@ antlrcpp::Any ParserVisitor::visitNested(CelParser::NestedContext* ctx) {
 antlrcpp::Any ParserVisitor::visitCreateList(
     CelParser::CreateListContext* ctx) {
   int64_t list_id = sf_->Id(ctx->op);
-  return sf_->NewList(list_id, visitList(ctx->elems));
+  std::vector<Expr> elems;
+  std::vector<int64_t> opts;
+  std::tie(elems, opts) = visitList(ctx->elems);
+  return sf_->NewList(list_id, elems, opts);
 }
 
-std::vector<Expr> ParserVisitor::visitList(CelParser::ListInitContext* ctx) {
-  std::vector<Expr> rv;
+std::pair<std::vector<Expr>, std::vector<int64_t>> ParserVisitor::visitList(
+    CelParser::ListInitContext* ctx) {
+  std::pair<std::vector<Expr>, std::vector<int64_t>> rv;
   if (!ctx) return rv;
-  std::transform(ctx->elems.begin(), ctx->elems.end(), std::back_inserter(rv),
-                 [this](CelParser::OptExprContext* expr_ctx) {
-                   if (expr_ctx->opt) {
-                     return sf_->ReportError(
-                         expr_ctx,
-                         "support for optional is not yet implemented");
-                   }
-                   return std::any_cast<Expr>(visitExpr(expr_ctx->e));
-                 });
+  rv.first.resize(ctx->elems.size());
+  for (size_t i = 0; i < ctx->elems.size(); ++i) {
+    auto* expr_ctx = ctx->elems[i];
+    if (expr_ctx == nullptr) {
+      return rv;
+    }
+    if (!enable_optional_syntax_ && expr_ctx->opt != nullptr) {
+      sf_->ReportError(ctx, "unsupported syntax '?'");
+      continue;
+    }
+    rv.first[i] = std::any_cast<Expr>(visitExpr(expr_ctx->e));
+    if (expr_ctx->opt) {
+      rv.second.push_back(static_cast<int64_t>(i));
+    }
+  }
   return rv;
 }
 
@@ -737,14 +757,13 @@ antlrcpp::Any ParserVisitor::visitMapInitializerList(
   for (size_t i = 0; i < ctx->cols.size(); ++i) {
     int64_t col_id = sf_->Id(ctx->cols[i]);
     Expr key;
-    if (ctx->keys[i]->opt) {
-      key =
-          sf_->ReportError(ctx, "support for optional is not yet implemented");
-    } else {
-      key = std::any_cast<Expr>(visit(ctx->keys[i]->e));
+    if (!enable_optional_syntax_ && ctx->keys[i]->opt) {
+      sf_->ReportError(ctx, "unsupported syntax '?'");
+      continue;
     }
+    key = std::any_cast<Expr>(visit(ctx->keys[i]->e));
     auto value = std::any_cast<Expr>(visit(ctx->values[i]));
-    res[i] = sf_->NewMapEntry(col_id, key, value);
+    res[i] = sf_->NewMapEntry(col_id, key, value, ctx->keys[i]->opt != nullptr);
   }
   return res;
 }
@@ -1081,7 +1100,8 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
     CelParser parser(&tokens);
     ExprRecursionListener listener(options.max_recursion_depth);
     ParserVisitor visitor(description, expression, options.max_recursion_depth,
-                          macros, options.add_macro_calls);
+                          macros, options.add_macro_calls,
+                          options.enable_optional_syntax);
 
     lexer.removeErrorListeners();
     parser.removeErrorListeners();

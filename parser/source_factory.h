@@ -102,6 +102,9 @@ class SourceFactory {
                              const std::vector<Expr>& args);
   Expr NewReceiverCall(int64_t id, const std::string& function,
                        const Expr& target, const std::vector<Expr>& args);
+  Expr NewReceiverCallForMacro(int64_t macro_id, const std::string& function,
+                               const Expr& target,
+                               const std::vector<Expr>& args);
   Expr NewIdent(const antlr4::Token* token, const std::string& ident_name);
   Expr NewIdentForMacro(int64_t macro_id, const std::string& ident_name);
   Expr NewSelect(::cel_parser_internal::CelParser::SelectContext* ctx,
@@ -114,7 +117,8 @@ class SourceFactory {
                  const std::vector<Expr::CreateStruct::Entry>& entries);
   Expr::CreateStruct::Entry NewObjectField(int64_t field_id,
                                            const std::string& field,
-                                           const Expr& value);
+                                           const Expr& value,
+                                           bool optional = false);
   Expr NewComprehension(int64_t id, const std::string& iter_var,
                         const Expr& iter_range, const std::string& accu_var,
                         const Expr& accu_init, const Expr& condition,
@@ -130,14 +134,16 @@ class SourceFactory {
   Expr NewFilterExprForMacro(int64_t macro_id, const Expr& target,
                              const std::vector<Expr>& args);
 
-  Expr NewList(int64_t list_id, const std::vector<Expr>& elems);
+  Expr NewList(int64_t list_id, const std::vector<Expr>& elems,
+               const std::vector<int64_t>& opts = {});
   Expr NewListForMacro(int64_t macro_id, const std::vector<Expr>& elems);
   Expr NewMap(int64_t map_id,
               const std::vector<Expr::CreateStruct::Entry>& entries);
   Expr NewMapForMacro(int64_t macro_id, const Expr& target,
                       const std::vector<Expr>& args);
   Expr::CreateStruct::Entry NewMapEntry(int64_t entry_id, const Expr& key,
-                                        const Expr& value);
+                                        const Expr& value,
+                                        bool optional = false);
   Expr NewLiteralInt(antlr4::ParserRuleContext* ctx, int64_t value);
   Expr NewLiteralIntForMacro(int64_t macro_id, int64_t value);
   Expr NewLiteralUint(antlr4::ParserRuleContext* ctx, uint64_t value);

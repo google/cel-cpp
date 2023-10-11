@@ -14,12 +14,17 @@
 
 #include "parser/macro.h"
 
+#include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <utility>
+#include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
+#include "absl/strings/string_view.h"
 #include "common/operators.h"
 #include "internal/lexis.h"
 #include "parser/source_factory.h"
@@ -167,6 +172,79 @@ std::vector<Macro> Macro::AllMacros() {
           },
           /* receiver style*/ true),
   };
+}
+
+Macro Macro::OptMap() {
+  return Macro(
+      "optMap", 2,
+      [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
+         const Expr& target, const std::vector<Expr>& args) -> Expr {
+        if (args.size() != 2) {
+          return sf->ReportError(args[0].id(), "optMap() requires 2 arguments");
+        }
+        if (!args[0].has_ident_expr()) {
+          return sf->ReportError(
+              args[0].id(),
+              "optMap() variable name must be a simple identifier");
+        }
+        const auto& var_name = args[0].ident_expr().name();
+        const auto& map_expr = args[1];
+
+        std::vector<Expr> call_args;
+        call_args.resize(3);
+        call_args[0] =
+            sf->NewReceiverCallForMacro(macro_id, "hasValue", target, {});
+        auto iter_range = sf->NewListForMacro(macro_id, {});
+        auto accu_init =
+            sf->NewReceiverCallForMacro(macro_id, "value", target, {});
+        auto condition = sf->NewLiteralBoolForMacro(macro_id, false);
+        auto step = sf->NewIdentForMacro(macro_id, var_name);
+        const auto& result = map_expr;
+        auto fold = sf->FoldForMacro(macro_id, "#unused", iter_range, var_name,
+                                     accu_init, condition, step, result);
+        call_args[1] =
+            sf->NewGlobalCallForMacro(macro_id, "optional.of", {fold});
+        call_args[2] = sf->NewGlobalCallForMacro(macro_id, "optional.none", {});
+        return sf->NewGlobalCallForMacro(macro_id, CelOperator::CONDITIONAL,
+                                         call_args);
+      },
+      true);
+}
+
+Macro Macro::OptFlatMap() {
+  return Macro(
+      "optFlatMap", 2,
+      [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
+         const Expr& target, const std::vector<Expr>& args) -> Expr {
+        if (args.size() != 2) {
+          return sf->ReportError(args[0].id(),
+                                 "optFlatMap() requires 2 arguments");
+        }
+        if (!args[0].has_ident_expr()) {
+          return sf->ReportError(
+              args[0].id(),
+              "optFlatMap() variable name must be a simple identifier");
+        }
+        const auto& var_name = args[0].ident_expr().name();
+        const auto& map_expr = args[1];
+        std::vector<Expr> call_args;
+        call_args.resize(3);
+        call_args[0] =
+            sf->NewReceiverCallForMacro(macro_id, "hasValue", target, {});
+        auto iter_range = sf->NewListForMacro(macro_id, {});
+        auto accu_init =
+            sf->NewReceiverCallForMacro(macro_id, "value", target, {});
+        auto condition = sf->NewLiteralBoolForMacro(macro_id, false);
+        auto step = sf->NewIdentForMacro(macro_id, var_name);
+        const auto& result = map_expr;
+        call_args[1] =
+            sf->FoldForMacro(macro_id, "#unused", iter_range, var_name,
+                             accu_init, condition, step, result);
+        call_args[2] = sf->NewGlobalCallForMacro(macro_id, "optional.none", {});
+        return sf->NewGlobalCallForMacro(macro_id, CelOperator::CONDITIONAL,
+                                         call_args);
+      },
+      true);
 }
 
 }  // namespace cel

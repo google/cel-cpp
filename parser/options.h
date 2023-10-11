@@ -44,6 +44,9 @@ struct ParserOptions final {
 
   // Add macro calls to macro_calls list in source_info.
   bool add_macro_calls = ::cel_parser_internal::kDefaultAddMacroCalls;
+
+  // Enable support for optional syntax.
+  bool enable_optional_syntax = false;
 };
 
 }  // namespace cel

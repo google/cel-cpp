@@ -71,7 +71,8 @@ bool CreateStruct::Entry::operator==(const Entry& other) const {
   } else if (has_map_key() && other.has_map_key()) {
     has_same_key = map_key() == other.map_key();
   }
-  return id_ == other.id_ && has_same_key && value() == other.value();
+  return id_ == other.id_ && has_same_key && value() == other.value() &&
+         optional_entry_ == other.optional_entry();
 }
 
 const Expr& Comprehension::iter_range() const {

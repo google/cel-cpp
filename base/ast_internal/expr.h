@@ -353,6 +353,7 @@ class CreateList {
  public:
   CreateList() = default;
   explicit CreateList(std::vector<Expr> elements);
+  CreateList(std::vector<Expr> elements, std::vector<int32_t> optional_indices);
 
   void set_elements(std::vector<Expr> elements);
 
@@ -360,11 +361,22 @@ class CreateList {
 
   std::vector<Expr>& mutable_elements() { return elements_; }
 
+  void set_optional_indices(std::vector<int32_t> optional_indices) {
+    optional_indices_ = std::move(optional_indices);
+  }
+
+  const std::vector<int32_t>& optional_indices() const {
+    return optional_indices_;
+  }
+
+  std::vector<int32_t>& optional_indices() { return optional_indices_; }
+
   bool operator==(const CreateList& other) const;
 
  private:
   // The elements part of the list.
   std::vector<Expr> elements_;
+  std::vector<int32_t> optional_indices_;
 };
 
 // A map or message creation expression.
@@ -379,8 +391,12 @@ class CreateStruct {
    public:
     using KeyKind = absl::variant<std::string, std::unique_ptr<Expr>>;
     Entry() = default;
-    Entry(int64_t id, KeyKind key_kind, std::unique_ptr<Expr> value)
-        : id_(id), key_kind_(std::move(key_kind)), value_(std::move(value)) {}
+    Entry(int64_t id, KeyKind key_kind, std::unique_ptr<Expr> value,
+          bool optional_entry = false)
+        : id_(id),
+          key_kind_(std::move(key_kind)),
+          value_(std::move(value)),
+          optional_entry_(optional_entry) {}
 
     void set_id(int64_t id) { id_ = id; }
 
@@ -437,6 +453,12 @@ class CreateStruct {
       return *value_;
     }
 
+    bool optional_entry() const { return optional_entry_; }
+
+    void set_optional_entry(bool optional_entry) {
+      optional_entry_ = optional_entry;
+    }
+
     bool operator==(const Entry& other) const;
 
     bool operator!=(const Entry& other) const { return !operator==(other); }
@@ -450,6 +472,7 @@ class CreateStruct {
     KeyKind key_kind_;
     // Required. The value assigned to the key.
     std::unique_ptr<Expr> value_;
+    bool optional_entry_ = false;
   };
 
   CreateStruct() = default;
@@ -1602,12 +1625,18 @@ inline void Call::set_args(std::vector<Expr> args) { args_ = std::move(args); }
 inline CreateList::CreateList(std::vector<Expr> elements)
     : elements_(std::move(elements)) {}
 
+inline CreateList::CreateList(std::vector<Expr> elements,
+                              std::vector<int32_t> optional_indices)
+    : elements_(std::move(elements)),
+      optional_indices_(std::move(optional_indices)) {}
+
 inline void CreateList::set_elements(std::vector<Expr> elements) {
   elements_ = std::move(elements);
 }
 
 inline bool CreateList::operator==(const CreateList& other) const {
-  return elements_ == other.elements_;
+  return elements_ == other.elements_ &&
+         optional_indices_ == other.optional_indices_;
 }
 
 inline FunctionType::FunctionType(std::unique_ptr<Type> result_type,

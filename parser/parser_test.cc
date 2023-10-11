@@ -1177,21 +1177,24 @@ std::vector<TestInfo> test_cases = {
      "ERROR: <input>:1:1: Invalid bytes literal: Illegal escape sequence: "
      "Unicode escape sequence \\U cannot be used in bytes literals\n | "
      "b'\\UFFFFFFFF'\n | ^"},
-    {"foo.?bar", "",
-     "ERROR: <input>:1:1: support for optional is not yet implemented\n | "
-     "foo.?bar\n | ^"},
-    {"foo[?0]", "",
-     "ERROR: <input>:1:1: support for optional is not yet implemented\n | "
-     "foo[?0]\n | ^"},
-    {"foo.Bar{?foo: 'bar'}", "",
-     "ERROR: <input>:1:9: support for optional is not yet implemented\n | "
-     "foo.Bar{?foo: 'bar'}\n | ........^"},
-    {"{?'foo': 'bar'}", "",
-     "ERROR: <input>:1:2: support for optional is not yet implemented\n | "
-     "{?'foo': 'bar'}\n | .^"},
-    {"[?foo]", "",
-     "ERROR: <input>:1:2: support for optional is not yet implemented\n | "
-     "[?foo]\n | .^"}};
+    {"a.?b[?0] && a[?c]",
+     "_&&_(\n  _[?_](\n    _?._(\n      a^#1:Expr.Ident#,\n      "
+     "\"b\"^#3:string#\n    )^#2:Expr.Call#,\n    0^#5:int64#\n  "
+     ")^#4:Expr.Call#,\n  _[?_](\n    a^#6:Expr.Ident#,\n    "
+     "c^#8:Expr.Ident#\n  )^#7:Expr.Call#\n)^#9:Expr.Call#"},
+    {"{?'key': value}",
+     "{\n  "
+     "?\"key\"^#3:string#:value^#4:Expr.Ident#^#2:Expr.CreateStruct.Entry#\n}^#"
+     "1:Expr.CreateStruct#"},
+    {"[?a, ?b]",
+     "[\n  ?a^#2:Expr.Ident#,\n  ?b^#3:Expr.Ident#\n]^#1:Expr.CreateList#"},
+    {"[?a[?b]]",
+     "[\n  ?_[?_](\n    a^#2:Expr.Ident#,\n    b^#4:Expr.Ident#\n  "
+     ")^#3:Expr.Call#\n]^#1:Expr.CreateList#"},
+    {"Msg{?field: value}",
+     "Msg{\n  "
+     "?field:value^#3:Expr.Ident#^#2:Expr.CreateStruct.Entry#\n}^#1:Expr."
+     "CreateStruct#"}};
 
 class KindAndIdAdorner : public testutil::ExpressionAdorner {
  public:
@@ -1355,6 +1358,7 @@ TEST_P(ExpressionTest, Parse) {
   if (!test_info.M.empty()) {
     options.add_macro_calls = true;
   }
+  options.enable_optional_syntax = true;
 
   auto result =
       EnrichedParse(test_info.I, Macro::AllMacros(), "<input>", options);

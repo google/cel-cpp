@@ -22,7 +22,6 @@ cc_library(
     hdrs = ["expr_printer.h"],
     deps = [
         "//internal:strings",
-        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],

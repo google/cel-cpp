@@ -106,6 +106,9 @@ absl::StatusOr<CreateList> ConvertCreateList(
     std::stack<ConversionStackEntry>& stack) {
   CreateList ret_val;
   ret_val.set_elements(std::vector<Expr>(create_list.elements_size()));
+  ret_val.set_optional_indices(
+      std::vector<int32_t>(create_list.optional_indices().begin(),
+                           create_list.optional_indices().end()));
 
   for (int i = 0; i < ret_val.elements().size(); i++) {
     stack.push({&ret_val.mutable_elements()[i], &create_list.elements(i)});
@@ -142,7 +145,7 @@ absl::StatusOr<CreateStruct::Entry> ConvertCreateStructEntry(
         "google::api::expr::v1alpha1::Expr::CreateStruct::Entry missing value");
   }
   CreateStruct::Entry result(entry.id(), std::move(native_key),
-                             std::make_unique<Expr>());
+                             std::make_unique<Expr>(), entry.optional_entry());
   stack.push({&result.mutable_value(), &entry.value()});
 
   return result;

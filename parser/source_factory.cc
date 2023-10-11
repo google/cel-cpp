@@ -125,6 +125,13 @@ Expr SourceFactory::NewReceiverCall(int64_t id, const std::string& function,
   return expr;
 }
 
+Expr SourceFactory::NewReceiverCallForMacro(int64_t macro_id,
+                                            const std::string& function,
+                                            const Expr& target,
+                                            const std::vector<Expr>& args) {
+  return NewReceiverCall(NextMacroId(macro_id), function, target, args);
+}
+
 Expr SourceFactory::NewIdent(const antlr4::Token* token,
                              const std::string& ident_name) {
   Expr expr = NewExpr(token);
@@ -183,11 +190,13 @@ Expr SourceFactory::NewObject(
 }
 
 Expr::CreateStruct::Entry SourceFactory::NewObjectField(
-    int64_t field_id, const std::string& field, const Expr& value) {
+    int64_t field_id, const std::string& field, const Expr& value,
+    bool optional) {
   Expr::CreateStruct::Entry entry;
   entry.set_id(field_id);
   entry.set_field_key(field);
   *entry.mutable_value() = value;
+  entry.set_optional_entry(optional);
   return entry;
 }
 
@@ -218,11 +227,14 @@ Expr SourceFactory::FoldForMacro(int64_t macro_id, const std::string& iter_var,
                           accu_init, condition, step, result);
 }
 
-Expr SourceFactory::NewList(int64_t list_id, const std::vector<Expr>& elems) {
+Expr SourceFactory::NewList(int64_t list_id, const std::vector<Expr>& elems,
+                            const std::vector<int64_t>& opts) {
   auto expr = NewExpr(list_id);
   auto list_expr = expr.mutable_list_expr();
   std::for_each(elems.begin(), elems.end(),
                 [list_expr](const Expr& e) { *list_expr->add_elements() = e; });
+  std::for_each(opts.begin(), opts.end(),
+                [list_expr](int64_t o) { list_expr->add_optional_indices(o); });
   return expr;
 }
 
@@ -439,11 +451,13 @@ Expr SourceFactory::NewMapForMacro(int64_t macro_id, const Expr& target,
 
 Expr::CreateStruct::Entry SourceFactory::NewMapEntry(int64_t entry_id,
                                                      const Expr& key,
-                                                     const Expr& value) {
+                                                     const Expr& value,
+                                                     bool optional) {
   Expr::CreateStruct::Entry entry;
   entry.set_id(entry_id);
   *entry.mutable_map_key() = key;
   *entry.mutable_value() = value;
+  entry.set_optional_entry(optional);
   return entry;
 }
 

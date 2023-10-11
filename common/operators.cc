@@ -167,6 +167,9 @@ const char* CelOperator::FILTER = "filter";
 const char* CelOperator::NOT_STRICTLY_FALSE = "@not_strictly_false";
 const char* CelOperator::IN = "@in";
 
+const absl::string_view CelOperator::OPT_INDEX = "_[?_]";
+const absl::string_view CelOperator::OPT_SELECT = "_?._";
+
 int LookupPrecedence(const std::string& op) {
   auto precs = Precedences();
   auto p = precs.find(op);
