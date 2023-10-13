@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #include "google/rpc/context/attribute_context.pb.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "codelab/exercise2.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
 
-namespace google::api::expr::codelab {
+namespace cel_codelab {
 namespace {
 
 using ::google::rpc::context::AttributeContext;
@@ -28,7 +28,7 @@ using cel::internal::StatusIs;
 
 // Helper for a simple CelExpression with no context.
 absl::StatusOr<bool> TruthTableTest(absl::string_view statement) {
-  return ParseAndEvaluate(statement, /*unused*/ false);
+  return ParseAndEvaluateWithVariable(statement, /*unused*/ false);
 }
 
 TEST(Exercise3, LogicalOr) {
@@ -77,19 +77,21 @@ TEST(Exercise3Context, BadFieldAccess) {
 
   // typo-ed field name from 'request.host'
   EXPECT_THAT(
-      ParseAndEvaluate("request.hostname == 'localhost' && true", context),
+      ParseAndEvaluateWithContext("request.hostname == 'localhost' && true",
+                                  context),
       StatusIs(absl::StatusCode::kNotFound, "no_such_field : hostname"));
-  EXPECT_THAT(
-      ParseAndEvaluate("request.hostname == 'localhost' && false", context),
-      IsOkAndHolds(false));
+  EXPECT_THAT(ParseAndEvaluateWithContext(
+                  "request.hostname == 'localhost' && false", context),
+              IsOkAndHolds(false));
 
+  EXPECT_THAT(ParseAndEvaluateWithContext(
+                  "request.hostname == 'localhost' || true", context),
+              IsOkAndHolds(true));
   EXPECT_THAT(
-      ParseAndEvaluate("request.hostname == 'localhost' || true", context),
-      IsOkAndHolds(true));
-  EXPECT_THAT(
-      ParseAndEvaluate("request.hostname == 'localhost' || false", context),
+      ParseAndEvaluateWithContext("request.hostname == 'localhost' || false",
+                                  context),
       StatusIs(absl::StatusCode::kNotFound, "no_such_field : hostname"));
 }
 
 }  // namespace
-}  // namespace google::api::expr::codelab
+}  // namespace cel_codelab

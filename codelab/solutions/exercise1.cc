@@ -16,57 +16,68 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "eval/public/activation.h"
-#include "eval/public/builtin_func_registrar.h"
-#include "eval/public/cel_expr_builder_factory.h"
-#include "eval/public/cel_expression.h"
-#include "eval/public/cel_options.h"
-#include "eval/public/cel_value.h"
+#include "common/value.h"
+#include "common/value_kind.h"
+#include "extensions/protobuf/memory_manager.h"
+#include "extensions/protobuf/runtime_adapter.h"
 #include "internal/status_macros.h"
 #include "parser/parser.h"
+#include "runtime/activation.h"
+#include "runtime/managed_value_factory.h"
+#include "runtime/runtime.h"
+#include "runtime/runtime_builder.h"
+#include "runtime/runtime_options.h"
+#include "runtime/standard_runtime_builder_factory.h"
+#include "google/protobuf/arena.h"
 
-namespace google::api::expr::codelab {
+namespace cel_codelab {
 namespace {
 
+using ::cel::Activation;
+using ::cel::As;
+using ::cel::CreateStandardRuntimeBuilder;
+using ::cel::ManagedValueFactory;
+using ::cel::Program;
+using ::cel::Runtime;
+using ::cel::RuntimeBuilder;
+using ::cel::RuntimeOptions;
+using ::cel::StringValue;
+using ::cel::Value;
+using ::cel::ValueKindToString;
+using ::cel::extensions::ProtobufRuntimeAdapter;
+using ::cel::extensions::ProtoMemoryManagerRef;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::Parse;
-using ::google::api::expr::runtime::Activation;
-using ::google::api::expr::runtime::CelExpression;
-using ::google::api::expr::runtime::CelExpressionBuilder;
-using ::google::api::expr::runtime::CelValue;
-using ::google::api::expr::runtime::CreateCelExpressionBuilder;
-using ::google::api::expr::runtime::InterpreterOptions;
-using ::google::api::expr::runtime::RegisterBuiltinFunctions;
 
-// Convert the CelResult to a C++ string if it is string typed. Otherwise,
-// return invalid argument error. This takes a copy to avoid lifecycle concerns
-// (the evaluator may represent strings as stringviews backed by the input
-// expression).
-absl::StatusOr<std::string> ConvertResult(const CelValue& value) {
-  if (CelValue::StringHolder inner_value; value.GetValue(&inner_value)) {
-    return std::string(inner_value.value());
-  } else {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "expected string result got '", CelValue::TypeName(value.type()), "'"));
+// Convert the cel::Value result to a C++ string if it is string typed.
+// Otherwise, return invalid argument error. This takes a copy to avoid
+// lifecycle concerns (the value may be ref counted or Arena allocated).
+absl::StatusOr<std::string> ConvertResult(const Value& value) {
+  if (auto string_value = As<StringValue>(value); string_value.has_value()) {
+    return string_value->ToString();
   }
+  return absl::InvalidArgumentError(absl::StrCat(
+      "expected string result got '", ValueKindToString(value.kind()), "'"));
 }
+
 }  // namespace
 
 absl::StatusOr<std::string> ParseAndEvaluate(absl::string_view cel_expr) {
   // === Start Codelab ===
   // Setup a default environment for building expressions.
-  InterpreterOptions options;
-  std::unique_ptr<CelExpressionBuilder> builder =
-      CreateCelExpressionBuilder(options);
+  RuntimeOptions options;
+  CEL_ASSIGN_OR_RETURN(RuntimeBuilder builder,
+                       CreateStandardRuntimeBuilder(options));
 
-  CEL_RETURN_IF_ERROR(
-      RegisterBuiltinFunctions(builder->GetRegistry(), options));
+  CEL_ASSIGN_OR_RETURN(std::unique_ptr<const Runtime> runtime,
+                       std::move(builder).Build());
 
   // Parse the expression. This is fine for codelabs, but this skips the type
   // checking phase. It won't check that functions and variables are available
@@ -76,31 +87,34 @@ absl::StatusOr<std::string> ParseAndEvaluate(absl::string_view cel_expr) {
   ParsedExpr parsed_expr;
   CEL_ASSIGN_OR_RETURN(parsed_expr, Parse(cel_expr));
 
+  // Build the expression plan.
+  CEL_ASSIGN_OR_RETURN(
+      std::unique_ptr<Program> expression_plan,
+      ProtobufRuntimeAdapter::CreateProgram(*runtime, parsed_expr));
+
   // The evaluator uses a proto Arena for incidental allocations during
-  // evaluation.
+  // evaluation. A value factory associates the memory manager with the
+  // appropriate type system.
+  //
+  // Use cel::extensions::ProtoMemoryManagerRef to adapt an Arena to work with
+  // CEL's value representation.
   google::protobuf::Arena arena;
+  ManagedValueFactory value_factory(expression_plan->GetTypeProvider(),
+                                    ProtoMemoryManagerRef(&arena));
+
   // The activation provides variables and functions that are bound into the
   // expression environment. In this example, there's no context expected, so
   // we just provide an empty one to the evaluator.
   Activation activation;
 
-  // Build the expression plan. This assumes that the source expression AST and
-  // the expression builder outlive the CelExpression object.
-  CEL_ASSIGN_OR_RETURN(std::unique_ptr<CelExpression> expression_plan,
-                       builder->CreateExpression(&parsed_expr.expr(),
-                                                 &parsed_expr.source_info()));
-
   // Actually run the expression plan. We don't support any environment
   // variables at the moment so just use an empty activation.
-  CEL_ASSIGN_OR_RETURN(CelValue result,
-                       expression_plan->Evaluate(activation, &arena));
+  CEL_ASSIGN_OR_RETURN(
+      Value result, expression_plan->Evaluate(activation, value_factory.get()));
 
-  // Convert the result to a c++ string. CelValues may reference instances from
-  // either the input expression, or objects allocated on the arena, so we need
-  // to pass ownership (in this case by copying to a new instance and returning
-  // that).
+  // Convert the result to a std::string or return absl::Status if not.
   return ConvertResult(result);
   // === End Codelab ===
 }
 
-}  // namespace google::api::expr::codelab
+}  // namespace cel_codelab
