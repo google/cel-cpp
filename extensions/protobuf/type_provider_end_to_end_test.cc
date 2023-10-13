@@ -317,6 +317,13 @@ INSTANTIATE_TEST_SUITE_P(
              )cel",
              absl::InvalidArgumentError(
                  "type conversion error from int to string")},
+            {"no_such_field",
+             R"cel(
+              TestAllTypes{
+                single_int64: 32
+              }.unknown_field
+             )cel",
+             absl::NotFoundError("no_such_field : unknown_field")},
         }),
         ::testing::Values(MemoryManagerKind::kGlobal,
                           MemoryManagerKind::kProto)),

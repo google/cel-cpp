@@ -332,8 +332,10 @@ cc_library(
         ":function",
         ":function_descriptor",
         ":handle",
+        ":kind",
         "//base/internal:function_adapter",
         "//internal:status_macros",
+        "@com_google_absl//absl/functional:bind_front",
         "@com_google_absl//absl/log:die_if_null",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -356,6 +358,7 @@ cc_test(
         "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
     ],
 )
