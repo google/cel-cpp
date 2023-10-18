@@ -22,16 +22,20 @@
 
 #include <functional>
 #include <memory>
+#include <vector>
 
+#include "absl/functional/bind_front.h"
 #include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/function.h"
 #include "base/function_descriptor.h"
 #include "base/handle.h"
 #include "base/internal/function_adapter.h"
+#include "base/kind.h"
 #include "base/value.h"
 #include "internal/status_macros.h"
 
@@ -51,7 +55,85 @@ template <typename T>
 struct AdaptedTypeTraits<const T&> {
   using AssignableType = const T*;
 
-  static const T& ToArg(AssignableType v) { return *ABSL_DIE_IF_NULL(v); }
+  static std::reference_wrapper<const T> ToArg(AssignableType v) {
+    return *ABSL_DIE_IF_NULL(v);  // Crash OK
+  }
+};
+
+template <typename... Args>
+struct KindAdderImpl;
+
+template <typename Arg, typename... Args>
+struct KindAdderImpl<Arg, Args...> {
+  static void AddTo(std::vector<cel::Kind>& args) {
+    args.push_back(AdaptedKind<Arg>());
+    KindAdderImpl<Args...>::AddTo(args);
+  }
+};
+
+template <>
+struct KindAdderImpl<> {
+  static void AddTo(std::vector<cel::Kind>& args) {}
+};
+
+template <typename... Args>
+struct KindAdder {
+  static std::vector<cel::Kind> Kinds() {
+    std::vector<cel::Kind> args;
+    KindAdderImpl<Args...>::AddTo(args);
+    return args;
+  }
+};
+
+template <typename T>
+struct ApplyReturnType {
+  using type = absl::StatusOr<T>;
+};
+
+template <typename T>
+struct ApplyReturnType<absl::StatusOr<T>> {
+  using type = absl::StatusOr<T>;
+};
+
+template <int N, typename Arg, typename... Args>
+struct IndexerImpl {
+  using type = typename IndexerImpl<N - 1, Args...>::type;
+};
+
+template <typename Arg, typename... Args>
+struct IndexerImpl<0, Arg, Args...> {
+  using type = Arg;
+};
+
+template <int N, typename... Args>
+struct Indexer {
+  static_assert(N < sizeof...(Args) && N >= 0);
+  using type = typename IndexerImpl<N, Args...>::type;
+};
+
+template <int N, typename... Args>
+struct ApplyHelper {
+  template <typename T, typename Op>
+  static typename ApplyReturnType<T>::type Apply(
+      Op&& op, absl::Span<const Handle<Value>> input) {
+    constexpr int idx = sizeof...(Args) - N;
+    using Arg = typename Indexer<idx, Args...>::type;
+    using ArgTraits = internal::AdaptedTypeTraits<Arg>;
+    typename ArgTraits::AssignableType arg_i;
+    CEL_RETURN_IF_ERROR(internal::HandleToAdaptedVisitor{input[idx]}(&arg_i));
+
+    return ApplyHelper<N - 1, Args...>::template Apply<T>(
+        absl::bind_front(std::forward<Op>(op), ArgTraits::ToArg(arg_i)), input);
+  }
+};
+
+template <typename... Args>
+struct ApplyHelper<0, Args...> {
+  template <typename T, typename Op>
+  static typename ApplyReturnType<T>::type Apply(
+      Op&& op, absl::Span<const Handle<Value>> input) {
+    return op();
+  }
 };
 
 }  // namespace internal
@@ -214,6 +296,54 @@ class UnaryFunctionAdapter {
 
       T result = fn_(context.value_factory(), ArgTraits::ToArg(arg1));
 
+      return internal::AdaptedToHandleVisitor{context.value_factory()}(
+          std::move(result));
+    }
+
+   private:
+    FunctionType fn_;
+  };
+};
+
+// Generic adapter class for generating CEL extension functions from an
+// n-argument function. Prefer using the Binary and Unary versions. They are
+// simpler and cover most use cases.
+//
+// See documentation for Binary Function adapter for general recommendations.
+template <typename T, typename... Args>
+class VariadicFunctionAdapter {
+ public:
+  using FunctionType = std::function<T(ValueFactory&, Args...)>;
+
+  static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
+    return std::make_unique<VariadicFunctionImpl>(std::move(fn));
+  }
+
+  static FunctionDescriptor CreateDescriptor(absl::string_view name,
+                                             bool receiver_style,
+                                             bool is_strict = true) {
+    return FunctionDescriptor(name, receiver_style,
+                              internal::KindAdder<Args...>::Kinds(), is_strict);
+  }
+
+ private:
+  class VariadicFunctionImpl : public cel::Function {
+   public:
+    explicit VariadicFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
+
+    absl::StatusOr<Handle<Value>> Invoke(
+        const FunctionEvaluationContext& context,
+        absl::Span<const Handle<Value>> args) const override {
+      if (args.size() != sizeof...(Args)) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("unexpected number of arguments for variadic(",
+                         sizeof...(Args), ") function"));
+      }
+
+      CEL_ASSIGN_OR_RETURN(
+          T result,
+          (internal::ApplyHelper<sizeof...(Args), Args...>::template Apply<T>(
+              absl::bind_front(fn_, std::ref(context.value_factory())), args)));
       return internal::AdaptedToHandleVisitor{context.value_factory()}(
           std::move(result));
     }

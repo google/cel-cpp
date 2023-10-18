@@ -20,6 +20,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
 #include "base/function.h"
 #include "base/function_descriptor.h"
@@ -27,11 +28,14 @@
 #include "base/kind.h"
 #include "base/memory.h"
 #include "base/type_factory.h"
+#include "base/type_manager.h"
 #include "base/type_provider.h"
+#include "base/value.h"
 #include "base/value_factory.h"
 #include "base/values/bool_value.h"
 #include "base/values/bytes_value.h"
 #include "base/values/double_value.h"
+#include "base/values/duration_value.h"
 #include "base/values/int_value.h"
 #include "base/values/timestamp_value.h"
 #include "base/values/uint_value.h"
@@ -42,6 +46,7 @@ namespace {
 
 using testing::ElementsAre;
 using testing::HasSubstr;
+using testing::IsEmpty;
 using cel::internal::StatusIs;
 
 class FunctionAdapterTest : public ::testing::Test {
@@ -717,6 +722,104 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterCreateDescriptorNonStrict) {
   EXPECT_FALSE(desc.is_strict());
   EXPECT_FALSE(desc.receiver_style());
   EXPECT_THAT(desc.types(), ElementsAre(Kind::kAny, Kind::kAny));
+}
+
+TEST_F(FunctionAdapterTest, VariadicFunctionAdapterCreateDescriptor0Args) {
+  FunctionDescriptor desc =
+      VariadicFunctionAdapter<absl::StatusOr<Handle<Value>>>::CreateDescriptor(
+          "ZeroArgs", false);
+
+  EXPECT_EQ(desc.name(), "ZeroArgs");
+  EXPECT_TRUE(desc.is_strict());
+  EXPECT_FALSE(desc.receiver_style());
+  EXPECT_THAT(desc.types(), IsEmpty());
+}
+
+TEST_F(FunctionAdapterTest, VariadicFunctionAdapterWrapFunction0Args) {
+  std::unique_ptr<Function> fn =
+      VariadicFunctionAdapter<absl::StatusOr<Handle<Value>>>::WrapFunction(
+          [](ValueFactory& value_factory) {
+            return value_factory.CreateStringValue("abc");
+          });
+
+  ASSERT_OK_AND_ASSIGN(auto result, fn->Invoke(test_context(), {}));
+  ASSERT_TRUE(result->Is<StringValue>());
+  EXPECT_EQ(result.As<StringValue>()->ToString(), "abc");
+}
+
+TEST_F(FunctionAdapterTest, VariadicFunctionAdapterCreateDescriptor3Args) {
+  FunctionDescriptor desc = VariadicFunctionAdapter<
+      absl::StatusOr<Handle<Value>>, int64_t, bool,
+      const StringValue&>::CreateDescriptor("MyFormatter", false);
+
+  EXPECT_EQ(desc.name(), "MyFormatter");
+  EXPECT_TRUE(desc.is_strict());
+  EXPECT_FALSE(desc.receiver_style());
+  EXPECT_THAT(desc.types(),
+              ElementsAre(Kind::kInt64, Kind::kBool, Kind::kString));
+}
+
+TEST_F(FunctionAdapterTest, VariadicFunctionAdapterWrapFunction3Args) {
+  std::unique_ptr<Function> fn = VariadicFunctionAdapter<
+      absl::StatusOr<Handle<Value>>, int64_t, bool,
+      const StringValue&>::WrapFunction([](ValueFactory& value_factory,
+                                           int64_t int_val, bool bool_val,
+                                           const StringValue& string_val)
+                                            -> absl::StatusOr<Handle<Value>> {
+    return value_factory.CreateStringValue(
+        absl::StrCat(int_val, "_", (bool_val ? "true" : "false"), "_",
+                     string_val.ToString()));
+  });
+
+  std::vector<Handle<Value>> args{value_factory().CreateIntValue(42),
+                                  value_factory().CreateBoolValue(false)};
+  ASSERT_OK_AND_ASSIGN(args.emplace_back(),
+                       value_factory().CreateStringValue("abcd"));
+  ASSERT_OK_AND_ASSIGN(auto result, fn->Invoke(test_context(), args));
+  ASSERT_TRUE(result->Is<StringValue>());
+  EXPECT_EQ(result.As<StringValue>()->ToString(), "42_false_abcd");
+}
+
+TEST_F(FunctionAdapterTest,
+       VariadicFunctionAdapterWrapFunction3ArgsBadArgType) {
+  std::unique_ptr<Function> fn = VariadicFunctionAdapter<
+      absl::StatusOr<Handle<Value>>, int64_t, bool,
+      const StringValue&>::WrapFunction([](ValueFactory& value_factory,
+                                           int64_t int_val, bool bool_val,
+                                           const StringValue& string_val)
+                                            -> absl::StatusOr<Handle<Value>> {
+    return value_factory.CreateStringValue(
+        absl::StrCat(int_val, "_", (bool_val ? "true" : "false"), "_",
+                     string_val.ToString()));
+  });
+
+  std::vector<Handle<Value>> args{value_factory().CreateIntValue(42),
+                                  value_factory().CreateBoolValue(false)};
+  ASSERT_OK_AND_ASSIGN(args.emplace_back(),
+                       value_factory().CreateTimestampValue(absl::UnixEpoch()));
+  EXPECT_THAT(fn->Invoke(test_context(), args),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("expected string value")));
+}
+
+TEST_F(FunctionAdapterTest,
+       VariadicFunctionAdapterWrapFunction3ArgsBadArgCount) {
+  std::unique_ptr<Function> fn = VariadicFunctionAdapter<
+      absl::StatusOr<Handle<Value>>, int64_t, bool,
+      const StringValue&>::WrapFunction([](ValueFactory& value_factory,
+                                           int64_t int_val, bool bool_val,
+                                           const StringValue& string_val)
+                                            -> absl::StatusOr<Handle<Value>> {
+    return value_factory.CreateStringValue(
+        absl::StrCat(int_val, "_", (bool_val ? "true" : "false"), "_",
+                     string_val.ToString()));
+  });
+
+  std::vector<Handle<Value>> args{value_factory().CreateIntValue(42),
+                                  value_factory().CreateBoolValue(false)};
+  EXPECT_THAT(fn->Invoke(test_context(), args),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("unexpected number of arguments")));
 }
 
 }  // namespace
