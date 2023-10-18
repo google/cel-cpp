@@ -2291,7 +2291,8 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetFieldByName(
       auto field_type,
       type()->FindFieldByName(value_factory.type_manager(), name));
   if (ABSL_PREDICT_FALSE(!field_type)) {
-    return runtime_internal::CreateNoSuchFieldError(name);
+    return value_factory.CreateErrorValue(
+        runtime_internal::CreateNoSuchFieldError(name));
   }
   return GetField(value_factory, *field_type);
 }
@@ -2302,7 +2303,8 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetFieldByNumber(
       auto field_type,
       type()->FindFieldByNumber(value_factory.type_manager(), number));
   if (ABSL_PREDICT_FALSE(!field_type)) {
-    return runtime_internal::CreateNoSuchFieldError(absl::StrCat(number));
+    return value_factory.CreateErrorValue(
+        runtime_internal::CreateNoSuchFieldError(absl::StrCat(number)));
   }
   return GetField(value_factory, *field_type);
 }
