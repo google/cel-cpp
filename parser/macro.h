@@ -68,39 +68,43 @@ class Macro final {
   static absl::StatusOr<Macro> ReceiverVarArg(absl::string_view name,
                                               MacroExpander expander);
 
+  Macro(const Macro&) = default;
+  Macro(Macro&&) = default;
+
+  Macro& operator=(const Macro&) = default;
+  Macro& operator=(Macro&&) = default;
+
   // Create a Macro for a global function with the specified number of arguments
   ABSL_DEPRECATED("Use static factory methods instead.")
   Macro(absl::string_view function, size_t arg_count, MacroExpander expander,
         bool receiver_style = false)
-      : key_(absl::StrCat(function, ":", arg_count, ":",
-                          receiver_style ? "true" : "false")),
-        arg_count_(arg_count),
-        expander_(std::make_shared<MacroExpander>(std::move(expander))),
-        receiver_style_(receiver_style),
-        var_arg_style_(false) {}
+      : rep_(std::make_shared<Rep>(
+            absl::StrCat(function, ":", arg_count, ":",
+                         receiver_style ? "true" : "false"),
+            arg_count, std::move(expander), receiver_style, false)) {}
 
   ABSL_DEPRECATED("Use static factory methods instead.")
   Macro(absl::string_view function, MacroExpander expander,
         bool receiver_style = false)
-      : key_(absl::StrCat(function, ":*:", receiver_style ? "true" : "false")),
-        arg_count_(0),
-        expander_(std::make_shared<MacroExpander>(std::move(expander))),
-        receiver_style_(receiver_style),
-        var_arg_style_(true) {}
+      : rep_(std::make_shared<Rep>(
+            absl::StrCat(function, ":*:", receiver_style ? "true" : "false"), 0,
+            std::move(expander), receiver_style, true)) {}
 
   // Function name to match.
-  absl::string_view function() const { return key().substr(0, key_.find(':')); }
+  absl::string_view function() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return key().substr(0, rep_->key.find(':'));
+  }
 
   // argument_count() for the function call.
   //
   // When the macro is a var-arg style macro, the return value will be zero, but
   // the MacroKey will contain a `*` where the arg count would have been.
-  size_t argument_count() const { return arg_count_; }
+  size_t argument_count() const { return rep_->arg_count; }
 
   // is_receiver_style returns true if the macro matches a receiver style call.
-  bool is_receiver_style() const { return receiver_style_; }
+  bool is_receiver_style() const { return rep_->receiver_style; }
 
-  bool is_variadic() const { return var_arg_style_; }
+  bool is_variadic() const { return rep_->var_arg_style; }
 
   // key() returns the macro signatures accepted by this macro.
   //
@@ -108,11 +112,13 @@ class Macro final {
   //
   // When the macros is a var-arg style macro, the `arg-count` value is
   // represented as a `*`.
-  absl::string_view key() const { return key_; }
+  absl::string_view key() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return rep_->key;
+  }
 
   // Expander returns the MacroExpander to apply when the macro key matches the
   // parsed call signature.
-  const MacroExpander& expander() const { return *expander_; }
+  const MacroExpander& expander() const { return rep_->expander; }
 
   google::api::expr::v1alpha1::Expr Expand(
       const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
@@ -128,11 +134,23 @@ class Macro final {
   static Macro OptFlatMap();
 
  private:
-  std::string key_;
-  size_t arg_count_;
-  std::shared_ptr<MacroExpander> expander_;
-  bool receiver_style_;
-  bool var_arg_style_;
+  struct Rep {
+    Rep(std::string key, size_t arg_count, MacroExpander expander,
+        bool receiver_style, bool var_arg_style)
+        : key(std::move(key)),
+          arg_count(arg_count),
+          expander(std::move(expander)),
+          receiver_style(receiver_style),
+          var_arg_style(var_arg_style) {}
+
+    std::string key;
+    size_t arg_count;
+    MacroExpander expander;
+    bool receiver_style;
+    bool var_arg_style;
+  };
+
+  std::shared_ptr<const Rep> rep_;
 };
 
 }  // namespace cel
