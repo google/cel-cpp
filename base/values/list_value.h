@@ -182,8 +182,8 @@ class LegacyListValue final : public ListValue, public InlineData {
 
   bool empty() const;
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                    size_t index) const;
+  absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
+                                        size_t index) const;
 
   constexpr uintptr_t value() const { return impl_; }
 
@@ -250,9 +250,6 @@ class AbstractListValue : public ListValue,
 
   virtual bool empty() const { return size() == 0; }
 
-  virtual absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                            size_t index) const = 0;
-
   virtual absl::StatusOr<UniqueRef<Iterator>> NewIterator(
       ValueFactory& value_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
@@ -268,6 +265,9 @@ class AbstractListValue : public ListValue,
 
  protected:
   explicit AbstractListValue(Handle<ListType> type);
+
+  virtual absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
+                                                size_t index) const = 0;
 
  private:
   friend class cel::ListValue;
@@ -310,20 +310,21 @@ class DynamicListValue final : public AbstractListValue {
 
   bool empty() const override { return storage_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                    size_t index) const override {
+  absl::StatusOr<bool> AnyOf(ValueFactory& value_factory,
+                             AnyOfCallback cb) const override;
+
+ protected:
+  absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
+                                        size_t index) const override {
     static_cast<void>(value_factory);
     return storage_[index];
   }
 
+ private:
   internal::TypeInfo TypeId() const override {
     return internal::TypeId<DynamicListValue>();
   }
 
-  absl::StatusOr<bool> AnyOf(ValueFactory& value_factory,
-                             AnyOfCallback cb) const override;
-
- private:
   std::vector<Handle<Value>, Allocator<Handle<Value>>> storage_;
 };
 
@@ -357,16 +358,17 @@ class StaticListValue final : public AbstractListValue {
 
   bool empty() const override { return storage_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                    size_t index) const override {
+ protected:
+  absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
+                                        size_t index) const override {
     return value_traits::Wrap(value_factory, storage_[index]);
   }
 
+ private:
   internal::TypeInfo TypeId() const override {
     return internal::TypeId<StaticListValue<T>>();
   }
 
- private:
   std::vector<underlying_type, Allocator<underlying_type>> storage_;
 };
 

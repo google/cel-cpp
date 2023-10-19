@@ -441,19 +441,17 @@ class TestListValue final : public CEL_LIST_VALUE_CLASS {
 
   size_t size() const override { return elements_.size(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                    size_t index) const override {
-    if (index >= size()) {
-      return absl::OutOfRangeError("");
-    }
-    return value_factory.CreateIntValue(elements_[index]);
-  }
-
   std::string DebugString() const override {
     return absl::StrCat("[", absl::StrJoin(elements_, ", "), "]");
   }
 
   const std::vector<int64_t>& value() const { return elements_; }
+
+ protected:
+  absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
+                                        size_t index) const override {
+    return value_factory.CreateIntValue(elements_[index]);
+  }
 
  private:
   std::vector<int64_t> elements_;

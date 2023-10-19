@@ -101,7 +101,11 @@ bool ListValue::empty() const {
 
 absl::StatusOr<Handle<Value>> ListValue::Get(ValueFactory& value_factory,
                                              size_t index) const {
-  return CEL_INTERNAL_LIST_VALUE_DISPATCH(Get, value_factory, index);
+  if (ABSL_PREDICT_FALSE(index >= size())) {
+    return value_factory.CreateErrorValue(
+        absl::InvalidArgumentError("index out of bounds"));
+  }
+  return CEL_INTERNAL_LIST_VALUE_DISPATCH(GetImpl, value_factory, index);
 }
 
 absl::StatusOr<UniqueRef<ListValue::Iterator>> ListValue::NewIterator(
@@ -290,8 +294,8 @@ absl::StatusOr<UniqueRef<ListValue::Iterator>> LegacyListValue::NewIterator(
                                              value_factory, impl_);
 }
 
-absl::StatusOr<Handle<Value>> LegacyListValue::Get(ValueFactory& value_factory,
-                                                   size_t index) const {
+absl::StatusOr<Handle<Value>> LegacyListValue::GetImpl(
+    ValueFactory& value_factory, size_t index) const {
   return LegacyListValueGet(impl_, value_factory, index);
 }
 

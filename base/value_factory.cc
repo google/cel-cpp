@@ -326,11 +326,9 @@ class JsonListValue final : public CEL_LIST_VALUE_CLASS {
 
   bool empty() const override { return array_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                    size_t index) const override {
-    if (ABSL_PREDICT_FALSE(index >= size())) {
-      return absl::InvalidArgumentError("index out of bounds");
-    }
+ protected:
+  absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
+                                        size_t index) const override {
     return value_factory.CreateValueFromJson(array_[index]);
   }
 

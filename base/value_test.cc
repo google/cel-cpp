@@ -319,19 +319,17 @@ class TestListValue final : public CEL_LIST_VALUE_CLASS {
 
   size_t size() const override { return elements_.size(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                    size_t index) const override {
-    if (index >= size()) {
-      return absl::OutOfRangeError("");
-    }
-    return value_factory.CreateIntValue(elements_[index]);
-  }
-
   std::string DebugString() const override {
     return absl::StrCat("[", absl::StrJoin(elements_, ", "), "]");
   }
 
   const std::vector<int64_t>& value() const { return elements_; }
+
+ protected:
+  absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
+                                        size_t index) const override {
+    return value_factory.CreateIntValue(elements_[index]);
+  }
 
  private:
   std::vector<int64_t> elements_;
@@ -349,19 +347,17 @@ class TestMapKeysListValue final : public CEL_LIST_VALUE_CLASS {
 
   size_t size() const override { return elements_.size(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                    size_t index) const override {
-    if (index >= size()) {
-      return absl::OutOfRangeError("");
-    }
-    return value_factory.CreateStringValue(elements_[index]);
-  }
-
   std::string DebugString() const override {
     return absl::StrCat("[", absl::StrJoin(elements_, ", "), "]");
   }
 
   const std::vector<std::string>& value() const { return elements_; }
+
+ protected:
+  absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
+                                        size_t index) const override {
+    return value_factory.CreateStringValue(elements_[index]);
+  }
 
  private:
   std::vector<std::string> elements_;
@@ -2791,8 +2787,10 @@ TEST_P(ListValueTest, Get) {
             value_factory.CreateIntValue(1));
   EXPECT_EQ(Must(list_value->Get(value_factory, 2)),
             value_factory.CreateIntValue(2));
-  EXPECT_THAT(list_value->Get(value_factory, 3),
-              StatusIs(absl::StatusCode::kOutOfRange));
+  ASSERT_OK_AND_ASSIGN(auto element, list_value->Get(value_factory, 3));
+  ASSERT_TRUE(element->Is<ErrorValue>());
+  EXPECT_THAT(element->As<ErrorValue>().value(),
+              StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 TEST_P(ListValueTest, NewIteratorValues) {
