@@ -94,7 +94,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI NativeTypeId final {
 
   const std::type_info* rep_ = nullptr;
 #else
-  constexpr explicit NativeTypeId(const std::void* rep) : rep_(rep) {}
+  constexpr explicit NativeTypeId(const void* rep) : rep_(rep) {}
 
   const void* rep_ = nullptr;
 #endif
