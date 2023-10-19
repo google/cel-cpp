@@ -29,6 +29,7 @@
 #include "absl/types/optional.h"
 #include "internal/benchmark.h"
 #include "internal/testing.h"
+#include "parser/macro.h"
 #include "parser/options.h"
 #include "parser/source_factory.h"
 #include "testutil/expr_printer.h"
@@ -1194,7 +1195,24 @@ std::vector<TestInfo> test_cases = {
     {"Msg{?field: value}",
      "Msg{\n  "
      "?field:value^#3:Expr.Ident#^#2:Expr.CreateStruct.Entry#\n}^#1:Expr."
-     "CreateStruct#"}};
+     "CreateStruct#"},
+    {"m.optMap(v, f)",
+     "_?_:_(\n  m^#1:Expr.Ident#.hasValue()^#5:Expr.Call#,\n  optional.of(\n   "
+     " __comprehension__(\n      // Variable\n      #unused,\n      // "
+     "Target\n      []^#6:Expr.CreateList#,\n      // Accumulator\n      v,\n  "
+     "    // Init\n      m^#1:Expr.Ident#.value()^#7:Expr.Call#,\n      // "
+     "LoopCondition\n      false^#8:bool#,\n      // LoopStep\n      "
+     "v^#9:Expr.Ident#,\n      // Result\n      "
+     "f^#4:Expr.Ident#)^#10:Expr.Comprehension#\n  )^#11:Expr.Call#,\n  "
+     "optional.none()^#12:Expr.Call#\n)^#13:Expr.Call#"},
+    {"m.optFlatMap(v, f)",
+     "_?_:_(\n  m^#1:Expr.Ident#.hasValue()^#5:Expr.Call#,\n  "
+     "__comprehension__(\n    // Variable\n    #unused,\n    // Target\n    "
+     "[]^#6:Expr.CreateList#,\n    // Accumulator\n    v,\n    // Init\n    "
+     "m^#1:Expr.Ident#.value()^#7:Expr.Call#,\n    // LoopCondition\n    "
+     "false^#8:bool#,\n    // LoopStep\n    v^#9:Expr.Ident#,\n    // Result\n "
+     "   f^#4:Expr.Ident#)^#10:Expr.Comprehension#,\n  "
+     "optional.none()^#11:Expr.Call#\n)^#12:Expr.Call#"}};
 
 class KindAndIdAdorner : public testutil::ExpressionAdorner {
  public:
@@ -1360,8 +1378,10 @@ TEST_P(ExpressionTest, Parse) {
   }
   options.enable_optional_syntax = true;
 
-  auto result =
-      EnrichedParse(test_info.I, Macro::AllMacros(), "<input>", options);
+  std::vector<Macro> macros = Macro::AllMacros();
+  macros.push_back(cel::OptMapMacro());
+  macros.push_back(cel::OptFlatMapMacro());
+  auto result = EnrichedParse(test_info.I, macros, "<input>", options);
   if (test_info.E.empty()) {
     EXPECT_THAT(result, IsOk());
   } else {

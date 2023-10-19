@@ -79,6 +79,7 @@ class Macro final {
   Macro(absl::string_view function, size_t arg_count, MacroExpander expander,
         bool receiver_style = false)
       : rep_(std::make_shared<Rep>(
+            std::string(function),
             absl::StrCat(function, ":", arg_count, ":",
                          receiver_style ? "true" : "false"),
             arg_count, std::move(expander), receiver_style, false)) {}
@@ -87,12 +88,13 @@ class Macro final {
   Macro(absl::string_view function, MacroExpander expander,
         bool receiver_style = false)
       : rep_(std::make_shared<Rep>(
+            std::string(function),
             absl::StrCat(function, ":*:", receiver_style ? "true" : "false"), 0,
             std::move(expander), receiver_style, true)) {}
 
   // Function name to match.
   absl::string_view function() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return key().substr(0, rep_->key.find(':'));
+    return rep_->function;
   }
 
   // argument_count() for the function call.
@@ -129,20 +131,18 @@ class Macro final {
 
   static std::vector<Macro> AllMacros();
 
-  static Macro OptMap();
-
-  static Macro OptFlatMap();
-
  private:
   struct Rep {
-    Rep(std::string key, size_t arg_count, MacroExpander expander,
-        bool receiver_style, bool var_arg_style)
-        : key(std::move(key)),
+    Rep(std::string function, std::string key, size_t arg_count,
+        MacroExpander expander, bool receiver_style, bool var_arg_style)
+        : function(std::move(function)),
+          key(std::move(key)),
           arg_count(arg_count),
           expander(std::move(expander)),
           receiver_style(receiver_style),
           var_arg_style(var_arg_style) {}
 
+    std::string function;
     std::string key;
     size_t arg_count;
     MacroExpander expander;
@@ -152,6 +152,24 @@ class Macro final {
 
   std::shared_ptr<const Rep> rep_;
 };
+
+Macro HasMacro();
+
+Macro AllMacro();
+
+Macro ExistsMacro();
+
+Macro ExistsOneMacro();
+
+Macro Map2Macro();
+
+Macro Map3Macro();
+
+Macro FilterMacro();
+
+Macro OptMapMacro();
+
+Macro OptFlatMapMacro();
 
 }  // namespace cel
 
