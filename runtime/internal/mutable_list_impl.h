@@ -58,7 +58,7 @@ class MutableListType : public cel::OpaqueType {
 
  private:
   // Called by Is() to perform type checking
-  cel::internal::TypeInfo TypeId() const override;
+  cel::NativeTypeId TypeId() const override;
 };
 
 // Runtime internal value type representing a list that is built from a
@@ -94,7 +94,7 @@ class MutableListValue : public cel::OpaqueValue {
   std::string DebugString() const override;
 
  private:
-  cel::internal::TypeInfo TypeId() const override;
+  cel::NativeTypeId TypeId() const override;
 
   cel::UniqueRef<cel::ListValueBuilderInterface> list_builder_;
 };

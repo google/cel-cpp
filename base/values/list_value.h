@@ -37,7 +37,7 @@
 #include "base/value.h"
 #include "common/any.h"
 #include "common/json.h"
-#include "internal/rtti.h"
+#include "common/native_type.h"
 
 namespace cel {
 
@@ -121,14 +121,14 @@ class ListValue : public Value,
  private:
   friend class base_internal::LegacyListValue;
   friend class base_internal::AbstractListValue;
-  friend internal::TypeInfo base_internal::GetListValueTypeId(
+  friend NativeTypeId base_internal::GetListValueTypeId(
       const ListValue& list_value);
   friend class base_internal::ValueHandle;
 
   ListValue() = default;
 
   // Called by CEL_IMPLEMENT_LIST_VALUE() and Is() to perform type checking.
-  internal::TypeInfo TypeId() const;
+  NativeTypeId TypeId() const;
 };
 
 // Abstract class describes an iterator which can iterate over the elements in a
@@ -159,7 +159,7 @@ class LegacyListValue final : public ListValue, public InlineData {
   static bool Is(const Value& value) {
     return value.kind() == kKind &&
            static_cast<const ListValue&>(value).TypeId() ==
-               internal::TypeId<LegacyListValue>();
+               NativeTypeId::For<LegacyListValue>();
   }
 
   using ListValue::Is;
@@ -213,9 +213,7 @@ class LegacyListValue final : public ListValue, public InlineData {
       : ListValue(), InlineData(kMetadata), impl_(impl) {}
 
   // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
-  internal::TypeInfo TypeId() const {
-    return internal::TypeId<LegacyListValue>();
-  }
+  NativeTypeId TypeId() const { return NativeTypeId::For<LegacyListValue>(); }
 
   uintptr_t impl_;
 };
@@ -227,7 +225,7 @@ class AbstractListValue : public ListValue,
   static bool Is(const Value& value) {
     return value.kind() == kKind &&
            static_cast<const ListValue&>(value).TypeId() !=
-               internal::TypeId<LegacyListValue>();
+               NativeTypeId::For<LegacyListValue>();
   }
 
   using ListValue::Is;
@@ -272,16 +270,16 @@ class AbstractListValue : public ListValue,
  private:
   friend class cel::ListValue;
   friend class LegacyListValue;
-  friend internal::TypeInfo GetListValueTypeId(const ListValue& list_value);
+  friend NativeTypeId GetListValueTypeId(const ListValue& list_value);
   friend class ValueHandle;
 
   // Called by CEL_IMPLEMENT_LIST_VALUE() and Is() to perform type checking.
-  virtual internal::TypeInfo TypeId() const = 0;
+  virtual NativeTypeId TypeId() const = 0;
 
   const Handle<ListType> type_;
 };
 
-inline internal::TypeInfo GetListValueTypeId(const ListValue& list_value) {
+inline NativeTypeId GetListValueTypeId(const ListValue& list_value) {
   return list_value.TypeId();
 }
 
@@ -321,8 +319,8 @@ class DynamicListValue final : public AbstractListValue {
   }
 
  private:
-  internal::TypeInfo TypeId() const override {
-    return internal::TypeId<DynamicListValue>();
+  NativeTypeId TypeId() const override {
+    return NativeTypeId::For<DynamicListValue>();
   }
 
   std::vector<Handle<Value>, Allocator<Handle<Value>>> storage_;
@@ -365,8 +363,8 @@ class StaticListValue final : public AbstractListValue {
   }
 
  private:
-  internal::TypeInfo TypeId() const override {
-    return internal::TypeId<StaticListValue<T>>();
+  NativeTypeId TypeId() const override {
+    return NativeTypeId::For<StaticListValue<T>>();
   }
 
   std::vector<underlying_type, Allocator<underlying_type>> storage_;

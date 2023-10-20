@@ -18,9 +18,9 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/memory.h"
+#include "common/native_type.h"
 #include "eval/compiler/constant_folding.h"
 #include "internal/casts.h"
-#include "internal/rtti.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/runtime_friend_access.h"
 #include "runtime/internal/runtime_impl.h"
@@ -31,14 +31,14 @@ namespace cel::extensions {
 namespace {
 
 using ::cel::internal::down_cast;
-using ::cel::internal::TypeId;
 using ::cel::runtime_internal::RuntimeFriendAccess;
 using ::cel::runtime_internal::RuntimeImpl;
 
 absl::StatusOr<RuntimeImpl*> RuntimeImplFromBuilder(RuntimeBuilder& builder) {
   Runtime& runtime = RuntimeFriendAccess::GetMutableRuntime(builder);
 
-  if (RuntimeFriendAccess::RuntimeTypeId(runtime) != TypeId<RuntimeImpl>()) {
+  if (RuntimeFriendAccess::RuntimeTypeId(runtime) !=
+      NativeTypeId::For<RuntimeImpl>()) {
     return absl::UnimplementedError(
         "constant folding only supported on the default cel::Runtime "
         "implementation.");

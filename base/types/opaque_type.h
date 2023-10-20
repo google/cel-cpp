@@ -22,7 +22,7 @@
 #include "absl/types/span.h"
 #include "base/kind.h"
 #include "base/type.h"
-#include "internal/rtti.h"
+#include "common/native_type.h"
 
 namespace cel {
 
@@ -53,9 +53,7 @@ class OpaqueType : public Type, public base_internal::HeapData {
  protected:
   OpaqueType() : Type(), HeapData(kKind) {}
 
-  static internal::TypeInfo TypeId(const OpaqueType& type) {
-    return type.TypeId();
-  }
+  static NativeTypeId TypeId(const OpaqueType& type) { return type.TypeId(); }
 
  private:
   friend class Type;
@@ -64,7 +62,7 @@ class OpaqueType : public Type, public base_internal::HeapData {
   friend class base_internal::TypeHandle;
 
   // Called by CEL_IMPLEMENT_STRUCT_TYPE() and Is() to perform type checking.
-  virtual internal::TypeInfo TypeId() const = 0;
+  virtual NativeTypeId TypeId() const = 0;
 };
 
 extern template class Handle<OpaqueType>;

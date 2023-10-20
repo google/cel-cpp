@@ -40,7 +40,7 @@ cc_library(
         "//base:data",
         "//base:handle",
         "//base:memory",
-        "//internal:rtti",
+        "//common:native_type",
     ],
 )
 
@@ -59,7 +59,7 @@ cc_library(
     name = "runtime_friend_access",
     hdrs = ["runtime_friend_access.h"],
     deps = [
-        "//internal:rtti",
+        "//common:native_type",
         "//runtime",
         "//runtime:runtime_builder",
     ],
@@ -73,9 +73,9 @@ cc_library(
         "//base:ast",
         "//base:data",
         "//base:handle",
+        "//common:native_type",
         "//eval/compiler:flat_expr_builder",
         "//eval/eval:evaluator_core",
-        "//internal:rtti",
         "//internal:status_macros",
         "//runtime",
         "//runtime:activation_interface",
@@ -83,7 +83,6 @@ cc_library(
         "//runtime:runtime_options",
         "//runtime:type_registry",
         "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
     ],
 )
 

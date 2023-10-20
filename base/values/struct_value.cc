@@ -42,7 +42,7 @@
 #include "base/values/null_value.h"
 #include "common/any.h"
 #include "common/json.h"
-#include "internal/rtti.h"
+#include "common/native_type.h"
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -141,7 +141,7 @@ absl::StatusOr<Handle<Value>> StructValue::GetWrappedFieldByName(
                                             value_factory, name);
 }
 
-internal::TypeInfo StructValue::TypeId() const {
+NativeTypeId StructValue::TypeId() const {
   return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(TypeId);
 }
 

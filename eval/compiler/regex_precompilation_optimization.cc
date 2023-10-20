@@ -28,23 +28,23 @@
 #include "base/ast_internal/expr.h"
 #include "base/builtins.h"
 #include "base/values/string_value.h"
+#include "common/native_type.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/compiler_constant_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/regex_match_step.h"
 #include "internal/casts.h"
-#include "internal/rtti.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 namespace {
 
+using cel::NativeTypeId;
 using cel::ast_internal::AstImpl;
 using cel::ast_internal::Call;
 using cel::ast_internal::Expr;
 using cel::ast_internal::Reference;
 using cel::internal::down_cast;
-using cel::internal::TypeId;
 
 using ReferenceMap = absl::flat_hash_map<int64_t, Reference>;
 
@@ -168,7 +168,7 @@ class RegexPrecompilationOptimization : public ProgramOptimizer {
 
     ExecutionPathView re_plan = context.GetSubplan(expr);
     if (re_plan.size() == 1 &&
-        re_plan[0]->TypeId() == TypeId<CompilerConstantStep>()) {
+        re_plan[0]->TypeId() == NativeTypeId::For<CompilerConstantStep>()) {
       const auto& constant =
           down_cast<const CompilerConstantStep&>(*re_plan[0]);
       if (constant.value()->Is<cel::StringValue>()) {

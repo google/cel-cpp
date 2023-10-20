@@ -16,14 +16,12 @@
 #define THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_RUNTIME_IMPL_H_
 
 #include <memory>
-#include <string>
 
 #include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
 #include "base/ast.h"
 #include "base/type_provider.h"
+#include "common/native_type.h"
 #include "eval/compiler/flat_expr_builder.h"
-#include "internal/rtti.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
@@ -72,8 +70,8 @@ class RuntimeImpl : public Runtime {
   }
 
  private:
-  internal::TypeInfo TypeId() const override {
-    return internal::TypeId<RuntimeImpl>();
+  NativeTypeId TypeId() const override {
+    return NativeTypeId::For<RuntimeImpl>();
   }
   // Note: this is mutable, but should only be accessed in a const context after
   // building is complete.

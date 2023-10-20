@@ -34,7 +34,7 @@
 #include "base/values/bool_value.h"
 #include "common/any.h"
 #include "common/json.h"
-#include "internal/rtti.h"
+#include "common/native_type.h"
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -128,7 +128,7 @@ absl::StatusOr<bool> ListValue::AnyOf(ValueFactory& value_factory,
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(AnyOf, value_factory, cb);
 }
 
-internal::TypeInfo ListValue::TypeId() const {
+NativeTypeId ListValue::TypeId() const {
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(TypeId);
 }
 

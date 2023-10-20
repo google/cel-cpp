@@ -28,7 +28,7 @@
 #include "base/type_provider.h"
 #include "base/value.h"
 #include "base/value_factory.h"
-#include "internal/rtti.h"
+#include "common/native_type.h"
 #include "runtime/activation_interface.h"
 
 namespace cel {
@@ -127,7 +127,7 @@ class Runtime {
  private:
   friend class runtime_internal::RuntimeFriendAccess;
 
-  virtual internal::TypeInfo TypeId() const = 0;
+  virtual NativeTypeId TypeId() const = 0;
 };
 
 }  // namespace cel

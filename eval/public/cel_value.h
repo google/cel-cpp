@@ -35,11 +35,11 @@
 #include "absl/types/variant.h"
 #include "base/kind.h"
 #include "base/memory.h"
+#include "common/native_type.h"
 #include "eval/public/cel_value_internal.h"
 #include "eval/public/message_wrapper.h"
 #include "eval/public/unknown_set.h"
 #include "internal/casts.h"
-#include "internal/rtti.h"
 #include "internal/status_macros.h"
 #include "internal/utf8.h"
 
@@ -550,9 +550,7 @@ class CelList {
  private:
   friend struct cel::interop_internal::CelListAccess;
 
-  virtual cel::internal::TypeInfo TypeId() const {
-    return cel::internal::TypeInfo();
-  }
+  virtual cel::NativeTypeId TypeId() const { return cel::NativeTypeId(); }
 };
 
 // CelMap is a base class for map accessors.
@@ -628,9 +626,7 @@ class CelMap {
  private:
   friend struct cel::interop_internal::CelMapAccess;
 
-  virtual cel::internal::TypeInfo TypeId() const {
-    return cel::internal::TypeInfo();
-  }
+  virtual cel::NativeTypeId TypeId() const { return cel::NativeTypeId(); }
 };
 
 // Utility method that generates CelValue containing CelError.

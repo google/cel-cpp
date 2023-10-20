@@ -15,7 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_RUNTIME_FRIEND_ACCESS_H_
 #define THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_RUNTIME_FRIEND_ACCESS_H_
 
-#include "internal/rtti.h"
+#include "common/native_type.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_builder.h"
 
@@ -35,7 +35,7 @@ class RuntimeFriendAccess {
 
   // Return the internal type_id for the runtime instance for checked down
   // casting.
-  static internal::TypeInfo RuntimeTypeId(Runtime& runtime) {
+  static NativeTypeId RuntimeTypeId(Runtime& runtime) {
     return runtime.TypeId();
   }
 };

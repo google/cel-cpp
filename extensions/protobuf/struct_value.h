@@ -36,10 +36,10 @@
 #include "base/value.h"
 #include "base/value_factory.h"
 #include "base/values/struct_value.h"
+#include "common/native_type.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/struct_type.h"
 #include "internal/casts.h"
-#include "internal/rtti.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
@@ -69,7 +69,7 @@ class ProtoStructValue : public CEL_STRUCT_VALUE_CLASS {
     return CEL_STRUCT_VALUE_CLASS::Is(value) &&
            cel::base_internal::GetStructValueTypeId(
                static_cast<const StructValue&>(value)) ==
-               cel::internal::TypeId<ProtoStructValue>();
+               cel::NativeTypeId::For<ProtoStructValue>();
   }
 
   using CEL_STRUCT_VALUE_CLASS::Is;
@@ -104,7 +104,7 @@ class ProtoStructValue : public CEL_STRUCT_VALUE_CLASS {
       ABSL_ATTRIBUTE_LIFETIME_BOUND T& scratch) const {
     auto maybe_value =
         ValueReference(scratch, *ABSL_DIE_IF_NULL(T::descriptor()),  // Crash OK
-                       internal::TypeId<T>());
+                       NativeTypeId::For<T>());
     if (ABSL_PREDICT_FALSE(!maybe_value.has_value())) {
       return nullptr;
     }
@@ -145,7 +145,7 @@ class ProtoStructValue : public CEL_STRUCT_VALUE_CLASS {
   // pointer to the parsed protocol buffer message.
   virtual absl::optional<const google::protobuf::Message*> ValueReference(
       google::protobuf::Message& scratch, const google::protobuf::Descriptor& desc,
-      internal::TypeInfo type) const = 0;
+      NativeTypeId type) const = 0;
 
   virtual google::protobuf::Message* ValuePointer(google::protobuf::MessageFactory& message_factory,
                                         google::protobuf::Arena* arena) const = 0;
@@ -174,8 +174,8 @@ class ProtoStructValue : public CEL_STRUCT_VALUE_CLASS {
   static absl::StatusOr<Handle<ProtoStructValue>> Create(
       ValueFactory& value_factory, google::protobuf::Message&& message);
 
-  internal::TypeInfo TypeId() const final {
-    return internal::TypeId<ProtoStructValue>();
+  NativeTypeId TypeId() const final {
+    return NativeTypeId::For<ProtoStructValue>();
   }
 };
 
@@ -322,10 +322,10 @@ class StaticParsedProtoStructValue final : public ParsedProtoStructValue {
  protected:
   absl::optional<const google::protobuf::Message*> ValueReference(
       google::protobuf::Message& scratch, const google::protobuf::Descriptor& desc,
-      internal::TypeInfo type) const override {
+      NativeTypeId type) const override {
     static_cast<void>(scratch);
     static_cast<void>(desc);
-    if (ABSL_PREDICT_FALSE(type != internal::TypeId<T>())) {
+    if (ABSL_PREDICT_FALSE(type != NativeTypeId::For<T>())) {
       return absl::nullopt;
     }
     ABSL_ASSERT(value().GetDescriptor() == &desc);
@@ -347,10 +347,10 @@ class HeapStaticParsedProtoStructValue : public ParsedProtoStructValue {
  protected:
   absl::optional<const google::protobuf::Message*> ValueReference(
       google::protobuf::Message& scratch, const google::protobuf::Descriptor& desc,
-      internal::TypeInfo type) const final {
+      NativeTypeId type) const final {
     static_cast<void>(scratch);
     static_cast<void>(desc);
-    if (ABSL_PREDICT_FALSE(type != internal::TypeId<T>())) {
+    if (ABSL_PREDICT_FALSE(type != NativeTypeId::For<T>())) {
       return absl::nullopt;
     }
     ABSL_ASSERT(value().GetDescriptor() == &desc);
@@ -377,7 +377,7 @@ class DynamicParsedProtoStructValue : public ParsedProtoStructValue {
 
   absl::optional<const google::protobuf::Message*> ValueReference(
       google::protobuf::Message& scratch, const google::protobuf::Descriptor& desc,
-      internal::TypeInfo type) const final {
+      NativeTypeId type) const final {
     if (ABSL_PREDICT_FALSE(&desc != scratch.GetDescriptor())) {
       return absl::nullopt;
     }

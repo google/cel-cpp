@@ -26,7 +26,7 @@
 #include "base/types/optional_type.h"
 #include "base/value.h"
 #include "base/values/opaque_value.h"
-#include "internal/rtti.h"
+#include "common/native_type.h"
 
 namespace cel {
 
@@ -42,7 +42,7 @@ class OptionalValue : public OpaqueValue {
   static bool Is(const Value& value) {
     return OpaqueValue::Is(value) &&
            OpaqueValue::TypeId(static_cast<const OpaqueValue&>(value)) ==
-               internal::TypeId<OptionalValue>();
+               NativeTypeId::For<OptionalValue>();
   }
 
   using OpaqueValue::Is;
@@ -88,8 +88,8 @@ class OptionalValue : public OpaqueValue {
   explicit OptionalValue(Handle<OptionalType> type)
       : OpaqueValue(std::move(type)) {}
 
-  internal::TypeInfo TypeId() const final {
-    return internal::TypeId<OptionalValue>();
+  NativeTypeId TypeId() const final {
+    return NativeTypeId::For<OptionalValue>();
   }
 };
 

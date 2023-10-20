@@ -77,7 +77,7 @@ cc_library(
     deps = [
         ":data",
         "//base:kind",
-        "//internal:rtti",
+        "//common:native_type",
     ],
 )
 
@@ -102,7 +102,7 @@ cc_library(
         ":data",
         ":type",
         "//base:handle",
-        "//internal:rtti",
+        "//common:native_type",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",

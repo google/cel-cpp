@@ -88,7 +88,7 @@ std::string StructType::DebugString() const {
   return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(DebugString);
 }
 
-internal::TypeInfo StructType::TypeId() const {
+NativeTypeId StructType::TypeId() const {
   return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(TypeId);
 }
 

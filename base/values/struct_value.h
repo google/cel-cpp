@@ -42,7 +42,7 @@
 #include "base/value.h"
 #include "common/any.h"
 #include "common/json.h"
-#include "internal/rtti.h"
+#include "common/native_type.h"
 
 namespace google::api::expr::runtime {
 class SelectStep;
@@ -166,7 +166,7 @@ class StructValue : public Value,
 
   friend struct GetFieldVisitor;
   friend struct HasFieldVisitor;
-  friend internal::TypeInfo base_internal::GetStructValueTypeId(
+  friend NativeTypeId base_internal::GetStructValueTypeId(
       const StructValue& struct_value);
   friend class base_internal::ValueHandle;
   friend class base_internal::LegacyStructValue;
@@ -179,7 +179,7 @@ class StructValue : public Value,
       ValueFactory& value_factory, absl::string_view name) const;
 
   // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
-  internal::TypeInfo TypeId() const;
+  NativeTypeId TypeId() const;
 };
 
 class StructValue::FieldIterator {
@@ -235,7 +235,7 @@ class LegacyStructValue final : public StructValue, public InlineData {
   static bool Is(const Value& value) {
     return value.kind() == kKind &&
            static_cast<const StructValue&>(value).TypeId() ==
-               internal::TypeId<LegacyStructValue>();
+               NativeTypeId::For<LegacyStructValue>();
   }
 
   using StructValue::Is;
@@ -284,7 +284,7 @@ class LegacyStructValue final : public StructValue, public InlineData {
 
   friend struct GetFieldVisitor;
   friend struct HasFieldVisitor;
-  friend internal::TypeInfo base_internal::GetStructValueTypeId(
+  friend NativeTypeId base_internal::GetStructValueTypeId(
       const StructValue& struct_value);
   friend class base_internal::ValueHandle;
   friend class cel::StructValue;
@@ -311,9 +311,7 @@ class LegacyStructValue final : public StructValue, public InlineData {
       ValueFactory& value_factory, absl::string_view name) const;
 
   // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
-  internal::TypeInfo TypeId() const {
-    return internal::TypeId<LegacyStructValue>();
-  }
+  NativeTypeId TypeId() const { return NativeTypeId::For<LegacyStructValue>(); }
 
   // This is a type erased pointer to google::protobuf::Message or google::protobuf::MessageLite, it
   // is tagged.
@@ -329,7 +327,7 @@ class AbstractStructValue : public StructValue,
   static bool Is(const Value& value) {
     return value.kind() == kKind &&
            static_cast<const StructValue&>(value).TypeId() !=
-               internal::TypeId<LegacyStructValue>();
+               NativeTypeId::For<LegacyStructValue>();
   }
 
   using StructValue::Is;
@@ -383,7 +381,7 @@ class AbstractStructValue : public StructValue,
 
   friend struct GetFieldVisitor;
   friend struct HasFieldVisitor;
-  friend internal::TypeInfo base_internal::GetStructValueTypeId(
+  friend NativeTypeId base_internal::GetStructValueTypeId(
       const StructValue& struct_value);
   friend class base_internal::ValueHandle;
   friend class cel::StructValue;
@@ -398,7 +396,7 @@ class AbstractStructValue : public StructValue,
       ValueFactory& value_factory, absl::string_view name) const;
 
   // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
-  virtual internal::TypeInfo TypeId() const = 0;
+  virtual NativeTypeId TypeId() const = 0;
 
   const Handle<StructType> type_;
 };
@@ -433,8 +431,7 @@ class AbstractStructValue : public StructValue,
 
 namespace base_internal {
 
-inline internal::TypeInfo GetStructValueTypeId(
-    const StructValue& struct_value) {
+inline NativeTypeId GetStructValueTypeId(const StructValue& struct_value) {
   return struct_value.TypeId();
 }
 

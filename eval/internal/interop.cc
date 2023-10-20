@@ -40,6 +40,7 @@
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
 #include "base/values/struct_value.h"
+#include "common/native_type.h"
 #include "eval/internal/cel_value_equal.h"
 #include "eval/internal/errors.h"
 #include "eval/public/cel_options.h"
@@ -50,7 +51,6 @@
 #include "eval/public/unknown_set.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/overloaded.h"
-#include "internal/rtti.h"
 #include "internal/status_macros.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
@@ -186,8 +186,8 @@ class LegacyCelList final : public CelList {
   Handle<ListValue> value() const { return impl_; }
 
  private:
-  internal::TypeInfo TypeId() const override {
-    return internal::TypeId<LegacyCelList>();
+  NativeTypeId TypeId() const override {
+    return NativeTypeId::For<LegacyCelList>();
   }
 
   Handle<ListValue> impl_;
@@ -284,8 +284,8 @@ class LegacyCelMap final : public CelMap {
   Handle<MapValue> value() const { return impl_; }
 
  private:
-  internal::TypeInfo TypeId() const override {
-    return internal::TypeId<LegacyCelMap>();
+  NativeTypeId TypeId() const override {
+    return NativeTypeId::For<LegacyCelMap>();
   }
 
   Handle<MapValue> impl_;
@@ -434,13 +434,11 @@ absl::StatusOr<Handle<StructValue>> LegacyAbstractStructType::NewValueFromAny(
   return std::move(modern).As<StructValue>();
 }
 
-internal::TypeInfo CelListAccess::TypeId(const CelList& list) {
+NativeTypeId CelListAccess::TypeId(const CelList& list) {
   return list.TypeId();
 }
 
-internal::TypeInfo CelMapAccess::TypeId(const CelMap& map) {
-  return map.TypeId();
-}
+NativeTypeId CelMapAccess::TypeId(const CelMap& map) { return map.TypeId(); }
 
 Handle<StructType> LegacyStructTypeAccess::Create(uintptr_t message) {
   return base_internal::HandleFactory<StructType>::Make<
@@ -503,7 +501,7 @@ Handle<TypeValue> CreateTypeValueFromView(absl::string_view input) {
 }
 
 Handle<ListValue> CreateLegacyListValue(const CelList* value) {
-  if (CelListAccess::TypeId(*value) == internal::TypeId<LegacyCelList>()) {
+  if (CelListAccess::TypeId(*value) == NativeTypeId::For<LegacyCelList>()) {
     // Fast path.
     return static_cast<const LegacyCelList*>(value)->value();
   }
@@ -512,7 +510,7 @@ Handle<ListValue> CreateLegacyListValue(const CelList* value) {
 }
 
 Handle<MapValue> CreateLegacyMapValue(const CelMap* value) {
-  if (CelMapAccess::TypeId(*value) == internal::TypeId<LegacyCelMap>()) {
+  if (CelMapAccess::TypeId(*value) == NativeTypeId::For<LegacyCelMap>()) {
     // Fast path.
     return static_cast<const LegacyCelMap*>(value)->value();
   }

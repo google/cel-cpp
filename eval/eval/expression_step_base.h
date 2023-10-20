@@ -22,9 +22,7 @@ class ExpressionStepBase : public ExpressionStep {
   // Returns if the execution step comes from AST.
   bool ComesFromAst() const override { return comes_from_ast_; }
 
-  cel::internal::TypeInfo TypeId() const override {
-    return cel::internal::TypeInfo();
-  }
+  cel::NativeTypeId TypeId() const override { return cel::NativeTypeId(); }
 
  private:
   int64_t id_;

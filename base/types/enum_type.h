@@ -30,7 +30,7 @@
 #include "base/kind.h"
 #include "base/memory.h"
 #include "base/type.h"
-#include "internal/rtti.h"
+#include "common/native_type.h"
 
 namespace cel {
 
@@ -152,7 +152,7 @@ class EnumType : public Type, public base_internal::HeapData {
   EnumType();
 
  private:
-  friend internal::TypeInfo base_internal::GetEnumTypeTypeId(
+  friend NativeTypeId base_internal::GetEnumTypeTypeId(
       const EnumType& enum_type);
   struct NewInstanceVisitor;
   struct FindConstantVisitor;
@@ -168,7 +168,7 @@ class EnumType : public Type, public base_internal::HeapData {
   EnumType(EnumType&&) = delete;
 
   // Called by CEL_IMPLEMENT_ENUM_TYPE() and Is() to perform type checking.
-  virtual internal::TypeInfo TypeId() const = 0;
+  virtual NativeTypeId TypeId() const = 0;
 };
 
 // Constant describes a single value in an enumeration. All fields are valid so
@@ -233,7 +233,7 @@ CEL_INTERNAL_TYPE_DECL(EnumType);
 
 namespace base_internal {
 
-inline internal::TypeInfo GetEnumTypeTypeId(const EnumType& enum_type) {
+inline NativeTypeId GetEnumTypeTypeId(const EnumType& enum_type) {
   return enum_type.TypeId();
 }
 

@@ -35,7 +35,7 @@ cc_library(
         "//base:data",
         "//base:handle",
         "//base:memory",
-        "//internal:rtti",
+        "//common:native_type",
         "//internal:status_macros",
         "//runtime",
         "//runtime:activation_interface",
@@ -860,7 +860,7 @@ cc_library(
     hdrs = ["compiler_constant_step.h"],
     deps = [
         ":expression_step_base",
-        "//internal:rtti",
+        "//common:native_type",
     ],
 )
 
@@ -871,8 +871,8 @@ cc_test(
         ":compiler_constant_step",
         ":evaluator_core",
         "//base:data",
+        "//common:native_type",
         "//extensions/protobuf:memory_manager",
-        "//internal:rtti",
         "//internal:status_macros",
         "//internal:testing",
         "//runtime:activation",

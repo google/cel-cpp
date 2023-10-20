@@ -19,19 +19,19 @@
 #include <utility>
 
 #include "base/value.h"
-#include "internal/rtti.h"
+#include "common/native_type.h"
 
 namespace cel::runtime_internal {
-using ::cel::internal::TypeInfo;
+using ::cel::NativeTypeId;
 
 bool MutableListType::Is(const cel::Type& type) {
   return OpaqueType::Is(type) &&
          OpaqueType::TypeId(static_cast<const OpaqueType&>(type)) ==
-             cel::internal::TypeId<MutableListType>();
+             cel::NativeTypeId::For<MutableListType>();
 }
 
-TypeInfo MutableListType::TypeId() const {
-  return cel::internal::TypeId<MutableListType>();
+NativeTypeId MutableListType::TypeId() const {
+  return cel::NativeTypeId::For<MutableListType>();
 }
 
 MutableListValue::MutableListValue(
@@ -52,14 +52,14 @@ std::string MutableListValue::DebugString() const {
   return list_builder_->DebugString();
 }
 
-TypeInfo MutableListValue::TypeId() const {
-  return cel::internal::TypeId<MutableListValue>();
+NativeTypeId MutableListValue::TypeId() const {
+  return cel::NativeTypeId::For<MutableListValue>();
 }
 
 bool MutableListValue::Is(const cel::Value& value) {
   return OpaqueValue::Is(value) &&
          OpaqueValue::TypeId(static_cast<const OpaqueValue&>(value)) ==
-             cel::internal::TypeId<MutableListValue>();
+             cel::NativeTypeId::For<MutableListValue>();
 }
 
 }  // namespace cel::runtime_internal

@@ -31,10 +31,10 @@
 #include "base/value_factory.h"
 #include "base/values/struct_value_builder.h"
 #include "base/values/type_value.h"
+#include "common/native_type.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/message_wrapper.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
-#include "internal/rtti.h"
 
 namespace cel::interop_internal {
 
@@ -77,21 +77,19 @@ class LegacyAbstractStructType : public base_internal::AbstractStructType {
       ValueFactory& value_factory, const absl::Cord& value) const override;
 
  private:
-  internal::TypeInfo TypeId() const override {
-    return cel::internal::TypeId<LegacyAbstractStructType>();
+  NativeTypeId TypeId() const override {
+    return cel::NativeTypeId::For<LegacyAbstractStructType>();
   }
 
   const google::api::expr::runtime::LegacyTypeInfoApis& type_info_;
 };
 
 struct CelListAccess final {
-  static internal::TypeInfo TypeId(
-      const google::api::expr::runtime::CelList& list);
+  static NativeTypeId TypeId(const google::api::expr::runtime::CelList& list);
 };
 
 struct CelMapAccess final {
-  static internal::TypeInfo TypeId(
-      const google::api::expr::runtime::CelMap& map);
+  static NativeTypeId TypeId(const google::api::expr::runtime::CelMap& map);
 };
 
 struct LegacyStructTypeAccess final {

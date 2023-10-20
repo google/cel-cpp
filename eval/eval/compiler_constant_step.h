@@ -16,16 +16,16 @@
 
 #include <utility>
 
+#include "common/native_type.h"
 #include "eval/eval/expression_step_base.h"
-#include "internal/rtti.h"
 
 namespace google::api::expr::runtime {
 
 // ExpressionStep implementation that simply pushes a constant value on the
 // stack.
 //
-// Overrides TypeInfo to allow the FlatExprBuilder and extensions to inspect
-// the underlying value.
+// Overrides NativeTypeId ()o allow the FlatExprBuilder and extensions to
+// inspect the underlying value.
 class CompilerConstantStep : public ExpressionStepBase {
  public:
   CompilerConstantStep(cel::Handle<cel::Value> value, int64_t expr_id,
@@ -34,8 +34,8 @@ class CompilerConstantStep : public ExpressionStepBase {
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
-  cel::internal::TypeInfo TypeId() const override {
-    return cel::internal::TypeId<CompilerConstantStep>();
+  cel::NativeTypeId TypeId() const override {
+    return cel::NativeTypeId::For<CompilerConstantStep>();
   }
 
   const cel::Handle<cel::Value>& value() const { return value_; }

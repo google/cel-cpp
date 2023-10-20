@@ -21,8 +21,8 @@
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "base/memory.h"
+#include "common/native_type.h"
 #include "internal/casts.h"
-#include "internal/rtti.h"
 
 namespace cel::extensions {
 
@@ -32,7 +32,7 @@ namespace cel::extensions {
 class ProtoMemoryManager final : public ArenaMemoryManager {
  public:
   static bool Is(const MemoryManager& manager) {
-    return manager.TypeId() == cel::internal::TypeId<ProtoMemoryManager>();
+    return manager.TypeId() == cel::NativeTypeId::For<ProtoMemoryManager>();
   }
 
   // Passing a nullptr is highly discouraged, but supported for backwards
@@ -66,8 +66,8 @@ class ProtoMemoryManager final : public ArenaMemoryManager {
 
   void OwnDestructor(void* pointer, void (*destruct)(void*)) override;
 
-  cel::internal::TypeInfo TypeId() const override {
-    return cel::internal::TypeId<ProtoMemoryManager>();
+  cel::NativeTypeId TypeId() const override {
+    return cel::NativeTypeId::For<ProtoMemoryManager>();
   }
 
   google::protobuf::Arena* const arena_;

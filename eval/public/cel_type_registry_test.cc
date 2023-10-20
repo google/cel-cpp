@@ -21,8 +21,8 @@
 #include "base/values/struct_value.h"
 #include "base/values/struct_value_builder.h"
 #include "base/values/type_value.h"
+#include "common/native_type.h"
 #include "eval/public/structs/legacy_type_provider.h"
-#include "internal/rtti.h"
 #include "internal/testing.h"
 
 namespace google::api::expr::runtime {
@@ -204,8 +204,8 @@ class TestStructType : public cel::base_internal::AbstractStructType {
     return absl::UnimplementedError("");
   }
 
-  cel::internal::TypeInfo TypeId() const override {
-    return cel::internal::TypeId<TestStructType>();
+  cel::NativeTypeId TypeId() const override {
+    return cel::NativeTypeId::For<TestStructType>();
   }
 
  private:

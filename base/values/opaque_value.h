@@ -27,7 +27,7 @@
 #include "base/value.h"
 #include "common/any.h"
 #include "common/json.h"
-#include "internal/rtti.h"
+#include "common/native_type.h"
 
 namespace cel {
 
@@ -64,7 +64,7 @@ class OpaqueValue : public Value,
                                                const Value& other) const;
 
  protected:
-  static internal::TypeInfo TypeId(const OpaqueValue& value) {
+  static NativeTypeId TypeId(const OpaqueValue& value) {
     return value.TypeId();
   }
 
@@ -72,7 +72,7 @@ class OpaqueValue : public Value,
       : Value(), HeapData(kKind), type_(std::move(type)) {}
 
  private:
-  virtual internal::TypeInfo TypeId() const = 0;
+  virtual NativeTypeId TypeId() const = 0;
 
   const Handle<OpaqueType> type_;
 };

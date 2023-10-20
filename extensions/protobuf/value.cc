@@ -184,8 +184,8 @@ class StaticProtoJsonListValue : public CEL_LIST_VALUE_CLASS {
 
  private:
   // Called by CEL_IMPLEMENT_LIST_VALUE() and Is() to perform type checking.
-  internal::TypeInfo TypeId() const final {
-    return internal::TypeId<StaticProtoJsonListValue>();
+  NativeTypeId TypeId() const final {
+    return NativeTypeId::For<StaticProtoJsonListValue>();
   }
 
   const google::protobuf::ListValue value_;
@@ -215,8 +215,8 @@ class ArenaStaticProtoJsonListValue : public CEL_LIST_VALUE_CLASS {
 
  private:
   // Called by CEL_IMPLEMENT_LIST_VALUE() and Is() to perform type checking.
-  internal::TypeInfo TypeId() const final {
-    return internal::TypeId<ArenaStaticProtoJsonListValue>();
+  NativeTypeId TypeId() const final {
+    return NativeTypeId::For<ArenaStaticProtoJsonListValue>();
   }
 
   const google::protobuf::ListValue* const value_;
@@ -249,8 +249,8 @@ class StaticProtoJsonMapKeysListValue : public CEL_LIST_VALUE_CLASS {
 
  private:
   // Called by CEL_IMPLEMENT_LIST_VALUE() and Is() to perform type checking.
-  internal::TypeInfo TypeId() const final {
-    return internal::TypeId<StaticProtoJsonMapKeysListValue>();
+  NativeTypeId TypeId() const final {
+    return NativeTypeId::For<StaticProtoJsonMapKeysListValue>();
   }
 
   const google::protobuf::Struct* const value_;
@@ -316,8 +316,8 @@ class StaticProtoJsonMapValue : public CEL_MAP_VALUE_CLASS {
   }
 
   // Called by CEL_IMPLEMENT_MAP_VALUE() and Is() to perform type checking.
-  internal::TypeInfo TypeId() const override {
-    return internal::TypeId<StaticProtoJsonMapValue>();
+  NativeTypeId TypeId() const override {
+    return NativeTypeId::For<StaticProtoJsonMapValue>();
   }
 
   const google::protobuf::Struct value_;
@@ -383,8 +383,8 @@ class ArenaStaticProtoJsonMapValue : public CEL_MAP_VALUE_CLASS {
   }
 
   // Called by CEL_IMPLEMENT_MAP_VALUE() and Is() to perform type checking.
-  internal::TypeInfo TypeId() const final {
-    return internal::TypeId<ArenaStaticProtoJsonMapValue>();
+  NativeTypeId TypeId() const final {
+    return NativeTypeId::For<ArenaStaticProtoJsonMapValue>();
   }
 
   const google::protobuf::Struct* const value_;

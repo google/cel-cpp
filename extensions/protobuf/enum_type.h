@@ -21,6 +21,7 @@
 #include "base/type.h"
 #include "base/type_manager.h"
 #include "base/types/enum_type.h"
+#include "common/native_type.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/generated_enum_reflection.h"
 #include "google/protobuf/generated_enum_util.h"
@@ -37,7 +38,7 @@ class ProtoEnumType final : public EnumType {
   static bool Is(const Type& type) {
     return EnumType::Is(type) && cel::base_internal::GetEnumTypeTypeId(
                                      static_cast<const EnumType&>(type)) ==
-                                     cel::internal::TypeId<ProtoEnumType>();
+                                     cel::NativeTypeId::For<ProtoEnumType>();
   }
 
   using EnumType::Is;
@@ -91,8 +92,8 @@ class ProtoEnumType final : public EnumType {
       : descriptor_(ABSL_DIE_IF_NULL(descriptor)) {}  // Crash OK.
 
   // Called by CEL_IMPLEMENT_STRUCT_TYPE() and Is() to perform type checking.
-  internal::TypeInfo TypeId() const override {
-    return internal::TypeId<ProtoEnumType>();
+  NativeTypeId TypeId() const override {
+    return NativeTypeId::For<ProtoEnumType>();
   }
 
   const google::protobuf::EnumDescriptor* const descriptor_;

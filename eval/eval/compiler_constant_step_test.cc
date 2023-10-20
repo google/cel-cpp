@@ -20,9 +20,9 @@
 #include "base/type_provider.h"
 #include "base/value_factory.h"
 #include "base/values/int_value.h"
+#include "common/native_type.h"
 #include "eval/eval/evaluator_core.h"
 #include "extensions/protobuf/memory_manager.h"
-#include "internal/rtti.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "runtime/activation.h"
@@ -71,7 +71,7 @@ TEST_F(CompilerConstantStepTest, TypeId) {
 
   ExpressionStep& abstract_step = step;
   EXPECT_EQ(abstract_step.TypeId(),
-            cel::internal::TypeId<CompilerConstantStep>());
+            cel::NativeTypeId::For<CompilerConstantStep>());
 }
 
 TEST_F(CompilerConstantStepTest, Value) {

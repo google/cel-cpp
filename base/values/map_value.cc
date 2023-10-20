@@ -41,7 +41,7 @@
 #include "base/values/uint_value.h"
 #include "common/any.h"
 #include "common/json.h"
-#include "internal/rtti.h"
+#include "common/native_type.h"
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -170,7 +170,7 @@ absl::StatusOr<Handle<Value>> MapValue::Equals(ValueFactory& value_factory,
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(Equals, value_factory, other);
 }
 
-internal::TypeInfo MapValue::TypeId() const {
+NativeTypeId MapValue::TypeId() const {
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(TypeId);
 }
 

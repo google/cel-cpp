@@ -29,7 +29,7 @@
 #include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/internal/memory_manager.h"
-#include "internal/rtti.h"
+#include "common/native_type.h"
 
 namespace cel {
 
@@ -226,7 +226,7 @@ class MemoryManager {
   // implementation.
   virtual void OwnDestructor(void* pointer, void (*destruct)(void*)) = 0;
 
-  virtual internal::TypeInfo TypeId() const { return internal::TypeInfo(); }
+  virtual NativeTypeId TypeId() const { return NativeTypeId(); }
 
   const bool allocation_only_;
 };

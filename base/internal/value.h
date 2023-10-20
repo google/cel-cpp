@@ -30,7 +30,7 @@
 #include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/internal/type.h"
-#include "internal/rtti.h"
+#include "common/native_type.h"
 
 namespace cel {
 
@@ -49,11 +49,11 @@ class SimpleValue;
 
 class ValueHandle;
 
-internal::TypeInfo GetStructValueTypeId(const StructValue& struct_value);
+NativeTypeId GetStructValueTypeId(const StructValue& struct_value);
 
-internal::TypeInfo GetListValueTypeId(const ListValue& list_value);
+NativeTypeId GetListValueTypeId(const ListValue& list_value);
 
-internal::TypeInfo GetMapValueTypeId(const MapValue& map_value);
+NativeTypeId GetMapValueTypeId(const MapValue& map_value);
 
 static_assert(std::is_trivially_copyable_v<absl::Duration>,
               "absl::Duration must be trivially copyable.");
@@ -193,7 +193,7 @@ struct UnknownValueAccess;
  private:                                               \
   friend class ::cel::base_internal::ValueHandle;       \
                                                         \
-  ::cel::internal::TypeInfo TypeId() const override;
+  ::cel::NativeTypeId TypeId() const override;
 
 #define CEL_INTERNAL_IMPLEMENT_VALUE(base, derived)                           \
   static_assert(::std::is_base_of_v<::cel::base##Value, derived>,             \
@@ -204,11 +204,11 @@ struct UnknownValueAccess;
     return value.kind() == ::cel::Kind::k##base &&                            \
            ::cel::base_internal::Get##base##ValueTypeId(                      \
                static_cast<const ::cel::base##Value&>(value)) ==              \
-               ::cel::internal::TypeId<derived>();                            \
+               ::cel::NativeTypeId::For<derived>();                           \
   }                                                                           \
                                                                               \
-  ::cel::internal::TypeInfo derived::TypeId() const {                         \
-    return ::cel::internal::TypeId<derived>();                                \
+  ::cel::NativeTypeId derived::TypeId() const {                               \
+    return ::cel::NativeTypeId::For<derived>();                               \
   }
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_INTERNAL_VALUE_H_

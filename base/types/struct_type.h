@@ -32,7 +32,7 @@
 #include "base/kind.h"
 #include "base/memory.h"
 #include "base/type.h"
-#include "internal/rtti.h"
+#include "common/native_type.h"
 
 namespace cel {
 
@@ -162,7 +162,7 @@ class StructType : public Type {
   }
 
  private:
-  friend internal::TypeInfo base_internal::GetStructTypeTypeId(
+  friend NativeTypeId base_internal::GetStructTypeTypeId(
       const StructType& struct_type);
   struct FindFieldVisitor;
 
@@ -177,7 +177,7 @@ class StructType : public Type {
   StructType() = default;
 
   // Called by CEL_IMPLEMENT_STRUCT_TYPE() and Is() to perform type checking.
-  internal::TypeInfo TypeId() const;
+  NativeTypeId TypeId() const;
 };
 
 // Field describes a single field in a struct. All fields are valid so long as
@@ -238,7 +238,7 @@ class LegacyStructType final : public StructType, public InlineData {
   static bool Is(const Type& type) {
     return StructType::Is(type) &&
            static_cast<const StructType&>(type).TypeId() ==
-               internal::TypeId<LegacyStructType>();
+               NativeTypeId::For<LegacyStructType>();
   }
 
   using StructType::Is;
@@ -290,9 +290,7 @@ class LegacyStructType final : public StructType, public InlineData {
   explicit LegacyStructType(uintptr_t msg)
       : StructType(), InlineData(kMetadata), msg_(msg) {}
 
-  internal::TypeInfo TypeId() const {
-    return internal::TypeId<LegacyStructType>();
-  }
+  NativeTypeId TypeId() const { return NativeTypeId::For<LegacyStructType>(); }
 
   // This is a type erased pointer to google::protobuf::Message or LegacyTypeInfoApis. It
   // is tagged when it is google::protobuf::Message.
@@ -307,7 +305,7 @@ class AbstractStructType
   static bool Is(const Type& type) {
     return StructType::Is(type) &&
            static_cast<const StructType&>(type).TypeId() !=
-               internal::TypeId<LegacyStructType>();
+               NativeTypeId::For<LegacyStructType>();
   }
 
   using StructType::Is;
@@ -348,7 +346,7 @@ class AbstractStructType
   AbstractStructType();
 
  private:
-  friend internal::TypeInfo GetStructTypeTypeId(const StructType& struct_type);
+  friend NativeTypeId GetStructTypeTypeId(const StructType& struct_type);
   struct FindFieldVisitor;
 
   friend struct FindFieldVisitor;
@@ -362,7 +360,7 @@ class AbstractStructType
   AbstractStructType(AbstractStructType&&) = delete;
 
   // Called by CEL_IMPLEMENT_STRUCT_TYPE() and Is() to perform type checking.
-  virtual internal::TypeInfo TypeId() const = 0;
+  virtual NativeTypeId TypeId() const = 0;
 };
 
 }  // namespace base_internal
@@ -408,7 +406,7 @@ struct FieldIdFactory {
   }
 };
 
-inline internal::TypeInfo GetStructTypeTypeId(const StructType& struct_type) {
+inline NativeTypeId GetStructTypeTypeId(const StructType& struct_type) {
   return struct_type.TypeId();
 }
 

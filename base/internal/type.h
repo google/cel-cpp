@@ -21,7 +21,7 @@
 
 #include "base/internal/data.h"
 #include "base/kind.h"
-#include "internal/rtti.h"
+#include "common/native_type.h"
 
 namespace cel {
 
@@ -50,9 +50,9 @@ class SimpleType;
 template <typename T, typename U>
 class SimpleValue;
 
-internal::TypeInfo GetEnumTypeTypeId(const EnumType& enum_type);
+NativeTypeId GetEnumTypeTypeId(const EnumType& enum_type);
 
-internal::TypeInfo GetStructTypeTypeId(const StructType& struct_type);
+NativeTypeId GetStructTypeTypeId(const StructType& struct_type);
 
 struct InlineType final {
   uintptr_t vptr;
@@ -100,7 +100,7 @@ struct TypeTraits;
  private:                                             \
   friend class ::cel::base_internal::TypeHandle;      \
                                                       \
-  ::cel::internal::TypeInfo TypeId() const override;
+  ::cel::NativeTypeId TypeId() const override;
 
 #define CEL_INTERNAL_IMPLEMENT_TYPE(base, derived)                            \
   static_assert(::std::is_base_of_v<::cel::base##Type, derived>,              \
@@ -111,11 +111,11 @@ struct TypeTraits;
     return type.kind() == ::cel::TypeKind::k##base &&                         \
            ::cel::base_internal::Get##base##TypeTypeId(                       \
                static_cast<const ::cel::base##Type&>(type)) ==                \
-               ::cel::internal::TypeId<derived>();                            \
+               ::cel::NativeTypeId::For<derived>();                           \
   }                                                                           \
                                                                               \
-  ::cel::internal::TypeInfo derived::TypeId() const {                         \
-    return ::cel::internal::TypeId<derived>();                                \
+  ::cel::NativeTypeId derived::TypeId() const {                               \
+    return ::cel::NativeTypeId::For<derived>();                               \
   }
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_INTERNAL_TYPE_H_

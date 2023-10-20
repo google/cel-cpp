@@ -333,8 +333,8 @@ class JsonListValue final : public CEL_LIST_VALUE_CLASS {
   }
 
  private:
-  internal::TypeInfo TypeId() const override {
-    return internal::TypeId<JsonListValue>();
+  NativeTypeId TypeId() const override {
+    return NativeTypeId::For<JsonListValue>();
   }
 
   const JsonArray array_;
@@ -404,8 +404,8 @@ class JsonMapValue final : public CEL_MAP_VALUE_CLASS {
         }));
   }
 
-  internal::TypeInfo TypeId() const override {
-    return internal::TypeId<JsonMapValue>();
+  NativeTypeId TypeId() const override {
+    return NativeTypeId::For<JsonMapValue>();
   }
 
   const JsonObject object_;

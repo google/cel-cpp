@@ -26,6 +26,7 @@
 #include "base/type.h"
 #include "base/type_manager.h"
 #include "base/types/struct_type.h"
+#include "common/native_type.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -48,7 +49,7 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
     return CEL_STRUCT_TYPE_CLASS::Is(type) &&
            cel::base_internal::GetStructTypeTypeId(
                static_cast<const StructType&>(type)) ==
-               cel::internal::TypeId<ProtoStructType>();
+               cel::NativeTypeId::For<ProtoStructType>();
   }
 
   using CEL_STRUCT_TYPE_CLASS::Is;
@@ -114,8 +115,8 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
         factory_(ABSL_DIE_IF_NULL(factory)) {}      // Crash OK.
 
   // Called by CEL_IMPLEMENT_STRUCT_TYPE() and Is() to perform type checking.
-  internal::TypeInfo TypeId() const override {
-    return internal::TypeId<ProtoStructType>();
+  NativeTypeId TypeId() const override {
+    return NativeTypeId::For<ProtoStructType>();
   }
 
   const google::protobuf::Descriptor* const descriptor_;

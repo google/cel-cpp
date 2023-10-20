@@ -24,7 +24,7 @@
 #include "base/memory.h"
 #include "base/type.h"
 #include "base/types/opaque_type.h"
-#include "internal/rtti.h"
+#include "common/native_type.h"
 
 namespace cel {
 
@@ -33,7 +33,7 @@ class OptionalType final : public OpaqueType {
   static bool Is(const Type& type) {
     return OpaqueType::Is(type) &&
            OpaqueType::TypeId(static_cast<const OpaqueType&>(type)) ==
-               internal::TypeId<OptionalType>();
+               NativeTypeId::For<OptionalType>();
   }
 
   using OpaqueType::Is;
@@ -64,8 +64,8 @@ class OptionalType final : public OpaqueType {
 
   explicit OptionalType(Handle<Type> type) : type_(std::move(type)) {}
 
-  internal::TypeInfo TypeId() const override {
-    return internal::TypeId<OptionalType>();
+  NativeTypeId TypeId() const override {
+    return NativeTypeId::For<OptionalType>();
   }
 
   const Handle<Type> type_;

@@ -35,6 +35,7 @@
 #include "base/types/enum_type.h"
 #include "base/types/struct_type.h"
 #include "base/value.h"
+#include "common/native_type.h"
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -125,8 +126,8 @@ class ResolveableEnumType final : public cel::EnumType {
   };
 
   // Implement EnumType.
-  cel::internal::TypeInfo TypeId() const override {
-    return cel::internal::TypeId<ResolveableEnumType>();
+  cel::NativeTypeId TypeId() const override {
+    return cel::NativeTypeId::For<ResolveableEnumType>();
   }
 
   std::string name_;

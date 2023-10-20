@@ -34,10 +34,10 @@
 #include "base/type_provider.h"
 #include "base/value.h"
 #include "base/value_factory.h"
+#include "common/native_type.h"
 #include "eval/eval/attribute_utility.h"
 #include "eval/eval/comprehension_slots.h"
 #include "eval/eval/evaluator_stack.h"
-#include "internal/rtti.h"
 #include "runtime/activation_interface.h"
 #include "runtime/managed_value_factory.h"
 #include "runtime/runtime.h"
@@ -78,7 +78,7 @@ class ExpressionStep {
   // Return the type of the underlying expression step for special handling in
   // the planning phase. This should only be overridden by special cases, and
   // callers must not make any assumptions about the default case.
-  virtual cel::internal::TypeInfo TypeId() const = 0;
+  virtual cel::NativeTypeId TypeId() const = 0;
 };
 
 using ExecutionPath = std::vector<std::unique_ptr<const ExpressionStep>>;

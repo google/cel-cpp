@@ -39,9 +39,7 @@ class FakeConstExpressionStep : public ExpressionStep {
 
   bool ComesFromAst() const override { return true; }
 
-  cel::internal::TypeInfo TypeId() const override {
-    return cel::internal::TypeInfo();
-  }
+  cel::NativeTypeId TypeId() const override { return cel::NativeTypeId(); }
 };
 
 // Fake expression implementation
@@ -62,9 +60,7 @@ class FakeIncrementExpressionStep : public ExpressionStep {
 
   bool ComesFromAst() const override { return true; }
 
-  cel::internal::TypeInfo TypeId() const override {
-    return cel::internal::TypeInfo();
-  }
+  cel::NativeTypeId TypeId() const override { return cel::NativeTypeId(); }
 };
 
 TEST(EvaluatorCoreTest, ExecutionFrameNext) {

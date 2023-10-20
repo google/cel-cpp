@@ -38,7 +38,7 @@
 #include "base/values/list_value.h"
 #include "common/any.h"
 #include "common/json.h"
-#include "internal/rtti.h"
+#include "common/native_type.h"
 
 namespace cel {
 
@@ -121,7 +121,7 @@ class MapValue : public Value,
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
-  friend internal::TypeInfo base_internal::GetMapValueTypeId(
+  friend NativeTypeId base_internal::GetMapValueTypeId(
       const MapValue& map_value);
   friend class base_internal::ValueHandle;
   friend class base_internal::LegacyMapValue;
@@ -130,7 +130,7 @@ class MapValue : public Value,
   MapValue() = default;
 
   // Called by CEL_IMPLEMENT_MAP_VALUE() and Is() to perform type checking.
-  internal::TypeInfo TypeId() const;
+  NativeTypeId TypeId() const;
 };
 
 // Abstract class describes an iterator which can iterate over the entries in a
@@ -169,7 +169,7 @@ class LegacyMapValue final : public MapValue, public InlineData {
   static bool Is(const Value& value) {
     return value.kind() == kKind &&
            static_cast<const MapValue&>(value).TypeId() ==
-               internal::TypeId<LegacyMapValue>();
+               NativeTypeId::For<LegacyMapValue>();
   }
 
   using MapValue::Is;
@@ -215,9 +215,7 @@ class LegacyMapValue final : public MapValue, public InlineData {
   explicit LegacyMapValue(uintptr_t impl)
       : MapValue(), InlineData(kMetadata), impl_(impl) {}
 
-  internal::TypeInfo TypeId() const {
-    return internal::TypeId<LegacyMapValue>();
-  }
+  NativeTypeId TypeId() const { return NativeTypeId::For<LegacyMapValue>(); }
 
   absl::StatusOr<std::pair<Handle<Value>, bool>> FindImpl(
       ValueFactory& value_factory, const Handle<Value>& key) const;
@@ -235,7 +233,7 @@ class AbstractMapValue : public MapValue,
   static bool Is(const Value& value) {
     return value.kind() == kKind &&
            static_cast<const MapValue&>(value).TypeId() !=
-               internal::TypeId<LegacyMapValue>();
+               NativeTypeId::For<LegacyMapValue>();
   }
 
   using MapValue::Is;
@@ -282,12 +280,12 @@ class AbstractMapValue : public MapValue,
       ValueFactory& value_factory, const Handle<Value>& key) const = 0;
 
   // Called by CEL_IMPLEMENT_MAP_VALUE() and Is() to perform type checking.
-  virtual internal::TypeInfo TypeId() const = 0;
+  virtual NativeTypeId TypeId() const = 0;
 
   const Handle<MapType> type_;
 };
 
-inline internal::TypeInfo GetMapValueTypeId(const MapValue& map_value) {
+inline NativeTypeId GetMapValueTypeId(const MapValue& map_value) {
   return map_value.TypeId();
 }
 
