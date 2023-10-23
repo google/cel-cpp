@@ -684,6 +684,7 @@ ABSL_DEPRECATED("Prefer using the generic MemoryManager overload")
 CelValue CreateMissingAttributeError(google::protobuf::Arena* arena,
                                      absl::string_view missing_attribute_path);
 
+ABSL_CONST_INIT extern const absl::string_view kPayloadUrlMissingAttributePath;
 bool IsMissingAttributeError(const CelValue& value);
 
 // Returns error indicating the result of the function is unknown. This is used

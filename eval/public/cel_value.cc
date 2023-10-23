@@ -107,6 +107,9 @@ struct DebugStringVisitor {
 
 }  // namespace
 
+const absl::string_view kPayloadUrlMissingAttributePath =
+    cel::runtime_internal::kPayloadUrlMissingAttributePath;
+
 CelValue CelValue::CreateDuration(absl::Duration value) {
   if (value >= cel::runtime_internal::kDurationHigh ||
       value <= cel::runtime_internal::kDurationLow) {
