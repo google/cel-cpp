@@ -62,20 +62,11 @@ cc_library(
 
 cc_library(
     name = "kind",
-    srcs = ["kind.cc"],
     hdrs = ["kind.h"],
     deps = [
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/strings",
-    ],
-)
-
-cc_test(
-    name = "kind_test",
-    srcs = ["kind_test.cc"],
-    deps = [
-        ":kind",
-        "//internal:testing",
+        "//common:kind",
+        "//common:type_kind",
+        "//common:value_kind",
     ],
 )
 

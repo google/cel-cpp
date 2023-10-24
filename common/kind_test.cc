@@ -1,4 +1,4 @@
-// Copyright 2021 Google LLC
+// Copyright 2023 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "base/kind.h"
+#include "common/kind.h"
 
 #include <limits>
+#include <type_traits>
 
+#include "common/type_kind.h"
+#include "common/value_kind.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
+
+static_assert(std::is_same_v<std::underlying_type_t<TypeKind>,
+                             std::underlying_type_t<ValueKind>>,
+              "TypeKind and ValueKind must have the same underlying type");
 
 TEST(Kind, ToString) {
   EXPECT_EQ(KindToString(Kind::kError), "*error*");
@@ -75,17 +82,11 @@ TEST(Kind, Equality) {
   EXPECT_EQ(Kind::kBool, ValueKind::kBool);
   EXPECT_EQ(ValueKind::kBool, Kind::kBool);
 
-  EXPECT_EQ(TypeKind::kBool, ValueKind::kBool);
-  EXPECT_EQ(ValueKind::kBool, TypeKind::kBool);
-
   EXPECT_NE(Kind::kBool, TypeKind::kInt);
   EXPECT_NE(TypeKind::kInt, Kind::kBool);
 
   EXPECT_NE(Kind::kBool, ValueKind::kInt);
   EXPECT_NE(ValueKind::kInt, Kind::kBool);
-
-  EXPECT_NE(TypeKind::kBool, ValueKind::kInt);
-  EXPECT_NE(ValueKind::kInt, TypeKind::kBool);
 }
 
 TEST(TypeKind, ToString) {
