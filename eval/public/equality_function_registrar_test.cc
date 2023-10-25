@@ -623,7 +623,8 @@ TEST_P(EqualityFunctionTest, SmokeTest) {
       case EqualityTestCase::ErrorKind::kMissingOverload:
         EXPECT_THAT(result, test::IsCelError(
                                 StatusIs(absl::StatusCode::kUnknown,
-                                         HasSubstr("No matching overloads"))));
+                                         HasSubstr("No matching overloads"))))
+            << test_case.expr;
         break;
       case EqualityTestCase::ErrorKind::kMissingIdentifier:
         EXPECT_THAT(result, test::IsCelError(
@@ -657,11 +658,8 @@ INSTANTIATE_TEST_SUITE_P(
                  // This should fail before getting to the equal operator.
                  {"no_such_identifier == 1",
                   EqualityTestCase::ErrorKind::kMissingIdentifier},
-                 // TODO(uncreated-issue/6): The C++ evaluator allows creating maps
-                 // with error values. Propagate an error instead of a false
-                 // result.
                  {"{1: no_such_identifier} == {1: 1}",
-                  EqualityTestCase::ErrorKind::kMissingOverload}}),
+                  EqualityTestCase::ErrorKind::kMissingIdentifier}}),
             // heterogeneous equality enabled
             testing::Bool()));
 
@@ -685,11 +683,8 @@ INSTANTIATE_TEST_SUITE_P(
                  // This should fail before getting to the equal operator.
                  {"no_such_identifier != 1",
                   EqualityTestCase::ErrorKind::kMissingIdentifier},
-                 // TODO(uncreated-issue/6): The C++ evaluator allows creating maps
-                 // with error values. Propagate an error instead of a false
-                 // result.
                  {"{1: no_such_identifier} != {1: 1}",
-                  EqualityTestCase::ErrorKind::kMissingOverload}}),
+                  EqualityTestCase::ErrorKind::kMissingIdentifier}}),
             // heterogeneous equality enabled
             testing::Bool()));
 

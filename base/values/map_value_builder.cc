@@ -31,8 +31,10 @@ absl::Status CheckMapKeyOrValue(TypeKind expected_type_kind,
                                 const Value& value) {
   ABSL_ASSERT(expected_type_kind == expected_type.kind());
   ABSL_ASSERT(value_kind == value.kind());
-  if (ABSL_PREDICT_FALSE(value_kind == ValueKind::kError ||
-                         value_kind == ValueKind::kUnknown)) {
+  if (value_kind == ValueKind::kError) {
+    return value.As<ErrorValue>().value();
+  }
+  if (ABSL_PREDICT_FALSE(value_kind == ValueKind::kUnknown)) {
     return TypeConversionError(*value.type(), expected_type);
   }
   if (ABSL_PREDICT_FALSE(expected_type_kind != TypeKind::kDyn &&

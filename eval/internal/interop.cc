@@ -153,6 +153,9 @@ class LegacyCelList final : public CelList {
 
   CelValue Get(google::protobuf::Arena* arena, int index) const override {
     if (arena == nullptr) {
+      arena = arena_;
+    }
+    if (arena == nullptr) {
       static const absl::Status* status = []() {
         return new absl::Status(absl::InvalidArgumentError(
             "CelList::Get must be called with non-null google::protobuf::Arena* for "
@@ -196,14 +199,18 @@ class LegacyCelList final : public CelList {
 
 class LegacyCelMap final : public CelMap {
  public:
-  explicit LegacyCelMap(Handle<MapValue> impl) : impl_(std::move(impl)) {}
+  explicit LegacyCelMap(Handle<MapValue> impl, google::protobuf::Arena* arena)
+      : impl_(std::move(impl)), arena_(arena) {}
 
   absl::optional<CelValue> operator[](CelValue key) const override {
-    return Get(nullptr, key);
+    return Get(arena_, key);
   }
 
   absl::optional<CelValue> Get(google::protobuf::Arena* arena,
                                CelValue key) const override {
+    if (arena == nullptr) {
+      arena = arena_;
+    }
     if (arena == nullptr) {
       static const absl::Status* status = []() {
         return new absl::Status(absl::InvalidArgumentError(
@@ -259,10 +266,13 @@ class LegacyCelMap final : public CelMap {
   bool empty() const override { return impl_->empty(); }
 
   absl::StatusOr<const CelList*> ListKeys() const override {
-    return ListKeys(nullptr);
+    return ListKeys(arena_);
   }
 
   absl::StatusOr<const CelList*> ListKeys(google::protobuf::Arena* arena) const override {
+    if (arena == nullptr) {
+      arena = arena_;
+    }
     if (arena == nullptr) {
       return absl::InvalidArgumentError(
           "CelMap::ListKeys must be called with google::protobuf::Arena* for "
@@ -289,6 +299,7 @@ class LegacyCelMap final : public CelMap {
   }
 
   Handle<MapValue> impl_;
+  google::protobuf::Arena* arena_;
 };
 
 absl::StatusOr<Handle<Value>> LegacyStructGetFieldImpl(
@@ -688,8 +699,8 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
         return CelValue::CreateMap(reinterpret_cast<const CelMap*>(
             value.As<base_internal::LegacyMapValue>()->value()));
       }
-      return CelValue::CreateMap(
-          google::protobuf::Arena::Create<LegacyCelMap>(arena, value.As<MapValue>()));
+      return CelValue::CreateMap(google::protobuf::Arena::Create<LegacyCelMap>(
+          arena, value.As<MapValue>(), arena));
     }
     case ValueKind::kStruct: {
       if (value->Is<base_internal::LegacyStructValue>()) {

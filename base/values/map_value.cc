@@ -144,6 +144,10 @@ absl::StatusOr<std::pair<Handle<Value>, bool>> MapValue::Find(
   if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
     return std::make_pair(key, false);
   }
+  if (auto status = CheckKey(*key); ABSL_PREDICT_FALSE(!status.ok())) {
+    return std::make_pair(value_factory.CreateErrorValue(std::move(status)),
+                          false);
+  }
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(FindImpl, value_factory, key);
 }
 
@@ -151,6 +155,9 @@ absl::StatusOr<Handle<Value>> MapValue::Has(ValueFactory& value_factory,
                                             const Handle<Value>& key) const {
   if (ABSL_PREDICT_FALSE(key->Is<ErrorValue>() || key->Is<UnknownValue>())) {
     return key;
+  }
+  if (auto status = CheckKey(*key); ABSL_PREDICT_FALSE(!status.ok())) {
+    return value_factory.CreateErrorValue(std::move(status));
   }
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(HasImpl, value_factory, key);
 }

@@ -26,6 +26,7 @@
 #include "base/values/int_value.h"
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
+#include "base/values/map_value_builder.h"
 #include "base/values/string_value.h"
 #include "base/values/struct_value.h"
 #include "base/values/struct_value_builder.h"
@@ -991,21 +992,16 @@ absl::StatusOr<Handle<Value>> CreateStructStepForMap::DoEvaluate(
     }
   }
 
-  // TODO(uncreated-issue/32): switch to new cel::MapValue in phase 2
-  auto* map_builder = google::protobuf::Arena::Create<CelMapBuilder>(
-      cel::extensions::ProtoMemoryManager::CastToProtoArena(
-          frame->memory_manager()));
+  cel::MapValueBuilder<Value, Value> map_builder(
+      frame->value_factory(), frame->type_factory().GetDynType(),
+      frame->type_factory().GetDynType());
 
   for (size_t i = 0; i < entry_count_; i += 1) {
     int map_key_index = 2 * i;
     int map_value_index = map_key_index + 1;
-    const CelValue& map_key =
-        cel::interop_internal::ModernValueToLegacyValueOrDie(
-            frame->memory_manager(), args[map_key_index]);
-    CEL_RETURN_IF_ERROR(CelValue::CheckMapKeyType(map_key));
-    auto key_status = map_builder->Add(
-        map_key, cel::interop_internal::ModernValueToLegacyValueOrDie(
-                     frame->memory_manager(), args[map_value_index]));
+    CEL_RETURN_IF_ERROR(MapValue::CheckKey(*args[map_key_index]));
+    auto key_status =
+        map_builder.Put(args[map_key_index], args[map_value_index]);
     if (!key_status.ok()) {
       return CreateErrorValueFromView(google::protobuf::Arena::Create<absl::Status>(
           cel::extensions::ProtoMemoryManager::CastToProtoArena(
@@ -1014,7 +1010,7 @@ absl::StatusOr<Handle<Value>> CreateStructStepForMap::DoEvaluate(
     }
   }
 
-  return CreateLegacyMapValue(map_builder);
+  return std::move(map_builder).Build();
 }
 
 absl::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {

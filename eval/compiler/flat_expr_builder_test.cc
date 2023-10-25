@@ -1198,7 +1198,7 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapAndConstantFolding) {
   ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
   ASSERT_TRUE(result.IsMap());
   auto m = result.MapOrDie();
-  auto v = (*m)[CelValue::CreateInt64(1L)];
+  auto v = m->Get(&arena, CelValue::CreateInt64(1L));
   EXPECT_THAT(v->StringOrDie().value(), Eq("hello"));
 }
 

@@ -98,29 +98,96 @@ namespace base_internal {
 // types for all operations.
 
 template <typename T>
-struct MapKeyHasher {
-  inline size_t operator()(const T& key) const { return absl::Hash<T>{}(key); }
+struct MapKeyHasher;
+
+template <>
+struct MapKeyHasher<bool> {
+  inline size_t operator()(bool key) const {
+    return absl::HashOf(ValueKind::kBool, key);
+  }
+};
+
+template <>
+struct MapKeyHasher<int64_t> {
+  inline size_t operator()(int64_t key) const {
+    return absl::HashOf(ValueKind::kInt, key);
+  }
+};
+
+template <>
+struct MapKeyHasher<uint64_t> {
+  inline size_t operator()(uint64_t key) const {
+    return absl::HashOf(ValueKind::kUint, key);
+  }
+};
+
+template <>
+struct MapKeyHasher<absl::string_view> {
+  inline size_t operator()(absl::string_view key) const {
+    return absl::HashOf(ValueKind::kString, key);
+  }
+};
+
+template <>
+struct MapKeyHasher<absl::Cord> {
+  inline size_t operator()(const absl::Cord& key) const {
+    return absl::HashOf(ValueKind::kString, key);
+  }
+};
+
+template <>
+struct MapKeyHasher<BoolValue> {
+  inline size_t operator()(const BoolValue& key) const {
+    return MapKeyHasher<bool>{}(key.value());
+  }
+};
+
+template <>
+struct MapKeyHasher<IntValue> {
+  inline size_t operator()(const IntValue& key) const {
+    return MapKeyHasher<int64_t>{}(key.value());
+  }
+};
+
+template <>
+struct MapKeyHasher<UintValue> {
+  inline size_t operator()(const UintValue& key) const {
+    return MapKeyHasher<uint64_t>{}(key.value());
+  }
+};
+
+template <>
+struct MapKeyHasher<StringValue> {
+  inline size_t operator()(const StringValue& key) const {
+    return key.Visit(cel::internal::Overloaded{
+        [](absl::string_view string_key) -> size_t {
+          return MapKeyHasher<absl::string_view>{}(string_key);
+        },
+        [](const absl::Cord& string_key) -> size_t {
+          return MapKeyHasher<absl::Cord>{}(string_key);
+        }});
+  }
 };
 
 template <typename T>
 struct MapKeyHasher<Handle<T>> {
   inline size_t operator()(const Handle<T>& key) const {
-    return absl::Hash<T>{}(*key);
+    return MapKeyHasher<T>{}(*key);
   }
 };
 
 template <>
-struct MapKeyHasher<Handle<Value>> {
-  inline size_t operator()(const Handle<Value>& key) const {
-    switch (key->kind()) {
+struct MapKeyHasher<Value> {
+  inline size_t operator()(const Value& key) const {
+    switch (key.kind()) {
       case ValueKind::kBool:
-        return absl::Hash<BoolValue>{}(*key.As<BoolValue>());
+        return MapKeyHasher<BoolValue>{}(key.As<BoolValue>());
       case ValueKind::kInt:
-        return absl::Hash<IntValue>{}(*key.As<IntValue>());
+        return MapKeyHasher<IntValue>{}(key.As<IntValue>());
       case ValueKind::kUint:
-        return absl::Hash<UintValue>{}(*key.As<UintValue>());
+        return MapKeyHasher<UintValue>{}(key.As<UintValue>());
       case ValueKind::kString:
-        return absl::Hash<StringValue>{}(*key.As<StringValue>());
+        return MapKeyHasher<StringValue>{}(key.As<StringValue>());
       default:
         ABSL_UNREACHABLE();
     }
@@ -128,33 +195,98 @@ struct MapKeyHasher<Handle<Value>> {
 };
 
 template <typename T>
-struct MapKeyEqualer {
-  inline bool operator()(const T& lhs, const T& rhs) const {
+struct MapKeyEqualer;
+
+template <>
+struct MapKeyEqualer<bool> {
+  inline bool operator()(bool lhs, bool rhs) const { return lhs == rhs; }
+};
+
+template <>
+struct MapKeyEqualer<int64_t> {
+  inline bool operator()(int64_t lhs, int64_t rhs) const { return lhs == rhs; }
+};
+
+template <>
+struct MapKeyEqualer<uint64_t> {
+  inline bool operator()(uint64_t lhs, uint64_t rhs) const {
     return lhs == rhs;
+  }
+};
+
+template <>
+struct MapKeyEqualer<BoolValue> {
+  inline bool operator()(const BoolValue& lhs, const BoolValue& rhs) const {
+    return MapKeyEqualer<bool>{}(lhs.value(), rhs.value());
+  }
+};
+
+template <>
+struct MapKeyEqualer<IntValue> {
+  inline bool operator()(const IntValue& lhs, const IntValue& rhs) const {
+    return MapKeyEqualer<int64_t>{}(lhs.value(), rhs.value());
+  }
+
+  inline bool operator()(const IntValue& lhs, const UintValue& rhs) const {
+    return MapKeyEqualer<int64_t>{}(lhs.value(), rhs.value());
+  }
+
+  inline bool operator()(const UintValue& lhs, const IntValue& rhs) const {
+    return MapKeyEqualer<int64_t>{}(lhs.value(), rhs.value());
+  }
+};
+
+template <>
+struct MapKeyEqualer<UintValue> {
+  inline bool operator()(const UintValue& lhs, const UintValue& rhs) const {
+    return MapKeyEqualer<uint64_t>{}(lhs.value(), rhs.value());
+  }
+
+  inline bool operator()(const UintValue& lhs, const IntValue& rhs) const {
+    return MapKeyEqualer<int64_t>{}(lhs.value(), rhs.value());
+  }
+
+  inline bool operator()(const IntValue& lhs, const UintValue& rhs) const {
+    return MapKeyEqualer<int64_t>{}(lhs.value(), rhs.value());
+  }
+};
+
+template <>
+struct MapKeyEqualer<StringValue> {
+  inline bool operator()(const StringValue& lhs, const StringValue& rhs) const {
+    return lhs.Equals(rhs);
   }
 };
 
 template <typename T>
 struct MapKeyEqualer<Handle<T>> {
-  inline bool operator()(const T& lhs, const T& rhs) const {
-    return *lhs == *rhs;
+  inline bool operator()(const Handle<T>& lhs, const Handle<T>& rhs) const {
+    return MapKeyEqualer<T>{}(*lhs, *rhs);
   }
 };
 
 template <>
-struct MapKeyEqualer<Handle<Value>> {
-  inline bool operator()(const Handle<Value>& lhs,
-                         const Handle<Value>& rhs) const {
-    ABSL_ASSERT(lhs->kind() == rhs->kind());
-    switch (lhs->kind()) {
+struct MapKeyEqualer<Value> {
+  inline bool operator()(const Value& lhs, const Value& rhs) const {
+    ValueKind lhs_kind = lhs.kind();
+    ValueKind rhs_kind = rhs.kind();
+    switch (lhs_kind) {
       case ValueKind::kBool:
-        return *lhs.As<BoolValue>() == *rhs.As<BoolValue>();
+        return rhs_kind == ValueKind::kBool &&
+               MapKeyEqualer<BoolValue>{}(lhs.As<BoolValue>(),
+                                          rhs.As<BoolValue>());
       case ValueKind::kInt:
-        return *lhs.As<IntValue>() == *rhs.As<IntValue>();
+        return rhs_kind == ValueKind::kInt &&
+               MapKeyEqualer<IntValue>{}(lhs.As<IntValue>(),
+                                         rhs.As<IntValue>());
       case ValueKind::kUint:
-        return *lhs.As<UintValue>() == *rhs.As<UintValue>();
+        return rhs_kind == ValueKind::kUint &&
+               MapKeyEqualer<UintValue>{}(lhs.As<UintValue>(),
+                                          rhs.As<UintValue>());
       case ValueKind::kString:
-        return *lhs.As<StringValue>() == *rhs.As<StringValue>();
+        return rhs_kind == ValueKind::kString &&
+               MapKeyEqualer<StringValue>{}(lhs.As<StringValue>(),
+                                            rhs.As<StringValue>());
       default:
         ABSL_UNREACHABLE();
     }

@@ -764,12 +764,12 @@ TEST_P(CreateCreateStructStepTest, TestCreateStringMap) {
   const CelMap* cel_map = result.MapOrDie();
   ASSERT_EQ(cel_map->size(), 2);
 
-  auto lookup0 = (*cel_map)[CelValue::CreateString(&kKeys[0])];
+  auto lookup0 = cel_map->Get(&arena, CelValue::CreateString(&kKeys[0]));
   ASSERT_TRUE(lookup0.has_value());
-  ASSERT_TRUE(lookup0->IsInt64());
+  ASSERT_TRUE(lookup0->IsInt64()) << lookup0->DebugString();
   EXPECT_EQ(lookup0->Int64OrDie(), 2);
 
-  auto lookup1 = (*cel_map)[CelValue::CreateString(&kKeys[1])];
+  auto lookup1 = cel_map->Get(&arena, CelValue::CreateString(&kKeys[1]));
   ASSERT_TRUE(lookup1.has_value());
   ASSERT_TRUE(lookup1->IsInt64());
   EXPECT_EQ(lookup1->Int64OrDie(), 1);
