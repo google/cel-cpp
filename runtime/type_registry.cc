@@ -16,11 +16,13 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -72,9 +74,9 @@ class ResolveableEnumType final : public cel::EnumType {
 
   size_t constant_count() const override { return enumerators_.size(); };
 
-  absl::StatusOr<UniqueRef<ConstantIterator>> NewConstantIterator(
-      MemoryManager& memory_manager) const override {
-    return cel::MakeUnique<Iterator>(memory_manager, enumerators_);
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<ConstantIterator>>>
+  NewConstantIterator(MemoryManager& memory_manager) const override {
+    return std::make_unique<Iterator>(enumerators_);
   }
 
   const std::vector<Enumerator>& enumerators() const { return enumerators_; }

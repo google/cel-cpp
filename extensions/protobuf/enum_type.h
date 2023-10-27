@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_ENUM_TYPE_H_
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/log/die_if_null.h"
 #include "base/memory.h"
 #include "base/type.h"
@@ -60,8 +61,8 @@ class ProtoEnumType final : public EnumType {
   absl::StatusOr<absl::optional<Constant>> FindConstantByNumber(
       int64_t number) const override;
 
-  absl::StatusOr<UniqueRef<ConstantIterator>> NewConstantIterator(
-      MemoryManager& memory_manager) const override;
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<ConstantIterator>>>
+  NewConstantIterator(MemoryManager& memory_manager) const override;
 
   const google::protobuf::EnumDescriptor& descriptor() const { return *descriptor_; }
 

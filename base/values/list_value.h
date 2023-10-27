@@ -23,6 +23,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/functional/function_ref.h"
 #include "absl/hash/hash.h"
 #include "absl/log/absl_check.h"
@@ -99,7 +100,7 @@ class ListValue : public Value,
 
   class Iterator;
 
-  absl::StatusOr<UniqueRef<Iterator>> NewIterator(
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<Iterator>>> NewIterator(
       ValueFactory& value_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
@@ -187,7 +188,7 @@ class LegacyListValue final : public ListValue, public InlineData {
 
   constexpr uintptr_t value() const { return impl_; }
 
-  absl::StatusOr<UniqueRef<Iterator>> NewIterator(
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<Iterator>>> NewIterator(
       ValueFactory& value_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
@@ -248,7 +249,7 @@ class AbstractListValue : public ListValue,
 
   virtual bool empty() const { return size() == 0; }
 
-  virtual absl::StatusOr<UniqueRef<Iterator>> NewIterator(
+  virtual absl::StatusOr<absl::Nonnull<std::unique_ptr<Iterator>>> NewIterator(
       ValueFactory& value_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 

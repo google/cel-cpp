@@ -14,21 +14,28 @@
 
 #include "base/type.h"
 
+#include <cstddef>
 #include <memory>
 #include <type_traits>
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/hash/hash_testing.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "base/handle.h"
+#include "base/internal/data.h"
 #include "base/internal/memory_manager_testing.h"
 #include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/type_provider.h"
+#include "base/types/enum_type.h"
 #include "base/value.h"
 #include "base/value_factory.h"
+#include "common/type_kind.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -53,8 +60,8 @@ class TestEnumType final : public EnumType {
 
   size_t constant_count() const override { return 2; }
 
-  absl::StatusOr<UniqueRef<ConstantIterator>> NewConstantIterator(
-      MemoryManager& memory_manager) const override {
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<ConstantIterator>>>
+  NewConstantIterator(MemoryManager& memory_manager) const override {
     return absl::UnimplementedError(
         "EnumType::NewConstantIterator is unimplemented");
   }
@@ -104,8 +111,8 @@ class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
 
   size_t field_count() const override { return 4; }
 
-  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      TypeManager& type_manager) const override {
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<FieldIterator>>>
+  NewFieldIterator(TypeManager& type_manager) const override {
     return absl::UnimplementedError(
         "StructType::NewFieldIterator() is unimplemented");
   }

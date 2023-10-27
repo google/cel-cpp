@@ -14,16 +14,21 @@
 
 #include "base/values/map_value_builder.h"
 
+#include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "base/handle.h"
 #include "base/memory.h"
 #include "base/type_factory.h"
+#include "base/type_manager.h"
 #include "base/type_provider.h"
+#include "base/value_factory.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -706,7 +711,7 @@ void TestMapValueBuilderImpl(ValueFactory& value_factory, const Handle<K>& key,
   ASSERT_OK_AND_ASSIGN(auto type,
                        value_factory.type_factory().CreateMapType(key, value));
   ASSERT_OK_AND_ASSIGN(auto builder, type->NewValueBuilder(value_factory));
-  EXPECT_THAT((&builder.get()), WhenDynamicCastTo<I*>(NotNull()));
+  EXPECT_THAT((builder.get()), WhenDynamicCastTo<I*>(NotNull()));
 }
 
 TEST(MapValueBuilder, Dynamic) {

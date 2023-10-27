@@ -22,6 +22,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -116,7 +117,7 @@ class MapValue : public Value,
 
   class Iterator;
 
-  absl::StatusOr<UniqueRef<Iterator>> NewIterator(
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<Iterator>>> NewIterator(
       ValueFactory& value_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
@@ -194,7 +195,7 @@ class LegacyMapValue final : public MapValue, public InlineData {
 
   absl::StatusOr<Handle<ListValue>> ListKeys(ValueFactory& value_factory) const;
 
-  absl::StatusOr<UniqueRef<Iterator>> NewIterator(
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<Iterator>>> NewIterator(
       ValueFactory& value_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
@@ -259,7 +260,7 @@ class AbstractMapValue : public MapValue,
   virtual absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const = 0;
 
-  virtual absl::StatusOr<UniqueRef<Iterator>> NewIterator(
+  virtual absl::StatusOr<absl::Nonnull<std::unique_ptr<Iterator>>> NewIterator(
       ValueFactory& value_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 

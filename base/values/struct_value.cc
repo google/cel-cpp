@@ -16,11 +16,13 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
@@ -34,6 +36,7 @@
 #include "base/internal/message_wrapper.h"
 #include "base/kind.h"
 #include "base/memory.h"
+#include "base/type.h"
 #include "base/types/struct_type.h"
 #include "base/types/wrapper_type.h"
 #include "base/value.h"
@@ -125,7 +128,7 @@ absl::StatusOr<bool> StructValue::HasFieldByNumber(TypeManager& type_manager,
                                             number);
 }
 
-absl::StatusOr<UniqueRef<StructValue::FieldIterator>>
+absl::StatusOr<absl::Nonnull<std::unique_ptr<StructValue::FieldIterator>>>
 StructValue::NewFieldIterator(ValueFactory& value_factory) const {
   return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(NewFieldIterator, value_factory);
 }
@@ -365,10 +368,10 @@ absl::StatusOr<Handle<Value>> LegacyStructValue::GetWrappedFieldByName(
                                     false);
 }
 
-absl::StatusOr<UniqueRef<StructValue::FieldIterator>>
+absl::StatusOr<absl::Nonnull<std::unique_ptr<StructValue::FieldIterator>>>
 LegacyStructValue::NewFieldIterator(ValueFactory& value_factory) const {
-  return MakeUnique<LegacyStructValueFieldIterator>(
-      value_factory.memory_manager(), value_factory, msg_, type_info_);
+  return std::make_unique<LegacyStructValueFieldIterator>(value_factory, msg_,
+                                                          type_info_);
 }
 
 absl::StatusOr<Handle<Value>> LegacyStructValue::Equals(

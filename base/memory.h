@@ -43,109 +43,6 @@ namespace extensions {
 class ProtoMemoryManager;
 }
 
-// `UniqueRef` is similar to `std::unique_ptr`, but works with `MemoryManager`
-// and is more strict to help prevent misuse. It is undefined behavior to access
-// `UniqueRef` after being moved.
-template <typename T>
-class UniqueRef final {
- public:
-  UniqueRef() = delete;
-
-  UniqueRef(const UniqueRef<T>&) = delete;
-
-  UniqueRef(UniqueRef<T>&& other) : ref_(other.ref_), owned_(other.owned_) {
-    other.ref_ = nullptr;
-    other.owned_ = false;
-  }
-
-  template <typename F,
-            typename = std::enable_if_t<std::is_convertible_v<F*, T*>>>
-  UniqueRef(UniqueRef<F>&& other)  // NOLINT
-      : ref_(other.ref_), owned_(other.owned_) {
-    other.ref_ = nullptr;
-    other.owned_ = false;
-  }
-
-  ~UniqueRef() {
-    if (ref_ != nullptr) {
-      if (owned_) {
-        delete ref_;
-      } else {
-        ref_->~T();
-      }
-    }
-  }
-
-  UniqueRef<T>& operator=(const UniqueRef<T>&) = delete;
-
-  UniqueRef<T>& operator=(UniqueRef<T>&& other) {
-    if (ABSL_PREDICT_TRUE(this != &other)) {
-      if (ref_ != nullptr) {
-        if (owned_) {
-          delete ref_;
-        } else {
-          ref_->~T();
-        }
-      }
-      ref_ = other.ref_;
-      owned_ = other.owned_;
-      other.ref_ = nullptr;
-      other.owned_ = false;
-    }
-    return *this;
-  }
-
-  template <typename F,
-            typename = std::enable_if_t<std::is_convertible_v<F*, T*>>>
-  UniqueRef<T>& operator=(UniqueRef<F>&& other) {  // NOLINT
-    if (ABSL_PREDICT_TRUE(this != &other)) {
-      if (ref_ != nullptr) {
-        if (owned_) {
-          delete ref_;
-        } else {
-          ref_->~T();
-        }
-      }
-      ref_ = other.ref_;
-      owned_ = other.owned_;
-      other.ref_ = nullptr;
-      other.owned_ = false;
-    }
-    return *this;
-  }
-
-  T* operator->() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    ABSL_ASSERT(ref_ != nullptr);
-    ABSL_ASSUME(ref_ != nullptr);
-    return ref_;
-  }
-
-  T& operator*() const ABSL_ATTRIBUTE_LIFETIME_BOUND { return get(); }
-
-  T& get() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    ABSL_ASSERT(ref_ != nullptr);
-    ABSL_ASSUME(ref_ != nullptr);
-    return *ref_;
-  }
-
- private:
-  template <typename F>
-  friend class UniqueRef;
-  friend class MemoryManager;
-
-  UniqueRef(T* ref, bool owned) ABSL_ATTRIBUTE_NONNULL()
-      : ref_(ABSL_DIE_IF_NULL(ref)),  // Crash OK
-        owned_(owned) {}
-
-  T* ref_;
-  bool owned_;
-};
-
-template <typename T, typename... Args>
-ABSL_MUST_USE_RESULT UniqueRef<T> MakeUnique(MemoryManager& memory_manager
-                                                 ABSL_ATTRIBUTE_LIFETIME_BOUND,
-                                             Args&&... args);
-
 // `MemoryManager` is an abstraction over memory management that supports
 // different allocation strategies.
 class MemoryManager {
@@ -168,8 +65,6 @@ class MemoryManager {
   friend class Allocator;
   template <typename T>
   friend struct base_internal::HandleFactory;
-  template <typename T, typename... Args>
-  friend UniqueRef<T> MakeUnique(MemoryManager&, Args&&...);
 
   // Only for use by GlobalMemoryManager and ArenaMemoryManager.
   explicit MemoryManager(bool allocation_only)
@@ -202,20 +97,6 @@ class MemoryManager {
     return Handle<T>(base_internal::kInPlaceReferenceCounted, *pointer);
   }
 
-  template <typename T, typename... Args>
-  UniqueRef<T> AllocateUnique(Args&&... args)
-      ABSL_ATTRIBUTE_LIFETIME_BOUND ABSL_MUST_USE_RESULT {
-    static_assert(!base_internal::IsDataV<T>);
-    T* ptr;
-    if (allocation_only_) {
-      ptr = ::new (Allocate(sizeof(T), alignof(T)))
-          T(std::forward<Args>(args)...);
-    } else {
-      ptr = new T(std::forward<Args>(args)...);
-    }
-    return UniqueRef<T>(ptr, !allocation_only_);
-  }
-
   // These are virtual private, ensuring only `MemoryManager` calls these.
 
   // Allocates memory of at least size `size` in bytes that is at least as
@@ -230,12 +111,6 @@ class MemoryManager {
 
   const bool allocation_only_;
 };
-
-// Allocates and constructs `T`.
-template <typename T, typename... Args>
-UniqueRef<T> MakeUnique(MemoryManager& memory_manager, Args&&... args) {
-  return memory_manager.AllocateUnique<T>(std::forward<Args>(args)...);
-}
 
 // Base class for all arena-based memory managers.
 class ArenaMemoryManager : public MemoryManager {

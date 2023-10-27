@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "google/protobuf/arena.h"
+#include "absl/base/nullability.h"
 #include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -67,10 +68,11 @@ class LegacyAbstractStructType : public base_internal::AbstractStructType {
   absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
       TypeManager& type_manager, int64_t number) const override;
 
-  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      TypeManager& type_manager) const override;
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<FieldIterator>>>
+  NewFieldIterator(TypeManager& type_manager) const override;
 
-  absl::StatusOr<UniqueRef<StructValueBuilderInterface>> NewValueBuilder(
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<StructValueBuilderInterface>>>
+  NewValueBuilder(
       ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND) const override;
 
   absl::StatusOr<Handle<StructValue>> NewValueFromAny(

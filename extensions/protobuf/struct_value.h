@@ -23,6 +23,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/log/die_if_null.h"
 #include "absl/status/statusor.h"
@@ -263,8 +264,8 @@ class ParsedProtoStructValue : public ProtoStructValue {
   absl::StatusOr<bool> HasFieldByNumber(TypeManager& type_manager,
                                         int64_t number) const final;
 
-  absl::StatusOr<UniqueRef<StructValue::FieldIterator>> NewFieldIterator(
-      ValueFactory& value_factory) const final;
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<StructValue::FieldIterator>>>
+  NewFieldIterator(ValueFactory& value_factory) const final;
 
   using ProtoStructValue::value;
 

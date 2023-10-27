@@ -14,34 +14,12 @@
 
 #include "base/memory.h"
 
-#include <type_traits>
 #include <vector>
 
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
-
-struct NotTriviallyDestuctible final {
-  ~NotTriviallyDestuctible() { Delete(); }
-
-  MOCK_METHOD(void, Delete, (), ());
-};
-
-TEST(GlobalMemoryManager, NotTriviallyDestuctible) {
-  auto managed = MakeUnique<NotTriviallyDestuctible>(MemoryManager::Global());
-  EXPECT_CALL(*managed, Delete());
-}
-
-TEST(ArenaMemoryManager, NotTriviallyDestuctible) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  {
-    // Destructor is called when UniqueRef is destructed, not on MemoryManager
-    // destruction.
-    auto managed = MakeUnique<NotTriviallyDestuctible>(*memory_manager);
-    EXPECT_CALL(*managed, Delete());
-  }
-}
 
 TEST(Allocator, Global) {
   std::vector<int, Allocator<int>> vector(

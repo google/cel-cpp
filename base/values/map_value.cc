@@ -16,11 +16,14 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
@@ -32,6 +35,7 @@
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/memory.h"
+#include "base/type.h"
 #include "base/types/map_type.h"
 #include "base/value.h"
 #include "base/value_factory.h"
@@ -167,8 +171,8 @@ absl::StatusOr<Handle<ListValue>> MapValue::ListKeys(
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(ListKeys, value_factory);
 }
 
-absl::StatusOr<UniqueRef<MapValue::Iterator>> MapValue::NewIterator(
-    ValueFactory& value_factory) const {
+absl::StatusOr<absl::Nonnull<std::unique_ptr<MapValue::Iterator>>>
+MapValue::NewIterator(ValueFactory& value_factory) const {
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(NewIterator, value_factory);
 }
 
@@ -266,7 +270,8 @@ class LegacyMapValueIterator final : public MapValue::Iterator {
   ValueFactory& value_factory_;
   const uintptr_t impl_;
   Handle<ListValue> keys_;
-  absl::optional<UniqueRef<ListValue::Iterator>> keys_iterator_;
+  absl::optional<absl::Nonnull<std::unique_ptr<ListValue::Iterator>>>
+      keys_iterator_;
 };
 
 class AbstractMapValueIterator final : public MapValue::Iterator {
@@ -301,7 +306,8 @@ class AbstractMapValueIterator final : public MapValue::Iterator {
   ValueFactory& value_factory_;
   const AbstractMapValue* const value_;
   Handle<ListValue> keys_;
-  absl::optional<UniqueRef<ListValue::Iterator>> keys_iterator_;
+  absl::optional<absl::Nonnull<std::unique_ptr<ListValue::Iterator>>>
+      keys_iterator_;
 };
 
 absl::StatusOr<Any> GenericMapValueConvertToAny(const MapValue& value,
@@ -392,10 +398,9 @@ absl::StatusOr<Handle<ListValue>> LegacyMapValue::ListKeys(
   return LegacyMapValueListKeys(impl_, value_factory);
 }
 
-absl::StatusOr<UniqueRef<MapValue::Iterator>> LegacyMapValue::NewIterator(
-    ValueFactory& value_factory) const {
-  return MakeUnique<LegacyMapValueIterator>(value_factory.memory_manager(),
-                                            value_factory, impl_);
+absl::StatusOr<absl::Nonnull<std::unique_ptr<MapValue::Iterator>>>
+LegacyMapValue::NewIterator(ValueFactory& value_factory) const {
+  return std::make_unique<LegacyMapValueIterator>(value_factory, impl_);
 }
 
 absl::StatusOr<Handle<Value>> LegacyMapValue::Equals(
@@ -423,10 +428,9 @@ absl::StatusOr<JsonObject> AbstractMapValue::ConvertToJsonObject(
   return GenericMapValueConvertToJsonObject(*this, value_factory);
 }
 
-absl::StatusOr<UniqueRef<MapValue::Iterator>> AbstractMapValue::NewIterator(
-    ValueFactory& value_factory) const {
-  return MakeUnique<AbstractMapValueIterator>(value_factory.memory_manager(),
-                                              value_factory, this);
+absl::StatusOr<absl::Nonnull<std::unique_ptr<MapValue::Iterator>>>
+AbstractMapValue::NewIterator(ValueFactory& value_factory) const {
+  return std::make_unique<AbstractMapValueIterator>(value_factory, this);
 }
 
 absl::StatusOr<Handle<Value>> AbstractMapValue::Equals(

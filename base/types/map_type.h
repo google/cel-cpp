@@ -20,6 +20,7 @@
 #include <string>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -74,9 +75,9 @@ class MapType : public Type,
   // Returns the type of the values in the map.
   const Handle<Type>& value() const;
 
-  absl::StatusOr<UniqueRef<MapValueBuilderInterface>> NewValueBuilder(
-      ValueFactory& value_factory
-          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<MapValueBuilderInterface>>>
+  NewValueBuilder(ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   friend class Type;

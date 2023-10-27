@@ -69,8 +69,10 @@ class MutableListType : public cel::OpaqueType {
 // value via the Build function.
 class MutableListValue : public cel::OpaqueValue {
  public:
-  MutableListValue(cel::Handle<MutableListType> type,
-                   cel::UniqueRef<cel::ListValueBuilderInterface> list_builder);
+  MutableListValue(
+      cel::Handle<MutableListType> type,
+      absl::Nonnull<std::unique_ptr<cel::ListValueBuilderInterface>>
+          list_builder);
 
   static bool Is(const cel::Value& value);
 
@@ -96,7 +98,7 @@ class MutableListValue : public cel::OpaqueValue {
  private:
   cel::NativeTypeId TypeId() const override;
 
-  cel::UniqueRef<cel::ListValueBuilderInterface> list_builder_;
+  absl::Nonnull<std::unique_ptr<cel::ListValueBuilderInterface>> list_builder_;
 };
 
 }  //  namespace cel::runtime_internal

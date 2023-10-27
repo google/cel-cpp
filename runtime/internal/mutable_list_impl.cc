@@ -15,10 +15,13 @@
 
 #include "runtime/internal/mutable_list_impl.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
+#include "base/types/opaque_type.h"
 #include "base/value.h"
+#include "base/values/list_value_builder.h"
 #include "common/native_type.h"
 
 namespace cel::runtime_internal {
@@ -36,7 +39,7 @@ NativeTypeId MutableListType::TypeId() const {
 
 MutableListValue::MutableListValue(
     cel::Handle<MutableListType> type,
-    cel::UniqueRef<cel::ListValueBuilderInterface> list_builder)
+    absl::Nonnull<std::unique_ptr<cel::ListValueBuilderInterface>> list_builder)
     : cel::OpaqueValue(std::move(type)),
       list_builder_(std::move(list_builder)) {}
 

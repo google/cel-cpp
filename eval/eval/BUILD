@@ -295,8 +295,10 @@ cc_library(
         "//base/ast_internal:expr",
         "//internal:status_macros",
         "//runtime/internal:mutable_list_impl",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/types:optional",
     ],
 )
 

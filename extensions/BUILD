@@ -210,6 +210,7 @@ cc_test(
         "//internal:testing",
         "//parser",
         "//runtime:runtime_options",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",

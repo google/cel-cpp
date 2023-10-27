@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -123,8 +124,9 @@ class EnumType : public Type, public base_internal::HeapData {
 
   // Returns an iterator which can iterate over all the constants defined by
   // this enumeration. The order with which iteration occurs is undefined.
-  virtual absl::StatusOr<UniqueRef<ConstantIterator>> NewConstantIterator(
-      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
+  virtual absl::StatusOr<absl::Nonnull<std::unique_ptr<ConstantIterator>>>
+  NewConstantIterator(MemoryManager& memory_manager) const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
   absl::StatusOr<Handle<Value>> NewValueFromAny(ValueFactory& value_factory,
                                                 const absl::Cord& value) const;

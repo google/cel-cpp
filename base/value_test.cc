@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -98,8 +99,8 @@ class TestEnumType final : public EnumType {
 
   size_t constant_count() const override { return 2; }
 
-  absl::StatusOr<UniqueRef<ConstantIterator>> NewConstantIterator(
-      MemoryManager& memory_manager) const override {
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<ConstantIterator>>>
+  NewConstantIterator(MemoryManager& memory_manager) const override {
     return absl::UnimplementedError(
         "EnumType::NewConstantIterator is unimplemented");
   }
@@ -238,8 +239,8 @@ class TestStructValue final : public CEL_STRUCT_VALUE_CLASS {
 
   size_t field_count() const override { return 4; }
 
-  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      ValueFactory& value_factory) const override {
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<FieldIterator>>>
+  NewFieldIterator(ValueFactory& value_factory) const override {
     return absl::UnimplementedError(
         "StructValue::NewFieldIterator() is unimplemented");
   }
@@ -258,8 +259,8 @@ class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
 
   size_t field_count() const override { return 4; }
 
-  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      TypeManager& type_manager) const override {
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<FieldIterator>>>
+  NewFieldIterator(TypeManager& type_manager) const override {
     return absl::UnimplementedError(
         "StructType::NewFieldIterator() is unimplemented");
   }

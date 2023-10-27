@@ -14,22 +14,28 @@
 
 #include "base/types/list_type.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
 #include "absl/base/macros.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
-#include "base/memory.h"
+#include "base/type.h"
 #include "base/types/dyn_type.h"
 #include "base/value_factory.h"
+#include "base/values/bool_value.h"
 #include "base/values/list_value.h"
 #include "base/values/list_value_builder.h"
+#include "base/values/uint_value.h"
 #include "internal/proto_wire.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -90,37 +96,30 @@ const Handle<Type>& ListType::element() const {
   return static_cast<const base_internal::ModernListType&>(*this).element();
 }
 
-absl::StatusOr<UniqueRef<ListValueBuilderInterface>> ListType::NewValueBuilder(
-    ValueFactory& value_factory) const {
+absl::StatusOr<absl::Nonnull<std::unique_ptr<ListValueBuilderInterface>>>
+ListType::NewValueBuilder(ValueFactory& value_factory) const {
   switch (element()->kind()) {
     case TypeKind::kBool:
-      return MakeUnique<ListValueBuilder<BoolValue>>(
-          value_factory.memory_manager(), base_internal::kComposedListType,
-          value_factory, handle_from_this());
+      return std::make_unique<ListValueBuilder<BoolValue>>(
+          base_internal::kComposedListType, value_factory, handle_from_this());
     case TypeKind::kInt:
-      return MakeUnique<ListValueBuilder<IntValue>>(
-          value_factory.memory_manager(), base_internal::kComposedListType,
-          value_factory, handle_from_this());
+      return std::make_unique<ListValueBuilder<IntValue>>(
+          base_internal::kComposedListType, value_factory, handle_from_this());
     case TypeKind::kUint:
-      return MakeUnique<ListValueBuilder<UintValue>>(
-          value_factory.memory_manager(), base_internal::kComposedListType,
-          value_factory, handle_from_this());
+      return std::make_unique<ListValueBuilder<UintValue>>(
+          base_internal::kComposedListType, value_factory, handle_from_this());
     case TypeKind::kDouble:
-      return MakeUnique<ListValueBuilder<DoubleValue>>(
-          value_factory.memory_manager(), base_internal::kComposedListType,
-          value_factory, handle_from_this());
+      return std::make_unique<ListValueBuilder<DoubleValue>>(
+          base_internal::kComposedListType, value_factory, handle_from_this());
     case TypeKind::kDuration:
-      return MakeUnique<ListValueBuilder<DurationValue>>(
-          value_factory.memory_manager(), base_internal::kComposedListType,
-          value_factory, handle_from_this());
+      return std::make_unique<ListValueBuilder<DurationValue>>(
+          base_internal::kComposedListType, value_factory, handle_from_this());
     case TypeKind::kTimestamp:
-      return MakeUnique<ListValueBuilder<TimestampValue>>(
-          value_factory.memory_manager(), base_internal::kComposedListType,
-          value_factory, handle_from_this());
+      return std::make_unique<ListValueBuilder<TimestampValue>>(
+          base_internal::kComposedListType, value_factory, handle_from_this());
     default:
-      return MakeUnique<ListValueBuilder<Value>>(
-          value_factory.memory_manager(), base_internal::kComposedListType,
-          value_factory, handle_from_this());
+      return std::make_unique<ListValueBuilder<Value>>(
+          base_internal::kComposedListType, value_factory, handle_from_this());
   }
 }
 

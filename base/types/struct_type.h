@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -134,13 +135,13 @@ class StructType : public Type {
 
   class FieldIterator;
 
-  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      TypeManager& type_manager
-          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<FieldIterator>>>
+  NewFieldIterator(TypeManager& type_manager ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::StatusOr<UniqueRef<StructValueBuilderInterface>> NewValueBuilder(
-      ValueFactory& value_factory
-          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<StructValueBuilderInterface>>>
+  NewValueBuilder(ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   absl::StatusOr<Handle<StructValue>> NewValueFromAny(
       ValueFactory& value_factory, const absl::Cord& value) const;
@@ -265,13 +266,13 @@ class LegacyStructType final : public StructType, public InlineData {
       TypeManager& type_manager,
       int64_t number) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      TypeManager& type_manager
-          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<FieldIterator>>>
+  NewFieldIterator(TypeManager& type_manager ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::StatusOr<UniqueRef<StructValueBuilderInterface>> NewValueBuilder(
-      ValueFactory& value_factory
-          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<StructValueBuilderInterface>>>
+  NewValueBuilder(ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   absl::StatusOr<Handle<StructValue>> NewValueFromAny(
       ValueFactory& value_factory, const absl::Cord& value) const;
@@ -331,11 +332,12 @@ class AbstractStructType
       TypeManager& type_manager,
       int64_t number) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
-  virtual absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      TypeManager& type_manager ABSL_ATTRIBUTE_LIFETIME_BOUND) const
-      ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
+  virtual absl::StatusOr<absl::Nonnull<std::unique_ptr<FieldIterator>>>
+  NewFieldIterator(TypeManager& type_manager ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
-  virtual absl::StatusOr<UniqueRef<StructValueBuilderInterface>>
+  virtual absl::StatusOr<
+      absl::Nonnull<std::unique_ptr<StructValueBuilderInterface>>>
   NewValueBuilder(ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND)
       const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 

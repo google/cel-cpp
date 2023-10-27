@@ -14,14 +14,20 @@
 
 #include "extensions/protobuf/enum_type.h"
 
+#include <cstddef>
 #include <limits>
+#include <memory>
 #include <utility>
 
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "base/types/enum_type.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel::extensions {
 
@@ -98,10 +104,9 @@ ProtoEnumType::FindConstantByNumber(int64_t number) const {
                   value_desc->number(), value_desc);
 }
 
-absl::StatusOr<UniqueRef<EnumType::ConstantIterator>>
+absl::StatusOr<absl::Nonnull<std::unique_ptr<EnumType::ConstantIterator>>>
 ProtoEnumType::NewConstantIterator(MemoryManager& memory_manager) const {
-  return MakeUnique<ProtoEnumTypeConstantIterator>(memory_manager,
-                                                   descriptor());
+  return std::make_unique<ProtoEnumTypeConstantIterator>(descriptor());
 }
 
 }  // namespace cel::extensions

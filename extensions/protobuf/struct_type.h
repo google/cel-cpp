@@ -18,6 +18,7 @@
 #include <type_traits>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/log/die_if_null.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -63,8 +64,8 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
 
   size_t field_count() const override;
 
-  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      TypeManager& type_manager) const override;
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<FieldIterator>>>
+  NewFieldIterator(TypeManager& type_manager) const override;
 
   // Called by FindField.
   absl::StatusOr<absl::optional<Field>> FindFieldByName(
@@ -74,8 +75,8 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
   absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
       TypeManager& type_manager, int64_t number) const override;
 
-  absl::StatusOr<UniqueRef<StructValueBuilderInterface>> NewValueBuilder(
-      ValueFactory& value_factory) const override;
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<StructValueBuilderInterface>>>
+  NewValueBuilder(ValueFactory& value_factory) const override;
 
   absl::StatusOr<Handle<StructValue>> NewValueFromAny(
       ValueFactory& value_factory, const absl::Cord& value) const override;

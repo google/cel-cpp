@@ -20,6 +20,7 @@
 #include <string>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -66,9 +67,9 @@ class ListType
     return static_cast<const ListType&>(type);
   }
 
-  absl::StatusOr<UniqueRef<ListValueBuilderInterface>> NewValueBuilder(
-      ValueFactory& value_factory
-          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<ListValueBuilderInterface>>>
+  NewValueBuilder(ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   friend class Type;

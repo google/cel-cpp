@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
@@ -177,10 +178,12 @@ absl::StatusOr<std::unique_ptr<ListStorage>> RegisterModernLists(
                        value_factory.type_factory().CreateListType(
                            value_factory.type_factory().GetDynType()));
 
-  CEL_ASSIGN_OR_RETURN(cel::UniqueRef<cel::ListValueBuilderInterface> x_builder,
-                       list_type->NewValueBuilder(value_factory));
-  CEL_ASSIGN_OR_RETURN(cel::UniqueRef<cel::ListValueBuilderInterface> y_builder,
-                       list_type->NewValueBuilder(value_factory));
+  CEL_ASSIGN_OR_RETURN(
+      absl::Nonnull<std::unique_ptr<cel::ListValueBuilderInterface>> x_builder,
+      list_type->NewValueBuilder(value_factory));
+  CEL_ASSIGN_OR_RETURN(
+      absl::Nonnull<std::unique_ptr<cel::ListValueBuilderInterface>> y_builder,
+      list_type->NewValueBuilder(value_factory));
 
   x_builder->Reserve(len + 1);
   y_builder->Reserve(len + 1);

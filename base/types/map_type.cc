@@ -14,24 +14,31 @@
 
 #include "base/types/map_type.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
-#include "base/memory.h"
+#include "base/type.h"
 #include "base/types/dyn_type.h"
 #include "base/value_factory.h"
+#include "base/values/bool_value.h"
 #include "base/values/map_value.h"
 #include "base/values/map_value_builder.h"
+#include "base/values/string_value.h"
 #include "internal/proto_wire.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -147,37 +154,37 @@ const Handle<Type>& MapType::value() const {
 namespace {
 
 template <typename K>
-absl::StatusOr<UniqueRef<MapValueBuilderInterface>> NewMapValueBuilderFor(
-    ValueFactory& value_factory, Handle<MapType> type) {
+absl::StatusOr<absl::Nonnull<std::unique_ptr<MapValueBuilderInterface>>>
+NewMapValueBuilderFor(ValueFactory& value_factory, Handle<MapType> type) {
   switch (type->value()->kind()) {
     case TypeKind::kBool:
-      return MakeUnique<MapValueBuilder<K, BoolValue>>(
-          value_factory.memory_manager(), value_factory, std::move(type));
+      return std::make_unique<MapValueBuilder<K, BoolValue>>(value_factory,
+                                                             std::move(type));
     case TypeKind::kInt:
-      return MakeUnique<MapValueBuilder<K, IntValue>>(
-          value_factory.memory_manager(), value_factory, std::move(type));
+      return std::make_unique<MapValueBuilder<K, IntValue>>(value_factory,
+                                                            std::move(type));
     case TypeKind::kUint:
-      return MakeUnique<MapValueBuilder<K, UintValue>>(
-          value_factory.memory_manager(), value_factory, std::move(type));
+      return std::make_unique<MapValueBuilder<K, UintValue>>(value_factory,
+                                                             std::move(type));
     case TypeKind::kDouble:
-      return MakeUnique<MapValueBuilder<K, DoubleValue>>(
-          value_factory.memory_manager(), value_factory, std::move(type));
+      return std::make_unique<MapValueBuilder<K, DoubleValue>>(value_factory,
+                                                               std::move(type));
     case TypeKind::kDuration:
-      return MakeUnique<MapValueBuilder<K, DurationValue>>(
-          value_factory.memory_manager(), value_factory, std::move(type));
+      return std::make_unique<MapValueBuilder<K, DurationValue>>(
+          value_factory, std::move(type));
     case TypeKind::kTimestamp:
-      return MakeUnique<MapValueBuilder<K, TimestampValue>>(
-          value_factory.memory_manager(), value_factory, std::move(type));
+      return std::make_unique<MapValueBuilder<K, TimestampValue>>(
+          value_factory, std::move(type));
     default:
-      return MakeUnique<MapValueBuilder<K, Value>>(
-          value_factory.memory_manager(), value_factory, std::move(type));
+      return std::make_unique<MapValueBuilder<K, Value>>(value_factory,
+                                                         std::move(type));
   }
 }
 
 }  // namespace
 
-absl::StatusOr<UniqueRef<MapValueBuilderInterface>> MapType::NewValueBuilder(
-    ValueFactory& value_factory) const {
+absl::StatusOr<absl::Nonnull<std::unique_ptr<MapValueBuilderInterface>>>
+MapType::NewValueBuilder(ValueFactory& value_factory) const {
   switch (key()->kind()) {
     case TypeKind::kBool:
       return NewMapValueBuilderFor<BoolValue>(value_factory,

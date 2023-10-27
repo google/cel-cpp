@@ -14,18 +14,23 @@
 
 #include "base/types/struct_type.h"
 
+#include <cstdint>
 #include <string>
 #include <utility>
 
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/variant.h"
+#include "base/type.h"
 #include "base/value_factory.h"
 #include "base/values/struct_value_builder.h"
+#include "common/native_type.h"
 #include "internal/overloaded.h"
 #include "internal/status_macros.h"
 
@@ -103,12 +108,12 @@ absl::StatusOr<absl::optional<StructType::Field>> StructType::FindFieldByNumber(
                                            number);
 }
 
-absl::StatusOr<UniqueRef<StructType::FieldIterator>>
+absl::StatusOr<absl::Nonnull<std::unique_ptr<StructType::FieldIterator>>>
 StructType::NewFieldIterator(TypeManager& type_manager) const {
   return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(NewFieldIterator, type_manager);
 }
 
-absl::StatusOr<UniqueRef<StructValueBuilderInterface>>
+absl::StatusOr<absl::Nonnull<std::unique_ptr<StructValueBuilderInterface>>>
 StructType::NewValueBuilder(ValueFactory& value_factory) const {
   return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(NewValueBuilder, value_factory);
 }
@@ -170,7 +175,7 @@ size_t LegacyStructType::field_count() const {
   return MessageTypeFieldCount(msg_);
 }
 
-absl::StatusOr<UniqueRef<StructType::FieldIterator>>
+absl::StatusOr<absl::Nonnull<std::unique_ptr<StructType::FieldIterator>>>
 LegacyStructType::NewFieldIterator(TypeManager&) const {
   return absl::UnimplementedError(
       "StructType::NewFieldIterator is not supported by legacy struct types");
@@ -192,7 +197,7 @@ LegacyStructType::FindFieldByNumber(TypeManager& type_manager,
       "Legacy struct type does not support type introspection");
 }
 
-absl::StatusOr<UniqueRef<StructValueBuilderInterface>>
+absl::StatusOr<absl::Nonnull<std::unique_ptr<StructValueBuilderInterface>>>
 LegacyStructType::NewValueBuilder(ValueFactory& value_factory) const {
   return absl::UnimplementedError(
       "Legacy struct type does not support type reflection");
@@ -212,7 +217,7 @@ AbstractStructType::AbstractStructType()
       reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
 }
 
-absl::StatusOr<UniqueRef<StructValueBuilderInterface>>
+absl::StatusOr<absl::Nonnull<std::unique_ptr<StructValueBuilderInterface>>>
 AbstractStructType::NewValueBuilder(ValueFactory& value_factory) const {
   return absl::UnimplementedError(
       "StructType::NewValueBuilder is unimplemented. Perhaps the value library "

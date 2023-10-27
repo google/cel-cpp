@@ -32,16 +32,6 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "memory_manager_test",
-    srcs = ["memory_manager_test.cc"],
-    deps = [
-        ":memory_manager",
-        "//internal:testing",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
 cc_library(
     name = "ast_converters",
     srcs = ["ast_converters.cc"],
@@ -107,6 +97,7 @@ cc_library(
         "//base:kind",
         "//base:memory",
         "//base:owner",
+        "//base/internal:message_wrapper",
         "//common:any",
         "//common:json",
         "//common:native_type",
@@ -127,6 +118,7 @@ cc_library(
         "//internal:time",
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/functional:function_ref",

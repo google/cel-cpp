@@ -1,10 +1,12 @@
 #include "eval/public/cel_type_registry.h"
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -22,6 +24,7 @@
 #include "base/values/struct_value_builder.h"
 #include "base/values/type_value.h"
 #include "common/native_type.h"
+#include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_provider.h"
 #include "internal/testing.h"
 
@@ -36,12 +39,9 @@ using ::cel::Type;
 using ::cel::TypeFactory;
 using ::cel::TypeManager;
 using ::cel::TypeProvider;
-using ::cel::TypeValue;
-using ::cel::UniqueRef;
 using ::cel::ValueFactory;
 using testing::Contains;
 using testing::Eq;
-using testing::Field;
 using testing::Key;
 using testing::Optional;
 using testing::Pair;
@@ -193,14 +193,15 @@ class TestStructType : public cel::base_internal::AbstractStructType {
     return absl::nullopt;
   }
 
-  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      TypeManager& type_manager) const override {
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<FieldIterator>>>
+  NewFieldIterator(TypeManager& type_manager) const override {
     return absl::UnimplementedError("");
   }
 
-  absl::StatusOr<UniqueRef<cel::StructValueBuilderInterface>> NewValueBuilder(
-      ValueFactory& value_factory
-          ABSL_ATTRIBUTE_LIFETIME_BOUND) const override {
+  absl::StatusOr<
+      absl::Nonnull<std::unique_ptr<cel::StructValueBuilderInterface>>>
+  NewValueBuilder(ValueFactory& value_factory
+                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const override {
     return absl::UnimplementedError("");
   }
 

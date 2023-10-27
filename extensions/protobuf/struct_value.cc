@@ -16,6 +16,7 @@
 
 #include "extensions/protobuf/struct_value.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -25,9 +26,11 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/container/btree_set.h"
 #include "absl/functional/any_invocable.h"
+#include "absl/log/die_if_null.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -37,20 +40,26 @@
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "base/handle.h"
+#include "base/internal/message_wrapper.h"
 #include "base/memory.h"
+#include "base/types/list_type.h"
 #include "base/types/struct_type.h"
 #include "base/value.h"
 #include "base/value_factory.h"
 #include "base/values/bool_value.h"
 #include "base/values/bytes_value.h"
 #include "base/values/double_value.h"
+#include "base/values/duration_value.h"
 #include "base/values/int_value.h"
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
+#include "base/values/null_value.h"
 #include "base/values/string_value.h"
+#include "base/values/timestamp_value.h"
 #include "base/values/uint_value.h"
 #include "common/any.h"
 #include "common/json.h"
+#include "common/native_type.h"
 #include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
 #include "eval/public/message_wrapper.h"
@@ -70,6 +79,7 @@
 #include "extensions/protobuf/value.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/map_field.h"
 #include "google/protobuf/message.h"
@@ -2777,15 +2787,15 @@ class ParsedProtoStructValueFieldIterator final
   size_t index_ = 0;
 };
 
-absl::StatusOr<UniqueRef<StructValue::FieldIterator>>
+absl::StatusOr<absl::Nonnull<std::unique_ptr<StructValue::FieldIterator>>>
 ParsedProtoStructValue::NewFieldIterator(ValueFactory& value_factory) const {
   const auto* reflect = value().GetReflection();
   std::vector<const google::protobuf::FieldDescriptor*> fields;
   if (ABSL_PREDICT_TRUE(reflect != nullptr)) {
     reflect->ListFields(value(), &fields);
   }
-  return MakeUnique<ParsedProtoStructValueFieldIterator>(
-      value_factory.memory_manager(), value_factory, this, std::move(fields));
+  return std::make_unique<ParsedProtoStructValueFieldIterator>(
+      value_factory, this, std::move(fields));
 }
 
 absl::Status ParsedProtoStructValue::CopyTo(google::protobuf::Message& that) const {

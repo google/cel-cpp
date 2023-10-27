@@ -16,10 +16,12 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -108,8 +110,8 @@ absl::StatusOr<Handle<Value>> ListValue::Get(ValueFactory& value_factory,
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(GetImpl, value_factory, index);
 }
 
-absl::StatusOr<UniqueRef<ListValue::Iterator>> ListValue::NewIterator(
-    ValueFactory& value_factory) const {
+absl::StatusOr<absl::Nonnull<std::unique_ptr<ListValue::Iterator>>>
+ListValue::NewIterator(ValueFactory& value_factory) const {
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(NewIterator, value_factory);
 }
 
@@ -288,10 +290,9 @@ size_t LegacyListValue::size() const { return LegacyListValueSize(impl_); }
 
 bool LegacyListValue::empty() const { return LegacyListValueEmpty(impl_); }
 
-absl::StatusOr<UniqueRef<ListValue::Iterator>> LegacyListValue::NewIterator(
-    ValueFactory& value_factory) const {
-  return MakeUnique<LegacyListValueIterator>(value_factory.memory_manager(),
-                                             value_factory, impl_);
+absl::StatusOr<absl::Nonnull<std::unique_ptr<ListValue::Iterator>>>
+LegacyListValue::NewIterator(ValueFactory& value_factory) const {
+  return std::make_unique<LegacyListValueIterator>(value_factory, impl_);
 }
 
 absl::StatusOr<Handle<Value>> LegacyListValue::GetImpl(
@@ -334,10 +335,9 @@ absl::StatusOr<JsonArray> AbstractListValue::ConvertToJsonArray(
   return GenericListValueConvertToJsonArray(*this, value_factory);
 }
 
-absl::StatusOr<UniqueRef<ListValue::Iterator>> AbstractListValue::NewIterator(
-    ValueFactory& value_factory) const {
-  return MakeUnique<AbstractListValueIterator>(value_factory.memory_manager(),
-                                               value_factory, this);
+absl::StatusOr<absl::Nonnull<std::unique_ptr<ListValue::Iterator>>>
+AbstractListValue::NewIterator(ValueFactory& value_factory) const {
+  return std::make_unique<AbstractListValueIterator>(value_factory, this);
 }
 
 absl::StatusOr<Handle<Value>> AbstractListValue::Equals(

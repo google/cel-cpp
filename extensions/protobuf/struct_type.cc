@@ -14,14 +14,17 @@
 
 #include "extensions/protobuf/struct_type.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "google/protobuf/struct.pb.h"
 #include "absl/base/attributes.h"
-#include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/functional/any_invocable.h"
 #include "absl/functional/function_ref.h"
@@ -32,13 +35,19 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "base/handle.h"
 #include "base/kind.h"
+#include "base/type.h"
 #include "base/type_manager.h"
+#include "base/types/wrapper_type.h"
 #include "base/value_factory.h"
+#include "base/values/map_value.h"
 #include "base/values/opaque_value.h"
+#include "base/values/struct_value.h"
 #include "base/values/struct_value_builder.h"
+#include "base/values/uint_value.h"
 #include "eval/internal/errors.h"
 #include "extensions/protobuf/enum_type.h"
 #include "extensions/protobuf/internal/any.h"
@@ -256,10 +265,10 @@ size_t ProtoStructType::field_count() const {
   return descriptor().field_count();
 }
 
-absl::StatusOr<UniqueRef<StructType::FieldIterator>>
+absl::StatusOr<absl::Nonnull<std::unique_ptr<StructType::FieldIterator>>>
 ProtoStructType::NewFieldIterator(TypeManager& type_manager) const {
-  return MakeUnique<ProtoStructTypeFieldIterator>(type_manager.memory_manager(),
-                                                  type_manager, descriptor());
+  return std::make_unique<ProtoStructTypeFieldIterator>(type_manager,
+                                                        descriptor());
 }
 
 absl::StatusOr<absl::optional<ProtoStructType::Field>>
@@ -676,9 +685,8 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
             };
           case TypeKind::kDyn:
             // google.protobuf.Value
-            return [&to_value_type](
-                       ValueFactory& value_factory, const Value& value,
-                       google::protobuf::MapValueRef& value_ref) -> absl::Status {
+            return [](ValueFactory& value_factory, const Value& value,
+                      google::protobuf::MapValueRef& value_ref) -> absl::Status {
               CEL_ASSIGN_OR_RETURN(auto json,
                                    value.ConvertToJson(value_factory));
               return protobuf_internal::DynamicValueProtoFromJson(
@@ -1650,7 +1658,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
   google::protobuf::Message* message_;
 };
 
-absl::StatusOr<UniqueRef<StructValueBuilderInterface>>
+absl::StatusOr<absl::Nonnull<std::unique_ptr<StructValueBuilderInterface>>>
 ProtoStructType::NewValueBuilder(ValueFactory& value_factory) const {
   const auto* prototype = factory_->GetPrototype(&descriptor());
   if (prototype == nullptr) {
@@ -1666,9 +1674,9 @@ ProtoStructType::NewValueBuilder(ValueFactory& value_factory) const {
   } else {
     message = prototype->New();
   }
-  return MakeUnique<ProtoStructValueBuilder>(
-      value_factory.memory_manager(), value_factory,
-      handle_from_this().As<ProtoStructType>(), factory_, message);
+  return std::make_unique<ProtoStructValueBuilder>(
+      value_factory, handle_from_this().As<ProtoStructType>(), factory_,
+      message);
 }
 
 absl::StatusOr<Handle<StructValue>> ProtoStructType::NewValueFromAny(

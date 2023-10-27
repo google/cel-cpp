@@ -24,6 +24,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "absl/hash/hash.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
@@ -131,8 +132,9 @@ class StructValue : public Value,
 
   class FieldIterator;
 
-  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      ValueFactory& value_factory) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<FieldIterator>>>
+  NewFieldIterator(ValueFactory& value_factory) const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   struct Field final {
     Field(FieldId id, Handle<Value> value) : id(id), value(std::move(value)) {}
@@ -272,8 +274,9 @@ class LegacyStructValue final : public StructValue, public InlineData {
   absl::StatusOr<bool> HasFieldByNumber(TypeManager& type_manager,
                                         int64_t number) const;
 
-  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      ValueFactory& value_factory) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<FieldIterator>>>
+  NewFieldIterator(ValueFactory& value_factory) const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;
@@ -366,8 +369,9 @@ class AbstractStructValue : public StructValue,
   virtual absl::StatusOr<bool> HasFieldByNumber(TypeManager& type_manager,
                                                 int64_t number) const = 0;
 
-  virtual absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
-      ValueFactory& value_factory) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
+  virtual absl::StatusOr<absl::Nonnull<std::unique_ptr<FieldIterator>>>
+  NewFieldIterator(ValueFactory& value_factory) const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
   virtual absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                                const Value& other) const;

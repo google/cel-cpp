@@ -16,31 +16,40 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/attribute.h"
 #include "base/handle.h"
+#include "base/internal/data.h"
 #include "base/internal/message_wrapper.h"
+#include "base/internal/unknown_set.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/type_provider.h"
 #include "base/types/struct_type.h"
 #include "base/value.h"
 #include "base/value_factory.h"
+#include "base/values/bool_value.h"
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
+#include "base/values/null_value.h"
 #include "base/values/struct_value.h"
 #include "common/native_type.h"
+#include "common/value_kind.h"
 #include "eval/internal/cel_value_equal.h"
 #include "eval/internal/errors.h"
 #include "eval/public/cel_options.h"
@@ -52,7 +61,6 @@
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/overloaded.h"
 #include "internal/status_macros.h"
-#include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
 
@@ -397,13 +405,13 @@ LegacyAbstractStructType::FindFieldByNumber(TypeManager& type_manager,
       "FindFieldByNumber not implemented for legacy types.");
 }
 
-absl::StatusOr<UniqueRef<StructType::FieldIterator>>
+absl::StatusOr<absl::Nonnull<std::unique_ptr<StructType::FieldIterator>>>
 LegacyAbstractStructType::NewFieldIterator(TypeManager& type_manager) const {
   return absl::UnimplementedError(
       "Field iteration not implemented for legacy types");
 }
 
-absl::StatusOr<UniqueRef<StructValueBuilderInterface>>
+absl::StatusOr<absl::Nonnull<std::unique_ptr<StructValueBuilderInterface>>>
 LegacyAbstractStructType::NewValueBuilder(
     ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND) const {
   const auto* mutation = type_info_.GetMutationApis(MessageWrapper());
@@ -413,9 +421,9 @@ LegacyAbstractStructType::NewValueBuilder(
   }
   CEL_ASSIGN_OR_RETURN(auto builder,
                        mutation->NewInstance(value_factory.memory_manager()));
-  return MakeUnique<LegacyAbstractStructValueBuilder>(
-      value_factory.memory_manager(), value_factory, type_info_, *mutation,
-      MessageWrapper(), std::move(builder));
+  return std::make_unique<LegacyAbstractStructValueBuilder>(
+      value_factory, type_info_, *mutation, MessageWrapper(),
+      std::move(builder));
 }
 
 absl::StatusOr<Handle<StructValue>> LegacyAbstractStructType::NewValueFromAny(

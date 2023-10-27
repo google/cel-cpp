@@ -4,11 +4,15 @@
 #include <memory>
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/optional.h"
 #include "base/handle.h"
 #include "base/types/list_type.h"
+#include "base/value.h"
 #include "base/values/list_value_builder.h"
+#include "base/values/unknown_value.h"
 #include "eval/eval/expression_step_base.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/mutable_list_impl.h"
@@ -20,7 +24,6 @@ namespace {
 using ::cel::Handle;
 using ::cel::ListType;
 using ::cel::ListValueBuilderInterface;
-using ::cel::UniqueRef;
 using ::cel::UnknownValue;
 using ::cel::runtime_internal::MutableListType;
 using ::cel::runtime_internal::MutableListValue;
@@ -80,8 +83,9 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
   CEL_ASSIGN_OR_RETURN(Handle<ListType> type,
                        type_factory.CreateListType(type_factory.GetDynType()));
 
-  CEL_ASSIGN_OR_RETURN(UniqueRef<ListValueBuilderInterface> builder,
-                       type->NewValueBuilder(frame->value_factory()));
+  CEL_ASSIGN_OR_RETURN(
+      absl::Nonnull<std::unique_ptr<ListValueBuilderInterface>> builder,
+      type->NewValueBuilder(frame->value_factory()));
 
   builder->Reserve(args.size());
   for (const auto& arg : args) {

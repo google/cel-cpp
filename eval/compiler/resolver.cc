@@ -15,10 +15,12 @@
 #include "eval/compiler/resolver.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
@@ -87,7 +89,8 @@ Resolver::Resolver(
       auto remainder = absl::StripPrefix(enum_name, prefix);
       const Handle<EnumType>& enum_type = iter->second;
 
-      absl::StatusOr<cel::UniqueRef<cel::EnumType::ConstantIterator>>
+      absl::StatusOr<
+          absl::Nonnull<std::unique_ptr<cel::EnumType::ConstantIterator>>>
           enum_value_iter_or =
               enum_type->NewConstantIterator(MemoryManager::Global());
 
