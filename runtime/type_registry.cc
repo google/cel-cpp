@@ -128,7 +128,7 @@ class ResolveableEnumType final : public cel::EnumType {
   };
 
   // Implement EnumType.
-  cel::NativeTypeId TypeId() const override {
+  cel::NativeTypeId GetNativeTypeId() const override {
     return cel::NativeTypeId::For<ResolveableEnumType>();
   }
 

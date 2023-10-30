@@ -65,14 +65,14 @@ class OpaqueValue : public Value,
 
  protected:
   static NativeTypeId TypeId(const OpaqueValue& value) {
-    return value.TypeId();
+    return value.GetNativeTypeId();
   }
 
   explicit OpaqueValue(Handle<OpaqueType> type)
       : Value(), HeapData(kKind), type_(std::move(type)) {}
 
  private:
-  virtual NativeTypeId TypeId() const = 0;
+  virtual NativeTypeId GetNativeTypeId() const = 0;
 
   const Handle<OpaqueType> type_;
 };

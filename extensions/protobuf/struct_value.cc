@@ -331,7 +331,7 @@ class ParsedProtoListValue<NullValue> : public CEL_LIST_VALUE_CLASS {
   }
 
  private:
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<ParsedProtoListValue<NullValue>>();
   }
 
@@ -372,7 +372,7 @@ class ParsedProtoListValue<BoolValue, bool> : public CEL_LIST_VALUE_CLASS {
   }
 
  private:
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<ParsedProtoListValue<BoolValue, bool>>();
   }
 
@@ -412,7 +412,7 @@ class ParsedProtoListValue<IntValue, P> : public CEL_LIST_VALUE_CLASS {
   }
 
  private:
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<ParsedProtoListValue<IntValue, P>>();
   }
 
@@ -453,7 +453,7 @@ class ParsedProtoListValue<UintValue, P> : public CEL_LIST_VALUE_CLASS {
   }
 
  private:
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<ParsedProtoListValue<UintValue, P>>();
   }
 
@@ -495,7 +495,7 @@ class ParsedProtoListValue<DoubleValue, P> : public CEL_LIST_VALUE_CLASS {
   }
 
  private:
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<ParsedProtoListValue<DoubleValue, P>>();
   }
 
@@ -539,7 +539,7 @@ class ParsedProtoListValue<BytesValue, std::string>
   }
 
  private:
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<ParsedProtoListValue<BytesValue, std::string>>();
   }
 
@@ -584,7 +584,7 @@ class ParsedProtoListValue<StringValue, std::string>
   }
 
  private:
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<ParsedProtoListValue<StringValue, std::string>>();
   }
 
@@ -632,7 +632,7 @@ class ParsedProtoListValue<DurationValue, google::protobuf::Message>
   }
 
  private:
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<
         ParsedProtoListValue<DurationValue, google::protobuf::Message>>();
   }
@@ -680,7 +680,7 @@ class ParsedProtoListValue<TimestampValue, google::protobuf::Message>
   }
 
  private:
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<
         ParsedProtoListValue<TimestampValue, google::protobuf::Message>>();
   }
@@ -725,7 +725,7 @@ class ParsedProtoListValue<EnumValue, int32_t> : public CEL_LIST_VALUE_CLASS {
   }
 
  private:
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<ParsedProtoListValue<EnumValue, int32_t>>();
   }
 
@@ -794,7 +794,7 @@ class ParsedProtoListValue<ProtoStructValue, google::protobuf::Message>
   }
 
  private:
-  cel::NativeTypeId TypeId() const final {
+  cel::NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<
         ParsedProtoListValue<ProtoStructValue, google::protobuf::Message>>();
   }
@@ -846,7 +846,7 @@ class ParsedProtoListValue<ListValue, google::protobuf::Message>
   }
 
  private:
-  cel::NativeTypeId TypeId() const final {
+  cel::NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<
         ParsedProtoListValue<ListValue, google::protobuf::Message>>();
   }
@@ -897,7 +897,7 @@ class ParsedProtoListValue<MapValue, google::protobuf::Message>
   }
 
  private:
-  cel::NativeTypeId TypeId() const final {
+  cel::NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<ParsedProtoListValue<MapValue, google::protobuf::Message>>();
   }
 
@@ -947,7 +947,7 @@ class ParsedProtoListValue<DynValue, google::protobuf::Message>
   }
 
  private:
-  cel::NativeTypeId TypeId() const final {
+  cel::NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<ParsedProtoListValue<DynValue, google::protobuf::Message>>();
   }
 
@@ -992,7 +992,7 @@ class ParsedProtoListValue<AnyType, google::protobuf::Message>
   }
 
  private:
-  cel::NativeTypeId TypeId() const final {
+  cel::NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<
         ParsedProtoListValue<ListValue, google::protobuf::Message>>();
   }
@@ -1040,7 +1040,7 @@ class ParsedProtoListValue<BoolValue, google::protobuf::Message>
   }
 
  private:
-  cel::NativeTypeId TypeId() const final {
+  cel::NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<
         ParsedProtoListValue<BoolValue, google::protobuf::Message>>();
   }
@@ -1088,7 +1088,7 @@ class ParsedProtoListValue<BytesValue, google::protobuf::Message>
   }
 
  private:
-  cel::NativeTypeId TypeId() const final {
+  cel::NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<
         ParsedProtoListValue<BytesValue, google::protobuf::Message>>();
   }
@@ -1137,7 +1137,7 @@ class ParsedProtoListValue<DoubleValue, google::protobuf::Message>
   }
 
  private:
-  cel::NativeTypeId TypeId() const final {
+  cel::NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<
         ParsedProtoListValue<DoubleValue, google::protobuf::Message>>();
   }
@@ -1186,7 +1186,7 @@ class ParsedProtoListValue<IntValue, google::protobuf::Message>
   }
 
  private:
-  cel::NativeTypeId TypeId() const final {
+  cel::NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<ParsedProtoListValue<IntValue, google::protobuf::Message>>();
   }
 
@@ -1233,7 +1233,7 @@ class ParsedProtoListValue<StringValue, google::protobuf::Message>
   }
 
  private:
-  cel::NativeTypeId TypeId() const final {
+  cel::NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<
         ParsedProtoListValue<StringValue, google::protobuf::Message>>();
   }
@@ -1282,7 +1282,7 @@ class ParsedProtoListValue<UintValue, google::protobuf::Message>
   }
 
  private:
-  cel::NativeTypeId TypeId() const final {
+  cel::NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<
         ParsedProtoListValue<UintValue, google::protobuf::Message>>();
   }
@@ -1522,7 +1522,7 @@ class ParsedProtoMapValueKeysList : public CEL_LIST_VALUE_CLASS {
   }
 
  private:
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<ParsedProtoMapValueKeysList>();
   }
 
@@ -1796,7 +1796,7 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
         reflection(), message_, field_, proto_key));
   }
 
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<ParsedProtoMapValue>();
   }
 

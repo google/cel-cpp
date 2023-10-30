@@ -144,8 +144,8 @@ absl::StatusOr<Handle<Value>> StructValue::GetWrappedFieldByName(
                                             value_factory, name);
 }
 
-NativeTypeId StructValue::TypeId() const {
-  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(TypeId);
+NativeTypeId StructValue::GetNativeTypeId() const {
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(GetNativeTypeId);
 }
 
 #undef CEL_INTERNAL_STRUCT_VALUE_DISPATCH

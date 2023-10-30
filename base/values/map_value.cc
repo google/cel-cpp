@@ -181,8 +181,8 @@ absl::StatusOr<Handle<Value>> MapValue::Equals(ValueFactory& value_factory,
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(Equals, value_factory, other);
 }
 
-NativeTypeId MapValue::TypeId() const {
-  return CEL_INTERNAL_MAP_VALUE_DISPATCH(TypeId);
+NativeTypeId MapValue::GetNativeTypeId() const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(GetNativeTypeId);
 }
 
 #undef CEL_INTERNAL_MAP_VALUE_DISPATCH

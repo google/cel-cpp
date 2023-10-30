@@ -175,7 +175,7 @@ class ProtoStructValue : public CEL_STRUCT_VALUE_CLASS {
   static absl::StatusOr<Handle<ProtoStructValue>> Create(
       ValueFactory& value_factory, google::protobuf::Message&& message);
 
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<ProtoStructValue>();
   }
 };

@@ -193,7 +193,7 @@ struct UnknownValueAccess;
  private:                                               \
   friend class ::cel::base_internal::ValueHandle;       \
                                                         \
-  ::cel::NativeTypeId TypeId() const override;
+  ::cel::NativeTypeId GetNativeTypeId() const override;
 
 #define CEL_INTERNAL_IMPLEMENT_VALUE(base, derived)                           \
   static_assert(::std::is_base_of_v<::cel::base##Value, derived>,             \
@@ -207,7 +207,7 @@ struct UnknownValueAccess;
                ::cel::NativeTypeId::For<derived>();                           \
   }                                                                           \
                                                                               \
-  ::cel::NativeTypeId derived::TypeId() const {                               \
+  ::cel::NativeTypeId derived::GetNativeTypeId() const {                      \
     return ::cel::NativeTypeId::For<derived>();                               \
   }
 

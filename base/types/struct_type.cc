@@ -93,8 +93,8 @@ std::string StructType::DebugString() const {
   return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(DebugString);
 }
 
-NativeTypeId StructType::TypeId() const {
-  return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(TypeId);
+NativeTypeId StructType::GetNativeTypeId() const {
+  return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(GetNativeTypeId);
 }
 
 absl::StatusOr<absl::optional<StructType::Field>> StructType::FindFieldByName(

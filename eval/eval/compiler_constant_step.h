@@ -34,7 +34,7 @@ class CompilerConstantStep : public ExpressionStepBase {
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
-  cel::NativeTypeId TypeId() const override {
+  cel::NativeTypeId GetNativeTypeId() const override {
     return cel::NativeTypeId::For<CompilerConstantStep>();
   }
 

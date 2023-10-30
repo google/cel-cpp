@@ -70,7 +70,7 @@ TEST_F(CompilerConstantStepTest, TypeId) {
   CompilerConstantStep step(value_factory_.CreateIntValue(42), -1, false);
 
   ExpressionStep& abstract_step = step;
-  EXPECT_EQ(abstract_step.TypeId(),
+  EXPECT_EQ(abstract_step.GetNativeTypeId(),
             cel::NativeTypeId::For<CompilerConstantStep>());
 }
 

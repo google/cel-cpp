@@ -36,7 +36,7 @@ class RuntimeFriendAccess {
   // Return the internal type_id for the runtime instance for checked down
   // casting.
   static NativeTypeId RuntimeTypeId(Runtime& runtime) {
-    return runtime.TypeId();
+    return runtime.GetNativeTypeId();
   }
 };
 

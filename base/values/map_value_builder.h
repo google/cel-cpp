@@ -366,7 +366,7 @@ class DynamicMapValue final : public AbstractMapValue {
     return std::move(keys).Build();
   }
 
-  NativeTypeId TypeId() const override {
+  NativeTypeId GetNativeTypeId() const override {
     return NativeTypeId::For<DynamicMapValue>();
   }
 
@@ -419,7 +419,7 @@ class StaticMapValue<K, void> final : public AbstractMapValue {
     return std::move(keys).Build();
   }
 
-  NativeTypeId TypeId() const override {
+  NativeTypeId GetNativeTypeId() const override {
     return NativeTypeId::For<StaticMapValue<K, void>>();
   }
 
@@ -480,7 +480,7 @@ class StaticMapValue<void, V> final : public AbstractMapValue {
     return std::move(keys).Build();
   }
 
-  NativeTypeId TypeId() const override {
+  NativeTypeId GetNativeTypeId() const override {
     return NativeTypeId::For<StaticMapValue<void, V>>();
   }
 
@@ -548,7 +548,7 @@ class StaticMapValue final : public AbstractMapValue {
     return std::move(keys).Build();
   }
 
-  NativeTypeId TypeId() const override {
+  NativeTypeId GetNativeTypeId() const override {
     return NativeTypeId::For<StaticMapValue<K, V>>();
   }
 

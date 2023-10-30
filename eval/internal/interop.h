@@ -79,7 +79,7 @@ class LegacyAbstractStructType : public base_internal::AbstractStructType {
       ValueFactory& value_factory, const absl::Cord& value) const override;
 
  private:
-  NativeTypeId TypeId() const override {
+  NativeTypeId GetNativeTypeId() const override {
     return cel::NativeTypeId::For<LegacyAbstractStructType>();
   }
 

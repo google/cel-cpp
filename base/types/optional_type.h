@@ -64,7 +64,7 @@ class OptionalType final : public OpaqueType {
 
   explicit OptionalType(Handle<Type> type) : type_(std::move(type)) {}
 
-  NativeTypeId TypeId() const override {
+  NativeTypeId GetNativeTypeId() const override {
     return NativeTypeId::For<OptionalType>();
   }
 

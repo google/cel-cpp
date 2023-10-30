@@ -100,7 +100,7 @@ struct TypeTraits;
  private:                                             \
   friend class ::cel::base_internal::TypeHandle;      \
                                                       \
-  ::cel::NativeTypeId TypeId() const override;
+  ::cel::NativeTypeId GetNativeTypeId() const override;
 
 #define CEL_INTERNAL_IMPLEMENT_TYPE(base, derived)                            \
   static_assert(::std::is_base_of_v<::cel::base##Type, derived>,              \
@@ -114,7 +114,7 @@ struct TypeTraits;
                ::cel::NativeTypeId::For<derived>();                           \
   }                                                                           \
                                                                               \
-  ::cel::NativeTypeId derived::TypeId() const {                               \
+  ::cel::NativeTypeId derived::GetNativeTypeId() const {                      \
     return ::cel::NativeTypeId::For<derived>();                               \
   }
 

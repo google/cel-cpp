@@ -184,7 +184,7 @@ class StaticProtoJsonListValue : public CEL_LIST_VALUE_CLASS {
 
  private:
   // Called by CEL_IMPLEMENT_LIST_VALUE() and Is() to perform type checking.
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<StaticProtoJsonListValue>();
   }
 
@@ -215,7 +215,7 @@ class ArenaStaticProtoJsonListValue : public CEL_LIST_VALUE_CLASS {
 
  private:
   // Called by CEL_IMPLEMENT_LIST_VALUE() and Is() to perform type checking.
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<ArenaStaticProtoJsonListValue>();
   }
 
@@ -249,7 +249,7 @@ class StaticProtoJsonMapKeysListValue : public CEL_LIST_VALUE_CLASS {
 
  private:
   // Called by CEL_IMPLEMENT_LIST_VALUE() and Is() to perform type checking.
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<StaticProtoJsonMapKeysListValue>();
   }
 
@@ -316,7 +316,7 @@ class StaticProtoJsonMapValue : public CEL_MAP_VALUE_CLASS {
   }
 
   // Called by CEL_IMPLEMENT_MAP_VALUE() and Is() to perform type checking.
-  NativeTypeId TypeId() const override {
+  NativeTypeId GetNativeTypeId() const override {
     return NativeTypeId::For<StaticProtoJsonMapValue>();
   }
 
@@ -383,7 +383,7 @@ class ArenaStaticProtoJsonMapValue : public CEL_MAP_VALUE_CLASS {
   }
 
   // Called by CEL_IMPLEMENT_MAP_VALUE() and Is() to perform type checking.
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<ArenaStaticProtoJsonMapValue>();
   }
 

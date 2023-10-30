@@ -127,7 +127,7 @@ class Runtime {
  private:
   friend class runtime_internal::RuntimeFriendAccess;
 
-  virtual NativeTypeId TypeId() const = 0;
+  virtual NativeTypeId GetNativeTypeId() const = 0;
 };
 
 }  // namespace cel

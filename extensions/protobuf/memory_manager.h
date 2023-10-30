@@ -32,7 +32,8 @@ namespace cel::extensions {
 class ProtoMemoryManager final : public ArenaMemoryManager {
  public:
   static bool Is(const MemoryManager& manager) {
-    return manager.TypeId() == cel::NativeTypeId::For<ProtoMemoryManager>();
+    return manager.GetNativeTypeId() ==
+           cel::NativeTypeId::For<ProtoMemoryManager>();
   }
 
   // Passing a nullptr is highly discouraged, but supported for backwards
@@ -66,7 +67,7 @@ class ProtoMemoryManager final : public ArenaMemoryManager {
 
   void OwnDestructor(void* pointer, void (*destruct)(void*)) override;
 
-  cel::NativeTypeId TypeId() const override {
+  cel::NativeTypeId GetNativeTypeId() const override {
     return cel::NativeTypeId::For<ProtoMemoryManager>();
   }
 

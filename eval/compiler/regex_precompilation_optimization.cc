@@ -167,8 +167,8 @@ class RegexPrecompilationOptimization : public ProgramOptimizer {
     }
 
     ExecutionPathView re_plan = context.GetSubplan(expr);
-    if (re_plan.size() == 1 &&
-        re_plan[0]->TypeId() == NativeTypeId::For<CompilerConstantStep>()) {
+    if (re_plan.size() == 1 && re_plan[0]->GetNativeTypeId() ==
+                                   NativeTypeId::For<CompilerConstantStep>()) {
       const auto& constant =
           down_cast<const CompilerConstantStep&>(*re_plan[0]);
       if (constant.value()->Is<cel::StringValue>()) {

@@ -70,7 +70,7 @@ class RuntimeImpl : public Runtime {
   }
 
  private:
-  NativeTypeId TypeId() const override {
+  NativeTypeId GetNativeTypeId() const override {
     return NativeTypeId::For<RuntimeImpl>();
   }
   // Note: this is mutable, but should only be accessed in a const context after

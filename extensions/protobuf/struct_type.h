@@ -116,7 +116,7 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
         factory_(ABSL_DIE_IF_NULL(factory)) {}      // Crash OK.
 
   // Called by CEL_IMPLEMENT_STRUCT_TYPE() and Is() to perform type checking.
-  NativeTypeId TypeId() const override {
+  NativeTypeId GetNativeTypeId() const override {
     return NativeTypeId::For<ProtoStructType>();
   }
 

@@ -170,7 +170,7 @@ class EnumType : public Type, public base_internal::HeapData {
   EnumType(EnumType&&) = delete;
 
   // Called by CEL_IMPLEMENT_ENUM_TYPE() and Is() to perform type checking.
-  virtual NativeTypeId TypeId() const = 0;
+  virtual NativeTypeId GetNativeTypeId() const = 0;
 };
 
 // Constant describes a single value in an enumeration. All fields are valid so
@@ -236,7 +236,7 @@ CEL_INTERNAL_TYPE_DECL(EnumType);
 namespace base_internal {
 
 inline NativeTypeId GetEnumTypeTypeId(const EnumType& enum_type) {
-  return enum_type.TypeId();
+  return enum_type.GetNativeTypeId();
 }
 
 }  // namespace base_internal

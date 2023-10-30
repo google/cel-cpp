@@ -107,7 +107,7 @@ class MemoryManager {
   // implementation.
   virtual void OwnDestructor(void* pointer, void (*destruct)(void*)) = 0;
 
-  virtual NativeTypeId TypeId() const { return NativeTypeId(); }
+  virtual NativeTypeId GetNativeTypeId() const { return NativeTypeId(); }
 
   const bool allocation_only_;
 };

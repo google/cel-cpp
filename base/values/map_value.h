@@ -131,7 +131,7 @@ class MapValue : public Value,
   MapValue() = default;
 
   // Called by CEL_IMPLEMENT_MAP_VALUE() and Is() to perform type checking.
-  NativeTypeId TypeId() const;
+  NativeTypeId GetNativeTypeId() const;
 };
 
 // Abstract class describes an iterator which can iterate over the entries in a
@@ -169,7 +169,7 @@ class LegacyMapValue final : public MapValue, public InlineData {
  public:
   static bool Is(const Value& value) {
     return value.kind() == kKind &&
-           static_cast<const MapValue&>(value).TypeId() ==
+           static_cast<const MapValue&>(value).GetNativeTypeId() ==
                NativeTypeId::For<LegacyMapValue>();
   }
 
@@ -216,7 +216,9 @@ class LegacyMapValue final : public MapValue, public InlineData {
   explicit LegacyMapValue(uintptr_t impl)
       : MapValue(), InlineData(kMetadata), impl_(impl) {}
 
-  NativeTypeId TypeId() const { return NativeTypeId::For<LegacyMapValue>(); }
+  NativeTypeId GetNativeTypeId() const {
+    return NativeTypeId::For<LegacyMapValue>();
+  }
 
   absl::StatusOr<std::pair<Handle<Value>, bool>> FindImpl(
       ValueFactory& value_factory, const Handle<Value>& key) const;
@@ -233,7 +235,7 @@ class AbstractMapValue : public MapValue,
  public:
   static bool Is(const Value& value) {
     return value.kind() == kKind &&
-           static_cast<const MapValue&>(value).TypeId() !=
+           static_cast<const MapValue&>(value).GetNativeTypeId() !=
                NativeTypeId::For<LegacyMapValue>();
   }
 
@@ -281,13 +283,13 @@ class AbstractMapValue : public MapValue,
       ValueFactory& value_factory, const Handle<Value>& key) const = 0;
 
   // Called by CEL_IMPLEMENT_MAP_VALUE() and Is() to perform type checking.
-  virtual NativeTypeId TypeId() const = 0;
+  virtual NativeTypeId GetNativeTypeId() const = 0;
 
   const Handle<MapType> type_;
 };
 
 inline NativeTypeId GetMapValueTypeId(const MapValue& map_value) {
-  return map_value.TypeId();
+  return map_value.GetNativeTypeId();
 }
 
 }  // namespace base_internal

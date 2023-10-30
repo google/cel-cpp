@@ -53,7 +53,9 @@ class OpaqueType : public Type, public base_internal::HeapData {
  protected:
   OpaqueType() : Type(), HeapData(kKind) {}
 
-  static NativeTypeId TypeId(const OpaqueType& type) { return type.TypeId(); }
+  static NativeTypeId TypeId(const OpaqueType& type) {
+    return type.GetNativeTypeId();
+  }
 
  private:
   friend class Type;
@@ -62,7 +64,7 @@ class OpaqueType : public Type, public base_internal::HeapData {
   friend class base_internal::TypeHandle;
 
   // Called by CEL_IMPLEMENT_STRUCT_TYPE() and Is() to perform type checking.
-  virtual NativeTypeId TypeId() const = 0;
+  virtual NativeTypeId GetNativeTypeId() const = 0;
 };
 
 extern template class Handle<OpaqueType>;

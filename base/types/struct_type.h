@@ -178,7 +178,7 @@ class StructType : public Type {
   StructType() = default;
 
   // Called by CEL_IMPLEMENT_STRUCT_TYPE() and Is() to perform type checking.
-  NativeTypeId TypeId() const;
+  NativeTypeId GetNativeTypeId() const;
 };
 
 // Field describes a single field in a struct. All fields are valid so long as
@@ -238,7 +238,7 @@ class LegacyStructType final : public StructType, public InlineData {
  public:
   static bool Is(const Type& type) {
     return StructType::Is(type) &&
-           static_cast<const StructType&>(type).TypeId() ==
+           static_cast<const StructType&>(type).GetNativeTypeId() ==
                NativeTypeId::For<LegacyStructType>();
   }
 
@@ -291,7 +291,9 @@ class LegacyStructType final : public StructType, public InlineData {
   explicit LegacyStructType(uintptr_t msg)
       : StructType(), InlineData(kMetadata), msg_(msg) {}
 
-  NativeTypeId TypeId() const { return NativeTypeId::For<LegacyStructType>(); }
+  NativeTypeId GetNativeTypeId() const {
+    return NativeTypeId::For<LegacyStructType>();
+  }
 
   // This is a type erased pointer to google::protobuf::Message or LegacyTypeInfoApis. It
   // is tagged when it is google::protobuf::Message.
@@ -305,7 +307,7 @@ class AbstractStructType
  public:
   static bool Is(const Type& type) {
     return StructType::Is(type) &&
-           static_cast<const StructType&>(type).TypeId() !=
+           static_cast<const StructType&>(type).GetNativeTypeId() !=
                NativeTypeId::For<LegacyStructType>();
   }
 
@@ -362,7 +364,7 @@ class AbstractStructType
   AbstractStructType(AbstractStructType&&) = delete;
 
   // Called by CEL_IMPLEMENT_STRUCT_TYPE() and Is() to perform type checking.
-  virtual NativeTypeId TypeId() const = 0;
+  virtual NativeTypeId GetNativeTypeId() const = 0;
 };
 
 }  // namespace base_internal
@@ -409,7 +411,7 @@ struct FieldIdFactory {
 };
 
 inline NativeTypeId GetStructTypeTypeId(const StructType& struct_type) {
-  return struct_type.TypeId();
+  return struct_type.GetNativeTypeId();
 }
 
 }  // namespace base_internal

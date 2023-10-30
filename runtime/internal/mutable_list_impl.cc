@@ -33,7 +33,7 @@ bool MutableListType::Is(const cel::Type& type) {
              cel::NativeTypeId::For<MutableListType>();
 }
 
-NativeTypeId MutableListType::TypeId() const {
+NativeTypeId MutableListType::GetNativeTypeId() const {
   return cel::NativeTypeId::For<MutableListType>();
 }
 
@@ -55,7 +55,7 @@ std::string MutableListValue::DebugString() const {
   return list_builder_->DebugString();
 }
 
-NativeTypeId MutableListValue::TypeId() const {
+NativeTypeId MutableListValue::GetNativeTypeId() const {
   return cel::NativeTypeId::For<MutableListValue>();
 }
 

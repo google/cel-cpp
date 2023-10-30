@@ -205,7 +205,7 @@ class TestStructType : public cel::base_internal::AbstractStructType {
     return absl::UnimplementedError("");
   }
 
-  cel::NativeTypeId TypeId() const override {
+  cel::NativeTypeId GetNativeTypeId() const override {
     return cel::NativeTypeId::For<TestStructType>();
   }
 

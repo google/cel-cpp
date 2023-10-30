@@ -130,8 +130,8 @@ absl::StatusOr<bool> ListValue::AnyOf(ValueFactory& value_factory,
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(AnyOf, value_factory, cb);
 }
 
-NativeTypeId ListValue::TypeId() const {
-  return CEL_INTERNAL_LIST_VALUE_DISPATCH(TypeId);
+NativeTypeId ListValue::GetNativeTypeId() const {
+  return CEL_INTERNAL_LIST_VALUE_DISPATCH(GetNativeTypeId);
 }
 
 #undef CEL_INTERNAL_LIST_VALUE_DISPATCH

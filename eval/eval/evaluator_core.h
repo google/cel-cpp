@@ -78,7 +78,7 @@ class ExpressionStep {
   // Return the type of the underlying expression step for special handling in
   // the planning phase. This should only be overridden by special cases, and
   // callers must not make any assumptions about the default case.
-  virtual cel::NativeTypeId TypeId() const = 0;
+  virtual cel::NativeTypeId GetNativeTypeId() const = 0;
 };
 
 using ExecutionPath = std::vector<std::unique_ptr<const ExpressionStep>>;

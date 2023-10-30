@@ -181,7 +181,7 @@ class StructValue : public Value,
       ValueFactory& value_factory, absl::string_view name) const;
 
   // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
-  NativeTypeId TypeId() const;
+  NativeTypeId GetNativeTypeId() const;
 };
 
 class StructValue::FieldIterator {
@@ -236,7 +236,7 @@ class LegacyStructValue final : public StructValue, public InlineData {
  public:
   static bool Is(const Value& value) {
     return value.kind() == kKind &&
-           static_cast<const StructValue&>(value).TypeId() ==
+           static_cast<const StructValue&>(value).GetNativeTypeId() ==
                NativeTypeId::For<LegacyStructValue>();
   }
 
@@ -314,7 +314,9 @@ class LegacyStructValue final : public StructValue, public InlineData {
       ValueFactory& value_factory, absl::string_view name) const;
 
   // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
-  NativeTypeId TypeId() const { return NativeTypeId::For<LegacyStructValue>(); }
+  NativeTypeId GetNativeTypeId() const {
+    return NativeTypeId::For<LegacyStructValue>();
+  }
 
   // This is a type erased pointer to google::protobuf::Message or google::protobuf::MessageLite, it
   // is tagged.
@@ -329,7 +331,7 @@ class AbstractStructValue : public StructValue,
  public:
   static bool Is(const Value& value) {
     return value.kind() == kKind &&
-           static_cast<const StructValue&>(value).TypeId() !=
+           static_cast<const StructValue&>(value).GetNativeTypeId() !=
                NativeTypeId::For<LegacyStructValue>();
   }
 
@@ -400,7 +402,7 @@ class AbstractStructValue : public StructValue,
       ValueFactory& value_factory, absl::string_view name) const;
 
   // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
-  virtual NativeTypeId TypeId() const = 0;
+  virtual NativeTypeId GetNativeTypeId() const = 0;
 
   const Handle<StructType> type_;
 };
@@ -436,7 +438,7 @@ class AbstractStructValue : public StructValue,
 namespace base_internal {
 
 inline NativeTypeId GetStructValueTypeId(const StructValue& struct_value) {
-  return struct_value.TypeId();
+  return struct_value.GetNativeTypeId();
 }
 
 }  // namespace base_internal

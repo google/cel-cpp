@@ -129,7 +129,7 @@ class ListValue : public Value,
   ListValue() = default;
 
   // Called by CEL_IMPLEMENT_LIST_VALUE() and Is() to perform type checking.
-  NativeTypeId TypeId() const;
+  NativeTypeId GetNativeTypeId() const;
 };
 
 // Abstract class describes an iterator which can iterate over the elements in a
@@ -159,7 +159,7 @@ class LegacyListValue final : public ListValue, public InlineData {
  public:
   static bool Is(const Value& value) {
     return value.kind() == kKind &&
-           static_cast<const ListValue&>(value).TypeId() ==
+           static_cast<const ListValue&>(value).GetNativeTypeId() ==
                NativeTypeId::For<LegacyListValue>();
   }
 
@@ -214,7 +214,9 @@ class LegacyListValue final : public ListValue, public InlineData {
       : ListValue(), InlineData(kMetadata), impl_(impl) {}
 
   // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
-  NativeTypeId TypeId() const { return NativeTypeId::For<LegacyListValue>(); }
+  NativeTypeId GetNativeTypeId() const {
+    return NativeTypeId::For<LegacyListValue>();
+  }
 
   uintptr_t impl_;
 };
@@ -225,7 +227,7 @@ class AbstractListValue : public ListValue,
  public:
   static bool Is(const Value& value) {
     return value.kind() == kKind &&
-           static_cast<const ListValue&>(value).TypeId() !=
+           static_cast<const ListValue&>(value).GetNativeTypeId() !=
                NativeTypeId::For<LegacyListValue>();
   }
 
@@ -275,13 +277,13 @@ class AbstractListValue : public ListValue,
   friend class ValueHandle;
 
   // Called by CEL_IMPLEMENT_LIST_VALUE() and Is() to perform type checking.
-  virtual NativeTypeId TypeId() const = 0;
+  virtual NativeTypeId GetNativeTypeId() const = 0;
 
   const Handle<ListType> type_;
 };
 
 inline NativeTypeId GetListValueTypeId(const ListValue& list_value) {
-  return list_value.TypeId();
+  return list_value.GetNativeTypeId();
 }
 
 class DynamicListValue final : public AbstractListValue {
@@ -320,7 +322,7 @@ class DynamicListValue final : public AbstractListValue {
   }
 
  private:
-  NativeTypeId TypeId() const override {
+  NativeTypeId GetNativeTypeId() const override {
     return NativeTypeId::For<DynamicListValue>();
   }
 
@@ -364,7 +366,7 @@ class StaticListValue final : public AbstractListValue {
   }
 
  private:
-  NativeTypeId TypeId() const override {
+  NativeTypeId GetNativeTypeId() const override {
     return NativeTypeId::For<StaticListValue<T>>();
   }
 

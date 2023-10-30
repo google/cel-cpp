@@ -88,7 +88,7 @@ class OptionalValue : public OpaqueValue {
   explicit OptionalValue(Handle<OptionalType> type)
       : OpaqueValue(std::move(type)) {}
 
-  NativeTypeId TypeId() const final {
+  NativeTypeId GetNativeTypeId() const final {
     return NativeTypeId::For<OptionalValue>();
   }
 };

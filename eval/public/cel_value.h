@@ -550,7 +550,9 @@ class CelList {
  private:
   friend struct cel::interop_internal::CelListAccess;
 
-  virtual cel::NativeTypeId TypeId() const { return cel::NativeTypeId(); }
+  virtual cel::NativeTypeId GetNativeTypeId() const {
+    return cel::NativeTypeId();
+  }
 };
 
 // CelMap is a base class for map accessors.
@@ -626,7 +628,9 @@ class CelMap {
  private:
   friend struct cel::interop_internal::CelMapAccess;
 
-  virtual cel::NativeTypeId TypeId() const { return cel::NativeTypeId(); }
+  virtual cel::NativeTypeId GetNativeTypeId() const {
+    return cel::NativeTypeId();
+  }
 };
 
 // Utility method that generates CelValue containing CelError.

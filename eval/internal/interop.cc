@@ -197,7 +197,7 @@ class LegacyCelList final : public CelList {
   Handle<ListValue> value() const { return impl_; }
 
  private:
-  NativeTypeId TypeId() const override {
+  NativeTypeId GetNativeTypeId() const override {
     return NativeTypeId::For<LegacyCelList>();
   }
 
@@ -302,7 +302,7 @@ class LegacyCelMap final : public CelMap {
   Handle<MapValue> value() const { return impl_; }
 
  private:
-  NativeTypeId TypeId() const override {
+  NativeTypeId GetNativeTypeId() const override {
     return NativeTypeId::For<LegacyCelMap>();
   }
 
@@ -454,10 +454,12 @@ absl::StatusOr<Handle<StructValue>> LegacyAbstractStructType::NewValueFromAny(
 }
 
 NativeTypeId CelListAccess::TypeId(const CelList& list) {
-  return list.TypeId();
+  return list.GetNativeTypeId();
 }
 
-NativeTypeId CelMapAccess::TypeId(const CelMap& map) { return map.TypeId(); }
+NativeTypeId CelMapAccess::TypeId(const CelMap& map) {
+  return map.GetNativeTypeId();
+}
 
 Handle<StructType> LegacyStructTypeAccess::Create(uintptr_t message) {
   return base_internal::HandleFactory<StructType>::Make<
