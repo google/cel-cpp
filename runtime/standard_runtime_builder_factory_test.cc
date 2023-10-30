@@ -392,7 +392,11 @@ INSTANTIATE_TEST_SUITE_P(
          "60",
          true},
         {"duration_get_milliseconds",
-         "duration('10h20m30s40ms').getMilliseconds() == 40", true},
+         "duration('10h20m30s40ms50us60ns').getMilliseconds() == 40", true},
+        {"duration_get_milliseconds",
+         "duration('10h20m30s40ms50us60ns').getMicroseconds() == 50", true},
+        {"duration_get_milliseconds",
+         "duration('10h20m30s40ms50us60ns').getNanoseconds() == 60", true},
     }),
     TestCaseName);
 

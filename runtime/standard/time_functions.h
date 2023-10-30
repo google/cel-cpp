@@ -33,11 +33,15 @@ namespace cel {
 // (timestamp).getMinutes(<timezone:string>) -> int
 // (timestamp).getSeconds(<timezone:string>) -> int
 // (timestamp).getMilliseconds(<timezone:string>) -> int
+// (timestamp).getMicroseconds(<timezone:string>) -> int
+// (timestamp).getNanoseconds(<timezone:string>) -> int
 //
 // (duration).getHours() -> int
 // (duration).getMinutes() -> int
 // (duration).getSeconds() -> int
 // (duration).getMilliseconds() -> int
+// (duration).getMicroseconds() -> int
+// (duration).getNanoseconds() -> int
 //
 // _+_(timestamp, duration) -> timestamp
 // _+_(duration, timestamp) -> timestamp

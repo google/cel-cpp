@@ -169,6 +169,24 @@ Handle<Value> GetMilliseconds(ValueFactory& value_factory, absl::Time timestamp,
       });
 }
 
+Handle<Value> GetMicroseconds(ValueFactory& value_factory, absl::Time timestamp,
+                              absl::string_view tz) {
+  return GetTimeBreakdownPart(
+      value_factory, timestamp, tz,
+      [](const absl::TimeZone::CivilInfo& breakdown) {
+        return absl::ToInt64Microseconds(breakdown.subsecond);
+      });
+}
+
+Handle<Value> GetNanoseconds(ValueFactory& value_factory, absl::Time timestamp,
+                             absl::string_view tz) {
+  return GetTimeBreakdownPart(
+      value_factory, timestamp, tz,
+      [](const absl::TimeZone::CivilInfo& breakdown) {
+        return absl::ToInt64Nanoseconds(breakdown.subsecond);
+      });
+}
+
 absl::Status RegisterTimestampFunctions(FunctionRegistry& registry,
                                         const RuntimeOptions& options) {
   CEL_RETURN_IF_ERROR(registry.Register(
@@ -331,6 +349,24 @@ absl::Status RegisterTimestampFunctions(FunctionRegistry& registry,
           WrapFunction([](ValueFactory& value_factory, absl::Time ts,
                           const StringValue& tz) -> Handle<Value> {
             return GetMilliseconds(value_factory, ts, tz.ToString());
+          })));
+
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
+          CreateDescriptor(builtin::kMicroseonds, true),
+      BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
+          WrapFunction([](ValueFactory& value_factory, absl::Time ts,
+                          const StringValue& tz) -> Handle<Value> {
+            return GetMicroseconds(value_factory, ts, tz.ToString());
+          })));
+
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
+          CreateDescriptor(builtin::kNanoseconds, true),
+      BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
+          WrapFunction([](ValueFactory& value_factory, absl::Time ts,
+                          const StringValue& tz) -> Handle<Value> {
+            return GetNanoseconds(value_factory, ts, tz.ToString());
           })));
 
   return registry.Register(
