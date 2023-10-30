@@ -416,3 +416,9 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "runtime_issue",
+    hdrs = ["runtime_issue.h"],
+    deps = ["@com_google_absl//absl/status"],
+)

@@ -113,3 +113,24 @@ cc_library(
         "@com_google_absl//absl/time",
     ],
 )
+
+cc_library(
+    name = "issue_collector",
+    hdrs = ["issue_collector.h"],
+    deps = [
+        "//runtime:runtime_issue",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "issue_collector_test",
+    srcs = ["issue_collector_test.cc"],
+    deps = [
+        ":issue_collector",
+        "//internal:testing",
+        "//runtime:runtime_issue",
+        "@com_google_absl//absl/status",
+    ],
+)
