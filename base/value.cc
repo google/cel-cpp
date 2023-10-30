@@ -345,8 +345,8 @@ bool ValueHandle::Equals(const Value& lhs, const Value& rhs, ValueKind kind) {
     case ValueKind::kNullType:
       return true;
     case ValueKind::kError:
-      return static_cast<const ErrorValue&>(lhs).value() ==
-             static_cast<const ErrorValue&>(rhs).value();
+      return static_cast<const ErrorValue&>(lhs).NativeValue() ==
+             static_cast<const ErrorValue&>(rhs).NativeValue();
     case ValueKind::kType:
       return static_cast<const TypeValue&>(lhs).name() ==
              static_cast<const TypeValue&>(rhs).name();

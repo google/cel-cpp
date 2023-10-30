@@ -35,9 +35,11 @@ std::string ErrorValue::DebugString(const absl::Status& value) {
   return value.ToString();
 }
 
-std::string ErrorValue::DebugString() const { return DebugString(value()); }
+std::string ErrorValue::DebugString() const {
+  return DebugString(NativeValue());
+}
 
-const absl::Status& ErrorValue::value() const {
+const absl::Status& ErrorValue::NativeValue() const {
   return base_internal::Metadata::IsTrivial(*this) ? *value_ptr_ : value_;
 }
 
@@ -58,7 +60,7 @@ absl::StatusOr<Handle<Value>> ErrorValue::ConvertToType(
 
 absl::StatusOr<Handle<Value>> ErrorValue::Equals(ValueFactory& value_factory,
                                                  const Value&) const {
-  return value_factory.CreateErrorValue(value());
+  return value_factory.CreateErrorValue(NativeValue());
 }
 
 }  // namespace cel

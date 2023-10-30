@@ -199,7 +199,7 @@ INSTANTIATE_TEST_SUITE_P(
                  Truly([](const Handle<Value>& v) {
                    return v->Is<ErrorValue>() &&
                           absl::StrContains(
-                              v->As<ErrorValue>().value().message(),
+                              v->As<ErrorValue>().NativeValue().message(),
                               "No matching overloads");
                  })},
     }));

@@ -255,7 +255,7 @@ TEST(ReferenceResolver, ResolveQualifiedIdentifiersSkipParseOnly) {
                        program->Evaluate(activation, value_factory.get()));
 
   ASSERT_TRUE(value->Is<ErrorValue>());
-  EXPECT_THAT(value->As<ErrorValue>().value(),
+  EXPECT_THAT(value->As<ErrorValue>().NativeValue(),
               StatusIs(absl::StatusCode::kUnknown, HasSubstr("\"com\"")));
 }
 
@@ -368,7 +368,7 @@ TEST(ReferenceResolver, ResolveEnumConstantsSkipParseOnly) {
 
   ASSERT_TRUE(value->Is<ErrorValue>());
   EXPECT_THAT(
-      value->As<ErrorValue>().value(),
+      value->As<ErrorValue>().NativeValue(),
       StatusIs(absl::StatusCode::kUnknown,
                HasSubstr("\"google.api.expr.test.v1.proto2.GlobalEnum.GAZ\"")));
 }

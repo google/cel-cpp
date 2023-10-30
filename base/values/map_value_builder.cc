@@ -32,7 +32,7 @@ absl::Status CheckMapKeyOrValue(TypeKind expected_type_kind,
   ABSL_ASSERT(expected_type_kind == expected_type.kind());
   ABSL_ASSERT(value_kind == value.kind());
   if (value_kind == ValueKind::kError) {
-    return value.As<ErrorValue>().value();
+    return value.As<ErrorValue>().NativeValue();
   }
   if (ABSL_PREDICT_FALSE(value_kind == ValueKind::kUnknown)) {
     return TypeConversionError(*value.type(), expected_type);

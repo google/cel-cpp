@@ -72,7 +72,7 @@ MATCHER_P(IsBoolValue, expected, "") {
 MATCHER_P(IsErrorValue, expected_substr, "") {
   const Handle<Value>& value = arg;
   return value->Is<ErrorValue>() &&
-         absl::StrContains(value->As<ErrorValue>().value().message(),
+         absl::StrContains(value->As<ErrorValue>().NativeValue().message(),
                            expected_substr);
 }
 

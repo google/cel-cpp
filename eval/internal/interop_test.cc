@@ -224,7 +224,7 @@ TEST(ValueInterop, CreateDurationOk) {
 TEST(ValueInterop, CreateDurationOutOfRangeHigh) {
   Handle<Value> value = CreateDurationValue(runtime_internal::kDurationHigh);
   EXPECT_TRUE(value->Is<ErrorValue>());
-  EXPECT_THAT(value.As<ErrorValue>()->value(),
+  EXPECT_THAT(value.As<ErrorValue>()->NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Duration is out of range")));
 }
@@ -232,7 +232,7 @@ TEST(ValueInterop, CreateDurationOutOfRangeHigh) {
 TEST(ValueInterop, CreateDurationOutOfRangeLow) {
   Handle<Value> value = CreateDurationValue(runtime_internal::kDurationLow);
   EXPECT_TRUE(value->Is<ErrorValue>());
-  EXPECT_THAT(value.As<ErrorValue>()->value(),
+  EXPECT_THAT(value.As<ErrorValue>()->NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Duration is out of range")));
 }
@@ -274,7 +274,7 @@ TEST(ValueInterop, ErrorFromLegacy) {
   auto legacy_value = CelValue::CreateError(&error);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<ErrorValue>());
-  EXPECT_EQ(value.As<ErrorValue>()->value(), error);
+  EXPECT_EQ(value.As<ErrorValue>()->NativeValue(), error);
 }
 
 TEST(ValueInterop, TypeFromLegacy) {

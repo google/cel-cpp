@@ -31,7 +31,7 @@ TEST(ValueFactory, CreateErrorValueReplacesOk) {
   TypeFactory type_factory(MemoryManager::Global());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  EXPECT_THAT(value_factory.CreateErrorValue(absl::OkStatus())->value(),
+  EXPECT_THAT(value_factory.CreateErrorValue(absl::OkStatus())->NativeValue(),
               StatusIs(absl::StatusCode::kUnknown));
 }
 

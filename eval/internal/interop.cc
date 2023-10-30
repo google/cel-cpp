@@ -656,7 +656,7 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
             ErrorValueAccess::value_ptr(*value.As<ErrorValue>()));
       }
       return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
-          arena, value.As<ErrorValue>()->value()));
+          arena, value.As<ErrorValue>()->NativeValue()));
     }
     case ValueKind::kType: {
       // Should be fine, so long as we are using an arena allocator.

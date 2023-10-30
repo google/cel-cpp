@@ -72,7 +72,7 @@ class ErrorValue final
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;
 
-  const absl::Status& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const absl::Status& NativeValue() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   friend class ValueHandle;
@@ -151,7 +151,7 @@ struct ValueTraits<ErrorValue> {
   static underlying_type Unwrap(underlying_type value) { return value; }
 
   static underlying_type Unwrap(const Handle<type>& value) {
-    return Unwrap(value->value());
+    return Unwrap(value->NativeValue());
   }
 };
 

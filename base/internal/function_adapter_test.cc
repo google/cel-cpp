@@ -404,7 +404,7 @@ TEST_F(AdaptedToHandleVisitorTest, Any) {
                        AdaptedToHandleVisitor{value_factory()}(handle));
 
   ASSERT_TRUE(result->Is<ErrorValue>());
-  EXPECT_THAT(result.As<ErrorValue>()->value(),
+  EXPECT_THAT(result.As<ErrorValue>()->NativeValue(),
               StatusIs(absl::StatusCode::kInternal, "test_error"));
 }
 

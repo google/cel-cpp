@@ -360,7 +360,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
 
     Handle<cel::Value> result = eval_status.value();
     if (result->Is<cel::ErrorValue>()) {
-      const absl::Status& error = result->As<cel::ErrorValue>().value();
+      const absl::Status& error = result->As<cel::ErrorValue>().NativeValue();
       *response.mutable_result()
            ->mutable_error()
            ->add_errors()

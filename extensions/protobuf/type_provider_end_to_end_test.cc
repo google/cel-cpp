@@ -117,7 +117,7 @@ TEST_P(TypeProviderSetGetTest, Generated) {
     EXPECT_TRUE(result->As<BoolValue>().NativeValue());
   } else {
     ASSERT_TRUE(result->Is<ErrorValue>()) << result->DebugString();
-    EXPECT_THAT(result->As<ErrorValue>().value(),
+    EXPECT_THAT(result->As<ErrorValue>().NativeValue(),
                 StatusIs(test_case.result.status().code(),
                          HasSubstr(test_case.result.status().message())));
   }
@@ -170,7 +170,7 @@ TEST_P(TypeProviderSetGetTest, Custom) {
     EXPECT_TRUE(result->As<BoolValue>().NativeValue());
   } else {
     ASSERT_TRUE(result->Is<ErrorValue>()) << result->DebugString();
-    EXPECT_THAT(result->As<ErrorValue>().value(),
+    EXPECT_THAT(result->As<ErrorValue>().NativeValue(),
                 StatusIs(test_case.result.status().code(),
                          HasSubstr(test_case.result.status().message())));
   }

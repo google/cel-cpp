@@ -234,7 +234,7 @@ struct ValueOfTraits<cel::ErrorValue, void> {
   }
 
   static bool Equals(const cel::ErrorValue& lhs, const cel::ErrorValue& rhs) {
-    return lhs.value() == rhs.value();
+    return lhs.NativeValue() == rhs.NativeValue();
   }
 };
 

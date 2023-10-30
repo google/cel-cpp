@@ -1283,7 +1283,7 @@ TEST_P(ValueTest, Error) {
   EXPECT_EQ(error_value, error_value);
   EXPECT_EQ(error_value,
             value_factory.CreateErrorValue(absl::CancelledError()));
-  EXPECT_EQ(error_value->value(), absl::CancelledError());
+  EXPECT_EQ(error_value->NativeValue(), absl::CancelledError());
 }
 
 TEST_P(ValueTest, Bool) {
@@ -2791,7 +2791,7 @@ TEST_P(ListValueTest, Get) {
             value_factory.CreateIntValue(2));
   ASSERT_OK_AND_ASSIGN(auto element, list_value->Get(value_factory, 3));
   ASSERT_TRUE(element->Is<ErrorValue>());
-  EXPECT_THAT(element->As<ErrorValue>().value(),
+  EXPECT_THAT(element->As<ErrorValue>().NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -2997,7 +2997,7 @@ TEST_P(ValueConvertToTypeTest, Bool) {
                        value.As<Value>()->ConvertToType(
                            value_factory, type_factory.GetErrorType()));
   ASSERT_TRUE(error->Is<ErrorValue>());
-  EXPECT_THAT(error->As<ErrorValue>().value(),
+  EXPECT_THAT(error->As<ErrorValue>().NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -3020,7 +3020,7 @@ TEST_P(ValueConvertToTypeTest, Bytes) {
                        value.As<Value>()->ConvertToType(
                            value_factory, type_factory.GetErrorType()));
   ASSERT_TRUE(error->Is<ErrorValue>());
-  EXPECT_THAT(error->As<ErrorValue>().value(),
+  EXPECT_THAT(error->As<ErrorValue>().NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -3049,7 +3049,7 @@ TEST_P(ValueConvertToTypeTest, Double) {
                        value.As<Value>()->ConvertToType(
                            value_factory, type_factory.GetErrorType()));
   ASSERT_TRUE(error->Is<ErrorValue>());
-  EXPECT_THAT(error->As<ErrorValue>().value(),
+  EXPECT_THAT(error->As<ErrorValue>().NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -3074,7 +3074,7 @@ TEST_P(ValueConvertToTypeTest, Duration) {
                        value.As<Value>()->ConvertToType(
                            value_factory, type_factory.GetErrorType()));
   ASSERT_TRUE(error->Is<ErrorValue>());
-  EXPECT_THAT(error->As<ErrorValue>().value(),
+  EXPECT_THAT(error->As<ErrorValue>().NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -3087,7 +3087,7 @@ TEST_P(ValueConvertToTypeTest, Error) {
                        value.As<Value>()->ConvertToType(
                            value_factory, type_factory.GetStringType()));
   ASSERT_TRUE(result->Is<ErrorValue>());
-  EXPECT_EQ(value->value(), result.As<ErrorValue>()->value());
+  EXPECT_EQ(value->NativeValue(), result.As<ErrorValue>()->NativeValue());
 }
 
 TEST_P(ValueConvertToTypeTest, Int) {
@@ -3119,7 +3119,7 @@ TEST_P(ValueConvertToTypeTest, Int) {
                        value.As<Value>()->ConvertToType(
                            value_factory, type_factory.GetErrorType()));
   ASSERT_TRUE(error->Is<ErrorValue>());
-  EXPECT_THAT(error->As<ErrorValue>().value(),
+  EXPECT_THAT(error->As<ErrorValue>().NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -3142,7 +3142,7 @@ TEST_P(ValueConvertToTypeTest, Null) {
                        value.As<Value>()->ConvertToType(
                            value_factory, type_factory.GetErrorType()));
   ASSERT_TRUE(error->Is<ErrorValue>());
-  EXPECT_THAT(error->As<ErrorValue>().value(),
+  EXPECT_THAT(error->As<ErrorValue>().NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -3186,7 +3186,7 @@ TEST_P(ValueConvertToTypeTest, String) {
                        value.As<Value>()->ConvertToType(
                            value_factory, type_factory.GetErrorType()));
   ASSERT_TRUE(error->Is<ErrorValue>());
-  EXPECT_THAT(error->As<ErrorValue>().value(),
+  EXPECT_THAT(error->As<ErrorValue>().NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -3215,7 +3215,7 @@ TEST_P(ValueConvertToTypeTest, Timestamp) {
                        value.As<Value>()->ConvertToType(
                            value_factory, type_factory.GetErrorType()));
   ASSERT_TRUE(error->Is<ErrorValue>());
-  EXPECT_THAT(error->As<ErrorValue>().value(),
+  EXPECT_THAT(error->As<ErrorValue>().NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -3235,7 +3235,7 @@ TEST_P(ValueConvertToTypeTest, Type) {
                        value.As<Value>()->ConvertToType(
                            value_factory, type_factory.GetErrorType()));
   ASSERT_TRUE(error->Is<ErrorValue>());
-  EXPECT_THAT(error->As<ErrorValue>().value(),
+  EXPECT_THAT(error->As<ErrorValue>().NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -3264,7 +3264,7 @@ TEST_P(ValueConvertToTypeTest, Uint) {
                        value.As<Value>()->ConvertToType(
                            value_factory, type_factory.GetErrorType()));
   ASSERT_TRUE(error->Is<ErrorValue>());
-  EXPECT_THAT(error->As<ErrorValue>().value(),
+  EXPECT_THAT(error->As<ErrorValue>().NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -3287,7 +3287,7 @@ TEST_P(ValueConvertToTypeTest, List) {
                        value.As<Value>()->ConvertToType(
                            value_factory, type_factory.GetErrorType()));
   ASSERT_TRUE(error->Is<ErrorValue>());
-  EXPECT_THAT(error->As<ErrorValue>().value(),
+  EXPECT_THAT(error->As<ErrorValue>().NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -3311,7 +3311,7 @@ TEST_P(ValueConvertToTypeTest, Map) {
                        value.As<Value>()->ConvertToType(
                            value_factory, type_factory.GetErrorType()));
   ASSERT_TRUE(error->Is<ErrorValue>());
-  EXPECT_THAT(error->As<ErrorValue>().value(),
+  EXPECT_THAT(error->As<ErrorValue>().NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 

@@ -212,7 +212,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionReturnError) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<ErrorValue>());
-  EXPECT_THAT(result.As<ErrorValue>()->value(),
+  EXPECT_THAT(result.As<ErrorValue>()->NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument, "test_error"));
 }
 
@@ -563,7 +563,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionReturnError) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<ErrorValue>());
-  EXPECT_THAT(result.As<ErrorValue>()->value(),
+  EXPECT_THAT(result.As<ErrorValue>()->NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument, "test_error"));
 }
 
