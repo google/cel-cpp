@@ -172,7 +172,7 @@ class StaticProtoJsonListValue : public CEL_LIST_VALUE_CLASS {
     return out;
   }
 
-  size_t size() const final { return value_.values_size(); }
+  size_t Size() const final { return value_.values_size(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -203,7 +203,7 @@ class ArenaStaticProtoJsonListValue : public CEL_LIST_VALUE_CLASS {
     return out;
   }
 
-  size_t size() const final { return value_->values_size(); }
+  size_t Size() const final { return value_->values_size(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -237,7 +237,7 @@ class StaticProtoJsonMapKeysListValue : public CEL_LIST_VALUE_CLASS {
     return out;
   }
 
-  size_t size() const final { return field_names_.size(); }
+  size_t Size() const final { return field_names_.size(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,

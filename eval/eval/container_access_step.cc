@@ -179,9 +179,9 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInList(
 
   if (maybe_idx.has_value()) {
     int64_t idx = *maybe_idx;
-    if (idx < 0 || idx >= cel_list->size()) {
+    if (idx < 0 || idx >= cel_list->Size()) {
       return absl::UnknownError(
-          absl::StrCat("Index error: index=", idx, " size=", cel_list->size()));
+          absl::StrCat("Index error: index=", idx, " size=", cel_list->Size()));
     }
     return cel_list->Get(frame->value_factory(), idx);
   }

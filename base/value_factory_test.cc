@@ -87,8 +87,8 @@ TEST(ValueFactory, JsonArray) {
   auto array = MakeJsonArray({JsonString("foo")});
   auto value = value_factory.CreateValueFromJson(array);
   ASSERT_TRUE(value->Is<ListValue>());
-  EXPECT_FALSE(value->As<ListValue>().empty());
-  EXPECT_EQ(value->As<ListValue>().size(), 1);
+  EXPECT_FALSE(value->As<ListValue>().IsEmpty());
+  EXPECT_EQ(value->As<ListValue>().Size(), 1);
   EXPECT_EQ(value->DebugString(), "[\"foo\"]");
   ASSERT_OK_AND_ASSIGN(auto element,
                        value->As<ListValue>().Get(value_factory, 0));

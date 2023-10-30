@@ -92,7 +92,7 @@ TEST(MutableListImplValue, ListBuilding) {
   ASSERT_OK_AND_ASSIGN(Handle<ListValue> list_value,
                        std::move(mutable_ref).Build());
 
-  EXPECT_EQ(list_value->size(), 1);
+  EXPECT_EQ(list_value->Size(), 1);
 
   ASSERT_OK_AND_ASSIGN(auto element, list_value->Get(value_factory, 0));
 

@@ -39,18 +39,18 @@ int64_t MapSizeImpl(ValueFactory&, const MapValue& value) {
 }
 
 int64_t ListSizeImpl(ValueFactory&, const ListValue& value) {
-  return value.size();
+  return value.Size();
 }
 
 // Concatenation for CelList type.
 absl::StatusOr<Handle<ListValue>> ConcatList(ValueFactory& factory,
                                              const Handle<ListValue>& value1,
                                              const Handle<ListValue>& value2) {
-  int size1 = value1->size();
+  int size1 = value1->Size();
   if (size1 == 0) {
     return value2;
   }
-  int size2 = value2->size();
+  int size2 = value2->Size();
   if (size2 == 0) {
     return value1;
   }
@@ -93,7 +93,7 @@ absl::StatusOr<Handle<OpaqueValue>> AppendList(ValueFactory& factory,
   }
   MutableListValue& mutable_list =
       const_cast<MutableListValue&>(value1->As<MutableListValue>());
-  for (int i = 0; i < value2.size(); i++) {
+  for (int i = 0; i < value2.Size(); i++) {
     CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value2.Get(factory, i));
     CEL_RETURN_IF_ERROR(mutable_list.Append(std::move(elem)));
   }

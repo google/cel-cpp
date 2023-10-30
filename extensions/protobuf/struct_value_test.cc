@@ -970,14 +970,14 @@ TEST_P(ProtoStructValueTest, ListValueGetField) {
       memory_manager(), "list_value",
       [](const Handle<Value>& field) {
         ASSERT_TRUE(field->Is<ListValue>());
-        EXPECT_TRUE(field->As<ListValue>().empty());
+        EXPECT_TRUE(field->As<ListValue>().IsEmpty());
       },
       [](TestAllTypes& message) {
         message.mutable_list_value()->add_values()->set_bool_value(true);
       },
       [](ValueFactory& value_factory, const Handle<Value>& field) {
         ASSERT_TRUE(field->Is<ListValue>());
-        EXPECT_EQ(field->As<ListValue>().size(), 1);
+        EXPECT_EQ(field->As<ListValue>().Size(), 1);
         EXPECT_THAT(field->As<ListValue>().Get(value_factory, 0),
                     IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
       });
@@ -1081,8 +1081,8 @@ void TestGetListField(
   ASSERT_NO_FATAL_FAILURE(TestGetListField(__VA_ARGS__))
 
 void EmptyListFieldTester(const Handle<ListValue>& field) {
-  EXPECT_EQ(field->size(), 0);
-  EXPECT_TRUE(field->empty());
+  EXPECT_EQ(field->Size(), 0);
+  EXPECT_TRUE(field->IsEmpty());
   EXPECT_EQ(field->DebugString(), "[]");
 }
 
@@ -1094,8 +1094,8 @@ TEST_P(ProtoStructValueTest, NullValueListGetField) {
         message.add_repeated_null_value(NULL_VALUE);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[null, null]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_TRUE(field_value->Is<NullValue>());
@@ -1112,8 +1112,8 @@ TEST_P(ProtoStructValueTest, BoolListGetField) {
         message.add_repeated_bool(false);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[true, false]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_TRUE(field_value.As<BoolValue>()->NativeValue());
@@ -1130,8 +1130,8 @@ TEST_P(ProtoStructValueTest, Int32ListGetField) {
         message.add_repeated_int32(0);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[1, 0]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<IntValue>()->NativeValue(), 1);
@@ -1148,8 +1148,8 @@ TEST_P(ProtoStructValueTest, Int64ListGetField) {
         message.add_repeated_int64(0);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[1, 0]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<IntValue>()->NativeValue(), 1);
@@ -1166,8 +1166,8 @@ TEST_P(ProtoStructValueTest, Uint32ListGetField) {
         message.add_repeated_uint32(0);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[1u, 0u]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<UintValue>()->NativeValue(), 1);
@@ -1184,8 +1184,8 @@ TEST_P(ProtoStructValueTest, Uint64ListGetField) {
         message.add_repeated_uint64(0);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[1u, 0u]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<UintValue>()->NativeValue(), 1);
@@ -1202,8 +1202,8 @@ TEST_P(ProtoStructValueTest, FloatListGetField) {
         message.add_repeated_float(0.0);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<DoubleValue>()->NativeValue(), 1.0);
@@ -1220,8 +1220,8 @@ TEST_P(ProtoStructValueTest, DoubleListGetField) {
         message.add_repeated_double(0.0);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<DoubleValue>()->NativeValue(), 1.0);
@@ -1238,8 +1238,8 @@ TEST_P(ProtoStructValueTest, BytesListGetField) {
         message.add_repeated_bytes("bar");
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[b\"foo\", b\"bar\"]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<BytesValue>()->ToString(), "foo");
@@ -1256,8 +1256,8 @@ TEST_P(ProtoStructValueTest, StringListGetField) {
         message.add_repeated_string("bar");
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[\"foo\", \"bar\"]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<StringValue>()->ToString(), "foo");
@@ -1274,8 +1274,8 @@ TEST_P(ProtoStructValueTest, DurationListGetField) {
         message.add_repeated_duration()->set_seconds(2);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[1s, 2s]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<DurationValue>()->NativeValue(),
@@ -1294,8 +1294,8 @@ TEST_P(ProtoStructValueTest, TimestampListGetField) {
         message.add_repeated_timestamp()->set_seconds(2);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(),
                   "[1970-01-01T00:00:01Z, 1970-01-01T00:00:02Z]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
@@ -1315,8 +1315,8 @@ TEST_P(ProtoStructValueTest, EnumListGetField) {
         message.add_repeated_nested_enum(TestAllTypes::BAR);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(
             field->DebugString(),
             "[google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO, "
@@ -1336,8 +1336,8 @@ TEST_P(ProtoStructValueTest, StructListGetField) {
         message.add_repeated_nested_message()->set_bb(2);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(),
                   "[google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{"
                   "bb: 1}, "
@@ -1363,8 +1363,8 @@ TEST_P(ProtoStructValueTest, BoolWrapperListGetField) {
         message.add_repeated_bool_wrapper()->set_value(false);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[true, false]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_TRUE(field_value.As<BoolValue>()->NativeValue());
@@ -1381,8 +1381,8 @@ TEST_P(ProtoStructValueTest, Int32WrapperListGetField) {
         message.add_repeated_int32_wrapper()->set_value(0);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[1, 0]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<IntValue>()->NativeValue(), 1);
@@ -1399,8 +1399,8 @@ TEST_P(ProtoStructValueTest, Int64WrapperListGetField) {
         message.add_repeated_int64_wrapper()->set_value(0);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[1, 0]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<IntValue>()->NativeValue(), 1);
@@ -1417,8 +1417,8 @@ TEST_P(ProtoStructValueTest, Uint32WrapperListGetField) {
         message.add_repeated_uint32_wrapper()->set_value(0);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[1u, 0u]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<UintValue>()->NativeValue(), 1);
@@ -1435,8 +1435,8 @@ TEST_P(ProtoStructValueTest, Uint64WrapperListGetField) {
         message.add_repeated_uint64_wrapper()->set_value(0);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[1u, 0u]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<UintValue>()->NativeValue(), 1);
@@ -1453,8 +1453,8 @@ TEST_P(ProtoStructValueTest, FloatWrapperListGetField) {
         message.add_repeated_float_wrapper()->set_value(0.0);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<DoubleValue>()->NativeValue(), 1.0);
@@ -1471,8 +1471,8 @@ TEST_P(ProtoStructValueTest, DoubleWrapperListGetField) {
         message.add_repeated_double_wrapper()->set_value(0.0);
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<DoubleValue>()->NativeValue(), 1.0);
@@ -1489,8 +1489,8 @@ TEST_P(ProtoStructValueTest, BytesWrapperListGetField) {
         message.add_repeated_bytes_wrapper()->set_value("bar");
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[b\"foo\", b\"bar\"]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<BytesValue>()->ToString(), "foo");
@@ -1507,8 +1507,8 @@ TEST_P(ProtoStructValueTest, StringWrapperListGetField) {
         message.add_repeated_string_wrapper()->set_value("bar");
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 2);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 2);
+        EXPECT_FALSE(field->IsEmpty());
         EXPECT_EQ(field->DebugString(), "[\"foo\", \"bar\"]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_EQ(field_value.As<StringValue>()->ToString(), "foo");
@@ -1526,8 +1526,8 @@ TEST_P(ProtoStructValueTest, AnyListGetField) {
         ASSERT_TRUE(message.add_repeated_any()->PackFrom(proto));
       },
       [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->size(), 1);
-        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->Size(), 1);
+        EXPECT_FALSE(field->IsEmpty());
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
         EXPECT_TRUE(field_value.As<BoolValue>()->NativeValue());
       });
@@ -1745,8 +1745,8 @@ void TestMapGetField(MemoryManager& memory_manager,
               IsOkAndHolds(ValueOf<ErrorValue>(value_factory, status)));
   ASSERT_OK_AND_ASSIGN(auto keys,
                        field.As<MapValue>()->ListKeys(value_factory));
-  EXPECT_EQ(keys->size(), 2);
-  EXPECT_FALSE(keys->empty());
+  EXPECT_EQ(keys->Size(), 2);
+  EXPECT_FALSE(keys->IsEmpty());
   EXPECT_EQ(field.As<MapValue>()->type()->key(), keys->type()->element());
   EXPECT_OK(keys->Get(value_factory, 0));
 }
@@ -1834,8 +1834,8 @@ void TestStringMapGetField(MemoryManager& memory_manager,
               IsOkAndHolds(ValueOf<ErrorValue>(value_factory, status)));
   ASSERT_OK_AND_ASSIGN(auto keys,
                        field.As<MapValue>()->ListKeys(value_factory));
-  EXPECT_EQ(keys->size(), 2);
-  EXPECT_FALSE(keys->empty());
+  EXPECT_EQ(keys->Size(), 2);
+  EXPECT_FALSE(keys->IsEmpty());
   EXPECT_EQ(field.As<MapValue>()->type()->key(), keys->type()->element());
   EXPECT_OK(keys->Get(value_factory, 0));
 }
@@ -3003,8 +3003,8 @@ TEST_P(ProtoStructValueTest, BoolListValueMapGetField) {
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
         ASSERT_TRUE(value->Is<ListValue>());
-        EXPECT_FALSE(value->As<ListValue>().empty());
-        EXPECT_EQ(value->As<ListValue>().size(), 1);
+        EXPECT_FALSE(value->As<ListValue>().IsEmpty());
+        EXPECT_EQ(value->As<ListValue>().Size(), 1);
         ASSERT_OK_AND_ASSIGN(auto element,
                              value->As<ListValue>().Get(value_factory, 0));
         ASSERT_TRUE(element->Is<NullValue>());

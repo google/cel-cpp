@@ -1013,7 +1013,7 @@ TEST_P(TypeNewValueFromAnyTest, DynType) {
                  value_factory(),
                  absl::Cord(absl::string_view("\x32\x04\x0a\x02\x20\x01", 6))));
   ASSERT_TRUE(value->Is<ListValue>());
-  ASSERT_EQ(value->As<ListValue>().size(), 1);
+  ASSERT_EQ(value->As<ListValue>().Size(), 1);
   ASSERT_OK_AND_ASSIGN(auto element,
                        value->As<ListValue>().Get(value_factory(), 0));
   ASSERT_TRUE(element->Is<BoolValue>());

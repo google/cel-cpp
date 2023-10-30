@@ -319,9 +319,9 @@ class ParsedProtoListValue<NullValue> : public CEL_LIST_VALUE_CLASS {
     return out;
   }
 
-  size_t size() const final { return size_; }
+  size_t Size() const final { return size_; }
 
-  bool empty() const final { return size_ == 0; }
+  bool IsEmpty() const final { return size_ == 0; }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -361,9 +361,9 @@ class ParsedProtoListValue<BoolValue, bool> : public CEL_LIST_VALUE_CLASS {
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -402,9 +402,9 @@ class ParsedProtoListValue<IntValue, P> : public CEL_LIST_VALUE_CLASS {
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
                                         size_t index) const final {
@@ -442,9 +442,9 @@ class ParsedProtoListValue<UintValue, P> : public CEL_LIST_VALUE_CLASS {
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -483,9 +483,9 @@ class ParsedProtoListValue<DoubleValue, P> : public CEL_LIST_VALUE_CLASS {
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -526,9 +526,9 @@ class ParsedProtoListValue<BytesValue, std::string>
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -570,9 +570,9 @@ class ParsedProtoListValue<StringValue, std::string>
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -615,9 +615,9 @@ class ParsedProtoListValue<DurationValue, google::protobuf::Message>
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -664,9 +664,9 @@ class ParsedProtoListValue<TimestampValue, google::protobuf::Message>
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -713,9 +713,9 @@ class ParsedProtoListValue<EnumValue, int32_t> : public CEL_LIST_VALUE_CLASS {
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -758,9 +758,9 @@ class ParsedProtoListValue<ProtoStructValue, google::protobuf::Message>
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -827,9 +827,9 @@ class ParsedProtoListValue<ListValue, google::protobuf::Message>
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -879,9 +879,9 @@ class ParsedProtoListValue<MapValue, google::protobuf::Message>
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -929,9 +929,9 @@ class ParsedProtoListValue<DynValue, google::protobuf::Message>
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -979,9 +979,9 @@ class ParsedProtoListValue<AnyType, google::protobuf::Message>
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -1025,9 +1025,9 @@ class ParsedProtoListValue<BoolValue, google::protobuf::Message>
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -1073,9 +1073,9 @@ class ParsedProtoListValue<BytesValue, google::protobuf::Message>
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -1121,9 +1121,9 @@ class ParsedProtoListValue<DoubleValue, google::protobuf::Message>
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -1170,9 +1170,9 @@ class ParsedProtoListValue<IntValue, google::protobuf::Message>
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -1218,9 +1218,9 @@ class ParsedProtoListValue<StringValue, google::protobuf::Message>
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -1266,9 +1266,9 @@ class ParsedProtoListValue<UintValue, google::protobuf::Message>
     return out;
   }
 
-  size_t size() const final { return fields_.size(); }
+  size_t Size() const final { return fields_.size(); }
 
-  bool empty() const final { return fields_.empty(); }
+  bool IsEmpty() const final { return fields_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
@@ -1494,7 +1494,7 @@ class ParsedProtoMapValueKeysList : public CEL_LIST_VALUE_CLASS {
     return out;
   }
 
-  size_t size() const final { return keys_.size(); }
+  size_t Size() const final { return keys_.size(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,

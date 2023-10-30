@@ -318,7 +318,7 @@ class TestListValue final : public CEL_LIST_VALUE_CLASS {
     ABSL_ASSERT(type->element()->Is<IntType>());
   }
 
-  size_t size() const override { return elements_.size(); }
+  size_t Size() const override { return elements_.size(); }
 
   std::string DebugString() const override {
     return absl::StrCat("[", absl::StrJoin(elements_, ", "), "]");
@@ -346,7 +346,7 @@ class TestMapKeysListValue final : public CEL_LIST_VALUE_CLASS {
                                 std::vector<std::string> elements)
       : CEL_LIST_VALUE_CLASS(type), elements_(std::move(elements)) {}
 
-  size_t size() const override { return elements_.size(); }
+  size_t Size() const override { return elements_.size(); }
 
   std::string DebugString() const override {
     return absl::StrCat("[", absl::StrJoin(elements_, ", "), "]");
@@ -2775,14 +2775,14 @@ TEST_P(ListValueTest, Get) {
   ASSERT_OK_AND_ASSIGN(auto list_value,
                        value_factory.CreateListValue<TestListValue>(
                            list_type, std::vector<int64_t>{}));
-  EXPECT_TRUE(list_value->empty());
-  EXPECT_EQ(list_value->size(), 0);
+  EXPECT_TRUE(list_value->IsEmpty());
+  EXPECT_EQ(list_value->Size(), 0);
 
   ASSERT_OK_AND_ASSIGN(list_value,
                        value_factory.CreateListValue<TestListValue>(
                            list_type, std::vector<int64_t>{0, 1, 2}));
-  EXPECT_FALSE(list_value->empty());
-  EXPECT_EQ(list_value->size(), 3);
+  EXPECT_FALSE(list_value->IsEmpty());
+  EXPECT_EQ(list_value->Size(), 3);
   EXPECT_EQ(Must(list_value->Get(value_factory, 0)),
             value_factory.CreateIntValue(0));
   EXPECT_EQ(Must(list_value->Get(value_factory, 1)),

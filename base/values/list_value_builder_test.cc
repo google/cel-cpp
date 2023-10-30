@@ -50,7 +50,7 @@ TEST(ListValueBuilder, Unspecialized) {
   EXPECT_OK(list_builder.Add(value_factory.GetBytesValue()));  // rvalue
   EXPECT_EQ(list_builder.DebugString(), "[b\"\", b\"\"]");
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
-  EXPECT_EQ(list->size(), 2);
+  EXPECT_EQ(list->Size(), 2);
   EXPECT_EQ(list->DebugString(), "[b\"\", b\"\"]");
   EXPECT_THAT(list->AnyOf(value_factory,
                           [](const Handle<Value>& v) -> absl::StatusOr<bool> {
@@ -96,7 +96,7 @@ TEST(ListValueBuilder, Value) {
   EXPECT_EQ(list_builder.Size(), 2);
   EXPECT_EQ(list_builder.DebugString(), "[b\"\", b\"\"]");
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
-  EXPECT_EQ(list->size(), 2);
+  EXPECT_EQ(list->Size(), 2);
   EXPECT_EQ(list->DebugString(), "[b\"\", b\"\"]");
   ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<BytesValue>());
@@ -122,7 +122,7 @@ TEST(ListValueBuilder, Bool) {
   EXPECT_EQ(list_builder.Size(), 3);
   EXPECT_EQ(list_builder.DebugString(), "[false, true, false]");
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
-  EXPECT_EQ(list->size(), 3);
+  EXPECT_EQ(list->Size(), 3);
   EXPECT_EQ(list->DebugString(), "[false, true, false]");
   ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<BoolValue>());
@@ -151,7 +151,7 @@ TEST(ListValueBuilder, Int) {
   EXPECT_EQ(list_builder.Size(), 3);
   EXPECT_EQ(list_builder.DebugString(), "[0, 1, 2]");
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
-  EXPECT_EQ(list->size(), 3);
+  EXPECT_EQ(list->Size(), 3);
   EXPECT_EQ(list->DebugString(), "[0, 1, 2]");
   EXPECT_THAT(list->AnyOf(value_factory,
                           [](const Handle<Value>& v) -> absl::StatusOr<bool> {
@@ -197,7 +197,7 @@ TEST(ListValueBuilder, Uint) {
   EXPECT_EQ(list_builder.Size(), 3);
   EXPECT_EQ(list_builder.DebugString(), "[0u, 1u, 2u]");
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
-  EXPECT_EQ(list->size(), 3);
+  EXPECT_EQ(list->Size(), 3);
   EXPECT_EQ(list->DebugString(), "[0u, 1u, 2u]");
   ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<UintValue>());
@@ -226,7 +226,7 @@ TEST(ListValueBuilder, Double) {
   EXPECT_EQ(list_builder.Size(), 3);
   EXPECT_EQ(list_builder.DebugString(), "[0.0, 1.0, 2.0]");
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
-  EXPECT_EQ(list->size(), 3);
+  EXPECT_EQ(list->Size(), 3);
   EXPECT_EQ(list->DebugString(), "[0.0, 1.0, 2.0]");
   ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<DoubleValue>());
@@ -257,7 +257,7 @@ TEST(ListValueBuilder, Duration) {
   EXPECT_EQ(list_builder.Size(), 3);
   EXPECT_EQ(list_builder.DebugString(), "[0, 1s, 1m]");
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
-  EXPECT_EQ(list->size(), 3);
+  EXPECT_EQ(list->Size(), 3);
   EXPECT_EQ(list->DebugString(), "[0, 1s, 1m]");
   ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<DurationValue>());
@@ -293,7 +293,7 @@ TEST(ListValueBuilder, Timestamp) {
       list_builder.DebugString(),
       "[1970-01-01T00:00:00Z, 1970-01-01T00:00:01Z, 1970-01-01T00:01:00Z]");
   ASSERT_OK_AND_ASSIGN(auto list, std::move(list_builder).Build());
-  EXPECT_EQ(list->size(), 3);
+  EXPECT_EQ(list->Size(), 3);
   EXPECT_EQ(
       list->DebugString(),
       "[1970-01-01T00:00:00Z, 1970-01-01T00:00:01Z, 1970-01-01T00:01:00Z]");

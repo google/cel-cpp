@@ -322,9 +322,9 @@ class JsonListValue final : public CEL_LIST_VALUE_CLASS {
     return array_;
   }
 
-  size_t size() const override { return array_.size(); }
+  size_t Size() const override { return array_.size(); }
 
-  bool empty() const override { return array_.empty(); }
+  bool IsEmpty() const override { return array_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,

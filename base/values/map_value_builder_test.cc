@@ -129,8 +129,8 @@ TEST(MapValueBuilder, UnspecializedUnspecialized) {
               AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
                                                "\"bar\": b\"baz\"")));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
-  EXPECT_FALSE(keys->empty());
-  EXPECT_EQ(keys->size(), 3);
+  EXPECT_FALSE(keys->IsEmpty());
+  EXPECT_EQ(keys->Size(), 3);
   EXPECT_THAT(keys->DebugString(),
               AnyOfArray(MakeListDebugStringFor("\"\"", "\"foo\"", "\"bar\"")));
 }
@@ -184,8 +184,8 @@ TEST(MapValueBuilder, UnspecializedGeneric) {
               AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
                                                "\"bar\": b\"baz\"")));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
-  EXPECT_FALSE(keys->empty());
-  EXPECT_EQ(keys->size(), 3);
+  EXPECT_FALSE(keys->IsEmpty());
+  EXPECT_EQ(keys->Size(), 3);
   EXPECT_THAT(keys->DebugString(),
               AnyOfArray(MakeListDebugStringFor("\"\"", "\"foo\"", "\"bar\"")));
 }
@@ -239,8 +239,8 @@ TEST(MapValueBuilder, GenericUnspecialized) {
               AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
                                                "\"bar\": b\"baz\"")));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
-  EXPECT_FALSE(keys->empty());
-  EXPECT_EQ(keys->size(), 3);
+  EXPECT_FALSE(keys->IsEmpty());
+  EXPECT_EQ(keys->Size(), 3);
   EXPECT_THAT(keys->DebugString(),
               AnyOfArray(MakeListDebugStringFor("\"\"", "\"foo\"", "\"bar\"")));
 }
@@ -294,8 +294,8 @@ TEST(MapValueBuilder, GenericGeneric) {
               AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
                                                "\"bar\": b\"baz\"")));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
-  EXPECT_FALSE(keys->empty());
-  EXPECT_EQ(keys->size(), 3);
+  EXPECT_FALSE(keys->IsEmpty());
+  EXPECT_EQ(keys->Size(), 3);
   EXPECT_THAT(keys->DebugString(),
               AnyOfArray(MakeListDebugStringFor("\"\"", "\"foo\"", "\"bar\"")));
 }
@@ -347,8 +347,8 @@ TEST(MapValueBuilder, UnspecializedSpecialized) {
   EXPECT_THAT(map->DebugString(), AnyOfArray(MakeMapDebugStringFor(
                                       "\"\": 0", "\"foo\": 0", "\"bar\": 1")));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
-  EXPECT_FALSE(keys->empty());
-  EXPECT_EQ(keys->size(), 3);
+  EXPECT_FALSE(keys->IsEmpty());
+  EXPECT_EQ(keys->Size(), 3);
   EXPECT_THAT(keys->DebugString(),
               AnyOfArray(MakeListDebugStringFor("\"\"", "\"foo\"", "\"bar\"")));
 }
@@ -400,8 +400,8 @@ TEST(MapValueBuilder, GenericSpecialized) {
   EXPECT_THAT(map->DebugString(), AnyOfArray(MakeMapDebugStringFor(
                                       "\"\": 0", "\"foo\": 0", "\"bar\": 1")));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
-  EXPECT_FALSE(keys->empty());
-  EXPECT_EQ(keys->size(), 3);
+  EXPECT_FALSE(keys->IsEmpty());
+  EXPECT_EQ(keys->Size(), 3);
   EXPECT_THAT(keys->DebugString(),
               AnyOfArray(MakeListDebugStringFor("\"\"", "\"foo\"", "\"bar\"")));
 }
@@ -453,8 +453,8 @@ TEST(MapValueBuilder, SpecializedUnspecialized) {
   EXPECT_THAT(map->DebugString(), AnyOfArray(MakeMapDebugStringFor(
                                       "0: \"\"", "1: \"\"", "2: \"foo\"")));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
-  EXPECT_FALSE(keys->empty());
-  EXPECT_EQ(keys->size(), 3);
+  EXPECT_FALSE(keys->IsEmpty());
+  EXPECT_EQ(keys->Size(), 3);
   EXPECT_THAT(keys->DebugString(),
               AnyOfArray(MakeListDebugStringFor("0", "1", "2")));
 }
@@ -558,8 +558,8 @@ void TestMapBuilder(GetKey get_key, GetValue get_value, MakeKey make_key1,
             *((make_value2(value_factory)).template As<Value>()));
   EXPECT_THAT(map->DebugString(), AnyOfArray(debug_string));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
-  EXPECT_FALSE(keys->empty());
-  EXPECT_EQ(keys->size(), 3);
+  EXPECT_FALSE(keys->IsEmpty());
+  EXPECT_EQ(keys->Size(), 3);
   EXPECT_THAT(keys->DebugString(), AnyOfArray(keys_debug_string));
 }
 

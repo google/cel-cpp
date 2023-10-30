@@ -93,17 +93,17 @@ absl::StatusOr<Handle<Value>> ListValue::ConvertToType(
       base_internal::TypeConversionError(*this->type(), *type));
 }
 
-size_t ListValue::size() const {
-  return CEL_INTERNAL_LIST_VALUE_DISPATCH(size);
+size_t ListValue::Size() const {
+  return CEL_INTERNAL_LIST_VALUE_DISPATCH(Size);
 }
 
-bool ListValue::empty() const {
-  return CEL_INTERNAL_LIST_VALUE_DISPATCH(empty);
+bool ListValue::IsEmpty() const {
+  return CEL_INTERNAL_LIST_VALUE_DISPATCH(IsEmpty);
 }
 
 absl::StatusOr<Handle<Value>> ListValue::Get(ValueFactory& value_factory,
                                              size_t index) const {
-  if (ABSL_PREDICT_FALSE(index >= size())) {
+  if (ABSL_PREDICT_FALSE(index >= Size())) {
     return value_factory.CreateErrorValue(
         absl::InvalidArgumentError("index out of bounds"));
   }
@@ -143,8 +143,8 @@ absl::StatusOr<Handle<Value>> GenericListValueEquals(
   if (&lhs == &rhs) {
     return value_factory.CreateBoolValue(true);
   }
-  const auto lhs_size = lhs.size();
-  if (lhs_size != rhs.size()) {
+  const auto lhs_size = lhs.Size();
+  if (lhs_size != rhs.Size()) {
     return value_factory.CreateBoolValue(false);
   }
   if (lhs_size == 0) {
@@ -228,7 +228,7 @@ class AbstractListValueIterator final : public ListValue::Iterator {
  public:
   AbstractListValueIterator(ValueFactory& value_factory,
                             const AbstractListValue* value)
-      : value_factory_(value_factory), value_(value), size_(value_->size()) {}
+      : value_factory_(value_factory), value_(value), size_(value_->Size()) {}
 
   bool HasNext() override { return index_ < size_; }
 
@@ -257,7 +257,7 @@ absl::StatusOr<Any> GenericListValueConvertToAny(const ListValue& value,
 absl::StatusOr<JsonArray> GenericListValueConvertToJsonArray(
     const ListValue& value, ValueFactory& value_factory) {
   JsonArrayBuilder builder;
-  builder.reserve(value.size());
+  builder.reserve(value.Size());
   CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_factory));
   while (iterator->HasNext()) {
     CEL_ASSIGN_OR_RETURN(auto element, iterator->Next());
@@ -286,9 +286,9 @@ absl::StatusOr<JsonArray> LegacyListValue::ConvertToJsonArray(
   return GenericListValueConvertToJsonArray(*this, value_factory);
 }
 
-size_t LegacyListValue::size() const { return LegacyListValueSize(impl_); }
+size_t LegacyListValue::Size() const { return LegacyListValueSize(impl_); }
 
-bool LegacyListValue::empty() const { return LegacyListValueEmpty(impl_); }
+bool LegacyListValue::IsEmpty() const { return LegacyListValueEmpty(impl_); }
 
 absl::StatusOr<absl::Nonnull<std::unique_ptr<ListValue::Iterator>>>
 LegacyListValue::NewIterator(ValueFactory& value_factory) const {
@@ -355,7 +355,7 @@ absl::StatusOr<Handle<Value>> AbstractListValue::Contains(
 
 absl::StatusOr<bool> AbstractListValue::AnyOf(ValueFactory& value_factory,
                                               AnyOfCallback cb) const {
-  for (size_t i = 0; i < size(); ++i) {
+  for (size_t i = 0; i < Size(); ++i) {
     absl::StatusOr<Handle<Value>> value = Get(value_factory, i);
     auto condition = cb(*value);
     if (!condition.ok() || *condition) {

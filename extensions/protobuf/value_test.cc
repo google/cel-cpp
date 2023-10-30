@@ -382,7 +382,7 @@ TEST_P(ProtoValueTest, StaticValueListValue) {
   ASSERT_OK_AND_ASSIGN(
       auto value, ProtoValue::Create(value_factory, std::move(value_proto)));
   EXPECT_TRUE(value->Is<ListValue>());
-  EXPECT_EQ(value->As<ListValue>().size(), 1);
+  EXPECT_EQ(value->As<ListValue>().Size(), 1);
   EXPECT_THAT(value->As<ListValue>().Get(value_factory, 0),
               IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
 }
@@ -397,7 +397,7 @@ TEST_P(ProtoValueTest, StaticLValueValueListValue) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        ProtoValue::Create(value_factory, value_proto));
   EXPECT_TRUE(value->Is<ListValue>());
-  EXPECT_EQ(value->As<ListValue>().size(), 1);
+  EXPECT_EQ(value->As<ListValue>().Size(), 1);
   EXPECT_THAT(value->As<ListValue>().Get(value_factory, 0),
               IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
 }
@@ -412,7 +412,7 @@ TEST_P(ProtoValueTest, StaticRValueValueListValue) {
   ASSERT_OK_AND_ASSIGN(
       auto value, ProtoValue::Create(value_factory, std::move(value_proto)));
   EXPECT_TRUE(value->Is<ListValue>());
-  EXPECT_EQ(value->As<ListValue>().size(), 1);
+  EXPECT_EQ(value->As<ListValue>().Size(), 1);
   EXPECT_THAT(value->As<ListValue>().Get(value_factory, 0),
               IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
 }
@@ -514,7 +514,7 @@ TEST_P(ProtoValueTest, StaticListValue) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
       ProtoValue::Create(value_factory, std::move(list_value_proto)));
-  EXPECT_EQ(value->size(), 1);
+  EXPECT_EQ(value->Size(), 1);
   EXPECT_THAT(value->Get(value_factory, 0),
               IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
 }
@@ -528,7 +528,7 @@ TEST_P(ProtoValueTest, StaticLValueListValue) {
   list_value_proto.add_values()->set_bool_value(true);
   ASSERT_OK_AND_ASSIGN(auto value,
                        ProtoValue::Create(value_factory, list_value_proto));
-  EXPECT_EQ(value->size(), 1);
+  EXPECT_EQ(value->Size(), 1);
   EXPECT_THAT(value->Get(value_factory, 0),
               IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
 }
@@ -543,7 +543,7 @@ TEST_P(ProtoValueTest, StaticRValueListValue) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
       ProtoValue::Create(value_factory, std::move(list_value_proto)));
-  EXPECT_EQ(value->size(), 1);
+  EXPECT_EQ(value->Size(), 1);
   EXPECT_THAT(value->Get(value_factory, 0),
               IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
 }
@@ -764,7 +764,7 @@ TEST_P(ProtoValueAnyTest, AnyListValue) {
   payload.add_values()->set_bool_value(true);
   Run(payload, [](ValueFactory& value_factory, const Handle<Value>& value) {
     ASSERT_TRUE(value->Is<ListValue>());
-    EXPECT_EQ(value.As<ListValue>()->size(), 1);
+    EXPECT_EQ(value.As<ListValue>()->Size(), 1);
     ASSERT_OK_AND_ASSIGN(auto element,
                          value->As<ListValue>().Get(value_factory, 0));
     ASSERT_TRUE(element->Is<BoolValue>());

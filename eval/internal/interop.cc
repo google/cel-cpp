@@ -192,7 +192,7 @@ class LegacyCelList final : public CelList {
   }
 
   // List size
-  int size() const override { return static_cast<int>(impl_->size()); }
+  int size() const override { return static_cast<int>(impl_->Size()); }
 
   Handle<ListValue> value() const { return impl_; }
 

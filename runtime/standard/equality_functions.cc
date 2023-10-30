@@ -141,11 +141,11 @@ absl::StatusOr<absl::optional<bool>> ListEqual(ValueFactory& factory,
   if (&lhs == &rhs) {
     return true;
   }
-  if (lhs.size() != rhs.size()) {
+  if (lhs.Size() != rhs.Size()) {
     return false;
   }
 
-  for (int i = 0; i < lhs.size(); ++i) {
+  for (int i = 0; i < lhs.Size(); ++i) {
     CEL_ASSIGN_OR_RETURN(auto lhs_i, lhs.Get(factory, i));
     CEL_ASSIGN_OR_RETURN(auto rhs_i, rhs.Get(factory, i));
     CEL_ASSIGN_OR_RETURN(absl::optional<bool> eq,

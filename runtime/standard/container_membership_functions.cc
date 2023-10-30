@@ -89,7 +89,7 @@ bool ValueEquals(const Handle<Value>& value, const BytesValue& other) {
 template <typename T>
 absl::StatusOr<bool> In(ValueFactory& value_factory, T value,
                         const ListValue& list) {
-  size_t size = list.size();
+  size_t size = list.Size();
   for (int i = 0; i < size; i++) {
     CEL_ASSIGN_OR_RETURN(Handle<Value> element, list.Get(value_factory, i));
     if (ValueEquals<T>(element, value)) {

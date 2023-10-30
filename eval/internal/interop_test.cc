@@ -424,7 +424,7 @@ TEST(ValueInterop, ListFromLegacy) {
                 return value->Is<BoolValue>() &&
                        value->As<BoolValue>().NativeValue() == false;
               })));
-  EXPECT_EQ(value.As<ListValue>()->size(), 2);
+  EXPECT_EQ(value.As<ListValue>()->Size(), 2);
   ASSERT_OK_AND_ASSIGN(auto element,
                        value.As<ListValue>()->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<IntValue>());
@@ -439,7 +439,7 @@ class TestListValue final : public CEL_LIST_VALUE_CLASS {
     ABSL_ASSERT(type->element()->Is<IntType>());
   }
 
-  size_t size() const override { return elements_.size(); }
+  size_t Size() const override { return elements_.size(); }
 
   std::string DebugString() const override {
     return absl::StrCat("[", absl::StrJoin(elements_, ", "), "]");

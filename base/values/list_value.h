@@ -91,9 +91,9 @@ class ListValue : public Value,
   absl::StatusOr<Handle<Value>> ConvertToType(ValueFactory& value_factory,
                                               const Handle<Type>& type) const;
 
-  size_t size() const;
+  size_t Size() const;
 
-  bool empty() const;
+  bool IsEmpty() const;
 
   absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const;
@@ -179,9 +179,9 @@ class LegacyListValue final : public ListValue, public InlineData {
   absl::StatusOr<JsonArray> ConvertToJsonArray(
       ValueFactory& value_factory) const;
 
-  size_t size() const;
+  size_t Size() const;
 
-  bool empty() const;
+  bool IsEmpty() const;
 
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
                                         size_t index) const;
@@ -247,9 +247,9 @@ class AbstractListValue : public ListValue,
   virtual absl::StatusOr<JsonArray> ConvertToJsonArray(
       ValueFactory& value_factory) const;
 
-  virtual size_t size() const = 0;
+  virtual size_t Size() const = 0;
 
-  virtual bool empty() const { return size() == 0; }
+  virtual bool IsEmpty() const { return Size() == 0; }
 
   virtual absl::StatusOr<absl::Nonnull<std::unique_ptr<Iterator>>> NewIterator(
       ValueFactory& value_factory
@@ -293,7 +293,7 @@ class DynamicListValue final : public AbstractListValue {
       : AbstractListValue(std::move(type)), storage_(std::move(storage)) {}
 
   std::string DebugString() const override {
-    size_t count = size();
+    size_t count = Size();
     std::string out;
     out.push_back('[');
     if (count != 0) {
@@ -307,9 +307,9 @@ class DynamicListValue final : public AbstractListValue {
     return out;
   }
 
-  size_t size() const override { return storage_.size(); }
+  size_t Size() const override { return storage_.size(); }
 
-  bool empty() const override { return storage_.empty(); }
+  bool IsEmpty() const override { return storage_.empty(); }
 
   absl::StatusOr<bool> AnyOf(ValueFactory& value_factory,
                              AnyOfCallback cb) const override;
@@ -341,7 +341,7 @@ class StaticListValue final : public AbstractListValue {
       : AbstractListValue(std::move(type)), storage_(std::move(storage)) {}
 
   std::string DebugString() const override {
-    size_t count = size();
+    size_t count = Size();
     std::string out;
     out.push_back('[');
     if (count != 0) {
@@ -355,9 +355,9 @@ class StaticListValue final : public AbstractListValue {
     return out;
   }
 
-  size_t size() const override { return storage_.size(); }
+  size_t Size() const override { return storage_.size(); }
 
-  bool empty() const override { return storage_.empty(); }
+  bool IsEmpty() const override { return storage_.empty(); }
 
  protected:
   absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,

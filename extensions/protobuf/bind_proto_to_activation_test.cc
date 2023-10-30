@@ -129,7 +129,7 @@ TEST_P(BindProtoToActivationTest, BindProtoToActivationDefault) {
 MATCHER_P(IsListValueOfSize, size, "") {
   const Handle<Value>& handle = arg;
 
-  return handle->Is<ListValue>() && handle->As<ListValue>().size() == size;
+  return handle->Is<ListValue>() && handle->As<ListValue>().Size() == size;
 }
 
 TEST_P(BindProtoToActivationTest, BindProtoToActivationRepeated) {

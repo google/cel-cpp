@@ -226,7 +226,7 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
 
   // Make sure the iter var is out of scope.
   if (current_index >=
-      static_cast<int64_t>(iter_range.As<cel::ListValue>()->size()) - 1) {
+      static_cast<int64_t>(iter_range.As<cel::ListValue>()->Size()) - 1) {
     frame->comprehension_slots().ClearSlot(iter_slot_);
     return frame->JumpTo(jump_offset_);
   }
