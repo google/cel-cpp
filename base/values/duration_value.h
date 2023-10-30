@@ -67,7 +67,7 @@ class DurationValue final
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;
 
-  using Base::value;
+  using Base::NativeValue;
 
  private:
   using Base::Base;
@@ -78,7 +78,7 @@ class DurationValue final
 CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(DurationValue);
 
 inline bool operator==(const DurationValue& lhs, const DurationValue& rhs) {
-  return lhs.value() == rhs.value();
+  return lhs.NativeValue() == rhs.NativeValue();
 }
 
 namespace base_internal {
@@ -104,7 +104,7 @@ struct ValueTraits<DurationValue> {
   static underlying_type Unwrap(underlying_type value) { return value; }
 
   static underlying_type Unwrap(const Handle<type>& value) {
-    return Unwrap(value->value());
+    return Unwrap(value->NativeValue());
   }
 };
 

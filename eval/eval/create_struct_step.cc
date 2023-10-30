@@ -117,7 +117,7 @@ class BoolWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
     if (!value->Is<BoolValue>()) {
       return TypeConversionError(value->type()->name(), "bool");
     }
-    value_ = value->As<BoolValue>().value();
+    value_ = value->As<BoolValue>().NativeValue();
     return absl::OkStatus();
   }
 
@@ -145,7 +145,7 @@ class Int32WellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
       return TypeConversionError(value->type()->name(), "int");
     }
     CEL_ASSIGN_OR_RETURN(value_, cel::internal::CheckedInt64ToInt32(
-                                     value->As<IntValue>().value()));
+                                     value->As<IntValue>().NativeValue()));
     return absl::OkStatus();
   }
 
@@ -172,7 +172,7 @@ class Int64WellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
     if (!value->Is<IntValue>()) {
       return TypeConversionError(value->type()->name(), "int");
     }
-    value_ = value->As<IntValue>().value();
+    value_ = value->As<IntValue>().NativeValue();
     return absl::OkStatus();
   }
 
@@ -200,7 +200,7 @@ class UInt32WellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
       return TypeConversionError(value->type()->name(), "uint");
     }
     CEL_ASSIGN_OR_RETURN(value_, cel::internal::CheckedUint64ToUint32(
-                                     value->As<UintValue>().value()));
+                                     value->As<UintValue>().NativeValue()));
     return absl::OkStatus();
   }
 
@@ -227,7 +227,7 @@ class UInt64WellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
     if (!value->Is<UintValue>()) {
       return TypeConversionError(value->type()->name(), "uint");
     }
-    value_ = value->As<UintValue>().value();
+    value_ = value->As<UintValue>().NativeValue();
     return absl::OkStatus();
   }
 
@@ -254,7 +254,7 @@ class FloatWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
     if (!value->Is<DoubleValue>()) {
       return TypeConversionError(value->type()->name(), "double");
     }
-    value_ = static_cast<float>(value->As<DoubleValue>().value());
+    value_ = static_cast<float>(value->As<DoubleValue>().NativeValue());
     return absl::OkStatus();
   }
 
@@ -281,7 +281,7 @@ class DoubleWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
     if (!value->Is<DoubleValue>()) {
       return TypeConversionError(value->type()->name(), "double");
     }
-    value_ = value->As<DoubleValue>().value();
+    value_ = value->As<DoubleValue>().NativeValue();
     return absl::OkStatus();
   }
 
@@ -360,7 +360,7 @@ class DurationWellKnownTypeValueBuilder final
       if (!value->Is<IntValue>()) {
         return TypeConversionError(value->type()->name(), "int");
       }
-      seconds_ = value->As<IntValue>().value();
+      seconds_ = value->As<IntValue>().NativeValue();
       return absl::OkStatus();
     }
     if (number == 2) {
@@ -368,7 +368,7 @@ class DurationWellKnownTypeValueBuilder final
         return TypeConversionError(value->type()->name(), "int");
       }
       CEL_ASSIGN_OR_RETURN(nanos_, cel::internal::CheckedInt64ToInt32(
-                                       value->As<IntValue>().value()));
+                                       value->As<IntValue>().NativeValue()));
       return absl::OkStatus();
     }
     return cel::runtime_internal::CreateNoSuchFieldError(absl::StrCat(number));
@@ -397,7 +397,7 @@ class TimestampWellKnownTypeValueBuilder final
       if (!value->Is<IntValue>()) {
         return TypeConversionError(value->type()->name(), "int");
       }
-      seconds_ = value->As<IntValue>().value();
+      seconds_ = value->As<IntValue>().NativeValue();
       return absl::OkStatus();
     }
     if (number == 2) {
@@ -405,7 +405,7 @@ class TimestampWellKnownTypeValueBuilder final
         return TypeConversionError(value->type()->name(), "int");
       }
       CEL_ASSIGN_OR_RETURN(nanos_, cel::internal::CheckedInt64ToInt32(
-                                       value->As<IntValue>().value()));
+                                       value->As<IntValue>().NativeValue()));
       return absl::OkStatus();
     }
     return cel::runtime_internal::CreateNoSuchFieldError(absl::StrCat(number));
@@ -493,7 +493,7 @@ class ValueWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
         if (!value->Is<DoubleValue>()) {
           return TypeConversionError(value->type()->name(), "double");
         }
-        value_ = value->As<DoubleValue>().value();
+        value_ = value->As<DoubleValue>().NativeValue();
         return absl::OkStatus();
       case 3:
         if (!value->Is<StringValue>()) {
@@ -505,7 +505,7 @@ class ValueWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
         if (!value->Is<BoolValue>()) {
           return TypeConversionError(value->type()->name(), "bool");
         }
-        value_ = value->As<BoolValue>().value();
+        value_ = value->As<BoolValue>().NativeValue();
         return absl::OkStatus();
       case 5: {
         if (value->Is<MapValue>()) {

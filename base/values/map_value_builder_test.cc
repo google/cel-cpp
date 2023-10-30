@@ -337,13 +337,13 @@ TEST(MapValueBuilder, UnspecializedSpecialized) {
   EXPECT_EQ(map->size(), 3);
   ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE(entry->Is<IntValue>());
-  EXPECT_EQ(entry.As<IntValue>()->value(), 0);
+  EXPECT_EQ(entry.As<IntValue>()->NativeValue(), 0);
   ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("foo")));
   EXPECT_TRUE(entry->Is<IntValue>());
-  EXPECT_EQ(entry.As<IntValue>()->value(), 0);
+  EXPECT_EQ(entry.As<IntValue>()->NativeValue(), 0);
   ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("bar")));
   EXPECT_TRUE(entry->Is<IntValue>());
-  EXPECT_EQ(entry.As<IntValue>()->value(), 1);
+  EXPECT_EQ(entry.As<IntValue>()->NativeValue(), 1);
   EXPECT_THAT(map->DebugString(), AnyOfArray(MakeMapDebugStringFor(
                                       "\"\": 0", "\"foo\": 0", "\"bar\": 1")));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));
@@ -390,13 +390,13 @@ TEST(MapValueBuilder, GenericSpecialized) {
   EXPECT_EQ(map->size(), 3);
   ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE(entry->Is<IntValue>());
-  EXPECT_EQ(entry.As<IntValue>()->value(), 0);
+  EXPECT_EQ(entry.As<IntValue>()->NativeValue(), 0);
   ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("foo")));
   EXPECT_TRUE(entry->Is<IntValue>());
-  EXPECT_EQ(entry.As<IntValue>()->value(), 0);
+  EXPECT_EQ(entry.As<IntValue>()->NativeValue(), 0);
   ASSERT_OK_AND_ASSIGN(entry, map->Get(value_factory, make_key("bar")));
   EXPECT_TRUE(entry->Is<IntValue>());
-  EXPECT_EQ(entry.As<IntValue>()->value(), 1);
+  EXPECT_EQ(entry.As<IntValue>()->NativeValue(), 1);
   EXPECT_THAT(map->DebugString(), AnyOfArray(MakeMapDebugStringFor(
                                       "\"\": 0", "\"foo\": 0", "\"bar\": 1")));
   ASSERT_OK_AND_ASSIGN(auto keys, map->ListKeys(value_factory));

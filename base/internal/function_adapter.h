@@ -127,7 +127,7 @@ struct HandleToAdaptedVisitor {
     if (!input->Is<IntValue>()) {
       return absl::InvalidArgumentError("expected int value");
     }
-    *out = input.As<IntValue>()->value();
+    *out = input.As<IntValue>()->NativeValue();
     return absl::OkStatus();
   }
 
@@ -135,7 +135,7 @@ struct HandleToAdaptedVisitor {
     if (!input->Is<UintValue>()) {
       return absl::InvalidArgumentError("expected uint value");
     }
-    *out = input.As<UintValue>()->value();
+    *out = input.As<UintValue>()->NativeValue();
     return absl::OkStatus();
   }
 
@@ -143,7 +143,7 @@ struct HandleToAdaptedVisitor {
     if (!input->Is<DoubleValue>()) {
       return absl::InvalidArgumentError("expected double value");
     }
-    *out = input.As<DoubleValue>()->value();
+    *out = input.As<DoubleValue>()->NativeValue();
     return absl::OkStatus();
   }
 
@@ -151,7 +151,7 @@ struct HandleToAdaptedVisitor {
     if (!input->Is<BoolValue>()) {
       return absl::InvalidArgumentError("expected bool value");
     }
-    *out = input.As<BoolValue>()->value();
+    *out = input.As<BoolValue>()->NativeValue();
     return absl::OkStatus();
   }
 
@@ -159,7 +159,7 @@ struct HandleToAdaptedVisitor {
     if (!input->Is<TimestampValue>()) {
       return absl::InvalidArgumentError("expected timestamp value");
     }
-    *out = input.As<TimestampValue>()->value();
+    *out = input.As<TimestampValue>()->NativeValue();
     return absl::OkStatus();
   }
 
@@ -167,7 +167,7 @@ struct HandleToAdaptedVisitor {
     if (!input->Is<DurationValue>()) {
       return absl::InvalidArgumentError("expected duration value");
     }
-    *out = input.As<DurationValue>()->value();
+    *out = input.As<DurationValue>()->NativeValue();
     return absl::OkStatus();
   }
 

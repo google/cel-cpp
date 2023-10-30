@@ -59,7 +59,8 @@ class BindProtoToActivationTest
 MATCHER_P(IsIntValue, value, "") {
   const Handle<Value>& handle = arg;
 
-  return handle->Is<IntValue>() && handle->As<IntValue>().value() == value;
+  return handle->Is<IntValue>() &&
+         handle->As<IntValue>().NativeValue() == value;
 }
 
 TEST_P(BindProtoToActivationTest, BindProtoToActivation) {

@@ -51,11 +51,13 @@ std::string DurationValue::DebugString(absl::Duration value) {
   return internal::DebugStringDuration(value);
 }
 
-std::string DurationValue::DebugString() const { return DebugString(value()); }
+std::string DurationValue::DebugString() const {
+  return DebugString(NativeValue());
+}
 
 absl::StatusOr<Any> DurationValue::ConvertToAny(ValueFactory&) const {
   static constexpr absl::string_view kTypeName = "google.protobuf.Duration";
-  auto value = this->value();
+  auto value = this->NativeValue();
   if (ABSL_PREDICT_FALSE(value == absl::InfiniteDuration() ||
                          value == -absl::InfiniteDuration())) {
     return absl::FailedPreconditionError(
@@ -79,7 +81,8 @@ absl::StatusOr<Any> DurationValue::ConvertToAny(ValueFactory&) const {
 }
 
 absl::StatusOr<Json> DurationValue::ConvertToJson(ValueFactory&) const {
-  CEL_ASSIGN_OR_RETURN(auto formatted, internal::EncodeDurationToJson(value()));
+  CEL_ASSIGN_OR_RETURN(auto formatted,
+                       internal::EncodeDurationToJson(NativeValue()));
   return JsonString(std::move(formatted));
 }
 
@@ -91,7 +94,7 @@ absl::StatusOr<Handle<Value>> DurationValue::ConvertToType(
     case TypeKind::kType:
       return value_factory.CreateTypeValue(this->type());
     case TypeKind::kString: {
-      auto status_or_string = internal::EncodeDurationToJson(value());
+      auto status_or_string = internal::EncodeDurationToJson(NativeValue());
       if (!status_or_string.ok()) {
         return value_factory.CreateErrorValue(status_or_string.status());
       }
@@ -105,9 +108,9 @@ absl::StatusOr<Handle<Value>> DurationValue::ConvertToType(
 
 absl::StatusOr<Handle<Value>> DurationValue::Equals(ValueFactory& value_factory,
                                                     const Value& other) const {
-  return value_factory.CreateBoolValue(other.Is<DurationValue>() &&
-                                       value() ==
-                                           other.As<DurationValue>().value());
+  return value_factory.CreateBoolValue(
+      other.Is<DurationValue>() &&
+      NativeValue() == other.As<DurationValue>().NativeValue());
 }
 
 }  // namespace cel

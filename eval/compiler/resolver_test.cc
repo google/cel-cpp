@@ -120,13 +120,13 @@ TEST_F(ResolverTest, TestFindConstantEnum) {
   auto enum_value = resolver.FindConstant("TestEnum.TEST_ENUM_1", -1);
   ASSERT_TRUE(enum_value);
   ASSERT_TRUE(enum_value->Is<IntValue>());
-  EXPECT_THAT(enum_value.As<IntValue>()->value(), Eq(1L));
+  EXPECT_THAT(enum_value.As<IntValue>()->NativeValue(), Eq(1L));
 
   enum_value = resolver.FindConstant(
       ".google.api.expr.runtime.TestMessage.TestEnum.TEST_ENUM_2", -1);
   ASSERT_TRUE(enum_value);
   ASSERT_TRUE(enum_value->Is<IntValue>());
-  EXPECT_THAT(enum_value.As<IntValue>()->value(), Eq(2L));
+  EXPECT_THAT(enum_value.As<IntValue>()->NativeValue(), Eq(2L));
 }
 
 TEST_F(ResolverTest, TestFindConstantUnqualifiedType) {

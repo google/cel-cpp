@@ -63,7 +63,7 @@ class UintValue final : public base_internal::SimpleValue<UintType, uint64_t>,
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;
 
-  using Base::value;
+  using Base::NativeValue;
 
  private:
   using Base::Base;
@@ -75,11 +75,11 @@ CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(UintValue);
 
 template <typename H>
 H AbslHashValue(H state, const UintValue& value) {
-  return H::combine(std::move(state), value.value());
+  return H::combine(std::move(state), value.NativeValue());
 }
 
 inline bool operator==(const UintValue& lhs, const UintValue& rhs) {
-  return lhs.value() == rhs.value();
+  return lhs.NativeValue() == rhs.NativeValue();
 }
 
 namespace base_internal {
@@ -105,7 +105,7 @@ struct ValueTraits<UintValue> {
   static underlying_type Unwrap(underlying_type value) { return value; }
 
   static underlying_type Unwrap(const Handle<type>& value) {
-    return Unwrap(value->value());
+    return Unwrap(value->NativeValue());
   }
 };
 

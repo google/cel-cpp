@@ -162,7 +162,7 @@ absl::StatusOr<Handle<Value>> GenericListValueEquals(
     CEL_ASSIGN_OR_RETURN(auto rhs_element, rhs_iterator->Next());
     CEL_ASSIGN_OR_RETURN(auto equal,
                          lhs_element->Equals(value_factory, *rhs_element));
-    if (equal->Is<BoolValue>() && !equal->As<BoolValue>().value()) {
+    if (equal->Is<BoolValue>() && !equal->As<BoolValue>().NativeValue()) {
       return equal;
     }
   }
@@ -184,7 +184,7 @@ absl::StatusOr<Handle<Value>> GenericListValueContains(
                        CEL_ASSIGN_OR_RETURN(
                            auto equal, needle.Equals(value_factory, *element));
                        if (equal->Is<BoolValue>() &&
-                           equal->As<BoolValue>().value()) {
+                           equal->As<BoolValue>().NativeValue()) {
                          return true;
                        }
                        return false;

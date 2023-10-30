@@ -57,7 +57,7 @@ TEST_P(ProtoValueTest, DurationStatic) {
   duration_proto.set_seconds(1);
   ASSERT_OK_AND_ASSIGN(auto duration_value,
                        ProtoValue::Create(value_factory, duration_proto));
-  EXPECT_EQ(duration_value->value(), absl::Seconds(1));
+  EXPECT_EQ(duration_value->NativeValue(), absl::Seconds(1));
 }
 
 TEST_P(ProtoValueTest, DurationDynamicLValue) {
@@ -71,7 +71,8 @@ TEST_P(ProtoValueTest, DurationDynamicLValue) {
       auto duration_value,
       ProtoValue::Create(value_factory,
                          static_cast<const google::protobuf::Message&>(duration_proto)));
-  EXPECT_EQ(duration_value.As<DurationValue>()->value(), absl::Seconds(1));
+  EXPECT_EQ(duration_value.As<DurationValue>()->NativeValue(),
+            absl::Seconds(1));
 }
 
 TEST_P(ProtoValueTest, DurationDynamicRValue) {
@@ -85,7 +86,8 @@ TEST_P(ProtoValueTest, DurationDynamicRValue) {
       auto duration_value,
       ProtoValue::Create(value_factory,
                          static_cast<google::protobuf::Message&&>(duration_proto)));
-  EXPECT_EQ(duration_value.As<DurationValue>()->value(), absl::Seconds(1));
+  EXPECT_EQ(duration_value.As<DurationValue>()->NativeValue(),
+            absl::Seconds(1));
 }
 
 TEST_P(ProtoValueTest, TimestampStatic) {
@@ -97,7 +99,8 @@ TEST_P(ProtoValueTest, TimestampStatic) {
   timestamp_proto.set_seconds(1);
   ASSERT_OK_AND_ASSIGN(auto timestamp_value,
                        ProtoValue::Create(value_factory, timestamp_proto));
-  EXPECT_EQ(timestamp_value->value(), absl::UnixEpoch() + absl::Seconds(1));
+  EXPECT_EQ(timestamp_value->NativeValue(),
+            absl::UnixEpoch() + absl::Seconds(1));
 }
 
 TEST_P(ProtoValueTest, TimestampDynamicLValue) {
@@ -111,7 +114,7 @@ TEST_P(ProtoValueTest, TimestampDynamicLValue) {
       auto timestamp_value,
       ProtoValue::Create(value_factory,
                          static_cast<const google::protobuf::Message&>(timestamp_proto)));
-  EXPECT_EQ(timestamp_value.As<TimestampValue>()->value(),
+  EXPECT_EQ(timestamp_value.As<TimestampValue>()->NativeValue(),
             absl::UnixEpoch() + absl::Seconds(1));
 }
 
@@ -126,7 +129,7 @@ TEST_P(ProtoValueTest, TimestampDynamicRValue) {
       auto timestamp_value,
       ProtoValue::Create(value_factory,
                          static_cast<google::protobuf::Message&&>(timestamp_proto)));
-  EXPECT_EQ(timestamp_value.As<TimestampValue>()->value(),
+  EXPECT_EQ(timestamp_value.As<TimestampValue>()->NativeValue(),
             absl::UnixEpoch() + absl::Seconds(1));
 }
 
@@ -663,7 +666,7 @@ TEST_P(ProtoValueAnyTest, AnyBoolWrapper) {
   google::protobuf::BoolValue payload;
   payload.set_value(true);
   Run(payload, [](const Handle<Value>& value) {
-    EXPECT_EQ(value.As<BoolValue>()->value(), true);
+    EXPECT_EQ(value.As<BoolValue>()->NativeValue(), true);
   });
 }
 
@@ -671,7 +674,7 @@ TEST_P(ProtoValueAnyTest, AnyInt32Wrapper) {
   google::protobuf::Int32Value payload;
   payload.set_value(1);
   Run(payload, [](const Handle<Value>& value) {
-    EXPECT_EQ(value.As<IntValue>()->value(), 1);
+    EXPECT_EQ(value.As<IntValue>()->NativeValue(), 1);
   });
 }
 
@@ -679,7 +682,7 @@ TEST_P(ProtoValueAnyTest, AnyInt64Wrapper) {
   google::protobuf::Int64Value payload;
   payload.set_value(1);
   Run(payload, [](const Handle<Value>& value) {
-    EXPECT_EQ(value.As<IntValue>()->value(), 1);
+    EXPECT_EQ(value.As<IntValue>()->NativeValue(), 1);
   });
 }
 
@@ -687,7 +690,7 @@ TEST_P(ProtoValueAnyTest, AnyUInt32Wrapper) {
   google::protobuf::UInt32Value payload;
   payload.set_value(1);
   Run(payload, [](const Handle<Value>& value) {
-    EXPECT_EQ(value.As<UintValue>()->value(), 1);
+    EXPECT_EQ(value.As<UintValue>()->NativeValue(), 1);
   });
 }
 
@@ -695,7 +698,7 @@ TEST_P(ProtoValueAnyTest, AnyUInt64Wrapper) {
   google::protobuf::UInt64Value payload;
   payload.set_value(1);
   Run(payload, [](const Handle<Value>& value) {
-    EXPECT_EQ(value.As<UintValue>()->value(), 1);
+    EXPECT_EQ(value.As<UintValue>()->NativeValue(), 1);
   });
 }
 
@@ -703,7 +706,7 @@ TEST_P(ProtoValueAnyTest, AnyFloatWrapper) {
   google::protobuf::FloatValue payload;
   payload.set_value(1);
   Run(payload, [](const Handle<Value>& value) {
-    EXPECT_EQ(value.As<DoubleValue>()->value(), 1);
+    EXPECT_EQ(value.As<DoubleValue>()->NativeValue(), 1);
   });
 }
 
@@ -711,7 +714,7 @@ TEST_P(ProtoValueAnyTest, AnyDoubleWrapper) {
   google::protobuf::DoubleValue payload;
   payload.set_value(1);
   Run(payload, [](const Handle<Value>& value) {
-    EXPECT_EQ(value.As<DoubleValue>()->value(), 1);
+    EXPECT_EQ(value.As<DoubleValue>()->NativeValue(), 1);
   });
 }
 
@@ -735,7 +738,7 @@ TEST_P(ProtoValueAnyTest, AnyDuration) {
   google::protobuf::Duration payload;
   payload.set_seconds(1);
   Run(payload, [](const Handle<Value>& value) {
-    EXPECT_EQ(value.As<DurationValue>()->value(), absl::Seconds(1));
+    EXPECT_EQ(value.As<DurationValue>()->NativeValue(), absl::Seconds(1));
   });
 }
 
@@ -743,7 +746,7 @@ TEST_P(ProtoValueAnyTest, AnyTimestamp) {
   google::protobuf::Timestamp payload;
   payload.set_seconds(1);
   Run(payload, [](const Handle<Value>& value) {
-    EXPECT_EQ(value.As<TimestampValue>()->value(),
+    EXPECT_EQ(value.As<TimestampValue>()->NativeValue(),
               absl::UnixEpoch() + absl::Seconds(1));
   });
 }
@@ -752,7 +755,7 @@ TEST_P(ProtoValueAnyTest, AnyValue) {
   google::protobuf::Value payload;
   payload.set_bool_value(true);
   Run(payload, [](const Handle<Value>& value) {
-    EXPECT_TRUE(value.As<BoolValue>()->value());
+    EXPECT_TRUE(value.As<BoolValue>()->NativeValue());
   });
 }
 
@@ -765,7 +768,7 @@ TEST_P(ProtoValueAnyTest, AnyListValue) {
     ASSERT_OK_AND_ASSIGN(auto element,
                          value->As<ListValue>().Get(value_factory, 0));
     ASSERT_TRUE(element->Is<BoolValue>());
-    EXPECT_TRUE(element.As<BoolValue>()->value());
+    EXPECT_TRUE(element.As<BoolValue>()->NativeValue());
   });
 }
 

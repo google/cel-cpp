@@ -59,7 +59,7 @@ TEST(ValueFactory, JsonBool) {
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateValueFromJson(true);
   ASSERT_TRUE(value->Is<BoolValue>());
-  EXPECT_TRUE(value->As<BoolValue>().value());
+  EXPECT_TRUE(value->As<BoolValue>().NativeValue());
 }
 
 TEST(ValueFactory, JsonNumber) {
@@ -68,7 +68,7 @@ TEST(ValueFactory, JsonNumber) {
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateValueFromJson(1.0);
   ASSERT_TRUE(value->Is<DoubleValue>());
-  EXPECT_EQ(value->As<DoubleValue>().value(), 1.0);
+  EXPECT_EQ(value->As<DoubleValue>().NativeValue(), 1.0);
 }
 
 TEST(ValueFactory, JsonString) {
@@ -114,7 +114,7 @@ TEST(ValueFactory, JsonObject) {
       value->As<MapValue>().Get(
           value_factory, value_factory.CreateUncheckedStringValue("foo")));
   ASSERT_TRUE(entry->Is<BoolValue>());
-  EXPECT_TRUE(entry->As<BoolValue>().value());
+  EXPECT_TRUE(entry->As<BoolValue>().NativeValue());
   EXPECT_THAT(
       value->As<MapValue>().Has(
           value_factory, value_factory.CreateUncheckedStringValue("foo")),

@@ -90,7 +90,7 @@ struct ValueOfTraits<cel::BoolValue, void> {
   }
 
   static bool Equals(const cel::BoolValue& lhs, const cel::BoolValue& rhs) {
-    return lhs.value() == rhs.value();
+    return lhs.NativeValue() == rhs.NativeValue();
   }
 };
 
@@ -124,7 +124,7 @@ struct ValueOfTraits<cel::DoubleValue, void> {
   }
 
   static bool Equals(const cel::DoubleValue& lhs, const cel::DoubleValue& rhs) {
-    return lhs.value() == rhs.value();
+    return lhs.NativeValue() == rhs.NativeValue();
   }
 };
 
@@ -137,7 +137,7 @@ struct ValueOfTraits<cel::DurationValue, void> {
 
   static bool Equals(const cel::DurationValue& lhs,
                      const cel::DurationValue& rhs) {
-    return lhs.value() == rhs.value();
+    return lhs.NativeValue() == rhs.NativeValue();
   }
 };
 
@@ -149,7 +149,7 @@ struct ValueOfTraits<cel::IntValue, void> {
   }
 
   static bool Equals(const cel::IntValue& lhs, const cel::IntValue& rhs) {
-    return lhs.value() == rhs.value();
+    return lhs.NativeValue() == rhs.NativeValue();
   }
 };
 
@@ -198,7 +198,7 @@ struct ValueOfTraits<cel::TimestampValue, void> {
 
   static bool Equals(const cel::TimestampValue& lhs,
                      const cel::TimestampValue& rhs) {
-    return lhs.value() == rhs.value();
+    return lhs.NativeValue() == rhs.NativeValue();
   }
 };
 
@@ -210,7 +210,7 @@ struct ValueOfTraits<cel::UintValue, void> {
   }
 
   static bool Equals(const cel::UintValue& lhs, const cel::UintValue& rhs) {
-    return lhs.value() == rhs.value();
+    return lhs.NativeValue() == rhs.NativeValue();
   }
 };
 

@@ -56,7 +56,8 @@ MATCHER_P3(DescriptorIs, name, arg_kinds, is_receiver, "") {
 
 MATCHER_P(IsBool, expected, "") {
   const Handle<Value>& value = arg;
-  return value->Is<BoolValue>() && value->As<BoolValue>().value() == expected;
+  return value->Is<BoolValue>() &&
+         value->As<BoolValue>().NativeValue() == expected;
 }
 
 // TODO(uncreated-issue/48): replace this with a parsed expr when the non-protobuf

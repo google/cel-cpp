@@ -303,7 +303,7 @@ TEST_F(AdaptedToHandleVisitorTest, Int) {
                        AdaptedToHandleVisitor{value_factory()}(value));
 
   ASSERT_TRUE(result->Is<IntValue>());
-  EXPECT_EQ(result.As<IntValue>()->value(), 10);
+  EXPECT_EQ(result.As<IntValue>()->NativeValue(), 10);
 }
 
 TEST_F(AdaptedToHandleVisitorTest, Double) {
@@ -313,7 +313,7 @@ TEST_F(AdaptedToHandleVisitorTest, Double) {
                        AdaptedToHandleVisitor{value_factory()}(value));
 
   ASSERT_TRUE(result->Is<DoubleValue>());
-  EXPECT_EQ(result.As<DoubleValue>()->value(), 10.0);
+  EXPECT_EQ(result.As<DoubleValue>()->NativeValue(), 10.0);
 }
 
 TEST_F(AdaptedToHandleVisitorTest, Uint) {
@@ -323,7 +323,7 @@ TEST_F(AdaptedToHandleVisitorTest, Uint) {
                        AdaptedToHandleVisitor{value_factory()}(value));
 
   ASSERT_TRUE(result->Is<UintValue>());
-  EXPECT_EQ(result.As<UintValue>()->value(), 10);
+  EXPECT_EQ(result.As<UintValue>()->NativeValue(), 10);
 }
 
 TEST_F(AdaptedToHandleVisitorTest, Bool) {
@@ -333,7 +333,7 @@ TEST_F(AdaptedToHandleVisitorTest, Bool) {
                        AdaptedToHandleVisitor{value_factory()}(value));
 
   ASSERT_TRUE(result->Is<BoolValue>());
-  EXPECT_EQ(result.As<BoolValue>()->value(), true);
+  EXPECT_EQ(result.As<BoolValue>()->NativeValue(), true);
 }
 
 TEST_F(AdaptedToHandleVisitorTest, Timestamp) {
@@ -343,7 +343,7 @@ TEST_F(AdaptedToHandleVisitorTest, Timestamp) {
                        AdaptedToHandleVisitor{value_factory()}(value));
 
   ASSERT_TRUE(result->Is<TimestampValue>());
-  EXPECT_EQ(result.As<TimestampValue>()->value(),
+  EXPECT_EQ(result.As<TimestampValue>()->NativeValue(),
             absl::UnixEpoch() + absl::Seconds(10));
 }
 
@@ -354,7 +354,7 @@ TEST_F(AdaptedToHandleVisitorTest, Duration) {
                        AdaptedToHandleVisitor{value_factory()}(value));
 
   ASSERT_TRUE(result->Is<DurationValue>());
-  EXPECT_EQ(result.As<DurationValue>()->value(), absl::Seconds(5));
+  EXPECT_EQ(result.As<DurationValue>()->NativeValue(), absl::Seconds(5));
 }
 
 TEST_F(AdaptedToHandleVisitorTest, String) {
@@ -386,7 +386,7 @@ TEST_F(AdaptedToHandleVisitorTest, StatusOrValue) {
                        AdaptedToHandleVisitor{value_factory()}(value));
 
   ASSERT_TRUE(result->Is<IntValue>());
-  EXPECT_EQ(result.As<IntValue>()->value(), 10);
+  EXPECT_EQ(result.As<IntValue>()->NativeValue(), 10);
 }
 
 TEST_F(AdaptedToHandleVisitorTest, StatusOrError) {

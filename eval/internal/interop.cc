@@ -266,7 +266,7 @@ class LegacyCelMap final : public CelMap {
     ValueFactory value_factory(type_manager);
     CEL_ASSIGN_OR_RETURN(auto modern_key, FromLegacyValue(&arena, key));
     CEL_ASSIGN_OR_RETURN(auto has, impl_->Has(value_factory, modern_key));
-    return has->Is<BoolValue>() && has->As<BoolValue>().value();
+    return has->Is<BoolValue>() && has->As<BoolValue>().NativeValue();
   }
 
   int size() const override { return static_cast<int>(impl_->size()); }
@@ -672,13 +672,13 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
       return CelValue::CreateCelTypeView(*type_name);
     }
     case ValueKind::kBool:
-      return CelValue::CreateBool(value.As<BoolValue>()->value());
+      return CelValue::CreateBool(value.As<BoolValue>()->NativeValue());
     case ValueKind::kInt:
-      return CelValue::CreateInt64(value.As<IntValue>()->value());
+      return CelValue::CreateInt64(value.As<IntValue>()->NativeValue());
     case ValueKind::kUint:
-      return CelValue::CreateUint64(value.As<UintValue>()->value());
+      return CelValue::CreateUint64(value.As<UintValue>()->NativeValue());
     case ValueKind::kDouble:
-      return CelValue::CreateDouble(value.As<DoubleValue>()->value());
+      return CelValue::CreateDouble(value.As<DoubleValue>()->NativeValue());
     case ValueKind::kString:
       return absl::visit(StringValueToLegacyVisitor{arena},
                          GetStringValueRep(value.As<StringValue>()));
@@ -688,12 +688,13 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
     case ValueKind::kEnum:
       break;
     case ValueKind::kDuration:
-      return unchecked
-                 ? CelValue::CreateUncheckedDuration(
-                       value.As<DurationValue>()->value())
-                 : CelValue::CreateDuration(value.As<DurationValue>()->value());
+      return unchecked ? CelValue::CreateUncheckedDuration(
+                             value.As<DurationValue>()->NativeValue())
+                       : CelValue::CreateDuration(
+                             value.As<DurationValue>()->NativeValue());
     case ValueKind::kTimestamp:
-      return CelValue::CreateTimestamp(value.As<TimestampValue>()->value());
+      return CelValue::CreateTimestamp(
+          value.As<TimestampValue>()->NativeValue());
     case ValueKind::kList: {
       if (value->Is<base_internal::LegacyListValue>()) {
         // Fast path.

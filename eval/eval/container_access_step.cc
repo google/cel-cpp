@@ -70,11 +70,11 @@ class ContainerAccessStep : public ExpressionStepBase {
 absl::optional<Number> CelNumberFromValue(const Handle<Value>& value) {
   switch (value->kind()) {
     case ValueKind::kInt64:
-      return Number::FromInt64(value.As<IntValue>()->value());
+      return Number::FromInt64(value.As<IntValue>()->NativeValue());
     case ValueKind::kUint64:
-      return Number::FromUint64(value.As<UintValue>()->value());
+      return Number::FromUint64(value.As<UintValue>()->NativeValue());
     case ValueKind::kDouble:
-      return Number::FromDouble(value.As<DoubleValue>()->value());
+      return Number::FromDouble(value.As<DoubleValue>()->NativeValue());
     default:
       return absl::nullopt;
   }
@@ -99,11 +99,11 @@ AttributeQualifier AttributeQualifierFromValue(const Handle<Value>& v) {
     case ValueKind::kString:
       return AttributeQualifier::OfString(v.As<StringValue>()->ToString());
     case ValueKind::kInt64:
-      return AttributeQualifier::OfInt(v.As<IntValue>()->value());
+      return AttributeQualifier::OfInt(v.As<IntValue>()->NativeValue());
     case ValueKind::kUint64:
-      return AttributeQualifier::OfUint(v.As<UintValue>()->value());
+      return AttributeQualifier::OfUint(v.As<UintValue>()->NativeValue());
     case ValueKind::kBool:
-      return AttributeQualifier::OfBool(v.As<BoolValue>()->value());
+      return AttributeQualifier::OfBool(v.As<BoolValue>()->NativeValue());
     default:
       // Non-matching qualifier.
       return AttributeQualifier();
@@ -174,7 +174,7 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInList(
       maybe_idx = number->AsInt();
     }
   } else if (key->Is<IntValue>()) {
-    maybe_idx = key.As<IntValue>()->value();
+    maybe_idx = key.As<IntValue>()->NativeValue();
   }
 
   if (maybe_idx.has_value()) {

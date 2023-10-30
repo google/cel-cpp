@@ -1423,10 +1423,10 @@ bool ToProtoMapKey(google::protobuf::MapKey& key, const Handle<Value>& value,
                    const google::protobuf::FieldDescriptor& field) {
   switch (value->kind()) {
     case ValueKind::kBool:
-      key.SetBoolValue(value.As<BoolValue>()->value());
+      key.SetBoolValue(value.As<BoolValue>()->NativeValue());
       break;
     case ValueKind::kInt: {
-      int64_t cpp_key = value.As<IntValue>()->value();
+      int64_t cpp_key = value.As<IntValue>()->NativeValue();
       const auto* key_desc = field.message_type()->map_key();
       switch (key_desc->cpp_type()) {
         case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
@@ -1444,7 +1444,7 @@ bool ToProtoMapKey(google::protobuf::MapKey& key, const Handle<Value>& value,
       }
     } break;
     case ValueKind::kUint: {
-      uint64_t cpp_key = value.As<UintValue>()->value();
+      uint64_t cpp_key = value.As<UintValue>()->NativeValue();
       const auto* key_desc = field.message_type()->map_key();
       switch (key_desc->cpp_type()) {
         case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:

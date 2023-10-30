@@ -69,7 +69,7 @@ class DoubleValue final
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;
 
-  using Base::value;
+  using Base::NativeValue;
 
  private:
   using Base::Base;
@@ -80,7 +80,7 @@ class DoubleValue final
 CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(DoubleValue);
 
 inline bool operator==(const DoubleValue& lhs, const DoubleValue& rhs) {
-  return lhs.value() == rhs.value();
+  return lhs.NativeValue() == rhs.NativeValue();
 }
 
 namespace base_internal {
@@ -106,7 +106,7 @@ struct ValueTraits<DoubleValue> {
   static underlying_type Unwrap(underlying_type value) { return value; }
 
   static underlying_type Unwrap(const Handle<type>& value) {
-    return Unwrap(value->value());
+    return Unwrap(value->NativeValue());
   }
 };
 

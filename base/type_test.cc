@@ -883,7 +883,7 @@ TEST_P(TypeNewValueFromAnyTest, DurationType) {
       auto value, type_factory().GetDurationType().As<Type>()->NewValueFromAny(
                       value_factory(), absl::Cord("\x08\x01\x10\x01")));
   ASSERT_TRUE(value->Is<DurationValue>());
-  EXPECT_EQ(value->As<DurationValue>().value(),
+  EXPECT_EQ(value->As<DurationValue>().NativeValue(),
             absl::Seconds(1) + absl::Nanoseconds(1));
 }
 
@@ -892,7 +892,7 @@ TEST_P(TypeNewValueFromAnyTest, TimestampType) {
       auto value, type_factory().GetTimestampType().As<Type>()->NewValueFromAny(
                       value_factory(), absl::Cord("\x08\x01\x10\x01")));
   ASSERT_TRUE(value->Is<TimestampValue>());
-  EXPECT_EQ(value->As<TimestampValue>().value(),
+  EXPECT_EQ(value->As<TimestampValue>().NativeValue(),
             absl::UnixEpoch() + absl::Seconds(1) + absl::Nanoseconds(1));
 }
 
@@ -903,7 +903,7 @@ TEST_P(TypeNewValueFromAnyTest, AnyType) {
                       absl::Cord("\x0a\x2dtype.googleapis.com/"
                                  "google.protobuf.BoolValue\x12\x02\x08\x01")));
   ASSERT_TRUE(value->Is<BoolValue>());
-  EXPECT_TRUE(value->As<BoolValue>().value());
+  EXPECT_TRUE(value->As<BoolValue>().NativeValue());
 }
 
 TEST_P(TypeNewValueFromAnyTest, BoolWrapperType) {
@@ -912,7 +912,7 @@ TEST_P(TypeNewValueFromAnyTest, BoolWrapperType) {
       type_factory().GetBoolWrapperType().As<Type>()->NewValueFromAny(
           value_factory(), absl::Cord("\x08\x01")));
   ASSERT_TRUE(value->Is<BoolValue>());
-  EXPECT_TRUE(value->As<BoolValue>().value());
+  EXPECT_TRUE(value->As<BoolValue>().NativeValue());
 }
 
 TEST_P(TypeNewValueFromAnyTest, IntWrapperType) {
@@ -921,7 +921,7 @@ TEST_P(TypeNewValueFromAnyTest, IntWrapperType) {
       type_factory().GetIntWrapperType().As<Type>()->NewValueFromAny(
           value_factory(), absl::Cord("\x08\x01")));
   ASSERT_TRUE(value->Is<IntValue>());
-  EXPECT_EQ(value->As<IntValue>().value(), 1);
+  EXPECT_EQ(value->As<IntValue>().NativeValue(), 1);
 }
 
 TEST_P(TypeNewValueFromAnyTest, UintWrapperType) {
@@ -930,7 +930,7 @@ TEST_P(TypeNewValueFromAnyTest, UintWrapperType) {
       type_factory().GetUintWrapperType().As<Type>()->NewValueFromAny(
           value_factory(), absl::Cord("\x08\x01")));
   ASSERT_TRUE(value->Is<UintValue>());
-  EXPECT_EQ(value->As<UintValue>().value(), 1);
+  EXPECT_EQ(value->As<UintValue>().NativeValue(), 1);
 }
 
 TEST_P(TypeNewValueFromAnyTest, DoubleWrapperType) {
@@ -940,13 +940,13 @@ TEST_P(TypeNewValueFromAnyTest, DoubleWrapperType) {
           value_factory(), absl::Cord(absl::string_view(
                                "\x09\x00\x00\x00\x00\x00\x00\xf0?", 9))));
   ASSERT_TRUE(value->Is<DoubleValue>());
-  EXPECT_EQ(value->As<DoubleValue>().value(), 1.0);
+  EXPECT_EQ(value->As<DoubleValue>().NativeValue(), 1.0);
   ASSERT_OK_AND_ASSIGN(
       value, type_factory().GetDoubleWrapperType().As<Type>()->NewValueFromAny(
                  value_factory(),
                  absl::Cord(absl::string_view("\x0d\x00\x00\x80?", 5))));
   ASSERT_TRUE(value->Is<DoubleValue>());
-  EXPECT_EQ(value->As<DoubleValue>().value(), 1.0);
+  EXPECT_EQ(value->As<DoubleValue>().NativeValue(), 1.0);
 }
 
 TEST_P(TypeNewValueFromAnyTest, BytesWrapperType) {
@@ -982,7 +982,7 @@ TEST_P(TypeNewValueFromAnyTest, DynType) {
           value_factory(), absl::Cord(absl::string_view(
                                "\x11\x00\x00\x00\x00\x00\x00\xf0?", 9))));
   ASSERT_TRUE(value->Is<DoubleValue>());
-  EXPECT_EQ(value->As<DoubleValue>().value(), 1.0);
+  EXPECT_EQ(value->As<DoubleValue>().NativeValue(), 1.0);
 
   ASSERT_OK_AND_ASSIGN(value, type_factory().GetDynType()->NewValueFromAny(
                                   value_factory(), absl::Cord("\x1a\x03"
@@ -994,7 +994,7 @@ TEST_P(TypeNewValueFromAnyTest, DynType) {
                        type_factory().GetDynType().As<Type>()->NewValueFromAny(
                            value_factory(), absl::Cord("\x20\x01")));
   ASSERT_TRUE(value->Is<BoolValue>());
-  EXPECT_TRUE(value->As<BoolValue>().value());
+  EXPECT_TRUE(value->As<BoolValue>().NativeValue());
 
   ASSERT_OK_AND_ASSIGN(
       value, type_factory().GetDynType().As<Type>()->NewValueFromAny(
@@ -1006,7 +1006,7 @@ TEST_P(TypeNewValueFromAnyTest, DynType) {
   ASSERT_OK_AND_ASSIGN(auto entry,
                        value->As<MapValue>().Get(value_factory(), key));
   ASSERT_TRUE(entry->Is<BoolValue>());
-  EXPECT_TRUE(entry->As<BoolValue>().value());
+  EXPECT_TRUE(entry->As<BoolValue>().NativeValue());
 
   ASSERT_OK_AND_ASSIGN(
       value, type_factory().GetDynType().As<Type>()->NewValueFromAny(
@@ -1017,7 +1017,7 @@ TEST_P(TypeNewValueFromAnyTest, DynType) {
   ASSERT_OK_AND_ASSIGN(auto element,
                        value->As<ListValue>().Get(value_factory(), 0));
   ASSERT_TRUE(element->Is<BoolValue>());
-  EXPECT_TRUE(element->As<BoolValue>().value());
+  EXPECT_TRUE(element->As<BoolValue>().NativeValue());
 }
 
 INSTANTIATE_TEST_SUITE_P(TypeNewValueFromAnyTest, TypeNewValueFromAnyTest,

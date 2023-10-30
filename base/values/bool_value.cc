@@ -46,11 +46,13 @@ std::string BoolValue::DebugString(bool value) {
   return value ? "true" : "false";
 }
 
-std::string BoolValue::DebugString() const { return DebugString(value()); }
+std::string BoolValue::DebugString() const {
+  return DebugString(NativeValue());
+}
 
 absl::StatusOr<Any> BoolValue::ConvertToAny(ValueFactory&) const {
   static constexpr absl::string_view kTypeName = "google.protobuf.BoolValue";
-  const auto value = this->value();
+  const auto value = this->NativeValue();
   absl::Cord data;
   if (value) {
     ProtoWireEncoder encoder(kTypeName, data);
@@ -63,7 +65,7 @@ absl::StatusOr<Any> BoolValue::ConvertToAny(ValueFactory&) const {
 }
 
 absl::StatusOr<Json> BoolValue::ConvertToJson(ValueFactory&) const {
-  return value();
+  return NativeValue();
 }
 
 absl::StatusOr<Handle<Value>> BoolValue::ConvertToType(
@@ -74,7 +76,7 @@ absl::StatusOr<Handle<Value>> BoolValue::ConvertToType(
     case TypeKind::kType:
       return value_factory.CreateTypeValue(this->type());
     case TypeKind::kString:
-      return value_factory.CreateStringValue(value() ? "true" : "false");
+      return value_factory.CreateStringValue(NativeValue() ? "true" : "false");
     default:
       return value_factory.CreateErrorValue(
           base_internal::TypeConversionError(*this->type(), *type));
@@ -83,8 +85,9 @@ absl::StatusOr<Handle<Value>> BoolValue::ConvertToType(
 
 absl::StatusOr<Handle<Value>> BoolValue::Equals(ValueFactory& value_factory,
                                                 const Value& other) const {
-  return value_factory.CreateBoolValue(
-      other.Is<BoolValue>() && value() == other.As<BoolValue>().value());
+  return value_factory.CreateBoolValue(other.Is<BoolValue>() &&
+                                       NativeValue() ==
+                                           other.As<BoolValue>().NativeValue());
 }
 
 }  // namespace cel

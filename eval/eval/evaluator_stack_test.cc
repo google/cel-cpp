@@ -33,18 +33,18 @@ TEST(EvaluatorStackTest, StackPushPop) {
   stack.Push(value_factory.CreateIntValue(2), AttributeTrail());
   stack.Push(value_factory.CreateIntValue(3), AttributeTrail("name"));
 
-  ASSERT_EQ(stack.Peek().As<cel::IntValue>()->value(), 3);
+  ASSERT_EQ(stack.Peek().As<cel::IntValue>()->NativeValue(), 3);
   ASSERT_FALSE(stack.PeekAttribute().empty());
   ASSERT_EQ(stack.PeekAttribute().attribute(), attribute);
 
   stack.Pop(1);
 
-  ASSERT_EQ(stack.Peek().As<cel::IntValue>()->value(), 2);
+  ASSERT_EQ(stack.Peek().As<cel::IntValue>()->NativeValue(), 2);
   ASSERT_TRUE(stack.PeekAttribute().empty());
 
   stack.Pop(1);
 
-  ASSERT_EQ(stack.Peek().As<cel::IntValue>()->value(), 1);
+  ASSERT_EQ(stack.Peek().As<cel::IntValue>()->NativeValue(), 1);
   ASSERT_TRUE(stack.PeekAttribute().empty());
 }
 

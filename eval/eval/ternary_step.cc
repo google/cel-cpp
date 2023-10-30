@@ -63,7 +63,7 @@ absl::Status TernaryStep::Evaluate(ExecutionFrame* frame) const {
   if (!condition->Is<cel::BoolValue>()) {
     result = frame->value_factory().CreateErrorValue(
         CreateNoMatchingOverloadError(kTernary));
-  } else if (condition.As<cel::BoolValue>()->value()) {
+  } else if (condition.As<cel::BoolValue>()->NativeValue()) {
     result = args[kTernaryStepTrue];
   } else {
     result = args[kTernaryStepFalse];

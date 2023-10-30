@@ -51,11 +51,11 @@ CEL_INTERNAL_VALUE_IMPL(IntValue);
 
 std::string IntValue::DebugString(int64_t value) { return absl::StrCat(value); }
 
-std::string IntValue::DebugString() const { return DebugString(value()); }
+std::string IntValue::DebugString() const { return DebugString(NativeValue()); }
 
 absl::StatusOr<Any> IntValue::ConvertToAny(ValueFactory&) const {
   static constexpr absl::string_view kTypeName = "google.protobuf.Int64Value";
-  const auto value = this->value();
+  const auto value = this->NativeValue();
   absl::Cord data;
   if (value) {
     ProtoWireEncoder encoder(kTypeName, data);
@@ -68,7 +68,7 @@ absl::StatusOr<Any> IntValue::ConvertToAny(ValueFactory&) const {
 }
 
 absl::StatusOr<Json> IntValue::ConvertToJson(ValueFactory&) const {
-  return JsonInt(value());
+  return JsonInt(NativeValue());
 }
 
 absl::StatusOr<Handle<Value>> IntValue::ConvertToType(
@@ -77,9 +77,10 @@ absl::StatusOr<Handle<Value>> IntValue::ConvertToType(
     case TypeKind::kInt:
       return handle_from_this();
     case TypeKind::kDouble:
-      return value_factory.CreateDoubleValue(static_cast<double>(value()));
+      return value_factory.CreateDoubleValue(
+          static_cast<double>(NativeValue()));
     case TypeKind::kUint: {
-      auto number = internal::Number::FromInt64(value());
+      auto number = internal::Number::FromInt64(NativeValue());
       if (!number.LosslessConvertibleToUint()) {
         return value_factory.CreateErrorValue(
             absl::OutOfRangeError("unsigned integer overflow"));
@@ -89,10 +90,10 @@ absl::StatusOr<Handle<Value>> IntValue::ConvertToType(
     case TypeKind::kType:
       return value_factory.CreateTypeValue(this->type());
     case TypeKind::kString:
-      return value_factory.CreateStringValue(absl::StrCat(value()));
+      return value_factory.CreateStringValue(absl::StrCat(NativeValue()));
     case TypeKind::kTimestamp: {
-      auto status_or_timestamp =
-          value_factory.CreateTimestampValue(absl::FromUnixSeconds(value()));
+      auto status_or_timestamp = value_factory.CreateTimestampValue(
+          absl::FromUnixSeconds(NativeValue()));
       if (!status_or_timestamp.ok()) {
         return value_factory.CreateErrorValue(status_or_timestamp.status());
       }
@@ -109,16 +110,16 @@ absl::StatusOr<Handle<Value>> IntValue::Equals(ValueFactory& value_factory,
   switch (other.kind()) {
     case ValueKind::kInt:
       return value_factory.CreateBoolValue(
-          internal::Number::FromInt64(value()) ==
-          internal::Number::FromInt64(other.As<IntValue>().value()));
+          internal::Number::FromInt64(NativeValue()) ==
+          internal::Number::FromInt64(other.As<IntValue>().NativeValue()));
     case ValueKind::kUint:
       return value_factory.CreateBoolValue(
-          internal::Number::FromInt64(value()) ==
-          internal::Number::FromUint64(other.As<UintValue>().value()));
+          internal::Number::FromInt64(NativeValue()) ==
+          internal::Number::FromUint64(other.As<UintValue>().NativeValue()));
     case ValueKind::kDouble:
       return value_factory.CreateBoolValue(
-          internal::Number::FromInt64(value()) ==
-          internal::Number::FromDouble(other.As<DoubleValue>().value()));
+          internal::Number::FromInt64(NativeValue()) ==
+          internal::Number::FromDouble(other.As<DoubleValue>().NativeValue()));
     default:
       return value_factory.CreateBoolValue(false);
   }

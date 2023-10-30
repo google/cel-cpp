@@ -313,7 +313,7 @@ class ListValueBuilderImpl : public ListValueBuilderInterface {
   }
 
   absl::Status Add(const Handle<T>& value) {
-    Add(value->value());
+    Add(value->NativeValue());
     return absl::OkStatus();
   }
 

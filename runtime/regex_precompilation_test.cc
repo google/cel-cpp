@@ -59,12 +59,14 @@ struct TestCase {
 
 MATCHER_P(IsIntValue, expected, "") {
   const Handle<Value>& value = arg;
-  return value->Is<IntValue>() && value->As<IntValue>().value() == expected;
+  return value->Is<IntValue>() &&
+         value->As<IntValue>().NativeValue() == expected;
 }
 
 MATCHER_P(IsBoolValue, expected, "") {
   const Handle<Value>& value = arg;
-  return value->Is<BoolValue>() && value->As<BoolValue>().value() == expected;
+  return value->Is<BoolValue>() &&
+         value->As<BoolValue>().NativeValue() == expected;
 }
 
 MATCHER_P(IsErrorValue, expected_substr, "") {

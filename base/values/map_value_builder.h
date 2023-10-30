@@ -138,21 +138,21 @@ struct MapKeyHasher<absl::Cord> {
 template <>
 struct MapKeyHasher<BoolValue> {
   inline size_t operator()(const BoolValue& key) const {
-    return MapKeyHasher<bool>{}(key.value());
+    return MapKeyHasher<bool>{}(key.NativeValue());
   }
 };
 
 template <>
 struct MapKeyHasher<IntValue> {
   inline size_t operator()(const IntValue& key) const {
-    return MapKeyHasher<int64_t>{}(key.value());
+    return MapKeyHasher<int64_t>{}(key.NativeValue());
   }
 };
 
 template <>
 struct MapKeyHasher<UintValue> {
   inline size_t operator()(const UintValue& key) const {
-    return MapKeyHasher<uint64_t>{}(key.value());
+    return MapKeyHasher<uint64_t>{}(key.NativeValue());
   }
 };
 
@@ -217,37 +217,37 @@ struct MapKeyEqualer<uint64_t> {
 template <>
 struct MapKeyEqualer<BoolValue> {
   inline bool operator()(const BoolValue& lhs, const BoolValue& rhs) const {
-    return MapKeyEqualer<bool>{}(lhs.value(), rhs.value());
+    return MapKeyEqualer<bool>{}(lhs.NativeValue(), rhs.NativeValue());
   }
 };
 
 template <>
 struct MapKeyEqualer<IntValue> {
   inline bool operator()(const IntValue& lhs, const IntValue& rhs) const {
-    return MapKeyEqualer<int64_t>{}(lhs.value(), rhs.value());
+    return MapKeyEqualer<int64_t>{}(lhs.NativeValue(), rhs.NativeValue());
   }
 
   inline bool operator()(const IntValue& lhs, const UintValue& rhs) const {
-    return MapKeyEqualer<int64_t>{}(lhs.value(), rhs.value());
+    return MapKeyEqualer<int64_t>{}(lhs.NativeValue(), rhs.NativeValue());
   }
 
   inline bool operator()(const UintValue& lhs, const IntValue& rhs) const {
-    return MapKeyEqualer<int64_t>{}(lhs.value(), rhs.value());
+    return MapKeyEqualer<int64_t>{}(lhs.NativeValue(), rhs.NativeValue());
   }
 };
 
 template <>
 struct MapKeyEqualer<UintValue> {
   inline bool operator()(const UintValue& lhs, const UintValue& rhs) const {
-    return MapKeyEqualer<uint64_t>{}(lhs.value(), rhs.value());
+    return MapKeyEqualer<uint64_t>{}(lhs.NativeValue(), rhs.NativeValue());
   }
 
   inline bool operator()(const UintValue& lhs, const IntValue& rhs) const {
-    return MapKeyEqualer<int64_t>{}(lhs.value(), rhs.value());
+    return MapKeyEqualer<int64_t>{}(lhs.NativeValue(), rhs.NativeValue());
   }
 
   inline bool operator()(const IntValue& lhs, const UintValue& rhs) const {
-    return MapKeyEqualer<int64_t>{}(lhs.value(), rhs.value());
+    return MapKeyEqualer<int64_t>{}(lhs.NativeValue(), rhs.NativeValue());
   }
 };
 
@@ -426,7 +426,7 @@ class StaticMapValue<K, void> final : public AbstractMapValue {
  private:
   absl::StatusOr<std::pair<Handle<Value>, bool>> FindImpl(
       ValueFactory& value_factory, const Handle<Value>& key) const override {
-    auto existing = storage_.find(key.As<K>()->value());
+    auto existing = storage_.find(key.As<K>()->NativeValue());
     if (existing == storage_.end()) {
       return std::make_pair(Handle<Value>(), false);
     }
@@ -435,8 +435,8 @@ class StaticMapValue<K, void> final : public AbstractMapValue {
 
   absl::StatusOr<Handle<Value>> HasImpl(
       ValueFactory& value_factory, const Handle<Value>& key) const override {
-    return value_factory.CreateBoolValue(storage_.find(key.As<K>()->value()) !=
-                                         storage_.end());
+    return value_factory.CreateBoolValue(
+        storage_.find(key.As<K>()->NativeValue()) != storage_.end());
   }
 
   hash_map_type storage_;
@@ -555,7 +555,7 @@ class StaticMapValue final : public AbstractMapValue {
  private:
   absl::StatusOr<std::pair<Handle<Value>, bool>> FindImpl(
       ValueFactory& value_factory, const Handle<Value>& key) const override {
-    auto existing = storage_.find(key.As<K>()->value());
+    auto existing = storage_.find(key.As<K>()->NativeValue());
     if (existing == storage_.end()) {
       return std::make_pair(Handle<Value>(), false);
     }
@@ -565,8 +565,8 @@ class StaticMapValue final : public AbstractMapValue {
 
   absl::StatusOr<Handle<Value>> HasImpl(
       ValueFactory& value_factory, const Handle<Value>& key) const override {
-    return value_factory.CreateBoolValue(storage_.find(key.As<K>()->value()) !=
-                                         storage_.end());
+    return value_factory.CreateBoolValue(
+        storage_.find(key.As<K>()->NativeValue()) != storage_.end());
   }
 
   hash_map_type storage_;
@@ -864,7 +864,7 @@ class MapValueBuilderImpl<Value, V, void, UV>
   }
 
   absl::Status Put(Handle<Value> key, Handle<V> value) {
-    return Put(std::move(key), value->value());
+    return Put(std::move(key), value->NativeValue());
   }
 
   absl::Status Put(Handle<Value> key, UV value) {
@@ -995,7 +995,7 @@ class MapValueBuilderImpl<K, V, UK, void> : public MapValueBuilderInterface {
   }
 
   absl::Status Put(Handle<K> key, Handle<V> value) {
-    return Put(key->value(), std::move(value));
+    return Put(key->NativeValue(), std::move(value));
   }
 
   absl::Status Put(UK key, Handle<V> value) {
@@ -1068,7 +1068,7 @@ class MapValueBuilderImpl<K, V, void, UV> : public MapValueBuilderInterface {
   }
 
   absl::Status Put(Handle<K> key, Handle<V> value) {
-    return Put(std::move(key), value->value());
+    return Put(std::move(key), value->NativeValue());
   }
 
   absl::Status Put(Handle<K> key, UV value) {
@@ -1143,7 +1143,7 @@ class MapValueBuilderImpl : public MapValueBuilderInterface {
   }
 
   absl::Status Put(Handle<K> key, Handle<V> value) {
-    return Put(key->value(), value->value());
+    return Put(key->NativeValue(), value->NativeValue());
   }
 
   absl::Status Put(Handle<K> key, UV value) {

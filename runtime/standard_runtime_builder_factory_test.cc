@@ -97,7 +97,7 @@ TEST_P(StandardRuntimeTest, DefaultsRefCounted) {
                        program->Evaluate(activation, value_factory));
 
   ASSERT_TRUE(result->Is<BoolValue>()) << result->DebugString();
-  EXPECT_EQ(result->As<BoolValue>().value(), test_case.expected_result)
+  EXPECT_EQ(result->As<BoolValue>().NativeValue(), test_case.expected_result)
       << test_case.expression;
 }
 
@@ -130,7 +130,7 @@ TEST_P(StandardRuntimeTest, DefaultsArena) {
                        program->Evaluate(activation, value_factory));
 
   ASSERT_TRUE(result->Is<BoolValue>()) << result->DebugString();
-  EXPECT_EQ(result->As<BoolValue>().value(), test_case.expected_result)
+  EXPECT_EQ(result->As<BoolValue>().NativeValue(), test_case.expected_result)
       << test_case.expression;
 }
 

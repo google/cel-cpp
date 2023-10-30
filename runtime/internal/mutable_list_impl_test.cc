@@ -98,7 +98,7 @@ TEST(MutableListImplValue, ListBuilding) {
 
   ASSERT_TRUE(element->Is<IntValue>());
 
-  EXPECT_EQ(element->As<IntValue>().value(), 1);
+  EXPECT_EQ(element->As<IntValue>().NativeValue(), 1);
 }
 
 }  // namespace

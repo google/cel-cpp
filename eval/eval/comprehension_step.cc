@@ -207,7 +207,8 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   }
   CEL_RETURN_IF_ERROR(frame->IncrementIterations());
 
-  int64_t current_index = current_index_value.As<cel::IntValue>()->value();
+  int64_t current_index =
+      current_index_value.As<cel::IntValue>()->NativeValue();
 
   AttributeTrail iter_range_attr;
   AttributeTrail iter_trail;
@@ -289,7 +290,8 @@ absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
     frame->comprehension_slots().ClearSlot(accu_slot_);
     return frame->JumpTo(error_jump_offset_);
   }
-  bool loop_condition = loop_condition_value.As<cel::BoolValue>()->value();
+  bool loop_condition =
+      loop_condition_value.As<cel::BoolValue>()->NativeValue();
   frame->value_stack().Pop(1);  // loop_condition
   if (!loop_condition && shortcircuiting_) {
     return frame->JumpTo(jump_offset_);

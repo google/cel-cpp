@@ -271,7 +271,7 @@ class SimpleValue : public Value, InlineData {
 
   const Handle<T>& type() const { return T::Get(); }
 
-  constexpr U value() const { return value_; }
+  constexpr U NativeValue() const { return value_; }
 
   using Value::Is;
 

@@ -63,7 +63,7 @@ TEST_F(CompilerConstantStepTest, Evaluate) {
   ASSERT_OK_AND_ASSIGN(cel::Handle<cel::Value> result,
                        frame.Evaluate(EvaluationListener()));
 
-  EXPECT_EQ(result->As<cel::IntValue>().value(), 42);
+  EXPECT_EQ(result->As<cel::IntValue>().NativeValue(), 42);
 }
 
 TEST_F(CompilerConstantStepTest, TypeId) {
@@ -77,7 +77,7 @@ TEST_F(CompilerConstantStepTest, TypeId) {
 TEST_F(CompilerConstantStepTest, Value) {
   CompilerConstantStep step(value_factory_.CreateIntValue(42), -1, false);
 
-  EXPECT_EQ(step.value()->As<cel::IntValue>().value(), 42);
+  EXPECT_EQ(step.value()->As<cel::IntValue>().NativeValue(), 42);
 }
 
 }  // namespace

@@ -51,11 +51,13 @@ std::string TimestampValue::DebugString(absl::Time value) {
   return internal::DebugStringTimestamp(value);
 }
 
-std::string TimestampValue::DebugString() const { return DebugString(value()); }
+std::string TimestampValue::DebugString() const {
+  return DebugString(NativeValue());
+}
 
 absl::StatusOr<Any> TimestampValue::ConvertToAny(ValueFactory&) const {
   static constexpr absl::string_view kTypeName = "google.protobuf.Timestamp";
-  auto value = this->value() - absl::UnixEpoch();
+  auto value = this->NativeValue() - absl::UnixEpoch();
   if (ABSL_PREDICT_FALSE(value == absl::InfiniteDuration() ||
                          value == -absl::InfiniteDuration())) {
     return absl::FailedPreconditionError(
@@ -80,7 +82,7 @@ absl::StatusOr<Any> TimestampValue::ConvertToAny(ValueFactory&) const {
 
 absl::StatusOr<Json> TimestampValue::ConvertToJson(ValueFactory&) const {
   CEL_ASSIGN_OR_RETURN(auto formatted,
-                       internal::EncodeTimestampToJson(value()));
+                       internal::EncodeTimestampToJson(NativeValue()));
   return JsonString(std::move(formatted));
 }
 
@@ -90,11 +92,11 @@ absl::StatusOr<Handle<Value>> TimestampValue::ConvertToType(
     case TypeKind::kTimestamp:
       return handle_from_this();
     case TypeKind::kInt:
-      return value_factory.CreateIntValue(absl::ToUnixSeconds(value()));
+      return value_factory.CreateIntValue(absl::ToUnixSeconds(NativeValue()));
     case TypeKind::kType:
       return value_factory.CreateTypeValue(this->type());
     case TypeKind::kString: {
-      auto status_or_string = internal::EncodeTimestampToJson(value());
+      auto status_or_string = internal::EncodeTimestampToJson(NativeValue());
       if (!status_or_string.ok()) {
         return value_factory.CreateErrorValue(status_or_string.status());
       }
@@ -108,9 +110,9 @@ absl::StatusOr<Handle<Value>> TimestampValue::ConvertToType(
 
 absl::StatusOr<Handle<Value>> TimestampValue::Equals(
     ValueFactory& value_factory, const Value& other) const {
-  return value_factory.CreateBoolValue(other.Is<TimestampValue>() &&
-                                       value() ==
-                                           other.As<TimestampValue>().value());
+  return value_factory.CreateBoolValue(
+      other.Is<TimestampValue>() &&
+      NativeValue() == other.As<TimestampValue>().NativeValue());
 }
 
 }  // namespace cel

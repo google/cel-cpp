@@ -55,7 +55,7 @@ class CondJumpStep : public JumpStepBase {
     }
 
     if (value->Is<BoolValue>() &&
-        jump_condition_ == value.As<BoolValue>()->value()) {
+        jump_condition_ == value.As<BoolValue>()->NativeValue()) {
       return Jump(frame);
     }
 

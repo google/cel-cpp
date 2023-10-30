@@ -101,7 +101,7 @@ TEST(ValueInterop, BoolFromLegacy) {
   auto legacy_value = CelValue::CreateBool(true);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<BoolValue>());
-  EXPECT_TRUE(value.As<BoolValue>()->value());
+  EXPECT_TRUE(value.As<BoolValue>()->NativeValue());
 }
 
 TEST(ValueInterop, BoolToLegacy) {
@@ -125,7 +125,7 @@ TEST(ValueInterop, IntFromLegacy) {
   auto legacy_value = CelValue::CreateInt64(1);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<IntValue>());
-  EXPECT_EQ(value.As<IntValue>()->value(), 1);
+  EXPECT_EQ(value.As<IntValue>()->NativeValue(), 1);
 }
 
 TEST(ValueInterop, IntToLegacy) {
@@ -149,7 +149,7 @@ TEST(ValueInterop, UintFromLegacy) {
   auto legacy_value = CelValue::CreateUint64(1);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<UintValue>());
-  EXPECT_EQ(value.As<UintValue>()->value(), 1);
+  EXPECT_EQ(value.As<UintValue>()->NativeValue(), 1);
 }
 
 TEST(ValueInterop, UintToLegacy) {
@@ -173,7 +173,7 @@ TEST(ValueInterop, DoubleFromLegacy) {
   auto legacy_value = CelValue::CreateDouble(1.0);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<DoubleValue>());
-  EXPECT_EQ(value.As<DoubleValue>()->value(), 1.0);
+  EXPECT_EQ(value.As<DoubleValue>()->NativeValue(), 1.0);
 }
 
 TEST(ValueInterop, DoubleToLegacy) {
@@ -198,7 +198,7 @@ TEST(ValueInterop, DurationFromLegacy) {
   auto legacy_value = CelValue::CreateDuration(duration);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<DurationValue>());
-  EXPECT_EQ(value.As<DurationValue>()->value(), duration);
+  EXPECT_EQ(value.As<DurationValue>()->NativeValue(), duration);
 }
 
 TEST(ValueInterop, DurationToLegacy) {
@@ -218,7 +218,7 @@ TEST(ValueInterop, CreateDurationOk) {
   auto duration = absl::ZeroDuration() + absl::Seconds(1);
   Handle<Value> value = CreateDurationValue(duration);
   EXPECT_TRUE(value->Is<DurationValue>());
-  EXPECT_EQ(value.As<DurationValue>()->value(), duration);
+  EXPECT_EQ(value.As<DurationValue>()->NativeValue(), duration);
 }
 
 TEST(ValueInterop, CreateDurationOutOfRangeHigh) {
@@ -247,7 +247,7 @@ TEST(ValueInterop, TimestampFromLegacy) {
   auto legacy_value = CelValue::CreateTimestamp(timestamp);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<TimestampValue>());
-  EXPECT_EQ(value.As<TimestampValue>()->value(), timestamp);
+  EXPECT_EQ(value.As<TimestampValue>()->NativeValue(), timestamp);
 }
 
 TEST(ValueInterop, TimestampToLegacy) {
@@ -393,20 +393,20 @@ TEST(ValueInterop, ListFromLegacy) {
                                         CelValue::CreateInt64(1)}));
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   ASSERT_TRUE(value->Is<ListValue>());
-  EXPECT_THAT(
-      value->As<ListValue>().AnyOf(value_factory,
-                                   [](const Handle<Value>& value) {
-                                     return value->Is<IntValue>() &&
-                                            value->As<IntValue>().value() == 1;
-                                   }),
-      IsOkAndHolds(true));
-  EXPECT_THAT(
-      value->As<ListValue>().AnyOf(value_factory,
-                                   [](const Handle<Value>& value) {
-                                     return value->Is<IntValue>() &&
-                                            value->As<IntValue>().value() > 1;
-                                   }),
-      IsOkAndHolds(false));
+  EXPECT_THAT(value->As<ListValue>().AnyOf(
+                  value_factory,
+                  [](const Handle<Value>& value) {
+                    return value->Is<IntValue>() &&
+                           value->As<IntValue>().NativeValue() == 1;
+                  }),
+              IsOkAndHolds(true));
+  EXPECT_THAT(value->As<ListValue>().AnyOf(
+                  value_factory,
+                  [](const Handle<Value>& value) {
+                    return value->Is<IntValue>() &&
+                           value->As<IntValue>().NativeValue() > 1;
+                  }),
+              IsOkAndHolds(false));
   EXPECT_THAT(value->As<ListValue>().AnyOf(value_factory,
                                            [](const Handle<Value>& value) {
                                              return absl::InternalError("test");
@@ -416,19 +416,19 @@ TEST(ValueInterop, ListFromLegacy) {
                                               value_factory.CreateIntValue(1)),
               IsOkAndHolds(Truly([](const Handle<Value>& value) {
                 return value->Is<BoolValue>() &&
-                       value->As<BoolValue>().value() == true;
+                       value->As<BoolValue>().NativeValue() == true;
               })));
   EXPECT_THAT(value->As<ListValue>().Contains(value_factory,
                                               value_factory.CreateIntValue(42)),
               IsOkAndHolds(Truly([](const Handle<Value>& value) {
                 return value->Is<BoolValue>() &&
-                       value->As<BoolValue>().value() == false;
+                       value->As<BoolValue>().NativeValue() == false;
               })));
   EXPECT_EQ(value.As<ListValue>()->size(), 2);
   ASSERT_OK_AND_ASSIGN(auto element,
                        value.As<ListValue>()->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<IntValue>());
-  EXPECT_EQ(element.As<IntValue>()->value(), 0);
+  EXPECT_EQ(element.As<IntValue>()->NativeValue(), 0);
 }
 
 class TestListValue final : public CEL_LIST_VALUE_CLASS {
@@ -530,7 +530,7 @@ TEST(ValueInterop, LegacyListNewIteratorValues) {
   std::set<int64_t> actual_values;
   while (iterator->HasNext()) {
     ASSERT_OK_AND_ASSIGN(auto value, iterator->Next());
-    actual_values.insert(value->As<IntValue>().value());
+    actual_values.insert(value->As<IntValue>().NativeValue());
   }
   EXPECT_THAT(iterator->Next(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
@@ -601,7 +601,7 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
  private:
   absl::StatusOr<std::pair<Handle<Value>, bool>> FindImpl(
       ValueFactory& value_factory, const Handle<Value>& key) const override {
-    auto existing = entries_.find(key.As<IntValue>()->value());
+    auto existing = entries_.find(key.As<IntValue>()->NativeValue());
     if (existing == entries_.end()) {
       return std::make_pair(Handle<Value>(), false);
     }
@@ -612,7 +612,7 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
   absl::StatusOr<Handle<Value>> HasImpl(
       ValueFactory& value_factory, const Handle<Value>& key) const override {
     return value_factory.CreateBoolValue(
-        entries_.find(key.As<IntValue>()->value()) != entries_.end());
+        entries_.find(key.As<IntValue>()->NativeValue()) != entries_.end());
   }
 
   std::map<int64_t, std::string> entries_;

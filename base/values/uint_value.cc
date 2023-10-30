@@ -52,11 +52,13 @@ std::string UintValue::DebugString(uint64_t value) {
   return absl::StrCat(value, "u");
 }
 
-std::string UintValue::DebugString() const { return DebugString(value()); }
+std::string UintValue::DebugString() const {
+  return DebugString(NativeValue());
+}
 
 absl::StatusOr<Any> UintValue::ConvertToAny(ValueFactory&) const {
   static constexpr absl::string_view kTypeName = "google.protobuf.UInt64Value";
-  const auto value = this->value();
+  const auto value = this->NativeValue();
   absl::Cord data;
   if (value) {
     ProtoWireEncoder encoder(kTypeName, data);
@@ -69,7 +71,7 @@ absl::StatusOr<Any> UintValue::ConvertToAny(ValueFactory&) const {
 }
 
 absl::StatusOr<Json> UintValue::ConvertToJson(ValueFactory&) const {
-  return JsonUint(value());
+  return JsonUint(NativeValue());
 }
 
 absl::StatusOr<Handle<Value>> UintValue::ConvertToType(
@@ -78,9 +80,10 @@ absl::StatusOr<Handle<Value>> UintValue::ConvertToType(
     case TypeKind::kUint:
       return handle_from_this();
     case TypeKind::kDouble:
-      return value_factory.CreateDoubleValue(static_cast<double>(value()));
+      return value_factory.CreateDoubleValue(
+          static_cast<double>(NativeValue()));
     case TypeKind::kInt: {
-      auto number = internal::Number::FromUint64(value());
+      auto number = internal::Number::FromUint64(NativeValue());
       if (!number.LosslessConvertibleToInt()) {
         return value_factory.CreateErrorValue(
             absl::OutOfRangeError("integer overflow"));
@@ -90,7 +93,7 @@ absl::StatusOr<Handle<Value>> UintValue::ConvertToType(
     case TypeKind::kType:
       return value_factory.CreateTypeValue(this->type());
     case TypeKind::kString:
-      return value_factory.CreateStringValue(absl::StrCat(value()));
+      return value_factory.CreateStringValue(absl::StrCat(NativeValue()));
     default:
       return value_factory.CreateErrorValue(
           base_internal::TypeConversionError(*this->type(), *type));
@@ -102,16 +105,16 @@ absl::StatusOr<Handle<Value>> UintValue::Equals(ValueFactory& value_factory,
   switch (other.kind()) {
     case ValueKind::kInt:
       return value_factory.CreateBoolValue(
-          internal::Number::FromUint64(value()) ==
-          internal::Number::FromInt64(other.As<IntValue>().value()));
+          internal::Number::FromUint64(NativeValue()) ==
+          internal::Number::FromInt64(other.As<IntValue>().NativeValue()));
     case ValueKind::kUint:
       return value_factory.CreateBoolValue(
-          internal::Number::FromUint64(value()) ==
-          internal::Number::FromUint64(other.As<UintValue>().value()));
+          internal::Number::FromUint64(NativeValue()) ==
+          internal::Number::FromUint64(other.As<UintValue>().NativeValue()));
     case ValueKind::kDouble:
       return value_factory.CreateBoolValue(
-          internal::Number::FromUint64(value()) ==
-          internal::Number::FromDouble(other.As<DoubleValue>().value()));
+          internal::Number::FromUint64(NativeValue()) ==
+          internal::Number::FromDouble(other.As<DoubleValue>().NativeValue()));
     default:
       return value_factory.CreateBoolValue(false);
   }

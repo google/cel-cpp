@@ -351,17 +351,17 @@ bool ValueHandle::Equals(const Value& lhs, const Value& rhs, ValueKind kind) {
       return static_cast<const TypeValue&>(lhs).name() ==
              static_cast<const TypeValue&>(rhs).name();
     case ValueKind::kBool:
-      return static_cast<const BoolValue&>(lhs).value() ==
-             static_cast<const BoolValue&>(rhs).value();
+      return static_cast<const BoolValue&>(lhs).NativeValue() ==
+             static_cast<const BoolValue&>(rhs).NativeValue();
     case ValueKind::kInt:
-      return static_cast<const IntValue&>(lhs).value() ==
-             static_cast<const IntValue&>(rhs).value();
+      return static_cast<const IntValue&>(lhs).NativeValue() ==
+             static_cast<const IntValue&>(rhs).NativeValue();
     case ValueKind::kUint:
-      return static_cast<const UintValue&>(lhs).value() ==
-             static_cast<const UintValue&>(rhs).value();
+      return static_cast<const UintValue&>(lhs).NativeValue() ==
+             static_cast<const UintValue&>(rhs).NativeValue();
     case ValueKind::kDouble:
-      return static_cast<const DoubleValue&>(lhs).value() ==
-             static_cast<const DoubleValue&>(rhs).value();
+      return static_cast<const DoubleValue&>(lhs).NativeValue() ==
+             static_cast<const DoubleValue&>(rhs).NativeValue();
     case ValueKind::kString:
       return static_cast<const StringValue&>(lhs).Equals(
           static_cast<const StringValue&>(rhs));
@@ -374,11 +374,11 @@ bool ValueHandle::Equals(const Value& lhs, const Value& rhs, ValueKind kind) {
              static_cast<const EnumValue&>(lhs).type() ==
                  static_cast<const EnumValue&>(rhs).type();
     case ValueKind::kDuration:
-      return static_cast<const DurationValue&>(lhs).value() ==
-             static_cast<const DurationValue&>(rhs).value();
+      return static_cast<const DurationValue&>(lhs).NativeValue() ==
+             static_cast<const DurationValue&>(rhs).NativeValue();
     case ValueKind::kTimestamp:
-      return static_cast<const TimestampValue&>(lhs).value() ==
-             static_cast<const TimestampValue&>(rhs).value();
+      return static_cast<const TimestampValue&>(lhs).NativeValue() ==
+             static_cast<const TimestampValue&>(rhs).NativeValue();
     case ValueKind::kList: {
       bool stored_inline = Metadata::IsStoredInline(lhs);
       if (stored_inline != Metadata::IsStoredInline(rhs)) {

@@ -220,16 +220,16 @@ absl::StatusOr<google::api::expr::v1alpha1::Value> ToConformanceValue(
   google::api::expr::v1alpha1::Value result;
   switch (value->kind()) {
     case ValueKind::kBool:
-      result.set_bool_value(value->As<BoolValue>().value());
+      result.set_bool_value(value->As<BoolValue>().NativeValue());
       break;
     case ValueKind::kInt:
-      result.set_int64_value(value->As<IntValue>().value());
+      result.set_int64_value(value->As<IntValue>().NativeValue());
       break;
     case ValueKind::kUint:
-      result.set_uint64_value(value->As<UintValue>().value());
+      result.set_uint64_value(value->As<UintValue>().NativeValue());
       break;
     case ValueKind::kDouble:
-      result.set_double_value(value->As<DoubleValue>().value());
+      result.set_double_value(value->As<DoubleValue>().NativeValue());
       break;
     case ValueKind::kString:
       result.set_string_value(value->As<StringValue>().ToString());
@@ -246,14 +246,14 @@ absl::StatusOr<google::api::expr::v1alpha1::Value> ToConformanceValue(
     case ValueKind::kDuration: {
       google::protobuf::Duration duration;
       CEL_RETURN_IF_ERROR(internal::EncodeDuration(
-          value->As<DurationValue>().value(), &duration));
+          value->As<DurationValue>().NativeValue(), &duration));
       result.mutable_object_value()->PackFrom(duration);
       break;
     }
     case ValueKind::kTimestamp: {
       google::protobuf::Timestamp timestamp;
       CEL_RETURN_IF_ERROR(internal::EncodeTime(
-          value->As<TimestampValue>().value(), &timestamp));
+          value->As<TimestampValue>().NativeValue(), &timestamp));
       result.mutable_object_value()->PackFrom(timestamp);
       break;
     }

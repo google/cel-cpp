@@ -588,11 +588,11 @@ TEST_P(ProtoStructValueTest, BoolGetField) {
   TEST_GET_FIELD(
       memory_manager(), "single_bool",
       [](const Handle<Value>& field) {
-        EXPECT_FALSE(field.As<BoolValue>()->value());
+        EXPECT_FALSE(field.As<BoolValue>()->NativeValue());
       },
       [](TestAllTypes& message) { message.set_single_bool(true); },
       [](const Handle<Value>& field) {
-        EXPECT_TRUE(field.As<BoolValue>()->value());
+        EXPECT_TRUE(field.As<BoolValue>()->NativeValue());
       });
 }
 
@@ -600,11 +600,11 @@ TEST_P(ProtoStructValueTest, Int32GetField) {
   TEST_GET_FIELD(
       memory_manager(), "single_int32",
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<IntValue>()->value(), 0);
+        EXPECT_EQ(field.As<IntValue>()->NativeValue(), 0);
       },
       [](TestAllTypes& message) { message.set_single_int32(1); },
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<IntValue>()->value(), 1);
+        EXPECT_EQ(field.As<IntValue>()->NativeValue(), 1);
       });
 }
 
@@ -612,11 +612,11 @@ TEST_P(ProtoStructValueTest, Int64GetField) {
   TEST_GET_FIELD(
       memory_manager(), "single_int64",
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<IntValue>()->value(), 0);
+        EXPECT_EQ(field.As<IntValue>()->NativeValue(), 0);
       },
       [](TestAllTypes& message) { message.set_single_int64(1); },
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<IntValue>()->value(), 1);
+        EXPECT_EQ(field.As<IntValue>()->NativeValue(), 1);
       });
 }
 
@@ -624,11 +624,11 @@ TEST_P(ProtoStructValueTest, Uint32GetField) {
   TEST_GET_FIELD(
       memory_manager(), "single_uint32",
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<UintValue>()->value(), 0);
+        EXPECT_EQ(field.As<UintValue>()->NativeValue(), 0);
       },
       [](TestAllTypes& message) { message.set_single_uint32(1); },
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<UintValue>()->value(), 1);
+        EXPECT_EQ(field.As<UintValue>()->NativeValue(), 1);
       });
 }
 
@@ -636,11 +636,11 @@ TEST_P(ProtoStructValueTest, Uint64GetField) {
   TEST_GET_FIELD(
       memory_manager(), "single_uint64",
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<UintValue>()->value(), 0);
+        EXPECT_EQ(field.As<UintValue>()->NativeValue(), 0);
       },
       [](TestAllTypes& message) { message.set_single_uint64(1); },
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<UintValue>()->value(), 1);
+        EXPECT_EQ(field.As<UintValue>()->NativeValue(), 1);
       });
 }
 
@@ -648,11 +648,11 @@ TEST_P(ProtoStructValueTest, FloatGetField) {
   TEST_GET_FIELD(
       memory_manager(), "single_float",
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<DoubleValue>()->value(), 0);
+        EXPECT_EQ(field.As<DoubleValue>()->NativeValue(), 0);
       },
       [](TestAllTypes& message) { message.set_single_float(1.0); },
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<DoubleValue>()->value(), 1);
+        EXPECT_EQ(field.As<DoubleValue>()->NativeValue(), 1);
       });
 }
 
@@ -660,11 +660,11 @@ TEST_P(ProtoStructValueTest, DoubleGetField) {
   TEST_GET_FIELD(
       memory_manager(), "single_double",
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<DoubleValue>()->value(), 0);
+        EXPECT_EQ(field.As<DoubleValue>()->NativeValue(), 0);
       },
       [](TestAllTypes& message) { message.set_single_double(1.0); },
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<DoubleValue>()->value(), 1);
+        EXPECT_EQ(field.As<DoubleValue>()->NativeValue(), 1);
       });
 }
 
@@ -696,13 +696,14 @@ TEST_P(ProtoStructValueTest, DurationGetField) {
   TEST_GET_FIELD(
       memory_manager(), "single_duration",
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<DurationValue>()->value(), absl::ZeroDuration());
+        EXPECT_EQ(field.As<DurationValue>()->NativeValue(),
+                  absl::ZeroDuration());
       },
       [](TestAllTypes& message) {
         message.mutable_single_duration()->set_seconds(1);
       },
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<DurationValue>()->value(), absl::Seconds(1));
+        EXPECT_EQ(field.As<DurationValue>()->NativeValue(), absl::Seconds(1));
       });
 }
 
@@ -710,13 +711,13 @@ TEST_P(ProtoStructValueTest, TimestampGetField) {
   TEST_GET_FIELD(
       memory_manager(), "single_timestamp",
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<TimestampValue>()->value(), absl::UnixEpoch());
+        EXPECT_EQ(field.As<TimestampValue>()->NativeValue(), absl::UnixEpoch());
       },
       [](TestAllTypes& message) {
         message.mutable_single_timestamp()->set_seconds(1);
       },
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<TimestampValue>()->value(),
+        EXPECT_EQ(field.As<TimestampValue>()->NativeValue(),
                   absl::UnixEpoch() + absl::Seconds(1));
       });
 }
@@ -850,7 +851,7 @@ TEST_P(ProtoStructValueTest, BoolWrapperGetField) {
         message.mutable_single_bool_wrapper()->set_value(true);
       },
       [](const Handle<Value>& field) {
-        EXPECT_TRUE(field.As<BoolValue>()->value());
+        EXPECT_TRUE(field.As<BoolValue>()->NativeValue());
       });
 }
 
@@ -861,7 +862,7 @@ TEST_P(ProtoStructValueTest, Int32WrapperGetField) {
         message.mutable_single_int32_wrapper()->set_value(1);
       },
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<IntValue>()->value(), 1);
+        EXPECT_EQ(field.As<IntValue>()->NativeValue(), 1);
       });
 }
 
@@ -872,7 +873,7 @@ TEST_P(ProtoStructValueTest, Int64WrapperGetField) {
         message.mutable_single_int64_wrapper()->set_value(1);
       },
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<IntValue>()->value(), 1);
+        EXPECT_EQ(field.As<IntValue>()->NativeValue(), 1);
       });
 }
 
@@ -883,7 +884,7 @@ TEST_P(ProtoStructValueTest, Uint32WrapperGetField) {
         message.mutable_single_uint32_wrapper()->set_value(1);
       },
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<UintValue>()->value(), 1);
+        EXPECT_EQ(field.As<UintValue>()->NativeValue(), 1);
       });
 }
 
@@ -894,7 +895,7 @@ TEST_P(ProtoStructValueTest, Uint64WrapperGetField) {
         message.mutable_single_uint64_wrapper()->set_value(1);
       },
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<UintValue>()->value(), 1);
+        EXPECT_EQ(field.As<UintValue>()->NativeValue(), 1);
       });
 }
 
@@ -905,7 +906,7 @@ TEST_P(ProtoStructValueTest, FloatWrapperGetField) {
         message.mutable_single_float_wrapper()->set_value(1.0);
       },
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<DoubleValue>()->value(), 1);
+        EXPECT_EQ(field.As<DoubleValue>()->NativeValue(), 1);
       });
 }
 
@@ -916,7 +917,7 @@ TEST_P(ProtoStructValueTest, DoubleWrapperGetField) {
         message.mutable_single_double_wrapper()->set_value(1.0);
       },
       [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<DoubleValue>()->value(), 1);
+        EXPECT_EQ(field.As<DoubleValue>()->NativeValue(), 1);
       });
 }
 
@@ -990,7 +991,7 @@ TEST_P(ProtoStructValueTest, ValueGetField) {
         message.mutable_single_value()->set_bool_value(true);
       },
       [](const Handle<Value>& field) {
-        EXPECT_TRUE(field->As<BoolValue>().value());
+        EXPECT_TRUE(field->As<BoolValue>().NativeValue());
       });
 }
 
@@ -1004,7 +1005,7 @@ TEST_P(ProtoStructValueTest, AnyGetField) {
         ASSERT_TRUE(message.mutable_single_any()->PackFrom(proto));
       },
       [](const Handle<Value>& field) {
-        EXPECT_TRUE(field->As<BoolValue>().value());
+        EXPECT_TRUE(field->As<BoolValue>().NativeValue());
       });
 }
 
@@ -1115,9 +1116,9 @@ TEST_P(ProtoStructValueTest, BoolListGetField) {
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[true, false]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_TRUE(field_value.As<BoolValue>()->value());
+        EXPECT_TRUE(field_value.As<BoolValue>()->NativeValue());
         ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
-        EXPECT_FALSE(field_value.As<BoolValue>()->value());
+        EXPECT_FALSE(field_value.As<BoolValue>()->NativeValue());
       });
 }
 
@@ -1133,9 +1134,9 @@ TEST_P(ProtoStructValueTest, Int32ListGetField) {
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1, 0]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
+        EXPECT_EQ(field_value.As<IntValue>()->NativeValue(), 1);
         ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
-        EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
+        EXPECT_EQ(field_value.As<IntValue>()->NativeValue(), 0);
       });
 }
 
@@ -1151,9 +1152,9 @@ TEST_P(ProtoStructValueTest, Int64ListGetField) {
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1, 0]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
+        EXPECT_EQ(field_value.As<IntValue>()->NativeValue(), 1);
         ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
-        EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
+        EXPECT_EQ(field_value.As<IntValue>()->NativeValue(), 0);
       });
 }
 
@@ -1169,9 +1170,9 @@ TEST_P(ProtoStructValueTest, Uint32ListGetField) {
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1u, 0u]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
+        EXPECT_EQ(field_value.As<UintValue>()->NativeValue(), 1);
         ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
-        EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
+        EXPECT_EQ(field_value.As<UintValue>()->NativeValue(), 0);
       });
 }
 
@@ -1187,9 +1188,9 @@ TEST_P(ProtoStructValueTest, Uint64ListGetField) {
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1u, 0u]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
+        EXPECT_EQ(field_value.As<UintValue>()->NativeValue(), 1);
         ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
-        EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
+        EXPECT_EQ(field_value.As<UintValue>()->NativeValue(), 0);
       });
 }
 
@@ -1205,9 +1206,9 @@ TEST_P(ProtoStructValueTest, FloatListGetField) {
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
+        EXPECT_EQ(field_value.As<DoubleValue>()->NativeValue(), 1.0);
         ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
-        EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
+        EXPECT_EQ(field_value.As<DoubleValue>()->NativeValue(), 0.0);
       });
 }
 
@@ -1223,9 +1224,9 @@ TEST_P(ProtoStructValueTest, DoubleListGetField) {
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
+        EXPECT_EQ(field_value.As<DoubleValue>()->NativeValue(), 1.0);
         ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
-        EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
+        EXPECT_EQ(field_value.As<DoubleValue>()->NativeValue(), 0.0);
       });
 }
 
@@ -1277,9 +1278,11 @@ TEST_P(ProtoStructValueTest, DurationListGetField) {
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1s, 2s]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_EQ(field_value.As<DurationValue>()->value(), absl::Seconds(1));
+        EXPECT_EQ(field_value.As<DurationValue>()->NativeValue(),
+                  absl::Seconds(1));
         ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
-        EXPECT_EQ(field_value.As<DurationValue>()->value(), absl::Seconds(2));
+        EXPECT_EQ(field_value.As<DurationValue>()->NativeValue(),
+                  absl::Seconds(2));
       });
 }
 
@@ -1296,10 +1299,10 @@ TEST_P(ProtoStructValueTest, TimestampListGetField) {
         EXPECT_EQ(field->DebugString(),
                   "[1970-01-01T00:00:01Z, 1970-01-01T00:00:02Z]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_EQ(field_value.As<TimestampValue>()->value(),
+        EXPECT_EQ(field_value.As<TimestampValue>()->NativeValue(),
                   absl::UnixEpoch() + absl::Seconds(1));
         ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
-        EXPECT_EQ(field_value.As<TimestampValue>()->value(),
+        EXPECT_EQ(field_value.As<TimestampValue>()->NativeValue(),
                   absl::UnixEpoch() + absl::Seconds(2));
       });
 }
@@ -1364,9 +1367,9 @@ TEST_P(ProtoStructValueTest, BoolWrapperListGetField) {
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[true, false]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_TRUE(field_value.As<BoolValue>()->value());
+        EXPECT_TRUE(field_value.As<BoolValue>()->NativeValue());
         ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
-        EXPECT_FALSE(field_value.As<BoolValue>()->value());
+        EXPECT_FALSE(field_value.As<BoolValue>()->NativeValue());
       });
 }
 
@@ -1382,9 +1385,9 @@ TEST_P(ProtoStructValueTest, Int32WrapperListGetField) {
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1, 0]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
+        EXPECT_EQ(field_value.As<IntValue>()->NativeValue(), 1);
         ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
-        EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
+        EXPECT_EQ(field_value.As<IntValue>()->NativeValue(), 0);
       });
 }
 
@@ -1400,9 +1403,9 @@ TEST_P(ProtoStructValueTest, Int64WrapperListGetField) {
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1, 0]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
+        EXPECT_EQ(field_value.As<IntValue>()->NativeValue(), 1);
         ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
-        EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
+        EXPECT_EQ(field_value.As<IntValue>()->NativeValue(), 0);
       });
 }
 
@@ -1418,9 +1421,9 @@ TEST_P(ProtoStructValueTest, Uint32WrapperListGetField) {
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1u, 0u]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
+        EXPECT_EQ(field_value.As<UintValue>()->NativeValue(), 1);
         ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
-        EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
+        EXPECT_EQ(field_value.As<UintValue>()->NativeValue(), 0);
       });
 }
 
@@ -1436,9 +1439,9 @@ TEST_P(ProtoStructValueTest, Uint64WrapperListGetField) {
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1u, 0u]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
+        EXPECT_EQ(field_value.As<UintValue>()->NativeValue(), 1);
         ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
-        EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
+        EXPECT_EQ(field_value.As<UintValue>()->NativeValue(), 0);
       });
 }
 
@@ -1454,9 +1457,9 @@ TEST_P(ProtoStructValueTest, FloatWrapperListGetField) {
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
+        EXPECT_EQ(field_value.As<DoubleValue>()->NativeValue(), 1.0);
         ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
-        EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
+        EXPECT_EQ(field_value.As<DoubleValue>()->NativeValue(), 0.0);
       });
 }
 
@@ -1472,9 +1475,9 @@ TEST_P(ProtoStructValueTest, DoubleWrapperListGetField) {
         EXPECT_FALSE(field->empty());
         EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
+        EXPECT_EQ(field_value.As<DoubleValue>()->NativeValue(), 1.0);
         ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
-        EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
+        EXPECT_EQ(field_value.As<DoubleValue>()->NativeValue(), 0.0);
       });
 }
 
@@ -1526,7 +1529,7 @@ TEST_P(ProtoStructValueTest, AnyListGetField) {
         EXPECT_EQ(field->size(), 1);
         EXPECT_FALSE(field->empty());
         ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_TRUE(field_value.As<BoolValue>()->value());
+        EXPECT_TRUE(field_value.As<BoolValue>()->NativeValue());
       });
 }
 
@@ -2818,7 +2821,7 @@ TEST_P(ProtoStructValueTest, BoolBoolMapGetField) {
   TestMapGetField<BoolValue>(
       memory_manager(), "map_bool_bool", "{false: true, true: false}",
       &TestAllTypes::mutable_map_bool_bool, &ValueFactory::CreateBoolValue,
-      &BoolValue::value, std::make_pair(false, true),
+      &BoolValue::NativeValue, std::make_pair(false, true),
       std::make_pair(true, false), nullptr);
 }
 
@@ -2826,7 +2829,7 @@ TEST_P(ProtoStructValueTest, BoolInt32MapGetField) {
   TestMapGetField<IntValue>(
       memory_manager(), "map_bool_int32", "{false: 1, true: 0}",
       &TestAllTypes::mutable_map_bool_int32, &ValueFactory::CreateBoolValue,
-      &IntValue::value, std::make_pair(false, 1), std::make_pair(true, 0),
+      &IntValue::NativeValue, std::make_pair(false, 1), std::make_pair(true, 0),
       nullptr);
 }
 
@@ -2834,7 +2837,7 @@ TEST_P(ProtoStructValueTest, BoolInt64MapGetField) {
   TestMapGetField<IntValue>(
       memory_manager(), "map_bool_int64", "{false: 1, true: 0}",
       &TestAllTypes::mutable_map_bool_int64, &ValueFactory::CreateBoolValue,
-      &IntValue::value, std::make_pair(false, 1), std::make_pair(true, 0),
+      &IntValue::NativeValue, std::make_pair(false, 1), std::make_pair(true, 0),
       nullptr);
 }
 
@@ -2842,23 +2845,23 @@ TEST_P(ProtoStructValueTest, BoolUint32MapGetField) {
   TestMapGetField<UintValue>(
       memory_manager(), "map_bool_uint32", "{false: 1u, true: 0u}",
       &TestAllTypes::mutable_map_bool_uint32, &ValueFactory::CreateBoolValue,
-      &UintValue::value, std::make_pair(false, 1u), std::make_pair(true, 0u),
-      nullptr);
+      &UintValue::NativeValue, std::make_pair(false, 1u),
+      std::make_pair(true, 0u), nullptr);
 }
 
 TEST_P(ProtoStructValueTest, BoolUint64MapGetField) {
   TestMapGetField<UintValue>(
       memory_manager(), "map_bool_uint64", "{false: 1u, true: 0u}",
       &TestAllTypes::mutable_map_bool_uint64, &ValueFactory::CreateBoolValue,
-      &UintValue::value, std::make_pair(false, 1u), std::make_pair(true, 0u),
-      nullptr);
+      &UintValue::NativeValue, std::make_pair(false, 1u),
+      std::make_pair(true, 0u), nullptr);
 }
 
 TEST_P(ProtoStructValueTest, BoolFloatMapGetField) {
   TestMapGetField<DoubleValue>(
       memory_manager(), "map_bool_float", "{false: 1.0, true: 0.0}",
       &TestAllTypes::mutable_map_bool_float, &ValueFactory::CreateBoolValue,
-      &DoubleValue::value, std::make_pair(false, 1.0f),
+      &DoubleValue::NativeValue, std::make_pair(false, 1.0f),
       std::make_pair(true, 0.0f), nullptr);
 }
 
@@ -2866,7 +2869,7 @@ TEST_P(ProtoStructValueTest, BoolDoubleMapGetField) {
   TestMapGetField<DoubleValue>(
       memory_manager(), "map_bool_double", "{false: 1.0, true: 0.0}",
       &TestAllTypes::mutable_map_bool_double, &ValueFactory::CreateBoolValue,
-      &DoubleValue::value, std::make_pair(false, 1.0),
+      &DoubleValue::NativeValue, std::make_pair(false, 1.0),
       std::make_pair(true, 0.0), nullptr);
 }
 
@@ -2890,7 +2893,7 @@ TEST_P(ProtoStructValueTest, BoolDurationMapGetField) {
   TestMapGetField<DurationValue>(
       memory_manager(), "map_bool_duration", "{false: 1s, true: 0}",
       &TestAllTypes::mutable_map_bool_duration, &ValueFactory::CreateBoolValue,
-      &DurationValue::value,
+      &DurationValue::NativeValue,
       std::make_pair(false, NativeToProto(absl::Seconds(1))),
       std::make_pair(true, NativeToProto(absl::ZeroDuration())), nullptr);
 }
@@ -2900,7 +2903,7 @@ TEST_P(ProtoStructValueTest, BoolTimestampMapGetField) {
       memory_manager(), "map_bool_timestamp",
       "{false: 1970-01-01T00:00:01Z, true: 1970-01-01T00:00:00Z}",
       &TestAllTypes::mutable_map_bool_timestamp, &ValueFactory::CreateBoolValue,
-      &TimestampValue::value,
+      &TimestampValue::NativeValue,
       std::make_pair(false,
                      NativeToProto(absl::UnixEpoch() + absl::Seconds(1))),
       std::make_pair(true,
@@ -2960,7 +2963,7 @@ TEST_P(ProtoStructValueTest, BoolStructMapGetField) {
                 value_factory, Must(value_factory.CreateStringValue("foo"))));
         ASSERT_TRUE(subvalue);
         ASSERT_TRUE(subvalue->Is<BoolValue>());
-        EXPECT_FALSE(subvalue->As<BoolValue>().value());
+        EXPECT_FALSE(subvalue->As<BoolValue>().NativeValue());
       });
 }
 
@@ -2980,7 +2983,7 @@ TEST_P(ProtoStructValueTest, BoolValueMapGetField) {
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
         ASSERT_TRUE(value->Is<BoolValue>());
-        EXPECT_TRUE(value->As<BoolValue>().value());
+        EXPECT_TRUE(value->As<BoolValue>().NativeValue());
       });
 }
 
@@ -3024,7 +3027,7 @@ TEST_P(ProtoStructValueTest, BoolBoolWrapperMapGetField) {
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
         ASSERT_TRUE(value->Is<BoolValue>());
-        EXPECT_TRUE(value->As<BoolValue>().value());
+        EXPECT_TRUE(value->As<BoolValue>().NativeValue());
       });
 }
 
@@ -3044,7 +3047,7 @@ TEST_P(ProtoStructValueTest, BoolInt32WrapperMapGetField) {
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
         ASSERT_TRUE(value->Is<IntValue>());
-        EXPECT_EQ(value->As<IntValue>().value(), 1);
+        EXPECT_EQ(value->As<IntValue>().NativeValue(), 1);
       });
 }
 
@@ -3064,7 +3067,7 @@ TEST_P(ProtoStructValueTest, BoolInt64WrapperMapGetField) {
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
         ASSERT_TRUE(value->Is<IntValue>());
-        EXPECT_EQ(value->As<IntValue>().value(), 1);
+        EXPECT_EQ(value->As<IntValue>().NativeValue(), 1);
       });
 }
 
@@ -3084,7 +3087,7 @@ TEST_P(ProtoStructValueTest, BoolUInt32WrapperMapGetField) {
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
         ASSERT_TRUE(value->Is<UintValue>());
-        EXPECT_EQ(value->As<UintValue>().value(), 1);
+        EXPECT_EQ(value->As<UintValue>().NativeValue(), 1);
       });
 }
 
@@ -3104,7 +3107,7 @@ TEST_P(ProtoStructValueTest, BoolUInt64WrapperMapGetField) {
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
         ASSERT_TRUE(value->Is<UintValue>());
-        EXPECT_EQ(value->As<UintValue>().value(), 1);
+        EXPECT_EQ(value->As<UintValue>().NativeValue(), 1);
       });
 }
 
@@ -3124,7 +3127,7 @@ TEST_P(ProtoStructValueTest, BoolFloatWrapperMapGetField) {
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
         ASSERT_TRUE(value->Is<DoubleValue>());
-        EXPECT_EQ(value->As<DoubleValue>().value(), 1);
+        EXPECT_EQ(value->As<DoubleValue>().NativeValue(), 1);
       });
 }
 
@@ -3144,7 +3147,7 @@ TEST_P(ProtoStructValueTest, BoolDoubleWrapperMapGetField) {
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
         ASSERT_TRUE(value->Is<DoubleValue>());
-        EXPECT_EQ(value->As<DoubleValue>().value(), 1);
+        EXPECT_EQ(value->As<DoubleValue>().NativeValue(), 1);
       });
 }
 
@@ -3200,49 +3203,52 @@ TEST_P(ProtoStructValueTest, Int32BoolMapGetField) {
   TestMapGetField<BoolValue>(
       memory_manager(), "map_int32_bool", "{0: true, 1: false}",
       &TestAllTypes::mutable_map_int32_bool, &ValueFactory::CreateIntValue,
-      &BoolValue::value, std::make_pair(0, true), std::make_pair(1, false), 2);
+      &BoolValue::NativeValue, std::make_pair(0, true),
+      std::make_pair(1, false), 2);
 }
 
 TEST_P(ProtoStructValueTest, Int32Int32MapGetField) {
-  TestMapGetField<IntValue>(memory_manager(), "map_int32_int32", "{0: 1, 1: 0}",
-                            &TestAllTypes::mutable_map_int32_int32,
-                            &ValueFactory::CreateIntValue, &IntValue::value,
-                            std::make_pair(0, 1), std::make_pair(1, 0), 2);
+  TestMapGetField<IntValue>(
+      memory_manager(), "map_int32_int32", "{0: 1, 1: 0}",
+      &TestAllTypes::mutable_map_int32_int32, &ValueFactory::CreateIntValue,
+      &IntValue::NativeValue, std::make_pair(0, 1), std::make_pair(1, 0), 2);
 }
 
 TEST_P(ProtoStructValueTest, Int32Int64MapGetField) {
-  TestMapGetField<IntValue>(memory_manager(), "map_int32_int64", "{0: 1, 1: 0}",
-                            &TestAllTypes::mutable_map_int32_int64,
-                            &ValueFactory::CreateIntValue, &IntValue::value,
-                            std::make_pair(0, 1), std::make_pair(1, 0), 2);
+  TestMapGetField<IntValue>(
+      memory_manager(), "map_int32_int64", "{0: 1, 1: 0}",
+      &TestAllTypes::mutable_map_int32_int64, &ValueFactory::CreateIntValue,
+      &IntValue::NativeValue, std::make_pair(0, 1), std::make_pair(1, 0), 2);
 }
 
 TEST_P(ProtoStructValueTest, Int32Uint32MapGetField) {
   TestMapGetField<UintValue>(
       memory_manager(), "map_int32_uint32", "{0: 1u, 1: 0u}",
       &TestAllTypes::mutable_map_int32_uint32, &ValueFactory::CreateIntValue,
-      &UintValue::value, std::make_pair(0, 1u), std::make_pair(1, 0u), 2);
+      &UintValue::NativeValue, std::make_pair(0, 1u), std::make_pair(1, 0u), 2);
 }
 
 TEST_P(ProtoStructValueTest, Int32Uint64MapGetField) {
   TestMapGetField<UintValue>(
       memory_manager(), "map_int32_uint64", "{0: 1u, 1: 0u}",
       &TestAllTypes::mutable_map_int32_uint64, &ValueFactory::CreateIntValue,
-      &UintValue::value, std::make_pair(0, 1u), std::make_pair(1, 0u), 2);
+      &UintValue::NativeValue, std::make_pair(0, 1u), std::make_pair(1, 0u), 2);
 }
 
 TEST_P(ProtoStructValueTest, Int32FloatMapGetField) {
   TestMapGetField<DoubleValue>(
       memory_manager(), "map_int32_float", "{0: 1.0, 1: 0.0}",
       &TestAllTypes::mutable_map_int32_float, &ValueFactory::CreateIntValue,
-      &DoubleValue::value, std::make_pair(0, 1.0f), std::make_pair(1, 0.0f), 2);
+      &DoubleValue::NativeValue, std::make_pair(0, 1.0f),
+      std::make_pair(1, 0.0f), 2);
 }
 
 TEST_P(ProtoStructValueTest, Int32DoubleMapGetField) {
   TestMapGetField<DoubleValue>(
       memory_manager(), "map_int32_double", "{0: 1.0, 1: 0.0}",
       &TestAllTypes::mutable_map_int32_double, &ValueFactory::CreateIntValue,
-      &DoubleValue::value, std::make_pair(0, 1.0), std::make_pair(1, 0.0), 2);
+      &DoubleValue::NativeValue, std::make_pair(0, 1.0), std::make_pair(1, 0.0),
+      2);
 }
 
 TEST_P(ProtoStructValueTest, Int32BytesMapGetField) {
@@ -3265,7 +3271,8 @@ TEST_P(ProtoStructValueTest, Int32DurationMapGetField) {
   TestMapGetField<DurationValue>(
       memory_manager(), "map_int32_duration", "{0: 1s, 1: 0}",
       &TestAllTypes::mutable_map_int32_duration, &ValueFactory::CreateIntValue,
-      &DurationValue::value, std::make_pair(0, NativeToProto(absl::Seconds(1))),
+      &DurationValue::NativeValue,
+      std::make_pair(0, NativeToProto(absl::Seconds(1))),
       std::make_pair(1, NativeToProto(absl::ZeroDuration())), 2);
 }
 
@@ -3274,7 +3281,7 @@ TEST_P(ProtoStructValueTest, Int32TimestampMapGetField) {
       memory_manager(), "map_int32_timestamp",
       "{0: 1970-01-01T00:00:01Z, 1: 1970-01-01T00:00:00Z}",
       &TestAllTypes::mutable_map_int32_timestamp, &ValueFactory::CreateIntValue,
-      &TimestampValue::value,
+      &TimestampValue::NativeValue,
       std::make_pair(0, NativeToProto(absl::UnixEpoch() + absl::Seconds(1))),
       std::make_pair(1,
                      NativeToProto(absl::UnixEpoch() + absl::ZeroDuration())),
@@ -3314,49 +3321,52 @@ TEST_P(ProtoStructValueTest, Int64BoolMapGetField) {
   TestMapGetField<BoolValue>(
       memory_manager(), "map_int64_bool", "{0: true, 1: false}",
       &TestAllTypes::mutable_map_int64_bool, &ValueFactory::CreateIntValue,
-      &BoolValue::value, std::make_pair(0, true), std::make_pair(1, false), 2);
+      &BoolValue::NativeValue, std::make_pair(0, true),
+      std::make_pair(1, false), 2);
 }
 
 TEST_P(ProtoStructValueTest, Int64Int32MapGetField) {
-  TestMapGetField<IntValue>(memory_manager(), "map_int64_int32", "{0: 1, 1: 0}",
-                            &TestAllTypes::mutable_map_int64_int32,
-                            &ValueFactory::CreateIntValue, &IntValue::value,
-                            std::make_pair(0, 1), std::make_pair(1, 0), 2);
+  TestMapGetField<IntValue>(
+      memory_manager(), "map_int64_int32", "{0: 1, 1: 0}",
+      &TestAllTypes::mutable_map_int64_int32, &ValueFactory::CreateIntValue,
+      &IntValue::NativeValue, std::make_pair(0, 1), std::make_pair(1, 0), 2);
 }
 
 TEST_P(ProtoStructValueTest, Int64Int64MapGetField) {
-  TestMapGetField<IntValue>(memory_manager(), "map_int64_int64", "{0: 1, 1: 0}",
-                            &TestAllTypes::mutable_map_int64_int64,
-                            &ValueFactory::CreateIntValue, &IntValue::value,
-                            std::make_pair(0, 1), std::make_pair(1, 0), 2);
+  TestMapGetField<IntValue>(
+      memory_manager(), "map_int64_int64", "{0: 1, 1: 0}",
+      &TestAllTypes::mutable_map_int64_int64, &ValueFactory::CreateIntValue,
+      &IntValue::NativeValue, std::make_pair(0, 1), std::make_pair(1, 0), 2);
 }
 
 TEST_P(ProtoStructValueTest, Int64Uint32MapGetField) {
   TestMapGetField<UintValue>(
       memory_manager(), "map_int64_uint32", "{0: 1u, 1: 0u}",
       &TestAllTypes::mutable_map_int64_uint32, &ValueFactory::CreateIntValue,
-      &UintValue::value, std::make_pair(0, 1u), std::make_pair(1, 0u), 2);
+      &UintValue::NativeValue, std::make_pair(0, 1u), std::make_pair(1, 0u), 2);
 }
 
 TEST_P(ProtoStructValueTest, Int64Uint64MapGetField) {
   TestMapGetField<UintValue>(
       memory_manager(), "map_int64_uint64", "{0: 1u, 1: 0u}",
       &TestAllTypes::mutable_map_int64_uint64, &ValueFactory::CreateIntValue,
-      &UintValue::value, std::make_pair(0, 1u), std::make_pair(1, 0u), 2);
+      &UintValue::NativeValue, std::make_pair(0, 1u), std::make_pair(1, 0u), 2);
 }
 
 TEST_P(ProtoStructValueTest, Int64FloatMapGetField) {
   TestMapGetField<DoubleValue>(
       memory_manager(), "map_int64_float", "{0: 1.0, 1: 0.0}",
       &TestAllTypes::mutable_map_int64_float, &ValueFactory::CreateIntValue,
-      &DoubleValue::value, std::make_pair(0, 1.0f), std::make_pair(1, 0.0f), 2);
+      &DoubleValue::NativeValue, std::make_pair(0, 1.0f),
+      std::make_pair(1, 0.0f), 2);
 }
 
 TEST_P(ProtoStructValueTest, Int64DoubleMapGetField) {
   TestMapGetField<DoubleValue>(
       memory_manager(), "map_int64_double", "{0: 1.0, 1: 0.0}",
       &TestAllTypes::mutable_map_int64_double, &ValueFactory::CreateIntValue,
-      &DoubleValue::value, std::make_pair(0, 1.0), std::make_pair(1, 0.0), 2);
+      &DoubleValue::NativeValue, std::make_pair(0, 1.0), std::make_pair(1, 0.0),
+      2);
 }
 
 TEST_P(ProtoStructValueTest, Int64BytesMapGetField) {
@@ -3379,7 +3389,8 @@ TEST_P(ProtoStructValueTest, Int64DurationMapGetField) {
   TestMapGetField<DurationValue>(
       memory_manager(), "map_int64_duration", "{0: 1s, 1: 0}",
       &TestAllTypes::mutable_map_int64_duration, &ValueFactory::CreateIntValue,
-      &DurationValue::value, std::make_pair(0, NativeToProto(absl::Seconds(1))),
+      &DurationValue::NativeValue,
+      std::make_pair(0, NativeToProto(absl::Seconds(1))),
       std::make_pair(1, NativeToProto(absl::ZeroDuration())), 2);
 }
 
@@ -3388,7 +3399,7 @@ TEST_P(ProtoStructValueTest, Int64TimestampMapGetField) {
       memory_manager(), "map_int64_timestamp",
       "{0: 1970-01-01T00:00:01Z, 1: 1970-01-01T00:00:00Z}",
       &TestAllTypes::mutable_map_int64_timestamp, &ValueFactory::CreateIntValue,
-      &TimestampValue::value,
+      &TimestampValue::NativeValue,
       std::make_pair(0, NativeToProto(absl::UnixEpoch() + absl::Seconds(1))),
       std::make_pair(1,
                      NativeToProto(absl::UnixEpoch() + absl::ZeroDuration())),
@@ -3428,52 +3439,54 @@ TEST_P(ProtoStructValueTest, Uint32BoolMapGetField) {
   TestMapGetField<BoolValue>(
       memory_manager(), "map_uint32_bool", "{0u: true, 1u: false}",
       &TestAllTypes::mutable_map_uint32_bool, &ValueFactory::CreateUintValue,
-      &BoolValue::value, std::make_pair(0u, true), std::make_pair(1u, false),
-      2u);
+      &BoolValue::NativeValue, std::make_pair(0u, true),
+      std::make_pair(1u, false), 2u);
 }
 
 TEST_P(ProtoStructValueTest, Uint32Int32MapGetField) {
   TestMapGetField<IntValue>(
       memory_manager(), "map_uint32_int32", "{0u: 1, 1u: 0}",
       &TestAllTypes::mutable_map_uint32_int32, &ValueFactory::CreateUintValue,
-      &IntValue::value, std::make_pair(0u, 1), std::make_pair(1u, 0), 2u);
+      &IntValue::NativeValue, std::make_pair(0u, 1), std::make_pair(1u, 0), 2u);
 }
 
 TEST_P(ProtoStructValueTest, Uint32Int64MapGetField) {
   TestMapGetField<IntValue>(
       memory_manager(), "map_uint32_int64", "{0u: 1, 1u: 0}",
       &TestAllTypes::mutable_map_uint32_int64, &ValueFactory::CreateUintValue,
-      &IntValue::value, std::make_pair(0u, 1), std::make_pair(1u, 0), 2u);
+      &IntValue::NativeValue, std::make_pair(0u, 1), std::make_pair(1u, 0), 2u);
 }
 
 TEST_P(ProtoStructValueTest, Uint32Uint32MapGetField) {
   TestMapGetField<UintValue>(
       memory_manager(), "map_uint32_uint32", "{0u: 1u, 1u: 0u}",
       &TestAllTypes::mutable_map_uint32_uint32, &ValueFactory::CreateUintValue,
-      &UintValue::value, std::make_pair(0u, 1u), std::make_pair(1u, 0u), 2u);
+      &UintValue::NativeValue, std::make_pair(0u, 1u), std::make_pair(1u, 0u),
+      2u);
 }
 
 TEST_P(ProtoStructValueTest, Uint32Uint64MapGetField) {
   TestMapGetField<UintValue>(
       memory_manager(), "map_uint32_uint64", "{0u: 1u, 1u: 0u}",
       &TestAllTypes::mutable_map_uint32_uint64, &ValueFactory::CreateUintValue,
-      &UintValue::value, std::make_pair(0u, 1u), std::make_pair(1u, 0u), 2u);
+      &UintValue::NativeValue, std::make_pair(0u, 1u), std::make_pair(1u, 0u),
+      2u);
 }
 
 TEST_P(ProtoStructValueTest, Uint32FloatMapGetField) {
   TestMapGetField<DoubleValue>(
       memory_manager(), "map_uint32_float", "{0u: 1.0, 1u: 0.0}",
       &TestAllTypes::mutable_map_uint32_float, &ValueFactory::CreateUintValue,
-      &DoubleValue::value, std::make_pair(0u, 1.0f), std::make_pair(1u, 0.0f),
-      2u);
+      &DoubleValue::NativeValue, std::make_pair(0u, 1.0f),
+      std::make_pair(1u, 0.0f), 2u);
 }
 
 TEST_P(ProtoStructValueTest, Uint32DoubleMapGetField) {
   TestMapGetField<DoubleValue>(
       memory_manager(), "map_uint32_double", "{0u: 1.0, 1u: 0.0}",
       &TestAllTypes::mutable_map_uint32_double, &ValueFactory::CreateUintValue,
-      &DoubleValue::value, std::make_pair(0u, 1.0), std::make_pair(1u, 0.0),
-      2u);
+      &DoubleValue::NativeValue, std::make_pair(0u, 1.0),
+      std::make_pair(1u, 0.0), 2u);
 }
 
 TEST_P(ProtoStructValueTest, Uint32BytesMapGetField) {
@@ -3496,7 +3509,7 @@ TEST_P(ProtoStructValueTest, Uint32DurationMapGetField) {
   TestMapGetField<DurationValue>(
       memory_manager(), "map_uint32_duration", "{0u: 1s, 1u: 0}",
       &TestAllTypes::mutable_map_uint32_duration,
-      &ValueFactory::CreateUintValue, &DurationValue::value,
+      &ValueFactory::CreateUintValue, &DurationValue::NativeValue,
       std::make_pair(0u, NativeToProto(absl::Seconds(1))),
       std::make_pair(1u, NativeToProto(absl::ZeroDuration())), 2u);
 }
@@ -3506,7 +3519,7 @@ TEST_P(ProtoStructValueTest, Uint32TimestampMapGetField) {
       memory_manager(), "map_uint32_timestamp",
       "{0u: 1970-01-01T00:00:01Z, 1u: 1970-01-01T00:00:00Z}",
       &TestAllTypes::mutable_map_uint32_timestamp,
-      &ValueFactory::CreateUintValue, &TimestampValue::value,
+      &ValueFactory::CreateUintValue, &TimestampValue::NativeValue,
       std::make_pair(0u, NativeToProto(absl::UnixEpoch() + absl::Seconds(1))),
       std::make_pair(1u,
                      NativeToProto(absl::UnixEpoch() + absl::ZeroDuration())),
@@ -3546,52 +3559,54 @@ TEST_P(ProtoStructValueTest, Uint64BoolMapGetField) {
   TestMapGetField<BoolValue>(
       memory_manager(), "map_uint64_bool", "{0u: true, 1u: false}",
       &TestAllTypes::mutable_map_uint64_bool, &ValueFactory::CreateUintValue,
-      &BoolValue::value, std::make_pair(0u, true), std::make_pair(1u, false),
-      2u);
+      &BoolValue::NativeValue, std::make_pair(0u, true),
+      std::make_pair(1u, false), 2u);
 }
 
 TEST_P(ProtoStructValueTest, Uint64Int32MapGetField) {
   TestMapGetField<IntValue>(
       memory_manager(), "map_uint64_int32", "{0u: 1, 1u: 0}",
       &TestAllTypes::mutable_map_uint64_int32, &ValueFactory::CreateUintValue,
-      &IntValue::value, std::make_pair(0u, 1), std::make_pair(1u, 0), 2u);
+      &IntValue::NativeValue, std::make_pair(0u, 1), std::make_pair(1u, 0), 2u);
 }
 
 TEST_P(ProtoStructValueTest, Uint64Int64MapGetField) {
   TestMapGetField<IntValue>(
       memory_manager(), "map_uint64_int64", "{0u: 1, 1u: 0}",
       &TestAllTypes::mutable_map_uint64_int64, &ValueFactory::CreateUintValue,
-      &IntValue::value, std::make_pair(0u, 1), std::make_pair(1u, 0), 2u);
+      &IntValue::NativeValue, std::make_pair(0u, 1), std::make_pair(1u, 0), 2u);
 }
 
 TEST_P(ProtoStructValueTest, Uint64Uint32MapGetField) {
   TestMapGetField<UintValue>(
       memory_manager(), "map_uint64_uint32", "{0u: 1u, 1u: 0u}",
       &TestAllTypes::mutable_map_uint64_uint32, &ValueFactory::CreateUintValue,
-      &UintValue::value, std::make_pair(0u, 1u), std::make_pair(1u, 0u), 2u);
+      &UintValue::NativeValue, std::make_pair(0u, 1u), std::make_pair(1u, 0u),
+      2u);
 }
 
 TEST_P(ProtoStructValueTest, Uint64Uint64MapGetField) {
   TestMapGetField<UintValue>(
       memory_manager(), "map_uint64_uint64", "{0u: 1u, 1u: 0u}",
       &TestAllTypes::mutable_map_uint64_uint64, &ValueFactory::CreateUintValue,
-      &UintValue::value, std::make_pair(0u, 1u), std::make_pair(1u, 0u), 2u);
+      &UintValue::NativeValue, std::make_pair(0u, 1u), std::make_pair(1u, 0u),
+      2u);
 }
 
 TEST_P(ProtoStructValueTest, Uint64FloatMapGetField) {
   TestMapGetField<DoubleValue>(
       memory_manager(), "map_uint64_float", "{0u: 1.0, 1u: 0.0}",
       &TestAllTypes::mutable_map_uint64_float, &ValueFactory::CreateUintValue,
-      &DoubleValue::value, std::make_pair(0u, 1.0f), std::make_pair(1u, 0.0f),
-      2u);
+      &DoubleValue::NativeValue, std::make_pair(0u, 1.0f),
+      std::make_pair(1u, 0.0f), 2u);
 }
 
 TEST_P(ProtoStructValueTest, Uint64DoubleMapGetField) {
   TestMapGetField<DoubleValue>(
       memory_manager(), "map_uint64_double", "{0u: 1.0, 1u: 0.0}",
       &TestAllTypes::mutable_map_uint64_double, &ValueFactory::CreateUintValue,
-      &DoubleValue::value, std::make_pair(0u, 1.0), std::make_pair(1u, 0.0),
-      2u);
+      &DoubleValue::NativeValue, std::make_pair(0u, 1.0),
+      std::make_pair(1u, 0.0), 2u);
 }
 
 TEST_P(ProtoStructValueTest, Uint64BytesMapGetField) {
@@ -3614,7 +3629,7 @@ TEST_P(ProtoStructValueTest, Uint64DurationMapGetField) {
   TestMapGetField<DurationValue>(
       memory_manager(), "map_uint64_duration", "{0u: 1s, 1u: 0}",
       &TestAllTypes::mutable_map_uint64_duration,
-      &ValueFactory::CreateUintValue, &DurationValue::value,
+      &ValueFactory::CreateUintValue, &DurationValue::NativeValue,
       std::make_pair(0u, NativeToProto(absl::Seconds(1))),
       std::make_pair(1u, NativeToProto(absl::ZeroDuration())), 2u);
 }
@@ -3624,7 +3639,7 @@ TEST_P(ProtoStructValueTest, Uint64TimestampMapGetField) {
       memory_manager(), "map_uint64_timestamp",
       "{0u: 1970-01-01T00:00:01Z, 1u: 1970-01-01T00:00:00Z}",
       &TestAllTypes::mutable_map_uint64_timestamp,
-      &ValueFactory::CreateUintValue, &TimestampValue::value,
+      &ValueFactory::CreateUintValue, &TimestampValue::NativeValue,
       std::make_pair(0u, NativeToProto(absl::UnixEpoch() + absl::Seconds(1))),
       std::make_pair(1u,
                      NativeToProto(absl::UnixEpoch() + absl::ZeroDuration())),
@@ -3663,49 +3678,49 @@ TEST_P(ProtoStructValueTest, StringNullValueMapGetField) {
 TEST_P(ProtoStructValueTest, StringBoolMapGetField) {
   TestStringMapGetField<BoolValue>(
       memory_manager(), "map_string_bool", "{\"bar\": true, \"baz\": false}",
-      &TestAllTypes::mutable_map_string_bool, &BoolValue::value,
+      &TestAllTypes::mutable_map_string_bool, &BoolValue::NativeValue,
       std::make_pair("bar", true), std::make_pair("baz", false), "foo");
 }
 
 TEST_P(ProtoStructValueTest, StringInt32MapGetField) {
   TestStringMapGetField<IntValue>(
       memory_manager(), "map_string_int32", "{\"bar\": 1, \"baz\": 0}",
-      &TestAllTypes::mutable_map_string_int32, &IntValue::value,
+      &TestAllTypes::mutable_map_string_int32, &IntValue::NativeValue,
       std::make_pair("bar", 1), std::make_pair("baz", 0), "foo");
 }
 
 TEST_P(ProtoStructValueTest, StringInt64MapGetField) {
   TestStringMapGetField<IntValue>(
       memory_manager(), "map_string_int64", "{\"bar\": 1, \"baz\": 0}",
-      &TestAllTypes::mutable_map_string_int64, &IntValue::value,
+      &TestAllTypes::mutable_map_string_int64, &IntValue::NativeValue,
       std::make_pair("bar", 1), std::make_pair("baz", 0), "foo");
 }
 
 TEST_P(ProtoStructValueTest, StringUint32MapGetField) {
   TestStringMapGetField<UintValue>(
       memory_manager(), "map_string_uint32", "{\"bar\": 1u, \"baz\": 0u}",
-      &TestAllTypes::mutable_map_string_uint32, &UintValue::value,
+      &TestAllTypes::mutable_map_string_uint32, &UintValue::NativeValue,
       std::make_pair("bar", 1u), std::make_pair("baz", 0u), "foo");
 }
 
 TEST_P(ProtoStructValueTest, StringUint64MapGetField) {
   TestStringMapGetField<UintValue>(
       memory_manager(), "map_string_uint64", "{\"bar\": 1u, \"baz\": 0u}",
-      &TestAllTypes::mutable_map_string_uint64, &UintValue::value,
+      &TestAllTypes::mutable_map_string_uint64, &UintValue::NativeValue,
       std::make_pair("bar", 1u), std::make_pair("baz", 0u), "foo");
 }
 
 TEST_P(ProtoStructValueTest, StringFloatMapGetField) {
   TestStringMapGetField<DoubleValue>(
       memory_manager(), "map_string_float", "{\"bar\": 1.0, \"baz\": 0.0}",
-      &TestAllTypes::mutable_map_string_float, &DoubleValue::value,
+      &TestAllTypes::mutable_map_string_float, &DoubleValue::NativeValue,
       std::make_pair("bar", 1.0f), std::make_pair("baz", 0.0f), "foo");
 }
 
 TEST_P(ProtoStructValueTest, StringDoubleMapGetField) {
   TestStringMapGetField<DoubleValue>(
       memory_manager(), "map_string_double", "{\"bar\": 1.0, \"baz\": 0.0}",
-      &TestAllTypes::mutable_map_string_double, &DoubleValue::value,
+      &TestAllTypes::mutable_map_string_double, &DoubleValue::NativeValue,
       std::make_pair("bar", 1.0), std::make_pair("baz", 0.0), "foo");
 }
 
@@ -3728,7 +3743,7 @@ TEST_P(ProtoStructValueTest, StringStringMapGetField) {
 TEST_P(ProtoStructValueTest, StringDurationMapGetField) {
   TestStringMapGetField<DurationValue>(
       memory_manager(), "map_string_duration", "{\"bar\": 1s, \"baz\": 0}",
-      &TestAllTypes::mutable_map_string_duration, &DurationValue::value,
+      &TestAllTypes::mutable_map_string_duration, &DurationValue::NativeValue,
       std::make_pair("bar", NativeToProto(absl::Seconds(1))),
       std::make_pair("baz", NativeToProto(absl::ZeroDuration())), "foo");
 }
@@ -3737,7 +3752,7 @@ TEST_P(ProtoStructValueTest, StringTimestampMapGetField) {
   TestStringMapGetField<TimestampValue>(
       memory_manager(), "map_string_timestamp",
       "{\"bar\": 1970-01-01T00:00:01Z, \"baz\": 1970-01-01T00:00:00Z}",
-      &TestAllTypes::mutable_map_string_timestamp, &TimestampValue::value,
+      &TestAllTypes::mutable_map_string_timestamp, &TimestampValue::NativeValue,
       std::make_pair("bar",
                      NativeToProto(absl::UnixEpoch() + absl::Seconds(1))),
       std::make_pair("baz",

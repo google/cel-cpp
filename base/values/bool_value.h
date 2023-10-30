@@ -66,7 +66,7 @@ class BoolValue final : public base_internal::SimpleValue<BoolType, bool>,
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;
 
-  using Base::value;
+  using Base::NativeValue;
 
  private:
   using Base::Base;
@@ -78,11 +78,11 @@ CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(BoolValue);
 
 template <typename H>
 H AbslHashValue(H state, const BoolValue& value) {
-  return H::combine(std::move(state), value.value());
+  return H::combine(std::move(state), value.NativeValue());
 }
 
 inline bool operator==(const BoolValue& lhs, const BoolValue& rhs) {
-  return lhs.value() == rhs.value();
+  return lhs.NativeValue() == rhs.NativeValue();
 }
 
 namespace base_internal {
@@ -108,7 +108,7 @@ struct ValueTraits<BoolValue> {
   static underlying_type Unwrap(underlying_type value) { return value; }
 
   static underlying_type Unwrap(const Handle<type>& value) {
-    return Unwrap(value->value());
+    return Unwrap(value->NativeValue());
   }
 };
 

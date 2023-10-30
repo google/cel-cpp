@@ -88,7 +88,7 @@ TEST(ReferenceResolver, ResolveQualifiedFunctions) {
   ASSERT_OK_AND_ASSIGN(Handle<Value> value,
                        program->Evaluate(activation, value_factory.get()));
   ASSERT_TRUE(value->Is<BoolValue>());
-  EXPECT_TRUE(value->As<BoolValue>().value());
+  EXPECT_TRUE(value->As<BoolValue>().NativeValue());
 }
 
 TEST(ReferenceResolver, ResolveQualifiedFunctionsCheckedOnly) {
@@ -220,7 +220,7 @@ TEST(ReferenceResolver, ResolveQualifiedIdentifiers) {
                        program->Evaluate(activation, value_factory.get()));
 
   ASSERT_TRUE(value->Is<IntValue>());
-  EXPECT_EQ(value->As<IntValue>().value(), 7);
+  EXPECT_EQ(value->As<IntValue>().NativeValue(), 7);
 }
 
 TEST(ReferenceResolver, ResolveQualifiedIdentifiersSkipParseOnly) {
@@ -339,7 +339,7 @@ TEST(ReferenceResolver, ResolveEnumConstants) {
                        program->Evaluate(activation, value_factory.get()));
 
   ASSERT_TRUE(value->Is<BoolValue>());
-  EXPECT_TRUE(value->As<BoolValue>().value());
+  EXPECT_TRUE(value->As<BoolValue>().NativeValue());
 }
 
 TEST(ReferenceResolver, ResolveEnumConstantsSkipParseOnly) {

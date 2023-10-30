@@ -82,11 +82,13 @@ std::string DoubleValue::DebugString(double value) {
   return DoubleToString(value);
 }
 
-std::string DoubleValue::DebugString() const { return DebugString(value()); }
+std::string DoubleValue::DebugString() const {
+  return DebugString(NativeValue());
+}
 
 absl::StatusOr<Any> DoubleValue::ConvertToAny(ValueFactory&) const {
   static constexpr absl::string_view kTypeName = "google.protobuf.DoubleValue";
-  const auto value = this->value();
+  const auto value = this->NativeValue();
   absl::Cord data;
   if (absl::bit_cast<uint64_t>(value) != 0) {
     ProtoWireEncoder encoder(kTypeName, data);
@@ -99,7 +101,7 @@ absl::StatusOr<Any> DoubleValue::ConvertToAny(ValueFactory&) const {
 }
 
 absl::StatusOr<Json> DoubleValue::ConvertToJson(ValueFactory&) const {
-  return value();
+  return NativeValue();
 }
 
 absl::StatusOr<Handle<Value>> DoubleValue::ConvertToType(
@@ -108,7 +110,7 @@ absl::StatusOr<Handle<Value>> DoubleValue::ConvertToType(
     case TypeKind::kDouble:
       return handle_from_this();
     case TypeKind::kInt: {
-      auto number = internal::Number::FromDouble(value());
+      auto number = internal::Number::FromDouble(NativeValue());
       if (!number.LosslessConvertibleToInt()) {
         return value_factory.CreateErrorValue(
             absl::OutOfRangeError("integer overflow"));
@@ -116,7 +118,7 @@ absl::StatusOr<Handle<Value>> DoubleValue::ConvertToType(
       return value_factory.CreateIntValue(number.AsInt());
     }
     case TypeKind::kUint: {
-      auto number = internal::Number::FromDouble(value());
+      auto number = internal::Number::FromDouble(NativeValue());
       if (!number.LosslessConvertibleToUint()) {
         return value_factory.CreateErrorValue(
             absl::OutOfRangeError("unsigned integer overflow"));
@@ -126,7 +128,7 @@ absl::StatusOr<Handle<Value>> DoubleValue::ConvertToType(
     case TypeKind::kType:
       return value_factory.CreateTypeValue(this->type());
     case TypeKind::kString:
-      return value_factory.CreateStringValue(DoubleToString(value()));
+      return value_factory.CreateStringValue(DoubleToString(NativeValue()));
     default:
       return value_factory.CreateErrorValue(
           base_internal::TypeConversionError(*this->type(), *type));
@@ -138,16 +140,16 @@ absl::StatusOr<Handle<Value>> DoubleValue::Equals(ValueFactory& value_factory,
   switch (other.kind()) {
     case ValueKind::kInt:
       return value_factory.CreateBoolValue(
-          internal::Number::FromDouble(value()) ==
-          internal::Number::FromInt64(other.As<IntValue>().value()));
+          internal::Number::FromDouble(NativeValue()) ==
+          internal::Number::FromInt64(other.As<IntValue>().NativeValue()));
     case ValueKind::kUint:
       return value_factory.CreateBoolValue(
-          internal::Number::FromDouble(value()) ==
-          internal::Number::FromUint64(other.As<UintValue>().value()));
+          internal::Number::FromDouble(NativeValue()) ==
+          internal::Number::FromUint64(other.As<UintValue>().NativeValue()));
     case ValueKind::kDouble:
       return value_factory.CreateBoolValue(
-          internal::Number::FromDouble(value()) ==
-          internal::Number::FromDouble(other.As<DoubleValue>().value()));
+          internal::Number::FromDouble(NativeValue()) ==
+          internal::Number::FromDouble(other.As<DoubleValue>().NativeValue()));
     default:
       return value_factory.CreateBoolValue(false);
   }

@@ -53,23 +53,26 @@ bool ValueEquals(const Handle<Value>& value, T other);
 
 template <>
 bool ValueEquals(const Handle<Value>& value, bool other) {
-  return value->Is<BoolValue>() && value->As<BoolValue>().value() == other;
+  return value->Is<BoolValue>() &&
+         value->As<BoolValue>().NativeValue() == other;
 }
 
 template <>
 bool ValueEquals(const Handle<Value>& value, int64_t other) {
-  return value->Is<IntValue>() && (value->As<IntValue>().value() == other);
+  return value->Is<IntValue>() &&
+         (value->As<IntValue>().NativeValue() == other);
 }
 
 template <>
 bool ValueEquals(const Handle<Value>& value, uint64_t other) {
-  return value->Is<UintValue>() && (value->As<UintValue>().value() == other);
+  return value->Is<UintValue>() &&
+         (value->As<UintValue>().NativeValue() == other);
 }
 
 template <>
 bool ValueEquals(const Handle<Value>& value, double other) {
   return value->Is<DoubleValue>() &&
-         (value->As<DoubleValue>().value() == other);
+         (value->As<DoubleValue>().NativeValue() == other);
 }
 
 template <>
@@ -197,7 +200,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
     auto result = map_value.Has(factory, int_key);
     if (enable_heterogeneous_equality) {
       if (result.ok() && (*result)->Is<BoolValue>() &&
-          (*result)->As<BoolValue>().value()) {
+          (*result)->As<BoolValue>().NativeValue()) {
         return std::move(*result);
       }
       Number number = Number::FromInt64(key);
@@ -205,7 +208,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
         const auto& result =
             map_value.Has(factory, factory.CreateUintValue(number.AsUint()));
         if (result.ok() && (*result)->Is<BoolValue>() &&
-            (*result)->As<BoolValue>().value()) {
+            (*result)->As<BoolValue>().NativeValue()) {
           return std::move(*result);
         }
       }
@@ -239,7 +242,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
     const auto& result = map_value.Has(factory, uint_key);
     if (enable_heterogeneous_equality) {
       if (result.ok() && (*result)->Is<BoolValue>() &&
-          (*result)->As<BoolValue>().value()) {
+          (*result)->As<BoolValue>().NativeValue()) {
         return std::move(*result);
       }
       Number number = Number::FromUint64(key);
@@ -247,7 +250,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
         const auto& result =
             map_value.Has(factory, factory.CreateIntValue(number.AsInt()));
         if (result.ok() && (*result)->Is<BoolValue>() &&
-            (*result)->As<BoolValue>().value()) {
+            (*result)->As<BoolValue>().NativeValue()) {
           return std::move(*result);
         }
       }
@@ -267,7 +270,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
       const auto& result =
           map_value.Has(factory, factory.CreateIntValue(number.AsInt()));
       if (result.ok() && (*result)->Is<BoolValue>() &&
-          (*result)->As<BoolValue>().value()) {
+          (*result)->As<BoolValue>().NativeValue()) {
         return std::move(*result);
       }
     }
@@ -275,7 +278,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
       const auto& result =
           map_value.Has(factory, factory.CreateUintValue(number.AsUint()));
       if (result.ok() && (*result)->Is<BoolValue>() &&
-          (*result)->As<BoolValue>().value()) {
+          (*result)->As<BoolValue>().NativeValue()) {
         return std::move(*result);
       }
     }

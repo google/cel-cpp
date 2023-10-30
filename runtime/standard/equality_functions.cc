@@ -159,11 +159,11 @@ absl::StatusOr<absl::optional<bool>> ListEqual(ValueFactory& factory,
 
 absl::optional<Number> NumberFromValue(const Value& value) {
   if (value.Is<IntValue>()) {
-    return Number::FromInt64(value.As<IntValue>().value());
+    return Number::FromInt64(value.As<IntValue>().NativeValue());
   } else if (value.Is<UintValue>()) {
-    return Number::FromUint64(value.As<UintValue>().value());
+    return Number::FromUint64(value.As<UintValue>().NativeValue());
   } else if (value.Is<DoubleValue>()) {
-    return Number::FromDouble(value.As<DoubleValue>().value());
+    return Number::FromDouble(value.As<DoubleValue>().NativeValue());
   }
 
   return absl::nullopt;
@@ -423,25 +423,25 @@ absl::StatusOr<absl::optional<bool>> HomogenousValueEqual(
 
   switch (v1->kind()) {
     case ValueKind::kBool:
-      return Equal<bool>(v1->As<BoolValue>().value(),
-                         v2->As<BoolValue>().value());
+      return Equal<bool>(v1->As<BoolValue>().NativeValue(),
+                         v2->As<BoolValue>().NativeValue());
     case ValueKind::kNull:
       return Equal<const NullValue&>(v1->As<NullValue>(), v2->As<NullValue>());
     case ValueKind::kInt:
-      return Equal<int64_t>(v1->As<IntValue>().value(),
-                            v2->As<IntValue>().value());
+      return Equal<int64_t>(v1->As<IntValue>().NativeValue(),
+                            v2->As<IntValue>().NativeValue());
     case ValueKind::kUint:
-      return Equal<uint64_t>(v1->As<UintValue>().value(),
-                             v2->As<UintValue>().value());
+      return Equal<uint64_t>(v1->As<UintValue>().NativeValue(),
+                             v2->As<UintValue>().NativeValue());
     case ValueKind::kDouble:
-      return Equal<double>(v1->As<DoubleValue>().value(),
-                           v2->As<DoubleValue>().value());
+      return Equal<double>(v1->As<DoubleValue>().NativeValue(),
+                           v2->As<DoubleValue>().NativeValue());
     case ValueKind::kDuration:
-      return Equal<absl::Duration>(v1->As<DurationValue>().value(),
-                                   v2->As<DurationValue>().value());
+      return Equal<absl::Duration>(v1->As<DurationValue>().NativeValue(),
+                                   v2->As<DurationValue>().NativeValue());
     case ValueKind::kTimestamp:
-      return Equal<absl::Time>(v1->As<TimestampValue>().value(),
-                               v2->As<TimestampValue>().value());
+      return Equal<absl::Time>(v1->As<TimestampValue>().NativeValue(),
+                               v2->As<TimestampValue>().NativeValue());
     case ValueKind::kCelType:
       return Equal<const TypeValue&>(v1->As<TypeValue>(), v2->As<TypeValue>());
     case ValueKind::kString:
@@ -525,7 +525,7 @@ absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueFactory& value_factory,
           Handle<Value> result,
           v1->As<StructValue>().Equals(value_factory, v2->As<StructValue>()));
       if (result->Is<BoolValue>()) {
-        return result->As<BoolValue>().value();
+        return result->As<BoolValue>().NativeValue();
       }
       return false;
     }

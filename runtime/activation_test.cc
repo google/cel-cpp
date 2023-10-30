@@ -47,7 +47,7 @@ using cel::internal::StatusIs;
 MATCHER_P(IsIntValue, x, absl::StrCat("is IntValue Handle with value ", x)) {
   const Handle<Value>& handle = arg;
 
-  return handle->Is<IntValue>() && handle.As<IntValue>()->value() == x;
+  return handle->Is<IntValue>() && handle.As<IntValue>()->NativeValue() == x;
 }
 
 MATCHER_P(AttributePatternMatches, val, "matches AttributePattern") {

@@ -1297,7 +1297,7 @@ TEST_P(ValueTest, Bool) {
   EXPECT_EQ(false_value, value_factory.CreateBoolValue(false));
   EXPECT_EQ(false_value->kind(), ValueKind::kBool);
   EXPECT_EQ(false_value->type(), type_factory.GetBoolType());
-  EXPECT_FALSE(false_value->value());
+  EXPECT_FALSE(false_value->NativeValue());
 
   auto true_value = BoolValue::True(value_factory);
   EXPECT_TRUE(true_value->Is<BoolValue>());
@@ -1306,7 +1306,7 @@ TEST_P(ValueTest, Bool) {
   EXPECT_EQ(true_value, value_factory.CreateBoolValue(true));
   EXPECT_EQ(true_value->kind(), ValueKind::kBool);
   EXPECT_EQ(true_value->type(), type_factory.GetBoolType());
-  EXPECT_TRUE(true_value->value());
+  EXPECT_TRUE(true_value->NativeValue());
 
   EXPECT_NE(false_value, true_value);
   EXPECT_NE(true_value, false_value);
@@ -1323,7 +1323,7 @@ TEST_P(ValueTest, Int) {
   EXPECT_EQ(zero_value, value_factory.CreateIntValue(0));
   EXPECT_EQ(zero_value->kind(), ValueKind::kInt);
   EXPECT_EQ(zero_value->type(), type_factory.GetIntType());
-  EXPECT_EQ(zero_value->value(), 0);
+  EXPECT_EQ(zero_value->NativeValue(), 0);
 
   auto one_value = value_factory.CreateIntValue(1);
   EXPECT_TRUE(one_value->Is<IntValue>());
@@ -1332,7 +1332,7 @@ TEST_P(ValueTest, Int) {
   EXPECT_EQ(one_value, value_factory.CreateIntValue(1));
   EXPECT_EQ(one_value->kind(), ValueKind::kInt);
   EXPECT_EQ(one_value->type(), type_factory.GetIntType());
-  EXPECT_EQ(one_value->value(), 1);
+  EXPECT_EQ(one_value->NativeValue(), 1);
 
   EXPECT_NE(zero_value, one_value);
   EXPECT_NE(one_value, zero_value);
@@ -1349,7 +1349,7 @@ TEST_P(ValueTest, Uint) {
   EXPECT_EQ(zero_value, value_factory.CreateUintValue(0));
   EXPECT_EQ(zero_value->kind(), ValueKind::kUint);
   EXPECT_EQ(zero_value->type(), type_factory.GetUintType());
-  EXPECT_EQ(zero_value->value(), 0);
+  EXPECT_EQ(zero_value->NativeValue(), 0);
 
   auto one_value = value_factory.CreateUintValue(1);
   EXPECT_TRUE(one_value->Is<UintValue>());
@@ -1358,7 +1358,7 @@ TEST_P(ValueTest, Uint) {
   EXPECT_EQ(one_value, value_factory.CreateUintValue(1));
   EXPECT_EQ(one_value->kind(), ValueKind::kUint);
   EXPECT_EQ(one_value->type(), type_factory.GetUintType());
-  EXPECT_EQ(one_value->value(), 1);
+  EXPECT_EQ(one_value->NativeValue(), 1);
 
   EXPECT_NE(zero_value, one_value);
   EXPECT_NE(one_value, zero_value);
@@ -1375,7 +1375,7 @@ TEST_P(ValueTest, Double) {
   EXPECT_EQ(zero_value, value_factory.CreateDoubleValue(0.0));
   EXPECT_EQ(zero_value->kind(), ValueKind::kDouble);
   EXPECT_EQ(zero_value->type(), type_factory.GetDoubleType());
-  EXPECT_EQ(zero_value->value(), 0.0);
+  EXPECT_EQ(zero_value->NativeValue(), 0.0);
 
   auto one_value = value_factory.CreateDoubleValue(1.0);
   EXPECT_TRUE(one_value->Is<DoubleValue>());
@@ -1384,7 +1384,7 @@ TEST_P(ValueTest, Double) {
   EXPECT_EQ(one_value, value_factory.CreateDoubleValue(1.0));
   EXPECT_EQ(one_value->kind(), ValueKind::kDouble);
   EXPECT_EQ(one_value->type(), type_factory.GetDoubleType());
-  EXPECT_EQ(one_value->value(), 1.0);
+  EXPECT_EQ(one_value->NativeValue(), 1.0);
 
   EXPECT_NE(zero_value, one_value);
   EXPECT_NE(one_value, zero_value);
@@ -1403,7 +1403,7 @@ TEST_P(ValueTest, Duration) {
             Must(value_factory.CreateDurationValue(absl::ZeroDuration())));
   EXPECT_EQ(zero_value->kind(), ValueKind::kDuration);
   EXPECT_EQ(zero_value->type(), type_factory.GetDurationType());
-  EXPECT_EQ(zero_value->value(), absl::ZeroDuration());
+  EXPECT_EQ(zero_value->NativeValue(), absl::ZeroDuration());
 
   auto one_value = Must(value_factory.CreateDurationValue(
       absl::ZeroDuration() + absl::Nanoseconds(1)));
@@ -1412,7 +1412,8 @@ TEST_P(ValueTest, Duration) {
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value->kind(), ValueKind::kDuration);
   EXPECT_EQ(one_value->type(), type_factory.GetDurationType());
-  EXPECT_EQ(one_value->value(), absl::ZeroDuration() + absl::Nanoseconds(1));
+  EXPECT_EQ(one_value->NativeValue(),
+            absl::ZeroDuration() + absl::Nanoseconds(1));
 
   EXPECT_NE(zero_value, one_value);
   EXPECT_NE(one_value, zero_value);
@@ -1433,7 +1434,7 @@ TEST_P(ValueTest, Timestamp) {
             Must(value_factory.CreateTimestampValue(absl::UnixEpoch())));
   EXPECT_EQ(zero_value->kind(), ValueKind::kTimestamp);
   EXPECT_EQ(zero_value->type(), type_factory.GetTimestampType());
-  EXPECT_EQ(zero_value->value(), absl::UnixEpoch());
+  EXPECT_EQ(zero_value->NativeValue(), absl::UnixEpoch());
 
   auto one_value = Must(value_factory.CreateTimestampValue(
       absl::UnixEpoch() + absl::Nanoseconds(1)));
@@ -1442,7 +1443,7 @@ TEST_P(ValueTest, Timestamp) {
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value->kind(), ValueKind::kTimestamp);
   EXPECT_EQ(one_value->type(), type_factory.GetTimestampType());
-  EXPECT_EQ(one_value->value(), absl::UnixEpoch() + absl::Nanoseconds(1));
+  EXPECT_EQ(one_value->NativeValue(), absl::UnixEpoch() + absl::Nanoseconds(1));
 
   EXPECT_NE(zero_value, one_value);
   EXPECT_NE(one_value, zero_value);
@@ -2807,7 +2808,7 @@ TEST_P(ListValueTest, NewIteratorValues) {
   std::set<int64_t> actual_values;
   while (iterator->HasNext()) {
     ASSERT_OK_AND_ASSIGN(auto value, iterator->Next());
-    actual_values.insert(value->As<IntValue>().value());
+    actual_values.insert(value->As<IntValue>().NativeValue());
   }
   EXPECT_THAT(iterator->Next(),
               StatusIs(absl::StatusCode::kFailedPrecondition));

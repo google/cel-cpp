@@ -215,7 +215,7 @@ absl::StatusOr<Handle<Value>> GenericMapValueEquals(ValueFactory& value_factory,
     CEL_ASSIGN_OR_RETURN(auto equal,
                          lhs_value->Equals(value_factory, *rhs_value));
     // TODO(uncreated-issue/32): fix this for homogeneous equality
-    if (equal->Is<BoolValue>() && !equal->As<BoolValue>().value()) {
+    if (equal->Is<BoolValue>() && !equal->As<BoolValue>().NativeValue()) {
       return equal;
     }
   }
@@ -325,15 +325,15 @@ absl::StatusOr<JsonObject> GenericMapValueConvertToJsonObject(
     CEL_ASSIGN_OR_RETURN(auto key, iterator->Next());
     absl::Cord key_json;
     if (key->Is<BoolValue>()) {
-      if (key->As<BoolValue>().value()) {
+      if (key->As<BoolValue>().NativeValue()) {
         key_json = "true";
       } else {
         key_json = "false";
       }
     } else if (key->Is<IntValue>()) {
-      key_json = absl::StrCat(key->As<IntValue>().value());
+      key_json = absl::StrCat(key->As<IntValue>().NativeValue());
     } else if (key->Is<UintValue>()) {
-      key_json = absl::StrCat(key->As<UintValue>().value());
+      key_json = absl::StrCat(key->As<UintValue>().NativeValue());
     } else if (key->Is<StringValue>()) {
       key_json = key->As<StringValue>().ToCord();
     } else {

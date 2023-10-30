@@ -385,7 +385,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
           if (ABSL_PREDICT_FALSE(!value.Is<BoolValue>())) {
             return TypeConversionError(*value.type(), to_key_type);
           }
-          key.SetBoolValue(value.As<BoolValue>().value());
+          key.SetBoolValue(value.As<BoolValue>().NativeValue());
           return absl::OkStatus();
         };
       case google::protobuf::FieldDescriptor::TYPE_SFIXED32:
@@ -404,7 +404,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
           }
           CEL_ASSIGN_OR_RETURN(auto raw_value,
                                (CheckedCast<int64_t, int32_t>::Cast(
-                                   value.As<IntValue>().value())));
+                                   value.As<IntValue>().NativeValue())));
           key.SetInt32Value(raw_value);
           return absl::OkStatus();
         };
@@ -422,7 +422,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
           if (ABSL_PREDICT_FALSE(!value.Is<IntValue>())) {
             return TypeConversionError(*value.type(), to_key_type);
           }
-          key.SetInt64Value(value.As<IntValue>().value());
+          key.SetInt64Value(value.As<IntValue>().NativeValue());
           return absl::OkStatus();
         };
       case google::protobuf::FieldDescriptor::TYPE_FIXED32:
@@ -439,7 +439,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
           }
           CEL_ASSIGN_OR_RETURN(auto raw_value,
                                (CheckedCast<uint64_t, uint32_t>::Cast(
-                                   value.As<UintValue>().value())));
+                                   value.As<UintValue>().NativeValue())));
           key.SetUInt32Value(raw_value);
           return absl::OkStatus();
         };
@@ -455,7 +455,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
           if (ABSL_PREDICT_FALSE(!value.Is<UintValue>())) {
             return TypeConversionError(*value.type(), to_key_type);
           }
-          key.SetUInt64Value(value.As<UintValue>().value());
+          key.SetUInt64Value(value.As<UintValue>().NativeValue());
           return absl::OkStatus();
         };
       case google::protobuf::FieldDescriptor::TYPE_STRING:
@@ -495,7 +495,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               if (ABSL_PREDICT_FALSE(!value.Is<BoolValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
               }
-              value_ref.SetBoolValue(value.As<BoolValue>().value());
+              value_ref.SetBoolValue(value.As<BoolValue>().NativeValue());
               return absl::OkStatus();
             };
       case google::protobuf::FieldDescriptor::TYPE_SFIXED32:
@@ -515,7 +515,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               }
               CEL_ASSIGN_OR_RETURN(auto raw_value,
                                    (CheckedCast<int64_t, int32_t>::Cast(
-                                       value.As<IntValue>().value())));
+                                       value.As<IntValue>().NativeValue())));
               value_ref.SetInt32Value(raw_value);
               return absl::OkStatus();
             };
@@ -534,7 +534,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               if (ABSL_PREDICT_FALSE(!value.Is<IntValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
               }
-              value_ref.SetInt64Value(value.As<IntValue>().value());
+              value_ref.SetInt64Value(value.As<IntValue>().NativeValue());
               return absl::OkStatus();
             };
       case google::protobuf::FieldDescriptor::TYPE_FIXED32:
@@ -552,7 +552,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               }
               CEL_ASSIGN_OR_RETURN(auto raw_value,
                                    (CheckedCast<uint64_t, uint32_t>::Cast(
-                                       value.As<UintValue>().value())));
+                                       value.As<UintValue>().NativeValue())));
               value_ref.SetUInt32Value(raw_value);
               return absl::OkStatus();
             };
@@ -569,7 +569,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               if (ABSL_PREDICT_FALSE(!value.Is<UintValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
               }
-              value_ref.SetUInt64Value(value.As<UintValue>().value());
+              value_ref.SetUInt64Value(value.As<UintValue>().NativeValue());
               return absl::OkStatus();
             };
       case google::protobuf::FieldDescriptor::TYPE_STRING:
@@ -613,7 +613,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               }
               CEL_ASSIGN_OR_RETURN(auto raw_value,
                                    (CheckedCast<double, float>::Cast(
-                                       value.As<DoubleValue>().value())));
+                                       value.As<DoubleValue>().NativeValue())));
               value_ref.SetFloatValue(raw_value);
               return absl::OkStatus();
             };
@@ -628,7 +628,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               if (ABSL_PREDICT_FALSE(!value.Is<DoubleValue>())) {
                 return TypeConversionError(*value.type(), to_value_type);
               }
-              value_ref.SetDoubleValue(value.As<DoubleValue>().value());
+              value_ref.SetDoubleValue(value.As<DoubleValue>().NativeValue());
               return absl::OkStatus();
             };
       case google::protobuf::FieldDescriptor::TYPE_ENUM:
@@ -658,7 +658,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               if (value.Is<IntValue>()) {
                 CEL_ASSIGN_OR_RETURN(auto raw_value,
                                      (CheckedCast<int64_t, int32_t>::Cast(
-                                         value.As<IntValue>().value())));
+                                         value.As<IntValue>().NativeValue())));
                 value_ref.SetEnumValue(static_cast<int>(raw_value));
               } else if (value.Is<EnumValue>()) {
                 CEL_ASSIGN_OR_RETURN(auto raw_value,
@@ -739,7 +739,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                 return TypeConversionError(*value.type(), to_value_type);
               }
               return protobuf_internal::WrapDynamicDurationProto(
-                  value.As<DurationValue>().value(),
+                  value.As<DurationValue>().NativeValue(),
                   *value_ref.MutableMessageValue());
             };
           case TypeKind::kTimestamp:
@@ -755,7 +755,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                 return TypeConversionError(*value.type(), to_value_type);
               }
               return protobuf_internal::WrapDynamicTimestampProto(
-                  value.As<TimestampValue>().value(),
+                  value.As<TimestampValue>().NativeValue(),
                   *value_ref.MutableMessageValue());
             };
           case TypeKind::kBool:
@@ -771,7 +771,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                 return TypeConversionError(*value.type(), to_value_type);
               }
               return protobuf_internal::WrapDynamicBoolValueProto(
-                  value.As<BoolValue>().value(),
+                  value.As<BoolValue>().NativeValue(),
                   *value_ref.MutableMessageValue());
             };
           case TypeKind::kInt:
@@ -787,7 +787,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                 return TypeConversionError(*value.type(), to_value_type);
               }
               return protobuf_internal::WrapDynamicSignedIntegralValueProto(
-                  value.As<IntValue>().value(),
+                  value.As<IntValue>().NativeValue(),
                   *value_ref.MutableMessageValue());
             };
           case TypeKind::kUint:
@@ -803,7 +803,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                 return TypeConversionError(*value.type(), to_value_type);
               }
               return protobuf_internal::WrapDynamicUnsignedIntegralValueProto(
-                  value.As<UintValue>().value(),
+                  value.As<UintValue>().NativeValue(),
                   *value_ref.MutableMessageValue());
             };
           case TypeKind::kDouble:
@@ -819,7 +819,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                 return TypeConversionError(*value.type(), to_value_type);
               }
               return protobuf_internal::WrapDynamicFloatingPointValueProto(
-                  value.As<DoubleValue>().value(),
+                  value.As<DoubleValue>().NativeValue(),
                   *value_ref.MutableMessageValue());
             };
           case TypeKind::kBytes:
@@ -944,7 +944,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
       CEL_ASSIGN_OR_RETURN(
           auto casted_element,
           (CheckedCast<typename base_internal::ValueTraits<V>::underlying_type,
-                       P>::Cast(element->As<V>().value())));
+                       P>::Cast(element->As<V>().NativeValue())));
       repeated_field_ref.Add(std::move(casted_element));
     }
     return absl::OkStatus();
@@ -1029,7 +1029,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
         }
         repeated_field_ref.Add(static_cast<int>(raw_value));
       } else if (element->Is<IntValue>()) {
-        int64_t raw_value = element->As<IntValue>().value();
+        int64_t raw_value = element->As<IntValue>().NativeValue();
         if (ABSL_PREDICT_FALSE(raw_value < std::numeric_limits<int>::min() ||
                                raw_value > std::numeric_limits<int>::max())) {
           return absl::OutOfRangeError("int64 to int32_t overflow");
@@ -1178,7 +1178,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                                               absl::Duration>(
             from_list_type, to_list_type, to_element_type, value, reflect,
             field_desc,
-            [](const DurationValue& value) { return value.value(); },
+            [](const DurationValue& value) { return value.NativeValue(); },
             [](absl::Duration value, google::protobuf::Message& message) {
               return protobuf_internal::WrapDynamicDurationProto(value,
                                                                  message);
@@ -1189,7 +1189,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                                               absl::Time>(
             from_list_type, to_list_type, to_element_type, value, reflect,
             field_desc,
-            [](const TimestampValue& value) { return value.value(); },
+            [](const TimestampValue& value) { return value.NativeValue(); },
             [](absl::Time value, google::protobuf::Message& message) {
               return protobuf_internal::WrapDynamicTimestampProto(value,
                                                                   message);
@@ -1198,25 +1198,29 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
         // google.protobuf.BoolValue
         return SetRepeatedWrapperMessageField<BoolType, BoolValue, bool>(
             from_list_type, to_list_type, to_element_type, value, reflect,
-            field_desc, [](const BoolValue& value) { return value.value(); },
+            field_desc,
+            [](const BoolValue& value) { return value.NativeValue(); },
             protobuf_internal::WrapDynamicBoolValueProto);
       case TypeKind::kInt:
         // google.protobuf.{Int32,Int64}Value
         return SetRepeatedWrapperMessageField<IntType, IntValue, int64_t>(
             from_list_type, to_list_type, to_element_type, value, reflect,
-            field_desc, [](const IntValue& value) { return value.value(); },
+            field_desc,
+            [](const IntValue& value) { return value.NativeValue(); },
             protobuf_internal::WrapDynamicSignedIntegralValueProto);
       case TypeKind::kUint:
         // google.protobuf.{UInt32,UInt64}Value
         return SetRepeatedWrapperMessageField<UintType, UintValue, uint64_t>(
             from_list_type, to_list_type, to_element_type, value, reflect,
-            field_desc, [](const UintValue& value) { return value.value(); },
+            field_desc,
+            [](const UintValue& value) { return value.NativeValue(); },
             protobuf_internal::WrapDynamicUnsignedIntegralValueProto);
       case TypeKind::kDouble:
         // google.protobuf.{Float,Double}Value
         return SetRepeatedWrapperMessageField<DoubleType, DoubleValue, double>(
             from_list_type, to_list_type, to_element_type, value, reflect,
-            field_desc, [](const DoubleValue& value) { return value.value(); },
+            field_desc,
+            [](const DoubleValue& value) { return value.NativeValue(); },
             protobuf_internal::WrapDynamicFloatingPointValueProto);
       case TypeKind::kBytes:
         // google.protobuf.BytesValue
@@ -1382,7 +1386,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               value->type()->DebugString()));
         }
         return protobuf_internal::WrapDynamicDurationProto(
-            value->As<DurationValue>().value(),
+            value->As<DurationValue>().NativeValue(),
             *reflect.MutableMessage(message_, &field_desc, factory_));
       }
       case TypeKind::kTimestamp: {
@@ -1393,7 +1397,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               value->type()->DebugString()));
         }
         return protobuf_internal::WrapDynamicTimestampProto(
-            value->As<TimestampValue>().value(),
+            value->As<TimestampValue>().NativeValue(),
             *reflect.MutableMessage(message_, &field_desc, factory_));
       }
       case TypeKind::kWrapper: {
@@ -1410,7 +1414,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                   " to ", value->type()->DebugString()));
             }
             return protobuf_internal::WrapDynamicBoolValueProto(
-                value->As<BoolValue>().value(),
+                value->As<BoolValue>().NativeValue(),
                 *reflect.MutableMessage(message_, &field_desc, factory_));
           }
           case TypeKind::kInt: {
@@ -1421,7 +1425,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                   " to ", value->type()->DebugString()));
             }
             return protobuf_internal::WrapDynamicSignedIntegralValueProto(
-                value->As<IntValue>().value(),
+                value->As<IntValue>().NativeValue(),
                 *reflect.MutableMessage(message_, &field_desc, factory_));
           }
           case TypeKind::kUint: {
@@ -1432,7 +1436,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                   " to ", value->type()->DebugString()));
             }
             return protobuf_internal::WrapDynamicUnsignedIntegralValueProto(
-                value->As<UintValue>().value(),
+                value->As<UintValue>().NativeValue(),
                 *reflect.MutableMessage(message_, &field_desc, factory_));
           }
           case TypeKind::kDouble: {
@@ -1443,7 +1447,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                   " to ", value->type()->DebugString()));
             }
             return protobuf_internal::WrapDynamicFloatingPointValueProto(
-                value->As<DoubleValue>().value(),
+                value->As<DoubleValue>().NativeValue(),
                 *reflect.MutableMessage(message_, &field_desc, factory_));
           }
           case TypeKind::kBytes: {
@@ -1501,7 +1505,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               value->type()->DebugString()));
         }
         reflect.SetDouble(message_, &field_desc,
-                          value->As<DoubleValue>().value());
+                          value->As<DoubleValue>().NativeValue());
         return absl::OkStatus();
       }
       case google::protobuf::FieldDescriptor::TYPE_FLOAT: {
@@ -1510,7 +1514,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               "type conversion error from ", field.type->DebugString(), " to ",
               value->type()->DebugString()));
         }
-        auto raw_value = value->As<DoubleValue>().value();
+        auto raw_value = value->As<DoubleValue>().NativeValue();
         if (ABSL_PREDICT_FALSE(static_cast<double>(static_cast<float>(
                                    raw_value)) != raw_value)) {
           return absl::InvalidArgumentError("double to float overflow");
@@ -1527,7 +1531,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               value->type()->DebugString()));
         }
         reflect.SetUInt64(message_, &field_desc,
-                          value->As<UintValue>().value());
+                          value->As<UintValue>().NativeValue());
         return absl::OkStatus();
       }
       case google::protobuf::FieldDescriptor::TYPE_BOOL: {
@@ -1536,7 +1540,8 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               "type conversion error from ", field.type->DebugString(), " to ",
               value->type()->DebugString()));
         }
-        reflect.SetBool(message_, &field_desc, value->As<BoolValue>().value());
+        reflect.SetBool(message_, &field_desc,
+                        value->As<BoolValue>().NativeValue());
         return absl::OkStatus();
       }
       case google::protobuf::FieldDescriptor::TYPE_STRING: {
@@ -1582,7 +1587,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               "type conversion error from ", field.type->DebugString(), " to ",
               value->type()->DebugString()));
         }
-        auto raw_value = value->As<UintValue>().value();
+        auto raw_value = value->As<UintValue>().NativeValue();
         if (ABSL_PREDICT_FALSE(raw_value >
                                std::numeric_limits<uint32_t>::max())) {
           return absl::InvalidArgumentError("uint64 to uint32_t overflow");
@@ -1600,7 +1605,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
         }
         int64_t raw_value;
         if (value->Is<IntValue>()) {
-          raw_value = value->As<IntValue>().value();
+          raw_value = value->As<IntValue>().NativeValue();
         } else if (value->Is<EnumValue>()) {
           raw_value = value->As<EnumValue>().number();
         } else {
@@ -1626,7 +1631,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               "type conversion error from ", field.type->DebugString(), " to ",
               value->type()->DebugString()));
         }
-        auto raw_value = value->As<IntValue>().value();
+        auto raw_value = value->As<IntValue>().NativeValue();
         if (ABSL_PREDICT_FALSE(
                 raw_value < std::numeric_limits<int32_t>::min() ||
                 raw_value > std::numeric_limits<int32_t>::max())) {
@@ -1646,7 +1651,8 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
               "type conversion error from ", field.type->DebugString(), " to ",
               value->type()->DebugString()));
         }
-        reflect.SetInt64(message_, &field_desc, value->As<IntValue>().value());
+        reflect.SetInt64(message_, &field_desc,
+                         value->As<IntValue>().NativeValue());
         return absl::OkStatus();
       }
     }

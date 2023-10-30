@@ -126,13 +126,13 @@ TEST(ListValueBuilder, Bool) {
   EXPECT_EQ(list->DebugString(), "[false, true, false]");
   ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<BoolValue>());
-  EXPECT_FALSE(element.As<BoolValue>()->value());
+  EXPECT_FALSE(element.As<BoolValue>()->NativeValue());
   ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 1));
   EXPECT_TRUE(element->Is<BoolValue>());
-  EXPECT_TRUE(element.As<BoolValue>()->value());
+  EXPECT_TRUE(element.As<BoolValue>()->NativeValue());
   ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 2));
   EXPECT_TRUE(element->Is<BoolValue>());
-  EXPECT_FALSE(element.As<BoolValue>()->value());
+  EXPECT_FALSE(element.As<BoolValue>()->NativeValue());
 }
 
 TEST(ListValueBuilder, Int) {
@@ -156,13 +156,13 @@ TEST(ListValueBuilder, Int) {
   EXPECT_THAT(list->AnyOf(value_factory,
                           [](const Handle<Value>& v) -> absl::StatusOr<bool> {
                             return v->Is<IntValue>() &&
-                                   v->As<IntValue>().value() > 2;
+                                   v->As<IntValue>().NativeValue() > 2;
                           }),
               IsOkAndHolds(false));
   EXPECT_THAT(list->AnyOf(value_factory,
                           [](const Handle<Value>& v) -> absl::StatusOr<bool> {
                             return v->Is<IntValue>() &&
-                                   v->As<IntValue>().value() < 2;
+                                   v->As<IntValue>().NativeValue() < 2;
                           }),
               IsOkAndHolds(true));
   EXPECT_THAT(list->AnyOf(value_factory,
@@ -172,13 +172,13 @@ TEST(ListValueBuilder, Int) {
               StatusIs(absl::StatusCode::kInternal, "test"));
   ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<IntValue>());
-  EXPECT_EQ(element.As<IntValue>()->value(), 0);
+  EXPECT_EQ(element.As<IntValue>()->NativeValue(), 0);
   ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 1));
   EXPECT_TRUE(element->Is<IntValue>());
-  EXPECT_EQ(element.As<IntValue>()->value(), 1);
+  EXPECT_EQ(element.As<IntValue>()->NativeValue(), 1);
   ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 2));
   EXPECT_TRUE(element->Is<IntValue>());
-  EXPECT_EQ(element.As<IntValue>()->value(), 2);
+  EXPECT_EQ(element.As<IntValue>()->NativeValue(), 2);
 }
 
 TEST(ListValueBuilder, Uint) {
@@ -201,13 +201,13 @@ TEST(ListValueBuilder, Uint) {
   EXPECT_EQ(list->DebugString(), "[0u, 1u, 2u]");
   ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<UintValue>());
-  EXPECT_EQ(element.As<UintValue>()->value(), 0);
+  EXPECT_EQ(element.As<UintValue>()->NativeValue(), 0);
   ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 1));
   EXPECT_TRUE(element->Is<UintValue>());
-  EXPECT_EQ(element.As<UintValue>()->value(), 1);
+  EXPECT_EQ(element.As<UintValue>()->NativeValue(), 1);
   ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 2));
   EXPECT_TRUE(element->Is<UintValue>());
-  EXPECT_EQ(element.As<UintValue>()->value(), 2);
+  EXPECT_EQ(element.As<UintValue>()->NativeValue(), 2);
 }
 
 TEST(ListValueBuilder, Double) {
@@ -230,13 +230,13 @@ TEST(ListValueBuilder, Double) {
   EXPECT_EQ(list->DebugString(), "[0.0, 1.0, 2.0]");
   ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<DoubleValue>());
-  EXPECT_EQ(element.As<DoubleValue>()->value(), 0);
+  EXPECT_EQ(element.As<DoubleValue>()->NativeValue(), 0);
   ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 1));
   EXPECT_TRUE(element->Is<DoubleValue>());
-  EXPECT_EQ(element.As<DoubleValue>()->value(), 1);
+  EXPECT_EQ(element.As<DoubleValue>()->NativeValue(), 1);
   ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 2));
   EXPECT_TRUE(element->Is<DoubleValue>());
-  EXPECT_EQ(element.As<DoubleValue>()->value(), 2);
+  EXPECT_EQ(element.As<DoubleValue>()->NativeValue(), 2);
 }
 
 TEST(ListValueBuilder, Duration) {
@@ -261,13 +261,13 @@ TEST(ListValueBuilder, Duration) {
   EXPECT_EQ(list->DebugString(), "[0, 1s, 1m]");
   ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<DurationValue>());
-  EXPECT_EQ(element.As<DurationValue>()->value(), absl::ZeroDuration());
+  EXPECT_EQ(element.As<DurationValue>()->NativeValue(), absl::ZeroDuration());
   ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 1));
   EXPECT_TRUE(element->Is<DurationValue>());
-  EXPECT_EQ(element.As<DurationValue>()->value(), absl::Seconds(1));
+  EXPECT_EQ(element.As<DurationValue>()->NativeValue(), absl::Seconds(1));
   ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 2));
   EXPECT_TRUE(element->Is<DurationValue>());
-  EXPECT_EQ(element.As<DurationValue>()->value(), absl::Minutes(1));
+  EXPECT_EQ(element.As<DurationValue>()->NativeValue(), absl::Minutes(1));
 }
 
 TEST(ListValueBuilder, Timestamp) {
@@ -299,15 +299,15 @@ TEST(ListValueBuilder, Timestamp) {
       "[1970-01-01T00:00:00Z, 1970-01-01T00:00:01Z, 1970-01-01T00:01:00Z]");
   ASSERT_OK_AND_ASSIGN(auto element, list->Get(value_factory, 0));
   EXPECT_TRUE(element->Is<TimestampValue>());
-  EXPECT_EQ(element.As<TimestampValue>()->value(),
+  EXPECT_EQ(element.As<TimestampValue>()->NativeValue(),
             absl::UnixEpoch() + absl::ZeroDuration());
   ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 1));
   EXPECT_TRUE(element->Is<TimestampValue>());
-  EXPECT_EQ(element.As<TimestampValue>()->value(),
+  EXPECT_EQ(element.As<TimestampValue>()->NativeValue(),
             absl::UnixEpoch() + absl::Seconds(1));
   ASSERT_OK_AND_ASSIGN(element, list->Get(value_factory, 2));
   EXPECT_TRUE(element->Is<TimestampValue>());
-  EXPECT_EQ(element.As<TimestampValue>()->value(),
+  EXPECT_EQ(element.As<TimestampValue>()->NativeValue(),
             absl::UnixEpoch() + absl::Minutes(1));
 }
 template <typename I, typename T>

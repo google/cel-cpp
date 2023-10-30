@@ -64,7 +64,7 @@ class IntValue final : public base_internal::SimpleValue<IntType, int64_t>,
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;
 
-  using Base::value;
+  using Base::NativeValue;
 
  private:
   using Base::Base;
@@ -79,11 +79,12 @@ H AbslHashValue(H state, const IntValue& value) {
   // Due to heterogeneous lookup, we need to ensure hashing IntValue and
   // UintValue produces the same result when they are heterogeneously equal. We
   // do this by bit casting int64_t to uint64_t here.
-  return H::combine(std::move(state), absl::bit_cast<uint64_t>(value.value()));
+  return H::combine(std::move(state),
+                    absl::bit_cast<uint64_t>(value.NativeValue()));
 }
 
 inline bool operator==(const IntValue& lhs, const IntValue& rhs) {
-  return lhs.value() == rhs.value();
+  return lhs.NativeValue() == rhs.NativeValue();
 }
 
 namespace base_internal {
@@ -109,7 +110,7 @@ struct ValueTraits<IntValue> {
   static underlying_type Unwrap(underlying_type value) { return value; }
 
   static underlying_type Unwrap(const Handle<type>& value) {
-    return Unwrap(value->value());
+    return Unwrap(value->NativeValue());
   }
 };
 

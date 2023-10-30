@@ -251,7 +251,7 @@ absl::StatusOr<Handle<Value>> GenericStructValueEquals(
     CEL_ASSIGN_OR_RETURN(auto rhs_field, rhs.GetField(value_factory, field_id));
     CEL_ASSIGN_OR_RETURN(auto equal,
                          lhs_field->Equals(value_factory, *rhs_field));
-    if (equal->Is<BoolValue>() && !equal->As<BoolValue>().value()) {
+    if (equal->Is<BoolValue>() && !equal->As<BoolValue>().NativeValue()) {
       return equal;
     }
   }
