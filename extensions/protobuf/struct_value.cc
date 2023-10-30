@@ -1543,7 +1543,7 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
     return out;
   }
 
-  size_t size() const final {
+  size_t Size() const final {
     return protobuf_internal::MapSize(reflection(), message_, field_);
   }
 
@@ -1554,7 +1554,7 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
         value_factory.type_factory().CreateListType(type()->key()));
     std::vector<google::protobuf::MapKey, Allocator<google::protobuf::MapKey>> keys(
         Allocator<google::protobuf::MapKey>(value_factory.memory_manager()));
-    keys.reserve(size());
+    keys.reserve(Size());
     auto begin = protobuf_internal::MapBegin(reflection(), message_, field_);
     auto end = protobuf_internal::MapEnd(reflection(), message_, field_);
     for (; begin != end; ++begin) {

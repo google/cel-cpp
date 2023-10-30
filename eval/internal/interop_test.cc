@@ -551,7 +551,7 @@ TEST(ValueInterop, MapFromLegacy) {
   auto legacy_value = CelValue::CreateMap(legacy_map);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<MapValue>());
-  EXPECT_EQ(value.As<MapValue>()->size(), 1);
+  EXPECT_EQ(value.As<MapValue>()->Size(), 1);
   auto entry_key = value_factory.CreateIntValue(1);
   EXPECT_THAT(value.As<MapValue>()->Has(value_factory, entry_key),
               IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
@@ -581,9 +581,9 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
     return output;
   }
 
-  size_t size() const override { return entries_.size(); }
+  size_t Size() const override { return entries_.size(); }
 
-  bool empty() const override { return entries_.empty(); }
+  bool IsEmpty() const override { return entries_.empty(); }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const override {

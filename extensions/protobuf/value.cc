@@ -268,7 +268,7 @@ class StaticProtoJsonMapValue : public CEL_MAP_VALUE_CLASS {
     return out;
   }
 
-  size_t size() const final { return value_.fields_size(); }
+  size_t Size() const final { return value_.fields_size(); }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const final {
@@ -335,7 +335,7 @@ class ArenaStaticProtoJsonMapValue : public CEL_MAP_VALUE_CLASS {
     return out;
   }
 
-  size_t size() const final { return value_->fields_size(); }
+  size_t Size() const final { return value_->fields_size(); }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const final {

@@ -212,7 +212,7 @@ absl::StatusOr<absl::optional<bool>> MapEqual(ValueFactory& value_factory,
   if (&lhs == &rhs) {
     return true;
   }
-  if (lhs.size() != rhs.size()) {
+  if (lhs.Size() != rhs.Size()) {
     return false;
   }
 

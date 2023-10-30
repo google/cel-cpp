@@ -93,9 +93,9 @@ class MapValue : public Value,
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;
 
-  size_t size() const;
+  size_t Size() const;
 
-  bool empty() const;
+  bool IsEmpty() const;
 
   // Retrieves the value corresponding to the given key. If the key does not
   // exist, an error value is returned. If the given key type is not
@@ -189,9 +189,9 @@ class LegacyMapValue final : public MapValue, public InlineData {
   absl::StatusOr<JsonObject> ConvertToJsonObject(
       ValueFactory& value_factory) const;
 
-  size_t size() const;
+  size_t Size() const;
 
-  bool empty() const;
+  bool IsEmpty() const;
 
   absl::StatusOr<Handle<ListValue>> ListKeys(ValueFactory& value_factory) const;
 
@@ -255,9 +255,9 @@ class AbstractMapValue : public MapValue,
   virtual absl::StatusOr<JsonObject> ConvertToJsonObject(
       ValueFactory& value_factory) const;
 
-  virtual size_t size() const = 0;
+  virtual size_t Size() const = 0;
 
-  virtual bool empty() const { return size() == 0; }
+  virtual bool IsEmpty() const { return Size() == 0; }
 
   virtual absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const = 0;

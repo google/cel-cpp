@@ -430,7 +430,7 @@ TEST_P(ProtoValueTest, StaticValueStructValue) {
   ASSERT_OK_AND_ASSIGN(
       auto value, ProtoValue::Create(value_factory, std::move(value_proto)));
   EXPECT_TRUE(value->Is<MapValue>());
-  EXPECT_EQ(value->As<MapValue>().size(), 1);
+  EXPECT_EQ(value->As<MapValue>().Size(), 1);
   ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
   EXPECT_THAT(value->As<MapValue>().Get(value_factory, key),
               IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
@@ -449,7 +449,7 @@ TEST_P(ProtoValueTest, StaticLValueValueStructValue) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        ProtoValue::Create(value_factory, value_proto));
   EXPECT_TRUE(value->Is<MapValue>());
-  EXPECT_EQ(value->As<MapValue>().size(), 1);
+  EXPECT_EQ(value->As<MapValue>().Size(), 1);
   ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
   EXPECT_THAT(value->As<MapValue>().Get(value_factory, key),
               IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
@@ -468,7 +468,7 @@ TEST_P(ProtoValueTest, StaticRValueValueStructValue) {
   ASSERT_OK_AND_ASSIGN(
       auto value, ProtoValue::Create(value_factory, std::move(value_proto)));
   EXPECT_TRUE(value->Is<MapValue>());
-  EXPECT_EQ(value->As<MapValue>().size(), 1);
+  EXPECT_EQ(value->As<MapValue>().Size(), 1);
   ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
   EXPECT_THAT(value->As<MapValue>().Get(value_factory, key),
               IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
@@ -559,7 +559,7 @@ TEST_P(ProtoValueTest, StaticStruct) {
   struct_proto->mutable_fields()->insert({"foo", bool_value_proto});
   ASSERT_OK_AND_ASSIGN(
       auto value, ProtoValue::Create(value_factory, std::move(struct_proto)));
-  EXPECT_EQ(value->size(), 1);
+  EXPECT_EQ(value->Size(), 1);
   ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
   EXPECT_THAT(value->Get(value_factory, key),
               IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
@@ -576,7 +576,7 @@ TEST_P(ProtoValueTest, StaticLValueStruct) {
   struct_proto.mutable_fields()->insert({"foo", bool_value_proto});
   ASSERT_OK_AND_ASSIGN(auto value,
                        ProtoValue::Create(value_factory, struct_proto));
-  EXPECT_EQ(value->size(), 1);
+  EXPECT_EQ(value->Size(), 1);
   ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
   EXPECT_THAT(value->Get(value_factory, key),
               IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
@@ -593,7 +593,7 @@ TEST_P(ProtoValueTest, StaticRValueStruct) {
   struct_proto.mutable_fields()->insert({"foo", bool_value_proto});
   ASSERT_OK_AND_ASSIGN(
       auto value, ProtoValue::Create(value_factory, std::move(struct_proto)));
-  EXPECT_EQ(value->size(), 1);
+  EXPECT_EQ(value->Size(), 1);
   ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
   EXPECT_THAT(value->Get(value_factory, key),
               IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
@@ -778,7 +778,7 @@ TEST_P(ProtoValueAnyTest, AnyMessage) {
       {"foo", google::protobuf::Value::default_instance()});
   Run(payload, [](ValueFactory& value_factory, const Handle<Value>& value) {
     ASSERT_TRUE(value->Is<MapValue>());
-    EXPECT_EQ(value.As<MapValue>()->size(), 1);
+    EXPECT_EQ(value.As<MapValue>()->Size(), 1);
     ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
     ASSERT_OK_AND_ASSIGN(auto field,
                          value->As<MapValue>().Get(value_factory, key));

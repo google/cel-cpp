@@ -114,8 +114,8 @@ TEST(MapValueBuilder, UnspecializedUnspecialized) {
               AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
                                                "\"bar\": b\"baz\"")));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
-  EXPECT_FALSE(map->empty());
-  EXPECT_EQ(map->size(), 3);
+  EXPECT_FALSE(map->IsEmpty());
+  EXPECT_EQ(map->Size(), 3);
   ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE(entry->Is<BytesValue>());
   EXPECT_TRUE(entry.As<BytesValue>()->empty());
@@ -169,8 +169,8 @@ TEST(MapValueBuilder, UnspecializedGeneric) {
               AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
                                                "\"bar\": b\"baz\"")));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
-  EXPECT_FALSE(map->empty());
-  EXPECT_EQ(map->size(), 3);
+  EXPECT_FALSE(map->IsEmpty());
+  EXPECT_EQ(map->Size(), 3);
   ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE(entry->Is<BytesValue>());
   EXPECT_TRUE(entry.As<BytesValue>()->empty());
@@ -224,8 +224,8 @@ TEST(MapValueBuilder, GenericUnspecialized) {
               AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
                                                "\"bar\": b\"baz\"")));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
-  EXPECT_FALSE(map->empty());
-  EXPECT_EQ(map->size(), 3);
+  EXPECT_FALSE(map->IsEmpty());
+  EXPECT_EQ(map->Size(), 3);
   ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE(entry->Is<BytesValue>());
   EXPECT_TRUE(entry.As<BytesValue>()->empty());
@@ -279,8 +279,8 @@ TEST(MapValueBuilder, GenericGeneric) {
               AnyOfArray(MakeMapDebugStringFor("\"\": b\"\"", "\"foo\": b\"\"",
                                                "\"bar\": b\"baz\"")));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
-  EXPECT_FALSE(map->empty());
-  EXPECT_EQ(map->size(), 3);
+  EXPECT_FALSE(map->IsEmpty());
+  EXPECT_EQ(map->Size(), 3);
   ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE(entry->Is<BytesValue>());
   EXPECT_TRUE(entry.As<BytesValue>()->empty());
@@ -333,8 +333,8 @@ TEST(MapValueBuilder, UnspecializedSpecialized) {
       map_builder.DebugString(),
       AnyOfArray(MakeMapDebugStringFor("\"\": 0", "\"foo\": 0", "\"bar\": 1")));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
-  EXPECT_FALSE(map->empty());
-  EXPECT_EQ(map->size(), 3);
+  EXPECT_FALSE(map->IsEmpty());
+  EXPECT_EQ(map->Size(), 3);
   ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE(entry->Is<IntValue>());
   EXPECT_EQ(entry.As<IntValue>()->NativeValue(), 0);
@@ -386,8 +386,8 @@ TEST(MapValueBuilder, GenericSpecialized) {
       map_builder.DebugString(),
       AnyOfArray(MakeMapDebugStringFor("\"\": 0", "\"foo\": 0", "\"bar\": 1")));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
-  EXPECT_FALSE(map->empty());
-  EXPECT_EQ(map->size(), 3);
+  EXPECT_FALSE(map->IsEmpty());
+  EXPECT_EQ(map->Size(), 3);
   ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE(entry->Is<IntValue>());
   EXPECT_EQ(entry.As<IntValue>()->NativeValue(), 0);
@@ -439,8 +439,8 @@ TEST(MapValueBuilder, SpecializedUnspecialized) {
       map_builder.DebugString(),
       AnyOfArray(MakeMapDebugStringFor("0: \"\"", "1: \"\"", "2: \"foo\"")));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
-  EXPECT_FALSE(map->empty());
-  EXPECT_EQ(map->size(), 3);
+  EXPECT_FALSE(map->IsEmpty());
+  EXPECT_EQ(map->Size(), 3);
   ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE(entry->Is<StringValue>());
   EXPECT_TRUE(entry.As<StringValue>()->empty());
@@ -492,8 +492,8 @@ TEST(MapValueBuilder, SpecializedGeneric) {
       map_builder.DebugString(),
       AnyOfArray(MakeMapDebugStringFor("0: \"\"", "1: \"\"", "2: \"foo\"")));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
-  EXPECT_FALSE(map->empty());
-  EXPECT_EQ(map->size(), 3);
+  EXPECT_FALSE(map->IsEmpty());
+  EXPECT_EQ(map->Size(), 3);
   ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE(entry->Is<StringValue>());
   EXPECT_TRUE(entry.As<StringValue>()->empty());
@@ -540,8 +540,8 @@ void TestMapBuilder(GetKey get_key, GetValue get_value, MakeKey make_key1,
   EXPECT_EQ(map_builder.Size(), 3);
   EXPECT_THAT(map_builder.DebugString(), AnyOfArray(debug_string));
   ASSERT_OK_AND_ASSIGN(auto map, std::move(map_builder).Build());
-  EXPECT_FALSE(map->empty());
-  EXPECT_EQ(map->size(), 3);
+  EXPECT_FALSE(map->IsEmpty());
+  EXPECT_EQ(map->Size(), 3);
   ASSERT_OK_AND_ASSIGN(auto entry, map->Get(value_factory, key));
   EXPECT_TRUE(entry->template Is<Value>());
   EXPECT_EQ(*(entry.template As<Value>()),

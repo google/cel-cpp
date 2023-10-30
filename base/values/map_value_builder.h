@@ -338,9 +338,9 @@ class DynamicMapValue final : public AbstractMapValue {
         [](const Handle<Value>& value) { return value->DebugString(); });
   }
 
-  size_t size() const override { return storage_.size(); }
+  size_t Size() const override { return storage_.size(); }
 
-  bool empty() const override { return storage_.empty(); }
+  bool IsEmpty() const override { return storage_.empty(); }
 
   absl::StatusOr<std::pair<Handle<Value>, bool>> FindImpl(
       ValueFactory& value_factory, const Handle<Value>& key) const override {
@@ -359,7 +359,7 @@ class DynamicMapValue final : public AbstractMapValue {
   absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const override {
     ListValueBuilder<Value> keys(value_factory, type()->key());
-    keys.Reserve(size());
+    keys.Reserve(Size());
     for (const auto& current : storage_) {
       CEL_RETURN_IF_ERROR(keys.Add(current.first));
     }
@@ -403,16 +403,16 @@ class StaticMapValue<K, void> final : public AbstractMapValue {
         [](const Handle<Value>& value) { return value->DebugString(); });
   }
 
-  size_t size() const override { return storage_.size(); }
+  size_t Size() const override { return storage_.size(); }
 
-  bool empty() const override { return storage_.empty(); }
+  bool IsEmpty() const override { return storage_.empty(); }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const override {
     ListValueBuilder<K> keys(
         value_factory,
         type()->key().template As<typename ValueTraits<K>::type_type>());
-    keys.Reserve(size());
+    keys.Reserve(Size());
     for (const auto& current : storage_) {
       CEL_RETURN_IF_ERROR(keys.Add(current.first));
     }
@@ -466,14 +466,14 @@ class StaticMapValue<void, V> final : public AbstractMapValue {
         });
   }
 
-  size_t size() const override { return storage_.size(); }
+  size_t Size() const override { return storage_.size(); }
 
-  bool empty() const override { return storage_.empty(); }
+  bool IsEmpty() const override { return storage_.empty(); }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const override {
     ListValueBuilder<Value> keys(value_factory, type()->key());
-    keys.Reserve(size());
+    keys.Reserve(Size());
     for (const auto& current : storage_) {
       CEL_RETURN_IF_ERROR(keys.Add(current.first));
     }
@@ -532,16 +532,16 @@ class StaticMapValue final : public AbstractMapValue {
         });
   }
 
-  size_t size() const override { return storage_.size(); }
+  size_t Size() const override { return storage_.size(); }
 
-  bool empty() const override { return storage_.empty(); }
+  bool IsEmpty() const override { return storage_.empty(); }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const override {
     ListValueBuilder<K> keys(
         value_factory,
         type()->key().template As<typename ValueTraits<K>::type_type>());
-    keys.Reserve(size());
+    keys.Reserve(Size());
     for (const auto& current : storage_) {
       CEL_RETURN_IF_ERROR(keys.Add(current.first));
     }

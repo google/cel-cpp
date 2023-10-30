@@ -120,9 +120,11 @@ absl::StatusOr<Handle<Value>> MapValue::ConvertToType(
       base_internal::TypeConversionError(*this->type(), *type));
 }
 
-size_t MapValue::size() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(size); }
+size_t MapValue::Size() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(Size); }
 
-bool MapValue::empty() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(empty); }
+bool MapValue::IsEmpty() const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(IsEmpty);
+}
 
 absl::StatusOr<Handle<Value>> MapValue::Get(ValueFactory& value_factory,
                                             const Handle<Value>& key) const {
@@ -193,8 +195,8 @@ absl::StatusOr<Handle<Value>> GenericMapValueEquals(ValueFactory& value_factory,
   if (&lhs == &rhs) {
     return value_factory.CreateBoolValue(true);
   }
-  const auto lhs_size = lhs.size();
-  if (lhs_size != rhs.size()) {
+  const auto lhs_size = lhs.Size();
+  if (lhs_size != rhs.Size()) {
     return value_factory.CreateBoolValue(false);
   }
   if (lhs_size == 0) {
@@ -283,7 +285,7 @@ class AbstractMapValueIterator final : public MapValue::Iterator {
   bool HasNext() override {
     if (ABSL_PREDICT_FALSE(!keys_iterator_.has_value())) {
       // First call.
-      return !value_->empty();
+      return !value_->IsEmpty();
     }
     return (*keys_iterator_)->HasNext();
   }
@@ -319,7 +321,7 @@ absl::StatusOr<Any> GenericMapValueConvertToAny(const MapValue& value,
 absl::StatusOr<JsonObject> GenericMapValueConvertToJsonObject(
     const MapValue& value, ValueFactory& value_factory) {
   JsonObjectBuilder builder;
-  builder.reserve(value.size());
+  builder.reserve(value.Size());
   CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_factory));
   while (iterator->HasNext()) {
     CEL_ASSIGN_OR_RETURN(auto key, iterator->Next());
@@ -373,9 +375,9 @@ absl::StatusOr<JsonObject> LegacyMapValue::ConvertToJsonObject(
   return GenericMapValueConvertToJsonObject(*this, value_factory);
 }
 
-size_t LegacyMapValue::size() const { return LegacyMapValueSize(impl_); }
+size_t LegacyMapValue::Size() const { return LegacyMapValueSize(impl_); }
 
-bool LegacyMapValue::empty() const { return LegacyMapValueEmpty(impl_); }
+bool LegacyMapValue::IsEmpty() const { return LegacyMapValueEmpty(impl_); }
 
 absl::StatusOr<std::pair<Handle<Value>, bool>> LegacyMapValue::FindImpl(
     ValueFactory& value_factory, const Handle<Value>& key) const {

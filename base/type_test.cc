@@ -1001,7 +1001,7 @@ TEST_P(TypeNewValueFromAnyTest, DynType) {
                  value_factory(), absl::Cord("\x2a\x0b\x0a\x09\x0a\x03"
                                              "foo\x12\x02\x20\x01")));
   ASSERT_TRUE(value->Is<MapValue>());
-  ASSERT_EQ(value->As<MapValue>().size(), 1);
+  ASSERT_EQ(value->As<MapValue>().Size(), 1);
   ASSERT_OK_AND_ASSIGN(auto key, value_factory().CreateStringValue("foo"));
   ASSERT_OK_AND_ASSIGN(auto entry,
                        value->As<MapValue>().Get(value_factory(), key));

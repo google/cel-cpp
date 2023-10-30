@@ -186,7 +186,7 @@ TEST_P(BindProtoToActivationTest, BindProtoToActivationRepeatedComplex) {
 MATCHER_P(IsMapValueOfSize, size, "") {
   const Handle<Value>& handle = arg;
 
-  return handle->Is<MapValue>() && handle->As<MapValue>().size() == size;
+  return handle->Is<MapValue>() && handle->As<MapValue>().Size() == size;
 }
 
 TEST_P(BindProtoToActivationTest, BindProtoToActivationMap) {

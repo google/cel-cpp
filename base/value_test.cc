@@ -377,7 +377,7 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
     ABSL_ASSERT(type->value()->Is<IntType>());
   }
 
-  size_t size() const override { return entries_.size(); }
+  size_t Size() const override { return entries_.size(); }
 
   std::string DebugString() const override {
     std::vector<std::string> parts;
@@ -2899,15 +2899,15 @@ TEST_P(MapValueTest, GetAndHas) {
   ASSERT_OK_AND_ASSIGN(auto map_value,
                        value_factory.CreateMapValue<TestMapValue>(
                            map_type, std::map<std::string, int64_t>{}));
-  EXPECT_TRUE(map_value->empty());
-  EXPECT_EQ(map_value->size(), 0);
+  EXPECT_TRUE(map_value->IsEmpty());
+  EXPECT_EQ(map_value->Size(), 0);
 
   ASSERT_OK_AND_ASSIGN(map_value,
                        value_factory.CreateMapValue<TestMapValue>(
                            map_type, std::map<std::string, int64_t>{
                                          {"foo", 1}, {"bar", 2}, {"baz", 3}}));
-  EXPECT_FALSE(map_value->empty());
-  EXPECT_EQ(map_value->size(), 3);
+  EXPECT_FALSE(map_value->IsEmpty());
+  EXPECT_EQ(map_value->Size(), 3);
   EXPECT_EQ(Must(map_value->Get(value_factory,
                                 Must(value_factory.CreateStringValue("foo")))),
             value_factory.CreateIntValue(1));

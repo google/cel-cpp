@@ -948,7 +948,7 @@ TEST_P(ProtoStructValueTest, StructGetField) {
       memory_manager(), "single_struct",
       [](const Handle<Value>& field) {
         ASSERT_TRUE(field->Is<MapValue>());
-        EXPECT_TRUE(field->As<MapValue>().empty());
+        EXPECT_TRUE(field->As<MapValue>().IsEmpty());
       },
       [](TestAllTypes& message) {
         google::protobuf::Value value_proto;
@@ -958,7 +958,7 @@ TEST_P(ProtoStructValueTest, StructGetField) {
       },
       [](ValueFactory& value_factory, const Handle<Value>& field) {
         ASSERT_TRUE(field->Is<MapValue>());
-        EXPECT_EQ(field->As<MapValue>().size(), 1);
+        EXPECT_EQ(field->As<MapValue>().Size(), 1);
         ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
         EXPECT_THAT(field->As<MapValue>().Get(value_factory, key),
                     IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
@@ -1679,8 +1679,8 @@ void TestMapGetField(MemoryManager& memory_manager,
   ASSERT_OK_AND_ASSIGN(
       auto field, value_without->GetFieldByName(value_factory, map_field_name));
   EXPECT_TRUE(field->Is<MapValue>());
-  EXPECT_EQ(field.As<MapValue>()->size(), 0);
-  EXPECT_TRUE(field.As<MapValue>()->empty());
+  EXPECT_EQ(field.As<MapValue>()->Size(), 0);
+  EXPECT_TRUE(field.As<MapValue>()->IsEmpty());
   EXPECT_EQ(field->DebugString(), "{}");
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
@@ -1693,8 +1693,8 @@ void TestMapGetField(MemoryManager& memory_manager,
   ASSERT_OK_AND_ASSIGN(
       field, value_with->GetFieldByName(value_factory, map_field_name));
   EXPECT_TRUE(field->Is<MapValue>());
-  EXPECT_EQ(field.As<MapValue>()->size(), 2);
-  EXPECT_FALSE(field.As<MapValue>()->empty());
+  EXPECT_EQ(field.As<MapValue>()->Size(), 2);
+  EXPECT_FALSE(field.As<MapValue>()->IsEmpty());
   EXPECT_EQ(field->DebugString(), debug_string);
   ASSERT_OK_AND_ASSIGN(
       auto field_value,
@@ -1768,8 +1768,8 @@ void TestStringMapGetField(MemoryManager& memory_manager,
   ASSERT_OK_AND_ASSIGN(
       auto field, value_without->GetFieldByName(value_factory, map_field_name));
   EXPECT_TRUE(field->Is<MapValue>());
-  EXPECT_EQ(field.As<MapValue>()->size(), 0);
-  EXPECT_TRUE(field.As<MapValue>()->empty());
+  EXPECT_EQ(field.As<MapValue>()->Size(), 0);
+  EXPECT_TRUE(field.As<MapValue>()->IsEmpty());
   EXPECT_EQ(field->DebugString(), "{}");
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
@@ -1782,8 +1782,8 @@ void TestStringMapGetField(MemoryManager& memory_manager,
   ASSERT_OK_AND_ASSIGN(
       field, value_with->GetFieldByName(value_factory, map_field_name));
   EXPECT_TRUE(field->Is<MapValue>());
-  EXPECT_EQ(field.As<MapValue>()->size(), 2);
-  EXPECT_FALSE(field.As<MapValue>()->empty());
+  EXPECT_EQ(field.As<MapValue>()->Size(), 2);
+  EXPECT_FALSE(field.As<MapValue>()->IsEmpty());
   EXPECT_EQ(field->DebugString(), debug_string);
   ASSERT_OK_AND_ASSIGN(
       auto field_value,
@@ -2933,8 +2933,8 @@ TEST_P(ProtoStructValueTest, BoolMessageMapGetField) {
 }
 
 void EmptyMapTester(const Handle<MapValue>& field) {
-  EXPECT_TRUE(field->empty());
-  EXPECT_EQ(field->size(), 0);
+  EXPECT_TRUE(field->IsEmpty());
+  EXPECT_EQ(field->Size(), 0);
   EXPECT_EQ(field->DebugString(), "{}");
 }
 
@@ -2949,14 +2949,14 @@ TEST_P(ProtoStructValueTest, BoolStructMapGetField) {
         message.mutable_map_bool_struct()->insert({false, proto});
       },
       [](ValueFactory& value_factory, const Handle<MapValue>& field) {
-        EXPECT_FALSE(field->empty());
-        EXPECT_EQ(field->size(), 1);
+        EXPECT_FALSE(field->IsEmpty());
+        EXPECT_EQ(field->Size(), 1);
         ASSERT_OK_AND_ASSIGN(
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
         ASSERT_TRUE(value);
         ASSERT_TRUE(value->Is<MapValue>());
-        EXPECT_EQ(value.As<MapValue>()->size(), 1);
+        EXPECT_EQ(value.As<MapValue>()->Size(), 1);
         ASSERT_OK_AND_ASSIGN(
             auto subvalue,
             value.As<MapValue>()->Get(
@@ -2976,8 +2976,8 @@ TEST_P(ProtoStructValueTest, BoolValueMapGetField) {
         message.mutable_map_bool_value()->insert({false, value});
       },
       [](ValueFactory& value_factory, const Handle<MapValue>& field) {
-        EXPECT_FALSE(field->empty());
-        EXPECT_EQ(field->size(), 1);
+        EXPECT_FALSE(field->IsEmpty());
+        EXPECT_EQ(field->Size(), 1);
         ASSERT_OK_AND_ASSIGN(
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
@@ -2996,8 +2996,8 @@ TEST_P(ProtoStructValueTest, BoolListValueMapGetField) {
         message.mutable_map_bool_list_value()->insert({false, value});
       },
       [](ValueFactory& value_factory, const Handle<MapValue>& field) {
-        EXPECT_FALSE(field->empty());
-        EXPECT_EQ(field->size(), 1);
+        EXPECT_FALSE(field->IsEmpty());
+        EXPECT_EQ(field->Size(), 1);
         ASSERT_OK_AND_ASSIGN(
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
@@ -3020,8 +3020,8 @@ TEST_P(ProtoStructValueTest, BoolBoolWrapperMapGetField) {
         message.mutable_map_bool_bool_wrapper()->insert({false, value});
       },
       [](ValueFactory& value_factory, const Handle<MapValue>& field) {
-        EXPECT_FALSE(field->empty());
-        EXPECT_EQ(field->size(), 1);
+        EXPECT_FALSE(field->IsEmpty());
+        EXPECT_EQ(field->Size(), 1);
         ASSERT_OK_AND_ASSIGN(
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
@@ -3040,8 +3040,8 @@ TEST_P(ProtoStructValueTest, BoolInt32WrapperMapGetField) {
         message.mutable_map_bool_int32_wrapper()->insert({false, value});
       },
       [](ValueFactory& value_factory, const Handle<MapValue>& field) {
-        EXPECT_FALSE(field->empty());
-        EXPECT_EQ(field->size(), 1);
+        EXPECT_FALSE(field->IsEmpty());
+        EXPECT_EQ(field->Size(), 1);
         ASSERT_OK_AND_ASSIGN(
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
@@ -3060,8 +3060,8 @@ TEST_P(ProtoStructValueTest, BoolInt64WrapperMapGetField) {
         message.mutable_map_bool_int64_wrapper()->insert({false, value});
       },
       [](ValueFactory& value_factory, const Handle<MapValue>& field) {
-        EXPECT_FALSE(field->empty());
-        EXPECT_EQ(field->size(), 1);
+        EXPECT_FALSE(field->IsEmpty());
+        EXPECT_EQ(field->Size(), 1);
         ASSERT_OK_AND_ASSIGN(
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
@@ -3080,8 +3080,8 @@ TEST_P(ProtoStructValueTest, BoolUInt32WrapperMapGetField) {
         message.mutable_map_bool_uint32_wrapper()->insert({false, value});
       },
       [](ValueFactory& value_factory, const Handle<MapValue>& field) {
-        EXPECT_FALSE(field->empty());
-        EXPECT_EQ(field->size(), 1);
+        EXPECT_FALSE(field->IsEmpty());
+        EXPECT_EQ(field->Size(), 1);
         ASSERT_OK_AND_ASSIGN(
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
@@ -3100,8 +3100,8 @@ TEST_P(ProtoStructValueTest, BoolUInt64WrapperMapGetField) {
         message.mutable_map_bool_uint64_wrapper()->insert({false, value});
       },
       [](ValueFactory& value_factory, const Handle<MapValue>& field) {
-        EXPECT_FALSE(field->empty());
-        EXPECT_EQ(field->size(), 1);
+        EXPECT_FALSE(field->IsEmpty());
+        EXPECT_EQ(field->Size(), 1);
         ASSERT_OK_AND_ASSIGN(
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
@@ -3120,8 +3120,8 @@ TEST_P(ProtoStructValueTest, BoolFloatWrapperMapGetField) {
         message.mutable_map_bool_float_wrapper()->insert({false, value});
       },
       [](ValueFactory& value_factory, const Handle<MapValue>& field) {
-        EXPECT_FALSE(field->empty());
-        EXPECT_EQ(field->size(), 1);
+        EXPECT_FALSE(field->IsEmpty());
+        EXPECT_EQ(field->Size(), 1);
         ASSERT_OK_AND_ASSIGN(
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
@@ -3140,8 +3140,8 @@ TEST_P(ProtoStructValueTest, BoolDoubleWrapperMapGetField) {
         message.mutable_map_bool_double_wrapper()->insert({false, value});
       },
       [](ValueFactory& value_factory, const Handle<MapValue>& field) {
-        EXPECT_FALSE(field->empty());
-        EXPECT_EQ(field->size(), 1);
+        EXPECT_FALSE(field->IsEmpty());
+        EXPECT_EQ(field->Size(), 1);
         ASSERT_OK_AND_ASSIGN(
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
@@ -3160,8 +3160,8 @@ TEST_P(ProtoStructValueTest, BoolBytesWrapperMapGetField) {
         message.mutable_map_bool_bytes_wrapper()->insert({false, value});
       },
       [](ValueFactory& value_factory, const Handle<MapValue>& field) {
-        EXPECT_FALSE(field->empty());
-        EXPECT_EQ(field->size(), 1);
+        EXPECT_FALSE(field->IsEmpty());
+        EXPECT_EQ(field->Size(), 1);
         ASSERT_OK_AND_ASSIGN(
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));
@@ -3180,8 +3180,8 @@ TEST_P(ProtoStructValueTest, BoolStringWrapperMapGetField) {
         message.mutable_map_bool_string_wrapper()->insert({false, value});
       },
       [](ValueFactory& value_factory, const Handle<MapValue>& field) {
-        EXPECT_FALSE(field->empty());
-        EXPECT_EQ(field->size(), 1);
+        EXPECT_FALSE(field->IsEmpty());
+        EXPECT_EQ(field->Size(), 1);
         ASSERT_OK_AND_ASSIGN(
             auto value,
             field->Get(value_factory, value_factory.CreateBoolValue(false)));

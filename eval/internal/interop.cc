@@ -269,9 +269,9 @@ class LegacyCelMap final : public CelMap {
     return has->Is<BoolValue>() && has->As<BoolValue>().NativeValue();
   }
 
-  int size() const override { return static_cast<int>(impl_->size()); }
+  int size() const override { return static_cast<int>(impl_->Size()); }
 
-  bool empty() const override { return impl_->empty(); }
+  bool empty() const override { return impl_->IsEmpty(); }
 
   absl::StatusOr<const CelList*> ListKeys() const override {
     return ListKeys(arena_);

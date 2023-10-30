@@ -106,8 +106,8 @@ TEST(ValueFactory, JsonObject) {
   auto object = MakeJsonObject({{JsonString("foo"), true}});
   auto value = value_factory.CreateValueFromJson(object);
   ASSERT_TRUE(value->Is<MapValue>());
-  EXPECT_FALSE(value->As<MapValue>().empty());
-  EXPECT_EQ(value->As<MapValue>().size(), 1);
+  EXPECT_FALSE(value->As<MapValue>().IsEmpty());
+  EXPECT_EQ(value->As<MapValue>().Size(), 1);
   EXPECT_EQ(value->DebugString(), "{\"foo\": true}");
   ASSERT_OK_AND_ASSIGN(
       auto entry,

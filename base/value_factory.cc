@@ -353,9 +353,9 @@ class JsonMapValue final : public CEL_MAP_VALUE_CLASS {
     return object_;
   }
 
-  size_t size() const override { return object_.size(); }
+  size_t Size() const override { return object_.size(); }
 
-  bool empty() const override { return object_.empty(); }
+  bool IsEmpty() const override { return object_.empty(); }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const override {

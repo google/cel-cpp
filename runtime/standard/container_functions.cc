@@ -35,7 +35,7 @@ namespace {
 using cel::runtime_internal::MutableListValue;
 
 int64_t MapSizeImpl(ValueFactory&, const MapValue& value) {
-  return value.size();
+  return value.Size();
 }
 
 int64_t ListSizeImpl(ValueFactory&, const ListValue& value) {
