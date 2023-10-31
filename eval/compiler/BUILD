@@ -61,6 +61,7 @@ cc_library(
         "flat_expr_builder.h",
     ],
     deps = [
+        ":comprehension_vulnerability_check",
         ":flat_expr_builder_extensions",
         ":resolver",
         "//base:ast",
@@ -470,5 +471,17 @@ cc_test(
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "comprehension_vulnerability_check",
+    srcs = ["comprehension_vulnerability_check.cc"],
+    hdrs = ["comprehension_vulnerability_check.h"],
+    deps = [
+        "//base:builtins",
+        "//base/ast_internal:expr",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:variant",
     ],
 )
