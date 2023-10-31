@@ -53,7 +53,6 @@
 #include "eval/eval/create_list_step.h"
 #include "eval/eval/create_struct_step.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/eval/expression_build_warning.h"
 #include "eval/eval/function_step.h"
 #include "eval/eval/ident_step.h"
 #include "eval/eval/jump_step.h"
@@ -65,6 +64,8 @@
 #include "eval/public/ast_visitor_native.h"
 #include "eval/public/source_position_native.h"
 #include "internal/status_macros.h"
+#include "runtime/internal/issue_collector.h"
+#include "runtime/runtime_issue.h"
 
 namespace google::api::expr::runtime {
 
@@ -72,12 +73,14 @@ namespace {
 
 using ::cel::Ast;
 using ::cel::Handle;
+using ::cel::RuntimeIssue;
 using ::cel::TypeFactory;
 using ::cel::TypeManager;
 using ::cel::Value;
 using ::cel::ValueFactory;
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::AstTraverse;
+using ::cel::runtime_internal::IssueCollector;
 
 constexpr int64_t kExprIdNotFromAst = -1;
 
@@ -209,7 +212,8 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       const absl::flat_hash_map<int64_t, cel::ast_internal::Reference>&
           reference_map,
       ExecutionPath& path, ValueFactory& value_factory,
-      BuilderWarnings& warnings, PlannerContext::ProgramTree& program_tree,
+      IssueCollector& issue_collector,
+      PlannerContext::ProgramTree& program_tree,
       PlannerContext& extension_context)
       : resolver_(resolver),
         execution_path_(path),
@@ -222,7 +226,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
         enable_comprehension_vulnerability_check_(
             enable_comprehension_vulnerability_check),
         program_optimizers_(program_optimizers),
-        builder_warnings_(warnings),
+        issue_collector_(issue_collector),
         reference_map_(reference_map),
         program_tree_(program_tree),
         extension_context_(extension_context) {}
@@ -535,8 +539,10 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       // builder_warnings configuration, this could result in termination of the
       // CelExpression creation or an inspectable warning for use within runtime
       // logging.
-      auto status = builder_warnings_.AddWarning(absl::InvalidArgumentError(
-          "No overloads provided for FunctionStep creation"));
+      auto status = issue_collector_.AddIssue(RuntimeIssue::CreateWarning(
+          absl::InvalidArgumentError(
+              "No overloads provided for FunctionStep creation"),
+          RuntimeIssue::ErrorCode::kNoMatchingOverload));
       if (!status.ok()) {
         SetProgressStatusError(status);
         return;
@@ -885,7 +891,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   bool enable_comprehension_vulnerability_check_;
 
   absl::Span<const std::unique_ptr<ProgramOptimizer>> program_optimizers_;
-  BuilderWarnings& builder_warnings_;
+  IssueCollector& issue_collector_;
 
   const absl::flat_hash_map<int64_t, cel::ast_internal::Reference>&
       reference_map_;
@@ -1266,14 +1272,17 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
                            type_registry_.GetComposedTypeProvider());
   ValueFactory value_factory(type_manager);
 
-  BuilderWarnings warnings_builder(options_.fail_on_warnings);
+  RuntimeIssue::Severity max_severity = options_.fail_on_warnings
+                                            ? RuntimeIssue::Severity::kWarning
+                                            : RuntimeIssue::Severity::kError;
+  IssueCollector issue_collector(max_severity);
   Resolver resolver(container_, function_registry_, type_registry_,
                     value_factory, type_registry_.resolveable_enums(),
                     options_.enable_qualified_type_identifiers);
 
   PlannerContext::ProgramTree program_tree;
   PlannerContext extension_context(resolver, options_, value_factory,
-                                   warnings_builder, execution_path,
+                                   issue_collector, execution_path,
                                    program_tree);
 
   auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
@@ -1294,7 +1303,7 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
   }
   FlatExprVisitor visitor(
       resolver, options_, enable_comprehension_vulnerability_check_, optimizers,
-      ast_impl.reference_map(), execution_path, value_factory, warnings_builder,
+      ast_impl.reference_map(), execution_path, value_factory, issue_collector,
       program_tree, extension_context);
 
   cel::ast_internal::TraversalOptions opts;
@@ -1306,7 +1315,11 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
   }
 
   if (warnings != nullptr) {
-    *warnings = std::move(warnings_builder).warnings();
+    warnings->clear();
+    auto issues = issue_collector.ExtractIssues();
+    for (RuntimeIssue& issue : issues) {
+      warnings->push_back(std::move(issue).ToStatus());
+    }
   }
 
   return FlatExpression(std::move(execution_path), visitor.slot_count(),

@@ -556,7 +556,6 @@ cc_test(
         ":cel_expression_flat_impl",
         ":const_value_step",
         ":evaluator_core",
-        ":expression_build_warning",
         ":function_step",
         ":ident_step",
         "//base:data",
@@ -690,32 +689,6 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
-    name = "expression_build_warning",
-    srcs = [
-        "expression_build_warning.cc",
-    ],
-    hdrs = [
-        "expression_build_warning.h",
-    ],
-    deps = [
-        "@com_google_absl//absl/status",
-    ],
-)
-
-cc_test(
-    name = "expression_build_warning_test",
-    size = "small",
-    srcs = [
-        "expression_build_warning_test.cc",
-    ],
-    deps = [
-        ":expression_build_warning",
-        "//internal:testing",
-        "@com_google_absl//absl/status",
     ],
 )
 

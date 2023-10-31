@@ -22,7 +22,7 @@
 #include "base/ast_internal/ast_impl.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
-#include "eval/eval/expression_build_warning.h"
+#include "runtime/internal/issue_collector.h"
 
 namespace google::api::expr::runtime {
 
@@ -35,9 +35,9 @@ namespace google::api::expr::runtime {
 // Will warn or return a non-ok status if references can't be resolved (no
 // function overload could match a call) or are inconsistent (reference map
 // points to an expr node that isn't a reference).
-absl::StatusOr<bool> ResolveReferences(const Resolver& resolver,
-                                       BuilderWarnings& warnings,
-                                       cel::ast_internal::AstImpl& ast);
+absl::StatusOr<bool> ResolveReferences(
+    const Resolver& resolver, cel::runtime_internal::IssueCollector& issues,
+    cel::ast_internal::AstImpl& ast);
 
 enum class ReferenceResolverOption {
   // Always attempt to resolve references based on runtime types and functions.

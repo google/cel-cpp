@@ -32,13 +32,14 @@
 #include "base/type_manager.h"
 #include "base/value_factory.h"
 #include "eval/compiler/resolver.h"
-#include "eval/eval/expression_build_warning.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
 #include "extensions/protobuf/ast_converters.h"
 #include "internal/casts.h"
 #include "internal/testing.h"
+#include "runtime/internal/issue_collector.h"
+#include "runtime/runtime_issue.h"
 #include "runtime/type_registry.h"
 #include "google/protobuf/text_format.h"
 
@@ -47,10 +48,12 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::Ast;
+using ::cel::RuntimeIssue;
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::SourceInfo;
 using ::cel::extensions::internal::ConvertProtoExprToNative;
+using ::cel::runtime_internal::IssueCollector;
 using testing::Contains;
 using testing::ElementsAre;
 using testing::Eq;
@@ -111,11 +114,19 @@ std::unique_ptr<AstImpl> ParseTestProto(const std::string& pb) {
       cel::extensions::CreateAstFromParsedExpr(expr).value().release()));
 }
 
+std::vector<absl::Status> ExtractIssuesStatus(const IssueCollector& issues) {
+  std::vector<absl::Status> issues_status;
+  for (const auto& issue : issues.issues()) {
+    issues_status.push_back(issue.ToStatus());
+  }
+  return issues_status;
+}
+
 TEST(ResolveReferences, Basic) {
   std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExpr);
   expr_ast->reference_map()[2].set_name("foo.bar.var1");
   expr_ast->reference_map()[5].set_name("bar.foo.var2");
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
   cel::TypeFactory type_factory(cel::MemoryManager::Global());
@@ -125,7 +136,7 @@ TEST(ResolveReferences, Basic) {
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
 
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
   ASSERT_THAT(result, IsOkAndHolds(true));
   google::api::expr::v1alpha1::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(R"pb(
@@ -148,7 +159,7 @@ TEST(ResolveReferences, Basic) {
 
 TEST(ResolveReferences, ReturnsFalseIfNoChanges) {
   std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExpr);
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
   cel::TypeFactory type_factory(cel::MemoryManager::Global());
@@ -158,21 +169,21 @@ TEST(ResolveReferences, ReturnsFalseIfNoChanges) {
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
 
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
   ASSERT_THAT(result, IsOkAndHolds(false));
 
   // reference to the same name also doesn't count as a rewrite.
   expr_ast->reference_map()[4].set_name("foo");
   expr_ast->reference_map()[7].set_name("bar");
 
-  result = ResolveReferences(registry, warnings, *expr_ast);
+  result = ResolveReferences(registry, issues, *expr_ast);
   ASSERT_THAT(result, IsOkAndHolds(false));
 }
 
 TEST(ResolveReferences, NamespacedIdent) {
   std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExpr);
   SourceInfo source_info;
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
   cel::TypeFactory type_factory(cel::MemoryManager::Global());
@@ -184,7 +195,7 @@ TEST(ResolveReferences, NamespacedIdent) {
   expr_ast->reference_map()[2].set_name("foo.bar.var1");
   expr_ast->reference_map()[7].set_name("namespace_x.bar");
 
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
   ASSERT_THAT(result, IsOkAndHolds(true));
   google::api::expr::v1alpha1::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(
@@ -237,7 +248,7 @@ TEST(ResolveReferences, WarningOnPresenceTest) {
     })pb");
   SourceInfo source_info;
 
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
   cel::TypeFactory type_factory(cel::MemoryManager::Global());
@@ -248,11 +259,11 @@ TEST(ResolveReferences, WarningOnPresenceTest) {
                     value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[1].set_name("foo.bar.var1");
 
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
   EXPECT_THAT(
-      warnings.warnings(),
+      ExtractIssuesStatus(issues),
       testing::ElementsAre(Eq(absl::Status(
           absl::StatusCode::kInvalidArgument,
           "Reference map points to a presence test -- has(container.attr)"))));
@@ -302,9 +313,9 @@ TEST(ResolveReferences, EnumConstReferenceUsed) {
   expr_ast->reference_map()[2].set_name("foo.bar.var1");
   expr_ast->reference_map()[5].set_name("bar.foo.Enum.ENUM_VAL1");
   expr_ast->reference_map()[5].mutable_value().set_int64_value(9);
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
 
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
   google::api::expr::v1alpha1::Expr expected_expr;
@@ -343,9 +354,9 @@ TEST(ResolveReferences, EnumConstReferenceUsedSelect) {
   expr_ast->reference_map()[2].mutable_value().set_int64_value(2);
   expr_ast->reference_map()[5].set_name("bar.foo.Enum.ENUM_VAL1");
   expr_ast->reference_map()[5].mutable_value().set_int64_value(9);
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
 
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
   google::api::expr::v1alpha1::Expr expected_expr;
@@ -383,9 +394,9 @@ TEST(ResolveReferences, ConstReferenceSkipped) {
   expr_ast->reference_map()[2].set_name("foo.bar.var1");
   expr_ast->reference_map()[2].mutable_value().set_bool_value(true);
   expr_ast->reference_map()[5].set_name("bar.foo.var2");
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
 
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
   google::api::expr::v1alpha1::Expr expected_expr;
@@ -455,11 +466,11 @@ TEST(ResolveReferences, FunctionReferenceBasic) {
   cel::ValueFactory value_factory(type_manager);
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
   expr_ast->reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
 
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
 }
@@ -476,14 +487,14 @@ TEST(ResolveReferences, FunctionReferenceMissingOverloadDetected) {
   cel::ValueFactory value_factory(type_manager);
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
   expr_ast->reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
 
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
-  EXPECT_THAT(warnings.warnings(),
+  EXPECT_THAT(ExtractIssuesStatus(issues),
               ElementsAre(StatusCodeIs(absl::StatusCode::kInvalidArgument)));
 }
 
@@ -516,15 +527,15 @@ TEST(ResolveReferences, SpecialBuiltinsNotWarned) {
     cel::ValueFactory value_factory(type_manager);
     Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                       value_factory, type_registry.resolveable_enums());
-    BuilderWarnings warnings;
+    IssueCollector issues(RuntimeIssue::Severity::kError);
     expr_ast->reference_map()[1].mutable_overload_id().push_back(
         absl::StrCat("builtin.", builtin_fn));
     expr_ast->root_expr().mutable_call_expr().set_function(builtin_fn);
 
-    auto result = ResolveReferences(registry, warnings, *expr_ast);
+    auto result = ResolveReferences(registry, issues, *expr_ast);
 
     ASSERT_THAT(result, IsOkAndHolds(false));
-    EXPECT_THAT(warnings.warnings(), IsEmpty());
+    EXPECT_THAT(ExtractIssuesStatus(issues), IsEmpty());
   }
 }
 
@@ -541,14 +552,14 @@ TEST(ResolveReferences,
   cel::ValueFactory value_factory(type_manager);
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
   expr_ast->reference_map()[1].set_name("udf_boolean_and");
 
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
   EXPECT_THAT(
-      warnings.warnings(),
+      ExtractIssuesStatus(issues),
       UnorderedElementsAre(
           Eq(absl::InvalidArgumentError(
               "No overload found in reference resolve step for boolean_and")),
@@ -568,11 +579,11 @@ TEST(ResolveReferences, EmulatesEagerFailing) {
   cel::ValueFactory value_factory(type_manager);
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
-  BuilderWarnings warnings(/*fail_eagerly=*/true);
+  IssueCollector issues(RuntimeIssue::Severity::kWarning);
   expr_ast->reference_map()[1].set_name("udf_boolean_and");
 
   EXPECT_THAT(
-      ResolveReferences(registry, warnings, *expr_ast),
+      ResolveReferences(registry, issues, *expr_ast),
       StatusIs(absl::StatusCode::kInvalidArgument,
                "Reference map doesn't provide overloads for boolean_and"));
 }
@@ -581,7 +592,7 @@ TEST(ResolveReferences, FunctionReferenceToWrongExprKind) {
   std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExtensionAndExpr);
   SourceInfo source_info;
 
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
   cel::TypeFactory type_factory(cel::MemoryManager::Global());
@@ -593,10 +604,10 @@ TEST(ResolveReferences, FunctionReferenceToWrongExprKind) {
   expr_ast->reference_map()[2].mutable_overload_id().push_back(
       "udf_boolean_and");
 
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
-  EXPECT_THAT(warnings.warnings(),
+  EXPECT_THAT(ExtractIssuesStatus(issues),
               ElementsAre(StatusCodeIs(absl::StatusCode::kInvalidArgument)));
 }
 
@@ -623,7 +634,7 @@ TEST(ResolveReferences, FunctionReferenceWithTargetNoChange) {
       ParseTestProto(kReceiverCallExtensionAndExpr);
   SourceInfo source_info;
 
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "boolean_and", true, {CelValue::Type::kBool, CelValue::Type::kBool})));
@@ -637,10 +648,10 @@ TEST(ResolveReferences, FunctionReferenceWithTargetNoChange) {
   expr_ast->reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
 
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
-  EXPECT_THAT(warnings.warnings(), IsEmpty());
+  EXPECT_THAT(ExtractIssuesStatus(issues), IsEmpty());
 }
 
 TEST(ResolveReferences,
@@ -649,7 +660,7 @@ TEST(ResolveReferences,
       ParseTestProto(kReceiverCallExtensionAndExpr);
   SourceInfo source_info;
 
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
   cel::TypeFactory type_factory(cel::MemoryManager::Global());
@@ -661,10 +672,10 @@ TEST(ResolveReferences,
   expr_ast->reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
 
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
-  EXPECT_THAT(warnings.warnings(),
+  EXPECT_THAT(ExtractIssuesStatus(issues),
               ElementsAre(StatusCodeIs(absl::StatusCode::kInvalidArgument)));
 }
 
@@ -673,7 +684,7 @@ TEST(ResolveReferences, FunctionReferenceWithTargetToNamespacedFunction) {
       ParseTestProto(kReceiverCallExtensionAndExpr);
   SourceInfo source_info;
 
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "ext.boolean_and", false, {CelValue::Type::kBool})));
@@ -687,7 +698,7 @@ TEST(ResolveReferences, FunctionReferenceWithTargetToNamespacedFunction) {
   expr_ast->reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
 
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
   google::api::expr::v1alpha1::Expr expected_expr;
@@ -704,7 +715,7 @@ TEST(ResolveReferences, FunctionReferenceWithTargetToNamespacedFunction) {
                                       &expected_expr);
   EXPECT_EQ(expr_ast->root_expr(),
             ConvertProtoExprToNative(expected_expr).value());
-  EXPECT_THAT(warnings.warnings(), IsEmpty());
+  EXPECT_THAT(ExtractIssuesStatus(issues), IsEmpty());
 }
 
 TEST(ResolveReferences,
@@ -715,7 +726,7 @@ TEST(ResolveReferences,
 
   expr_ast->reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "com.google.ext.boolean_and", false, {CelValue::Type::kBool})));
@@ -727,7 +738,7 @@ TEST(ResolveReferences,
   Resolver registry("com.google", func_registry.InternalGetRegistry(),
                     type_registry, value_factory,
                     type_registry.resolveable_enums());
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
   google::api::expr::v1alpha1::Expr expected_expr;
@@ -744,7 +755,7 @@ TEST(ResolveReferences,
                                       &expected_expr);
   EXPECT_EQ(expr_ast->root_expr(),
             ConvertProtoExprToNative(expected_expr).value());
-  EXPECT_THAT(warnings.warnings(), IsEmpty());
+  EXPECT_THAT(ExtractIssuesStatus(issues), IsEmpty());
 }
 
 // has(ext.option).boolean_and(false)
@@ -778,7 +789,7 @@ TEST(ResolveReferences, FunctionReferenceWithHasTargetNoChange) {
       ParseTestProto(kReceiverCallHasExtensionAndExpr);
   SourceInfo source_info;
 
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "boolean_and", true, {CelValue::Type::kBool, CelValue::Type::kBool})));
@@ -794,7 +805,7 @@ TEST(ResolveReferences, FunctionReferenceWithHasTargetNoChange) {
   expr_ast->reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
 
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
   // The target is unchanged because it is a test_only select.
@@ -803,7 +814,7 @@ TEST(ResolveReferences, FunctionReferenceWithHasTargetNoChange) {
                                       &expected_expr);
   EXPECT_EQ(expr_ast->root_expr(),
             ConvertProtoExprToNative(expected_expr).value());
-  EXPECT_THAT(warnings.warnings(), IsEmpty());
+  EXPECT_THAT(ExtractIssuesStatus(issues), IsEmpty());
 }
 
 constexpr char kComprehensionExpr[] = R"(
@@ -891,9 +902,9 @@ TEST(ResolveReferences, EnumConstReferenceUsedInComprehension) {
   expr_ast->reference_map()[3].mutable_value().set_int64_value(2);
   expr_ast->reference_map()[7].set_name("ENUM");
   expr_ast->reference_map()[7].mutable_value().set_int64_value(2);
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
 
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
   google::api::expr::v1alpha1::Expr expected_expr;
@@ -999,9 +1010,9 @@ TEST(ResolveReferences, ReferenceToId0Warns) {
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[0].set_name("pkg.var");
-  BuilderWarnings warnings;
+  IssueCollector issues(RuntimeIssue::Severity::kError);
 
-  auto result = ResolveReferences(registry, warnings, *expr_ast);
+  auto result = ResolveReferences(registry, issues, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
   google::api::expr::v1alpha1::Expr expected_expr;
@@ -1018,7 +1029,7 @@ TEST(ResolveReferences, ReferenceToId0Warns) {
   EXPECT_EQ(expr_ast->root_expr(),
             ConvertProtoExprToNative(expected_expr).value());
   EXPECT_THAT(
-      warnings.warnings(),
+      ExtractIssuesStatus(issues),
       Contains(StatusIs(
           absl::StatusCode::kInvalidArgument,
           "reference map entries for expression id 0 are not supported")));

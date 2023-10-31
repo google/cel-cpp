@@ -34,7 +34,7 @@
 #include "base/value_factory.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/eval/expression_build_warning.h"
+#include "runtime/internal/issue_collector.h"
 #include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
@@ -52,16 +52,15 @@ class PlannerContext {
   using ProgramTree =
       absl::flat_hash_map<const cel::ast_internal::Expr*, ProgramInfo>;
 
-  explicit PlannerContext(const Resolver& resolver,
-                          const cel::RuntimeOptions& options,
-                          cel::ValueFactory& value_factory,
-                          BuilderWarnings& builder_warnings,
-                          ExecutionPath& execution_path,
-                          ProgramTree& program_tree)
+  explicit PlannerContext(
+      const Resolver& resolver, const cel::RuntimeOptions& options,
+      cel::ValueFactory& value_factory,
+      cel::runtime_internal::IssueCollector& issue_collector,
+      ExecutionPath& execution_path, ProgramTree& program_tree)
       : resolver_(resolver),
         value_factory_(value_factory),
         options_(options),
-        builder_warnings_(builder_warnings),
+        issue_collector_(issue_collector),
         execution_path_(execution_path),
         program_tree_(program_tree) {}
 
@@ -81,13 +80,15 @@ class PlannerContext {
   const Resolver& resolver() const { return resolver_; }
   cel::ValueFactory& value_factory() const { return value_factory_; }
   const cel::RuntimeOptions& options() const { return options_; }
-  BuilderWarnings& builder_warnings() { return builder_warnings_; }
+  cel::runtime_internal::IssueCollector& issue_collector() {
+    return issue_collector_;
+  }
 
  private:
   const Resolver& resolver_;
   cel::ValueFactory& value_factory_;
   const cel::RuntimeOptions& options_;
-  BuilderWarnings& builder_warnings_;
+  cel::runtime_internal::IssueCollector& issue_collector_;
   ExecutionPath& execution_path_;
   ProgramTree& program_tree_;
 };

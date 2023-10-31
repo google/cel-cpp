@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -33,17 +34,20 @@
 #include "base/kind.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
-#include "eval/eval/expression_build_warning.h"
 #include "eval/public/ast_rewrite_native.h"
 #include "eval/public/source_position_native.h"
+#include "runtime/internal/issue_collector.h"
+#include "runtime/runtime_issue.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::RuntimeIssue;
 using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::Reference;
 using ::cel::ast_internal::SourcePosition;
+using ::cel::runtime_internal::IssueCollector;
 
 // Determines if function is implemented with custom evaluation step instead of
 // registered.
@@ -98,10 +102,11 @@ class ReferenceResolver : public cel::ast_internal::AstRewriterBase {
  public:
   ReferenceResolver(
       const absl::flat_hash_map<int64_t, Reference>& reference_map,
-      const Resolver& resolver, BuilderWarnings& warnings)
+      const Resolver& resolver, IssueCollector& issue_collector)
       : reference_map_(reference_map),
         resolver_(resolver),
-        warnings_(warnings) {}
+        issues_(issue_collector),
+        progress_status_(absl::OkStatus()) {}
 
   // Attempt to resolve references in expr. Return true if part of the
   // expression was rewritten.
@@ -147,6 +152,8 @@ class ReferenceResolver : public cel::ast_internal::AstRewriterBase {
     return false;
   }
 
+  const absl::Status& GetProgressStatus() const { return progress_status_; }
+
  private:
   // Attempt to update a function call node. This disambiguates
   // receiver call verses namespaced names in parse if possible.
@@ -156,11 +163,10 @@ class ReferenceResolver : public cel::ast_internal::AstRewriterBase {
   bool MaybeUpdateCallNode(Expr* out, const Reference* reference) {
     auto& call_expr = out->mutable_call_expr();
     if (reference != nullptr && reference->overload_id().empty()) {
-      warnings_
-          .AddWarning(absl::InvalidArgumentError(
+      UpdateStatus(issues_.AddIssue(
+          RuntimeIssue::CreateWarning(absl::InvalidArgumentError(
               absl::StrCat("Reference map doesn't provide overloads for ",
-                           out->call_expr().function())))
-          .IgnoreError();
+                           out->call_expr().function())))));
     }
     bool receiver_style = call_expr.has_target();
     int arg_num = call_expr.args().size();
@@ -183,11 +189,11 @@ class ReferenceResolver : public cel::ast_internal::AstRewriterBase {
       auto maybe_resolved_function =
           BestOverloadMatch(resolver_, call_expr.function(), arg_num);
       if (!maybe_resolved_function.has_value()) {
-        warnings_
-            .AddWarning(absl::InvalidArgumentError(
+        UpdateStatus(issues_.AddIssue(RuntimeIssue::CreateWarning(
+            absl::InvalidArgumentError(
                 absl::StrCat("No overload found in reference resolve step for ",
-                             call_expr.function())))
-            .IgnoreError();
+                             call_expr.function())),
+            RuntimeIssue::ErrorCode::kNoMatchingOverload)));
       } else if (maybe_resolved_function.value() != call_expr.function()) {
         call_expr.set_function(maybe_resolved_function.value());
         return true;
@@ -199,11 +205,11 @@ class ReferenceResolver : public cel::ast_internal::AstRewriterBase {
         !OverloadExists(resolver_, call_expr.function(),
                         ArgumentsMatcher(arg_num + 1),
                         /* receiver_style= */ true)) {
-      warnings_
-          .AddWarning(absl::InvalidArgumentError(
+      UpdateStatus(issues_.AddIssue(RuntimeIssue::CreateWarning(
+          absl::InvalidArgumentError(
               absl::StrCat("No overload found in reference resolve step for ",
-                           call_expr.function())))
-          .IgnoreError();
+                           call_expr.function())),
+          RuntimeIssue::ErrorCode::kNoMatchingOverload)));
     }
     return false;
   }
@@ -212,11 +218,9 @@ class ReferenceResolver : public cel::ast_internal::AstRewriterBase {
   // replace the select node with the fully qualified ident node.
   bool MaybeUpdateSelectNode(Expr* out, const Reference& reference) {
     if (out->select_expr().test_only()) {
-      warnings_
-          .AddWarning(
-              absl::InvalidArgumentError("Reference map points to a presence "
-                                         "test -- has(container.attr)"))
-          .IgnoreError();
+      UpdateStatus(issues_.AddIssue(RuntimeIssue::CreateWarning(
+          absl::InvalidArgumentError("Reference map points to a presence "
+                                     "test -- has(container.attr)"))));
     } else if (!reference.name().empty()) {
       out->mutable_ident_expr().set_name(reference.name());
       rewritten_reference_.insert(out->id());
@@ -273,18 +277,26 @@ class ReferenceResolver : public cel::ast_internal::AstRewriterBase {
       return nullptr;
     }
     if (expr_id == 0) {
-      warnings_
-          .AddWarning(absl::InvalidArgumentError(
-              "reference map entries for expression id 0 are not supported"))
-          .IgnoreError();
+      UpdateStatus(issues_.AddIssue(
+          RuntimeIssue::CreateWarning(absl::InvalidArgumentError(
+              "reference map entries for expression id 0 are not supported"))));
       return nullptr;
     }
     return &iter->second;
   }
 
+  void UpdateStatus(absl::Status status) {
+    if (progress_status_.ok() && !status.ok()) {
+      progress_status_ = std::move(status);
+      return;
+    }
+    status.IgnoreError();
+  }
+
   const absl::flat_hash_map<int64_t, Reference>& reference_map_;
   const Resolver& resolver_;
-  BuilderWarnings& warnings_;
+  IssueCollector& issues_;
+  absl::Status progress_status_;
   absl::flat_hash_set<int64_t> rewritten_reference_;
 };
 
@@ -298,8 +310,7 @@ class ReferenceResolverExtension : public AstTransform {
         ast.reference_map().empty()) {
       return absl::OkStatus();
     }
-    return ResolveReferences(context.resolver(), context.builder_warnings(),
-                             ast)
+    return ResolveReferences(context.resolver(), context.issue_collector(), ast)
         .status();
   }
 
@@ -310,16 +321,16 @@ class ReferenceResolverExtension : public AstTransform {
 }  // namespace
 
 absl::StatusOr<bool> ResolveReferences(const Resolver& resolver,
-                                       BuilderWarnings& warnings,
+                                       IssueCollector& issues,
                                        cel::ast_internal::AstImpl& ast) {
-  ReferenceResolver ref_resolver(ast.reference_map(), resolver, warnings);
+  ReferenceResolver ref_resolver(ast.reference_map(), resolver, issues);
 
   // Rewriting interface doesn't support failing mid traverse propagate first
   // error encountered if fail fast enabled.
   bool was_rewritten = cel::ast_internal::AstRewrite(
       &ast.root_expr(), &ast.source_info(), &ref_resolver);
-  if (warnings.fail_immediately() && !warnings.warnings().empty()) {
-    return warnings.warnings().front();
+  if (!ref_resolver.GetProgressStatus().ok()) {
+    return ref_resolver.GetProgressStatus();
   }
   return was_rewritten;
 }

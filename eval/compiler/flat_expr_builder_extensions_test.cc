@@ -20,16 +20,18 @@
 #include "eval/compiler/resolver.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/eval/expression_build_warning.h"
-#include "eval/public/cel_type_registry.h"
 #include "internal/testing.h"
 #include "runtime/function_registry.h"
+#include "runtime/internal/issue_collector.h"
+#include "runtime/runtime_issue.h"
 #include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 namespace {
 
+using ::cel::RuntimeIssue;
 using ::cel::ast_internal::Expr;
+using ::cel::runtime_internal::IssueCollector;
 using testing::ElementsAre;
 using testing::IsEmpty;
 using cel::internal::StatusIs;
@@ -43,7 +45,8 @@ class PlannerContextTest : public testing::Test {
         type_manager_(type_factory_, type_registry_.GetComposedTypeProvider()),
         value_factory_(type_manager_),
         resolver_("", function_registry_, type_registry_, value_factory_,
-                  type_registry_.resolveable_enums()) {}
+                  type_registry_.resolveable_enums()),
+        issue_collector_(RuntimeIssue::Severity::kError) {}
 
  protected:
   cel::TypeRegistry type_registry_;
@@ -53,7 +56,7 @@ class PlannerContextTest : public testing::Test {
   cel::TypeManager type_manager_;
   cel::ValueFactory value_factory_;
   Resolver resolver_;
-  BuilderWarnings builder_warnings_;
+  IssueCollector issue_collector_;
 };
 
 MATCHER_P(UniquePtrHolds, ptr, "") {
@@ -111,7 +114,7 @@ TEST_F(PlannerContextTest, GetPlan) {
   const ExpressionStep* c_step_ptr = path[1].get();
   const ExpressionStep* a_step_ptr = path[2].get();
 
-  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
                          path, tree);
 
   EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
@@ -139,7 +142,7 @@ TEST_F(PlannerContextTest, ReplacePlan) {
   const ExpressionStep* c_step_ptr = path[1].get();
   const ExpressionStep* a_step_ptr = path[2].get();
 
-  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
                          path, tree);
 
   EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
@@ -173,7 +176,7 @@ TEST_F(PlannerContextTest, ExtractPlan) {
   const ExpressionStep* c_step_ptr = path[1].get();
   const ExpressionStep* a_step_ptr = path[2].get();
 
-  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
                          path, tree);
 
   EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
@@ -199,7 +202,7 @@ TEST_F(PlannerContextTest, ExtractPlanFailsOnUnfinishedNode) {
   // Mark a incomplete.
   tree[&a].range_len = -1;
 
-  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
                          path, tree);
 
   EXPECT_THAT(context.ExtractSubplan(a), StatusIs(absl::StatusCode::kInternal));
@@ -214,7 +217,7 @@ TEST_F(PlannerContextTest, ExtractFailsOnReplacedNode) {
   ASSERT_OK_AND_ASSIGN(ExecutionPath path,
                        InitSimpleTree(a, b, c, value_factory_, tree));
 
-  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
                          path, tree);
 
   ASSERT_OK(context.ReplaceSubplan(a, {}));
@@ -235,7 +238,7 @@ TEST_F(PlannerContextTest, ReplacePlanUpdatesParent) {
   const ExpressionStep* c_step_ptr = path[1].get();
   const ExpressionStep* a_step_ptr = path[2].get();
 
-  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
                          path, tree);
 
   EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
@@ -262,7 +265,7 @@ TEST_F(PlannerContextTest, ReplacePlanUpdatesSibling) {
   const ExpressionStep* c_step_ptr = path[1].get();
   const ExpressionStep* a_step_ptr = path[2].get();
 
-  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
                          path, tree);
 
   EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
@@ -304,7 +307,7 @@ TEST_F(PlannerContextTest, ReplacePlanFailsOnUpdatedNode) {
   const ExpressionStep* c_step_ptr = path[1].get();
   const ExpressionStep* a_step_ptr = path[2].get();
 
-  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
                          path, tree);
 
   EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
@@ -327,7 +330,7 @@ TEST_F(PlannerContextTest, ReplacePlanFailsOnUnfinishedNode) {
 
   tree[&a].range_len = -1;
 
-  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
                          path, tree);
 
   EXPECT_THAT(context.GetSubplan(a), IsEmpty());

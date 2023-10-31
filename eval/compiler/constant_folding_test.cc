@@ -35,13 +35,14 @@
 #include "eval/eval/create_list_step.h"
 #include "eval/eval/create_struct_step.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/eval/expression_build_warning.h"
 #include "extensions/protobuf/ast_converters.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
 #include "runtime/function_registry.h"
+#include "runtime/internal/issue_collector.h"
+#include "runtime/runtime_issue.h"
 #include "runtime/runtime_options.h"
 #include "runtime/type_registry.h"
 #include "google/protobuf/arena.h"
@@ -50,11 +51,12 @@ namespace cel::runtime_internal {
 
 namespace {
 
+using ::cel::RuntimeIssue;
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::Expr;
+using ::cel::runtime_internal::IssueCollector;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::Parse;
-using ::google::api::expr::runtime::BuilderWarnings;
 using ::google::api::expr::runtime::CreateConstValueStep;
 using ::google::api::expr::runtime::CreateCreateListStep;
 using ::google::api::expr::runtime::CreateCreateStructStepForMap;
@@ -73,6 +75,7 @@ class UpdatedConstantFoldingTest : public testing::Test {
         type_factory_(MemoryManager::Global()),
         type_manager_(type_factory_, type_registry_.GetComposedTypeProvider()),
         value_factory_(type_manager_),
+        issue_collector_(RuntimeIssue::Severity::kError),
         resolver_("", function_registry_, type_registry_, value_factory_,
                   type_registry_.resolveable_enums()) {}
 
@@ -85,7 +88,7 @@ class UpdatedConstantFoldingTest : public testing::Test {
   cel::TypeManager type_manager_;
   cel::ValueFactory value_factory_;
   cel::RuntimeOptions options_;
-  BuilderWarnings builder_warnings_;
+  IssueCollector issue_collector_;
   Resolver resolver_;
 };
 
@@ -153,7 +156,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsTernary) {
   ASSERT_OK_AND_ASSIGN(path.emplace_back(),
                        CreateConstValueStep(value_factory_.GetNullValue(), -1));
 
-  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
                          path, tree);
 
   google::protobuf::Arena arena;
@@ -220,7 +223,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
   ASSERT_OK_AND_ASSIGN(path.emplace_back(),
                        CreateConstValueStep(value_factory_.GetNullValue(), -1));
 
-  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
                          path, tree);
 
   google::protobuf::Arena arena;
@@ -285,7 +288,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
   ASSERT_OK_AND_ASSIGN(path.emplace_back(),
                        CreateConstValueStep(value_factory_.GetNullValue(), -1));
 
-  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
                          path, tree);
 
   google::protobuf::Arena arena;
@@ -346,7 +349,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesList) {
   ASSERT_OK_AND_ASSIGN(path.emplace_back(),
                        CreateCreateListStep(create_list.list_expr(), 3));
 
-  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
                          path, tree);
 
   google::protobuf::Arena arena;
@@ -407,7 +410,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
   ASSERT_OK_AND_ASSIGN(path.emplace_back(), CreateCreateStructStepForMap(
                                                 create_map.struct_expr(), 3));
 
-  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
                          path, tree);
 
   google::protobuf::Arena arena;
@@ -468,7 +471,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
   ASSERT_OK_AND_ASSIGN(path.emplace_back(), CreateCreateStructStepForMap(
                                                 create_map.struct_expr(), 3));
 
-  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
                          path, tree);
 
   google::protobuf::Arena arena;
@@ -533,7 +536,7 @@ TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
   ASSERT_OK_AND_ASSIGN(path.emplace_back(),
                        CreateConstValueStep(value_factory_.GetNullValue(), -1));
 
-  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
                          path, tree);
 
   google::protobuf::Arena arena;

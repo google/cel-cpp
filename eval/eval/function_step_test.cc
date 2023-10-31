@@ -12,7 +12,6 @@
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/eval/expression_build_warning.h"
 #include "eval/eval/ident_step.h"
 #include "eval/internal/interop.h"
 #include "eval/public/activation.h"
@@ -227,7 +226,6 @@ class FunctionStepTest
 
 TEST_P(FunctionStepTest, SimpleFunctionTest) {
   ExecutionPath path;
-  BuilderWarnings warnings;
 
   CelFunctionRegistry registry;
   AddDefaults(registry);
@@ -256,7 +254,6 @@ TEST_P(FunctionStepTest, SimpleFunctionTest) {
 
 TEST_P(FunctionStepTest, TestStackUnderflow) {
   ExecutionPath path;
-  BuilderWarnings warnings;
 
   CelFunctionRegistry registry;
   AddDefaults(registry);
@@ -283,7 +280,6 @@ TEST_P(FunctionStepTest, TestStackUnderflow) {
 // Test situation when no overloads match input arguments during evaluation.
 TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
   ExecutionPath path;
-  BuilderWarnings warnings;
 
   CelFunctionRegistry registry;
   AddDefaults(registry);
@@ -321,7 +317,6 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
 // Test situation when no overloads match input arguments during evaluation.
 TEST_P(FunctionStepTest, TestNoMatchingOverloadsUnexpectedArgCount) {
   ExecutionPath path;
-  BuilderWarnings warnings;
 
   CelFunctionRegistry registry;
   AddDefaults(registry);
@@ -407,7 +402,6 @@ TEST_P(FunctionStepTest, LazyFunctionTest) {
   ExecutionPath path;
   Activation activation;
   CelFunctionRegistry registry;
-  BuilderWarnings warnings;
   ASSERT_OK(
       registry.RegisterLazyFunction(ConstFunction::CreateDescriptor("Const3")));
   ASSERT_OK(activation.InsertFunction(
@@ -443,7 +437,6 @@ TEST_P(FunctionStepTest, LazyFunctionOverloadingTest) {
   ExecutionPath path;
   Activation activation;
   CelFunctionRegistry registry;
-  BuilderWarnings warnings;
   auto floor_int = PortableUnaryFunctionAdapter<int64_t, int64_t>::Create(
       "Floor", false, [](google::protobuf::Arena*, int64_t val) { return val; });
   auto floor_double = PortableUnaryFunctionAdapter<int64_t, double>::Create(
@@ -606,7 +599,6 @@ TEST_P(FunctionStepTestUnknowns, PassedUnknownTest) {
 
 TEST_P(FunctionStepTestUnknowns, PartialUnknownHandlingTest) {
   ExecutionPath path;
-  BuilderWarnings warnings;
 
   CelFunctionRegistry registry;
   AddDefaults(registry);

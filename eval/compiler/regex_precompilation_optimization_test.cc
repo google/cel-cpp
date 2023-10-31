@@ -35,13 +35,17 @@
 #include "eval/public/cel_options.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "runtime/internal/issue_collector.h"
+#include "runtime/runtime_issue.h"
 #include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 namespace {
 
-using cel::ast_internal::CheckedExpr;
-using google::api::expr::parser::Parse;
+using ::cel::RuntimeIssue;
+using ::cel::ast_internal::CheckedExpr;
+using ::cel::runtime_internal::IssueCollector;
+using ::google::api::expr::parser::Parse;
 
 namespace exprpb = google::api::expr::v1alpha1;
 
@@ -55,7 +59,8 @@ class RegexPrecompilationExtensionTest : public testing::Test {
         value_factory_(type_manager_),
         resolver_("", function_registry_.InternalGetRegistry(),
                   type_registry_.InternalGetModernRegistry(), value_factory_,
-                  type_registry_.resolveable_enums()) {
+                  type_registry_.resolveable_enums()),
+        issue_collector_(RuntimeIssue::Severity::kError) {
     options_.enable_regex = true;
     options_.regex_max_program_size = 100;
     options_.enable_regex_precompilation = true;
@@ -76,7 +81,7 @@ class RegexPrecompilationExtensionTest : public testing::Test {
   cel::TypeManager type_manager_;
   cel::ValueFactory value_factory_;
   Resolver resolver_;
-  BuilderWarnings builder_warnings_;
+  IssueCollector issue_collector_;
 };
 
 TEST_F(RegexPrecompilationExtensionTest, SmokeTest) {
@@ -87,7 +92,7 @@ TEST_F(RegexPrecompilationExtensionTest, SmokeTest) {
   CheckedExpr expr;
   cel::ast_internal::AstImpl ast_impl(std::move(expr));
   PlannerContext context(resolver_, runtime_options_, value_factory_,
-                         builder_warnings_, path, program_tree);
+                         issue_collector_, path, program_tree);
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> optimizer,
                        factory(context, ast_impl));

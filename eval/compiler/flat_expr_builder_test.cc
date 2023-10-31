@@ -40,7 +40,6 @@
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/qualified_reference_resolver.h"
-#include "eval/eval/expression_build_warning.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
