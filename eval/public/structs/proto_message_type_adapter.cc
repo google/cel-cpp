@@ -217,15 +217,15 @@ absl::StatusOr<CelValue> QualifyImpl(
       return CreateNoSuchFieldError(memory_manager, field_specifier.name);
     }
 
-    if (field_desc->is_repeated()) {
-      return absl::UnimplementedError(
-          "Select optimization only supports singular field traversal.");
-    }
-
     if (i == path.size() - 1) {
       // for last step, delegate the reflection-based field access operation to
       // the value creation helper.
       break;
+    }
+
+    if (field_desc->is_repeated()) {
+      return absl::UnimplementedError(
+          "Select optimization only supports singular field traversal.");
     }
 
     switch (field_desc->type()) {

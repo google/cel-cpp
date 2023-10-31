@@ -44,6 +44,7 @@ namespace {
 using ::cel::extensions::ProtoMemoryManager;
 using ::google::protobuf::Int64Value;
 using testing::_;
+using testing::ElementsAre;
 using testing::HasSubstr;
 using testing::Optional;
 using testing::Truly;
@@ -808,6 +809,34 @@ TEST(ProtoMesssageTypeAdapter, QualifyMapsNotYetSupported) {
   EXPECT_THAT(api->Qualify(qualfiers, wrapped,
                            /*presence_test=*/false, manager),
               StatusIs(absl::StatusCode::kUnimplemented));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyRepeatedLeaf) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  ProtoMemoryManager manager(&arena);
+
+  TestMessage message;
+  auto* nested = message.mutable_message_value();
+  nested->add_int64_list(1);
+  nested->add_int64_list(2);
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{12, "message_value"},
+      cel::FieldSpecifier{102, "int64_list"},
+  };
+
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/false, manager),
+              IsOkAndHolds(test::IsCelList(
+                  ElementsAre(test::IsCelInt64(1), test::IsCelInt64(2)))));
 }
 
 }  // namespace
