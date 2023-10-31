@@ -55,10 +55,12 @@ class RuntimeImpl : public Runtime {
 
   // implement Runtime
   absl::StatusOr<std::unique_ptr<Program>> CreateProgram(
-      std::unique_ptr<Ast> ast) const final;
+      std::unique_ptr<Ast> ast,
+      const Runtime::CreateProgramOptions& options) const final;
 
   absl::StatusOr<std::unique_ptr<TraceableProgram>> CreateTraceableProgram(
-      std::unique_ptr<Ast> ast) const override;
+      std::unique_ptr<Ast> ast,
+      const Runtime::CreateProgramOptions& options) const override;
 
   const TypeProvider& GetTypeProvider() const override {
     return environment_->type_registry.GetComposedTypeProvider();

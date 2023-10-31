@@ -29,12 +29,15 @@
 #include "base/ast.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
+#include "eval/public/cel_expression.h"
 #include "extensions/protobuf/ast_converters.h"
 #include "internal/status_macros.h"
+#include "runtime/runtime_issue.h"
 
 namespace google::api::expr::runtime {
 
 using ::cel::Ast;
+using ::cel::RuntimeIssue;
 using ::google::api::expr::v1alpha1::CheckedExpr;
 using ::google::api::expr::v1alpha1::Expr;  // NOLINT: adjusted in OSS
 using ::google::api::expr::v1alpha1::SourceInfo;
@@ -47,10 +50,7 @@ CelExpressionBuilderFlatImpl::CreateExpression(
   CEL_ASSIGN_OR_RETURN(
       std::unique_ptr<Ast> converted_ast,
       cel::extensions::CreateAstFromParsedExpr(*expr, source_info));
-  CEL_ASSIGN_OR_RETURN(FlatExpression impl,
-                       flat_expr_builder_.CreateExpressionImpl(
-                           std::move(converted_ast), warnings));
-  return std::make_unique<CelExpressionFlatImpl>(std::move(impl));
+  return CreateExpressionImpl(std::move(converted_ast), warnings);
 }
 
 absl::StatusOr<std::unique_ptr<CelExpression>>
@@ -69,16 +69,33 @@ CelExpressionBuilderFlatImpl::CreateExpression(
       std::unique_ptr<Ast> converted_ast,
       cel::extensions::CreateAstFromCheckedExpr(*checked_expr));
 
-  CEL_ASSIGN_OR_RETURN(FlatExpression impl,
-                       flat_expr_builder_.CreateExpressionImpl(
-                           std::move(converted_ast), warnings));
-  return std::make_unique<CelExpressionFlatImpl>(std::move(impl));
+  return CreateExpressionImpl(std::move(converted_ast), warnings);
 }
 
 absl::StatusOr<std::unique_ptr<CelExpression>>
 CelExpressionBuilderFlatImpl::CreateExpression(
     const CheckedExpr* checked_expr) const {
   return CreateExpression(checked_expr, /*warnings=*/nullptr);
+}
+
+absl::StatusOr<std::unique_ptr<CelExpression>>
+CelExpressionBuilderFlatImpl::CreateExpressionImpl(
+    std::unique_ptr<Ast> converted_ast,
+    std::vector<absl::Status>* warnings) const {
+  std::vector<RuntimeIssue> issues;
+  auto* issues_ptr = (warnings != nullptr) ? &issues : nullptr;
+
+  CEL_ASSIGN_OR_RETURN(FlatExpression impl,
+                       flat_expr_builder_.CreateExpressionImpl(
+                           std::move(converted_ast), issues_ptr));
+
+  if (issues_ptr != nullptr) {
+    for (const auto& issue : issues) {
+      warnings->push_back(issue.ToStatus());
+    }
+  }
+
+  return std::make_unique<CelExpressionFlatImpl>(std::move(impl));
 }
 
 }  // namespace google::api::expr::runtime

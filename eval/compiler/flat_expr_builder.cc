@@ -1262,7 +1262,7 @@ void ComprehensionVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
 }  // namespace
 
 absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
-    std::unique_ptr<Ast> ast, std::vector<absl::Status>* warnings) const {
+    std::unique_ptr<Ast> ast, std::vector<RuntimeIssue>* issues) const {
   ExecutionPath execution_path;
 
   // These objects are expected to remain scoped to one build call -- references
@@ -1314,12 +1314,8 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
     return visitor.progress_status();
   }
 
-  if (warnings != nullptr) {
-    warnings->clear();
-    auto issues = issue_collector.ExtractIssues();
-    for (RuntimeIssue& issue : issues) {
-      warnings->push_back(std::move(issue).ToStatus());
-    }
+  if (issues != nullptr) {
+    (*issues) = issue_collector.ExtractIssues();
   }
 
   return FlatExpression(std::move(execution_path), visitor.slot_count(),

@@ -19,6 +19,8 @@
 
 #include <cstdint>
 #include <memory>
+#include <utility>
+#include <vector>
 
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
@@ -30,6 +32,7 @@
 #include "base/value_factory.h"
 #include "common/native_type.h"
 #include "runtime/activation_interface.h"
+#include "runtime/runtime_issue.h"
 
 namespace cel {
 
@@ -114,13 +117,31 @@ class TraceableProgram : public Program {
 // instantiated directly.
 class Runtime {
  public:
+  struct CreateProgramOptions {
+    // Optional output for collecting issues encountered while planning.
+    // If non-null, vector is cleared and encountered issues are added.
+    std::vector<RuntimeIssue>* issues = nullptr;
+  };
+
   virtual ~Runtime() = default;
 
+  absl::StatusOr<std::unique_ptr<Program>> CreateProgram(
+      std::unique_ptr<cel::Ast> ast) const {
+    return CreateProgram(std::move(ast), CreateProgramOptions{});
+  }
+
   virtual absl::StatusOr<std::unique_ptr<Program>> CreateProgram(
-      std::unique_ptr<cel::Ast> ast) const = 0;
+      std::unique_ptr<cel::Ast> ast,
+      const CreateProgramOptions& options) const = 0;
+
+  absl::StatusOr<std::unique_ptr<TraceableProgram>> CreateTraceableProgram(
+      std::unique_ptr<cel::Ast> ast) const {
+    return CreateTraceableProgram(std::move(ast), CreateProgramOptions{});
+  }
 
   virtual absl::StatusOr<std::unique_ptr<TraceableProgram>>
-  CreateTraceableProgram(std::unique_ptr<cel::Ast> ast) const = 0;
+  CreateTraceableProgram(std::unique_ptr<cel::Ast> ast,
+                         const CreateProgramOptions& options) const = 0;
 
   virtual const TypeProvider& GetTypeProvider() const = 0;
 

@@ -202,6 +202,7 @@ cc_library(
         "//eval/public:cel_expression",
         "//extensions/protobuf:ast_converters",
         "//internal:status_macros",
+        "//runtime:runtime_issue",
         "//runtime:runtime_options",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:check",

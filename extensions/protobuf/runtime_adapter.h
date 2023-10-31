@@ -35,12 +35,15 @@ class ProtobufRuntimeAdapter {
   ProtobufRuntimeAdapter() = delete;
 
   static absl::StatusOr<std::unique_ptr<TraceableProgram>> CreateProgram(
-      const Runtime& runtime, const google::api::expr::v1alpha1::CheckedExpr& expr);
+      const Runtime& runtime, const google::api::expr::v1alpha1::CheckedExpr& expr,
+      const Runtime::CreateProgramOptions options = {});
   static absl::StatusOr<std::unique_ptr<TraceableProgram>> CreateProgram(
-      const Runtime& runtime, const google::api::expr::v1alpha1::ParsedExpr& expr);
+      const Runtime& runtime, const google::api::expr::v1alpha1::ParsedExpr& expr,
+      const Runtime::CreateProgramOptions options = {});
   static absl::StatusOr<std::unique_ptr<TraceableProgram>> CreateProgram(
       const Runtime& runtime, const google::api::expr::v1alpha1::Expr& expr,
-      const google::api::expr::v1alpha1::SourceInfo* source_info = nullptr);
+      const google::api::expr::v1alpha1::SourceInfo* source_info = nullptr,
+      const Runtime::CreateProgramOptions options = {});
 };
 
 }  // namespace cel::extensions

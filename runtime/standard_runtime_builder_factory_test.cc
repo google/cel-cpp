@@ -15,7 +15,6 @@
 #include "runtime/standard_runtime_builder_factory.h"
 
 #include <functional>
-#include <iterator>
 #include <memory>
 #include <string>
 #include <utility>
@@ -29,6 +28,7 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value.h"
+#include "base/value_factory.h"
 #include "base/values/bool_value.h"
 #include "extensions/bindings_ext.h"
 #include "extensions/protobuf/memory_manager.h"
@@ -38,7 +38,9 @@
 #include "parser/macro.h"
 #include "parser/parser.h"
 #include "runtime/activation.h"
+#include "runtime/managed_value_factory.h"
 #include "runtime/runtime.h"
+#include "runtime/runtime_issue.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 
@@ -48,6 +50,8 @@ namespace {
 using ::cel::extensions::ProtobufRuntimeAdapter;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::ParseWithMacros;
+using testing::ElementsAre;
+using testing::Truly;
 
 struct EvaluateResultTestCase {
   std::string name;
@@ -445,6 +449,97 @@ INSTANTIATE_TEST_SUITE_P(
         {"list_in", "'a' in ['a', 'b', 'c', 'd']", true},
         {"list_in_numeric", "3u in [1.1, 2.3, 3.0, 4.4]", true}}),
     TestCaseName);
+
+TEST(StandardRuntimeTest, RuntimeIssueSupport) {
+  RuntimeOptions options;
+  options.fail_on_warnings = false;
+
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+
+  ASSERT_OK_AND_ASSIGN(auto builder, CreateStandardRuntimeBuilder(options));
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  {
+    ASSERT_OK_AND_ASSIGN(
+        ParsedExpr expr,
+        ParseWithMacros("unregistered_function(1)", GetMacros()));
+
+    std::vector<RuntimeIssue> issues;
+    ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<Program> program,
+        ProtobufRuntimeAdapter::CreateProgram(*runtime, expr, {&issues}));
+
+    EXPECT_THAT(issues, ElementsAre(Truly([](const RuntimeIssue& issue) {
+                  return issue.severity() == RuntimeIssue::Severity::kWarning &&
+                         issue.error_code() ==
+                             RuntimeIssue::ErrorCode::kNoMatchingOverload;
+                })));
+  }
+
+  {
+    ASSERT_OK_AND_ASSIGN(
+        ParsedExpr expr,
+        ParseWithMacros("unregistered_function(1) || unregistered_function(2)",
+                        GetMacros()));
+
+    std::vector<RuntimeIssue> issues;
+    ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<Program> program,
+        ProtobufRuntimeAdapter::CreateProgram(*runtime, expr, {&issues}));
+
+    EXPECT_THAT(
+        issues,
+        ElementsAre(
+            Truly([](const RuntimeIssue& issue) {
+              return issue.severity() == RuntimeIssue::Severity::kWarning &&
+                     issue.error_code() ==
+                         RuntimeIssue::ErrorCode::kNoMatchingOverload;
+            }),
+            Truly([](const RuntimeIssue& issue) {
+              return issue.severity() == RuntimeIssue::Severity::kWarning &&
+                     issue.error_code() ==
+                         RuntimeIssue::ErrorCode::kNoMatchingOverload;
+            })));
+  }
+
+  {
+    ASSERT_OK_AND_ASSIGN(
+        ParsedExpr expr,
+        ParseWithMacros(
+            "unregistered_function(1) || unregistered_function(2) || true",
+            GetMacros()));
+
+    std::vector<RuntimeIssue> issues;
+    ASSERT_OK_AND_ASSIGN(
+        std::unique_ptr<Program> program,
+        ProtobufRuntimeAdapter::CreateProgram(*runtime, expr, {&issues}));
+
+    EXPECT_THAT(
+        issues,
+        ElementsAre(
+            Truly([](const RuntimeIssue& issue) {
+              return issue.severity() == RuntimeIssue::Severity::kWarning &&
+                     issue.error_code() ==
+                         RuntimeIssue::ErrorCode::kNoMatchingOverload;
+            }),
+            Truly([](const RuntimeIssue& issue) {
+              return issue.severity() == RuntimeIssue::Severity::kWarning &&
+                     issue.error_code() ==
+                         RuntimeIssue::ErrorCode::kNoMatchingOverload;
+            })));
+
+    ManagedValueFactory value_factory(program->GetTypeProvider(),
+                                      memory_manager);
+    Activation activation;
+
+    ASSERT_OK_AND_ASSIGN(auto result,
+                         program->Evaluate(activation, value_factory.get()));
+    EXPECT_TRUE(result->Is<BoolValue>() &&
+                result->As<BoolValue>().NativeValue());
+  }
+}
 
 }  // namespace
 }  // namespace cel

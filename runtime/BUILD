@@ -183,6 +183,7 @@ cc_library(
         "//base:data",
         "//base:handle",
         "//common:native_type",
+        "//runtime:runtime_issue",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -241,6 +242,7 @@ cc_test(
     srcs = ["standard_runtime_builder_factory_test.cc"],
     deps = [
         ":activation",
+        ":managed_value_factory",
         ":runtime",
         ":runtime_options",
         ":standard_runtime_builder_factory",
@@ -254,6 +256,7 @@ cc_test(
         "//internal:testing",
         "//parser",
         "//parser:macro",
+        "//runtime:runtime_issue",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/status",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",

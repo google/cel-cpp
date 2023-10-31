@@ -25,8 +25,10 @@
 #include "absl/status/statusor.h"
 #include "base/ast.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
+#include "eval/eval/evaluator_core.h"
 #include "eval/public/cel_type_registry.h"
 #include "runtime/function_registry.h"
+#include "runtime/runtime_issue.h"
 #include "runtime/runtime_options.h"
 #include "runtime/type_registry.h"
 
@@ -84,7 +86,8 @@ class FlatExprBuilder {
   // TODO(uncreated-issue/45): Add overload for cref AST. At the moment, all the users
   // can pass ownership of a freshly converted AST.
   absl::StatusOr<FlatExpression> CreateExpressionImpl(
-      std::unique_ptr<cel::Ast> ast, std::vector<absl::Status>* warnings) const;
+      std::unique_ptr<cel::Ast> ast,
+      std::vector<cel::RuntimeIssue>* issues) const;
 
   const cel::RuntimeOptions& options() const { return options_; }
 

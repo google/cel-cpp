@@ -63,15 +63,17 @@ class ProgramImpl final : public TraceableProgram {
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<Program>> RuntimeImpl::CreateProgram(
-    std::unique_ptr<Ast> ast) const {
-  return CreateTraceableProgram(std::move(ast));
+    std::unique_ptr<Ast> ast,
+    const Runtime::CreateProgramOptions& options) const {
+  return CreateTraceableProgram(std::move(ast), options);
 }
 
 absl::StatusOr<std::unique_ptr<TraceableProgram>>
-RuntimeImpl::CreateTraceableProgram(std::unique_ptr<Ast> ast) const {
-  CEL_ASSIGN_OR_RETURN(
-      auto flat_expr,
-      expr_builder_.CreateExpressionImpl(std::move(ast), /*warnings=*/nullptr));
+RuntimeImpl::CreateTraceableProgram(
+    std::unique_ptr<Ast> ast,
+    const Runtime::CreateProgramOptions& options) const {
+  CEL_ASSIGN_OR_RETURN(auto flat_expr, expr_builder_.CreateExpressionImpl(
+                                           std::move(ast), options.issues));
 
   return std::make_unique<ProgramImpl>(environment_, std::move(flat_expr));
 }

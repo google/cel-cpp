@@ -24,7 +24,9 @@
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "base/ast.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/public/cel_expression.h"
 #include "runtime/runtime_options.h"
@@ -67,6 +69,10 @@ class CelExpressionBuilderFlatImpl : public CelExpressionBuilder {
   }
 
  private:
+  absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpressionImpl(
+      std::unique_ptr<cel::Ast> converted_ast,
+      std::vector<absl::Status>* warnings) const;
+
   FlatExprBuilder flat_expr_builder_;
 };
 
