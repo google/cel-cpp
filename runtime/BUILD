@@ -425,3 +425,40 @@ cc_library(
     hdrs = ["runtime_issue.h"],
     deps = ["@com_google_absl//absl/status"],
 )
+
+cc_library(
+    name = "comprehension_vulnerability_check",
+    srcs = ["comprehension_vulnerability_check.cc"],
+    hdrs = ["comprehension_vulnerability_check.h"],
+    deps = [
+        ":runtime",
+        ":runtime_builder",
+        "//common:native_type",
+        "//eval/compiler:comprehension_vulnerability_check",
+        "//internal:casts",
+        "//internal:status_macros",
+        "//runtime/internal:runtime_friend_access",
+        "//runtime/internal:runtime_impl",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_test(
+    name = "comprehension_vulnerability_check_test",
+    srcs = ["comprehension_vulnerability_check_test.cc"],
+    deps = [
+        ":comprehension_vulnerability_check",
+        ":runtime_builder",
+        ":runtime_options",
+        ":standard_runtime_builder_factory",
+        "//extensions/protobuf:runtime_adapter",
+        "//internal:testing",
+        "//parser",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)

@@ -25,6 +25,7 @@
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
+#include "eval/compiler/comprehension_vulnerability_check.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -248,8 +249,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
 
   cel::RuntimeOptions options;
   CelExpressionBuilderFlatImpl builder(options);
-  builder.flat_expr_builder().set_enable_comprehension_vulnerability_check(
-      true);
+  builder.flat_expr_builder().AddProgramOptimizer(
+      CreateComprehensionVulnerabilityCheck());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -291,8 +292,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
       &expr);
 
   CelExpressionBuilderFlatImpl builder;
-  builder.flat_expr_builder().set_enable_comprehension_vulnerability_check(
-      true);
+  builder.flat_expr_builder().AddProgramOptimizer(
+      CreateComprehensionVulnerabilityCheck());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -348,8 +349,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
 
   cel::RuntimeOptions options;
   CelExpressionBuilderFlatImpl builder(options);
-  builder.flat_expr_builder().set_enable_comprehension_vulnerability_check(
-      true);
+  builder.flat_expr_builder().AddProgramOptimizer(
+      CreateComprehensionVulnerabilityCheck());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -416,8 +417,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
 
   cel::RuntimeOptions options;
   CelExpressionBuilderFlatImpl builder(options);
-  builder.flat_expr_builder().set_enable_comprehension_vulnerability_check(
-      true);
+  builder.flat_expr_builder().AddProgramOptimizer(
+      CreateComprehensionVulnerabilityCheck());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -462,8 +463,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
       &expr);
 
   CelExpressionBuilderFlatImpl builder;
-  builder.flat_expr_builder().set_enable_comprehension_vulnerability_check(
-      true);
+  builder.flat_expr_builder().AddProgramOptimizer(
+      CreateComprehensionVulnerabilityCheck());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -512,8 +513,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
       )pb",
       &expr);
   CelExpressionBuilderFlatImpl builder;
-  builder.flat_expr_builder().set_enable_comprehension_vulnerability_check(
-      true);
+  builder.flat_expr_builder().AddProgramOptimizer(
+      CreateComprehensionVulnerabilityCheck());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -557,8 +558,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
       )pb",
       &expr);
   CelExpressionBuilderFlatImpl builder;
-  builder.flat_expr_builder().set_enable_comprehension_vulnerability_check(
-      true);
+  builder.flat_expr_builder().AddProgramOptimizer(
+      CreateComprehensionVulnerabilityCheck());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,

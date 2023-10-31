@@ -59,18 +59,6 @@ class FlatExprBuilder {
         function_registry_(function_registry),
         type_registry_(type_registry.InternalGetModernRegistry()) {}
 
-  // set_enable_comprehension_vulnerability_check inspects comprehension
-  // sub-expressions for the presence of potential memory exhaustion.
-  //
-  // Note: This flag is not necessary if you are only using Core CEL macros.
-  //
-  // Consider enabling this feature when using custom comprehensions, and
-  // absolutely enable the feature when using hand-written ASTs for
-  // comprehension expressions.
-  void set_enable_comprehension_vulnerability_check(bool enabled) {
-    enable_comprehension_vulnerability_check_ = enabled;
-  }
-
   void AddAstTransform(std::unique_ptr<AstTransform> transform) {
     ast_transforms_.push_back(std::move(transform));
   }
@@ -100,8 +88,6 @@ class FlatExprBuilder {
   const cel::TypeRegistry& type_registry_;
   std::vector<std::unique_ptr<AstTransform>> ast_transforms_;
   std::vector<ProgramOptimizerFactory> program_optimizers_;
-
-  bool enable_comprehension_vulnerability_check_ = false;
 };
 
 }  // namespace google::api::expr::runtime

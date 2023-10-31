@@ -1239,6 +1239,7 @@ cc_library(
         "//base:memory",
         "//base/ast_internal:ast_impl",
         "//eval/compiler:cel_expression_builder_flat_impl",
+        "//eval/compiler:comprehension_vulnerability_check",
         "//eval/compiler:constant_folding",
         "//eval/compiler:flat_expr_builder",
         "//eval/compiler:flat_expr_builder_extensions",

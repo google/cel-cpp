@@ -44,7 +44,6 @@
 #include "base/type_factory.h"
 #include "base/type_provider.h"
 #include "base/value_factory.h"
-#include "eval/compiler/comprehension_vulnerability_check.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/comprehension_slots.h"
@@ -179,13 +178,11 @@ class ExhaustiveTernaryCondVisitor : public CondVisitor {
 class ComprehensionVisitor {
  public:
   explicit ComprehensionVisitor(FlatExprVisitor* visitor, bool short_circuiting,
-                                bool enable_vulnerability_check,
                                 size_t slot_offset)
       : visitor_(visitor),
         next_step_(nullptr),
         cond_step_(nullptr),
         short_circuiting_(short_circuiting),
-        enable_vulnerability_check_(enable_vulnerability_check),
         slot_offset_(slot_offset) {}
 
   void PreVisit(const cel::ast_internal::Expr* expr);
@@ -200,7 +197,6 @@ class ComprehensionVisitor {
   int next_step_pos_;
   int cond_step_pos_;
   bool short_circuiting_;
-  bool enable_vulnerability_check_;
   size_t slot_offset_;
 };
 
@@ -208,7 +204,6 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
  public:
   FlatExprVisitor(
       const Resolver& resolver, const cel::RuntimeOptions& options,
-      bool enable_comprehension_vulnerability_check,
       absl::Span<const std::unique_ptr<ProgramOptimizer>> program_optimizers,
       const absl::flat_hash_map<int64_t, cel::ast_internal::Reference>&
           reference_map,
@@ -224,8 +219,6 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
         parent_expr_(nullptr),
         options_(options),
         max_comprehension_depth_(0),
-        enable_comprehension_vulnerability_check_(
-            enable_comprehension_vulnerability_check),
         program_optimizers_(program_optimizers),
         issue_collector_(issue_collector),
         reference_map_(reference_map),
@@ -629,9 +622,8 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
                                  options_.enable_comprehension_list_append),
          /*.iter_var_in_scope=*/false,
          /*.accu_var_in_scope=*/false,
-         std::make_unique<ComprehensionVisitor>(
-             this, options_.short_circuiting,
-             enable_comprehension_vulnerability_check_, slot_offset)});
+         std::make_unique<ComprehensionVisitor>(this, options_.short_circuiting,
+                                                slot_offset)});
     if (comprehension_stack_.size() > max_comprehension_depth_) {
       max_comprehension_depth_ = comprehension_stack_.size();
     }
@@ -889,8 +881,6 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   std::vector<ComprehensionStackRecord> comprehension_stack_;
   int max_comprehension_depth_;
 
-  bool enable_comprehension_vulnerability_check_;
-
   absl::Span<const std::unique_ptr<ProgramOptimizer>> program_optimizers_;
   IssueCollector& issue_collector_;
 
@@ -1066,14 +1056,7 @@ void ComprehensionVisitor::PostVisitArg(
   }
 }
 
-void ComprehensionVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
-  if (enable_vulnerability_check_) {
-    visitor_->ValidateOrError(
-        !ComprehensionHasMemoryExhaustionVulnerability(
-            expr->comprehension_expr()),
-        "Comprehension contains memory exhaustion vulnerability");
-  }
-}
+void ComprehensionVisitor::PostVisit(const cel::ast_internal::Expr* expr) {}
 
 }  // namespace
 
@@ -1118,9 +1101,8 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
                          optimizer_factory(extension_context, ast_impl));
   }
   FlatExprVisitor visitor(
-      resolver, options_, enable_comprehension_vulnerability_check_, optimizers,
-      ast_impl.reference_map(), execution_path, value_factory, issue_collector,
-      program_tree, extension_context);
+      resolver, options_, optimizers, ast_impl.reference_map(), execution_path,
+      value_factory, issue_collector, program_tree, extension_context);
 
   cel::ast_internal::TraversalOptions opts;
   opts.use_comprehension_callbacks = true;

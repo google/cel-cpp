@@ -61,7 +61,6 @@ cc_library(
         "flat_expr_builder.h",
     ],
     deps = [
-        ":comprehension_vulnerability_check",
         ":flat_expr_builder_extensions",
         ":resolver",
         "//base:ast",
@@ -163,6 +162,7 @@ cc_test(
     ],
     deps = [
         ":cel_expression_builder_flat_impl",
+        ":comprehension_vulnerability_check",
         ":flat_expr_builder",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
@@ -479,8 +479,11 @@ cc_library(
     srcs = ["comprehension_vulnerability_check.cc"],
     hdrs = ["comprehension_vulnerability_check.h"],
     deps = [
+        ":flat_expr_builder_extensions",
         "//base:builtins",
+        "//base/ast_internal:ast_impl",
         "//base/ast_internal:expr",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:variant",
     ],

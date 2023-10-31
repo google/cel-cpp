@@ -26,6 +26,7 @@
 #include "base/kind.h"
 #include "base/memory.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
+#include "eval/compiler/comprehension_vulnerability_check.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
@@ -82,10 +83,11 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
       (options.enable_qualified_identifier_rewrites)
           ? ReferenceResolverOption::kAlways
           : ReferenceResolverOption::kCheckedOnly));
-  // TODO(uncreated-issue/27): These need to be abstracted to avoid bringing in too
-  // many build dependencies by default.
-  flat_expr_builder.set_enable_comprehension_vulnerability_check(
-      options.enable_comprehension_vulnerability_check);
+
+  if (options.enable_comprehension_vulnerability_check) {
+    builder->flat_expr_builder().AddProgramOptimizer(
+        CreateComprehensionVulnerabilityCheck());
+  }
 
   if (options.constant_folding) {
     builder->flat_expr_builder().AddProgramOptimizer(
