@@ -41,6 +41,18 @@
 namespace cel {
 
 class ABSL_ATTRIBUTE_TRIVIAL_ABI NativeTypeId final {
+ private:
+  template <typename, typename = void>
+  struct HasCelNativeTypeIdOf : std::false_type {};
+
+  template <typename T>
+  struct HasCelNativeTypeIdOf<
+      T, std::void_t<decltype(CelNativeTypeIdOf(std::declval<const T&>()))>>
+      : std::true_type {};
+
+  template <typename T>
+  static constexpr bool HasCelNativeTypeIdOfV = HasCelNativeTypeIdOf<T>::value;
+
  public:
   template <typename T>
   static NativeTypeId For() {
@@ -58,9 +70,22 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI NativeTypeId final {
 #endif
   }
 
+  // Gets the NativeTypeId for `T` at runtime. Uses ADL with `NativeTypeId
+  // CelNativeTypeIdOf(const T&)`. See
+  // https://en.cppreference.com/w/cpp/language/adl for ADL rules.
+  template <typename T, typename = std::enable_if_t<HasCelNativeTypeIdOfV<T>>>
+  static NativeTypeId Of(const T& type) noexcept {
+    static_assert(!std::is_pointer_v<T>);
+    static_assert(std::is_same_v<T, std::decay_t<T>>);
+    static_assert(!std::is_same_v<NativeTypeId, std::decay_t<T>>);
+    return CelNativeTypeIdOf(type);
+  }
+
   NativeTypeId() = default;
   NativeTypeId(const NativeTypeId&) = default;
+  NativeTypeId(NativeTypeId&&) noexcept = default;
   NativeTypeId& operator=(const NativeTypeId&) = default;
+  NativeTypeId& operator=(NativeTypeId&&) noexcept = default;
 
   std::string DebugString() const;
 
@@ -72,10 +97,6 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI NativeTypeId final {
 #else
     return lhs.rep_ == rhs.rep_;
 #endif
-  }
-
-  friend bool operator!=(NativeTypeId lhs, NativeTypeId rhs) {
-    return !operator==(lhs, rhs);
   }
 
   template <typename H>
@@ -99,6 +120,10 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI NativeTypeId final {
   const void* rep_ = nullptr;
 #endif
 };
+
+inline bool operator!=(NativeTypeId lhs, NativeTypeId rhs) {
+  return !operator==(lhs, rhs);
+}
 
 }  // namespace cel
 

@@ -58,6 +58,18 @@ absl::string_view KindToString(Kind kind) {
       return "*wrapper*";
     case Kind::kOpaque:
       return "*opaque*";
+    case Kind::kBoolWrapper:
+      return "google.protobuf.BoolValue";
+    case Kind::kIntWrapper:
+      return "google.protobuf.Int64Value";
+    case Kind::kUintWrapper:
+      return "google.protobuf.UInt64Value";
+    case Kind::kDoubleWrapper:
+      return "google.protobuf.DoubleValue";
+    case Kind::kStringWrapper:
+      return "google.protobuf.StringValue";
+    case Kind::kBytesWrapper:
+      return "google.protobuf.BytesValue";
     default:
       return "*error*";
   }

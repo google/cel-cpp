@@ -40,5 +40,20 @@ TEST(NativeTypeId, DebugString) {
   EXPECT_THAT(NativeTypeId::For<Type1>().DebugString(), Not(IsEmpty()));
 }
 
+namespace native_type_test {
+
+struct TestType {};
+
+NativeTypeId CelNativeTypeIdOf(const TestType& type) {
+  return NativeTypeId::For<TestType>();
+}
+
+}  // namespace native_type_test
+
+TEST(NativeTypeId, Of) {
+  EXPECT_EQ(NativeTypeId::Of(native_type_test::TestType()),
+            NativeTypeId::For<native_type_test::TestType>());
+}
+
 }  // namespace
 }  // namespace cel

@@ -49,6 +49,12 @@ TEST(Kind, ToString) {
   EXPECT_EQ(KindToString(Kind::kUnknown), "*unknown*");
   EXPECT_EQ(KindToString(Kind::kWrapper), "*wrapper*");
   EXPECT_EQ(KindToString(Kind::kOpaque), "*opaque*");
+  EXPECT_EQ(KindToString(Kind::kBoolWrapper), "google.protobuf.BoolValue");
+  EXPECT_EQ(KindToString(Kind::kIntWrapper), "google.protobuf.Int64Value");
+  EXPECT_EQ(KindToString(Kind::kUintWrapper), "google.protobuf.UInt64Value");
+  EXPECT_EQ(KindToString(Kind::kDoubleWrapper), "google.protobuf.DoubleValue");
+  EXPECT_EQ(KindToString(Kind::kStringWrapper), "google.protobuf.StringValue");
+  EXPECT_EQ(KindToString(Kind::kBytesWrapper), "google.protobuf.BytesValue");
   EXPECT_EQ(KindToString(static_cast<Kind>(std::numeric_limits<int>::max())),
             "*error*");
 }
