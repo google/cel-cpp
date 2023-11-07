@@ -32,6 +32,12 @@
 
 namespace cel::common_internal {
 
+struct AdoptRef final {
+  explicit AdoptRef() = default;
+};
+
+inline constexpr AdoptRef kAdoptRef{};
+
 class ReferenceCount;
 struct ReferenceCountFromThis;
 
@@ -104,6 +110,12 @@ bool IsUniqueRef(const ReferenceCount& refcount) noexcept;
 ABSL_MUST_USE_RESULT
 bool IsUniqueRef(absl::Nullable<const ReferenceCount*> refcount) noexcept;
 
+ABSL_MUST_USE_RESULT
+bool IsExpiredRef(const ReferenceCount& refcount) noexcept;
+
+ABSL_MUST_USE_RESULT
+bool IsExpiredRef(absl::Nullable<const ReferenceCount*> refcount) noexcept;
+
 // `ReferenceCount` is similar to the control block used by `std::shared_ptr`.
 // It is not meant to be interacted with directly in most cases, instead
 // `cel::ManagedMemory` should be used.
@@ -125,6 +137,7 @@ class ReferenceCount {
   friend void WeakRef(const ReferenceCount& refcount) noexcept;
   friend void WeakUnref(const ReferenceCount& refcount) noexcept;
   friend bool IsUniqueRef(const ReferenceCount& refcount) noexcept;
+  friend bool IsExpiredRef(const ReferenceCount& refcount) noexcept;
 
   virtual void Finalize() const noexcept = 0;
 
@@ -259,6 +272,17 @@ inline bool IsUniqueRef(const ReferenceCount& refcount) noexcept {
 inline bool IsUniqueRef(
     absl::Nullable<const ReferenceCount*> refcount) noexcept {
   return refcount != nullptr ? IsUniqueRef(*refcount) : false;
+}
+
+inline bool IsExpiredRef(const ReferenceCount& refcount) noexcept {
+  const auto count = refcount.strong_refcount_.load(std::memory_order_acquire);
+  ABSL_DCHECK_GE(count, 0);
+  return count == 0;
+}
+
+inline bool IsExpiredRef(
+    absl::Nullable<const ReferenceCount*> refcount) noexcept {
+  return refcount != nullptr ? IsExpiredRef(*refcount) : false;
 }
 
 }  // namespace cel::common_internal

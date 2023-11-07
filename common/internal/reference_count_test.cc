@@ -47,6 +47,7 @@ TEST(ReferenceCount, Strong) {
   StrongRef(refcount);
   StrongUnref(refcount);
   EXPECT_TRUE(IsUniqueRef(refcount));
+  EXPECT_FALSE(IsExpiredRef(refcount));
   EXPECT_FALSE(destructed);
   StrongUnref(refcount);
   EXPECT_TRUE(destructed);
@@ -64,9 +65,11 @@ TEST(ReferenceCount, Weak) {
   ASSERT_TRUE(StrengthenRef(refcount));
   StrongUnref(refcount);
   EXPECT_TRUE(IsUniqueRef(refcount));
+  EXPECT_FALSE(IsExpiredRef(refcount));
   EXPECT_FALSE(destructed);
   StrongUnref(refcount);
   EXPECT_TRUE(destructed);
+  EXPECT_TRUE(IsExpiredRef(refcount));
   ASSERT_FALSE(StrengthenRef(refcount));
   WeakUnref(refcount);
 }
