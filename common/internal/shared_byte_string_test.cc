@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/internal/managed_byte_string.h"
+#include "common/internal/shared_byte_string.h"
 
 #include <string>
 #include <utility>
@@ -42,16 +42,16 @@ class OwningObject final : public ReferenceCount {
   mutable std::string string_;
 };
 
-TEST(ManagedByteString, DefaultConstructor) {
-  ManagedByteString byte_string;
+TEST(SharedByteString, DefaultConstructor) {
+  SharedByteString byte_string;
   std::string scratch;
   EXPECT_THAT(byte_string.ToString(scratch), IsEmpty());
   EXPECT_THAT(byte_string.ToCord(), IsEmpty());
 }
 
-TEST(ManagedByteString, StringView) {
+TEST(SharedByteString, StringView) {
   absl::string_view string_view = "foo";
-  ManagedByteString byte_string(string_view);
+  SharedByteString byte_string(string_view);
   std::string scratch;
   EXPECT_THAT(byte_string.ToString(scratch), Not(IsEmpty()));
   EXPECT_THAT(byte_string.ToString(scratch).data(), Eq(string_view.data()));
@@ -60,13 +60,13 @@ TEST(ManagedByteString, StringView) {
   EXPECT_THAT(cord.Flatten().data(), Ne(string_view.data()));
 }
 
-TEST(ManagedByteString, OwnedStringView) {
+TEST(SharedByteString, OwnedStringView) {
   auto* const owner =
       new OwningObject("----------------------------------------");
   {
-    ManagedByteString byte_string1(owner, owner->owned_string());
-    ManagedByteStringView byte_string2(byte_string1);
-    ManagedByteString byte_string3(byte_string2);
+    SharedByteString byte_string1(owner, owner->owned_string());
+    SharedByteStringView byte_string2(byte_string1);
+    SharedByteString byte_string3(byte_string2);
     std::string scratch;
     EXPECT_THAT(byte_string3.ToString(scratch), Not(IsEmpty()));
     EXPECT_THAT(byte_string3.ToString(scratch).data(),
@@ -78,66 +78,66 @@ TEST(ManagedByteString, OwnedStringView) {
   StrongUnref(owner);
 }
 
-TEST(ManagedByteString, String) {
-  ManagedByteString byte_string(std::string("foo"));
+TEST(SharedByteString, String) {
+  SharedByteString byte_string(std::string("foo"));
   std::string scratch;
   EXPECT_THAT(byte_string.ToString(scratch), Eq("foo"));
   EXPECT_THAT(byte_string.ToCord(), Eq("foo"));
 }
 
-TEST(ManagedByteString, Cord) {
-  ManagedByteString byte_string(absl::Cord("foo"));
+TEST(SharedByteString, Cord) {
+  SharedByteString byte_string(absl::Cord("foo"));
   std::string scratch;
   EXPECT_THAT(byte_string.ToString(scratch), Eq("foo"));
   EXPECT_THAT(byte_string.ToCord(), Eq("foo"));
 }
 
-TEST(ManagedByteString, CopyConstruct) {
-  ManagedByteString byte_string1(absl::string_view("foo"));
-  ManagedByteString byte_string2(std::string("bar"));
-  ManagedByteString byte_string3(absl::Cord("baz"));
-  EXPECT_THAT(ManagedByteString(byte_string1).ToString(),
+TEST(SharedByteString, CopyConstruct) {
+  SharedByteString byte_string1(absl::string_view("foo"));
+  SharedByteString byte_string2(std::string("bar"));
+  SharedByteString byte_string3(absl::Cord("baz"));
+  EXPECT_THAT(SharedByteString(byte_string1).ToString(),
               byte_string1.ToString());
-  EXPECT_THAT(ManagedByteString(byte_string2).ToString(),
+  EXPECT_THAT(SharedByteString(byte_string2).ToString(),
               byte_string2.ToString());
-  EXPECT_THAT(ManagedByteString(byte_string3).ToString(),
+  EXPECT_THAT(SharedByteString(byte_string3).ToString(),
               byte_string3.ToString());
 }
 
-TEST(ManagedByteString, MoveConstruct) {
-  ManagedByteString byte_string1(absl::string_view("foo"));
-  ManagedByteString byte_string2(std::string("bar"));
-  ManagedByteString byte_string3(absl::Cord("baz"));
-  EXPECT_THAT(ManagedByteString(std::move(byte_string1)).ToString(), Eq("foo"));
-  EXPECT_THAT(ManagedByteString(std::move(byte_string2)).ToString(), Eq("bar"));
-  EXPECT_THAT(ManagedByteString(std::move(byte_string3)).ToString(), Eq("baz"));
+TEST(SharedByteString, MoveConstruct) {
+  SharedByteString byte_string1(absl::string_view("foo"));
+  SharedByteString byte_string2(std::string("bar"));
+  SharedByteString byte_string3(absl::Cord("baz"));
+  EXPECT_THAT(SharedByteString(std::move(byte_string1)).ToString(), Eq("foo"));
+  EXPECT_THAT(SharedByteString(std::move(byte_string2)).ToString(), Eq("bar"));
+  EXPECT_THAT(SharedByteString(std::move(byte_string3)).ToString(), Eq("baz"));
 }
 
-TEST(ManagedByteString, CopyAssign) {
-  ManagedByteString byte_string1(absl::string_view("foo"));
-  ManagedByteString byte_string2(std::string("bar"));
-  ManagedByteString byte_string3(absl::Cord("baz"));
-  ManagedByteString byte_string;
+TEST(SharedByteString, CopyAssign) {
+  SharedByteString byte_string1(absl::string_view("foo"));
+  SharedByteString byte_string2(std::string("bar"));
+  SharedByteString byte_string3(absl::Cord("baz"));
+  SharedByteString byte_string;
   EXPECT_THAT((byte_string = byte_string1).ToString(), byte_string1.ToString());
   EXPECT_THAT((byte_string = byte_string2).ToString(), byte_string2.ToString());
   EXPECT_THAT((byte_string = byte_string3).ToString(), byte_string3.ToString());
 }
 
-TEST(ManagedByteString, MoveAssign) {
-  ManagedByteString byte_string1(absl::string_view("foo"));
-  ManagedByteString byte_string2(std::string("bar"));
-  ManagedByteString byte_string3(absl::Cord("baz"));
-  ManagedByteString byte_string;
+TEST(SharedByteString, MoveAssign) {
+  SharedByteString byte_string1(absl::string_view("foo"));
+  SharedByteString byte_string2(std::string("bar"));
+  SharedByteString byte_string3(absl::Cord("baz"));
+  SharedByteString byte_string;
   EXPECT_THAT((byte_string = std::move(byte_string1)).ToString(), Eq("foo"));
   EXPECT_THAT((byte_string = std::move(byte_string2)).ToString(), Eq("bar"));
   EXPECT_THAT((byte_string = std::move(byte_string3)).ToString(), Eq("baz"));
 }
 
-TEST(ManagedByteString, Swap) {
-  ManagedByteString byte_string1(absl::string_view("foo"));
-  ManagedByteString byte_string2(std::string("bar"));
-  ManagedByteString byte_string3(absl::Cord("baz"));
-  ManagedByteString byte_string4;
+TEST(SharedByteString, Swap) {
+  SharedByteString byte_string1(absl::string_view("foo"));
+  SharedByteString byte_string2(std::string("bar"));
+  SharedByteString byte_string3(absl::Cord("baz"));
+  SharedByteString byte_string4;
   byte_string1.swap(byte_string2);
   byte_string2.swap(byte_string3);
   byte_string2.swap(byte_string3);
@@ -153,25 +153,25 @@ TEST(ManagedByteString, Swap) {
   EXPECT_THAT(byte_string3.ToString(), Eq("foo"));
 }
 
-TEST(ManagedByteString, ManagedByteStringView) {
-  ManagedByteString byte_string1(absl::string_view("foo"));
-  ManagedByteString byte_string2(std::string("bar"));
-  ManagedByteString byte_string3(absl::Cord("baz"));
-  EXPECT_THAT(ManagedByteStringView(byte_string1).ToString(), Eq("foo"));
-  EXPECT_THAT(ManagedByteStringView(byte_string2).ToString(), Eq("bar"));
-  EXPECT_THAT(ManagedByteStringView(byte_string3).ToString(), Eq("baz"));
+TEST(SharedByteString, SharedByteStringView) {
+  SharedByteString byte_string1(absl::string_view("foo"));
+  SharedByteString byte_string2(std::string("bar"));
+  SharedByteString byte_string3(absl::Cord("baz"));
+  EXPECT_THAT(SharedByteStringView(byte_string1).ToString(), Eq("foo"));
+  EXPECT_THAT(SharedByteStringView(byte_string2).ToString(), Eq("bar"));
+  EXPECT_THAT(SharedByteStringView(byte_string3).ToString(), Eq("baz"));
 }
 
-TEST(ManagedByteStringView, DefaultConstructor) {
-  ManagedByteStringView byte_string;
+TEST(SharedByteStringView, DefaultConstructor) {
+  SharedByteStringView byte_string;
   std::string scratch;
   EXPECT_THAT(byte_string.ToString(scratch), IsEmpty());
   EXPECT_THAT(byte_string.ToCord(), IsEmpty());
 }
 
-TEST(ManagedByteStringView, StringView) {
+TEST(SharedByteStringView, StringView) {
   absl::string_view string_view = "foo";
-  ManagedByteStringView byte_string(string_view);
+  SharedByteStringView byte_string(string_view);
   std::string scratch;
   EXPECT_THAT(byte_string.ToString(scratch), Not(IsEmpty()));
   EXPECT_THAT(byte_string.ToString(scratch).data(), Eq(string_view.data()));
@@ -180,12 +180,12 @@ TEST(ManagedByteStringView, StringView) {
   EXPECT_THAT(cord.Flatten().data(), Ne(string_view.data()));
 }
 
-TEST(ManagedByteStringView, OwnedStringView) {
+TEST(SharedByteStringView, OwnedStringView) {
   auto* const owner =
       new OwningObject("----------------------------------------");
   {
-    ManagedByteString byte_string1(owner, owner->owned_string());
-    ManagedByteStringView byte_string2(byte_string1);
+    SharedByteString byte_string1(owner, owner->owned_string());
+    SharedByteStringView byte_string2(byte_string1);
     std::string scratch;
     EXPECT_THAT(byte_string2.ToString(scratch), Not(IsEmpty()));
     EXPECT_THAT(byte_string2.ToString(scratch).data(),
@@ -197,77 +197,77 @@ TEST(ManagedByteStringView, OwnedStringView) {
   StrongUnref(owner);
 }
 
-TEST(ManagedByteStringView, String) {
+TEST(SharedByteStringView, String) {
   std::string string("foo");
-  ManagedByteStringView byte_string(string);
+  SharedByteStringView byte_string(string);
   std::string scratch;
   EXPECT_THAT(byte_string.ToString(scratch), Eq("foo"));
   EXPECT_THAT(byte_string.ToCord(), Eq("foo"));
 }
 
-TEST(ManagedByteStringView, Cord) {
+TEST(SharedByteStringView, Cord) {
   absl::Cord cord("foo");
-  ManagedByteStringView byte_string(cord);
+  SharedByteStringView byte_string(cord);
   std::string scratch;
   EXPECT_THAT(byte_string.ToString(scratch), Eq("foo"));
   EXPECT_THAT(byte_string.ToCord(), Eq("foo"));
 }
 
-TEST(ManagedByteStringView, CopyConstruct) {
+TEST(SharedByteStringView, CopyConstruct) {
   std::string string("bar");
   absl::Cord cord("baz");
-  ManagedByteStringView byte_string1(absl::string_view("foo"));
-  ManagedByteStringView byte_string2(string);
-  ManagedByteStringView byte_string3(cord);
-  EXPECT_THAT(ManagedByteString(byte_string1).ToString(),
+  SharedByteStringView byte_string1(absl::string_view("foo"));
+  SharedByteStringView byte_string2(string);
+  SharedByteStringView byte_string3(cord);
+  EXPECT_THAT(SharedByteString(byte_string1).ToString(),
               byte_string1.ToString());
-  EXPECT_THAT(ManagedByteString(byte_string2).ToString(),
+  EXPECT_THAT(SharedByteString(byte_string2).ToString(),
               byte_string2.ToString());
-  EXPECT_THAT(ManagedByteString(byte_string3).ToString(),
+  EXPECT_THAT(SharedByteString(byte_string3).ToString(),
               byte_string3.ToString());
 }
 
-TEST(ManagedByteStringView, MoveConstruct) {
+TEST(SharedByteStringView, MoveConstruct) {
   std::string string("bar");
   absl::Cord cord("baz");
-  ManagedByteStringView byte_string1(absl::string_view("foo"));
-  ManagedByteStringView byte_string2(string);
-  ManagedByteStringView byte_string3(cord);
-  EXPECT_THAT(ManagedByteString(std::move(byte_string1)).ToString(), Eq("foo"));
-  EXPECT_THAT(ManagedByteString(std::move(byte_string2)).ToString(), Eq("bar"));
-  EXPECT_THAT(ManagedByteString(std::move(byte_string3)).ToString(), Eq("baz"));
+  SharedByteStringView byte_string1(absl::string_view("foo"));
+  SharedByteStringView byte_string2(string);
+  SharedByteStringView byte_string3(cord);
+  EXPECT_THAT(SharedByteString(std::move(byte_string1)).ToString(), Eq("foo"));
+  EXPECT_THAT(SharedByteString(std::move(byte_string2)).ToString(), Eq("bar"));
+  EXPECT_THAT(SharedByteString(std::move(byte_string3)).ToString(), Eq("baz"));
 }
 
-TEST(ManagedByteStringView, CopyAssign) {
+TEST(SharedByteStringView, CopyAssign) {
   std::string string("bar");
   absl::Cord cord("baz");
-  ManagedByteStringView byte_string1(absl::string_view("foo"));
-  ManagedByteStringView byte_string2(string);
-  ManagedByteStringView byte_string3(cord);
-  ManagedByteStringView byte_string;
+  SharedByteStringView byte_string1(absl::string_view("foo"));
+  SharedByteStringView byte_string2(string);
+  SharedByteStringView byte_string3(cord);
+  SharedByteStringView byte_string;
   EXPECT_THAT((byte_string = byte_string1).ToString(), byte_string1.ToString());
   EXPECT_THAT((byte_string = byte_string2).ToString(), byte_string2.ToString());
   EXPECT_THAT((byte_string = byte_string3).ToString(), byte_string3.ToString());
 }
 
-TEST(ManagedByteStringView, MoveAssign) {
+TEST(SharedByteStringView, MoveAssign) {
   std::string string("bar");
   absl::Cord cord("baz");
-  ManagedByteStringView byte_string1(absl::string_view("foo"));
-  ManagedByteStringView byte_string2(string);
-  ManagedByteStringView byte_string3(cord);
-  ManagedByteStringView byte_string;
+  SharedByteStringView byte_string1(absl::string_view("foo"));
+  SharedByteStringView byte_string2(string);
+  SharedByteStringView byte_string3(cord);
+  SharedByteStringView byte_string;
   EXPECT_THAT((byte_string = std::move(byte_string1)).ToString(), Eq("foo"));
   EXPECT_THAT((byte_string = std::move(byte_string2)).ToString(), Eq("bar"));
   EXPECT_THAT((byte_string = std::move(byte_string3)).ToString(), Eq("baz"));
 }
 
-TEST(ManagedByteStringView, Swap) {
+TEST(SharedByteStringView, Swap) {
   std::string string("bar");
   absl::Cord cord("baz");
-  ManagedByteStringView byte_string1(absl::string_view("foo"));
-  ManagedByteStringView byte_string2(string);
-  ManagedByteStringView byte_string3(cord);
+  SharedByteStringView byte_string1(absl::string_view("foo"));
+  SharedByteStringView byte_string2(string);
+  SharedByteStringView byte_string3(cord);
   byte_string1.swap(byte_string2);
   byte_string2.swap(byte_string3);
   EXPECT_THAT(byte_string1.ToString(), Eq("bar"));
@@ -275,15 +275,15 @@ TEST(ManagedByteStringView, Swap) {
   EXPECT_THAT(byte_string3.ToString(), Eq("foo"));
 }
 
-TEST(ManagedByteStringView, ManagedByteString) {
+TEST(SharedByteStringView, SharedByteString) {
   std::string string("bar");
   absl::Cord cord("baz");
-  ManagedByteStringView byte_string1(absl::string_view("foo"));
-  ManagedByteStringView byte_string2(string);
-  ManagedByteStringView byte_string3(cord);
-  EXPECT_THAT(ManagedByteString(byte_string1).ToString(), Eq("foo"));
-  EXPECT_THAT(ManagedByteString(byte_string2).ToString(), Eq("bar"));
-  EXPECT_THAT(ManagedByteString(byte_string3).ToString(), Eq("baz"));
+  SharedByteStringView byte_string1(absl::string_view("foo"));
+  SharedByteStringView byte_string2(string);
+  SharedByteStringView byte_string3(cord);
+  EXPECT_THAT(SharedByteString(byte_string1).ToString(), Eq("foo"));
+  EXPECT_THAT(SharedByteString(byte_string2).ToString(), Eq("bar"));
+  EXPECT_THAT(SharedByteString(byte_string3).ToString(), Eq("baz"));
 }
 
 }  // namespace

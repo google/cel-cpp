@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_COMMON_INTERNAL_MANAGED_BYTE_STRING_H_
-#define THIRD_PARTY_CEL_CPP_COMMON_INTERNAL_MANAGED_BYTE_STRING_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_INTERNAL_SHARED_BYTE_STRING_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_INTERNAL_SHARED_BYTE_STRING_H_
 
 #include <cstddef>
 #include <string>
@@ -34,13 +34,13 @@ namespace cel::common_internal {
 #pragma pack(pack, 1)
 #endif
 
-struct ABSL_ATTRIBUTE_PACKED ManagedByteStringHeader final {
+struct ABSL_ATTRIBUTE_PACKED SharedByteStringHeader final {
   // True if the content is `absl::Cord`.
   bool is_cord : 1;
   // Only used when `is_cord` is `false`.
   size_t size : sizeof(size_t) * 8 - 1;
 
-  ManagedByteStringHeader(bool is_cord, size_t size)
+  SharedByteStringHeader(bool is_cord, size_t size)
       : is_cord(is_cord), size(size) {
     // Ensure size does not occupy the most significant bit.
     ABSL_DCHECK_GE(absl::bit_cast<std::make_signed_t<size_t>>(size), 0);
@@ -51,44 +51,44 @@ struct ABSL_ATTRIBUTE_PACKED ManagedByteStringHeader final {
 #pragma pack(pop)
 #endif
 
-static_assert(sizeof(ManagedByteStringHeader) == sizeof(size_t));
+static_assert(sizeof(SharedByteStringHeader) == sizeof(size_t));
 
-class ManagedByteString;
-class ABSL_ATTRIBUTE_TRIVIAL_ABI ManagedByteStringView;
+class SharedByteString;
+class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedByteStringView;
 
-// `ManagedByteString` is a compact wrapper around either an `absl::Cord` or
+// `SharedByteString` is a compact wrapper around either an `absl::Cord` or
 // `absl::string_view` with `const ReferenceCount*`.
-class ManagedByteString final {
+class SharedByteString final {
  public:
-  ManagedByteString() noexcept : ManagedByteString(absl::string_view()) {}
+  SharedByteString() noexcept : SharedByteString(absl::string_view()) {}
 
-  explicit ManagedByteString(absl::string_view string_view) noexcept
-      : ManagedByteString(nullptr, string_view) {}
+  explicit SharedByteString(absl::string_view string_view) noexcept
+      : SharedByteString(nullptr, string_view) {}
 
-  explicit ManagedByteString(
+  explicit SharedByteString(
       const std::string& string ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : ManagedByteString(absl::string_view(string)) {}
+      : SharedByteString(absl::string_view(string)) {}
 
-  explicit ManagedByteString(std::string&& string)
-      : ManagedByteString(absl::Cord(std::move(string))) {}
+  explicit SharedByteString(std::string&& string)
+      : SharedByteString(absl::Cord(std::move(string))) {}
 
-  // Constructs a `ManagedByteString` whose contents are `string_view` owned by
+  // Constructs a `SharedByteString` whose contents are `string_view` owned by
   // `refcount`. If `refcount` is not nullptr, a strong reference is taken.
-  ManagedByteString(const ReferenceCount* refcount,
-                    absl::string_view string_view) noexcept
+  SharedByteString(const ReferenceCount* refcount,
+                   absl::string_view string_view) noexcept
       : header_(false, string_view.size()) {
     content_.string.data = string_view.data();
     content_.string.refcount = refcount;
     (StrongRef)(refcount);
   }
 
-  explicit ManagedByteString(absl::Cord cord) noexcept : header_(true, 0) {
+  explicit SharedByteString(absl::Cord cord) noexcept : header_(true, 0) {
     ::new (static_cast<void*>(cord_ptr())) absl::Cord(std::move(cord));
   }
 
-  explicit ManagedByteString(ManagedByteStringView other) noexcept;
+  explicit SharedByteString(SharedByteStringView other) noexcept;
 
-  ManagedByteString(const ManagedByteString& other) noexcept
+  SharedByteString(const SharedByteString& other) noexcept
       : header_(other.header_) {
     if (header_.is_cord) {
       ::new (static_cast<void*>(cord_ptr())) absl::Cord(*other.cord_ptr());
@@ -99,8 +99,7 @@ class ManagedByteString final {
     }
   }
 
-  ManagedByteString(ManagedByteString&& other) noexcept
-      : header_(other.header_) {
+  SharedByteString(SharedByteString&& other) noexcept : header_(other.header_) {
     if (header_.is_cord) {
       ::new (static_cast<void*>(cord_ptr()))
           absl::Cord(std::move(*other.cord_ptr()));
@@ -113,7 +112,7 @@ class ManagedByteString final {
     }
   }
 
-  ~ManagedByteString() noexcept {
+  ~SharedByteString() noexcept {
     if (header_.is_cord) {
       cord_ptr()->~Cord();
     } else {
@@ -121,15 +120,15 @@ class ManagedByteString final {
     }
   }
 
-  ManagedByteString& operator=(const ManagedByteString& other) noexcept {
-    this->~ManagedByteString();
-    ::new (static_cast<void*>(this)) ManagedByteString(other);
+  SharedByteString& operator=(const SharedByteString& other) noexcept {
+    this->~SharedByteString();
+    ::new (static_cast<void*>(this)) SharedByteString(other);
     return *this;
   }
 
-  ManagedByteString& operator=(ManagedByteString&& other) noexcept {
-    this->~ManagedByteString();
-    ::new (static_cast<void*>(this)) ManagedByteString(std::move(other));
+  SharedByteString& operator=(SharedByteString&& other) noexcept {
+    this->~SharedByteString();
+    ::new (static_cast<void*>(this)) SharedByteString(std::move(other));
     return *this;
   }
 
@@ -145,7 +144,7 @@ class ManagedByteString final {
     }
   }
 
-  void swap(ManagedByteString& other) noexcept {
+  void swap(SharedByteString& other) noexcept {
     using std::swap;
     if (header_.is_cord) {
       // absl::Cord
@@ -212,10 +211,10 @@ class ManagedByteString final {
   }
 
  private:
-  friend class ManagedByteStringView;
+  friend class SharedByteStringView;
 
-  static void SwapMixed(ManagedByteString& cord,
-                        ManagedByteString& string) noexcept {
+  static void SwapMixed(SharedByteString& cord,
+                        SharedByteString& string) noexcept {
     const auto* string_data = string.content_.string.data;
     const auto* string_refcount = string.content_.string.refcount;
     ::new (static_cast<void*>(string.cord_ptr()))
@@ -233,7 +232,7 @@ class ManagedByteString final {
     return reinterpret_cast<const absl::Cord*>(&content_.cord[0]);
   }
 
-  ManagedByteStringHeader header_;
+  SharedByteStringHeader header_;
   union {
     struct {
       const char* data;
@@ -243,38 +242,37 @@ class ManagedByteString final {
   } content_;
 };
 
-inline void swap(ManagedByteString& lhs, ManagedByteString& rhs) noexcept {
+inline void swap(SharedByteString& lhs, SharedByteString& rhs) noexcept {
   lhs.swap(rhs);
 }
 
-class ABSL_ATTRIBUTE_TRIVIAL_ABI ManagedByteStringView final {
+class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedByteStringView final {
  public:
-  ManagedByteStringView() noexcept
-      : ManagedByteStringView(absl::string_view()) {}
+  SharedByteStringView() noexcept : SharedByteStringView(absl::string_view()) {}
 
-  explicit ManagedByteStringView(absl::string_view string) noexcept
-      : ManagedByteStringView(nullptr, string) {}
+  explicit SharedByteStringView(absl::string_view string) noexcept
+      : SharedByteStringView(nullptr, string) {}
 
-  explicit ManagedByteStringView(
+  explicit SharedByteStringView(
       const std::string& string ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : ManagedByteStringView(absl::string_view(string)) {}
+      : SharedByteStringView(absl::string_view(string)) {}
 
-  ManagedByteStringView(const ReferenceCount* refcount,
-                        absl::string_view string) noexcept
+  SharedByteStringView(const ReferenceCount* refcount,
+                       absl::string_view string) noexcept
       : header_(false, string.size()) {
     content_.string.data = string.data();
     content_.string.refcount = refcount;
   }
 
-  explicit ManagedByteStringView(
+  explicit SharedByteStringView(
       const absl::Cord& cord ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
       : header_(true, 0) {
     content_.cord = &cord;
   }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ManagedByteStringView(
-      const ManagedByteString& other ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
+  SharedByteStringView(
+      const SharedByteString& other ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
       : header_(other.header_) {
     if (header_.is_cord) {
       content_.cord = other.cord_ptr();
@@ -284,8 +282,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ManagedByteStringView final {
     }
   }
 
-  ManagedByteStringView(const ManagedByteStringView&) = default;
-  ManagedByteStringView& operator=(const ManagedByteStringView&) = default;
+  SharedByteStringView(const SharedByteStringView&) = default;
+  SharedByteStringView& operator=(const SharedByteStringView&) = default;
 
   template <typename Visitor>
   std::common_type_t<std::invoke_result_t<Visitor, absl::string_view>,
@@ -299,7 +297,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ManagedByteStringView final {
     }
   }
 
-  void swap(ManagedByteStringView& other) noexcept {
+  void swap(SharedByteStringView& other) noexcept {
     using std::swap;
     swap(header_, other.header_);
     swap(content_, other.content_);
@@ -347,9 +345,9 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ManagedByteStringView final {
   }
 
  private:
-  friend class ManagedByteString;
+  friend class SharedByteString;
 
-  ManagedByteStringHeader header_;
+  SharedByteStringHeader header_;
   union {
     struct {
       const char* data;
@@ -359,8 +357,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ManagedByteStringView final {
   } content_;
 };
 
-inline ManagedByteString::ManagedByteString(
-    ManagedByteStringView other) noexcept
+inline SharedByteString::SharedByteString(SharedByteStringView other) noexcept
     : header_(other.header_) {
   if (header_.is_cord) {
     ::new (static_cast<void*>(cord_ptr())) absl::Cord(*other.content_.cord);
@@ -373,4 +370,4 @@ inline ManagedByteString::ManagedByteString(
 
 }  // namespace cel::common_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_COMMON_INTERNAL_MANAGED_BYTE_STRING_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_INTERNAL_SHARED_BYTE_STRING_H_

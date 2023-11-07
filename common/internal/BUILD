@@ -34,32 +34,6 @@ cc_test(
 )
 
 cc_library(
-    name = "managed_byte_string",
-    hdrs = ["managed_byte_string.h"],
-    deps = [
-        ":reference_count",
-        "//internal:overloaded",
-        "@com_google_absl//absl/base",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/log:absl_check",
-        "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/strings:string_view",
-    ],
-)
-
-cc_test(
-    name = "managed_byte_string_test",
-    srcs = ["managed_byte_string_test.cc"],
-    deps = [
-        ":managed_byte_string",
-        ":reference_count",
-        "//internal:testing",
-        "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/strings:string_view",
-    ],
-)
-
-cc_library(
     name = "reference_count",
     hdrs = ["reference_count.h"],
     deps = [
@@ -75,5 +49,31 @@ cc_test(
     deps = [
         ":reference_count",
         "//internal:testing",
+    ],
+)
+
+cc_library(
+    name = "shared_byte_string",
+    hdrs = ["shared_byte_string.h"],
+    deps = [
+        ":reference_count",
+        "//internal:overloaded",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_test(
+    name = "shared_byte_string_test",
+    srcs = ["shared_byte_string_test.cc"],
+    deps = [
+        ":reference_count",
+        ":shared_byte_string",
+        "//internal:testing",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:string_view",
     ],
 )
