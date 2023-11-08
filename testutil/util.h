@@ -1,32 +1,35 @@
-#ifndef THIRD_PARTY_CEL_CPP_TESTUTIL_EXPECT_SAME_TYPE_H_
-#define THIRD_PARTY_CEL_CPP_TESTUTIL_EXPECT_SAME_TYPE_H_
+// Copyright 2018 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef THIRD_PARTY_CEL_CPP_TESTUTIL_UTIL_H_
+#define THIRD_PARTY_CEL_CPP_TESTUTIL_UTIL_H_
 
 #include <memory>
 #include <ostream>
 #include <string>
 
-#include "google/protobuf/message.h"
-#include "google/protobuf/text_format.h"
-#include "gmock/gmock.h"
 #include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/string_view.h"
 #include "internal/casts.h"
+#include "internal/testing.h"
+#include "google/protobuf/message.h"
+#include "google/protobuf/message_lite.h"
 #include "google/protobuf/text_format.h"
 #include "google/protobuf/util/message_differencer.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace testutil {
-
-// A helper class that causes the compiler to print a helpful error when
-// they template args don't match.
-template <typename E, typename A>
-struct ExpectSameType;
-
-template <typename T>
-struct ExpectSameType<T, T> {};
+namespace cel::internal::test {
 
 /**
  * Simple implementation of a proto matcher comparing string representations.
@@ -134,9 +137,13 @@ inline ::testing::PolymorphicMatcher<ProtoMatcher> EqualsProto(
   return ::testing::MakePolymorphicMatcher(ProtoMatcher(x));
 }
 
-}  // namespace testutil
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace cel::internal::test
 
-#endif  // THIRD_PARTY_CEL_CPP_TESTUTIL_EXPECT_SAME_TYPE_H_
+namespace google::api::expr::testutil {
+
+// aliases for old namespace
+using cel::internal::test::EqualsProto;
+
+}  // namespace google::api::expr::testutil
+
+#endif  // THIRD_PARTY_CEL_CPP_TESTUTIL_UTIL_H_
