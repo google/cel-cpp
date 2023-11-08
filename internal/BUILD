@@ -343,3 +343,17 @@ cc_test(
         "@com_google_absl//absl/strings:cord",
     ],
 )
+
+cc_library(
+    name = "proto_matchers",
+    testonly = True,
+    hdrs = ["proto_matchers.h"],
+    deps = [
+        ":casts",
+        ":testing",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
