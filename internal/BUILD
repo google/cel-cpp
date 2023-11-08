@@ -108,6 +108,12 @@ cc_test(
 )
 
 cc_library(
+    name = "exceptions",
+    hdrs = ["exceptions.h"],
+    deps = ["@com_google_absl//absl/base:config"],
+)
+
+cc_library(
     name = "overloaded",
     hdrs = ["overloaded.h"],
 )
