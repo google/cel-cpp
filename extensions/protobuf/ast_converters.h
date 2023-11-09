@@ -55,11 +55,17 @@ absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
 absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
     const google::api::expr::v1alpha1::ParsedExpr& parsed_expr);
 
+absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> CreateParsedExprFromAst(
+    const Ast& ast);
+
 // Creates a runtime AST from a checked protobuf AST.
 // May return a non-ok Status if the AST is malformed (e.g. unset required
 // fields).
 absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromCheckedExpr(
     const google::api::expr::v1alpha1::CheckedExpr& checked_expr);
+
+absl::StatusOr<google::api::expr::v1alpha1::CheckedExpr> CreateCheckedExprFromAst(
+    const Ast& ast);
 
 }  // namespace cel::extensions
 

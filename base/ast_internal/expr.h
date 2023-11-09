@@ -1614,6 +1614,8 @@ class CheckedExpr {
 
   const std::string& expr_version() const { return expr_version_; }
 
+  std::string& mutable_expr_version() { return expr_version_; }
+
   const Expr& expr() const { return expr_; }
 
   Expr& mutable_expr() { return expr_; }

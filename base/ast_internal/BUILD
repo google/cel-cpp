@@ -30,6 +30,7 @@ cc_library(
         "//base:ast",
         "//internal:casts",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/strings:string_view",
     ],
 )
 

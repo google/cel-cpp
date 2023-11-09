@@ -16,9 +16,11 @@
 #define THIRD_PARTY_CEL_CPP_BASE_AST_INTERNAL_AST_IMPL_H_
 
 #include <cstdint>
+#include <string>
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/strings/string_view.h"
 #include "base/ast.h"
 #include "base/ast_internal/expr.h"
 #include "internal/casts.h"
@@ -70,6 +72,7 @@ class AstImpl : public Ast {
         source_info_(std::move(expr.mutable_source_info())),
         reference_map_(std::move(expr.mutable_reference_map())),
         type_map_(std::move(expr.mutable_type_map())),
+        expr_version_(std::move(expr.mutable_expr_version())),
         is_checked_(true) {}
 
   // Implement public Ast APIs.
@@ -98,6 +101,8 @@ class AstImpl : public Ast {
     return type_map_;
   }
 
+  absl::string_view expr_version() const { return expr_version_; }
+
   AstImpl DeepCopy() const;
 
  private:
@@ -105,6 +110,7 @@ class AstImpl : public Ast {
   SourceInfo source_info_;
   absl::flat_hash_map<int64_t, Reference> reference_map_;
   absl::flat_hash_map<int64_t, Type> type_map_;
+  std::string expr_version_;
   bool is_checked_;
 };
 
