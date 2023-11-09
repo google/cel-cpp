@@ -25,10 +25,14 @@
 #include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/text_format.h"
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "absl/types/variant.h"
+#include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "internal/testing.h"
+#include "parser/options.h"
+#include "parser/parser.h"
 
 namespace cel::extensions {
 namespace internal {
@@ -815,8 +819,14 @@ TEST(AstConvertersTest, CheckedExprToNative) {
 
 namespace {
 
+using ::google::api::expr::parser::Parse;
+
+using ParsedExprPb = google::api::expr::v1alpha1::ParsedExpr;
+using CheckedExprPb = google::api::expr::v1alpha1::CheckedExpr;
+using TypePb = google::api::expr::v1alpha1::Type;
+
 TEST(AstUtilityTest, CheckedExprToAst) {
-  google::api::expr::v1alpha1::CheckedExpr checked_expr;
+  CheckedExprPb checked_expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         reference_map {
@@ -855,7 +865,7 @@ TEST(AstUtilityTest, CheckedExprToAst) {
 }
 
 TEST(AstUtilityTest, ParsedExprToAst) {
-  google::api::expr::v1alpha1::ParsedExpr parsed_expr;
+  ParsedExprPb parsed_expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         source_info {
@@ -917,6 +927,73 @@ TEST(AstUtilityTest, ExprAndSourceInfoToAst) {
   ASSERT_OK_AND_ASSIGN(
       auto ast, cel::extensions::CreateAstFromParsedExpr(expr, &source_info));
 }
+
+struct ConversionTestCase {
+  absl::string_view expr;
+};
+
+class ConversionTest : public testing::TestWithParam<ConversionTestCase> {
+ public:
+  ConversionTest() {
+    options_.add_macro_calls = true;
+    options_.enable_optional_syntax = true;
+  }
+
+ protected:
+  ParserOptions options_;
+};
+
+TEST_P(ConversionTest, ParsedExprCopyable) {
+  ASSERT_OK_AND_ASSIGN(ParsedExprPb parsed_expr,
+                       Parse(GetParam().expr, "<input>", options_));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> ast,
+                       CreateAstFromParsedExpr(parsed_expr));
+
+  const auto& impl = ast_internal::AstImpl::CastFromPublicAst(*ast);
+  ast_internal::AstImpl copy_of_impl = impl.DeepCopy();
+
+  EXPECT_EQ(copy_of_impl.root_expr(), impl.root_expr());
+}
+
+TEST_P(ConversionTest, CheckedExprCopyable) {
+  ASSERT_OK_AND_ASSIGN(ParsedExprPb parsed_expr,
+                       Parse(GetParam().expr, "<input>", options_));
+
+  CheckedExprPb checked_expr;
+  *checked_expr.mutable_expr() = parsed_expr.expr();
+  *checked_expr.mutable_source_info() = parsed_expr.source_info();
+
+  int64_t root_id = checked_expr.expr().id();
+  (*checked_expr.mutable_reference_map())[root_id].add_overload_id("_==_");
+  (*checked_expr.mutable_type_map())[root_id].set_primitive(TypePb::BOOL);
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> ast,
+                       CreateAstFromCheckedExpr(checked_expr));
+
+  const auto& impl = ast_internal::AstImpl::CastFromPublicAst(*ast);
+  ast_internal::AstImpl copy_of_impl = impl.DeepCopy();
+
+  EXPECT_EQ(copy_of_impl.root_expr(), impl.root_expr());
+  EXPECT_EQ(copy_of_impl.type_map(), impl.type_map());
+  EXPECT_EQ(copy_of_impl.reference_map(), impl.reference_map());
+  EXPECT_EQ(copy_of_impl.source_info(), impl.source_info());
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ExpressionCases, ConversionTest,
+    testing::ValuesIn<ConversionTestCase>(
+        {{R"cel(1 == 2)cel"},
+         {R"cel("42" == "42")cel"},
+         {R"cel("s".startsWith("s") == true)cel"},
+         {R"cel([1, 2, 3] == [1, 2, 3])cel"},
+         {R"cel(TestAllTypes{single_int64: 42}.single_int64 == 42)cel"},
+         {R"cel([1, 2, 3].map(x, x + 2).size() == 3)cel"},
+         {R"cel({"a": 1, "b": 2}["a"] == 1)cel"},
+         {R"cel(ident == 42)cel"},
+         {R"cel(ident.field == 42)cel"},
+         {R"cel({?"abc": {}[?1]}.?abc.orValue(42) == 42)cel"},
+         {R"cel([1, 2, ?optional.none()].size() == 2)cel"}}));
 
 }  // namespace
 }  // namespace cel::extensions

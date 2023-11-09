@@ -49,6 +49,12 @@ class AstImpl : public Ast {
     return cel::internal::down_cast<const AstImpl*>(ast);
   }
 
+  // Move-only
+  AstImpl(const AstImpl& other) = delete;
+  AstImpl& operator=(const AstImpl& other) = delete;
+  AstImpl(AstImpl&& other) = default;
+  AstImpl& operator=(AstImpl&& other) = default;
+
   explicit AstImpl(Expr expr, SourceInfo source_info)
       : root_expr_(std::move(expr)),
         source_info_(std::move(source_info)),
@@ -91,6 +97,8 @@ class AstImpl : public Ast {
   const absl::flat_hash_map<int64_t, Type>& type_map() const {
     return type_map_;
   }
+
+  AstImpl DeepCopy() const;
 
  private:
   Expr root_expr_;

@@ -46,4 +46,12 @@ const Reference* AstImpl::GetReference(int64_t expr_id) const {
   return &iter->second;
 }
 
+AstImpl AstImpl::DeepCopy() const {
+  AstImpl copy(root_expr_.DeepCopy(), source_info_.DeepCopy());
+  copy.type_map_ = type_map_;
+  copy.reference_map_ = reference_map_;
+  copy.is_checked_ = is_checked_;
+  return copy;
+}
+
 }  // namespace cel::ast_internal

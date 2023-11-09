@@ -128,5 +128,45 @@ TEST(AstImpl, CheckedExprCtor) {
   EXPECT_EQ(ast_impl.source_info().syntax_version(), "1.0");
 }
 
+TEST(AstImpl, CheckedExprDeepCopy) {
+  CheckedExpr expr;
+  auto& root = expr.mutable_expr();
+  root.set_id(3);
+  root.mutable_call_expr().set_function("_==_");
+  root.mutable_call_expr().mutable_args().resize(2);
+  auto& lhs = root.mutable_call_expr().mutable_args()[0];
+  auto& rhs = root.mutable_call_expr().mutable_args()[1];
+  expr.mutable_type_map()[3] = Type(PrimitiveType::kBool);
+
+  lhs.mutable_ident_expr().set_name("int_value");
+  lhs.set_id(1);
+  Reference ref;
+  ref.set_name("com.int_value");
+  expr.mutable_reference_map()[1] = std::move(ref);
+  expr.mutable_type_map()[1] = Type(PrimitiveType::kInt64);
+
+  rhs.mutable_const_expr().set_int64_value(2);
+  rhs.set_id(2);
+  expr.mutable_type_map()[2] = Type(PrimitiveType::kInt64);
+  expr.mutable_source_info().set_syntax_version("1.0");
+
+  AstImpl ast_impl(std::move(expr));
+  AstImpl ast_impl_copy = ast_impl.DeepCopy();
+  Ast& ast = ast_impl_copy;
+
+  ASSERT_TRUE(ast.IsChecked());
+  EXPECT_EQ(ast_impl_copy.GetType(1), Type(PrimitiveType::kInt64));
+  EXPECT_THAT(ast_impl_copy.GetReference(1),
+              Pointee(Truly([](const Reference& arg) {
+                return arg.name() == "com.int_value";
+              })));
+  EXPECT_EQ(ast_impl_copy.GetReturnType(), Type(PrimitiveType::kBool));
+  EXPECT_TRUE(ast_impl_copy.root_expr().has_call_expr());
+  EXPECT_EQ(ast_impl_copy.root_expr().call_expr().function(), "_==_");
+  EXPECT_EQ(ast_impl_copy.root_expr().id(), 3);
+  EXPECT_EQ(ast_impl_copy.source_info().syntax_version(), "1.0");
+  EXPECT_EQ(ast_impl.root_expr(), ast_impl_copy.root_expr());
+}
+
 }  // namespace
 }  // namespace cel::ast_internal

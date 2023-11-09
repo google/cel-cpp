@@ -557,6 +557,118 @@ TEST(AstTest, ReferenceConstantDefaultValue) {
   EXPECT_EQ(reference.value(), Constant());
 }
 
+TEST(AstTest, TypeCopyable) {
+  Type type = Type(PrimitiveType::kBool);
+  Type type2 = type;
+  EXPECT_TRUE(type2.has_primitive());
+  EXPECT_EQ(type2, type);
+
+  type = Type(ListType(std::make_unique<Type>(PrimitiveType::kBool)));
+  type2 = type;
+  EXPECT_TRUE(type2.has_list_type());
+  EXPECT_EQ(type2, type);
+
+  type = Type(MapType(std::make_unique<Type>(PrimitiveType::kBool),
+                      std::make_unique<Type>(PrimitiveType::kBool)));
+  type2 = type;
+  EXPECT_TRUE(type2.has_map_type());
+  EXPECT_EQ(type2, type);
+
+  type = Type(FunctionType(std::make_unique<Type>(PrimitiveType::kBool), {}));
+  type2 = type;
+  EXPECT_TRUE(type2.has_function());
+  EXPECT_EQ(type2, type);
+
+  type = Type(AbstractType("optional", {Type(PrimitiveType::kBool)}));
+  type2 = type;
+  EXPECT_TRUE(type2.has_abstract_type());
+  EXPECT_EQ(type2, type);
+}
+
+TEST(AstTest, DeepCopyIsDeep) {
+  Expr expr;
+  auto& call = expr.mutable_call_expr();
+  call.set_function("_[_]");
+  auto& arg1 = call.mutable_args().emplace_back();
+  arg1.mutable_ident_expr().set_name("x");
+  auto& arg2 = call.mutable_args().emplace_back();
+  arg2.mutable_const_expr().set_string_value("x");
+
+  Expr expr2(expr.DeepCopy());
+
+  EXPECT_EQ(expr2, expr);
+
+  expr2.mutable_call_expr().mutable_args()[0].mutable_ident_expr().set_name(
+      "y");
+  expr2.mutable_call_expr()
+      .mutable_args()[1]
+      .mutable_const_expr()
+      .set_string_value("y");
+
+  EXPECT_NE(expr2, expr);
+}
+
+TEST(AstTest, TypeMoveable) {
+  Type type = Type(PrimitiveType::kBool);
+  Type type2 = type;
+  Type type3 = std::move(type);
+  EXPECT_TRUE(type2.has_primitive());
+  EXPECT_EQ(type2, type3);
+
+  type = Type(ListType(std::make_unique<Type>(PrimitiveType::kBool)));
+  type2 = type;
+  type3 = std::move(type);
+  EXPECT_TRUE(type2.has_list_type());
+  EXPECT_EQ(type2, type3);
+
+  type = Type(MapType(std::make_unique<Type>(PrimitiveType::kBool),
+                      std::make_unique<Type>(PrimitiveType::kBool)));
+  type2 = type;
+  type3 = std::move(type);
+  EXPECT_TRUE(type2.has_map_type());
+  EXPECT_EQ(type2, type3);
+
+  type = Type(FunctionType(std::make_unique<Type>(PrimitiveType::kBool), {}));
+  type2 = type;
+  type3 = std::move(type);
+  EXPECT_TRUE(type2.has_function());
+  EXPECT_EQ(type2, type3);
+
+  type = Type(AbstractType("optional", {Type(PrimitiveType::kBool)}));
+  type2 = type;
+  type3 = std::move(type);
+  EXPECT_TRUE(type2.has_abstract_type());
+  EXPECT_EQ(type2, type3);
+}
+
+TEST(AstTest, NestedTypeKindCopyAssignable) {
+  ListType list_type(std::make_unique<Type>(PrimitiveType::kBool));
+  ListType list_type2;
+  list_type2 = list_type;
+
+  EXPECT_EQ(list_type2, list_type);
+
+  MapType map_type(std::make_unique<Type>(PrimitiveType::kBool),
+                   std::make_unique<Type>(PrimitiveType::kBool));
+  MapType map_type2;
+  map_type2 = map_type;
+
+  AbstractType abstract_type(
+      "abstract", {Type(PrimitiveType::kBool), Type(PrimitiveType::kBool)});
+  AbstractType abstract_type2;
+  abstract_type2 = abstract_type;
+
+  EXPECT_EQ(abstract_type2, abstract_type);
+
+  FunctionType function_type(
+      std::make_unique<Type>(PrimitiveType::kBool),
+      {Type(PrimitiveType::kBool), Type(PrimitiveType::kBool)});
+  FunctionType function_type2;
+  function_type2 = function_type;
+
+  EXPECT_EQ(function_type2, function_type);
+}
+
 }  // namespace
 }  // namespace ast_internal
 }  // namespace cel

@@ -59,9 +59,13 @@ cc_test(
     ],
     deps = [
         ":ast_converters",
+        "//base/ast_internal:ast_impl",
         "//base/ast_internal:expr",
         "//internal:testing",
+        "//parser",
+        "//parser:options",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:variant",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",

@@ -879,6 +879,10 @@ class Expr {
     return id_ == other.id_ && expr_kind_ == other.expr_kind_;
   }
 
+  bool operator!=(const Expr& other) const { return !operator==(other); }
+
+  Expr DeepCopy() const;
+
  private:
   // Required. An id assigned to this node by the parser which is unique in a
   // given expression tree. This is used to associate type information and other
@@ -943,6 +947,15 @@ class SourceInfo {
   absl::flat_hash_map<int64_t, Expr>& mutable_macro_calls() {
     return macro_calls_;
   }
+
+  bool operator==(const SourceInfo& other) const {
+    return syntax_version_ == other.syntax_version_ &&
+           location_ == other.location_ &&
+           line_offsets_ == other.line_offsets_ &&
+           positions_ == other.positions_ && macro_calls_ == other.macro_calls_;
+  }
+
+  SourceInfo DeepCopy() const;
 
  private:
   // The syntax version of the source, e.g. `cel1`.
@@ -1062,6 +1075,16 @@ class Type;
 class ListType {
  public:
   ListType() = default;
+
+  ListType(const ListType& rhs)
+      : elem_type_(std::make_unique<Type>(rhs.elem_type())) {}
+  ListType& operator=(const ListType& rhs) {
+    elem_type_ = std::make_unique<Type>(rhs.elem_type());
+    return *this;
+  }
+  ListType(ListType&& rhs) = default;
+  ListType& operator=(ListType&& rhs) = default;
+
   explicit ListType(std::unique_ptr<Type> elem_type)
       : elem_type_(std::move(elem_type)) {}
 
@@ -1092,6 +1115,18 @@ class MapType {
   MapType() = default;
   MapType(std::unique_ptr<Type> key_type, std::unique_ptr<Type> value_type)
       : key_type_(std::move(key_type)), value_type_(std::move(value_type)) {}
+
+  MapType(const MapType& rhs)
+      : key_type_(std::make_unique<Type>(rhs.key_type())),
+        value_type_(std::make_unique<Type>(rhs.value_type())) {}
+  MapType& operator=(const MapType& rhs) {
+    key_type_ = std::make_unique<Type>(rhs.key_type());
+    value_type_ = std::make_unique<Type>(rhs.value_type());
+
+    return *this;
+  }
+  MapType(MapType&& rhs) = default;
+  MapType& operator=(MapType&& rhs) = default;
 
   void set_key_type(std::unique_ptr<Type> key_type) {
     key_type_ = std::move(key_type);
@@ -1143,6 +1178,11 @@ class FunctionType {
  public:
   FunctionType() = default;
   FunctionType(std::unique_ptr<Type> result_type, std::vector<Type> arg_types);
+
+  FunctionType(const FunctionType& other);
+  FunctionType& operator=(const FunctionType& other);
+  FunctionType(FunctionType&&) = default;
+  FunctionType& operator=(FunctionType&&) = default;
 
   void set_result_type(std::unique_ptr<Type> result_type) {
     result_type_ = std::move(result_type);
@@ -1286,8 +1326,10 @@ class Type {
   Type() = default;
   explicit Type(TypeKind type_kind) : type_kind_(std::move(type_kind)) {}
 
-  Type(Type&& rhs) = default;
-  Type& operator=(Type&& rhs) = default;
+  Type(const Type& other);
+  Type& operator=(const Type& other);
+  Type(Type&&) = default;
+  Type& operator=(Type&&) = default;
 
   void set_type_kind(TypeKind type_kind) { type_kind_ = std::move(type_kind); }
 
@@ -1492,6 +1534,11 @@ class Reference {
   }
 
   bool has_value() const { return value_.has_value(); }
+
+  bool operator==(const Reference& other) const {
+    return name_ == other.name_ && overload_id_ == other.overload_id_ &&
+           value() == other.value();
+  }
 
  private:
   // The fully qualified name of the declaration.
