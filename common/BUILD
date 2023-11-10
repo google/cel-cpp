@@ -103,6 +103,38 @@ cc_test(
 )
 
 cc_library(
+    name = "memory",
+    srcs = ["memory.cc"],
+    hdrs = ["memory.h"],
+    deps = [
+        ":native_type",
+        "//common/internal:reference_count",
+        "//internal:exceptions",
+        "//internal:no_destructor",
+        "@com_google_absl//absl/base:config",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/log:die_if_null",
+        "@com_google_absl//absl/numeric:bits",
+    ],
+)
+
+cc_test(
+    name = "memory_test",
+    srcs = ["memory_test.cc"],
+    deps = [
+        ":memory",
+        ":native_type",
+        "//internal:testing",
+        "@com_google_absl//absl/base:config",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_library(
     name = "type_kind",
     hdrs = ["type_kind.h"],
     deps = [

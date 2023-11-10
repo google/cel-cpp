@@ -14,7 +14,7 @@
 
 // This header contains primitives for reference counting, roughly equivalent to
 // the primitives used to implement `std::shared_ptr`. These primitives should
-// not be used directly in most cases, instead `cel::ManagedMemory` should be
+// not be used directly in most cases, instead `cel::Shared` should be
 // used instead.
 
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_INTERNAL_REFERENCE_COUNT_H_
@@ -118,7 +118,7 @@ bool IsExpiredRef(absl::Nullable<const ReferenceCount*> refcount) noexcept;
 
 // `ReferenceCount` is similar to the control block used by `std::shared_ptr`.
 // It is not meant to be interacted with directly in most cases, instead
-// `cel::ManagedMemory` should be used.
+// `cel::Shared` should be used.
 class ReferenceCount {
  public:
   ReferenceCount() = default;
