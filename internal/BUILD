@@ -35,12 +35,6 @@ cc_test(
 )
 
 cc_library(
-    name = "linked_hash_map",
-    hdrs = ["linked_hash_map.h"],
-    deps = ["@com_google_absl//absl/container:flat_hash_set"],
-)
-
-cc_library(
     name = "benchmark",
     testonly = True,
     hdrs = ["benchmark.h"],
@@ -234,15 +228,6 @@ cc_test(
         "//testutil:util",
         "@com_google_absl//absl/time",
         "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
-    name = "rtti",
-    hdrs = ["rtti.h"],
-    deps = [
-        "//common:native_type",
-        "@com_google_absl//absl/base:core_headers",
     ],
 )
 
