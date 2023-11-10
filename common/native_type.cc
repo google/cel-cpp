@@ -36,7 +36,7 @@ namespace cel {
 
 namespace {
 
-#if defined(CEL_INTERNAL_HAVE_RTTI)
+#ifdef CEL_INTERNAL_HAVE_RTTI
 struct FreeDeleter {
   void operator()(char* ptr) const { std::free(ptr); }
 };

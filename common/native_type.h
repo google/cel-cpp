@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_NATIVE_TYPE_H_
 
 #include <cstddef>
+#include <ostream>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -123,6 +124,10 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI NativeTypeId final {
 
 inline bool operator!=(NativeTypeId lhs, NativeTypeId rhs) {
   return !operator==(lhs, rhs);
+}
+
+inline std::ostream& operator<<(std::ostream& out, NativeTypeId id) {
+  return out << id.DebugString();
 }
 
 }  // namespace cel

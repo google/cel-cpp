@@ -14,6 +14,8 @@
 
 #include "common/native_type.h"
 
+#include <sstream>
+
 #include "absl/hash/hash_testing.h"
 #include "internal/testing.h"
 
@@ -36,8 +38,11 @@ TEST(NativeTypeId, ImplementsAbslHashCorrectly) {
 }
 
 TEST(NativeTypeId, DebugString) {
-  EXPECT_THAT(NativeTypeId().DebugString(), IsEmpty());
-  EXPECT_THAT(NativeTypeId::For<Type1>().DebugString(), Not(IsEmpty()));
+  std::ostringstream out;
+  out << NativeTypeId();
+  EXPECT_THAT(out.str(), IsEmpty());
+  out << NativeTypeId::For<Type1>();
+  EXPECT_THAT(out.str(), Not(IsEmpty()));
 }
 
 namespace native_type_test {
