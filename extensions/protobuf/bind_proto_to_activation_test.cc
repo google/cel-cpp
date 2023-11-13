@@ -34,6 +34,7 @@
 namespace cel::extensions {
 namespace {
 
+using ::cel::extensions::ProtoMemoryManagerRef;
 using ::google::api::expr::test::v1::proto2::TestAllTypes;
 using testing::HasSubstr;
 using testing::Optional;
@@ -45,15 +46,16 @@ enum class MemoryManagerOption { kGlobal, kArena };
 class BindProtoToActivationTest
     : public ::testing::TestWithParam<MemoryManagerOption> {
  public:
-  BindProtoToActivationTest() : proto_memory_manager_(&arena_) {}
-  cel::MemoryManager& memory_manager() {
-    return GetParam() == MemoryManagerOption::kGlobal ? MemoryManager::Global()
-                                                      : proto_memory_manager_;
+  BindProtoToActivationTest() = default;
+
+  cel::MemoryManagerRef memory_manager() {
+    return GetParam() == MemoryManagerOption::kGlobal
+               ? MemoryManagerRef::ReferenceCounting()
+               : ProtoMemoryManagerRef(&arena_);
   }
 
  private:
   google::protobuf::Arena arena_;
-  ProtoMemoryManager proto_memory_manager_;
 };
 
 MATCHER_P(IsIntValue, value, "") {

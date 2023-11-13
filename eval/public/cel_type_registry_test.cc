@@ -34,7 +34,7 @@ namespace {
 
 using ::cel::EnumType;
 using ::cel::Handle;
-using ::cel::MemoryManager;
+using ::cel::MemoryManagerRef;
 using ::cel::Type;
 using ::cel::TypeFactory;
 using ::cel::TypeManager;
@@ -138,8 +138,8 @@ TEST(CelTypeRegistryTest, ImplementsEnumType) {
               IsOkAndHolds(Eq(absl::nullopt)));
 
   std::vector<std::string> names;
-  ASSERT_OK_AND_ASSIGN(auto iter,
-                       enum_type->NewConstantIterator(MemoryManager::Global()));
+  ASSERT_OK_AND_ASSIGN(auto iter, enum_type->NewConstantIterator(
+                                      MemoryManagerRef::ReferenceCounting()));
   while (iter->HasNext()) {
     ASSERT_OK_AND_ASSIGN(absl::string_view name, iter->NextName());
     names.push_back(std::string(name));
@@ -152,8 +152,8 @@ TEST(CelTypeRegistryTest, ImplementsEnumType) {
               StatusIs(absl::StatusCode::kFailedPrecondition));
 
   std::vector<int> numbers;
-  ASSERT_OK_AND_ASSIGN(iter,
-                       enum_type->NewConstantIterator(MemoryManager::Global()));
+  ASSERT_OK_AND_ASSIGN(iter, enum_type->NewConstantIterator(
+                                 MemoryManagerRef::ReferenceCounting()));
   while (iter->HasNext()) {
     ASSERT_OK_AND_ASSIGN(numbers.emplace_back(), iter->NextNumber());
   }
@@ -227,7 +227,7 @@ TEST(CelTypeRegistryTest, RegisterModernProvider) {
   };
 
   registry.RegisterModernTypeProvider(std::make_unique<ExampleTypeProvider>());
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, registry.GetTypeProvider());
 
   ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> type_value,
@@ -292,7 +292,7 @@ MATCHER_P(TypeNameIs, name, "") {
 TEST(CelTypeRegistryTypeProviderTest, Builtins) {
   CelTypeRegistry registry;
 
-  cel::TypeFactory type_factory(MemoryManager::Global());
+  cel::TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory, registry.GetTypeProvider());
 
   // simple

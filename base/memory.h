@@ -23,114 +23,15 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
-#include "absl/base/macros.h"
-#include "absl/base/optimization.h"
-#include "absl/log/die_if_null.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/internal/memory_manager.h"
-#include "common/native_type.h"
+#include "common/memory.h"  // IWYU pragma: export
 
 namespace cel {
 
 template <typename T>
 class Allocator;
-class MemoryManager;
-class GlobalMemoryManager;
-class ArenaMemoryManager;
-
-namespace extensions {
-class ProtoMemoryManager;
-}
-
-// `MemoryManager` is an abstraction over memory management that supports
-// different allocation strategies.
-class MemoryManager {
- public:
-  ABSL_ATTRIBUTE_PURE_FUNCTION static MemoryManager& Global();
-
-  MemoryManager(const MemoryManager&) = delete;
-  MemoryManager(MemoryManager&&) = delete;
-
-  virtual ~MemoryManager() = default;
-
-  MemoryManager& operator=(const MemoryManager&) = delete;
-  MemoryManager& operator=(MemoryManager&&) = delete;
-
- private:
-  friend class GlobalMemoryManager;
-  friend class ArenaMemoryManager;
-  friend class extensions::ProtoMemoryManager;
-  template <typename T>
-  friend class Allocator;
-  template <typename T>
-  friend struct base_internal::HandleFactory;
-
-  // Only for use by GlobalMemoryManager and ArenaMemoryManager.
-  explicit MemoryManager(bool allocation_only)
-      : allocation_only_(allocation_only) {}
-
-  // Allocates and constructs `T`.
-  template <typename T, typename... Args>
-  Handle<T> AllocateHandle(Args&&... args)
-      ABSL_ATTRIBUTE_LIFETIME_BOUND ABSL_MUST_USE_RESULT {
-    static_assert(base_internal::IsDerivedHeapDataV<T>);
-    if (allocation_only_) {
-      T* pointer = ::new (Allocate(sizeof(T), alignof(T)))
-          T(std::forward<Args>(args)...);
-      if constexpr (!std::is_trivially_destructible_v<T>) {
-        if constexpr (base_internal::HasIsDestructorSkippable<T>::value) {
-          if (!pointer->IsDestructorSkippable()) {
-            OwnDestructor(pointer,
-                          &base_internal::MemoryManagerDestructor<T>::Destruct);
-          }
-        } else {
-          OwnDestructor(pointer,
-                        &base_internal::MemoryManagerDestructor<T>::Destruct);
-        }
-      }
-      base_internal::Metadata::SetArenaAllocated(*pointer);
-      return Handle<T>(base_internal::kInPlaceArenaAllocated, *pointer);
-    }
-    T* pointer = new T(std::forward<Args>(args)...);
-    base_internal::Metadata::SetReferenceCounted(*pointer);
-    return Handle<T>(base_internal::kInPlaceReferenceCounted, *pointer);
-  }
-
-  // These are virtual private, ensuring only `MemoryManager` calls these.
-
-  // Allocates memory of at least size `size` in bytes that is at least as
-  // aligned as `align`.
-  virtual void* Allocate(size_t size, size_t align) = 0;
-
-  // Registers a destructor to be run upon destruction of the memory management
-  // implementation.
-  virtual void OwnDestructor(void* pointer, void (*destruct)(void*)) = 0;
-
-  virtual NativeTypeId GetNativeTypeId() const { return NativeTypeId(); }
-
-  const bool allocation_only_;
-};
-
-// Base class for all arena-based memory managers.
-class ArenaMemoryManager : public MemoryManager {
- public:
-  // Returns the default implementation of an arena-based memory manager. In
-  // most cases it should be good enough, however you should not rely on its
-  // performance characteristics.
-  static std::unique_ptr<ArenaMemoryManager> Default();
-
- protected:
-  ArenaMemoryManager() : ArenaMemoryManager(true) {}
-
- private:
-  friend class extensions::ProtoMemoryManager;
-
-  // Private so that only ProtoMemoryManager can use it for legacy reasons. All
-  // other derivations of ArenaMemoryManager should be allocation-only.
-  explicit ArenaMemoryManager(bool allocation_only)
-      : MemoryManager(allocation_only) {}
-};
 
 // STL allocator implementation which is backed by MemoryManager.
 template <typename T>
@@ -152,9 +53,10 @@ class Allocator {
   };
 
   explicit Allocator(
-      ABSL_ATTRIBUTE_LIFETIME_BOUND MemoryManager& memory_manager)
+      ABSL_ATTRIBUTE_LIFETIME_BOUND MemoryManagerRef memory_manager)
       : memory_manager_(memory_manager),
-        allocation_only_(memory_manager.allocation_only_) {}
+        allocation_only_(memory_manager.memory_management() ==
+                         MemoryManagement::kPooling) {}
 
   Allocator(const Allocator&) = default;
 
@@ -164,11 +66,20 @@ class Allocator {
         allocation_only_(other.allocation_only_) {}
 
   pointer allocate(size_type n) {
-    if (!memory_manager_.allocation_only_) {
+    if (!allocation_only_) {
       return static_cast<pointer>(::operator new(
           n * sizeof(T), static_cast<std::align_val_t>(alignof(T))));
     }
-    return static_cast<T*>(memory_manager_.Allocate(n * sizeof(T), alignof(T)));
+    if (memory_manager_.pointer_ == nullptr) {
+      return static_cast<pointer>(
+          static_cast<PoolingMemoryManager*>(memory_manager_.vpointer_)
+              ->Allocate(n * sizeof(T), alignof(T)));
+    } else {
+      return static_cast<pointer>(
+          static_cast<const PoolingMemoryManagerVirtualTable*>(
+              memory_manager_.vpointer_)
+              ->Allocate(memory_manager_.pointer_, n * sizeof(T), alignof(T)));
+    }
   }
 
   pointer allocate(size_type n, const void* hint) {
@@ -223,12 +134,12 @@ class Allocator {
   template <typename U>
   friend class Allocator;
 
-  MemoryManager& memory_manager_;
-  // Ugh. This is here because of legacy behavior. MemoryManager& is guaranteed
-  // to exist during allocation, but not necessarily during deallocation. So we
-  // store the member variable from MemoryManager. This can go away once
-  // CelValue and friends are entirely gone and everybody is instantiating their
-  // own MemoryManager.
+  MemoryManagerRef memory_manager_;
+  // Ugh. This is here because of legacy behavior. MemoryManagerRef is
+  // guaranteed to exist during allocation, but not necessarily during
+  // deallocation. So we store the member variable from MemoryManager. This can
+  // go away once CelValue and friends are entirely gone and everybody is
+  // instantiating their own MemoryManager.
   bool allocation_only_;
 };
 
@@ -238,7 +149,8 @@ class Allocator {
 // correctly.
 #define CEL_INTERNAL_IS_DESTRUCTOR_SKIPPABLE()                  \
  private:                                                       \
-  friend class ::cel::MemoryManager;                            \
+  template <typename>                                           \
+  friend class ::cel::base_internal::HandleFactory;             \
   template <typename, typename>                                 \
   friend struct ::cel::base_internal::HasIsDestructorSkippable; \
                                                                 \
@@ -249,7 +161,7 @@ namespace base_internal {
 template <typename T>
 template <typename F, typename... Args>
 std::enable_if_t<IsDerivedHeapDataV<F>, Handle<T>> HandleFactory<T>::Make(
-    MemoryManager& memory_manager, Args&&... args) {
+    MemoryManagerRef memory_manager, Args&&... args) {
   static_assert(std::is_base_of_v<T, F>, "F is not derived from T");
 #if defined(__cpp_lib_is_pointer_interconvertible) && \
     __cpp_lib_is_pointer_interconvertible >= 201907L
@@ -257,7 +169,54 @@ std::enable_if_t<IsDerivedHeapDataV<F>, Handle<T>> HandleFactory<T>::Make(
   static_assert(std::is_pointer_interconvertible_base_of_v<Data, F>,
                 "F must be pointer interconvertible to Data");
 #endif
-  return memory_manager.AllocateHandle<F>(std::forward<Args>(args)...);
+  if (memory_manager.memory_management() == MemoryManagement::kPooling) {
+    void* addr;
+    if (memory_manager.pointer_ == nullptr) {
+      addr = static_cast<PoolingMemoryManager*>(memory_manager.vpointer_)
+                 ->Allocate(sizeof(F), alignof(F));
+    } else {
+      addr = static_cast<const PoolingMemoryManagerVirtualTable*>(
+                 memory_manager.vpointer_)
+                 ->Allocate(memory_manager.pointer_, sizeof(F), alignof(F));
+    }
+    F* pointer = ::new (addr) F(std::forward<Args>(args)...);
+    if constexpr (!std::is_trivially_destructible_v<F>) {
+      if constexpr (base_internal::HasIsDestructorSkippable<F>::value) {
+        if (!pointer->IsDestructorSkippable()) {
+          if (memory_manager.pointer_ == nullptr) {
+            static_cast<PoolingMemoryManager*>(memory_manager.vpointer_)
+                ->OwnCustomDestructor(
+                    pointer,
+                    &base_internal::MemoryManagerDestructor<F>::Destruct);
+          } else {
+            static_cast<const PoolingMemoryManagerVirtualTable*>(
+                memory_manager.vpointer_)
+                ->OwnCustomDestructor(
+                    memory_manager.pointer_, pointer,
+                    &base_internal::MemoryManagerDestructor<F>::Destruct);
+          }
+        }
+      } else {
+        if (memory_manager.pointer_ == nullptr) {
+          static_cast<PoolingMemoryManager*>(memory_manager.vpointer_)
+              ->OwnCustomDestructor(
+                  pointer,
+                  &base_internal::MemoryManagerDestructor<F>::Destruct);
+        } else {
+          static_cast<const PoolingMemoryManagerVirtualTable*>(
+              memory_manager.vpointer_)
+              ->OwnCustomDestructor(
+                  memory_manager.pointer_, pointer,
+                  &base_internal::MemoryManagerDestructor<F>::Destruct);
+        }
+      }
+    }
+    base_internal::Metadata::SetArenaAllocated(*pointer);
+    return Handle<F>(base_internal::kInPlaceArenaAllocated, *pointer);
+  }
+  F* pointer = new F(std::forward<Args>(args)...);
+  base_internal::Metadata::SetReferenceCounted(*pointer);
+  return Handle<F>(base_internal::kInPlaceReferenceCounted, *pointer);
 }
 
 }  // namespace base_internal

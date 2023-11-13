@@ -56,8 +56,7 @@ class TypeFactory final {
   using EnableIfBaseOfT = std::enable_if_t<std::is_base_of_v<T, U>, V>;
 
  public:
-  explicit TypeFactory(
-      MemoryManager& memory_manager ABSL_ATTRIBUTE_LIFETIME_BOUND);
+  explicit TypeFactory(MemoryManagerRef memory_manager);
 
   TypeFactory(const TypeFactory&) = delete;
   TypeFactory(TypeFactory&&) = delete;
@@ -194,10 +193,10 @@ class TypeFactory final {
   absl::StatusOr<Handle<OptionalType>> CreateOptionalType(
       const Handle<Type>& type) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  MemoryManager& memory_manager() const { return memory_manager_; }
+  MemoryManagerRef memory_manager() const { return memory_manager_; }
 
  private:
-  MemoryManager& memory_manager_;
+  MemoryManagerRef memory_manager_;
 
   Handle<ListType> json_list_type_;
   Handle<MapType> json_map_type_;

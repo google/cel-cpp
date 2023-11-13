@@ -713,7 +713,6 @@ cc_test(
         ":attribute_trail",
         "//eval/public:cel_attribute",
         "//eval/public:cel_value",
-        "//extensions/protobuf:memory_manager",
         "//internal:testing",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],

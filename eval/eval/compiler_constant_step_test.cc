@@ -32,18 +32,19 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::extensions::ProtoMemoryManagerRef;
+
 class CompilerConstantStepTest : public testing::Test {
  public:
   CompilerConstantStepTest()
-      : memory_manager_(&arena_),
-        type_factory_(memory_manager_),
+      : type_factory_(ProtoMemoryManagerRef(&arena_)),
         type_manager_(type_factory_, cel::TypeProvider::Builtin()),
         value_factory_(type_manager_),
-        state_(2, 0, cel::TypeProvider::Builtin(), memory_manager_) {}
+        state_(2, 0, cel::TypeProvider::Builtin(),
+               ProtoMemoryManagerRef(&arena_)) {}
 
  protected:
   google::protobuf::Arena arena_;
-  cel::extensions::ProtoMemoryManager memory_manager_;
   cel::TypeFactory type_factory_;
   cel::TypeManager type_manager_;
   cel::ValueFactory value_factory_;

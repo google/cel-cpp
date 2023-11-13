@@ -32,28 +32,22 @@ class BuiltinTypeProviderTest
     : public testing::TestWithParam<base_internal::MemoryManagerTestMode> {
  protected:
   void SetUp() override {
-    if (GetParam() == base_internal::MemoryManagerTestMode::kArena) {
-      memory_manager_ = ArenaMemoryManager::Default();
-    }
-  }
-
-  void TearDown() override {
-    if (GetParam() == base_internal::MemoryManagerTestMode::kArena) {
-      memory_manager_.reset();
-    }
-  }
-
-  MemoryManager& memory_manager() const {
     switch (GetParam()) {
       case base_internal::MemoryManagerTestMode::kGlobal:
-        return MemoryManager::Global();
+        memory_manager_ = MemoryManager::ReferenceCounting();
+        break;
       case base_internal::MemoryManagerTestMode::kArena:
-        return *memory_manager_;
+        memory_manager_ = NewThreadCompatiblePoolingMemoryManager();
+        break;
     }
   }
 
+  void TearDown() override { memory_manager_.reset(); }
+
+  MemoryManagerRef memory_manager() { return *memory_manager_; }
+
  private:
-  std::unique_ptr<ArenaMemoryManager> memory_manager_;
+  absl::optional<MemoryManager> memory_manager_;
 };
 
 TEST_P(BuiltinTypeProviderTest, ProvidesBoolWrapperType) {

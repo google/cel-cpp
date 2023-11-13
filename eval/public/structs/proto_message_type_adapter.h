@@ -63,29 +63,29 @@ class ProtoMessageTypeAdapter : public LegacyTypeInfoApis,
 
   // Implement LegacyTypeMutation APIs.
   absl::StatusOr<CelValue::MessageWrapper::Builder> NewInstance(
-      cel::MemoryManager& memory_manager) const override;
+      cel::MemoryManagerRef memory_manager) const override;
 
   bool DefinesField(absl::string_view field_name) const override;
 
   absl::Status SetField(
       absl::string_view field_name, const CelValue& value,
-      cel::MemoryManager& memory_manager,
+      cel::MemoryManagerRef memory_manager,
       CelValue::MessageWrapper::Builder& instance) const override;
 
   absl::Status SetFieldByNumber(
       int64_t field_number, const CelValue& value,
-      cel::MemoryManager& memory_manager,
+      cel::MemoryManagerRef memory_manager,
       CelValue::MessageWrapper::Builder& instance) const override;
 
   absl::StatusOr<CelValue> AdaptFromWellKnownType(
-      cel::MemoryManager& memory_manager,
+      cel::MemoryManagerRef memory_manager,
       CelValue::MessageWrapper::Builder instance) const override;
 
   // Implement LegacyTypeAccessAPIs.
   absl::StatusOr<CelValue> GetField(
       absl::string_view field_name, const CelValue::MessageWrapper& instance,
       ProtoWrapperTypeOptions unboxing_option,
-      cel::MemoryManager& memory_manager) const override;
+      cel::MemoryManagerRef memory_manager) const override;
 
   absl::StatusOr<bool> HasField(
       absl::string_view field_name,
@@ -94,7 +94,7 @@ class ProtoMessageTypeAdapter : public LegacyTypeInfoApis,
   absl::StatusOr<CelValue> Qualify(
       absl::Span<const cel::SelectQualifier> qualifiers,
       const CelValue::MessageWrapper& instance, bool presence_test,
-      cel::MemoryManager& memory_manager) const override;
+      cel::MemoryManagerRef memory_manager) const override;
 
   bool IsEqualTo(const CelValue::MessageWrapper& instance,
                  const CelValue::MessageWrapper& other_instance) const override;

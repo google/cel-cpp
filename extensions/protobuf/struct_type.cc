@@ -1674,9 +1674,9 @@ ProtoStructType::NewValueBuilder(ValueFactory& value_factory) const {
                      descriptor().full_name()));
   }
   google::protobuf::Message* message;
-  if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-    message = prototype->New(
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager()));
+  if (ProtoMemoryManagerArena(value_factory.memory_manager())) {
+    message =
+        prototype->New(ProtoMemoryManagerArena(value_factory.memory_manager()));
   } else {
     message = prototype->New();
   }
@@ -1695,10 +1695,11 @@ absl::StatusOr<Handle<StructValue>> ProtoStructType::NewValueFromAny(
                      descriptor().full_name()));
   }
   google::protobuf::Message* message;
-  bool arena_based = ProtoMemoryManager::Is(value_factory.memory_manager());
+  bool arena_based =
+      ProtoMemoryManagerArena(value_factory.memory_manager()) != nullptr;
   if (arena_based) {
-    message = prototype->New(
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager()));
+    message =
+        prototype->New(ProtoMemoryManagerArena(value_factory.memory_manager()));
   } else {
     message = prototype->New();
   }

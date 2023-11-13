@@ -25,9 +25,11 @@ cc_library(
     hdrs = ["memory_manager.h"],
     deps = [
         "//base:memory",
+        "//common:memory",
         "//common:native_type",
         "//internal:casts",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_protobuf//:protobuf",
     ],
 )

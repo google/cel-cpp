@@ -66,19 +66,18 @@ enum class MemoryManagerKind { kGlobal, kProto };
 class TypeProviderSetGetTest
     : public ::testing::TestWithParam<std::tuple<TestCase, MemoryManagerKind>> {
  public:
-  TypeProviderSetGetTest() : proto_memory_manager_(&arena_) {}
+  TypeProviderSetGetTest() = default;
 
   MemoryManagerKind GetMemoryManagerKind() { return std::get<1>(GetParam()); }
-  MemoryManager& GetMemoryManager() {
+  MemoryManagerRef GetMemoryManager() {
     return GetMemoryManagerKind() == MemoryManagerKind::kProto
-               ? proto_memory_manager_
-               : MemoryManager::Global();
+               ? ProtoMemoryManagerRef(&arena_)
+               : MemoryManagerRef::ReferenceCounting();
   }
   const TestCase& GetTestCase() { return std::get<0>(GetParam()); }
 
  private:
   google::protobuf::Arena arena_;
-  ProtoMemoryManager proto_memory_manager_;
   google::protobuf::SimpleDescriptorDatabase descriptor_database_;
 };
 

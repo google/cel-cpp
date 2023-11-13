@@ -19,7 +19,7 @@ namespace google::api::expr::runtime {
 using ::cel::FunctionEvaluationContext;
 using ::cel::Handle;
 using ::cel::Value;
-using ::cel::extensions::ProtoMemoryManager;
+using ::cel::extensions::ProtoMemoryManagerArena;
 using ::cel::interop_internal::ToLegacyValue;
 
 bool CelFunction::MatchArguments(absl::Span<const CelValue> arguments) const {
@@ -60,8 +60,8 @@ bool CelFunction::MatchArguments(
 absl::StatusOr<Handle<Value>> CelFunction::Invoke(
     const FunctionEvaluationContext& context,
     absl::Span<const Handle<Value>> arguments) const {
-  google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(
-      context.value_factory().memory_manager());
+  google::protobuf::Arena* arena =
+      ProtoMemoryManagerArena(context.value_factory().memory_manager());
   std::vector<CelValue> legacy_args;
   legacy_args.reserve(arguments.size());
 

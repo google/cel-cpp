@@ -28,7 +28,7 @@ class ManagedValueFactory {
  public:
   // type_provider and memory_manager must outlive the ManagedValueFactory.
   ManagedValueFactory(const TypeProvider& type_provider,
-                      MemoryManager& memory_manager)
+                      MemoryManagerRef memory_manager)
       : type_factory_(memory_manager),
         type_manager_(type_factory_, type_provider),
         value_factory_(type_manager_) {}

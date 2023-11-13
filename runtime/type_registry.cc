@@ -48,7 +48,8 @@ using EnumMap = absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>;
 
 // Type factory for ref-counted type instances.
 cel::TypeFactory& GetDefaultTypeFactory() {
-  static TypeFactory* factory = new TypeFactory(cel::MemoryManager::Global());
+  static TypeFactory* factory =
+      new TypeFactory(cel::MemoryManagerRef::ReferenceCounting());
   return *factory;
 }
 
@@ -75,7 +76,7 @@ class ResolveableEnumType final : public cel::EnumType {
   size_t constant_count() const override { return enumerators_.size(); };
 
   absl::StatusOr<absl::Nonnull<std::unique_ptr<ConstantIterator>>>
-  NewConstantIterator(MemoryManager& memory_manager) const override {
+  NewConstantIterator(MemoryManagerRef memory_manager) const override {
     return std::make_unique<Iterator>(enumerators_);
   }
 

@@ -61,7 +61,8 @@ class Program {
   //
   // The memory manager determines the lifecycle requirements of the returned
   // value. The most common choices are:
-  //  - cel::MemoryManager::Global(): created values are allocated on the heap
+  //  - cel::MemoryManagerRef::ReferenceCounting(): created values are allocated
+  //  on the heap
   //    and managed by a reference count. Destructor is called when reference
   //    count is 0.
   //  - cel::extensions::ProtoMemoryManager instance: created values are

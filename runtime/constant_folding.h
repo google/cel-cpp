@@ -30,7 +30,7 @@ namespace cel::extensions {
 // The provided memory manager must outlive the runtime object built
 // from builder.
 absl::Status EnableConstantFolding(RuntimeBuilder& builder,
-                                   MemoryManager& memory_manager);
+                                   MemoryManagerRef memory_manager);
 
 }  // namespace cel::extensions
 

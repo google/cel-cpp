@@ -100,7 +100,7 @@ class TestEnumType final : public EnumType {
   size_t constant_count() const override { return 2; }
 
   absl::StatusOr<absl::Nonnull<std::unique_ptr<ConstantIterator>>>
-  NewConstantIterator(MemoryManager& memory_manager) const override {
+  NewConstantIterator(MemoryManagerRef memory_manager) const override {
     return absl::UnimplementedError(
         "EnumType::NewConstantIterator is unimplemented");
   }
@@ -455,32 +455,24 @@ class BaseValueTest
 
  protected:
   void SetUp() override {
-    if (std::get<0>(Base::GetParam()) ==
-        base_internal::MemoryManagerTestMode::kArena) {
-      memory_manager_ = ArenaMemoryManager::Default();
-    }
-  }
-
-  void TearDown() override {
-    if (std::get<0>(Base::GetParam()) ==
-        base_internal::MemoryManagerTestMode::kArena) {
-      memory_manager_.reset();
-    }
-  }
-
-  MemoryManager& memory_manager() const {
     switch (std::get<0>(Base::GetParam())) {
       case base_internal::MemoryManagerTestMode::kGlobal:
-        return MemoryManager::Global();
+        memory_manager_ = MemoryManager::ReferenceCounting();
+        break;
       case base_internal::MemoryManagerTestMode::kArena:
-        return *memory_manager_;
+        memory_manager_ = NewThreadCompatiblePoolingMemoryManager();
+        break;
     }
   }
+
+  void TearDown() override { memory_manager_.reset(); }
+
+  MemoryManagerRef memory_manager() { return *memory_manager_; }
 
   const auto& test_case() const { return std::get<1>(Base::GetParam()); }
 
  private:
-  std::unique_ptr<ArenaMemoryManager> memory_manager_;
+  absl::optional<MemoryManager> memory_manager_;
 };
 
 using ValueTest = BaseValueTest<>;
@@ -2968,8 +2960,9 @@ INSTANTIATE_TEST_SUITE_P(ValueTest, ValueTest,
                          base_internal::MemoryManagerTestModeTupleName);
 
 TEST(TypeValue, SkippableDestructor) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  auto memory_manager =
+      MemoryManager(NewThreadCompatiblePoolingMemoryManager());
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto type_value = value_factory.CreateTypeValue(type_factory.GetBoolType());
@@ -3371,7 +3364,7 @@ Handle<TypeValue> DefaultTypeValue(ValueFactory& value_factory) {
 
 template <typename T, Handle<T> (*F)(ValueFactory&)>
 void BM_SimpleCopyConstruct(benchmark::State& state) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   Handle<Value> value = (*F)(value_factory);
@@ -3393,7 +3386,7 @@ BM_SIMPLE_VALUES_LIST(BM_SIMPLE_VALUES)
 
 template <typename T, Handle<T> (*F)(ValueFactory&)>
 void BM_SimpleMoveConstruct(benchmark::State& state) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   for (auto s : state) {

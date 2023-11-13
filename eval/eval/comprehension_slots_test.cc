@@ -30,7 +30,7 @@ namespace google::api::expr::runtime {
 
 using ::cel::Attribute;
 using ::cel::Handle;
-using ::cel::MemoryManager;
+using ::cel::MemoryManagerRef;
 using ::cel::StringValue;
 using ::cel::TypeFactory;
 using ::cel::TypeManager;
@@ -41,7 +41,7 @@ using testing::Truly;
 using cel::internal::IsOkAndHolds;
 
 TEST(ComprehensionSlots, Basic) {
-  TypeFactory tf(MemoryManager::Global());
+  TypeFactory tf(MemoryManagerRef::ReferenceCounting());
   TypeManager tm(tf, TypeProvider::Builtin());
   ValueFactory factory(tm);
 

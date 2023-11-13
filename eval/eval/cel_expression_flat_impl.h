@@ -35,7 +35,6 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
 
  private:
   google::protobuf::Arena* arena_;
-  cel::extensions::ProtoMemoryManager memory_manager_;
   FlatExpressionEvaluatorState state_;
 };
 

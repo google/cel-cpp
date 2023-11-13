@@ -37,6 +37,7 @@ namespace {
 
 using ::cel::TypeProvider;
 using ::cel::ast_internal::Expr;
+using ::cel::extensions::ProtoMemoryManagerRef;
 using testing::_;
 using testing::Eq;
 using testing::HasSubstr;
@@ -62,7 +63,7 @@ class MockAccessor : public LegacyTypeAccessApis, public LegacyTypeInfoApis {
               (absl::string_view field_name,
                const CelValue::MessageWrapper& instance,
                ProtoWrapperTypeOptions unboxing_option,
-               cel::MemoryManager& memory_manager),
+               cel::MemoryManagerRef memory_manager),
               (const override));
   MOCK_METHOD((const std::string&), GetTypename,
               (const CelValue::MessageWrapper& instance), (const override));
@@ -79,8 +80,7 @@ class MockAccessor : public LegacyTypeAccessApis, public LegacyTypeInfoApis {
 class SelectStepTest : public testing::Test {
  public:
   SelectStepTest()
-      : memory_manager_(&arena_),
-        type_factory_(memory_manager_),
+      : type_factory_(ProtoMemoryManagerRef(&arena_)),
         type_manager_(type_factory_, cel::TypeProvider::Builtin()),
         value_factory_(type_manager_) {}
   // Helper method. Creates simple pipeline containing Select step and runs it.
@@ -158,7 +158,6 @@ class SelectStepTest : public testing::Test {
 
  protected:
   google::protobuf::Arena arena_;
-  cel::extensions::ProtoMemoryManager memory_manager_;
   cel::TypeFactory type_factory_;
   cel::TypeManager type_manager_;
   cel::ValueFactory value_factory_;

@@ -459,7 +459,7 @@ class ValueFactory final {
   Handle<MapValue> CreateMapValueFromJson(JsonObject object)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  MemoryManager& memory_manager() const {
+  MemoryManagerRef memory_manager() const {
     return type_manager().memory_manager();
   }
 

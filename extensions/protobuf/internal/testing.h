@@ -15,14 +15,11 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TESTING_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TESTING_H_
 
-#include <utility>
-
 #include "absl/types/optional.h"
 #include "base/internal/memory_manager_testing.h"
 #include "base/memory.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
-#include "google/protobuf/arena.h"
 
 namespace cel::extensions {
 
@@ -37,31 +34,20 @@ class ProtoTest
   void SetUp() override {
     if (std::get<0>(Base::GetParam()) ==
         cel::base_internal::MemoryManagerTestMode::kArena) {
-      arena_.emplace();
-      proto_memory_manager_.emplace(&arena_.value());
-      memory_manager_ = &proto_memory_manager_.value();
+      memory_manager_ = ProtoMemoryManager();
     } else {
-      memory_manager_ = &MemoryManager::Global();
+      memory_manager_ = MemoryManager::ReferenceCounting();
     }
   }
 
-  void TearDown() override {
-    memory_manager_ = nullptr;
-    if (std::get<0>(Base::GetParam()) ==
-        cel::base_internal::MemoryManagerTestMode::kArena) {
-      proto_memory_manager_.reset();
-      arena_.reset();
-    }
-  }
+  void TearDown() override { memory_manager_.reset(); }
 
-  MemoryManager& memory_manager() const { return *memory_manager_; }
+  MemoryManagerRef memory_manager() { return *memory_manager_; }
 
   const auto& test_case() const { return std::get<1>(Base::GetParam()); }
 
  private:
-  absl::optional<google::protobuf::Arena> arena_;
-  absl::optional<ProtoMemoryManager> proto_memory_manager_;
-  MemoryManager* memory_manager_;
+  absl::optional<MemoryManager> memory_manager_;
 };
 
 }  // namespace cel::extensions

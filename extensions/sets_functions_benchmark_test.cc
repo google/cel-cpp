@@ -228,7 +228,7 @@ void RunBenchmark(const TestCase& test_case, benchmark::State& state) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, Parse(expr));
 
   google::protobuf::Arena arena;
-  cel::extensions::ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
   cel::TypeFactory type_factory = cel::TypeFactory(manager);
   cel::TypeManager type_manager(type_factory, TypeProvider::Builtin());
   cel::ValueFactory value_factory(type_manager);

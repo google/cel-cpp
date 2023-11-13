@@ -89,7 +89,7 @@ std::unique_ptr<DescriptorGatherer> NewDescriptorGatherer() {
 }
 
 void WithCustomDescriptorPool(
-    MemoryManager& memory_manager, const google::protobuf::Message& message,
+    MemoryManagerRef memory_manager, const google::protobuf::Message& message,
     const google::protobuf::Descriptor& additional_descriptor,
     absl::FunctionRef<void(TypeProvider&, const google::protobuf::Message&)> invocable) {
   std::unique_ptr<google::protobuf::DescriptorDatabase> database;
@@ -111,8 +111,8 @@ void WithCustomDescriptorPool(
   ABSL_CHECK(prototype != nullptr)  // Crash OK
       << "Unable to get prototype for " << descriptor->full_name();
   google::protobuf::Arena* arena = nullptr;
-  if (ProtoMemoryManager::Is(memory_manager)) {
-    arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
+  if (ProtoMemoryManagerArena(memory_manager)) {
+    arena = ProtoMemoryManagerArena(memory_manager);
   }
   auto* custom = prototype->New(arena);
   {

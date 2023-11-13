@@ -105,7 +105,7 @@ ProtoEnumType::FindConstantByNumber(int64_t number) const {
 }
 
 absl::StatusOr<absl::Nonnull<std::unique_ptr<EnumType::ConstantIterator>>>
-ProtoEnumType::NewConstantIterator(MemoryManager& memory_manager) const {
+ProtoEnumType::NewConstantIterator(MemoryManagerRef memory_manager) const {
   return std::make_unique<ProtoEnumTypeConstantIterator>(descriptor());
 }
 

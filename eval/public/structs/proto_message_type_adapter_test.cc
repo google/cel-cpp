@@ -41,7 +41,7 @@
 namespace google::api::expr::runtime {
 namespace {
 
-using ::cel::extensions::ProtoMemoryManager;
+using ::cel::extensions::ProtoMemoryManagerRef;
 using ::google::protobuf::Int64Value;
 using testing::_;
 using testing::ElementsAre;
@@ -145,7 +145,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldSingular) {
   google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
 
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   TestMessage example;
   example.set_int64_value(10);
@@ -161,7 +161,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldNoSuchField) {
   google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
 
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   TestMessage example;
   example.set_int64_value(10);
@@ -178,7 +178,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldNotAMessage) {
   google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
 
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   MessageWrapper value(static_cast<const google::protobuf::MessageLite*>(nullptr),
                        nullptr);
@@ -192,7 +192,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldRepeated) {
   google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
 
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   TestMessage example;
   example.add_int64_list(10);
@@ -217,7 +217,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldMap) {
   google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
 
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   TestMessage example;
   (*example.mutable_int64_int32_map())[10] = 20;
@@ -241,7 +241,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldWrapperType) {
   google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
 
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   TestMessage example;
   example.mutable_int64_wrapper_value()->set_value(10);
@@ -257,7 +257,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldWrapperTypeUnsetNullUnbox) {
   google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
 
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   TestMessage example;
 
@@ -279,7 +279,7 @@ TEST_P(ProtoMessageTypeAccessorTest,
   google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
 
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   TestMessage example;
 
@@ -301,10 +301,7 @@ TEST_P(ProtoMessageTypeAccessorTest,
 }
 
 TEST_P(ProtoMessageTypeAccessorTest, IsEqualTo) {
-  google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
-
-  ProtoMemoryManager manager(&arena);
 
   TestMessage example;
   example.mutable_int64_wrapper_value()->set_value(10);
@@ -319,10 +316,7 @@ TEST_P(ProtoMessageTypeAccessorTest, IsEqualTo) {
 }
 
 TEST_P(ProtoMessageTypeAccessorTest, IsEqualToSameTypeInequal) {
-  google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
-
-  ProtoMemoryManager manager(&arena);
 
   TestMessage example;
   example.mutable_int64_wrapper_value()->set_value(10);
@@ -337,10 +331,7 @@ TEST_P(ProtoMessageTypeAccessorTest, IsEqualToSameTypeInequal) {
 }
 
 TEST_P(ProtoMessageTypeAccessorTest, IsEqualToDifferentTypeInequal) {
-  google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
-
-  ProtoMemoryManager manager(&arena);
 
   TestMessage example;
   example.mutable_int64_wrapper_value()->set_value(10);
@@ -355,10 +346,7 @@ TEST_P(ProtoMessageTypeAccessorTest, IsEqualToDifferentTypeInequal) {
 }
 
 TEST_P(ProtoMessageTypeAccessorTest, IsEqualToNonMessageInequal) {
-  google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
-
-  ProtoMemoryManager manager(&arena);
 
   TestMessage example;
   example.mutable_int64_wrapper_value()->set_value(10);
@@ -406,7 +394,7 @@ TEST(GetGenericProtoTypeInfoInstance, GetAccessApis) {
 
   auto* accessor = info_api.GetAccessApis(wrapped_message);
   google::protobuf::Arena arena;
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   ASSERT_OK_AND_ASSIGN(
       CelValue result,
@@ -441,7 +429,7 @@ TEST(ProtoMessageTypeAdapter, NewInstance) {
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper::Builder result,
                        adapter.NewInstance(manager));
@@ -463,7 +451,7 @@ TEST(ProtoMessageTypeAdapter, NewInstanceUnsupportedDescriptor) {
   ProtoMessageTypeAdapter adapter(
       pool.FindMessageTypeByName("google.api.expr.runtime.FakeMessage"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   // Message factory doesn't know how to create our custom message, even though
   // we provided a descriptor for it.
@@ -488,7 +476,7 @@ TEST(ProtoMessageTypeAdapter, SetFieldSingular) {
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper::Builder value,
                        adapter.NewInstance(manager));
@@ -513,7 +501,7 @@ TEST(ProtoMessageTypeAdapter, SetFieldRepeated) {
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   ContainerBackedListImpl list(
       {CelValue::CreateInt64(1), CelValue::CreateInt64(2)});
@@ -537,7 +525,7 @@ TEST(ProtoMessageTypeAdapter, SetFieldNotAField) {
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper::Builder instance,
                        adapter.NewInstance(manager));
@@ -554,7 +542,7 @@ TEST(ProtoMesssageTypeAdapter, SetFieldWrongType) {
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   ContainerBackedListImpl list(
       {CelValue::CreateInt64(1), CelValue::CreateInt64(2)});
@@ -594,7 +582,7 @@ TEST(ProtoMesssageTypeAdapter, SetFieldNotAMessage) {
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   CelValue int_value = CelValue::CreateInt64(42);
   CelValue::MessageWrapper::Builder instance(
@@ -610,7 +598,7 @@ TEST(ProtoMesssageTypeAdapter, SetFieldNullMessage) {
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   CelValue int_value = CelValue::CreateInt64(42);
   CelValue::MessageWrapper::Builder instance(
@@ -626,7 +614,7 @@ TEST(ProtoMessageTypeAdapter, AdaptFromWellKnownType) {
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.protobuf.Int64Value"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper::Builder instance,
                        adapter.NewInstance(manager));
@@ -645,7 +633,7 @@ TEST(ProtoMessageTypeAdapter, AdaptFromWellKnownTypeUnspecial) {
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper::Builder instance,
                        adapter.NewInstance(manager));
@@ -665,7 +653,7 @@ TEST(ProtoMessageTypeAdapter, AdaptFromWellKnownTypeNotAMessageError) {
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   CelValue::MessageWrapper::Builder instance(
       static_cast<google::protobuf::MessageLite*>(nullptr));
@@ -677,12 +665,10 @@ TEST(ProtoMessageTypeAdapter, AdaptFromWellKnownTypeNotAMessageError) {
 }
 
 TEST(ProtoMesssageTypeAdapter, TypeInfoDebug) {
-  google::protobuf::Arena arena;
   ProtoMessageTypeAdapter adapter(
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
 
   TestMessage message;
   message.set_int64_value(42);
@@ -694,12 +680,10 @@ TEST(ProtoMesssageTypeAdapter, TypeInfoDebug) {
 }
 
 TEST(ProtoMesssageTypeAdapter, TypeInfoName) {
-  google::protobuf::Arena arena;
   ProtoMessageTypeAdapter adapter(
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
 
   EXPECT_EQ(adapter.GetTypename(MessageWrapper()),
             "google.api.expr.runtime.TestMessage");
@@ -734,7 +718,7 @@ TEST(ProtoMesssageTypeAdapter, TypeInfoMutator) {
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   const LegacyTypeMutationApis* api = adapter.GetMutationApis(MessageWrapper());
   ASSERT_NE(api, nullptr);
@@ -750,7 +734,7 @@ TEST(ProtoMesssageTypeAdapter, TypeInfoAccesor) {
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   TestMessage message;
   message.set_int64_value(42);
@@ -770,7 +754,7 @@ TEST(ProtoMesssageTypeAdapter, Qualify) {
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   TestMessage message;
   message.mutable_message_value()->set_int64_value(42);
@@ -793,7 +777,7 @@ TEST(ProtoMesssageTypeAdapter, QualifyMapsNotYetSupported) {
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   TestMessage message;
   (*message.mutable_string_message_map())["@key"].set_int64_value(42);
@@ -817,7 +801,7 @@ TEST(ProtoMesssageTypeAdapter, QualifyRepeatedLeaf) {
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
       google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   TestMessage message;
   auto* nested = message.mutable_message_value();

@@ -420,9 +420,8 @@ absl::StatusOr<Handle<ListValue>> ProtoValue::Create(
   CEL_ASSIGN_OR_RETURN(auto list_type,
                        value_factory.type_factory().CreateListType(
                            value_factory.type_factory().GetDynType()));
-  if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-    auto* arena =
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+  if (ProtoMemoryManagerArena(value_factory.memory_manager())) {
+    auto* arena = ProtoMemoryManagerArena(value_factory.memory_manager());
     if (arena != nullptr) {
       auto* arena_value =
           google::protobuf::Arena::CreateMessage<google::protobuf::ListValue>(arena);
@@ -441,9 +440,8 @@ absl::StatusOr<Handle<ListValue>> ProtoValue::Create(
   CEL_ASSIGN_OR_RETURN(auto list_type,
                        value_factory.type_factory().CreateListType(
                            value_factory.type_factory().GetDynType()));
-  if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-    auto* arena =
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+  if (ProtoMemoryManagerArena(value_factory.memory_manager())) {
+    auto* arena = ProtoMemoryManagerArena(value_factory.memory_manager());
     if (arena != nullptr) {
       auto* arena_value =
           google::protobuf::Arena::CreateMessage<google::protobuf::ListValue>(arena);
@@ -472,9 +470,8 @@ absl::StatusOr<Handle<MapValue>> ProtoValue::Create(
                        value_factory.type_factory().CreateMapType(
                            value_factory.type_factory().GetStringType(),
                            value_factory.type_factory().GetDynType()));
-  if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-    auto* arena =
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+  if (ProtoMemoryManagerArena(value_factory.memory_manager())) {
+    auto* arena = ProtoMemoryManagerArena(value_factory.memory_manager());
     if (arena != nullptr) {
       auto* arena_value =
           google::protobuf::Arena::CreateMessage<google::protobuf::Struct>(arena);
@@ -494,9 +491,8 @@ absl::StatusOr<Handle<MapValue>> ProtoValue::Create(
                        value_factory.type_factory().CreateMapType(
                            value_factory.type_factory().GetStringType(),
                            value_factory.type_factory().GetDynType()));
-  if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-    auto* arena =
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+  if (ProtoMemoryManagerArena(value_factory.memory_manager())) {
+    auto* arena = ProtoMemoryManagerArena(value_factory.memory_manager());
     if (arena != nullptr) {
       auto* arena_value =
           google::protobuf::Arena::CreateMessage<google::protobuf::Struct>(arena);
@@ -863,9 +859,8 @@ absl::StatusOr<Handle<Value>> StructMessageCopyConverter(
   if (!value.SerializePartialToString(&serialized)) {
     return absl::InternalError("failed to serialize google.protobuf.Struct");
   }
-  if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-    auto* arena =
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+  if (ProtoMemoryManagerArena(value_factory.memory_manager())) {
+    auto* arena = ProtoMemoryManagerArena(value_factory.memory_manager());
     if (arena != nullptr) {
       CEL_ASSIGN_OR_RETURN(auto map_type,
                            value_factory.type_factory().CreateMapType(
@@ -898,9 +893,8 @@ absl::StatusOr<Handle<Value>> StructMessageMoveConverter(
   if (!value.SerializePartialToString(&serialized)) {
     return absl::InternalError("failed to serialize google.protobuf.Struct");
   }
-  if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-    auto* arena =
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+  if (ProtoMemoryManagerArena(value_factory.memory_manager())) {
+    auto* arena = ProtoMemoryManagerArena(value_factory.memory_manager());
     if (arena != nullptr) {
       CEL_ASSIGN_OR_RETURN(auto map_type,
                            value_factory.type_factory().CreateMapType(
@@ -934,9 +928,8 @@ absl::StatusOr<Handle<Value>> StructMessageBorrowConverter(
   if (!value.SerializePartialToString(&serialized)) {
     return absl::InternalError("failed to serialize google.protobuf.Struct");
   }
-  if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-    auto* arena =
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+  if (ProtoMemoryManagerArena(value_factory.memory_manager())) {
+    auto* arena = ProtoMemoryManagerArena(value_factory.memory_manager());
     if (arena != nullptr) {
       CEL_ASSIGN_OR_RETURN(auto map_type,
                            value_factory.type_factory().CreateMapType(
@@ -970,9 +963,8 @@ absl::StatusOr<Handle<Value>> StructMessageOwnConverter(
     return absl::InternalError("failed to serialize google.protobuf.Struct");
   }
   value.reset();
-  if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-    auto* arena =
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+  if (ProtoMemoryManagerArena(value_factory.memory_manager())) {
+    auto* arena = ProtoMemoryManagerArena(value_factory.memory_manager());
     if (arena != nullptr) {
       CEL_ASSIGN_OR_RETURN(auto map_type,
                            value_factory.type_factory().CreateMapType(
@@ -1005,9 +997,8 @@ absl::StatusOr<Handle<Value>> ListValueMessageCopyConverter(
   if (!value.SerializePartialToString(&serialized)) {
     return absl::InternalError("failed to serialize google.protobuf.ListValue");
   }
-  if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-    auto* arena =
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+  if (ProtoMemoryManagerArena(value_factory.memory_manager())) {
+    auto* arena = ProtoMemoryManagerArena(value_factory.memory_manager());
     if (arena != nullptr) {
       CEL_ASSIGN_OR_RETURN(auto map_type,
                            value_factory.type_factory().CreateListType(
@@ -1040,9 +1031,8 @@ absl::StatusOr<Handle<Value>> ListValueMessageMoveConverter(
   if (!value.SerializePartialToString(&serialized)) {
     return absl::InternalError("failed to serialize google.protobuf.ListValue");
   }
-  if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-    auto* arena =
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+  if (ProtoMemoryManagerArena(value_factory.memory_manager())) {
+    auto* arena = ProtoMemoryManagerArena(value_factory.memory_manager());
     if (arena != nullptr) {
       CEL_ASSIGN_OR_RETURN(auto map_type,
                            value_factory.type_factory().CreateListType(
@@ -1075,9 +1065,8 @@ absl::StatusOr<Handle<Value>> ListValueMessageBorrowConverter(
   if (!value.SerializePartialToString(&serialized)) {
     return absl::InternalError("failed to serialize google.protobuf.ListValue");
   }
-  if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-    auto* arena =
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+  if (ProtoMemoryManagerArena(value_factory.memory_manager())) {
+    auto* arena = ProtoMemoryManagerArena(value_factory.memory_manager());
     if (arena != nullptr) {
       CEL_ASSIGN_OR_RETURN(auto map_type,
                            value_factory.type_factory().CreateListType(
@@ -1111,9 +1100,8 @@ absl::StatusOr<Handle<Value>> ListValueMessageOwnConverter(
     return absl::InternalError("failed to serialize google.protobuf.ListValue");
   }
   value.reset();
-  if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-    auto* arena =
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+  if (ProtoMemoryManagerArena(value_factory.memory_manager())) {
+    auto* arena = ProtoMemoryManagerArena(value_factory.memory_manager());
     if (arena != nullptr) {
       CEL_ASSIGN_OR_RETURN(auto type,
                            value_factory.type_factory().CreateListType(

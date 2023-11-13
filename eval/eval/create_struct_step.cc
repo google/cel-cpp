@@ -1004,8 +1004,7 @@ absl::StatusOr<Handle<Value>> CreateStructStepForMap::DoEvaluate(
         map_builder.Put(args[map_key_index], args[map_value_index]);
     if (!key_status.ok()) {
       return CreateErrorValueFromView(google::protobuf::Arena::Create<absl::Status>(
-          cel::extensions::ProtoMemoryManager::CastToProtoArena(
-              frame->memory_manager()),
+          cel::extensions::ProtoMemoryManagerArena(frame->memory_manager()),
           key_status));
     }
   }

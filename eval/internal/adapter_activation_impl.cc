@@ -34,8 +34,8 @@ AdapterActivationImpl::FindVariable(ValueFactory& value_factory,
                                     absl::string_view name) const {
   // This implementation should only be used during interop, when we can
   // always assume the memory manager is backed by a protobuf arena.
-  google::protobuf::Arena* arena = extensions::ProtoMemoryManager::CastToProtoArena(
-      value_factory.memory_manager());
+  google::protobuf::Arena* arena =
+      extensions::ProtoMemoryManagerArena(value_factory.memory_manager());
 
   absl::optional<google::api::expr::runtime::CelValue> legacy_value =
       legacy_activation_.FindValue(name, arena);

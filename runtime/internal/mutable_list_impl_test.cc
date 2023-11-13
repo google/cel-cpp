@@ -28,7 +28,7 @@ namespace cel::runtime_internal {
 namespace {
 
 TEST(MutableListImplType, Creation) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
 
   ASSERT_OK_AND_ASSIGN(Handle<MutableListType> list_type,
                        type_factory.CreateOpaqueType<MutableListType>());
@@ -42,7 +42,7 @@ TEST(MutableListImplType, Creation) {
 }
 
 TEST(MutableListImplValue, Creation) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
 
@@ -66,7 +66,7 @@ TEST(MutableListImplValue, Creation) {
 }
 
 TEST(MutableListImplValue, ListBuilding) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
 

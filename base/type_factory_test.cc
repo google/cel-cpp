@@ -22,7 +22,7 @@ namespace cel {
 namespace {
 
 TEST(TypeFactory, CreateListTypeCaches) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   ASSERT_OK_AND_ASSIGN(auto list_type_1,
                        type_factory.CreateListType(type_factory.GetBoolType()));
   ASSERT_OK_AND_ASSIGN(auto list_type_2,
@@ -31,7 +31,7 @@ TEST(TypeFactory, CreateListTypeCaches) {
 }
 
 TEST(TypeFactory, CreateMapTypeCaches) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   ASSERT_OK_AND_ASSIGN(auto map_type_1,
                        type_factory.CreateMapType(type_factory.GetStringType(),
                                                   type_factory.GetBoolType()));
@@ -42,19 +42,19 @@ TEST(TypeFactory, CreateMapTypeCaches) {
 }
 
 TEST(TypeFactory, JsonValueType) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   EXPECT_EQ(type_factory.GetJsonValueType(), type_factory.GetDynType());
 }
 
 TEST(TypeFactory, JsonListType) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   ASSERT_OK_AND_ASSIGN(auto type,
                        type_factory.CreateListType(type_factory.GetDynType()));
   EXPECT_EQ(type, type_factory.GetJsonListType());
 }
 
 TEST(TypeFactory, JsonMapType) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   ASSERT_OK_AND_ASSIGN(auto type,
                        type_factory.CreateMapType(type_factory.GetStringType(),
                                                   type_factory.GetDynType()));

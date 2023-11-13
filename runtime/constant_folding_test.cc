@@ -93,7 +93,8 @@ TEST_P(ConstantFoldingExtTest, Runner) {
           builder.function_registry());
   ASSERT_OK(status);
 
-  ASSERT_OK(EnableConstantFolding(builder, MemoryManager::Global()));
+  ASSERT_OK(
+      EnableConstantFolding(builder, MemoryManagerRef::ReferenceCounting()));
 
   ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
 
@@ -103,7 +104,7 @@ TEST_P(ConstantFoldingExtTest, Runner) {
                                          *runtime, parsed_expr));
 
   ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                    MemoryManager::Global());
+                                    MemoryManagerRef::ReferenceCounting());
   Activation activation;
 
   auto result = program->Evaluate(activation, value_factory.get());

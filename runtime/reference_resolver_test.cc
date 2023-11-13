@@ -82,7 +82,7 @@ TEST(ReferenceResolver, ResolveQualifiedFunctions) {
                                          *runtime, parsed_expr));
 
   ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                    MemoryManager::Global());
+                                    MemoryManagerRef::ReferenceCounting());
   Activation activation;
 
   ASSERT_OK_AND_ASSIGN(Handle<Value> value,
@@ -208,7 +208,7 @@ TEST(ReferenceResolver, ResolveQualifiedIdentifiers) {
                                          *runtime, checked_expr));
 
   ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                    MemoryManager::Global());
+                                    MemoryManagerRef::ReferenceCounting());
   Activation activation;
 
   activation.InsertOrAssignValue("com.example.x",
@@ -243,7 +243,7 @@ TEST(ReferenceResolver, ResolveQualifiedIdentifiersSkipParseOnly) {
                                          *runtime, checked_expr.expr()));
 
   ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                    MemoryManager::Global());
+                                    MemoryManagerRef::ReferenceCounting());
   Activation activation;
 
   activation.InsertOrAssignValue("com.example.x",
@@ -332,7 +332,7 @@ TEST(ReferenceResolver, ResolveEnumConstants) {
                                          *runtime, checked_expr));
 
   ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                    MemoryManager::Global());
+                                    MemoryManagerRef::ReferenceCounting());
   Activation activation;
 
   ASSERT_OK_AND_ASSIGN(Handle<Value> value,
@@ -360,7 +360,7 @@ TEST(ReferenceResolver, ResolveEnumConstantsSkipParseOnly) {
                                          *runtime, unchecked_expr));
 
   ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                    MemoryManager::Global());
+                                    MemoryManagerRef::ReferenceCounting());
   Activation activation;
 
   ASSERT_OK_AND_ASSIGN(Handle<Value> value,

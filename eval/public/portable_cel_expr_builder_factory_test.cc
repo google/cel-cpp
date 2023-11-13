@@ -264,15 +264,15 @@ class DemoTimestamp : public LegacyTypeInfoApis, public LegacyTypeMutationApis {
   }
 
   absl::StatusOr<CelValue::MessageWrapper::Builder> NewInstance(
-      cel::MemoryManager& memory_manager) const override;
+      cel::MemoryManagerRef memory_manager) const override;
 
   absl::StatusOr<CelValue> AdaptFromWellKnownType(
-      cel::MemoryManager& memory_manager,
+      cel::MemoryManagerRef memory_manager,
       CelValue::MessageWrapper::Builder instance) const override;
 
   absl::Status SetField(
       absl::string_view field_name, const CelValue& value,
-      cel::MemoryManager& memory_manager,
+      cel::MemoryManagerRef memory_manager,
       CelValue::MessageWrapper::Builder& instance) const override;
 
  private:
@@ -342,15 +342,15 @@ class DemoTestMessage : public LegacyTypeInfoApis,
   }
 
   absl::StatusOr<CelValue::MessageWrapper::Builder> NewInstance(
-      cel::MemoryManager& memory_manager) const override;
+      cel::MemoryManagerRef memory_manager) const override;
 
   absl::StatusOr<CelValue> AdaptFromWellKnownType(
-      cel::MemoryManager& memory_manager,
+      cel::MemoryManagerRef memory_manager,
       CelValue::MessageWrapper::Builder instance) const override;
 
   absl::Status SetField(
       absl::string_view field_name, const CelValue& value,
-      cel::MemoryManager& memory_manager,
+      cel::MemoryManagerRef memory_manager,
       CelValue::MessageWrapper::Builder& instance) const override;
 
   absl::StatusOr<bool> HasField(
@@ -360,7 +360,7 @@ class DemoTestMessage : public LegacyTypeInfoApis,
   absl::StatusOr<CelValue> GetField(
       absl::string_view field_name, const CelValue::MessageWrapper& instance,
       ProtoWrapperTypeOptions unboxing_option,
-      cel::MemoryManager& memory_manager) const override;
+      cel::MemoryManagerRef memory_manager) const override;
 
   std::vector<absl::string_view> ListFields(
       const CelValue::MessageWrapper& instance) const override {
@@ -443,13 +443,13 @@ const LegacyTypeAccessApis* DemoTypeInfo::GetAccessApis(
 }
 
 absl::StatusOr<CelValue::MessageWrapper::Builder> DemoTimestamp::NewInstance(
-    cel::MemoryManager& memory_manager) const {
+    cel::MemoryManagerRef memory_manager) const {
   auto* ts = google::protobuf::Arena::CreateMessage<google::protobuf::Timestamp>(
-      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager));
+      cel::extensions::ProtoMemoryManagerArena(memory_manager));
   return CelValue::MessageWrapper::Builder(ts);
 }
 absl::StatusOr<CelValue> DemoTimestamp::AdaptFromWellKnownType(
-    cel::MemoryManager& memory_manager,
+    cel::MemoryManagerRef memory_manager,
     CelValue::MessageWrapper::Builder instance) const {
   auto value = Unwrap(instance.message_ptr());
   ABSL_ASSERT(value.has_value());
@@ -458,7 +458,7 @@ absl::StatusOr<CelValue> DemoTimestamp::AdaptFromWellKnownType(
 
 absl::Status DemoTimestamp::SetField(
     absl::string_view field_name, const CelValue& value,
-    cel::MemoryManager& memory_manager,
+    cel::MemoryManagerRef memory_manager,
     CelValue::MessageWrapper::Builder& instance) const {
   ABSL_ASSERT(Validate(instance.message_ptr()).ok());
   auto* mutable_ts = cel::internal::down_cast<google::protobuf::Timestamp*>(
@@ -495,15 +495,15 @@ DemoTestMessage::DemoTestMessage(const DemoTypeProvider* owning_provider)
 }
 
 absl::StatusOr<CelValue::MessageWrapper::Builder> DemoTestMessage::NewInstance(
-    cel::MemoryManager& memory_manager) const {
+    cel::MemoryManagerRef memory_manager) const {
   auto* ts = google::protobuf::Arena::CreateMessage<TestMessage>(
-      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager));
+      cel::extensions::ProtoMemoryManagerArena(memory_manager));
   return CelValue::MessageWrapper::Builder(ts);
 }
 
 absl::Status DemoTestMessage::SetField(
     absl::string_view field_name, const CelValue& value,
-    cel::MemoryManager& memory_manager,
+    cel::MemoryManagerRef memory_manager,
     CelValue::MessageWrapper::Builder& instance) const {
   auto iter = fields_.find(field_name);
   if (iter == fields_.end()) {
@@ -515,7 +515,7 @@ absl::Status DemoTestMessage::SetField(
 }
 
 absl::StatusOr<CelValue> DemoTestMessage::AdaptFromWellKnownType(
-    cel::MemoryManager& memory_manager,
+    cel::MemoryManagerRef memory_manager,
     CelValue::MessageWrapper::Builder instance) const {
   return CelValue::CreateMessageWrapper(
       instance.Build(owning_provider_.GetTypeInfoInstance()));
@@ -536,7 +536,7 @@ absl::StatusOr<bool> DemoTestMessage::HasField(
 absl::StatusOr<CelValue> DemoTestMessage::GetField(
     absl::string_view field_name, const CelValue::MessageWrapper& instance,
     ProtoWrapperTypeOptions unboxing_option,
-    cel::MemoryManager& memory_manager) const {
+    cel::MemoryManagerRef memory_manager) const {
   auto iter = fields_.find(field_name);
   if (iter == fields_.end()) {
     return absl::UnknownError("no such field");

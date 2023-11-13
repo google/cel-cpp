@@ -75,7 +75,7 @@ TEST(Any, CustomRoundtrip) {
 }
 
 TEST(Any, ToJson) {
-  MemoryManager& memory_manager = MemoryManager::Global();
+  MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);

@@ -52,7 +52,7 @@ using cel::internal::StatusIs;
 class FunctionAdapterTest : public ::testing::Test {
  public:
   FunctionAdapterTest()
-      : type_factory_(cel::MemoryManager::Global()),
+      : type_factory_(cel::MemoryManagerRef::ReferenceCounting()),
         type_manager_(type_factory_, TypeProvider::Builtin()),
         value_factory_(type_manager_),
         test_context_(value_factory_) {}

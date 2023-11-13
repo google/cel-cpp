@@ -25,10 +25,10 @@ cc_library(
     srcs = ["descriptors.cc"],
     hdrs = ["descriptors.h"],
     deps = [
+        "//base:data",
         "//base:memory",
-        "//base:type",
+        "//extensions/protobuf:data",
         "//extensions/protobuf:memory_manager",
-        "//extensions/protobuf:type",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/functional:function_ref",
@@ -125,7 +125,6 @@ cc_library(
         "//extensions/protobuf:memory_manager",
         "//internal:testing",
         "@com_google_absl//absl/types:optional",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 

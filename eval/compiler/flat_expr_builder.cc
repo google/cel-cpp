@@ -1066,7 +1066,7 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
 
   // These objects are expected to remain scoped to one build call -- references
   // to them shouldn't be persisted in any part of the result expression.
-  TypeFactory type_factory(cel::MemoryManager::Global());
+  TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory,
                            type_registry_.GetComposedTypeProvider());
   ValueFactory value_factory(type_manager);

@@ -70,7 +70,7 @@ using ::google::api::expr::runtime::Resolver;
 
 class ConstantFoldingExtension : public ProgramOptimizer {
  public:
-  ConstantFoldingExtension(MemoryManager& memory_manager,
+  ConstantFoldingExtension(MemoryManagerRef memory_manager,
                            const TypeProvider& type_provider)
       : memory_manager_(memory_manager),
         state_(kDefaultStackLimit, kComprehensionSlotCount, type_provider,
@@ -94,7 +94,7 @@ class ConstantFoldingExtension : public ProgramOptimizer {
   // if the comprehension variables are only used in a const way.
   static constexpr size_t kComprehensionSlotCount = 0;
 
-  MemoryManager& memory_manager_;
+  MemoryManagerRef memory_manager_;
   Activation empty_;
   FlatExpressionEvaluatorState state_;
 
@@ -219,8 +219,8 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
 }  // namespace
 
 ProgramOptimizerFactory CreateConstantFoldingOptimizer(
-    MemoryManager& memory_manager) {
-  return [&memory_manager](PlannerContext& ctx, const AstImpl&)
+    MemoryManagerRef memory_manager) {
+  return [memory_manager](PlannerContext& ctx, const AstImpl&)
              -> absl::StatusOr<std::unique_ptr<ProgramOptimizer>> {
     return std::make_unique<ConstantFoldingExtension>(
         memory_manager, ctx.value_factory().type_provider());

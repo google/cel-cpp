@@ -42,7 +42,6 @@ cc_test(
         "//base/ast_internal:expr",
         "//eval/eval:const_value_step",
         "//eval/eval:evaluator_core",
-        "//eval/public:cel_type_registry",
         "//internal:testing",
         "//runtime:function_registry",
         "//runtime:runtime_issue",

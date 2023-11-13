@@ -177,7 +177,7 @@ class RewriterImpl : public AstRewriterBase {
   RewriterImpl(const AstImpl& ast, PlannerContext& planner_context)
       : ast_(ast),
         planner_context_(planner_context),
-        type_factory_(MemoryManager::Global()) {}
+        type_factory_(MemoryManagerRef::ReferenceCounting()) {}
 
   void PreVisitExpr(const Expr* expr, const SourcePosition* position) override {
     path_.push_back(expr);

@@ -28,7 +28,7 @@ namespace cel::extensions {
 namespace {
 
 TEST(ProtoTypeProvider, Enum) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   ProtoTypeProvider type_provider;
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(auto type,
@@ -42,7 +42,7 @@ TEST(ProtoTypeProvider, Enum) {
 }
 
 TEST(ProtoTypeProvider, Struct) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   ProtoTypeProvider type_provider;
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(auto type,

@@ -125,7 +125,7 @@ class EnumType : public Type, public base_internal::HeapData {
   // Returns an iterator which can iterate over all the constants defined by
   // this enumeration. The order with which iteration occurs is undefined.
   virtual absl::StatusOr<absl::Nonnull<std::unique_ptr<ConstantIterator>>>
-  NewConstantIterator(MemoryManager& memory_manager) const
+  NewConstantIterator(MemoryManagerRef memory_manager) const
       ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
   absl::StatusOr<Handle<Value>> NewValueFromAny(ValueFactory& value_factory,

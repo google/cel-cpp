@@ -115,7 +115,7 @@ int TestMessageFieldNameToNumber(absl::string_view name) {
   return ABSL_DIE_IF_NULL(descriptor->FindFieldByName(name))->number();
 }
 
-void TestHasFieldImpl(MemoryManager& memory_manager,
+void TestHasFieldImpl(MemoryManagerRef memory_manager,
                       absl::FunctionRef<absl::StatusOr<bool>(
                           const Handle<StructValue>&, TypeManager&)>
                           has_field,
@@ -135,7 +135,7 @@ void TestHasFieldImpl(MemoryManager& memory_manager,
 }
 
 void TestHasFieldByName(
-    MemoryManager& memory_manager, absl::string_view name,
+    MemoryManagerRef memory_manager, absl::string_view name,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker, bool found) {
   TestHasFieldImpl(
       memory_manager,
@@ -146,7 +146,7 @@ void TestHasFieldByName(
 }
 
 void TestHasFieldByNumber(
-    MemoryManager& memory_manager, int64_t number,
+    MemoryManagerRef memory_manager, int64_t number,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker, bool found) {
   TestHasFieldImpl(
       memory_manager,
@@ -156,7 +156,7 @@ void TestHasFieldByNumber(
       test_message_maker, found);
 }
 
-void TestHasField(MemoryManager& memory_manager, absl::string_view name,
+void TestHasField(MemoryManagerRef memory_manager, absl::string_view name,
                   absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
                   bool found = true) {
   TestHasFieldByName(memory_manager, name, test_message_maker, found);
@@ -489,7 +489,7 @@ TEST_P(ProtoStructValueTest, AnyListHasField) {
 }
 
 void TestGetFieldImpl(
-    MemoryManager& memory_manager,
+    MemoryManagerRef memory_manager,
     absl::FunctionRef<absl::StatusOr<Handle<Value>>(const Handle<StructValue>&,
                                                     ValueFactory&)>
         get_field,
@@ -513,7 +513,7 @@ void TestGetFieldImpl(
 }
 
 void TestGetFieldByName(
-    MemoryManager& memory_manager, absl::string_view name,
+    MemoryManagerRef memory_manager, absl::string_view name,
     absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
@@ -527,7 +527,7 @@ void TestGetFieldByName(
 }
 
 void TestGetFieldByNumber(
-    MemoryManager& memory_manager, int64_t number,
+    MemoryManagerRef memory_manager, int64_t number,
     absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
@@ -541,7 +541,7 @@ void TestGetFieldByNumber(
 }
 
 void TestGetField(
-    MemoryManager& memory_manager, absl::string_view name,
+    MemoryManagerRef memory_manager, absl::string_view name,
     absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
@@ -554,7 +554,7 @@ void TestGetField(
 }
 
 void TestGetField(
-    MemoryManager& memory_manager, absl::string_view name,
+    MemoryManagerRef memory_manager, absl::string_view name,
     absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(const Handle<Value>&)> set_field_tester) {
@@ -763,7 +763,7 @@ TEST_P(ProtoStructValueTest, MessageGetField) {
 }
 
 void TestGetWrapperFieldImpl(
-    MemoryManager& memory_manager,
+    MemoryManagerRef memory_manager,
     absl::FunctionRef<absl::StatusOr<Handle<Value>>(const Handle<StructValue>&,
                                                     ValueFactory&)>
         get_field,
@@ -789,7 +789,7 @@ void TestGetWrapperFieldImpl(
 }
 
 void TestGetWrapperFieldByName(
-    MemoryManager& memory_manager, absl::string_view name,
+    MemoryManagerRef memory_manager, absl::string_view name,
     absl::string_view debug_string,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
@@ -803,7 +803,7 @@ void TestGetWrapperFieldByName(
 }
 
 void TestGetWrapperFieldByNumber(
-    MemoryManager& memory_manager, int64_t number,
+    MemoryManagerRef memory_manager, int64_t number,
     absl::string_view debug_string,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
@@ -817,7 +817,7 @@ void TestGetWrapperFieldByNumber(
 }
 
 void TestGetWrapperField(
-    MemoryManager& memory_manager, absl::string_view name,
+    MemoryManagerRef memory_manager, absl::string_view name,
     absl::string_view debug_string,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
@@ -830,7 +830,7 @@ void TestGetWrapperField(
 }
 
 void TestGetWrapperField(
-    MemoryManager& memory_manager, absl::string_view name,
+    MemoryManagerRef memory_manager, absl::string_view name,
     absl::string_view debug_string,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(const Handle<Value>&)> set_field_tester) {
@@ -1010,7 +1010,7 @@ TEST_P(ProtoStructValueTest, AnyGetField) {
 }
 
 void TestGetListFieldImpl(
-    MemoryManager& memory_manager,
+    MemoryManagerRef memory_manager,
     absl::FunctionRef<absl::StatusOr<Handle<Value>>(const Handle<StructValue>&,
                                                     ValueFactory&)>
         get_field,
@@ -1037,7 +1037,7 @@ void TestGetListFieldImpl(
 }
 
 void TestGetListFieldByName(
-    MemoryManager& memory_manager, absl::string_view name,
+    MemoryManagerRef memory_manager, absl::string_view name,
     absl::FunctionRef<void(const Handle<ListValue>&)> unset_field_tester,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(ValueFactory&, const Handle<ListValue>&)>
@@ -1051,7 +1051,7 @@ void TestGetListFieldByName(
 }
 
 void TestGetListFieldByNumber(
-    MemoryManager& memory_manager, int64_t number,
+    MemoryManagerRef memory_manager, int64_t number,
     absl::FunctionRef<void(const Handle<ListValue>&)> unset_field_tester,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(ValueFactory&, const Handle<ListValue>&)>
@@ -1065,7 +1065,7 @@ void TestGetListFieldByNumber(
 }
 
 void TestGetListField(
-    MemoryManager& memory_manager, absl::string_view name,
+    MemoryManagerRef memory_manager, absl::string_view name,
     absl::FunctionRef<void(const Handle<ListValue>&)> unset_field_tester,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(ValueFactory&, const Handle<ListValue>&)>
@@ -1534,7 +1534,7 @@ TEST_P(ProtoStructValueTest, AnyListGetField) {
 }
 
 void TestGetMapFieldImpl(
-    MemoryManager& memory_manager,
+    MemoryManagerRef memory_manager,
     absl::FunctionRef<absl::StatusOr<Handle<Value>>(const Handle<StructValue>&,
                                                     ValueFactory&)>
         get_field,
@@ -1561,7 +1561,7 @@ void TestGetMapFieldImpl(
 }
 
 void TestGetMapFieldByName(
-    MemoryManager& memory_manager, absl::string_view name,
+    MemoryManagerRef memory_manager, absl::string_view name,
     absl::FunctionRef<void(const Handle<MapValue>&)> unset_field_tester,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(ValueFactory&, const Handle<MapValue>&)>
@@ -1575,7 +1575,7 @@ void TestGetMapFieldByName(
 }
 
 void TestGetMapFieldByNumber(
-    MemoryManager& memory_manager, int64_t number,
+    MemoryManagerRef memory_manager, int64_t number,
     absl::FunctionRef<void(const Handle<MapValue>&)> unset_field_tester,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(ValueFactory&, const Handle<MapValue>&)>
@@ -1589,7 +1589,7 @@ void TestGetMapFieldByNumber(
 }
 
 void TestGetMapField(
-    MemoryManager& memory_manager, absl::string_view name,
+    MemoryManagerRef memory_manager, absl::string_view name,
     absl::FunctionRef<void(const Handle<MapValue>&)> unset_field_tester,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(ValueFactory&, const Handle<MapValue>&)>
@@ -1605,7 +1605,7 @@ void TestGetMapField(
   ASSERT_NO_FATAL_FAILURE(TestGetMapField(__VA_ARGS__))
 
 template <typename MutableMapField, typename Pair>
-void TestMapHasField(MemoryManager& memory_manager,
+void TestMapHasField(MemoryManagerRef memory_manager,
                      absl::string_view map_field_name,
                      MutableMapField mutable_map_field, Pair&& pair) {
   TypeFactory type_factory(memory_manager);
@@ -1664,7 +1664,7 @@ google::protobuf::Timestamp NativeToProto(absl::Time time) {
 
 template <typename T, typename MutableMapField, typename Creator,
           typename Valuer, typename Pair, typename Key>
-void TestMapGetField(MemoryManager& memory_manager,
+void TestMapGetField(MemoryManagerRef memory_manager,
                      absl::string_view map_field_name,
                      absl::string_view debug_string,
                      MutableMapField mutable_map_field, Creator creator,
@@ -1753,7 +1753,7 @@ void TestMapGetField(MemoryManager& memory_manager,
 
 template <typename T, typename MutableMapField, typename Valuer, typename Pair,
           typename Key>
-void TestStringMapGetField(MemoryManager& memory_manager,
+void TestStringMapGetField(MemoryManagerRef memory_manager,
                            absl::string_view map_field_name,
                            absl::string_view debug_string,
                            MutableMapField mutable_map_field, Valuer valuer,

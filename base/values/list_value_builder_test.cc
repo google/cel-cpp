@@ -38,7 +38,7 @@ using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
 TEST(ListValueBuilder, Unspecialized) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto list_builder =
@@ -80,7 +80,7 @@ TEST(ListValueBuilder, Unspecialized) {
 }
 
 TEST(ListValueBuilder, Value) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto list_builder =
@@ -107,7 +107,7 @@ TEST(ListValueBuilder, Value) {
 }
 
 TEST(ListValueBuilder, Bool) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto list_builder =
@@ -136,7 +136,7 @@ TEST(ListValueBuilder, Bool) {
 }
 
 TEST(ListValueBuilder, Int) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto list_builder =
@@ -182,7 +182,7 @@ TEST(ListValueBuilder, Int) {
 }
 
 TEST(ListValueBuilder, Uint) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto list_builder =
@@ -211,7 +211,7 @@ TEST(ListValueBuilder, Uint) {
 }
 
 TEST(ListValueBuilder, Double) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto list_builder = ListValueBuilder<DoubleValue>(
@@ -240,7 +240,7 @@ TEST(ListValueBuilder, Double) {
 }
 
 TEST(ListValueBuilder, Duration) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto list_builder = ListValueBuilder<DurationValue>(
@@ -271,7 +271,7 @@ TEST(ListValueBuilder, Duration) {
 }
 
 TEST(ListValueBuilder, Timestamp) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto list_builder = ListValueBuilder<TimestampValue>(
@@ -320,7 +320,7 @@ void TestListValueBuilderImpl(ValueFactory& value_factory,
 }
 
 TEST(ListValueBuilder, Dynamic) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
 #ifdef ABSL_INTERNAL_HAS_RTTI

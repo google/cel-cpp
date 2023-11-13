@@ -774,9 +774,8 @@ class ParsedProtoListValue<ProtoStructValue, google::protobuf::Message>
           protobuf_internal::DynamicMemberParsedProtoStructValue>(
           owner_from_this(), type()->element().As<StructType>(), &field);
     }
-    if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-      auto* arena =
-          ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+    if (ProtoMemoryManagerArena(value_factory.memory_manager())) {
+      auto* arena = ProtoMemoryManagerArena(value_factory.memory_manager());
       if (ABSL_PREDICT_TRUE(arena != nullptr)) {
         // We are using google::protobuf::Arena, but fields_.NewMessage() allocates on the
         // heap. Copy the message into the arena to avoid the extra bookkeeping.
@@ -2055,9 +2054,8 @@ absl::StatusOr<Handle<ProtoStructValue>> ProtoStructValue::Create(
       auto type,
       ProtoStructType::Resolve(value_factory.type_manager(), *descriptor));
   bool same_descriptors = &type->descriptor() == descriptor;
-  if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-    auto* arena =
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+  if (ProtoMemoryManagerArena(value_factory.memory_manager())) {
+    auto* arena = ProtoMemoryManagerArena(value_factory.memory_manager());
     if (ABSL_PREDICT_TRUE(arena != nullptr)) {
       google::protobuf::Message* value;
       if (ABSL_PREDICT_TRUE(same_descriptors)) {
@@ -2145,9 +2143,8 @@ absl::StatusOr<Handle<ProtoStructValue>> ProtoStructValue::CreateBorrowed(
     return absl::InternalError(
         "cel: failed to serialize protocol buffer message");
   }
-  if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-    auto* arena =
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+  if (ProtoMemoryManagerArena(value_factory.memory_manager())) {
+    auto* arena = ProtoMemoryManagerArena(value_factory.memory_manager());
     if (arena != nullptr) {
       auto* value = prototype->New(arena);
       if (ABSL_PREDICT_FALSE(!value->ParsePartialFromString(serialized))) {
@@ -2184,9 +2181,8 @@ absl::StatusOr<Handle<ProtoStructValue>> ProtoStructValue::Create(
       auto type,
       ProtoStructType::Resolve(value_factory.type_manager(), *descriptor));
   bool same_descriptors = &type->descriptor() == descriptor;
-  if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-    auto* arena =
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+  if (ProtoMemoryManagerArena(value_factory.memory_manager())) {
+    auto* arena = ProtoMemoryManagerArena(value_factory.memory_manager());
     if (ABSL_PREDICT_TRUE(arena != nullptr)) {
       google::protobuf::Message* value;
       if (ABSL_PREDICT_TRUE(same_descriptors)) {

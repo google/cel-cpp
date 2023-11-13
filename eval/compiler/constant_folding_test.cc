@@ -54,6 +54,7 @@ namespace {
 using ::cel::RuntimeIssue;
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::Expr;
+using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::runtime_internal::IssueCollector;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::Parse;
@@ -71,8 +72,7 @@ using cel::internal::StatusIs;
 class UpdatedConstantFoldingTest : public testing::Test {
  public:
   UpdatedConstantFoldingTest()
-      : memory_manager_(&arena_),
-        type_factory_(MemoryManager::Global()),
+      : type_factory_(ProtoMemoryManagerRef(&arena_)),
         type_manager_(type_factory_, type_registry_.GetComposedTypeProvider()),
         value_factory_(type_manager_),
         issue_collector_(RuntimeIssue::Severity::kError),
@@ -81,7 +81,6 @@ class UpdatedConstantFoldingTest : public testing::Test {
 
  protected:
   google::protobuf::Arena arena_;
-  cel::extensions::ProtoMemoryManager memory_manager_;
   cel::FunctionRegistry function_registry_;
   cel::TypeRegistry type_registry_;
   cel::TypeFactory type_factory_;
@@ -161,7 +160,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsTernary) {
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingOptimizer(memory_manager_);
+      CreateConstantFoldingOptimizer(ProtoMemoryManagerRef(&arena_));
 
   // Act
   // Issue the visitation calls.
@@ -228,7 +227,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingOptimizer(memory_manager_);
+      CreateConstantFoldingOptimizer(ProtoMemoryManagerRef(&arena_));
 
   // Act
   // Issue the visitation calls.
@@ -293,7 +292,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingOptimizer(memory_manager_);
+      CreateConstantFoldingOptimizer(ProtoMemoryManagerRef(&arena_));
 
   // Act
   // Issue the visitation calls.
@@ -354,7 +353,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesList) {
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingOptimizer(memory_manager_);
+      CreateConstantFoldingOptimizer(ProtoMemoryManagerRef(&arena_));
 
   // Act
   // Issue the visitation calls.
@@ -415,7 +414,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingOptimizer(memory_manager_);
+      CreateConstantFoldingOptimizer(ProtoMemoryManagerRef(&arena_));
 
   // Act
   // Issue the visitation calls.
@@ -476,7 +475,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingOptimizer(memory_manager_);
+      CreateConstantFoldingOptimizer(ProtoMemoryManagerRef(&arena_));
 
   // Act
   // Issue the visitation calls.
@@ -541,7 +540,7 @@ TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingOptimizer(memory_manager_);
+      CreateConstantFoldingOptimizer(ProtoMemoryManagerRef(&arena_));
 
   // Act / Assert
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,

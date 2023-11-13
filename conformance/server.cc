@@ -60,6 +60,7 @@ using ::cel::conformance_internal::FromConformanceValue;
 using ::cel::conformance_internal::ToConformanceValue;
 using ::cel::extensions::ProtobufRuntimeAdapter;
 using ::cel::extensions::ProtoMemoryManager;
+using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::extensions::RegisterProtobufEnum;
 using ::google::protobuf::Arena;
 
@@ -315,9 +316,10 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
                     conformance::v1alpha1::EvalResponse& response) override {
     google::api::expr::v1alpha1::Expr expr = ExtractExpr(request);
     google::protobuf::Arena arena;
-    ProtoMemoryManager proto_memory_manager(&arena);
-    MemoryManager& memory_manager =
-        (use_arena_ ? proto_memory_manager : MemoryManager::Global());
+    auto proto_memory_manager = ProtoMemoryManagerRef(&arena);
+    cel::MemoryManagerRef memory_manager =
+        (use_arena_ ? proto_memory_manager
+                    : cel::MemoryManagerRef::ReferenceCounting());
 
     auto runtime_status = Setup(request.container());
     if (!runtime_status.ok()) {
@@ -383,16 +385,15 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
       : options_(options),
         use_arena_(use_arena),
         enable_optimizations_(enable_optimizations),
-        constant_proto_memory_manager_(&constant_arena_),
-        constant_memory_manager_(use_arena_ ? constant_proto_memory_manager_
-                                            : cel::MemoryManager::Global()) {}
+        constant_memory_manager_(
+            use_arena_ ? ProtoMemoryManagerRef(&constant_arena_)
+                       : cel::MemoryManagerRef::ReferenceCounting()) {}
 
   RuntimeOptions options_;
   bool use_arena_;
   bool enable_optimizations_;
   Arena constant_arena_;
-  ProtoMemoryManager constant_proto_memory_manager_;
-  cel::MemoryManager& constant_memory_manager_;
+  cel::MemoryManagerRef constant_memory_manager_;
 };
 
 class PipeCodec {

@@ -41,7 +41,7 @@ class PlannerContextTest : public testing::Test {
   PlannerContextTest()
       : type_registry_(),
         function_registry_(),
-        type_factory_(cel::MemoryManager::Global()),
+        type_factory_(cel::MemoryManagerRef::ReferenceCounting()),
         type_manager_(type_factory_, type_registry_.GetComposedTypeProvider()),
         value_factory_(type_manager_),
         resolver_("", function_registry_, type_registry_, value_factory_,

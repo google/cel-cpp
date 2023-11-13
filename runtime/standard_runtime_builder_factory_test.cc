@@ -48,6 +48,7 @@ namespace cel {
 namespace {
 
 using ::cel::extensions::ProtobufRuntimeAdapter;
+using ::cel::extensions::ProtoMemoryManagerRef;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::ParseWithMacros;
 using testing::ElementsAre;
@@ -78,7 +79,7 @@ class StandardRuntimeTest
 TEST_P(StandardRuntimeTest, DefaultsRefCounted) {
   RuntimeOptions opts;
   const EvaluateResultTestCase& test_case = GetParam();
-  MemoryManager& memory_manager = MemoryManager::Global();
+  MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
 
   ASSERT_OK_AND_ASSIGN(auto builder, CreateStandardRuntimeBuilder(opts));
 
@@ -109,7 +110,7 @@ TEST_P(StandardRuntimeTest, DefaultsArena) {
   RuntimeOptions opts;
   const EvaluateResultTestCase& test_case = GetParam();
   google::protobuf::Arena arena;
-  extensions::ProtoMemoryManager memory_manager(&arena);
+  auto memory_manager = ProtoMemoryManagerRef(&arena);
 
   ASSERT_OK_AND_ASSIGN(auto builder, CreateStandardRuntimeBuilder(opts));
 
@@ -455,7 +456,7 @@ TEST(StandardRuntimeTest, RuntimeIssueSupport) {
   options.fail_on_warnings = false;
 
   google::protobuf::Arena arena;
-  extensions::ProtoMemoryManager memory_manager(&arena);
+  auto memory_manager = ProtoMemoryManagerRef(&arena);
 
   ASSERT_OK_AND_ASSIGN(auto builder, CreateStandardRuntimeBuilder(options));
 

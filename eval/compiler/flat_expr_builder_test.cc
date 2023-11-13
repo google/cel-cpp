@@ -77,6 +77,7 @@ namespace {
 
 using ::cel::Handle;
 using ::cel::Value;
+using ::cel::extensions::ProtoMemoryManagerRef;
 using ::google::api::expr::v1alpha1::CheckedExpr;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::ParsedExpr;
@@ -1187,7 +1188,7 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapAndConstantFolding) {
   builder.flat_expr_builder().AddAstTransform(
       NewReferenceResolverExtension(ReferenceResolverOption::kCheckedOnly));
   google::protobuf::Arena arena;
-  cel::extensions::ProtoMemoryManager memory_manager(&arena);
+  auto memory_manager = ProtoMemoryManagerRef(&arena);
   builder.flat_expr_builder().AddProgramOptimizer(
       cel::runtime_internal::CreateConstantFoldingOptimizer(memory_manager));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));

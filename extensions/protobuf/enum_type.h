@@ -62,7 +62,7 @@ class ProtoEnumType final : public EnumType {
       int64_t number) const override;
 
   absl::StatusOr<absl::Nonnull<std::unique_ptr<ConstantIterator>>>
-  NewConstantIterator(MemoryManager& memory_manager) const override;
+  NewConstantIterator(MemoryManagerRef memory_manager) const override;
 
   const google::protobuf::EnumDescriptor& descriptor() const { return *descriptor_; }
 

@@ -206,8 +206,6 @@ TEST(ActivationTest, CheckValueProducerClear) {
 
 TEST(ActivationTest, ErrorPathTest) {
   Activation activation;
-  Arena arena;
-  ProtoMemoryManager manager(&arena);
 
   Expr expr;
   auto* select_expr = expr.mutable_select_expr();

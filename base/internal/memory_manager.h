@@ -15,12 +15,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_INTERNAL_MEMORY_MANAGER_PRE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_INTERNAL_MEMORY_MANAGER_PRE_H_
 
-#include <cstddef>
 #include <type_traits>
 
 namespace cel::base_internal {
-
-size_t GetPageSize();
 
 template <typename T>
 struct MemoryManagerDestructor final {

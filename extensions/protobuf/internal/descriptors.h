@@ -46,11 +46,11 @@ std::unique_ptr<DescriptorGatherer> NewDescriptorGatherer();
 // custom descriptor database and creating a custom descriptor pool and message
 // factory.
 void WithCustomDescriptorPool(
-    MemoryManager& memory_manager, const google::protobuf::Message& message,
+    MemoryManagerRef memory_manager, const google::protobuf::Message& message,
     const google::protobuf::Descriptor& additional_descriptor,
     absl::FunctionRef<void(TypeProvider&, const google::protobuf::Message&)> invocable);
 inline void WithCustomDescriptorPool(
-    MemoryManager& memory_manager, const google::protobuf::Message& message,
+    MemoryManagerRef memory_manager, const google::protobuf::Message& message,
     absl::FunctionRef<void(TypeProvider&, const google::protobuf::Message&)> invocable) {
   WithCustomDescriptorPool(memory_manager, message, *message.GetDescriptor(),
                            invocable);

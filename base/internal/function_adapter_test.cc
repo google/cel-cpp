@@ -91,7 +91,7 @@ static_assert(AdaptedKind<const NullValue&>() == Kind::kNullType,
 class ValueFactoryTestBase : public testing::Test {
  public:
   ValueFactoryTestBase()
-      : type_factory_(MemoryManager::Global()),
+      : type_factory_(MemoryManagerRef::ReferenceCounting()),
         type_manager_(type_factory_, TypeProvider::Builtin()),
         value_factory_(type_manager_) {}
 

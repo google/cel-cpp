@@ -30,6 +30,7 @@ using ::cel::TypeProvider;
 using ::cel::ast_internal::Constant;
 using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::NullValue;
+using ::cel::extensions::ProtoMemoryManagerRef;
 using testing::Eq;
 using testing::HasSubstr;
 using cel::internal::StatusIs;
@@ -55,14 +56,12 @@ absl::StatusOr<CelValue> RunConstantExpression(
 class ConstValueStepTest : public ::testing::Test {
  public:
   ConstValueStepTest()
-      : manager_(&arena_),
-        type_factory_(manager_),
+      : type_factory_(ProtoMemoryManagerRef(&arena_)),
         type_manager_(type_factory_, cel::TypeProvider::Builtin()),
         value_factory_(type_manager_) {}
 
  protected:
   google::protobuf::Arena arena_;
-  cel::extensions::ProtoMemoryManager manager_;
   cel::TypeFactory type_factory_;
   cel::TypeManager type_manager_;
   cel::ValueFactory value_factory_;

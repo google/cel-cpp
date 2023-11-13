@@ -21,6 +21,7 @@
 
 namespace google::api::expr::runtime {
 
+using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::runtime_internal::kDurationHigh;
 using ::cel::runtime_internal::kDurationLow;
 using testing::Eq;
@@ -323,7 +324,7 @@ TEST(CelValueTest, TestUnknownSet) {
 
 TEST(CelValueTest, SpecialErrorFactories) {
   google::protobuf::Arena arena;
-  cel::extensions::ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   CelValue error = CreateNoSuchKeyError(manager, "key");
   EXPECT_THAT(error, test::IsCelError(StatusIs(absl::StatusCode::kNotFound)));
@@ -357,7 +358,7 @@ TEST(CelValueTest, MissingAttributeErrorsDeprecated) {
 
 TEST(CelValueTest, MissingAttributeErrors) {
   google::protobuf::Arena arena;
-  cel::extensions::ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   CelValue missing_attribute_error =
       CreateMissingAttributeError(manager, "destination.ip");
@@ -375,7 +376,7 @@ TEST(CelValueTest, UnknownFunctionResultErrorsDeprecated) {
 
 TEST(CelValueTest, UnknownFunctionResultErrors) {
   google::protobuf::Arena arena;
-  cel::extensions::ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
 
   CelValue value = CreateUnknownFunctionResultError(manager, "message");
   EXPECT_TRUE(value.IsError());

@@ -243,7 +243,8 @@ class InlinedStringViewStringValue final : public StringValue,
 // heap, potentially reference counted.
 class StringStringValue final : public StringValue, public HeapData {
  private:
-  friend class cel::MemoryManager;
+  template <typename>
+  friend class ::cel::base_internal::HandleFactory;
   friend class BytesValue;
   friend class StringValue;
   friend class ValueFactory;

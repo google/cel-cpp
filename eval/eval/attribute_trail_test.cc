@@ -5,19 +5,12 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 
-using ::cel::extensions::ProtoMemoryManager;
-using ::google::api::expr::v1alpha1::Expr;
-
 // Attribute Trail behavior
 TEST(AttributeTrailTest, AttributeTrailEmptyStep) {
-  google::protobuf::Arena arena;
-  ProtoMemoryManager manager(&arena);
-
   std::string step = "step";
   CelValue step_value = CelValue::CreateString(&step);
   AttributeTrail trail;
@@ -26,9 +19,6 @@ TEST(AttributeTrailTest, AttributeTrailEmptyStep) {
 }
 
 TEST(AttributeTrailTest, AttributeTrailStep) {
-  google::protobuf::Arena arena;
-  ProtoMemoryManager manager(&arena);
-
   std::string step = "step";
   CelValue step_value = CelValue::CreateString(&step);
 

@@ -35,6 +35,7 @@ namespace {
 
 using ::cel::TypeProvider;
 using ::cel::ast_internal::Expr;
+using ::cel::extensions::ProtoMemoryManagerRef;
 using ::google::protobuf::Arena;
 using ::google::protobuf::Message;
 using testing::Eq;
@@ -56,7 +57,7 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
-  cel::extensions::ProtoMemoryManager memory_manager(arena);
+  auto memory_manager = ProtoMemoryManagerRef(arena);
   cel::TypeFactory type_factory(memory_manager);
   cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
 
@@ -200,7 +201,7 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
   google::protobuf::Arena arena;
-  cel::extensions::ProtoMemoryManager memory_manager(&arena);
+  auto memory_manager = ProtoMemoryManagerRef(&arena);
   cel::TypeFactory type_factory(memory_manager);
   cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
   Expr expr1;
@@ -244,7 +245,7 @@ TEST_P(CreateCreateStructStepTest, TestMessageCreationBadField) {
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
   google::protobuf::Arena arena;
-  cel::extensions::ProtoMemoryManager memory_manager(&arena);
+  auto memory_manager = ProtoMemoryManagerRef(&arena);
   cel::TypeFactory type_factory(memory_manager);
   cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
   Expr expr1;

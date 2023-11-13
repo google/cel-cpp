@@ -28,7 +28,7 @@ using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
 TEST(ValueFactory, CreateErrorValueReplacesOk) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   EXPECT_THAT(value_factory.CreateErrorValue(absl::OkStatus())->NativeValue(),
@@ -36,7 +36,7 @@ TEST(ValueFactory, CreateErrorValueReplacesOk) {
 }
 
 TEST(ValueFactory, CreateStringValueIllegalByteSequence) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   EXPECT_THAT(value_factory.CreateStringValue("\xff"),
@@ -46,7 +46,7 @@ TEST(ValueFactory, CreateStringValueIllegalByteSequence) {
 }
 
 TEST(ValueFactory, JsonNull) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateValueFromJson(kJsonNull);
@@ -54,7 +54,7 @@ TEST(ValueFactory, JsonNull) {
 }
 
 TEST(ValueFactory, JsonBool) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateValueFromJson(true);
@@ -63,7 +63,7 @@ TEST(ValueFactory, JsonBool) {
 }
 
 TEST(ValueFactory, JsonNumber) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateValueFromJson(1.0);
@@ -72,7 +72,7 @@ TEST(ValueFactory, JsonNumber) {
 }
 
 TEST(ValueFactory, JsonString) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateValueFromJson(JsonString("foo"));
@@ -81,7 +81,7 @@ TEST(ValueFactory, JsonString) {
 }
 
 TEST(ValueFactory, JsonArray) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto array = MakeJsonArray({JsonString("foo")});
@@ -100,7 +100,7 @@ TEST(ValueFactory, JsonArray) {
 }
 
 TEST(ValueFactory, JsonObject) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto object = MakeJsonObject({{JsonString("foo"), true}});

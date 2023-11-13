@@ -38,7 +38,7 @@ class TestAccessApiImpl : public LegacyTypeAccessApis {
   absl::StatusOr<CelValue> GetField(
       absl::string_view field_name, const CelValue::MessageWrapper& instance,
       ProtoWrapperTypeOptions unboxing_option,
-      cel::MemoryManager& memory_manager) const override {
+      cel::MemoryManagerRef memory_manager) const override {
     return absl::UnimplementedError("Not implemented");
   }
 
@@ -52,9 +52,6 @@ TEST(LegacyTypeAdapterAccessApis, DefaultAlwaysInequal) {
   TestMessage message;
   MessageWrapper wrapper(&message, nullptr);
   MessageWrapper wrapper2(&message, nullptr);
-
-  google::protobuf::Arena arena;
-  cel::extensions::ProtoMemoryManager manager(&arena);
 
   TestAccessApiImpl impl;
 

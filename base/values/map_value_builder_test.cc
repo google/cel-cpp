@@ -81,7 +81,7 @@ std::vector<std::string> MakeMapDebugStringFor(absl::string_view first,
 }
 
 TEST(MapValueBuilder, UnspecializedUnspecialized) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto map_builder = MapValueBuilder<StringValue, BytesValue>(
@@ -136,7 +136,7 @@ TEST(MapValueBuilder, UnspecializedUnspecialized) {
 }
 
 TEST(MapValueBuilder, UnspecializedGeneric) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto map_builder = MapValueBuilder<StringValue, Value>(
@@ -191,7 +191,7 @@ TEST(MapValueBuilder, UnspecializedGeneric) {
 }
 
 TEST(MapValueBuilder, GenericUnspecialized) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto map_builder = MapValueBuilder<Value, BytesValue>(
@@ -246,7 +246,7 @@ TEST(MapValueBuilder, GenericUnspecialized) {
 }
 
 TEST(MapValueBuilder, GenericGeneric) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto map_builder = MapValueBuilder<Value, Value>(
@@ -301,7 +301,7 @@ TEST(MapValueBuilder, GenericGeneric) {
 }
 
 TEST(MapValueBuilder, UnspecializedSpecialized) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto map_builder = MapValueBuilder<StringValue, IntValue>(
@@ -354,7 +354,7 @@ TEST(MapValueBuilder, UnspecializedSpecialized) {
 }
 
 TEST(MapValueBuilder, GenericSpecialized) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto map_builder = MapValueBuilder<Value, IntValue>(
@@ -407,7 +407,7 @@ TEST(MapValueBuilder, GenericSpecialized) {
 }
 
 TEST(MapValueBuilder, SpecializedUnspecialized) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto map_builder = MapValueBuilder<IntValue, StringValue>(
@@ -460,7 +460,7 @@ TEST(MapValueBuilder, SpecializedUnspecialized) {
 }
 
 TEST(MapValueBuilder, SpecializedGeneric) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto map_builder = MapValueBuilder<IntValue, Value>(
@@ -514,7 +514,7 @@ void TestMapBuilder(GetKey get_key, GetValue get_value, MakeKey make_key1,
                     MakeValue make_value2,
                     const std::vector<std::string>& debug_string,
                     const std::vector<std::string>& keys_debug_string) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto map_builder = MapValueBuilder<Key, Value>(
@@ -715,7 +715,7 @@ void TestMapValueBuilderImpl(ValueFactory& value_factory, const Handle<K>& key,
 }
 
 TEST(MapValueBuilder, Dynamic) {
-  TypeFactory type_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
 #ifdef ABSL_INTERNAL_HAS_RTTI

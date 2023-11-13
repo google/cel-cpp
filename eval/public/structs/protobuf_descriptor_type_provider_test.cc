@@ -26,12 +26,13 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::cel::extensions::ProtoMemoryManager;
+
 TEST(ProtobufDescriptorProvider, Basic) {
   ProtobufDescriptorProvider provider(
       google::protobuf::DescriptorPool::generated_pool(),
       google::protobuf::MessageFactory::generated_factory());
-  google::protobuf::Arena arena;
-  cel::extensions::ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManager();
   auto type_adapter = provider.ProvideLegacyType("google.protobuf.Int64Value");
   absl::optional<const LegacyTypeInfoApis*> type_info =
       provider.ProvideLegacyTypeInfo("google.protobuf.Int64Value");
@@ -65,8 +66,6 @@ TEST(ProtobufDescriptorProvider, MemoizesAdapters) {
   ProtobufDescriptorProvider provider(
       google::protobuf::DescriptorPool::generated_pool(),
       google::protobuf::MessageFactory::generated_factory());
-  google::protobuf::Arena arena;
-  cel::extensions::ProtoMemoryManager manager(&arena);
   auto type_adapter = provider.ProvideLegacyType("google.protobuf.Int64Value");
 
   ASSERT_TRUE(type_adapter.has_value());
@@ -83,8 +82,6 @@ TEST(ProtobufDescriptorProvider, NotFound) {
   ProtobufDescriptorProvider provider(
       google::protobuf::DescriptorPool::generated_pool(),
       google::protobuf::MessageFactory::generated_factory());
-  google::protobuf::Arena arena;
-  cel::extensions::ProtoMemoryManager manager(&arena);
   auto type_adapter = provider.ProvideLegacyType("UnknownType");
   auto type_info = provider.ProvideLegacyTypeInfo("UnknownType");
 

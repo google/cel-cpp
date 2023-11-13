@@ -34,7 +34,7 @@ namespace {
 
 using ::cel::EnumType;
 using ::cel::Handle;
-using ::cel::MemoryManager;
+using ::cel::MemoryManagerRef;
 using ::cel::StructType;
 using ::cel::Type;
 using ::google::protobuf::Struct;
@@ -58,7 +58,8 @@ MATCHER_P(MatchesEnumDescriptor, desc, "") {
     return false;
   }
 
-  auto iter_or = enum_type->NewConstantIterator(MemoryManager::Global());
+  auto iter_or =
+      enum_type->NewConstantIterator(MemoryManagerRef::ReferenceCounting());
   if (!iter_or.ok()) {
     return false;
   }
@@ -113,7 +114,7 @@ TEST(CelTypeRegistryTypeProviderTest, StructTypes) {
       google::protobuf::DescriptorPool::generated_pool(),
       google::protobuf::MessageFactory::generated_factory()));
 
-  cel::TypeFactory type_factory(MemoryManager::Global());
+  cel::TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory, registry.GetTypeProvider());
 
   ASSERT_OK_AND_ASSIGN(

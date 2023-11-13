@@ -60,7 +60,7 @@ class FakeFunction : public CelFunction {
 class ResolverTest : public testing::Test {
  public:
   ResolverTest()
-      : type_factory_(cel::MemoryManager::Global()),
+      : type_factory_(cel::MemoryManagerRef::ReferenceCounting()),
         type_manager_(type_factory_, type_registry_.GetTypeProvider()),
         value_factory_(type_manager_) {}
 

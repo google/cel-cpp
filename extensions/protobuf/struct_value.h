@@ -412,9 +412,8 @@ ProtoStructValue::Create(ValueFactory& value_factory, T&& value) {
   CEL_ASSIGN_OR_RETURN(
       auto type, ProtoStructType::Resolve<T>(value_factory.type_manager()));
   if (google::protobuf::Arena::is_arena_constructable<T>::value &&
-      ProtoMemoryManager::Is(value_factory.memory_manager())) {
-    auto* arena =
-        ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+      ProtoMemoryManagerArena(value_factory.memory_manager())) {
+    auto* arena = ProtoMemoryManagerArena(value_factory.memory_manager());
     if (ABSL_PREDICT_TRUE(arena != nullptr)) {
       auto* arena_value = google::protobuf::Arena::CreateMessage<T>(arena);
       *arena_value = std::forward<T>(value);

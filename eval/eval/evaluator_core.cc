@@ -36,7 +36,8 @@ namespace google::api::expr::runtime {
 
 FlatExpressionEvaluatorState::FlatExpressionEvaluatorState(
     size_t value_stack_size, size_t comprehension_slot_count,
-    const cel::TypeProvider& type_provider, cel::MemoryManager& memory_manager)
+    const cel::TypeProvider& type_provider,
+    cel::MemoryManagerRef memory_manager)
     : value_stack_(value_stack_size),
       comprehension_slots_(comprehension_slot_count),
       managed_value_factory_(absl::in_place, type_provider, memory_manager),
@@ -99,7 +100,7 @@ absl::StatusOr<cel::Handle<cel::Value>> ExecutionFrame::Evaluate(
 }
 
 FlatExpressionEvaluatorState FlatExpression::MakeEvaluatorState(
-    cel::MemoryManager& manager) const {
+    cel::MemoryManagerRef manager) const {
   return FlatExpressionEvaluatorState(path_.size(), comprehension_slots_size_,
                                       type_provider_, manager);
 }

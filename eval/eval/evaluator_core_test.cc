@@ -19,7 +19,7 @@
 namespace google::api::expr::runtime {
 
 using ::cel::TypeProvider;
-using ::cel::extensions::ProtoMemoryManager;
+using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::interop_internal::CreateIntValue;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::runtime::RegisterBuiltinFunctions;
@@ -70,7 +70,7 @@ class FakeIncrementExpressionStep : public ExpressionStep {
 TEST(EvaluatorCoreTest, ExecutionFrameNext) {
   ExecutionPath path;
   google::protobuf::Arena arena;
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
   auto const_step = std::make_unique<const FakeConstExpressionStep>();
   auto incr_step1 = std::make_unique<const FakeIncrementExpressionStep>();
   auto incr_step2 = std::make_unique<const FakeIncrementExpressionStep>();

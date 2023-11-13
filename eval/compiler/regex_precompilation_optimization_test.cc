@@ -54,7 +54,7 @@ class RegexPrecompilationExtensionTest : public testing::Test {
   RegexPrecompilationExtensionTest()
       : type_registry_(*builder_.GetTypeRegistry()),
         function_registry_(*builder_.GetRegistry()),
-        type_factory_(cel::MemoryManager::Global()),
+        type_factory_(cel::MemoryManagerRef::ReferenceCounting()),
         type_manager_(type_factory_, type_registry_.GetTypeProvider()),
         value_factory_(type_manager_),
         resolver_("", function_registry_.InternalGetRegistry(),
@@ -187,7 +187,7 @@ class RegexConstFoldInteropTest : public RegexPrecompilationExtensionTest {
   RegexConstFoldInteropTest() : RegexPrecompilationExtensionTest() {
     builder_.flat_expr_builder().AddProgramOptimizer(
         cel::runtime_internal::CreateConstantFoldingOptimizer(
-            cel::MemoryManager::Global()));
+            cel::MemoryManagerRef::ReferenceCounting()));
   }
 
  protected:

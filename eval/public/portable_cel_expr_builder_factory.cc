@@ -43,21 +43,21 @@
 namespace google::api::expr::runtime {
 namespace {
 
-using ::cel::MemoryManager;
+using ::cel::MemoryManagerRef;
 using ::cel::ast_internal::AstImpl;
 using ::cel::extensions::CreateSelectOptimizationProgramOptimizer;
-using ::cel::extensions::ProtoMemoryManager;
+using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::extensions::SelectOptimizationAstUpdater;
 using ::cel::runtime_internal::CreateConstantFoldingOptimizer;
 
 // Adapter for a raw arena* pointer. Manages a MemoryManager object for the
 // constant folding extension.
 struct ArenaBackedConstfoldingFactory {
-  std::unique_ptr<MemoryManager> memory_manager;
+  MemoryManagerRef memory_manager;
 
   absl::StatusOr<std::unique_ptr<ProgramOptimizer>> operator()(
       PlannerContext& ctx, const AstImpl& ast) const {
-    return CreateConstantFoldingOptimizer(*memory_manager)(ctx, ast);
+    return CreateConstantFoldingOptimizer(memory_manager)(ctx, ast);
   }
 };
 
@@ -92,7 +92,7 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
   if (options.constant_folding) {
     builder->flat_expr_builder().AddProgramOptimizer(
         ArenaBackedConstfoldingFactory{
-            std::make_unique<ProtoMemoryManager>(options.constant_arena)});
+            ProtoMemoryManagerRef(options.constant_arena)});
   }
 
   if (options.enable_regex_precompilation) {

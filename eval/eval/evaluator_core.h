@@ -92,7 +92,7 @@ class FlatExpressionEvaluatorState {
   FlatExpressionEvaluatorState(size_t value_stack_size,
                                size_t comprehension_slot_count,
                                const cel::TypeProvider& type_provider,
-                               cel::MemoryManager& memory_manager);
+                               cel::MemoryManagerRef memory_manager);
 
   FlatExpressionEvaluatorState(size_t value_stack_size,
                                size_t comprehension_slot_count,
@@ -104,7 +104,7 @@ class FlatExpressionEvaluatorState {
 
   ComprehensionSlots& comprehension_slots() { return comprehension_slots_; }
 
-  cel::MemoryManager& memory_manager() {
+  cel::MemoryManagerRef memory_manager() {
     return value_factory_->memory_manager();
   }
 
@@ -197,7 +197,7 @@ class ExecutionFrame {
     return options_.enable_comprehension_list_append;
   }
 
-  cel::MemoryManager& memory_manager() { return state_.memory_manager(); }
+  cel::MemoryManagerRef memory_manager() { return state_.memory_manager(); }
 
   cel::TypeFactory& type_factory() { return state_.type_factory(); }
 
@@ -260,7 +260,7 @@ class FlatExpression {
   // Create new evaluator state instance with the configured options and type
   // provider.
   FlatExpressionEvaluatorState MakeEvaluatorState(
-      cel::MemoryManager& memory_manager) const;
+      cel::MemoryManagerRef memory_manager) const;
   FlatExpressionEvaluatorState MakeEvaluatorState(
       cel::ValueFactory& value_factory) const;
 

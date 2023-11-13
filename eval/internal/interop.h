@@ -198,14 +198,14 @@ Handle<Value> LegacyValueToModernValueOrDie(
     google::protobuf::Arena* arena, const google::api::expr::runtime::CelValue& value,
     bool unchecked = false);
 Handle<Value> LegacyValueToModernValueOrDie(
-    MemoryManager& memory_manager,
+    MemoryManagerRef memory_manager,
     const google::api::expr::runtime::CelValue& value, bool unchecked = false);
 std::vector<Handle<Value>> LegacyValueToModernValueOrDie(
     google::protobuf::Arena* arena,
     absl::Span<const google::api::expr::runtime::CelValue> values,
     bool unchecked = false);
 std::vector<Handle<Value>> LegacyValueToModernValueOrDie(
-    MemoryManager& memory_manager,
+    MemoryManagerRef memory_manager,
     absl::Span<const google::api::expr::runtime::CelValue> values,
     bool unchecked = false);
 
@@ -216,13 +216,13 @@ std::vector<Handle<Value>> LegacyValueToModernValueOrDie(
 google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
     google::protobuf::Arena* arena, const Handle<Value>& value, bool unchecked = false);
 google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
-    MemoryManager& memory_manager, const Handle<Value>& value,
+    MemoryManagerRef memory_manager, const Handle<Value>& value,
     bool unchecked = false);
 std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
     google::protobuf::Arena* arena, absl::Span<const Handle<Value>> values,
     bool unchecked = false);
 std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
-    MemoryManager& memory_manager, absl::Span<const Handle<Value>> values,
+    MemoryManagerRef memory_manager, absl::Span<const Handle<Value>> values,
     bool unchecked = false);
 
 Handle<TypeValue> CreateTypeValueFromView(absl::string_view input);

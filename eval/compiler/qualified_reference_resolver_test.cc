@@ -129,7 +129,7 @@ TEST(ResolveReferences, Basic) {
   IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -162,7 +162,7 @@ TEST(ResolveReferences, ReturnsFalseIfNoChanges) {
   IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -186,7 +186,7 @@ TEST(ResolveReferences, NamespacedIdent) {
   IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -251,7 +251,7 @@ TEST(ResolveReferences, WarningOnPresenceTest) {
   IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -304,7 +304,7 @@ TEST(ResolveReferences, EnumConstReferenceUsed) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -344,7 +344,7 @@ TEST(ResolveReferences, EnumConstReferenceUsedSelect) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -385,7 +385,7 @@ TEST(ResolveReferences, ConstReferenceSkipped) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -460,7 +460,7 @@ TEST(ResolveReferences, FunctionReferenceBasic) {
                                 CelValue::Type::kBool,
                             })));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -481,7 +481,7 @@ TEST(ResolveReferences, FunctionReferenceMissingOverloadDetected) {
 
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -521,7 +521,7 @@ TEST(ResolveReferences, SpecialBuiltinsNotWarned) {
     // Builtins aren't in the function registry.
     CelFunctionRegistry func_registry;
     cel::TypeRegistry type_registry;
-    cel::TypeFactory type_factory(cel::MemoryManager::Global());
+    cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
     cel::TypeManager type_manager(type_factory,
                                   type_registry.GetComposedTypeProvider());
     cel::ValueFactory value_factory(type_manager);
@@ -546,7 +546,7 @@ TEST(ResolveReferences,
 
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -573,7 +573,7 @@ TEST(ResolveReferences, EmulatesEagerFailing) {
 
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -595,7 +595,7 @@ TEST(ResolveReferences, FunctionReferenceToWrongExprKind) {
   IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -639,7 +639,7 @@ TEST(ResolveReferences, FunctionReferenceWithTargetNoChange) {
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "boolean_and", true, {CelValue::Type::kBool, CelValue::Type::kBool})));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -663,7 +663,7 @@ TEST(ResolveReferences,
   IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -689,7 +689,7 @@ TEST(ResolveReferences, FunctionReferenceWithTargetToNamespacedFunction) {
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "ext.boolean_and", false, {CelValue::Type::kBool})));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -731,7 +731,7 @@ TEST(ResolveReferences,
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "com.google.ext.boolean_and", false, {CelValue::Type::kBool})));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -796,7 +796,7 @@ TEST(ResolveReferences, FunctionReferenceWithHasTargetNoChange) {
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "ext.option.boolean_and", true, {CelValue::Type::kBool})));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -892,7 +892,7 @@ TEST(ResolveReferences, EnumConstReferenceUsedInComprehension) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);
@@ -1003,7 +1003,7 @@ TEST(ResolveReferences, ReferenceToId0Warns) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   cel::TypeManager type_manager(type_factory,
                                 type_registry.GetComposedTypeProvider());
   cel::ValueFactory value_factory(type_manager);

@@ -47,6 +47,7 @@ namespace google::api::expr::runtime {
 using ::cel::EnumType;
 using ::cel::Handle;
 using ::cel::MemoryManager;
+using ::cel::MemoryManagerRef;
 using ::cel::Value;
 
 Resolver::Resolver(
@@ -91,8 +92,8 @@ Resolver::Resolver(
 
       absl::StatusOr<
           absl::Nonnull<std::unique_ptr<cel::EnumType::ConstantIterator>>>
-          enum_value_iter_or =
-              enum_type->NewConstantIterator(MemoryManager::Global());
+          enum_value_iter_or = enum_type->NewConstantIterator(
+              MemoryManagerRef::ReferenceCounting());
 
       // Errors are not expected from the implementation in the type registry,
       // but we need to swallow the error case to avoid compiler/lint warnings.

@@ -30,7 +30,7 @@ using base_internal::ModernMapType;
 
 }  // namespace
 
-TypeFactory::TypeFactory(MemoryManager& memory_manager)
+TypeFactory::TypeFactory(MemoryManagerRef memory_manager)
     : memory_manager_(memory_manager) {
   json_list_type_ = list_types_
                         .insert({GetJsonValueType(),

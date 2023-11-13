@@ -35,7 +35,8 @@ namespace {
 using ::cel::Handle;
 using ::cel::Value;
 using ::cel::ValueFactory;
-using ::cel::extensions::ProtoMemoryManager;
+using ::cel::extensions::ProtoMemoryManagerArena;
+using ::cel::extensions::ProtoMemoryManagerRef;
 
 EvaluationListener AdaptListener(const CelEvaluationListener& listener) {
   if (!listener) return nullptr;
@@ -47,8 +48,7 @@ EvaluationListener AdaptListener(const CelEvaluationListener& listener) {
       // inspectable by clients.
       return absl::OkStatus();
     }
-    google::protobuf::Arena* arena =
-        ProtoMemoryManager::CastToProtoArena(factory.memory_manager());
+    google::protobuf::Arena* arena = ProtoMemoryManagerArena(factory.memory_manager());
     CelValue legacy_value =
         cel::interop_internal::ModernValueToLegacyValueOrDie(arena, value);
     return listener(expr_id, legacy_value, arena);
@@ -59,8 +59,7 @@ EvaluationListener AdaptListener(const CelEvaluationListener& listener) {
 CelExpressionFlatEvaluationState::CelExpressionFlatEvaluationState(
     google::protobuf::Arena* arena, const FlatExpression& expression)
     : arena_(arena),
-      memory_manager_(arena),
-      state_(expression.MakeEvaluatorState(memory_manager_)) {}
+      state_(expression.MakeEvaluatorState(ProtoMemoryManagerRef(arena_))) {}
 
 absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
     const BaseActivation& activation, CelEvaluationState* _state,

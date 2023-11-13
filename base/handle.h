@@ -25,6 +25,7 @@
 #include "absl/log/absl_check.h"
 #include "base/internal/data.h"
 #include "base/internal/handle.h"  // IWYU pragma: export
+#include "common/memory.h"
 
 namespace cel {
 
@@ -305,7 +306,7 @@ struct HandleFactory {
   // implementation.
   template <typename F, typename... Args>
   static std::enable_if_t<IsDerivedHeapDataV<F>, Handle<T>> Make(
-      MemoryManager& memory_manager, Args&&... args);
+      MemoryManagerRef memory_manager, Args&&... args);
 
   // Constructs a handle from `*this` for classes which extend `Type` and
   // `Value`.

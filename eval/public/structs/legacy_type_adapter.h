@@ -47,13 +47,13 @@ class LegacyTypeMutationApis {
   // Create a new empty instance of the type.
   // May return a status if the type is not possible to create.
   virtual absl::StatusOr<CelValue::MessageWrapper::Builder> NewInstance(
-      cel::MemoryManager& memory_manager) const = 0;
+      cel::MemoryManagerRef memory_manager) const = 0;
 
   // Normalize special types to a native CEL value after building.
   // The interpreter guarantees that instance is uniquely owned by the
   // interpreter, and can be safely mutated.
   virtual absl::StatusOr<CelValue> AdaptFromWellKnownType(
-      cel::MemoryManager& memory_manager,
+      cel::MemoryManagerRef memory_manager,
       CelValue::MessageWrapper::Builder instance) const = 0;
 
   // Set field on instance to value.
@@ -61,12 +61,12 @@ class LegacyTypeMutationApis {
   // interpreter, and can be safely mutated.
   virtual absl::Status SetField(
       absl::string_view field_name, const CelValue& value,
-      cel::MemoryManager& memory_manager,
+      cel::MemoryManagerRef memory_manager,
       CelValue::MessageWrapper::Builder& instance) const = 0;
 
   virtual absl::Status SetFieldByNumber(
       int64_t field_number, const CelValue& value,
-      cel::MemoryManager& memory_manager,
+      cel::MemoryManagerRef memory_manager,
       CelValue::MessageWrapper::Builder& instance) const {
     return absl::UnimplementedError("SetFieldByNumber is not yet implemented");
   }
@@ -89,7 +89,7 @@ class LegacyTypeAccessApis {
   virtual absl::StatusOr<CelValue> GetField(
       absl::string_view field_name, const CelValue::MessageWrapper& instance,
       ProtoWrapperTypeOptions unboxing_option,
-      cel::MemoryManager& memory_manager) const = 0;
+      cel::MemoryManagerRef memory_manager) const = 0;
 
   // Apply a series of select operations on the given instance.
   //
@@ -110,7 +110,7 @@ class LegacyTypeAccessApis {
   virtual absl::StatusOr<CelValue> Qualify(
       absl::Span<const cel::SelectQualifier>,
       const CelValue::MessageWrapper& instance, bool presence_test,
-      cel::MemoryManager& memory_manager) const {
+      cel::MemoryManagerRef memory_manager) const {
     return absl::UnimplementedError("Qualify unsupported.");
   }
 

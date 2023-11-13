@@ -50,6 +50,7 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::extensions::ProtoMemoryManager;
+using ::cel::extensions::ProtoMemoryManagerArena;
 using ::google::protobuf::FieldDescriptor;
 using ::google::protobuf::Message;
 using ::google::protobuf::Reflection;
@@ -163,7 +164,7 @@ absl::StatusOr<CelValue> GetFieldImpl(const google::protobuf::Message* message,
                                       const google::protobuf::Descriptor* descriptor,
                                       absl::string_view field_name,
                                       ProtoWrapperTypeOptions unboxing_option,
-                                      cel::MemoryManager& memory_manager) {
+                                      cel::MemoryManagerRef memory_manager) {
   ABSL_ASSERT(descriptor == message->GetDescriptor());
   const Reflection* reflection = message->GetReflection();
   const FieldDescriptor* field_desc = descriptor->FindFieldByName(field_name);
@@ -175,7 +176,7 @@ absl::StatusOr<CelValue> GetFieldImpl(const google::protobuf::Message* message,
     return CreateNoSuchFieldError(memory_manager, field_name);
   }
 
-  google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
+  google::protobuf::Arena* arena = ProtoMemoryManagerArena(memory_manager);
 
   return CreateCelValueFromField(message, field_desc, unboxing_option, arena);
 }
@@ -183,8 +184,8 @@ absl::StatusOr<CelValue> GetFieldImpl(const google::protobuf::Message* message,
 absl::StatusOr<CelValue> QualifyImpl(
     const google::protobuf::Message* message, const google::protobuf::Descriptor* descriptor,
     absl::Span<const cel::SelectQualifier> path, bool presence_test,
-    cel::MemoryManager& memory_manager) {
-  google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
+    cel::MemoryManagerRef memory_manager) {
+  google::protobuf::Arena* arena = ProtoMemoryManagerArena(memory_manager);
   const google::protobuf::Message* select_path_elem = message;
   const google::protobuf::FieldDescriptor* field_desc = nullptr;
   ABSL_ASSERT(descriptor == message->GetDescriptor());
@@ -285,7 +286,7 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
   absl::StatusOr<CelValue> GetField(
       absl::string_view field_name, const CelValue::MessageWrapper& instance,
       ProtoWrapperTypeOptions unboxing_option,
-      cel::MemoryManager& memory_manager) const override {
+      cel::MemoryManagerRef memory_manager) const override {
     CEL_ASSIGN_OR_RETURN(const google::protobuf::Message* message,
                          UnwrapMessage(instance, "GetField"));
     return GetFieldImpl(message, message->GetDescriptor(), field_name,
@@ -295,7 +296,7 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
   absl::StatusOr<CelValue> Qualify(
       absl::Span<const cel::SelectQualifier> qualifiers,
       const CelValue::MessageWrapper& instance, bool presence_test,
-      cel::MemoryManager& memory_manager) const override {
+      cel::MemoryManagerRef memory_manager) const override {
     CEL_ASSIGN_OR_RETURN(const google::protobuf::Message* message,
                          UnwrapMessage(instance, "Qualify"));
 
@@ -348,12 +349,12 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
   }
 
   absl::StatusOr<CelValue::MessageWrapper::Builder> NewInstance(
-      cel::MemoryManager& memory_manager) const override {
+      cel::MemoryManagerRef memory_manager) const override {
     return absl::UnimplementedError("NewInstance is not implemented");
   }
 
   absl::StatusOr<CelValue> AdaptFromWellKnownType(
-      cel::MemoryManager& memory_manager,
+      cel::MemoryManagerRef memory_manager,
       CelValue::MessageWrapper::Builder instance) const override {
     if (!instance.HasFullProto() || instance.message_ptr() == nullptr) {
       return absl::UnimplementedError(
@@ -369,7 +370,7 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
 
   absl::Status SetField(
       absl::string_view field_name, const CelValue& value,
-      cel::MemoryManager& memory_manager,
+      cel::MemoryManagerRef memory_manager,
       CelValue::MessageWrapper::Builder& instance) const override {
     if (!instance.HasFullProto() || instance.message_ptr() == nullptr) {
       return absl::UnimplementedError(
@@ -467,14 +468,15 @@ absl::Status ProtoMessageTypeAdapter::ValidateSetFieldOp(
 }
 
 absl::StatusOr<CelValue::MessageWrapper::Builder>
-ProtoMessageTypeAdapter::NewInstance(cel::MemoryManager& memory_manager) const {
+ProtoMessageTypeAdapter::NewInstance(
+    cel::MemoryManagerRef memory_manager) const {
   if (message_factory_ == nullptr) {
     return absl::UnimplementedError(
         absl::StrCat("Cannot create message ", descriptor_->name()));
   }
 
   // This implementation requires arena-backed memory manager.
-  google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
+  google::protobuf::Arena* arena = ProtoMemoryManagerArena(memory_manager);
   const Message* prototype = message_factory_->GetPrototype(descriptor_);
 
   Message* msg = (prototype != nullptr) ? prototype->New(arena) : nullptr;
@@ -500,7 +502,7 @@ absl::StatusOr<bool> ProtoMessageTypeAdapter::HasField(
 absl::StatusOr<CelValue> ProtoMessageTypeAdapter::GetField(
     absl::string_view field_name, const CelValue::MessageWrapper& instance,
     ProtoWrapperTypeOptions unboxing_option,
-    cel::MemoryManager& memory_manager) const {
+    cel::MemoryManagerRef memory_manager) const {
   CEL_ASSIGN_OR_RETURN(const google::protobuf::Message* message,
                        UnwrapMessage(instance, "GetField"));
 
@@ -511,7 +513,7 @@ absl::StatusOr<CelValue> ProtoMessageTypeAdapter::GetField(
 absl::StatusOr<CelValue> ProtoMessageTypeAdapter::Qualify(
     absl::Span<const cel::SelectQualifier> qualifiers,
     const CelValue::MessageWrapper& instance, bool presence_test,
-    cel::MemoryManager& memory_manager) const {
+    cel::MemoryManagerRef memory_manager) const {
   CEL_ASSIGN_OR_RETURN(const google::protobuf::Message* message,
                        UnwrapMessage(instance, "Qualify"));
 
@@ -581,11 +583,11 @@ absl::Status ProtoMessageTypeAdapter::SetField(
 
 absl::Status ProtoMessageTypeAdapter::SetField(
     absl::string_view field_name, const CelValue& value,
-    cel::MemoryManager& memory_manager,
+    cel::MemoryManagerRef memory_manager,
     CelValue::MessageWrapper::Builder& instance) const {
   // Assume proto arena implementation if this provider is used.
   google::protobuf::Arena* arena =
-      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager);
+      cel::extensions::ProtoMemoryManagerArena(memory_manager);
 
   CEL_ASSIGN_OR_RETURN(google::protobuf::Message * mutable_message,
                        UnwrapMessage(instance, "SetField"));
@@ -600,11 +602,11 @@ absl::Status ProtoMessageTypeAdapter::SetField(
 
 absl::Status ProtoMessageTypeAdapter::SetFieldByNumber(
     int64_t field_number, const CelValue& value,
-    cel::MemoryManager& memory_manager,
+    cel::MemoryManagerRef memory_manager,
     CelValue::MessageWrapper::Builder& instance) const {
   // Assume proto arena implementation if this provider is used.
   google::protobuf::Arena* arena =
-      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager);
+      cel::extensions::ProtoMemoryManagerArena(memory_manager);
 
   CEL_ASSIGN_OR_RETURN(google::protobuf::Message * mutable_message,
                        UnwrapMessage(instance, "SetField"));
@@ -618,11 +620,11 @@ absl::Status ProtoMessageTypeAdapter::SetFieldByNumber(
 }
 
 absl::StatusOr<CelValue> ProtoMessageTypeAdapter::AdaptFromWellKnownType(
-    cel::MemoryManager& memory_manager,
+    cel::MemoryManagerRef memory_manager,
     CelValue::MessageWrapper::Builder instance) const {
   // Assume proto arena implementation if this provider is used.
   google::protobuf::Arena* arena =
-      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager);
+      cel::extensions::ProtoMemoryManagerArena(memory_manager);
   CEL_ASSIGN_OR_RETURN(google::protobuf::Message * message,
                        UnwrapMessage(instance, "AdaptFromWellKnownType"));
   return internal::UnwrapMessageToValue(message, &MessageCelValueFactory,

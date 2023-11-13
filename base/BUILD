@@ -46,6 +46,7 @@ cc_library(
     deps = [
         "//base/internal:data",
         "//base/internal:handle",
+        "//common:memory",
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:absl_check",
@@ -72,7 +73,6 @@ cc_library(
 
 cc_library(
     name = "memory",
-    srcs = ["memory.cc"],
     hdrs = [
         "memory.h",
     ],
@@ -80,25 +80,8 @@ cc_library(
         ":handle",
         "//base/internal:data",
         "//base/internal:memory_manager",
-        "//common:native_type",
-        "//internal:no_destructor",
-        "@com_google_absl//absl/base:config",
+        "//common:memory",
         "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/base:dynamic_annotations",
-        "@com_google_absl//absl/log:die_if_null",
-        "@com_google_absl//absl/numeric:bits",
-        "@com_google_absl//absl/synchronization",
-    ],
-)
-
-cc_test(
-    name = "memory_test",
-    srcs = [
-        "memory_test.cc",
-    ],
-    deps = [
-        ":memory",
-        "//internal:testing",
     ],
 )
 
@@ -232,6 +215,7 @@ cc_test(
         "//base/internal:memory_manager_testing",
         "//base/testing:value_matchers",
         "//common:json",
+        "//common:memory",
         "//common:type_kind",
         "//internal:benchmark",
         "//internal:status_macros",

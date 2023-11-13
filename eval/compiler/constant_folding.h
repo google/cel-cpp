@@ -28,7 +28,7 @@ namespace cel::runtime_internal {
 // MemoryManager so it must outlive any programs created with this
 // extension.
 google::api::expr::runtime::ProgramOptimizerFactory
-CreateConstantFoldingOptimizer(MemoryManager& manager);
+CreateConstantFoldingOptimizer(MemoryManagerRef manager);
 
 }  // namespace cel::runtime_internal
 

@@ -17,12 +17,12 @@ using ::cel::TypeFactory;
 using ::cel::TypeManager;
 using ::cel::TypeProvider;
 using ::cel::ValueFactory;
-using ::cel::extensions::ProtoMemoryManager;
+using ::cel::extensions::ProtoMemoryManagerRef;
 
 // Test Value Stack Push/Pop operation
 TEST(EvaluatorStackTest, StackPushPop) {
   google::protobuf::Arena arena;
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
@@ -51,7 +51,7 @@ TEST(EvaluatorStackTest, StackPushPop) {
 // Test that inner stacks within value stack retain the equality of their sizes.
 TEST(EvaluatorStackTest, StackBalanced) {
   google::protobuf::Arena arena;
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
@@ -75,7 +75,7 @@ TEST(EvaluatorStackTest, StackBalanced) {
 
 TEST(EvaluatorStackTest, Clear) {
   google::protobuf::Arena arena;
-  ProtoMemoryManager manager(&arena);
+  auto manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);

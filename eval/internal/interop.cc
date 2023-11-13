@@ -86,7 +86,8 @@ using ::google::api::expr::runtime::CelList;
 using ::google::api::expr::runtime::CelMap;
 using ::google::api::expr::runtime::CelValue;
 using MessageWrapper = ::google::api::expr::runtime::CelValue::MessageWrapper;
-using extensions::ProtoMemoryManager;
+using extensions::ProtoMemoryManagerArena;
+using extensions::ProtoMemoryManagerRef;
 using ::google::api::expr::runtime::LegacyTypeAccessApis;
 using ::google::api::expr::runtime::LegacyTypeInfoApis;
 using ::google::api::expr::runtime::LegacyTypeMutationApis;
@@ -110,19 +111,19 @@ class LegacyAbstractStructValueBuilder final
 
   absl::Status SetFieldByName(absl::string_view name,
                               Handle<Value> value) override {
-    CEL_ASSIGN_OR_RETURN(auto arg,
-                         ToLegacyValue(ProtoMemoryManager::CastToProtoArena(
-                                           value_factory_.memory_manager()),
-                                       value, true));
+    CEL_ASSIGN_OR_RETURN(
+        auto arg,
+        ToLegacyValue(ProtoMemoryManagerArena(value_factory_.memory_manager()),
+                      value, true));
     return mutation_.SetField(name, arg, value_factory_.memory_manager(),
                               builder_);
   }
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
-    CEL_ASSIGN_OR_RETURN(auto arg,
-                         ToLegacyValue(ProtoMemoryManager::CastToProtoArena(
-                                           value_factory_.memory_manager()),
-                                       value, true));
+    CEL_ASSIGN_OR_RETURN(
+        auto arg,
+        ToLegacyValue(ProtoMemoryManagerArena(value_factory_.memory_manager()),
+                      value, true));
     return mutation_.SetFieldByNumber(
         number, arg, value_factory_.memory_manager(), builder_);
   }
@@ -137,7 +138,7 @@ class LegacyAbstractStructValueBuilder final
           type_info_.GetTypename(instance_), ": ", legacy.DebugString()));
     }
     CEL_ASSIGN_OR_RETURN(auto modern,
-                         FromLegacyValue(ProtoMemoryManager::CastToProtoArena(
+                         FromLegacyValue(ProtoMemoryManagerArena(
                                              value_factory_.memory_manager()),
                                          legacy, true));
     return std::move(modern).As<StructValue>();
@@ -174,7 +175,7 @@ class LegacyCelList final : public CelList {
     // Do not do this at  home. This is extremely unsafe, and we only do it for
     // interoperation, because we know that references to the below should not
     // persist past the return value.
-    extensions::ProtoMemoryManager memory_manager(arena);
+    auto memory_manager = ProtoMemoryManagerRef(arena);
     TypeFactory type_factory(memory_manager);
     TypeManager type_manager(type_factory, TypeProvider::Builtin());
     ValueFactory value_factory(type_manager);
@@ -235,7 +236,7 @@ class LegacyCelMap final : public CelMap {
     // Do not do this at  home. This is extremely unsafe, and we only do it for
     // interoperation, because we know that references to the below should not
     // persist past the return value.
-    extensions::ProtoMemoryManager memory_manager(arena);
+    auto memory_manager = ProtoMemoryManagerRef(arena);
     TypeFactory type_factory(memory_manager);
     TypeManager type_manager(type_factory, TypeProvider::Builtin());
     ValueFactory value_factory(type_manager);
@@ -260,7 +261,7 @@ class LegacyCelMap final : public CelMap {
     // interoperation, because we know that references to the below should not
     // persist past the return value.
     google::protobuf::Arena arena;
-    extensions::ProtoMemoryManager memory_manager(&arena);
+    auto memory_manager = ProtoMemoryManagerRef(&arena);
     TypeFactory type_factory(memory_manager);
     TypeManager type_manager(type_factory, TypeProvider::Builtin());
     ValueFactory value_factory(type_manager);
@@ -289,7 +290,7 @@ class LegacyCelMap final : public CelMap {
     // Do not do this at  home. This is extremely unsafe, and we only do it for
     // interoperation, because we know that references to the below should not
     // persist past the return value.
-    extensions::ProtoMemoryManager memory_manager(arena);
+    auto memory_manager = ProtoMemoryManagerRef(arena);
     TypeFactory type_factory(memory_manager);
     TypeManager type_manager(type_factory, TypeProvider::Builtin());
     ValueFactory value_factory(type_manager);
@@ -312,12 +313,11 @@ class LegacyCelMap final : public CelMap {
 
 absl::StatusOr<Handle<Value>> LegacyStructGetFieldImpl(
     const MessageWrapper& wrapper, absl::string_view field,
-    bool unbox_null_wrapper_types, MemoryManager& memory_manager) {
+    bool unbox_null_wrapper_types, MemoryManagerRef memory_manager) {
   const LegacyTypeAccessApis* access_api =
       wrapper.legacy_type_info()->GetAccessApis(wrapper);
 
-  google::protobuf::Arena* arena =
-      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager);
+  google::protobuf::Arena* arena = extensions::ProtoMemoryManagerArena(memory_manager);
   if (access_api == nullptr) {
     return interop_internal::CreateErrorValueFromView(
         interop_internal::CreateNoSuchFieldError(arena, field));
@@ -335,15 +335,14 @@ absl::StatusOr<Handle<Value>> LegacyStructGetFieldImpl(
 
 absl::StatusOr<Handle<Value>> LegacyStructQualifyImpl(
     const MessageWrapper& wrapper, absl::Span<const cel::SelectQualifier> path,
-    bool presence_test, MemoryManager& memory_manager) {
+    bool presence_test, MemoryManagerRef memory_manager) {
   if (path.empty()) {
     return absl::InvalidArgumentError("invalid select qualifier path.");
   }
   const LegacyTypeAccessApis* access_api =
       wrapper.legacy_type_info()->GetAccessApis(wrapper);
 
-  google::protobuf::Arena* arena =
-      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager);
+  google::protobuf::Arena* arena = extensions::ProtoMemoryManagerArena(memory_manager);
   if (access_api == nullptr) {
     absl::string_view field_name = absl::visit(
         cel::internal::Overloaded{
@@ -446,10 +445,10 @@ absl::StatusOr<Handle<StructValue>> LegacyAbstractStructType::NewValueFromAny(
         absl::StrCat("Expected struct/message when parsing and adapting ",
                      name(), ": ", legacy.DebugString()));
   }
-  CEL_ASSIGN_OR_RETURN(auto modern,
-                       FromLegacyValue(ProtoMemoryManager::CastToProtoArena(
-                                           value_factory.memory_manager()),
-                                       legacy, true));
+  CEL_ASSIGN_OR_RETURN(
+      auto modern,
+      FromLegacyValue(ProtoMemoryManagerArena(value_factory.memory_manager()),
+                      legacy, true));
   return std::move(modern).As<StructValue>();
 }
 
@@ -828,11 +827,10 @@ Handle<Value> LegacyValueToModernValueOrDie(
 }
 
 Handle<Value> LegacyValueToModernValueOrDie(
-    MemoryManager& memory_manager,
+    MemoryManagerRef memory_manager,
     const google::api::expr::runtime::CelValue& value, bool unchecked) {
   return LegacyValueToModernValueOrDie(
-      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), value,
-      unchecked);
+      extensions::ProtoMemoryManagerArena(memory_manager), value, unchecked);
 }
 
 std::vector<Handle<Value>> LegacyValueToModernValueOrDie(
@@ -849,11 +847,11 @@ std::vector<Handle<Value>> LegacyValueToModernValueOrDie(
 }
 
 std::vector<Handle<Value>> LegacyValueToModernValueOrDie(
-    MemoryManager& memory_manager,
+    MemoryManagerRef memory_manager,
     absl::Span<const google::api::expr::runtime::CelValue> values,
     bool unchecked) {
   return LegacyValueToModernValueOrDie(
-      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), values);
+      extensions::ProtoMemoryManagerArena(memory_manager), values);
 }
 
 google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
@@ -864,10 +862,10 @@ google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
 }
 
 google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
-    MemoryManager& memory_manager, const Handle<Value>& value, bool unchecked) {
+    MemoryManagerRef memory_manager, const Handle<Value>& value,
+    bool unchecked) {
   return ModernValueToLegacyValueOrDie(
-      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), value,
-      unchecked);
+      extensions::ProtoMemoryManagerArena(memory_manager), value, unchecked);
 }
 
 std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
@@ -883,11 +881,10 @@ std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
 }
 
 std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
-    MemoryManager& memory_manager, absl::Span<const Handle<Value>> values,
+    MemoryManagerRef memory_manager, absl::Span<const Handle<Value>> values,
     bool unchecked) {
   return ModernValueToLegacyValueOrDie(
-      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), values,
-      unchecked);
+      extensions::ProtoMemoryManagerArena(memory_manager), values, unchecked);
 }
 
 }  // namespace cel::interop_internal
@@ -1024,8 +1021,8 @@ absl::StatusOr<Handle<Value>> MessageValueQualify(
 absl::StatusOr<Handle<Value>> LegacyListValueGet(uintptr_t impl,
                                                  ValueFactory& value_factory,
                                                  size_t index) {
-  auto* arena = extensions::ProtoMemoryManager::CastToProtoArena(
-      value_factory.memory_manager());
+  auto* arena =
+      extensions::ProtoMemoryManagerArena(value_factory.memory_manager());
   return FromLegacyValue(arena, reinterpret_cast<const CelList*>(impl)->Get(
                                     arena, static_cast<int>(index)));
 }
@@ -1035,8 +1032,8 @@ absl::StatusOr<Handle<Value>> LegacyListValueContains(
   // Specialization for contains on a legacy list. It's cheaper to convert the
   // search element to legacy type than to convert all of the elements of
   // the legacy list for 'in' checks.
-  auto* arena = extensions::ProtoMemoryManager::CastToProtoArena(
-      value_factory.memory_manager());
+  auto* arena =
+      extensions::ProtoMemoryManagerArena(value_factory.memory_manager());
   CEL_ASSIGN_OR_RETURN(auto legacy_value, ToLegacyValue(arena, other));
   const auto* list = reinterpret_cast<const CelList*>(impl);
 
@@ -1065,8 +1062,8 @@ absl::StatusOr<bool> LegacyListValueAnyOf(ValueFactory& value_factory,
                                           uintptr_t impl,
                                           ListValue::AnyOfCallback cb) {
   const auto* list = reinterpret_cast<const CelList*>(impl);
-  auto* arena = extensions::ProtoMemoryManager::CastToProtoArena(
-      value_factory.memory_manager());
+  auto* arena =
+      extensions::ProtoMemoryManagerArena(value_factory.memory_manager());
   for (int i = 0; i < list->size(); ++i) {
     absl::StatusOr<Handle<Value>> value =
         FromLegacyValue(arena, list->Get(arena, i));
@@ -1091,8 +1088,8 @@ bool LegacyMapValueEmpty(uintptr_t impl) {
 
 absl::StatusOr<absl::optional<Handle<Value>>> LegacyMapValueGet(
     uintptr_t impl, ValueFactory& value_factory, const Handle<Value>& key) {
-  auto* arena = extensions::ProtoMemoryManager::CastToProtoArena(
-      value_factory.memory_manager());
+  auto* arena =
+      extensions::ProtoMemoryManagerArena(value_factory.memory_manager());
   CEL_ASSIGN_OR_RETURN(auto legacy_key, ToLegacyValue(arena, key));
   auto legacy_value =
       reinterpret_cast<const CelMap*>(impl)->Get(arena, legacy_key);
@@ -1111,8 +1108,8 @@ absl::StatusOr<bool> LegacyMapValueHas(uintptr_t impl,
 
 absl::StatusOr<Handle<ListValue>> LegacyMapValueListKeys(
     uintptr_t impl, ValueFactory& value_factory) {
-  auto* arena = extensions::ProtoMemoryManager::CastToProtoArena(
-      value_factory.memory_manager());
+  auto* arena =
+      extensions::ProtoMemoryManagerArena(value_factory.memory_manager());
   CEL_ASSIGN_OR_RETURN(auto legacy_list_keys,
                        reinterpret_cast<const CelMap*>(impl)->ListKeys(arena));
   CEL_ASSIGN_OR_RETURN(

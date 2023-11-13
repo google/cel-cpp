@@ -52,7 +52,7 @@ absl::StatusOr<RuntimeImpl*> RuntimeImplFromBuilder(RuntimeBuilder& builder) {
 }  // namespace
 
 absl::Status EnableConstantFolding(RuntimeBuilder& builder,
-                                   MemoryManager& memory_manager) {
+                                   MemoryManagerRef memory_manager) {
   CEL_ASSIGN_OR_RETURN(RuntimeImpl * runtime_impl,
                        RuntimeImplFromBuilder(builder));
   ABSL_ASSERT(runtime_impl != nullptr);

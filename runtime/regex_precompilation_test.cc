@@ -113,7 +113,7 @@ TEST_P(RegexPrecompilationTest, Basic) {
   ASSERT_OK_AND_ASSIGN(auto program, std::move(program_or));
 
   ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                    MemoryManager::Global());
+                                    MemoryManagerRef::ReferenceCounting());
   Activation activation;
   ASSERT_OK_AND_ASSIGN(auto var,
                        value_factory.get().CreateStringValue("string_var"));
@@ -141,7 +141,8 @@ TEST_P(RegexPrecompilationTest, WithConstantFolding) {
           builder.function_registry());
   ASSERT_OK(status);
 
-  ASSERT_OK(EnableConstantFolding(builder, MemoryManager::Global()));
+  ASSERT_OK(
+      EnableConstantFolding(builder, MemoryManagerRef::ReferenceCounting()));
   ASSERT_OK(EnableRegexPrecompilation(builder));
 
   ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
@@ -159,7 +160,7 @@ TEST_P(RegexPrecompilationTest, WithConstantFolding) {
 
   ASSERT_OK_AND_ASSIGN(auto program, std::move(program_or));
   ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                    MemoryManager::Global());
+                                    MemoryManagerRef::ReferenceCounting());
   Activation activation;
   ASSERT_OK_AND_ASSIGN(auto var,
                        value_factory.get().CreateStringValue("string_var"));

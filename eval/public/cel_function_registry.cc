@@ -29,6 +29,8 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::cel::extensions::ProtoMemoryManagerRef;
+
 // Legacy cel function that proxies to the modern cel::Function interface.
 //
 // This is used to wrap new-style cel::Functions for clients consuming
@@ -47,7 +49,7 @@ class ProxyToModernCelFunction : public CelFunction {
     // assumed to always be backed by a google::protobuf::Arena instance. After all
     // dependencies on legacy CelFunction are removed, we can remove this
     // implementation.
-    cel::extensions::ProtoMemoryManager memory_manager(arena);
+    auto memory_manager = ProtoMemoryManagerRef(arena);
     cel::TypeFactory type_factory(memory_manager);
     cel::TypeManager type_manager(type_factory, cel::TypeProvider::Builtin());
     cel::ValueFactory value_factory(type_manager);

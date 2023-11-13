@@ -335,7 +335,7 @@ INSTANTIATE_TEST_SUITE_P(ProtoStructTypeTest, ProtoStructTypeTest,
 using ProtoStructValueBuilderTest = ProtoTest<>;
 
 void TestProtoStructValueBuilderImpl(
-    MemoryManager& memory_manager, StructType::FieldId id,
+    MemoryManagerRef memory_manager, StructType::FieldId id,
     absl::FunctionRef<absl::StatusOr<Handle<Value>>(ValueFactory&)> value_maker,
     absl::string_view text_proto) {
   TypeFactory type_factory(memory_manager);
@@ -359,7 +359,7 @@ void TestProtoStructValueBuilderImpl(
 }
 
 void TestProtoStructValueBuilderByNumber(
-    MemoryManager& memory_manager, int64_t field,
+    MemoryManagerRef memory_manager, int64_t field,
     absl::FunctionRef<absl::StatusOr<Handle<Value>>(ValueFactory&)> value_maker,
     absl::string_view text_proto) {
   TestProtoStructValueBuilderImpl(memory_manager,
@@ -368,7 +368,7 @@ void TestProtoStructValueBuilderByNumber(
 }
 
 void TestProtoStructValueBuilderByName(
-    MemoryManager& memory_manager, absl::string_view field,
+    MemoryManagerRef memory_manager, absl::string_view field,
     absl::FunctionRef<absl::StatusOr<Handle<Value>>(ValueFactory&)> value_maker,
     absl::string_view text_proto) {
   TestProtoStructValueBuilderImpl(memory_manager,
@@ -377,7 +377,7 @@ void TestProtoStructValueBuilderByName(
 }
 
 void TestProtoStructValueBuilder(
-    MemoryManager& memory_manager, absl::string_view field,
+    MemoryManagerRef memory_manager, absl::string_view field,
     absl::FunctionRef<absl::StatusOr<Handle<Value>>(ValueFactory&)> value_maker,
     absl::string_view text_proto) {
   ASSERT_NO_FATAL_FAILURE(TestProtoStructValueBuilderByName(

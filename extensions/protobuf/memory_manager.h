@@ -17,73 +17,46 @@
 
 #include <utility>
 
-#include "google/protobuf/arena.h"
 #include "absl/base/attributes.h"
-#include "absl/base/macros.h"
+#include "absl/base/nullability.h"
 #include "base/memory.h"
-#include "common/native_type.h"
-#include "internal/casts.h"
+#include "google/protobuf/arena.h"
 
 namespace cel::extensions {
 
-// `ProtoMemoryManager` is an implementation of `ArenaMemoryManager` using
-// `google::protobuf::Arena`. All allocations are valid so long as the underlying
-// `google::protobuf::Arena` is still alive.
-class ProtoMemoryManager final : public ArenaMemoryManager {
- public:
-  static bool Is(const MemoryManager& manager) {
-    return manager.GetNativeTypeId() ==
-           cel::NativeTypeId::For<ProtoMemoryManager>();
-  }
+// Returns an appropriate `MemoryManagerRef` wrapping `google::protobuf::Arena`. The
+// lifetime of objects creating using the resulting `MemoryManagerRef` is tied
+// to that of `google::protobuf::Arena`.
+//
+// IMPORTANT: Passing `nullptr` here will result in getting
+// `MemoryManagerRef::ReferenceCounting()`.
+MemoryManagerRef ProtoMemoryManagerRef(
+    google::protobuf::Arena* arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
-  // Passing a nullptr is highly discouraged, but supported for backwards
-  // compatibility. If `arena` is a nullptr, `ProtoMemoryManager` acts like
-  // `MemoryManager::Default()` and then must outlive all allocations.
-  explicit ProtoMemoryManager(google::protobuf::Arena* arena)
-      : ArenaMemoryManager(arena != nullptr), arena_(arena) {}
+// Returns a `PoolingMemoryManager` implementation which uses `google::protobuf::Arena`.
+MemoryManager ProtoMemoryManager();
 
-  ProtoMemoryManager(const ProtoMemoryManager&) = delete;
+// Gets the underlying `google::protobuf::Arena`. If `MemoryManager` was not created using
+// either `ProtoMemoryManagerRef` or `ProtoMemoryManager`, this returns
+// `nullptr`.
+absl::Nullable<google::protobuf::Arena*> ProtoMemoryManagerArena(
+    MemoryManager& memory_manager ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
-  ProtoMemoryManager(ProtoMemoryManager&&) = delete;
-
-  ProtoMemoryManager& operator=(const ProtoMemoryManager&) = delete;
-
-  ProtoMemoryManager& operator=(ProtoMemoryManager&&) = delete;
-
-  constexpr google::protobuf::Arena* arena() const { return arena_; }
-
-  // Expose the underlying google::protobuf::Arena on a generic MemoryManager. This may
-  // only be called on an instance that is guaranteed to be a
-  // ProtoMemoryManager.
-  //
-  // Note: underlying arena may be null.
-  static google::protobuf::Arena* CastToProtoArena(MemoryManager& manager) {
-    ABSL_ASSERT(Is(manager));
-    return cel::internal::down_cast<ProtoMemoryManager&>(manager).arena();
-  }
-
- private:
-  void* Allocate(size_t size, size_t align) override;
-
-  void OwnDestructor(void* pointer, void (*destruct)(void*)) override;
-
-  cel::NativeTypeId GetNativeTypeId() const override {
-    return cel::NativeTypeId::For<ProtoMemoryManager>();
-  }
-
-  google::protobuf::Arena* const arena_;
-};
+// Gets the underlying `google::protobuf::Arena`. If `MemoryManager` was not created using
+// either `ProtoMemoryManagerRef` or `ProtoMemoryManager`, this returns
+// `nullptr`.
+absl::Nullable<google::protobuf::Arena*> ProtoMemoryManagerArena(
+    MemoryManagerRef memory_manager);
 
 // Allocate and construct `T` using the `ProtoMemoryManager` provided as
 // `memory_manager`. `memory_manager` must be `ProtoMemoryManager` or behavior
 // is undefined. Unlike `MemoryManager::New`, this method supports arena-enabled
 // messages.
 template <typename T, typename... Args>
-ABSL_MUST_USE_RESULT T* NewInProtoArena(MemoryManager& memory_manager,
+ABSL_MUST_USE_RESULT T* NewInProtoArena(MemoryManagerRef memory_manager,
                                         Args&&... args) {
-  return google::protobuf::Arena::Create<T>(
-      ProtoMemoryManager::CastToProtoArena(memory_manager),
-      std::forward<Args>(args)...);
+  return google::protobuf::Arena::Create<T>(ProtoMemoryManagerArena(memory_manager),
+                                  std::forward<Args>(args)...);
 }
 
 }  // namespace cel::extensions

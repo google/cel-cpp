@@ -19,7 +19,7 @@ using ::cel::AttributeSet;
 using ::cel::Handle;
 using ::cel::UnknownValue;
 using ::cel::Value;
-using ::cel::extensions::ProtoMemoryManager;
+using ::cel::extensions::ProtoMemoryManagerRef;
 using testing::Eq;
 using testing::SizeIs;
 using testing::UnorderedPointwise;
@@ -27,22 +27,18 @@ using testing::UnorderedPointwise;
 class AttributeUtilityTest : public ::testing::Test {
  public:
   AttributeUtilityTest()
-      : manager_(&arena_),
-        type_factory_(manager_),
+      : type_factory_(ProtoMemoryManagerRef(&arena_)),
         type_manager_(type_factory_, cel::TypeProvider::Builtin()),
         value_factory_(type_manager_) {}
 
  protected:
   google::protobuf::Arena arena_;
-  ProtoMemoryManager manager_;
   cel::TypeFactory type_factory_;
   cel::TypeManager type_manager_;
   cel::ValueFactory value_factory_;
 };
 
 TEST_F(AttributeUtilityTest, UnknownsUtilityCheckUnknowns) {
-  google::protobuf::Arena arena;
-  ProtoMemoryManager manager(&arena);
   std::vector<CelAttributePattern> unknown_patterns = {
       CelAttributePattern("unknown0", {CreateCelAttributeQualifierPattern(
                                           CelValue::CreateInt64(1))}),
@@ -82,9 +78,6 @@ TEST_F(AttributeUtilityTest, UnknownsUtilityCheckUnknowns) {
 }
 
 TEST_F(AttributeUtilityTest, UnknownsUtilityMergeUnknownsFromValues) {
-  google::protobuf::Arena arena;
-  ProtoMemoryManager manager(&arena);
-
   std::vector<CelAttributePattern> unknown_patterns;
 
   std::vector<CelAttributePattern> missing_attribute_patterns;
@@ -116,9 +109,6 @@ TEST_F(AttributeUtilityTest, UnknownsUtilityMergeUnknownsFromValues) {
 }
 
 TEST_F(AttributeUtilityTest, UnknownsUtilityCheckForUnknownsFromAttributes) {
-  google::protobuf::Arena arena;
-  ProtoMemoryManager manager(&arena);
-
   std::vector<CelAttributePattern> unknown_patterns = {
       CelAttributePattern("unknown0",
                           {CelAttributeQualifierPattern::CreateWildcard()}),
@@ -149,9 +139,6 @@ TEST_F(AttributeUtilityTest, UnknownsUtilityCheckForUnknownsFromAttributes) {
 }
 
 TEST_F(AttributeUtilityTest, UnknownsUtilityCheckForMissingAttributes) {
-  google::protobuf::Arena arena;
-  ProtoMemoryManager manager(&arena);
-
   std::vector<CelAttributePattern> unknown_patterns;
 
   std::vector<CelAttributePattern> missing_attribute_patterns;
@@ -174,9 +161,6 @@ TEST_F(AttributeUtilityTest, UnknownsUtilityCheckForMissingAttributes) {
 }
 
 TEST_F(AttributeUtilityTest, CreateUnknownSet) {
-  google::protobuf::Arena arena;
-  ProtoMemoryManager manager(&arena);
-
   AttributeTrail trail("destination");
   trail =
       trail.Step(CreateCelAttributeQualifier(CelValue::CreateStringView("ip")));
