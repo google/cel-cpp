@@ -457,6 +457,58 @@ class PoolingMemoryManager {
 
   virtual ~PoolingMemoryManager() = default;
 
+  template <typename T, typename... Args>
+  ABSL_MUST_USE_RESULT Shared<T> MakeShared(Args&&... args) {
+    using U = std::remove_const_t<T>;
+    U* ptr = nullptr;
+    void* addr = Allocate(sizeof(U), alignof(U));
+    CEL_INTERNAL_TRY {
+      ptr = ::new (addr) U(std::forward<Args>(args)...);
+      if constexpr (!std::is_trivially_destructible_v<U>) {
+        if constexpr (HasCelIsDestructorSkippable<U>::value) {
+          CEL_INTERNAL_TRY {
+            if (!CelIsDestructorSkippable(
+                    *static_cast<std::add_const_t<U>*>(ptr))) {
+              OwnCustomDestructor(ptr, &DefaultDestructor<U>);
+            }
+          }
+          CEL_INTERNAL_CATCH_ANY {
+            ptr->~U();
+            CEL_INTERNAL_RETHROW;
+          }
+        } else {
+          CEL_INTERNAL_TRY { OwnCustomDestructor(ptr, &DefaultDestructor<U>); }
+          CEL_INTERNAL_CATCH_ANY {
+            ptr->~U();
+            CEL_INTERNAL_RETHROW;
+          }
+        }
+      }
+      if constexpr (std::is_base_of_v<common_internal::ReferenceCountFromThis,
+                                      U>) {
+        common_internal::SetReferenceCountForThat(*ptr, nullptr);
+      }
+    }
+    CEL_INTERNAL_CATCH_ANY {
+      Deallocate(addr, sizeof(U), alignof(U));
+      CEL_INTERNAL_RETHROW;
+    }
+    return Shared<T>(common_internal::kAdoptRef, static_cast<T*>(ptr), nullptr);
+  }
+
+  template <typename T, typename... Args>
+  ABSL_MUST_USE_RESULT Unique<T> MakeUnique(Args&&... args) {
+    using U = std::remove_const_t<T>;
+    U* ptr = nullptr;
+    void* addr = Allocate(sizeof(U), alignof(U));
+    CEL_INTERNAL_TRY { ptr = ::new (addr) U(std::forward<Args>(args)...); }
+    CEL_INTERNAL_CATCH_ANY {
+      Deallocate(addr, sizeof(U), alignof(U));
+      CEL_INTERNAL_RETHROW;
+    }
+    return Unique<T>(static_cast<T*>(ptr), MemoryManagement::kPooling);
+  }
+
   friend NativeTypeId CelNativeTypeIdOf(
       const PoolingMemoryManager& memory_manager) noexcept {
     return memory_manager.GetNativeTypeId();
@@ -486,62 +538,6 @@ class PoolingMemoryManager {
   static void DefaultDestructor(void* ptr) {
     static_assert(!std::is_trivially_destructible_v<T>);
     static_cast<T*>(ptr)->~T();
-  }
-
-  template <typename T, typename... Args>
-  static ABSL_MUST_USE_RESULT Shared<T> MakeShared(
-      PoolingMemoryManager& memory_manager, Args&&... args) {
-    using U = std::remove_const_t<T>;
-    U* ptr = nullptr;
-    void* addr = memory_manager.Allocate(sizeof(U), alignof(U));
-    CEL_INTERNAL_TRY {
-      ptr = ::new (addr) U(std::forward<Args>(args)...);
-      if constexpr (!std::is_trivially_destructible_v<U>) {
-        if constexpr (HasCelIsDestructorSkippable<U>::value) {
-          CEL_INTERNAL_TRY {
-            if (!CelIsDestructorSkippable(
-                    *static_cast<std::add_const_t<U>*>(ptr))) {
-              memory_manager.OwnCustomDestructor(ptr, &DefaultDestructor<U>);
-            }
-          }
-          CEL_INTERNAL_CATCH_ANY {
-            ptr->~U();
-            CEL_INTERNAL_RETHROW;
-          }
-        } else {
-          CEL_INTERNAL_TRY {
-            memory_manager.OwnCustomDestructor(ptr, &DefaultDestructor<U>);
-          }
-          CEL_INTERNAL_CATCH_ANY {
-            ptr->~U();
-            CEL_INTERNAL_RETHROW;
-          }
-        }
-      }
-      if constexpr (std::is_base_of_v<common_internal::ReferenceCountFromThis,
-                                      U>) {
-        common_internal::SetReferenceCountForThat(*ptr, nullptr);
-      }
-    }
-    CEL_INTERNAL_CATCH_ANY {
-      memory_manager.Deallocate(addr, sizeof(U), alignof(U));
-      CEL_INTERNAL_RETHROW;
-    }
-    return Shared<T>(common_internal::kAdoptRef, static_cast<T*>(ptr), nullptr);
-  }
-
-  template <typename T, typename... Args>
-  static ABSL_MUST_USE_RESULT Unique<T> MakeUnique(
-      PoolingMemoryManager& memory_manager, Args&&... args) {
-    using U = std::remove_const_t<T>;
-    U* ptr = nullptr;
-    void* addr = memory_manager.Allocate(sizeof(U), alignof(U));
-    CEL_INTERNAL_TRY { ptr = ::new (addr) U(std::forward<Args>(args)...); }
-    CEL_INTERNAL_CATCH_ANY {
-      memory_manager.Deallocate(addr, sizeof(U), alignof(U));
-      CEL_INTERNAL_RETHROW;
-    }
-    return Unique<T>(static_cast<T*>(ptr), MemoryManagement::kPooling);
   }
 
   // These are virtual private, ensuring only `MemoryManager` calls these.
@@ -732,8 +728,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManager final {
       return ReferenceCountingMemoryManager::MakeShared<T>(
           std::forward<Args>(args)...);
     } else {
-      return PoolingMemoryManager::MakeShared<T>(*pointer_,
-                                                 std::forward<Args>(args)...);
+      return pointer_->MakeShared<T>(std::forward<Args>(args)...);
     }
   }
 
@@ -743,8 +738,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManager final {
       return ReferenceCountingMemoryManager::MakeUnique<T>(
           std::forward<Args>(args)...);
     } else {
-      return PoolingMemoryManager::MakeUnique<T>(*pointer_,
-                                                 std::forward<Args>(args)...);
+      return pointer_->MakeUnique<T>(std::forward<Args>(args)...);
     }
   }
 
@@ -828,15 +822,14 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManagerRef final {
       return ReferenceCountingMemoryManager::MakeShared<T>(
           std::forward<Args>(args)...);
     } else if (pointer_ == nullptr) {
-      return PoolingMemoryManager::MakeShared<T>(
-          *static_cast<PoolingMemoryManager*>(vpointer_),
+      return static_cast<PoolingMemoryManager*>(vpointer_)->MakeShared<T>(
           std::forward<Args>(args)...);
     } else {
-      PoolingMemoryManagerVirtualDispatcher pooling(
-          static_cast<const PoolingMemoryManagerVirtualTable*>(vpointer_),
-          pointer_);
-      return PoolingMemoryManager::MakeShared<T>(pooling,
-                                                 std::forward<Args>(args)...);
+      return PoolingMemoryManagerVirtualDispatcher(
+                 static_cast<const PoolingMemoryManagerVirtualTable*>(
+                     vpointer_),
+                 pointer_)
+          .MakeShared<T>(std::forward<Args>(args)...);
     }
   }
 
@@ -846,15 +839,14 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManagerRef final {
       return ReferenceCountingMemoryManager::MakeUnique<T>(
           std::forward<Args>(args)...);
     } else if (pointer_ == nullptr) {
-      return PoolingMemoryManager::MakeUnique<T>(
-          *static_cast<PoolingMemoryManager*>(vpointer_),
+      return static_cast<PoolingMemoryManager*>(vpointer_)->MakeUnique<T>(
           std::forward<Args>(args)...);
     } else {
-      PoolingMemoryManagerVirtualDispatcher pooling(
-          static_cast<const PoolingMemoryManagerVirtualTable*>(vpointer_),
-          pointer_);
-      return PoolingMemoryManager::MakeUnique<T>(pooling,
-                                                 std::forward<Args>(args)...);
+      return PoolingMemoryManagerVirtualDispatcher(
+                 static_cast<const PoolingMemoryManagerVirtualTable*>(
+                     vpointer_),
+                 pointer_)
+          .MakeUnique<T>(std::forward<Args>(args)...);
     }
   }
 
