@@ -217,7 +217,9 @@ cc_test(
     srcs = [
         "internal_field_backed_map_impl_test.cc",
     ],
-    visibility = [":cel_internal"],
+    visibility = [
+        "//visibility:private",  # Only private by automation, not intent. Owner may accept CLs adding visibility. See go/scheuklappen#explicit-private.
+    ],
     deps = [
         ":internal_field_backed_map_impl",
         "//eval/public/structs:cel_proto_wrapper",
