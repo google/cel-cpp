@@ -17,9 +17,9 @@ def base_deps():
         sha256 = ABSL_SHA256,
     )
 
-    # v1.11.0
-    GOOGLETEST_SHA1 = "e2239ee6043f73722e7aa812a459f54a28552929"
-    GOOGLETEST_SHA256 = "8daa1a71395892f7c1ec5f7cb5b099a02e606be720d62f1a6a98f8f8898ec826"
+    # v1.14.0
+    GOOGLETEST_SHA1 = "f8d7d77c06936315286eb55f8de22cd23c188571"
+    GOOGLETEST_SHA256 = "b976cf4fd57b318afdb1bdb27fc708904b3e4bed482859eb94ba2b4bdd077fe2"
     http_archive(
         name = "com_google_googletest",
         urls = ["https://github.com/google/googletest/archive/" + GOOGLETEST_SHA1 + ".zip"],

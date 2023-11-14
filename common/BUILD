@@ -51,6 +51,23 @@ cc_test(
 )
 
 cc_library(
+    name = "casting",
+    hdrs = ["casting.h"],
+    deps = ["//common/internal:casting"],
+)
+
+cc_test(
+    name = "casting_test",
+    srcs = ["casting_test.cc"],
+    deps = [
+        ":casting",
+        ":native_type",
+        "//internal:testing",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_library(
     name = "json",
     srcs = ["json.cc"],
     hdrs = ["json.h"],

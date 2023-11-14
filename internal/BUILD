@@ -102,6 +102,15 @@ cc_test(
 )
 
 cc_library(
+    name = "optional_ref",
+    hdrs = ["optional_ref.h"],
+    deps = [
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_library(
     name = "exceptions",
     hdrs = ["exceptions.h"],
     deps = ["@com_google_absl//absl/base:config"],
