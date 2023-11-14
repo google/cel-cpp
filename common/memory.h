@@ -602,7 +602,7 @@ class PoolingMemoryManagerVirtualDispatcher final
     return vtable_;
   }
 
-  absl::Nonnull<void*> callee() const { return context_; }
+  absl::Nonnull<void*> callee() const { return callee_; }
 
  private:
   friend class MemoryManagerRef;
@@ -613,10 +613,9 @@ class PoolingMemoryManagerVirtualDispatcher final
 
   explicit PoolingMemoryManagerVirtualDispatcher(
       absl::Nonnull<const PoolingMemoryManagerVirtualTable*> vtable,
-      absl::Nonnull<void*> context)
-      : vtable_(vtable), context_(context) {
-    ABSL_DCHECK(vtable_ != nullptr);
-    ABSL_DCHECK(context_ != nullptr);
+      absl::Nonnull<void*> callee)
+      : vtable_(ABSL_DIE_IF_NULL(vtable)),   // Crash OK
+        callee_(ABSL_DIE_IF_NULL(callee)) {  // Crash OK
     ABSL_DCHECK(vtable_->NativeTypeId != NativeTypeId());
     ABSL_DCHECK(vtable_->Allocate != nullptr);
     ABSL_DCHECK(vtable_->Deallocate != nullptr);
@@ -628,29 +627,29 @@ class PoolingMemoryManagerVirtualDispatcher final
   // Allocates memory of at least size `size` in bytes that is at least as
   // aligned as `align`.
   absl::Nonnull<void*> Allocate(size_t size, size_t align) override {
-    return vtable_->Allocate(context_, size, align);
+    return vtable()->Allocate(callee(), size, align);
   }
 
   // Attempts to deallocate memory previously returned from `Allocate`. This is
   // only used for manual memory management.
   bool Deallocate(absl::Nonnull<void*> pointer, size_t size,
                   size_t align) noexcept override {
-    return vtable_->Deallocate(context_, pointer, size, align);
+    return vtable()->Deallocate(callee(), pointer, size, align);
   }
 
   // Registers a destructor to be run upon destruction of the memory management
   // implementation.
   void OwnCustomDestructor(absl::Nonnull<void*> object,
                            absl::Nonnull<CustomDestructPtr> destruct) override {
-    vtable_->OwnCustomDestructor(context_, object, destruct);
+    vtable()->OwnCustomDestructor(callee(), object, destruct);
   }
 
   NativeTypeId GetNativeTypeId() const noexcept override {
-    return vtable_->NativeTypeId;
+    return vtable()->NativeTypeId;
   }
 
   absl::Nonnull<const PoolingMemoryManagerVirtualTable*> vtable_;
-  absl::Nonnull<void*> context_;
+  absl::Nonnull<void*> callee_;
 };
 
 // `MemoryManager` is an abstraction for supporting automatic memory management.
