@@ -582,9 +582,9 @@ struct PoolingMemoryManagerVirtualTable final {
 
   // NOLINTBEGIN(google3-readability-class-member-naming)
   const cel::NativeTypeId NativeTypeId;
-  const absl::Nonnull<AllocatePtr> Allocate;
-  const absl::Nonnull<DeallocatePtr> Deallocate;
-  const absl::Nonnull<OwnCustomDestructorPtr> OwnCustomDestructor;
+  const AllocatePtr Allocate;
+  const DeallocatePtr Deallocate;
+  const OwnCustomDestructorPtr OwnCustomDestructor;
   // NOLINTEND(google3-readability-class-member-naming)
 };
 
