@@ -55,55 +55,13 @@ using propagate_cvref_t = propagate_reference_t<
 
 }  // namespace common_internal
 
+// Forward declared here, documented in `../casting.h`.
 template <typename To, typename From, typename = void>
 struct CastTraits;
 
-template <typename To, typename From>
-struct CastTraits<
-    To, From, std::enable_if_t<std::is_same_v<To, absl::remove_cvref_t<From>>>>
-    final {
-  static bool Compatible(const absl::remove_cvref_t<From>&) { return true; }
-
-  static From Convert(From from) { return static_cast<From>(from); }
-};
-
-// Upcasting.
-template <typename To, typename From>
-struct CastTraits<
-    To, From,
-    std::enable_if_t<std::conjunction_v<
-        std::negation<std::is_same<To, absl::remove_cvref_t<From>>>,
-        std::is_lvalue_reference<From>,
-        std::is_base_of<To, absl::remove_cvref_t<From>>>>>
-    final {
-  static bool Compatible(const absl::remove_cvref_t<From>&) { return true; }
-
-  static common_internal::propagate_cvref_t<To, From> Convert(From from) {
-    return static_cast<common_internal::propagate_cvref_t<To, From>>(from);
-  }
-};
-
-// Downcasting.
-template <typename To, typename From>
-struct CastTraits<
-    To, From,
-    std::enable_if_t<std::conjunction_v<
-        std::negation<std::is_same<To, absl::remove_cvref_t<From>>>,
-        std::is_lvalue_reference<From>,
-        std::is_base_of<absl::remove_cvref_t<From>, To>>>>
-    final {
-  static bool Compatible(const absl::remove_cvref_t<From>& from) {
-    return To::ClassOf(from);
-  }
-
-  static common_internal::propagate_cvref_t<To, From> Convert(From from) {
-    return cel::internal::down_cast<
-        common_internal::propagate_cvref_t<To, From>>(from);
-  }
-};
-
 namespace common_internal {
 
+// Implementation of `cel::InstanceOf`.
 template <typename To>
 struct InstanceOfImpl final {
   static_assert(!std::is_pointer_v<To>, "To must not be a pointer");
@@ -123,7 +81,27 @@ struct InstanceOfImpl final {
     static_assert(!std::is_volatile_v<From>,
                   "From must not be volatile qualified");
     static_assert(std::is_class_v<From>, "From must be a non-union class");
-    return CastTraits<To, const From&>::Compatible(from);
+    if constexpr (std::is_same_v<absl::remove_cvref_t<From>, To>) {
+      // Same type. Separate from the next `else if` to work on in-complete
+      // types.
+      return true;
+    } else if constexpr (std::is_polymorphic_v<To> &&
+                         std::is_polymorphic_v<absl::remove_cvref_t<From>> &&
+                         std::is_base_of_v<To, absl::remove_cvref_t<From>>) {
+      // Polymorphic upcast.
+      return true;
+    } else if constexpr (!std::is_polymorphic_v<To> &&
+                         !std::is_polymorphic_v<absl::remove_cvref_t<From>> &&
+                         (std::is_convertible_v<const From&, To> ||
+                          std::is_convertible_v<From&, To> ||
+                          std::is_convertible_v<const From&&, To> ||
+                          std::is_convertible_v<From&&, To>)) {
+      // Implicitly convertible.
+      return true;
+    } else {
+      // Something else.
+      return CastTraits<To, const From&>::Compatible(from);
+    }
   }
 
   template <typename From>
@@ -131,10 +109,11 @@ struct InstanceOfImpl final {
     static_assert(!std::is_volatile_v<From>,
                   "From must not be volatile qualified");
     static_assert(std::is_class_v<From>, "From must be a non-union class");
-    return from == nullptr || (*this)(*from);
+    return from != nullptr && (*this)(*from);
   }
 };
 
+// Implementation of `cel::Cast`.
 template <typename To>
 struct CastImpl final {
   static_assert(!std::is_pointer_v<To>, "To must not be a pointer");
@@ -155,9 +134,35 @@ struct CastImpl final {
                   "From must not be volatile qualified");
     static_assert(std::is_class_v<absl::remove_cvref_t<From>>,
                   "From must be a non-union class");
-    ABSL_DCHECK((CastTraits<To, const From&>::Compatible(from)))
+    ABSL_DCHECK(InstanceOfImpl<To>{}(from))
         << NativeTypeId::Of(from) << " => " << NativeTypeId::For<To>();
-    return CastTraits<To, From>::Convert(std::forward<From>(from));
+    if constexpr (std::is_polymorphic_v<From>) {
+      static_assert(std::is_lvalue_reference_v<From>,
+                    "polymorphic casts are only possible on lvalue references");
+    }
+    if constexpr (std::is_same_v<absl::remove_cvref_t<From>, To>) {
+      // Same type. Separate from the next `else if` to work on in-complete
+      // types.
+      return static_cast<propagate_cvref_t<To, From>>(from);
+    } else if constexpr (std::is_polymorphic_v<To> &&
+                         std::is_polymorphic_v<absl::remove_cvref_t<From>> &&
+                         std::is_base_of_v<To, absl::remove_cvref_t<From>>) {
+      // Polymorphic upcast.
+      return static_cast<propagate_cvref_t<To, From>>(from);
+    } else if constexpr (std::is_polymorphic_v<To> &&
+                         std::is_polymorphic_v<absl::remove_cvref_t<From>> &&
+                         std::is_base_of_v<absl::remove_cvref_t<From>, To>) {
+      // Polymorphic downcast.
+      return cel::internal::down_cast<propagate_cvref_t<To, From>>(
+          std::forward<From>(from));
+    } else if constexpr (std::is_convertible_v<From, To> &&
+                         !std::is_polymorphic_v<To> &&
+                         !std::is_polymorphic_v<absl::remove_cvref_t<From>>) {
+      return static_cast<To>(std::forward<From>(from));
+    } else {
+      // Something else.
+      return CastTraits<To, From>::Convert(std::forward<From>(from));
+    }
   }
 
   template <typename From>
@@ -176,6 +181,7 @@ struct CastImpl final {
   }
 };
 
+// Implementation of `cel::As`.
 template <typename To>
 struct AsImpl final {
   static_assert(!std::is_pointer_v<To>, "To must not be a pointer");
@@ -199,8 +205,8 @@ struct AsImpl final {
                   "From must not be volatile qualified");
     static_assert(std::is_class_v<absl::remove_cvref_t<From>>,
                   "From must be a non-union class");
-    using R = decltype(CastTraits<To, From>::Convert(std::forward<From>(from)));
-    if (!CastTraits<To, const From&>::Compatible(from)) {
+    using R = decltype(CastImpl<To>{}(std::forward<From>(from)));
+    if (!InstanceOfImpl<To>{}(from)) {
       if constexpr (std::is_lvalue_reference_v<R>) {
         return cel::internal::optional_ref<std::remove_reference_t<R>>{
             absl::nullopt};
@@ -210,11 +216,10 @@ struct AsImpl final {
     }
     if constexpr (std::is_lvalue_reference_v<R>) {
       return cel::internal::optional_ref<std::remove_reference_t<R>>{
-          CastTraits<To, From>::Convert(std::forward<From>(from))};
+          CastImpl<To>{}(std::forward<From>(from))};
     } else {
       return absl::optional<absl::remove_cvref_t<R>>{
-          absl::in_place,
-          CastTraits<To, From>::Convert(std::forward<From>(from))};
+          absl::in_place, CastImpl<To>{}(std::forward<From>(from))};
     }
   }
 
@@ -227,8 +232,8 @@ struct AsImpl final {
     static_assert(!std::is_volatile_v<From>,
                   "From must not be volatile qualified");
     static_assert(std::is_class_v<From>, "From must be a non-union class");
-    using R = decltype((*this)(*from));
-    if (from == nullptr || !CastTraits<To, const From&>::Compatible(from)) {
+    using R = decltype(CastImpl<To>{}(*from));
+    if (from == nullptr || !InstanceOfImpl<To>{}(from)) {
       if constexpr (std::is_lvalue_reference_v<R>) {
         return static_cast<std::add_pointer_t<std::remove_reference_t<R>>>(
             nullptr);
@@ -238,10 +243,10 @@ struct AsImpl final {
     }
     if constexpr (std::is_lvalue_reference_v<R>) {
       return static_cast<std::add_pointer_t<std::remove_reference_t<R>>>(
-          std::addressof((*this)(*from)));
+          std::addressof(CastImpl<To>{}(*from)));
     } else {
       return absl::optional<absl::remove_cvref_t<R>>{absl::in_place,
-                                                     (*this)(*from)};
+                                                     CastImpl<To>{}(*from)};
     }
   }
 };

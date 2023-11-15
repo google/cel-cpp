@@ -27,6 +27,7 @@
 #include "absl/base/config.h"  // IWYU pragma: keep
 #include "absl/log/absl_check.h"
 #include "absl/types/optional.h"
+#include "common/casting.h"
 #include "common/native_type.h"
 #include "internal/testing.h"
 
@@ -685,6 +686,35 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(MemoryManagement::kPooling,
                       MemoryManagement::kReferenceCounting),
     MemoryManagerTest::ToString);
+
+TEST(MemoryManagerCasting, ReferenceCounting) {
+  EXPECT_TRUE(InstanceOf<ReferenceCountingMemoryManager>(
+      MemoryManager::ReferenceCounting()));
+  EXPECT_FALSE(InstanceOf<ReferenceCountingMemoryManager>(
+      MemoryManager(NewThreadCompatiblePoolingMemoryManager())));
+}
+
+TEST(MemoryManagerCasting, Pooling) {
+  EXPECT_FALSE(
+      InstanceOf<PoolingMemoryManager>(MemoryManager::ReferenceCounting()));
+  EXPECT_TRUE(InstanceOf<PoolingMemoryManager>(
+      MemoryManager(NewThreadCompatiblePoolingMemoryManager())));
+}
+
+TEST(MemoryManagerRefCasting, ReferenceCounting) {
+  EXPECT_TRUE(InstanceOf<ReferenceCountingMemoryManager>(
+      MemoryManagerRef::ReferenceCounting()));
+  auto pooling = MemoryManager(NewThreadCompatiblePoolingMemoryManager());
+  EXPECT_FALSE(
+      InstanceOf<ReferenceCountingMemoryManager>(MemoryManagerRef(pooling)));
+}
+
+TEST(MemoryManagerRefCasting, Pooling) {
+  EXPECT_FALSE(
+      InstanceOf<PoolingMemoryManager>(MemoryManagerRef::ReferenceCounting()));
+  auto pooling = MemoryManager(NewThreadCompatiblePoolingMemoryManager());
+  EXPECT_TRUE(InstanceOf<PoolingMemoryManager>(MemoryManagerRef(pooling)));
+}
 
 }  // namespace
 }  // namespace cel

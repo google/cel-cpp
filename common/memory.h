@@ -27,6 +27,8 @@
 #include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/die_if_null.h"
+#include "absl/meta/type_traits.h"
+#include "common/casting.h"
 #include "common/internal/reference_count.h"
 #include "common/native_type.h"
 #include "internal/exceptions.h"
@@ -450,11 +452,6 @@ class ReferenceCountingMemoryManager final {
 // memory management through memory pooling.
 class PoolingMemoryManager {
  public:
-  static PoolingMemoryManager& DownCast(
-      MemoryManager& memory_manager ABSL_ATTRIBUTE_LIFETIME_BOUND);
-
-  static PoolingMemoryManager& DownCast(MemoryManagerRef memory_manager);
-
   virtual ~PoolingMemoryManager() = default;
 
   template <typename T, typename... Args>
@@ -509,17 +506,13 @@ class PoolingMemoryManager {
     return Unique<T>(static_cast<T*>(ptr), MemoryManagement::kPooling);
   }
 
-  friend NativeTypeId CelNativeTypeIdOf(
-      const PoolingMemoryManager& memory_manager) noexcept {
-    return memory_manager.GetNativeTypeId();
-  }
-
  protected:
   using CustomDestructPtr = void (*)(void*);
 
  private:
   friend class MemoryManager;
   friend class MemoryManagerRef;
+  friend struct NativeTypeTraits<PoolingMemoryManager>;
   template <typename T>
   friend class Allocator;
   template <typename T>
@@ -562,6 +555,29 @@ class PoolingMemoryManager {
   virtual NativeTypeId GetNativeTypeId() const noexcept = 0;
 };
 
+template <>
+struct NativeTypeTraits<PoolingMemoryManager> final {
+  static NativeTypeId Id(const PoolingMemoryManager& memory_manager) {
+    return memory_manager.GetNativeTypeId();
+  }
+};
+
+template <typename T>
+struct NativeTypeTraits<
+    T, std::enable_if_t<std::conjunction_v<
+           std::is_base_of<PoolingMemoryManager, T>,
+           std::negation<std::is_same<T, PoolingMemoryManager>>>>>
+    final {
+  static NativeTypeId Id(const PoolingMemoryManager& memory_manager) {
+    return NativeTypeTraits<PoolingMemoryManager>::Id(memory_manager);
+  }
+};
+
+template <typename To, typename From>
+struct CastTraits<To, From,
+                  EnableIfSubsumptionCastable<To, From, PoolingMemoryManager>>
+    : SubsumptionCastTraits<To, From> {};
+
 // Creates a new `PoolingMemoryManager` which is thread-compatible.
 absl::Nonnull<std::unique_ptr<PoolingMemoryManager>>
 NewThreadCompatiblePoolingMemoryManager();
@@ -595,9 +611,6 @@ struct PoolingMemoryManagerVirtualTable final {
 class PoolingMemoryManagerVirtualDispatcher final
     : public PoolingMemoryManager {
  public:
-  static PoolingMemoryManagerVirtualDispatcher DownCast(
-      MemoryManagerRef memory_manager);
-
   absl::Nonnull<const PoolingMemoryManagerVirtualTable*> vtable() const {
     return vtable_;
   }
@@ -606,6 +619,7 @@ class PoolingMemoryManagerVirtualDispatcher final
 
  private:
   friend class MemoryManagerRef;
+  friend class CompositionTraits<MemoryManagerRef>;
   template <typename T>
   friend class Allocator;
   template <typename T>
@@ -746,15 +760,11 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManager final {
     swap(lhs.pointer_, rhs.pointer_);
   }
 
-  friend NativeTypeId CelNativeTypeIdOf(
-      const MemoryManager& memory_manager) noexcept {
-    return memory_manager.pointer_ == nullptr
-               ? NativeTypeId::For<ReferenceCountingMemoryManager>()
-               : NativeTypeId::Of(*memory_manager.pointer_);
-  }
-
  private:
+  friend class PoolingMemoryManager;
   friend class MemoryManagerRef;
+  friend class NativeTypeTraits<MemoryManager>;
+  friend class CompositionTraits<MemoryManager>;
 
   explicit MemoryManager(PoolingMemoryManager* pointer) : pointer_(pointer) {}
 
@@ -770,6 +780,85 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManager final {
   // utilize reference counting.
   PoolingMemoryManager* pointer_;
 };
+
+template <>
+struct NativeTypeTraits<MemoryManager> final {
+  static NativeTypeId Id(const MemoryManager& memory_manager) {
+    return memory_manager.pointer_ == nullptr
+               ? NativeTypeId::For<ReferenceCountingMemoryManager>()
+               : NativeTypeId::Of(*memory_manager.pointer_);
+  }
+};
+
+template <>
+struct CompositionTraits<MemoryManager> final {
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<ReferenceCountingMemoryManager, U>,
+                          bool>
+  HasA(const MemoryManager& memory_manager) {
+    return memory_manager.memory_management() ==
+           MemoryManagement::kReferenceCounting;
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<PoolingMemoryManager, U>, bool> HasA(
+      const MemoryManager& memory_manager) {
+    return memory_manager.memory_management() == MemoryManagement::kPooling;
+  }
+
+  template <typename U>
+  static std::enable_if_t<
+      std::conjunction_v<std::is_base_of<PoolingMemoryManager, U>,
+                         std::negation<std::is_same<PoolingMemoryManager, U>>>,
+      bool>
+  HasA(const MemoryManager& memory_manager) {
+    return memory_manager.memory_management() == MemoryManagement::kPooling &&
+           SubsumptionTraits<U>::IsA(*static_cast<const PoolingMemoryManager*>(
+               memory_manager.pointer_));
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<PoolingMemoryManager, U>, const U&>
+  Get(const MemoryManager& memory_manager) {
+    ABSL_DCHECK(HasA<U>(memory_manager));
+    return *static_cast<const PoolingMemoryManager*>(memory_manager.pointer_);
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<PoolingMemoryManager, U>, U&> Get(
+      MemoryManager& memory_manager) {
+    ABSL_DCHECK(HasA<U>(memory_manager));
+    return *static_cast<PoolingMemoryManager*>(memory_manager.pointer_);
+  }
+
+  template <typename U>
+  static std::enable_if_t<
+      std::conjunction_v<std::is_base_of<PoolingMemoryManager, U>,
+                         std::negation<std::is_same<PoolingMemoryManager, U>>>,
+      const U&>
+  Get(const MemoryManager& memory_manager) {
+    ABSL_DCHECK(HasA<U>(memory_manager));
+    return Cast<U>(
+        *static_cast<const PoolingMemoryManager*>(memory_manager.pointer_));
+  }
+
+  template <typename U>
+  static std::enable_if_t<
+      std::conjunction_v<std::is_base_of<PoolingMemoryManager, U>,
+                         std::negation<std::is_same<PoolingMemoryManager, U>>>,
+      U&>
+  Get(MemoryManager& memory_manager) {
+    ABSL_DCHECK(HasA<U>(memory_manager));
+    return Cast<U>(
+        *static_cast<PoolingMemoryManager*>(memory_manager.pointer_));
+  }
+};
+
+template <typename To, typename From>
+struct CastTraits<
+    To, From,
+    std::enable_if_t<std::is_same_v<MemoryManager, absl::remove_cvref_t<From>>>>
+    : CompositionCastTraits<To, From> {};
 
 // `MemoryManagerRef` is similar to `MemoryManager` except it is more flexible.
 // In most cases you should accept and pass around `MemoryManagerRef` instead of
@@ -855,21 +944,11 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManagerRef final {
     swap(lhs.pointer_, rhs.pointer_);
   }
 
-  friend NativeTypeId CelNativeTypeIdOf(
-      const MemoryManagerRef& memory_manager) noexcept {
-    return memory_manager.vpointer_ == nullptr
-               ? NativeTypeId::For<ReferenceCountingMemoryManager>()
-           : memory_manager.pointer_ == nullptr
-               ? NativeTypeId::Of(*static_cast<PoolingMemoryManager*>(
-                     memory_manager.vpointer_))
-               : static_cast<const PoolingMemoryManagerVirtualTable*>(
-                     memory_manager.vpointer_)
-                     ->NativeTypeId;
-  }
-
  private:
   friend class PoolingMemoryManager;
   friend class PoolingMemoryManagerVirtualDispatcher;
+  friend struct NativeTypeTraits<MemoryManagerRef>;
+  friend class CompositionTraits<MemoryManagerRef>;
   template <typename T>
   friend class Allocator;
   template <typename T>
@@ -882,30 +961,88 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManagerRef final {
   void* pointer_;
 };
 
-inline PoolingMemoryManager& PoolingMemoryManager::DownCast(
-    MemoryManager& memory_manager) {
-  return DownCast(MemoryManagerRef(memory_manager));
-}
+template <>
+struct NativeTypeTraits<MemoryManagerRef> final {
+  static NativeTypeId Id(MemoryManagerRef memory_manager) {
+    return memory_manager.vpointer_ == nullptr
+               ? NativeTypeId::For<ReferenceCountingMemoryManager>()
+           : memory_manager.pointer_ == nullptr
+               ? NativeTypeId::Of(*static_cast<PoolingMemoryManager*>(
+                     memory_manager.vpointer_))
+               : static_cast<const PoolingMemoryManagerVirtualTable*>(
+                     memory_manager.vpointer_)
+                     ->NativeTypeId;
+  }
+};
 
-inline PoolingMemoryManager& PoolingMemoryManager::DownCast(
-    MemoryManagerRef memory_manager) {
-  ABSL_DCHECK(memory_manager.vpointer_ != nullptr &&
-              memory_manager.pointer_ == nullptr)
-      << NativeTypeId::Of(memory_manager);
-  return *static_cast<PoolingMemoryManager*>(memory_manager.vpointer_);
-}
+template <>
+struct CompositionTraits<MemoryManagerRef> final {
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<ReferenceCountingMemoryManager, U>,
+                          bool>
+  HasA(MemoryManagerRef memory_manager) {
+    return memory_manager.memory_management() ==
+           MemoryManagement::kReferenceCounting;
+  }
 
-inline PoolingMemoryManagerVirtualDispatcher
-PoolingMemoryManagerVirtualDispatcher::DownCast(
-    MemoryManagerRef memory_manager) {
-  ABSL_DCHECK(memory_manager.vpointer_ != nullptr &&
-              memory_manager.pointer_ != nullptr)
-      << NativeTypeId::Of(memory_manager);
-  return PoolingMemoryManagerVirtualDispatcher(
-      static_cast<const PoolingMemoryManagerVirtualTable*>(
-          memory_manager.vpointer_),
-      memory_manager.pointer_);
-}
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<PoolingMemoryManager, U>, bool> HasA(
+      MemoryManagerRef memory_manager) {
+    return memory_manager.memory_management() == MemoryManagement::kPooling;
+  }
+
+  template <typename U>
+  static std::enable_if_t<
+      std::is_same_v<PoolingMemoryManagerVirtualDispatcher, U>, bool>
+  HasA(MemoryManagerRef memory_manager) {
+    return memory_manager.vpointer_ != nullptr &&
+           memory_manager.pointer_ != nullptr;
+  }
+
+  template <typename U>
+  static std::enable_if_t<
+      std::conjunction_v<std::is_base_of<PoolingMemoryManager, U>,
+                         std::negation<std::is_same<PoolingMemoryManager, U>>,
+                         std::negation<std::is_same<
+                             PoolingMemoryManagerVirtualDispatcher, U>>>,
+      bool>
+  HasA(MemoryManagerRef memory_manager) {
+    return memory_manager.vpointer_ != nullptr &&
+           memory_manager.pointer_ == nullptr &&
+           SubsumptionTraits<U>::IsA(*static_cast<const PoolingMemoryManager*>(
+               memory_manager.vpointer_));
+  }
+
+  template <typename U>
+  static std::enable_if_t<
+      std::is_same_v<PoolingMemoryManagerVirtualDispatcher, U>,
+      PoolingMemoryManagerVirtualDispatcher>
+  Get(MemoryManagerRef memory_manager) {
+    ABSL_DCHECK(HasA<U>(memory_manager));
+    return PoolingMemoryManagerVirtualDispatcher(
+        static_cast<const PoolingMemoryManagerVirtualTable*>(
+            memory_manager.vpointer_),
+        memory_manager.pointer_);
+  }
+
+  template <typename U>
+  static std::enable_if_t<
+      std::conjunction_v<std::is_base_of<PoolingMemoryManager, U>,
+                         std::negation<std::is_same<
+                             PoolingMemoryManagerVirtualDispatcher, U>>>,
+      U&>
+  Get(MemoryManagerRef memory_manager) {
+    ABSL_DCHECK(HasA<U>(memory_manager));
+    return Cast<U>(
+        *static_cast<PoolingMemoryManager*>(memory_manager.vpointer_));
+  }
+};
+
+template <typename To, typename From>
+struct CastTraits<To, From,
+                  std::enable_if_t<std::is_same_v<MemoryManagerRef,
+                                                  absl::remove_cvref_t<From>>>>
+    : CompositionCastTraits<To, From> {};
 
 }  // namespace cel
 

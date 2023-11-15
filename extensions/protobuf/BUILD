@@ -25,11 +25,22 @@ cc_library(
     hdrs = ["memory_manager.h"],
     deps = [
         "//base:memory",
+        "//common:casting",
         "//common:memory",
         "//common:native_type",
-        "//internal:casts",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "memory_manager_test",
+    srcs = ["memory_manager_test.cc"],
+    deps = [
+        ":memory_manager",
+        "//common:memory",
+        "//internal:testing",
         "@com_google_protobuf//:protobuf",
     ],
 )

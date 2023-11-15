@@ -53,7 +53,11 @@ cc_test(
 cc_library(
     name = "casting",
     hdrs = ["casting.h"],
-    deps = ["//common/internal:casting"],
+    deps = [
+        "//common/internal:casting",
+        "//internal:casts",
+        "@com_google_absl//absl/meta:type_traits",
+    ],
 )
 
 cc_test(
@@ -124,6 +128,7 @@ cc_library(
     srcs = ["memory.cc"],
     hdrs = ["memory.h"],
     deps = [
+        ":casting",
         ":native_type",
         "//common/internal:reference_count",
         "//internal:exceptions",
@@ -134,6 +139,7 @@ cc_library(
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/log:die_if_null",
+        "@com_google_absl//absl/meta:type_traits",
         "@com_google_absl//absl/numeric:bits",
     ],
 )
@@ -142,6 +148,7 @@ cc_test(
     name = "memory_test",
     srcs = ["memory_test.cc"],
     deps = [
+        ":casting",
         ":memory",
         ":native_type",
         "//internal:testing",
@@ -212,6 +219,7 @@ cc_library(
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:config",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/meta:type_traits",
         "@com_google_absl//absl/strings",
     ],
 )

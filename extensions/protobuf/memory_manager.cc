@@ -18,12 +18,14 @@
 #include <memory>
 
 #include "absl/base/nullability.h"
+#include "common/casting.h"
 #include "common/memory.h"
 #include "common/native_type.h"
-#include "internal/casts.h"
 #include "google/protobuf/arena.h"
 
-namespace cel::extensions {
+namespace cel {
+
+namespace extensions {
 
 namespace {
 
@@ -77,6 +79,18 @@ const PoolingMemoryManagerVirtualTable kProtoMemoryManagerVirtualTable = {
 
 }  // namespace
 
+}  // namespace extensions
+
+template <>
+struct SubsumptionTraits<extensions::ProtoPoolingMemoryManager> final {
+  static bool IsA(const PoolingMemoryManager& memory_manager) {
+    return NativeTypeId::Of(memory_manager) ==
+           NativeTypeId::For<extensions::ProtoPoolingMemoryManager>();
+  }
+};
+
+namespace extensions {
+
 MemoryManagerRef ProtoMemoryManagerRef(google::protobuf::Arena* arena) {
   return arena != nullptr ? MemoryManagerRef::Pooling(
                                 kProtoMemoryManagerVirtualTable, *arena)
@@ -96,18 +110,19 @@ absl::Nullable<google::protobuf::Arena*> ProtoMemoryManagerArena(
 
 absl::Nullable<google::protobuf::Arena*> ProtoMemoryManagerArena(
     MemoryManagerRef memory_manager) {
-  const auto& native_type_id = NativeTypeId::Of(memory_manager);
-  if (native_type_id == NativeTypeId::For<google::protobuf::Arena>()) {
-    return static_cast<google::protobuf::Arena*>(
-        PoolingMemoryManagerVirtualDispatcher::DownCast(memory_manager)
-            .callee());
+  if (InstanceOf<extensions::ProtoPoolingMemoryManager>(memory_manager)) {
+    return Cast<extensions::ProtoPoolingMemoryManager>(memory_manager).arena();
   }
-  if (native_type_id == NativeTypeId::For<ProtoPoolingMemoryManager>()) {
-    return cel::internal::down_cast<ProtoPoolingMemoryManager&>(
-               PoolingMemoryManager::DownCast(memory_manager))
-        .arena();
+  if (auto virtual_dispatcher =
+          As<PoolingMemoryManagerVirtualDispatcher>(memory_manager);
+      virtual_dispatcher &&
+      virtual_dispatcher->vtable() ==
+          std::addressof(kProtoMemoryManagerVirtualTable)) {
+    return static_cast<google::protobuf::Arena*>(virtual_dispatcher->callee());
   }
   return nullptr;
 }
 
-}  // namespace cel::extensions
+}  // namespace extensions
+
+}  // namespace cel

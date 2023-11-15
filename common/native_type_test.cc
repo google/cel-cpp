@@ -45,19 +45,21 @@ TEST(NativeTypeId, DebugString) {
   EXPECT_THAT(out.str(), Not(IsEmpty()));
 }
 
-namespace native_type_test {
-
 struct TestType {};
 
-NativeTypeId CelNativeTypeIdOf(const TestType& type) {
-  return NativeTypeId::For<TestType>();
-}
+}  // namespace
 
-}  // namespace native_type_test
+template <>
+struct NativeTypeTraits<TestType> final {
+  static NativeTypeId Id(const TestType&) {
+    return NativeTypeId::For<TestType>();
+  }
+};
+
+namespace {
 
 TEST(NativeTypeId, Of) {
-  EXPECT_EQ(NativeTypeId::Of(native_type_test::TestType()),
-            NativeTypeId::For<native_type_test::TestType>());
+  EXPECT_EQ(NativeTypeId::Of(TestType()), NativeTypeId::For<TestType>());
 }
 
 }  // namespace

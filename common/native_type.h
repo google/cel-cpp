@@ -24,6 +24,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/casts.h"  // IWYU pragma: keep
 #include "absl/base/config.h"
+#include "absl/meta/type_traits.h"
 
 #if ABSL_HAVE_FEATURE(cxx_rtti)
 #define CEL_INTERNAL_HAVE_RTTI 1
@@ -41,18 +42,22 @@
 
 namespace cel {
 
+template <typename T, typename = void>
+struct NativeTypeTraits;
+
 class ABSL_ATTRIBUTE_TRIVIAL_ABI NativeTypeId final {
  private:
   template <typename, typename = void>
-  struct HasCelNativeTypeIdOf : std::false_type {};
+  struct HasNativeTypeTraitsId : std::false_type {};
 
   template <typename T>
-  struct HasCelNativeTypeIdOf<
-      T, std::void_t<decltype(CelNativeTypeIdOf(std::declval<const T&>()))>>
+  struct HasNativeTypeTraitsId<T, std::void_t<decltype(NativeTypeTraits<T>::Id(
+                                      std::declval<const T&>()))>>
       : std::true_type {};
 
   template <typename T>
-  static constexpr bool HasCelNativeTypeIdOfV = HasCelNativeTypeIdOf<T>::value;
+  static constexpr bool HasNativeTypeTraitsIdV =
+      HasNativeTypeTraitsId<T>::value;
 
  public:
   template <typename T>
@@ -71,15 +76,15 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI NativeTypeId final {
 #endif
   }
 
-  // Gets the NativeTypeId for `T` at runtime. Uses ADL with `NativeTypeId
-  // CelNativeTypeIdOf(const T&)`. See
-  // https://en.cppreference.com/w/cpp/language/adl for ADL rules.
-  template <typename T, typename = std::enable_if_t<HasCelNativeTypeIdOfV<T>>>
+  // Gets the NativeTypeId for `T` at runtime. Requires that
+  // `cel::NativeTypeTraits` is defined for `T`.
+  template <typename T, typename = std::enable_if_t<
+                            HasNativeTypeTraitsIdV<absl::remove_cvref_t<T>>>>
   static NativeTypeId Of(const T& type) noexcept {
     static_assert(!std::is_pointer_v<T>);
     static_assert(std::is_same_v<T, std::decay_t<T>>);
     static_assert(!std::is_same_v<NativeTypeId, std::decay_t<T>>);
-    return CelNativeTypeIdOf(type);
+    return NativeTypeTraits<absl::remove_cvref_t<T>>::Id(type);
   }
 
   NativeTypeId() = default;

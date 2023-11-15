@@ -15,6 +15,7 @@
 #include "common/casting.h"
 
 #include <memory>
+#include <type_traits>
 
 #include "absl/types/optional.h"
 #include "common/native_type.h"
@@ -39,23 +40,52 @@ class Ancestry {
 
   virtual AncestryKind kind() const = 0;
 
-  friend NativeTypeId CelNativeTypeIdOf(const Ancestry& ancestry) {
-    return ancestry.GetNativeTypeId();
-  }
-
  private:
+  friend struct NativeTypeTraits<Ancestry>;
+
   virtual NativeTypeId GetNativeTypeId() const = 0;
 };
 
+}  // namespace
+
+// Specialize `NativeTypeTraits` for `Ancestry`. Enables `NativeTypeId::Of`.
+template <>
+struct NativeTypeTraits<Ancestry> final {
+  static NativeTypeId Id(const Ancestry& ancestry) {
+    return ancestry.GetNativeTypeId();
+  }
+};
+
+// Specialize `NativeTypeTraits` for types derived from `Ancestry`, deferring to
+// the above specialization for the implementation of `Id`.
+template <typename T>
+struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
+                               std::is_base_of<Ancestry, T>,
+                               std::negation<std::is_same<T, Ancestry>>>>>
+    final {
+  static NativeTypeId Id(const Ancestry& ancestry) {
+    return NativeTypeTraits<Ancestry>::Id(ancestry);
+  }
+};
+
+// Enable `InstanceOf`, `Cast`, and `As` using subsumption relationships.
+// `SubsumptionTraits` is defined for derived classes below.
+template <typename To, typename From>
+struct CastTraits<To, From, EnableIfSubsumptionCastable<To, From, Ancestry>>
+    : SubsumptionCastTraits<To, From> {};
+
+namespace {
+
 class Parent final : public Ancestry {
  public:
-  static bool ClassOf(const Ancestry& ancestry) {
-    return ancestry.kind() == AncestryKind::kParent;
-  }
-
   AncestryKind kind() const override { return AncestryKind::kParent; }
 
  private:
+  // Friend is only needed if the specialization needs to access private
+  // members. Here we do not need it, but do it as typical implementations may
+  // require it.
+  friend struct SubsumptionTraits<Parent>;
+
   NativeTypeId GetNativeTypeId() const override {
     return NativeTypeId::For<Parent>();
   }
@@ -63,17 +93,38 @@ class Parent final : public Ancestry {
 
 class Child final : public Ancestry {
  public:
-  static bool ClassOf(const Ancestry& ancestry) {
-    return ancestry.kind() == AncestryKind::kChild;
-  }
-
   AncestryKind kind() const override { return AncestryKind::kChild; }
 
  private:
+  // Friend is only needed if the specialization needs to access private
+  // members. Here we do not need it, but do it as typical implementations may
+  // require it.
+  friend struct SubsumptionTraits<Child>;
+
   NativeTypeId GetNativeTypeId() const override {
     return NativeTypeId::For<Child>();
   }
 };
+
+}  // namespace
+
+// Specialize `SubsumptionTraits` for `Parent`. Used by `SubsumptionCastTraits`.
+template <>
+struct SubsumptionTraits<Parent> final {
+  static bool IsA(const Ancestry& ancestry) {
+    return ancestry.kind() == AncestryKind::kParent;
+  }
+};
+
+// Specialize `SubsumptionTraits` for `Child`. Used by `SubsumptionCastTraits`.
+template <>
+struct SubsumptionTraits<Child> final {
+  static bool IsA(const Ancestry& ancestry) {
+    return ancestry.kind() == AncestryKind::kChild;
+  }
+};
+
+namespace {
 
 inline bool operator==(const Ancestry& lhs, const Ancestry& rhs) {
   return lhs.kind() == rhs.kind();
