@@ -31,7 +31,8 @@
 #include "common/native_type.h"
 #include "common/type_interface.h"  // IWYU pragma: export
 #include "common/type_kind.h"
-#include "common/types/any_type.h"  // IWYU pragma: export
+#include "common/types/any_type.h"   // IWYU pragma: export
+#include "common/types/bool_type.h"  // IWYU pragma: export
 #include "common/types/types.h"
 
 namespace cel {

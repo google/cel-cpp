@@ -27,15 +27,18 @@ class TypeInterface;
 
 class Type;
 class AnyType;
+class BoolType;
 
 class TypeView;
 class AnyTypeView;
+class BoolTypeView;
 
 namespace common_internal {
 
 template <typename T>
 struct IsTypeAlternative
-    : std::bool_constant<std::disjunction_v<std::is_same<AnyType, T>>> {};
+    : std::bool_constant<std::disjunction_v<std::is_same<AnyType, T>,
+                                            std::is_same<BoolType, T>>> {};
 
 template <typename T>
 inline constexpr bool IsTypeAlternativeV = IsTypeAlternative<T>::value;
@@ -47,11 +50,12 @@ using TypeVariant = absl::variant<
 #ifndef NDEBUG
     absl::monostate,
 #endif
-    AnyType>;
+    AnyType, BoolType>;
 
 template <typename T>
 struct IsTypeViewAlternative
-    : std::bool_constant<std::disjunction_v<std::is_same<AnyTypeView, T>>> {};
+    : std::bool_constant<std::disjunction_v<std::is_same<AnyTypeView, T>,
+                                            std::is_same<BoolTypeView, T>>> {};
 
 template <typename T>
 inline constexpr bool IsTypeViewAlternativeV = IsTypeViewAlternative<T>::value;
@@ -63,7 +67,7 @@ using TypeViewVariant = absl::variant<
 #ifndef NDEBUG
     absl::monostate,
 #endif
-    AnyTypeView>;
+    AnyTypeView, BoolTypeView>;
 
 }  // namespace common_internal
 
