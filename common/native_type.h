@@ -78,13 +78,29 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI NativeTypeId final {
 
   // Gets the NativeTypeId for `T` at runtime. Requires that
   // `cel::NativeTypeTraits` is defined for `T`.
-  template <typename T, typename = std::enable_if_t<
-                            HasNativeTypeTraitsIdV<absl::remove_cvref_t<T>>>>
-  static NativeTypeId Of(const T& type) noexcept {
+  template <typename T>
+  static std::enable_if_t<HasNativeTypeTraitsIdV<absl::remove_cvref_t<T>>,
+                          NativeTypeId>
+  Of(const T& type) noexcept {
     static_assert(!std::is_pointer_v<T>);
     static_assert(std::is_same_v<T, std::decay_t<T>>);
     static_assert(!std::is_same_v<NativeTypeId, std::decay_t<T>>);
     return NativeTypeTraits<absl::remove_cvref_t<T>>::Id(type);
+  }
+
+  // Gets the NativeTypeId for `T` at runtime. Requires that
+  // `cel::NativeTypeTraits` is defined for `T`.
+  template <typename T>
+  static std::enable_if_t<
+      std::conjunction_v<
+          std::negation<HasNativeTypeTraitsId<absl::remove_cvref_t<T>>>,
+          std::is_final<absl::remove_cvref_t<T>>>,
+      NativeTypeId>
+  Of(const T& type) noexcept {
+    static_assert(!std::is_pointer_v<T>);
+    static_assert(std::is_same_v<T, std::decay_t<T>>);
+    static_assert(!std::is_same_v<NativeTypeId, std::decay_t<T>>);
+    return NativeTypeId::For<absl::remove_cvref_t<T>>();
   }
 
   NativeTypeId() = default;

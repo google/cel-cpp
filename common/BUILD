@@ -233,3 +233,43 @@ cc_test(
         "@com_google_absl//absl/hash:hash_testing",
     ],
 )
+
+cc_library(
+    name = "data",
+    srcs = glob(
+        ["types/*.cc"],
+        exclude = ["types/*_test.cc"],
+    ),
+    hdrs = glob(
+        ["types/*.h"],
+        exclude = ["types/*_test.h"],
+    ) + [
+        "type.h",
+        "type_interface.h",
+    ],
+    deps = [
+        ":casting",
+        ":native_type",
+        ":type_kind",
+        "//common/internal:data_interface",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/meta:type_traits",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_test(
+    name = "data_test",
+    srcs = glob(["types/*_test.cc"]) + ["type_test.cc"],
+    deps = [
+        ":casting",
+        ":data",
+        ":native_type",
+        "//internal:testing",
+        "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/types:optional",
+    ],
+)

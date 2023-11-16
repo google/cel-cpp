@@ -35,10 +35,6 @@ class DataInterface;
 // `cel::TypeInterface`.
 class DataInterface {
  public:
-  // Static member used by `cel::InstanceOf` to determine if the instance has
-  // `cel::common_internal::DataInterface` as a class.
-  static bool ClassOf(const DataInterface&) { return true; }
-
   DataInterface(const DataInterface&) = delete;
   DataInterface(DataInterface&&) = delete;
 
