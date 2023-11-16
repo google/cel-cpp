@@ -42,6 +42,7 @@ class NullType;
 class StringType;
 class StringWrapperType;
 class TimestampType;
+class TypeType;
 
 class TypeView;
 class AnyTypeView;
@@ -60,6 +61,7 @@ class NullTypeView;
 class StringTypeView;
 class StringWrapperTypeView;
 class TimestampTypeView;
+class TypeTypeView;
 
 namespace common_internal {
 
@@ -73,8 +75,8 @@ struct IsTypeAlternative
           std::is_same<DynType, T>, std::is_same<ErrorType, T>,
           std::is_same<IntType, T>, std::is_same<IntWrapperType, T>,
           std::is_same<NullType, T>, std::is_same<StringType, T>,
-          std::is_same<StringWrapperType, T>, std::is_same<TimestampType, T>>> {
-};
+          std::is_same<StringWrapperType, T>, std::is_same<TimestampType, T>,
+          std::is_same<TypeType, T>>> {};
 
 template <typename T>
 inline constexpr bool IsTypeAlternativeV = IsTypeAlternative<T>::value;
@@ -88,7 +90,8 @@ using TypeVariant = absl::variant<
 #endif
     AnyType, BoolType, BoolWrapperType, BytesType, BytesWrapperType, DoubleType,
     DoubleWrapperType, DurationType, DynType, ErrorType, IntType,
-    IntWrapperType, NullType, StringType, StringWrapperType, TimestampType>;
+    IntWrapperType, NullType, StringType, StringWrapperType, TimestampType,
+    TypeType>;
 
 template <typename T>
 struct IsTypeViewAlternative
@@ -103,7 +106,8 @@ struct IsTypeViewAlternative
           std::is_same<IntWrapperTypeView, T>, std::is_same<NullTypeView, T>,
           std::is_same<StringTypeView, T>,
           std::is_same<StringWrapperTypeView, T>,
-          std::is_same<TimestampTypeView, T>>> {};
+          std::is_same<TimestampTypeView, T>, std::is_same<TypeTypeView, T>>> {
+};
 
 template <typename T>
 inline constexpr bool IsTypeViewAlternativeV = IsTypeViewAlternative<T>::value;
@@ -119,7 +123,7 @@ using TypeViewVariant = absl::variant<
     BytesWrapperTypeView, DoubleTypeView, DoubleWrapperTypeView,
     DurationTypeView, DynTypeView, ErrorTypeView, IntTypeView,
     IntWrapperTypeView, NullTypeView, StringTypeView, StringWrapperTypeView,
-    TimestampTypeView>;
+    TimestampTypeView, TypeTypeView>;
 
 }  // namespace common_internal
 

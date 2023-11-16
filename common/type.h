@@ -47,6 +47,7 @@
 #include "common/types/string_type.h"  // IWYU pragma: export
 #include "common/types/string_wrapper_type.h"  // IWYU pragma: export
 #include "common/types/timestamp_type.h"  // IWYU pragma: export
+#include "common/types/type_type.h"  // IWYU pragma: export
 #include "common/types/types.h"
 
 namespace cel {
