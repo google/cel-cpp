@@ -39,6 +39,7 @@
 #include "common/types/double_type.h"  // IWYU pragma: export
 #include "common/types/double_wrapper_type.h"  // IWYU pragma: export
 #include "common/types/duration_type.h"  // IWYU pragma: export
+#include "common/types/dyn_type.h"  // IWYU pragma: export
 #include "common/types/types.h"
 
 namespace cel {
