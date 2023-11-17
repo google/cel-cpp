@@ -45,6 +45,7 @@
 #include "common/types/int_wrapper_type.h"  // IWYU pragma: export
 #include "common/types/null_type.h"  // IWYU pragma: export
 #include "common/types/string_type.h"  // IWYU pragma: export
+#include "common/types/string_wrapper_type.h"  // IWYU pragma: export
 #include "common/types/types.h"
 
 namespace cel {

@@ -40,6 +40,7 @@ class IntType;
 class IntWrapperType;
 class NullType;
 class StringType;
+class StringWrapperType;
 
 class TypeView;
 class AnyTypeView;
@@ -56,6 +57,7 @@ class IntTypeView;
 class IntWrapperTypeView;
 class NullTypeView;
 class StringTypeView;
+class StringWrapperTypeView;
 
 namespace common_internal {
 
@@ -68,7 +70,8 @@ struct IsTypeAlternative
           std::is_same<DoubleWrapperType, T>, std::is_same<DurationType, T>,
           std::is_same<DynType, T>, std::is_same<ErrorType, T>,
           std::is_same<IntType, T>, std::is_same<IntWrapperType, T>,
-          std::is_same<NullType, T>, std::is_same<StringType, T>>> {};
+          std::is_same<NullType, T>, std::is_same<StringType, T>,
+          std::is_same<StringWrapperType, T>>> {};
 
 template <typename T>
 inline constexpr bool IsTypeAlternativeV = IsTypeAlternative<T>::value;
@@ -82,7 +85,7 @@ using TypeVariant = absl::variant<
 #endif
     AnyType, BoolType, BoolWrapperType, BytesType, BytesWrapperType, DoubleType,
     DoubleWrapperType, DurationType, DynType, ErrorType, IntType,
-    IntWrapperType, NullType, StringType>;
+    IntWrapperType, NullType, StringType, StringWrapperType>;
 
 template <typename T>
 struct IsTypeViewAlternative
@@ -95,7 +98,8 @@ struct IsTypeViewAlternative
           std::is_same<DurationTypeView, T>, std::is_same<DynTypeView, T>,
           std::is_same<ErrorTypeView, T>, std::is_same<IntTypeView, T>,
           std::is_same<IntWrapperTypeView, T>, std::is_same<NullTypeView, T>,
-          std::is_same<StringTypeView, T>>> {};
+          std::is_same<StringTypeView, T>,
+          std::is_same<StringWrapperTypeView, T>>> {};
 
 template <typename T>
 inline constexpr bool IsTypeViewAlternativeV = IsTypeViewAlternative<T>::value;
@@ -110,7 +114,7 @@ using TypeViewVariant = absl::variant<
     AnyTypeView, BoolTypeView, BoolWrapperTypeView, BytesTypeView,
     BytesWrapperTypeView, DoubleTypeView, DoubleWrapperTypeView,
     DurationTypeView, DynTypeView, ErrorTypeView, IntTypeView,
-    IntWrapperTypeView, NullTypeView, StringTypeView>;
+    IntWrapperTypeView, NullTypeView, StringTypeView, StringWrapperTypeView>;
 
 }  // namespace common_internal
 
