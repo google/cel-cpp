@@ -36,6 +36,7 @@
 #include "common/types/bool_wrapper_type.h"  // IWYU pragma: export
 #include "common/types/bytes_type.h"  // IWYU pragma: export
 #include "common/types/bytes_wrapper_type.h"  // IWYU pragma: export
+#include "common/types/double_type.h"  // IWYU pragma: export
 #include "common/types/types.h"
 
 namespace cel {
