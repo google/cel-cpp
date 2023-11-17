@@ -192,6 +192,7 @@ cc_test(
 cc_test(
     name = "sets_functions_benchmark_test",
     srcs = ["sets_functions_benchmark_test.cc"],
+    tags = ["benchmark"],
     deps = [
         ":sets_functions",
         "//base:data",
