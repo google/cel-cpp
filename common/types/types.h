@@ -44,6 +44,7 @@ class StringWrapperType;
 class TimestampType;
 class TypeType;
 class UintType;
+class UintWrapperType;
 
 class TypeView;
 class AnyTypeView;
@@ -64,6 +65,7 @@ class StringWrapperTypeView;
 class TimestampTypeView;
 class TypeTypeView;
 class UintTypeView;
+class UintWrapperTypeView;
 
 namespace common_internal {
 
@@ -78,7 +80,8 @@ struct IsTypeAlternative
           std::is_same<IntType, T>, std::is_same<IntWrapperType, T>,
           std::is_same<NullType, T>, std::is_same<StringType, T>,
           std::is_same<StringWrapperType, T>, std::is_same<TimestampType, T>,
-          std::is_same<TypeType, T>, std::is_same<UintType, T>>> {};
+          std::is_same<TypeType, T>, std::is_same<UintType, T>,
+          std::is_same<UintWrapperType, T>>> {};
 
 template <typename T>
 inline constexpr bool IsTypeAlternativeV = IsTypeAlternative<T>::value;
@@ -93,7 +96,7 @@ using TypeVariant = absl::variant<
     AnyType, BoolType, BoolWrapperType, BytesType, BytesWrapperType, DoubleType,
     DoubleWrapperType, DurationType, DynType, ErrorType, IntType,
     IntWrapperType, NullType, StringType, StringWrapperType, TimestampType,
-    TypeType, UintType>;
+    TypeType, UintType, UintWrapperType>;
 
 template <typename T>
 struct IsTypeViewAlternative
@@ -109,7 +112,8 @@ struct IsTypeViewAlternative
           std::is_same<StringTypeView, T>,
           std::is_same<StringWrapperTypeView, T>,
           std::is_same<TimestampTypeView, T>, std::is_same<TypeTypeView, T>,
-          std::is_same<UintTypeView, T>>> {};
+          std::is_same<UintTypeView, T>,
+          std::is_same<UintWrapperTypeView, T>>> {};
 
 template <typename T>
 inline constexpr bool IsTypeViewAlternativeV = IsTypeViewAlternative<T>::value;
@@ -125,7 +129,7 @@ using TypeViewVariant = absl::variant<
     BytesWrapperTypeView, DoubleTypeView, DoubleWrapperTypeView,
     DurationTypeView, DynTypeView, ErrorTypeView, IntTypeView,
     IntWrapperTypeView, NullTypeView, StringTypeView, StringWrapperTypeView,
-    TimestampTypeView, TypeTypeView, UintTypeView>;
+    TimestampTypeView, TypeTypeView, UintTypeView, UintWrapperTypeView>;
 
 }  // namespace common_internal
 
