@@ -42,6 +42,7 @@
 #include "common/types/dyn_type.h"    // IWYU pragma: export
 #include "common/types/error_type.h"  // IWYU pragma: export
 #include "common/types/int_type.h"    // IWYU pragma: export
+#include "common/types/int_wrapper_type.h"  // IWYU pragma: export
 #include "common/types/types.h"
 
 namespace cel {
