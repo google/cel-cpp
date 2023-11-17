@@ -35,6 +35,7 @@ class DoubleType;
 class DoubleWrapperType;
 class DurationType;
 class DynType;
+class ErrorType;
 
 class TypeView;
 class AnyTypeView;
@@ -46,6 +47,7 @@ class DoubleTypeView;
 class DoubleWrapperTypeView;
 class DurationTypeView;
 class DynTypeView;
+class ErrorTypeView;
 
 namespace common_internal {
 
@@ -56,7 +58,7 @@ struct IsTypeAlternative
           std::is_same<BoolWrapperType, T>, std::is_same<BytesType, T>,
           std::is_same<BytesWrapperType, T>, std::is_same<DoubleType, T>,
           std::is_same<DoubleWrapperType, T>, std::is_same<DurationType, T>,
-          std::is_same<DynType, T>>> {};
+          std::is_same<DynType, T>, std::is_same<ErrorType, T>>> {};
 
 template <typename T>
 inline constexpr bool IsTypeAlternativeV = IsTypeAlternative<T>::value;
@@ -69,7 +71,7 @@ using TypeVariant = absl::variant<
     absl::monostate,
 #endif
     AnyType, BoolType, BoolWrapperType, BytesType, BytesWrapperType, DoubleType,
-    DoubleWrapperType, DurationType, DynType>;
+    DoubleWrapperType, DurationType, DynType, ErrorType>;
 
 template <typename T>
 struct IsTypeViewAlternative
@@ -79,7 +81,8 @@ struct IsTypeViewAlternative
           std::is_same<BytesWrapperTypeView, T>,
           std::is_same<DoubleTypeView, T>,
           std::is_same<DoubleWrapperTypeView, T>,
-          std::is_same<DurationTypeView, T>, std::is_same<DynTypeView, T>>> {};
+          std::is_same<DurationTypeView, T>, std::is_same<DynTypeView, T>,
+          std::is_same<ErrorTypeView, T>>> {};
 
 template <typename T>
 inline constexpr bool IsTypeViewAlternativeV = IsTypeViewAlternative<T>::value;
@@ -93,7 +96,7 @@ using TypeViewVariant = absl::variant<
 #endif
     AnyTypeView, BoolTypeView, BoolWrapperTypeView, BytesTypeView,
     BytesWrapperTypeView, DoubleTypeView, DoubleWrapperTypeView,
-    DurationTypeView, DynTypeView>;
+    DurationTypeView, DynTypeView, ErrorTypeView>;
 
 }  // namespace common_internal
 
