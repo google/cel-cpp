@@ -51,6 +51,7 @@
 #include "common/types/types.h"
 #include "common/types/uint_type.h"  // IWYU pragma: export
 #include "common/types/uint_wrapper_type.h"  // IWYU pragma: export
+#include "common/types/unknown_type.h"  // IWYU pragma: export
 
 namespace cel {
 
