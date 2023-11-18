@@ -27,7 +27,6 @@ class ValueInterface;
 
 namespace common_internal {
 
-struct MapTypeData;
 class DataInterface;
 
 // `DataInterface` is the abstract base class of `cel::ValueInterface` and
@@ -54,7 +53,6 @@ class DataInterface {
  private:
   friend class cel::TypeInterface;
   friend class cel::ValueInterface;
-  friend struct MapTypeData;
   friend struct NativeTypeTraits<DataInterface>;
 
   ABSL_ATTRIBUTE_PURE_FUNCTION

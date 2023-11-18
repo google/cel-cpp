@@ -45,6 +45,7 @@
 #include "common/types/int_type.h"    // IWYU pragma: export
 #include "common/types/int_wrapper_type.h"  // IWYU pragma: export
 #include "common/types/list_type.h"  // IWYU pragma: export
+#include "common/types/map_type.h"   // IWYU pragma: export
 #include "common/types/null_type.h"  // IWYU pragma: export
 #include "common/types/string_type.h"  // IWYU pragma: export
 #include "common/types/string_wrapper_type.h"  // IWYU pragma: export
@@ -532,6 +533,14 @@ struct ListTypeData final {
   Type element;
 };
 
+struct MapTypeData final {
+  explicit MapTypeData(Type key, Type value) noexcept
+      : key(std::move(key)), value(std::move(value)) {}
+
+  Type key;
+  Type value;
+};
+
 }  // namespace common_internal
 
 inline ListType::ListType(ListTypeView other) : data_(other.data_) {}
@@ -563,6 +572,41 @@ inline bool operator==(ListTypeView lhs, ListTypeView rhs) {
 template <typename H>
 inline H AbslHashValue(H state, ListTypeView type) {
   return H::combine(std::move(state), type.kind(), type.element());
+}
+
+inline MapType::MapType(MapTypeView other) : data_(other.data_) {}
+
+inline MapType::MapType(MemoryManagerRef memory_manager, Type key, Type value)
+    : data_(memory_manager.MakeShared<common_internal::MapTypeData>(
+          std::move(key), std::move(value))) {}
+
+inline TypeView MapType::key() const { return data_->key; }
+
+inline TypeView MapType::value() const { return data_->value; }
+
+inline bool operator==(const MapType& lhs, const MapType& rhs) {
+  return &lhs == &rhs || (lhs.key() == rhs.key() && lhs.value() == rhs.value());
+}
+
+template <typename H>
+inline H AbslHashValue(H state, const MapType& type) {
+  return H::combine(std::move(state), type.kind(), type.key(), type.value());
+}
+
+inline MapTypeView::MapTypeView(const MapType& type) noexcept
+    : data_(type.data_) {}
+
+inline TypeView MapTypeView::key() const { return data_->key; }
+
+inline TypeView MapTypeView::value() const { return data_->value; }
+
+inline bool operator==(MapTypeView lhs, MapTypeView rhs) {
+  return lhs.key() == rhs.key() && lhs.value() == rhs.value();
+}
+
+template <typename H>
+inline H AbslHashValue(H state, MapTypeView type) {
+  return H::combine(std::move(state), type.kind(), type.key(), type.value());
 }
 
 }  // namespace cel
