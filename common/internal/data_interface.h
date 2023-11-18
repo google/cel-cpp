@@ -27,7 +27,6 @@ class ValueInterface;
 
 namespace common_internal {
 
-struct ListTypeData;
 struct MapTypeData;
 class DataInterface;
 
@@ -55,7 +54,6 @@ class DataInterface {
  private:
   friend class cel::TypeInterface;
   friend class cel::ValueInterface;
-  friend struct ListTypeData;
   friend struct MapTypeData;
   friend struct NativeTypeTraits<DataInterface>;
 

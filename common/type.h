@@ -28,6 +28,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
 #include "common/casting.h"
+#include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type_interface.h"  // IWYU pragma: export
 #include "common/type_kind.h"
@@ -43,6 +44,7 @@
 #include "common/types/error_type.h"  // IWYU pragma: export
 #include "common/types/int_type.h"    // IWYU pragma: export
 #include "common/types/int_wrapper_type.h"  // IWYU pragma: export
+#include "common/types/list_type.h"  // IWYU pragma: export
 #include "common/types/null_type.h"  // IWYU pragma: export
 #include "common/types/string_type.h"  // IWYU pragma: export
 #include "common/types/string_wrapper_type.h"  // IWYU pragma: export
@@ -276,13 +278,13 @@ struct CompositionTraits<Type> final {
   }
 
   template <typename U>
-  static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, const U&&>
-  Get(const Type&& type) {
+  static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U> Get(
+      const Type&& type) {
     return absl::get<U>(std::move(type.variant_));
   }
 
   template <typename U>
-  static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U&&> Get(
+  static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U> Get(
       Type&& type) {
     return absl::get<U>(std::move(type.variant_));
   }
@@ -517,6 +519,50 @@ inline Type::Type(TypeView other) : variant_(other.ToVariant()) {}
 inline Type& Type::operator=(TypeView other) {
   variant_ = other.ToVariant();
   return *this;
+}
+
+// Now that Type and TypeView are complete, we can define various parts of list,
+// map, opaque, and struct which depend on Type and TypeView.
+
+namespace common_internal {
+
+struct ListTypeData final {
+  explicit ListTypeData(Type element) noexcept : element(std::move(element)) {}
+
+  Type element;
+};
+
+}  // namespace common_internal
+
+inline ListType::ListType(ListTypeView other) : data_(other.data_) {}
+
+inline ListType::ListType(MemoryManagerRef memory_manager, Type element)
+    : data_(memory_manager.MakeShared<common_internal::ListTypeData>(
+          std::move(element))) {}
+
+inline TypeView ListType::element() const { return data_->element; }
+
+inline bool operator==(const ListType& lhs, const ListType& rhs) {
+  return &lhs == &rhs || lhs.element() == rhs.element();
+}
+
+template <typename H>
+inline H AbslHashValue(H state, const ListType& type) {
+  return H::combine(std::move(state), type.kind(), type.element());
+}
+
+inline ListTypeView::ListTypeView(const ListType& type) noexcept
+    : data_(type.data_) {}
+
+inline TypeView ListTypeView::element() const { return data_->element; }
+
+inline bool operator==(ListTypeView lhs, ListTypeView rhs) {
+  return lhs.element() == rhs.element();
+}
+
+template <typename H>
+inline H AbslHashValue(H state, ListTypeView type) {
+  return H::combine(std::move(state), type.kind(), type.element());
 }
 
 }  // namespace cel

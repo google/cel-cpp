@@ -38,6 +38,7 @@ class DynType;
 class ErrorType;
 class IntType;
 class IntWrapperType;
+class ListType;
 class NullType;
 class StringType;
 class StringWrapperType;
@@ -60,6 +61,7 @@ class DynTypeView;
 class ErrorTypeView;
 class IntTypeView;
 class IntWrapperTypeView;
+class ListTypeView;
 class NullTypeView;
 class StringTypeView;
 class StringWrapperTypeView;
@@ -80,10 +82,11 @@ struct IsTypeAlternative
           std::is_same<DoubleWrapperType, T>, std::is_same<DurationType, T>,
           std::is_same<DynType, T>, std::is_same<ErrorType, T>,
           std::is_same<IntType, T>, std::is_same<IntWrapperType, T>,
-          std::is_same<NullType, T>, std::is_same<StringType, T>,
-          std::is_same<StringWrapperType, T>, std::is_same<TimestampType, T>,
-          std::is_same<TypeType, T>, std::is_same<UintType, T>,
-          std::is_same<UintWrapperType, T>, std::is_same<UnknownType, T>>> {};
+          std::is_same<ListType, T>, std::is_same<NullType, T>,
+          std::is_same<StringType, T>, std::is_same<StringWrapperType, T>,
+          std::is_same<TimestampType, T>, std::is_same<TypeType, T>,
+          std::is_same<UintType, T>, std::is_same<UintWrapperType, T>,
+          std::is_same<UnknownType, T>>> {};
 
 template <typename T>
 inline constexpr bool IsTypeAlternativeV = IsTypeAlternative<T>::value;
@@ -97,8 +100,8 @@ using TypeVariant = absl::variant<
 #endif
     AnyType, BoolType, BoolWrapperType, BytesType, BytesWrapperType, DoubleType,
     DoubleWrapperType, DurationType, DynType, ErrorType, IntType,
-    IntWrapperType, NullType, StringType, StringWrapperType, TimestampType,
-    TypeType, UintType, UintWrapperType, UnknownType>;
+    IntWrapperType, ListType, NullType, StringType, StringWrapperType,
+    TimestampType, TypeType, UintType, UintWrapperType, UnknownType>;
 
 template <typename T>
 struct IsTypeViewAlternative
@@ -110,8 +113,8 @@ struct IsTypeViewAlternative
           std::is_same<DoubleWrapperTypeView, T>,
           std::is_same<DurationTypeView, T>, std::is_same<DynTypeView, T>,
           std::is_same<ErrorTypeView, T>, std::is_same<IntTypeView, T>,
-          std::is_same<IntWrapperTypeView, T>, std::is_same<NullTypeView, T>,
-          std::is_same<StringTypeView, T>,
+          std::is_same<IntWrapperTypeView, T>, std::is_same<ListTypeView, T>,
+          std::is_same<NullTypeView, T>, std::is_same<StringTypeView, T>,
           std::is_same<StringWrapperTypeView, T>,
           std::is_same<TimestampTypeView, T>, std::is_same<TypeTypeView, T>,
           std::is_same<UintTypeView, T>, std::is_same<UintWrapperTypeView, T>,
@@ -130,9 +133,9 @@ using TypeViewVariant = absl::variant<
     AnyTypeView, BoolTypeView, BoolWrapperTypeView, BytesTypeView,
     BytesWrapperTypeView, DoubleTypeView, DoubleWrapperTypeView,
     DurationTypeView, DynTypeView, ErrorTypeView, IntTypeView,
-    IntWrapperTypeView, NullTypeView, StringTypeView, StringWrapperTypeView,
-    TimestampTypeView, TypeTypeView, UintTypeView, UintWrapperTypeView,
-    UnknownTypeView>;
+    IntWrapperTypeView, ListTypeView, NullTypeView, StringTypeView,
+    StringWrapperTypeView, TimestampTypeView, TypeTypeView, UintTypeView,
+    UintWrapperTypeView, UnknownTypeView>;
 
 }  // namespace common_internal
 

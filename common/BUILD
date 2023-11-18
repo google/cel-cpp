@@ -249,6 +249,7 @@ cc_library(
     ],
     deps = [
         ":casting",
+        ":memory",
         ":native_type",
         ":type_kind",
         "//common/internal:data_interface",
@@ -256,6 +257,7 @@ cc_library(
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/meta:type_traits",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:variant",
     ],
@@ -267,6 +269,7 @@ cc_test(
     deps = [
         ":casting",
         ":data",
+        ":memory",
         ":native_type",
         "//internal:testing",
         "@com_google_absl//absl/hash",
