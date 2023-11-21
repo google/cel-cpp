@@ -64,6 +64,10 @@ std::string NativeTypeId::DebugString() const {
   if (status != 0 || demangled == nullptr) {
     return std::string(rep_->name());
   }
+  while (length != 0 && demangled.get()[length - 1] == '\0') {
+    // length includes the null terminator, remove it.
+    --length;
+  }
   return std::string(demangled.get(), length);
 #endif
 #else

@@ -14,6 +14,7 @@
 
 #include "common/native_type.h"
 
+#include <cstring>
 #include <sstream>
 
 #include "absl/hash/hash_testing.h"
@@ -24,6 +25,7 @@ namespace {
 
 using testing::IsEmpty;
 using testing::Not;
+using testing::SizeIs;
 
 struct Type1 {};
 
@@ -42,7 +44,9 @@ TEST(NativeTypeId, DebugString) {
   out << NativeTypeId();
   EXPECT_THAT(out.str(), IsEmpty());
   out << NativeTypeId::For<Type1>();
-  EXPECT_THAT(out.str(), Not(IsEmpty()));
+  auto string = out.str();
+  EXPECT_THAT(string, Not(IsEmpty()));
+  EXPECT_THAT(string, SizeIs(std::strlen(string.c_str())));
 }
 
 struct TestType {};
