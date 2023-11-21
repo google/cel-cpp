@@ -303,14 +303,14 @@ struct EnableSharedFromThis
     : public virtual common_internal::ReferenceCountFromThis {
  protected:
   Shared<T> shared_from_this() noexcept {
-    auto* const derived = reinterpret_cast<T*>(this);
+    auto* const derived = static_cast<T*>(this);
     auto* const refcount = common_internal::GetReferenceCountForThat(*this);
     common_internal::StrongRef(refcount);
     return Shared<T>(common_internal::kAdoptRef, derived, refcount);
   }
 
   Shared<const T> shared_from_this() const noexcept {
-    auto* const derived = reinterpret_cast<const T*>(this);
+    auto* const derived = static_cast<const T*>(this);
     auto* const refcount = common_internal::GetReferenceCountForThat(*this);
     common_internal::StrongRef(refcount);
     return Shared<const T>(common_internal::kAdoptRef, derived, refcount);
