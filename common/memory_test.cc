@@ -130,13 +130,18 @@ class SkippableDestructor {
 
   ~SkippableDestructor() { deleted_ = true; }
 
-  friend bool CelIsDestructorSkippable(const SkippableDestructor&) {
-    return true;
-  }
-
  private:
   bool& deleted_;
 };
+
+}  // namespace
+
+template <>
+struct NativeTypeTraits<SkippableDestructor> final {
+  static bool SkipDestructor(const SkippableDestructor&) { return true; }
+};
+
+namespace {
 
 TEST(RegionalMemoryManager, SkippableDestructor) {
   bool deleted = false;

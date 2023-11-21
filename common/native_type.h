@@ -151,6 +151,42 @@ inline std::ostream& operator<<(std::ostream& out, NativeTypeId id) {
   return out << id.DebugString();
 }
 
+class NativeType final {
+ public:
+  // Determines at runtime whether calling the destructor of `T` can be skipped
+  // when `T` was allocated by a pooling memory manager.
+  template <typename T>
+  ABSL_MUST_USE_RESULT static bool SkipDestructor(const T& type) {
+    if constexpr (std::is_trivially_destructible_v<T>) {
+      return true;
+    } else if constexpr (HasNativeTypeTraitsSkipDestructorV<T>) {
+      return NativeTypeTraits<T>::SkipDestructor(type);
+    } else {
+      return false;
+    }
+  }
+
+ private:
+  template <typename, typename = void>
+  struct HasNativeTypeTraitsSkipDestructor : std::false_type {};
+
+  template <typename T>
+  struct HasNativeTypeTraitsSkipDestructor<
+      T, std::void_t<decltype(NativeTypeTraits<T>::SkipDestructor(
+             std::declval<const T&>()))>> : std::true_type {};
+
+  template <typename T>
+  static inline constexpr bool HasNativeTypeTraitsSkipDestructorV =
+      HasNativeTypeTraitsSkipDestructor<T>::value;
+
+  NativeType() = delete;
+  NativeType(const NativeType&) = delete;
+  NativeType(NativeType&&) = delete;
+  ~NativeType() = delete;
+  NativeType& operator=(const NativeType&) = delete;
+  NativeType& operator=(NativeType&&) = delete;
+};
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_NATIVE_TYPE_H_

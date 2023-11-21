@@ -194,6 +194,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Shared final {
   friend class SharedView;
   template <typename U>
   friend struct EnableSharedFromThis;
+  friend struct NativeTypeTraits<Shared<T>>;
 
   Shared(common_internal::AdoptRef, T* value,
          const common_internal::ReferenceCount* refcount) noexcept
@@ -203,6 +204,13 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Shared final {
 
   T* value_ = nullptr;
   const common_internal::ReferenceCount* refcount_ = nullptr;
+};
+
+template <typename T>
+struct NativeTypeTraits<Shared<T>> final {
+  static bool SkipDestructor(const Shared<T>& shared) {
+    return shared.refcount_ == nullptr;
+  }
 };
 
 // `SharedView` is a wrapper on top of `Shared`. It is roughly equivalent to
@@ -462,18 +470,7 @@ class PoolingMemoryManager {
     CEL_INTERNAL_TRY {
       ptr = ::new (addr) U(std::forward<Args>(args)...);
       if constexpr (!std::is_trivially_destructible_v<U>) {
-        if constexpr (HasCelIsDestructorSkippable<U>::value) {
-          CEL_INTERNAL_TRY {
-            if (!CelIsDestructorSkippable(
-                    *static_cast<std::add_const_t<U>*>(ptr))) {
-              OwnCustomDestructor(ptr, &DefaultDestructor<U>);
-            }
-          }
-          CEL_INTERNAL_CATCH_ANY {
-            ptr->~U();
-            CEL_INTERNAL_RETHROW;
-          }
-        } else {
+        if (!NativeType::SkipDestructor(*ptr)) {
           CEL_INTERNAL_TRY { OwnCustomDestructor(ptr, &DefaultDestructor<U>); }
           CEL_INTERNAL_CATCH_ANY {
             ptr->~U();
@@ -517,15 +514,6 @@ class PoolingMemoryManager {
   friend class Allocator;
   template <typename T>
   friend struct base_internal::HandleFactory;
-
-  template <typename, typename = void>
-  struct HasCelIsDestructorSkippable : std::false_type {};
-
-  template <typename T>
-  struct HasCelIsDestructorSkippable<
-      T,
-      std::void_t<decltype(CelIsDestructorSkippable(std::declval<const T&>()))>>
-      : std::true_type {};
 
   template <typename T>
   static void DefaultDestructor(void* ptr) {

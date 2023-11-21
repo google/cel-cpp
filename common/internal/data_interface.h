@@ -41,12 +41,6 @@ class DataInterface {
   DataInterface& operator=(const DataInterface&) = delete;
   DataInterface& operator=(DataInterface&&) = delete;
 
-  // ADL used by `cel::MemoryManager` to determine whether the destructor needs
-  // to be called when using manual memory management.
-  friend bool CelIsDestructorSkippable(const DataInterface& data) {
-    return false;
-  }
-
  protected:
   DataInterface() = default;
 

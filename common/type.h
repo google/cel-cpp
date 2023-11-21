@@ -256,6 +256,22 @@ struct NativeTypeTraits<Type> final {
         },
         type.variant_);
   }
+
+  static bool SkipDestructor(const Type& type) {
+    return absl::visit(
+        [](const auto& alternative) -> bool {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // Only present in debug builds.
+            ABSL_LOG(FATAL) << "use of moved-from Type";  // Crash OK
+            ABSL_UNREACHABLE();
+          } else {
+            return NativeType::SkipDestructor(alternative);
+          }
+        },
+        type.variant_);
+  }
 };
 
 template <>
@@ -514,6 +530,7 @@ static_assert(std::is_nothrow_move_constructible_v<TypeView>);
 static_assert(std::is_nothrow_move_assignable_v<TypeView>);
 static_assert(std::is_nothrow_swappable_v<TypeView>);
 static_assert(std::is_trivially_copyable_v<TypeView>);
+static_assert(std::is_trivially_destructible_v<TypeView>);
 
 inline Type::Type(TypeView other) : variant_(other.ToVariant()) {}
 
@@ -530,18 +547,33 @@ namespace common_internal {
 struct ListTypeData final {
   explicit ListTypeData(Type element) noexcept : element(std::move(element)) {}
 
-  Type element;
+  const Type element;
 };
 
 struct MapTypeData final {
   explicit MapTypeData(Type key, Type value) noexcept
       : key(std::move(key)), value(std::move(value)) {}
 
-  Type key;
-  Type value;
+  const Type key;
+  const Type value;
 };
 
 }  // namespace common_internal
+
+template <>
+struct NativeTypeTraits<common_internal::ListTypeData> final {
+  static bool SkipDestructor(const common_internal::ListTypeData& data) {
+    return NativeType::SkipDestructor(data.element);
+  }
+};
+
+template <>
+struct NativeTypeTraits<common_internal::MapTypeData> final {
+  static bool SkipDestructor(const common_internal::MapTypeData& data) {
+    return NativeType::SkipDestructor(data.key) &&
+           NativeType::SkipDestructor(data.value);
+  }
+};
 
 inline ListType::ListType(ListTypeView other) : data_(other.data_) {}
 

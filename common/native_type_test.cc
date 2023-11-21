@@ -66,5 +66,41 @@ TEST(NativeTypeId, Of) {
   EXPECT_EQ(NativeTypeId::Of(TestType()), NativeTypeId::For<TestType>());
 }
 
+struct TrivialObject {};
+
+TEST(NativeType, SkipDestructorTrivial) {
+  EXPECT_TRUE(NativeType::SkipDestructor(TrivialObject{}));
+}
+
+struct NonTrivialObject {
+  // Not "= default" on purpose to make this non-trivial.
+  // NOLINTNEXTLINE(modernize-use-equals-default)
+  ~NonTrivialObject() {}
+};
+
+TEST(NativeType, SkipDestructorNonTrivial) {
+  EXPECT_FALSE(NativeType::SkipDestructor(NonTrivialObject{}));
+}
+
+struct SkippableDestructObject {
+  // Not "= default" on purpose to make this non-trivial.
+  // NOLINTNEXTLINE(modernize-use-equals-default)
+  ~SkippableDestructObject() {}
+};
+
 }  // namespace
+
+template <>
+struct NativeTypeTraits<SkippableDestructObject> final {
+  static bool SkipDestructor(const SkippableDestructObject&) { return true; }
+};
+
+namespace {
+
+TEST(NativeType, SkipDestructorTraits) {
+  EXPECT_TRUE(NativeType::SkipDestructor(SkippableDestructObject{}));
+}
+
+}  // namespace
+
 }  // namespace cel

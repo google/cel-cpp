@@ -25,6 +25,7 @@
 #include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
 #include "common/memory.h"
+#include "common/native_type.h"
 #include "common/type_kind.h"
 
 namespace cel {
@@ -70,6 +71,7 @@ class ListType final {
 
  private:
   friend class ListTypeView;
+  friend struct NativeTypeTraits<ListType>;
 
   Shared<const common_internal::ListTypeData> data_;
 };
@@ -88,6 +90,13 @@ H AbslHashValue(H state, const ListType& type);
 inline std::ostream& operator<<(std::ostream& out, const ListType& type) {
   return out << type.DebugString();
 }
+
+template <>
+struct NativeTypeTraits<ListType> final {
+  static bool SkipDestructor(const ListType& type) {
+    return NativeType::SkipDestructor(type.data_);
+  }
+};
 
 class ListTypeView final {
  public:

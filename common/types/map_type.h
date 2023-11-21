@@ -25,6 +25,7 @@
 #include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
 #include "common/memory.h"
+#include "common/native_type.h"
 #include "common/type_kind.h"
 
 namespace cel {
@@ -72,6 +73,7 @@ class MapType final {
 
  private:
   friend class MapTypeView;
+  friend struct NativeTypeTraits<MapType>;
 
   Shared<const common_internal::MapTypeData> data_;
 };
@@ -90,6 +92,13 @@ H AbslHashValue(H state, const MapType& type);
 inline std::ostream& operator<<(std::ostream& out, const MapType& type) {
   return out << type.DebugString();
 }
+
+template <>
+struct NativeTypeTraits<MapType> final {
+  static bool SkipDestructor(const MapType& type) {
+    return NativeType::SkipDestructor(type.data_);
+  }
+};
 
 class MapTypeView final {
  public:
