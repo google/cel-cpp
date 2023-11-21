@@ -276,3 +276,35 @@ cc_test(
         "@com_google_absl//absl/types:optional",
     ],
 )
+
+cc_library(
+    name = "sized_input_view",
+    hdrs = ["sized_input_view.h"],
+    deps = [
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log:absl_check",
+    ],
+)
+
+cc_test(
+    name = "sized_input_view_test",
+    srcs = ["sized_input_view_test.cc"],
+    deps = [
+        ":sized_input_view",
+        "//internal:testing",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_test(
+    name = "sized_input_view_benchmark_test",
+    srcs = ["sized_input_view_benchmark_test.cc"],
+    tags = ["benchmark"],
+    deps = [
+        ":sized_input_view",
+        "//internal:benchmark",
+        "//internal:testing",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
