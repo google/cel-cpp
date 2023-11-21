@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_H_
 
+#include <algorithm>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -22,6 +23,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/optimization.h"
+#include "absl/hash/hash.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/meta/type_traits.h"
@@ -30,6 +32,7 @@
 #include "common/casting.h"
 #include "common/memory.h"
 #include "common/native_type.h"
+#include "common/sized_input_view.h"
 #include "common/type_interface.h"  // IWYU pragma: export
 #include "common/type_kind.h"
 #include "common/types/any_type.h"   // IWYU pragma: export
@@ -47,6 +50,7 @@
 #include "common/types/list_type.h"  // IWYU pragma: export
 #include "common/types/map_type.h"   // IWYU pragma: export
 #include "common/types/null_type.h"  // IWYU pragma: export
+#include "common/types/opaque_type.h"  // IWYU pragma: export
 #include "common/types/string_type.h"  // IWYU pragma: export
 #include "common/types/string_wrapper_type.h"  // IWYU pragma: export
 #include "common/types/timestamp_type.h"  // IWYU pragma: export
@@ -89,11 +93,28 @@ class Type final {
   Type& operator=(TypeView other);
 
   template <typename T,
+            typename = std::enable_if_t<common_internal::IsTypeInterfaceV<T>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Type(const Shared<const T>& interface) noexcept
+      : variant_(
+            absl::in_place_type<common_internal::BaseTypeAlternativeForT<T>>,
+            interface) {}
+
+  template <typename T,
+            typename = std::enable_if_t<common_internal::IsTypeInterfaceV<T>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Type(Shared<const T>&& interface) noexcept
+      : variant_(
+            absl::in_place_type<common_internal::BaseTypeAlternativeForT<T>>,
+            std::move(interface)) {}
+
+  template <typename T,
             typename = std::enable_if_t<
                 common_internal::IsTypeAlternativeV<absl::remove_cvref_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   Type(T&& alternative) noexcept
-      : variant_(absl::in_place_type<absl::remove_cvref_t<T>>,
+      : variant_(absl::in_place_type<common_internal::BaseTypeAlternativeForT<
+                     absl::remove_cvref_t<T>>>,
                  std::forward<T>(alternative)) {}
 
   template <typename T,
@@ -101,7 +122,9 @@ class Type final {
                 common_internal::IsTypeAlternativeV<absl::remove_cvref_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   Type& operator=(T&& type) noexcept {
-    variant_.emplace<absl::remove_cvref_t<T>>(std::forward<T>(type));
+    variant_.emplace<
+        common_internal::BaseTypeAlternativeForT<absl::remove_cvref_t<T>>>(
+        std::forward<T>(type));
     return *this;
   }
 
@@ -279,31 +302,57 @@ struct CompositionTraits<Type> final {
   template <typename U>
   static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, bool> HasA(
       const Type& type) {
-    return absl::holds_alternative<U>(type.variant_);
+    using Base = common_internal::BaseTypeAlternativeForT<U>;
+    if constexpr (std::is_same_v<Base, U>) {
+      return absl::holds_alternative<U>(type.variant_);
+    } else {
+      return absl::holds_alternative<Base>(type.variant_) &&
+             InstanceOf<U>(Get<U>(type));
+    }
   }
 
   template <typename U>
   static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, const U&> Get(
       const Type& type) {
-    return absl::get<U>(type.variant_);
+    using Base = common_internal::BaseTypeAlternativeForT<U>;
+    if constexpr (std::is_same_v<Base, U>) {
+      return absl::get<U>(type.variant_);
+    } else {
+      return Cast<U>(absl::get<Base>(type.variant_));
+    }
   }
 
   template <typename U>
   static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U&> Get(
       Type& type) {
-    return absl::get<U>(type.variant_);
+    using Base = common_internal::BaseTypeAlternativeForT<U>;
+    if constexpr (std::is_same_v<Base, U>) {
+      return absl::get<U>(type.variant_);
+    } else {
+      return Cast<U>(absl::get<Base>(type.variant_));
+    }
   }
 
   template <typename U>
   static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U> Get(
       const Type&& type) {
-    return absl::get<U>(std::move(type.variant_));
+    using Base = common_internal::BaseTypeAlternativeForT<U>;
+    if constexpr (std::is_same_v<Base, U>) {
+      return absl::get<U>(std::move(type.variant_));
+    } else {
+      return Cast<U>(absl::get<Base>(std::move(type.variant_)));
+    }
   }
 
   template <typename U>
   static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U> Get(
       Type&& type) {
-    return absl::get<U>(std::move(type.variant_));
+    using Base = common_internal::BaseTypeAlternativeForT<U>;
+    if constexpr (std::is_same_v<Base, U>) {
+      return absl::get<U>(std::move(type.variant_));
+    } else {
+      return Cast<U>(absl::get<Base>(std::move(type.variant_)));
+    }
   }
 };
 
@@ -337,7 +386,8 @@ class TypeView final {
             typename = std::enable_if_t<common_internal::IsTypeAlternativeV<T>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   TypeView(const T& alternative ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : variant_(absl::in_place_type<typename T::view_alternative_type>,
+      : variant_(absl::in_place_type<
+                     common_internal::BaseTypeViewAlternativeForT<T>>,
                  alternative) {}
 
   template <typename T,
@@ -345,8 +395,18 @@ class TypeView final {
                 absl::remove_cvref_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   TypeView(T&& alternative) noexcept
-      : variant_(absl::in_place_type<absl::remove_cvref_t<T>>,
-                 std::forward<T>(alternative)) {}
+      : variant_(
+            absl::in_place_type<common_internal::BaseTypeViewAlternativeForT<
+                absl::remove_cvref_t<T>>>,
+            std::forward<T>(alternative)) {}
+
+  template <typename T,
+            typename = std::enable_if_t<common_internal::IsTypeInterfaceV<T>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  TypeView(SharedView<const T> interface) noexcept
+      : variant_(absl::in_place_type<
+                     common_internal::BaseTypeViewAlternativeForT<T>>,
+                 interface) {}
 
   TypeKind kind() const {
     return absl::visit(
@@ -506,13 +566,23 @@ struct CompositionTraits<TypeView> final {
   template <typename U>
   static std::enable_if_t<common_internal::IsTypeViewAlternativeV<U>, bool>
   HasA(TypeView type) {
-    return absl::holds_alternative<U>(type.variant_);
+    using Base = common_internal::BaseTypeViewAlternativeForT<U>;
+    if constexpr (std::is_same_v<Base, U>) {
+      return absl::holds_alternative<U>(type.variant_);
+    } else {
+      return InstanceOf<U>(Get<Base>(type));
+    }
   }
 
   template <typename U>
   static std::enable_if_t<common_internal::IsTypeViewAlternativeV<U>, U> Get(
       TypeView type) {
-    return absl::get<U>(type.variant_);
+    using Base = common_internal::BaseTypeViewAlternativeForT<U>;
+    if constexpr (std::is_same_v<Base, U>) {
+      return absl::get<U>(type.variant_);
+    } else {
+      return Cast<U>(absl::get<Base>(type.variant_));
+    }
   }
 };
 
@@ -639,6 +709,66 @@ inline bool operator==(MapTypeView lhs, MapTypeView rhs) {
 template <typename H>
 inline H AbslHashValue(H state, MapTypeView type) {
   return H::combine(std::move(state), type.kind(), type.key(), type.value());
+}
+
+inline SizedInputView<TypeView> OpaqueType::parameters() const {
+  return interface_->parameters();
+}
+
+inline bool operator==(const OpaqueType& lhs, const OpaqueType& rhs) {
+  if (lhs.interface_.operator->() == rhs.interface_.operator->()) {
+    return true;
+  }
+  auto lhs_parameters = lhs.parameters();
+  auto rhs_parameters = rhs.parameters();
+  if (lhs_parameters.size() != rhs_parameters.size()) {
+    return false;
+  }
+  return lhs.name() == rhs.name() &&
+         std::equal(lhs_parameters.begin(), lhs_parameters.end(),
+                    rhs_parameters.begin()) &&
+         lhs.interface_->Equals(*rhs.interface_);
+}
+
+template <typename H>
+inline H AbslHashValue(H state, const OpaqueType& type) {
+  state = H::combine(std::move(state), type.kind(), type.name());
+  auto parameters = type.parameters();
+  for (const auto& parameter : parameters) {
+    state = H::combine(std::move(state), parameter);
+  }
+  type.interface_->HashValue(absl::HashState::Create(&state));
+  return std::move(state);
+}
+
+inline SizedInputView<TypeView> OpaqueTypeView::parameters() const {
+  return interface_->parameters();
+}
+
+inline bool operator==(OpaqueTypeView lhs, OpaqueTypeView rhs) {
+  if (lhs.interface_.operator->() == rhs.interface_.operator->()) {
+    return true;
+  }
+  auto lhs_parameters = lhs.parameters();
+  auto rhs_parameters = rhs.parameters();
+  if (lhs_parameters.size() != rhs_parameters.size()) {
+    return false;
+  }
+  return lhs.name() == rhs.name() &&
+         std::equal(lhs_parameters.begin(), lhs_parameters.end(),
+                    rhs_parameters.begin()) &&
+         lhs.interface_->Equals(*rhs.interface_);
+}
+
+template <typename H>
+inline H AbslHashValue(H state, OpaqueTypeView type) {
+  state = H::combine(std::move(state), type.kind(), type.name());
+  auto parameters = type.parameters();
+  for (const auto& parameter : parameters) {
+    state = H::combine(std::move(state), parameter);
+  }
+  type.interface_->HashValue(absl::HashState::Create(&state));
+  return std::move(state);
 }
 
 }  // namespace cel

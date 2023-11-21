@@ -24,6 +24,7 @@
 namespace cel {
 
 class TypeInterface;
+class OpaqueTypeInterface;
 
 class Type;
 class AnyType;
@@ -41,6 +42,7 @@ class IntWrapperType;
 class ListType;
 class MapType;
 class NullType;
+class OpaqueType;
 class StringType;
 class StringWrapperType;
 class TimestampType;
@@ -65,6 +67,7 @@ class IntWrapperTypeView;
 class ListTypeView;
 class MapTypeView;
 class NullTypeView;
+class OpaqueTypeView;
 class StringTypeView;
 class StringWrapperTypeView;
 class TimestampTypeView;
@@ -74,6 +77,21 @@ class UintWrapperTypeView;
 class UnknownTypeView;
 
 namespace common_internal {
+
+template <typename Base, typename Derived>
+struct IsDerivedFrom
+    : std::bool_constant<
+          std::conjunction_v<std::negation<std::is_same<Base, Derived>>,
+                             std::is_base_of<Base, Derived>>> {};
+
+template <typename Base, typename Derived>
+inline constexpr bool IsDerivedFromV = IsDerivedFrom<Base, Derived>::value;
+
+template <typename T>
+struct IsTypeInterface : IsDerivedFrom<TypeInterface, T> {};
+
+template <typename T>
+inline constexpr bool IsTypeInterfaceV = IsTypeInterface<T>::value;
 
 template <typename T>
 struct IsTypeAlternative
@@ -85,10 +103,11 @@ struct IsTypeAlternative
           std::is_same<DynType, T>, std::is_same<ErrorType, T>,
           std::is_same<IntType, T>, std::is_same<IntWrapperType, T>,
           std::is_same<ListType, T>, std::is_same<MapType, T>,
-          std::is_same<NullType, T>, std::is_same<StringType, T>,
-          std::is_same<StringWrapperType, T>, std::is_same<TimestampType, T>,
-          std::is_same<TypeType, T>, std::is_same<UintType, T>,
-          std::is_same<UintWrapperType, T>, std::is_same<UnknownType, T>>> {};
+          std::is_same<NullType, T>, std::is_base_of<OpaqueType, T>,
+          std::is_same<StringType, T>, std::is_same<StringWrapperType, T>,
+          std::is_same<TimestampType, T>, std::is_same<TypeType, T>,
+          std::is_same<UintType, T>, std::is_same<UintWrapperType, T>,
+          std::is_same<UnknownType, T>>> {};
 
 template <typename T>
 inline constexpr bool IsTypeAlternativeV = IsTypeAlternative<T>::value;
@@ -102,8 +121,9 @@ using TypeVariant = absl::variant<
 #endif
     AnyType, BoolType, BoolWrapperType, BytesType, BytesWrapperType, DoubleType,
     DoubleWrapperType, DurationType, DynType, ErrorType, IntType,
-    IntWrapperType, ListType, MapType, NullType, StringType, StringWrapperType,
-    TimestampType, TypeType, UintType, UintWrapperType, UnknownType>;
+    IntWrapperType, ListType, MapType, NullType, OpaqueType, StringType,
+    StringWrapperType, TimestampType, TypeType, UintType, UintWrapperType,
+    UnknownType>;
 
 template <typename T>
 struct IsTypeViewAlternative
@@ -117,7 +137,7 @@ struct IsTypeViewAlternative
           std::is_same<ErrorTypeView, T>, std::is_same<IntTypeView, T>,
           std::is_same<IntWrapperTypeView, T>, std::is_same<ListTypeView, T>,
           std::is_same<MapTypeView, T>, std::is_same<NullTypeView, T>,
-          std::is_same<StringTypeView, T>,
+          std::is_base_of<OpaqueTypeView, T>, std::is_same<StringTypeView, T>,
           std::is_same<StringWrapperTypeView, T>,
           std::is_same<TimestampTypeView, T>, std::is_same<TypeTypeView, T>,
           std::is_same<UintTypeView, T>, std::is_same<UintWrapperTypeView, T>,
@@ -136,9 +156,60 @@ using TypeViewVariant = absl::variant<
     AnyTypeView, BoolTypeView, BoolWrapperTypeView, BytesTypeView,
     BytesWrapperTypeView, DoubleTypeView, DoubleWrapperTypeView,
     DurationTypeView, DynTypeView, ErrorTypeView, IntTypeView,
-    IntWrapperTypeView, ListTypeView, MapTypeView, NullTypeView, StringTypeView,
-    StringWrapperTypeView, TimestampTypeView, TypeTypeView, UintTypeView,
-    UintWrapperTypeView, UnknownTypeView>;
+    IntWrapperTypeView, ListTypeView, MapTypeView, NullTypeView, OpaqueTypeView,
+    StringTypeView, StringWrapperTypeView, TimestampTypeView, TypeTypeView,
+    UintTypeView, UintWrapperTypeView, UnknownTypeView>;
+
+// Get the base type alternative for the given alternative or interface. The
+// base type alternative is the type stored in the `TypeVariant`.
+template <typename T, typename = void>
+struct BaseTypeAlternativeFor {
+  static_assert(IsTypeAlternativeV<T>);
+  using type = T;
+};
+
+template <typename T>
+struct BaseTypeAlternativeFor<T, std::enable_if_t<IsTypeViewAlternativeV<T>>>
+    : BaseTypeAlternativeFor<typename T::alternative_type> {};
+
+template <typename T>
+struct BaseTypeAlternativeFor<T, std::enable_if_t<IsTypeInterfaceV<T>>>
+    : BaseTypeAlternativeFor<typename T::alternative_type> {};
+
+template <typename T>
+struct BaseTypeAlternativeFor<
+    T, std::enable_if_t<std::is_base_of_v<OpaqueType, T>>> {
+  using type = OpaqueType;
+};
+
+template <typename T>
+using BaseTypeAlternativeForT = typename BaseTypeAlternativeFor<T>::type;
+
+// Get the base type view alternative for the given alternative or interface.
+// The base type view alternative is the type stored in the `TypeViewVariant`.
+template <typename T, typename = void>
+struct BaseTypeViewAlternativeFor {
+  static_assert(IsTypeViewAlternativeV<T>);
+  using type = T;
+};
+
+template <typename T>
+struct BaseTypeViewAlternativeFor<T, std::enable_if_t<IsTypeAlternativeV<T>>>
+    : BaseTypeViewAlternativeFor<typename T::view_alternative_type> {};
+
+template <typename T>
+struct BaseTypeViewAlternativeFor<T, std::enable_if_t<IsTypeInterfaceV<T>>>
+    : BaseTypeViewAlternativeFor<typename T::view_alternative_type> {};
+
+template <typename T>
+struct BaseTypeViewAlternativeFor<
+    T, std::enable_if_t<std::is_base_of_v<OpaqueTypeView, T>>> {
+  using type = OpaqueTypeView;
+};
+
+template <typename T>
+using BaseTypeViewAlternativeForT =
+    typename BaseTypeViewAlternativeFor<T>::type;
 
 }  // namespace common_internal
 
