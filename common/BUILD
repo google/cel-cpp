@@ -237,15 +237,28 @@ cc_test(
 cc_library(
     name = "data",
     srcs = glob(
-        ["types/*.cc"],
-        exclude = ["types/*_test.cc"],
+        [
+            "types/*.cc",
+            "values/*.cc",
+        ],
+        exclude = [
+            "types/*_test.cc",
+            "values/*_test.cc",
+        ],
     ),
     hdrs = glob(
-        ["types/*.h"],
-        exclude = ["types/*_test.h"],
+        [
+            "types/*.h",
+            "values/*.h",
+        ],
+        exclude = [
+            "types/*_test.h",
+            "values/*_test.h",
+        ],
     ) + [
         "type.h",
         "type_interface.h",
+        "value.h",
     ],
     deps = [
         ":casting",
@@ -253,23 +266,33 @@ cc_library(
         ":native_type",
         ":sized_input_view",
         ":type_kind",
+        ":value_kind",
         "//common/internal:data_interface",
         "//internal:casts",
+        "//internal:status_macros",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/hash",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/meta:type_traits",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:variant",
+        "@com_google_absl//absl/utility",
     ],
 )
 
 cc_test(
     name = "data_test",
-    srcs = glob(["types/*_test.cc"]) + ["type_test.cc"],
+    srcs = glob([
+        "types/*_test.cc",
+        "values/*_test.cc",
+    ]) + ["type_test.cc"],
     deps = [
         ":casting",
         ":data",
@@ -277,10 +300,15 @@ cc_test(
         ":native_type",
         ":sized_input_view",
         "//internal:testing",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/container:inlined_vector",
         "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/utility",
     ],
 )
 

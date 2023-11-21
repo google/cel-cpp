@@ -36,6 +36,7 @@ class DoubleType;
 class DoubleWrapperType;
 class DurationType;
 class DynType;
+class EnumType;
 class ErrorType;
 class IntType;
 class IntWrapperType;
@@ -61,6 +62,7 @@ class DoubleTypeView;
 class DoubleWrapperTypeView;
 class DurationTypeView;
 class DynTypeView;
+class EnumTypeView;
 class ErrorTypeView;
 class IntTypeView;
 class IntWrapperTypeView;
@@ -100,14 +102,14 @@ struct IsTypeAlternative
           std::is_same<BoolWrapperType, T>, std::is_same<BytesType, T>,
           std::is_same<BytesWrapperType, T>, std::is_same<DoubleType, T>,
           std::is_same<DoubleWrapperType, T>, std::is_same<DurationType, T>,
-          std::is_same<DynType, T>, std::is_same<ErrorType, T>,
-          std::is_same<IntType, T>, std::is_same<IntWrapperType, T>,
-          std::is_same<ListType, T>, std::is_same<MapType, T>,
-          std::is_same<NullType, T>, std::is_base_of<OpaqueType, T>,
-          std::is_same<StringType, T>, std::is_same<StringWrapperType, T>,
-          std::is_same<TimestampType, T>, std::is_same<TypeType, T>,
-          std::is_same<UintType, T>, std::is_same<UintWrapperType, T>,
-          std::is_same<UnknownType, T>>> {};
+          std::is_same<DynType, T>, std::is_base_of<EnumType, T>,
+          std::is_same<ErrorType, T>, std::is_same<IntType, T>,
+          std::is_same<IntWrapperType, T>, std::is_same<ListType, T>,
+          std::is_same<MapType, T>, std::is_same<NullType, T>,
+          std::is_base_of<OpaqueType, T>, std::is_same<StringType, T>,
+          std::is_same<StringWrapperType, T>, std::is_same<TimestampType, T>,
+          std::is_same<TypeType, T>, std::is_same<UintType, T>,
+          std::is_same<UintWrapperType, T>, std::is_same<UnknownType, T>>> {};
 
 template <typename T>
 inline constexpr bool IsTypeAlternativeV = IsTypeAlternative<T>::value;
@@ -120,7 +122,7 @@ using TypeVariant = absl::variant<
     absl::monostate,
 #endif
     AnyType, BoolType, BoolWrapperType, BytesType, BytesWrapperType, DoubleType,
-    DoubleWrapperType, DurationType, DynType, ErrorType, IntType,
+    DoubleWrapperType, DurationType, DynType, EnumType, ErrorType, IntType,
     IntWrapperType, ListType, MapType, NullType, OpaqueType, StringType,
     StringWrapperType, TimestampType, TypeType, UintType, UintWrapperType,
     UnknownType>;
@@ -134,10 +136,11 @@ struct IsTypeViewAlternative
           std::is_same<DoubleTypeView, T>,
           std::is_same<DoubleWrapperTypeView, T>,
           std::is_same<DurationTypeView, T>, std::is_same<DynTypeView, T>,
-          std::is_same<ErrorTypeView, T>, std::is_same<IntTypeView, T>,
-          std::is_same<IntWrapperTypeView, T>, std::is_same<ListTypeView, T>,
-          std::is_same<MapTypeView, T>, std::is_same<NullTypeView, T>,
-          std::is_base_of<OpaqueTypeView, T>, std::is_same<StringTypeView, T>,
+          std::is_base_of<EnumTypeView, T>, std::is_same<ErrorTypeView, T>,
+          std::is_same<IntTypeView, T>, std::is_same<IntWrapperTypeView, T>,
+          std::is_same<ListTypeView, T>, std::is_same<MapTypeView, T>,
+          std::is_same<NullTypeView, T>, std::is_base_of<OpaqueTypeView, T>,
+          std::is_same<StringTypeView, T>,
           std::is_same<StringWrapperTypeView, T>,
           std::is_same<TimestampTypeView, T>, std::is_same<TypeTypeView, T>,
           std::is_same<UintTypeView, T>, std::is_same<UintWrapperTypeView, T>,
@@ -155,7 +158,7 @@ using TypeViewVariant = absl::variant<
 #endif
     AnyTypeView, BoolTypeView, BoolWrapperTypeView, BytesTypeView,
     BytesWrapperTypeView, DoubleTypeView, DoubleWrapperTypeView,
-    DurationTypeView, DynTypeView, ErrorTypeView, IntTypeView,
+    DurationTypeView, DynTypeView, EnumTypeView, ErrorTypeView, IntTypeView,
     IntWrapperTypeView, ListTypeView, MapTypeView, NullTypeView, OpaqueTypeView,
     StringTypeView, StringWrapperTypeView, TimestampTypeView, TypeTypeView,
     UintTypeView, UintWrapperTypeView, UnknownTypeView>;
@@ -183,6 +186,12 @@ struct BaseTypeAlternativeFor<
 };
 
 template <typename T>
+struct BaseTypeAlternativeFor<
+    T, std::enable_if_t<std::is_base_of_v<EnumType, T>>> {
+  using type = EnumType;
+};
+
+template <typename T>
 using BaseTypeAlternativeForT = typename BaseTypeAlternativeFor<T>::type;
 
 // Get the base type view alternative for the given alternative or interface.
@@ -205,6 +214,12 @@ template <typename T>
 struct BaseTypeViewAlternativeFor<
     T, std::enable_if_t<std::is_base_of_v<OpaqueTypeView, T>>> {
   using type = OpaqueTypeView;
+};
+
+template <typename T>
+struct BaseTypeViewAlternativeFor<
+    T, std::enable_if_t<std::is_base_of_v<EnumTypeView, T>>> {
+  using type = EnumTypeView;
 };
 
 template <typename T>
