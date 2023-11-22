@@ -27,10 +27,12 @@ class ValueInterface;
 
 class Value;
 class BoolValue;
+class DoubleValue;
 class EnumValue;
 
 class ValueView;
 class BoolValueView;
+class DoubleValueView;
 class EnumValueView;
 
 namespace common_internal {
@@ -47,6 +49,7 @@ inline constexpr bool IsValueInterfaceV = IsValueInterface<T>::value;
 template <typename T>
 struct IsValueAlternative
     : std::bool_constant<std::disjunction_v<std::is_same<BoolValue, T>,
+                                            std::is_same<DoubleValue, T>,
                                             std::is_same<EnumValue, T>>> {};
 
 template <typename T>
@@ -59,11 +62,12 @@ using ValueVariant = absl::variant<
 #ifndef NDEBUG
     absl::monostate,
 #endif
-    BoolValue, EnumValue>;
+    BoolValue, DoubleValue, EnumValue>;
 
 template <typename T>
 struct IsValueViewAlternative
     : std::bool_constant<std::disjunction_v<std::is_same<BoolValueView, T>,
+                                            std::is_same<DoubleValueView, T>,
                                             std::is_same<EnumValueView, T>>> {};
 
 template <typename T>
@@ -77,7 +81,7 @@ using ValueViewVariant = absl::variant<
 #ifndef NDEBUG
     absl::monostate,
 #endif
-    BoolValueView, EnumValueView>;
+    BoolValueView, DoubleValueView, EnumValueView>;
 
 // Get the base type alternative for the given alternative or interface. The
 // base type alternative is the type stored in the `ValueVariant`.
