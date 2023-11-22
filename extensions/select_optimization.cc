@@ -354,7 +354,8 @@ AttributeTrail OptimizedSelectStep::GetAttributeTrail(
 
   auto attr = frame->value_stack().PeekAttribute();
   std::vector<AttributeQualifier> qualifiers =
-      attr.attribute().qualifier_path();
+      std::vector<AttributeQualifier>(attr.attribute().qualifier_path().begin(),
+                                      attr.attribute().qualifier_path().end());
   qualifiers.reserve(qualifiers_.size() + qualifiers.size());
   absl::c_copy(qualifiers_, std::back_inserter(qualifiers));
   AttributeTrail result(Attribute(std::string(attr.attribute().variable_name()),

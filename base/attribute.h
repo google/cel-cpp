@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_ATTRIBUTE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_ATTRIBUTE_H_
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -24,6 +25,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/kind.h"
 
@@ -185,7 +187,7 @@ class Attribute final {
 
   bool has_variable_name() const { return !impl_->variable_name.empty(); }
 
-  const std::vector<AttributeQualifier>& qualifier_path() const {
+  absl::Span<const AttributeQualifier> qualifier_path() const {
     return impl_->qualifier_path;
   }
 
@@ -230,7 +232,7 @@ class AttributePattern final {
 
   absl::string_view variable() const { return variable_; }
 
-  const std::vector<AttributeQualifierPattern>& qualifier_path() const {
+  absl::Span<const AttributeQualifierPattern> qualifier_path() const {
     return qualifier_path_;
   }
 
