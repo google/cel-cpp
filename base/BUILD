@@ -160,6 +160,7 @@ cc_library(
         "//base/internal:value",
         "//common:any",
         "//common:json",
+        "//common:memory",
         "//common:native_type",
         "//internal:casts",
         "//internal:no_destructor",

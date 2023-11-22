@@ -16,9 +16,19 @@
 
 #include <utility>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
+#include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
 #include "base/handle.h"
+#include "base/type.h"
+#include "base/types/dyn_type.h"
+#include "base/types/list_type.h"
+#include "base/types/map_type.h"
+#include "base/types/optional_type.h"
+#include "base/types/string_type.h"
+#include "common/memory.h"
+#include "internal/no_destructor.h"
 
 namespace cel {
 
@@ -27,27 +37,71 @@ namespace {
 using base_internal::HandleFactory;
 using base_internal::ModernListType;
 using base_internal::ModernMapType;
+using ::cel::internal::NoDestructor;
 
 }  // namespace
 
 TypeFactory::TypeFactory(MemoryManagerRef memory_manager)
-    : memory_manager_(memory_manager) {
-  json_list_type_ = list_types_
-                        .insert({GetJsonValueType(),
-                                 HandleFactory<ListType>::Make<ModernListType>(
-                                     memory_manager_, GetJsonValueType())})
-                        .first->second;
-  json_map_type_ =
-      map_types_
-          .insert({std::make_pair(GetStringType(), GetJsonValueType()),
-                   HandleFactory<MapType>::Make<ModernMapType>(
-                       memory_manager_, GetStringType(), GetJsonValueType())})
-          .first->second;
+    : memory_manager_(memory_manager) {}
+
+const Handle<Type>& TypeFactory::JsonValueType() {
+  static NoDestructor<Handle<Type>> kValueType(DynType::Get());
+  return *kValueType;
+}
+
+const Handle<ListType>& TypeFactory::JsonListType() {
+  static NoDestructor<Handle<ListType>> kListType(
+      HandleFactory<ListType>::Make<ModernListType>(
+          MemoryManagerRef::ReferenceCounting(), JsonValueType()));
+
+  return *kListType;
+}
+
+const Handle<MapType>& TypeFactory::JsonMapType() {
+  static NoDestructor<Handle<MapType>> kMapType(
+      HandleFactory<MapType>::Make<ModernMapType>(
+          MemoryManagerRef::ReferenceCounting(), StringType::Get(),
+          JsonValueType()));
+  return *kMapType;
+}
+
+const absl::flat_hash_map<Handle<Type>, Handle<ListType>>&
+TypeFactory::BuiltinListTypes() {
+  static NoDestructor<absl::flat_hash_map<Handle<Type>, Handle<ListType>>>
+      kTypes([]() -> absl::flat_hash_map<Handle<Type>, Handle<ListType>> {
+        return {std::make_pair(JsonValueType(), JsonListType())};
+      }());
+
+  return *kTypes;
+}
+
+const absl::flat_hash_map<std::pair<Handle<Type>, Handle<Type>>,
+                          Handle<MapType>>&
+TypeFactory::BuiltinMapTypes() {
+  static NoDestructor<absl::flat_hash_map<std::pair<Handle<Type>, Handle<Type>>,
+                                          Handle<MapType>>>
+      kTypes([]() -> absl::flat_hash_map<std::pair<Handle<Type>, Handle<Type>>,
+                                         Handle<MapType>> {
+        return {std::make_pair(std::make_pair(StringType::Get().As<Type>(),
+                                              JsonValueType()),
+                               JsonMapType()),
+                std::make_pair(std::make_pair(DynType::Get().As<Type>(),
+                                              DynType::Get().As<Type>()),
+                               HandleFactory<MapType>::Make<ModernMapType>(
+                                   MemoryManagerRef::ReferenceCounting(),
+                                   DynType::Get(), DynType::Get()))};
+      }());
+
+  return *kTypes;
 }
 
 absl::StatusOr<Handle<ListType>> TypeFactory::CreateListType(
     const Handle<Type>& element) {
   ABSL_DCHECK(element) << "handle must not be empty";
+  if (auto it = BuiltinListTypes().find(element);
+      it != BuiltinListTypes().end()) {
+    return it->second;
+  }
   {
     absl::ReaderMutexLock lock(&list_types_mutex_);
     if (auto existing = list_types_.find(element);
@@ -65,6 +119,10 @@ absl::StatusOr<Handle<MapType>> TypeFactory::CreateMapType(
     const Handle<Type>& key, const Handle<Type>& value) {
   ABSL_DCHECK(key) << "handle must not be empty";
   ABSL_DCHECK(value) << "handle must not be empty";
+  if (auto it = BuiltinMapTypes().find({key, value});
+      it != BuiltinMapTypes().end()) {
+    return it->second;
+  }
   {
     absl::ReaderMutexLock lock(&map_types_mutex_);
     if (auto existing = map_types_.find({key, value});

@@ -25,6 +25,7 @@
 #include "absl/synchronization/mutex.h"
 #include "base/handle.h"
 #include "base/memory.h"
+#include "base/type.h"
 #include "base/types/any_type.h"
 #include "base/types/bool_type.h"
 #include "base/types/bytes_type.h"
@@ -151,15 +152,15 @@ class TypeFactory final {
   }
 
   const Handle<Type>& GetJsonValueType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return GetDynType().As<Type>();
+    return JsonValueType();
   }
 
   const Handle<ListType>& GetJsonListType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return json_list_type_;
+    return JsonListType();
   }
 
   const Handle<MapType>& GetJsonMapType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return json_map_type_;
+    return JsonMapType();
   }
 
   template <typename T, typename... Args>
@@ -196,10 +197,17 @@ class TypeFactory final {
   MemoryManagerRef memory_manager() const { return memory_manager_; }
 
  private:
-  MemoryManagerRef memory_manager_;
+  static const Handle<Type>& JsonValueType();
+  static const Handle<ListType>& JsonListType();
+  static const Handle<MapType>& JsonMapType();
 
-  Handle<ListType> json_list_type_;
-  Handle<MapType> json_map_type_;
+  static const absl::flat_hash_map<Handle<Type>, Handle<ListType>>&
+  BuiltinListTypes();
+  static const absl::flat_hash_map<std::pair<Handle<Type>, Handle<Type>>,
+                                   Handle<MapType>>&
+  BuiltinMapTypes();
+
+  MemoryManagerRef memory_manager_;
 
   absl::Mutex list_types_mutex_;
   // Mapping from list element types to the list type. This allows us to cache
