@@ -259,6 +259,7 @@ cc_library(
         "type.h",
         "type_interface.h",
         "value.h",
+        "value_interface.h",
     ],
     deps = [
         ":casting",
@@ -292,7 +293,10 @@ cc_test(
     srcs = glob([
         "types/*_test.cc",
         "values/*_test.cc",
-    ]) + ["type_test.cc"],
+    ]) + [
+        "type_test.cc",
+        "value_test.cc",
+    ],
     deps = [
         ":casting",
         ":data",

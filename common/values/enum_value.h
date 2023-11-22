@@ -35,6 +35,8 @@ class EnumValueView;
 
 class EnumValue final {
  public:
+  using view_alternative_type = EnumValueView;
+
   static constexpr ValueKind kKind = ValueKind::kEnum;
 
   explicit EnumValue(EnumValueView value);
@@ -81,6 +83,8 @@ inline std::ostream& operator<<(std::ostream& out, const EnumValue& value) {
 
 class EnumValueView final {
  public:
+  using alternative_type = EnumValue;
+
   static constexpr ValueKind kKind = EnumValue::kKind;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
