@@ -40,6 +40,7 @@
 #include "common/values/null_value.h"  // IWYU pragma: export
 #include "common/values/timestamp_value.h"  // IWYU pragma: export
 #include "common/values/type_value.h"  // IWYU pragma: export
+#include "common/values/uint_value.h"  // IWYU pragma: export
 #include "common/values/values.h"
 
 namespace cel {
