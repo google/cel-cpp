@@ -28,11 +28,13 @@ class ValueInterface;
 class Value;
 class BoolValue;
 class DoubleValue;
+class DurationValue;
 class EnumValue;
 
 class ValueView;
 class BoolValueView;
 class DoubleValueView;
+class DurationValueView;
 class EnumValueView;
 
 namespace common_internal {
@@ -48,9 +50,9 @@ inline constexpr bool IsValueInterfaceV = IsValueInterface<T>::value;
 
 template <typename T>
 struct IsValueAlternative
-    : std::bool_constant<std::disjunction_v<std::is_same<BoolValue, T>,
-                                            std::is_same<DoubleValue, T>,
-                                            std::is_same<EnumValue, T>>> {};
+    : std::bool_constant<std::disjunction_v<
+          std::is_same<BoolValue, T>, std::is_same<DoubleValue, T>,
+          std::is_same<DurationValue, T>, std::is_same<EnumValue, T>>> {};
 
 template <typename T>
 inline constexpr bool IsValueAlternativeV = IsValueAlternative<T>::value;
@@ -62,13 +64,14 @@ using ValueVariant = absl::variant<
 #ifndef NDEBUG
     absl::monostate,
 #endif
-    BoolValue, DoubleValue, EnumValue>;
+    BoolValue, DoubleValue, DurationValue, EnumValue>;
 
 template <typename T>
 struct IsValueViewAlternative
-    : std::bool_constant<std::disjunction_v<std::is_same<BoolValueView, T>,
-                                            std::is_same<DoubleValueView, T>,
-                                            std::is_same<EnumValueView, T>>> {};
+    : std::bool_constant<std::disjunction_v<
+          std::is_same<BoolValueView, T>, std::is_same<DoubleValueView, T>,
+          std::is_same<DurationValueView, T>, std::is_same<EnumValueView, T>>> {
+};
 
 template <typename T>
 inline constexpr bool IsValueViewAlternativeV =
@@ -81,7 +84,7 @@ using ValueViewVariant = absl::variant<
 #ifndef NDEBUG
     absl::monostate,
 #endif
-    BoolValueView, DoubleValueView, EnumValueView>;
+    BoolValueView, DoubleValueView, DurationValueView, EnumValueView>;
 
 // Get the base type alternative for the given alternative or interface. The
 // base type alternative is the type stored in the `ValueVariant`.
