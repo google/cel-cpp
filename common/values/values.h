@@ -31,6 +31,7 @@ class BytesValue;
 class DoubleValue;
 class DurationValue;
 class EnumValue;
+class ErrorValue;
 class IntValue;
 class NullValue;
 class StringValue;
@@ -44,6 +45,7 @@ class BytesValueView;
 class DoubleValueView;
 class DurationValueView;
 class EnumValueView;
+class ErrorValueView;
 class IntValueView;
 class NullValueView;
 class StringValueView;
@@ -67,10 +69,10 @@ struct IsValueAlternative
     : std::bool_constant<std::disjunction_v<
           std::is_same<BoolValue, T>, std::is_same<BytesValue, T>,
           std::is_same<DoubleValue, T>, std::is_same<DurationValue, T>,
-          std::is_same<EnumValue, T>, std::is_same<IntValue, T>,
-          std::is_same<NullValue, T>, std::is_same<StringValue, T>,
-          std::is_same<TimestampValue, T>, std::is_same<TypeValue, T>,
-          std::is_same<UintValue, T>>> {};
+          std::is_same<EnumValue, T>, std::is_same<ErrorValue, T>,
+          std::is_same<IntValue, T>, std::is_same<NullValue, T>,
+          std::is_same<StringValue, T>, std::is_same<TimestampValue, T>,
+          std::is_same<TypeValue, T>, std::is_same<UintValue, T>>> {};
 
 template <typename T>
 inline constexpr bool IsValueAlternativeV = IsValueAlternative<T>::value;
@@ -82,18 +84,18 @@ using ValueVariant = absl::variant<
 #ifndef NDEBUG
     absl::monostate,
 #endif
-    BoolValue, BytesValue, DoubleValue, DurationValue, EnumValue, IntValue,
-    NullValue, StringValue, TimestampValue, TypeValue, UintValue>;
+    BoolValue, BytesValue, DoubleValue, DurationValue, EnumValue, ErrorValue,
+    IntValue, NullValue, StringValue, TimestampValue, TypeValue, UintValue>;
 
 template <typename T>
 struct IsValueViewAlternative
     : std::bool_constant<std::disjunction_v<
           std::is_same<BoolValueView, T>, std::is_same<BytesValueView, T>,
           std::is_same<DoubleValueView, T>, std::is_same<DurationValueView, T>,
-          std::is_same<EnumValueView, T>, std::is_same<IntValueView, T>,
-          std::is_same<NullValueView, T>, std::is_same<StringValueView, T>,
-          std::is_same<TimestampValueView, T>, std::is_same<TypeValueView, T>,
-          std::is_same<UintValueView, T>>> {};
+          std::is_same<EnumValueView, T>, std::is_same<ErrorValueView, T>,
+          std::is_same<IntValueView, T>, std::is_same<NullValueView, T>,
+          std::is_same<StringValueView, T>, std::is_same<TimestampValueView, T>,
+          std::is_same<TypeValueView, T>, std::is_same<UintValueView, T>>> {};
 
 template <typename T>
 inline constexpr bool IsValueViewAlternativeV =
@@ -107,7 +109,7 @@ using ValueViewVariant = absl::variant<
     absl::monostate,
 #endif
     BoolValueView, BytesValueView, DoubleValueView, DurationValueView,
-    EnumValueView, IntValueView, NullValueView, StringValueView,
+    EnumValueView, ErrorValueView, IntValueView, NullValueView, StringValueView,
     TimestampValueView, TypeValueView, UintValueView>;
 
 // Get the base type alternative for the given alternative or interface. The
