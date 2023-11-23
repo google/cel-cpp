@@ -30,6 +30,8 @@
 
 namespace cel::common_internal {
 
+constexpr bool IsStringLiteral(absl::string_view string);
+
 #ifdef _MSC_VER
 #pragma pack(pack, 1)
 #endif
@@ -362,9 +364,18 @@ inline SharedByteString::SharedByteString(SharedByteStringView other) noexcept
   if (header_.is_cord) {
     ::new (static_cast<void*>(cord_ptr())) absl::Cord(*other.content_.cord);
   } else {
-    content_.string.data = other.content_.string.data;
-    content_.string.refcount = other.content_.string.refcount;
-    (StrongRef)(content_.string.refcount);
+    if (other.content_.string.refcount == nullptr) {
+      // Unfortunately since we cannot guarantee lifetimes when using arenas or
+      // without a reference count, we are forced to transform this into a cord.
+      header_.is_cord = true;
+      header_.size = 0;
+      ::new (static_cast<void*>(cord_ptr())) absl::Cord(
+          absl::string_view(other.content_.string.data, other.header_.size));
+    } else {
+      content_.string.data = other.content_.string.data;
+      content_.string.refcount = other.content_.string.refcount;
+      (StrongRef)(content_.string.refcount);
+    }
   }
 }
 
