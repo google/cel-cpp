@@ -137,7 +137,6 @@ cc_library(
         "type_factory.h",
         "type_manager.h",
         "type_provider.h",
-        "type_registry.h",
         "value.h",
         "value_factory.h",
     ] + glob(
