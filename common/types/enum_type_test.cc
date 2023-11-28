@@ -74,10 +74,6 @@ class CustomEnumTypeInterface final
  private:
   friend class CustomEnumTypeValueIterator;
 
-  bool Equals(const EnumTypeInterface&) const override { return true; }
-
-  void HashValue(absl::HashState) const override {}
-
   absl::StatusOr<absl::optional<EnumTypeValueId>> FindIdByName(
       absl::string_view name) const override {
     if (name == "FOO") {

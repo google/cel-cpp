@@ -29,7 +29,6 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
-#include "absl/hash/hash.h"
 #include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/statusor.h"
@@ -160,16 +159,6 @@ class EnumTypeInterface : public TypeInterface,
  private:
   friend class EnumType;
   friend class EnumTypeView;
-  friend bool operator==(const EnumType& lhs, const EnumType& rhs);
-  template <typename H>
-  friend H AbslHashValue(H state, const EnumType& type);
-  friend bool operator==(EnumTypeView lhs, EnumTypeView rhs);
-  template <typename H>
-  friend H AbslHashValue(H state, EnumTypeView type);
-
-  virtual bool Equals(const EnumTypeInterface& other) const = 0;
-
-  virtual void HashValue(absl::HashState state) const = 0;
 
   virtual absl::StatusOr<absl::optional<EnumTypeValueId>> FindIdByName(
       absl::string_view name) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
@@ -248,14 +237,12 @@ class EnumType {
   }
 
   friend bool operator==(const EnumType& lhs, const EnumType& rhs) {
-    return lhs.name() == rhs.name() && lhs.interface_->Equals(*rhs.interface_);
+    return lhs.name() == rhs.name();
   }
 
   template <typename H>
   friend H AbslHashValue(H state, const EnumType& type) {
-    state = H::combine(std::move(state), type.kind(), type.name());
-    type.interface_->HashValue(absl::HashState::Create(&state));
-    return std::move(state);
+    return H::combine(std::move(state), type.kind(), type.name());
   }
 
  private:
@@ -453,14 +440,12 @@ class EnumTypeView {
   }
 
   friend bool operator==(EnumTypeView lhs, EnumTypeView rhs) {
-    return lhs.name() == rhs.name() && lhs.interface_->Equals(*rhs.interface_);
+    return lhs.name() == rhs.name();
   }
 
   template <typename H>
   friend H AbslHashValue(H state, EnumTypeView type) {
-    state = H::combine(std::move(state), type.kind(), type.name());
-    type.interface_->HashValue(absl::HashState::Create(&state));
-    return std::move(state);
+    return H::combine(std::move(state), type.kind(), type.name());
   }
 
  private:

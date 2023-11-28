@@ -81,10 +81,6 @@ class BasicEnumType final : public EnumTypeInterface {
  private:
   friend class BasicEnumTypeValueIterator;
 
-  bool Equals(const EnumTypeInterface&) const override { return true; }
-
-  void HashValue(absl::HashState) const override {}
-
   absl::StatusOr<absl::optional<EnumTypeValueId>> FindIdByName(
       absl::string_view name) const override {
     if (auto it = values_by_name_.find(name); it != values_by_name_.end()) {
