@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_H_
 
 #include <algorithm>
+#include <cstdint>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -54,6 +55,7 @@
 #include "common/types/opaque_type.h"  // IWYU pragma: export
 #include "common/types/string_type.h"  // IWYU pragma: export
 #include "common/types/string_wrapper_type.h"  // IWYU pragma: export
+#include "common/types/struct_type.h"  // IWYU pragma: export
 #include "common/types/timestamp_type.h"  // IWYU pragma: export
 #include "common/types/type_type.h"  // IWYU pragma: export
 #include "common/types/types.h"
@@ -608,6 +610,39 @@ inline Type::Type(TypeView other) : variant_(other.ToVariant()) {}
 inline Type& Type::operator=(TypeView other) {
   variant_ = other.ToVariant();
   return *this;
+}
+
+struct StructTypeField final {
+  StructTypeField() = default;
+
+  explicit StructTypeField(StructTypeFieldView field);
+
+  StructTypeField(std::string name, int64_t number, Type type)
+      : name(std::move(name)), number(number), type(std::move(type)) {}
+
+  std::string name;
+  int64_t number = -1;
+  Type type = ErrorType();
+};
+
+struct StructTypeFieldView final {
+  StructTypeFieldView() = default;
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StructTypeFieldView(
+      const StructTypeField& field ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : StructTypeFieldView(field.name, field.number, field.type) {}
+
+  StructTypeFieldView(absl::string_view name, int64_t number, TypeView type)
+      : name(name), number(number), type(type) {}
+
+  absl::string_view name;
+  int64_t number = -1;
+  TypeView type = ErrorTypeView();
+};
+
+inline StructTypeField::StructTypeField(StructTypeFieldView field)
+    : StructTypeField(std::string(field.name), field.number, Type(field.type)) {
 }
 
 // Now that Type and TypeView are complete, we can define various parts of list,
