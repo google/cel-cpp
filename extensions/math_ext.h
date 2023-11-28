@@ -15,11 +15,18 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_MATH_EXT_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_MATH_EXT_H_
 
+#include <vector>
+
 #include "absl/status/status.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
+#include "parser/macro.h"
 
 namespace cel::extensions {
+
+// math_macros() returns the namespaced helper macros for math.least() and
+// math.greatest().
+std::vector<Macro> math_macros();
 
 // Register extension functions for supporting mathematical operations above
 // and beyond the set defined in the CEL standard environment.
