@@ -36,7 +36,6 @@
 #include "common/values/bytes_value.h"  // IWYU pragma: export
 #include "common/values/double_value.h"  // IWYU pragma: export
 #include "common/values/duration_value.h"  // IWYU pragma: export
-#include "common/values/enum_value.h"  // IWYU pragma: export
 #include "common/values/error_value.h"  // IWYU pragma: export
 #include "common/values/int_value.h"  // IWYU pragma: export
 #include "common/values/null_value.h"  // IWYU pragma: export
