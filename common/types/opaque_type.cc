@@ -12,27 +12,58 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstddef>
 #include <string>
+#include <utility>
 
+#include "absl/container/fixed_array.h"
+#include "absl/log/absl_check.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
+#include "common/memory.h"
 #include "common/sized_input_view.h"
 #include "common/type.h"
 
 namespace cel {
 
-std::string OpaqueTypeInterface::DebugString() const {
-  auto parameters = this->parameters();
+namespace {
+
+std::string OpaqueDebugString(absl::string_view name,
+                              absl::Span<const Type> parameters) {
   if (parameters.empty()) {
-    return std::string(name());
+    return std::string(name);
   }
-  return absl::StrCat(name(), "<",
-                      absl::StrJoin(parameters, ", ", absl::StreamFormatter()),
-                      ">");
+  return absl::StrCat(
+      name, "<", absl::StrJoin(parameters, ", ", absl::StreamFormatter()), ">");
 }
 
-SizedInputView<TypeView> OpaqueTypeInterface::parameters() const {
-  return SizedInputView<TypeView>();
+absl::FixedArray<Type, 1> SizedInputViewToFixedArray(
+    SizedInputView<TypeView> parameters) {
+  absl::FixedArray<Type, 1> fixed_parameters(parameters.size(), DynType());
+  size_t index = 0;
+  for (const auto& parameter : parameters) {
+    fixed_parameters[index++] = Type(parameter);
+  }
+  ABSL_DCHECK_EQ(index, parameters.size());
+  return fixed_parameters;
+}
+
+}  // namespace
+
+OpaqueType::OpaqueType(MemoryManagerRef memory_manager, absl::string_view name,
+                       SizedInputView<TypeView> parameters)
+    : data_(memory_manager.MakeShared<common_internal::OpaqueTypeData>(
+          std::string(name),
+          SizedInputViewToFixedArray(std::move(parameters)))) {}
+
+std::string OpaqueType::DebugString() const {
+  return OpaqueDebugString(name(), parameters());
+}
+
+std::string OpaqueTypeView::DebugString() const {
+  return OpaqueDebugString(name(), parameters());
 }
 
 }  // namespace cel

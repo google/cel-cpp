@@ -22,18 +22,19 @@
 #include <type_traits>
 #include <utility>
 
+#include "absl/algorithm/container.h"
 #include "absl/base/attributes.h"
 #include "absl/base/optimization.h"
-#include "absl/hash/hash.h"
+#include "absl/container/fixed_array.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/meta/type_traits.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "common/casting.h"
 #include "common/memory.h"
 #include "common/native_type.h"
-#include "common/sized_input_view.h"
 #include "common/type_interface.h"  // IWYU pragma: export
 #include "common/type_kind.h"
 #include "common/types/any_type.h"   // IWYU pragma: export
@@ -663,6 +664,16 @@ struct MapTypeData final {
   const Type value;
 };
 
+struct OpaqueTypeData final {
+  using Parameters = absl::FixedArray<Type, 1>;
+
+  explicit OpaqueTypeData(std::string name, Parameters parameters)
+      : name(std::move(name)), parameters(std::move(parameters)) {}
+
+  const std::string name;
+  const Parameters parameters;
+};
+
 }  // namespace common_internal
 
 template <>
@@ -746,23 +757,17 @@ inline H AbslHashValue(H state, MapTypeView type) {
   return H::combine(std::move(state), type.kind(), type.key(), type.value());
 }
 
-inline SizedInputView<TypeView> OpaqueType::parameters() const {
-  return interface_->parameters();
+inline OpaqueType::OpaqueType(OpaqueTypeView other) : data_(other.data_) {}
+
+inline absl::string_view OpaqueType::name() const { return data_->name; }
+
+inline absl::Span<const Type> OpaqueType::parameters() const {
+  return data_->parameters;
 }
 
 inline bool operator==(const OpaqueType& lhs, const OpaqueType& rhs) {
-  if (lhs.interface_.operator->() == rhs.interface_.operator->()) {
-    return true;
-  }
-  auto lhs_parameters = lhs.parameters();
-  auto rhs_parameters = rhs.parameters();
-  if (lhs_parameters.size() != rhs_parameters.size()) {
-    return false;
-  }
   return lhs.name() == rhs.name() &&
-         std::equal(lhs_parameters.begin(), lhs_parameters.end(),
-                    rhs_parameters.begin()) &&
-         lhs.interface_->Equals(*rhs.interface_);
+         absl::c_equal(lhs.parameters(), rhs.parameters());
 }
 
 template <typename H>
@@ -772,27 +777,21 @@ inline H AbslHashValue(H state, const OpaqueType& type) {
   for (const auto& parameter : parameters) {
     state = H::combine(std::move(state), parameter);
   }
-  type.interface_->HashValue(absl::HashState::Create(&state));
   return std::move(state);
 }
 
-inline SizedInputView<TypeView> OpaqueTypeView::parameters() const {
-  return interface_->parameters();
+inline OpaqueTypeView::OpaqueTypeView(const OpaqueType& type) noexcept
+    : data_(type.data_) {}
+
+inline absl::string_view OpaqueTypeView::name() const { return data_->name; }
+
+inline absl::Span<const Type> OpaqueTypeView::parameters() const {
+  return data_->parameters;
 }
 
 inline bool operator==(OpaqueTypeView lhs, OpaqueTypeView rhs) {
-  if (lhs.interface_.operator->() == rhs.interface_.operator->()) {
-    return true;
-  }
-  auto lhs_parameters = lhs.parameters();
-  auto rhs_parameters = rhs.parameters();
-  if (lhs_parameters.size() != rhs_parameters.size()) {
-    return false;
-  }
   return lhs.name() == rhs.name() &&
-         std::equal(lhs_parameters.begin(), lhs_parameters.end(),
-                    rhs_parameters.begin()) &&
-         lhs.interface_->Equals(*rhs.interface_);
+         absl::c_equal(lhs.parameters(), rhs.parameters());
 }
 
 template <typename H>
@@ -802,7 +801,6 @@ inline H AbslHashValue(H state, OpaqueTypeView type) {
   for (const auto& parameter : parameters) {
     state = H::combine(std::move(state), parameter);
   }
-  type.interface_->HashValue(absl::HashState::Create(&state));
   return std::move(state);
 }
 

@@ -14,16 +14,12 @@
 
 #include <sstream>
 #include <string>
-#include <utility>
 
-#include "absl/container/inlined_vector.h"
 #include "absl/hash/hash.h"
-#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/memory.h"
 #include "common/native_type.h"
-#include "common/sized_input_view.h"
 #include "common/type.h"
 #include "internal/testing.h"
 
@@ -34,49 +30,6 @@ using testing::An;
 using testing::Ne;
 using testing::TestParamInfo;
 using testing::TestWithParam;
-
-class CustomTypeInterface;
-
-using OpaqueTypeParameterVector = absl::InlinedVector<Type, 1>;
-
-class CustomTypeInterface final
-    : public ExtendOpaqueTypeInterface<CustomTypeInterface> {
- public:
-  explicit CustomTypeInterface(OpaqueTypeParameterVector parameters)
-      : parameters_(std::move(parameters)) {}
-
-  absl::string_view name() const override { return "custom_type"; }
-
-  SizedInputView<TypeView> parameters() const override { return parameters_; }
-
- private:
-  bool Equals(const OpaqueTypeInterface&) const override { return true; }
-
-  void HashValue(absl::HashState) const override {}
-
-  const OpaqueTypeParameterVector parameters_;
-};
-
-using CustomType = OpaqueTypeFor<CustomTypeInterface>;
-
-using CustomTypeView = OpaqueTypeViewFor<CustomTypeInterface>;
-
-class EmptyOpaqueTypeInterface final
-    : public ExtendOpaqueTypeInterface<EmptyOpaqueTypeInterface> {
- public:
-  using ExtendOpaqueTypeInterface::ExtendOpaqueTypeInterface;
-
-  absl::string_view name() const override { return "empty"; }
-
- private:
-  bool Equals(const OpaqueTypeInterface&) const override { return true; }
-
-  void HashValue(absl::HashState) const override {}
-};
-
-using EmptyOpaqueType = OpaqueTypeFor<EmptyOpaqueTypeInterface>;
-
-using EmptyOpaqueTypeView = OpaqueTypeViewFor<EmptyOpaqueTypeInterface>;
 
 class OpaqueTypeTest : public TestWithParam<MemoryManagement> {
  public:
@@ -100,11 +53,6 @@ class OpaqueTypeTest : public TestWithParam<MemoryManagement> {
 
   MemoryManagement memory_management() const { return GetParam(); }
 
-  CustomType MakeCustomType() {
-    return memory_manager().MakeShared<CustomTypeInterface>(
-        OpaqueTypeParameterVector{StringType()});
-  }
-
   static std::string ToString(TestParamInfo<MemoryManagement> param) {
     std::ostringstream out;
     out << param.param;
@@ -116,88 +64,91 @@ class OpaqueTypeTest : public TestWithParam<MemoryManagement> {
 };
 
 TEST_P(OpaqueTypeTest, Kind) {
-  EXPECT_EQ(MakeCustomType().kind(), OpaqueType::kKind);
-  EXPECT_EQ(OpaqueType(MakeCustomType()).kind(), OpaqueType::kKind);
-  EXPECT_EQ(Type(OpaqueType(MakeCustomType())).kind(), OpaqueType::kKind);
+  EXPECT_EQ(OpaqueType(memory_manager(), "test.Opaque", {BytesType()}).kind(),
+            OpaqueType::kKind);
+  EXPECT_EQ(
+      Type(OpaqueType(memory_manager(), "test.Opaque", {BytesType()})).kind(),
+      OpaqueType::kKind);
 }
 
 TEST_P(OpaqueTypeTest, Name) {
-  EXPECT_EQ(MakeCustomType().name(), "custom_type");
-  EXPECT_EQ(OpaqueType(MakeCustomType()).name(), "custom_type");
-  EXPECT_EQ(Type(OpaqueType(MakeCustomType())).name(), "custom_type");
+  EXPECT_EQ(OpaqueType(memory_manager(), "test.Opaque", {BytesType()}).name(),
+            "test.Opaque");
+  EXPECT_EQ(
+      Type(OpaqueType(memory_manager(), "test.Opaque", {BytesType()})).name(),
+      "test.Opaque");
 }
 
 TEST_P(OpaqueTypeTest, DebugString) {
   {
     std::ostringstream out;
-    out << MakeCustomType();
-    EXPECT_EQ(out.str(), "custom_type<string>");
+    out << OpaqueType(memory_manager(), "test.Opaque", {BytesType()});
+    EXPECT_EQ(out.str(), "test.Opaque<bytes>");
   }
   {
     std::ostringstream out;
-    out << OpaqueType(MakeCustomType());
-    EXPECT_EQ(out.str(), "custom_type<string>");
+    out << Type(OpaqueType(memory_manager(), "test.Opaque", {BytesType()}));
+    EXPECT_EQ(out.str(), "test.Opaque<bytes>");
   }
   {
     std::ostringstream out;
-    out << Type(OpaqueType(MakeCustomType()));
-    EXPECT_EQ(out.str(), "custom_type<string>");
-  }
-  {
-    std::ostringstream out;
-    out << EmptyOpaqueType(
-        memory_manager().MakeShared<EmptyOpaqueTypeInterface>());
-    EXPECT_EQ(out.str(), "empty");
+    out << OpaqueType(memory_manager(), "test.Opaque", {});
+    EXPECT_EQ(out.str(), "test.Opaque");
   }
 }
 
 TEST_P(OpaqueTypeTest, Hash) {
-  const auto expected_hash = absl::HashOf(MakeCustomType());
-  EXPECT_EQ(absl::HashOf(MakeCustomType()), expected_hash);
-  EXPECT_EQ(absl::HashOf(OpaqueType(MakeCustomType())), expected_hash);
-  EXPECT_EQ(absl::HashOf(Type(OpaqueType(MakeCustomType()))), expected_hash);
+  EXPECT_EQ(
+      absl::HashOf(OpaqueType(memory_manager(), "test.Opaque", {BytesType()})),
+      absl::HashOf(OpaqueType(memory_manager(), "test.Opaque", {BytesType()})));
+  EXPECT_EQ(
+      absl::HashOf(
+          Type(OpaqueType(memory_manager(), "test.Opaque", {BytesType()}))),
+      absl::HashOf(OpaqueType(memory_manager(), "test.Opaque", {BytesType()})));
 }
 
 TEST_P(OpaqueTypeTest, Equal) {
-  EXPECT_EQ(MakeCustomType(), MakeCustomType());
-  EXPECT_EQ(OpaqueType(MakeCustomType()), MakeCustomType());
-  EXPECT_EQ(MakeCustomType(), OpaqueType(MakeCustomType()));
-  EXPECT_EQ(OpaqueType(MakeCustomType()), OpaqueType(MakeCustomType()));
-  EXPECT_EQ(Type(OpaqueType(MakeCustomType())), OpaqueType(MakeCustomType()));
-  EXPECT_EQ(OpaqueType(MakeCustomType()), Type(OpaqueType(MakeCustomType())));
-  EXPECT_EQ(Type(OpaqueType(MakeCustomType())),
-            Type(OpaqueType(MakeCustomType())));
+  EXPECT_EQ(OpaqueType(memory_manager(), "test.Opaque", {BytesType()}),
+            OpaqueType(memory_manager(), "test.Opaque", {BytesType()}));
+  EXPECT_EQ(Type(OpaqueType(memory_manager(), "test.Opaque", {BytesType()})),
+            OpaqueType(memory_manager(), "test.Opaque", {BytesType()}));
+  EXPECT_EQ(OpaqueType(memory_manager(), "test.Opaque", {BytesType()}),
+            Type(OpaqueType(memory_manager(), "test.Opaque", {BytesType()})));
+  EXPECT_EQ(Type(OpaqueType(memory_manager(), "test.Opaque", {BytesType()})),
+            Type(OpaqueType(memory_manager(), "test.Opaque", {BytesType()})));
 }
 
 TEST_P(OpaqueTypeTest, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(MakeCustomType()),
-            NativeTypeId::For<CustomTypeInterface>());
-  EXPECT_EQ(NativeTypeId::Of(OpaqueType(MakeCustomType())),
-            NativeTypeId::For<CustomTypeInterface>());
-  EXPECT_EQ(NativeTypeId::Of(Type(OpaqueType(MakeCustomType()))),
-            NativeTypeId::For<CustomTypeInterface>());
+  EXPECT_EQ(NativeTypeId::Of(
+                OpaqueType(memory_manager(), "test.Opaque", {BytesType()})),
+            NativeTypeId::For<OpaqueType>());
+  EXPECT_EQ(NativeTypeId::Of(Type(
+                OpaqueType(memory_manager(), "test.Opaque", {BytesType()}))),
+            NativeTypeId::For<OpaqueType>());
 }
 
 TEST_P(OpaqueTypeTest, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<OpaqueType>(MakeCustomType()));
-  EXPECT_TRUE(InstanceOf<OpaqueType>(OpaqueType(MakeCustomType())));
-  EXPECT_TRUE(InstanceOf<OpaqueType>(Type(OpaqueType(MakeCustomType()))));
-  EXPECT_TRUE(InstanceOf<CustomType>(MakeCustomType()));
-  EXPECT_TRUE(InstanceOf<CustomType>(OpaqueType(MakeCustomType())));
-  EXPECT_TRUE(InstanceOf<CustomType>(Type(OpaqueType(MakeCustomType()))));
+  EXPECT_TRUE(InstanceOf<OpaqueType>(
+      OpaqueType(memory_manager(), "test.Opaque", {BytesType()})));
+  EXPECT_TRUE(InstanceOf<OpaqueType>(
+      Type(OpaqueType(memory_manager(), "test.Opaque", {BytesType()}))));
 }
 
 TEST_P(OpaqueTypeTest, Cast) {
-  EXPECT_THAT(Cast<CustomType>(MakeCustomType()), An<CustomType>());
-  EXPECT_THAT(Cast<CustomType>(OpaqueType(MakeCustomType())), An<CustomType>());
-  EXPECT_THAT(Cast<CustomType>(Type(OpaqueType(MakeCustomType()))),
-              An<CustomType>());
+  EXPECT_THAT(Cast<OpaqueType>(
+                  OpaqueType(memory_manager(), "test.Opaque", {BytesType()})),
+              An<OpaqueType>());
+  EXPECT_THAT(Cast<OpaqueType>(Type(
+                  OpaqueType(memory_manager(), "test.Opaque", {BytesType()}))),
+              An<OpaqueType>());
 }
 
 TEST_P(OpaqueTypeTest, As) {
-  EXPECT_THAT(As<CustomType>(MakeCustomType()), Ne(absl::nullopt));
-  EXPECT_THAT(As<CustomType>(OpaqueType(MakeCustomType())), Ne(absl::nullopt));
-  EXPECT_THAT(As<CustomType>(Type(OpaqueType(MakeCustomType()))),
+  EXPECT_THAT(As<OpaqueType>(
+                  OpaqueType(memory_manager(), "test.Opaque", {BytesType()})),
+              Ne(absl::nullopt));
+  EXPECT_THAT(As<OpaqueType>(Type(
+                  OpaqueType(memory_manager(), "test.Opaque", {BytesType()}))),
               Ne(absl::nullopt));
 }
 
@@ -229,11 +180,6 @@ class OpaqueTypeViewTest : public TestWithParam<MemoryManagement> {
 
   MemoryManagement memory_management() const { return GetParam(); }
 
-  CustomType MakeCustomType() {
-    return memory_manager().MakeShared<CustomTypeInterface>(
-        OpaqueTypeParameterVector{StringType()});
-  }
-
   static std::string ToString(TestParamInfo<MemoryManagement> param) {
     std::ostringstream out;
     out << param.param;
@@ -245,104 +191,84 @@ class OpaqueTypeViewTest : public TestWithParam<MemoryManagement> {
 };
 
 TEST_P(OpaqueTypeViewTest, Kind) {
-  auto type = MakeCustomType();
-  EXPECT_EQ(CustomTypeView(type).kind(), OpaqueTypeView::kKind);
-  EXPECT_EQ(OpaqueTypeView(CustomTypeView(type)).kind(), OpaqueTypeView::kKind);
-  EXPECT_EQ(TypeView(OpaqueTypeView(CustomTypeView(type))).kind(),
-            OpaqueTypeView::kKind);
+  auto type = OpaqueType(memory_manager(), "test.Opaque", {BytesType()});
+  EXPECT_EQ(OpaqueTypeView(type).kind(), OpaqueTypeView::kKind);
+  EXPECT_EQ(TypeView(OpaqueTypeView(type)).kind(), OpaqueTypeView::kKind);
 }
 
 TEST_P(OpaqueTypeViewTest, Name) {
-  auto type = MakeCustomType();
-  EXPECT_EQ(CustomTypeView(type).name(), "custom_type");
-  EXPECT_EQ(OpaqueTypeView(CustomTypeView(type)).name(), "custom_type");
-  EXPECT_EQ(TypeView(OpaqueTypeView(CustomTypeView(type))).name(),
-            "custom_type");
+  auto type = OpaqueType(memory_manager(), "test.Opaque", {BytesType()});
+  EXPECT_EQ(OpaqueTypeView(type).name(), "test.Opaque");
+  EXPECT_EQ(TypeView(OpaqueTypeView(type)).name(), "test.Opaque");
 }
 
 TEST_P(OpaqueTypeViewTest, DebugString) {
-  auto type = MakeCustomType();
+  auto type = OpaqueType(memory_manager(), "test.Opaque", {BytesType()});
   {
     std::ostringstream out;
-    out << CustomTypeView(type);
-    EXPECT_EQ(out.str(), "custom_type<string>");
+    out << OpaqueTypeView(type);
+    EXPECT_EQ(out.str(), "test.Opaque<bytes>");
   }
   {
     std::ostringstream out;
-    out << OpaqueTypeView(CustomTypeView(type));
-    EXPECT_EQ(out.str(), "custom_type<string>");
-  }
-  {
-    std::ostringstream out;
-    out << TypeView(OpaqueTypeView(CustomTypeView(type)));
-    EXPECT_EQ(out.str(), "custom_type<string>");
+    out << TypeView(OpaqueTypeView(type));
+    EXPECT_EQ(out.str(), "test.Opaque<bytes>");
   }
 }
 
 TEST_P(OpaqueTypeViewTest, Hash) {
-  auto type = MakeCustomType();
-  const auto expected_hash = absl::HashOf(CustomTypeView(type));
-  EXPECT_EQ(absl::HashOf(CustomTypeView(type)), expected_hash);
-  EXPECT_EQ(absl::HashOf(OpaqueTypeView(CustomTypeView(type))), expected_hash);
-  EXPECT_EQ(absl::HashOf(TypeView(OpaqueTypeView(CustomTypeView(type)))),
-            expected_hash);
+  auto type = OpaqueType(memory_manager(), "test.Opaque", {BytesType()});
+  EXPECT_EQ(absl::HashOf(OpaqueTypeView(type)),
+            absl::HashOf(OpaqueTypeView(type)));
+  EXPECT_EQ(absl::HashOf(TypeView(OpaqueTypeView(type))),
+            absl::HashOf(OpaqueTypeView(type)));
+  EXPECT_EQ(absl::HashOf(OpaqueTypeView(type)), absl::HashOf(OpaqueType(type)));
+  EXPECT_EQ(absl::HashOf(TypeView(OpaqueTypeView(type))),
+            absl::HashOf(OpaqueType(type)));
 }
 
 TEST_P(OpaqueTypeViewTest, Equal) {
-  auto type = MakeCustomType();
-  EXPECT_EQ(CustomTypeView(type), CustomTypeView(type));
-  EXPECT_EQ(OpaqueTypeView(CustomTypeView(type)), CustomTypeView(type));
-  EXPECT_EQ(CustomTypeView(type), OpaqueTypeView(CustomTypeView(type)));
-  EXPECT_EQ(OpaqueTypeView(CustomTypeView(type)),
-            OpaqueTypeView(CustomTypeView(type)));
-  EXPECT_EQ(TypeView(OpaqueTypeView(CustomTypeView(type))),
-            OpaqueTypeView(CustomTypeView(type)));
-  EXPECT_EQ(OpaqueTypeView(CustomTypeView(type)),
-            TypeView(OpaqueTypeView(CustomTypeView(type))));
-  EXPECT_EQ(TypeView(OpaqueTypeView(CustomTypeView(type))),
-            TypeView(OpaqueTypeView(CustomTypeView(type))));
+  auto type = OpaqueType(memory_manager(), "test.Opaque", {BytesType()});
+  EXPECT_EQ(OpaqueTypeView(type), OpaqueTypeView(type));
+  EXPECT_EQ(TypeView(OpaqueTypeView(type)), OpaqueTypeView(type));
+  EXPECT_EQ(OpaqueTypeView(type), TypeView(OpaqueTypeView(type)));
+  EXPECT_EQ(TypeView(OpaqueTypeView(type)), TypeView(OpaqueTypeView(type)));
+  EXPECT_EQ(OpaqueTypeView(type), OpaqueType(type));
+  EXPECT_EQ(TypeView(OpaqueTypeView(type)), OpaqueType(type));
+  EXPECT_EQ(TypeView(OpaqueTypeView(type)), Type(OpaqueType(type)));
+  EXPECT_EQ(OpaqueType(type), OpaqueTypeView(type));
+  EXPECT_EQ(OpaqueType(type), OpaqueTypeView(type));
+  EXPECT_EQ(OpaqueType(type), TypeView(OpaqueTypeView(type)));
+  EXPECT_EQ(Type(OpaqueType(type)), TypeView(OpaqueTypeView(type)));
+  EXPECT_EQ(OpaqueTypeView(type), OpaqueType(type));
 }
 
 TEST_P(OpaqueTypeViewTest, NativeTypeId) {
-  auto type = MakeCustomType();
-  EXPECT_EQ(NativeTypeId::Of(CustomTypeView(type)),
-            NativeTypeId::For<CustomTypeInterface>());
-  EXPECT_EQ(NativeTypeId::Of(OpaqueTypeView(CustomTypeView(type))),
-            NativeTypeId::For<CustomTypeInterface>());
-  EXPECT_EQ(NativeTypeId::Of(TypeView(OpaqueTypeView(CustomTypeView(type)))),
-            NativeTypeId::For<CustomTypeInterface>());
+  auto type = OpaqueType(memory_manager(), "test.Opaque", {BytesType()});
+  EXPECT_EQ(NativeTypeId::Of(OpaqueTypeView(type)),
+            NativeTypeId::For<OpaqueTypeView>());
+  EXPECT_EQ(NativeTypeId::Of(TypeView(OpaqueTypeView(type))),
+            NativeTypeId::For<OpaqueTypeView>());
 }
 
 TEST_P(OpaqueTypeViewTest, InstanceOf) {
-  auto type = MakeCustomType();
-  EXPECT_TRUE(InstanceOf<OpaqueTypeView>(CustomTypeView(type)));
-  EXPECT_TRUE(InstanceOf<OpaqueTypeView>(OpaqueType(CustomTypeView(type))));
-  EXPECT_TRUE(InstanceOf<OpaqueTypeView>(
-      TypeView(OpaqueTypeView(CustomTypeView(type)))));
-  EXPECT_TRUE(InstanceOf<CustomTypeView>(CustomTypeView(type)));
-  EXPECT_TRUE(InstanceOf<CustomTypeView>(OpaqueTypeView(CustomTypeView(type))));
-  EXPECT_TRUE(InstanceOf<CustomTypeView>(
-      TypeView(OpaqueTypeView(CustomTypeView(type)))));
+  auto type = OpaqueType(memory_manager(), "test.Opaque", {BytesType()});
+  EXPECT_TRUE(InstanceOf<OpaqueTypeView>(OpaqueTypeView(type)));
+  EXPECT_TRUE(InstanceOf<OpaqueTypeView>(TypeView(OpaqueTypeView(type))));
 }
 
 TEST_P(OpaqueTypeViewTest, Cast) {
-  auto type = MakeCustomType();
-  EXPECT_THAT(Cast<CustomTypeView>(CustomTypeView(type)), An<CustomTypeView>());
-  EXPECT_THAT(Cast<CustomTypeView>(OpaqueTypeView(CustomTypeView(type))),
-              An<CustomTypeView>());
-  EXPECT_THAT(
-      Cast<CustomTypeView>(TypeView(OpaqueTypeView(CustomTypeView(type)))),
-      An<CustomTypeView>());
+  auto type = OpaqueType(memory_manager(), "test.Opaque", {BytesType()});
+  EXPECT_THAT(Cast<OpaqueTypeView>(OpaqueTypeView(type)), An<OpaqueTypeView>());
+  EXPECT_THAT(Cast<OpaqueTypeView>(TypeView(OpaqueTypeView(type))),
+              An<OpaqueTypeView>());
 }
 
 TEST_P(OpaqueTypeViewTest, As) {
-  auto type = MakeCustomType();
-  EXPECT_THAT(As<CustomTypeView>(CustomTypeView(type)), Ne(absl::nullopt));
-  EXPECT_THAT(As<CustomTypeView>(OpaqueTypeView(CustomTypeView(type))),
+  auto type = OpaqueType(memory_manager(), "test.Opaque", {BytesType()});
+  EXPECT_THAT(As<OpaqueTypeView>(OpaqueTypeView(type)), Ne(absl::nullopt));
+  EXPECT_THAT(As<OpaqueTypeView>(TypeView(OpaqueTypeView(type))),
               Ne(absl::nullopt));
-  EXPECT_THAT(
-      As<CustomTypeView>(TypeView(OpaqueTypeView(CustomTypeView(type)))),
-      Ne(absl::nullopt));
 }
 
 INSTANTIATE_TEST_SUITE_P(
