@@ -114,18 +114,13 @@ struct IsTypeAlternative
 template <typename T>
 inline constexpr bool IsTypeAlternativeV = IsTypeAlternative<T>::value;
 
-using TypeVariant = absl::variant<
-// `absl::monostate` is used to detect use after moved-from, which invalidates
-// `Type`. We only do this in debug builds to avoid paying the cost in
-// production.
-#ifndef NDEBUG
-    absl::monostate,
-#endif
-    AnyType, BoolType, BoolWrapperType, BytesType, BytesWrapperType, DoubleType,
-    DoubleWrapperType, DurationType, DynType, ErrorType, IntType,
-    IntWrapperType, ListType, MapType, NullType, OpaqueType, StringType,
-    StringWrapperType, StructType, TimestampType, TypeType, UintType,
-    UintWrapperType, UnknownType>;
+using TypeVariant =
+    absl::variant<absl::monostate, AnyType, BoolType, BoolWrapperType,
+                  BytesType, BytesWrapperType, DoubleType, DoubleWrapperType,
+                  DurationType, DynType, ErrorType, IntType, IntWrapperType,
+                  ListType, MapType, NullType, OpaqueType, StringType,
+                  StringWrapperType, StructType, TimestampType, TypeType,
+                  UintType, UintWrapperType, UnknownType>;
 
 template <typename T>
 struct IsTypeViewAlternative
@@ -150,14 +145,8 @@ template <typename T>
 inline constexpr bool IsTypeViewAlternativeV = IsTypeViewAlternative<T>::value;
 
 using TypeViewVariant = absl::variant<
-// `absl::monostate` is used to detect use after moved-from, which invalidates
-// `Type`. We only do this in debug builds to avoid paying the cost in
-// production.
-#ifndef NDEBUG
-    absl::monostate,
-#endif
-    AnyTypeView, BoolTypeView, BoolWrapperTypeView, BytesTypeView,
-    BytesWrapperTypeView, DoubleTypeView, DoubleWrapperTypeView,
+    absl::monostate, AnyTypeView, BoolTypeView, BoolWrapperTypeView,
+    BytesTypeView, BytesWrapperTypeView, DoubleTypeView, DoubleWrapperTypeView,
     DurationTypeView, DynTypeView, ErrorTypeView, IntTypeView,
     IntWrapperTypeView, ListTypeView, MapTypeView, NullTypeView, OpaqueTypeView,
     StringTypeView, StringWrapperTypeView, StructTypeView, TimestampTypeView,

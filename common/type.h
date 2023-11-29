@@ -16,7 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_H_
 
 #include <algorithm>
-#include <cstdint>
+#include <memory>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -24,10 +24,8 @@
 
 #include "absl/algorithm/container.h"
 #include "absl/base/attributes.h"
-#include "absl/base/optimization.h"
 #include "absl/container/fixed_array.h"
 #include "absl/log/absl_check.h"
-#include "absl/log/absl_log.h"
 #include "absl/meta/type_traits.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -68,28 +66,38 @@ namespace cel {
 class Type;
 class TypeView;
 
+// `Type` is a composition type which encompasses all types supported by the
+// Common Expression Language. When default constructed or moved, `Type` is in a
+// known but invalid state. Any attempt to use it from then on, without
+// assigning another type, is undefined behavior. In debug builds, we do our
+// best to fail.
 class Type final {
  public:
-  Type() = delete;
+  Type() = default;
 
-  Type(const Type&) = default;
-  Type& operator=(const Type&) = default;
+  Type(const Type& other) : variant_((other.AssertIsValid(), other.variant_)) {}
 
-#ifndef NDEBUG
-  Type(Type&& other) noexcept : variant_(std::move(other.variant_)) {
+  Type& operator=(const Type& other) {
+    other.AssertIsValid();
+    ABSL_DCHECK(this != std::addressof(other))
+        << "Type should not be copied to itself";
+    variant_ = other.variant_;
+    return *this;
+  }
+
+  Type(Type&& other) noexcept
+      : variant_((other.AssertIsValid(), std::move(other.variant_))) {
     other.variant_.emplace<absl::monostate>();
   }
 
   Type& operator=(Type&& other) noexcept {
+    other.AssertIsValid();
+    ABSL_DCHECK(this != std::addressof(other))
+        << "Type should not be moved to itself";
     variant_ = std::move(other.variant_);
     other.variant_.emplace<absl::monostate>();
     return *this;
   }
-#else
-  Type(Type&&) = default;
-
-  Type& operator=(Type&&) = default;
-#endif
 
   explicit Type(TypeView other);
 
@@ -132,14 +140,15 @@ class Type final {
   }
 
   TypeKind kind() const {
+    AssertIsValid();
     return absl::visit(
         [](const auto& alternative) -> TypeKind {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Type";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just return TypeKind::kError. In debug
+            // builds we cannot reach here.
+            return TypeKind::kError;
           } else {
             return alternative.kind();
           }
@@ -148,14 +157,15 @@ class Type final {
   }
 
   absl::string_view name() const {
+    AssertIsValid();
     return absl::visit(
         [](const auto& alternative) -> absl::string_view {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Type";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just return an empty string. In debug
+            // builds we cannot reach here.
+            return absl::string_view();
           } else {
             return alternative.name();
           }
@@ -164,14 +174,15 @@ class Type final {
   }
 
   std::string DebugString() const {
+    AssertIsValid();
     return absl::visit(
         [](const auto& alternative) -> std::string {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Type";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just return an empty string. In debug
+            // builds we cannot reach here.
+            return std::string();
           } else {
             return alternative.DebugString();
           }
@@ -179,46 +190,38 @@ class Type final {
         variant_);
   }
 
-  void swap(Type& other) noexcept { variant_.swap(other.variant_); }
+  void swap(Type& other) noexcept {
+    AssertIsValid();
+    other.AssertIsValid();
+    variant_.swap(other.variant_);
+  }
 
   template <typename H>
   friend H AbslHashValue(H state, const Type& type) {
+    type.AssertIsValid();
     return absl::visit(
         [state = std::move(state)](const auto& alternative) mutable -> H {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Type";  // Crash OK
-            ABSL_UNREACHABLE();
-          } else {
-            return H::combine(std::move(state), alternative);
-          }
+          return H::combine(std::move(state), alternative);
         },
         type.variant_);
   }
 
   friend bool operator==(const Type& lhs, const Type& rhs) {
-#ifndef NDEBUG
-    ABSL_CHECK(  // Crash OK
-        !absl::holds_alternative<absl::monostate>(lhs.variant_))
-        << "use of moved-from Type";
-    ABSL_CHECK(  // Crash OK
-        !absl::holds_alternative<absl::monostate>(rhs.variant_))
-        << "use of moved-from Type";
-#endif
+    lhs.AssertIsValid();
+    rhs.AssertIsValid();
     return lhs.variant_ == rhs.variant_;
   }
 
   friend std::ostream& operator<<(std::ostream& out, const Type& type) {
+    type.AssertIsValid();
     return absl::visit(
         [&out](const auto& alternative) -> std::ostream& {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Type";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we do nothing. In debug builds we cannot
+            // reach here.
+            return out;
           } else {
             return out << alternative;
           }
@@ -256,6 +259,14 @@ class Type final {
         variant_);
   }
 
+  constexpr bool IsValid() const {
+    return !absl::holds_alternative<absl::monostate>(variant_);
+  }
+
+  void AssertIsValid() const {
+    ABSL_DCHECK(IsValid()) << "use of invalid Type";
+  }
+
   common_internal::TypeVariant variant_;
 };
 
@@ -268,14 +279,16 @@ inline bool operator!=(const Type& lhs, const Type& rhs) {
 template <>
 struct NativeTypeTraits<Type> final {
   static NativeTypeId Id(const Type& type) {
+    type.AssertIsValid();
     return absl::visit(
         [](const auto& alternative) -> NativeTypeId {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Type";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just return
+            // `NativeTypeId::For<absl::monostate>()`. In debug builds we cannot
+            // reach here.
+            return NativeTypeId::For<absl::monostate>();
           } else {
             return NativeTypeId::Of(alternative);
           }
@@ -284,14 +297,15 @@ struct NativeTypeTraits<Type> final {
   }
 
   static bool SkipDestructor(const Type& type) {
+    type.AssertIsValid();
     return absl::visit(
         [](const auto& alternative) -> bool {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Type";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just say we should skip the destructor.
+            // In debug builds we cannot reach here.
+            return true;
           } else {
             return NativeType::SkipDestructor(alternative);
           }
@@ -305,6 +319,7 @@ struct CompositionTraits<Type> final {
   template <typename U>
   static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, bool> HasA(
       const Type& type) {
+    type.AssertIsValid();
     using Base = common_internal::BaseTypeAlternativeForT<U>;
     if constexpr (std::is_same_v<Base, U>) {
       return absl::holds_alternative<U>(type.variant_);
@@ -317,6 +332,7 @@ struct CompositionTraits<Type> final {
   template <typename U>
   static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, const U&> Get(
       const Type& type) {
+    type.AssertIsValid();
     using Base = common_internal::BaseTypeAlternativeForT<U>;
     if constexpr (std::is_same_v<Base, U>) {
       return absl::get<U>(type.variant_);
@@ -328,6 +344,7 @@ struct CompositionTraits<Type> final {
   template <typename U>
   static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U&> Get(
       Type& type) {
+    type.AssertIsValid();
     using Base = common_internal::BaseTypeAlternativeForT<U>;
     if constexpr (std::is_same_v<Base, U>) {
       return absl::get<U>(type.variant_);
@@ -339,6 +356,7 @@ struct CompositionTraits<Type> final {
   template <typename U>
   static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U> Get(
       const Type&& type) {
+    type.AssertIsValid();
     using Base = common_internal::BaseTypeAlternativeForT<U>;
     if constexpr (std::is_same_v<Base, U>) {
       return absl::get<U>(std::move(type.variant_));
@@ -350,6 +368,7 @@ struct CompositionTraits<Type> final {
   template <typename U>
   static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U> Get(
       Type&& type) {
+    type.AssertIsValid();
     using Base = common_internal::BaseTypeAlternativeForT<U>;
     if constexpr (std::is_same_v<Base, U>) {
       return absl::get<U>(std::move(type.variant_));
@@ -366,24 +385,25 @@ struct CastTraits<
     : CompositionCastTraits<To, From> {};
 
 // Statically assert some expectations.
-static_assert(!std::is_default_constructible_v<Type>);
+static_assert(std::is_default_constructible_v<Type>);
 static_assert(std::is_copy_constructible_v<Type>);
 static_assert(std::is_copy_assignable_v<Type>);
 static_assert(std::is_nothrow_move_constructible_v<Type>);
 static_assert(std::is_nothrow_move_assignable_v<Type>);
 static_assert(std::is_nothrow_swappable_v<Type>);
 
+// `TypeView` is a composition type which acts as a view of `Type` and its
+// composed types. Like `Type`, it is also invalid when default constructed and
+// must be assigned another type.
 class TypeView final {
  public:
-  TypeView() = delete;
+  TypeView() = default;
   TypeView(const TypeView&) = default;
-  TypeView(TypeView&&) = default;
   TypeView& operator=(const TypeView&) = default;
-  TypeView& operator=(TypeView&&) = default;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   TypeView(const Type& type ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : variant_(type.ToViewVariant()) {}
+      : variant_((type.AssertIsValid(), type.ToViewVariant())) {}
 
   template <typename T,
             typename = std::enable_if_t<common_internal::IsTypeAlternativeV<T>>>
@@ -412,14 +432,15 @@ class TypeView final {
                  interface) {}
 
   TypeKind kind() const {
+    AssertIsValid();
     return absl::visit(
         [](auto alternative) -> TypeKind {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Type";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just return TypeKind::kError. In debug
+            // builds we cannot reach here.
+            return TypeKind::kError;
           } else {
             return alternative.kind();
           }
@@ -428,14 +449,15 @@ class TypeView final {
   }
 
   absl::string_view name() const {
+    AssertIsValid();
     return absl::visit(
         [](auto alternative) -> absl::string_view {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Type";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just return an empty string. In debug
+            // builds we cannot reach here.
+            return absl::string_view();
           } else {
             return alternative.name();
           }
@@ -444,14 +466,15 @@ class TypeView final {
   }
 
   std::string DebugString() const {
+    AssertIsValid();
     return absl::visit(
         [](auto alternative) -> std::string {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Type";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just return an empty string. In debug
+            // builds we cannot reach here.
+            return std::string();
           } else {
             return alternative.DebugString();
           }
@@ -459,46 +482,38 @@ class TypeView final {
         variant_);
   }
 
-  void swap(TypeView& other) noexcept { variant_.swap(other.variant_); }
+  void swap(TypeView& other) noexcept {
+    AssertIsValid();
+    other.AssertIsValid();
+    variant_.swap(other.variant_);
+  }
 
   template <typename H>
   friend H AbslHashValue(H state, TypeView type) {
+    type.AssertIsValid();
     return absl::visit(
         [state = std::move(state)](auto alternative) mutable -> H {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Type";  // Crash OK
-            ABSL_UNREACHABLE();
-          } else {
-            return H::combine(std::move(state), alternative);
-          }
+          return H::combine(std::move(state), alternative);
         },
         type.variant_);
   }
 
   friend bool operator==(TypeView lhs, TypeView rhs) {
-#ifndef NDEBUG
-    ABSL_CHECK(  // Crash OK
-        !absl::holds_alternative<absl::monostate>(lhs.variant_))
-        << "use of moved-from Type";
-    ABSL_CHECK(  // Crash OK
-        !absl::holds_alternative<absl::monostate>(rhs.variant_))
-        << "use of moved-from Type";
-#endif
+    lhs.AssertIsValid();
+    rhs.AssertIsValid();
     return lhs.variant_ == rhs.variant_;
   }
 
   friend std::ostream& operator<<(std::ostream& out, TypeView type) {
+    type.AssertIsValid();
     return absl::visit(
         [&out](auto alternative) -> std::ostream& {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Type";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we do nothing. In debug builds we cannot
+            // reach here.
+            return out;
           } else {
             return out << alternative;
           }
@@ -536,6 +551,14 @@ class TypeView final {
         variant_);
   }
 
+  constexpr bool IsValid() const {
+    return !absl::holds_alternative<absl::monostate>(variant_);
+  }
+
+  void AssertIsValid() const {
+    ABSL_DCHECK(IsValid()) << "use of invalid TypeView";
+  }
+
   common_internal::TypeViewVariant variant_;
 };
 
@@ -548,14 +571,16 @@ inline bool operator!=(TypeView lhs, TypeView rhs) {
 template <>
 struct NativeTypeTraits<TypeView> final {
   static NativeTypeId Id(TypeView type) {
+    type.AssertIsValid();
     return absl::visit(
         [](const auto& alternative) -> NativeTypeId {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Type";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just return
+            // `NativeTypeId::For<absl::monostate>()`. In debug builds we cannot
+            // reach here.
+            return NativeTypeId::For<absl::monostate>();
           } else {
             return NativeTypeId::Of(alternative);
           }
@@ -569,6 +594,7 @@ struct CompositionTraits<TypeView> final {
   template <typename U>
   static std::enable_if_t<common_internal::IsTypeViewAlternativeV<U>, bool>
   HasA(TypeView type) {
+    type.AssertIsValid();
     using Base = common_internal::BaseTypeViewAlternativeForT<U>;
     if constexpr (std::is_same_v<Base, U>) {
       return absl::holds_alternative<U>(type.variant_);
@@ -580,6 +606,7 @@ struct CompositionTraits<TypeView> final {
   template <typename U>
   static std::enable_if_t<common_internal::IsTypeViewAlternativeV<U>, U> Get(
       TypeView type) {
+    type.AssertIsValid();
     using Base = common_internal::BaseTypeViewAlternativeForT<U>;
     if constexpr (std::is_same_v<Base, U>) {
       return absl::get<U>(type.variant_);
@@ -596,7 +623,7 @@ struct CastTraits<
     : CompositionCastTraits<To, From> {};
 
 // Statically assert some expectations.
-static_assert(!std::is_default_constructible_v<TypeView>);
+static_assert(std::is_default_constructible_v<TypeView>);
 static_assert(std::is_nothrow_copy_constructible_v<TypeView>);
 static_assert(std::is_nothrow_copy_assignable_v<TypeView>);
 static_assert(std::is_nothrow_move_constructible_v<TypeView>);
@@ -605,9 +632,11 @@ static_assert(std::is_nothrow_swappable_v<TypeView>);
 static_assert(std::is_trivially_copyable_v<TypeView>);
 static_assert(std::is_trivially_destructible_v<TypeView>);
 
-inline Type::Type(TypeView other) : variant_(other.ToVariant()) {}
+inline Type::Type(TypeView other)
+    : variant_((other.AssertIsValid(), other.ToVariant())) {}
 
 inline Type& Type::operator=(TypeView other) {
+  other.AssertIsValid();
   variant_ = other.ToVariant();
   return *this;
 }
