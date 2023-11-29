@@ -16,14 +16,14 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUE_H_
 
 #include <algorithm>
+#include <memory>
 #include <ostream>
 #include <string>
 #include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
-#include "absl/base/optimization.h"
-#include "absl/log/absl_log.h"
+#include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/types/variant.h"
 #include "common/casting.h"
@@ -51,28 +51,39 @@ namespace cel {
 class Value;
 class ValueView;
 
+// `Value` is a composition type which encompasses all values supported by the
+// Common Expression Language. When default constructed or moved, `Value` is in
+// a known but invalid state. Any attempt to use it from then on, without
+// assigning another type, is undefined behavior. In debug builds, we do our
+// best to fail.
 class Value final {
  public:
-  Value() = delete;
+  Value() = default;
 
-  Value(const Value&) = default;
-  Value& operator=(const Value&) = default;
+  Value(const Value& other)
+      : variant_((other.AssertIsValid(), other.variant_)) {}
 
-#ifndef NDEBUG
-  Value(Value&& other) noexcept : variant_(std::move(other.variant_)) {
+  Value& operator=(const Value& other) {
+    other.AssertIsValid();
+    ABSL_DCHECK(this != std::addressof(other))
+        << "Value should not be copied to itself";
+    variant_ = other.variant_;
+    return *this;
+  }
+
+  Value(Value&& other) noexcept
+      : variant_((other.AssertIsValid(), std::move(other.variant_))) {
     other.variant_.emplace<absl::monostate>();
   }
 
   Value& operator=(Value&& other) noexcept {
+    other.AssertIsValid();
+    ABSL_DCHECK(this != std::addressof(other))
+        << "Value should not be moved to itself";
     variant_ = std::move(other.variant_);
     other.variant_.emplace<absl::monostate>();
     return *this;
   }
-#else
-  Value(Value&&) = default;
-
-  Value& operator=(Value&&) = default;
-#endif
 
   explicit Value(ValueView other);
 
@@ -115,14 +126,15 @@ class Value final {
   }
 
   ValueKind kind() const {
+    AssertIsValid();
     return absl::visit(
         [](const auto& alternative) -> ValueKind {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Value";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just return ValueKind::kError. In debug
+            // builds we cannot reach here.
+            return ValueKind::kError;
           } else {
             return alternative.kind();
           }
@@ -131,14 +143,15 @@ class Value final {
   }
 
   TypeView type() const {
+    AssertIsValid();
     return absl::visit(
         [](const auto& alternative) -> TypeView {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Value";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just return an invalid type. In debug
+            // builds we cannot reach here.
+            return TypeView();
           } else {
             return alternative.type();
           }
@@ -147,14 +160,15 @@ class Value final {
   }
 
   std::string DebugString() const {
+    AssertIsValid();
     return absl::visit(
         [](const auto& alternative) -> std::string {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Value";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just return an empty string. In debug
+            // builds we cannot reach here.
+            return std::string();
           } else {
             return alternative.DebugString();
           }
@@ -162,22 +176,27 @@ class Value final {
         variant_);
   }
 
-  void swap(Value& other) noexcept { variant_.swap(other.variant_); }
+  void swap(Value& other) noexcept {
+    AssertIsValid();
+    other.AssertIsValid();
+    variant_.swap(other.variant_);
+  }
 
-  friend std::ostream& operator<<(std::ostream& out, const Value& type) {
+  friend std::ostream& operator<<(std::ostream& out, const Value& value) {
+    value.AssertIsValid();
     return absl::visit(
         [&out](const auto& alternative) -> std::ostream& {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Value";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we do nothing. In debug builds we cannot
+            // reach here.
+            return out;
           } else {
             return out << alternative;
           }
         },
-        type.variant_);
+        value.variant_);
   }
 
  private:
@@ -210,6 +229,14 @@ class Value final {
         variant_);
   }
 
+  constexpr bool IsValid() const {
+    return !absl::holds_alternative<absl::monostate>(variant_);
+  }
+
+  void AssertIsValid() const {
+    ABSL_DCHECK(IsValid()) << "use of invalid Value";
+  }
+
   common_internal::ValueVariant variant_;
 };
 
@@ -217,36 +244,39 @@ inline void swap(Value& lhs, Value& rhs) noexcept { lhs.swap(rhs); }
 
 template <>
 struct NativeTypeTraits<Value> final {
-  static NativeTypeId Id(const Value& type) {
+  static NativeTypeId Id(const Value& value) {
+    value.AssertIsValid();
     return absl::visit(
         [](const auto& alternative) -> NativeTypeId {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Value";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just return
+            // `NativeTypeId::For<absl::monostate>()`. In debug builds we cannot
+            // reach here.
+            return NativeTypeId::For<absl::monostate>();
           } else {
             return NativeTypeId::Of(alternative);
           }
         },
-        type.variant_);
+        value.variant_);
   }
 
-  static bool SkipDestructor(const Value& type) {
+  static bool SkipDestructor(const Value& value) {
+    value.AssertIsValid();
     return absl::visit(
         [](const auto& alternative) -> bool {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Value";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just say we should skip the destructor.
+            // In debug builds we cannot reach here.
+            return true;
           } else {
             return NativeType::SkipDestructor(alternative);
           }
         },
-        type.variant_);
+        value.variant_);
   }
 };
 
@@ -254,57 +284,62 @@ template <>
 struct CompositionTraits<Value> final {
   template <typename U>
   static std::enable_if_t<common_internal::IsValueAlternativeV<U>, bool> HasA(
-      const Value& type) {
+      const Value& value) {
+    value.AssertIsValid();
     using Base = common_internal::BaseValueAlternativeForT<U>;
     if constexpr (std::is_same_v<Base, U>) {
-      return absl::holds_alternative<U>(type.variant_);
+      return absl::holds_alternative<U>(value.variant_);
     } else {
-      return absl::holds_alternative<Base>(type.variant_) &&
-             InstanceOf<U>(Get<U>(type));
+      return absl::holds_alternative<Base>(value.variant_) &&
+             InstanceOf<U>(Get<U>(value));
     }
   }
 
   template <typename U>
   static std::enable_if_t<common_internal::IsValueAlternativeV<U>, const U&>
-  Get(const Value& type) {
+  Get(const Value& value) {
+    value.AssertIsValid();
     using Base = common_internal::BaseValueAlternativeForT<U>;
     if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(type.variant_);
+      return absl::get<U>(value.variant_);
     } else {
-      return Cast<U>(absl::get<Base>(type.variant_));
+      return Cast<U>(absl::get<Base>(value.variant_));
     }
   }
 
   template <typename U>
   static std::enable_if_t<common_internal::IsValueAlternativeV<U>, U&> Get(
-      Value& type) {
+      Value& value) {
+    value.AssertIsValid();
     using Base = common_internal::BaseValueAlternativeForT<U>;
     if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(type.variant_);
+      return absl::get<U>(value.variant_);
     } else {
-      return Cast<U>(absl::get<Base>(type.variant_));
+      return Cast<U>(absl::get<Base>(value.variant_));
     }
   }
 
   template <typename U>
   static std::enable_if_t<common_internal::IsValueAlternativeV<U>, U> Get(
-      const Value&& type) {
+      const Value&& value) {
+    value.AssertIsValid();
     using Base = common_internal::BaseValueAlternativeForT<U>;
     if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(std::move(type.variant_));
+      return absl::get<U>(std::move(value.variant_));
     } else {
-      return Cast<U>(absl::get<Base>(std::move(type.variant_)));
+      return Cast<U>(absl::get<Base>(std::move(value.variant_)));
     }
   }
 
   template <typename U>
   static std::enable_if_t<common_internal::IsValueAlternativeV<U>, U> Get(
-      Value&& type) {
+      Value&& value) {
+    value.AssertIsValid();
     using Base = common_internal::BaseValueAlternativeForT<U>;
     if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(std::move(type.variant_));
+      return absl::get<U>(std::move(value.variant_));
     } else {
-      return Cast<U>(absl::get<Base>(std::move(type.variant_)));
+      return Cast<U>(absl::get<Base>(std::move(value.variant_)));
     }
   }
 };
@@ -316,24 +351,27 @@ struct CastTraits<
     : CompositionCastTraits<To, From> {};
 
 // Statically assert some expectations.
-static_assert(!std::is_default_constructible_v<Value>);
+static_assert(std::is_default_constructible_v<Value>);
 static_assert(std::is_copy_constructible_v<Value>);
 static_assert(std::is_copy_assignable_v<Value>);
 static_assert(std::is_nothrow_move_constructible_v<Value>);
 static_assert(std::is_nothrow_move_assignable_v<Value>);
 static_assert(std::is_nothrow_swappable_v<Value>);
 
+// `ValueView` is a composition type which acts as a view of `Value` and its
+// composed types. Like `Value`, it is also invalid when default constructed and
+// must be assigned another type.
 class ValueView final {
  public:
-  ValueView() = delete;
+  ValueView() = default;
   ValueView(const ValueView&) = default;
   ValueView(ValueView&&) = default;
   ValueView& operator=(const ValueView&) = default;
   ValueView& operator=(ValueView&&) = default;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ValueView(const Value& type ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : variant_(type.ToViewVariant()) {}
+  ValueView(const Value& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
+      : variant_((value.AssertIsValid(), value.ToViewVariant())) {}
 
   template <typename T, typename = std::enable_if_t<
                             common_internal::IsValueAlternativeV<T>>>
@@ -363,14 +401,15 @@ class ValueView final {
                  interface) {}
 
   ValueKind kind() const {
+    AssertIsValid();
     return absl::visit(
         [](auto alternative) -> ValueKind {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Value";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just return ValueKind::kError. In debug
+            // builds we cannot reach here.
+            return ValueKind::kError;
           } else {
             return alternative.kind();
           }
@@ -379,14 +418,15 @@ class ValueView final {
   }
 
   TypeView type() const {
+    AssertIsValid();
     return absl::visit(
         [](auto alternative) -> TypeView {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Value";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just return an invalid type. In debug
+            // builds we cannot reach here.
+            return TypeView();
           } else {
             return alternative.type();
           }
@@ -395,14 +435,15 @@ class ValueView final {
   }
 
   std::string DebugString() const {
+    AssertIsValid();
     return absl::visit(
         [](auto alternative) -> std::string {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Value";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just return an empty string. In debug
+            // builds we cannot reach here.
+            return std::string();
           } else {
             return alternative.DebugString();
           }
@@ -410,22 +451,27 @@ class ValueView final {
         variant_);
   }
 
-  void swap(ValueView& other) noexcept { variant_.swap(other.variant_); }
+  void swap(ValueView& other) noexcept {
+    AssertIsValid();
+    other.AssertIsValid();
+    variant_.swap(other.variant_);
+  }
 
-  friend std::ostream& operator<<(std::ostream& out, ValueView type) {
+  friend std::ostream& operator<<(std::ostream& out, ValueView value) {
+    value.AssertIsValid();
     return absl::visit(
         [&out](auto alternative) -> std::ostream& {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Value";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we do nothing. In debug builds we cannot
+            // reach here.
+            return out;
           } else {
             return out << alternative;
           }
         },
-        type.variant_);
+        value.variant_);
   }
 
  private:
@@ -458,6 +504,14 @@ class ValueView final {
         variant_);
   }
 
+  constexpr bool IsValid() const {
+    return !absl::holds_alternative<absl::monostate>(variant_);
+  }
+
+  void AssertIsValid() const {
+    ABSL_DCHECK(IsValid()) << "use of invalid ValueView";
+  }
+
   common_internal::ValueViewVariant variant_;
 };
 
@@ -465,20 +519,22 @@ inline void swap(ValueView& lhs, ValueView& rhs) noexcept { lhs.swap(rhs); }
 
 template <>
 struct NativeTypeTraits<ValueView> final {
-  static NativeTypeId Id(ValueView type) {
+  static NativeTypeId Id(ValueView value) {
+    value.AssertIsValid();
     return absl::visit(
         [](const auto& alternative) -> NativeTypeId {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            ABSL_LOG(FATAL) << "use of moved-from Value";  // Crash OK
-            ABSL_UNREACHABLE();
+            // In optimized builds, we just return
+            // `NativeTypeId::For<absl::monostate>()`. In debug builds we cannot
+            // reach here.
+            return NativeTypeId::For<absl::monostate>();
           } else {
             return NativeTypeId::Of(alternative);
           }
         },
-        type.variant_);
+        value.variant_);
   }
 };
 
@@ -486,23 +542,25 @@ template <>
 struct CompositionTraits<ValueView> final {
   template <typename U>
   static std::enable_if_t<common_internal::IsValueViewAlternativeV<U>, bool>
-  HasA(ValueView type) {
+  HasA(ValueView value) {
+    value.AssertIsValid();
     using Base = common_internal::BaseValueViewAlternativeForT<U>;
     if constexpr (std::is_same_v<Base, U>) {
-      return absl::holds_alternative<U>(type.variant_);
+      return absl::holds_alternative<U>(value.variant_);
     } else {
-      return InstanceOf<U>(Get<Base>(type));
+      return InstanceOf<U>(Get<Base>(value));
     }
   }
 
   template <typename U>
   static std::enable_if_t<common_internal::IsValueViewAlternativeV<U>, U> Get(
-      ValueView type) {
+      ValueView value) {
+    value.AssertIsValid();
     using Base = common_internal::BaseValueViewAlternativeForT<U>;
     if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(type.variant_);
+      return absl::get<U>(value.variant_);
     } else {
-      return Cast<U>(absl::get<Base>(type.variant_));
+      return Cast<U>(absl::get<Base>(value.variant_));
     }
   }
 };
@@ -514,7 +572,7 @@ struct CastTraits<
     : CompositionCastTraits<To, From> {};
 
 // Statically assert some expectations.
-static_assert(!std::is_default_constructible_v<ValueView>);
+static_assert(std::is_default_constructible_v<ValueView>);
 static_assert(std::is_nothrow_copy_constructible_v<ValueView>);
 static_assert(std::is_nothrow_copy_assignable_v<ValueView>);
 static_assert(std::is_nothrow_move_constructible_v<ValueView>);
@@ -523,9 +581,11 @@ static_assert(std::is_nothrow_swappable_v<ValueView>);
 static_assert(std::is_trivially_copyable_v<ValueView>);
 static_assert(std::is_trivially_destructible_v<ValueView>);
 
-inline Value::Value(ValueView other) : variant_(other.ToVariant()) {}
+inline Value::Value(ValueView other)
+    : variant_((other.AssertIsValid(), other.ToVariant())) {}
 
 inline Value& Value::operator=(ValueView other) {
+  other.AssertIsValid();
   variant_ = other.ToVariant();
   return *this;
 }

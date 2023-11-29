@@ -77,15 +77,10 @@ struct IsValueAlternative
 template <typename T>
 inline constexpr bool IsValueAlternativeV = IsValueAlternative<T>::value;
 
-using ValueVariant = absl::variant<
-// `absl::monostate` is used to detect use after moved-from, which invalidates
-// `Value`. We only do this in debug builds to avoid paying the cost in
-// production.
-#ifndef NDEBUG
-    absl::monostate,
-#endif
-    BoolValue, BytesValue, DoubleValue, DurationValue, ErrorValue, IntValue,
-    NullValue, StringValue, TimestampValue, TypeValue, UintValue, UnknownValue>;
+using ValueVariant =
+    absl::variant<absl::monostate, BoolValue, BytesValue, DoubleValue,
+                  DurationValue, ErrorValue, IntValue, NullValue, StringValue,
+                  TimestampValue, TypeValue, UintValue, UnknownValue>;
 
 template <typename T>
 struct IsValueViewAlternative
@@ -102,16 +97,12 @@ template <typename T>
 inline constexpr bool IsValueViewAlternativeV =
     IsValueViewAlternative<T>::value;
 
-using ValueViewVariant = absl::variant<
-// `absl::monostate` is used to detect use after moved-from, which invalidates
-// `Value`. We only do this in debug builds to avoid paying the cost in
-// production.
-#ifndef NDEBUG
-    absl::monostate,
-#endif
-    BoolValueView, BytesValueView, DoubleValueView, DurationValueView,
-    ErrorValueView, IntValueView, NullValueView, StringValueView,
-    TimestampValueView, TypeValueView, UintValueView, UnknownValueView>;
+using ValueViewVariant =
+    absl::variant<absl::monostate, BoolValueView, BytesValueView,
+                  DoubleValueView, DurationValueView, ErrorValueView,
+                  IntValueView, NullValueView, StringValueView,
+                  TimestampValueView, TypeValueView, UintValueView,
+                  UnknownValueView>;
 
 // Get the base type alternative for the given alternative or interface. The
 // base type alternative is the type stored in the `ValueVariant`.
