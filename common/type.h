@@ -612,39 +612,6 @@ inline Type& Type::operator=(TypeView other) {
   return *this;
 }
 
-struct StructTypeField final {
-  StructTypeField() = default;
-
-  explicit StructTypeField(StructTypeFieldView field);
-
-  StructTypeField(std::string name, int64_t number, Type type)
-      : name(std::move(name)), number(number), type(std::move(type)) {}
-
-  std::string name;
-  int64_t number = -1;
-  Type type = ErrorType();
-};
-
-struct StructTypeFieldView final {
-  StructTypeFieldView() = default;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  StructTypeFieldView(
-      const StructTypeField& field ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : StructTypeFieldView(field.name, field.number, field.type) {}
-
-  StructTypeFieldView(absl::string_view name, int64_t number, TypeView type)
-      : name(name), number(number), type(type) {}
-
-  absl::string_view name;
-  int64_t number = -1;
-  TypeView type = ErrorTypeView();
-};
-
-inline StructTypeField::StructTypeField(StructTypeFieldView field)
-    : StructTypeField(std::string(field.name), field.number, Type(field.type)) {
-}
-
 // Now that Type and TypeView are complete, we can define various parts of list,
 // map, opaque, and struct which depend on Type and TypeView.
 
@@ -672,6 +639,12 @@ struct OpaqueTypeData final {
 
   const std::string name;
   const Parameters parameters;
+};
+
+struct StructTypeData final {
+  explicit StructTypeData(std::string name) : name(std::move(name)) {}
+
+  const std::string name;
 };
 
 }  // namespace common_internal
@@ -756,6 +729,20 @@ template <typename H>
 inline H AbslHashValue(H state, MapTypeView type) {
   return H::combine(std::move(state), type.kind(), type.key(), type.value());
 }
+
+inline StructType::StructType(StructTypeView other) : data_(other.data_) {}
+
+inline StructType::StructType(MemoryManagerRef memory_manager,
+                              absl::string_view name)
+    : data_(memory_manager.MakeShared<common_internal::StructTypeData>(
+          std::string(name))) {}
+
+inline absl::string_view StructType::name() const { return data_->name; }
+
+inline StructTypeView::StructTypeView(const StructType& type) noexcept
+    : data_(type.data_) {}
+
+inline absl::string_view StructTypeView::name() const { return data_->name; }
 
 inline OpaqueType::OpaqueType(OpaqueTypeView other) : data_(other.data_) {}
 
