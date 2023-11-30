@@ -315,6 +315,41 @@ class UnreachablePoolingMemoryManager final : public PoolingMemoryManager {
   }
 };
 
+struct UnmanagedPoolingMemoryManager {
+  UnmanagedPoolingMemoryManager() = default;
+  UnmanagedPoolingMemoryManager(const UnmanagedPoolingMemoryManager&) = delete;
+  UnmanagedPoolingMemoryManager(UnmanagedPoolingMemoryManager&&) = delete;
+  UnmanagedPoolingMemoryManager& operator=(
+      const UnmanagedPoolingMemoryManager&) = delete;
+  UnmanagedPoolingMemoryManager& operator=(UnmanagedPoolingMemoryManager&&) =
+      delete;
+};
+
+absl::Nonnull<void*> UnmanagedPoolingMemoryManagerAllocate(void*, size_t size,
+                                                           size_t align) {
+  if (align <= __STDCPP_DEFAULT_NEW_ALIGNMENT__) {
+    return ::operator new(size);
+  }
+  return ::operator new(size, static_cast<std::align_val_t>(align));
+}
+
+bool UnmanagedPoolingMemoryManagerDeallocate(absl::Nonnull<void*>,
+                                             absl::Nonnull<void*>, size_t,
+                                             size_t) noexcept {
+  return false;
+}
+
+void UnmanagedPoolingMemoryManagerOwnCustomDestructor(
+    absl::Nonnull<void*>, absl::Nonnull<void*>,
+    absl::Nonnull<PoolingMemoryManagerVirtualTable::CustomDestructPtr>) {}
+
+const PoolingMemoryManagerVirtualTable kUnmanagedMemoryManagerVirtualTable = {
+    NativeTypeId::For<UnmanagedPoolingMemoryManager>(),
+    &UnmanagedPoolingMemoryManagerAllocate,
+    &UnmanagedPoolingMemoryManagerDeallocate,
+    &UnmanagedPoolingMemoryManagerOwnCustomDestructor,
+};
+
 }  // namespace
 
 std::ostream& operator<<(std::ostream& out,
@@ -336,6 +371,12 @@ absl::Nonnull<PoolingMemoryManager*>
 MemoryManager::UnreachablePooling() noexcept {
   static internal::NoDestructor<UnreachablePoolingMemoryManager> instance;
   return &instance.get();
+}
+
+MemoryManagerRef MemoryManagerRef::Unmanaged() {
+  static UnmanagedPoolingMemoryManager instance;
+  return MemoryManagerRef::Pooling(kUnmanagedMemoryManagerVirtualTable,
+                                   instance);
 }
 
 }  // namespace cel

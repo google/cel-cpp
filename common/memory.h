@@ -872,6 +872,14 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManagerRef final {
     return memory_manager;
   }
 
+  // Returns a `MemoryManagerRef` to a `PoolingMemoryManager` which never
+  // deallocates memory and is never destroyed.
+  //
+  // IMPORTANT: This should only be used for cases where something is
+  // initialized and never destructed (e.g. singletons). It should never be used
+  // for anything else.
+  static MemoryManagerRef Unmanaged();
+
   MemoryManagerRef() = delete;
   MemoryManagerRef(const MemoryManagerRef&) = default;
   MemoryManagerRef(MemoryManagerRef&&) = default;

@@ -40,8 +40,8 @@ std::string OpaqueDebugString(absl::string_view name,
 }
 
 absl::FixedArray<Type, 1> SizedInputViewToFixedArray(
-    SizedInputView<TypeView> parameters) {
-  absl::FixedArray<Type, 1> fixed_parameters(parameters.size(), DynType());
+    const SizedInputView<TypeView>& parameters) {
+  absl::FixedArray<Type, 1> fixed_parameters(parameters.size());
   size_t index = 0;
   for (const auto& parameter : parameters) {
     fixed_parameters[index++] = Type(parameter);
@@ -53,7 +53,7 @@ absl::FixedArray<Type, 1> SizedInputViewToFixedArray(
 }  // namespace
 
 OpaqueType::OpaqueType(MemoryManagerRef memory_manager, absl::string_view name,
-                       SizedInputView<TypeView> parameters)
+                       const SizedInputView<TypeView>& parameters)
     : data_(memory_manager.MakeShared<common_internal::OpaqueTypeData>(
           std::string(name),
           SizedInputViewToFixedArray(std::move(parameters)))) {}

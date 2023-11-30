@@ -245,7 +245,7 @@ cc_library(
             "types/*_test.cc",
             "values/*_test.cc",
         ],
-    ),
+    ) + ["type_factory.cc"],
     hdrs = glob(
         [
             "types/*.h",
@@ -257,6 +257,7 @@ cc_library(
         ],
     ) + [
         "type.h",
+        "type_factory.h",
         "type_interface.h",
         "value.h",
         "value_interface.h",
@@ -289,6 +290,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
@@ -303,6 +305,7 @@ cc_test(
         "types/*_test.cc",
         "values/*_test.cc",
     ]) + [
+        "type_factory_test.cc",
         "type_test.cc",
         "value_test.cc",
     ],

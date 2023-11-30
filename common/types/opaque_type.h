@@ -50,7 +50,7 @@ class OpaqueType final {
   explicit OpaqueType(OpaqueTypeView other);
 
   OpaqueType(MemoryManagerRef memory_manager, absl::string_view name,
-             SizedInputView<TypeView> parameters);
+             const SizedInputView<TypeView>& parameters);
 
   OpaqueType() = delete;
   OpaqueType(const OpaqueType&) = default;
