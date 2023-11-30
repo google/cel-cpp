@@ -24,14 +24,26 @@ cc_library(
         "//eval/public:cel_value",
         "//eval/public:portable_cel_function_adapter",
         "//internal:status_macros",
-        "//parser:macro",
-        "//parser:source_factory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "math_ext_macros",
+    srcs = ["math_ext_macros.cc"],
+    hdrs = ["math_ext_macros.h"],
+    deps = [
+        "//parser:macro",
+        "//parser:source_factory",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
 
@@ -40,6 +52,7 @@ cc_test(
     srcs = ["math_ext_test.cc"],
     deps = [
         ":math_ext",
+        ":math_ext_macros",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",

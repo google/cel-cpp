@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2023 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,21 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_MATH_EXT_H_
-#define THIRD_PARTY_CEL_CPP_EXTENSIONS_MATH_EXT_H_
+#ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_MATH_EXT_MACROS_H_
+#define THIRD_PARTY_CEL_CPP_EXTENSIONS_MATH_EXT_MACROS_H_
 
-#include "absl/status/status.h"
-#include "eval/public/cel_function_registry.h"
-#include "eval/public/cel_options.h"
+#include <vector>
+
+#include "parser/macro.h"
 
 namespace cel::extensions {
 
-// Register extension functions for supporting mathematical operations above
-// and beyond the set defined in the CEL standard environment.
-absl::Status RegisterMathExtensionFunctions(
-    google::api::expr::runtime::CelFunctionRegistry* registry,
-    const google::api::expr::runtime::InterpreterOptions& options);
+// math_macros() returns the namespaced helper macros for math.least() and
+// math.greatest().
+std::vector<Macro> math_macros();
 
 }  // namespace cel::extensions
 
-#endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_MATH_EXT_H_
+#endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_MATH_EXT_MACROS_H_

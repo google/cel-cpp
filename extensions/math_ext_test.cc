@@ -29,6 +29,7 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/testing/matchers.h"
+#include "extensions/math_ext_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
 #include "google/protobuf/arena.h"
