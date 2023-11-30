@@ -19,12 +19,14 @@
 
 #include "common/memory.h"
 
+#include <cstddef>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <utility>
 
 #include "absl/base/config.h"  // IWYU pragma: keep
+#include "absl/debugging/leak_check.h"
 #include "absl/log/absl_check.h"
 #include "absl/types/optional.h"
 #include "common/casting.h"
@@ -38,6 +40,11 @@
 namespace cel {
 namespace {
 
+using testing::_;
+using testing::IsFalse;
+using testing::IsNull;
+using testing::IsTrue;
+using testing::NotNull;
 using testing::TestParamInfo;
 using testing::TestWithParam;
 
@@ -184,6 +191,32 @@ class MemoryManagerTest : public TestWithParam<MemoryManagement> {
  private:
   absl::optional<MemoryManager> memory_manager_;
 };
+
+TEST_P(MemoryManagerTest, AllocateAndDeallocateZeroSize) {
+  EXPECT_THAT(memory_manager().Allocate(0, 1), IsNull());
+  EXPECT_THAT(memory_manager().Deallocate(nullptr, 0, 1), IsFalse());
+}
+
+TEST_P(MemoryManagerTest, AllocateAndDeallocateBadAlignment) {
+  EXPECT_DEBUG_DEATH(absl::IgnoreLeak(memory_manager().Allocate(1, 0)), _);
+  EXPECT_DEBUG_DEATH(memory_manager().Deallocate(nullptr, 0, 0), _);
+}
+
+TEST_P(MemoryManagerTest, AllocateAndDeallocate) {
+  constexpr size_t kSize = 1024;
+  constexpr size_t kAlignment = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
+  void* ptr = memory_manager().Allocate(kSize, kAlignment);
+  ASSERT_THAT(ptr, NotNull());
+  EXPECT_THAT(memory_manager().Deallocate(ptr, kSize, kAlignment), IsTrue());
+}
+
+TEST_P(MemoryManagerTest, AllocateAndDeallocateOveraligned) {
+  constexpr size_t kSize = 1024;
+  constexpr size_t kAlignment = __STDCPP_DEFAULT_NEW_ALIGNMENT__ * 4;
+  void* ptr = memory_manager().Allocate(kSize, kAlignment);
+  ASSERT_THAT(ptr, NotNull());
+  EXPECT_THAT(memory_manager().Deallocate(ptr, kSize, kAlignment), IsTrue());
+}
 
 class Object {
  public:

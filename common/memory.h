@@ -28,6 +28,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/log/die_if_null.h"
 #include "absl/meta/type_traits.h"
+#include "absl/numeric/bits.h"
 #include "common/casting.h"
 #include "common/internal/reference_count.h"
 #include "common/native_type.h"
@@ -450,6 +451,10 @@ class ReferenceCountingMemoryManager final {
                      MemoryManagement::kReferenceCounting);
   }
 
+  static void* Allocate(size_t size, size_t alignment);
+
+  static bool Deallocate(void* ptr, size_t size, size_t alignment) noexcept;
+
   explicit ReferenceCountingMemoryManager() = default;
 
   friend class MemoryManager;
@@ -503,6 +508,35 @@ class PoolingMemoryManager {
     return Unique<T>(static_cast<T*>(ptr), MemoryManagement::kPooling);
   }
 
+  // Allocates memory directly from the allocator used by this memory manager.
+  // If `memory_management()` returns `MemoryManagement::kReferenceCounting`,
+  // this allocation *must* be explicitly deallocated at some point via
+  // `Deallocate`. Otherwise deallocation is optional.
+  void* Allocate(size_t size, size_t alignment) {
+    ABSL_DCHECK(absl::has_single_bit(alignment))
+        << "alignment must be a power of 2";
+    if (size == 0) {
+      return nullptr;
+    }
+    return AllocateImpl(size, alignment);
+  }
+
+  // Attempts to deallocate memory previously allocated via `Allocate`, `size`
+  // and `alignment` must match the values from the previous call to `Allocate`.
+  // Returns `true` if the deallocation was successful and additional calls to
+  // `Allocate` may re-use the memory, `false` otherwise. Returns `false` if
+  // given `nullptr`.
+  bool Deallocate(void* ptr, size_t size, size_t alignment) noexcept {
+    ABSL_DCHECK(absl::has_single_bit(alignment))
+        << "alignment must be a power of 2";
+    if (ptr == nullptr) {
+      ABSL_DCHECK_EQ(size, 0);
+      return false;
+    }
+    ABSL_DCHECK_GT(size, 0);
+    return DeallocateImpl(ptr, size, alignment);
+  }
+
  protected:
   using CustomDestructPtr = void (*)(void*);
 
@@ -523,14 +557,9 @@ class PoolingMemoryManager {
 
   // These are virtual private, ensuring only `MemoryManager` calls these.
 
-  // Allocates memory of at least size `size` in bytes that is at least as
-  // aligned as `align`.
-  virtual absl::Nonnull<void*> Allocate(size_t size, size_t align) = 0;
+  virtual absl::Nonnull<void*> AllocateImpl(size_t size, size_t align) = 0;
 
-  // Attempts to deallocate memory previously returned from `Allocate`. This is
-  // only used for manual memory management.
-  virtual bool Deallocate(absl::Nonnull<void*> pointer, size_t size,
-                          size_t align) noexcept {
+  virtual bool DeallocateImpl(absl::Nonnull<void*>, size_t, size_t) noexcept {
     return false;
   }
 
@@ -624,18 +653,12 @@ class PoolingMemoryManagerVirtualDispatcher final
     ABSL_DCHECK(vtable_->OwnCustomDestructor != nullptr);
   }
 
-  // These are virtual private, ensuring only `MemoryManager` calls these.
-
-  // Allocates memory of at least size `size` in bytes that is at least as
-  // aligned as `align`.
-  absl::Nonnull<void*> Allocate(size_t size, size_t align) override {
+  absl::Nonnull<void*> AllocateImpl(size_t size, size_t align) override {
     return vtable()->Allocate(callee(), size, align);
   }
 
-  // Attempts to deallocate memory previously returned from `Allocate`. This is
-  // only used for manual memory management.
-  bool Deallocate(absl::Nonnull<void*> pointer, size_t size,
-                  size_t align) noexcept override {
+  bool DeallocateImpl(absl::Nonnull<void*> pointer, size_t size,
+                      size_t align) noexcept override {
     return vtable()->Deallocate(callee(), pointer, size, align);
   }
 
@@ -740,6 +763,31 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManager final {
           std::forward<Args>(args)...);
     } else {
       return pointer_->MakeUnique<T>(std::forward<Args>(args)...);
+    }
+  }
+
+  // Allocates memory directly from the allocator used by this memory manager.
+  // If `memory_management()` returns `MemoryManagement::kReferenceCounting`,
+  // this allocation *must* be explicitly deallocated at some point via
+  // `Deallocate`. Otherwise deallocation is optional.
+  void* Allocate(size_t size, size_t alignment) {
+    if (pointer_ == nullptr) {
+      return ReferenceCountingMemoryManager::Allocate(size, alignment);
+    } else {
+      return pointer_->Allocate(size, alignment);
+    }
+  }
+
+  // Attempts to deallocate memory previously allocated via `Allocate`, `size`
+  // and `alignment` must match the values from the previous call to `Allocate`.
+  // Returns `true` if the deallocation was successful and additional calls to
+  // `Allocate` may re-use the memory, `false` otherwise. Returns `false` if
+  // given `nullptr`.
+  bool Deallocate(void* ptr, size_t size, size_t alignment) noexcept {
+    if (pointer_ == nullptr) {
+      return ReferenceCountingMemoryManager::Deallocate(ptr, size, alignment);
+    } else {
+      return pointer_->Deallocate(ptr, size, alignment);
     }
   }
 
@@ -931,6 +979,45 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManagerRef final {
                      vpointer_),
                  pointer_)
           .MakeUnique<T>(std::forward<Args>(args)...);
+    }
+  }
+
+  // Allocates memory directly from the allocator used by this memory manager.
+  // If `memory_management()` returns `MemoryManagement::kReferenceCounting`,
+  // this allocation *must* be explicitly deallocated at some point via
+  // `Deallocate`. Otherwise deallocation is optional.
+  void* Allocate(size_t size, size_t alignment) {
+    if (vpointer_ == nullptr) {
+      return ReferenceCountingMemoryManager::Allocate(size, alignment);
+    } else if (pointer_ == nullptr) {
+      return static_cast<PoolingMemoryManager*>(vpointer_)->Allocate(size,
+                                                                     alignment);
+    } else {
+      return PoolingMemoryManagerVirtualDispatcher(
+                 static_cast<const PoolingMemoryManagerVirtualTable*>(
+                     vpointer_),
+                 pointer_)
+          .Allocate(size, alignment);
+    }
+  }
+
+  // Attempts to deallocate memory previously allocated via `Allocate`, `size`
+  // and `alignment` must match the values from the previous call to `Allocate`.
+  // Returns `true` if the deallocation was successful and additional calls to
+  // `Allocate` may re-use the memory, `false` otherwise. Returns `false` if
+  // given `nullptr`.
+  bool Deallocate(void* ptr, size_t size, size_t alignment) noexcept {
+    if (vpointer_ == nullptr) {
+      return ReferenceCountingMemoryManager::Deallocate(ptr, size, alignment);
+    } else if (pointer_ == nullptr) {
+      return static_cast<PoolingMemoryManager*>(vpointer_)->Deallocate(
+          ptr, size, alignment);
+    } else {
+      return PoolingMemoryManagerVirtualDispatcher(
+                 static_cast<const PoolingMemoryManagerVirtualTable*>(
+                     vpointer_),
+                 pointer_)
+          .Deallocate(ptr, size, alignment);
     }
   }
 

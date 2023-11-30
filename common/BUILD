@@ -153,6 +153,7 @@ cc_test(
         ":native_type",
         "//internal:testing",
         "@com_google_absl//absl/base:config",
+        "@com_google_absl//absl/debugging:leak_check",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/types:optional",
     ],

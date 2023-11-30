@@ -54,7 +54,7 @@ class ProtoPoolingMemoryManager final : public PoolingMemoryManager {
   absl::Nonnull<google::protobuf::Arena*> arena() { return &arena_; }
 
  private:
-  absl::Nonnull<void*> Allocate(size_t size, size_t align) override {
+  absl::Nonnull<void*> AllocateImpl(size_t size, size_t align) override {
     return ProtoPoolingMemoryManagerAllocate(arena(), size, align);
   }
 

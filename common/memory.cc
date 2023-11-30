@@ -203,7 +203,7 @@ class ThreadCompatiblePoolingMemoryManager final : public PoolingMemoryManager {
     return capacity;
   }
 
-  absl::Nonnull<void*> Allocate(size_t size, size_t align) override {
+  absl::Nonnull<void*> AllocateImpl(size_t size, size_t align) override {
     ABSL_DCHECK_NE(size, 0);
     ABSL_DCHECK(absl::has_single_bit(align));
     if (ABSL_PREDICT_FALSE(IsSizeTooLarge(size))) {
@@ -249,8 +249,8 @@ class ThreadCompatiblePoolingMemoryManager final : public PoolingMemoryManager {
 #endif
   }
 
-  bool Deallocate(absl::Nonnull<void*> pointer, size_t size,
-                  size_t align) noexcept override {
+  bool DeallocateImpl(absl::Nonnull<void*> pointer, size_t size,
+                      size_t align) noexcept override {
     ABSL_DCHECK(absl::has_single_bit(align));
     ABSL_DCHECK_NE(size, 0);
     ABSL_DCHECK(IsAligned(pointer, align));
@@ -297,11 +297,11 @@ class ThreadCompatiblePoolingMemoryManager final : public PoolingMemoryManager {
 
 class UnreachablePoolingMemoryManager final : public PoolingMemoryManager {
  private:
-  absl::Nonnull<void*> Allocate(size_t, size_t) override {
+  absl::Nonnull<void*> AllocateImpl(size_t, size_t) override {
     ABSL_LOG(FATAL) << "MemoryManager used after being moved";
   }
 
-  bool Deallocate(absl::Nonnull<void*>, size_t, size_t) noexcept override {
+  bool DeallocateImpl(absl::Nonnull<void*>, size_t, size_t) noexcept override {
     ABSL_LOG(FATAL) << "MemoryManager used after being moved";
   }
 
@@ -325,7 +325,8 @@ struct UnmanagedPoolingMemoryManager {
       delete;
 };
 
-absl::Nonnull<void*> UnmanagedPoolingMemoryManagerAllocate(void*, size_t size,
+absl::Nonnull<void*> UnmanagedPoolingMemoryManagerAllocate(absl::Nonnull<void*>,
+                                                           size_t size,
                                                            size_t align) {
   if (align <= __STDCPP_DEFAULT_NEW_ALIGNMENT__) {
     return ::operator new(size);
@@ -334,9 +335,23 @@ absl::Nonnull<void*> UnmanagedPoolingMemoryManagerAllocate(void*, size_t size,
 }
 
 bool UnmanagedPoolingMemoryManagerDeallocate(absl::Nonnull<void*>,
-                                             absl::Nonnull<void*>, size_t,
-                                             size_t) noexcept {
-  return false;
+                                             absl::Nonnull<void*> ptr,
+                                             size_t size,
+                                             size_t alignment) noexcept {
+  if (alignment <= __STDCPP_DEFAULT_NEW_ALIGNMENT__) {
+#if defined(__cpp_sized_deallocation) && __cpp_sized_deallocation >= 201309L
+    ::operator delete(ptr, size);
+#else
+    ::operator delete(ptr);
+#endif
+  } else {
+#if defined(__cpp_sized_deallocation) && __cpp_sized_deallocation >= 201309L
+    ::operator delete(ptr, size, static_cast<std::align_val_t>(alignment));
+#else
+    ::operator delete(ptr, static_cast<std::align_val_t>(alignment));
+#endif
+  }
+  return true;
 }
 
 void UnmanagedPoolingMemoryManagerOwnCustomDestructor(
@@ -360,6 +375,44 @@ std::ostream& operator<<(std::ostream& out,
     case MemoryManagement::kReferenceCounting:
       return out << "REFERENCE_COUNTING";
   }
+}
+
+absl::Nonnull<void*> ReferenceCountingMemoryManager::Allocate(
+    size_t size, size_t alignment) {
+  ABSL_DCHECK(absl::has_single_bit(alignment))
+      << "alignment must be a power of 2: " << alignment;
+  if (size == 0) {
+    return nullptr;
+  }
+  if (alignment <= __STDCPP_DEFAULT_NEW_ALIGNMENT__) {
+    return ::operator new(size);
+  }
+  return ::operator new(size, static_cast<std::align_val_t>(alignment));
+}
+
+bool ReferenceCountingMemoryManager::Deallocate(void* ptr, size_t size,
+                                                size_t alignment) noexcept {
+  ABSL_DCHECK(absl::has_single_bit(alignment))
+      << "alignment must be a power of 2: " << alignment;
+  if (ptr == nullptr) {
+    ABSL_DCHECK_EQ(size, 0);
+    return false;
+  }
+  ABSL_DCHECK_GT(size, 0);
+  if (alignment <= __STDCPP_DEFAULT_NEW_ALIGNMENT__) {
+#if defined(__cpp_sized_deallocation) && __cpp_sized_deallocation >= 201309L
+    ::operator delete(ptr, size);
+#else
+    ::operator delete(ptr);
+#endif
+  } else {
+#if defined(__cpp_sized_deallocation) && __cpp_sized_deallocation >= 201309L
+    ::operator delete(ptr, size, static_cast<std::align_val_t>(alignment));
+#else
+    ::operator delete(ptr, static_cast<std::align_val_t>(alignment));
+#endif
+  }
+  return true;
 }
 
 absl::Nonnull<std::unique_ptr<PoolingMemoryManager>>
