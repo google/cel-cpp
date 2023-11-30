@@ -277,6 +277,7 @@ cc_test(
         "//eval/public/testing:matchers",
         "//eval/testutil:test_message_cc_proto",
         "//extensions/protobuf:memory_manager",
+        "//internal:proto_matchers",
         "//internal:testing",
         "//runtime:runtime_options",
         "//testutil:util",

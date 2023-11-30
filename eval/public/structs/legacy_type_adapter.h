@@ -77,6 +77,13 @@ class LegacyTypeMutationApis {
 // dynamic dispatch to concrete implementations).
 class LegacyTypeAccessApis {
  public:
+  struct LegacyQualifyResult {
+    // The possibly intermediate result of the select operation.
+    CelValue value;
+    // Number of qualifiers applied.
+    int qualifier_count;
+  };
+
   virtual ~LegacyTypeAccessApis() = default;
 
   // Return whether an instance of the type has field set to a non-default
@@ -107,7 +114,7 @@ class LegacyTypeAccessApis {
   // - presence_test controls whether to treat the call as a 'has' call,
   // returning
   //   whether the leaf field is set to a non-default value.
-  virtual absl::StatusOr<CelValue> Qualify(
+  virtual absl::StatusOr<LegacyQualifyResult> Qualify(
       absl::Span<const cel::SelectQualifier>,
       const CelValue::MessageWrapper& instance, bool presence_test,
       cel::MemoryManagerRef memory_manager) const {

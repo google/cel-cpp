@@ -66,6 +66,14 @@ struct FieldSpecifier {
 
 using SelectQualifier = absl::variant<FieldSpecifier, AttributeQualifier>;
 
+struct QualifyResult {
+  // The possibly intermediate result of qualification.
+  Handle<Value> value;
+  // The number of qualifiers applied.
+  // A value < 0 indicates all qualifiers were effectively applied.
+  int qualifier_count;
+};
+
 // StructValue represents an instance of cel::StructType.
 class StructValue : public Value,
                     public base_internal::EnableHandleFromThis<StructValue> {
@@ -117,7 +125,7 @@ class StructValue : public Value,
   // absl::StatusCode::kUnimplemented has special meaning: if returned the
   // evaluator will attempt to apply the operation using the standard Get/Has
   // operations.
-  absl::StatusOr<Handle<Value>> Qualify(
+  absl::StatusOr<QualifyResult> Qualify(
       ValueFactory& value_factory,
       absl::Span<const SelectQualifier> select_qualifiers,
       bool presence_test) const;
@@ -225,7 +233,7 @@ ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool> MessageValueHasFieldByName(
 ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> MessageValueGetFieldByNumber(
     uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
     int64_t number, bool unbox_null_wrapper_types);
-ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> MessageValueQualify(
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<QualifyResult> MessageValueQualify(
     uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
     absl::Span<const SelectQualifier> qualifiers, bool presence_test);
 ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> MessageValueGetFieldByName(
@@ -263,7 +271,7 @@ class LegacyStructValue final : public StructValue, public InlineData {
   absl::StatusOr<Handle<Value>> GetFieldByNumber(ValueFactory& value_factory,
                                                  int64_t number) const;
 
-  absl::StatusOr<Handle<Value>> Qualify(
+  absl::StatusOr<QualifyResult> Qualify(
       ValueFactory& value_factory,
       absl::Span<const SelectQualifier> select_qualifiers,
       bool presence_test) const;
@@ -358,7 +366,7 @@ class AbstractStructValue : public StructValue,
   virtual absl::StatusOr<Handle<Value>> GetFieldByNumber(
       ValueFactory& value_factory, int64_t number) const = 0;
 
-  virtual absl::StatusOr<Handle<Value>> Qualify(
+  virtual absl::StatusOr<QualifyResult> Qualify(
       ValueFactory& value_factory,
       absl::Span<const SelectQualifier> select_qualifiers,
       bool presence_test) const {

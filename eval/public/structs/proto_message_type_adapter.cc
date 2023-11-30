@@ -181,10 +181,11 @@ absl::StatusOr<CelValue> GetFieldImpl(const google::protobuf::Message* message,
   return CreateCelValueFromField(message, field_desc, unboxing_option, arena);
 }
 
-absl::StatusOr<CelValue> QualifyImpl(
+absl::StatusOr<LegacyTypeAccessApis::LegacyQualifyResult> QualifyImpl(
     const google::protobuf::Message* message, const google::protobuf::Descriptor* descriptor,
     absl::Span<const cel::SelectQualifier> path, bool presence_test,
     cel::MemoryManagerRef memory_manager) {
+  using LegacyQualifyResult = LegacyTypeAccessApis::LegacyQualifyResult;
   google::protobuf::Arena* arena = ProtoMemoryManagerArena(memory_manager);
   const google::protobuf::Message* select_path_elem = message;
   const google::protobuf::FieldDescriptor* field_desc = nullptr;
@@ -195,7 +196,7 @@ absl::StatusOr<CelValue> QualifyImpl(
     const auto& qualifier = path[i];
     if (!absl::holds_alternative<cel::FieldSpecifier>(qualifier)) {
       return absl::UnimplementedError(
-          "Select optimization only supports message traversal.");
+          "Select optimization only supports typed message field traversal.");
     }
     const auto& field_specifier = absl::get<cel::FieldSpecifier>(qualifier);
 
@@ -215,7 +216,8 @@ absl::StatusOr<CelValue> QualifyImpl(
     }
 
     if (field_desc == nullptr) {
-      return CreateNoSuchFieldError(memory_manager, field_specifier.name);
+      return LegacyQualifyResult{
+          CreateNoSuchFieldError(memory_manager, field_specifier.name), -1};
     }
 
     if (i == path.size() - 1) {
@@ -225,8 +227,14 @@ absl::StatusOr<CelValue> QualifyImpl(
     }
 
     if (field_desc->is_repeated()) {
-      return absl::UnimplementedError(
-          "Select optimization only supports singular field traversal.");
+      // Return early if we can't traverse the next step (a map or list).
+      LegacyQualifyResult result;
+      result.qualifier_count = i + 1;
+      CEL_ASSIGN_OR_RETURN(
+          result.value,
+          CreateCelValueFromField(select_path_elem, field_desc,
+                                  ProtoWrapperTypeOptions::kUnsetNull, arena));
+      return result;
     }
 
     switch (field_desc->type()) {
@@ -240,16 +248,24 @@ absl::StatusOr<CelValue> QualifyImpl(
     }
   }
 
+  LegacyQualifyResult result;
+  result.qualifier_count = -1;
+
   if (presence_test) {
-    return CelValue::CreateBool(
+    result.value = CelValue::CreateBool(
         CelFieldIsPresent(select_path_elem, field_desc, reflection));
+
+    return result;
   }
 
   // For simplicity, qualify only supports the spec behavior for wrapper types.
-  // The optimization is opt-in, so should not affect clients depening on the
+  // The optimization is opt-in, so should not affect clients depending on the
   // legacy behavior.
-  return CreateCelValueFromField(select_path_elem, field_desc,
-                                 ProtoWrapperTypeOptions::kUnsetNull, arena);
+  CEL_ASSIGN_OR_RETURN(
+      result.value,
+      CreateCelValueFromField(select_path_elem, field_desc,
+                              ProtoWrapperTypeOptions::kUnsetNull, arena));
+  return result;
 }
 
 std::vector<absl::string_view> ListFieldsImpl(
@@ -293,7 +309,7 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
                         unboxing_option, memory_manager);
   }
 
-  absl::StatusOr<CelValue> Qualify(
+  absl::StatusOr<LegacyTypeAccessApis::LegacyQualifyResult> Qualify(
       absl::Span<const cel::SelectQualifier> qualifiers,
       const CelValue::MessageWrapper& instance, bool presence_test,
       cel::MemoryManagerRef memory_manager) const override {
@@ -510,7 +526,8 @@ absl::StatusOr<CelValue> ProtoMessageTypeAdapter::GetField(
                       memory_manager);
 }
 
-absl::StatusOr<CelValue> ProtoMessageTypeAdapter::Qualify(
+absl::StatusOr<LegacyTypeAccessApis::LegacyQualifyResult>
+ProtoMessageTypeAdapter::Qualify(
     absl::Span<const cel::SelectQualifier> qualifiers,
     const CelValue::MessageWrapper& instance, bool presence_test,
     cel::MemoryManagerRef memory_manager) const {

@@ -21,7 +21,6 @@
 #include "absl/status/status.h"
 #include "base/attribute.h"
 #include "base/values/struct_value.h"
-#include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
@@ -31,9 +30,9 @@
 #include "eval/public/testing/matchers.h"
 #include "eval/testutil/test_message.pb.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "internal/proto_matchers.h"
 #include "internal/testing.h"
 #include "runtime/runtime_options.h"
-#include "testutil/util.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -41,16 +40,22 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::cel::ProtoWrapperTypeOptions;
 using ::cel::extensions::ProtoMemoryManagerRef;
+using ::cel::internal::test::EqualsProto;
 using ::google::protobuf::Int64Value;
 using testing::_;
+using testing::AllOf;
 using testing::ElementsAre;
+using testing::Eq;
+using testing::Field;
 using testing::HasSubstr;
 using testing::Optional;
 using testing::Truly;
 using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
-using testutil::EqualsProto;
+
+using LegacyQualifyResult = LegacyTypeAccessApis::LegacyQualifyResult;
 
 class ProtoMessageTypeAccessorTest : public testing::TestWithParam<bool> {
  public:
@@ -766,12 +771,13 @@ TEST(ProtoMesssageTypeAdapter, Qualify) {
   std::vector<cel::SelectQualifier> qualfiers{
       cel::FieldSpecifier{12, "message_value"},
       cel::FieldSpecifier{2, "int64_value"}};
-  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
-                           /*presence_test=*/false, manager),
-              IsOkAndHolds(test::IsCelInt64(42)));
+  EXPECT_THAT(
+      api->Qualify(qualfiers, wrapped,
+                   /*presence_test=*/false, manager),
+      IsOkAndHolds(Field(&LegacyQualifyResult::value, test::IsCelInt64(42))));
 }
 
-TEST(ProtoMesssageTypeAdapter, QualifyMapsNotYetSupported) {
+TEST(ProtoMesssageTypeAdapter, QualifyMapsTraversalPartialSupport) {
   google::protobuf::Arena arena;
   ProtoMessageTypeAdapter adapter(
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
@@ -787,12 +793,43 @@ TEST(ProtoMesssageTypeAdapter, QualifyMapsNotYetSupported) {
   ASSERT_NE(api, nullptr);
 
   std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{210, "string_message_map"},
       cel::AttributeQualifier::OfString("@key"),
       cel::FieldSpecifier{2, "int64_value"}};
 
+  EXPECT_THAT(
+      api->Qualify(qualfiers, wrapped,
+                   /*presence_test=*/false, manager),
+      IsOkAndHolds(
+          AllOf(Field(&LegacyQualifyResult::value, Truly([](const CelValue& v) {
+                  return v.IsMap() && v.MapOrDie()->size() == 1;
+                })),
+                Field(&LegacyQualifyResult::qualifier_count, Eq(1)))));
+}
+
+TEST(ProtoMesssageTypeAdapter, UntypedQualifiersNotYetSupported) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  (*message.mutable_string_message_map())["@key"].set_int64_value(42);
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::AttributeQualifier::OfString("string_message_map"),
+      cel::AttributeQualifier::OfString("@key"),
+      cel::AttributeQualifier::OfString("int64_value")};
+
   EXPECT_THAT(api->Qualify(qualfiers, wrapped,
                            /*presence_test=*/false, manager),
-              StatusIs(absl::StatusCode::kUnimplemented));
+              StatusIs(absl::StatusCode::kUnimplemented, _));
 }
 
 TEST(ProtoMesssageTypeAdapter, QualifyRepeatedLeaf) {
@@ -817,10 +854,12 @@ TEST(ProtoMesssageTypeAdapter, QualifyRepeatedLeaf) {
       cel::FieldSpecifier{102, "int64_list"},
   };
 
-  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
-                           /*presence_test=*/false, manager),
-              IsOkAndHolds(test::IsCelList(
-                  ElementsAre(test::IsCelInt64(1), test::IsCelInt64(2)))));
+  EXPECT_THAT(
+      api->Qualify(qualfiers, wrapped,
+                   /*presence_test=*/false, manager),
+      IsOkAndHolds(Field(&LegacyQualifyResult::value,
+                         test::IsCelList(ElementsAre(test::IsCelInt64(1),
+                                                     test::IsCelInt64(2))))));
 }
 
 }  // namespace

@@ -91,7 +91,7 @@ class ProtoMessageTypeAdapter : public LegacyTypeInfoApis,
       absl::string_view field_name,
       const CelValue::MessageWrapper& value) const override;
 
-  absl::StatusOr<CelValue> Qualify(
+  absl::StatusOr<LegacyTypeAccessApis::LegacyQualifyResult> Qualify(
       absl::Span<const cel::SelectQualifier> qualifiers,
       const CelValue::MessageWrapper& instance, bool presence_test,
       cel::MemoryManagerRef memory_manager) const override;

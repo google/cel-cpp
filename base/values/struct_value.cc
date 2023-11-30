@@ -110,7 +110,7 @@ absl::StatusOr<Handle<Value>> StructValue::GetFieldByNumber(
                                             number);
 }
 
-absl::StatusOr<Handle<Value>> StructValue::Qualify(
+absl::StatusOr<QualifyResult> StructValue::Qualify(
     ValueFactory& value_factory, absl::Span<const SelectQualifier> qualifiers,
     bool presence_test) const {
   return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(Qualify, value_factory, qualifiers,
@@ -345,7 +345,7 @@ absl::StatusOr<Handle<Value>> LegacyStructValue::GetFieldByNumber(
                                       true);
 }
 
-absl::StatusOr<Handle<Value>> LegacyStructValue::Qualify(
+absl::StatusOr<QualifyResult> LegacyStructValue::Qualify(
     ValueFactory& value_factory, absl::Span<const SelectQualifier> qualifiers,
     bool presence_test) const {
   return MessageValueQualify(msg_, type_info_, value_factory, qualifiers,

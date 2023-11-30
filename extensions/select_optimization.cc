@@ -14,6 +14,7 @@
 
 #include "extensions/select_optimization.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <iterator>
 #include <memory>
@@ -23,12 +24,14 @@
 #include <vector>
 
 #include "absl/algorithm/container.h"
+#include "absl/base/macros.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
@@ -47,6 +50,7 @@
 #include "eval/public/source_position_native.h"
 #include "internal/overloaded.h"
 #include "internal/status_macros.h"
+#include "runtime/internal/errors.h"
 #include "runtime/runtime_options.h"
 
 namespace cel::extensions {
@@ -297,8 +301,9 @@ class OptimizedSelectStep : public ExpressionStepBase {
 
   // Slow implementation if the Qualify operation isn't provided for the struct
   // implementation at runtime.
-  absl::StatusOr<Handle<Value>> FallbackSelect(ExecutionFrame* frame,
-                                               const StructValue& root) const;
+  absl::StatusOr<Handle<Value>> FallbackSelect(
+      ExecutionFrame* frame, const Value& root,
+      absl::Span<const SelectQualifier> select_path) const;
 
   // Get the effective attribute for the optimized select expression.
   // Assumes the operand is the top of stack if the attribute wasn't known at
@@ -364,17 +369,22 @@ AttributeTrail OptimizedSelectStep::GetAttributeTrail(
 }
 
 absl::StatusOr<Handle<Value>> OptimizedSelectStep::FallbackSelect(
-    ExecutionFrame* frame, const StructValue& root) const {
-  const StructValue* elem = &root;
+    ExecutionFrame* frame, const Value& root,
+    absl::Span<const SelectQualifier> select_path) const {
+  const Value* elem = &root;
   Handle<Value> result;
 
-  for (const auto& instruction : select_path_) {
+  for (const auto& instruction : select_path) {
     if (elem == nullptr) {
       return absl::InvalidArgumentError("select path overflow");
     }
     if (!std::holds_alternative<FieldSpecifier>(instruction)) {
       return absl::UnimplementedError(
           "map and repeated field traversal not yet supported");
+    }
+    if (!elem->Is<StructValue>()) {
+      return frame->value_factory().CreateErrorValue(
+          runtime_internal::CreateNoMatchingOverloadError("<select>"));
     }
     const auto& field_specifier = std::get<FieldSpecifier>(instruction);
     if (presence_test_) {
@@ -384,15 +394,16 @@ absl::StatusOr<Handle<Value>> OptimizedSelectStep::FallbackSelect(
       // default instance (all fields defaulted and so not present
       // see
       // https://github.com/google/cel-spec/blob/master/doc/langdef.md#field-selection).
-      CEL_ASSIGN_OR_RETURN(
-          bool has_field,
-          elem->HasFieldByName(frame->type_manager(), field_specifier.name));
+      CEL_ASSIGN_OR_RETURN(bool has_field,
+                           elem->As<StructValue>().HasFieldByName(
+                               frame->type_manager(), field_specifier.name));
       if (!has_field) {
         return frame->value_factory().CreateBoolValue(false);
       }
     }
-    CEL_ASSIGN_OR_RETURN(result, elem->GetFieldByName(frame->value_factory(),
-                                                      field_specifier.name));
+    CEL_ASSIGN_OR_RETURN(
+        result, elem->As<StructValue>().GetFieldByName(frame->value_factory(),
+                                                       field_specifier.name));
     if (result->Is<StructValue>()) {
       elem = &result->As<StructValue>();
     }
@@ -405,17 +416,28 @@ absl::StatusOr<Handle<Value>> OptimizedSelectStep::FallbackSelect(
 
 absl::StatusOr<Handle<Value>> OptimizedSelectStep::ApplySelect(
     ExecutionFrame* frame, const StructValue& struct_value) const {
-  absl::StatusOr<Handle<Value>> value_or =
+  absl::StatusOr<QualifyResult> value_or =
       (options_.force_fallback_implementation)
           ? absl::UnimplementedError("Forced fallback impl")
           : struct_value.Qualify(frame->value_factory(), select_path_,
                                  presence_test_);
 
-  if (value_or.status().code() != absl::StatusCode::kUnimplemented) {
-    return value_or;
+  if (!value_or.ok()) {
+    if (value_or.status().code() == absl::StatusCode::kUnimplemented) {
+      return FallbackSelect(frame, struct_value, select_path_);
+    }
+
+    return value_or.status();
   }
 
-  return FallbackSelect(frame, struct_value);
+  if (value_or->qualifier_count < 0 ||
+      value_or->qualifier_count >= select_path_.size()) {
+    return std::move(value_or->value);
+  }
+
+  return FallbackSelect(
+      frame, *value_or->value,
+      absl::MakeConstSpan(select_path_).subspan(value_or->qualifier_count));
 }
 
 absl::Status OptimizedSelectStep::Evaluate(ExecutionFrame* frame) const {

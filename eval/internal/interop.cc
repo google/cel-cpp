@@ -333,7 +333,7 @@ absl::StatusOr<Handle<Value>> LegacyStructGetFieldImpl(
   return FromLegacyValue(arena, legacy_value);
 }
 
-absl::StatusOr<Handle<Value>> LegacyStructQualifyImpl(
+absl::StatusOr<QualifyResult> LegacyStructQualifyImpl(
     const MessageWrapper& wrapper, absl::Span<const cel::SelectQualifier> path,
     bool presence_test, MemoryManagerRef memory_manager) {
   if (path.empty()) {
@@ -353,15 +353,22 @@ absl::StatusOr<Handle<Value>> LegacyStructQualifyImpl(
               return field.GetStringKey().value_or("<invalid field>");
             }},
         path.front());
-    return interop_internal::CreateErrorValueFromView(
-        interop_internal::CreateNoSuchFieldError(arena, field_name));
+    return QualifyResult{
+        interop_internal::CreateErrorValueFromView(
+            interop_internal::CreateNoSuchFieldError(arena, field_name)),
+        -1};
   }
 
   CEL_ASSIGN_OR_RETURN(
-      auto legacy_value,
+      LegacyTypeAccessApis::LegacyQualifyResult legacy_result,
       access_api->Qualify(path, wrapper, presence_test, memory_manager));
 
-  return FromLegacyValue(arena, legacy_value);
+  QualifyResult result;
+  result.qualifier_count = legacy_result.qualifier_count;
+
+  CEL_ASSIGN_OR_RETURN(result.value,
+                       FromLegacyValue(arena, legacy_result.value));
+  return result;
 }
 
 }  // namespace
@@ -1009,7 +1016,7 @@ absl::StatusOr<Handle<Value>> MessageValueGetFieldByName(
       wrapper, name, unbox_null_wrapper_types, value_factory.memory_manager());
 }
 
-absl::StatusOr<Handle<Value>> MessageValueQualify(
+absl::StatusOr<QualifyResult> MessageValueQualify(
     uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
     absl::Span<const SelectQualifier> qualifiers, bool presence_test) {
   auto wrapper = MessageWrapperAccess::Make(msg, type_info);
