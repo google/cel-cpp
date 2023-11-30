@@ -40,6 +40,8 @@ class TypeFactory {
 
   virtual absl::StatusOr<OpaqueType> CreateOpaqueType(
       absl::string_view name, const SizedInputView<TypeView>& parameters) = 0;
+
+  absl::StatusOr<OptionalType> CreateOptionalType(TypeView parameter);
 };
 
 // Creates a new `TypeFactory` which is thread compatible. The returned

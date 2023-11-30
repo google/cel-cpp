@@ -23,6 +23,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "common/memory.h"
+#include "common/native_type.h"
 #include "common/sized_input_view.h"
 #include "common/type.h"
 

@@ -21,14 +21,18 @@
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/hash/hash.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "common/casting.h"
 #include "common/memory.h"
 #include "common/sized_input_view.h"
 #include "common/type.h"
+#include "internal/no_destructor.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -109,10 +113,13 @@ struct OpaqueTypeKeyHash {
   }
 };
 
-struct CommonTypes final {
-  absl::flat_hash_map<TypeView, ListType> list_types;
-  absl::flat_hash_map<std::pair<TypeView, TypeView>, MapType> map_types;
+using ListTypeMap = absl::flat_hash_map<TypeView, ListType>;
+using MapTypeMap = absl::flat_hash_map<std::pair<TypeView, TypeView>, MapType>;
+using OpaqueTypeMap =
+    absl::flat_hash_map<OpaqueTypeKey, OpaqueType, OpaqueTypeKeyHash,
+                        OpaqueTypeKeyEqualTo>;
 
+struct CommonTypes final {
   absl::optional<ListType> FindListType(TypeView element) const {
     if (auto list_type = list_types.find(element);
         list_type != list_types.end()) {
@@ -129,24 +136,41 @@ struct CommonTypes final {
     return absl::nullopt;
   }
 
+  absl::optional<OpaqueType> FindOpaqueType(
+      absl::string_view name,
+      const SizedInputView<TypeView>& parameters) const {
+    if (auto opaque_type = opaque_types.find(
+            OpaqueTypeKeyView{.name = name, .parameters = parameters});
+        opaque_type != opaque_types.end()) {
+      return opaque_type->second;
+    }
+    return absl::nullopt;
+  }
+
   static const CommonTypes* Get() {
-    static const CommonTypes* common_types = []() -> const CommonTypes* {
-      MemoryManagerRef memory_manager = MemoryManagerRef::Unmanaged();
-      CommonTypes* common_types = new CommonTypes();
-      common_types->PopulateListTypes<
-          BoolType, BytesType, DoubleType, DurationType, DynType, IntType,
-          NullType, StringType, TimestampType, TypeType, UintType>(
-          memory_manager);
-      common_types
-          ->PopulateMapTypes<BoolType, BytesType, DoubleType, DurationType,
-                             DynType, IntType, NullType, StringType,
-                             TimestampType, TypeType, UintType>(memory_manager);
-      return common_types;
-    }();
-    return common_types;
+    static const internal::NoDestructor<CommonTypes> common_types;
+    return &*common_types;
   }
 
  private:
+  friend class internal::NoDestructor<CommonTypes>;
+
+  CommonTypes() {
+    PopulateTypes<AnyType, BoolType, BoolWrapperType, BytesType,
+                  BytesWrapperType, DoubleType, DoubleWrapperType, DurationType,
+                  DynType, ErrorType, IntType, IntWrapperType, NullType,
+                  StringType, StringWrapperType, TimestampType, TypeType,
+                  UintType, UintWrapperType, UnknownType>(
+        MemoryManagerRef::Unmanaged());
+  }
+
+  template <typename... Ts>
+  void PopulateTypes(MemoryManagerRef memory_manager) {
+    PopulateListTypes<Ts...>(memory_manager);
+    PopulateMapTypes<Ts...>(memory_manager);
+    PopulateOptionalTypes<Ts...>(memory_manager);
+  }
+
   template <typename... Ts>
   void PopulateListTypes(MemoryManagerRef memory_manager) {
     list_types.reserve(sizeof...(Ts));
@@ -159,34 +183,85 @@ struct CommonTypes final {
     DoPopulateMapTypes<Ts...>(memory_manager);
   }
 
+  template <typename... Ts>
+  void PopulateOptionalTypes(MemoryManagerRef memory_manager) {
+    // Reserve space for optionals of each primitive type, optionals of each
+    // list type, and optionals of each map type.
+    opaque_types.reserve(opaque_types.size() + sizeof...(Ts) +
+                         list_types.size() + map_types.size());
+    DoPopulateOptionalTypes<Ts...>(memory_manager);
+    for (const auto& list_type : list_types) {
+      InsertOptionalType(
+          OptionalType(memory_manager, TypeView(list_type.second)));
+    }
+    for (const auto& map_type : map_types) {
+      InsertOptionalType(
+          OptionalType(memory_manager, TypeView(map_type.second)));
+    }
+  }
+
   template <typename T, typename... Ts>
   void DoPopulateListTypes(MemoryManagerRef memory_manager) {
-    list_types.insert_or_assign(typename T::view_alternative_type(),
-                                ListType(memory_manager, T()));
+    InsertListType(ListType(memory_manager, T()));
     if constexpr (sizeof...(Ts) != 0) {
       DoPopulateListTypes<Ts...>(memory_manager);
     }
   }
 
+  void InsertListType(ListType list_type) {
+    auto element = list_type.element();
+    auto inserted =
+        list_types.insert_or_assign(element, std::move(list_type)).second;
+    ABSL_DCHECK(inserted);
+  }
+
   template <typename T, typename... Ts>
   void DoPopulateMapTypes(MemoryManagerRef memory_manager) {
-    map_types.insert_or_assign(
-        std::make_pair(BoolTypeView(), typename T::view_alternative_type()),
-        MapType(memory_manager, BoolType(), T()));
-    map_types.insert_or_assign(
-        std::make_pair(IntTypeView(), typename T::view_alternative_type()),
-        MapType(memory_manager, IntType(), T()));
-    map_types.insert_or_assign(
-        std::make_pair(UintTypeView(), typename T::view_alternative_type()),
-        MapType(memory_manager, UintType(), T()));
-    map_types.insert_or_assign(
-        std::make_pair(StringTypeView(), typename T::view_alternative_type()),
-        MapType(memory_manager, StringType(), T()));
+    InsertMapType(MapType(memory_manager, BoolType(), T()));
+    InsertMapType(MapType(memory_manager, IntType(), T()));
+    InsertMapType(MapType(memory_manager, UintType(), T()));
+    InsertMapType(MapType(memory_manager, StringType(), T()));
     if constexpr (sizeof...(Ts) != 0) {
       DoPopulateMapTypes<Ts...>(memory_manager);
     }
   }
+
+  void InsertMapType(MapType map_type) {
+    auto key = map_type.key();
+    auto value = map_type.value();
+    auto inserted =
+        map_types
+            .insert_or_assign(std::make_pair(key, value), std::move(map_type))
+            .second;
+    ABSL_DCHECK(inserted);
+  }
+
+  template <typename T, typename... Ts>
+  void DoPopulateOptionalTypes(MemoryManagerRef memory_manager) {
+    InsertOptionalType(
+        OptionalType(memory_manager, typename T::view_alternative_type()));
+    if constexpr (sizeof...(Ts) != 0) {
+      DoPopulateOptionalTypes<Ts...>(memory_manager);
+    }
+  }
+
+  void InsertOptionalType(OptionalType optional_type) {
+    auto parameters = optional_type.parameters();
+    auto inserted =
+        opaque_types
+            .insert_or_assign(OpaqueTypeKey{.name = OptionalType::kName,
+                                            .parameters = parameters},
+                              std::move(optional_type))
+            .second;
+    ABSL_DCHECK(inserted);
+  }
+
+  ListTypeMap list_types;
+  MapTypeMap map_types;
+  OpaqueTypeMap opaque_types;
 };
+
+using StructTypeMap = absl::flat_hash_map<absl::string_view, StructType>;
 
 class ThreadCompatibleTypeFactory final : public TypeFactory {
  public:
@@ -236,6 +311,10 @@ class ThreadCompatibleTypeFactory final : public TypeFactory {
   absl::StatusOr<OpaqueType> CreateOpaqueType(
       absl::string_view name,
       const SizedInputView<TypeView>& parameters) override {
+    if (auto opaque_type = CommonTypes::Get()->FindOpaqueType(name, parameters);
+        opaque_type.has_value()) {
+      return *opaque_type;
+    }
     if (auto opaque_type = opaque_types_.find(
             OpaqueTypeKeyView{.name = name, .parameters = parameters});
         opaque_type != opaque_types_.end()) {
@@ -251,12 +330,10 @@ class ThreadCompatibleTypeFactory final : public TypeFactory {
 
  private:
   MemoryManagerRef memory_manager_;
-  absl::flat_hash_map<TypeView, ListType> list_types_;
-  absl::flat_hash_map<std::pair<TypeView, TypeView>, MapType> map_types_;
-  absl::flat_hash_map<absl::string_view, StructType> struct_types_;
-  absl::flat_hash_map<OpaqueTypeKey, OpaqueType, OpaqueTypeKeyHash,
-                      OpaqueTypeKeyEqualTo>
-      opaque_types_;
+  ListTypeMap list_types_;
+  MapTypeMap map_types_;
+  StructTypeMap struct_types_;
+  OpaqueTypeMap opaque_types_;
 };
 
 class ThreadSafeTypeFactory final : public TypeFactory {
@@ -319,6 +396,10 @@ class ThreadSafeTypeFactory final : public TypeFactory {
   absl::StatusOr<OpaqueType> CreateOpaqueType(
       absl::string_view name,
       const SizedInputView<TypeView>& parameters) override {
+    if (auto opaque_type = CommonTypes::Get()->FindOpaqueType(name, parameters);
+        opaque_type.has_value()) {
+      return *opaque_type;
+    }
     {
       absl::ReaderMutexLock lock(&opaque_types_mutex_);
       if (auto opaque_type = opaque_types_.find(
@@ -339,21 +420,23 @@ class ThreadSafeTypeFactory final : public TypeFactory {
  private:
   MemoryManagerRef memory_manager_;
   mutable absl::Mutex list_types_mutex_;
-  absl::flat_hash_map<TypeView, ListType> list_types_
-      ABSL_GUARDED_BY(list_types_mutex_);
+  ListTypeMap list_types_ ABSL_GUARDED_BY(list_types_mutex_);
   mutable absl::Mutex map_types_mutex_;
-  absl::flat_hash_map<std::pair<TypeView, TypeView>, MapType> map_types_
-      ABSL_GUARDED_BY(map_types_mutex_);
+  MapTypeMap map_types_ ABSL_GUARDED_BY(map_types_mutex_);
   mutable absl::Mutex struct_types_mutex_;
-  absl::flat_hash_map<absl::string_view, StructType> struct_types_
-      ABSL_GUARDED_BY(struct_types_mutex_);
+  StructTypeMap struct_types_ ABSL_GUARDED_BY(struct_types_mutex_);
   mutable absl::Mutex opaque_types_mutex_;
-  absl::flat_hash_map<OpaqueTypeKey, OpaqueType, OpaqueTypeKeyHash,
-                      OpaqueTypeKeyEqualTo>
-      opaque_types_ ABSL_GUARDED_BY(opaque_types_mutex_);
+  OpaqueTypeMap opaque_types_ ABSL_GUARDED_BY(opaque_types_mutex_);
 };
 
 }  // namespace
+
+absl::StatusOr<OptionalType> TypeFactory::CreateOptionalType(
+    TypeView parameter) {
+  CEL_ASSIGN_OR_RETURN(auto type,
+                       CreateOpaqueType(OptionalType::kName, {parameter}));
+  return Cast<OptionalType>(std::move(type));
+}
 
 Shared<TypeFactory> NewThreadCompatibleTypeFactory(
     MemoryManagerRef memory_manager) {

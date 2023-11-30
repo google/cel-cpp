@@ -157,6 +157,27 @@ TEST_P(TypeFactoryTest, OpaqueType) {
               IsOkAndHolds(Ne(opaque_type1)));
 }
 
+TEST_P(TypeFactoryTest, OptionalType) {
+  // Primitive types are cached.
+  ASSERT_OK_AND_ASSIGN(auto optional_type1,
+                       type_factory().CreateOptionalType(StringType()));
+  EXPECT_THAT(type_factory().CreateOptionalType(StringType()),
+              IsOkAndHolds(Eq(optional_type1)));
+  EXPECT_THAT(type_factory().CreateOptionalType(BytesType()),
+              IsOkAndHolds(Ne(optional_type1)));
+  // Try types which are not cached to exercise other codepath.
+  ASSERT_OK_AND_ASSIGN(auto struct_type1,
+                       type_factory().CreateStructType("test.Struct1"));
+  ASSERT_OK_AND_ASSIGN(auto struct_type2,
+                       type_factory().CreateStructType("test.Struct2"));
+  ASSERT_OK_AND_ASSIGN(auto optional_type2,
+                       type_factory().CreateOptionalType(struct_type1));
+  EXPECT_THAT(type_factory().CreateOptionalType(struct_type1),
+              IsOkAndHolds(Eq(optional_type2)));
+  EXPECT_THAT(type_factory().CreateOptionalType(struct_type2),
+              IsOkAndHolds(Ne(optional_type2)));
+}
+
 INSTANTIATE_TEST_SUITE_P(
     TypeFactoryTest, TypeFactoryTest,
     ::testing::Combine(::testing::Values(MemoryManagement::kPooling,

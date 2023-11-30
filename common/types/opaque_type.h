@@ -14,17 +14,21 @@
 
 // IWYU pragma: private, include "common/type.h"
 // IWYU pragma: friend "common/type.h"
+// IWYU pragma: friend "common/types/optional_type.h"
 
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPES_OPAQUE_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPES_OPAQUE_TYPE_H_
 
 #include <ostream>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/meta/type_traits.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "common/casting.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/sized_input_view.h"
@@ -41,7 +45,7 @@ namespace common_internal {
 struct OpaqueTypeData;
 }  // namespace common_internal
 
-class OpaqueType final {
+class OpaqueType {
  public:
   using view_alternative_type = OpaqueTypeView;
 
@@ -95,12 +99,52 @@ inline std::ostream& operator<<(std::ostream& out, const OpaqueType& type) {
 
 template <>
 struct NativeTypeTraits<OpaqueType> final {
+  static NativeTypeId Id(const OpaqueType&) {
+    return NativeTypeId::For<OpaqueType>();
+  }
+
   static bool SkipDestructor(const OpaqueType& type) {
     return NativeType::SkipDestructor(type.data_);
   }
 };
 
-class OpaqueTypeView final {
+template <typename T>
+struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
+                               std::negation<std::is_same<OpaqueType, T>>,
+                               std::is_base_of<OpaqueType, T>>>>
+    final {
+  static NativeTypeId Id(const T& type) {
+    return NativeTypeTraits<OpaqueType>::Id(type);
+  }
+
+  static bool SkipDestructor(const T& type) {
+    return NativeTypeTraits<OpaqueType>::SkipDestructor(type);
+  }
+};
+
+// OpaqueType -> Derived
+template <typename To, typename From>
+struct CastTraits<
+    To, From,
+    std::enable_if_t<std::conjunction_v<
+        std::bool_constant<sizeof(To) == sizeof(absl::remove_cvref_t<From>)>,
+        std::bool_constant<alignof(To) == alignof(absl::remove_cvref_t<From>)>,
+        std::is_same<OpaqueType, absl::remove_cvref_t<From>>,
+        std::negation<std::is_same<OpaqueType, To>>,
+        std::is_base_of<OpaqueType, To>>>>
+    final {
+  static bool Compatible(const absl::remove_cvref_t<From>& from) {
+    return SubsumptionTraits<To>::IsA(from);
+  }
+
+  static decltype(auto) Convert(From from) {
+    // `To` is derived from `From`, `From` is `EnumType`, and `To` has the
+    // same size and alignment as `EnumType`. We can just reinterpret_cast.
+    return SubsumptionTraits<To>::DownCast(std::move(from));
+  }
+};
+
+class OpaqueTypeView {
  public:
   using alternative_type = OpaqueType;
 
@@ -130,6 +174,7 @@ class OpaqueTypeView final {
 
  private:
   friend class OpaqueType;
+  friend struct NativeTypeTraits<OpaqueTypeView>;
 
   SharedView<const common_internal::OpaqueTypeData> data_;
 };
@@ -150,6 +195,45 @@ H AbslHashValue(H state, OpaqueTypeView type);
 inline std::ostream& operator<<(std::ostream& out, OpaqueTypeView type) {
   return out << type.DebugString();
 }
+
+template <>
+struct NativeTypeTraits<OpaqueTypeView> final {
+  static NativeTypeId Id(OpaqueTypeView type) {
+    return NativeTypeId::For<OpaqueTypeView>();
+  }
+};
+
+template <typename T>
+struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
+                               std::negation<std::is_same<OpaqueTypeView, T>>,
+                               std::is_base_of<OpaqueTypeView, T>>>>
+    final {
+  static NativeTypeId Id(const T& type) {
+    return NativeTypeTraits<OpaqueTypeView>::Id(type);
+  }
+};
+
+// OpaqueTypeView -> Derived
+template <typename To, typename From>
+struct CastTraits<
+    To, From,
+    std::enable_if_t<std::conjunction_v<
+        std::bool_constant<sizeof(To) == sizeof(absl::remove_cvref_t<From>)>,
+        std::bool_constant<alignof(To) == alignof(absl::remove_cvref_t<From>)>,
+        std::is_same<OpaqueTypeView, absl::remove_cvref_t<From>>,
+        std::negation<std::is_same<OpaqueTypeView, To>>,
+        std::is_base_of<OpaqueTypeView, To>>>>
+    final {
+  static bool Compatible(const absl::remove_cvref_t<From>& from) {
+    return SubsumptionTraits<To>::IsA(from);
+  }
+
+  static decltype(auto) Convert(From from) {
+    // `To` is derived from `From`, `From` is `EnumType`, and `To` has the
+    // same size and alignment as `EnumType`. We can just reinterpret_cast.
+    return SubsumptionTraits<To>::DownCast(std::move(from));
+  }
+};
 
 }  // namespace cel
 

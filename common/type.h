@@ -51,6 +51,7 @@
 #include "common/types/map_type.h"   // IWYU pragma: export
 #include "common/types/null_type.h"  // IWYU pragma: export
 #include "common/types/opaque_type.h"  // IWYU pragma: export
+#include "common/types/optional_type.h"  // IWYU pragma: export
 #include "common/types/string_type.h"  // IWYU pragma: export
 #include "common/types/string_wrapper_type.h"  // IWYU pragma: export
 #include "common/types/struct_type.h"  // IWYU pragma: export
@@ -661,13 +662,12 @@ struct MapTypeData final {
 };
 
 struct OpaqueTypeData final {
-  using Parameters = absl::FixedArray<Type, 1>;
-
-  explicit OpaqueTypeData(std::string name, Parameters parameters)
+  explicit OpaqueTypeData(std::string name,
+                          absl::FixedArray<Type, 1> parameters)
       : name(std::move(name)), parameters(std::move(parameters)) {}
 
   const std::string name;
-  const Parameters parameters;
+  const absl::FixedArray<Type, 1> parameters;
 };
 
 struct StructTypeData final {
@@ -818,6 +818,21 @@ inline H AbslHashValue(H state, OpaqueTypeView type) {
     state = H::combine(std::move(state), parameter);
   }
   return std::move(state);
+}
+
+inline OptionalType::OptionalType(OptionalTypeView type) : OpaqueType(type) {}
+
+inline OptionalType::OptionalType(MemoryManagerRef memory_manager,
+                                  TypeView parameter)
+    : OpaqueType(memory_manager, kName, {parameter}) {}
+
+inline TypeView OptionalType::parameter() const { return parameters().front(); }
+
+inline OptionalTypeView::OptionalTypeView(const OptionalType& type) noexcept
+    : OpaqueTypeView(type) {}
+
+inline TypeView OptionalTypeView::parameter() const {
+  return parameters().front();
 }
 
 }  // namespace cel
