@@ -27,6 +27,7 @@
 namespace cel {
 namespace {
 
+using testing::_;
 using testing::Eq;
 using testing::Ne;
 using testing::TestParamInfo;
@@ -99,83 +100,80 @@ class TypeFactoryTest
 
 TEST_P(TypeFactoryTest, ListType) {
   // Primitive types are cached.
-  ASSERT_OK_AND_ASSIGN(auto list_type1,
-                       type_factory().CreateListType(StringType()));
-  EXPECT_THAT(type_factory().CreateListType(StringType()),
-              IsOkAndHolds(Eq(list_type1)));
-  EXPECT_THAT(type_factory().CreateListType(BytesType()),
-              IsOkAndHolds(Ne(list_type1)));
+  auto list_type1 = type_factory().CreateListType(StringType());
+  EXPECT_THAT(type_factory().CreateListType(StringType()), Eq(list_type1));
+  EXPECT_THAT(type_factory().CreateListType(BytesType()), Ne(list_type1));
   // Try types which are not cached to exercise other codepath.
-  ASSERT_OK_AND_ASSIGN(auto struct_type1,
-                       type_factory().CreateStructType("test.Struct1"));
-  ASSERT_OK_AND_ASSIGN(auto struct_type2,
-                       type_factory().CreateStructType("test.Struct2"));
-  ASSERT_OK_AND_ASSIGN(auto list_type2,
-                       type_factory().CreateListType(struct_type1));
-  EXPECT_THAT(type_factory().CreateListType(struct_type1),
-              IsOkAndHolds(Eq(list_type2)));
-  EXPECT_THAT(type_factory().CreateListType(struct_type2),
-              IsOkAndHolds(Ne(list_type2)));
+  auto struct_type1 = type_factory().CreateStructType("test.Struct1");
+  auto struct_type2 = type_factory().CreateStructType("test.Struct2");
+  auto list_type2 = type_factory().CreateListType(struct_type1);
+  EXPECT_THAT(type_factory().CreateListType(struct_type1), Eq(list_type2));
+  EXPECT_THAT(type_factory().CreateListType(struct_type2), Ne(list_type2));
 }
 
 TEST_P(TypeFactoryTest, MapType) {
   // Primitive types are cached.
-  ASSERT_OK_AND_ASSIGN(auto map_type1,
-                       type_factory().CreateMapType(StringType(), BytesType()));
+  auto map_type1 = type_factory().CreateMapType(StringType(), BytesType());
   EXPECT_THAT(type_factory().CreateMapType(StringType(), BytesType()),
-              IsOkAndHolds(Eq(map_type1)));
+              Eq(map_type1));
   EXPECT_THAT(type_factory().CreateMapType(StringType(), StringType()),
-              IsOkAndHolds(Ne(map_type1)));
+              Ne(map_type1));
   // Try types which are not cached to exercise other codepath.
-  ASSERT_OK_AND_ASSIGN(auto struct_type1,
-                       type_factory().CreateStructType("test.Struct1"));
-  ASSERT_OK_AND_ASSIGN(auto struct_type2,
-                       type_factory().CreateStructType("test.Struct2"));
-  ASSERT_OK_AND_ASSIGN(
-      auto map_type2, type_factory().CreateMapType(StringType(), struct_type1));
+  auto struct_type1 = type_factory().CreateStructType("test.Struct1");
+  auto struct_type2 = type_factory().CreateStructType("test.Struct2");
+
+  auto map_type2 = type_factory().CreateMapType(StringType(), struct_type1);
   EXPECT_THAT(type_factory().CreateMapType(StringType(), struct_type1),
-              IsOkAndHolds(Eq(map_type2)));
+              Eq(map_type2));
   EXPECT_THAT(type_factory().CreateMapType(StringType(), struct_type2),
-              IsOkAndHolds(Ne(map_type2)));
+              Ne(map_type2));
+}
+
+TEST_P(TypeFactoryTest, MapTypeInvalidKeyType) {
+  EXPECT_DEBUG_DEATH(type_factory().CreateMapType(DoubleType(), BytesType()),
+                     _);
 }
 
 TEST_P(TypeFactoryTest, StructType) {
-  ASSERT_OK_AND_ASSIGN(auto struct_type1,
-                       type_factory().CreateStructType("test.Struct1"));
+  auto struct_type1 = type_factory().CreateStructType("test.Struct1");
   EXPECT_THAT(type_factory().CreateStructType("test.Struct1"),
-              IsOkAndHolds(Eq(struct_type1)));
+              Eq(struct_type1));
   EXPECT_THAT(type_factory().CreateStructType("test.Struct2"),
-              IsOkAndHolds(Ne(struct_type1)));
+              Ne(struct_type1));
+}
+
+TEST_P(TypeFactoryTest, StructTypeBadName) {
+  EXPECT_DEBUG_DEATH(type_factory().CreateStructType("test.~"), _);
 }
 
 TEST_P(TypeFactoryTest, OpaqueType) {
-  ASSERT_OK_AND_ASSIGN(auto opaque_type1, type_factory().CreateOpaqueType(
-                                              "test.Struct1", {BytesType()}));
+  auto opaque_type1 =
+      type_factory().CreateOpaqueType("test.Struct1", {BytesType()});
   EXPECT_THAT(type_factory().CreateOpaqueType("test.Struct1", {BytesType()}),
-              IsOkAndHolds(Eq(opaque_type1)));
+              Eq(opaque_type1));
   EXPECT_THAT(type_factory().CreateOpaqueType("test.Struct2", {}),
-              IsOkAndHolds(Ne(opaque_type1)));
+              Ne(opaque_type1));
+}
+
+TEST_P(TypeFactoryTest, OpaqueTypeBadName) {
+  EXPECT_DEBUG_DEATH(type_factory().CreateOpaqueType("test.~", {}), _);
 }
 
 TEST_P(TypeFactoryTest, OptionalType) {
   // Primitive types are cached.
-  ASSERT_OK_AND_ASSIGN(auto optional_type1,
-                       type_factory().CreateOptionalType(StringType()));
+  auto optional_type1 = type_factory().CreateOptionalType(StringType());
   EXPECT_THAT(type_factory().CreateOptionalType(StringType()),
-              IsOkAndHolds(Eq(optional_type1)));
+              Eq(optional_type1));
   EXPECT_THAT(type_factory().CreateOptionalType(BytesType()),
-              IsOkAndHolds(Ne(optional_type1)));
+              Ne(optional_type1));
   // Try types which are not cached to exercise other codepath.
-  ASSERT_OK_AND_ASSIGN(auto struct_type1,
-                       type_factory().CreateStructType("test.Struct1"));
-  ASSERT_OK_AND_ASSIGN(auto struct_type2,
-                       type_factory().CreateStructType("test.Struct2"));
-  ASSERT_OK_AND_ASSIGN(auto optional_type2,
-                       type_factory().CreateOptionalType(struct_type1));
+  auto struct_type1 = type_factory().CreateStructType("test.Struct1");
+  auto struct_type2 = type_factory().CreateStructType("test.Struct2");
+  auto optional_type2 = type_factory().CreateOptionalType(struct_type1);
   EXPECT_THAT(type_factory().CreateOptionalType(struct_type1),
-              IsOkAndHolds(Eq(optional_type2)));
+              Eq(optional_type2));
   EXPECT_THAT(type_factory().CreateOptionalType(struct_type2),
-              IsOkAndHolds(Ne(optional_type2)));
+              Ne(optional_type2));
 }
 
 INSTANTIATE_TEST_SUITE_P(

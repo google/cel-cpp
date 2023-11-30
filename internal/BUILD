@@ -357,3 +357,23 @@ cc_library(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "names",
+    srcs = ["names.cc"],
+    hdrs = ["names.h"],
+    deps = [
+        ":lexis",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_test(
+    name = "names_test",
+    srcs = ["names_test.cc"],
+    deps = [
+        ":names",
+        ":testing",
+    ],
+)

@@ -18,11 +18,11 @@
 #include <cstddef>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/hash/hash.h"
 #include "absl/log/absl_check.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/optional.h"
@@ -31,8 +31,9 @@
 #include "common/memory.h"
 #include "common/sized_input_view.h"
 #include "common/type.h"
+#include "common/type_kind.h"
+#include "internal/names.h"
 #include "internal/no_destructor.h"
-#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -270,11 +271,7 @@ class ThreadCompatibleTypeFactory final : public TypeFactory {
 
   MemoryManagerRef memory_manager() const { return memory_manager_; }
 
-  absl::StatusOr<ListType> CreateListType(TypeView element) override {
-    if (auto list_type = CommonTypes::Get()->FindListType(element);
-        list_type.has_value()) {
-      return *list_type;
-    }
+  ListType CreateListTypeImpl(TypeView element) override {
     if (auto list_type = list_types_.find(element);
         list_type != list_types_.end()) {
       return list_type->second;
@@ -283,11 +280,7 @@ class ThreadCompatibleTypeFactory final : public TypeFactory {
     return list_types_.insert({list_type.element(), list_type}).first->second;
   }
 
-  absl::StatusOr<MapType> CreateMapType(TypeView key, TypeView value) override {
-    if (auto map_type = CommonTypes::Get()->FindMapType(key, value);
-        map_type.has_value()) {
-      return *map_type;
-    }
+  MapType CreateMapTypeImpl(TypeView key, TypeView value) override {
     if (auto map_type = map_types_.find(std::make_pair(key, value));
         map_type != map_types_.end()) {
       return map_type->second;
@@ -298,7 +291,7 @@ class ThreadCompatibleTypeFactory final : public TypeFactory {
         .first->second;
   }
 
-  absl::StatusOr<StructType> CreateStructType(absl::string_view name) override {
+  StructType CreateStructTypeImpl(absl::string_view name) override {
     if (auto struct_type = struct_types_.find(name);
         struct_type != struct_types_.end()) {
       return struct_type->second;
@@ -308,7 +301,7 @@ class ThreadCompatibleTypeFactory final : public TypeFactory {
         .first->second;
   }
 
-  absl::StatusOr<OpaqueType> CreateOpaqueType(
+  OpaqueType CreateOpaqueTypeImpl(
       absl::string_view name,
       const SizedInputView<TypeView>& parameters) override {
     if (auto opaque_type = CommonTypes::Get()->FindOpaqueType(name, parameters);
@@ -343,11 +336,7 @@ class ThreadSafeTypeFactory final : public TypeFactory {
 
   MemoryManagerRef memory_manager() const { return memory_manager_; }
 
-  absl::StatusOr<ListType> CreateListType(TypeView element) override {
-    if (auto list_type = CommonTypes::Get()->FindListType(element);
-        list_type.has_value()) {
-      return *list_type;
-    }
+  ListType CreateListTypeImpl(TypeView element) override {
     {
       absl::ReaderMutexLock lock(&list_types_mutex_);
       if (auto list_type = list_types_.find(element);
@@ -360,11 +349,7 @@ class ThreadSafeTypeFactory final : public TypeFactory {
     return list_types_.insert({list_type.element(), list_type}).first->second;
   }
 
-  absl::StatusOr<MapType> CreateMapType(TypeView key, TypeView value) override {
-    if (auto map_type = CommonTypes::Get()->FindMapType(key, value);
-        map_type.has_value()) {
-      return *map_type;
-    }
+  MapType CreateMapTypeImpl(TypeView key, TypeView value) override {
     {
       absl::ReaderMutexLock lock(&map_types_mutex_);
       if (auto map_type = map_types_.find(std::make_pair(key, value));
@@ -379,7 +364,7 @@ class ThreadSafeTypeFactory final : public TypeFactory {
         .first->second;
   }
 
-  absl::StatusOr<StructType> CreateStructType(absl::string_view name) override {
+  StructType CreateStructTypeImpl(absl::string_view name) override {
     {
       absl::ReaderMutexLock lock(&struct_types_mutex_);
       if (auto struct_type = struct_types_.find(name);
@@ -393,7 +378,7 @@ class ThreadSafeTypeFactory final : public TypeFactory {
         .first->second;
   }
 
-  absl::StatusOr<OpaqueType> CreateOpaqueType(
+  OpaqueType CreateOpaqueTypeImpl(
       absl::string_view name,
       const SizedInputView<TypeView>& parameters) override {
     if (auto opaque_type = CommonTypes::Get()->FindOpaqueType(name, parameters);
@@ -426,16 +411,66 @@ class ThreadSafeTypeFactory final : public TypeFactory {
   mutable absl::Mutex struct_types_mutex_;
   StructTypeMap struct_types_ ABSL_GUARDED_BY(struct_types_mutex_);
   mutable absl::Mutex opaque_types_mutex_;
-  OpaqueTypeMap opaque_types_ ABSL_GUARDED_BY(opaque_types_mutex_);
+  absl::flat_hash_map<OpaqueTypeKey, OpaqueType, OpaqueTypeKeyHash,
+                      OpaqueTypeKeyEqualTo>
+      opaque_types_ ABSL_GUARDED_BY(opaque_types_mutex_);
 };
+
+bool IsValidMapKeyType(TypeView type) {
+  switch (type.kind()) {
+    case TypeKind::kDyn:
+      ABSL_FALLTHROUGH_INTENDED;
+    case TypeKind::kError:
+      ABSL_FALLTHROUGH_INTENDED;
+    case TypeKind::kBool:
+      ABSL_FALLTHROUGH_INTENDED;
+    case TypeKind::kInt:
+      ABSL_FALLTHROUGH_INTENDED;
+    case TypeKind::kUint:
+      ABSL_FALLTHROUGH_INTENDED;
+    case TypeKind::kString:
+      return true;
+    default:
+      return false;
+  }
+}
 
 }  // namespace
 
-absl::StatusOr<OptionalType> TypeFactory::CreateOptionalType(
-    TypeView parameter) {
-  CEL_ASSIGN_OR_RETURN(auto type,
-                       CreateOpaqueType(OptionalType::kName, {parameter}));
-  return Cast<OptionalType>(std::move(type));
+ListType TypeFactory::CreateListType(TypeView element) {
+  if (auto list_type = CommonTypes::Get()->FindListType(element);
+      list_type.has_value()) {
+    return *list_type;
+  }
+  return CreateListTypeImpl(element);
+}
+
+MapType TypeFactory::CreateMapType(TypeView key, TypeView value) {
+  ABSL_DCHECK(IsValidMapKeyType(key)) << key;
+  if (auto map_type = CommonTypes::Get()->FindMapType(key, value);
+      map_type.has_value()) {
+    return *map_type;
+  }
+  return CreateMapTypeImpl(key, value);
+}
+
+StructType TypeFactory::CreateStructType(absl::string_view name) {
+  ABSL_DCHECK(internal::IsValidRelativeName(name)) << name;
+  return CreateStructTypeImpl(name);
+}
+
+OpaqueType TypeFactory::CreateOpaqueType(
+    absl::string_view name, const SizedInputView<TypeView>& parameters) {
+  ABSL_DCHECK(internal::IsValidRelativeName(name)) << name;
+  if (auto opaque_type = CommonTypes::Get()->FindOpaqueType(name, parameters);
+      opaque_type.has_value()) {
+    return *opaque_type;
+  }
+  return CreateOpaqueTypeImpl(name, parameters);
+}
+
+OptionalType TypeFactory::CreateOptionalType(TypeView parameter) {
+  return Cast<OptionalType>(CreateOpaqueType(OptionalType::kName, {parameter}));
 }
 
 Shared<TypeFactory> NewThreadCompatibleTypeFactory(

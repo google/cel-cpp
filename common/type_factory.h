@@ -15,7 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPE_FACTORY_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_FACTORY_H_
 
-#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "common/memory.h"
 #include "common/sized_input_view.h"
@@ -30,18 +29,42 @@ class TypeFactory {
  public:
   virtual ~TypeFactory() = default;
 
-  virtual absl::StatusOr<ListType> CreateListType(TypeView element) = 0;
+  virtual MemoryManagerRef memory_manager() const = 0;
 
-  virtual absl::StatusOr<MapType> CreateMapType(TypeView key,
-                                                TypeView value) = 0;
+  // Creates a `ListType` whose element type is `element`. Requires that
+  // `element` is a valid element type for lists.
+  ListType CreateListType(TypeView element);
 
-  virtual absl::StatusOr<StructType> CreateStructType(
-      absl::string_view name) = 0;
+  // Creates a `MapType` whose key type is `key` and value type is `value`.
+  // Requires that `key` is a valid key type for maps and `value` is a valid
+  // value type for maps.
+  MapType CreateMapType(TypeView key, TypeView value);
 
-  virtual absl::StatusOr<OpaqueType> CreateOpaqueType(
+  // Creates a `StructType` whose name is `name`. Requires that `name` is a
+  // valid relative name, that is one or more `IDENT` (as defined by the Common
+  // Expression language lexis) joined by `.`.
+  StructType CreateStructType(absl::string_view name);
+
+  // Creates a `OpaqueType` whose name is `name` and parameters are
+  // `parameters`. Requires that `name` is a valid relative name, that is one or
+  // more `IDENT` (as defined by the Common Expression language lexis) joined by
+  // `.`, and that `parameters` contains zero or more valid parameter types for
+  // opaques.
+  OpaqueType CreateOpaqueType(absl::string_view name,
+                              const SizedInputView<TypeView>& parameters);
+
+  // Creates a `OptionalType`.
+  OptionalType CreateOptionalType(TypeView parameter);
+
+ private:
+  virtual ListType CreateListTypeImpl(TypeView element) = 0;
+
+  virtual MapType CreateMapTypeImpl(TypeView key, TypeView value) = 0;
+
+  virtual StructType CreateStructTypeImpl(absl::string_view name) = 0;
+
+  virtual OpaqueType CreateOpaqueTypeImpl(
       absl::string_view name, const SizedInputView<TypeView>& parameters) = 0;
-
-  absl::StatusOr<OptionalType> CreateOptionalType(TypeView parameter);
 };
 
 // Creates a new `TypeFactory` which is thread compatible. The returned
