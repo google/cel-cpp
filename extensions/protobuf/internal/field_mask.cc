@@ -23,6 +23,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "internal/casts.h"
+#include "google/protobuf/message.h"
 #include "google/protobuf/reflection.h"
 
 namespace cel::extensions::protobuf_internal {
@@ -37,7 +38,7 @@ absl::StatusOr<JsonString> DynamicFieldMaskProtoToJsonString(
   }
   if (ABSL_PREDICT_TRUE(desc == google::protobuf::FieldMask::descriptor())) {
     return GeneratedFieldMaskProtoToJsonString(
-        cel::internal::down_cast<const google::protobuf::FieldMask&>(message));
+        google::protobuf::DownCastToGenerated<google::protobuf::FieldMask>(message));
   }
   const auto* reflection = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflection == nullptr)) {

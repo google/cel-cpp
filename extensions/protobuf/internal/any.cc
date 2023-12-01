@@ -28,6 +28,7 @@
 #include "common/json.h"
 #include "internal/casts.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions::protobuf_internal {
 
@@ -51,7 +52,7 @@ absl::Status WrapDynamicAnyProto(absl::string_view type_url,
   if (ABSL_PREDICT_TRUE(desc == google::protobuf::Any::descriptor())) {
     return WrapGeneratedAnyProto(
         type_url, value,
-        cel::internal::down_cast<google::protobuf::Any&>(message));
+        google::protobuf::DownCastToGenerated<google::protobuf::Any>(message));
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
@@ -112,7 +113,7 @@ absl::StatusOr<Any> UnwrapDynamicAnyProto(const google::protobuf::Message& messa
   }
   if (ABSL_PREDICT_TRUE(desc == google::protobuf::Any::descriptor())) {
     return UnwrapGeneratedAnyProto(
-        cel::internal::down_cast<const google::protobuf::Any&>(message));
+        google::protobuf::DownCastToGenerated<google::protobuf::Any>(message));
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {

@@ -34,6 +34,7 @@
 #include "internal/status_macros.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/map_field.h"
+#include "google/protobuf/message.h"
 #include "google/protobuf/reflection.h"
 
 namespace cel::extensions::protobuf_internal {
@@ -165,7 +166,7 @@ absl::StatusOr<Json> DynamicValueProtoToJson(const google::protobuf::Message& me
   CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(message));
   if (ABSL_PREDICT_TRUE(desc == google::protobuf::Value::descriptor())) {
     return GeneratedValueProtoToJson(
-        cel::internal::down_cast<const google::protobuf::Value&>(message));
+        google::protobuf::DownCastToGenerated<google::protobuf::Value>(message));
   }
   CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(message));
   CEL_ASSIGN_OR_RETURN(const auto* kind_desc, FindOneofByName(desc, "kind"));
@@ -244,7 +245,7 @@ absl::StatusOr<Json> DynamicListValueProtoToJson(
   CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(message));
   if (ABSL_PREDICT_TRUE(desc == google::protobuf::ListValue::descriptor())) {
     return GeneratedListValueProtoToJson(
-        cel::internal::down_cast<const google::protobuf::ListValue&>(message));
+        google::protobuf::DownCastToGenerated<google::protobuf::ListValue>(message));
   }
   CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(message));
   CEL_ASSIGN_OR_RETURN(
@@ -280,7 +281,7 @@ absl::StatusOr<Json> DynamicStructProtoToJson(const google::protobuf::Message& m
   CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(message));
   if (ABSL_PREDICT_TRUE(desc == google::protobuf::Struct::descriptor())) {
     return GeneratedStructProtoToJson(
-        cel::internal::down_cast<const google::protobuf::Struct&>(message));
+        google::protobuf::DownCastToGenerated<google::protobuf::Struct>(message));
   }
   CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(message));
   CEL_ASSIGN_OR_RETURN(
@@ -324,7 +325,7 @@ absl::Status DynamicValueProtoFromJson(const Json& json,
   CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(message));
   if (ABSL_PREDICT_TRUE(desc == google::protobuf::Value::descriptor())) {
     return GeneratedValueProtoFromJson(
-        json, cel::internal::down_cast<google::protobuf::Value&>(message));
+        json, google::protobuf::DownCastToGenerated<google::protobuf::Value>(message));
   }
   CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(message));
   return absl::visit(
@@ -440,7 +441,8 @@ absl::Status DynamicListValueProtoFromJson(const JsonArray& json,
   CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(message));
   if (ABSL_PREDICT_TRUE(desc == google::protobuf::ListValue::descriptor())) {
     return GeneratedListValueProtoFromJson(
-        json, cel::internal::down_cast<google::protobuf::ListValue&>(message));
+        json,
+        google::protobuf::DownCastToGenerated<google::protobuf::ListValue>(message));
   }
   CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(message));
   CEL_ASSIGN_OR_RETURN(
@@ -478,7 +480,7 @@ absl::Status DynamicStructProtoFromJson(const JsonObject& json,
   CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(message));
   if (ABSL_PREDICT_TRUE(desc == google::protobuf::Struct::descriptor())) {
     return GeneratedStructProtoFromJson(
-        json, cel::internal::down_cast<google::protobuf::Struct&>(message));
+        json, google::protobuf::DownCastToGenerated<google::protobuf::Struct>(message));
   }
   CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(message));
   CEL_ASSIGN_OR_RETURN(

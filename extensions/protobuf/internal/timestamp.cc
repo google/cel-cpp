@@ -21,6 +21,7 @@
 #include "absl/time/time.h"
 #include "internal/casts.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions::protobuf_internal {
 
@@ -35,7 +36,7 @@ absl::StatusOr<absl::Time> UnwrapDynamicTimestampProto(
   if (desc == google::protobuf::Timestamp::descriptor()) {
     // Fast path.
     return UnwrapGeneratedTimestampProto(
-        cel::internal::down_cast<const google::protobuf::Timestamp&>(message));
+        google::protobuf::DownCastToGenerated<google::protobuf::Timestamp>(message));
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
@@ -92,7 +93,8 @@ absl::Status WrapDynamicTimestampProto(absl::Time value,
   }
   if (ABSL_PREDICT_TRUE(desc == google::protobuf::Timestamp::descriptor())) {
     return WrapGeneratedTimestampProto(
-        value, cel::internal::down_cast<google::protobuf::Timestamp&>(message));
+        value,
+        google::protobuf::DownCastToGenerated<google::protobuf::Timestamp>(message));
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {

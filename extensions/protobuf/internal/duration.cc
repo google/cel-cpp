@@ -21,6 +21,7 @@
 #include "absl/time/time.h"
 #include "internal/casts.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions::protobuf_internal {
 
@@ -35,7 +36,7 @@ absl::StatusOr<absl::Duration> UnwrapDynamicDurationProto(
   if (desc == google::protobuf::Duration::descriptor()) {
     // Fast path.
     return UnwrapGeneratedDurationProto(
-        cel::internal::down_cast<const google::protobuf::Duration&>(message));
+        google::protobuf::DownCastToGenerated<google::protobuf::Duration>(message));
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
@@ -91,7 +92,8 @@ absl::Status WrapDynamicDurationProto(absl::Duration value,
   }
   if (ABSL_PREDICT_TRUE(desc == google::protobuf::Duration::descriptor())) {
     return WrapGeneratedDurationProto(
-        value, cel::internal::down_cast<google::protobuf::Duration&>(message));
+        value,
+        google::protobuf::DownCastToGenerated<google::protobuf::Duration>(message));
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
