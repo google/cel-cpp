@@ -18,12 +18,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_DURATION_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_DURATION_VALUE_H_
 
-#include <memory>
 #include <ostream>
 #include <string>
 
-#include "absl/base/attributes.h"
-#include "absl/base/nullability.h"
 #include "absl/time/time.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -40,10 +37,10 @@ class DurationValue final {
 
   static constexpr ValueKind kKind = ValueKind::kDuration;
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr DurationValue(absl::Duration value) noexcept : value_(value) {}
+  constexpr explicit DurationValue(absl::Duration value) noexcept
+      : value_(value) {}
 
-  explicit DurationValue(DurationValueView value) noexcept;
+  constexpr explicit DurationValue(DurationValueView value) noexcept;
 
   DurationValue() = default;
   DurationValue(const DurationValue&) = default;
@@ -57,7 +54,7 @@ class DurationValue final {
 
   std::string DebugString() const;
 
-  absl::Duration NativeValue() const { return value_; }
+  constexpr absl::Duration NativeValue() const { return value_; }
 
   void swap(DurationValue& other) noexcept {
     using std::swap;
@@ -74,29 +71,45 @@ inline void swap(DurationValue& lhs, DurationValue& rhs) noexcept {
   lhs.swap(rhs);
 }
 
-inline std::ostream& operator<<(std::ostream& out, const DurationValue& value) {
+constexpr bool operator==(DurationValue lhs, DurationValue rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator==(DurationValue lhs, absl::Duration rhs) {
+  return lhs.NativeValue() == rhs;
+}
+
+constexpr bool operator==(absl::Duration lhs, DurationValue rhs) {
+  return lhs == rhs.NativeValue();
+}
+
+constexpr bool operator!=(DurationValue lhs, DurationValue rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(DurationValue lhs, absl::Duration rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(absl::Duration lhs, DurationValue rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline std::ostream& operator<<(std::ostream& out, DurationValue value) {
   return out << value.DebugString();
 }
 
 class DurationValueView final {
- private:
-  static constexpr DurationValue kZero{absl::ZeroDuration()};
-
  public:
   using alternative_type = DurationValue;
 
   static constexpr ValueKind kKind = DurationValue::kKind;
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  DurationValueView(
-      const absl::
-          Duration&  // NOLINT(google3-readability-pass-trivial-by-value)
-              value) noexcept
-      : value_(std::addressof(value)) {}
+  constexpr explicit DurationValueView(absl::Duration value) noexcept
+      : value_(value) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  DurationValueView(
-      const DurationValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
+  constexpr DurationValueView(DurationValue value) noexcept
       : DurationValueView(value.value_) {}
 
   DurationValueView() = default;
@@ -111,7 +124,7 @@ class DurationValueView final {
 
   std::string DebugString() const;
 
-  absl::Duration NativeValue() const { return *value_; }
+  constexpr absl::Duration NativeValue() const { return value_; }
 
   void swap(DurationValueView& other) noexcept {
     using std::swap;
@@ -121,19 +134,61 @@ class DurationValueView final {
  private:
   friend class DurationValue;
 
-  absl::Nonnull<const absl::Duration*> value_ = std::addressof(kZero.value_);
+  // We pass around by value, as its cheaper than passing around a pointer due
+  // to the performance degradation from pointer chasing.
+  absl::Duration value_ = absl::ZeroDuration();
 };
 
 inline void swap(DurationValueView& lhs, DurationValueView& rhs) noexcept {
   lhs.swap(rhs);
 }
 
+constexpr bool operator==(DurationValueView lhs, DurationValueView rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator==(DurationValueView lhs, absl::Duration rhs) {
+  return lhs.NativeValue() == rhs;
+}
+
+constexpr bool operator==(absl::Duration lhs, DurationValueView rhs) {
+  return lhs == rhs.NativeValue();
+}
+
+constexpr bool operator==(DurationValueView lhs, DurationValue rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator==(DurationValue lhs, DurationValueView rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator!=(DurationValueView lhs, DurationValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(DurationValueView lhs, absl::Duration rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(absl::Duration lhs, DurationValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(DurationValueView lhs, DurationValue rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(DurationValue lhs, DurationValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
 inline std::ostream& operator<<(std::ostream& out, DurationValueView value) {
   return out << value.DebugString();
 }
 
-inline DurationValue::DurationValue(DurationValueView value) noexcept
-    : value_(*value.value_) {}
+inline constexpr DurationValue::DurationValue(DurationValueView value) noexcept
+    : DurationValue(value.value_) {}
 
 }  // namespace cel
 

@@ -79,6 +79,13 @@ TEST(DurationValue, As) {
               Ne(absl::nullopt));
 }
 
+TEST(DurationValue, Equality) {
+  EXPECT_NE(DurationValue(absl::ZeroDuration()), absl::Seconds(1));
+  EXPECT_NE(absl::Seconds(1), DurationValue(absl::ZeroDuration()));
+  EXPECT_NE(DurationValue(absl::ZeroDuration()),
+            DurationValue(absl::Seconds(1)));
+}
+
 TEST(DurationValueView, Kind) {
   EXPECT_EQ(DurationValueView(absl::Seconds(1)).kind(),
             DurationValueView::kKind);
@@ -133,6 +140,18 @@ TEST(DurationValueView, As) {
   EXPECT_THAT(
       As<DurationValueView>(ValueView(DurationValueView(absl::Seconds(1)))),
       Ne(absl::nullopt));
+}
+
+TEST(DurationValueView, Equality) {
+  EXPECT_NE(DurationValueView(DurationValue(absl::ZeroDuration())),
+            absl::Seconds(1));
+  EXPECT_NE(absl::Seconds(1), DurationValueView(absl::ZeroDuration()));
+  EXPECT_NE(DurationValueView(absl::ZeroDuration()),
+            DurationValueView(absl::Seconds(1)));
+  EXPECT_NE(DurationValueView(absl::ZeroDuration()),
+            DurationValue(absl::Seconds(1)));
+  EXPECT_NE(DurationValue(absl::Seconds(1)),
+            DurationValueView(absl::ZeroDuration()));
 }
 
 }  // namespace

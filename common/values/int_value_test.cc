@@ -71,6 +71,12 @@ TEST(IntValue, As) {
   EXPECT_THAT(As<IntValue>(Value(IntValue(1))), Ne(absl::nullopt));
 }
 
+TEST(IntValue, Equality) {
+  EXPECT_NE(IntValue(0), 1);
+  EXPECT_NE(1, IntValue(0));
+  EXPECT_NE(IntValue(0), IntValue(1));
+}
+
 TEST(IntValueView, Kind) {
   EXPECT_EQ(IntValueView(1).kind(), IntValueView::kKind);
   EXPECT_EQ(ValueView(IntValueView(1)).kind(), IntValueView::kKind);
@@ -115,6 +121,14 @@ TEST(IntValueView, Cast) {
 TEST(IntValueView, As) {
   EXPECT_THAT(As<IntValueView>(IntValueView(1)), Ne(absl::nullopt));
   EXPECT_THAT(As<IntValueView>(ValueView(IntValueView(1))), Ne(absl::nullopt));
+}
+
+TEST(IntValueView, Equality) {
+  EXPECT_NE(IntValueView(IntValue(0)), 1);
+  EXPECT_NE(1, IntValueView(0));
+  EXPECT_NE(IntValueView(0), IntValueView(1));
+  EXPECT_NE(IntValueView(0), IntValue(1));
+  EXPECT_NE(IntValue(1), IntValueView(0));
 }
 
 }  // namespace

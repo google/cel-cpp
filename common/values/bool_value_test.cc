@@ -71,6 +71,12 @@ TEST(BoolValue, As) {
   EXPECT_THAT(As<BoolValue>(Value(BoolValue(true))), Ne(absl::nullopt));
 }
 
+TEST(BoolValue, Equality) {
+  EXPECT_NE(BoolValue(false), true);
+  EXPECT_NE(true, BoolValue(false));
+  EXPECT_NE(BoolValue(false), BoolValue(true));
+}
+
 TEST(BoolValueView, Kind) {
   EXPECT_EQ(BoolValueView(true).kind(), BoolValueView::kKind);
   EXPECT_EQ(ValueView(BoolValueView(true)).kind(), BoolValueView::kKind);
@@ -116,6 +122,14 @@ TEST(BoolValueView, As) {
   EXPECT_THAT(As<BoolValueView>(BoolValueView(true)), Ne(absl::nullopt));
   EXPECT_THAT(As<BoolValueView>(ValueView(BoolValueView(true))),
               Ne(absl::nullopt));
+}
+
+TEST(BoolValueView, Equality) {
+  EXPECT_NE(BoolValueView(BoolValue(false)), true);
+  EXPECT_NE(true, BoolValueView(false));
+  EXPECT_NE(BoolValueView(false), BoolValueView(true));
+  EXPECT_NE(BoolValueView(false), BoolValue(true));
+  EXPECT_NE(BoolValue(true), BoolValueView(false));
 }
 
 }  // namespace

@@ -18,12 +18,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_DOUBLE_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_DOUBLE_VALUE_H_
 
-#include <memory>
 #include <ostream>
 #include <string>
 
-#include "absl/base/attributes.h"
-#include "absl/base/nullability.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 
@@ -39,10 +36,9 @@ class DoubleValue final {
 
   static constexpr ValueKind kKind = ValueKind::kDouble;
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr DoubleValue(double value) noexcept : value_(value) {}
+  constexpr explicit DoubleValue(double value) noexcept : value_(value) {}
 
-  explicit DoubleValue(DoubleValueView value) noexcept;
+  constexpr explicit DoubleValue(DoubleValueView value) noexcept;
 
   DoubleValue() = default;
   DoubleValue(const DoubleValue&) = default;
@@ -56,7 +52,7 @@ class DoubleValue final {
 
   std::string DebugString() const;
 
-  double NativeValue() const { return value_; }
+  constexpr double NativeValue() const { return value_; }
 
   void swap(DoubleValue& other) noexcept {
     using std::swap;
@@ -71,28 +67,44 @@ class DoubleValue final {
 
 inline void swap(DoubleValue& lhs, DoubleValue& rhs) noexcept { lhs.swap(rhs); }
 
-inline std::ostream& operator<<(std::ostream& out, const DoubleValue& value) {
+constexpr bool operator==(DoubleValue lhs, DoubleValue rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator==(DoubleValue lhs, double rhs) {
+  return lhs.NativeValue() == rhs;
+}
+
+constexpr bool operator==(double lhs, DoubleValue rhs) {
+  return lhs == rhs.NativeValue();
+}
+
+constexpr bool operator!=(DoubleValue lhs, DoubleValue rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(DoubleValue lhs, double rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(double lhs, DoubleValue rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline std::ostream& operator<<(std::ostream& out, DoubleValue value) {
   return out << value.DebugString();
 }
 
 class DoubleValueView final {
- private:
-  static constexpr DoubleValue kZero{0.0};
-
  public:
   using alternative_type = DoubleValue;
 
   static constexpr ValueKind kKind = DoubleValue::kKind;
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  DoubleValueView(
-      const double&  // NOLINT(google3-readability-pass-trivial-by-value)
-          value) noexcept
-      : value_(std::addressof(value)) {}
+  constexpr explicit DoubleValueView(double value) noexcept : value_(value) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  DoubleValueView(
-      const DoubleValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
+  constexpr DoubleValueView(DoubleValue value) noexcept
       : DoubleValueView(value.value_) {}
 
   DoubleValueView() = default;
@@ -107,7 +119,7 @@ class DoubleValueView final {
 
   std::string DebugString() const;
 
-  double NativeValue() const { return *value_; }
+  constexpr double NativeValue() const { return value_; }
 
   void swap(DoubleValueView& other) noexcept {
     using std::swap;
@@ -117,19 +129,61 @@ class DoubleValueView final {
  private:
   friend class DoubleValue;
 
-  absl::Nonnull<const double*> value_ = std::addressof(kZero.value_);
+  // We pass around by value, as its cheaper than passing around a pointer due
+  // to the performance degradation from pointer chasing.
+  double value_ = 0.0;
 };
 
 inline void swap(DoubleValueView& lhs, DoubleValueView& rhs) noexcept {
   lhs.swap(rhs);
 }
 
+constexpr bool operator==(DoubleValueView lhs, DoubleValueView rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator==(DoubleValueView lhs, double rhs) {
+  return lhs.NativeValue() == rhs;
+}
+
+constexpr bool operator==(double lhs, DoubleValueView rhs) {
+  return lhs == rhs.NativeValue();
+}
+
+constexpr bool operator==(DoubleValueView lhs, DoubleValue rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator==(DoubleValue lhs, DoubleValueView rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator!=(DoubleValueView lhs, DoubleValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(DoubleValueView lhs, double rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(double lhs, DoubleValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(DoubleValueView lhs, DoubleValue rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(DoubleValue lhs, DoubleValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
 inline std::ostream& operator<<(std::ostream& out, DoubleValueView value) {
   return out << value.DebugString();
 }
 
-inline DoubleValue::DoubleValue(DoubleValueView value) noexcept
-    : value_(*value.value_) {}
+inline constexpr DoubleValue::DoubleValue(DoubleValueView value) noexcept
+    : DoubleValue(value.value_) {}
 
 }  // namespace cel
 

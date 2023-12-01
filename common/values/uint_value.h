@@ -19,12 +19,9 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_UINT_VALUE_H_
 
 #include <cstdint>
-#include <memory>
 #include <ostream>
 #include <string>
 
-#include "absl/base/attributes.h"
-#include "absl/base/nullability.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 
@@ -40,10 +37,9 @@ class UintValue final {
 
   static constexpr ValueKind kKind = ValueKind::kUint;
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr UintValue(uint64_t value) noexcept : value_(value) {}
+  constexpr explicit UintValue(uint64_t value) noexcept : value_(value) {}
 
-  explicit UintValue(UintValueView value) noexcept;
+  constexpr explicit UintValue(UintValueView value) noexcept;
 
   UintValue() = default;
   UintValue(const UintValue&) = default;
@@ -57,7 +53,7 @@ class UintValue final {
 
   std::string DebugString() const;
 
-  uint64_t NativeValue() const { return value_; }
+  constexpr uint64_t NativeValue() const { return value_; }
 
   void swap(UintValue& other) noexcept {
     using std::swap;
@@ -67,32 +63,49 @@ class UintValue final {
  private:
   friend class UintValueView;
 
-  uint64_t value_ = 0;
+  uint64_t value_ = 0u;
 };
 
 inline void swap(UintValue& lhs, UintValue& rhs) noexcept { lhs.swap(rhs); }
 
-inline std::ostream& operator<<(std::ostream& out, const UintValue& value) {
+constexpr bool operator==(UintValue lhs, UintValue rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator==(UintValue lhs, uint64_t rhs) {
+  return lhs.NativeValue() == rhs;
+}
+
+constexpr bool operator==(uint64_t lhs, UintValue rhs) {
+  return lhs == rhs.NativeValue();
+}
+
+constexpr bool operator!=(UintValue lhs, UintValue rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(UintValue lhs, uint64_t rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(uint64_t lhs, UintValue rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline std::ostream& operator<<(std::ostream& out, UintValue value) {
   return out << value.DebugString();
 }
 
 class UintValueView final {
- private:
-  static constexpr UintValue kZero{0};
-
  public:
   using alternative_type = UintValue;
 
   static constexpr ValueKind kKind = UintValue::kKind;
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  UintValueView(
-      const uint64_t&  // NOLINT(google3-readability-pass-trivial-by-value)
-          value) noexcept
-      : value_(std::addressof(value)) {}
+  constexpr explicit UintValueView(uint64_t value) noexcept : value_(value) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  UintValueView(const UintValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
+  constexpr UintValueView(UintValue value) noexcept
       : UintValueView(value.value_) {}
 
   UintValueView() = default;
@@ -107,7 +120,7 @@ class UintValueView final {
 
   std::string DebugString() const;
 
-  uint64_t NativeValue() const { return *value_; }
+  constexpr uint64_t NativeValue() const { return value_; }
 
   void swap(UintValueView& other) noexcept {
     using std::swap;
@@ -117,19 +130,61 @@ class UintValueView final {
  private:
   friend class UintValue;
 
-  absl::Nonnull<const uint64_t*> value_ = std::addressof(kZero.value_);
+  // We pass around by value, as its cheaper than passing around a pointer due
+  // to the performance degradation from pointer chasing.
+  uint64_t value_ = 0u;
 };
 
 inline void swap(UintValueView& lhs, UintValueView& rhs) noexcept {
   lhs.swap(rhs);
 }
 
+constexpr bool operator==(UintValueView lhs, UintValueView rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator==(UintValueView lhs, uint64_t rhs) {
+  return lhs.NativeValue() == rhs;
+}
+
+constexpr bool operator==(uint64_t lhs, UintValueView rhs) {
+  return lhs == rhs.NativeValue();
+}
+
+constexpr bool operator==(UintValueView lhs, UintValue rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator==(UintValue lhs, UintValueView rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator!=(UintValueView lhs, UintValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(UintValueView lhs, uint64_t rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(uint64_t lhs, UintValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(UintValueView lhs, UintValue rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(UintValue lhs, UintValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
 inline std::ostream& operator<<(std::ostream& out, UintValueView value) {
   return out << value.DebugString();
 }
 
-inline UintValue::UintValue(UintValueView value) noexcept
-    : value_(*value.value_) {}
+inline constexpr UintValue::UintValue(UintValueView value) noexcept
+    : UintValue(value.value_) {}
 
 }  // namespace cel
 

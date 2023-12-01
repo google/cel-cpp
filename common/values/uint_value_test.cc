@@ -71,6 +71,12 @@ TEST(UintValue, As) {
   EXPECT_THAT(As<UintValue>(Value(UintValue(1))), Ne(absl::nullopt));
 }
 
+TEST(UintValue, Equality) {
+  EXPECT_NE(UintValue(0u), 1u);
+  EXPECT_NE(1u, UintValue(0u));
+  EXPECT_NE(UintValue(0u), UintValue(1u));
+}
+
 TEST(UintValueView, Kind) {
   EXPECT_EQ(UintValueView(1).kind(), UintValueView::kKind);
   EXPECT_EQ(ValueView(UintValueView(1)).kind(), UintValueView::kKind);
@@ -116,6 +122,14 @@ TEST(UintValueView, As) {
   EXPECT_THAT(As<UintValueView>(UintValueView(1)), Ne(absl::nullopt));
   EXPECT_THAT(As<UintValueView>(ValueView(UintValueView(1))),
               Ne(absl::nullopt));
+}
+
+TEST(UintValueView, Equality) {
+  EXPECT_NE(UintValueView(UintValue(0u)), 1u);
+  EXPECT_NE(1u, UintValueView(0u));
+  EXPECT_NE(UintValueView(0u), UintValueView(1u));
+  EXPECT_NE(UintValueView(0u), UintValue(1u));
+  EXPECT_NE(UintValue(1u), UintValueView(0u));
 }
 
 }  // namespace

@@ -88,6 +88,15 @@ TEST(TimestampValue, As) {
               Ne(absl::nullopt));
 }
 
+TEST(TimestampValue, Equality) {
+  EXPECT_NE(TimestampValue(absl::UnixEpoch()),
+            absl::UnixEpoch() + absl::Seconds(1));
+  EXPECT_NE(absl::UnixEpoch() + absl::Seconds(1),
+            TimestampValue(absl::UnixEpoch()));
+  EXPECT_NE(TimestampValue(absl::UnixEpoch()),
+            TimestampValue(absl::UnixEpoch() + absl::Seconds(1)));
+}
+
 TEST(TimestampValueView, Kind) {
   EXPECT_EQ(TimestampValueView(absl::UnixEpoch() + absl::Seconds(1)).kind(),
             TimestampValueView::kKind);
@@ -149,6 +158,19 @@ TEST(TimestampValueView, As) {
   EXPECT_THAT(As<TimestampValueView>(ValueView(
                   TimestampValueView(absl::UnixEpoch() + absl::Seconds(1)))),
               Ne(absl::nullopt));
+}
+
+TEST(DurationValueView, Equality) {
+  EXPECT_NE(TimestampValueView(TimestampValue(absl::UnixEpoch())),
+            absl::UnixEpoch() + absl::Seconds(1));
+  EXPECT_NE(absl::UnixEpoch() + absl::Seconds(1),
+            TimestampValueView(absl::UnixEpoch()));
+  EXPECT_NE(TimestampValueView(absl::UnixEpoch()),
+            TimestampValueView(absl::UnixEpoch() + absl::Seconds(1)));
+  EXPECT_NE(TimestampValueView(absl::UnixEpoch()),
+            TimestampValue(absl::UnixEpoch() + absl::Seconds(1)));
+  EXPECT_NE(TimestampValue(absl::UnixEpoch() + absl::Seconds(1)),
+            TimestampValueView(absl::UnixEpoch()));
 }
 
 }  // namespace

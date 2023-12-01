@@ -18,12 +18,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_BOOL_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_BOOL_VALUE_H_
 
-#include <memory>
 #include <ostream>
 #include <string>
 
-#include "absl/base/attributes.h"
-#include "absl/base/nullability.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 
@@ -39,10 +36,9 @@ class BoolValue final {
 
   static constexpr ValueKind kKind = ValueKind::kBool;
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr BoolValue(bool value) noexcept : value_(value) {}
+  constexpr explicit BoolValue(bool value) noexcept : value_(value) {}
 
-  explicit BoolValue(BoolValueView value) noexcept;
+  constexpr explicit BoolValue(BoolValueView value) noexcept;
 
   BoolValue() = default;
   BoolValue(const BoolValue&) = default;
@@ -56,7 +52,7 @@ class BoolValue final {
 
   std::string DebugString() const;
 
-  bool NativeValue() const { return value_; }
+  constexpr bool NativeValue() const { return value_; }
 
   void swap(BoolValue& other) noexcept {
     using std::swap;
@@ -71,26 +67,45 @@ class BoolValue final {
 
 inline void swap(BoolValue& lhs, BoolValue& rhs) noexcept { lhs.swap(rhs); }
 
-inline std::ostream& operator<<(std::ostream& out, const BoolValue& value) {
+constexpr bool operator==(BoolValue lhs, BoolValue rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator==(BoolValue lhs, bool rhs) {
+  return lhs.NativeValue() == rhs;
+}
+
+constexpr bool operator==(bool lhs, BoolValue rhs) {
+  return lhs == rhs.NativeValue();
+}
+
+constexpr bool operator!=(BoolValue lhs, BoolValue rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(BoolValue lhs, bool rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(bool lhs, BoolValue rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline std::ostream& operator<<(std::ostream& out, BoolValue value) {
   return out << value.DebugString();
 }
 
 class BoolValueView final {
- private:
-  static constexpr BoolValue kFalse{false};
-  static constexpr BoolValue kTrue{true};
-
  public:
   using alternative_type = BoolValue;
 
   static constexpr ValueKind kKind = BoolValue::kKind;
 
-  explicit BoolValueView(bool value) noexcept
-      : BoolValueView(value ? kTrue : kFalse) {}
+  constexpr explicit BoolValueView(bool value) noexcept : value_(value) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  BoolValueView(const BoolValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : value_(std::addressof(value.value_)) {}
+  constexpr BoolValueView(BoolValue value) noexcept
+      : BoolValueView(value.value_) {}
 
   BoolValueView() = default;
   BoolValueView(const BoolValueView&) = default;
@@ -104,7 +119,7 @@ class BoolValueView final {
 
   std::string DebugString() const;
 
-  bool NativeValue() const { return *value_; }
+  constexpr bool NativeValue() const { return value_; }
 
   void swap(BoolValueView& other) noexcept {
     using std::swap;
@@ -114,19 +129,61 @@ class BoolValueView final {
  private:
   friend class BoolValue;
 
-  absl::Nonnull<const bool*> value_ = std::addressof(kFalse.value_);
+  // We pass around by value, as its cheaper than passing around a pointer both
+  // in size and the performance degradation from pointer chasing.
+  bool value_ = false;
 };
 
 inline void swap(BoolValueView& lhs, BoolValueView& rhs) noexcept {
   lhs.swap(rhs);
 }
 
+constexpr bool operator==(BoolValueView lhs, BoolValueView rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator==(BoolValueView lhs, bool rhs) {
+  return lhs.NativeValue() == rhs;
+}
+
+constexpr bool operator==(bool lhs, BoolValueView rhs) {
+  return lhs == rhs.NativeValue();
+}
+
+constexpr bool operator==(BoolValueView lhs, BoolValue rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator==(BoolValue lhs, BoolValueView rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator!=(BoolValueView lhs, BoolValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(BoolValueView lhs, bool rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(bool lhs, BoolValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(BoolValueView lhs, BoolValue rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(BoolValue lhs, BoolValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
 inline std::ostream& operator<<(std::ostream& out, BoolValueView value) {
   return out << value.DebugString();
 }
 
-inline BoolValue::BoolValue(BoolValueView value) noexcept
-    : value_(*value.value_) {}
+inline constexpr BoolValue::BoolValue(BoolValueView value) noexcept
+    : BoolValue(value.value_) {}
 
 }  // namespace cel
 

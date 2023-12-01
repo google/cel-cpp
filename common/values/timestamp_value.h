@@ -18,12 +18,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_TIMESTAMP_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_TIMESTAMP_VALUE_H_
 
-#include <memory>
 #include <ostream>
 #include <string>
 
-#include "absl/base/attributes.h"
-#include "absl/base/nullability.h"
 #include "absl/time/time.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -40,10 +37,10 @@ class TimestampValue final {
 
   static constexpr ValueKind kKind = ValueKind::kTimestamp;
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr TimestampValue(absl::Time value) noexcept : value_(value) {}
+  constexpr explicit TimestampValue(absl::Time value) noexcept
+      : value_(value) {}
 
-  explicit TimestampValue(TimestampValueView value) noexcept;
+  constexpr explicit TimestampValue(TimestampValueView value) noexcept;
 
   TimestampValue() = default;
   TimestampValue(const TimestampValue&) = default;
@@ -57,7 +54,7 @@ class TimestampValue final {
 
   std::string DebugString() const;
 
-  absl::Time NativeValue() const { return value_; }
+  constexpr absl::Time NativeValue() const { return value_; }
 
   void swap(TimestampValue& other) noexcept {
     using std::swap;
@@ -74,29 +71,45 @@ inline void swap(TimestampValue& lhs, TimestampValue& rhs) noexcept {
   lhs.swap(rhs);
 }
 
-inline std::ostream& operator<<(std::ostream& out,
-                                const TimestampValue& value) {
+constexpr bool operator==(TimestampValue lhs, TimestampValue rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator==(TimestampValue lhs, absl::Time rhs) {
+  return lhs.NativeValue() == rhs;
+}
+
+constexpr bool operator==(absl::Time lhs, TimestampValue rhs) {
+  return lhs == rhs.NativeValue();
+}
+
+constexpr bool operator!=(TimestampValue lhs, TimestampValue rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(TimestampValue lhs, absl::Time rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(absl::Time lhs, TimestampValue rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline std::ostream& operator<<(std::ostream& out, TimestampValue value) {
   return out << value.DebugString();
 }
 
 class TimestampValueView final {
- private:
-  static constexpr TimestampValue kZero{absl::UnixEpoch()};
-
  public:
   using alternative_type = TimestampValue;
 
   static constexpr ValueKind kKind = TimestampValue::kKind;
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  TimestampValueView(
-      const absl::Time&  // NOLINT(google3-readability-pass-trivial-by-value)
-          value) noexcept
-      : value_(std::addressof(value)) {}
+  constexpr explicit TimestampValueView(absl::Time value) noexcept
+      : value_(value) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  TimestampValueView(
-      const TimestampValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
+  constexpr TimestampValueView(TimestampValue value) noexcept
       : TimestampValueView(value.value_) {}
 
   TimestampValueView() = default;
@@ -111,7 +124,7 @@ class TimestampValueView final {
 
   std::string DebugString() const;
 
-  absl::Time NativeValue() const { return *value_; }
+  constexpr absl::Time NativeValue() const { return value_; }
 
   void swap(TimestampValueView& other) noexcept {
     using std::swap;
@@ -121,19 +134,62 @@ class TimestampValueView final {
  private:
   friend class TimestampValue;
 
-  absl::Nonnull<const absl::Time*> value_ = std::addressof(kZero.value_);
+  // We pass around by value, as its cheaper than passing around a pointer due
+  // to the performance degradation from pointer chasing.
+  absl::Time value_ = absl::UnixEpoch();
 };
 
 inline void swap(TimestampValueView& lhs, TimestampValueView& rhs) noexcept {
   lhs.swap(rhs);
 }
 
+constexpr bool operator==(TimestampValueView lhs, TimestampValueView rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator==(TimestampValueView lhs, absl::Time rhs) {
+  return lhs.NativeValue() == rhs;
+}
+
+constexpr bool operator==(absl::Time lhs, TimestampValueView rhs) {
+  return lhs == rhs.NativeValue();
+}
+
+constexpr bool operator==(TimestampValueView lhs, TimestampValue rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator==(TimestampValue lhs, TimestampValueView rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator!=(TimestampValueView lhs, TimestampValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(TimestampValueView lhs, absl::Time rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(absl::Time lhs, TimestampValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(TimestampValueView lhs, TimestampValue rhs) {
+  return !operator==(lhs, rhs);
+}
+
+constexpr bool operator!=(TimestampValue lhs, TimestampValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
 inline std::ostream& operator<<(std::ostream& out, TimestampValueView value) {
   return out << value.DebugString();
 }
 
-inline TimestampValue::TimestampValue(TimestampValueView value) noexcept
-    : value_(*value.value_) {}
+inline constexpr TimestampValue::TimestampValue(
+    TimestampValueView value) noexcept
+    : TimestampValue(value.value_) {}
 
 }  // namespace cel
 
