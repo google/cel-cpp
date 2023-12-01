@@ -32,6 +32,7 @@ class DoubleValue;
 class DurationValue;
 class ErrorValue;
 class IntValue;
+class ListValue;
 class NullValue;
 class StringValue;
 class TimestampValue;
@@ -46,6 +47,7 @@ class DoubleValueView;
 class DurationValueView;
 class ErrorValueView;
 class IntValueView;
+class ListValueView;
 class NullValueView;
 class StringValueView;
 class TimestampValueView;
@@ -70,17 +72,19 @@ struct IsValueAlternative
           std::is_same<BoolValue, T>, std::is_same<BytesValue, T>,
           std::is_same<DoubleValue, T>, std::is_same<DurationValue, T>,
           std::is_same<ErrorValue, T>, std::is_same<IntValue, T>,
-          std::is_same<NullValue, T>, std::is_same<StringValue, T>,
-          std::is_same<TimestampValue, T>, std::is_same<TypeValue, T>,
-          std::is_same<UintValue, T>, std::is_same<UnknownValue, T>>> {};
+          std::is_base_of<ListValue, T>, std::is_same<NullValue, T>,
+          std::is_same<StringValue, T>, std::is_same<TimestampValue, T>,
+          std::is_same<TypeValue, T>, std::is_same<UintValue, T>,
+          std::is_same<UnknownValue, T>>> {};
 
 template <typename T>
 inline constexpr bool IsValueAlternativeV = IsValueAlternative<T>::value;
 
 using ValueVariant =
     absl::variant<absl::monostate, BoolValue, BytesValue, DoubleValue,
-                  DurationValue, ErrorValue, IntValue, NullValue, StringValue,
-                  TimestampValue, TypeValue, UintValue, UnknownValue>;
+                  DurationValue, ErrorValue, IntValue, ListValue, NullValue,
+                  StringValue, TimestampValue, TypeValue, UintValue,
+                  UnknownValue>;
 
 template <typename T>
 struct IsValueViewAlternative
@@ -88,10 +92,10 @@ struct IsValueViewAlternative
           std::is_same<BoolValueView, T>, std::is_same<BytesValueView, T>,
           std::is_same<DoubleValueView, T>, std::is_same<DurationValueView, T>,
           std::is_same<ErrorValueView, T>, std::is_same<IntValueView, T>,
-          std::is_same<NullValueView, T>, std::is_same<StringValueView, T>,
-          std::is_same<TimestampValueView, T>, std::is_same<TypeValueView, T>,
-          std::is_same<UintValueView, T>, std::is_same<UnknownValueView, T>>> {
-};
+          std::is_base_of<ListValueView, T>, std::is_same<NullValueView, T>,
+          std::is_same<StringValueView, T>, std::is_same<TimestampValueView, T>,
+          std::is_same<TypeValueView, T>, std::is_same<UintValueView, T>,
+          std::is_same<UnknownValueView, T>>> {};
 
 template <typename T>
 inline constexpr bool IsValueViewAlternativeV =
@@ -100,7 +104,7 @@ inline constexpr bool IsValueViewAlternativeV =
 using ValueViewVariant =
     absl::variant<absl::monostate, BoolValueView, BytesValueView,
                   DoubleValueView, DurationValueView, ErrorValueView,
-                  IntValueView, NullValueView, StringValueView,
+                  IntValueView, ListValueView, NullValueView, StringValueView,
                   TimestampValueView, TypeValueView, UintValueView,
                   UnknownValueView>;
 
@@ -121,6 +125,12 @@ struct BaseValueAlternativeFor<T, std::enable_if_t<IsValueInterfaceV<T>>>
     : BaseValueAlternativeFor<typename T::alternative_type> {};
 
 template <typename T>
+struct BaseValueAlternativeFor<
+    T, std::enable_if_t<std::is_base_of_v<ListValue, T>>> {
+  using type = ListValue;
+};
+
+template <typename T>
 using BaseValueAlternativeForT = typename BaseValueAlternativeFor<T>::type;
 
 // Get the base type view alternative for the given alternative or interface.
@@ -138,6 +148,12 @@ struct BaseValueViewAlternativeFor<T, std::enable_if_t<IsValueAlternativeV<T>>>
 template <typename T>
 struct BaseValueViewAlternativeFor<T, std::enable_if_t<IsValueInterfaceV<T>>>
     : BaseValueViewAlternativeFor<typename T::view_alternative_type> {};
+
+template <typename T>
+struct BaseValueViewAlternativeFor<
+    T, std::enable_if_t<std::is_base_of_v<ListValueView, T>>> {
+  using type = ListValueView;
+};
 
 template <typename T>
 using BaseValueViewAlternativeForT =

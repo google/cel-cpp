@@ -16,15 +16,22 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUE_H_
 
 #include <algorithm>
+#include <cstddef>
 #include <memory>
 #include <ostream>
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "absl/types/variant.h"
 #include "common/casting.h"
 #include "common/memory.h"
@@ -38,6 +45,7 @@
 #include "common/values/duration_value.h"  // IWYU pragma: export
 #include "common/values/error_value.h"  // IWYU pragma: export
 #include "common/values/int_value.h"  // IWYU pragma: export
+#include "common/values/list_value.h"  // IWYU pragma: export
 #include "common/values/null_value.h"  // IWYU pragma: export
 #include "common/values/string_value.h"  // IWYU pragma: export
 #include "common/values/timestamp_value.h"  // IWYU pragma: export
@@ -592,6 +600,120 @@ inline Value& Value::operator=(ValueView other) {
 
 // Now that Value and ValueView are complete, we can define various parts of
 // list, map, opaque, and struct which depend on Value and ValueView.
+
+namespace common_internal {
+
+template <typename T>
+class TypedListValue final : public ListValueInterface {
+ public:
+  TypedListValue(ListType type, std::vector<T>&& elements)
+      : type_(std::move(type)), elements_(std::move(elements)) {}
+
+  std::string DebugString() const override {
+    return absl::StrCat(
+        "[", absl::StrJoin(elements_, ", ", absl::StreamFormatter()), "]");
+  }
+
+  bool IsEmpty() const override { return elements_.empty(); }
+
+  size_t Size() const override { return elements_.size(); }
+
+ protected:
+  TypeView get_type() const override { return type_; }
+
+ private:
+  absl::StatusOr<ValueView> GetImpl(size_t index) const override {
+    return elements_[index];
+  }
+
+  NativeTypeId GetNativeTypeId() const noexcept override {
+    return NativeTypeId::For<TypedListValue<T>>();
+  }
+
+  const ListType type_;
+  const std::vector<T> elements_;
+};
+
+}  // namespace common_internal
+
+inline absl::StatusOr<ValueView> ListValue::Get(size_t index) const {
+  return interface_->Get(index);
+}
+
+inline absl::Status ListValue::ForEach(ForEachCallback callback) const {
+  return interface_->ForEach(callback);
+}
+
+inline absl::StatusOr<absl::Nonnull<ListValueIteratorPtr>>
+ListValue::NewIterator() const {
+  return interface_->NewIterator();
+}
+
+inline absl::StatusOr<ValueView> ListValueView::Get(size_t index) const {
+  return interface_->Get(index);
+}
+
+inline absl::Status ListValueView::ForEach(ForEachCallback callback) const {
+  return interface_->ForEach(callback);
+}
+
+inline absl::StatusOr<absl::Nonnull<ListValueIteratorPtr>>
+ListValueView::NewIterator() const {
+  return interface_->NewIterator();
+}
+
+template <>
+class ListValueBuilder<Value> final : public ListValueBuilderInterface {
+ public:
+  ListValueBuilder(TypeFactory& type_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                   TypeView element)
+      : ListValueBuilder(type_factory.memory_manager(),
+                         type_factory.CreateListType(element)) {}
+
+  ListValueBuilder(MemoryManagerRef memory_manager, ListType type)
+      : memory_manager_(memory_manager), type_(std::move(type)) {}
+
+  ListValueBuilder(const ListValueBuilder&) = delete;
+  ListValueBuilder(ListValueBuilder&&) = delete;
+  ListValueBuilder& operator=(const ListValueBuilder&) = delete;
+  ListValueBuilder& operator=(ListValueBuilder&&) = delete;
+
+  void Add(Value value) override { elements_.push_back(std::move(value)); }
+
+  bool IsEmpty() const override { return elements_.empty(); }
+
+  size_t Size() const override { return elements_.size(); }
+
+  void Reserve(size_t capacity) override { elements_.reserve(capacity); }
+
+  ListValue Build() && override {
+    return ListValue(
+        memory_manager_.MakeShared<common_internal::TypedListValue<Value>>(
+            std::move(type_), std::move(elements_)));
+  }
+
+ private:
+  MemoryManagerRef memory_manager_;
+  ListType type_;
+  std::vector<Value> elements_;
+};
+
+template <typename T>
+void ListValueBuilder<T>::Add(Value value) {
+  Add(Cast<T>(std::move(value)));
+}
+
+template <typename T>
+void ListValueBuilder<T>::Add(T value) {
+  elements_.push_back(std::move(value));
+}
+
+template <typename T>
+ListValue ListValueBuilder<T>::Build() && {
+  return ListValue(
+      memory_manager_.template MakeShared<common_internal::TypedListValue<T>>(
+          std::move(type_), std::move(elements_)));
+}
 
 }  // namespace cel
 

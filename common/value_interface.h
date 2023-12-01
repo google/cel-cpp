@@ -35,10 +35,13 @@ class ValueInterface : public common_internal::DataInterface {
   ABSL_ATTRIBUTE_PURE_FUNCTION
   virtual ValueKind kind() const = 0;
 
-  ABSL_ATTRIBUTE_PURE_FUNCTION
-  virtual TypeView type() const = 0;
+  TypeView type() const { return get_type(); }
 
   virtual std::string DebugString() const = 0;
+
+ protected:
+  ABSL_ATTRIBUTE_PURE_FUNCTION
+  virtual TypeView get_type() const = 0;
 };
 
 // Enable `InstanceOf`, `Cast`, and `As` using subsumption relationships.
