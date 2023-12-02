@@ -47,8 +47,8 @@ def base_deps():
         sha256 = RE2_SHA256,
     )
 
-    PROTOBUF_VERSION = "23.0"
-    PROTOBUF_SHA = "b8faf8487cc364e5c2b47a9abd77512bc79a6389ea45392ca938ba7617eae877"
+    PROTOBUF_VERSION = "25.1"
+    PROTOBUF_SHA = "9bd87b8280ef720d3240514f884e56a712f2218f0d693b48050c836028940a42"
     http_archive(
         name = "com_google_protobuf",
         sha256 = PROTOBUF_SHA,
