@@ -244,7 +244,7 @@ class InlinedStringViewStringValue final : public StringValue,
 class StringStringValue final : public StringValue, public HeapData {
  private:
   template <typename>
-  friend class ::cel::base_internal::HandleFactory;
+  friend struct ::cel::base_internal::HandleFactory;
   friend class BytesValue;
   friend class StringValue;
   friend class ValueFactory;

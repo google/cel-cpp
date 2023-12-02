@@ -636,7 +636,7 @@ class PoolingMemoryManagerVirtualDispatcher final
 
  private:
   friend class MemoryManagerRef;
-  friend class CompositionTraits<MemoryManagerRef>;
+  friend struct CompositionTraits<MemoryManagerRef>;
   template <typename T>
   friend class Allocator;
   template <typename T>
@@ -799,8 +799,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManager final {
  private:
   friend class PoolingMemoryManager;
   friend class MemoryManagerRef;
-  friend class NativeTypeTraits<MemoryManager>;
-  friend class CompositionTraits<MemoryManager>;
+  friend struct NativeTypeTraits<MemoryManager>;
+  friend struct CompositionTraits<MemoryManager>;
 
   explicit MemoryManager(PoolingMemoryManager* pointer) : pointer_(pointer) {}
 
@@ -1031,7 +1031,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManagerRef final {
   friend class PoolingMemoryManager;
   friend class PoolingMemoryManagerVirtualDispatcher;
   friend struct NativeTypeTraits<MemoryManagerRef>;
-  friend class CompositionTraits<MemoryManagerRef>;
+  friend struct CompositionTraits<MemoryManagerRef>;
   template <typename T>
   friend class Allocator;
   template <typename T>

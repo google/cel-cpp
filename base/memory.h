@@ -150,7 +150,7 @@ class Allocator {
 #define CEL_INTERNAL_IS_DESTRUCTOR_SKIPPABLE()                  \
  private:                                                       \
   template <typename>                                           \
-  friend class ::cel::base_internal::HandleFactory;             \
+  friend struct ::cel::base_internal::HandleFactory;            \
   template <typename, typename>                                 \
   friend struct ::cel::base_internal::HasIsDestructorSkippable; \
                                                                 \
