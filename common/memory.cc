@@ -273,8 +273,8 @@ class ThreadCompatiblePoolingMemoryManager final : public PoolingMemoryManager {
     return true;
   }
 
-  void OwnCustomDestructor(absl::Nonnull<void*> object,
-                           absl::Nonnull<CustomDestructPtr> destruct) override {
+  void OwnCustomDestructorImpl(
+      void* object, absl::Nonnull<void (*)(void*)> destruct) override {
     ABSL_DCHECK(object != nullptr);
     ABSL_DCHECK(destruct != nullptr);
     cleanup_actions_.push_back(CleanupAction{object, destruct});
@@ -305,8 +305,7 @@ class UnreachablePoolingMemoryManager final : public PoolingMemoryManager {
     ABSL_LOG(FATAL) << "MemoryManager used after being moved";
   }
 
-  void OwnCustomDestructor(absl::Nonnull<void*>,
-                           absl::Nonnull<CustomDestructPtr>) override {
+  void OwnCustomDestructorImpl(void*, absl::Nonnull<void (*)(void*)>) override {
     ABSL_LOG(FATAL) << "MemoryManager used after being moved";
   }
 
@@ -355,8 +354,7 @@ bool UnmanagedPoolingMemoryManagerDeallocate(absl::Nonnull<void*>,
 }
 
 void UnmanagedPoolingMemoryManagerOwnCustomDestructor(
-    absl::Nonnull<void*>, absl::Nonnull<void*>,
-    absl::Nonnull<PoolingMemoryManagerVirtualTable::CustomDestructPtr>) {}
+    absl::Nonnull<void*>, void*, absl::Nonnull<void (*)(void*)>) {}
 
 const PoolingMemoryManagerVirtualTable kUnmanagedMemoryManagerVirtualTable = {
     NativeTypeId::For<UnmanagedPoolingMemoryManager>(),

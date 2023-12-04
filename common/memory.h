@@ -512,7 +512,7 @@ class PoolingMemoryManager {
   // If `memory_management()` returns `MemoryManagement::kReferenceCounting`,
   // this allocation *must* be explicitly deallocated at some point via
   // `Deallocate`. Otherwise deallocation is optional.
-  void* Allocate(size_t size, size_t alignment) {
+  ABSL_MUST_USE_RESULT void* Allocate(size_t size, size_t alignment) {
     ABSL_DCHECK(absl::has_single_bit(alignment))
         << "alignment must be a power of 2";
     if (size == 0) {
@@ -537,8 +537,15 @@ class PoolingMemoryManager {
     return DeallocateImpl(ptr, size, alignment);
   }
 
- protected:
-  using CustomDestructPtr = void (*)(void*);
+  // Registers a custom destructor to be run upon destruction of the memory
+  // management implementation. Return value is always `true`, indicating that
+  // the destructor may be called at some point in the future.
+  bool OwnCustomDestructor(void* object,
+                           absl::Nonnull<void (*)(void*)> destruct) {
+    ABSL_DCHECK(destruct != nullptr);
+    OwnCustomDestructorImpl(object, destruct);
+    return true;
+  }
 
  private:
   friend class MemoryManager;
@@ -565,9 +572,8 @@ class PoolingMemoryManager {
 
   // Registers a destructor to be run upon destruction of the memory management
   // implementation.
-  virtual void OwnCustomDestructor(
-      absl::Nonnull<void*> object,
-      absl::Nonnull<CustomDestructPtr> destruct) = 0;
+  virtual void OwnCustomDestructorImpl(
+      absl::Nonnull<void*> object, absl::Nonnull<void (*)(void*)> destruct) = 0;
 
   virtual NativeTypeId GetNativeTypeId() const noexcept = 0;
 };
@@ -608,10 +614,9 @@ struct PoolingMemoryManagerVirtualTable final {
                                                size_t);
   using DeallocatePtr = bool (*)(absl::Nonnull<void*>, absl::Nonnull<void*>,
                                  size_t, size_t) noexcept;
-  using CustomDestructPtr = void (*)(void*);
   using OwnCustomDestructorPtr = void (*)(absl::Nonnull<void*>,
                                           absl::Nonnull<void*>,
-                                          absl::Nonnull<CustomDestructPtr>);
+                                          absl::Nonnull<void (*)(void*)>);
 
   // NOLINTBEGIN(google3-readability-class-member-naming)
   const cel::NativeTypeId NativeTypeId;
@@ -664,8 +669,8 @@ class PoolingMemoryManagerVirtualDispatcher final
 
   // Registers a destructor to be run upon destruction of the memory management
   // implementation.
-  void OwnCustomDestructor(absl::Nonnull<void*> object,
-                           absl::Nonnull<CustomDestructPtr> destruct) override {
+  void OwnCustomDestructorImpl(
+      void* object, absl::Nonnull<void (*)(void*)> destruct) override {
     vtable()->OwnCustomDestructor(callee(), object, destruct);
   }
 
@@ -701,13 +706,13 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManager final {
   static absl::Nonnull<PoolingMemoryManager*> UnreachablePooling() noexcept;
 
  public:
-  static MemoryManager ReferenceCounting() {
+  ABSL_MUST_USE_RESULT static MemoryManager ReferenceCounting() {
     MemoryManager memory_manager(nullptr);
     ABSL_ASSUME(memory_manager.pointer_ == nullptr);
     return memory_manager;
   }
 
-  static MemoryManager Pooling(
+  ABSL_MUST_USE_RESULT static MemoryManager Pooling(
       absl::Nonnull<std::unique_ptr<PoolingMemoryManager>> pooling) {
     return MemoryManager(std::move(pooling));
   }
@@ -770,7 +775,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManager final {
   // If `memory_management()` returns `MemoryManagement::kReferenceCounting`,
   // this allocation *must* be explicitly deallocated at some point via
   // `Deallocate`. Otherwise deallocation is optional.
-  void* Allocate(size_t size, size_t alignment) {
+  ABSL_MUST_USE_RESULT void* Allocate(size_t size, size_t alignment) {
     if (pointer_ == nullptr) {
       return ReferenceCountingMemoryManager::Allocate(size, alignment);
     } else {
@@ -788,6 +793,22 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManager final {
       return ReferenceCountingMemoryManager::Deallocate(ptr, size, alignment);
     } else {
       return pointer_->Deallocate(ptr, size, alignment);
+    }
+  }
+
+  // Registers a custom destructor to be run upon destruction of the memory
+  // management implementation. A return of `true` indicates the destructor may
+  // be called at some point in the future, `false` if will definitely not be
+  // called. All pooling memory managers return `true` while the reference
+  // counting memory manager returns `false`.
+  bool OwnCustomDestructor(void* object,
+                           absl::Nonnull<void (*)(void*)> destruct) {
+    ABSL_DCHECK(destruct != nullptr);
+    if (pointer_ == nullptr) {
+      return false;
+    } else {
+      return static_cast<PoolingMemoryManager*>(pointer_)->OwnCustomDestructor(
+          object, destruct);
     }
   }
 
@@ -901,7 +922,7 @@ struct CastTraits<
 // `MemoryManager`.
 class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManagerRef final {
  public:
-  static MemoryManagerRef ReferenceCounting() {
+  ABSL_MUST_USE_RESULT static MemoryManagerRef ReferenceCounting() {
     MemoryManagerRef memory_manager(nullptr, nullptr);
     ABSL_ASSUME(memory_manager.vpointer_ == nullptr &&
                 memory_manager.pointer_ == nullptr);
@@ -909,9 +930,10 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManagerRef final {
   }
 
   template <typename T>
-  static MemoryManagerRef Pooling(const PoolingMemoryManagerVirtualTable& vtable
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND,
-                                  T& self ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  ABSL_MUST_USE_RESULT static MemoryManagerRef Pooling(
+      const PoolingMemoryManagerVirtualTable& vtable
+          ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      T& self ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     MemoryManagerRef memory_manager(
         const_cast<PoolingMemoryManagerVirtualTable*>(std::addressof(vtable)),
         std::addressof(self));
@@ -926,7 +948,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManagerRef final {
   // IMPORTANT: This should only be used for cases where something is
   // initialized and never destructed (e.g. singletons). It should never be used
   // for anything else.
-  static MemoryManagerRef Unmanaged();
+  ABSL_MUST_USE_RESULT static MemoryManagerRef Unmanaged();
 
   MemoryManagerRef() = delete;
   MemoryManagerRef(const MemoryManagerRef&) = default;
@@ -986,7 +1008,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManagerRef final {
   // If `memory_management()` returns `MemoryManagement::kReferenceCounting`,
   // this allocation *must* be explicitly deallocated at some point via
   // `Deallocate`. Otherwise deallocation is optional.
-  void* Allocate(size_t size, size_t alignment) {
+  ABSL_MUST_USE_RESULT void* Allocate(size_t size, size_t alignment) {
     if (vpointer_ == nullptr) {
       return ReferenceCountingMemoryManager::Allocate(size, alignment);
     } else if (pointer_ == nullptr) {
@@ -1018,6 +1040,28 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManagerRef final {
                      vpointer_),
                  pointer_)
           .Deallocate(ptr, size, alignment);
+    }
+  }
+
+  // Registers a custom destructor to be run upon destruction of the memory
+  // management implementation. A return of `true` indicates the destructor may
+  // be called at some point in the future, `false` if will definitely not be
+  // called. All pooling memory managers return `true` while the reference
+  // counting memory manager returns `false`.
+  bool OwnCustomDestructor(void* object,
+                           absl::Nonnull<void (*)(void*)> destruct) {
+    ABSL_DCHECK(destruct != nullptr);
+    if (vpointer_ == nullptr) {
+      return false;
+    } else if (pointer_ == nullptr) {
+      return static_cast<PoolingMemoryManager*>(vpointer_)->OwnCustomDestructor(
+          object, destruct);
+    } else {
+      return PoolingMemoryManagerVirtualDispatcher(
+                 static_cast<const PoolingMemoryManagerVirtualTable*>(
+                     vpointer_),
+                 pointer_)
+          .OwnCustomDestructor(object, destruct);
     }
   }
 

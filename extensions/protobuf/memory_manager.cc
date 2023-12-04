@@ -41,9 +41,8 @@ bool ProtoPoolingMemoryManagerDeallocate(absl::Nonnull<void*>,
 }
 
 void ProtoPoolingMemoryManagerOwnCustomDestructor(
-    absl::Nonnull<void*> arena, absl::Nonnull<void*> object,
-    absl::Nonnull<PoolingMemoryManagerVirtualTable::CustomDestructPtr>
-        destruct) {
+    absl::Nonnull<void*> arena, void* object,
+    absl::Nonnull<void (*)(void*)> destruct) {
   static_cast<google::protobuf::Arena*>(arena)->OwnCustomDestructor(object, destruct);
 }
 
@@ -58,8 +57,8 @@ class ProtoPoolingMemoryManager final : public PoolingMemoryManager {
     return ProtoPoolingMemoryManagerAllocate(arena(), size, align);
   }
 
-  void OwnCustomDestructor(absl::Nonnull<void*> object,
-                           absl::Nonnull<CustomDestructPtr> destruct) override {
+  void OwnCustomDestructorImpl(
+      void* object, absl::Nonnull<void (*)(void*)> destruct) override {
     ProtoPoolingMemoryManagerOwnCustomDestructor(arena(), object, destruct);
   }
 
