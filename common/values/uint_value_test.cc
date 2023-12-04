@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdint>
 #include <sstream>
 
+#include "absl/hash/hash.h"
 #include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/native_type.h"
@@ -71,10 +73,20 @@ TEST(UintValue, As) {
   EXPECT_THAT(As<UintValue>(Value(UintValue(1))), Ne(absl::nullopt));
 }
 
+TEST(UintValue, HashValue) {
+  EXPECT_EQ(absl::HashOf(UintValue(1)), absl::HashOf(uint64_t{1}));
+}
+
 TEST(UintValue, Equality) {
   EXPECT_NE(UintValue(0u), 1u);
   EXPECT_NE(1u, UintValue(0u));
   EXPECT_NE(UintValue(0u), UintValue(1u));
+}
+
+TEST(UintValue, LessThan) {
+  EXPECT_LT(UintValue(0), 1);
+  EXPECT_LT(0, UintValue(1));
+  EXPECT_LT(UintValue(0), UintValue(1));
 }
 
 TEST(UintValueView, Kind) {
@@ -124,12 +136,24 @@ TEST(UintValueView, As) {
               Ne(absl::nullopt));
 }
 
+TEST(UintValueView, HashValue) {
+  EXPECT_EQ(absl::HashOf(UintValueView(1)), absl::HashOf(uint64_t{1}));
+}
+
 TEST(UintValueView, Equality) {
   EXPECT_NE(UintValueView(UintValue(0u)), 1u);
   EXPECT_NE(1u, UintValueView(0u));
   EXPECT_NE(UintValueView(0u), UintValueView(1u));
   EXPECT_NE(UintValueView(0u), UintValue(1u));
   EXPECT_NE(UintValue(1u), UintValueView(0u));
+}
+
+TEST(IntValueView, LessThan) {
+  EXPECT_LT(UintValueView(0), 1);
+  EXPECT_LT(0, UintValueView(1));
+  EXPECT_LT(UintValueView(0), UintValueView(1));
+  EXPECT_LT(UintValueView(0), UintValue(1));
+  EXPECT_LT(UintValue(0), UintValueView(1));
 }
 
 }  // namespace

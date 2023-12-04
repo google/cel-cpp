@@ -17,6 +17,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/hash/hash.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/internal/reference_count.h"
@@ -153,6 +154,41 @@ TEST(SharedByteString, Swap) {
   EXPECT_THAT(byte_string3.ToString(), Eq("foo"));
 }
 
+TEST(SharedByteString, HashValue) {
+  EXPECT_EQ(absl::HashOf(SharedByteString(absl::string_view("foo"))),
+            absl::HashOf(absl::string_view("foo")));
+  EXPECT_EQ(absl::HashOf(SharedByteString(absl::Cord("foo"))),
+            absl::HashOf(absl::Cord("foo")));
+}
+
+TEST(SharedByteString, Equality) {
+  SharedByteString byte_string1(absl::string_view("foo"));
+  SharedByteString byte_string2(absl::string_view("bar"));
+  SharedByteString byte_string3(absl::Cord("baz"));
+  SharedByteString byte_string4(absl::Cord("qux"));
+  EXPECT_NE(byte_string1, byte_string2);
+  EXPECT_NE(byte_string2, byte_string1);
+  EXPECT_NE(byte_string1, byte_string3);
+  EXPECT_NE(byte_string3, byte_string1);
+  EXPECT_NE(byte_string1, byte_string4);
+  EXPECT_NE(byte_string4, byte_string1);
+  EXPECT_NE(byte_string2, byte_string3);
+  EXPECT_NE(byte_string3, byte_string2);
+  EXPECT_NE(byte_string3, byte_string4);
+  EXPECT_NE(byte_string4, byte_string3);
+}
+
+TEST(SharedByteString, LessThan) {
+  SharedByteString byte_string1(absl::string_view("foo"));
+  SharedByteString byte_string2(absl::string_view("baz"));
+  SharedByteString byte_string3(absl::Cord("bar"));
+  SharedByteString byte_string4(absl::Cord("qux"));
+  EXPECT_LT(byte_string2, byte_string1);
+  EXPECT_LT(byte_string1, byte_string4);
+  EXPECT_LT(byte_string3, byte_string4);
+  EXPECT_LT(byte_string3, byte_string2);
+}
+
 TEST(SharedByteString, SharedByteStringView) {
   SharedByteString byte_string1(absl::string_view("foo"));
   SharedByteString byte_string2(std::string("bar"));
@@ -273,6 +309,45 @@ TEST(SharedByteStringView, Swap) {
   EXPECT_THAT(byte_string1.ToString(), Eq("bar"));
   EXPECT_THAT(byte_string2.ToString(), Eq("baz"));
   EXPECT_THAT(byte_string3.ToString(), Eq("foo"));
+}
+
+TEST(SharedByteStringView, HashValue) {
+  absl::Cord cord("foo");
+  EXPECT_EQ(absl::HashOf(SharedByteStringView(absl::string_view("foo"))),
+            absl::HashOf(absl::string_view("foo")));
+  EXPECT_EQ(absl::HashOf(SharedByteStringView(cord)), absl::HashOf(cord));
+}
+
+TEST(SharedByteStringView, Equality) {
+  absl::Cord cord1("baz");
+  absl::Cord cord2("qux");
+  SharedByteStringView byte_string1(absl::string_view("foo"));
+  SharedByteStringView byte_string2(absl::string_view("bar"));
+  SharedByteStringView byte_string3(cord1);
+  SharedByteStringView byte_string4(cord2);
+  EXPECT_NE(byte_string1, byte_string2);
+  EXPECT_NE(byte_string2, byte_string1);
+  EXPECT_NE(byte_string1, byte_string3);
+  EXPECT_NE(byte_string3, byte_string1);
+  EXPECT_NE(byte_string1, byte_string4);
+  EXPECT_NE(byte_string4, byte_string1);
+  EXPECT_NE(byte_string2, byte_string3);
+  EXPECT_NE(byte_string3, byte_string2);
+  EXPECT_NE(byte_string3, byte_string4);
+  EXPECT_NE(byte_string4, byte_string3);
+}
+
+TEST(SharedByteStringView, LessThan) {
+  absl::Cord cord1("bar");
+  absl::Cord cord2("qux");
+  SharedByteStringView byte_string1(absl::string_view("foo"));
+  SharedByteStringView byte_string2(absl::string_view("baz"));
+  SharedByteStringView byte_string3(cord1);
+  SharedByteStringView byte_string4(cord2);
+  EXPECT_LT(byte_string2, byte_string1);
+  EXPECT_LT(byte_string1, byte_string4);
+  EXPECT_LT(byte_string3, byte_string4);
+  EXPECT_LT(byte_string3, byte_string2);
 }
 
 TEST(SharedByteStringView, SharedByteString) {

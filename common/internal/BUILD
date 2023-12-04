@@ -88,6 +88,7 @@ cc_test(
         ":reference_count",
         ":shared_byte_string",
         "//internal:testing",
+        "@com_google_absl//absl/hash",
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/strings:string_view",
     ],

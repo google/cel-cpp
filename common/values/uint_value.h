@@ -68,6 +68,11 @@ class UintValue final {
 
 inline void swap(UintValue& lhs, UintValue& rhs) noexcept { lhs.swap(rhs); }
 
+template <typename H>
+H AbslHashValue(H state, UintValue value) {
+  return H::combine(std::move(state), value.NativeValue());
+}
+
 constexpr bool operator==(UintValue lhs, UintValue rhs) {
   return lhs.NativeValue() == rhs.NativeValue();
 }
@@ -90,6 +95,18 @@ constexpr bool operator!=(UintValue lhs, uint64_t rhs) {
 
 constexpr bool operator!=(uint64_t lhs, UintValue rhs) {
   return !operator==(lhs, rhs);
+}
+
+constexpr bool operator<(UintValue lhs, UintValue rhs) {
+  return lhs.NativeValue() < rhs.NativeValue();
+}
+
+constexpr bool operator<(UintValue lhs, uint64_t rhs) {
+  return lhs.NativeValue() < rhs;
+}
+
+constexpr bool operator<(uint64_t lhs, UintValue rhs) {
+  return lhs < rhs.NativeValue();
 }
 
 inline std::ostream& operator<<(std::ostream& out, UintValue value) {
@@ -139,6 +156,11 @@ inline void swap(UintValueView& lhs, UintValueView& rhs) noexcept {
   lhs.swap(rhs);
 }
 
+template <typename H>
+H AbslHashValue(H state, UintValueView value) {
+  return H::combine(std::move(state), value.NativeValue());
+}
+
 constexpr bool operator==(UintValueView lhs, UintValueView rhs) {
   return lhs.NativeValue() == rhs.NativeValue();
 }
@@ -177,6 +199,26 @@ constexpr bool operator!=(UintValueView lhs, UintValue rhs) {
 
 constexpr bool operator!=(UintValue lhs, UintValueView rhs) {
   return !operator==(lhs, rhs);
+}
+
+constexpr bool operator<(UintValueView lhs, UintValueView rhs) {
+  return lhs.NativeValue() < rhs.NativeValue();
+}
+
+constexpr bool operator<(UintValueView lhs, uint64_t rhs) {
+  return lhs.NativeValue() < rhs;
+}
+
+constexpr bool operator<(uint64_t lhs, UintValueView rhs) {
+  return lhs < rhs.NativeValue();
+}
+
+constexpr bool operator<(UintValueView lhs, UintValue rhs) {
+  return lhs.NativeValue() < rhs.NativeValue();
+}
+
+constexpr bool operator<(UintValue lhs, UintValueView rhs) {
+  return lhs.NativeValue() < rhs.NativeValue();
 }
 
 inline std::ostream& operator<<(std::ostream& out, UintValueView value) {

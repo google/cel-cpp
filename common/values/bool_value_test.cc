@@ -14,6 +14,7 @@
 
 #include <sstream>
 
+#include "absl/hash/hash.h"
 #include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/native_type.h"
@@ -71,10 +72,20 @@ TEST(BoolValue, As) {
   EXPECT_THAT(As<BoolValue>(Value(BoolValue(true))), Ne(absl::nullopt));
 }
 
+TEST(BoolValue, HashValue) {
+  EXPECT_EQ(absl::HashOf(BoolValue(true)), absl::HashOf(true));
+}
+
 TEST(BoolValue, Equality) {
   EXPECT_NE(BoolValue(false), true);
   EXPECT_NE(true, BoolValue(false));
   EXPECT_NE(BoolValue(false), BoolValue(true));
+}
+
+TEST(BoolValue, LessThan) {
+  EXPECT_LT(BoolValue(false), true);
+  EXPECT_LT(false, BoolValue(true));
+  EXPECT_LT(BoolValue(false), BoolValue(true));
 }
 
 TEST(BoolValueView, Kind) {
@@ -124,12 +135,24 @@ TEST(BoolValueView, As) {
               Ne(absl::nullopt));
 }
 
+TEST(BoolValueView, HashValue) {
+  EXPECT_EQ(absl::HashOf(BoolValueView(true)), absl::HashOf(true));
+}
+
 TEST(BoolValueView, Equality) {
   EXPECT_NE(BoolValueView(BoolValue(false)), true);
   EXPECT_NE(true, BoolValueView(false));
   EXPECT_NE(BoolValueView(false), BoolValueView(true));
   EXPECT_NE(BoolValueView(false), BoolValue(true));
   EXPECT_NE(BoolValue(true), BoolValueView(false));
+}
+
+TEST(BoolValueView, LessThan) {
+  EXPECT_LT(BoolValueView(false), true);
+  EXPECT_LT(false, BoolValueView(true));
+  EXPECT_LT(BoolValueView(false), BoolValueView(true));
+  EXPECT_LT(BoolValueView(false), BoolValue(true));
+  EXPECT_LT(BoolValue(false), BoolValueView(true));
 }
 
 }  // namespace

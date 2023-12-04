@@ -68,6 +68,11 @@ class IntValue final {
 
 inline void swap(IntValue& lhs, IntValue& rhs) noexcept { lhs.swap(rhs); }
 
+template <typename H>
+H AbslHashValue(H state, IntValue value) {
+  return H::combine(std::move(state), value.NativeValue());
+}
+
 constexpr bool operator==(IntValue lhs, IntValue rhs) {
   return lhs.NativeValue() == rhs.NativeValue();
 }
@@ -90,6 +95,18 @@ constexpr bool operator!=(IntValue lhs, int64_t rhs) {
 
 constexpr bool operator!=(int64_t lhs, IntValue rhs) {
   return !operator==(lhs, rhs);
+}
+
+constexpr bool operator<(IntValue lhs, IntValue rhs) {
+  return lhs.NativeValue() < rhs.NativeValue();
+}
+
+constexpr bool operator<(IntValue lhs, int64_t rhs) {
+  return lhs.NativeValue() < rhs;
+}
+
+constexpr bool operator<(int64_t lhs, IntValue rhs) {
+  return lhs < rhs.NativeValue();
 }
 
 inline std::ostream& operator<<(std::ostream& out, IntValue value) {
@@ -139,6 +156,11 @@ inline void swap(IntValueView& lhs, IntValueView& rhs) noexcept {
   lhs.swap(rhs);
 }
 
+template <typename H>
+H AbslHashValue(H state, IntValueView value) {
+  return H::combine(std::move(state), value.NativeValue());
+}
+
 constexpr bool operator==(IntValueView lhs, IntValueView rhs) {
   return lhs.NativeValue() == rhs.NativeValue();
 }
@@ -177,6 +199,26 @@ constexpr bool operator!=(IntValueView lhs, IntValue rhs) {
 
 constexpr bool operator!=(IntValue lhs, IntValueView rhs) {
   return !operator==(lhs, rhs);
+}
+
+constexpr bool operator<(IntValueView lhs, IntValueView rhs) {
+  return lhs.NativeValue() < rhs.NativeValue();
+}
+
+constexpr bool operator<(IntValueView lhs, int64_t rhs) {
+  return lhs.NativeValue() < rhs;
+}
+
+constexpr bool operator<(int64_t lhs, IntValueView rhs) {
+  return lhs < rhs.NativeValue();
+}
+
+constexpr bool operator<(IntValueView lhs, IntValue rhs) {
+  return lhs.NativeValue() < rhs.NativeValue();
+}
+
+constexpr bool operator<(IntValue lhs, IntValueView rhs) {
+  return lhs.NativeValue() < rhs.NativeValue();
 }
 
 inline std::ostream& operator<<(std::ostream& out, IntValueView value) {

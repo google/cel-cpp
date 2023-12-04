@@ -15,8 +15,10 @@
 #include <sstream>
 #include <string>
 
+#include "absl/hash/hash.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/cord_test_helpers.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/native_type.h"
@@ -89,6 +91,31 @@ TEST(StringValue, As) {
               Ne(absl::nullopt));
 }
 
+TEST(StringValue, HashValue) {
+  EXPECT_EQ(absl::HashOf(StringValue("foo")),
+            absl::HashOf(absl::string_view("foo")));
+  EXPECT_EQ(absl::HashOf(StringValue(absl::string_view("foo"))),
+            absl::HashOf(absl::string_view("foo")));
+  EXPECT_EQ(absl::HashOf(StringValue(absl::Cord("foo"))),
+            absl::HashOf(absl::string_view("foo")));
+}
+
+TEST(StringValue, Equality) {
+  EXPECT_NE(StringValue("foo"), "bar");
+  EXPECT_NE("bar", StringValue("foo"));
+  EXPECT_NE(StringValue("foo"), StringValue("bar"));
+  EXPECT_NE(StringValue("foo"), absl::Cord("bar"));
+  EXPECT_NE(absl::Cord("bar"), StringValue("foo"));
+}
+
+TEST(StringValue, LessThan) {
+  EXPECT_LT(StringValue("bar"), "foo");
+  EXPECT_LT("bar", StringValue("foo"));
+  EXPECT_LT(StringValue("bar"), StringValue("foo"));
+  EXPECT_LT(StringValue("bar"), absl::Cord("foo"));
+  EXPECT_LT(absl::Cord("bar"), StringValue("foo"));
+}
+
 TEST(StringValueView, Kind) {
   EXPECT_EQ(StringValueView("foo").kind(), StringValueView::kKind);
   EXPECT_EQ(ValueView(StringValueView("foo")).kind(), StringValueView::kKind);
@@ -142,6 +169,35 @@ TEST(StringValueView, As) {
   EXPECT_THAT(As<StringValueView>(StringValueView("foo")), Ne(absl::nullopt));
   EXPECT_THAT(As<StringValueView>(ValueView(StringValueView("foo"))),
               Ne(absl::nullopt));
+}
+
+TEST(StringValueView, HashValue) {
+  EXPECT_EQ(absl::HashOf(StringValueView("foo")),
+            absl::HashOf(absl::string_view("foo")));
+  EXPECT_EQ(absl::HashOf(StringValueView(absl::string_view("foo"))),
+            absl::HashOf(absl::string_view("foo")));
+  EXPECT_EQ(absl::HashOf(StringValueView(absl::Cord("foo"))),
+            absl::HashOf(absl::string_view("foo")));
+}
+
+TEST(StringValueView, Equality) {
+  EXPECT_NE(StringValueView("foo"), "bar");
+  EXPECT_NE("bar", StringValueView("foo"));
+  EXPECT_NE(StringValueView("foo"), StringValueView("bar"));
+  EXPECT_NE(StringValueView("foo"), absl::Cord("bar"));
+  EXPECT_NE(absl::Cord("bar"), StringValueView("foo"));
+  EXPECT_NE(StringValueView("foo"), StringValue("bar"));
+  EXPECT_NE(StringValue("bar"), StringValueView("foo"));
+}
+
+TEST(StringValueView, LessThan) {
+  EXPECT_LT(StringValueView("bar"), "foo");
+  EXPECT_LT("bar", StringValueView("foo"));
+  EXPECT_LT(StringValueView("bar"), StringValueView("foo"));
+  EXPECT_LT(StringValueView("bar"), absl::Cord("foo"));
+  EXPECT_LT(absl::Cord("bar"), StringValueView("foo"));
+  EXPECT_LT(StringValueView("bar"), StringValue("foo"));
+  EXPECT_LT(StringValue("bar"), StringValueView("foo"));
 }
 
 }  // namespace

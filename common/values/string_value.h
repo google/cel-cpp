@@ -100,6 +100,19 @@ class StringValue final {
     swap(value_, other.value_);
   }
 
+  template <typename H>
+  friend H AbslHashValue(H state, const StringValue& string) {
+    return H::combine(std::move(state), string.value_);
+  }
+
+  friend bool operator==(const StringValue& lhs, const StringValue& rhs) {
+    return lhs.value_ == rhs.value_;
+  }
+
+  friend bool operator<(const StringValue& lhs, const StringValue& rhs) {
+    return lhs.value_ < rhs.value_;
+  }
+
  private:
   friend class StringValueView;
 
@@ -107,6 +120,10 @@ class StringValue final {
 };
 
 inline void swap(StringValue& lhs, StringValue& rhs) noexcept { lhs.swap(rhs); }
+
+inline bool operator!=(const StringValue& lhs, const StringValue& rhs) {
+  return !operator==(lhs, rhs);
+}
 
 inline std::ostream& operator<<(std::ostream& out, const StringValue& value) {
   return out << value.DebugString();
@@ -163,6 +180,19 @@ class StringValueView final {
     swap(value_, other.value_);
   }
 
+  template <typename H>
+  friend H AbslHashValue(H state, StringValueView string) {
+    return H::combine(std::move(state), string.value_);
+  }
+
+  friend bool operator==(StringValueView lhs, StringValueView rhs) {
+    return lhs.value_ == rhs.value_;
+  }
+
+  friend bool operator<(StringValueView lhs, StringValueView rhs) {
+    return lhs.value_ < rhs.value_;
+  }
+
  private:
   friend class StringValue;
 
@@ -171,6 +201,58 @@ class StringValueView final {
 
 inline void swap(StringValueView& lhs, StringValueView& rhs) noexcept {
   lhs.swap(rhs);
+}
+
+inline bool operator==(StringValueView lhs, absl::string_view rhs) {
+  return lhs == StringValueView(rhs);
+}
+
+inline bool operator==(absl::string_view lhs, StringValueView rhs) {
+  return StringValueView(lhs) == rhs;
+}
+
+inline bool operator==(StringValueView lhs, const absl::Cord& rhs) {
+  return lhs == StringValueView(rhs);
+}
+
+inline bool operator==(const absl::Cord& lhs, StringValueView rhs) {
+  return StringValueView(lhs) == rhs;
+}
+
+inline bool operator!=(StringValueView lhs, StringValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline bool operator!=(StringValueView lhs, absl::string_view rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline bool operator!=(absl::string_view lhs, StringValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline bool operator!=(StringValueView lhs, const absl::Cord& rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline bool operator!=(const absl::Cord& lhs, StringValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline bool operator<(StringValueView lhs, absl::string_view rhs) {
+  return lhs < StringValueView(rhs);
+}
+
+inline bool operator<(absl::string_view lhs, StringValueView rhs) {
+  return StringValueView(lhs) < rhs;
+}
+
+inline bool operator<(StringValueView lhs, const absl::Cord& rhs) {
+  return lhs < StringValueView(rhs);
+}
+
+inline bool operator<(const absl::Cord& lhs, StringValueView rhs) {
+  return StringValueView(lhs) < rhs;
 }
 
 inline std::ostream& operator<<(std::ostream& out, StringValueView value) {

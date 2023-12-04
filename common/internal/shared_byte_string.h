@@ -212,6 +212,57 @@ class SharedByteString final {
         [](const absl::Cord& cord) -> absl::Cord { return cord; }});
   }
 
+  template <typename H>
+  friend H AbslHashValue(H state, const SharedByteString& byte_string) {
+    if (byte_string.header_.is_cord) {
+      return H::combine(std::move(state), *byte_string.cord_ptr());
+    } else {
+      return H::combine(std::move(state),
+                        absl::string_view(byte_string.content_.string.data,
+                                          byte_string.header_.size));
+    }
+  }
+
+  friend bool operator==(const SharedByteString& lhs,
+                         const SharedByteString& rhs) {
+    if (lhs.header_.is_cord) {
+      if (rhs.header_.is_cord) {
+        return *lhs.cord_ptr() == *rhs.cord_ptr();
+      } else {
+        return *lhs.cord_ptr() ==
+               absl::string_view(rhs.content_.string.data, rhs.header_.size);
+      }
+    } else {
+      if (rhs.header_.is_cord) {
+        return absl::string_view(lhs.content_.string.data, lhs.header_.size) ==
+               *rhs.cord_ptr();
+      } else {
+        return absl::string_view(lhs.content_.string.data, lhs.header_.size) ==
+               absl::string_view(rhs.content_.string.data, rhs.header_.size);
+      }
+    }
+  }
+
+  friend bool operator<(const SharedByteString& lhs,
+                        const SharedByteString& rhs) {
+    if (lhs.header_.is_cord) {
+      if (rhs.header_.is_cord) {
+        return *lhs.cord_ptr() < *rhs.cord_ptr();
+      } else {
+        return *lhs.cord_ptr() <
+               absl::string_view(rhs.content_.string.data, rhs.header_.size);
+      }
+    } else {
+      if (rhs.header_.is_cord) {
+        return absl::string_view(lhs.content_.string.data, lhs.header_.size) <
+               *rhs.cord_ptr();
+      } else {
+        return absl::string_view(lhs.content_.string.data, lhs.header_.size) <
+               absl::string_view(rhs.content_.string.data, rhs.header_.size);
+      }
+    }
+  }
+
  private:
   friend class SharedByteStringView;
 
@@ -246,6 +297,11 @@ class SharedByteString final {
 
 inline void swap(SharedByteString& lhs, SharedByteString& rhs) noexcept {
   lhs.swap(rhs);
+}
+
+inline bool operator!=(const SharedByteString& lhs,
+                       const SharedByteString& rhs) {
+  return !operator==(lhs, rhs);
 }
 
 class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedByteStringView final {
@@ -346,6 +402,55 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedByteStringView final {
         [](const absl::Cord& cord) -> absl::Cord { return cord; }});
   }
 
+  template <typename H>
+  friend H AbslHashValue(H state, SharedByteStringView byte_string) {
+    if (byte_string.header_.is_cord) {
+      return H::combine(std::move(state), *byte_string.content_.cord);
+    } else {
+      return H::combine(std::move(state),
+                        absl::string_view(byte_string.content_.string.data,
+                                          byte_string.header_.size));
+    }
+  }
+
+  friend bool operator==(SharedByteStringView lhs, SharedByteStringView rhs) {
+    if (lhs.header_.is_cord) {
+      if (rhs.header_.is_cord) {
+        return *lhs.content_.cord == *rhs.content_.cord;
+      } else {
+        return *lhs.content_.cord ==
+               absl::string_view(rhs.content_.string.data, rhs.header_.size);
+      }
+    } else {
+      if (rhs.header_.is_cord) {
+        return absl::string_view(lhs.content_.string.data, lhs.header_.size) ==
+               *rhs.content_.cord;
+      } else {
+        return absl::string_view(lhs.content_.string.data, lhs.header_.size) ==
+               absl::string_view(rhs.content_.string.data, rhs.header_.size);
+      }
+    }
+  }
+
+  friend bool operator<(SharedByteStringView lhs, SharedByteStringView rhs) {
+    if (lhs.header_.is_cord) {
+      if (rhs.header_.is_cord) {
+        return *lhs.content_.cord < *rhs.content_.cord;
+      } else {
+        return *lhs.content_.cord <
+               absl::string_view(rhs.content_.string.data, rhs.header_.size);
+      }
+    } else {
+      if (rhs.header_.is_cord) {
+        return absl::string_view(lhs.content_.string.data, lhs.header_.size) <
+               *rhs.content_.cord;
+      } else {
+        return absl::string_view(lhs.content_.string.data, lhs.header_.size) <
+               absl::string_view(rhs.content_.string.data, rhs.header_.size);
+      }
+    }
+  }
+
  private:
   friend class SharedByteString;
 
@@ -358,6 +463,10 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedByteStringView final {
     const absl::Cord* cord;
   } content_;
 };
+
+inline bool operator!=(SharedByteStringView lhs, SharedByteStringView rhs) {
+  return !operator==(lhs, rhs);
+}
 
 inline SharedByteString::SharedByteString(SharedByteStringView other) noexcept
     : header_(other.header_) {

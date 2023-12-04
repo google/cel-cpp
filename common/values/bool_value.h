@@ -67,6 +67,11 @@ class BoolValue final {
 
 inline void swap(BoolValue& lhs, BoolValue& rhs) noexcept { lhs.swap(rhs); }
 
+template <typename H>
+H AbslHashValue(H state, BoolValue value) {
+  return H::combine(std::move(state), value.NativeValue());
+}
+
 constexpr bool operator==(BoolValue lhs, BoolValue rhs) {
   return lhs.NativeValue() == rhs.NativeValue();
 }
@@ -89,6 +94,18 @@ constexpr bool operator!=(BoolValue lhs, bool rhs) {
 
 constexpr bool operator!=(bool lhs, BoolValue rhs) {
   return !operator==(lhs, rhs);
+}
+
+constexpr bool operator<(BoolValue lhs, BoolValue rhs) {
+  return lhs.NativeValue() < rhs.NativeValue();
+}
+
+constexpr bool operator<(BoolValue lhs, bool rhs) {
+  return lhs.NativeValue() < rhs;
+}
+
+constexpr bool operator<(bool lhs, BoolValue rhs) {
+  return lhs < rhs.NativeValue();
 }
 
 inline std::ostream& operator<<(std::ostream& out, BoolValue value) {
@@ -138,6 +155,11 @@ inline void swap(BoolValueView& lhs, BoolValueView& rhs) noexcept {
   lhs.swap(rhs);
 }
 
+template <typename H>
+H AbslHashValue(H state, BoolValueView value) {
+  return H::combine(std::move(state), value.NativeValue());
+}
+
 constexpr bool operator==(BoolValueView lhs, BoolValueView rhs) {
   return lhs.NativeValue() == rhs.NativeValue();
 }
@@ -176,6 +198,26 @@ constexpr bool operator!=(BoolValueView lhs, BoolValue rhs) {
 
 constexpr bool operator!=(BoolValue lhs, BoolValueView rhs) {
   return !operator==(lhs, rhs);
+}
+
+constexpr bool operator<(BoolValueView lhs, BoolValueView rhs) {
+  return lhs.NativeValue() < rhs.NativeValue();
+}
+
+constexpr bool operator<(BoolValueView lhs, bool rhs) {
+  return lhs.NativeValue() < rhs;
+}
+
+constexpr bool operator<(bool lhs, BoolValueView rhs) {
+  return lhs < rhs.NativeValue();
+}
+
+constexpr bool operator<(BoolValueView lhs, BoolValue rhs) {
+  return lhs.NativeValue() < rhs.NativeValue();
+}
+
+constexpr bool operator<(BoolValue lhs, BoolValueView rhs) {
+  return lhs.NativeValue() < rhs.NativeValue();
 }
 
 inline std::ostream& operator<<(std::ostream& out, BoolValueView value) {
