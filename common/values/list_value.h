@@ -24,7 +24,6 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_LIST_VALUE_H_
 
 #include <cstddef>
-#include <memory>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -54,9 +53,6 @@ class ListValueInterface;
 class ListValueInterfaceIterator;
 class ListValue;
 class ListValueView;
-class ListValueIterator;
-// Convenient alias.
-using ListValueIteratorPtr = std::unique_ptr<ListValueIterator>;
 class ListValueBuilderInterface;
 template <typename T>
 class ListValueBuilder;
@@ -77,28 +73,23 @@ class ListValueInterface : public ValueInterface {
 
   virtual size_t Size() const = 0;
 
-  absl::StatusOr<ValueView> Get(size_t index) const;
+  // Returns a view of the element at index `index`. If the underlying
+  // implementation cannot directly return a view of a value, the value will be
+  // stored in `scratch`, and the returned view will be that of `scratch`.
+  absl::StatusOr<ValueView> Get(
+      size_t index, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   using ForEachCallback = absl::FunctionRef<absl::StatusOr<bool>(ValueView)>;
 
   virtual absl::Status ForEach(ForEachCallback callback) const;
 
-  virtual absl::StatusOr<absl::Nonnull<ListValueIteratorPtr>> NewIterator()
-      const;
+  virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
 
  private:
   friend class ListValueInterfaceIterator;
 
-  virtual absl::StatusOr<ValueView> GetImpl(size_t index) const = 0;
-};
-
-class ListValueIterator {
- public:
-  virtual ~ListValueIterator() = default;
-
-  virtual bool HasNext() = 0;
-
-  virtual absl::StatusOr<ValueView> Next() = 0;
+  virtual absl::StatusOr<ValueView> GetImpl(size_t index,
+                                            Value& scratch) const = 0;
 };
 
 class ListValue {
@@ -129,13 +120,15 @@ class ListValue {
 
   size_t Size() const { return interface_->Size(); }
 
-  absl::StatusOr<ValueView> Get(size_t index) const;
+  // See ListValueInterface::Get for documentation.
+  absl::StatusOr<ValueView> Get(
+      size_t index, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   using ForEachCallback = typename ListValueInterface::ForEachCallback;
 
   absl::Status ForEach(ForEachCallback callback) const;
 
-  absl::StatusOr<absl::Nonnull<ListValueIteratorPtr>> NewIterator() const;
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
 
   void swap(ListValue& other) noexcept {
     using std::swap;
@@ -235,13 +228,15 @@ class ListValueView {
 
   size_t Size() const { return interface_->Size(); }
 
-  absl::StatusOr<ValueView> Get(size_t index) const;
+  // See ListValueInterface::Get for documentation.
+  absl::StatusOr<ValueView> Get(
+      size_t index, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   using ForEachCallback = typename ListValueInterface::ForEachCallback;
 
   absl::Status ForEach(ForEachCallback callback) const;
 
-  absl::StatusOr<absl::Nonnull<ListValueIteratorPtr>> NewIterator() const;
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
 
   void swap(ListValueView& other) noexcept {
     using std::swap;

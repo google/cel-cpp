@@ -17,6 +17,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_VALUES_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_VALUES_H_
 
+#include <memory>
 #include <type_traits>
 
 #include "absl/types/variant.h"
@@ -54,6 +55,9 @@ class TimestampValueView;
 class TypeValueView;
 class UintValueView;
 class UnknownValueView;
+
+class ValueIterator;
+using ValueIteratorPtr = std::unique_ptr<ValueIterator>;
 
 namespace common_internal {
 

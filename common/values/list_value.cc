@@ -24,20 +24,20 @@
 
 namespace cel {
 
-class ListValueInterfaceIterator final : public ListValueIterator {
+class ListValueInterfaceIterator final : public ValueIterator {
  public:
   explicit ListValueInterfaceIterator(const ListValueInterface& interface)
       : interface_(interface), size_(interface_.Size()) {}
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::StatusOr<ValueView> Next() override {
+  absl::StatusOr<ValueView> Next(Value& scratch) override {
     if (ABSL_PREDICT_FALSE(index_ >= size_)) {
       return absl::FailedPreconditionError(
-          "ListValueIterator::Next() called when "
-          "ListValueIterator::HasNext() returns false");
+          "ValueIterator::Next() called when "
+          "ValueIterator::HasNext() returns false");
     }
-    return interface_.GetImpl(index_++);
+    return interface_.GetImpl(index_++, scratch);
   }
 
  private:
@@ -46,17 +46,19 @@ class ListValueInterfaceIterator final : public ListValueIterator {
   size_t index_ = 0;
 };
 
-absl::StatusOr<ValueView> ListValueInterface::Get(size_t index) const {
+absl::StatusOr<ValueView> ListValueInterface::Get(size_t index,
+                                                  Value& scratch) const {
   if (ABSL_PREDICT_FALSE(index >= Size())) {
     return absl::InvalidArgumentError("index out of bounds");
   }
-  return GetImpl(index);
+  return GetImpl(index, scratch);
 }
 
 absl::Status ListValueInterface::ForEach(ForEachCallback callback) const {
   const size_t size = Size();
   for (size_t index = 0; index < size; ++index) {
-    CEL_ASSIGN_OR_RETURN(auto element, GetImpl(index));
+    Value scratch;
+    CEL_ASSIGN_OR_RETURN(auto element, GetImpl(index, scratch));
     CEL_ASSIGN_OR_RETURN(auto ok, callback(element));
     if (!ok) {
       break;
@@ -65,7 +67,7 @@ absl::Status ListValueInterface::ForEach(ForEachCallback callback) const {
   return absl::OkStatus();
 }
 
-absl::StatusOr<absl::Nonnull<ListValueIteratorPtr>>
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
 ListValueInterface::NewIterator() const {
   return std::make_unique<ListValueInterfaceIterator>(*this);
 }

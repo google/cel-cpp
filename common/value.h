@@ -598,6 +598,21 @@ inline Value& Value::operator=(ValueView other) {
   return *this;
 }
 
+using ValueIteratorPtr = std::unique_ptr<ValueIterator>;
+
+class ValueIterator {
+ public:
+  virtual ~ValueIterator() = default;
+
+  virtual bool HasNext() = 0;
+
+  // Returns a view of the next value. If the underlying implementation cannot
+  // directly return a view of a value, the value will be stored in `scratch`,
+  // and the returned view will be that of `scratch`.
+  virtual absl::StatusOr<ValueView> Next(
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) = 0;
+};
+
 // Now that Value and ValueView are complete, we can define various parts of
 // list, map, opaque, and struct which depend on Value and ValueView.
 
@@ -622,7 +637,7 @@ class TypedListValue final : public ListValueInterface {
   TypeView get_type() const override { return type_; }
 
  private:
-  absl::StatusOr<ValueView> GetImpl(size_t index) const override {
+  absl::StatusOr<ValueView> GetImpl(size_t index, Value&) const override {
     return elements_[index];
   }
 
@@ -636,28 +651,30 @@ class TypedListValue final : public ListValueInterface {
 
 }  // namespace common_internal
 
-inline absl::StatusOr<ValueView> ListValue::Get(size_t index) const {
-  return interface_->Get(index);
+inline absl::StatusOr<ValueView> ListValue::Get(size_t index,
+                                                Value& scratch) const {
+  return interface_->Get(index, scratch);
 }
 
 inline absl::Status ListValue::ForEach(ForEachCallback callback) const {
   return interface_->ForEach(callback);
 }
 
-inline absl::StatusOr<absl::Nonnull<ListValueIteratorPtr>>
-ListValue::NewIterator() const {
+inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> ListValue::NewIterator()
+    const {
   return interface_->NewIterator();
 }
 
-inline absl::StatusOr<ValueView> ListValueView::Get(size_t index) const {
-  return interface_->Get(index);
+inline absl::StatusOr<ValueView> ListValueView::Get(size_t index,
+                                                    Value& scratch) const {
+  return interface_->Get(index, scratch);
 }
 
 inline absl::Status ListValueView::ForEach(ForEachCallback callback) const {
   return interface_->ForEach(callback);
 }
 
-inline absl::StatusOr<absl::Nonnull<ListValueIteratorPtr>>
+inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
 ListValueView::NewIterator() const {
   return interface_->NewIterator();
 }
