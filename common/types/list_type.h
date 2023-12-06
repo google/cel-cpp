@@ -50,7 +50,9 @@ class ListType final {
 
   ListType(MemoryManagerRef memory_manager, Type element);
 
-  ListType() = delete;
+  // By default, this type is `list(dyn)`. Unless you can help it, you should
+  // use a more specific list type.
+  ListType();
   ListType(const ListType&) = default;
   ListType(ListType&&) = default;
   ListType& operator=(const ListType&) = default;
@@ -108,7 +110,9 @@ class ListTypeView final {
   // NOLINTNEXTLINE(google-explicit-constructor)
   ListTypeView(const ListType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept;
 
-  ListTypeView() = delete;
+  // By default, this type is `list(dyn)`. Unless you can help it, you should
+  // use a more specific list type.
+  ListTypeView();
   ListTypeView(const ListTypeView&) = default;
   ListTypeView(ListTypeView&&) = default;
   ListTypeView& operator=(const ListTypeView&) = default;

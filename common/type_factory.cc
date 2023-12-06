@@ -121,6 +121,10 @@ using OpaqueTypeMap =
                         OpaqueTypeKeyEqualTo>;
 
 struct CommonTypes final {
+  ListTypeView GetDynListType() const { return *dyn_list_type; }
+
+  MapTypeView GetDynDynMapType() const { return *dyn_dyn_map_type; }
+
   absl::optional<ListType> FindListType(TypeView element) const {
     if (auto list_type = list_types.find(element);
         list_type != list_types.end()) {
@@ -163,6 +167,10 @@ struct CommonTypes final {
                   StringType, StringWrapperType, TimestampType, TypeType,
                   UintType, UintWrapperType, UnknownType>(
         MemoryManagerRef::Unmanaged());
+    dyn_list_type = FindListType(DynTypeView());
+    ABSL_DCHECK(dyn_list_type.has_value());
+    dyn_dyn_map_type = FindMapType(DynTypeView(), DynTypeView());
+    ABSL_DCHECK(dyn_dyn_map_type.has_value());
   }
 
   template <typename... Ts>
@@ -180,7 +188,7 @@ struct CommonTypes final {
 
   template <typename... Ts>
   void PopulateMapTypes(MemoryManagerRef memory_manager) {
-    map_types.reserve(sizeof...(Ts) * 4);
+    map_types.reserve(sizeof...(Ts) * 5);
     DoPopulateMapTypes<Ts...>(memory_manager);
   }
 
@@ -218,6 +226,7 @@ struct CommonTypes final {
 
   template <typename T, typename... Ts>
   void DoPopulateMapTypes(MemoryManagerRef memory_manager) {
+    InsertMapType(MapType(memory_manager, DynType(), T()));
     InsertMapType(MapType(memory_manager, BoolType(), T()));
     InsertMapType(MapType(memory_manager, IntType(), T()));
     InsertMapType(MapType(memory_manager, UintType(), T()));
@@ -260,6 +269,8 @@ struct CommonTypes final {
   ListTypeMap list_types;
   MapTypeMap map_types;
   OpaqueTypeMap opaque_types;
+  absl::optional<ListType> dyn_list_type;
+  absl::optional<MapType> dyn_dyn_map_type;
 };
 
 using StructTypeMap = absl::flat_hash_map<absl::string_view, StructType>;
@@ -436,6 +447,16 @@ bool IsValidMapKeyType(TypeView type) {
 }
 
 }  // namespace
+
+namespace common_internal {
+
+ListTypeView GetDynListType() { return CommonTypes::Get()->GetDynListType(); }
+
+MapTypeView GetDynDynMapType() {
+  return CommonTypes::Get()->GetDynDynMapType();
+}
+
+}  // namespace common_internal
 
 ListType TypeFactory::CreateListType(TypeView element) {
   if (auto list_type = CommonTypes::Get()->FindListType(element);

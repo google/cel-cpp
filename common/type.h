@@ -693,6 +693,8 @@ struct NativeTypeTraits<common_internal::MapTypeData> final {
   }
 };
 
+inline ListType::ListType() : ListType(common_internal::GetDynListType()) {}
+
 inline ListType::ListType(ListTypeView other) : data_(other.data_) {}
 
 inline ListType::ListType(MemoryManagerRef memory_manager, Type element)
@@ -710,6 +712,9 @@ inline H AbslHashValue(H state, const ListType& type) {
   return H::combine(std::move(state), type.kind(), type.element());
 }
 
+inline ListTypeView::ListTypeView()
+    : ListTypeView(common_internal::GetDynListType()) {}
+
 inline ListTypeView::ListTypeView(const ListType& type) noexcept
     : data_(type.data_) {}
 
@@ -723,6 +728,8 @@ template <typename H>
 inline H AbslHashValue(H state, ListTypeView type) {
   return H::combine(std::move(state), type.kind(), type.element());
 }
+
+inline MapType::MapType() : MapType(common_internal::GetDynDynMapType()) {}
 
 inline MapType::MapType(MapTypeView other) : data_(other.data_) {}
 
@@ -742,6 +749,9 @@ template <typename H>
 inline H AbslHashValue(H state, const MapType& type) {
   return H::combine(std::move(state), type.kind(), type.key(), type.value());
 }
+
+inline MapTypeView::MapTypeView()
+    : MapTypeView(common_internal::GetDynDynMapType()) {}
 
 inline MapTypeView::MapTypeView(const MapType& type) noexcept
     : data_(type.data_) {}

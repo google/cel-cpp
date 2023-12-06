@@ -31,6 +31,18 @@ using testing::Ne;
 using testing::TestParamInfo;
 using testing::TestWithParam;
 
+TEST(MapType, Default) {
+  MapType map_type;
+  EXPECT_EQ(map_type.key(), DynType());
+  EXPECT_EQ(map_type.value(), DynType());
+}
+
+TEST(MapTypeView, Default) {
+  MapTypeView map_type;
+  EXPECT_EQ(map_type.key(), DynType());
+  EXPECT_EQ(map_type.value(), DynType());
+}
+
 class MapTypeTest : public TestWithParam<MemoryManagement> {
  public:
   void SetUp() override {

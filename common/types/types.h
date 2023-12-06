@@ -19,6 +19,7 @@
 
 #include <type_traits>
 
+#include "absl/base/attributes.h"
 #include "absl/types/variant.h"
 
 namespace cel {
@@ -214,6 +215,10 @@ struct BaseTypeViewAlternativeFor<
 template <typename T>
 using BaseTypeViewAlternativeForT =
     typename BaseTypeViewAlternativeFor<T>::type;
+
+ABSL_ATTRIBUTE_PURE_FUNCTION ListTypeView GetDynListType();
+
+ABSL_ATTRIBUTE_PURE_FUNCTION MapTypeView GetDynDynMapType();
 
 }  // namespace common_internal
 

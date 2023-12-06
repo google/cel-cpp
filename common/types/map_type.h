@@ -50,7 +50,9 @@ class MapType final {
 
   MapType(MemoryManagerRef memory_manager, Type key, Type value);
 
-  MapType() = delete;
+  // By default, this type is `map(dyn, dyn)`. Unless you can help it, you
+  // should use a more specific map type.
+  MapType();
   MapType(const MapType&) = default;
   MapType(MapType&&) = default;
   MapType& operator=(const MapType&) = default;
@@ -110,7 +112,9 @@ class MapTypeView final {
   // NOLINTNEXTLINE(google-explicit-constructor)
   MapTypeView(const MapType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept;
 
-  MapTypeView() = delete;
+  // By default, this type is `map(dyn, dyn)`. Unless you can help it, you
+  // should use a more specific map type.
+  MapTypeView();
   MapTypeView(const MapTypeView&) = default;
   MapTypeView(MapTypeView&&) = default;
   MapTypeView& operator=(const MapTypeView&) = default;

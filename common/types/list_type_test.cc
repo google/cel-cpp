@@ -31,6 +31,16 @@ using testing::Ne;
 using testing::TestParamInfo;
 using testing::TestWithParam;
 
+TEST(ListType, Default) {
+  ListType list_type;
+  EXPECT_EQ(list_type.element(), DynType());
+}
+
+TEST(ListTypeView, Default) {
+  ListTypeView list_type;
+  EXPECT_EQ(list_type.element(), DynType());
+}
+
 class ListTypeTest : public TestWithParam<MemoryManagement> {
  public:
   void SetUp() override {
