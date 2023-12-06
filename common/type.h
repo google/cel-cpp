@@ -830,6 +830,9 @@ inline H AbslHashValue(H state, OpaqueTypeView type) {
   return std::move(state);
 }
 
+inline OptionalType::OptionalType()
+    : OptionalType(common_internal::GetDynOptionalType()) {}
+
 inline OptionalType::OptionalType(OptionalTypeView type) : OpaqueType(type) {}
 
 inline OptionalType::OptionalType(MemoryManagerRef memory_manager,
@@ -837,6 +840,9 @@ inline OptionalType::OptionalType(MemoryManagerRef memory_manager,
     : OpaqueType(memory_manager, kName, {parameter}) {}
 
 inline TypeView OptionalType::parameter() const { return parameters().front(); }
+
+inline OptionalTypeView::OptionalTypeView()
+    : OptionalTypeView(common_internal::GetDynOptionalType()) {}
 
 inline OptionalTypeView::OptionalTypeView(const OptionalType& type) noexcept
     : OpaqueTypeView(type) {}

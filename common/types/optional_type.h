@@ -47,6 +47,10 @@ class OptionalType final : public OpaqueType {
 
   explicit OptionalType(OpaqueTypeView) = delete;
 
+  // By default, this type is `optional(dyn)`. Unless you can help it, you
+  // should choose a more specific optional type.
+  OptionalType();
+
   OptionalType(MemoryManagerRef, absl::string_view,
                const SizedInputView<TypeView>&) = delete;
 
@@ -105,6 +109,10 @@ class OptionalTypeView final : public OpaqueTypeView {
   static constexpr absl::string_view kName = OptionalType::kName;
 
   using OpaqueTypeView::OpaqueTypeView;
+
+  // By default, this type is `optional(dyn)`. Unless you can help it, you
+  // should choose a more specific optional type.
+  OptionalTypeView();
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   OptionalTypeView(const OpaqueType& type) noexcept = delete;

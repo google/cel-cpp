@@ -125,6 +125,8 @@ struct CommonTypes final {
 
   MapTypeView GetDynDynMapType() const { return *dyn_dyn_map_type; }
 
+  OptionalTypeView GetDynOptionalType() const { return *dyn_optional_type; }
+
   absl::optional<ListType> FindListType(TypeView element) const {
     if (auto list_type = list_types.find(element);
         list_type != list_types.end()) {
@@ -171,6 +173,9 @@ struct CommonTypes final {
     ABSL_DCHECK(dyn_list_type.has_value());
     dyn_dyn_map_type = FindMapType(DynTypeView(), DynTypeView());
     ABSL_DCHECK(dyn_dyn_map_type.has_value());
+    auto opaque_type = FindOpaqueType(OptionalType::kName, {DynTypeView()});
+    ABSL_DCHECK(opaque_type.has_value());
+    dyn_optional_type = Cast<OptionalType>(*opaque_type);
   }
 
   template <typename... Ts>
@@ -271,6 +276,7 @@ struct CommonTypes final {
   OpaqueTypeMap opaque_types;
   absl::optional<ListType> dyn_list_type;
   absl::optional<MapType> dyn_dyn_map_type;
+  absl::optional<OptionalType> dyn_optional_type;
 };
 
 using StructTypeMap = absl::flat_hash_map<absl::string_view, StructType>;
@@ -454,6 +460,10 @@ ListTypeView GetDynListType() { return CommonTypes::Get()->GetDynListType(); }
 
 MapTypeView GetDynDynMapType() {
   return CommonTypes::Get()->GetDynDynMapType();
+}
+
+OptionalTypeView GetDynOptionalType() {
+  return CommonTypes::Get()->GetDynOptionalType();
 }
 
 }  // namespace common_internal

@@ -31,6 +31,16 @@ using testing::Ne;
 using testing::TestParamInfo;
 using testing::TestWithParam;
 
+TEST(OptionalType, Default) {
+  OptionalType optional_type;
+  EXPECT_EQ(optional_type.parameter(), DynType());
+}
+
+TEST(OptionalTypeView, Default) {
+  OptionalTypeView optional_type;
+  EXPECT_EQ(optional_type.parameter(), DynType());
+}
+
 class OptionalTypeTest : public TestWithParam<MemoryManagement> {
  public:
   void SetUp() override {

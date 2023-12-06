@@ -70,6 +70,7 @@ class ListTypeView;
 class MapTypeView;
 class NullTypeView;
 class OpaqueTypeView;
+class OptionalTypeView;
 class StringTypeView;
 class StringWrapperTypeView;
 class StructTypeView;
@@ -219,6 +220,8 @@ using BaseTypeViewAlternativeForT =
 ABSL_ATTRIBUTE_PURE_FUNCTION ListTypeView GetDynListType();
 
 ABSL_ATTRIBUTE_PURE_FUNCTION MapTypeView GetDynDynMapType();
+
+ABSL_ATTRIBUTE_PURE_FUNCTION OptionalTypeView GetDynOptionalType();
 
 }  // namespace common_internal
 
