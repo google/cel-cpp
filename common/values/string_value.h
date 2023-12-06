@@ -42,7 +42,7 @@ class StringValue final {
  public:
   using view_alternative_type = StringValueView;
 
-  static constexpr ValueKind kKind = ValueKind::kBytes;
+  static constexpr ValueKind kKind = ValueKind::kString;
 
   explicit StringValue(absl::Cord value) noexcept : value_(std::move(value)) {}
 

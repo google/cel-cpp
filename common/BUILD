@@ -318,6 +318,7 @@ cc_test(
         ":memory",
         ":native_type",
         ":sized_input_view",
+        ":value_kind",
         "//internal:testing",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_set",
