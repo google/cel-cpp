@@ -81,7 +81,7 @@ class SourceFactory {
     QUANTIFIER_EXISTS_ONE
   };
 
-  explicit SourceFactory(absl::string_view expression);
+  SourceFactory(absl::string_view expression, bool unique_macro_ids);
 
   int64_t Id(const antlr4::Token* token);
   int64_t Id(antlr4::ParserRuleContext* ctx);
@@ -183,6 +183,7 @@ class SourceFactory {
   int64_t num_errors_;
   std::vector<int32_t> line_offsets_;
   std::map<int64_t, Expr> macro_calls_;
+  bool unique_macro_ids_;
 };
 
 }  // namespace google::api::expr::parser

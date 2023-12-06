@@ -22,12 +22,13 @@
 
 #include "google/protobuf/struct.pb.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/memory/memory.h"
-#include "absl/strings/numbers.h"
+#include "absl/functional/any_invocable.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
+#include "absl/strings/string_view.h"
 #include "common/operators.h"
+#include "internal/no_destructor.h"
 
 namespace google::api::expr::parser {
 namespace {
@@ -41,10 +42,16 @@ int32_t PositiveOrMax(int32_t value) {
   return value >= 0 ? value : std::numeric_limits<int32_t>::max();
 }
 
+const std::string& DefaultAccumulatorName() {
+  static cel::internal::NoDestructor<std::string> kName("__result__");
+  return *kName;
+}
+
 }  // namespace
 
-SourceFactory::SourceFactory(absl::string_view expression)
-    : next_id_(1), num_errors_(0) {
+SourceFactory::SourceFactory(absl::string_view expression,
+                             bool unique_macro_ids)
+    : next_id_(1), num_errors_(0), unique_macro_ids_(unique_macro_ids) {
   CalcLineOffsets(expression);
 }
 
@@ -250,11 +257,8 @@ Expr SourceFactory::NewQuantifierExprForMacro(
   }
   std::string v = args[0].ident_expr().name();
 
-  // traditional variable name assigned to the fold accumulator variable.
-  const std::string AccumulatorName = "__result__";
-
-  auto accu_ident = [this, &macro_id, &AccumulatorName]() {
-    return NewIdentForMacro(macro_id, AccumulatorName);
+  auto accu_ident = [this, &macro_id]() {
+    return NewIdentForMacro(macro_id, DefaultAccumulatorName());
   };
 
   Expr init;
@@ -298,8 +302,8 @@ Expr SourceFactory::NewQuantifierExprForMacro(
       break;
     }
   }
-  return FoldForMacro(macro_id, v, target, AccumulatorName, init, condition,
-                      step, result);
+  return FoldForMacro(macro_id, v, target, DefaultAccumulatorName(), init,
+                      condition, step, result);
 }
 
 Expr SourceFactory::BuildArgForMacroCall(const Expr& expr) {
@@ -379,20 +383,27 @@ Expr SourceFactory::NewFilterExprForMacro(int64_t macro_id, const Expr& target,
   }
   std::string v = args[0].ident_expr().name();
 
-  // traditional variable name assigned to the fold accumulator variable.
-  const std::string AccumulatorName = "__result__";
+  const Expr& filter = args[1];
 
-  Expr filter = args[1];
-  Expr accu_expr = NewIdentForMacro(macro_id, AccumulatorName);
+  absl::AnyInvocable<Expr()> accu_ident;
+  if (unique_macro_ids_) {
+    accu_ident = [this, macro_id]() {
+      return NewIdentForMacro(macro_id, DefaultAccumulatorName());
+    };
+  } else {
+    auto ident_expr = NewIdentForMacro(macro_id, DefaultAccumulatorName());
+    accu_ident = [expr = std::move(ident_expr)]() { return expr; };
+  }
+
   Expr init = NewListForMacro(macro_id, {});
   Expr condition = NewLiteralBoolForMacro(macro_id, true);
-  Expr step =
-      NewGlobalCallForMacro(macro_id, CelOperator::ADD,
-                            {accu_expr, NewListForMacro(macro_id, {args[0]})});
+  Expr step = NewGlobalCallForMacro(
+      macro_id, CelOperator::ADD,
+      {accu_ident(), NewListForMacro(macro_id, {args[0]})});
   step = NewGlobalCallForMacro(macro_id, CelOperator::CONDITIONAL,
-                               {filter, step, accu_expr});
-  return FoldForMacro(macro_id, v, target, AccumulatorName, init, condition,
-                      step, accu_expr);
+                               {filter, step, accu_ident()});
+  return FoldForMacro(macro_id, v, target, DefaultAccumulatorName(), init,
+                      condition, step, accu_ident());
 }
 
 Expr SourceFactory::NewListForMacro(int64_t macro_id,
@@ -433,20 +444,26 @@ Expr SourceFactory::NewMapForMacro(int64_t macro_id, const Expr& target,
     fn = args[1];
   }
 
-  // traditional variable name assigned to the fold accumulator variable.
-  const std::string AccumulatorName = "__result__";
-
-  Expr accu_expr = NewIdentForMacro(macro_id, AccumulatorName);
+  absl::AnyInvocable<Expr()> accu_ident;
+  if (unique_macro_ids_) {
+    accu_ident = [this, macro_id]() {
+      return NewIdentForMacro(macro_id, DefaultAccumulatorName());
+    };
+  } else {
+    auto ident_expr = NewIdentForMacro(macro_id, DefaultAccumulatorName());
+    accu_ident = [expr = std::move(ident_expr)]() { return expr; };
+  }
   Expr init = NewListForMacro(macro_id, {});
   Expr condition = NewLiteralBoolForMacro(macro_id, true);
-  Expr step = NewGlobalCallForMacro(
-      macro_id, CelOperator::ADD, {accu_expr, NewListForMacro(macro_id, {fn})});
+  Expr step =
+      NewGlobalCallForMacro(macro_id, CelOperator::ADD,
+                            {accu_ident(), NewListForMacro(macro_id, {fn})});
   if (has_filter) {
     step = NewGlobalCallForMacro(macro_id, CelOperator::CONDITIONAL,
-                                 {filter, step, accu_expr});
+                                 {filter, step, accu_ident()});
   }
-  return FoldForMacro(macro_id, v, target, AccumulatorName, init, condition,
-                      step, accu_expr);
+  return FoldForMacro(macro_id, v, target, DefaultAccumulatorName(), init,
+                      condition, step, accu_ident());
 }
 
 Expr::CreateStruct::Entry SourceFactory::NewMapEntry(int64_t entry_id,

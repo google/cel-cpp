@@ -14,8 +14,6 @@
 
 #include "parser/parser.h"
 
-#include <algorithm>
-#include <iterator>
 #include <list>
 #include <string>
 #include <thread>
@@ -24,6 +22,8 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/algorithm/container.h"
+#include "absl/strings/ascii.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "absl/types/optional.h"
@@ -480,23 +480,23 @@ std::vector<TestInfo> test_cases = {
      "  // Accumulator\n"
      "  __result__,\n"
      "  // Init\n"
-     "  []^#6:Expr.CreateList#,\n"
+     "  []^#5:Expr.CreateList#,\n"
      "  // LoopCondition\n"
-     "  true^#7:bool#,\n"
+     "  true^#6:bool#,\n"
      "  // LoopStep\n"
      "  _+_(\n"
-     "    __result__^#5:Expr.Ident#,\n"
+     "    __result__^#7:Expr.Ident#,\n"
      "    [\n"
      "      f^#4:Expr.Ident#\n"
      "    ]^#8:Expr.CreateList#\n"
      "  )^#9:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#5:Expr.Ident#)^#10:Expr.Comprehension#",
+     "  __result__^#10:Expr.Ident#)^#11:Expr.Comprehension#",
      "", "", "",
      "m^#1:Expr.Ident#.map(\n"
      "  v^#3:Expr.Ident#,\n"
      "  f^#4:Expr.Ident#\n"
-     ")^#10:map"},
+     ")^#11:map"},
     {"m.map(v, p, f)",
      "__comprehension__(\n"
      "  // Variable\n"
@@ -506,28 +506,28 @@ std::vector<TestInfo> test_cases = {
      "  // Accumulator\n"
      "  __result__,\n"
      "  // Init\n"
-     "  []^#7:Expr.CreateList#,\n"
+     "  []^#6:Expr.CreateList#,\n"
      "  // LoopCondition\n"
-     "  true^#8:bool#,\n"
+     "  true^#7:bool#,\n"
      "  // LoopStep\n"
      "  _?_:_(\n"
      "    p^#4:Expr.Ident#,\n"
      "    _+_(\n"
-     "      __result__^#6:Expr.Ident#,\n"
+     "      __result__^#8:Expr.Ident#,\n"
      "      [\n"
      "        f^#5:Expr.Ident#\n"
      "      ]^#9:Expr.CreateList#\n"
      "    )^#10:Expr.Call#,\n"
-     "    __result__^#6:Expr.Ident#\n"
-     "  )^#11:Expr.Call#,\n"
+     "    __result__^#11:Expr.Ident#\n"
+     "  )^#12:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#6:Expr.Ident#)^#12:Expr.Comprehension#",
+     "  __result__^#13:Expr.Ident#)^#14:Expr.Comprehension#",
      "", "", "",
      "m^#1:Expr.Ident#.map(\n"
      "  v^#3:Expr.Ident#,\n"
      "  p^#4:Expr.Ident#,\n"
      "  f^#5:Expr.Ident#\n"
-     ")^#12:map"},
+     ")^#14:map"},
     {"m.filter(v, p)",
      "__comprehension__(\n"
      "  // Variable\n"
@@ -537,27 +537,27 @@ std::vector<TestInfo> test_cases = {
      "  // Accumulator\n"
      "  __result__,\n"
      "  // Init\n"
-     "  []^#6:Expr.CreateList#,\n"
+     "  []^#5:Expr.CreateList#,\n"
      "  // LoopCondition\n"
-     "  true^#7:bool#,\n"
+     "  true^#6:bool#,\n"
      "  // LoopStep\n"
      "  _?_:_(\n"
      "    p^#4:Expr.Ident#,\n"
      "    _+_(\n"
-     "      __result__^#5:Expr.Ident#,\n"
+     "      __result__^#7:Expr.Ident#,\n"
      "      [\n"
      "        v^#3:Expr.Ident#\n"
      "      ]^#8:Expr.CreateList#\n"
      "    )^#9:Expr.Call#,\n"
-     "    __result__^#5:Expr.Ident#\n"
-     "  )^#10:Expr.Call#,\n"
+     "    __result__^#10:Expr.Ident#\n"
+     "  )^#11:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#5:Expr.Ident#)^#11:Expr.Comprehension#",
+     "  __result__^#12:Expr.Ident#)^#13:Expr.Comprehension#",
      "", "", "",
      "m^#1:Expr.Ident#.filter(\n"
      "  v^#3:Expr.Ident#,\n"
      "  p^#4:Expr.Ident#\n"
-     ")^#11:filter"},
+     ")^#13:filter"},
 
     // Tests from Java parser
     {"[] + [1,2,3,] + [4]",
@@ -922,9 +922,9 @@ std::vector<TestInfo> test_cases = {
      "  // Accumulator\n"
      "  __result__,\n"
      "  // Init\n"
-     "  []^#18:Expr.CreateList#,\n"
+     "  []^#19:Expr.CreateList#,\n"
      "  // LoopCondition\n"
-     "  true^#19:bool#,\n"
+     "  true^#20:bool#,\n"
      "  // LoopStep\n"
      "  _?_:_(\n"
      "    __comprehension__(\n"
@@ -935,9 +935,9 @@ std::vector<TestInfo> test_cases = {
      "      // Accumulator\n"
      "      __result__,\n"
      "      // Init\n"
-     "      []^#11:Expr.CreateList#,\n"
+     "      []^#10:Expr.CreateList#,\n"
      "      // LoopCondition\n"
-     "      true^#12:bool#,\n"
+     "      true^#11:bool#,\n"
      "      // LoopStep\n"
      "      _?_:_(\n"
      "        _>_(\n"
@@ -945,38 +945,38 @@ std::vector<TestInfo> test_cases = {
      "          0^#9:int64#\n"
      "        )^#8:Expr.Call#,\n"
      "        _+_(\n"
-     "          __result__^#10:Expr.Ident#,\n"
+     "          __result__^#12:Expr.Ident#,\n"
      "          [\n"
      "            z^#6:Expr.Ident#\n"
      "          ]^#13:Expr.CreateList#\n"
      "        )^#14:Expr.Call#,\n"
-     "        __result__^#10:Expr.Ident#\n"
-     "      )^#15:Expr.Call#,\n"
+     "        __result__^#15:Expr.Ident#\n"
+     "      )^#16:Expr.Call#,\n"
      "      // Result\n"
-     "      __result__^#10:Expr.Ident#)^#16:Expr.Comprehension#,\n"
+     "      __result__^#17:Expr.Ident#)^#18:Expr.Comprehension#,\n"
      "    _+_(\n"
-     "      __result__^#17:Expr.Ident#,\n"
+     "      __result__^#21:Expr.Ident#,\n"
      "      [\n"
      "        y^#3:Expr.Ident#\n"
-     "      ]^#20:Expr.CreateList#\n"
-     "    )^#21:Expr.Call#,\n"
-     "    __result__^#17:Expr.Ident#\n"
-     "  )^#22:Expr.Call#,\n"
+     "      ]^#22:Expr.CreateList#\n"
+     "    )^#23:Expr.Call#,\n"
+     "    __result__^#24:Expr.Ident#\n"
+     "  )^#25:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#17:Expr.Ident#)^#23:Expr.Comprehension#"
+     "  __result__^#26:Expr.Ident#)^#27:Expr.Comprehension#"
      "",
      "", "", "",
      "x^#1:Expr.Ident#.filter(\n"
      "  y^#3:Expr.Ident#,\n"
-     "  ^#16:filter#\n"
-     ")^#23:filter#,\n"
+     "  ^#18:filter#\n"
+     ")^#27:filter#,\n"
      "y^#4:Expr.Ident#.filter(\n"
      "  z^#6:Expr.Ident#,\n"
      "  _>_(\n"
      "    z^#7:Expr.Ident#,\n"
      "    0^#9:int64#\n"
      "  )^#8:Expr.Call#\n"
-     ")^#16:filter"},
+     ")^#18:filter"},
     {"has(a.b).filter(c, c)",
      "__comprehension__(\n"
      "  // Variable\n"
@@ -986,27 +986,27 @@ std::vector<TestInfo> test_cases = {
      "  // Accumulator\n"
      "  __result__,\n"
      "  // Init\n"
-     "  []^#9:Expr.CreateList#,\n"
+     "  []^#8:Expr.CreateList#,\n"
      "  // LoopCondition\n"
-     "  true^#10:bool#,\n"
+     "  true^#9:bool#,\n"
      "  // LoopStep\n"
      "  _?_:_(\n"
      "    c^#7:Expr.Ident#,\n"
      "    _+_(\n"
-     "      __result__^#8:Expr.Ident#,\n"
+     "      __result__^#10:Expr.Ident#,\n"
      "      [\n"
      "        c^#6:Expr.Ident#\n"
      "      ]^#11:Expr.CreateList#\n"
      "    )^#12:Expr.Call#,\n"
-     "    __result__^#8:Expr.Ident#\n"
-     "  )^#13:Expr.Call#,\n"
+     "    __result__^#13:Expr.Ident#\n"
+     "  )^#14:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#8:Expr.Ident#)^#14:Expr.Comprehension#",
+     "  __result__^#15:Expr.Ident#)^#16:Expr.Comprehension#",
      "", "", "",
      "^#4:has#.filter(\n"
      "  c^#6:Expr.Ident#,\n"
      "  c^#7:Expr.Ident#\n"
-     ")^#14:filter#,\n"
+     ")^#16:filter#,\n"
      "has(\n"
      "  a^#2:Expr.Ident#.b^#3:Expr.Select#\n"
      ")^#4:has"},
@@ -1019,9 +1019,9 @@ std::vector<TestInfo> test_cases = {
      "  // Accumulator\n"
      "  __result__,\n"
      "  // Init\n"
-     "  []^#36:Expr.CreateList#,\n"
+     "  []^#35:Expr.CreateList#,\n"
      "  // LoopCondition\n"
-     "  true^#37:bool#,\n"
+     "  true^#36:bool#,\n"
      "  // LoopStep\n"
      "  _?_:_(\n"
      "    _&&_(\n"
@@ -1071,15 +1071,15 @@ std::vector<TestInfo> test_cases = {
      "        __result__^#32:Expr.Ident#)^#33:Expr.Comprehension#\n"
      "    )^#34:Expr.Call#,\n"
      "    _+_(\n"
-     "      __result__^#35:Expr.Ident#,\n"
+     "      __result__^#37:Expr.Ident#,\n"
      "      [\n"
      "        y^#3:Expr.Ident#\n"
      "      ]^#38:Expr.CreateList#\n"
      "    )^#39:Expr.Call#,\n"
-     "    __result__^#35:Expr.Ident#\n"
-     "  )^#40:Expr.Call#,\n"
+     "    __result__^#40:Expr.Ident#\n"
+     "  )^#41:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#35:Expr.Ident#)^#41:Expr.Comprehension#",
+     "  __result__^#42:Expr.Ident#)^#43:Expr.Comprehension#",
      "", "", "",
      "x^#1:Expr.Ident#.filter(\n"
      "  y^#3:Expr.Ident#,\n"
@@ -1087,7 +1087,7 @@ std::vector<TestInfo> test_cases = {
      "    ^#18:exists#,\n"
      "    ^#33:exists#\n"
      "  )^#34:Expr.Call#\n"
-     ")^#41:filter#,\n"
+     ")^#43:filter#,\n"
      "y^#19:Expr.Ident#.exists(\n"
      "  z^#21:Expr.Ident#,\n"
      "  ^#25:has#\n"
@@ -1375,6 +1375,7 @@ TEST_P(ExpressionTest, Parse) {
   ParserOptions options;
   if (!test_info.M.empty()) {
     options.add_macro_calls = true;
+    options.enable_unique_macro_numbering = true;
   }
   options.enable_optional_syntax = true;
 
@@ -1488,8 +1489,16 @@ TEST(ExpressionTest, RecursionDepthExceeded) {
               HasSubstr("Exceeded max recursion depth of 16 when parsing."));
 }
 
+std::string TestName(const testing::TestParamInfo<TestInfo>& test_info) {
+  std::string name = absl::StrCat(test_info.index, "-", test_info.param.I);
+  absl::c_replace_if(
+      name, [](char c) { return !absl::ascii_isalnum(c); }, '_');
+  return name;
+  return name;
+}
+
 INSTANTIATE_TEST_SUITE_P(CelParserTest, ExpressionTest,
-                         testing::ValuesIn(test_cases));
+                         testing::ValuesIn(test_cases), TestName);
 
 void BM_Parse(benchmark::State& state) {
   std::vector<Macro> macros = Macro::AllMacros();
