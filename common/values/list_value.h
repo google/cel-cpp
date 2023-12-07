@@ -105,6 +105,9 @@ class ListValue {
   ListValue(Shared<const ListValueInterface> interface)
       : interface_(std::move(interface)) {}
 
+  // By default, this creates an empty list whose type is `list(dyn)`. Unless
+  // you can help it, you should use a more specific typed list value.
+  ListValue();
   ListValue(const ListValue&) = default;
   ListValue(ListValue&&) = default;
   ListValue& operator=(const ListValue&) = default;
@@ -212,7 +215,9 @@ class ListValueView {
   ListValueView(const ListValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
       : interface_(value.interface_) {}
 
-  ListValueView() = delete;
+  // By default, this creates an empty list whose type is `list(dyn)`. Unless
+  // you can help it, you should use a more specific typed list value.
+  ListValueView();
   ListValueView(const ListValueView&) = default;
   ListValueView(ListValueView&&) = default;
   ListValueView& operator=(const ListValueView&) = default;

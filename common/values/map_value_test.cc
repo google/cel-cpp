@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -264,6 +263,25 @@ class MapValueTest : public TestWithParam<MemoryManagement> {
   absl::optional<Shared<TypeFactory>> type_factory_;
 };
 
+TEST_P(MapValueTest, Default) {
+  Value scratch;
+  MapValue map_value;
+  EXPECT_TRUE(map_value.IsEmpty());
+  EXPECT_EQ(map_value.Size(), 0);
+  EXPECT_EQ(map_value.DebugString(), "{}");
+  EXPECT_EQ(map_value.type().key(), DynTypeView());
+  EXPECT_EQ(map_value.type().value(), DynTypeView());
+  ASSERT_OK_AND_ASSIGN(auto list_value, map_value.ListKeys(type_factory()));
+  EXPECT_TRUE(list_value.IsEmpty());
+  EXPECT_EQ(list_value.Size(), 0);
+  EXPECT_EQ(list_value.DebugString(), "[]");
+  EXPECT_EQ(list_value.type().element(), DynTypeView());
+  ASSERT_OK_AND_ASSIGN(auto iterator, map_value.NewIterator());
+  EXPECT_FALSE(iterator->HasNext());
+  EXPECT_THAT(iterator->Next(scratch),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
 TEST_P(MapValueTest, Kind) {
   auto value = NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                                     std::pair{IntValue(1), DoubleValue(4.0)},
@@ -485,6 +503,25 @@ class MapValueViewTest : public TestWithParam<MemoryManagement> {
   absl::optional<MemoryManager> memory_manager_;
   absl::optional<Shared<TypeFactory>> type_factory_;
 };
+
+TEST_P(MapValueViewTest, Default) {
+  Value scratch;
+  MapValueView map_value;
+  EXPECT_TRUE(map_value.IsEmpty());
+  EXPECT_EQ(map_value.Size(), 0);
+  EXPECT_EQ(map_value.DebugString(), "{}");
+  EXPECT_EQ(map_value.type().key(), DynTypeView());
+  EXPECT_EQ(map_value.type().value(), DynTypeView());
+  ASSERT_OK_AND_ASSIGN(auto list_value, map_value.ListKeys(type_factory()));
+  EXPECT_TRUE(list_value.IsEmpty());
+  EXPECT_EQ(list_value.Size(), 0);
+  EXPECT_EQ(list_value.DebugString(), "[]");
+  EXPECT_EQ(list_value.type().element(), DynTypeView());
+  ASSERT_OK_AND_ASSIGN(auto iterator, map_value.NewIterator());
+  EXPECT_FALSE(iterator->HasNext());
+  EXPECT_THAT(iterator->Next(scratch),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
 
 TEST_P(MapValueViewTest, Kind) {
   auto value = NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},

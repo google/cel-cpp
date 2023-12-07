@@ -25,7 +25,6 @@
 #include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/memory.h"
-#include "common/native_type.h"
 #include "common/type.h"
 #include "common/type_factory.h"
 #include "common/value.h"
@@ -34,9 +33,7 @@
 namespace cel {
 namespace {
 
-using testing::An;
 using testing::ElementsAreArray;
-using testing::Ne;
 using testing::TestParamInfo;
 using testing::TestWithParam;
 using cel::internal::StatusIs;
@@ -178,6 +175,14 @@ class ListValueTest : public TestWithParam<MemoryManagement> {
   absl::optional<Shared<TypeFactory>> type_factory_;
 };
 
+TEST(ListValue, Default) {
+  ListValue value;
+  EXPECT_TRUE(value.IsEmpty());
+  EXPECT_EQ(value.Size(), 0);
+  EXPECT_EQ(value.DebugString(), "[]");
+  EXPECT_EQ(value.type().element(), DynTypeView());
+}
+
 TEST_P(ListValueTest, Kind) {
   auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
   EXPECT_EQ(value.kind(), ListValue::kKind);
@@ -309,6 +314,14 @@ class ListValueViewTest : public TestWithParam<MemoryManagement> {
   absl::optional<MemoryManager> memory_manager_;
   absl::optional<Shared<TypeFactory>> type_factory_;
 };
+
+TEST(ListValueView, Default) {
+  ListValueView value;
+  EXPECT_TRUE(value.IsEmpty());
+  EXPECT_EQ(value.Size(), 0);
+  EXPECT_EQ(value.DebugString(), "[]");
+  EXPECT_EQ(value.type().element(), DynTypeView());
+}
 
 TEST_P(ListValueViewTest, Kind) {
   auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));

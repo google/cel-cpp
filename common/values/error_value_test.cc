@@ -30,6 +30,12 @@ using testing::An;
 using testing::IsEmpty;
 using testing::Ne;
 using testing::Not;
+using cel::internal::StatusIs;
+
+TEST(ErrorValue, Default) {
+  ErrorValue value;
+  EXPECT_THAT(value.NativeValue(), StatusIs(absl::StatusCode::kUnknown));
+}
 
 TEST(ErrorValue, OkStatus) {
   EXPECT_DEBUG_DEATH(static_cast<void>(ErrorValue(absl::OkStatus())), _);
@@ -84,6 +90,11 @@ TEST(ErrorValue, As) {
               Ne(absl::nullopt));
   EXPECT_THAT(As<ErrorValue>(Value(ErrorValue(absl::CancelledError()))),
               Ne(absl::nullopt));
+}
+
+TEST(ErrorValueView, Default) {
+  ErrorValueView value;
+  EXPECT_THAT(value.NativeValue(), StatusIs(absl::StatusCode::kUnknown));
 }
 
 TEST(ErrorValueView, OkStatus) {

@@ -49,7 +49,9 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final {
 
   explicit ErrorValue(ErrorValueView value) noexcept;
 
-  ErrorValue() = delete;
+  // By default, this creates an UNKNOWN error. You should always create a more
+  // specific error value.
+  ErrorValue();
   ErrorValue(const ErrorValue&) = default;
 
   ErrorValue& operator=(const ErrorValue&) = default;
@@ -108,7 +110,9 @@ class ErrorValueView final {
     ABSL_DCHECK(!value_->ok()) << "use of moved-from ErrorValue";
   }
 
-  ErrorValueView() = delete;
+  // By default, this creates an UNKNOWN error. You should always create a more
+  // specific error value.
+  ErrorValueView();
   ErrorValueView(const ErrorValueView&) = default;
   ErrorValueView(ErrorValueView&&) = default;
   ErrorValueView& operator=(const ErrorValueView&) = default;

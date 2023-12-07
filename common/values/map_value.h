@@ -140,6 +140,9 @@ class MapValue {
   MapValue(Shared<const MapValueInterface> interface)
       : interface_(std::move(interface)) {}
 
+  // By default, this creates an empty map whose type is `map(dyn, dyn)`. Unless
+  // you can help it, you should use a more specific typed map value.
+  MapValue();
   MapValue(const MapValue&) = default;
   MapValue(MapValue&&) = default;
   MapValue& operator=(const MapValue&) = default;
@@ -269,7 +272,9 @@ class MapValueView {
   MapValueView(const MapValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
       : interface_(value.interface_) {}
 
-  MapValueView() = delete;
+  // By default, this creates an empty map whose type is `map(dyn, dyn)`. Unless
+  // you can help it, you should use a more specific typed map value.
+  MapValueView();
   MapValueView(const MapValueView&) = default;
   MapValueView(MapValueView&&) = default;
   MapValueView& operator=(const MapValueView&) = default;

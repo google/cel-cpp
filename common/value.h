@@ -956,6 +956,15 @@ class TypedMapValue final : public MapValueInterface {
 
 }  // namespace common_internal
 
+inline ErrorValue::ErrorValue()
+    : ErrorValue(common_internal::GetDefaultErrorValue()) {}
+
+inline ErrorValueView::ErrorValueView()
+    : ErrorValueView(common_internal::GetDefaultErrorValue()) {}
+
+inline ListValue::ListValue()
+    : ListValue(common_internal::GetEmptyDynListValue()) {}
+
 inline absl::StatusOr<ValueView> ListValue::Get(size_t index,
                                                 Value& scratch) const {
   return interface_->Get(index, scratch);
@@ -969,6 +978,9 @@ inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> ListValue::NewIterator()
     const {
   return interface_->NewIterator();
 }
+
+inline ListValueView::ListValueView()
+    : ListValueView(common_internal::GetEmptyDynListValue()) {}
 
 inline absl::StatusOr<ValueView> ListValueView::Get(size_t index,
                                                     Value& scratch) const {
@@ -1037,6 +1049,9 @@ ListValue ListValueBuilder<T>::Build() && {
           std::move(type_), std::move(elements_)));
 }
 
+inline MapValue::MapValue()
+    : MapValue(common_internal::GetEmptyDynDynMapValue()) {}
+
 inline absl::Status MapValue::CheckKey(ValueView key) {
   return MapValueInterface::CheckKey(key);
 }
@@ -1068,6 +1083,9 @@ inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> MapValue::NewIterator()
     const {
   return interface_->NewIterator();
 }
+
+inline MapValueView::MapValueView()
+    : MapValueView(common_internal::GetEmptyDynDynMapValue()) {}
 
 inline absl::Status MapValueView::CheckKey(ValueView key) {
   return MapValue::CheckKey(key);
