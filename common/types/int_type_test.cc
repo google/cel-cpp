@@ -52,7 +52,6 @@ TEST(IntType, DebugString) {
 
 TEST(IntType, Hash) {
   EXPECT_EQ(absl::HashOf(IntType()), absl::HashOf(IntType()));
-  EXPECT_EQ(absl::HashOf(Type(IntType())), absl::HashOf(IntType()));
 }
 
 TEST(IntType, Equal) {
@@ -107,9 +106,7 @@ TEST(IntTypeView, DebugString) {
 
 TEST(IntTypeView, Hash) {
   EXPECT_EQ(absl::HashOf(IntTypeView()), absl::HashOf(IntTypeView()));
-  EXPECT_EQ(absl::HashOf(TypeView(IntTypeView())), absl::HashOf(IntTypeView()));
   EXPECT_EQ(absl::HashOf(IntTypeView()), absl::HashOf(IntType()));
-  EXPECT_EQ(absl::HashOf(TypeView(IntTypeView())), absl::HashOf(IntType()));
 }
 
 TEST(IntTypeView, Equal) {

@@ -83,7 +83,7 @@ inline bool operator!=(const StructType& lhs, const StructType& rhs) {
 
 template <typename H>
 H AbslHashValue(H state, const StructType& type) {
-  return H::combine(std::move(state), type.kind(), type.name());
+  return H::combine(std::move(state), type.name());
 }
 
 inline std::ostream& operator<<(std::ostream& out, const StructType& type) {
@@ -143,7 +143,7 @@ inline bool operator!=(StructTypeView lhs, StructTypeView rhs) {
 
 template <typename H>
 H AbslHashValue(H state, StructTypeView type) {
-  return H::combine(std::move(state), type.kind(), type.name());
+  return H::combine(std::move(state), type.name());
 }
 
 inline std::ostream& operator<<(std::ostream& out, StructTypeView type) {

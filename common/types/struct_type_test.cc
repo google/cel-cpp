@@ -92,8 +92,6 @@ TEST_P(StructTypeTest, DebugString) {
 TEST_P(StructTypeTest, Hash) {
   EXPECT_EQ(absl::HashOf(StructType(memory_manager(), "test.Struct")),
             absl::HashOf(StructType(memory_manager(), "test.Struct")));
-  EXPECT_EQ(absl::HashOf(Type(StructType(memory_manager(), "test.Struct"))),
-            absl::HashOf(StructType(memory_manager(), "test.Struct")));
 }
 
 TEST_P(StructTypeTest, Equal) {
@@ -204,11 +202,7 @@ TEST_P(StructTypeViewTest, Hash) {
   auto type = StructType(memory_manager(), "test.Struct");
   EXPECT_EQ(absl::HashOf(StructTypeView(type)),
             absl::HashOf(StructTypeView(type)));
-  EXPECT_EQ(absl::HashOf(TypeView(StructTypeView(type))),
-            absl::HashOf(StructTypeView(type)));
   EXPECT_EQ(absl::HashOf(StructTypeView(type)), absl::HashOf(StructType(type)));
-  EXPECT_EQ(absl::HashOf(TypeView(StructTypeView(type))),
-            absl::HashOf(StructType(type)));
 }
 
 TEST_P(StructTypeViewTest, Equal) {

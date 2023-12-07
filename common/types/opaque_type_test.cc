@@ -101,10 +101,6 @@ TEST_P(OpaqueTypeTest, Hash) {
   EXPECT_EQ(
       absl::HashOf(OpaqueType(memory_manager(), "test.Opaque", {BytesType()})),
       absl::HashOf(OpaqueType(memory_manager(), "test.Opaque", {BytesType()})));
-  EXPECT_EQ(
-      absl::HashOf(
-          Type(OpaqueType(memory_manager(), "test.Opaque", {BytesType()}))),
-      absl::HashOf(OpaqueType(memory_manager(), "test.Opaque", {BytesType()})));
 }
 
 TEST_P(OpaqueTypeTest, Equal) {
@@ -220,11 +216,7 @@ TEST_P(OpaqueTypeViewTest, Hash) {
   auto type = OpaqueType(memory_manager(), "test.Opaque", {BytesType()});
   EXPECT_EQ(absl::HashOf(OpaqueTypeView(type)),
             absl::HashOf(OpaqueTypeView(type)));
-  EXPECT_EQ(absl::HashOf(TypeView(OpaqueTypeView(type))),
-            absl::HashOf(OpaqueTypeView(type)));
   EXPECT_EQ(absl::HashOf(OpaqueTypeView(type)), absl::HashOf(OpaqueType(type)));
-  EXPECT_EQ(absl::HashOf(TypeView(OpaqueTypeView(type))),
-            absl::HashOf(OpaqueType(type)));
 }
 
 TEST_P(OpaqueTypeViewTest, Equal) {

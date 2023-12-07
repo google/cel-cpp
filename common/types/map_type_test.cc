@@ -105,9 +105,6 @@ TEST_P(MapTypeTest, DebugString) {
 TEST_P(MapTypeTest, Hash) {
   EXPECT_EQ(absl::HashOf(MapType(memory_manager(), StringType(), BytesType())),
             absl::HashOf(MapType(memory_manager(), StringType(), BytesType())));
-  EXPECT_EQ(
-      absl::HashOf(Type(MapType(memory_manager(), StringType(), BytesType()))),
-      absl::HashOf(MapType(memory_manager(), StringType(), BytesType())));
 }
 
 TEST_P(MapTypeTest, Equal) {
@@ -221,11 +218,7 @@ TEST_P(MapTypeViewTest, DebugString) {
 TEST_P(MapTypeViewTest, Hash) {
   auto type = MapType(memory_manager(), StringType(), BytesType());
   EXPECT_EQ(absl::HashOf(MapTypeView(type)), absl::HashOf(MapTypeView(type)));
-  EXPECT_EQ(absl::HashOf(TypeView(MapTypeView(type))),
-            absl::HashOf(MapTypeView(type)));
   EXPECT_EQ(absl::HashOf(MapTypeView(type)), absl::HashOf(MapType(type)));
-  EXPECT_EQ(absl::HashOf(TypeView(MapTypeView(type))),
-            absl::HashOf(MapType(type)));
 }
 
 TEST_P(MapTypeViewTest, Equal) {

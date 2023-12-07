@@ -108,8 +108,6 @@ TEST_P(OptionalTypeTest, Parameter) {
 TEST_P(OptionalTypeTest, Hash) {
   EXPECT_EQ(absl::HashOf(OptionalType(memory_manager(), BoolType())),
             absl::HashOf(OptionalType(memory_manager(), BoolType())));
-  EXPECT_EQ(absl::HashOf(Type(OptionalType(memory_manager(), BoolType()))),
-            absl::HashOf(OptionalType(memory_manager(), BoolType())));
 }
 
 TEST_P(OptionalTypeTest, Equal) {
@@ -239,11 +237,7 @@ TEST_P(OptionalTypeViewTest, Hash) {
   auto type = OptionalType(memory_manager(), BoolType());
   EXPECT_EQ(absl::HashOf(OptionalTypeView(type)),
             absl::HashOf(OptionalTypeView(type)));
-  EXPECT_EQ(absl::HashOf(TypeView(OptionalTypeView(type))),
-            absl::HashOf(OptionalTypeView(type)));
   EXPECT_EQ(absl::HashOf(OptionalTypeView(type)),
-            absl::HashOf(OptionalType(type)));
-  EXPECT_EQ(absl::HashOf(TypeView(OptionalTypeView(type))),
             absl::HashOf(OptionalType(type)));
 }
 

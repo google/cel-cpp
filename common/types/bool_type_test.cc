@@ -52,7 +52,6 @@ TEST(BoolType, DebugString) {
 
 TEST(BoolType, Hash) {
   EXPECT_EQ(absl::HashOf(BoolType()), absl::HashOf(BoolType()));
-  EXPECT_EQ(absl::HashOf(Type(BoolType())), absl::HashOf(BoolType()));
 }
 
 TEST(BoolType, Equal) {
@@ -107,10 +106,7 @@ TEST(BoolTypeView, DebugString) {
 
 TEST(BoolTypeView, Hash) {
   EXPECT_EQ(absl::HashOf(BoolTypeView()), absl::HashOf(BoolTypeView()));
-  EXPECT_EQ(absl::HashOf(TypeView(BoolTypeView())),
-            absl::HashOf(BoolTypeView()));
   EXPECT_EQ(absl::HashOf(BoolTypeView()), absl::HashOf(BoolType()));
-  EXPECT_EQ(absl::HashOf(TypeView(BoolTypeView())), absl::HashOf(BoolType()));
 }
 
 TEST(BoolTypeView, Equal) {

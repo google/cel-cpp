@@ -61,18 +61,17 @@ inline constexpr void swap(UnknownType& lhs, UnknownType& rhs) noexcept {
   lhs.swap(rhs);
 }
 
-inline constexpr bool operator==(const UnknownType&, const UnknownType&) {
-  return true;
-}
+inline constexpr bool operator==(UnknownType, UnknownType) { return true; }
 
-inline constexpr bool operator!=(const UnknownType& lhs,
-                                 const UnknownType& rhs) {
+inline constexpr bool operator!=(UnknownType lhs, UnknownType rhs) {
   return !operator==(lhs, rhs);
 }
 
 template <typename H>
-H AbslHashValue(H state, const UnknownType& type) {
-  return H::combine(std::move(state), type.kind());
+H AbslHashValue(H state, UnknownType) {
+  // UnknownType is really a singleton and all instances are equal. Nothing to
+  // hash.
+  return std::move(state);
 }
 
 inline std::ostream& operator<<(std::ostream& out, const UnknownType& type) {
@@ -120,7 +119,9 @@ inline constexpr bool operator!=(UnknownTypeView lhs, UnknownTypeView rhs) {
 
 template <typename H>
 H AbslHashValue(H state, UnknownTypeView type) {
-  return H::combine(std::move(state), type.kind());
+  // UnknownType is really a singleton and all instances are equal. Nothing to
+  // hash.
+  return std::move(state);
 }
 
 inline std::ostream& operator<<(std::ostream& out, UnknownTypeView type) {

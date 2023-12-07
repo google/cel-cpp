@@ -52,7 +52,6 @@ TEST(DynType, DebugString) {
 
 TEST(DynType, Hash) {
   EXPECT_EQ(absl::HashOf(DynType()), absl::HashOf(DynType()));
-  EXPECT_EQ(absl::HashOf(Type(DynType())), absl::HashOf(DynType()));
 }
 
 TEST(DynType, Equal) {
@@ -107,9 +106,7 @@ TEST(DynTypeView, DebugString) {
 
 TEST(DynTypeView, Hash) {
   EXPECT_EQ(absl::HashOf(DynTypeView()), absl::HashOf(DynTypeView()));
-  EXPECT_EQ(absl::HashOf(TypeView(DynTypeView())), absl::HashOf(DynTypeView()));
   EXPECT_EQ(absl::HashOf(DynTypeView()), absl::HashOf(DynType()));
-  EXPECT_EQ(absl::HashOf(TypeView(DynTypeView())), absl::HashOf(DynType()));
 }
 
 TEST(DynTypeView, Equal) {

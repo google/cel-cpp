@@ -52,8 +52,6 @@ TEST(UintWrapperType, DebugString) {
 
 TEST(UintWrapperType, Hash) {
   EXPECT_EQ(absl::HashOf(UintWrapperType()), absl::HashOf(UintWrapperType()));
-  EXPECT_EQ(absl::HashOf(Type(UintWrapperType())),
-            absl::HashOf(UintWrapperType()));
 }
 
 TEST(UintWrapperType, Equal) {
@@ -112,11 +110,7 @@ TEST(UintWrapperTypeView, DebugString) {
 TEST(UintWrapperTypeView, Hash) {
   EXPECT_EQ(absl::HashOf(UintWrapperTypeView()),
             absl::HashOf(UintWrapperTypeView()));
-  EXPECT_EQ(absl::HashOf(TypeView(UintWrapperTypeView())),
-            absl::HashOf(UintWrapperTypeView()));
   EXPECT_EQ(absl::HashOf(UintWrapperTypeView()),
-            absl::HashOf(UintWrapperType()));
-  EXPECT_EQ(absl::HashOf(TypeView(UintWrapperTypeView())),
             absl::HashOf(UintWrapperType()));
 }
 

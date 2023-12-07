@@ -52,8 +52,6 @@ TEST(BoolWrapperType, DebugString) {
 
 TEST(BoolWrapperType, Hash) {
   EXPECT_EQ(absl::HashOf(BoolWrapperType()), absl::HashOf(BoolWrapperType()));
-  EXPECT_EQ(absl::HashOf(Type(BoolWrapperType())),
-            absl::HashOf(BoolWrapperType()));
 }
 
 TEST(BoolWrapperType, Equal) {
@@ -112,11 +110,7 @@ TEST(BoolWrapperTypeView, DebugString) {
 TEST(BoolWrapperTypeView, Hash) {
   EXPECT_EQ(absl::HashOf(BoolWrapperTypeView()),
             absl::HashOf(BoolWrapperTypeView()));
-  EXPECT_EQ(absl::HashOf(TypeView(BoolWrapperTypeView())),
-            absl::HashOf(BoolWrapperTypeView()));
   EXPECT_EQ(absl::HashOf(BoolWrapperTypeView()),
-            absl::HashOf(BoolWrapperType()));
-  EXPECT_EQ(absl::HashOf(TypeView(BoolWrapperTypeView())),
             absl::HashOf(BoolWrapperType()));
 }
 

@@ -52,7 +52,6 @@ TEST(DurationType, DebugString) {
 
 TEST(DurationType, Hash) {
   EXPECT_EQ(absl::HashOf(DurationType()), absl::HashOf(DurationType()));
-  EXPECT_EQ(absl::HashOf(Type(DurationType())), absl::HashOf(DurationType()));
 }
 
 TEST(DurationType, Equal) {
@@ -109,11 +108,7 @@ TEST(DurationTypeView, DebugString) {
 
 TEST(DurationTypeView, Hash) {
   EXPECT_EQ(absl::HashOf(DurationTypeView()), absl::HashOf(DurationTypeView()));
-  EXPECT_EQ(absl::HashOf(TypeView(DurationTypeView())),
-            absl::HashOf(DurationTypeView()));
   EXPECT_EQ(absl::HashOf(DurationTypeView()), absl::HashOf(DurationType()));
-  EXPECT_EQ(absl::HashOf(TypeView(DurationTypeView())),
-            absl::HashOf(DurationType()));
 }
 
 TEST(DurationTypeView, Equal) {

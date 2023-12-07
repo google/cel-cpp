@@ -64,19 +64,19 @@ inline constexpr void swap(StringWrapperType& lhs,
   lhs.swap(rhs);
 }
 
-inline constexpr bool operator==(const StringWrapperType&,
-                                 const StringWrapperType&) {
+inline constexpr bool operator==(StringWrapperType, StringWrapperType) {
   return true;
 }
 
-inline constexpr bool operator!=(const StringWrapperType& lhs,
-                                 const StringWrapperType& rhs) {
+inline constexpr bool operator!=(StringWrapperType lhs, StringWrapperType rhs) {
   return !operator==(lhs, rhs);
 }
 
 template <typename H>
-H AbslHashValue(H state, const StringWrapperType& type) {
-  return H::combine(std::move(state), type.kind());
+H AbslHashValue(H state, StringWrapperType) {
+  // StringWrapperType is really a singleton and all instances are equal.
+  // Nothing to hash.
+  return std::move(state);
 }
 
 inline std::ostream& operator<<(std::ostream& out,
@@ -127,7 +127,9 @@ inline constexpr bool operator!=(StringWrapperTypeView lhs,
 
 template <typename H>
 H AbslHashValue(H state, StringWrapperTypeView type) {
-  return H::combine(std::move(state), type.kind());
+  // StringWrapperType is really a singleton and all instances are equal.
+  // Nothing to hash.
+  return std::move(state);
 }
 
 inline std::ostream& operator<<(std::ostream& out, StringWrapperTypeView type) {

@@ -60,18 +60,17 @@ inline constexpr void swap(TimestampType& lhs, TimestampType& rhs) noexcept {
   lhs.swap(rhs);
 }
 
-inline constexpr bool operator==(const TimestampType&, const TimestampType&) {
-  return true;
-}
+inline constexpr bool operator==(TimestampType, TimestampType) { return true; }
 
-inline constexpr bool operator!=(const TimestampType& lhs,
-                                 const TimestampType& rhs) {
+inline constexpr bool operator!=(TimestampType lhs, TimestampType rhs) {
   return !operator==(lhs, rhs);
 }
 
 template <typename H>
-H AbslHashValue(H state, const TimestampType& type) {
-  return H::combine(std::move(state), type.kind());
+H AbslHashValue(H state, TimestampType) {
+  // TimestampType is really a singleton and all instances are equal. Nothing to
+  // hash.
+  return std::move(state);
 }
 
 inline std::ostream& operator<<(std::ostream& out, const TimestampType& type) {
@@ -119,7 +118,9 @@ inline constexpr bool operator!=(TimestampTypeView lhs, TimestampTypeView rhs) {
 
 template <typename H>
 H AbslHashValue(H state, TimestampTypeView type) {
-  return H::combine(std::move(state), type.kind());
+  // TimestampType is really a singleton and all instances are equal. Nothing to
+  // hash.
+  return std::move(state);
 }
 
 inline std::ostream& operator<<(std::ostream& out, TimestampTypeView type) {

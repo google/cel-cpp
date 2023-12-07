@@ -200,11 +200,22 @@ class Type final {
   template <typename H>
   friend H AbslHashValue(H state, const Type& type) {
     type.AssertIsValid();
-    return absl::visit(
-        [state = std::move(state)](const auto& alternative) mutable -> H {
-          return H::combine(std::move(state), alternative);
-        },
-        type.variant_);
+    return H::combine(
+        absl::visit(
+            [state = std::move(state)](const auto& alternative) mutable -> H {
+              if constexpr (std::is_same_v<
+                                absl::remove_cvref_t<decltype(alternative)>,
+                                absl::monostate>) {
+                // In optimized builds, we just hash `absl::monostate`. In debug
+                // builds we cannot reach here.
+                return H::combine(std::move(state), alternative);
+              } else {
+                return H::combine(std::move(state), alternative.kind(),
+                                  alternative);
+              }
+            },
+            type.variant_),
+        type.variant_.index());
   }
 
   friend bool operator==(const Type& lhs, const Type& rhs) {
@@ -492,11 +503,22 @@ class TypeView final {
   template <typename H>
   friend H AbslHashValue(H state, TypeView type) {
     type.AssertIsValid();
-    return absl::visit(
-        [state = std::move(state)](auto alternative) mutable -> H {
-          return H::combine(std::move(state), alternative);
-        },
-        type.variant_);
+    return H::combine(
+        absl::visit(
+            [state = std::move(state)](auto alternative) mutable -> H {
+              if constexpr (std::is_same_v<
+                                absl::remove_cvref_t<decltype(alternative)>,
+                                absl::monostate>) {
+                // In optimized builds, we just hash `absl::monostate`. In debug
+                // builds we cannot reach here.
+                return H::combine(std::move(state), alternative);
+              } else {
+                return H::combine(std::move(state), alternative.kind(),
+                                  alternative);
+              }
+            },
+            type.variant_),
+        type.variant_.index());
   }
 
   friend bool operator==(TypeView lhs, TypeView rhs) {
@@ -709,7 +731,7 @@ inline bool operator==(const ListType& lhs, const ListType& rhs) {
 
 template <typename H>
 inline H AbslHashValue(H state, const ListType& type) {
-  return H::combine(std::move(state), type.kind(), type.element());
+  return H::combine(std::move(state), type.element());
 }
 
 inline ListTypeView::ListTypeView()
@@ -726,7 +748,7 @@ inline bool operator==(ListTypeView lhs, ListTypeView rhs) {
 
 template <typename H>
 inline H AbslHashValue(H state, ListTypeView type) {
-  return H::combine(std::move(state), type.kind(), type.element());
+  return H::combine(std::move(state), type.element());
 }
 
 inline MapType::MapType() : MapType(common_internal::GetDynDynMapType()) {}
@@ -747,7 +769,7 @@ inline bool operator==(const MapType& lhs, const MapType& rhs) {
 
 template <typename H>
 inline H AbslHashValue(H state, const MapType& type) {
-  return H::combine(std::move(state), type.kind(), type.key(), type.value());
+  return H::combine(std::move(state), type.key(), type.value());
 }
 
 inline MapTypeView::MapTypeView()
@@ -766,7 +788,7 @@ inline bool operator==(MapTypeView lhs, MapTypeView rhs) {
 
 template <typename H>
 inline H AbslHashValue(H state, MapTypeView type) {
-  return H::combine(std::move(state), type.kind(), type.key(), type.value());
+  return H::combine(std::move(state), type.key(), type.value());
 }
 
 inline StructType::StructType(StructTypeView other) : data_(other.data_) {}
@@ -798,7 +820,7 @@ inline bool operator==(const OpaqueType& lhs, const OpaqueType& rhs) {
 
 template <typename H>
 inline H AbslHashValue(H state, const OpaqueType& type) {
-  state = H::combine(std::move(state), type.kind(), type.name());
+  state = H::combine(std::move(state), type.name());
   auto parameters = type.parameters();
   for (const auto& parameter : parameters) {
     state = H::combine(std::move(state), parameter);
@@ -822,7 +844,7 @@ inline bool operator==(OpaqueTypeView lhs, OpaqueTypeView rhs) {
 
 template <typename H>
 inline H AbslHashValue(H state, OpaqueTypeView type) {
-  state = H::combine(std::move(state), type.kind(), type.name());
+  state = H::combine(std::move(state), type.name());
   auto parameters = type.parameters();
   for (const auto& parameter : parameters) {
     state = H::combine(std::move(state), parameter);

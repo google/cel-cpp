@@ -101,8 +101,6 @@ TEST_P(ListTypeTest, DebugString) {
 TEST_P(ListTypeTest, Hash) {
   EXPECT_EQ(absl::HashOf(ListType(memory_manager(), BoolType())),
             absl::HashOf(ListType(memory_manager(), BoolType())));
-  EXPECT_EQ(absl::HashOf(Type(ListType(memory_manager(), BoolType()))),
-            absl::HashOf(ListType(memory_manager(), BoolType())));
 }
 
 TEST_P(ListTypeTest, Equal) {
@@ -210,11 +208,7 @@ TEST_P(ListTypeViewTest, DebugString) {
 TEST_P(ListTypeViewTest, Hash) {
   auto type = ListType(memory_manager(), BoolType());
   EXPECT_EQ(absl::HashOf(ListTypeView(type)), absl::HashOf(ListTypeView(type)));
-  EXPECT_EQ(absl::HashOf(TypeView(ListTypeView(type))),
-            absl::HashOf(ListTypeView(type)));
   EXPECT_EQ(absl::HashOf(ListTypeView(type)), absl::HashOf(ListType(type)));
-  EXPECT_EQ(absl::HashOf(TypeView(ListTypeView(type))),
-            absl::HashOf(ListType(type)));
 }
 
 TEST_P(ListTypeViewTest, Equal) {

@@ -52,7 +52,6 @@ TEST(TimestampType, DebugString) {
 
 TEST(TimestampType, Hash) {
   EXPECT_EQ(absl::HashOf(TimestampType()), absl::HashOf(TimestampType()));
-  EXPECT_EQ(absl::HashOf(Type(TimestampType())), absl::HashOf(TimestampType()));
 }
 
 TEST(TimestampType, Equal) {
@@ -110,11 +109,7 @@ TEST(TimestampTypeView, DebugString) {
 TEST(TimestampTypeView, Hash) {
   EXPECT_EQ(absl::HashOf(TimestampTypeView()),
             absl::HashOf(TimestampTypeView()));
-  EXPECT_EQ(absl::HashOf(TypeView(TimestampTypeView())),
-            absl::HashOf(TimestampTypeView()));
   EXPECT_EQ(absl::HashOf(TimestampTypeView()), absl::HashOf(TimestampType()));
-  EXPECT_EQ(absl::HashOf(TypeView(TimestampTypeView())),
-            absl::HashOf(TimestampType()));
 }
 
 TEST(TimestampTypeView, Equal) {

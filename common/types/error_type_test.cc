@@ -52,7 +52,6 @@ TEST(ErrorType, DebugString) {
 
 TEST(ErrorType, Hash) {
   EXPECT_EQ(absl::HashOf(ErrorType()), absl::HashOf(ErrorType()));
-  EXPECT_EQ(absl::HashOf(Type(ErrorType())), absl::HashOf(ErrorType()));
 }
 
 TEST(ErrorType, Equal) {
@@ -108,10 +107,7 @@ TEST(ErrorTypeView, DebugString) {
 
 TEST(ErrorTypeView, Hash) {
   EXPECT_EQ(absl::HashOf(ErrorTypeView()), absl::HashOf(ErrorTypeView()));
-  EXPECT_EQ(absl::HashOf(TypeView(ErrorTypeView())),
-            absl::HashOf(ErrorTypeView()));
   EXPECT_EQ(absl::HashOf(ErrorTypeView()), absl::HashOf(ErrorType()));
-  EXPECT_EQ(absl::HashOf(TypeView(ErrorTypeView())), absl::HashOf(ErrorType()));
 }
 
 TEST(ErrorTypeView, Equal) {
