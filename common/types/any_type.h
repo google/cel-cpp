@@ -89,6 +89,14 @@ class AnyTypeView final {
   AnyTypeView(const AnyType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
                   ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  AnyTypeView& operator=(
+      const AnyType& type ABSL_ATTRIBUTE_LIFETIME_BOUND ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  AnyTypeView& operator=(AnyType&&) = delete;
+
   AnyTypeView() = default;
   AnyTypeView(const AnyTypeView&) = default;
   AnyTypeView(AnyTypeView&&) = default;

@@ -95,6 +95,15 @@ class BoolWrapperTypeView final {
   BoolWrapperTypeView(const BoolWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
                           ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  BoolWrapperTypeView& operator=(
+      const BoolWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
+          ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  BoolWrapperTypeView& operator=(BoolWrapperType&&) = delete;
+
   BoolWrapperTypeView() = default;
   BoolWrapperTypeView(const BoolWrapperTypeView&) = default;
   BoolWrapperTypeView(BoolWrapperTypeView&&) = default;

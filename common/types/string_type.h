@@ -88,6 +88,14 @@ class StringTypeView final {
   StringTypeView(const StringType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
                      ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StringTypeView& operator=(const StringType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
+                                ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  StringTypeView& operator=(StringType&&) = delete;
+
   StringTypeView() = default;
   StringTypeView(const StringTypeView&) = default;
   StringTypeView(StringTypeView&&) = default;

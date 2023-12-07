@@ -88,6 +88,14 @@ class BytesTypeView final {
   BytesTypeView(const BytesType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
                     ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  BytesTypeView& operator=(const BytesType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
+                               ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  BytesTypeView& operator=(BytesType&&) = delete;
+
   BytesTypeView() = default;
   BytesTypeView(const BytesTypeView&) = default;
   BytesTypeView(BytesTypeView&&) = default;

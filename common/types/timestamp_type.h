@@ -88,6 +88,15 @@ class TimestampTypeView final {
   TimestampTypeView(const TimestampType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
                         ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  TimestampTypeView& operator=(
+      const TimestampType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
+          ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  TimestampTypeView& operator=(TimestampType&&) = delete;
+
   TimestampTypeView() = default;
   TimestampTypeView(const TimestampTypeView&) = default;
   TimestampTypeView(TimestampTypeView&&) = default;

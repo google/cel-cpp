@@ -96,6 +96,15 @@ class DoubleWrapperTypeView final {
       const DoubleWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
           ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  DoubleWrapperTypeView& operator=(
+      const DoubleWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
+          ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  DoubleWrapperTypeView& operator=(DoubleWrapperType&&) = delete;
+
   DoubleWrapperTypeView() = default;
   DoubleWrapperTypeView(const DoubleWrapperTypeView&) = default;
   DoubleWrapperTypeView(DoubleWrapperTypeView&&) = default;

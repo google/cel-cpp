@@ -88,6 +88,14 @@ class TypeTypeView final {
   TypeTypeView(const TypeType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
                    ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  TypeTypeView& operator=(const TypeType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
+                              ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  TypeTypeView& operator=(TypeType&&) = delete;
+
   TypeTypeView() = default;
   TypeTypeView(const TypeTypeView&) = default;
   TypeTypeView(TypeTypeView&&) = default;

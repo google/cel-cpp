@@ -89,6 +89,15 @@ class UnknownTypeView final {
   UnknownTypeView(const UnknownType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
                       ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  UnknownTypeView& operator=(
+      const UnknownType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
+          ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  UnknownTypeView& operator=(UnknownType&&) = delete;
+
   UnknownTypeView() = default;
   UnknownTypeView(const UnknownTypeView&) = default;
   UnknownTypeView(UnknownTypeView&&) = default;

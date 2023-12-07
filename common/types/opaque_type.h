@@ -153,6 +153,15 @@ class OpaqueTypeView {
   // NOLINTNEXTLINE(google-explicit-constructor)
   OpaqueTypeView(const OpaqueType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept;
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  OpaqueTypeView& operator=(
+      const OpaqueType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    data_ = type.data_;
+    return *this;
+  }
+
+  OpaqueTypeView& operator=(OpaqueType&&) = delete;
+
   OpaqueTypeView() = delete;
   OpaqueTypeView(const OpaqueTypeView&) = default;
   OpaqueTypeView(OpaqueTypeView&&) = default;

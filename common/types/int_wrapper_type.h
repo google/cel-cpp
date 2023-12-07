@@ -93,6 +93,15 @@ class IntWrapperTypeView final {
   IntWrapperTypeView(const IntWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
                          ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  IntWrapperTypeView& operator=(
+      const IntWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
+          ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  IntWrapperTypeView& operator=(IntWrapperType&&) = delete;
+
   IntWrapperTypeView() = default;
   IntWrapperTypeView(const IntWrapperTypeView&) = default;
   IntWrapperTypeView(IntWrapperTypeView&&) = default;

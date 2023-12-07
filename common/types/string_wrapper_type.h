@@ -96,6 +96,15 @@ class StringWrapperTypeView final {
       const StringWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
           ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StringWrapperTypeView& operator=(
+      const StringWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
+          ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  StringWrapperTypeView& operator=(StringWrapperType&&) = delete;
+
   StringWrapperTypeView() = default;
   StringWrapperTypeView(const StringWrapperTypeView&) = default;
   StringWrapperTypeView(StringWrapperTypeView&&) = default;

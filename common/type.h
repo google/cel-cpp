@@ -429,11 +429,11 @@ class TypeView final {
             typename = std::enable_if_t<common_internal::IsTypeViewAlternativeV<
                 absl::remove_cvref_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  TypeView(T&& alternative) noexcept
+  TypeView(T alternative) noexcept
       : variant_(
             absl::in_place_type<common_internal::BaseTypeViewAlternativeForT<
                 absl::remove_cvref_t<T>>>,
-            std::forward<T>(alternative)) {}
+            alternative) {}
 
   template <typename T,
             typename = std::enable_if_t<common_internal::IsTypeInterfaceV<T>>>
@@ -442,6 +442,38 @@ class TypeView final {
       : variant_(absl::in_place_type<
                      common_internal::BaseTypeViewAlternativeForT<T>>,
                  interface) {}
+
+  TypeView& operator=(const Type& other) {
+    variant_ = (other.AssertIsValid(), other.ToViewVariant());
+    return *this;
+  }
+
+  TypeView& operator=(Type&&) = delete;
+
+  template <typename T>
+  std::enable_if_t<common_internal::IsTypeAlternativeV<T>, TypeView&> operator=(
+      const T& alternative ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    variant_.emplace<common_internal::BaseTypeViewAlternativeForT<T>>(
+        alternative);
+    return *this;
+  }
+
+  template <typename T>
+  std::enable_if_t<
+      std::conjunction_v<
+          std::negation<std::is_lvalue_reference<T>>,
+          common_internal::IsTypeAlternative<absl::remove_cvref_t<T>>>,
+      TypeView&>
+  operator=(T&&) = delete;
+
+  template <typename T>
+  std::enable_if_t<common_internal::IsTypeViewAlternativeV<T>, TypeView&>
+  operator=(T alternative) {
+    variant_.emplace<
+        common_internal::BaseTypeViewAlternativeForT<absl::remove_cvref_t<T>>>(
+        alternative);
+    return *this;
+  }
 
   TypeKind kind() const {
     AssertIsValid();

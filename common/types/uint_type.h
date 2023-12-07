@@ -88,6 +88,14 @@ class UintTypeView final {
   UintTypeView(const UintType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
                    ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  UintTypeView& operator=(const UintType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
+                              ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  UintTypeView& operator=(UintType&&) = delete;
+
   UintTypeView() = default;
   UintTypeView(const UintTypeView&) = default;
   UintTypeView(UintTypeView&&) = default;

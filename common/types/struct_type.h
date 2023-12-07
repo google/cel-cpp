@@ -106,6 +106,15 @@ class StructTypeView final {
   // NOLINTNEXTLINE(google-explicit-constructor)
   StructTypeView(const StructType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept;
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StructTypeView& operator=(
+      const StructType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    data_ = type.data_;
+    return *this;
+  }
+
+  StructTypeView& operator=(StructType&&) = delete;
+
   StructTypeView() = delete;
   StructTypeView(const StructTypeView&) = default;
   StructTypeView(StructTypeView&&) = default;

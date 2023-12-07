@@ -88,6 +88,14 @@ class NullTypeView final {
   NullTypeView(const NullType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
                    ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  NullTypeView& operator=(const NullType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
+                              ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  NullTypeView& operator=(NullType&&) = delete;
+
   NullTypeView() = default;
   NullTypeView(const NullTypeView&) = default;
   NullTypeView(NullTypeView&&) = default;

@@ -88,6 +88,15 @@ class DurationTypeView final {
   DurationTypeView(const DurationType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
                        ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  DurationTypeView& operator=(
+      const DurationType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
+          ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  DurationTypeView& operator=(DurationType&&) = delete;
+
   DurationTypeView() = default;
   DurationTypeView(const DurationTypeView&) = default;
   DurationTypeView(DurationTypeView&&) = default;

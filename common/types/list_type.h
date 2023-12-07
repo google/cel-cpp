@@ -110,6 +110,14 @@ class ListTypeView final {
   // NOLINTNEXTLINE(google-explicit-constructor)
   ListTypeView(const ListType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept;
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ListTypeView& operator=(const ListType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    data_ = type.data_;
+    return *this;
+  }
+
+  ListTypeView& operator=(ListType&&) = delete;
+
   // By default, this type is `list(dyn)`. Unless you can help it, you should
   // use a more specific list type.
   ListTypeView();

@@ -95,6 +95,15 @@ class UintWrapperTypeView final {
   UintWrapperTypeView(const UintWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
                           ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  UintWrapperTypeView& operator=(
+      const UintWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
+          ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  UintWrapperTypeView& operator=(UintWrapperType&&) = delete;
+
   UintWrapperTypeView() = default;
   UintWrapperTypeView(const UintWrapperTypeView&) = default;
   UintWrapperTypeView(UintWrapperTypeView&&) = default;

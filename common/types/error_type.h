@@ -90,6 +90,14 @@ class ErrorTypeView final {
   ErrorTypeView(const ErrorType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
                     ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ErrorTypeView& operator=(const ErrorType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
+                               ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  ErrorTypeView& operator=(ErrorType&&) = delete;
+
   ErrorTypeView() = default;
   ErrorTypeView(const ErrorTypeView&) = default;
   ErrorTypeView(ErrorTypeView&&) = default;

@@ -112,6 +112,14 @@ class MapTypeView final {
   // NOLINTNEXTLINE(google-explicit-constructor)
   MapTypeView(const MapType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept;
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  MapTypeView& operator=(const MapType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    data_ = type.data_;
+    return *this;
+  }
+
+  MapTypeView& operator=(MapType&&) = delete;
+
   // By default, this type is `map(dyn, dyn)`. Unless you can help it, you
   // should use a more specific map type.
   MapTypeView();

@@ -121,6 +121,15 @@ class OptionalTypeView final : public OpaqueTypeView {
   OptionalTypeView(
       const OptionalType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept;
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  OptionalTypeView& operator=(
+      const OpaqueType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    OpaqueTypeView::operator=(type);
+    return *this;
+  }
+
+  OptionalTypeView& operator=(OpaqueType&&) = delete;
+
   absl::string_view name() const {
     auto name = OpaqueTypeView::name();
     ABSL_DCHECK_EQ(name, kName);

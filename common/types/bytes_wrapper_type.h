@@ -96,6 +96,15 @@ class BytesWrapperTypeView final {
       const BytesWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
           ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  BytesWrapperTypeView& operator=(
+      const BytesWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
+          ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  BytesWrapperTypeView& operator=(BytesWrapperType&&) = delete;
+
   BytesWrapperTypeView() = default;
   BytesWrapperTypeView(const BytesWrapperTypeView&) = default;
   BytesWrapperTypeView(BytesWrapperTypeView&&) = default;

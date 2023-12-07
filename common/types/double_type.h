@@ -88,6 +88,14 @@ class DoubleTypeView final {
   DoubleTypeView(const DoubleType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
                      ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  DoubleTypeView& operator=(const DoubleType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
+                                ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  DoubleTypeView& operator=(DoubleType&&) = delete;
+
   DoubleTypeView() = default;
   DoubleTypeView(const DoubleTypeView&) = default;
   DoubleTypeView(DoubleTypeView&&) = default;

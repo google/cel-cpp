@@ -88,6 +88,14 @@ class DynTypeView final {
   DynTypeView(const DynType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
                   ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  DynTypeView& operator=(
+      const DynType& type ABSL_ATTRIBUTE_LIFETIME_BOUND ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  DynTypeView& operator=(DynType&&) = delete;
+
   DynTypeView() = default;
   DynTypeView(const DynTypeView&) = default;
   DynTypeView(DynTypeView&&) = default;

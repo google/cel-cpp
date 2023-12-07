@@ -88,6 +88,14 @@ class BoolTypeView final {
   BoolTypeView(const BoolType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
                    ABSL_ATTRIBUTE_UNUSED) noexcept {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  BoolTypeView& operator=(const BoolType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
+                              ABSL_ATTRIBUTE_UNUSED) {
+    return *this;
+  }
+
+  BoolTypeView& operator=(BoolType&&) = delete;
+
   BoolTypeView() = default;
   BoolTypeView(const BoolTypeView&) = default;
   BoolTypeView(BoolTypeView&&) = default;
