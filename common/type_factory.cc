@@ -14,272 +14,35 @@
 
 #include "common/type_factory.h"
 
-#include <algorithm>
-#include <cstddef>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/hash/hash.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/optional.h"
-#include "absl/types/span.h"
 #include "common/casting.h"
 #include "common/memory.h"
 #include "common/sized_input_view.h"
 #include "common/type.h"
 #include "common/type_kind.h"
+#include "common/types/type_cache.h"
 #include "internal/names.h"
-#include "internal/no_destructor.h"
 
 namespace cel {
 
 namespace {
 
-struct OpaqueTypeKey {
-  absl::string_view name;
-  absl::Span<const Type> parameters;
-};
+using common_internal::ListTypeCacheMap;
+using common_internal::MapTypeCacheMap;
+using common_internal::OpaqueTypeCacheMap;
+using common_internal::OpaqueTypeKey;
+using common_internal::OpaqueTypeKeyView;
+using common_internal::ProcessLocalTypeCache;
 
-template <typename H>
-H AbslHashValue(H state, const OpaqueTypeKey& key) {
-  state = H::combine(std::move(state), key.name);
-  for (const auto& parameter : key.parameters) {
-    state = H::combine(std::move(state), parameter);
-  }
-  return std::move(state);
-}
-
-struct OpaqueTypeKeyView {
-  absl::string_view name;
-  const SizedInputView<TypeView>& parameters;
-};
-
-template <typename H>
-H AbslHashValue(H state, const OpaqueTypeKeyView& key) {
-  state = H::combine(std::move(state), key.name);
-  for (const auto& parameter : key.parameters) {
-    state = H::combine(std::move(state), parameter);
-  }
-  return std::move(state);
-}
-
-struct OpaqueTypeKeyEqualTo {
-  using is_transparent = void;
-
-  bool operator()(const OpaqueTypeKey& lhs, const OpaqueTypeKey& rhs) const {
-    return lhs.name == rhs.name &&
-           lhs.parameters.size() == rhs.parameters.size() &&
-           std::equal(lhs.parameters.begin(), lhs.parameters.end(),
-                      rhs.parameters.begin(), rhs.parameters.end());
-  }
-
-  bool operator()(const OpaqueTypeKey& lhs,
-                  const OpaqueTypeKeyView& rhs) const {
-    return lhs.name == rhs.name &&
-           lhs.parameters.size() == rhs.parameters.size() &&
-           std::equal(lhs.parameters.begin(), lhs.parameters.end(),
-                      rhs.parameters.begin(), rhs.parameters.end());
-  }
-
-  bool operator()(const OpaqueTypeKeyView& lhs,
-                  const OpaqueTypeKey& rhs) const {
-    return lhs.name == rhs.name &&
-           lhs.parameters.size() == rhs.parameters.size() &&
-           std::equal(lhs.parameters.begin(), lhs.parameters.end(),
-                      rhs.parameters.begin(), rhs.parameters.end());
-  }
-
-  bool operator()(const OpaqueTypeKeyView& lhs,
-                  const OpaqueTypeKeyView& rhs) const {
-    return lhs.name == rhs.name &&
-           lhs.parameters.size() == rhs.parameters.size() &&
-           std::equal(lhs.parameters.begin(), lhs.parameters.end(),
-                      rhs.parameters.begin(), rhs.parameters.end());
-  }
-};
-
-struct OpaqueTypeKeyHash {
-  using is_transparent = void;
-
-  size_t operator()(const OpaqueTypeKey& key) const {
-    return absl::HashOf(key);
-  }
-
-  size_t operator()(const OpaqueTypeKeyView& key) const {
-    return absl::HashOf(key);
-  }
-};
-
-using ListTypeMap = absl::flat_hash_map<TypeView, ListType>;
-using MapTypeMap = absl::flat_hash_map<std::pair<TypeView, TypeView>, MapType>;
-using OpaqueTypeMap =
-    absl::flat_hash_map<OpaqueTypeKey, OpaqueType, OpaqueTypeKeyHash,
-                        OpaqueTypeKeyEqualTo>;
-
-struct CommonTypes final {
-  ListTypeView GetDynListType() const { return *dyn_list_type; }
-
-  MapTypeView GetDynDynMapType() const { return *dyn_dyn_map_type; }
-
-  OptionalTypeView GetDynOptionalType() const { return *dyn_optional_type; }
-
-  absl::optional<ListType> FindListType(TypeView element) const {
-    if (auto list_type = list_types.find(element);
-        list_type != list_types.end()) {
-      return list_type->second;
-    }
-    return absl::nullopt;
-  }
-
-  absl::optional<MapType> FindMapType(TypeView key, TypeView value) const {
-    if (auto map_type = map_types.find(std::make_pair(key, value));
-        map_type != map_types.end()) {
-      return map_type->second;
-    }
-    return absl::nullopt;
-  }
-
-  absl::optional<OpaqueType> FindOpaqueType(
-      absl::string_view name,
-      const SizedInputView<TypeView>& parameters) const {
-    if (auto opaque_type = opaque_types.find(
-            OpaqueTypeKeyView{.name = name, .parameters = parameters});
-        opaque_type != opaque_types.end()) {
-      return opaque_type->second;
-    }
-    return absl::nullopt;
-  }
-
-  static const CommonTypes* Get() {
-    static const internal::NoDestructor<CommonTypes> common_types;
-    return &*common_types;
-  }
-
- private:
-  friend class internal::NoDestructor<CommonTypes>;
-
-  CommonTypes() {
-    PopulateTypes<AnyType, BoolType, BoolWrapperType, BytesType,
-                  BytesWrapperType, DoubleType, DoubleWrapperType, DurationType,
-                  DynType, ErrorType, IntType, IntWrapperType, NullType,
-                  StringType, StringWrapperType, TimestampType, TypeType,
-                  UintType, UintWrapperType, UnknownType>(
-        MemoryManagerRef::Unmanaged());
-    dyn_list_type = FindListType(DynTypeView());
-    ABSL_DCHECK(dyn_list_type.has_value());
-    dyn_dyn_map_type = FindMapType(DynTypeView(), DynTypeView());
-    ABSL_DCHECK(dyn_dyn_map_type.has_value());
-    auto opaque_type = FindOpaqueType(OptionalType::kName, {DynTypeView()});
-    ABSL_DCHECK(opaque_type.has_value());
-    dyn_optional_type = Cast<OptionalType>(*opaque_type);
-  }
-
-  template <typename... Ts>
-  void PopulateTypes(MemoryManagerRef memory_manager) {
-    PopulateListTypes<Ts...>(memory_manager);
-    PopulateMapTypes<Ts...>(memory_manager);
-    PopulateOptionalTypes<Ts...>(memory_manager);
-  }
-
-  template <typename... Ts>
-  void PopulateListTypes(MemoryManagerRef memory_manager) {
-    list_types.reserve(sizeof...(Ts));
-    DoPopulateListTypes<Ts...>(memory_manager);
-  }
-
-  template <typename... Ts>
-  void PopulateMapTypes(MemoryManagerRef memory_manager) {
-    map_types.reserve(sizeof...(Ts) * 5);
-    DoPopulateMapTypes<Ts...>(memory_manager);
-  }
-
-  template <typename... Ts>
-  void PopulateOptionalTypes(MemoryManagerRef memory_manager) {
-    // Reserve space for optionals of each primitive type, optionals of each
-    // list type, and optionals of each map type.
-    opaque_types.reserve(opaque_types.size() + sizeof...(Ts) +
-                         list_types.size() + map_types.size());
-    DoPopulateOptionalTypes<Ts...>(memory_manager);
-    for (const auto& list_type : list_types) {
-      InsertOptionalType(
-          OptionalType(memory_manager, TypeView(list_type.second)));
-    }
-    for (const auto& map_type : map_types) {
-      InsertOptionalType(
-          OptionalType(memory_manager, TypeView(map_type.second)));
-    }
-  }
-
-  template <typename T, typename... Ts>
-  void DoPopulateListTypes(MemoryManagerRef memory_manager) {
-    InsertListType(ListType(memory_manager, T()));
-    if constexpr (sizeof...(Ts) != 0) {
-      DoPopulateListTypes<Ts...>(memory_manager);
-    }
-  }
-
-  void InsertListType(ListType list_type) {
-    auto element = list_type.element();
-    auto inserted =
-        list_types.insert_or_assign(element, std::move(list_type)).second;
-    ABSL_DCHECK(inserted);
-  }
-
-  template <typename T, typename... Ts>
-  void DoPopulateMapTypes(MemoryManagerRef memory_manager) {
-    InsertMapType(MapType(memory_manager, DynType(), T()));
-    InsertMapType(MapType(memory_manager, BoolType(), T()));
-    InsertMapType(MapType(memory_manager, IntType(), T()));
-    InsertMapType(MapType(memory_manager, UintType(), T()));
-    InsertMapType(MapType(memory_manager, StringType(), T()));
-    if constexpr (sizeof...(Ts) != 0) {
-      DoPopulateMapTypes<Ts...>(memory_manager);
-    }
-  }
-
-  void InsertMapType(MapType map_type) {
-    auto key = map_type.key();
-    auto value = map_type.value();
-    auto inserted =
-        map_types
-            .insert_or_assign(std::make_pair(key, value), std::move(map_type))
-            .second;
-    ABSL_DCHECK(inserted);
-  }
-
-  template <typename T, typename... Ts>
-  void DoPopulateOptionalTypes(MemoryManagerRef memory_manager) {
-    InsertOptionalType(
-        OptionalType(memory_manager, typename T::view_alternative_type()));
-    if constexpr (sizeof...(Ts) != 0) {
-      DoPopulateOptionalTypes<Ts...>(memory_manager);
-    }
-  }
-
-  void InsertOptionalType(OptionalType optional_type) {
-    auto parameters = optional_type.parameters();
-    auto inserted =
-        opaque_types
-            .insert_or_assign(OpaqueTypeKey{.name = OptionalType::kName,
-                                            .parameters = parameters},
-                              std::move(optional_type))
-            .second;
-    ABSL_DCHECK(inserted);
-  }
-
-  ListTypeMap list_types;
-  MapTypeMap map_types;
-  OpaqueTypeMap opaque_types;
-  absl::optional<ListType> dyn_list_type;
-  absl::optional<MapType> dyn_dyn_map_type;
-  absl::optional<OptionalType> dyn_optional_type;
-};
-
-using StructTypeMap = absl::flat_hash_map<absl::string_view, StructType>;
+using StructTypeCacheMap = absl::flat_hash_map<absl::string_view, StructType>;
 
 class ThreadCompatibleTypeFactory final : public TypeFactory {
  public:
@@ -321,10 +84,6 @@ class ThreadCompatibleTypeFactory final : public TypeFactory {
   OpaqueType CreateOpaqueTypeImpl(
       absl::string_view name,
       const SizedInputView<TypeView>& parameters) override {
-    if (auto opaque_type = CommonTypes::Get()->FindOpaqueType(name, parameters);
-        opaque_type.has_value()) {
-      return *opaque_type;
-    }
     if (auto opaque_type = opaque_types_.find(
             OpaqueTypeKeyView{.name = name, .parameters = parameters});
         opaque_type != opaque_types_.end()) {
@@ -340,10 +99,10 @@ class ThreadCompatibleTypeFactory final : public TypeFactory {
 
  private:
   MemoryManagerRef memory_manager_;
-  ListTypeMap list_types_;
-  MapTypeMap map_types_;
-  StructTypeMap struct_types_;
-  OpaqueTypeMap opaque_types_;
+  ListTypeCacheMap list_types_;
+  MapTypeCacheMap map_types_;
+  StructTypeCacheMap struct_types_;
+  OpaqueTypeCacheMap opaque_types_;
 };
 
 class ThreadSafeTypeFactory final : public TypeFactory {
@@ -398,7 +157,8 @@ class ThreadSafeTypeFactory final : public TypeFactory {
   OpaqueType CreateOpaqueTypeImpl(
       absl::string_view name,
       const SizedInputView<TypeView>& parameters) override {
-    if (auto opaque_type = CommonTypes::Get()->FindOpaqueType(name, parameters);
+    if (auto opaque_type =
+            ProcessLocalTypeCache::Get()->FindOpaqueType(name, parameters);
         opaque_type.has_value()) {
       return *opaque_type;
     }
@@ -422,15 +182,13 @@ class ThreadSafeTypeFactory final : public TypeFactory {
  private:
   MemoryManagerRef memory_manager_;
   mutable absl::Mutex list_types_mutex_;
-  ListTypeMap list_types_ ABSL_GUARDED_BY(list_types_mutex_);
+  ListTypeCacheMap list_types_ ABSL_GUARDED_BY(list_types_mutex_);
   mutable absl::Mutex map_types_mutex_;
-  MapTypeMap map_types_ ABSL_GUARDED_BY(map_types_mutex_);
+  MapTypeCacheMap map_types_ ABSL_GUARDED_BY(map_types_mutex_);
   mutable absl::Mutex struct_types_mutex_;
-  StructTypeMap struct_types_ ABSL_GUARDED_BY(struct_types_mutex_);
+  StructTypeCacheMap struct_types_ ABSL_GUARDED_BY(struct_types_mutex_);
   mutable absl::Mutex opaque_types_mutex_;
-  absl::flat_hash_map<OpaqueTypeKey, OpaqueType, OpaqueTypeKeyHash,
-                      OpaqueTypeKeyEqualTo>
-      opaque_types_ ABSL_GUARDED_BY(opaque_types_mutex_);
+  OpaqueTypeCacheMap opaque_types_ ABSL_GUARDED_BY(opaque_types_mutex_);
 };
 
 bool IsValidMapKeyType(TypeView type) {
@@ -454,22 +212,8 @@ bool IsValidMapKeyType(TypeView type) {
 
 }  // namespace
 
-namespace common_internal {
-
-ListTypeView GetDynListType() { return CommonTypes::Get()->GetDynListType(); }
-
-MapTypeView GetDynDynMapType() {
-  return CommonTypes::Get()->GetDynDynMapType();
-}
-
-OptionalTypeView GetDynOptionalType() {
-  return CommonTypes::Get()->GetDynOptionalType();
-}
-
-}  // namespace common_internal
-
 ListType TypeFactory::CreateListType(TypeView element) {
-  if (auto list_type = CommonTypes::Get()->FindListType(element);
+  if (auto list_type = ProcessLocalTypeCache::Get()->FindListType(element);
       list_type.has_value()) {
     return *list_type;
   }
@@ -478,7 +222,7 @@ ListType TypeFactory::CreateListType(TypeView element) {
 
 MapType TypeFactory::CreateMapType(TypeView key, TypeView value) {
   ABSL_DCHECK(IsValidMapKeyType(key)) << key;
-  if (auto map_type = CommonTypes::Get()->FindMapType(key, value);
+  if (auto map_type = ProcessLocalTypeCache::Get()->FindMapType(key, value);
       map_type.has_value()) {
     return *map_type;
   }
@@ -493,7 +237,8 @@ StructType TypeFactory::CreateStructType(absl::string_view name) {
 OpaqueType TypeFactory::CreateOpaqueType(
     absl::string_view name, const SizedInputView<TypeView>& parameters) {
   ABSL_DCHECK(internal::IsValidRelativeName(name)) << name;
-  if (auto opaque_type = CommonTypes::Get()->FindOpaqueType(name, parameters);
+  if (auto opaque_type =
+          ProcessLocalTypeCache::Get()->FindOpaqueType(name, parameters);
       opaque_type.has_value()) {
     return *opaque_type;
   }

@@ -21,6 +21,7 @@
 #include <memory>
 #include <new>
 #include <type_traits>
+#include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/optimization.h"
@@ -36,6 +37,13 @@ class SizedInputView;
 
 namespace sized_input_view_internal {
 
+struct ForwardingTransformer {
+  template <typename T>
+  decltype(auto) operator()(T&& to_transformer) const {
+    return std::forward<T>(to_transformer);
+  }
+};
+
 template <typename C>
 using ConstIterator =
     std::decay_t<decltype(std::begin(std::declval<const C&>()))>;
@@ -43,11 +51,14 @@ using ConstIterator =
 template <typename C>
 using SizeType = std::decay_t<decltype(std::size(std::declval<const C&>()))>;
 
-template <typename T, typename Iter>
+template <typename Transformer, typename T, typename Iter>
 constexpr bool CanIterateAsType() {
   return std::is_convertible_v<
-             std::add_pointer_t<decltype(*std::declval<Iter>())>, const T*> ||
-         std::is_convertible_v<decltype(*std::declval<Iter>()), T>;
+             std::add_pointer_t<decltype((std::declval<Transformer>())(
+                 *std::declval<Iter>()))>,
+             const T*> ||
+         std::is_convertible_v<
+             decltype((std::declval<Transformer>())(*std::declval<Iter>())), T>;
 }
 
 inline constexpr size_t kSmallSize = sizeof(void*) * 2;
@@ -80,10 +91,12 @@ const T* StorageCast(const Storage& storage) {
   }
 }
 
-template <typename T, typename Iter>
+template <typename T, typename Iter, typename Transformer>
 constexpr bool IsValueStashRequired() {
   return !std::is_convertible_v<
-      std::add_pointer_t<decltype(*std::declval<Iter>())>, const T*>;
+      std::add_pointer_t<decltype((std::declval<Transformer>())(
+          *std::declval<Iter>()))>,
+      const T*>;
 }
 
 template <typename Iter>
@@ -92,17 +105,38 @@ struct LargeIteratorStorage {
   alignas(Iter) char end[sizeof(Iter)];
 };
 
+template <typename Transformer>
+struct LargeTransformerStorage {
+  alignas(Transformer) char value[sizeof(Transformer)];
+};
+
+template <typename Iter, typename Transformer>
+struct LargeIteratorTransformerStorage : LargeIteratorStorage<Iter>,
+                                         LargeTransformerStorage<Transformer> {
+};
+
 template <typename T>
 struct LargeValueStorage {
   alignas(T) char value[sizeof(T)];
 };
 
-template <typename T, typename Iter>
-struct LargeStorage : LargeIteratorStorage<Iter>, LargeValueStorage<T> {};
+template <typename Iter, typename T>
+struct LargeIteratorValueStorage : LargeIteratorStorage<Iter>,
+                                   LargeValueStorage<T> {};
+
+template <typename Transformer, typename T>
+struct LargeTransformerValueStorage : LargeTransformerStorage<Transformer>,
+                                      LargeValueStorage<T> {};
+
+template <typename T, typename Iter, typename Transformer>
+struct LargeStorage : LargeIteratorStorage<Iter>,
+                      LargeTransformerStorage<Transformer>,
+                      LargeValueStorage<T> {};
 
 struct RangeStorage {
   Storage begin;
   Storage end;
+  Storage transformer;
   Storage value_stash;
 };
 
@@ -122,48 +156,110 @@ void Deallocate(void* address) {
 #endif
 }
 
-template <typename T, typename Iter>
+template <typename T, typename Iter, typename Transformer>
 void CreateRangeStorage(RangeStorage* range) {
-  if constexpr ((!IsValueStashRequired<T, Iter>() || IsStoredInline<T>()) &&
-                IsStoredInline<Iter>()) {
+  constexpr bool value_stash_required =
+      IsValueStashRequired<T, Iter, Transformer>() && !IsStoredInline<T>();
+  if constexpr (!value_stash_required && IsStoredInline<Iter>() &&
+                IsStoredInline<Transformer>()) {
     // Nothing.
-  } else if constexpr (!IsValueStashRequired<T, Iter>() ||
-                       IsStoredInline<T>()) {
+  } else if constexpr (!value_stash_required && !IsStoredInline<Iter>() &&
+                       IsStoredInline<Transformer>()) {
     using StorageType = LargeIteratorStorage<Iter>;
     auto* storage = Allocate<StorageType>();
     range->begin.large = storage + offsetof(StorageType, begin);
     range->end.large = storage + offsetof(StorageType, end);
-  } else if constexpr (IsStoredInline<Iter>()) {
+  } else if constexpr (!value_stash_required && IsStoredInline<Iter>() &&
+                       !IsStoredInline<Transformer>()) {
+    using StorageType = LargeTransformerStorage<Transformer>;
+    auto* storage = Allocate<StorageType>();
+    range->transformer.large = storage + offsetof(StorageType, transformer);
+  } else if constexpr (!value_stash_required && !IsStoredInline<Iter>() &&
+                       !IsStoredInline<Transformer>()) {
+    using StorageType = LargeIteratorTransformerStorage<Iter, Transformer>;
+    auto* storage = Allocate<StorageType>();
+    range->begin.large = storage + offsetof(StorageType, begin);
+    range->end.large = storage + offsetof(StorageType, end);
+    range->transformer.large = storage + offsetof(StorageType, transformer);
+  } else if constexpr (value_stash_required && IsStoredInline<Iter>() &&
+                       !IsStoredInline<Transformer>()) {
+    using StorageType = LargeTransformerValueStorage<Transformer, T>;
+    auto* storage = Allocate<StorageType>();
+    range->transformer.large = storage + offsetof(StorageType, transformer);
+    range->value_stash.large = storage + offsetof(StorageType, value);
+  } else if constexpr (value_stash_required && !IsStoredInline<Iter>() &&
+                       IsStoredInline<Transformer>()) {
+    using StorageType = LargeIteratorValueStorage<Transformer, T>;
+    auto* storage = Allocate<StorageType>();
+    range->begin.large = storage + offsetof(StorageType, begin);
+    range->end.large = storage + offsetof(StorageType, end);
+    range->value_stash.large = storage + offsetof(StorageType, value);
+  } else if constexpr (value_stash_required && IsStoredInline<Iter>() &&
+                       IsStoredInline<Transformer>()) {
     using StorageType = LargeValueStorage<T>;
     auto* storage = Allocate<StorageType>();
     range->value_stash.large = storage + offsetof(StorageType, value);
   } else {
-    using StorageType = LargeStorage<T, Iter>;
+    static_assert(value_stash_required);
+    static_assert(!IsStoredInline<Iter>());
+    static_assert(!IsStoredInline<Transformer>());
+    using StorageType = LargeStorage<T, Iter, Transformer>;
     auto* storage = Allocate<StorageType>();
     range->begin.large = storage + offsetof(StorageType, begin);
     range->end.large = storage + offsetof(StorageType, end);
+    range->transformer.large = storage + offsetof(StorageType, transformer);
     range->value_stash.large = storage + offsetof(StorageType, value);
   }
 }
 
-template <typename T, typename Iter>
+template <typename T, typename Iter, typename Transformer>
 void DestroyRangeStorage(RangeStorage* range) {
-  if constexpr ((!IsValueStashRequired<T, Iter>() || IsStoredInline<T>()) &&
-                IsStoredInline<Iter>()) {
+  constexpr bool value_stash_required =
+      IsValueStashRequired<T, Iter, Transformer>() && !IsStoredInline<T>();
+  if constexpr (!value_stash_required && IsStoredInline<Iter>() &&
+                IsStoredInline<Transformer>()) {
     // Nothing.
-  } else if constexpr (!IsValueStashRequired<T, Iter>() ||
-                       IsStoredInline<T>()) {
+  } else if constexpr (!value_stash_required && !IsStoredInline<Iter>() &&
+                       IsStoredInline<Transformer>()) {
     using StorageType = LargeIteratorStorage<Iter>;
     auto* storage =
         static_cast<char*>(range->begin.large) - offsetof(StorageType, begin);
     Deallocate<StorageType>(storage);
-  } else if constexpr (IsStoredInline<Iter>()) {
+  } else if constexpr (!value_stash_required && IsStoredInline<Iter>() &&
+                       !IsStoredInline<Transformer>()) {
+    using StorageType = LargeTransformerStorage<Transformer>;
+    auto* storage = static_cast<char*>(range->transformer.large) -
+                    offsetof(StorageType, transformer);
+    Deallocate<StorageType>(storage);
+  } else if constexpr (!value_stash_required && !IsStoredInline<Iter>() &&
+                       !IsStoredInline<Transformer>()) {
+    using StorageType = LargeIteratorTransformerStorage<Iter, Transformer>;
+    auto* storage =
+        static_cast<char*>(range->begin.large) - offsetof(StorageType, begin);
+    Deallocate<StorageType>(storage);
+  } else if constexpr (value_stash_required && IsStoredInline<Iter>() &&
+                       !IsStoredInline<Transformer>()) {
+    using StorageType = LargeTransformerValueStorage<Transformer, T>;
+    auto* storage = static_cast<char*>(range->transformer.large) -
+                    offsetof(StorageType, transformer);
+    Deallocate<StorageType>(storage);
+  } else if constexpr (value_stash_required && !IsStoredInline<Iter>() &&
+                       IsStoredInline<Transformer>()) {
+    using StorageType = LargeIteratorValueStorage<Transformer, T>;
+    auto* storage =
+        static_cast<char*>(range->begin.large) - offsetof(StorageType, begin);
+    Deallocate<StorageType>(storage);
+  } else if constexpr (value_stash_required && IsStoredInline<Iter>() &&
+                       IsStoredInline<Transformer>()) {
     using StorageType = LargeValueStorage<T>;
     auto* storage = static_cast<char*>(range->value_stash.large) -
                     offsetof(StorageType, value);
     Deallocate<StorageType>(storage);
   } else {
-    using StorageType = LargeStorage<T, Iter>;
+    static_assert(value_stash_required);
+    static_assert(!IsStoredInline<Iter>());
+    static_assert(!IsStoredInline<Transformer>());
+    using StorageType = LargeStorage<T, Iter, Transformer>;
     auto* storage =
         static_cast<char*>(range->begin.large) - offsetof(StorageType, begin);
     Deallocate<StorageType>(storage);
@@ -183,6 +279,7 @@ union OperationInput {
     RangeStorage* storage;
     void* begin;
     void* end;
+    void* transformer;
   } create;
   RangeStorage* advance_one;
   struct {
@@ -200,75 +297,85 @@ union OperationOutput {
   const void* value;
 };
 
-using RangeManagerFn = OperationOutput (*)(Operation, OperationInput);
+using RangeManagerFn = OperationOutput (*)(Operation, const OperationInput&);
 
-template <typename T, typename Iter>
+template <typename T, typename Iter, typename Transformer>
 void RangeManagerDestroy(RangeStorage* range) {
-  if constexpr (IsValueStashRequired<T, Iter>()) {
+  if constexpr (IsValueStashRequired<T, Iter, Transformer>()) {
     StorageCast<T>(range->value_stash)->~T();
   }
+  StorageCast<Transformer>(range->transformer)->~Transformer();
   StorageCast<Iter>(range->end)->~Iter();
   StorageCast<Iter>(range->begin)->~Iter();
-  DestroyRangeStorage<T, Iter>(range);
+  DestroyRangeStorage<T, Iter, Transformer>(range);
 }
 
-template <typename T, typename Iter>
+template <typename T, typename Iter, typename Transformer>
 const void* RangeManagerAdvanceOne(RangeStorage* range) {
   auto* begin = StorageCast<Iter>(range->begin);
   auto* end = StorageCast<Iter>(range->end);
   if (++(*begin) == *end) {
-    RangeManagerDestroy<T, Iter>(range);
+    RangeManagerDestroy<T, Iter, Transformer>(range);
     return nullptr;
   } else {
-    if constexpr (IsValueStashRequired<T, Iter>()) {
+    auto* transformer = StorageCast<Transformer>(range->transformer);
+    if constexpr (IsValueStashRequired<T, Iter, Transformer>()) {
       auto* value_stash = StorageCast<T>(range->value_stash);
       value_stash->~T();
-      ::new (static_cast<void*>(value_stash)) T(**begin);
+      ::new (static_cast<void*>(value_stash)) T((*transformer)(**begin));
       return value_stash;
     } else {
-      return static_cast<const T*>(std::addressof(**begin));
+      return static_cast<const T*>(std::addressof((*transformer)(**begin)));
     }
   }
 }
 
-template <typename T, typename Iter>
-const void* RangeManagerCreate(RangeStorage* range, Iter begin, Iter end) {
-  CreateRangeStorage<T, Iter>(range);
+template <typename T, typename Iter, typename Transformer>
+const void* RangeManagerCreate(RangeStorage* range, Iter begin, Iter end,
+                               Transformer transformer) {
+  CreateRangeStorage<T, Iter, Transformer>(range);
   ::new (static_cast<void*>(StorageCast<Iter>(range->begin)))
       Iter(std::move(begin));
   ::new (static_cast<void*>(StorageCast<Iter>(range->end)))
       Iter(std::move(end));
-  if constexpr (IsValueStashRequired<T, Iter>()) {
+  auto* transformer_ptr =
+      ::new (static_cast<void*>(StorageCast<Transformer>(range->transformer)))
+          Transformer(std::move(transformer));
+  if constexpr (IsValueStashRequired<T, Iter, Transformer>()) {
     auto* value_stash = StorageCast<T>(range->value_stash);
     ::new (static_cast<void*>(value_stash))
-        T(**StorageCast<Iter>(range->begin));
+        T((*transformer_ptr)(**StorageCast<Iter>(range->begin)));
     return value_stash;
   } else {
     return static_cast<const T*>(
-        std::addressof(**StorageCast<Iter>(range->begin)));
+        std::addressof((*transformer_ptr)(**StorageCast<Iter>(range->begin))));
   }
 }
 
-template <typename T, typename Iter>
+template <typename T, typename Iter, typename Transformer>
 const void* RangeManagerCopy(const RangeStorage* src, RangeStorage* dest) {
-  CreateRangeStorage<T, Iter>(dest);
+  CreateRangeStorage<T, Iter, Transformer>(dest);
   ::new (static_cast<void*>(StorageCast<Iter>(dest->begin)))
       Iter(*StorageCast<Iter>(src->begin));
   ::new (static_cast<void*>(StorageCast<Iter>(dest->end)))
       Iter(*StorageCast<Iter>(src->end));
-  if constexpr (IsValueStashRequired<T, Iter>()) {
+  auto* transformer_ptr =
+      ::new (static_cast<void*>(StorageCast<Transformer>(dest->transformer)))
+          Transformer(*StorageCast<Transformer>(src->transformer));
+  if constexpr (IsValueStashRequired<T, Iter, Transformer>()) {
     auto* value_stash = StorageCast<T>(dest->value_stash);
-    ::new (static_cast<void*>(value_stash)) T(**StorageCast<Iter>(dest->begin));
+    ::new (static_cast<void*>(value_stash))
+        T((*transformer_ptr)(**StorageCast<Iter>(dest->begin)));
     return value_stash;
   } else {
     return static_cast<const T*>(
-        std::addressof(**StorageCast<Iter>(dest->begin)));
+        std::addressof((*transformer_ptr)(**StorageCast<Iter>(dest->begin))));
   }
 }
 
-template <typename T, typename Iter>
+template <typename T, typename Iter, typename Transformer>
 const void* RangeManagerMove(RangeStorage* src, RangeStorage* dest) {
-  if constexpr (IsValueStashRequired<T, Iter>()) {
+  if constexpr (IsValueStashRequired<T, Iter, Transformer>()) {
     if constexpr (IsStoredInline<T>()) {
       ::new (static_cast<void*>(&dest->value_stash.small[0]))
           T(std::move(*StorageCast<T>(src->value_stash)));
@@ -276,6 +383,13 @@ const void* RangeManagerMove(RangeStorage* src, RangeStorage* dest) {
     } else {
       dest->value_stash.large = src->value_stash.large;
     }
+  }
+  if constexpr (IsStoredInline<Transformer>()) {
+    ::new (static_cast<void*>(&dest->transformer.small[0]))
+        Transformer(std::move(*StorageCast<Transformer>(src->transformer)));
+    StorageCast<Transformer>(src->transformer)->~Transformer();
+  } else {
+    dest->transformer.large = src->transformer.large;
   }
   if constexpr (IsStoredInline<Iter>()) {
     ::new (static_cast<void*>(&dest->begin.small[0]))
@@ -288,7 +402,7 @@ const void* RangeManagerMove(RangeStorage* src, RangeStorage* dest) {
     dest->begin.large = src->begin.large;
     dest->end.large = src->end.large;
   }
-  if constexpr (IsValueStashRequired<T, Iter>()) {
+  if constexpr (IsValueStashRequired<T, Iter, Transformer>()) {
     return StorageCast<T>(dest->value_stash);
   } else {
     return static_cast<const T*>(
@@ -296,28 +410,32 @@ const void* RangeManagerMove(RangeStorage* src, RangeStorage* dest) {
   }
 }
 
-template <typename T, typename Iter>
-OperationOutput RangeManager(Operation op, OperationInput input) {
+template <typename T, typename Iter, typename Transformer>
+OperationOutput RangeManager(Operation op, const OperationInput& input) {
   OperationOutput output;
   switch (op) {
     case Operation::kCreate: {
-      output.value = RangeManagerCreate<T, Iter>(
+      output.value = RangeManagerCreate<T, Iter, Transformer>(
           input.create.storage,
           std::move(*static_cast<Iter*>(input.create.begin)),
-          std::move(*static_cast<Iter*>(input.create.end)));
+          std::move(*static_cast<Iter*>(input.create.end)),
+          std::move(*static_cast<Transformer*>(input.create.transformer)));
     } break;
     case Operation::kAdvanceOne: {
-      output.value = RangeManagerAdvanceOne<T, Iter>(input.advance_one);
+      output.value =
+          RangeManagerAdvanceOne<T, Iter, Transformer>(input.advance_one);
     } break;
     case Operation::kDestroy: {
-      RangeManagerDestroy<T, Iter>(input.destroy);
+      RangeManagerDestroy<T, Iter, Transformer>(input.destroy);
       output.value = nullptr;
     } break;
     case Operation::kCopy: {
-      output.value = RangeManagerCopy<T, Iter>(input.copy.src, input.copy.dest);
+      output.value = RangeManagerCopy<T, Iter, Transformer>(input.copy.src,
+                                                            input.copy.dest);
     } break;
     case Operation::kMove: {
-      output.value = RangeManagerMove<T, Iter>(input.move.src, input.move.dest);
+      output.value = RangeManagerMove<T, Iter, Transformer>(input.move.src,
+                                                            input.move.dest);
     } break;
   }
   return output;
@@ -334,15 +452,17 @@ class Iterator final {
 
   Iterator() = default;
 
-  template <typename Iter>
-  Iterator(Iter first, Iter last) {
+  template <typename Iter, typename Transformer>
+  Iterator(Iter first, Iter last, Transformer transformer) {
     if (first != last) {
-      manager_ = &RangeManager<T, Iter>;
+      manager_ = &RangeManager<T, Iter, Transformer>;
       value_ = static_cast<pointer>(
           ((*manager_)(Operation::kCreate,
                        OperationInput{.create = {.storage = &range_,
                                                  .begin = std::addressof(first),
-                                                 .end = std::addressof(last)}}))
+                                                 .end = std::addressof(last),
+                                                 .transformer = std::addressof(
+                                                     transformer)}}))
               .value);
     }
   }
@@ -479,17 +599,48 @@ class SizedInputView final {
             typename IterType = sized_input_view_internal::ConstIterator<C>,
             typename SizeType = sized_input_view_internal::SizeType<C>,
             typename = std::enable_if_t<
-                (sized_input_view_internal::CanIterateAsType<T, IterType>() &&
+                (sized_input_view_internal::CanIterateAsType<
+                     sized_input_view_internal::ForwardingTransformer, T,
+                     IterType>() &&
                  std::is_convertible_v<SizeType, size_type> &&
                  !std::is_same_v<SizedInputView<T>, C>)>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   SizedInputView(const C& c ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : begin_(std::begin(c), std::end(c)), size_(std::size(c)) {}
+      : SizedInputView(c, sized_input_view_internal::ForwardingTransformer{}) {}
+
+  template <
+      typename C, typename Transformer,
+      typename IterType = sized_input_view_internal::ConstIterator<C>,
+      typename SizeType = sized_input_view_internal::SizeType<C>,
+      typename = std::enable_if_t<(sized_input_view_internal::CanIterateAsType<
+                                       Transformer, T, IterType>() &&
+                                   std::is_convertible_v<SizeType, size_type> &&
+                                   !std::is_same_v<SizedInputView<T>, C>)>>
+  SizedInputView(const C& c ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                 Transformer&& transformer)
+      : begin_(std::begin(c), std::end(c),
+               std::forward<Transformer>(transformer)),
+        size_(std::size(c)) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
+  template <
+      typename U,
+      typename = std::enable_if_t<sized_input_view_internal::CanIterateAsType<
+          sized_input_view_internal::ForwardingTransformer, T,
+          typename std::initializer_list<U>::const_iterator>()>>
   SizedInputView(
-      const std::initializer_list<T>& c ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : begin_(c.begin(), c.end()), size_(c.size()) {}
+      const std::initializer_list<U>& c ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : SizedInputView(c, sized_input_view_internal::ForwardingTransformer{}) {}
+
+  template <
+      typename U, typename Transformer,
+      typename = std::enable_if_t<sized_input_view_internal::CanIterateAsType<
+          Transformer, T, typename std::initializer_list<U>::const_iterator>()>>
+  SizedInputView(const std::initializer_list<U>& c
+                     ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                 Transformer&& transformer)
+      : begin_(c.begin(), c.end(), std::forward<Transformer>(transformer)),
+        size_(c.size()) {}
 
   const iterator& begin() const ABSL_ATTRIBUTE_LIFETIME_BOUND { return begin_; }
 
