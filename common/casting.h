@@ -122,8 +122,8 @@ struct SubsumptionCastTraits<
 template <typename To, typename From, typename Base>
 using EnableIfSubsumptionCastable = std::enable_if_t<std::conjunction_v<
     std::is_polymorphic<To>, std::is_polymorphic<absl::remove_cvref_t<From>>,
-    std::disjunction<std::is_base_of<Base, absl::remove_cvref_t<From>>,
-                     std::is_base_of<absl::remove_cvref_t<From>, To>>>>;
+    std::is_base_of<Base, absl::remove_cvref_t<From>>,
+    std::is_base_of<absl::remove_cvref_t<From>, To>>>;
 
 // `CompositionCastTraits` is an implementation of `CastTraits` for classes with
 // composition relationships. When upcasting (`From` is implicitly convertible

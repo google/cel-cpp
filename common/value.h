@@ -53,6 +53,8 @@
 #include "common/values/list_value.h"  // IWYU pragma: export
 #include "common/values/map_value.h"  // IWYU pragma: export
 #include "common/values/null_value.h"  // IWYU pragma: export
+#include "common/values/opaque_value.h"  // IWYU pragma: export
+#include "common/values/optional_value.h"  // IWYU pragma: export
 #include "common/values/string_value.h"  // IWYU pragma: export
 #include "common/values/timestamp_value.h"  // IWYU pragma: export
 #include "common/values/type_value.h"  // IWYU pragma: export
@@ -391,6 +393,8 @@ class ValueView final {
   ValueView(const Value& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
       : variant_((value.AssertIsValid(), value.ToViewVariant())) {}
 
+  ValueView(Value&&) = delete;
+
   template <typename T, typename = std::enable_if_t<
                             common_internal::IsValueAlternativeV<T>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
@@ -399,12 +403,15 @@ class ValueView final {
                      common_internal::BaseValueViewAlternativeForT<T>>,
                  alternative) {}
 
-  template <
-      typename T,
-      typename = std::enable_if_t<
-          common_internal::IsValueViewAlternativeV<absl::remove_cvref_t<T>>>>
+  template <typename T,
+            typename = std::enable_if_t<
+                common_internal::IsValueAlternativeV<absl::remove_cvref_t<T>>>>
+  ValueView(T&&) = delete;
+
+  template <typename T, typename = std::enable_if_t<
+                            common_internal::IsValueViewAlternativeV<T>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ValueView(T&& alternative) noexcept
+  ValueView(T alternative) noexcept
       : variant_(
             absl::in_place_type<common_internal::BaseValueViewAlternativeForT<
                 absl::remove_cvref_t<T>>>,
@@ -1047,6 +1054,14 @@ ListValue ListValueBuilder<T>::Build() && {
   return ListValue(
       memory_manager_.template MakeShared<common_internal::TypedListValue<T>>(
           std::move(type_), std::move(elements_)));
+}
+
+inline ValueView OptionalValue::Value(cel::Value& scratch) const {
+  return (*this)->Value(scratch);
+}
+
+inline ValueView OptionalValueView::Value(cel::Value& scratch) const {
+  return (*this)->Value(scratch);
 }
 
 inline MapValue::MapValue()

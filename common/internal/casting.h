@@ -36,11 +36,13 @@ namespace common_internal {
 
 template <typename To, typename From>
 using propagate_const_t =
-    std::conditional_t<std::is_const_v<From>, std::add_const_t<To>, To>;
+    std::conditional_t<std::is_const_v<std::remove_reference_t<From>>,
+                       std::add_const_t<To>, To>;
 
 template <typename To, typename From>
 using propagate_volatile_t =
-    std::conditional_t<std::is_volatile_v<From>, std::add_volatile_t<To>, To>;
+    std::conditional_t<std::is_volatile_v<std::remove_reference_t<From>>,
+                       std::add_volatile_t<To>, To>;
 
 template <typename To, typename From>
 using propagate_reference_t =

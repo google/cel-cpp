@@ -334,16 +334,16 @@ TEST_P(MapValueTest, Get) {
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)});
-  ASSERT_OK_AND_ASSIGN(auto value, map_value.Get(IntValue(0), scratch));
+  ASSERT_OK_AND_ASSIGN(auto value, map_value.Get(IntValueView(0), scratch));
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 3.0);
-  ASSERT_OK_AND_ASSIGN(value, map_value.Get(IntValue(1), scratch));
+  ASSERT_OK_AND_ASSIGN(value, map_value.Get(IntValueView(1), scratch));
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 4.0);
-  ASSERT_OK_AND_ASSIGN(value, map_value.Get(IntValue(2), scratch));
+  ASSERT_OK_AND_ASSIGN(value, map_value.Get(IntValueView(2), scratch));
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 5.0);
-  EXPECT_THAT(map_value.Get(IntValue(3), scratch),
+  EXPECT_THAT(map_value.Get(IntValueView(3), scratch),
               StatusIs(absl::StatusCode::kNotFound));
 }
 
@@ -356,22 +356,22 @@ TEST_P(MapValueTest, Find) {
   ValueView value;
   bool ok;
   ASSERT_OK_AND_ASSIGN(std::tie(value, ok),
-                       map_value.Find(IntValue(0), scratch));
+                       map_value.Find(IntValueView(0), scratch));
   ASSERT_TRUE(ok);
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 3.0);
   ASSERT_OK_AND_ASSIGN(std::tie(value, ok),
-                       map_value.Find(IntValue(1), scratch));
+                       map_value.Find(IntValueView(1), scratch));
   ASSERT_TRUE(ok);
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 4.0);
   ASSERT_OK_AND_ASSIGN(std::tie(value, ok),
-                       map_value.Find(IntValue(2), scratch));
+                       map_value.Find(IntValueView(2), scratch));
   ASSERT_TRUE(ok);
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 5.0);
   ASSERT_OK_AND_ASSIGN(std::tie(value, ok),
-                       map_value.Find(IntValue(3), scratch));
+                       map_value.Find(IntValueView(3), scratch));
   ASSERT_FALSE(ok);
 }
 
@@ -380,16 +380,16 @@ TEST_P(MapValueTest, Has) {
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)});
-  ASSERT_OK_AND_ASSIGN(auto value, map_value.Has(IntValue(0)));
+  ASSERT_OK_AND_ASSIGN(auto value, map_value.Has(IntValueView(0)));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
   ASSERT_TRUE(Cast<BoolValueView>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, map_value.Has(IntValue(1)));
+  ASSERT_OK_AND_ASSIGN(value, map_value.Has(IntValueView(1)));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
   ASSERT_TRUE(Cast<BoolValueView>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, map_value.Has(IntValue(2)));
+  ASSERT_OK_AND_ASSIGN(value, map_value.Has(IntValueView(2)));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
   ASSERT_TRUE(Cast<BoolValueView>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, map_value.Has(IntValue(3)));
+  ASSERT_OK_AND_ASSIGN(value, map_value.Has(IntValueView(3)));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
   ASSERT_FALSE(Cast<BoolValueView>(value).NativeValue());
 }
@@ -576,18 +576,18 @@ TEST_P(MapValueViewTest, Get) {
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)});
   ASSERT_OK_AND_ASSIGN(auto value,
-                       MapValueView(map_value).Get(IntValue(0), scratch));
+                       MapValueView(map_value).Get(IntValueView(0), scratch));
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 3.0);
   ASSERT_OK_AND_ASSIGN(value,
-                       MapValueView(map_value).Get(IntValue(1), scratch));
+                       MapValueView(map_value).Get(IntValueView(1), scratch));
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 4.0);
   ASSERT_OK_AND_ASSIGN(value,
-                       MapValueView(map_value).Get(IntValue(2), scratch));
+                       MapValueView(map_value).Get(IntValueView(2), scratch));
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 5.0);
-  EXPECT_THAT(MapValueView(map_value).Get(IntValue(3), scratch),
+  EXPECT_THAT(MapValueView(map_value).Get(IntValueView(3), scratch),
               StatusIs(absl::StatusCode::kNotFound));
 }
 
@@ -600,22 +600,22 @@ TEST_P(MapValueViewTest, Find) {
   ValueView value;
   bool ok;
   ASSERT_OK_AND_ASSIGN(std::tie(value, ok),
-                       MapValueView(map_value).Find(IntValue(0), scratch));
+                       MapValueView(map_value).Find(IntValueView(0), scratch));
   ASSERT_TRUE(ok);
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 3.0);
   ASSERT_OK_AND_ASSIGN(std::tie(value, ok),
-                       MapValueView(map_value).Find(IntValue(1), scratch));
+                       MapValueView(map_value).Find(IntValueView(1), scratch));
   ASSERT_TRUE(ok);
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 4.0);
   ASSERT_OK_AND_ASSIGN(std::tie(value, ok),
-                       MapValueView(map_value).Find(IntValue(2), scratch));
+                       MapValueView(map_value).Find(IntValueView(2), scratch));
   ASSERT_TRUE(ok);
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 5.0);
   ASSERT_OK_AND_ASSIGN(std::tie(value, ok),
-                       MapValueView(map_value).Find(IntValue(3), scratch));
+                       MapValueView(map_value).Find(IntValueView(3), scratch));
   ASSERT_FALSE(ok);
 }
 
@@ -624,16 +624,17 @@ TEST_P(MapValueViewTest, Has) {
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)});
-  ASSERT_OK_AND_ASSIGN(auto value, MapValueView(map_value).Has(IntValue(0)));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       MapValueView(map_value).Has(IntValueView(0)));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
   ASSERT_TRUE(Cast<BoolValueView>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, MapValueView(map_value).Has(IntValue(1)));
+  ASSERT_OK_AND_ASSIGN(value, MapValueView(map_value).Has(IntValueView(1)));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
   ASSERT_TRUE(Cast<BoolValueView>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, MapValueView(map_value).Has(IntValue(2)));
+  ASSERT_OK_AND_ASSIGN(value, MapValueView(map_value).Has(IntValueView(2)));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
   ASSERT_TRUE(Cast<BoolValueView>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, MapValueView(map_value).Has(IntValue(3)));
+  ASSERT_OK_AND_ASSIGN(value, MapValueView(map_value).Has(IntValueView(3)));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
   ASSERT_FALSE(Cast<BoolValueView>(value).NativeValue());
 }

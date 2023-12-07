@@ -280,6 +280,7 @@ cc_library(
         "//internal:strings",
         "//internal:time",
         "@com_google_absl//absl/algorithm:container",
+        "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:fixed_array",

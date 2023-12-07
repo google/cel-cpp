@@ -250,6 +250,10 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedView final {
   SharedView(const Shared<U>& other ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
       : value_(other.value_), refcount_(other.refcount_) {}
 
+  template <typename U,
+            typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
+  SharedView(Shared<U>&&) = delete;
+
   template <
       typename U,
       typename = std::enable_if_t<std::conjunction_v<
