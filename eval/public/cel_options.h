@@ -148,9 +148,11 @@ struct InterpreterOptions {
   // This assumes that the type information at check time agrees with the
   // configured types at runtime.
   //
-  // Important: The select optimization ignores
-  // `enable_empty_wrapper_null_unboxing` and always operates as though it is
-  // `true`.
+  // Important: The select optimization follows spec behavior for traversals.
+  //  - `enable_empty_wrapper_null_unboxing` is ignored and optimized traversals
+  //    always operates as though it is `true`.
+  //  - `enable_heterogeneous_equality` is ignored and optimized traversals
+  //    always operate as though it is `true`.
   //
   // Note: implementation in progress -- please consult the CEL team before
   // enabling in an existing environment.

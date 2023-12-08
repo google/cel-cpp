@@ -777,7 +777,109 @@ TEST(ProtoMesssageTypeAdapter, Qualify) {
       IsOkAndHolds(Field(&LegacyQualifyResult::value, test::IsCelInt64(42))));
 }
 
-TEST(ProtoMesssageTypeAdapter, QualifyMapsTraversalPartialSupport) {
+TEST(ProtoMesssageTypeAdapter, QualifyDynamicFieldAccessUnsupported) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  message.mutable_message_value()->set_int64_value(42);
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{12, "message_value"},
+      cel::AttributeQualifier::OfString("int64_value")};
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/false, manager),
+              StatusIs(absl::StatusCode::kUnimplemented));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyNoSuchField) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  message.mutable_message_value()->set_int64_value(42);
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{12, "message_value"},
+      cel::FieldSpecifier{99, "not_a_field"},
+      cel::FieldSpecifier{2, "int64_value"}};
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/false, manager),
+              IsOkAndHolds(Field(
+                  &LegacyQualifyResult::value,
+                  test::IsCelError(StatusIs(absl::StatusCode::kNotFound,
+                                            HasSubstr("no_such_field"))))));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyHasNoSuchField) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  message.mutable_message_value()->set_int64_value(42);
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{12, "message_value"},
+      cel::FieldSpecifier{99, "not_a_field"}};
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/true, manager),
+              IsOkAndHolds(Field(
+                  &LegacyQualifyResult::value,
+                  test::IsCelError(StatusIs(absl::StatusCode::kNotFound,
+                                            HasSubstr("no_such_field"))))));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyNoSuchFieldLeaf) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  message.mutable_message_value()->set_int64_value(42);
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{12, "message_value"},
+      cel::FieldSpecifier{99, "not_a_field"}};
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/false, manager),
+              IsOkAndHolds(Field(
+                  &LegacyQualifyResult::value,
+                  test::IsCelError(StatusIs(absl::StatusCode::kNotFound,
+                                            HasSubstr("no_such_field"))))));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyMapTraversalSupport) {
   google::protobuf::Arena arena;
   ProtoMessageTypeAdapter adapter(
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
@@ -800,11 +902,247 @@ TEST(ProtoMesssageTypeAdapter, QualifyMapsTraversalPartialSupport) {
   EXPECT_THAT(
       api->Qualify(qualfiers, wrapped,
                    /*presence_test=*/false, manager),
-      IsOkAndHolds(
-          AllOf(Field(&LegacyQualifyResult::value, Truly([](const CelValue& v) {
-                  return v.IsMap() && v.MapOrDie()->size() == 1;
-                })),
-                Field(&LegacyQualifyResult::qualifier_count, Eq(1)))));
+      IsOkAndHolds(Field(&LegacyQualifyResult::value, test::IsCelInt64(42))));
+}
+
+TEST(ProtoMesssageTypeAdapter, TypedFieldAccessOnMapUnsupported) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  (*message.mutable_string_message_map())["@key"].set_int64_value(42);
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{210, "string_message_map"},
+      // This is probably a bug, but defer to evaluator for consistent handling.
+      cel::FieldSpecifier{2, "value"}, cel::FieldSpecifier{2, "int64_value"}};
+
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/false, manager),
+              StatusIs(absl::StatusCode::kUnimplemented));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyMapTraversalWrongKeyType) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  (*message.mutable_string_message_map())["@key"].set_int64_value(42);
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{210, "string_message_map"},
+      cel::AttributeQualifier::OfInt(0), cel::FieldSpecifier{2, "int64_value"}};
+
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/false, manager),
+              IsOkAndHolds(Field(&LegacyQualifyResult::value,
+                                 test::IsCelError(StatusIs(
+                                     absl::StatusCode::kInvalidArgument,
+                                     HasSubstr("Invalid map key type"))))));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyMapTraversalHasWrongKeyType) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  (*message.mutable_string_message_map())["@key"].set_int64_value(42);
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{210, "string_message_map"},
+      cel::AttributeQualifier::OfInt(0)};
+
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/true, manager),
+              IsOkAndHolds(Field(&LegacyQualifyResult::value,
+                                 test::IsCelError(StatusIs(
+                                     absl::StatusCode::kUnknown,
+                                     HasSubstr("No matching overloads"))))));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyMapTraversalSupportNoSuchKey) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  (*message.mutable_string_message_map())["@key"].set_int64_value(42);
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{210, "string_message_map"},
+      cel::AttributeQualifier::OfString("bad_key"),
+      cel::FieldSpecifier{2, "int64_value"}};
+
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/false, manager),
+              IsOkAndHolds(Field(
+                  &LegacyQualifyResult::value,
+                  test::IsCelError(StatusIs(absl::StatusCode::kNotFound,
+                                            HasSubstr("Key not found"))))));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyMapTraversalInt32Key) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  (*message.mutable_int32_int32_map())[0] = 42;
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{205, "int32_int32_map"},
+      cel::AttributeQualifier::OfInt(0)};
+
+  EXPECT_THAT(
+      api->Qualify(qualfiers, wrapped,
+                   /*presence_test=*/false, manager),
+      IsOkAndHolds(Field(&LegacyQualifyResult::value, test::IsCelInt64(42))));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyMapTraversalIntOutOfRange) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  (*message.mutable_int32_int32_map())[0] = 42;
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{205, "int32_int32_map"},
+      cel::AttributeQualifier::OfInt(1LL << 32)};
+
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/false, manager),
+              IsOkAndHolds(Field(
+                  &LegacyQualifyResult::value,
+                  test::IsCelError(StatusIs(absl::StatusCode::kOutOfRange,
+                                            HasSubstr("integer overflow"))))));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyMapTraversalUint32Key) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  (*message.mutable_uint32_uint32_map())[0] = 42;
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{206, "uint32_uint32_map"},
+      cel::AttributeQualifier::OfUint(0)};
+
+  EXPECT_THAT(
+      api->Qualify(qualfiers, wrapped,
+                   /*presence_test=*/false, manager),
+      IsOkAndHolds(Field(&LegacyQualifyResult::value, test::IsCelUint64(42))));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyMapTraversalUintOutOfRange) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  (*message.mutable_uint32_uint32_map())[0] = 42;
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{206, "uint32_uint32_map"},
+      cel::AttributeQualifier::OfUint(1LL << 32)};
+
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/false, manager),
+              IsOkAndHolds(Field(
+                  &LegacyQualifyResult::value,
+                  test::IsCelError(StatusIs(absl::StatusCode::kOutOfRange,
+                                            HasSubstr("integer overflow"))))));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyMapTraversalUnexpectedFieldAccess) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  (*message.mutable_string_message_map())["@key"].set_int64_value(42);
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{210, "string_message_map"},
+      // For coverage check that qualify gives up if there's a strong field
+      // access requested for a map.
+      cel::FieldSpecifier{0, "field_like_key"}};
+
+  auto result = api->Qualify(qualfiers, wrapped,
+                             /*presence_test=*/false, manager);
+
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/false, manager),
+              StatusIs(absl::StatusCode::kUnimplemented, _));
 }
 
 TEST(ProtoMesssageTypeAdapter, UntypedQualifiersNotYetSupported) {
@@ -830,6 +1168,67 @@ TEST(ProtoMesssageTypeAdapter, UntypedQualifiersNotYetSupported) {
   EXPECT_THAT(api->Qualify(qualfiers, wrapped,
                            /*presence_test=*/false, manager),
               StatusIs(absl::StatusCode::kUnimplemented, _));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyRepeatedIndexWrongType) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  message.add_message_list()->add_int64_list(1);
+  message.add_message_list()->add_int64_list(2);
+
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{112, "message_list"},
+      cel::AttributeQualifier::OfBool(false),
+      cel::FieldSpecifier{102, "int64_list"},
+      cel::AttributeQualifier::OfInt(0)};
+
+  EXPECT_THAT(
+      api->Qualify(qualfiers, wrapped,
+                   /*presence_test=*/false, manager),
+      IsOkAndHolds(Field(&LegacyQualifyResult::value,
+                         test::IsCelError(StatusIs(
+                             absl::StatusCode::kUnknown,
+                             HasSubstr("No matching overloads found"))))));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyRepeatedTypeCheckError) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  message.add_int64_list(1);
+  message.add_int64_list(2);
+
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{102, "int64_list"}, cel::AttributeQualifier::OfInt(0),
+      // index on an int.
+      cel::AttributeQualifier::OfInt(1)};
+
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/false, manager),
+
+              StatusIs(absl::StatusCode::kInternal,
+                       HasSubstr("Unexpected qualify intermediate type")));
 }
 
 TEST(ProtoMesssageTypeAdapter, QualifyRepeatedLeaf) {
@@ -860,6 +1259,155 @@ TEST(ProtoMesssageTypeAdapter, QualifyRepeatedLeaf) {
       IsOkAndHolds(Field(&LegacyQualifyResult::value,
                          test::IsCelList(ElementsAre(test::IsCelInt64(1),
                                                      test::IsCelInt64(2))))));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyRepeatedIndexLeaf) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  auto* nested = message.mutable_message_value();
+  nested->add_int64_list(1);
+  nested->add_int64_list(2);
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{12, "message_value"},
+      cel::FieldSpecifier{102, "int64_list"},
+      cel::AttributeQualifier::OfInt(1)};
+
+  EXPECT_THAT(
+      api->Qualify(qualfiers, wrapped,
+                   /*presence_test=*/false, manager),
+      IsOkAndHolds(Field(&LegacyQualifyResult::value, test::IsCelInt64(2))));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyRepeatedIndexLeafOutOfBounds) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  auto* nested = message.mutable_message_value();
+  nested->add_int64_list(1);
+  nested->add_int64_list(2);
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{12, "message_value"},
+      cel::FieldSpecifier{102, "int64_list"},
+      cel::AttributeQualifier::OfInt(2)};
+
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/false, manager),
+              IsOkAndHolds(Field(&LegacyQualifyResult::value,
+                                 test::IsCelError(StatusIs(
+                                     absl::StatusCode::kInvalidArgument,
+                                     HasSubstr("index out of bounds"))))));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyMapLeaf) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  auto* nested_map =
+      message.mutable_message_value()->mutable_string_int32_map();
+  (*nested_map)["@key"] = 42;
+  (*nested_map)["@key2"] = -42;
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{12, "message_value"},
+      cel::FieldSpecifier{203, "string_int32_map"},
+  };
+
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/false, manager),
+              IsOkAndHolds(Field(
+                  &LegacyQualifyResult::value, Truly([](const CelValue& v) {
+                    return v.IsMap() && v.MapOrDie()->size() == 2;
+                  }))));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyMapIndexLeaf) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  auto* nested_map =
+      message.mutable_message_value()->mutable_string_int32_map();
+  (*nested_map)["@key"] = 42;
+  (*nested_map)["@key2"] = -42;
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{12, "message_value"},
+      cel::FieldSpecifier{203, "string_int32_map"},
+      cel::AttributeQualifier::OfString("@key")};
+
+  EXPECT_THAT(
+      api->Qualify(qualfiers, wrapped,
+                   /*presence_test=*/false, manager),
+      IsOkAndHolds(Field(&LegacyQualifyResult::value, test::IsCelInt64(42))));
+}
+
+TEST(ProtoMesssageTypeAdapter, QualifyMapIndexLeafWrongType) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  auto manager = ProtoMemoryManagerRef(&arena);
+
+  TestMessage message;
+  auto* nested_map =
+      message.mutable_message_value()->mutable_string_int32_map();
+  (*nested_map)["@key"] = 42;
+  (*nested_map)["@key2"] = -42;
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  std::vector<cel::SelectQualifier> qualfiers{
+      cel::FieldSpecifier{12, "message_value"},
+      cel::FieldSpecifier{203, "string_int32_map"},
+      cel::AttributeQualifier::OfInt(0)};
+
+  EXPECT_THAT(api->Qualify(qualfiers, wrapped,
+                           /*presence_test=*/false, manager),
+              IsOkAndHolds(Field(&LegacyQualifyResult::value,
+                                 test::IsCelError(StatusIs(
+                                     absl::StatusCode::kInvalidArgument,
+                                     HasSubstr("Invalid map key type"))))));
 }
 
 }  // namespace

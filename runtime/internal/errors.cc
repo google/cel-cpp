@@ -46,6 +46,11 @@ absl::Status CreateMissingAttributeError(
   return result;
 }
 
+absl::Status CreateInvalidMapKeyTypeError(absl::string_view key_type) {
+  return absl::InvalidArgumentError(
+      absl::StrCat("Invalid map key type: '", key_type, "'"));
+}
+
 absl::Status CreateUnknownFunctionResultError(absl::string_view help_message) {
   absl::Status result = absl::UnavailableError(
       absl::StrCat("Unknown function result: ", help_message));

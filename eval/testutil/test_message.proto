@@ -43,6 +43,8 @@ message TestMessage {
 
   TestMessage message_value = 12;
 
+  reserved 99;
+
   repeated int32 int32_list = 101;
   repeated int64 int64_list = 102;
   repeated uint32 uint32_list = 103;

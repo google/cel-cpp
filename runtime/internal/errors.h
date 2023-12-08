@@ -50,6 +50,9 @@ absl::Status CreateNoSuchFieldError(absl::string_view field);
 // No such key for map access.
 using base_internal::CreateNoSuchKeyError;
 
+// Invalid key type used for map index.
+absl::Status CreateInvalidMapKeyTypeError(absl::string_view key_type);
+
 // A missing attribute was accessed. Attributes may be declared as missing to
 // they are not well defined at evaluation time.
 absl::Status CreateMissingAttributeError(
