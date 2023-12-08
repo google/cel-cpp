@@ -14,6 +14,9 @@
 
 #include "tools/navigable_ast.h"
 
+#include <utility>
+#include <vector>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "base/builtins.h"
 #include "internal/testing.h"
@@ -26,6 +29,7 @@ using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::parser::Parse;
 using testing::ElementsAre;
 using testing::IsEmpty;
+using testing::Pair;
 using testing::SizeIs;
 
 TEST(NavigableAst, Basic) {
@@ -225,11 +229,115 @@ TEST(NavigableAst, ParentRelationComprehension) {
   const auto* step = root.children()[3];
   const auto* finish = root.children()[4];
 
-  EXPECT_EQ(range->parent_relation(), ChildKind::kCompehensionRange);
-  EXPECT_EQ(init->parent_relation(), ChildKind::kCompehensionInit);
+  EXPECT_EQ(range->parent_relation(), ChildKind::kComprehensionRange);
+  EXPECT_EQ(init->parent_relation(), ChildKind::kComprehensionInit);
   EXPECT_EQ(condition->parent_relation(), ChildKind::kComprehensionCondition);
   EXPECT_EQ(step->parent_relation(), ChildKind::kComprehensionLoopStep);
   EXPECT_EQ(finish->parent_relation(), ChildKind::kComprensionResult);
+}
+
+TEST(NavigableAst, DescendantsPostorder) {
+  ASSERT_OK_AND_ASSIGN(auto parsed_expr, Parse("1 + (x * 3)"));
+
+  NavigableAst ast = NavigableAst::Build(parsed_expr.expr());
+  const AstNode& root = ast.Root();
+
+  EXPECT_EQ(root.node_kind(), NodeKind::kCall);
+
+  std::vector<int> constants;
+  std::vector<NodeKind> node_kinds;
+
+  for (const AstNode* node : root.DescendantsPostorder()) {
+    if (node->node_kind() == NodeKind::kConstant) {
+      constants.push_back(node->expr()->const_expr().int64_value());
+    }
+    node_kinds.push_back(node->node_kind());
+  }
+
+  EXPECT_THAT(node_kinds, ElementsAre(NodeKind::kConstant, NodeKind::kIdent,
+                                      NodeKind::kConstant, NodeKind::kCall,
+                                      NodeKind::kCall));
+  EXPECT_THAT(constants, ElementsAre(1, 3));
+}
+
+TEST(NavigableAst, DescendantsPreorder) {
+  ASSERT_OK_AND_ASSIGN(auto parsed_expr, Parse("1 + (x * 3)"));
+
+  NavigableAst ast = NavigableAst::Build(parsed_expr.expr());
+  const AstNode& root = ast.Root();
+
+  EXPECT_EQ(root.node_kind(), NodeKind::kCall);
+
+  std::vector<int> constants;
+  std::vector<NodeKind> node_kinds;
+
+  for (const AstNode* node : root.DescendantsPreorder()) {
+    if (node->node_kind() == NodeKind::kConstant) {
+      constants.push_back(node->expr()->const_expr().int64_value());
+    }
+    node_kinds.push_back(node->node_kind());
+  }
+
+  EXPECT_THAT(node_kinds,
+              ElementsAre(NodeKind::kCall, NodeKind::kConstant, NodeKind::kCall,
+                          NodeKind::kIdent, NodeKind::kConstant));
+  EXPECT_THAT(constants, ElementsAre(1, 3));
+}
+
+TEST(NavigableAst, DescendantsPreorderComprehension) {
+  ASSERT_OK_AND_ASSIGN(auto parsed_expr, Parse("[1, 2, 3].map(x, x + 1)"));
+
+  NavigableAst ast = NavigableAst::Build(parsed_expr.expr());
+  const AstNode& root = ast.Root();
+
+  EXPECT_EQ(root.node_kind(), NodeKind::kComprehension);
+
+  std::vector<std::pair<NodeKind, ChildKind>> node_kinds;
+
+  for (const AstNode* node : root.DescendantsPreorder()) {
+    node_kinds.push_back(
+        std::make_pair(node->node_kind(), node->parent_relation()));
+  }
+
+  EXPECT_THAT(
+      node_kinds,
+      ElementsAre(Pair(NodeKind::kComprehension, ChildKind::kUnspecified),
+                  Pair(NodeKind::kList, ChildKind::kComprehensionRange),
+                  Pair(NodeKind::kConstant, ChildKind::kListElem),
+                  Pair(NodeKind::kConstant, ChildKind::kListElem),
+                  Pair(NodeKind::kConstant, ChildKind::kListElem),
+                  Pair(NodeKind::kList, ChildKind::kComprehensionInit),
+                  Pair(NodeKind::kConstant, ChildKind::kComprehensionCondition),
+                  Pair(NodeKind::kCall, ChildKind::kComprehensionLoopStep),
+                  Pair(NodeKind::kIdent, ChildKind::kCallArg),
+                  Pair(NodeKind::kList, ChildKind::kCallArg),
+                  Pair(NodeKind::kCall, ChildKind::kListElem),
+                  Pair(NodeKind::kIdent, ChildKind::kCallArg),
+                  Pair(NodeKind::kConstant, ChildKind::kCallArg),
+                  Pair(NodeKind::kIdent, ChildKind::kComprensionResult)));
+}
+
+TEST(NavigableAst, DescendantsPreorderCreateMap) {
+  ASSERT_OK_AND_ASSIGN(auto parsed_expr, Parse("{'key1': 1, 'key2': 2}"));
+
+  NavigableAst ast = NavigableAst::Build(parsed_expr.expr());
+  const AstNode& root = ast.Root();
+
+  EXPECT_EQ(root.node_kind(), NodeKind::kMap);
+
+  std::vector<std::pair<NodeKind, ChildKind>> node_kinds;
+
+  for (const AstNode* node : root.DescendantsPreorder()) {
+    node_kinds.push_back(
+        std::make_pair(node->node_kind(), node->parent_relation()));
+  }
+
+  EXPECT_THAT(node_kinds,
+              ElementsAre(Pair(NodeKind::kMap, ChildKind::kUnspecified),
+                          Pair(NodeKind::kConstant, ChildKind::kMapKey),
+                          Pair(NodeKind::kConstant, ChildKind::kMapValue),
+                          Pair(NodeKind::kConstant, ChildKind::kMapKey),
+                          Pair(NodeKind::kConstant, ChildKind::kMapValue)));
 }
 
 }  // namespace
