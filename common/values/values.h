@@ -64,6 +64,8 @@ class UnknownValueView;
 class ValueIterator;
 using ValueIteratorPtr = std::unique_ptr<ValueIterator>;
 
+class OptionalValueView;
+
 namespace common_internal {
 
 template <typename T>
@@ -199,6 +201,8 @@ ABSL_ATTRIBUTE_PURE_FUNCTION ErrorValueView GetDefaultErrorValue();
 ABSL_ATTRIBUTE_PURE_FUNCTION ListValueView GetEmptyDynListValue();
 
 ABSL_ATTRIBUTE_PURE_FUNCTION MapValueView GetEmptyDynDynMapValue();
+
+ABSL_ATTRIBUTE_PURE_FUNCTION OptionalValueView GetEmptyDynOptionalValue();
 
 }  // namespace common_internal
 

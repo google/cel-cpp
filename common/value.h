@@ -1056,8 +1056,16 @@ ListValue ListValueBuilder<T>::Build() && {
           std::move(type_), std::move(elements_)));
 }
 
+inline OptionalValue OptionalValue::None() {
+  return OptionalValue(common_internal::GetEmptyDynOptionalValue());
+}
+
 inline ValueView OptionalValue::Value(cel::Value& scratch) const {
   return (*this)->Value(scratch);
+}
+
+inline OptionalValueView OptionalValueView::None() {
+  return common_internal::GetEmptyDynOptionalValue();
 }
 
 inline ValueView OptionalValueView::Value(cel::Value& scratch) const {

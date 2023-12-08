@@ -15,36 +15,15 @@
 #include <string>
 #include <utility>
 
-#include "absl/base/call_once.h"
-#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "common/memory.h"
+#include "common/native_type.h"
 #include "common/type.h"
 #include "common/value.h"
 
 namespace cel {
 
 namespace {
-
-class EmptyOptionalValue final : public OptionalValueInterface {
- public:
-  explicit EmptyOptionalValue(OptionalType type) : type_(std::move(type)) {}
-
-  bool HasValue() const override { return false; }
-
-  ValueView Value(cel::Value& scratch) const override {
-    scratch = ErrorValue(
-        absl::FailedPreconditionError("optional.none() dereference"));
-    return scratch;
-  }
-
- private:
-  friend struct NativeTypeTraits<EmptyOptionalValue>;
-
-  TypeView get_type() const override { return type_; }
-
-  const OptionalType type_;
-};
 
 class FullOptionalValue final : public OptionalValueInterface {
  public:
@@ -64,18 +43,15 @@ class FullOptionalValue final : public OptionalValueInterface {
   const cel::Value value_;
 };
 
-absl::once_flag empty_optional_value_once;
-alignas(Shared<const EmptyOptionalValue>) char empty_optional_value[sizeof(
-    Shared<const EmptyOptionalValue>)] = {0};
-
-void InitializeEmptyOptionalValue() {
-  ::new (static_cast<void*>(&empty_optional_value[0]))
-      Shared<const EmptyOptionalValue>(
-          MemoryManagerRef::Unmanaged().MakeShared<EmptyOptionalValue>(
-              OptionalType()));
-}
-
 }  // namespace
+
+template <>
+struct NativeTypeTraits<FullOptionalValue> {
+  static bool SkipDestructor(const FullOptionalValue& value) {
+    return NativeType::SkipDestructor(value.type_) &&
+           NativeType::SkipDestructor(value.value_);
+  }
+};
 
 std::string OptionalValueInterface::DebugString() const {
   if (HasValue()) {
@@ -85,24 +61,10 @@ std::string OptionalValueInterface::DebugString() const {
   return "optional.none()";
 }
 
-OptionalValue OptionalValue::None() {
-  absl::call_once(empty_optional_value_once, InitializeEmptyOptionalValue);
-  return OptionalValue(
-      *reinterpret_cast<const Shared<const EmptyOptionalValue>*>(
-          &empty_optional_value[0]));
-}
-
 OptionalValue OptionalValue::Of(MemoryManagerRef memory_manager,
                                 cel::Value value) {
   return OptionalValue(memory_manager.MakeShared<FullOptionalValue>(
       OptionalType(), std::move(value)));
-}
-
-OptionalValueView OptionalValueView::None() {
-  absl::call_once(empty_optional_value_once, InitializeEmptyOptionalValue);
-  return OptionalValueView(
-      *reinterpret_cast<const Shared<const EmptyOptionalValue>*>(
-          &empty_optional_value[0]));
 }
 
 }  // namespace cel

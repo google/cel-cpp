@@ -21,6 +21,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/optional.h"
 #include "common/type.h"
+#include "common/types/optional_type.h"
 #include "common/value.h"
 #include "internal/no_destructor.h"
 
@@ -32,13 +33,18 @@ class ProcessLocalValueCache final {
 
   ErrorValueView GetDefaultErrorValue() const;
 
-  absl::optional<ListValue> GetEmptyListValue(ListTypeView type) const;
+  absl::optional<ListValueView> GetEmptyListValue(ListTypeView type) const;
 
   ListValueView GetEmptyDynListValue() const;
 
-  absl::optional<MapValue> GetEmptyMapValue(MapTypeView type) const;
+  absl::optional<MapValueView> GetEmptyMapValue(MapTypeView type) const;
 
   MapValueView GetEmptyDynDynMapValue() const;
+
+  absl::optional<OptionalValueView> GetEmptyOptionalValue(
+      OptionalTypeView type) const;
+
+  OptionalValueView GetEmptyDynOptionalValue() const;
 
  private:
   friend class internal::NoDestructor<ProcessLocalValueCache>;
@@ -48,8 +54,10 @@ class ProcessLocalValueCache final {
   const ErrorValue default_error_value_;
   absl::flat_hash_map<ListTypeView, ListValue> list_values_;
   absl::flat_hash_map<MapTypeView, MapValue> map_values_;
-  absl::optional<ListValue> dyn_list_value_;
-  absl::optional<MapValue> dyn_dyn_map_value_;
+  absl::flat_hash_map<OptionalTypeView, OptionalValue> optional_values_;
+  absl::optional<ListValueView> dyn_list_value_;
+  absl::optional<MapValueView> dyn_dyn_map_value_;
+  absl::optional<OptionalValueView> dyn_optional_value_;
 };
 
 }  // namespace cel::common_internal

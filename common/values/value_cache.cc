@@ -96,7 +96,7 @@ class EmptyMapValue final : public MapValueInterface {
           "expected cached empty list value to be present in process local "
           "cache");
     }
-    return std::move(*list_value);
+    return ListValue(*list_value);
   }
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
@@ -120,6 +120,26 @@ class EmptyMapValue final : public MapValueInterface {
   const MapType type_;
 };
 
+class EmptyOptionalValue final : public OptionalValueInterface {
+ public:
+  explicit EmptyOptionalValue(OptionalType type) : type_(std::move(type)) {}
+
+  bool HasValue() const override { return false; }
+
+  ValueView Value(cel::Value& scratch) const override {
+    scratch = ErrorValue(
+        absl::FailedPreconditionError("optional.none() dereference"));
+    return scratch;
+  }
+
+ private:
+  friend struct NativeTypeTraits<EmptyOptionalValue>;
+
+  TypeView get_type() const override { return type_; }
+
+  const OptionalType type_;
+};
+
 }  // namespace
 
 }  // namespace common_internal
@@ -138,6 +158,13 @@ struct NativeTypeTraits<common_internal::EmptyMapValue> {
   }
 };
 
+template <>
+struct NativeTypeTraits<common_internal::EmptyOptionalValue> {
+  static bool SkipDestructor(const common_internal::EmptyOptionalValue&) {
+    return true;
+  }
+};
+
 namespace common_internal {
 
 ErrorValueView GetDefaultErrorValue() {
@@ -152,6 +179,10 @@ MapValueView GetEmptyDynDynMapValue() {
   return ProcessLocalValueCache::Get()->GetEmptyDynDynMapValue();
 }
 
+OptionalValueView GetEmptyDynOptionalValue() {
+  return ProcessLocalValueCache::Get()->GetEmptyDynOptionalValue();
+}
+
 const ProcessLocalValueCache* ProcessLocalValueCache::Get() {
   static const internal::NoDestructor<ProcessLocalValueCache> instance;
   return &*instance;
@@ -161,7 +192,7 @@ ErrorValueView ProcessLocalValueCache::GetDefaultErrorValue() const {
   return default_error_value_;
 }
 
-absl::optional<ListValue> ProcessLocalValueCache::GetEmptyListValue(
+absl::optional<ListValueView> ProcessLocalValueCache::GetEmptyListValue(
     ListTypeView type) const {
   if (auto list_value = list_values_.find(type);
       list_value != list_values_.end()) {
@@ -174,7 +205,7 @@ ListValueView ProcessLocalValueCache::GetEmptyDynListValue() const {
   return *dyn_list_value_;
 }
 
-absl::optional<MapValue> ProcessLocalValueCache::GetEmptyMapValue(
+absl::optional<MapValueView> ProcessLocalValueCache::GetEmptyMapValue(
     MapTypeView type) const {
   if (auto map_value = map_values_.find(type); map_value != map_values_.end()) {
     return map_value->second;
@@ -184,6 +215,19 @@ absl::optional<MapValue> ProcessLocalValueCache::GetEmptyMapValue(
 
 MapValueView ProcessLocalValueCache::GetEmptyDynDynMapValue() const {
   return *dyn_dyn_map_value_;
+}
+
+absl::optional<OptionalValueView> ProcessLocalValueCache::GetEmptyOptionalValue(
+    OptionalTypeView type) const {
+  if (auto optional_value = optional_values_.find(type);
+      optional_value != optional_values_.end()) {
+    return optional_value->second;
+  }
+  return absl::nullopt;
+}
+
+OptionalValueView ProcessLocalValueCache::GetEmptyDynOptionalValue() const {
+  return *dyn_optional_value_;
 }
 
 ProcessLocalValueCache::ProcessLocalValueCache()
@@ -211,12 +255,27 @@ ProcessLocalValueCache::ProcessLocalValueCache()
             .second;
     ABSL_DCHECK(inserted);
   }
+  const auto& optional_types = ProcessLocalTypeCache::Get()->OptionalTypes();
+  optional_values_.reserve(optional_types.size());
+  for (const auto& optional_type : optional_types) {
+    auto inserted =
+        optional_values_
+            .insert_or_assign(
+                optional_type,
+                OptionalValue(memory_manager.MakeShared<EmptyOptionalValue>(
+                    OptionalType(optional_type))))
+            .second;
+    ABSL_DCHECK(inserted);
+  }
   dyn_list_value_ =
       GetEmptyListValue(ProcessLocalTypeCache::Get()->GetDynListType());
   ABSL_DCHECK(dyn_list_value_.has_value());
   dyn_dyn_map_value_ =
       GetEmptyMapValue(ProcessLocalTypeCache::Get()->GetDynDynMapType());
   ABSL_DCHECK(dyn_dyn_map_value_.has_value());
+  dyn_optional_value_ =
+      GetEmptyOptionalValue(ProcessLocalTypeCache::Get()->GetDynOptionalType());
+  ABSL_DCHECK(dyn_optional_value_.has_value());
 }
 
 }  // namespace common_internal
