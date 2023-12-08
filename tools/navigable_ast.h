@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -56,6 +57,24 @@ enum class NodeKind {
   kStruct,
   kComprehension,
 };
+
+// Human readable ChildKind name. Provided for test readability -- do not depend
+// on the specific values.
+std::string ChildKindName(ChildKind kind);
+
+template <typename Sink>
+void AbslStringify(Sink& sink, ChildKind kind) {
+  absl::Format(&sink, "%s", ChildKindName(kind));
+}
+
+// Human readable NodeKind name. Provided for test readability -- do not depend
+// on the specific values.
+std::string NodeKindName(NodeKind kind);
+
+template <typename Sink>
+void AbslStringify(Sink& sink, NodeKind kind) {
+  absl::Format(&sink, "%s", NodeKindName(kind));
+}
 
 class AstNode;
 

@@ -16,6 +16,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -23,6 +24,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "eval/public/ast_traverse.h"
 #include "eval/public/ast_visitor.h"
@@ -184,6 +186,64 @@ class NavigableExprBuilderVisitor
 };
 
 }  // namespace
+
+std::string ChildKindName(ChildKind kind) {
+  switch (kind) {
+    case ChildKind::kUnspecified:
+      return "Unspecified";
+    case ChildKind::kSelectOperand:
+      return "SelectOperand";
+    case ChildKind::kCallReceiver:
+      return "CallReceiver";
+    case ChildKind::kCallArg:
+      return "CallArg";
+    case ChildKind::kListElem:
+      return "ListElem";
+    case ChildKind::kMapKey:
+      return "MapKey";
+    case ChildKind::kMapValue:
+      return "MapValue";
+    case ChildKind::kStructValue:
+      return "StructValue";
+    case ChildKind::kComprehensionRange:
+      return "ComprehensionRange";
+    case ChildKind::kComprehensionInit:
+      return "ComprehensionInit";
+    case ChildKind::kComprehensionCondition:
+      return "ComprehensionCondition";
+    case ChildKind::kComprehensionLoopStep:
+      return "ComprehensionLoopStep";
+    case ChildKind::kComprensionResult:
+      return "ComprehensionResult";
+    default:
+      return absl::StrCat("Unknown ChildKind ", static_cast<int>(kind));
+  }
+}
+
+std::string NodeKindName(NodeKind kind) {
+  switch (kind) {
+    case NodeKind::kUnspecified:
+      return "Unspecified";
+    case NodeKind::kConstant:
+      return "Constant";
+    case NodeKind::kIdent:
+      return "Ident";
+    case NodeKind::kSelect:
+      return "Select";
+    case NodeKind::kCall:
+      return "Call";
+    case NodeKind::kList:
+      return "List";
+    case NodeKind::kMap:
+      return "Map";
+    case NodeKind::kStruct:
+      return "Struct";
+    case NodeKind::kComprehension:
+      return "Comprehension";
+    default:
+      return absl::StrCat("Unknown NodeKind ", static_cast<int>(kind));
+  }
+}
 
 int AstNode::child_index() const {
   if (data_.parent == nullptr) {
