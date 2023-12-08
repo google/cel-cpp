@@ -46,6 +46,7 @@ cc_library(
         "//eval/public:ast_visitor",
         "//eval/public:ast_visitor_base",
         "//eval/public:source_position",
+        "//tools/internal:navigable_ast_internal",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log:absl_check",
