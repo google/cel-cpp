@@ -23,6 +23,8 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "eval/public/ast_traverse.h"
 #include "eval/public/ast_visitor.h"
 #include "eval/public/ast_visitor_base.h"
@@ -30,7 +32,7 @@
 
 namespace cel {
 
-namespace internal {
+namespace tools_internal {
 
 AstNodeData& AstMetadata::NodeDataAt(size_t index) {
   ABSL_CHECK(index < nodes.size());
@@ -43,7 +45,7 @@ size_t AstMetadata::AddNode() {
   return index;
 }
 
-}  // namespace internal
+}  // namespace tools_internal
 
 namespace {
 
@@ -79,7 +81,7 @@ NodeKind GetNodeKind(const Expr& expr) {
 
 // Get the traversal relationship from parent to the given node.
 // Note: these depend on the ast_visitor utility's traversal ordering.
-ChildKind GetChildKind(const internal::AstNodeData& parent_node,
+ChildKind GetChildKind(const tools_internal::AstNodeData& parent_node,
                        size_t child_index) {
   constexpr size_t kComprehensionRangeArgIndex =
       google::api::expr::runtime::ITER_RANGE;
@@ -112,9 +114,9 @@ ChildKind GetChildKind(const internal::AstNodeData& parent_node,
     case NodeKind::kComprehension:
       switch (child_index) {
         case kComprehensionRangeArgIndex:
-          return ChildKind::kCompehensionRange;
+          return ChildKind::kComprehensionRange;
         case kComprehensionInitArgIndex:
-          return ChildKind::kCompehensionInit;
+          return ChildKind::kComprehensionInit;
         case kComprehensionConditionArgIndex:
           return ChildKind::kComprehensionCondition;
         case kComprehensionLoopStepArgIndex:
@@ -133,18 +135,21 @@ class NavigableExprBuilderVisitor
     : public google::api::expr::runtime::AstVisitorBase {
  public:
   NavigableExprBuilderVisitor()
-      : metadata_(std::make_unique<internal::AstMetadata>()) {}
+      : metadata_(std::make_unique<tools_internal::AstMetadata>()) {}
 
   void PreVisitExpr(const Expr* expr, const SourcePosition* position) override {
     AstNode* parent = parent_stack_.empty()
                           ? nullptr
                           : metadata_->nodes[parent_stack_.back()].get();
     size_t index = metadata_->AddNode();
-    internal::AstNodeData& node_data = metadata_->NodeDataAt(index);
+    tools_internal::AstNodeData& node_data = metadata_->NodeDataAt(index);
     node_data.parent = parent;
     node_data.expr = expr;
     node_data.parent_relation = ChildKind::kUnspecified;
     node_data.node_kind = GetNodeKind(*expr);
+    node_data.weight = 1;
+    node_data.index = index;
+    node_data.metadata = metadata_.get();
 
     metadata_->id_to_node.insert({expr->id(), index});
     metadata_->expr_to_node.insert({expr, index});
@@ -159,19 +164,85 @@ class NavigableExprBuilderVisitor
 
   void PostVisitExpr(const Expr* expr,
                      const SourcePosition* position) override {
+    size_t idx = parent_stack_.back();
     parent_stack_.pop_back();
+    metadata_->postorder.push_back(metadata_->nodes[idx].get());
+    tools_internal::AstNodeData& node = metadata_->NodeDataAt(idx);
+    if (!parent_stack_.empty()) {
+      tools_internal::AstNodeData& parent_node_data =
+          metadata_->NodeDataAt(parent_stack_.back());
+      parent_node_data.weight += node.weight;
+    }
   }
 
-  std::unique_ptr<internal::AstMetadata> Consume() && {
+  std::unique_ptr<tools_internal::AstMetadata> Consume() && {
     return std::move(metadata_);
   }
 
  private:
-  std::unique_ptr<internal::AstMetadata> metadata_;
+  std::unique_ptr<tools_internal::AstMetadata> metadata_;
   std::vector<size_t> parent_stack_;
 };
 
 }  // namespace
+
+absl::string_view ChildKindName(ChildKind kind) {
+  switch (kind) {
+    case ChildKind::kUnspecified:
+      return "Unspecified";
+    case ChildKind::kSelectOperand:
+      return "SelectOperand";
+    case ChildKind::kCallReceiver:
+      return "CallReceiver";
+    case ChildKind::kCallArg:
+      return "CallArg";
+    case ChildKind::kListElem:
+      return "ListElem";
+    case ChildKind::kMapKey:
+      return "MapKey";
+    case ChildKind::kMapValue:
+      return "MapValue";
+    case ChildKind::kStructValue:
+      return "StructValue";
+    case ChildKind::kComprehensionRange:
+      return "CompehensionRange";
+    case ChildKind::kComprehensionInit:
+      return "CompehensionInit";
+    case ChildKind::kComprehensionCondition:
+      return "CompehensionCondition";
+    case ChildKind::kComprehensionLoopStep:
+      return "CompehensionLoopStep";
+    case ChildKind::kComprensionResult:
+      return "ComprensionResult";
+    default:
+      return "Unknown ChildKind";
+  }
+}
+
+absl::string_view NodeKindName(NodeKind kind) {
+  switch (kind) {
+    case NodeKind::kUnspecified:
+      return "Unspecified";
+    case NodeKind::kConstant:
+      return "Constant";
+    case NodeKind::kIdent:
+      return "Ident";
+    case NodeKind::kSelect:
+      return "Select";
+    case NodeKind::kCall:
+      return "Call";
+    case NodeKind::kList:
+      return "List";
+    case NodeKind::kMap:
+      return "Map";
+    case NodeKind::kStruct:
+      return "Struct";
+    case NodeKind::kComprehension:
+      return "Comprehension";
+    default:
+      return "Unknown NodeKind";
+  }
+}
 
 int AstNode::child_index() const {
   if (data_.parent == nullptr) {
@@ -185,6 +256,16 @@ int AstNode::child_index() const {
     i++;
   }
   return -1;
+}
+
+AstNode::PreorderRange AstNode::DescendantsPreorder() const {
+  return AstNode::PreorderRange(absl::MakeConstSpan(data_.metadata->nodes)
+                                    .subspan(data_.index, data_.weight));
+}
+
+AstNode::PostorderRange AstNode::DescendantsPostorder() const {
+  return AstNode::PostorderRange(absl::MakeConstSpan(data_.metadata->postorder)
+                                     .subspan(data_.index, data_.weight));
 }
 
 NavigableAst NavigableAst::Build(const Expr& expr) {

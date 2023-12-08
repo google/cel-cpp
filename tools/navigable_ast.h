@@ -24,7 +24,9 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "tools/internal/navigable_ast_internal.h"
 
 namespace cel {
 
@@ -37,8 +39,8 @@ enum class ChildKind {
   kMapKey,
   kMapValue,
   kStructValue,
-  kCompehensionRange,
-  kCompehensionInit,
+  kComprehensionRange,
+  kComprehensionInit,
   kComprehensionCondition,
   kComprehensionLoopStep,
   kComprensionResult
@@ -56,11 +58,25 @@ enum class NodeKind {
   kComprehension,
 };
 
+absl::string_view ChildKindName(ChildKind kind);
+
+template <typename Sink>
+void AbslStringify(Sink& sink, ChildKind kind) {
+  absl::Format(&sink, "%s", ChildKindName(kind));
+}
+
+absl::string_view NodeKindName(NodeKind kind);
+
+template <typename Sink>
+void AbslStringify(Sink& sink, NodeKind kind) {
+  absl::Format(&sink, "%s", NodeKindName(kind));
+}
+
 class AstNode;
 
-namespace internal {
+namespace tools_internal {
 
-class AstMetadata;
+struct AstMetadata;
 
 // Internal implementation for data-structures handling cross-referencing nodes.
 //
@@ -71,11 +87,15 @@ struct AstNodeData {
   const ::google::api::expr::v1alpha1::Expr* expr;
   ChildKind parent_relation;
   NodeKind node_kind;
+  const AstMetadata* metadata;
+  size_t index;
+  size_t weight;
   std::vector<AstNode*> children;
 };
 
 struct AstMetadata {
   std::vector<std::unique_ptr<AstNode>> nodes;
+  std::vector<const AstNode*> postorder;
   absl::flat_hash_map<int64_t, size_t> id_to_node;
   absl::flat_hash_map<const google::api::expr::v1alpha1::Expr*, size_t> expr_to_node;
 
@@ -83,10 +103,28 @@ struct AstMetadata {
   size_t AddNode();
 };
 
-}  // namespace internal
+struct PostorderTraits {
+  using UnderlyingType = const AstNode*;
+  static const AstNode* Adapt(const AstNode* const node) { return node; }
+};
+
+struct PreorderTraits {
+  using UnderlyingType = std::unique_ptr<AstNode>;
+  static const AstNode* Adapt(const std::unique_ptr<AstNode>& node) {
+    return node.get();
+  }
+};
+
+}  // namespace tools_internal
 
 // Wrapper around a CEL AST node that exposes traversal information.
 class AstNode {
+ private:
+  using PreorderRange =
+      tools_internal::SpanRange<tools_internal::PreorderTraits>;
+  using PostorderRange =
+      tools_internal::SpanRange<tools_internal::PostorderTraits>;
+
  public:
   // The parent of this node or nullptr if it is a root.
   absl::Nullable<const AstNode*> parent() const { return data_.parent; }
@@ -108,14 +146,32 @@ class AstNode {
     return absl::MakeConstSpan(data_.children);
   }
 
+  // Range over the descendants of this node (including self) using preorder
+  // semantics. Each node is visited immediately before all of its descendants.
+  //
+  // Children are traversed in their natural order:
+  //   - call arguments are traversed in order (receiver if present is first)
+  //   - list elements are traversed in order
+  //   - maps are traversed in order (alternating key, value per entry)
+  //   - comprehensions are traversed in the order: range, accu_init, condition,
+  //   step, result
+  //
+  // Return type is an implementation detail, it should only be used with auto
+  // or in a range-for loop.
+  PreorderRange DescendantsPreorder() const;
+
+  // Range over the descendants of this node (including self) using postorder
+  // semantics. Each node is visited immediately after all of its descendants.
+  PostorderRange DescendantsPostorder() const;
+
  private:
-  friend struct internal::AstMetadata;
+  friend struct tools_internal::AstMetadata;
 
   AstNode() = default;
   AstNode(const AstNode&) = delete;
   AstNode& operator=(const AstNode&) = delete;
 
-  internal::AstNodeData data_;
+  tools_internal::AstNodeData data_;
 };
 
 // NavigableExpr provides a view over a CEL AST that allows for generalized
@@ -169,10 +225,10 @@ class NavigableAst {
   }
 
  private:
-  explicit NavigableAst(std::unique_ptr<internal::AstMetadata> metadata)
+  explicit NavigableAst(std::unique_ptr<tools_internal::AstMetadata> metadata)
       : metadata_(std::move(metadata)) {}
 
-  std::unique_ptr<internal::AstMetadata> metadata_;
+  std::unique_ptr<tools_internal::AstMetadata> metadata_;
 };
 
 }  // namespace cel
