@@ -403,11 +403,6 @@ class ValueView final {
                      common_internal::BaseValueViewAlternativeForT<T>>,
                  alternative) {}
 
-  template <typename T,
-            typename = std::enable_if_t<
-                common_internal::IsValueAlternativeV<absl::remove_cvref_t<T>>>>
-  ValueView(T&&) = delete;
-
   template <typename T, typename = std::enable_if_t<
                             common_internal::IsValueViewAlternativeV<T>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
@@ -415,7 +410,7 @@ class ValueView final {
       : variant_(
             absl::in_place_type<common_internal::BaseValueViewAlternativeForT<
                 absl::remove_cvref_t<T>>>,
-            std::forward<T>(alternative)) {}
+            alternative) {}
 
   template <typename T,
             typename = std::enable_if_t<common_internal::IsValueInterfaceV<T>>>
@@ -424,6 +419,38 @@ class ValueView final {
       : variant_(absl::in_place_type<
                      common_internal::BaseValueViewAlternativeForT<T>>,
                  interface) {}
+
+  ValueView& operator=(const Value& other) {
+    variant_ = (other.AssertIsValid(), other.ToViewVariant());
+    return *this;
+  }
+
+  ValueView& operator=(Value&&) = delete;
+
+  template <typename T>
+  std::enable_if_t<common_internal::IsValueAlternativeV<T>, ValueView&>
+  operator=(const T& alternative ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    variant_.emplace<common_internal::BaseValueViewAlternativeForT<T>>(
+        alternative);
+    return *this;
+  }
+
+  template <typename T>
+  std::enable_if_t<
+      std::conjunction_v<
+          std::negation<std::is_lvalue_reference<T>>,
+          common_internal::IsValueAlternative<absl::remove_cvref_t<T>>>,
+      ValueView&>
+  operator=(T&&) = delete;
+
+  template <typename T>
+  std::enable_if_t<common_internal::IsValueViewAlternativeV<T>, ValueView&>
+  operator=(T alternative) {
+    variant_.emplace<
+        common_internal::BaseValueViewAlternativeForT<absl::remove_cvref_t<T>>>(
+        alternative);
+    return *this;
+  }
 
   ValueKind kind() const {
     AssertIsValid();

@@ -212,8 +212,21 @@ class ListValueView {
   static constexpr ValueKind kKind = ListValue::kKind;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
+  ListValueView(SharedView<const ListValueInterface> interface)
+      : interface_(interface) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
   ListValueView(const ListValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
       : interface_(value.interface_) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ListValueView& operator=(
+      const ListValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    interface_ = value.interface_;
+    return *this;
+  }
+
+  ListValueView& operator=(ListValue&&) = delete;
 
   // By default, this creates an empty list whose type is `list(dyn)`. Unless
   // you can help it, you should use a more specific typed list value.

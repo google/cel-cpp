@@ -128,6 +128,15 @@ class BytesValueView final {
   BytesValueView(const BytesValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
       : value_(value.value_) {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  BytesValueView& operator=(
+      const BytesValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    value_ = value.value_;
+    return *this;
+  }
+
+  BytesValueView& operator=(BytesValue&&) = delete;
+
   BytesValueView() = default;
   BytesValueView(const BytesValueView&) = default;
   BytesValueView(BytesValueView&&) = default;

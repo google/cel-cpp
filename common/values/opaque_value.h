@@ -172,16 +172,22 @@ class OpaqueValueView {
   static constexpr ValueKind kKind = OpaqueValue::kKind;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
+  OpaqueValueView(SharedView<const OpaqueValueInterface> interface)
+      : interface_(interface) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
   OpaqueValueView(
       const OpaqueValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
       : interface_(value.interface_) {}
 
-  // Prevent binding to temporaries.
-  OpaqueValueView(OpaqueValue&&) = delete;
-
   // NOLINTNEXTLINE(google-explicit-constructor)
-  OpaqueValueView(SharedView<const OpaqueValueInterface> interface)
-      : interface_(interface) {}
+  OpaqueValueView& operator=(
+      const OpaqueValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    interface_ = value.interface_;
+    return *this;
+  }
+
+  OpaqueValueView& operator=(OpaqueValue&&) = delete;
 
   OpaqueValueView() = delete;
   OpaqueValueView(const OpaqueValueView&) = default;

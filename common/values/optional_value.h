@@ -147,15 +147,22 @@ class OptionalValueView final : public OpaqueValueView {
   OptionalValueView() : OptionalValueView(None()) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  OptionalValueView(const OptionalValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : OpaqueValueView(value) {}
-
-  // Prevent binding to temporaries.
-  OptionalValueView(OptionalValue&&) = delete;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
   OptionalValueView(SharedView<const OptionalValueInterface> interface)
       : OpaqueValueView(interface) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  OptionalValueView(
+      const OptionalValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
+      : OpaqueValueView(value) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  OptionalValueView& operator=(
+      const OptionalValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    OpaqueValueView::operator=(value);
+    return *this;
+  }
+
+  OptionalValueView& operator=(OptionalValue&&) = delete;
 
   OptionalValueView(const OptionalValueView&) = default;
   OptionalValueView& operator=(const OptionalValueView&) = default;

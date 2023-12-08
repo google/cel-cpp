@@ -146,6 +146,15 @@ class StringValueView final {
       const StringValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
       : value_(value.value_) {}
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StringValueView& operator=(
+      const StringValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    value_ = value.value_;
+    return *this;
+  }
+
+  StringValueView& operator=(StringValue&&) = delete;
+
   StringValueView() = default;
   StringValueView(const StringValueView&) = default;
   StringValueView(StringValueView&&) = default;

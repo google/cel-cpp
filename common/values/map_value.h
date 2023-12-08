@@ -269,8 +269,20 @@ class MapValueView {
   static absl::Status CheckKey(ValueView key);
 
   // NOLINTNEXTLINE(google-explicit-constructor)
+  MapValueView(SharedView<const MapValueInterface> interface)
+      : interface_(interface) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
   MapValueView(const MapValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
       : interface_(value.interface_) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  MapValueView& operator=(const MapValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    interface_ = value.interface_;
+    return *this;
+  }
+
+  MapValueView& operator=(MapValue&&) = delete;
 
   // By default, this creates an empty map whose type is `map(dyn, dyn)`. Unless
   // you can help it, you should use a more specific typed map value.
