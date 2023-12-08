@@ -895,6 +895,15 @@ inline OptionalType::OptionalType(MemoryManagerRef memory_manager,
 
 inline TypeView OptionalType::parameter() const { return parameters().front(); }
 
+inline bool operator==(const OptionalType& lhs, const OptionalType& rhs) {
+  return lhs.parameter() == rhs.parameter();
+}
+
+template <typename H>
+inline H AbslHashValue(H state, const OptionalType& type) {
+  return H::combine(std::move(state), type.parameter());
+}
+
 inline OptionalTypeView::OptionalTypeView()
     : OptionalTypeView(common_internal::GetDynOptionalType()) {}
 
@@ -903,6 +912,15 @@ inline OptionalTypeView::OptionalTypeView(const OptionalType& type) noexcept
 
 inline TypeView OptionalTypeView::parameter() const {
   return parameters().front();
+}
+
+inline bool operator==(OptionalTypeView lhs, OptionalTypeView rhs) {
+  return lhs.parameter() == rhs.parameter();
+}
+
+template <typename H>
+inline H AbslHashValue(H state, OptionalTypeView type) {
+  return H::combine(std::move(state), type.parameter());
 }
 
 }  // namespace cel

@@ -80,6 +80,15 @@ class OptionalType final : public OpaqueType {
   friend struct SubsumptionTraits<OptionalType>;
 };
 
+bool operator==(const OptionalType& lhs, const OptionalType& rhs);
+
+inline bool operator!=(const OptionalType& lhs, const OptionalType& rhs) {
+  return !operator==(lhs, rhs);
+}
+
+template <typename H>
+H AbslHashValue(H state, const OptionalType& type);
+
 template <>
 struct SubsumptionTraits<OptionalType> final {
   static bool IsA(const OpaqueType& type) {
@@ -151,6 +160,15 @@ class OptionalTypeView final : public OpaqueTypeView {
   explicit OptionalTypeView(OpaqueTypeView type) noexcept
       : OpaqueTypeView(type) {}
 };
+
+bool operator==(OptionalTypeView lhs, OptionalTypeView rhs);
+
+inline bool operator!=(OptionalTypeView lhs, OptionalTypeView rhs) {
+  return !operator==(lhs, rhs);
+}
+
+template <typename H>
+H AbslHashValue(H state, OptionalTypeView type);
 
 template <>
 struct SubsumptionTraits<OptionalTypeView> final {

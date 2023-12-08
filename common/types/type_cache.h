@@ -115,6 +115,7 @@ using MapTypeCacheMap =
 using OpaqueTypeCacheMap =
     absl::flat_hash_map<OpaqueTypeKey, OpaqueType, OpaqueTypeKeyHash,
                         OpaqueTypeKeyEqualTo>;
+using OptionalTypeCacheMap = absl::flat_hash_map<TypeView, OptionalType>;
 
 class ProcessLocalTypeCache final {
  public:
@@ -131,7 +132,9 @@ class ProcessLocalTypeCache final {
   absl::optional<OpaqueTypeView> FindOpaqueType(
       absl::string_view name, const SizedInputView<TypeView>& parameters) const;
 
-  SizedInputView<OpaqueTypeView> OpaqueTypes() const;
+  absl::optional<OptionalTypeView> FindOptionalType(TypeView type) const;
+
+  SizedInputView<OptionalTypeView> OptionalTypes() const;
 
   ListTypeView GetDynListType() const { return *dyn_list_type_; }
 
@@ -173,6 +176,7 @@ class ProcessLocalTypeCache final {
 
   ListTypeCacheMap list_types_;
   MapTypeCacheMap map_types_;
+  OptionalTypeCacheMap optional_types_;
   OpaqueTypeCacheMap opaque_types_;
   absl::optional<ListTypeView> dyn_list_type_;
   absl::optional<MapTypeView> dyn_dyn_map_type_;

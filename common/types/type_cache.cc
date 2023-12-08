@@ -20,7 +20,6 @@
 #include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/casting.h"
 #include "common/memory.h"
 #include "common/sized_input_view.h"
 #include "common/type.h"
@@ -72,6 +71,9 @@ SizedInputView<MapTypeView> ProcessLocalTypeCache::MapTypes() const {
 
 absl::optional<OpaqueTypeView> ProcessLocalTypeCache::FindOpaqueType(
     absl::string_view name, const SizedInputView<TypeView>& parameters) const {
+  if (name == OptionalType::kName && parameters.size() == 1) {
+    return FindOptionalType(*parameters.begin());
+  }
   if (auto opaque_type = opaque_types_.find(
           OpaqueTypeKeyView{.name = name, .parameters = parameters});
       opaque_type != opaque_types_.end()) {
@@ -80,8 +82,18 @@ absl::optional<OpaqueTypeView> ProcessLocalTypeCache::FindOpaqueType(
   return absl::nullopt;
 }
 
-SizedInputView<OpaqueTypeView> ProcessLocalTypeCache::OpaqueTypes() const {
-  return SizedInputView<OpaqueTypeView>(opaque_types_, MapValueTransformer{});
+absl::optional<OptionalTypeView> ProcessLocalTypeCache::FindOptionalType(
+    TypeView type) const {
+  if (auto optional_type = optional_types_.find(type);
+      optional_type != optional_types_.end()) {
+    return optional_type->second;
+  }
+  return absl::nullopt;
+}
+
+SizedInputView<OptionalTypeView> ProcessLocalTypeCache::OptionalTypes() const {
+  return SizedInputView<OptionalTypeView>(optional_types_,
+                                          MapValueTransformer{});
 }
 
 ProcessLocalTypeCache::ProcessLocalTypeCache() {
@@ -94,9 +106,8 @@ ProcessLocalTypeCache::ProcessLocalTypeCache() {
   ABSL_DCHECK(dyn_list_type_.has_value());
   dyn_dyn_map_type_ = FindMapType(DynTypeView(), DynTypeView());
   ABSL_DCHECK(dyn_dyn_map_type_.has_value());
-  auto opaque_type = FindOpaqueType(OptionalType::kName, {DynTypeView()});
-  ABSL_DCHECK(opaque_type.has_value());
-  dyn_optional_type_ = Cast<OptionalTypeView>(*opaque_type);
+  dyn_optional_type_ = FindOptionalType(DynTypeView());
+  ABSL_DCHECK(dyn_optional_type_.has_value());
 }
 
 template <typename... Ts>
@@ -123,8 +134,8 @@ void ProcessLocalTypeCache::PopulateOptionalTypes(
     MemoryManagerRef memory_manager) {
   // Reserve space for optionals of each primitive type, optionals of each
   // list type, and optionals of each map type.
-  opaque_types_.reserve(opaque_types_.size() + sizeof...(Ts) +
-                        list_types_.size() + map_types_.size());
+  optional_types_.reserve(sizeof...(Ts) + list_types_.size() +
+                          map_types_.size());
   DoPopulateOptionalTypes<Ts...>(memory_manager);
   for (const auto& list_type : list_types_) {
     InsertOptionalType(
@@ -185,12 +196,9 @@ void ProcessLocalTypeCache::DoPopulateOptionalTypes(
 }
 
 void ProcessLocalTypeCache::InsertOptionalType(OptionalType optional_type) {
-  auto parameters = optional_type.parameters();
+  auto parameter = optional_type.parameter();
   auto inserted =
-      opaque_types_
-          .insert_or_assign(OpaqueTypeKey{.name = OptionalType::kName,
-                                          .parameters = parameters},
-                            std::move(optional_type))
+      optional_types_.insert_or_assign(parameter, std::move(optional_type))
           .second;
   ABSL_DCHECK(inserted);
 }
