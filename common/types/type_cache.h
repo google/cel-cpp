@@ -120,15 +120,15 @@ class ProcessLocalTypeCache final {
  public:
   ABSL_ATTRIBUTE_PURE_FUNCTION static const ProcessLocalTypeCache* Get();
 
-  absl::optional<ListType> FindListType(TypeView element) const;
+  absl::optional<ListTypeView> FindListType(TypeView element) const;
 
   SizedInputView<ListTypeView> ListTypes() const;
 
-  absl::optional<MapType> FindMapType(TypeView key, TypeView value) const;
+  absl::optional<MapTypeView> FindMapType(TypeView key, TypeView value) const;
 
   SizedInputView<MapTypeView> MapTypes() const;
 
-  absl::optional<OpaqueType> FindOpaqueType(
+  absl::optional<OpaqueTypeView> FindOpaqueType(
       absl::string_view name, const SizedInputView<TypeView>& parameters) const;
 
   SizedInputView<OpaqueTypeView> OpaqueTypes() const;
@@ -174,9 +174,9 @@ class ProcessLocalTypeCache final {
   ListTypeCacheMap list_types_;
   MapTypeCacheMap map_types_;
   OpaqueTypeCacheMap opaque_types_;
-  absl::optional<ListType> dyn_list_type_;
-  absl::optional<MapType> dyn_dyn_map_type_;
-  absl::optional<OptionalType> dyn_optional_type_;
+  absl::optional<ListTypeView> dyn_list_type_;
+  absl::optional<MapTypeView> dyn_dyn_map_type_;
+  absl::optional<OptionalTypeView> dyn_optional_type_;
 };
 
 }  // namespace cel::common_internal

@@ -160,7 +160,7 @@ class ThreadSafeTypeFactory final : public TypeFactory {
     if (auto opaque_type =
             ProcessLocalTypeCache::Get()->FindOpaqueType(name, parameters);
         opaque_type.has_value()) {
-      return *opaque_type;
+      return OpaqueType(*opaque_type);
     }
     {
       absl::ReaderMutexLock lock(&opaque_types_mutex_);
@@ -215,7 +215,7 @@ bool IsValidMapKeyType(TypeView type) {
 ListType TypeFactory::CreateListType(TypeView element) {
   if (auto list_type = ProcessLocalTypeCache::Get()->FindListType(element);
       list_type.has_value()) {
-    return *list_type;
+    return ListType(*list_type);
   }
   return CreateListTypeImpl(element);
 }
@@ -224,7 +224,7 @@ MapType TypeFactory::CreateMapType(TypeView key, TypeView value) {
   ABSL_DCHECK(IsValidMapKeyType(key)) << key;
   if (auto map_type = ProcessLocalTypeCache::Get()->FindMapType(key, value);
       map_type.has_value()) {
-    return *map_type;
+    return MapType(*map_type);
   }
   return CreateMapTypeImpl(key, value);
 }
@@ -240,7 +240,7 @@ OpaqueType TypeFactory::CreateOpaqueType(
   if (auto opaque_type =
           ProcessLocalTypeCache::Get()->FindOpaqueType(name, parameters);
       opaque_type.has_value()) {
-    return *opaque_type;
+    return OpaqueType(*opaque_type);
   }
   return CreateOpaqueTypeImpl(name, parameters);
 }

@@ -33,7 +33,7 @@ const ProcessLocalTypeCache* ProcessLocalTypeCache::Get() {
   return &*type_cache;
 }
 
-absl::optional<ListType> ProcessLocalTypeCache::FindListType(
+absl::optional<ListTypeView> ProcessLocalTypeCache::FindListType(
     TypeView element) const {
   if (auto list_type = list_types_.find(element);
       list_type != list_types_.end()) {
@@ -57,7 +57,7 @@ SizedInputView<ListTypeView> ProcessLocalTypeCache::ListTypes() const {
   return SizedInputView<ListTypeView>(list_types_, MapValueTransformer{});
 }
 
-absl::optional<MapType> ProcessLocalTypeCache::FindMapType(
+absl::optional<MapTypeView> ProcessLocalTypeCache::FindMapType(
     TypeView key, TypeView value) const {
   if (auto map_type = map_types_.find(std::make_pair(key, value));
       map_type != map_types_.end()) {
@@ -70,7 +70,7 @@ SizedInputView<MapTypeView> ProcessLocalTypeCache::MapTypes() const {
   return SizedInputView<MapTypeView>(map_types_, MapValueTransformer{});
 }
 
-absl::optional<OpaqueType> ProcessLocalTypeCache::FindOpaqueType(
+absl::optional<OpaqueTypeView> ProcessLocalTypeCache::FindOpaqueType(
     absl::string_view name, const SizedInputView<TypeView>& parameters) const {
   if (auto opaque_type = opaque_types_.find(
           OpaqueTypeKeyView{.name = name, .parameters = parameters});
@@ -96,7 +96,7 @@ ProcessLocalTypeCache::ProcessLocalTypeCache() {
   ABSL_DCHECK(dyn_dyn_map_type_.has_value());
   auto opaque_type = FindOpaqueType(OptionalType::kName, {DynTypeView()});
   ABSL_DCHECK(opaque_type.has_value());
-  dyn_optional_type_ = Cast<OptionalType>(*opaque_type);
+  dyn_optional_type_ = Cast<OptionalTypeView>(*opaque_type);
 }
 
 template <typename... Ts>
