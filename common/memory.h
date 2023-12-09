@@ -85,7 +85,7 @@ struct HandleFactory;
 template <typename T>
 class ABSL_ATTRIBUTE_TRIVIAL_ABI Shared final {
  public:
-  Shared() = delete;
+  Shared() = default;
 
   Shared(const Shared& other)
       : value_(other.value_), refcount_(other.refcount_) {
@@ -180,6 +180,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Shared final {
     return value_;
   }
 
+  explicit operator bool() const { return !IsEmpty(); }
+
   friend void swap(Shared& lhs, Shared& rhs) noexcept {
     using std::swap;
     swap(lhs.value_, rhs.value_);
@@ -222,11 +224,9 @@ struct NativeTypeTraits<Shared<T>> final {
 template <typename T>
 class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedView final {
  public:
-  SharedView() = delete;
+  SharedView() = default;
   SharedView(const SharedView&) = default;
-  SharedView(SharedView&&) = default;
   SharedView& operator=(const SharedView&) = default;
-  SharedView& operator=(SharedView&&) = default;
 
   template <
       typename U,
@@ -297,6 +297,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedView final {
     return value_;
   }
 
+  explicit operator bool() const { return !IsEmpty(); }
+
   friend void swap(SharedView& lhs, SharedView& rhs) noexcept {
     using std::swap;
     swap(lhs.value_, rhs.value_);
@@ -349,7 +351,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Unique final {
  public:
   static_assert(!std::is_array_v<T>);
 
-  Unique() = delete;
+  Unique() = default;
   Unique(const Unique&) = delete;
   Unique& operator=(const Unique&) = delete;
 
@@ -401,6 +403,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Unique final {
     return ptr_;
   }
 
+  explicit operator bool() const { return !IsEmpty(); }
+
   friend void swap(Unique& lhs, Unique& rhs) noexcept {
     using std::swap;
     swap(lhs.ptr_, rhs.ptr_);
@@ -431,8 +435,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Unique final {
 
   bool IsEmpty() const noexcept { return ptr_ == nullptr; }
 
-  T* ptr_;
-  MemoryManagement memory_management_;
+  T* ptr_ = nullptr;
+  MemoryManagement memory_management_ = MemoryManagement::kPooling;
 };
 
 // `ReferenceCountingMemoryManager` is a `MemoryManager` which employs automatic

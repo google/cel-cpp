@@ -40,6 +40,8 @@
 namespace cel {
 namespace {
 
+// NOLINTBEGIN(bugprone-use-after-move)
+
 using testing::_;
 using testing::IsFalse;
 using testing::IsNull;
@@ -244,6 +246,7 @@ TEST_P(MemoryManagerTest, Shared) {
   bool deleted = false;
   {
     auto object = memory_manager().MakeShared<Object>(deleted);
+    EXPECT_TRUE(object);
     EXPECT_FALSE(deleted);
   }
   switch (memory_management()) {
@@ -261,8 +264,10 @@ TEST_P(MemoryManagerTest, SharedCopyConstruct) {
   bool deleted = false;
   {
     auto object = memory_manager().MakeShared<Object>(deleted);
+    EXPECT_TRUE(object);
     // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
     Shared<Object> copied_object(object);
+    EXPECT_TRUE(copied_object);
     EXPECT_FALSE(deleted);
   }
   switch (memory_management()) {
@@ -280,8 +285,11 @@ TEST_P(MemoryManagerTest, SharedMoveConstruct) {
   bool deleted = false;
   {
     auto object = memory_manager().MakeShared<Object>(deleted);
+    EXPECT_TRUE(object);
     // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
     Shared<Object> moved_object(std::move(object));
+    EXPECT_FALSE(object);
+    EXPECT_TRUE(moved_object);
     EXPECT_FALSE(deleted);
   }
   switch (memory_management()) {
@@ -299,9 +307,13 @@ TEST_P(MemoryManagerTest, SharedCopyAssign) {
   bool deleted = false;
   {
     auto object = memory_manager().MakeShared<Object>(deleted);
+    EXPECT_TRUE(object);
     // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
     Shared<Object> moved_object(std::move(object));
+    EXPECT_FALSE(object);
+    EXPECT_TRUE(moved_object);
     object = moved_object;
+    EXPECT_TRUE(object);
     EXPECT_FALSE(deleted);
   }
   switch (memory_management()) {
@@ -319,9 +331,14 @@ TEST_P(MemoryManagerTest, SharedMoveAssign) {
   bool deleted = false;
   {
     auto object = memory_manager().MakeShared<Object>(deleted);
+    EXPECT_TRUE(object);
     // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
     Shared<Object> moved_object(std::move(object));
+    EXPECT_FALSE(object);
+    EXPECT_TRUE(moved_object);
     object = std::move(moved_object);
+    EXPECT_FALSE(moved_object);
+    EXPECT_TRUE(object);
     EXPECT_FALSE(deleted);
   }
   switch (memory_management()) {
@@ -339,8 +356,10 @@ TEST_P(MemoryManagerTest, SharedCopyConstructConvertible) {
   bool deleted = false;
   {
     auto object = memory_manager().MakeShared<Subobject>(deleted);
+    EXPECT_TRUE(object);
     // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
     Shared<Object> copied_object(object);
+    EXPECT_TRUE(copied_object);
     EXPECT_FALSE(deleted);
   }
   switch (memory_management()) {
@@ -358,8 +377,11 @@ TEST_P(MemoryManagerTest, SharedMoveConstructConvertible) {
   bool deleted = false;
   {
     auto object = memory_manager().MakeShared<Subobject>(deleted);
+    EXPECT_TRUE(object);
     // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
     Shared<Object> moved_object(std::move(object));
+    EXPECT_FALSE(object);
+    EXPECT_TRUE(moved_object);
     EXPECT_FALSE(deleted);
   }
   switch (memory_management()) {
@@ -377,8 +399,12 @@ TEST_P(MemoryManagerTest, SharedCopyAssignConvertible) {
   bool deleted = false;
   {
     auto subobject = memory_manager().MakeShared<Subobject>(deleted);
+    EXPECT_TRUE(subobject);
     auto object = memory_manager().MakeShared<Object>();
+    EXPECT_TRUE(object);
     object = subobject;
+    EXPECT_TRUE(object);
+    EXPECT_TRUE(subobject);
     EXPECT_FALSE(deleted);
   }
   switch (memory_management()) {
@@ -396,8 +422,12 @@ TEST_P(MemoryManagerTest, SharedMoveAssignConvertible) {
   bool deleted = false;
   {
     auto subobject = memory_manager().MakeShared<Subobject>(deleted);
+    EXPECT_TRUE(subobject);
     auto object = memory_manager().MakeShared<Object>();
+    EXPECT_TRUE(object);
     object = std::move(subobject);
+    EXPECT_TRUE(object);
+    EXPECT_FALSE(subobject);
     EXPECT_FALSE(deleted);
   }
   switch (memory_management()) {
@@ -434,6 +464,7 @@ TEST_P(MemoryManagerTest, SharedViewConstruct) {
   {
     auto object = memory_manager().MakeShared<Object>(deleted);
     dangling_object_view.emplace(object);
+    EXPECT_TRUE(*dangling_object_view);
     {
       auto copied_object = Shared<Object>(*dangling_object_view);
       EXPECT_FALSE(deleted);
@@ -645,6 +676,7 @@ TEST_P(MemoryManagerTest, Unique) {
   bool deleted = false;
   {
     auto object = memory_manager().MakeUnique<Object>(deleted);
+    EXPECT_TRUE(object);
     EXPECT_FALSE(deleted);
   }
   EXPECT_TRUE(deleted);
@@ -753,6 +785,8 @@ TEST(MemoryManagerRefCasting, Pooling) {
   auto pooling = MemoryManager(NewThreadCompatiblePoolingMemoryManager());
   EXPECT_TRUE(InstanceOf<PoolingMemoryManager>(MemoryManagerRef(pooling)));
 }
+
+// NOLINTEND(bugprone-use-after-move)
 
 }  // namespace
 }  // namespace cel
