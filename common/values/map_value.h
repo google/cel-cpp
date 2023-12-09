@@ -51,6 +51,7 @@ namespace cel {
 class Value;
 class ValueView;
 class ListValue;
+class ListValueView;
 class MapValueInterface;
 class MapValue;
 class MapValueView;
@@ -96,8 +97,9 @@ class MapValueInterface : public ValueInterface {
   absl::StatusOr<ValueView> Has(ValueView key) const;
 
   // Returns a new list value whose elements are the keys of this map.
-  virtual absl::StatusOr<ListValue> ListKeys(
-      TypeFactory& type_factory) const = 0;
+  virtual absl::StatusOr<ListValueView> ListKeys(
+      TypeFactory& type_factory,
+      ListValue& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
 
   // Callback used by `ForEach`. The first argument is the key and the second is
   // the value. Returning a non-OK status causes `ForEach` to return that
@@ -174,7 +176,9 @@ class MapValue {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::StatusOr<ListValue> ListKeys(TypeFactory& type_factory) const;
+  absl::StatusOr<ListValueView> ListKeys(
+      TypeFactory& type_factory,
+      ListValue& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   // See the corresponding type declaration of `MapValueInterface` for
   // documentation.
@@ -318,7 +322,9 @@ class MapValueView {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::StatusOr<ListValue> ListKeys(TypeFactory& type_factory) const;
+  absl::StatusOr<ListValueView> ListKeys(
+      TypeFactory& type_factory,
+      ListValue& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   // See the corresponding type declaration of `MapValueInterface` for
   // documentation.

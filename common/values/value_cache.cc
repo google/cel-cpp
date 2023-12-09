@@ -83,7 +83,8 @@ class EmptyMapValue final : public MapValueInterface {
 
   size_t Size() const override { return 0; }
 
-  absl::StatusOr<ListValue> ListKeys(TypeFactory& type_factory) const override {
+  absl::StatusOr<ListValueView> ListKeys(TypeFactory& type_factory,
+                                         ListValue&) const override {
     auto list_type = ProcessLocalTypeCache::Get()->FindListType(type_.key());
     if (!list_type.has_value()) {
       return absl::InternalError(
@@ -96,7 +97,7 @@ class EmptyMapValue final : public MapValueInterface {
           "expected cached empty list value to be present in process local "
           "cache");
     }
-    return ListValue(*list_value);
+    return *list_value;
   }
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {

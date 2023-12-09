@@ -266,12 +266,14 @@ class MapValueTest : public TestWithParam<MemoryManagement> {
 TEST_P(MapValueTest, Default) {
   Value scratch;
   MapValue map_value;
+  ListValue map_keys_scratch;
   EXPECT_TRUE(map_value.IsEmpty());
   EXPECT_EQ(map_value.Size(), 0);
   EXPECT_EQ(map_value.DebugString(), "{}");
   EXPECT_EQ(map_value.type().key(), DynTypeView());
   EXPECT_EQ(map_value.type().value(), DynTypeView());
-  ASSERT_OK_AND_ASSIGN(auto list_value, map_value.ListKeys(type_factory()));
+  ASSERT_OK_AND_ASSIGN(auto list_value,
+                       map_value.ListKeys(type_factory(), map_keys_scratch));
   EXPECT_TRUE(list_value.IsEmpty());
   EXPECT_EQ(list_value.Size(), 0);
   EXPECT_EQ(list_value.DebugString(), "[]");
@@ -399,7 +401,9 @@ TEST_P(MapValueTest, ListKeys) {
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)});
-  ASSERT_OK_AND_ASSIGN(auto list_keys, map_value.ListKeys(type_factory()));
+  ListValue map_keys_scratch;
+  ASSERT_OK_AND_ASSIGN(auto list_keys,
+                       map_value.ListKeys(type_factory(), map_keys_scratch));
   std::vector<int64_t> keys;
   ASSERT_OK(list_keys.ForEach([&keys](ValueView element) -> bool {
     keys.push_back(Cast<IntValueView>(element).NativeValue());
@@ -507,12 +511,14 @@ class MapValueViewTest : public TestWithParam<MemoryManagement> {
 TEST_P(MapValueViewTest, Default) {
   Value scratch;
   MapValueView map_value;
+  ListValue map_keys_scratch;
   EXPECT_TRUE(map_value.IsEmpty());
   EXPECT_EQ(map_value.Size(), 0);
   EXPECT_EQ(map_value.DebugString(), "{}");
   EXPECT_EQ(map_value.type().key(), DynTypeView());
   EXPECT_EQ(map_value.type().value(), DynTypeView());
-  ASSERT_OK_AND_ASSIGN(auto list_value, map_value.ListKeys(type_factory()));
+  ASSERT_OK_AND_ASSIGN(auto list_value,
+                       map_value.ListKeys(type_factory(), map_keys_scratch));
   EXPECT_TRUE(list_value.IsEmpty());
   EXPECT_EQ(list_value.Size(), 0);
   EXPECT_EQ(list_value.DebugString(), "[]");
@@ -644,8 +650,9 @@ TEST_P(MapValueViewTest, ListKeys) {
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)});
-  ASSERT_OK_AND_ASSIGN(auto list_keys,
-                       MapValueView(map_value).ListKeys(type_factory()));
+  ListValue map_keys_scratch;
+  ASSERT_OK_AND_ASSIGN(auto list_keys, MapValueView(map_value).ListKeys(
+                                           type_factory(), map_keys_scratch));
   std::vector<int64_t> keys;
   ASSERT_OK(list_keys.ForEach([&keys](ValueView element) -> bool {
     keys.push_back(Cast<IntValueView>(element).NativeValue());

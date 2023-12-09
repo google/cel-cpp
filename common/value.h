@@ -943,13 +943,15 @@ class TypedMapValue final : public MapValueInterface {
 
   size_t Size() const override { return entries_.size(); }
 
-  absl::StatusOr<ListValue> ListKeys(TypeFactory& type_factory) const override {
+  absl::StatusOr<ListValueView> ListKeys(TypeFactory& type_factory,
+                                         ListValue& scratch) const override {
     ListValueBuilder<K> keys(type_factory, Cast<key_view_type>(type_.key()));
     keys.Reserve(Size());
     for (const auto& entry : entries_) {
       keys.Add(entry.first);
     }
-    return std::move(keys).Build();
+    scratch = std::move(keys).Build();
+    return scratch;
   }
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const override {
@@ -1120,9 +1122,9 @@ inline absl::StatusOr<ValueView> MapValue::Has(ValueView key) const {
   return interface_->Has(key);
 }
 
-inline absl::StatusOr<ListValue> MapValue::ListKeys(
-    TypeFactory& type_factory) const {
-  return interface_->ListKeys(type_factory);
+inline absl::StatusOr<ListValueView> MapValue::ListKeys(
+    TypeFactory& type_factory, ListValue& scratch) const {
+  return interface_->ListKeys(type_factory, scratch);
 }
 
 inline absl::Status MapValue::ForEach(ForEachCallback callback) const {
@@ -1155,9 +1157,9 @@ inline absl::StatusOr<ValueView> MapValueView::Has(ValueView key) const {
   return interface_->Has(key);
 }
 
-inline absl::StatusOr<ListValue> MapValueView::ListKeys(
-    TypeFactory& type_factory) const {
-  return interface_->ListKeys(type_factory);
+inline absl::StatusOr<ListValueView> MapValueView::ListKeys(
+    TypeFactory& type_factory, ListValue& scratch) const {
+  return interface_->ListKeys(type_factory, scratch);
 }
 
 inline absl::Status MapValueView::ForEach(ForEachCallback callback) const {
