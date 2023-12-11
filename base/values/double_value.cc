@@ -15,11 +15,9 @@
 #include "base/values/double_value.h"
 
 #include <cmath>
-#include <cstdint>
 #include <string>
 #include <utility>
 
-#include "absl/base/casts.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -36,7 +34,7 @@
 #include "common/any.h"
 #include "common/json.h"
 #include "internal/number.h"
-#include "internal/proto_wire.h"
+#include "internal/serialize.h"
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -45,9 +43,7 @@ CEL_INTERNAL_VALUE_IMPL(DoubleValue);
 
 namespace {
 
-using internal::ProtoWireEncoder;
-using internal::ProtoWireTag;
-using internal::ProtoWireType;
+using internal::SerializeDoubleValue;
 
 std::string DoubleToString(double value) {
   if (std::isfinite(value)) {
@@ -88,15 +84,8 @@ std::string DoubleValue::DebugString() const {
 
 absl::StatusOr<Any> DoubleValue::ConvertToAny(ValueFactory&) const {
   static constexpr absl::string_view kTypeName = "google.protobuf.DoubleValue";
-  const auto value = this->NativeValue();
   absl::Cord data;
-  if (absl::bit_cast<uint64_t>(value) != 0) {
-    ProtoWireEncoder encoder(kTypeName, data);
-    CEL_RETURN_IF_ERROR(
-        encoder.WriteTag(ProtoWireTag(1, ProtoWireType::kFixed64)));
-    CEL_RETURN_IF_ERROR(encoder.WriteFixed64(value));
-    encoder.EnsureFullyEncoded();
-  }
+  CEL_RETURN_IF_ERROR(SerializeDoubleValue(this->NativeValue(), data));
   return MakeAny(MakeTypeUrl(kTypeName), std::move(data));
 }
 

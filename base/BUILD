@@ -167,6 +167,7 @@ cc_library(
         "//internal:number",
         "//internal:overloaded",
         "//internal:proto_wire",
+        "//internal:serialize",
         "//internal:status_macros",
         "//internal:strings",
         "//internal:time",

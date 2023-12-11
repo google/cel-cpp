@@ -15,6 +15,7 @@
 #include "base/values/null_value.h"
 
 #include <string>
+#include <utility>
 
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -26,16 +27,25 @@
 #include "base/value_factory.h"
 #include "common/any.h"
 #include "common/json.h"
+#include "internal/serialize.h"
+#include "internal/status_macros.h"
 
 namespace cel {
+
+namespace {
+
+using internal::SerializeValue;
+
+}
 
 CEL_INTERNAL_VALUE_IMPL(NullValue);
 
 std::string NullValue::DebugString() { return "null"; }
 
 absl::StatusOr<Any> NullValue::ConvertToAny(ValueFactory&) const {
-  return MakeAny(MakeTypeUrl("google.protobuf.Value"),
-                 absl::Cord(absl::string_view("\x08\x00", 2)));
+  absl::Cord data;
+  CEL_RETURN_IF_ERROR(SerializeValue(kJsonNull, data));
+  return MakeAny(MakeTypeUrl("google.protobuf.Value"), std::move(data));
 }
 
 absl::StatusOr<Json> NullValue::ConvertToJson(ValueFactory&) const {

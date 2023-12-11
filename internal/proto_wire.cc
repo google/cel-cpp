@@ -146,4 +146,18 @@ absl::Status ProtoWireEncoder::WriteLengthDelimited(absl::Cord data) {
   return absl::OkStatus();
 }
 
+absl::Status ProtoWireEncoder::WriteLengthDelimited(absl::string_view data) {
+  ABSL_DCHECK(tag_.has_value() &&
+              tag_->type() == ProtoWireType::kLengthDelimited);
+  if (ABSL_PREDICT_FALSE(data.size() > std::numeric_limits<uint32_t>::max())) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("out of range length encountered encoding field ",
+                     tag_->field_number(), " of ", message_));
+  }
+  VarintEncode(static_cast<uint32_t>(data.size()), data_);
+  data_.Append(data);
+  tag_.reset();
+  return absl::OkStatus();
+}
+
 }  // namespace cel::internal

@@ -22,6 +22,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/types/variant.h"
@@ -440,14 +441,17 @@ Json JsonBytes(const absl::Cord& value);
 
 // Serializes `json` as `google.protobuf.Any` with type `google.protobuf.Value`.
 absl::StatusOr<Any> JsonToAny(const Json& json);
+absl::Status JsonToAnyValue(const Json& json, absl::Cord& data);
 
 // Serializes `json` as `google.protobuf.Any` with type
 // `google.protobuf.ListValue`.
 absl::StatusOr<Any> JsonArrayToAny(const JsonArray& json);
+absl::Status JsonArrayToAnyValue(const JsonArray& json, absl::Cord& data);
 
 // Serializes `json` as `google.protobuf.Any` with type
 // `google.protobuf.Struct`.
 absl::StatusOr<Any> JsonObjectToAny(const JsonObject& json);
+absl::Status JsonObjectToAnyValue(const JsonObject& json, absl::Cord& data);
 
 template <typename T>
 inline JsonArray MakeJsonArray(std::initializer_list<T> il) {

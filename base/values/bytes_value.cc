@@ -39,7 +39,7 @@
 #include "common/any.h"
 #include "common/json.h"
 #include "internal/overloaded.h"
-#include "internal/proto_wire.h"
+#include "internal/serialize.h"
 #include "internal/status_macros.h"
 #include "internal/strings.h"
 #include "internal/utf8.h"
@@ -50,9 +50,7 @@ CEL_INTERNAL_VALUE_IMPL(BytesValue);
 
 namespace {
 
-using internal::ProtoWireEncoder;
-using internal::ProtoWireTag;
-using internal::ProtoWireType;
+using internal::SerializeBytesValue;
 
 struct BytesValueDebugStringVisitor final {
   std::string operator()(absl::string_view value) const {
@@ -296,15 +294,8 @@ std::string BytesValue::DebugString() const {
 
 absl::StatusOr<Any> BytesValue::ConvertToAny(ValueFactory&) const {
   static constexpr absl::string_view kTypeName = "google.protobuf.BytesValue";
-  const auto value = ToCord();
   absl::Cord data;
-  if (!value.empty()) {
-    ProtoWireEncoder encoder(kTypeName, data);
-    CEL_RETURN_IF_ERROR(
-        encoder.WriteTag(ProtoWireTag(1, ProtoWireType::kLengthDelimited)));
-    CEL_RETURN_IF_ERROR(encoder.WriteLengthDelimited(value));
-    encoder.EnsureFullyEncoded();
-  }
+  CEL_RETURN_IF_ERROR(SerializeBytesValue(ToCord(), data));
   return MakeAny(MakeTypeUrl(kTypeName), std::move(data));
 }
 

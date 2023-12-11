@@ -34,16 +34,14 @@
 #include "common/any.h"
 #include "common/json.h"
 #include "internal/number.h"
-#include "internal/proto_wire.h"
+#include "internal/serialize.h"
 #include "internal/status_macros.h"
 
 namespace cel {
 
 namespace {
 
-using internal::ProtoWireEncoder;
-using internal::ProtoWireTag;
-using internal::ProtoWireType;
+using internal::SerializeInt64Value;
 
 }  // namespace
 
@@ -55,15 +53,8 @@ std::string IntValue::DebugString() const { return DebugString(NativeValue()); }
 
 absl::StatusOr<Any> IntValue::ConvertToAny(ValueFactory&) const {
   static constexpr absl::string_view kTypeName = "google.protobuf.Int64Value";
-  const auto value = this->NativeValue();
   absl::Cord data;
-  if (value) {
-    ProtoWireEncoder encoder(kTypeName, data);
-    CEL_RETURN_IF_ERROR(
-        encoder.WriteTag(ProtoWireTag(1, ProtoWireType::kVarint)));
-    CEL_RETURN_IF_ERROR(encoder.WriteVarint(value));
-    encoder.EnsureFullyEncoded();
-  }
+  CEL_RETURN_IF_ERROR(SerializeInt64Value(this->NativeValue(), data));
   return MakeAny(MakeTypeUrl(kTypeName), std::move(data));
 }
 

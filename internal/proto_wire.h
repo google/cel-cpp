@@ -495,6 +495,8 @@ class ProtoWireEncoder final {
 
   absl::Status WriteLengthDelimited(absl::Cord data);
 
+  absl::Status WriteLengthDelimited(absl::string_view data);
+
   void EnsureFullyEncoded() { ABSL_DCHECK(!tag_.has_value()); }
 
  private:

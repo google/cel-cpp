@@ -49,6 +49,22 @@ cc_library(
 )
 
 cc_library(
+    name = "serialize",
+    srcs = ["serialize.cc"],
+    hdrs = ["serialize.h"],
+    deps = [
+        ":proto_wire",
+        ":status_macros",
+        "//common:json",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+cc_library(
     name = "benchmark",
     testonly = True,
     hdrs = ["benchmark.h"],

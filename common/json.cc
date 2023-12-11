@@ -17,6 +17,8 @@
 #include <string>
 #include <utility>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/escaping.h"
 #include "absl/strings/str_cat.h"
@@ -78,12 +80,6 @@ inline constexpr absl::string_view kJsonArrayTypeName =
 inline constexpr absl::string_view kJsonObjectTypeName =
     "google.protobuf.Struct";
 
-absl::StatusOr<absl::Cord> JsonToAnyValue(const Json& json);
-
-absl::StatusOr<absl::Cord> JsonArrayToAnyValue(const JsonArray& json);
-
-absl::StatusOr<absl::Cord> JsonObjectToAnyValue(const JsonObject& json);
-
 inline constexpr ProtoWireTag kValueNullValueFieldTag =
     ProtoWireTag(1, ProtoWireType::kVarint);
 inline constexpr ProtoWireTag kValueBoolValueFieldTag =
@@ -97,8 +93,34 @@ inline constexpr ProtoWireTag kValueListValueFieldTag =
 inline constexpr ProtoWireTag kValueStructValueFieldTag =
     ProtoWireTag(5, ProtoWireType::kLengthDelimited);
 
-absl::StatusOr<absl::Cord> JsonToAnyValue(const Json& json) {
+inline constexpr ProtoWireTag kListValueValuesFieldTag =
+    ProtoWireTag(1, ProtoWireType::kLengthDelimited);
+
+inline constexpr ProtoWireTag kStructFieldsEntryKeyFieldTag =
+    ProtoWireTag(1, ProtoWireType::kLengthDelimited);
+inline constexpr ProtoWireTag kStructFieldsEntryValueFieldTag =
+    ProtoWireTag(2, ProtoWireType::kLengthDelimited);
+
+absl::StatusOr<absl::Cord> JsonObjectEntryToAnyValue(const absl::Cord& key,
+                                                     const Json& value) {
   absl::Cord data;
+  ProtoWireEncoder encoder("google.protobuf.Struct.FieldsEntry", data);
+  absl::Cord subdata;
+  CEL_RETURN_IF_ERROR(JsonToAnyValue(value, subdata));
+  CEL_RETURN_IF_ERROR(encoder.WriteTag(kStructFieldsEntryKeyFieldTag));
+  CEL_RETURN_IF_ERROR(encoder.WriteLengthDelimited(std::move(key)));
+  CEL_RETURN_IF_ERROR(encoder.WriteTag(kStructFieldsEntryValueFieldTag));
+  CEL_RETURN_IF_ERROR(encoder.WriteLengthDelimited(std::move(subdata)));
+  encoder.EnsureFullyEncoded();
+  return data;
+}
+
+inline constexpr ProtoWireTag kStructFieldsFieldTag =
+    ProtoWireTag(1, ProtoWireType::kLengthDelimited);
+
+}  // namespace
+
+absl::Status JsonToAnyValue(const Json& json, absl::Cord& data) {
   ProtoWireEncoder encoder(kJsonTypeName, data);
   absl::Status status = absl::visit(
       internal::Overloaded{
@@ -119,59 +141,36 @@ absl::StatusOr<absl::Cord> JsonToAnyValue(const Json& json) {
             return encoder.WriteLengthDelimited(value);
           },
           [&encoder](const JsonArray& value) -> absl::Status {
-            CEL_ASSIGN_OR_RETURN(auto subdata, JsonArrayToAnyValue(value));
+            absl::Cord subdata;
+            CEL_RETURN_IF_ERROR(JsonArrayToAnyValue(value, subdata));
             CEL_RETURN_IF_ERROR(encoder.WriteTag(kValueListValueFieldTag));
             return encoder.WriteLengthDelimited(std::move(subdata));
           },
           [&encoder](const JsonObject& value) -> absl::Status {
-            CEL_ASSIGN_OR_RETURN(auto subdata, JsonObjectToAnyValue(value));
+            absl::Cord subdata;
+            CEL_RETURN_IF_ERROR(JsonObjectToAnyValue(value, subdata));
             CEL_RETURN_IF_ERROR(encoder.WriteTag(kValueStructValueFieldTag));
             return encoder.WriteLengthDelimited(std::move(subdata));
           }},
       json);
   CEL_RETURN_IF_ERROR(status);
   encoder.EnsureFullyEncoded();
-  return data;
+  return absl::OkStatus();
 }
 
-inline constexpr ProtoWireTag kListValueValuesFieldTag =
-    ProtoWireTag(1, ProtoWireType::kLengthDelimited);
-
-absl::StatusOr<absl::Cord> JsonArrayToAnyValue(const JsonArray& json) {
-  absl::Cord data;
+absl::Status JsonArrayToAnyValue(const JsonArray& json, absl::Cord& data) {
   ProtoWireEncoder encoder(kJsonArrayTypeName, data);
   for (const auto& element : json) {
-    CEL_ASSIGN_OR_RETURN(auto subdata, JsonToAnyValue(element));
+    absl::Cord subdata;
+    CEL_RETURN_IF_ERROR(JsonToAnyValue(element, subdata));
     CEL_RETURN_IF_ERROR(encoder.WriteTag(kListValueValuesFieldTag));
     CEL_RETURN_IF_ERROR(encoder.WriteLengthDelimited(std::move(subdata)));
   }
   encoder.EnsureFullyEncoded();
-  return data;
+  return absl::OkStatus();
 }
 
-inline constexpr ProtoWireTag kStructFieldsEntryKeyFieldTag =
-    ProtoWireTag(1, ProtoWireType::kLengthDelimited);
-inline constexpr ProtoWireTag kStructFieldsEntryValueFieldTag =
-    ProtoWireTag(2, ProtoWireType::kLengthDelimited);
-
-absl::StatusOr<absl::Cord> JsonObjectEntryToAnyValue(const absl::Cord& key,
-                                                     const Json& value) {
-  absl::Cord data;
-  ProtoWireEncoder encoder("google.protobuf.Struct.FieldsEntry", data);
-  CEL_ASSIGN_OR_RETURN(auto subdata, JsonToAnyValue(value));
-  CEL_RETURN_IF_ERROR(encoder.WriteTag(kStructFieldsEntryKeyFieldTag));
-  CEL_RETURN_IF_ERROR(encoder.WriteLengthDelimited(std::move(key)));
-  CEL_RETURN_IF_ERROR(encoder.WriteTag(kStructFieldsEntryValueFieldTag));
-  CEL_RETURN_IF_ERROR(encoder.WriteLengthDelimited(std::move(subdata)));
-  encoder.EnsureFullyEncoded();
-  return data;
-}
-
-inline constexpr ProtoWireTag kStructFieldsFieldTag =
-    ProtoWireTag(1, ProtoWireType::kLengthDelimited);
-
-absl::StatusOr<absl::Cord> JsonObjectToAnyValue(const JsonObject& json) {
-  absl::Cord data;
+absl::Status JsonObjectToAnyValue(const JsonObject& json, absl::Cord& data) {
   ProtoWireEncoder encoder(kJsonObjectTypeName, data);
   for (const auto& entry : json) {
     CEL_ASSIGN_OR_RETURN(auto subdata,
@@ -180,23 +179,24 @@ absl::StatusOr<absl::Cord> JsonObjectToAnyValue(const JsonObject& json) {
     CEL_RETURN_IF_ERROR(encoder.WriteLengthDelimited(std::move(subdata)));
   }
   encoder.EnsureFullyEncoded();
-  return data;
+  return absl::OkStatus();
 }
 
-}  // namespace
-
 absl::StatusOr<Any> JsonToAny(const Json& json) {
-  CEL_ASSIGN_OR_RETURN(auto data, JsonToAnyValue(json));
+  absl::Cord data;
+  CEL_RETURN_IF_ERROR(JsonToAnyValue(json, data));
   return MakeAny(MakeTypeUrl(kJsonTypeName), std::move(data));
 }
 
 absl::StatusOr<Any> JsonArrayToAny(const JsonArray& json) {
-  CEL_ASSIGN_OR_RETURN(auto data, JsonArrayToAnyValue(json));
+  absl::Cord data;
+  CEL_RETURN_IF_ERROR(JsonArrayToAnyValue(json, data));
   return MakeAny(MakeTypeUrl(kJsonArrayTypeName), std::move(data));
 }
 
 absl::StatusOr<Any> JsonObjectToAny(const JsonObject& json) {
-  CEL_ASSIGN_OR_RETURN(auto data, JsonObjectToAnyValue(json));
+  absl::Cord data;
+  CEL_RETURN_IF_ERROR(JsonObjectToAnyValue(json, data));
   return MakeAny(MakeTypeUrl(kJsonObjectTypeName), std::move(data));
 }
 

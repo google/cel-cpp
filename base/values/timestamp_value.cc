@@ -14,7 +14,6 @@
 
 #include "base/values/timestamp_value.h"
 
-#include <cstdint>
 #include <string>
 #include <utility>
 
@@ -31,7 +30,7 @@
 #include "base/value_factory.h"
 #include "common/any.h"
 #include "common/json.h"
-#include "internal/proto_wire.h"
+#include "internal/serialize.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
 
@@ -39,9 +38,7 @@ namespace cel {
 
 namespace {
 
-using internal::ProtoWireEncoder;
-using internal::ProtoWireTag;
-using internal::ProtoWireType;
+using internal::SerializeTimestamp;
 
 }  // namespace
 
@@ -57,26 +54,14 @@ std::string TimestampValue::DebugString() const {
 
 absl::StatusOr<Any> TimestampValue::ConvertToAny(ValueFactory&) const {
   static constexpr absl::string_view kTypeName = "google.protobuf.Timestamp";
-  auto value = this->NativeValue() - absl::UnixEpoch();
-  if (ABSL_PREDICT_FALSE(value == absl::InfiniteDuration() ||
-                         value == -absl::InfiniteDuration())) {
+  auto value = this->NativeValue();
+  if (ABSL_PREDICT_FALSE(value == absl::InfiniteFuture() ||
+                         value == absl::InfinitePast())) {
     return absl::FailedPreconditionError(
         "infinite timestamp values cannot be converted to google.protobuf.Any");
   }
   absl::Cord data;
-  if (value != absl::ZeroDuration()) {
-    auto seconds = absl::IDivDuration(value, absl::Seconds(1), &value);
-    auto nanos = static_cast<int32_t>(
-        absl::IDivDuration(value, absl::Nanoseconds(1), &value));
-    ProtoWireEncoder encoder(kTypeName, data);
-    CEL_RETURN_IF_ERROR(
-        encoder.WriteTag(ProtoWireTag(1, ProtoWireType::kVarint)));
-    CEL_RETURN_IF_ERROR(encoder.WriteVarint(seconds));
-    CEL_RETURN_IF_ERROR(
-        encoder.WriteTag(ProtoWireTag(2, ProtoWireType::kVarint)));
-    CEL_RETURN_IF_ERROR(encoder.WriteVarint(nanos));
-    encoder.EnsureFullyEncoded();
-  }
+  CEL_RETURN_IF_ERROR(SerializeTimestamp(value, data));
   return MakeAny(MakeTypeUrl(kTypeName), std::move(data));
 }
 

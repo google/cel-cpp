@@ -14,7 +14,6 @@
 
 #include "base/values/duration_value.h"
 
-#include <cstdint>
 #include <string>
 #include <utility>
 
@@ -31,7 +30,7 @@
 #include "base/value_factory.h"
 #include "common/any.h"
 #include "common/json.h"
-#include "internal/proto_wire.h"
+#include "internal/serialize.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
 
@@ -41,9 +40,7 @@ CEL_INTERNAL_VALUE_IMPL(DurationValue);
 
 namespace {
 
-using internal::ProtoWireEncoder;
-using internal::ProtoWireTag;
-using internal::ProtoWireType;
+using internal::SerializeDuration;
 
 }  // namespace
 
@@ -64,19 +61,7 @@ absl::StatusOr<Any> DurationValue::ConvertToAny(ValueFactory&) const {
         "infinite duration values cannot be converted to google.protobuf.Any");
   }
   absl::Cord data;
-  if (value != absl::ZeroDuration()) {
-    auto seconds = absl::IDivDuration(value, absl::Seconds(1), &value);
-    auto nanos = static_cast<int32_t>(
-        absl::IDivDuration(value, absl::Nanoseconds(1), &value));
-    ProtoWireEncoder encoder(kTypeName, data);
-    CEL_RETURN_IF_ERROR(
-        encoder.WriteTag(ProtoWireTag(1, ProtoWireType::kVarint)));
-    CEL_RETURN_IF_ERROR(encoder.WriteVarint(seconds));
-    CEL_RETURN_IF_ERROR(
-        encoder.WriteTag(ProtoWireTag(2, ProtoWireType::kVarint)));
-    CEL_RETURN_IF_ERROR(encoder.WriteVarint(nanos));
-    encoder.EnsureFullyEncoded();
-  }
+  CEL_RETURN_IF_ERROR(SerializeDuration(value, data));
   return MakeAny(MakeTypeUrl(kTypeName), std::move(data));
 }
 
