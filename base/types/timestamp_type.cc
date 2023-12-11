@@ -18,16 +18,14 @@
 #include "absl/time/time.h"
 #include "base/value_factory.h"
 #include "base/values/timestamp_value.h"
-#include "internal/proto_wire.h"
+#include "internal/deserialize.h"
 #include "internal/status_macros.h"
 
 namespace cel {
 
 namespace {
 
-using internal::MakeProtoWireTag;
-using internal::ProtoWireDecoder;
-using internal::ProtoWireType;
+using internal::DeserializeTimestamp;
 
 }  // namespace
 
@@ -36,24 +34,8 @@ CEL_INTERNAL_TYPE_IMPL(TimestampType);
 absl::StatusOr<Handle<TimestampValue>> TimestampType::NewValueFromAny(
     ValueFactory& value_factory, const absl::Cord& value) const {
   // google.protobuf.Timestamp.
-  int64_t seconds = 0;
-  int32_t nanos = 0;
-  ProtoWireDecoder decoder("google.protobuf.Timestamp", value);
-  while (decoder.HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto tag, decoder.ReadTag());
-    if (tag == MakeProtoWireTag(1, ProtoWireType::kVarint)) {
-      CEL_ASSIGN_OR_RETURN(seconds, decoder.ReadVarint<int64_t>());
-      continue;
-    }
-    if (tag == MakeProtoWireTag(2, ProtoWireType::kVarint)) {
-      CEL_ASSIGN_OR_RETURN(nanos, decoder.ReadVarint<int32_t>());
-      continue;
-    }
-    CEL_RETURN_IF_ERROR(decoder.SkipLengthValue());
-  }
-  decoder.EnsureFullyDecoded();
-  return value_factory.CreateTimestampValue(
-      absl::UnixEpoch() + absl::Seconds(seconds) + absl::Nanoseconds(nanos));
+  CEL_ASSIGN_OR_RETURN(auto deserialized_value, DeserializeTimestamp(value));
+  return value_factory.CreateTimestampValue(deserialized_value);
 }
 
 }  // namespace cel

@@ -162,6 +162,7 @@ cc_library(
         "//common:memory",
         "//common:native_type",
         "//internal:casts",
+        "//internal:deserialize",
         "//internal:no_destructor",
         "//internal:number",
         "//internal:overloaded",

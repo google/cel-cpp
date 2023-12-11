@@ -37,16 +37,14 @@
 #include "base/values/map_value.h"
 #include "base/values/map_value_builder.h"
 #include "base/values/string_value.h"
-#include "internal/proto_wire.h"
+#include "internal/deserialize.h"
 #include "internal/status_macros.h"
 
 namespace cel {
 
 namespace {
 
-using internal::MakeProtoWireTag;
-using internal::ProtoWireDecoder;
-using internal::ProtoWireType;
+using internal::DeserializeStruct;
 
 }  // namespace
 
@@ -77,50 +75,8 @@ absl::StatusOr<Handle<MapValue>> MapType::NewValueFromAny(
         absl::StrCat("google.protobuf.Any cannot be deserialized as ", name()));
   }
   // google.protobuf.Struct.
-  CEL_ASSIGN_OR_RETURN(auto builder, NewValueBuilder(value_factory));
-  ProtoWireDecoder decoder("google.protobuf.Struct", value);
-  while (decoder.HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto tag, decoder.ReadTag());
-    if (tag == MakeProtoWireTag(1, ProtoWireType::kLengthDelimited)) {
-      // fields
-      CEL_ASSIGN_OR_RETURN(auto fields_value, decoder.ReadLengthDelimited());
-      Handle<StringValue> field_name = value_factory.GetStringValue();
-      Handle<Value> field_value = value_factory.GetNullValue();
-      ProtoWireDecoder fields_decoder("google.protobuf.Struct.FieldsEntry",
-                                      fields_value);
-      while (fields_decoder.HasNext()) {
-        CEL_ASSIGN_OR_RETURN(auto fields_tag, fields_decoder.ReadTag());
-        if (fields_tag ==
-            MakeProtoWireTag(1, ProtoWireType::kLengthDelimited)) {
-          // key
-          CEL_ASSIGN_OR_RETURN(auto field_name_value,
-                               fields_decoder.ReadLengthDelimited());
-          CEL_ASSIGN_OR_RETURN(field_name, value_factory.CreateStringValue(
-                                               std::move(field_name_value)));
-          continue;
-        }
-        if (fields_tag ==
-            MakeProtoWireTag(2, ProtoWireType::kLengthDelimited)) {
-          // value
-          CEL_ASSIGN_OR_RETURN(auto field_value_value,
-                               fields_decoder.ReadLengthDelimited());
-          CEL_ASSIGN_OR_RETURN(
-              field_value,
-              value_factory.type_factory().GetJsonValueType()->NewValueFromAny(
-                  value_factory, field_value_value));
-          continue;
-        }
-        CEL_RETURN_IF_ERROR(fields_decoder.SkipLengthValue());
-      }
-      fields_decoder.EnsureFullyDecoded();
-      CEL_RETURN_IF_ERROR(
-          builder->Put(std::move(field_name), std::move(field_value)));
-      continue;
-    }
-    CEL_RETURN_IF_ERROR(decoder.SkipLengthValue());
-  }
-  decoder.EnsureFullyDecoded();
-  return std::move(*builder).Build();
+  CEL_ASSIGN_OR_RETURN(auto deserialized_value, DeserializeStruct(value));
+  return value_factory.CreateMapValueFromJson(std::move(deserialized_value));
 }
 
 absl::Span<const absl::string_view> MapType::aliases() const {

@@ -21,15 +21,19 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/value_factory.h"
-#include "internal/proto_wire.h"
+#include "internal/deserialize.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
 namespace {
 
-using internal::MakeProtoWireTag;
-using internal::ProtoWireDecoder;
-using internal::ProtoWireType;
+using internal::DeserializeBoolValue;
+using internal::DeserializeBytesValue;
+using internal::DeserializeFloatValueOrDoubleValue;
+using internal::DeserializeInt64Value;
+using internal::DeserializeStringValue;
+using internal::DeserializeUInt64Value;
 
 }  // namespace
 
@@ -143,113 +147,44 @@ absl::Span<const absl::string_view> UintWrapperType::aliases() const {
 absl::StatusOr<Handle<BoolValue>> BoolWrapperType::NewValueFromAny(
     ValueFactory& value_factory, const absl::Cord& value) const {
   // google.protobuf.BoolValue.
-  bool primitive = false;
-  ProtoWireDecoder decoder("google.protobuf.BoolValue", value);
-  while (decoder.HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto tag, decoder.ReadTag());
-    if (tag == MakeProtoWireTag(1, ProtoWireType::kVarint)) {
-      CEL_ASSIGN_OR_RETURN(primitive, decoder.ReadVarint<bool>());
-      continue;
-    }
-    CEL_RETURN_IF_ERROR(decoder.SkipLengthValue());
-  }
-  decoder.EnsureFullyDecoded();
-  return value_factory.CreateBoolValue(primitive);
+  CEL_ASSIGN_OR_RETURN(auto deserialized_value, DeserializeBoolValue(value));
+  return value_factory.CreateBoolValue(deserialized_value);
 }
 
 absl::StatusOr<Handle<DoubleValue>> DoubleWrapperType::NewValueFromAny(
     ValueFactory& value_factory, const absl::Cord& value) const {
   // google.protobuf.{FloatValue,DoubleValue}.
-  double primitive = 0.0;
-  ProtoWireDecoder decoder("google.protobuf.DoubleValue", value);
-  while (decoder.HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto tag, decoder.ReadTag());
-    if (tag == MakeProtoWireTag(1, ProtoWireType::kFixed64)) {
-      // google.protobuf.DoubleValue
-      CEL_ASSIGN_OR_RETURN(primitive, decoder.ReadFixed64<double>());
-      continue;
-    }
-    if (tag == MakeProtoWireTag(1, ProtoWireType::kFixed32)) {
-      // google.protobuf.FloatValue
-      CEL_ASSIGN_OR_RETURN(primitive, decoder.ReadFixed32<float>());
-      continue;
-    }
-    CEL_RETURN_IF_ERROR(decoder.SkipLengthValue());
-  }
-  decoder.EnsureFullyDecoded();
-  return value_factory.CreateDoubleValue(primitive);
+  CEL_ASSIGN_OR_RETURN(auto deserialized_value,
+                       DeserializeFloatValueOrDoubleValue(value));
+  return value_factory.CreateDoubleValue(deserialized_value);
 }
 
 absl::StatusOr<Handle<IntValue>> IntWrapperType::NewValueFromAny(
     ValueFactory& value_factory, const absl::Cord& value) const {
   // google.protobuf.{Int32Value,Int64Value}
-  int64_t primitive = 0;
-  ProtoWireDecoder decoder("google.protobuf.Int64Value", value);
-  while (decoder.HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto tag, decoder.ReadTag());
-    if (tag == MakeProtoWireTag(1, ProtoWireType::kVarint)) {
-      CEL_ASSIGN_OR_RETURN(primitive, decoder.ReadVarint<int64_t>());
-      continue;
-    }
-    CEL_RETURN_IF_ERROR(decoder.SkipLengthValue());
-  }
-  decoder.EnsureFullyDecoded();
-  return value_factory.CreateIntValue(primitive);
+  CEL_ASSIGN_OR_RETURN(auto deserialized_value, DeserializeInt64Value(value));
+  return value_factory.CreateIntValue(deserialized_value);
 }
 
 absl::StatusOr<Handle<UintValue>> UintWrapperType::NewValueFromAny(
     ValueFactory& value_factory, const absl::Cord& value) const {
   // google.protobuf.{UInt32Value,UInt64Value}
-  uint64_t primitive = 0;
-  ProtoWireDecoder decoder("google.protobuf.UInt64Value", value);
-  while (decoder.HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto tag, decoder.ReadTag());
-    if (tag == MakeProtoWireTag(1, ProtoWireType::kVarint)) {
-      CEL_ASSIGN_OR_RETURN(primitive, decoder.ReadVarint<uint64_t>());
-      continue;
-    }
-    CEL_RETURN_IF_ERROR(decoder.SkipLengthValue());
-  }
-  decoder.EnsureFullyDecoded();
-  return value_factory.CreateUintValue(primitive);
+  CEL_ASSIGN_OR_RETURN(auto deserialized_value, DeserializeUInt64Value(value));
+  return value_factory.CreateUintValue(deserialized_value);
 }
 
 absl::StatusOr<Handle<BytesValue>> BytesWrapperType::NewValueFromAny(
     ValueFactory& value_factory, const absl::Cord& value) const {
   // google.protobuf.BytesValue
-  Handle<BytesValue> primitive = value_factory.GetBytesValue();
-  ProtoWireDecoder decoder("google.protobuf.BytesValue", value);
-  while (decoder.HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto tag, decoder.ReadTag());
-    if (tag == MakeProtoWireTag(1, ProtoWireType::kLengthDelimited)) {
-      CEL_ASSIGN_OR_RETURN(auto primitive_value, decoder.ReadLengthDelimited());
-      CEL_ASSIGN_OR_RETURN(primitive, value_factory.CreateBytesValue(
-                                          std::move(primitive_value)));
-      continue;
-    }
-    CEL_RETURN_IF_ERROR(decoder.SkipLengthValue());
-  }
-  decoder.EnsureFullyDecoded();
-  return primitive;
+  CEL_ASSIGN_OR_RETURN(auto deserialized_value, DeserializeBytesValue(value));
+  return value_factory.CreateBytesValue(std::move(deserialized_value));
 }
 
 absl::StatusOr<Handle<StringValue>> StringWrapperType::NewValueFromAny(
     ValueFactory& value_factory, const absl::Cord& value) const {
   // google.protobuf.StringValue
-  Handle<StringValue> primitive = value_factory.GetStringValue();
-  ProtoWireDecoder decoder("google.protobuf.StringValue", value);
-  while (decoder.HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto tag, decoder.ReadTag());
-    if (tag == MakeProtoWireTag(1, ProtoWireType::kLengthDelimited)) {
-      CEL_ASSIGN_OR_RETURN(auto primitive_value, decoder.ReadLengthDelimited());
-      CEL_ASSIGN_OR_RETURN(primitive, value_factory.CreateStringValue(
-                                          std::move(primitive_value)));
-      continue;
-    }
-    CEL_RETURN_IF_ERROR(decoder.SkipLengthValue());
-  }
-  decoder.EnsureFullyDecoded();
-  return primitive;
+  CEL_ASSIGN_OR_RETURN(auto deserialized_value, DeserializeStringValue(value));
+  return value_factory.CreateStringValue(std::move(deserialized_value));
 }
 
 }  // namespace cel

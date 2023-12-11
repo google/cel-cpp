@@ -35,6 +35,20 @@ cc_test(
 )
 
 cc_library(
+    name = "deserialize",
+    srcs = ["deserialize.cc"],
+    hdrs = ["deserialize.h"],
+    deps = [
+        ":proto_wire",
+        ":status_macros",
+        "//common:json",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+cc_library(
     name = "benchmark",
     testonly = True,
     hdrs = ["benchmark.h"],
