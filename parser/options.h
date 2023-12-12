@@ -27,7 +27,7 @@ struct ParserOptions final {
   // parsing of the expression.
   int error_recovery_limit = ::cel_parser_internal::kDefaultErrorRecoveryLimit;
 
-  // Limit on the amount of recusive parse instructions permitted when building
+  // Limit on the amount of recursive parse instructions permitted when building
   // the abstract syntax tree for the expression. This prevents pathological
   // inputs from causing stack overflows.
   int max_recursion_depth = ::cel_parser_internal::kDefaultMaxRecursionDepth;
@@ -49,7 +49,7 @@ struct ParserOptions final {
   bool enable_optional_syntax = false;
 
   // Enable unique numbering for builtin macro expr nodes.
-  bool enable_unique_macro_numbering = false;
+  bool enable_unique_macro_numbering = true;
 };
 
 }  // namespace cel
