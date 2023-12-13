@@ -56,6 +56,19 @@ class TypeFactory {
   // Creates a `OptionalType`.
   OptionalType CreateOptionalType(TypeView parameter);
 
+  // `GetDynListType` gets a view of the `ListType` type `list(dyn)`.
+  ListTypeView GetDynListType();
+
+  // `GetDynDynMapType` gets a view of the `MapType` type `map(dyn, dyn)`.
+  MapTypeView GetDynDynMapType();
+
+  // `GetDynDynMapType` gets a view of the `MapType` type `map(string, dyn)`.
+  MapTypeView GetStringDynMapType();
+
+  // `GetDynOptionalType` gets a view of the `OptionalType` type
+  // `optional(dyn)`.
+  OptionalTypeView GetDynOptionalType();
+
  private:
   virtual ListType CreateListTypeImpl(TypeView element) = 0;
 

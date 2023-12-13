@@ -106,6 +106,8 @@ ProcessLocalTypeCache::ProcessLocalTypeCache() {
   ABSL_DCHECK(dyn_list_type_.has_value());
   dyn_dyn_map_type_ = FindMapType(DynTypeView(), DynTypeView());
   ABSL_DCHECK(dyn_dyn_map_type_.has_value());
+  string_dyn_map_type_ = FindMapType(StringTypeView(), DynTypeView());
+  ABSL_DCHECK(string_dyn_map_type_.has_value());
   dyn_optional_type_ = FindOptionalType(DynTypeView());
   ABSL_DCHECK(dyn_optional_type_.has_value());
 }
