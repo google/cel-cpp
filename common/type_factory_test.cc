@@ -22,11 +22,13 @@
 #include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type.h"
+#include "common/types/type_cache.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
 
+using common_internal::ProcessLocalTypeCache;
 using testing::_;
 using testing::Eq;
 using testing::Ne;
@@ -109,6 +111,9 @@ TEST_P(TypeFactoryTest, ListType) {
   auto list_type2 = type_factory().CreateListType(struct_type1);
   EXPECT_THAT(type_factory().CreateListType(struct_type1), Eq(list_type2));
   EXPECT_THAT(type_factory().CreateListType(struct_type2), Ne(list_type2));
+
+  EXPECT_EQ(type_factory().GetDynListType(),
+            ProcessLocalTypeCache::Get()->GetDynListType());
 }
 
 TEST_P(TypeFactoryTest, MapType) {
@@ -127,6 +132,11 @@ TEST_P(TypeFactoryTest, MapType) {
               Eq(map_type2));
   EXPECT_THAT(type_factory().CreateMapType(StringType(), struct_type2),
               Ne(map_type2));
+
+  EXPECT_EQ(type_factory().GetDynDynMapType(),
+            ProcessLocalTypeCache::Get()->GetDynDynMapType());
+  EXPECT_EQ(type_factory().GetStringDynMapType(),
+            ProcessLocalTypeCache::Get()->GetStringDynMapType());
 }
 
 TEST_P(TypeFactoryTest, MapTypeInvalidKeyType) {
@@ -174,6 +184,9 @@ TEST_P(TypeFactoryTest, OptionalType) {
               Eq(optional_type2));
   EXPECT_THAT(type_factory().CreateOptionalType(struct_type2),
               Ne(optional_type2));
+
+  EXPECT_EQ(type_factory().GetDynOptionalType(),
+            ProcessLocalTypeCache::Get()->GetDynOptionalType());
 }
 
 INSTANTIATE_TEST_SUITE_P(

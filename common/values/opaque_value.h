@@ -50,6 +50,9 @@ class OpaqueValue;
 class OpaqueValueView;
 class TypeFactory;
 
+// `Is` checks whether `lhs` and `rhs` have the same identity.
+bool Is(OpaqueValueView lhs, OpaqueValueView rhs);
+
 class OpaqueValueInterface : public ValueInterface {
  public:
   using alternative_type = OpaqueValue;
@@ -244,6 +247,10 @@ struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
 
 inline OpaqueValue::OpaqueValue(OpaqueValueView value)
     : interface_(value.interface_) {}
+
+inline bool Is(OpaqueValueView lhs, OpaqueValueView rhs) {
+  return lhs.operator->() == rhs.operator->();
+}
 
 // OpaqueValueView -> OpaqueValueViewFor<T>
 template <typename To, typename From>

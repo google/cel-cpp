@@ -58,7 +58,10 @@ class MapValueView;
 class MapValueBuilderInterface;
 template <typename K, typename V>
 class MapValueBuilder;
-class TypeFactory;
+class ValueFactory;
+
+// `Is` checks whether `lhs` and `rhs` have the same identity.
+bool Is(MapValueView lhs, MapValueView rhs);
 
 class MapValueInterface : public ValueInterface {
  public:
@@ -83,22 +86,24 @@ class MapValueInterface : public ValueInterface {
   // Lookup the value associated with the given key, returning a view of the
   // value. If the implementation is not able to directly return a view, the
   // result is stored in `scratch` and the returned view is that of `scratch`.
-  absl::StatusOr<ValueView> Get(
-      ValueView key, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<ValueView> Get(ValueFactory& value_factory, ValueView key,
+                                Value& scratch
+                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   // Lookup the value associated with the given key, returning a view of the
   // value and a bool indicating whether it exists. If the implementation is not
   // able to directly return a view, the result is stored in `scratch` and the
   // returned view is that of `scratch`.
   absl::StatusOr<std::pair<ValueView, bool>> Find(
-      ValueView key, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+      ValueFactory& value_factory, ValueView key,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   // Checks whether the given key is present in the map.
   absl::StatusOr<ValueView> Has(ValueView key) const;
 
   // Returns a new list value whose elements are the keys of this map.
   virtual absl::StatusOr<ListValueView> ListKeys(
-      TypeFactory& type_factory,
+      TypeFactory& type_factory, ValueFactory& value_factory,
       ListValue& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
 
   // Callback used by `ForEach`. The first argument is the key and the second is
@@ -111,17 +116,19 @@ class MapValueInterface : public ValueInterface {
 
   // Iterates over the entries in the map, invoking `callback` for each. See the
   // comment on `ForEachCallback` for details.
-  virtual absl::Status ForEach(ForEachCallback callback) const;
+  virtual absl::Status ForEach(ValueFactory& value_factory,
+                               ForEachCallback callback) const;
 
   // By default, implementations do not guarantee any iteration order. Unless
   // specified otherwise, assume the iteration order is random.
-  virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator()
-      const = 0;
+  virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
+      ValueFactory& value_factory) const = 0;
 
  private:
   // Called by `Find` after performing various argument checks.
   virtual absl::StatusOr<absl::optional<ValueView>> FindImpl(
-      ValueView key, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
+      ValueFactory& value_factory, ValueView key,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
 
   // Called by `Has` after performing various argument checks.
   virtual absl::StatusOr<bool> HasImpl(ValueView key) const = 0;
@@ -162,13 +169,15 @@ class MapValue {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::StatusOr<ValueView> Get(
-      ValueView key, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<ValueView> Get(ValueFactory& value_factory, ValueView key,
+                                Value& scratch
+                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::StatusOr<std::pair<ValueView, bool>> Find(
-      ValueView key, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+      ValueFactory& value_factory, ValueView key,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
@@ -177,7 +186,7 @@ class MapValue {
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::StatusOr<ListValueView> ListKeys(
-      TypeFactory& type_factory,
+      TypeFactory& type_factory, ValueFactory& value_factory,
       ListValue& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   // See the corresponding type declaration of `MapValueInterface` for
@@ -186,11 +195,13 @@ class MapValue {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::Status ForEach(ForEachCallback callback) const;
+  absl::Status ForEach(ValueFactory& value_factory,
+                       ForEachCallback callback) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
+      ValueFactory& value_factory) const;
 
   void swap(MapValue& other) noexcept {
     using std::swap;
@@ -308,13 +319,15 @@ class MapValueView {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::StatusOr<ValueView> Get(
-      ValueView key, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<ValueView> Get(ValueFactory& value_factory, ValueView key,
+                                Value& scratch
+                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::StatusOr<std::pair<ValueView, bool>> Find(
-      ValueView key, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+      ValueFactory& value_factory, ValueView key,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
@@ -323,7 +336,7 @@ class MapValueView {
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::StatusOr<ListValueView> ListKeys(
-      TypeFactory& type_factory,
+      TypeFactory& type_factory, ValueFactory& value_factory,
       ListValue& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   // See the corresponding type declaration of `MapValueInterface` for
@@ -332,11 +345,13 @@ class MapValueView {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::Status ForEach(ForEachCallback callback) const;
+  absl::Status ForEach(ValueFactory& value_factory,
+                       ForEachCallback callback) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
+      ValueFactory& value_factory) const;
 
   void swap(MapValueView& other) noexcept {
     using std::swap;
@@ -352,6 +367,7 @@ class MapValueView {
  private:
   friend class MapValue;
   friend struct NativeTypeTraits<MapValueView>;
+  friend bool Is(MapValueView lhs, MapValueView rhs);
 
   SharedView<const MapValueInterface> interface_;
 };
@@ -382,6 +398,10 @@ struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
 };
 
 inline MapValue::MapValue(MapValueView value) : interface_(value.interface_) {}
+
+inline bool Is(MapValueView lhs, MapValueView rhs) {
+  return lhs.interface_.operator->() == rhs.interface_.operator->();
+}
 
 // MapValueView -> MapValueViewFor<T>
 template <typename To, typename From>

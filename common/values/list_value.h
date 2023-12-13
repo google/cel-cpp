@@ -57,6 +57,10 @@ class ListValueBuilderInterface;
 template <typename T>
 class ListValueBuilder;
 class TypeFactory;
+class ValueFactory;
+
+// `Is` checks whether `lhs` and `rhs` have the same identity.
+bool Is(ListValueView lhs, ListValueView rhs);
 
 class ListValueInterface : public ValueInterface {
  public:
@@ -76,19 +80,23 @@ class ListValueInterface : public ValueInterface {
   // Returns a view of the element at index `index`. If the underlying
   // implementation cannot directly return a view of a value, the value will be
   // stored in `scratch`, and the returned view will be that of `scratch`.
-  absl::StatusOr<ValueView> Get(
-      size_t index, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<ValueView> Get(ValueFactory& value_factory, size_t index,
+                                Value& scratch
+                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   using ForEachCallback = absl::FunctionRef<absl::StatusOr<bool>(ValueView)>;
 
-  virtual absl::Status ForEach(ForEachCallback callback) const;
+  virtual absl::Status ForEach(ValueFactory& value_factory,
+                               ForEachCallback callback) const;
 
-  virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
+  virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
+      ValueFactory& value_factory) const;
 
  private:
   friend class ListValueInterfaceIterator;
 
-  virtual absl::StatusOr<ValueView> GetImpl(size_t index,
+  virtual absl::StatusOr<ValueView> GetImpl(ValueFactory& value_factory,
+                                            size_t index,
                                             Value& scratch) const = 0;
 };
 
@@ -124,14 +132,17 @@ class ListValue {
   size_t Size() const { return interface_->Size(); }
 
   // See ListValueInterface::Get for documentation.
-  absl::StatusOr<ValueView> Get(
-      size_t index, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<ValueView> Get(ValueFactory& value_factory, size_t index,
+                                Value& scratch
+                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   using ForEachCallback = typename ListValueInterface::ForEachCallback;
 
-  absl::Status ForEach(ForEachCallback callback) const;
+  absl::Status ForEach(ValueFactory& value_factory,
+                       ForEachCallback callback) const;
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
+      ValueFactory& value_factory) const;
 
   void swap(ListValue& other) noexcept {
     using std::swap;
@@ -247,14 +258,17 @@ class ListValueView {
   size_t Size() const { return interface_->Size(); }
 
   // See ListValueInterface::Get for documentation.
-  absl::StatusOr<ValueView> Get(
-      size_t index, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<ValueView> Get(ValueFactory& value_factory, size_t index,
+                                Value& scratch
+                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   using ForEachCallback = typename ListValueInterface::ForEachCallback;
 
-  absl::Status ForEach(ForEachCallback callback) const;
+  absl::Status ForEach(ValueFactory& value_factory,
+                       ForEachCallback callback) const;
 
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator() const;
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
+      ValueFactory& value_factory) const;
 
   void swap(ListValueView& other) noexcept {
     using std::swap;
@@ -270,6 +284,7 @@ class ListValueView {
  private:
   friend class ListValue;
   friend struct NativeTypeTraits<ListValueView>;
+  friend bool Is(ListValueView lhs, ListValueView rhs);
 
   SharedView<const ListValueInterface> interface_;
 };
@@ -301,6 +316,10 @@ struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
 
 inline ListValue::ListValue(ListValueView value)
     : interface_(value.interface_) {}
+
+inline bool Is(ListValueView lhs, ListValueView rhs) {
+  return lhs.interface_.operator->() == rhs.interface_.operator->();
+}
 
 // ListValueView -> ListValueViewFor<T>
 template <typename To, typename From>

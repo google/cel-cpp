@@ -161,6 +161,42 @@ cc_test(
 )
 
 cc_library(
+    name = "memory_testing",
+    testonly = True,
+    hdrs = ["memory_testing.h"],
+    deps = [
+        ":memory",
+        "//internal:testing",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_library(
+    name = "type_testing",
+    testonly = True,
+    hdrs = ["type_testing.h"],
+    deps = [
+        ":data",
+        ":memory",
+        ":memory_testing",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_library(
+    name = "value_testing",
+    testonly = True,
+    hdrs = ["value_testing.h"],
+    deps = [
+        ":data",
+        ":memory",
+        ":type_testing",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_library(
     name = "type_kind",
     hdrs = ["type_kind.h"],
     deps = [
@@ -247,7 +283,10 @@ cc_library(
             "types/*_test.cc",
             "values/*_test.cc",
         ],
-    ) + ["type_factory.cc"],
+    ) + [
+        "type_factory.cc",
+        "value_factory.cc",
+    ],
     hdrs = glob(
         [
             "types/*.h",
@@ -263,6 +302,7 @@ cc_library(
         "type_interface.h",
         "type_provider.h",
         "value.h",
+        "value_factory.h",
         "value_interface.h",
         "value_provider.h",
     ],
@@ -313,6 +353,7 @@ cc_test(
     ]) + [
         "type_factory_test.cc",
         "type_test.cc",
+        "value_factory_test.cc",
         "value_test.cc",
     ],
     deps = [
@@ -322,6 +363,7 @@ cc_test(
         ":native_type",
         ":sized_input_view",
         ":value_kind",
+        ":value_testing",
         "//internal:testing",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_set",

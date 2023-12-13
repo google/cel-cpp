@@ -26,8 +26,11 @@ namespace cel {
 
 class ListValueInterfaceIterator final : public ValueIterator {
  public:
-  explicit ListValueInterfaceIterator(const ListValueInterface& interface)
-      : interface_(interface), size_(interface_.Size()) {}
+  explicit ListValueInterfaceIterator(const ListValueInterface& interface,
+                                      ValueFactory& value_factory)
+      : interface_(interface),
+        value_factory_(value_factory),
+        size_(interface_.Size()) {}
 
   bool HasNext() override { return index_ < size_; }
 
@@ -37,28 +40,31 @@ class ListValueInterfaceIterator final : public ValueIterator {
           "ValueIterator::Next() called when "
           "ValueIterator::HasNext() returns false");
     }
-    return interface_.GetImpl(index_++, scratch);
+    return interface_.GetImpl(value_factory_, index_++, scratch);
   }
 
  private:
   const ListValueInterface& interface_;
+  ValueFactory& value_factory_;
   const size_t size_;
   size_t index_ = 0;
 };
 
-absl::StatusOr<ValueView> ListValueInterface::Get(size_t index,
+absl::StatusOr<ValueView> ListValueInterface::Get(ValueFactory& value_factory,
+                                                  size_t index,
                                                   Value& scratch) const {
   if (ABSL_PREDICT_FALSE(index >= Size())) {
     return absl::InvalidArgumentError("index out of bounds");
   }
-  return GetImpl(index, scratch);
+  return GetImpl(value_factory, index, scratch);
 }
 
-absl::Status ListValueInterface::ForEach(ForEachCallback callback) const {
+absl::Status ListValueInterface::ForEach(ValueFactory& value_factory,
+                                         ForEachCallback callback) const {
   const size_t size = Size();
   for (size_t index = 0; index < size; ++index) {
     Value scratch;
-    CEL_ASSIGN_OR_RETURN(auto element, GetImpl(index, scratch));
+    CEL_ASSIGN_OR_RETURN(auto element, GetImpl(value_factory, index, scratch));
     CEL_ASSIGN_OR_RETURN(auto ok, callback(element));
     if (!ok) {
       break;
@@ -67,9 +73,9 @@ absl::Status ListValueInterface::ForEach(ForEachCallback callback) const {
   return absl::OkStatus();
 }
 
-absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
-ListValueInterface::NewIterator() const {
-  return std::make_unique<ListValueInterfaceIterator>(*this);
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> ListValueInterface::NewIterator(
+    ValueFactory& value_factory) const {
+  return std::make_unique<ListValueInterfaceIterator>(*this, value_factory);
 }
 
 }  // namespace cel

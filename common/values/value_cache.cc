@@ -77,6 +77,9 @@ MapValueView ProcessLocalValueCache::GetEmptyDynDynMapValue() const {
   return *dyn_dyn_map_value_;
 }
 
+MapValueView ProcessLocalValueCache::GetEmptyStringDynMapValue() const {
+  return *string_dyn_map_value_;
+}
 absl::optional<OptionalValueView> ProcessLocalValueCache::GetEmptyOptionalValue(
     OptionalTypeView type) const {
   if (auto optional_value = optional_values_.find(type);
@@ -133,6 +136,9 @@ ProcessLocalValueCache::ProcessLocalValueCache()
   dyn_dyn_map_value_ =
       GetEmptyMapValue(ProcessLocalTypeCache::Get()->GetDynDynMapType());
   ABSL_DCHECK(dyn_dyn_map_value_.has_value());
+  string_dyn_map_value_ =
+      GetEmptyMapValue(ProcessLocalTypeCache::Get()->GetStringDynMapType());
+  ABSL_DCHECK(string_dyn_map_value_.has_value());
   dyn_optional_value_ =
       GetEmptyOptionalValue(ProcessLocalTypeCache::Get()->GetDynOptionalType());
   ABSL_DCHECK(dyn_optional_value_.has_value());

@@ -28,6 +28,7 @@
 #include "common/type.h"
 #include "common/type_factory.h"
 #include "common/value.h"
+#include "common/value_testing.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -127,52 +128,18 @@ INSTANTIATE_TEST_SUITE_P(
                        ::testing::Values(Typing::kStatic, Typing::kDynamic)),
     ListValueBuilderTest::ToString);
 
-class ListValueTest : public TestWithParam<MemoryManagement> {
+class ListValueTest : public common_internal::ThreadCompatibleValueTest<> {
  public:
-  void SetUp() override {
-    switch (memory_management()) {
-      case MemoryManagement::kPooling:
-        memory_manager_ =
-            MemoryManager::Pooling(NewThreadCompatiblePoolingMemoryManager());
-        break;
-      case MemoryManagement::kReferenceCounting:
-        memory_manager_ = MemoryManager::ReferenceCounting();
-        break;
-    }
-    type_factory_ = NewThreadCompatibleTypeFactory(memory_manager());
-  }
-
   template <typename... Args>
   ListValue NewIntListValue(Args&&... args) {
-    ListValueBuilder<IntValue> builder(**type_factory_, IntTypeView());
+    ListValueBuilder<IntValue> builder(type_factory(), IntTypeView());
     (builder.Add(std::forward<Args>(args)), ...);
     return std::move(builder).Build();
   }
 
   ListType GetIntListType() {
-    return (*type_factory_)->CreateListType(IntTypeView());
+    return type_factory().CreateListType(IntTypeView());
   }
-
-  void TearDown() override { Finish(); }
-
-  void Finish() {
-    type_factory_.reset();
-    memory_manager_.reset();
-  }
-
-  MemoryManagerRef memory_manager() { return *memory_manager_; }
-
-  MemoryManagement memory_management() const { return GetParam(); }
-
-  static std::string ToString(TestParamInfo<MemoryManagement> param) {
-    std::ostringstream out;
-    out << param.param;
-    return out.str();
-  }
-
- private:
-  absl::optional<MemoryManager> memory_manager_;
-  absl::optional<Shared<TypeFactory>> type_factory_;
 };
 
 TEST(ListValue, Default) {
@@ -222,23 +189,23 @@ TEST_P(ListValueTest, Size) {
 TEST_P(ListValueTest, Get) {
   Value scratch;
   auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
-  ASSERT_OK_AND_ASSIGN(auto element, value.Get(0, scratch));
+  ASSERT_OK_AND_ASSIGN(auto element, value.Get(value_factory(), 0, scratch));
   ASSERT_TRUE(InstanceOf<IntValueView>(element));
   ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 0);
-  ASSERT_OK_AND_ASSIGN(element, value.Get(1, scratch));
+  ASSERT_OK_AND_ASSIGN(element, value.Get(value_factory(), 1, scratch));
   ASSERT_TRUE(InstanceOf<IntValueView>(element));
   ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 1);
-  ASSERT_OK_AND_ASSIGN(element, value.Get(2, scratch));
+  ASSERT_OK_AND_ASSIGN(element, value.Get(value_factory(), 2, scratch));
   ASSERT_TRUE(InstanceOf<IntValueView>(element));
   ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 2);
-  EXPECT_THAT(value.Get(3, scratch),
+  EXPECT_THAT(value.Get(value_factory(), 3, scratch),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 TEST_P(ListValueTest, ForEach) {
   auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
   std::vector<int64_t> elements;
-  EXPECT_OK(value.ForEach([&elements](ValueView element) {
+  EXPECT_OK(value.ForEach(value_factory(), [&elements](ValueView element) {
     elements.push_back(Cast<IntValueView>(element).NativeValue());
     return true;
   }));
@@ -248,7 +215,7 @@ TEST_P(ListValueTest, ForEach) {
 TEST_P(ListValueTest, NewIterator) {
   Value scratch;
   auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
-  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator());
+  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator(value_factory()));
   std::vector<int64_t> elements;
   while (iterator->HasNext()) {
     ASSERT_OK_AND_ASSIGN(auto element, iterator->Next(scratch));
@@ -263,56 +230,22 @@ TEST_P(ListValueTest, NewIterator) {
 
 INSTANTIATE_TEST_SUITE_P(
     ListValueTest, ListValueTest,
-    ::testing::Values(MemoryManagement::kPooling,
-                      MemoryManagement::kReferenceCounting),
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
     ListValueTest::ToString);
 
-class ListValueViewTest : public TestWithParam<MemoryManagement> {
+class ListValueViewTest : public common_internal::ThreadCompatibleValueTest<> {
  public:
-  void SetUp() override {
-    switch (memory_management()) {
-      case MemoryManagement::kPooling:
-        memory_manager_ =
-            MemoryManager::Pooling(NewThreadCompatiblePoolingMemoryManager());
-        break;
-      case MemoryManagement::kReferenceCounting:
-        memory_manager_ = MemoryManager::ReferenceCounting();
-        break;
-    }
-    type_factory_ = NewThreadCompatibleTypeFactory(memory_manager());
-  }
-
   template <typename... Args>
   ListValue NewIntListValue(Args&&... args) {
-    ListValueBuilder<IntValue> builder(**type_factory_, IntTypeView());
+    ListValueBuilder<IntValue> builder(type_factory(), IntTypeView());
     (builder.Add(std::forward<Args>(args)), ...);
     return std::move(builder).Build();
   }
 
   ListType GetIntListType() {
-    return (*type_factory_)->CreateListType(IntTypeView());
+    return type_factory().CreateListType(IntTypeView());
   }
-
-  void TearDown() override { Finish(); }
-
-  void Finish() {
-    type_factory_.reset();
-    memory_manager_.reset();
-  }
-
-  MemoryManagerRef memory_manager() { return *memory_manager_; }
-
-  MemoryManagement memory_management() const { return GetParam(); }
-
-  static std::string ToString(TestParamInfo<MemoryManagement> param) {
-    std::ostringstream out;
-    out << param.param;
-    return out.str();
-  }
-
- private:
-  absl::optional<MemoryManager> memory_manager_;
-  absl::optional<Shared<TypeFactory>> type_factory_;
 };
 
 TEST(ListValueView, Default) {
@@ -362,33 +295,38 @@ TEST_P(ListValueViewTest, Size) {
 TEST_P(ListValueViewTest, Get) {
   Value scratch;
   auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
-  ASSERT_OK_AND_ASSIGN(auto element, ListValueView(value).Get(0, scratch));
+  ASSERT_OK_AND_ASSIGN(auto element,
+                       ListValueView(value).Get(value_factory(), 0, scratch));
   ASSERT_TRUE(InstanceOf<IntValueView>(element));
   ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 0);
-  ASSERT_OK_AND_ASSIGN(element, ListValueView(value).Get(1, scratch));
+  ASSERT_OK_AND_ASSIGN(element,
+                       ListValueView(value).Get(value_factory(), 1, scratch));
   ASSERT_TRUE(InstanceOf<IntValueView>(element));
   ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 1);
-  ASSERT_OK_AND_ASSIGN(element, ListValueView(value).Get(2, scratch));
+  ASSERT_OK_AND_ASSIGN(element,
+                       ListValueView(value).Get(value_factory(), 2, scratch));
   ASSERT_TRUE(InstanceOf<IntValueView>(element));
   ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 2);
-  EXPECT_THAT(ListValueView(value).Get(3, scratch),
+  EXPECT_THAT(ListValueView(value).Get(value_factory(), 3, scratch),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 TEST_P(ListValueViewTest, ForEach) {
   auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
   std::vector<int64_t> elements;
-  EXPECT_OK(ListValueView(value).ForEach([&elements](ValueView element) {
-    elements.push_back(Cast<IntValueView>(element).NativeValue());
-    return true;
-  }));
+  EXPECT_OK(ListValueView(value).ForEach(
+      value_factory(), [&elements](ValueView element) {
+        elements.push_back(Cast<IntValueView>(element).NativeValue());
+        return true;
+      }));
   EXPECT_THAT(elements, ElementsAreArray({0, 1, 2}));
 }
 
 TEST_P(ListValueViewTest, NewIterator) {
   Value scratch;
   auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
-  ASSERT_OK_AND_ASSIGN(auto iterator, ListValueView(value).NewIterator());
+  ASSERT_OK_AND_ASSIGN(auto iterator,
+                       ListValueView(value).NewIterator(value_factory()));
   std::vector<int64_t> elements;
   while (iterator->HasNext()) {
     ASSERT_OK_AND_ASSIGN(auto element, iterator->Next(scratch));
@@ -403,8 +341,8 @@ TEST_P(ListValueViewTest, NewIterator) {
 
 INSTANTIATE_TEST_SUITE_P(
     ListValueViewTest, ListValueViewTest,
-    ::testing::Values(MemoryManagement::kPooling,
-                      MemoryManagement::kReferenceCounting),
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
     ListValueViewTest::ToString);
 
 }  // namespace
