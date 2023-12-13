@@ -18,8 +18,13 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <utility>
+#include <vector>
 
+#include "absl/strings/cord.h"
 #include "absl/types/optional.h"
+#include "common/casting.h"
+#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_factory.h"
@@ -33,6 +38,7 @@ namespace {
 using common_internal::ProcessLocalTypeCache;
 using testing::TestParamInfo;
 using testing::TestWithParam;
+using testing::UnorderedElementsAreArray;
 
 enum class ThreadSafety {
   kCompatible,
@@ -103,6 +109,129 @@ class ValueFactoryTest
   absl::optional<Shared<TypeFactory>> type_factory_;
   absl::optional<Shared<ValueFactory>> value_factory_;
 };
+
+TEST_P(ValueFactoryTest, JsonValueNull) {
+  auto value = value_factory().CreateValueFromJson(kJsonNull);
+  EXPECT_TRUE(InstanceOf<NullValue>(value));
+}
+
+TEST_P(ValueFactoryTest, JsonValueBool) {
+  auto value = value_factory().CreateValueFromJson(true);
+  ASSERT_TRUE(InstanceOf<BoolValue>(value));
+  EXPECT_TRUE(Cast<BoolValue>(value).NativeValue());
+}
+
+TEST_P(ValueFactoryTest, JsonValueNumber) {
+  auto value = value_factory().CreateValueFromJson(1.0);
+  ASSERT_TRUE(InstanceOf<DoubleValue>(value));
+  EXPECT_EQ(Cast<DoubleValue>(value).NativeValue(), 1.0);
+}
+
+TEST_P(ValueFactoryTest, JsonValueString) {
+  auto value = value_factory().CreateValueFromJson(absl::Cord("foo"));
+  ASSERT_TRUE(InstanceOf<StringValue>(value));
+  EXPECT_EQ(Cast<StringValue>(value).NativeString(), "foo");
+}
+
+JsonObject NewJsonObjectForTesting(bool with_array = true,
+                                   bool with_nested_object = true);
+
+JsonArray NewJsonArrayForTesting(bool with_nested_array = true,
+                                 bool with_object = true) {
+  JsonArrayBuilder builder;
+  builder.push_back(kJsonNull);
+  builder.push_back(true);
+  builder.push_back(1.0);
+  builder.push_back(absl::Cord("foo"));
+  if (with_nested_array) {
+    builder.push_back(NewJsonArrayForTesting(false, false));
+  }
+  if (with_object) {
+    builder.push_back(NewJsonObjectForTesting(false, false));
+  }
+  return std::move(builder).Build();
+}
+
+JsonObject NewJsonObjectForTesting(bool with_array, bool with_nested_object) {
+  JsonObjectBuilder builder;
+  builder.insert_or_assign(absl::Cord("a"), kJsonNull);
+  builder.insert_or_assign(absl::Cord("b"), true);
+  builder.insert_or_assign(absl::Cord("c"), 1.0);
+  builder.insert_or_assign(absl::Cord("d"), absl::Cord("foo"));
+  if (with_array) {
+    builder.insert_or_assign(absl::Cord("e"),
+                             NewJsonArrayForTesting(false, false));
+  }
+  if (with_nested_object) {
+    builder.insert_or_assign(absl::Cord("f"),
+                             NewJsonObjectForTesting(false, false));
+  }
+  return std::move(builder).Build();
+}
+
+TEST_P(ValueFactoryTest, JsonValueArray) {
+  auto value = value_factory().CreateValueFromJson(NewJsonArrayForTesting());
+  ASSERT_TRUE(InstanceOf<ListValue>(value));
+  EXPECT_EQ(value.type(), type_factory().GetDynListType());
+  auto& list_value = Cast<ListValue>(value);
+  EXPECT_FALSE(list_value.IsEmpty());
+  EXPECT_EQ(list_value.Size(), 6);
+  EXPECT_EQ(list_value.DebugString(),
+            "[null, true, 1.0, \"foo\", [null, true, 1.0, \"foo\"], {\"a\": "
+            "null, \"b\": true, \"c\": 1.0, \"d\": \"foo\"}]");
+  Value element;
+  ASSERT_OK_AND_ASSIGN(auto element_view,
+                       list_value.Get(value_factory(), 0, element));
+  EXPECT_TRUE(InstanceOf<NullValueView>(element_view));
+}
+
+TEST_P(ValueFactoryTest, JsonValueObject) {
+  auto value = value_factory().CreateValueFromJson(NewJsonObjectForTesting());
+  ASSERT_TRUE(InstanceOf<MapValue>(value));
+  EXPECT_EQ(value.type(), type_factory().GetStringDynMapType());
+  auto& map_value = Cast<MapValue>(value);
+  EXPECT_FALSE(map_value.IsEmpty());
+  EXPECT_EQ(map_value.Size(), 6);
+  EXPECT_EQ(map_value.DebugString(),
+            "{\"a\": null, \"b\": true, \"c\": 1.0, \"d\": \"foo\", \"e\": "
+            "[null, true, 1.0, \"foo\"], \"f\": {\"a\": null, \"b\": true, "
+            "\"c\": 1.0, \"d\": \"foo\"}}");
+
+  ListValue keys;
+  ASSERT_OK_AND_ASSIGN(
+      auto keys_view,
+      map_value.ListKeys(type_factory(), value_factory(), keys));
+  EXPECT_EQ(keys_view.Size(), 6);
+
+  ASSERT_OK_AND_ASSIGN(auto keys_iterator,
+                       map_value.NewIterator(value_factory()));
+  std::vector<StringValue> string_keys;
+  while (keys_iterator->HasNext()) {
+    Value key;
+    ASSERT_OK_AND_ASSIGN(auto key_view, keys_iterator->Next(key));
+    string_keys.push_back(StringValue(Cast<StringValueView>(key_view)));
+  }
+  EXPECT_THAT(string_keys, UnorderedElementsAreArray(
+                               {StringValueView("a"), StringValueView("b"),
+                                StringValueView("c"), StringValueView("d"),
+                                StringValueView("e"), StringValueView("f")}));
+
+  ASSERT_OK_AND_ASSIGN(auto has, map_value.Has(StringValueView("a")));
+  ASSERT_TRUE(InstanceOf<BoolValueView>(has));
+  EXPECT_TRUE(Cast<BoolValueView>(has).NativeValue());
+  ASSERT_OK_AND_ASSIGN(has, map_value.Has(StringValueView(absl::Cord("a"))));
+  ASSERT_TRUE(InstanceOf<BoolValueView>(has));
+  EXPECT_TRUE(Cast<BoolValueView>(has).NativeValue());
+
+  Value get;
+  ASSERT_OK_AND_ASSIGN(
+      auto get_view, map_value.Get(value_factory(), StringValueView("a"), get));
+  ASSERT_TRUE(InstanceOf<NullValueView>(get_view));
+  ASSERT_OK_AND_ASSIGN(
+      get_view,
+      map_value.Get(value_factory(), StringValueView(absl::Cord("a")), get));
+  ASSERT_TRUE(InstanceOf<NullValueView>(get_view));
+}
 
 TEST_P(ValueFactoryTest, ListValue) {
   // Primitive zero value types are cached.

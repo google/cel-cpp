@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUE_FACTORY_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUE_FACTORY_H_
 
+#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -29,6 +30,18 @@ class ValueFactory {
   // Returns a `MemoryManagerRef` which is used to manage memory for internal
   // data structures as well as created values.
   virtual MemoryManagerRef GetMemoryManager() const = 0;
+
+  // `CreateValueFromJson` constructs a new `Value` that is equivalent to the
+  // JSON value `json`.
+  Value CreateValueFromJson(Json json);
+
+  // `CreateListValueFromJsonArray` constructs a new `ListValue` that is
+  // equivalent to the JSON array `JsonArray`.
+  ListValue CreateListValueFromJsonArray(JsonArray json);
+
+  // `CreateMapValueFromJsonObject` constructs a new `MapValue` that is
+  // equivalent to the JSON object `JsonObject`.
+  MapValue CreateMapValueFromJsonObject(JsonObject json);
 
   // `CreateZeroListValue` returns an empty `ListValue` with the given type
   // `type`.
