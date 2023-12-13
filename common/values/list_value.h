@@ -350,7 +350,7 @@ class ListValueBuilder final : public ListValueBuilderInterface {
 
   ListValueBuilder(TypeFactory& type_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
                    element_view_type element)
-      : ListValueBuilder(type_factory.memory_manager(),
+      : ListValueBuilder(type_factory.GetMemoryManager(),
                          type_factory.CreateListType(element)) {}
 
   ListValueBuilder(MemoryManagerRef memory_manager, ListType type)

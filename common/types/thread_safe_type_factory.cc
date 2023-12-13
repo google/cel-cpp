@@ -32,7 +32,7 @@ ListType ThreadSafeTypeFactory::CreateListTypeImpl(TypeView element) {
       return list_type->second;
     }
   }
-  ListType list_type(memory_manager(), Type(element));
+  ListType list_type(GetMemoryManager(), Type(element));
   absl::WriterMutexLock lock(&list_types_mutex_);
   return list_types_.insert({list_type.element(), list_type}).first->second;
 }
@@ -45,7 +45,7 @@ MapType ThreadSafeTypeFactory::CreateMapTypeImpl(TypeView key, TypeView value) {
       return map_type->second;
     }
   }
-  MapType map_type(memory_manager(), Type(key), Type(value));
+  MapType map_type(GetMemoryManager(), Type(key), Type(value));
   absl::WriterMutexLock lock(&map_types_mutex_);
   return map_types_
       .insert({std::make_pair(map_type.key(), map_type.value()), map_type})
@@ -60,7 +60,7 @@ StructType ThreadSafeTypeFactory::CreateStructTypeImpl(absl::string_view name) {
       return struct_type->second;
     }
   }
-  StructType struct_type(memory_manager(), name);
+  StructType struct_type(GetMemoryManager(), name);
   absl::WriterMutexLock lock(&struct_types_mutex_);
   return struct_types_.insert({struct_type.name(), struct_type}).first->second;
 }
@@ -80,7 +80,7 @@ OpaqueType ThreadSafeTypeFactory::CreateOpaqueTypeImpl(
       return opaque_type->second;
     }
   }
-  OpaqueType opaque_type(memory_manager(), name, parameters);
+  OpaqueType opaque_type(GetMemoryManager(), name, parameters);
   absl::WriterMutexLock lock(&opaque_types_mutex_);
   return opaque_types_
       .insert({OpaqueTypeKey{.name = opaque_type.name(),

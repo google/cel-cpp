@@ -31,7 +31,7 @@ class ThreadCompatibleTypeFactory final : public TypeFactory {
   explicit ThreadCompatibleTypeFactory(MemoryManagerRef memory_manager)
       : memory_manager_(memory_manager) {}
 
-  MemoryManagerRef memory_manager() const override { return memory_manager_; }
+  MemoryManagerRef GetMemoryManager() const override { return memory_manager_; }
 
  private:
   ListType CreateListTypeImpl(TypeView element) override;

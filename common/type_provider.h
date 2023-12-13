@@ -18,6 +18,7 @@
 #include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "common/memory.h"
 #include "common/type.h"
 
 namespace cel {
@@ -30,6 +31,10 @@ namespace cel {
 class TypeProvider {
  public:
   virtual ~TypeProvider() = default;
+
+  // Returns a `MemoryManagerRef` which is used to manage memory for the type
+  // provider itself and its internal data structures.
+  virtual MemoryManagerRef GetMemoryManager() const = 0;
 
   // `FindType` find the type corresponding to name `name`.
   virtual absl::StatusOr<TypeView> FindType(

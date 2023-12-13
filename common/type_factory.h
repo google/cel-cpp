@@ -29,7 +29,9 @@ class TypeFactory {
  public:
   virtual ~TypeFactory() = default;
 
-  virtual MemoryManagerRef memory_manager() const = 0;
+  // Returns a `MemoryManagerRef` which is used to manage memory for internal
+  // data structures as well as created types.
+  virtual MemoryManagerRef GetMemoryManager() const = 0;
 
   // Creates a `ListType` whose element type is `element`. Requires that
   // `element` is a valid element type for lists.

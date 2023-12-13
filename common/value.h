@@ -1053,7 +1053,7 @@ class ListValueBuilder<Value> final : public ListValueBuilderInterface {
  public:
   ListValueBuilder(TypeFactory& type_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
                    TypeView element)
-      : ListValueBuilder(type_factory.memory_manager(),
+      : ListValueBuilder(type_factory.GetMemoryManager(),
                          type_factory.CreateListType(element)) {}
 
   ListValueBuilder(MemoryManagerRef memory_manager, ListType type)
@@ -1198,7 +1198,7 @@ class MapValueBuilder<Value, V> final : public MapValueBuilderInterface {
 
   MapValueBuilder(TypeFactory& type_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
                   TypeView key, value_view_type value)
-      : MapValueBuilder(type_factory.memory_manager(),
+      : MapValueBuilder(type_factory.GetMemoryManager(),
                         type_factory.CreateMapType(key, value)) {}
 
   MapValueBuilder(MemoryManagerRef memory_manager, MapType type)
@@ -1244,7 +1244,7 @@ class MapValueBuilder<K, Value> final : public MapValueBuilderInterface {
 
   MapValueBuilder(TypeFactory& type_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
                   key_view_type key, TypeView value)
-      : MapValueBuilder(type_factory.memory_manager(),
+      : MapValueBuilder(type_factory.GetMemoryManager(),
                         type_factory.CreateMapType(key, value)) {}
 
   MapValueBuilder(MemoryManagerRef memory_manager, MapType type)
@@ -1284,7 +1284,7 @@ class MapValueBuilder<Value, Value> final : public MapValueBuilderInterface {
  public:
   MapValueBuilder(TypeFactory& type_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
                   TypeView key, TypeView value)
-      : MapValueBuilder(type_factory.memory_manager(),
+      : MapValueBuilder(type_factory.GetMemoryManager(),
                         type_factory.CreateMapType(key, value)) {}
 
   MapValueBuilder(MemoryManagerRef memory_manager, MapType type)

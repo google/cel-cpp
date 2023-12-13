@@ -445,7 +445,7 @@ class MapValueBuilder final : public MapValueBuilderInterface {
 
   MapValueBuilder(TypeFactory& type_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
                   key_view_type key, value_view_type value)
-      : MapValueBuilder(type_factory.memory_manager(),
+      : MapValueBuilder(type_factory.GetMemoryManager(),
                         type_factory.CreateMapType(key, value)) {}
 
   MapValueBuilder(MemoryManagerRef memory_manager, MapType type)

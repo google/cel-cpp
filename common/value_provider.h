@@ -30,6 +30,12 @@ class ValueProvider {
  public:
   virtual ~ValueProvider() = default;
 
+  // Returns a `MemoryManagerRef` which is used to manage memory for the value
+  // provider itself, its internal data structures, as well as for builders. The
+  // builders are managed by the value provider's memory manager, but the values
+  // produced by the builders are managed by the value factory's memory manager.
+  virtual MemoryManagerRef GetMemoryManager() const = 0;
+
   // `NewListValueBuilder` returns a new `ListValueBuilderInterface` for the
   // corresponding `ListType` `type`.
   virtual absl::StatusOr<Unique<ListValueBuilderInterface>> NewListValueBuilder(

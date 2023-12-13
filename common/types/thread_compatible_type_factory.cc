@@ -28,7 +28,7 @@ ListType ThreadCompatibleTypeFactory::CreateListTypeImpl(TypeView element) {
       list_type != list_types_.end()) {
     return list_type->second;
   }
-  ListType list_type(memory_manager(), Type(element));
+  ListType list_type(GetMemoryManager(), Type(element));
   return list_types_.insert({list_type.element(), list_type}).first->second;
 }
 
@@ -38,7 +38,7 @@ MapType ThreadCompatibleTypeFactory::CreateMapTypeImpl(TypeView key,
       map_type != map_types_.end()) {
     return map_type->second;
   }
-  MapType map_type(memory_manager(), Type(key), Type(value));
+  MapType map_type(GetMemoryManager(), Type(key), Type(value));
   return map_types_
       .insert({std::make_pair(map_type.key(), map_type.value()), map_type})
       .first->second;
@@ -50,7 +50,7 @@ StructType ThreadCompatibleTypeFactory::CreateStructTypeImpl(
       struct_type != struct_types_.end()) {
     return struct_type->second;
   }
-  StructType struct_type(memory_manager(), name);
+  StructType struct_type(GetMemoryManager(), name);
   return struct_types_.insert({struct_type.name(), struct_type}).first->second;
 }
 
@@ -61,7 +61,7 @@ OpaqueType ThreadCompatibleTypeFactory::CreateOpaqueTypeImpl(
       opaque_type != opaque_types_.end()) {
     return opaque_type->second;
   }
-  OpaqueType opaque_type(memory_manager(), name, parameters);
+  OpaqueType opaque_type(GetMemoryManager(), name, parameters);
   return opaque_types_
       .insert({OpaqueTypeKey{.name = opaque_type.name(),
                              .parameters = opaque_type.parameters()},
