@@ -308,6 +308,7 @@ cc_library(
     ],
     deps = [
         ":casting",
+        ":json",
         ":memory",
         ":native_type",
         ":sized_input_view",
@@ -359,6 +360,7 @@ cc_test(
     deps = [
         ":casting",
         ":data",
+        ":json",
         ":memory",
         ":native_type",
         ":sized_input_view",
