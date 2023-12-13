@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <ostream>
 #include <string>
@@ -36,6 +37,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "common/casting.h"
@@ -56,6 +58,7 @@
 #include "common/values/opaque_value.h"  // IWYU pragma: export
 #include "common/values/optional_value.h"  // IWYU pragma: export
 #include "common/values/string_value.h"  // IWYU pragma: export
+#include "common/values/struct_value.h"  // IWYU pragma: export
 #include "common/values/timestamp_value.h"  // IWYU pragma: export
 #include "common/values/type_value.h"  // IWYU pragma: export
 #include "common/values/uint_value.h"  // IWYU pragma: export
@@ -66,6 +69,8 @@ namespace cel {
 
 class Value;
 class ValueView;
+
+Type TypeOf(ValueView value);
 
 // `Value` is a composition type which encompasses all values supported by the
 // Common Expression Language. When default constructed or moved, `Value` is in
@@ -655,6 +660,17 @@ class ValueIterator {
   // and the returned view will be that of `scratch`.
   virtual absl::StatusOr<ValueView> Next(
       Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) = 0;
+};
+
+class ValueBuilder {
+ public:
+  virtual ~ValueBuilder() = default;
+
+  virtual void SetFieldByName(absl::string_view name, Value value) = 0;
+
+  virtual void SetFieldByNumber(int64_t number, Value value) = 0;
+
+  virtual Value Build() && = 0;
 };
 
 // Now that Value and ValueView are complete, we can define various parts of

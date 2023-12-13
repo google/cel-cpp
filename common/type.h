@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_H_
 
 #include <algorithm>
+#include <cstdint>
 #include <memory>
 #include <ostream>
 #include <string>
@@ -695,6 +696,20 @@ inline Type& Type::operator=(TypeView other) {
   variant_ = other.ToVariant();
   return *this;
 }
+
+struct StructTypeField {
+  std::string name;
+  Type type;
+  // The field number, if less than or equal to 0 it is not available.
+  int64_t number = 0;
+};
+
+struct StructTypeFieldView {
+  absl::string_view name;
+  TypeView type;
+  // The field number, if less than or equal to 0 it is not available.
+  int64_t number = 0;
+};
 
 // Now that Type and TypeView are complete, we can define various parts of list,
 // map, opaque, and struct which depend on Type and TypeView.

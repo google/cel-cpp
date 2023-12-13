@@ -32,6 +32,8 @@ namespace cel {
 
 class StructType;
 class StructTypeView;
+struct StructTypeField;
+struct StructTypeFieldView;
 
 namespace common_internal {
 struct StructTypeData;

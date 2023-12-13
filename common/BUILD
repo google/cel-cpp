@@ -261,8 +261,10 @@ cc_library(
         "type.h",
         "type_factory.h",
         "type_interface.h",
+        "type_provider.h",
         "value.h",
         "value_interface.h",
+        "value_provider.h",
     ],
     deps = [
         ":casting",
