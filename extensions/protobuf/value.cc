@@ -48,6 +48,7 @@
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/casts.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions {
 
@@ -853,7 +854,7 @@ absl::StatusOr<Handle<Value>> StructMessageCopyConverter(
   if (value.GetDescriptor() == google::protobuf::Struct::descriptor()) {
     return ProtoValue::Create(
         value_factory,
-        cel::internal::down_cast<const google::protobuf::Struct&>(value));
+        google::protobuf::DownCastToGenerated<google::protobuf::Struct>(value));
   }
   std::string serialized;
   if (!value.SerializePartialToString(&serialized)) {
@@ -887,7 +888,8 @@ absl::StatusOr<Handle<Value>> StructMessageMoveConverter(
   if (value.GetDescriptor() == google::protobuf::Struct::descriptor()) {
     return ProtoValue::Create(
         value_factory,
-        std::move(cel::internal::down_cast<google::protobuf::Struct&>(value)));
+        std::move(
+            google::protobuf::DownCastToGenerated<google::protobuf::Struct>(value)));
   }
   std::string serialized;
   if (!value.SerializePartialToString(&serialized)) {
@@ -922,7 +924,7 @@ absl::StatusOr<Handle<Value>> StructMessageBorrowConverter(
   if (value.GetDescriptor() == google::protobuf::Struct::descriptor()) {
     return ProtoValue::Create(
         value_factory,
-        cel::internal::down_cast<const google::protobuf::Struct&>(value));
+        google::protobuf::DownCastToGenerated<google::protobuf::Struct>(value));
   }
   std::string serialized;
   if (!value.SerializePartialToString(&serialized)) {
@@ -956,7 +958,8 @@ absl::StatusOr<Handle<Value>> StructMessageOwnConverter(
   if (value->GetDescriptor() == google::protobuf::Struct::descriptor()) {
     return ProtoValue::Create(
         value_factory,
-        std::move(cel::internal::down_cast<google::protobuf::Struct&>(*value)));
+        std::move(
+            google::protobuf::DownCastToGenerated<google::protobuf::Struct>(*value)));
   }
   std::string serialized;
   if (!value->SerializePartialToString(&serialized)) {
@@ -991,7 +994,7 @@ absl::StatusOr<Handle<Value>> ListValueMessageCopyConverter(
   if (value.GetDescriptor() == google::protobuf::ListValue::descriptor()) {
     return ProtoValue::Create(
         value_factory,
-        cel::internal::down_cast<const google::protobuf::ListValue&>(value));
+        google::protobuf::DownCastToGenerated<google::protobuf::ListValue>(value));
   }
   std::string serialized;
   if (!value.SerializePartialToString(&serialized)) {
@@ -1025,7 +1028,7 @@ absl::StatusOr<Handle<Value>> ListValueMessageMoveConverter(
     return ProtoValue::Create(
         value_factory,
         std::move(
-            cel::internal::down_cast<google::protobuf::ListValue&>(value)));
+            google::protobuf::DownCastToGenerated<google::protobuf::ListValue>(value)));
   }
   std::string serialized;
   if (!value.SerializePartialToString(&serialized)) {
@@ -1059,7 +1062,7 @@ absl::StatusOr<Handle<Value>> ListValueMessageBorrowConverter(
   if (value.GetDescriptor() == google::protobuf::ListValue::descriptor()) {
     return ProtoValue::Create(
         value_factory,
-        cel::internal::down_cast<const google::protobuf::ListValue&>(value));
+        google::protobuf::DownCastToGenerated<google::protobuf::ListValue>(value));
   }
   std::string serialized;
   if (!value.SerializePartialToString(&serialized)) {
@@ -1093,7 +1096,7 @@ absl::StatusOr<Handle<Value>> ListValueMessageOwnConverter(
     return ProtoValue::Create(
         value_factory,
         std::move(
-            cel::internal::down_cast<google::protobuf::ListValue&>(*value)));
+            google::protobuf::DownCastToGenerated<google::protobuf::ListValue>(*value)));
   }
   std::string serialized;
   if (!value->SerializePartialToString(&serialized)) {
@@ -1128,7 +1131,7 @@ absl::StatusOr<Handle<Value>> ValueMessageCopyConverter(
   if (desc == google::protobuf::Value::descriptor()) {
     return ProtoValue::Create(
         value_factory,
-        cel::internal::down_cast<const google::protobuf::Value&>(value));
+        google::protobuf::DownCastToGenerated<google::protobuf::Value>(value));
   }
   const auto* oneof_desc = desc->FindOneofByName("kind");
   if (ABSL_PREDICT_FALSE(oneof_desc == nullptr)) {
@@ -1174,7 +1177,7 @@ absl::StatusOr<Handle<Value>> ValueMessageMoveConverter(
   if (desc == google::protobuf::Value::descriptor()) {
     return ProtoValue::Create(
         value_factory,
-        std::move(cel::internal::down_cast<google::protobuf::Value&>(value)));
+        std::move(google::protobuf::DownCastToGenerated<google::protobuf::Value>(value)));
   }
   const auto* oneof_desc = desc->FindOneofByName("kind");
   if (ABSL_PREDICT_FALSE(oneof_desc == nullptr)) {
@@ -1223,7 +1226,7 @@ absl::StatusOr<Handle<Value>> ValueMessageBorrowConverter(
   if (desc == google::protobuf::Value::descriptor()) {
     return ProtoValue::Create(
         value_factory,
-        cel::internal::down_cast<const google::protobuf::Value&>(value));
+        google::protobuf::DownCastToGenerated<google::protobuf::Value>(value));
   }
   const auto* oneof_desc = desc->FindOneofByName("kind");
   if (ABSL_PREDICT_FALSE(oneof_desc == nullptr)) {
@@ -1269,7 +1272,7 @@ absl::StatusOr<Handle<Value>> ValueMessageOwnConverter(
   if (desc == google::protobuf::Value::descriptor()) {
     return ProtoValue::Create(
         value_factory,
-        absl::WrapUnique(cel::internal::down_cast<google::protobuf::Value*>(
+        absl::WrapUnique(google::protobuf::DownCastToGenerated<google::protobuf::Value>(
             value.release())));
   }
   const auto* oneof_desc = desc->FindOneofByName("kind");
@@ -1317,7 +1320,7 @@ absl::StatusOr<Handle<Value>> AnyMessageCopyConverter(
   if (descriptor == google::protobuf::Any::descriptor()) {
     return ProtoValue::Create(
         value_factory,
-        cel::internal::down_cast<const google::protobuf::Any&>(value));
+        google::protobuf::DownCastToGenerated<google::protobuf::Any>(value));
   }
   const auto* reflect = value.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {

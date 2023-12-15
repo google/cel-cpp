@@ -26,6 +26,7 @@
 #include "absl/strings/str_cat.h"
 #include "internal/casts.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions::protobuf_internal {
 
@@ -59,7 +60,7 @@ absl::StatusOr<P> UnwrapValueProto(const google::protobuf::Message& message,
   }
   if (ABSL_PREDICT_TRUE(desc == T::descriptor())) {
     // Fast path.
-    return unwrapper(cel::internal::down_cast<const T&>(message));
+    return unwrapper(google::protobuf::DownCastToGenerated<T>(message));
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
@@ -96,7 +97,7 @@ absl::Status WrapValueProto(google::protobuf::Message& message, const P& value,
   }
   if (ABSL_PREDICT_TRUE(desc == T::descriptor())) {
     // Fast path.
-    return wrapper(value, cel::internal::down_cast<T&>(message));
+    return wrapper(value, google::protobuf::DownCastToGenerated<T>(message));
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
