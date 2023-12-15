@@ -53,14 +53,17 @@ cc_library(
     srcs = ["serialize.cc"],
     hdrs = ["serialize.h"],
     deps = [
+        ":overloaded",
         ":proto_wire",
         ":status_macros",
         "//common:json",
         "@com_google_absl//absl/base",
+        "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:variant",
     ],
 )
 

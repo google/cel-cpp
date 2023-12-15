@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_INTERNAL_SERIALIZE_H_
 #define THIRD_PARTY_CEL_CPP_INTERNAL_SERIALIZE_H_
 
+#include <cstddef>
 #include <cstdint>
 
 #include "absl/status/status.h"
@@ -63,6 +64,38 @@ absl::Status SerializeListValue(const JsonArray& value,
 
 absl::Status SerializeStruct(const JsonObject& value,
                              absl::Cord& serialized_value);
+
+size_t SerializedDurationSize(absl::Duration value);
+
+size_t SerializedTimestampSize(absl::Time value);
+
+size_t SerializedBytesValueSize(const absl::Cord& value);
+
+size_t SerializedBytesValueSize(absl::string_view value);
+
+size_t SerializedStringValueSize(const absl::Cord& value);
+
+size_t SerializedStringValueSize(absl::string_view value);
+
+size_t SerializedBoolValueSize(bool value);
+
+size_t SerializedInt32ValueSize(int32_t value);
+
+size_t SerializedInt64ValueSize(int64_t value);
+
+size_t SerializedUInt32ValueSize(uint32_t value);
+
+size_t SerializedUInt64ValueSize(uint64_t value);
+
+size_t SerializedFloatValueSize(float value);
+
+size_t SerializedDoubleValueSize(double value);
+
+size_t SerializedValueSize(const Json& value);
+
+size_t SerializedListValueSize(const JsonArray& value);
+
+size_t SerializedStructSize(const JsonObject& value);
 
 }  // namespace cel::internal
 
