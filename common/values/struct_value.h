@@ -20,6 +20,7 @@
 
 #include <cstdint>
 
+#include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 
 namespace cel {
@@ -30,9 +31,9 @@ class StructValueBuilder {
  public:
   virtual ~StructValueBuilder() = default;
 
-  virtual void SetFieldByName(absl::string_view name, Value value) = 0;
+  virtual absl::Status SetFieldByName(absl::string_view name, Value value) = 0;
 
-  virtual void SetFieldByNumber(int64_t number, Value value) = 0;
+  virtual absl::Status SetFieldByNumber(int64_t number, Value value) = 0;
 };
 
 }  // namespace cel

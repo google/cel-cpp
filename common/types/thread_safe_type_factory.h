@@ -28,23 +28,22 @@
 
 namespace cel::common_internal {
 
-class ThreadSafeTypeFactory final : public TypeFactory {
+class ThreadSafeTypeFactory : public virtual TypeFactory {
  public:
   explicit ThreadSafeTypeFactory(MemoryManagerRef memory_manager)
       : memory_manager_(memory_manager) {}
 
-  MemoryManagerRef GetMemoryManager() const override { return memory_manager_; }
+  MemoryManagerRef GetMemoryManager() const final { return memory_manager_; }
 
  private:
-  ListType CreateListTypeImpl(TypeView element) override;
+  ListType CreateListTypeImpl(TypeView element) final;
 
-  MapType CreateMapTypeImpl(TypeView key, TypeView value) override;
+  MapType CreateMapTypeImpl(TypeView key, TypeView value) final;
 
-  StructType CreateStructTypeImpl(absl::string_view name) override;
+  StructType CreateStructTypeImpl(absl::string_view name) final;
 
   OpaqueType CreateOpaqueTypeImpl(
-      absl::string_view name,
-      const SizedInputView<TypeView>& parameters) override;
+      absl::string_view name, const SizedInputView<TypeView>& parameters) final;
 
   MemoryManagerRef memory_manager_;
   absl::Mutex list_types_mutex_;

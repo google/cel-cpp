@@ -12,142 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <ostream>
 #include <sstream>
-#include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
 
-#include "absl/hash/hash.h"
 #include "absl/status/status.h"
-#include "absl/types/optional.h"
+#include "absl/status/statusor.h"
 #include "common/casting.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_factory.h"
 #include "common/value.h"
-#include "common/value_kind.h"
 #include "common/value_testing.h"
+#include "internal/status_macros.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
 
-using testing::_;
 using testing::TestParamInfo;
-using testing::TestWithParam;
 using testing::UnorderedElementsAreArray;
 using cel::internal::IsOk;
 using cel::internal::StatusIs;
-
-enum class Typing {
-  kStatic,
-  kDynamic,
-};
-
-std::ostream& operator<<(std::ostream& out, Typing typing) {
-  switch (typing) {
-    case Typing::kStatic:
-      return out << "STATIC";
-    case Typing::kDynamic:
-      return out << "DYNAMIC";
-  }
-}
-
-class MapValueBuilderTest
-    : public TestWithParam<std::tuple<MemoryManagement, Typing, Typing>> {
- public:
-  void SetUp() override {
-    switch (memory_management()) {
-      case MemoryManagement::kPooling:
-        memory_manager_ =
-            MemoryManager::Pooling(NewThreadCompatiblePoolingMemoryManager());
-        break;
-      case MemoryManagement::kReferenceCounting:
-        memory_manager_ = MemoryManager::ReferenceCounting();
-        break;
-    }
-    type_factory_ = NewThreadCompatibleTypeFactory(memory_manager());
-  }
-
-  std::unique_ptr<MapValueBuilderInterface> NewIntDoubleMapValueBuilder() {
-    switch (key_typing()) {
-      case Typing::kStatic:
-        switch (value_typing()) {
-          case Typing::kStatic:
-            return std::make_unique<MapValueBuilder<IntValue, DoubleValue>>(
-                **type_factory_, IntTypeView(), DoubleTypeView());
-          case Typing::kDynamic:
-            return std::make_unique<MapValueBuilder<IntValue, Value>>(
-                **type_factory_, IntTypeView(), DoubleTypeView());
-        }
-      case Typing::kDynamic:
-        switch (value_typing()) {
-          case Typing::kStatic:
-            return std::make_unique<MapValueBuilder<Value, DoubleValue>>(
-                **type_factory_, IntTypeView(), DoubleTypeView());
-          case Typing::kDynamic:
-            return std::make_unique<MapValueBuilder<Value, Value>>(
-                **type_factory_, IntTypeView(), DoubleTypeView());
-        }
-    }
-  }
-
-  void TearDown() override { Finish(); }
-
-  void Finish() {
-    type_factory_.reset();
-    memory_manager_.reset();
-  }
-
-  MemoryManagerRef memory_manager() { return *memory_manager_; }
-
-  MemoryManagement memory_management() const { return std::get<0>(GetParam()); }
-
-  Typing key_typing() const { return std::get<1>(GetParam()); }
-
-  Typing value_typing() const { return std::get<2>(GetParam()); }
-
-  static std::string ToString(
-      TestParamInfo<std::tuple<MemoryManagement, Typing, Typing>> param) {
-    std::ostringstream out;
-    out << std::get<0>(param.param) << "_" << std::get<1>(param.param) << "_"
-        << std::get<2>(param.param);
-    return out.str();
-  }
-
- private:
-  absl::optional<MemoryManager> memory_manager_;
-  absl::optional<Shared<TypeFactory>> type_factory_;
-};
-
-TEST_P(MapValueBuilderTest, Coverage) {
-  constexpr size_t kNumValues = 64;
-  auto builder = NewIntDoubleMapValueBuilder();
-  EXPECT_TRUE(builder->IsEmpty());
-  EXPECT_EQ(builder->Size(), 0);
-  builder->Reserve(kNumValues);
-  for (size_t index = 0; index < kNumValues; ++index) {
-    builder->Put(IntValue(index), DoubleValue(index));
-  }
-  EXPECT_FALSE(builder->IsEmpty());
-  EXPECT_EQ(builder->Size(), kNumValues);
-  auto value = std::move(*builder).Build();
-  EXPECT_FALSE(value.IsEmpty());
-  EXPECT_EQ(value.Size(), kNumValues);
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    MapValueBuilderTest, MapValueBuilderTest,
-    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
-                                         MemoryManagement::kReferenceCounting),
-                       ::testing::Values(Typing::kStatic, Typing::kDynamic),
-                       ::testing::Values(Typing::kStatic, Typing::kDynamic)),
-    MapValueBuilderTest::ToString);
 
 TEST(MapValue, CheckKey) {
   EXPECT_THAT(MapValueView::CheckKey(BoolValueView()), IsOk());
@@ -158,65 +47,17 @@ TEST(MapValue, CheckKey) {
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
-TEST(MapValueKeyHash, Value) {
-  using Hash = common_internal::MapValueKeyHash<Value>;
-  EXPECT_EQ(Hash{}(BoolValueView()),
-            absl::HashOf(ValueKind::kBool, BoolValueView()));
-  EXPECT_EQ(Hash{}(IntValueView()),
-            absl::HashOf(ValueKind::kInt, IntValueView()));
-  EXPECT_EQ(Hash{}(UintValueView()),
-            absl::HashOf(ValueKind::kUint, UintValueView()));
-  EXPECT_EQ(Hash{}(StringValueView()),
-            absl::HashOf(ValueKind::kString, StringValueView()));
-  EXPECT_DEBUG_DEATH(Hash{}(BytesValueView()), _);
-}
-
-TEST(MapValueKeyEqualTo, Value) {
-  using EqualTo = common_internal::MapValueKeyEqualTo<Value>;
-  EXPECT_TRUE(EqualTo{}(BoolValueView(), BoolValueView()));
-  EXPECT_FALSE(EqualTo{}(BoolValueView(), IntValueView()));
-  EXPECT_DEBUG_DEATH(EqualTo{}(BoolValueView(), BytesValueView()), _);
-  EXPECT_FALSE(EqualTo{}(IntValueView(), BoolValueView()));
-  EXPECT_TRUE(EqualTo{}(IntValueView(), IntValueView()));
-  EXPECT_DEBUG_DEATH(EqualTo{}(IntValueView(), BytesValueView()), _);
-  EXPECT_TRUE(EqualTo{}(UintValueView(), UintValueView()));
-  EXPECT_FALSE(EqualTo{}(UintValueView(), BoolValueView()));
-  EXPECT_DEBUG_DEATH(EqualTo{}(UintValueView(), BytesValueView()), _);
-  EXPECT_TRUE(EqualTo{}(StringValueView(), StringValueView()));
-  EXPECT_FALSE(EqualTo{}(StringValueView(), BoolValueView()));
-  EXPECT_DEBUG_DEATH(EqualTo{}(StringValueView(), BytesValueView()), _);
-  EXPECT_DEBUG_DEATH(EqualTo{}(BytesValueView(), BytesValueView()), _);
-}
-
-TEST(MapValueKeyLess, Value) {
-  using Less = common_internal::MapValueKeyLess<Value>;
-  EXPECT_TRUE(Less{}(BoolValueView(false), BoolValueView(true)));
-  EXPECT_TRUE(Less{}(BoolValueView(), IntValueView()));
-  EXPECT_DEBUG_DEATH(Less{}(BoolValueView(), BytesValueView()), _);
-  EXPECT_TRUE(Less{}(IntValueView(), IntValueView(1)));
-  EXPECT_FALSE(Less{}(IntValueView(), BoolValueView()));
-  EXPECT_TRUE(Less{}(IntValueView(), UintValueView()));
-  EXPECT_DEBUG_DEATH(Less{}(IntValueView(), BytesValueView()), _);
-  EXPECT_TRUE(Less{}(UintValueView(), UintValueView(1)));
-  EXPECT_FALSE(Less{}(UintValueView(), BoolValueView()));
-  EXPECT_TRUE(Less{}(UintValueView(), StringValueView()));
-  EXPECT_DEBUG_DEATH(Less{}(UintValueView(), BytesValueView()), _);
-  EXPECT_TRUE(Less{}(StringValueView("bar"), StringValueView("foo")));
-  EXPECT_FALSE(Less{}(StringValueView(), BoolValueView()));
-  EXPECT_DEBUG_DEATH(Less{}(StringValueView(), BytesValueView()), _);
-  EXPECT_DEBUG_DEATH(Less{}(BytesValueView(), BytesValueView()), _);
-}
-
 class MapValueTest : public common_internal::ThreadCompatibleValueTest<> {
  public:
   template <typename... Args>
-  MapValue NewIntDoubleMapValue(Args&&... args) {
-    MapValueBuilder<IntValue, DoubleValue> builder(
-        type_factory(), IntTypeView(), DoubleTypeView());
-    (builder.Put(std::forward<Args>(args).first,
-                 std::forward<Args>(args).second),
+  absl::StatusOr<MapValue> NewIntDoubleMapValue(Args&&... args) {
+    CEL_ASSIGN_OR_RETURN(auto builder,
+                         value_provider().NewMapValueBuilder(
+                             value_factory(), GetIntDoubleMapType()));
+    (static_cast<void>(builder->Put(std::forward<Args>(args).first,
+                                    std::forward<Args>(args).second)),
      ...);
-    return std::move(builder).Build();
+    return std::move(*builder).Build();
   }
 
   ListType GetIntListType() {
@@ -251,25 +92,31 @@ TEST_P(MapValueTest, Default) {
 }
 
 TEST_P(MapValueTest, Kind) {
-  auto value = NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                                    std::pair{IntValue(1), DoubleValue(4.0)},
-                                    std::pair{IntValue(2), DoubleValue(5.0)});
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   EXPECT_EQ(value.kind(), MapValue::kKind);
   EXPECT_EQ(Value(value).kind(), MapValue::kKind);
 }
 
 TEST_P(MapValueTest, Type) {
-  auto value = NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                                    std::pair{IntValue(1), DoubleValue(4.0)},
-                                    std::pair{IntValue(2), DoubleValue(5.0)});
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   EXPECT_EQ(value.type(), GetIntDoubleMapType());
   EXPECT_EQ(Value(value).type(), GetIntDoubleMapType());
 }
 
 TEST_P(MapValueTest, DebugString) {
-  auto value = NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                                    std::pair{IntValue(1), DoubleValue(4.0)},
-                                    std::pair{IntValue(2), DoubleValue(5.0)});
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   {
     std::ostringstream out;
     out << value;
@@ -283,25 +130,30 @@ TEST_P(MapValueTest, DebugString) {
 }
 
 TEST_P(MapValueTest, IsEmpty) {
-  auto value = NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                                    std::pair{IntValue(1), DoubleValue(4.0)},
-                                    std::pair{IntValue(2), DoubleValue(5.0)});
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   EXPECT_FALSE(value.IsEmpty());
 }
 
 TEST_P(MapValueTest, Size) {
-  auto value = NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                                    std::pair{IntValue(1), DoubleValue(4.0)},
-                                    std::pair{IntValue(2), DoubleValue(5.0)});
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   EXPECT_EQ(value.Size(), 3);
 }
 
 TEST_P(MapValueTest, Get) {
   Value scratch;
-  auto map_value =
+  ASSERT_OK_AND_ASSIGN(
+      auto map_value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
-                           std::pair{IntValue(2), DoubleValue(5.0)});
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   ASSERT_OK_AND_ASSIGN(
       auto value, map_value.Get(value_factory(), IntValueView(0), scratch));
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
@@ -320,10 +172,11 @@ TEST_P(MapValueTest, Get) {
 
 TEST_P(MapValueTest, Find) {
   Value scratch;
-  auto map_value =
+  ASSERT_OK_AND_ASSIGN(
+      auto map_value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
-                           std::pair{IntValue(2), DoubleValue(5.0)});
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   ValueView value;
   bool ok;
   ASSERT_OK_AND_ASSIGN(
@@ -351,10 +204,11 @@ TEST_P(MapValueTest, Find) {
 }
 
 TEST_P(MapValueTest, Has) {
-  auto map_value =
+  ASSERT_OK_AND_ASSIGN(
+      auto map_value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
-                           std::pair{IntValue(2), DoubleValue(5.0)});
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   ASSERT_OK_AND_ASSIGN(auto value, map_value.Has(IntValueView(0)));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
   ASSERT_TRUE(Cast<BoolValueView>(value).NativeValue());
@@ -370,10 +224,11 @@ TEST_P(MapValueTest, Has) {
 }
 
 TEST_P(MapValueTest, ListKeys) {
-  auto map_value =
+  ASSERT_OK_AND_ASSIGN(
+      auto map_value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
-                           std::pair{IntValue(2), DoubleValue(5.0)});
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   ListValue map_keys_scratch;
   ASSERT_OK_AND_ASSIGN(
       auto list_keys,
@@ -388,9 +243,11 @@ TEST_P(MapValueTest, ListKeys) {
 }
 
 TEST_P(MapValueTest, ForEach) {
-  auto value = NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                                    std::pair{IntValue(1), DoubleValue(4.0)},
-                                    std::pair{IntValue(2), DoubleValue(5.0)});
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   std::vector<std::pair<int64_t, double>> entries;
   EXPECT_OK(value.ForEach(value_factory(), [&entries](ValueView key,
                                                       ValueView value) {
@@ -405,9 +262,11 @@ TEST_P(MapValueTest, ForEach) {
 
 TEST_P(MapValueTest, NewIterator) {
   Value scratch;
-  auto value = NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                                    std::pair{IntValue(1), DoubleValue(4.0)},
-                                    std::pair{IntValue(2), DoubleValue(5.0)});
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator(value_factory()));
   std::vector<int64_t> keys;
   while (iterator->HasNext()) {
@@ -430,13 +289,14 @@ INSTANTIATE_TEST_SUITE_P(
 class MapValueViewTest : public common_internal::ThreadCompatibleValueTest<> {
  public:
   template <typename... Args>
-  MapValue NewIntDoubleMapValue(Args&&... args) {
-    MapValueBuilder<IntValue, DoubleValue> builder(
-        type_factory(), IntTypeView(), DoubleTypeView());
-    (builder.Put(std::forward<Args>(args).first,
-                 std::forward<Args>(args).second),
+  absl::StatusOr<MapValue> NewIntDoubleMapValue(Args&&... args) {
+    CEL_ASSIGN_OR_RETURN(auto builder,
+                         value_provider().NewMapValueBuilder(
+                             value_factory(), GetIntDoubleMapType()));
+    (static_cast<void>(builder->Put(std::forward<Args>(args).first,
+                                    std::forward<Args>(args).second)),
      ...);
-    return std::move(builder).Build();
+    return std::move(*builder).Build();
   }
 
   ListType GetIntListType() {
@@ -471,25 +331,31 @@ TEST_P(MapValueViewTest, Default) {
 }
 
 TEST_P(MapValueViewTest, Kind) {
-  auto value = NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                                    std::pair{IntValue(1), DoubleValue(4.0)},
-                                    std::pair{IntValue(2), DoubleValue(5.0)});
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   EXPECT_EQ(MapValueView(value).kind(), MapValue::kKind);
   EXPECT_EQ(ValueView(MapValueView(value)).kind(), MapValue::kKind);
 }
 
 TEST_P(MapValueViewTest, Type) {
-  auto value = NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                                    std::pair{IntValue(1), DoubleValue(4.0)},
-                                    std::pair{IntValue(2), DoubleValue(5.0)});
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   EXPECT_EQ(MapValueView(value).type(), GetIntDoubleMapType());
   EXPECT_EQ(ValueView(MapValueView(value)).type(), GetIntDoubleMapType());
 }
 
 TEST_P(MapValueViewTest, DebugString) {
-  auto value = NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                                    std::pair{IntValue(1), DoubleValue(4.0)},
-                                    std::pair{IntValue(2), DoubleValue(5.0)});
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   {
     std::ostringstream out;
     out << MapValueView(value);
@@ -503,25 +369,30 @@ TEST_P(MapValueViewTest, DebugString) {
 }
 
 TEST_P(MapValueViewTest, IsEmpty) {
-  auto value = NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                                    std::pair{IntValue(1), DoubleValue(4.0)},
-                                    std::pair{IntValue(2), DoubleValue(5.0)});
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   EXPECT_FALSE(MapValueView(value).IsEmpty());
 }
 
 TEST_P(MapValueViewTest, Size) {
-  auto value = NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                                    std::pair{IntValue(1), DoubleValue(4.0)},
-                                    std::pair{IntValue(2), DoubleValue(5.0)});
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   EXPECT_EQ(MapValueView(value).Size(), 3);
 }
 
 TEST_P(MapValueViewTest, Get) {
   Value scratch;
-  auto map_value =
+  ASSERT_OK_AND_ASSIGN(
+      auto map_value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
-                           std::pair{IntValue(2), DoubleValue(5.0)});
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   ASSERT_OK_AND_ASSIGN(
       auto value,
       MapValueView(map_value).Get(value_factory(), IntValueView(0), scratch));
@@ -542,10 +413,11 @@ TEST_P(MapValueViewTest, Get) {
 
 TEST_P(MapValueViewTest, Find) {
   Value scratch;
-  auto map_value =
+  ASSERT_OK_AND_ASSIGN(
+      auto map_value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
-                           std::pair{IntValue(2), DoubleValue(5.0)});
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   ValueView value;
   bool ok;
   ASSERT_OK_AND_ASSIGN(
@@ -573,10 +445,11 @@ TEST_P(MapValueViewTest, Find) {
 }
 
 TEST_P(MapValueViewTest, Has) {
-  auto map_value =
+  ASSERT_OK_AND_ASSIGN(
+      auto map_value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
-                           std::pair{IntValue(2), DoubleValue(5.0)});
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   ASSERT_OK_AND_ASSIGN(auto value,
                        MapValueView(map_value).Has(IntValueView(0)));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
@@ -593,10 +466,11 @@ TEST_P(MapValueViewTest, Has) {
 }
 
 TEST_P(MapValueViewTest, ListKeys) {
-  auto map_value =
+  ASSERT_OK_AND_ASSIGN(
+      auto map_value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
-                           std::pair{IntValue(2), DoubleValue(5.0)});
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   ListValue map_keys_scratch;
   ASSERT_OK_AND_ASSIGN(auto list_keys,
                        MapValueView(map_value).ListKeys(
@@ -611,9 +485,11 @@ TEST_P(MapValueViewTest, ListKeys) {
 }
 
 TEST_P(MapValueViewTest, ForEach) {
-  auto value = NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                                    std::pair{IntValue(1), DoubleValue(4.0)},
-                                    std::pair{IntValue(2), DoubleValue(5.0)});
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   std::vector<std::pair<int64_t, double>> entries;
   EXPECT_OK(MapValueView(value).ForEach(
       value_factory(), [&entries](ValueView key, ValueView value) {
@@ -629,9 +505,11 @@ TEST_P(MapValueViewTest, ForEach) {
 
 TEST_P(MapValueViewTest, NewIterator) {
   Value scratch;
-  auto value = NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                                    std::pair{IntValue(1), DoubleValue(4.0)},
-                                    std::pair{IntValue(2), DoubleValue(5.0)});
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
   ASSERT_OK_AND_ASSIGN(auto iterator,
                        MapValueView(value).NewIterator(value_factory()));
   std::vector<int64_t> keys;

@@ -31,7 +31,6 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
-#include "absl/container/flat_hash_map.h"
 #include "absl/functional/function_ref.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
@@ -55,8 +54,6 @@ class ListValueView;
 class MapValueInterface;
 class MapValue;
 class MapValueView;
-class MapValueBuilderInterface;
-template <typename K, typename V>
 class MapValueBuilder;
 class ValueFactory;
 
@@ -425,21 +422,11 @@ struct CastTraits<
   }
 };
 
-namespace common_internal {
-template <typename T>
-struct MapValueKeyHash;
-template <typename T>
-struct MapValueKeyEqualTo;
-template <typename K, typename V>
-using ValueFlatHashMapFor =
-    absl::flat_hash_map<K, V, MapValueKeyHash<K>, MapValueKeyEqualTo<K>>;
-}  // namespace common_internal
-
-class MapValueBuilderInterface {
+class MapValueBuilder {
  public:
-  virtual ~MapValueBuilderInterface() = default;
+  virtual ~MapValueBuilder() = default;
 
-  virtual void Put(Value key, Value value) = 0;
+  virtual absl::Status Put(Value key, Value value) = 0;
 
   virtual bool IsEmpty() const { return Size() == 0; }
 
@@ -448,54 +435,6 @@ class MapValueBuilderInterface {
   virtual void Reserve(size_t capacity) {}
 
   virtual MapValue Build() && = 0;
-};
-
-template <typename K, typename V>
-class MapValueBuilder final : public MapValueBuilderInterface {
- public:
-  using key_view_type = std::decay_t<decltype(std::declval<K>().type())>;
-  using key_type = typename key_view_type::alternative_type;
-  using value_view_type = std::decay_t<decltype(std::declval<V>().type())>;
-  using value_type = typename value_view_type::alternative_type;
-
-  static_assert(common_internal::IsValueAlternativeV<K>,
-                "K must be Value or one of the Value alternatives");
-  static_assert(common_internal::IsValueAlternativeV<V>,
-                "V must be Value or one of the Value alternatives");
-
-  MapValueBuilder(TypeFactory& type_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
-                  key_view_type key, value_view_type value)
-      : MapValueBuilder(type_factory.GetMemoryManager(),
-                        type_factory.CreateMapType(key, value)) {}
-
-  MapValueBuilder(MemoryManagerRef memory_manager, MapType type)
-      : memory_manager_(memory_manager), type_(std::move(type)) {}
-
-  MapValueBuilder(const MapValueBuilder&) = delete;
-  MapValueBuilder(MapValueBuilder&&) = delete;
-  MapValueBuilder& operator=(const MapValueBuilder&) = delete;
-  MapValueBuilder& operator=(MapValueBuilder&&) = delete;
-
-  void Put(Value key, Value value) override;
-
-  void Put(K key, V value);
-
-  void Put(K key, Value value);
-
-  void Put(Value key, V value);
-
-  bool IsEmpty() const override { return entries_.empty(); }
-
-  size_t Size() const override { return entries_.size(); }
-
-  void Reserve(size_t capacity) override { entries_.reserve(capacity); }
-
-  MapValue Build() && override;
-
- private:
-  MemoryManagerRef memory_manager_;
-  MapType type_;
-  common_internal::ValueFlatHashMapFor<K, V> entries_;
 };
 
 }  // namespace cel

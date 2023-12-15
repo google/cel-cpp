@@ -18,19 +18,14 @@
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
+#include "common/type_factory.h"
 #include "common/value.h"
 
 namespace cel {
 
 // `ValueFactory` is the preferred way for constructing values.
-class ValueFactory {
+class ValueFactory : public virtual TypeFactory {
  public:
-  virtual ~ValueFactory() = default;
-
-  // Returns a `MemoryManagerRef` which is used to manage memory for internal
-  // data structures as well as created values.
-  virtual MemoryManagerRef GetMemoryManager() const = 0;
-
   // `CreateValueFromJson` constructs a new `Value` that is equivalent to the
   // JSON value `json`.
   Value CreateValueFromJson(Json json);

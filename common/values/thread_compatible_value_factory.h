@@ -19,18 +19,20 @@
 
 #include "common/memory.h"
 #include "common/type.h"
+#include "common/types/thread_compatible_type_factory.h"
 #include "common/value.h"
 #include "common/value_factory.h"
 #include "common/values/value_cache.h"
 
 namespace cel::common_internal {
 
-class ThreadCompatibleValueFactory final : public ValueFactory {
+class ThreadCompatibleValueFactory : public ThreadCompatibleTypeFactory,
+                                     public ValueFactory {
  public:
   explicit ThreadCompatibleValueFactory(MemoryManagerRef memory_manager)
-      : memory_manager_(memory_manager) {}
+      : ThreadCompatibleTypeFactory(memory_manager) {}
 
-  MemoryManagerRef GetMemoryManager() const override { return memory_manager_; }
+  using ThreadCompatibleTypeFactory::GetMemoryManager;
 
  private:
   ListValue CreateZeroListValueImpl(ListTypeView type) override;
@@ -39,7 +41,6 @@ class ThreadCompatibleValueFactory final : public ValueFactory {
 
   OptionalValue CreateZeroOptionalValueImpl(OptionalTypeView type) override;
 
-  MemoryManagerRef memory_manager_;
   ListValueCacheMap list_values_;
   MapValueCacheMap map_values_;
   OptionalValueCacheMap optional_values_;

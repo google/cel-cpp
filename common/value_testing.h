@@ -17,31 +17,43 @@
 
 #include "absl/types/optional.h"
 #include "common/memory.h"
-#include "common/type_testing.h"
+#include "common/memory_testing.h"
+#include "common/type_factory.h"
+#include "common/type_provider.h"
 #include "common/value_factory.h"
+#include "common/value_provider.h"
 
 namespace cel::common_internal {
 
 template <typename... Ts>
-class ThreadCompatibleValueTest : public ThreadCompatibleTypeTest<Ts...> {
+class ThreadCompatibleValueTest : public ThreadCompatibleMemoryTest<Ts...> {
  private:
-  using Base = ThreadCompatibleTypeTest<Ts...>;
+  using Base = ThreadCompatibleMemoryTest<Ts...>;
 
  public:
   void SetUp() override {
     Base::SetUp();
     value_factory_ = NewThreadCompatibleValueFactory(this->memory_manager());
+    value_provider_ = NewThreadCompatibleValueProvider(this->memory_manager());
   }
 
   void TearDown() override {
+    value_provider_.reset();
     value_factory_.reset();
     Base::TearDown();
   }
 
+  TypeFactory& type_factory() const { return **value_factory_; }
+
+  TypeProvider& type_provider() const { return **value_provider_; }
+
   ValueFactory& value_factory() const { return **value_factory_; }
+
+  ValueProvider& value_provider() const { return **value_provider_; }
 
  private:
   absl::optional<Shared<ValueFactory>> value_factory_;
+  absl::optional<Shared<ValueProvider>> value_provider_;
 };
 
 }  // namespace cel::common_internal

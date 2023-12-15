@@ -14,21 +14,19 @@
 
 #include <cstdint>
 #include <memory>
-#include <ostream>
 #include <sstream>
-#include <string>
-#include <tuple>
 #include <utility>
 #include <vector>
 
 #include "absl/status/status.h"
-#include "absl/types/optional.h"
+#include "absl/status/statusor.h"
 #include "common/casting.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_factory.h"
 #include "common/value.h"
 #include "common/value_testing.h"
+#include "internal/status_macros.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -36,105 +34,16 @@ namespace {
 
 using testing::ElementsAreArray;
 using testing::TestParamInfo;
-using testing::TestWithParam;
 using cel::internal::StatusIs;
-
-enum class Typing {
-  kStatic,
-  kDynamic,
-};
-
-std::ostream& operator<<(std::ostream& out, Typing typing) {
-  switch (typing) {
-    case Typing::kStatic:
-      return out << "STATIC";
-    case Typing::kDynamic:
-      return out << "DYNAMIC";
-  }
-}
-
-class ListValueBuilderTest
-    : public TestWithParam<std::tuple<MemoryManagement, Typing>> {
- public:
-  void SetUp() override {
-    switch (memory_management()) {
-      case MemoryManagement::kPooling:
-        memory_manager_ =
-            MemoryManager::Pooling(NewThreadCompatiblePoolingMemoryManager());
-        break;
-      case MemoryManagement::kReferenceCounting:
-        memory_manager_ = MemoryManager::ReferenceCounting();
-        break;
-    }
-    type_factory_ = NewThreadCompatibleTypeFactory(memory_manager());
-  }
-
-  std::unique_ptr<ListValueBuilderInterface> NewIntListValueBuilder() {
-    switch (typing()) {
-      case Typing::kStatic:
-        return std::make_unique<ListValueBuilder<IntValue>>(**type_factory_,
-                                                            IntTypeView());
-      case Typing::kDynamic:
-        return std::make_unique<ListValueBuilder<Value>>(**type_factory_,
-                                                         IntTypeView());
-    }
-  }
-
-  void TearDown() override { Finish(); }
-
-  void Finish() {
-    type_factory_.reset();
-    memory_manager_.reset();
-  }
-
-  MemoryManagerRef memory_manager() { return *memory_manager_; }
-
-  MemoryManagement memory_management() const { return std::get<0>(GetParam()); }
-
-  Typing typing() const { return std::get<1>(GetParam()); }
-
-  static std::string ToString(
-      TestParamInfo<std::tuple<MemoryManagement, Typing>> param) {
-    std::ostringstream out;
-    out << std::get<0>(param.param) << "_" << std::get<1>(param.param);
-    return out.str();
-  }
-
- private:
-  absl::optional<MemoryManager> memory_manager_;
-  absl::optional<Shared<TypeFactory>> type_factory_;
-};
-
-TEST_P(ListValueBuilderTest, Coverage) {
-  constexpr size_t kNumValues = 64;
-  auto builder = NewIntListValueBuilder();
-  EXPECT_TRUE(builder->IsEmpty());
-  EXPECT_EQ(builder->Size(), 0);
-  builder->Reserve(kNumValues);
-  for (size_t index = 0; index < kNumValues; ++index) {
-    builder->Add(IntValue(index));
-  }
-  EXPECT_FALSE(builder->IsEmpty());
-  EXPECT_EQ(builder->Size(), kNumValues);
-  auto value = std::move(*builder).Build();
-  EXPECT_FALSE(value.IsEmpty());
-  EXPECT_EQ(value.Size(), kNumValues);
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    ListValueBuilderTest, ListValueBuilderTest,
-    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
-                                         MemoryManagement::kReferenceCounting),
-                       ::testing::Values(Typing::kStatic, Typing::kDynamic)),
-    ListValueBuilderTest::ToString);
 
 class ListValueTest : public common_internal::ThreadCompatibleValueTest<> {
  public:
   template <typename... Args>
-  ListValue NewIntListValue(Args&&... args) {
-    ListValueBuilder<IntValue> builder(type_factory(), IntTypeView());
-    (builder.Add(std::forward<Args>(args)), ...);
-    return std::move(builder).Build();
+  absl::StatusOr<ListValue> NewIntListValue(Args&&... args) {
+    CEL_ASSIGN_OR_RETURN(auto builder, value_provider().NewListValueBuilder(
+                                           value_factory(), GetIntListType()));
+    (static_cast<void>(builder->Add(std::forward<Args>(args))), ...);
+    return std::move(*builder).Build();
   }
 
   ListType GetIntListType() {
@@ -151,19 +60,22 @@ TEST(ListValue, Default) {
 }
 
 TEST_P(ListValueTest, Kind) {
-  auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   EXPECT_EQ(value.kind(), ListValue::kKind);
   EXPECT_EQ(Value(value).kind(), ListValue::kKind);
 }
 
 TEST_P(ListValueTest, Type) {
-  auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   EXPECT_EQ(value.type(), GetIntListType());
   EXPECT_EQ(Value(value).type(), GetIntListType());
 }
 
 TEST_P(ListValueTest, DebugString) {
-  auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   {
     std::ostringstream out;
     out << value;
@@ -177,18 +89,21 @@ TEST_P(ListValueTest, DebugString) {
 }
 
 TEST_P(ListValueTest, IsEmpty) {
-  auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   EXPECT_FALSE(value.IsEmpty());
 }
 
 TEST_P(ListValueTest, Size) {
-  auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   EXPECT_EQ(value.Size(), 3);
 }
 
 TEST_P(ListValueTest, Get) {
   Value scratch;
-  auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   ASSERT_OK_AND_ASSIGN(auto element, value.Get(value_factory(), 0, scratch));
   ASSERT_TRUE(InstanceOf<IntValueView>(element));
   ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 0);
@@ -203,7 +118,8 @@ TEST_P(ListValueTest, Get) {
 }
 
 TEST_P(ListValueTest, ForEach) {
-  auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   std::vector<int64_t> elements;
   EXPECT_OK(value.ForEach(value_factory(), [&elements](ValueView element) {
     elements.push_back(Cast<IntValueView>(element).NativeValue());
@@ -214,7 +130,8 @@ TEST_P(ListValueTest, ForEach) {
 
 TEST_P(ListValueTest, NewIterator) {
   Value scratch;
-  auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator(value_factory()));
   std::vector<int64_t> elements;
   while (iterator->HasNext()) {
@@ -237,10 +154,11 @@ INSTANTIATE_TEST_SUITE_P(
 class ListValueViewTest : public common_internal::ThreadCompatibleValueTest<> {
  public:
   template <typename... Args>
-  ListValue NewIntListValue(Args&&... args) {
-    ListValueBuilder<IntValue> builder(type_factory(), IntTypeView());
-    (builder.Add(std::forward<Args>(args)), ...);
-    return std::move(builder).Build();
+  absl::StatusOr<ListValue> NewIntListValue(Args&&... args) {
+    CEL_ASSIGN_OR_RETURN(auto builder, value_provider().NewListValueBuilder(
+                                           value_factory(), GetIntListType()));
+    (static_cast<void>(builder->Add(std::forward<Args>(args))), ...);
+    return std::move(*builder).Build();
   }
 
   ListType GetIntListType() {
@@ -257,19 +175,22 @@ TEST(ListValueView, Default) {
 }
 
 TEST_P(ListValueViewTest, Kind) {
-  auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   EXPECT_EQ(ListValueView(value).kind(), ListValueView::kKind);
   EXPECT_EQ(ValueView(ListValueView(value)).kind(), ListValueView::kKind);
 }
 
 TEST_P(ListValueViewTest, Type) {
-  auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   EXPECT_EQ(ListValueView(value).type(), GetIntListType());
   EXPECT_EQ(ListValue(ListValueView(value)).type(), GetIntListType());
 }
 
 TEST_P(ListValueViewTest, DebugString) {
-  auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   {
     std::ostringstream out;
     out << ListValueView(value);
@@ -283,18 +204,21 @@ TEST_P(ListValueViewTest, DebugString) {
 }
 
 TEST_P(ListValueViewTest, IsEmpty) {
-  auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   EXPECT_FALSE(ListValueView(value).IsEmpty());
 }
 
 TEST_P(ListValueViewTest, Size) {
-  auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   EXPECT_EQ(ListValueView(value).Size(), 3);
 }
 
 TEST_P(ListValueViewTest, Get) {
   Value scratch;
-  auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   ASSERT_OK_AND_ASSIGN(auto element,
                        ListValueView(value).Get(value_factory(), 0, scratch));
   ASSERT_TRUE(InstanceOf<IntValueView>(element));
@@ -312,7 +236,8 @@ TEST_P(ListValueViewTest, Get) {
 }
 
 TEST_P(ListValueViewTest, ForEach) {
-  auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   std::vector<int64_t> elements;
   EXPECT_OK(ListValueView(value).ForEach(
       value_factory(), [&elements](ValueView element) {
@@ -324,7 +249,8 @@ TEST_P(ListValueViewTest, ForEach) {
 
 TEST_P(ListValueViewTest, NewIterator) {
   Value scratch;
-  auto value = NewIntListValue(IntValue(0), IntValue(1), IntValue(2));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   ASSERT_OK_AND_ASSIGN(auto iterator,
                        ListValueView(value).NewIterator(value_factory()));
   std::vector<int64_t> elements;

@@ -360,10 +360,13 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Unique final {
     other.ptr_ = nullptr;
   }
 
-  template <typename U, typename = std::enable_if_t<std::conjunction_v<
-                            std::negation<std::is_same<U, T>>,
-                            std::is_same<U, std::remove_const_t<T>>,
-                            std::negation<std::is_const<U>>>>>
+  template <typename U,
+            typename = std::enable_if_t<std::conjunction_v<
+                std::negation<std::is_same<U, T>>, std::is_convertible<U*, T*>,
+                std::is_polymorphic<std::remove_const_t<U>>,
+                std::is_polymorphic<std::remove_const_t<T>>,
+                std::is_base_of<std::remove_const_t<T>, std::remove_const_t<U>>,
+                std::has_virtual_destructor<std::remove_const_t<T>>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   Unique(Unique<U>&& other) noexcept
       : ptr_(other.ptr_), memory_management_(other.memory_management_) {

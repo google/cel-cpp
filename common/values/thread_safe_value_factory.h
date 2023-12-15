@@ -21,6 +21,7 @@
 #include "absl/synchronization/mutex.h"
 #include "common/memory.h"
 #include "common/type.h"
+#include "common/types/thread_safe_type_factory.h"
 #include "common/value.h"
 #include "common/value_factory.h"
 #include "common/values/value_cache.h"
@@ -31,12 +32,13 @@ namespace cel::common_internal {
 // All methods are safe to call from any thread. It is more efficient than using
 // external synchronization with `ThreadCompatibleValueFactory`, but less
 // efficient than using `ThreadCompatibleValueFactory` with a single thread.
-class ThreadSafeValueFactory final : public ValueFactory {
+class ThreadSafeValueFactory : public ThreadSafeTypeFactory,
+                               public ValueFactory {
  public:
   explicit ThreadSafeValueFactory(MemoryManagerRef memory_manager)
-      : memory_manager_(memory_manager) {}
+      : ThreadSafeTypeFactory(memory_manager) {}
 
-  MemoryManagerRef GetMemoryManager() const override { return memory_manager_; }
+  using ThreadSafeTypeFactory::GetMemoryManager;
 
  private:
   ListValue CreateZeroListValueImpl(ListTypeView type) override;
@@ -45,7 +47,6 @@ class ThreadSafeValueFactory final : public ValueFactory {
 
   OptionalValue CreateZeroOptionalValueImpl(OptionalTypeView type) override;
 
-  MemoryManagerRef memory_manager_;
   absl::Mutex list_values_mutex_;
   ListValueCacheMap list_values_ ABSL_GUARDED_BY(list_values_mutex_);
   absl::Mutex map_values_mutex_;

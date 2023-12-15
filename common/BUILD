@@ -191,7 +191,7 @@ cc_library(
     deps = [
         ":data",
         ":memory",
-        ":type_testing",
+        ":memory_testing",
         "@com_google_absl//absl/types:optional",
     ],
 )
@@ -286,6 +286,7 @@ cc_library(
     ) + [
         "type_factory.cc",
         "value_factory.cc",
+        "value_provider.cc",
     ],
     hdrs = glob(
         [
@@ -355,6 +356,7 @@ cc_test(
         "type_factory_test.cc",
         "type_test.cc",
         "value_factory_test.cc",
+        "value_provider_test.cc",
         "value_test.cc",
     ],
     deps = [
@@ -366,6 +368,7 @@ cc_test(
         ":sized_input_view",
         ":value_kind",
         ":value_testing",
+        "//internal:status_macros",
         "//internal:testing",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_set",

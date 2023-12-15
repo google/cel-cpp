@@ -23,6 +23,8 @@
 
 namespace cel {
 
+class TypeFactory;
+
 // `TypeProvider` is an interface which allows querying type-related
 // information. It handles type introspection, but not type reflection. That is,
 // it is not capable of instantiating new values or understanding values. Its
@@ -38,20 +40,26 @@ class TypeProvider {
 
   // `FindType` find the type corresponding to name `name`.
   virtual absl::StatusOr<TypeView> FindType(
-      absl::string_view name, Type& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) = 0;
+      TypeFactory& type_factory, absl::string_view name,
+      Type& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) = 0;
 
   // `FindStructTypeFieldByName` find the name, number, and type of the field
   // `name` in type `type`.
   virtual absl::StatusOr<StructTypeFieldView> FindStructTypeFieldByName(
-      absl::string_view type, absl::string_view name,
+      TypeFactory& type_factory, absl::string_view type, absl::string_view name,
       StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) = 0;
 
   // `FindStructTypeFieldByName` find the name, number, and type of the field
   // `name` in struct type `type`.
   virtual absl::StatusOr<StructTypeFieldView> FindStructTypeFieldByName(
-      StructTypeView type, absl::string_view name,
+      TypeFactory& type_factory, StructTypeView type, absl::string_view name,
       StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) = 0;
 };
+
+Shared<TypeProvider> NewThreadCompatibleTypeProvider(
+    MemoryManagerRef memory_manager);
+
+Shared<TypeProvider> NewThreadSafeTypeProvider(MemoryManagerRef memory_manager);
 
 }  // namespace cel
 

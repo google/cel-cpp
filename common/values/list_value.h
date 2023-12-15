@@ -28,7 +28,6 @@
 #include <string>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
@@ -40,7 +39,6 @@
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
-#include "common/type_factory.h"
 #include "common/value_interface.h"
 #include "common/value_kind.h"
 #include "common/values/values.h"
@@ -53,8 +51,6 @@ class ListValueInterface;
 class ListValueInterfaceIterator;
 class ListValue;
 class ListValueView;
-class ListValueBuilderInterface;
-template <typename T>
 class ListValueBuilder;
 class TypeFactory;
 class ValueFactory;
@@ -343,11 +339,11 @@ struct CastTraits<
   }
 };
 
-class ListValueBuilderInterface {
+class ListValueBuilder {
  public:
-  virtual ~ListValueBuilderInterface() = default;
+  virtual ~ListValueBuilder() = default;
 
-  virtual void Add(Value value) = 0;
+  virtual absl::Status Add(Value value) = 0;
 
   virtual bool IsEmpty() const { return Size() == 0; }
 
@@ -356,46 +352,6 @@ class ListValueBuilderInterface {
   virtual void Reserve(size_t capacity) {}
 
   virtual ListValue Build() && = 0;
-};
-
-template <typename T>
-class ListValueBuilder final : public ListValueBuilderInterface {
- public:
-  using element_view_type = std::decay_t<decltype(std::declval<T>().type())>;
-  using element_type = typename element_view_type::alternative_type;
-
-  static_assert(common_internal::IsValueAlternativeV<T>,
-                "T must be Value or one of the Value alternatives");
-
-  ListValueBuilder(TypeFactory& type_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
-                   element_view_type element)
-      : ListValueBuilder(type_factory.GetMemoryManager(),
-                         type_factory.CreateListType(element)) {}
-
-  ListValueBuilder(MemoryManagerRef memory_manager, ListType type)
-      : memory_manager_(memory_manager), type_(std::move(type)) {}
-
-  ListValueBuilder(const ListValueBuilder&) = delete;
-  ListValueBuilder(ListValueBuilder&&) = delete;
-  ListValueBuilder& operator=(const ListValueBuilder&) = delete;
-  ListValueBuilder& operator=(ListValueBuilder&&) = delete;
-
-  void Add(Value value) override;
-
-  void Add(T value);
-
-  bool IsEmpty() const override { return elements_.empty(); }
-
-  size_t Size() const override { return elements_.size(); }
-
-  void Reserve(size_t capacity) override { elements_.reserve(capacity); }
-
-  ListValue Build() && override;
-
- private:
-  MemoryManagerRef memory_manager_;
-  ListType type_;
-  std::vector<T> elements_;
 };
 
 }  // namespace cel
