@@ -145,6 +145,28 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "bindings_ext_benchmark_test",
+    srcs = ["bindings_ext_benchmark_test.cc"],
+    deps = [
+        ":bindings_ext",
+        "//eval/public:activation",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_expr_builder_factory",
+        "//eval/public:cel_expression",
+        "//eval/public:cel_value",
+        "//eval/public/testing:matchers",
+        "//internal:benchmark",
+        "//internal:no_destructor",
+        "//internal:testing",
+        "//parser",
+        "//parser:macro",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
 cc_library(
     name = "select_optimization",
     srcs = ["select_optimization.cc"],
