@@ -27,12 +27,6 @@
 
 namespace google::api::expr::runtime {
 
-// Comprehensions typically define a iter_var and an accu_var, so in general
-// comprehensions will use exactly two slots.
-constexpr size_t kComprehensionSlotsSize = 2;
-constexpr size_t kComprehensionSlotsIterOffset = 0;
-constexpr size_t kComprehensionSlotsAccuOffset = 1;
-
 // Simple manager for comprehension variables.
 //
 // At plan time, each comprehension variable is assigned a slot by index.

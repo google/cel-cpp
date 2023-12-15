@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
@@ -76,10 +77,16 @@ std::unique_ptr<CelFunction> CreateBindFunction() {
   return std::make_unique<TestFunction>(kBind);
 }
 
-class BindingsExtTest : public testing::TestWithParam<TestInfo> {};
+class BindingsExtTest
+    : public testing::TestWithParam<std::tuple<TestInfo, bool>> {
+ protected:
+  const TestInfo& GetTestInfo() { return std::get<0>(GetParam()); }
+  bool GetEnableConstantFolding() { return std::get<1>(GetParam()); }
+};
 
 TEST_P(BindingsExtTest, EndToEnd) {
-  const TestInfo& test_info = GetParam();
+  const TestInfo& test_info = GetTestInfo();
+  Arena arena;
   std::vector<Macro> all_macros = Macro::AllMacros();
   std::vector<Macro> bindings_macros = cel::extensions::bindings_macros();
   all_macros.insert(all_macros.end(), bindings_macros.begin(),
@@ -100,6 +107,8 @@ TEST_P(BindingsExtTest, EndToEnd) {
   InterpreterOptions options;
   options.enable_heterogeneous_equality = true;
   options.enable_empty_wrapper_null_unboxing = true;
+  options.constant_folding = GetEnableConstantFolding();
+  options.constant_arena = &arena;
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(options);
   ASSERT_OK(builder->GetRegistry()->Register(CreateBindFunction()));
@@ -110,7 +119,6 @@ TEST_P(BindingsExtTest, EndToEnd) {
   // Create CelExpression from AST (Expr object).
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder->CreateExpression(&expr, &source_info));
-  Arena arena;
   Activation activation;
   // Run evaluation.
   ASSERT_OK_AND_ASSIGN(CelValue out, cel_expr->Evaluate(activation, &arena));
@@ -120,21 +128,27 @@ TEST_P(BindingsExtTest, EndToEnd) {
 
 INSTANTIATE_TEST_SUITE_P(
     CelBindingsExtTest, BindingsExtTest,
-    testing::ValuesIn<TestInfo>(
-        {{"cel.bind(t, true, t)"},
-         {"cel.bind(msg, \"hello\", msg + msg + msg) == \"hellohellohello\""},
-         {"cel.bind(t1, true, cel.bind(t2, true, t1 && t2))"},
-         {"cel.bind(valid_elems, [1, 2, 3], "
-          "[3, 4, 5].exists(e, e in valid_elems))"},
-         {"cel.bind(valid_elems, [1, 2, 3], "
-          "![4, 5].exists(e, e in valid_elems))"},
-         // Testing a bound function with the same macro name, but non-cel
-         // namespace. The function mirrors the macro signature, but just
-         // returns true.
-         {"false.bind(false, false, false)"},
-         // Error case where the variable name is not a simple identifier.
-         {"cel.bind(bad.name, true, bad.name)",
-          "variable name must be a simple identifier"}}));
+    testing::Combine(
+        testing::ValuesIn<TestInfo>(
+            {{"cel.bind(t, true, t)"},
+             {"cel.bind(msg, \"hello\", msg + msg + msg) == "
+              "\"hellohellohello\""},
+             {"cel.bind(t1, true, cel.bind(t2, true, t1 && t2))"},
+             {"cel.bind(valid_elems, [1, 2, 3], "
+              "[3, 4, 5].exists(e, e in valid_elems))"},
+             {"cel.bind(valid_elems, [1, 2, 3], "
+              "![4, 5].exists(e, e in valid_elems))"},
+             // Check scoping rules.
+             {"cel.bind(x, 1, "
+              "  cel.bind(x, x + 1, x)) == 2"},
+             // Testing a bound function with the same macro name, but non-cel
+             // namespace. The function mirrors the macro signature, but just
+             // returns true.
+             {"false.bind(false, false, false)"},
+             // Error case where the variable name is not a simple identifier.
+             {"cel.bind(bad.name, true, bad.name)",
+              "variable name must be a simple identifier"}}),
+        /*constant_folding*/ testing::Bool()));
 
 }  // namespace
 }  // namespace cel::extensions

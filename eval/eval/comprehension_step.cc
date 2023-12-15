@@ -3,17 +3,23 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <string>
 #include <utility>
 
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/optional.h"
+#include "base/attribute.h"
 #include "base/kind.h"
+#include "base/value.h"
+#include "base/values/bool_value.h"
 #include "base/values/error_value.h"
+#include "base/values/int_value.h"
+#include "base/values/list_value.h"
 #include "base/values/unknown_value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/comprehension_slots.h"
 #include "eval/eval/evaluator_core.h"
+#include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/mutable_list_impl.h"
@@ -29,7 +35,7 @@ using ::cel::runtime_internal::MutableListValue;
 
 class ComprehensionFinish : public ExpressionStepBase {
  public:
-  ComprehensionFinish(size_t slot_offset, int64_t expr_id);
+  ComprehensionFinish(size_t accu_slot, int64_t expr_id);
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
@@ -37,9 +43,8 @@ class ComprehensionFinish : public ExpressionStepBase {
   size_t accu_slot_;
 };
 
-ComprehensionFinish::ComprehensionFinish(size_t slot_offset_, int64_t expr_id)
-    : ExpressionStepBase(expr_id),
-      accu_slot_(slot_offset_ + kComprehensionSlotsAccuOffset) {}
+ComprehensionFinish::ComprehensionFinish(size_t accu_slot, int64_t expr_id)
+    : ExpressionStepBase(expr_id), accu_slot_(accu_slot) {}
 
 // Stack changes of ComprehensionFinish.
 //
@@ -122,6 +127,42 @@ absl::Status ComprehensionInitStep::Evaluate(ExecutionFrame* frame) const {
   return absl::OkStatus();
 }
 
+class SetSlotVarStep : public ExpressionStepBase {
+ public:
+  SetSlotVarStep(size_t slot_index, int64_t expr_id)
+      : ExpressionStepBase(expr_id, false), slot_index_(slot_index) {}
+
+  absl::Status Evaluate(ExecutionFrame* frame) const override {
+    if (!frame->value_stack().HasEnough(1)) {
+      return absl::Status(absl::StatusCode::kInternal,
+                          "Value stack underflow in accu_init");
+    }
+    frame->comprehension_slots().Set(slot_index_, frame->value_stack().Peek(),
+                                     frame->value_stack().PeekAttribute());
+
+    frame->value_stack().Pop(1);
+
+    return absl::OkStatus();
+  }
+
+ private:
+  size_t slot_index_;
+};
+
+class ClearSlotVarStep : public ExpressionStepBase {
+ public:
+  ClearSlotVarStep(size_t slot_index, int64_t expr_id)
+      : ExpressionStepBase(expr_id), slot_index_(slot_index) {}
+
+  absl::Status Evaluate(ExecutionFrame* frame) const override {
+    frame->comprehension_slots().ClearSlot(slot_index_);
+    return absl::OkStatus();
+  }
+
+ private:
+  size_t slot_index_;
+};
+
 }  // namespace
 
 // Stack variables during comprehension evaluation:
@@ -141,11 +182,11 @@ absl::Status ComprehensionInitStep::Evaluate(ExecutionFrame* frame) const {
 //  8. result                  (dep) 2 -> 3
 //  9. ComprehensionFinish           3 -> 1
 
-ComprehensionNextStep::ComprehensionNextStep(size_t slot_offset_,
+ComprehensionNextStep::ComprehensionNextStep(size_t iter_slot, size_t accu_slot,
                                              int64_t expr_id)
     : ExpressionStepBase(expr_id, false),
-      iter_slot_(slot_offset_ + kComprehensionSlotsIterOffset),
-      accu_slot_(slot_offset_ + kComprehensionSlotsAccuOffset) {}
+      iter_slot_(iter_slot),
+      accu_slot_(accu_slot) {}
 
 void ComprehensionNextStep::set_jump_offset(int offset) {
   jump_offset_ = offset;
@@ -244,12 +285,12 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   return absl::OkStatus();
 }
 
-ComprehensionCondStep::ComprehensionCondStep(size_t slot_offset_,
+ComprehensionCondStep::ComprehensionCondStep(size_t iter_slot, size_t accu_slot,
                                              bool shortcircuiting,
                                              int64_t expr_id)
     : ExpressionStepBase(expr_id, false),
-      iter_slot_(slot_offset_ + kComprehensionSlotsIterOffset),
-      accu_slot_(slot_offset_ + kComprehensionSlotsAccuOffset),
+      iter_slot_(iter_slot),
+      accu_slot_(accu_slot),
       shortcircuiting_(shortcircuiting) {}
 
 void ComprehensionCondStep::set_jump_offset(int offset) {
@@ -299,13 +340,23 @@ absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
   return absl::OkStatus();
 }
 
-std::unique_ptr<ExpressionStep> CreateComprehensionFinishStep(
-    size_t slot_offset, int64_t expr_id) {
-  return std::make_unique<ComprehensionFinish>(slot_offset, expr_id);
+std::unique_ptr<ExpressionStep> CreateComprehensionFinishStep(size_t accu_slot,
+                                                              int64_t expr_id) {
+  return std::make_unique<ComprehensionFinish>(accu_slot, expr_id);
 }
 
 std::unique_ptr<ExpressionStep> CreateComprehensionInitStep(int64_t expr_id) {
   return std::make_unique<ComprehensionInitStep>(expr_id);
+}
+
+std::unique_ptr<ExpressionStep> CreateSetSlotVarStep(size_t slot_index,
+                                                     int64_t expr_id) {
+  return std::make_unique<SetSlotVarStep>(slot_index, expr_id);
+}
+
+std::unique_ptr<ExpressionStep> CreateClearSlotVarStep(size_t slot_index,
+                                                       int64_t expr_id) {
+  return std::make_unique<ClearSlotVarStep>(slot_index, expr_id);
 }
 
 }  // namespace google::api::expr::runtime

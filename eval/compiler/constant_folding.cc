@@ -181,13 +181,17 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
     }
     return absl::OkStatus();
   }
+  ExecutionPathView subplan = context.GetSubplan(node);
+  if (subplan.empty()) {
+    // This subexpression is already optimized out or suppressed.
+    return absl::OkStatus();
+  }
   // copy string to managed handle if backed by the original program.
   Handle<Value> value;
   if (node.has_const_expr()) {
     CEL_ASSIGN_OR_RETURN(
         value, ConvertConstant(node.const_expr(), state_.value_factory()));
   } else {
-    ExecutionPathView subplan = context.GetSubplan(node);
     ExecutionFrame frame(subplan, empty_, context.options(), state_);
     state_.Reset();
     // Update stack size to accommodate sub expression.

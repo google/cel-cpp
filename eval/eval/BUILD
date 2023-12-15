@@ -392,6 +392,7 @@ cc_library(
         ":comprehension_slots",
         ":evaluator_core",
         ":expression_step_base",
+        "//base:attributes",
         "//base:data",
         "//base:kind",
         "//eval/internal:errors",
@@ -399,6 +400,7 @@ cc_library(
         "//runtime/internal:mutable_list_impl",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
     ],
 )
 

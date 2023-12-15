@@ -48,7 +48,8 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using google::api::expr::v1alpha1::CheckedExpr;
+using ::google::api::expr::v1alpha1::CheckedExpr;
+using ::google::api::expr::v1alpha1::ParsedExpr;
 using testing::HasSubstr;
 using cel::internal::StatusIs;
 
@@ -564,6 +565,48 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("memory exhaustion vulnerability")));
+}
+
+TEST(CelExpressionBuilderFlatImplComprehensionsTest, InvalidBindComprehension) {
+  ParsedExpr expr;
+  // Trivial comprehensions (such as cel.bind), are optimized by skipping the
+  // planning for the loop step, however the planner will still warn if the
+  // loop step references the unused var.
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr {
+          comprehension_expr {
+            iter_var: "#unused"
+            iter_range {
+              id: 1
+              list_expr {}
+            }
+            accu_var: "bind_var"
+            accu_init {
+              id: 1
+              const_expr { bool_value: true }
+            }
+            loop_step {
+              call_expr {
+                function: "_&&_"
+                args { ident_expr { name: "#unused" } }
+                args { ident_expr { name: "bind_var" } }
+              }
+            }
+            loop_condition { const_expr { bool_value: false } }
+            result { ident_expr { name: "bind_var" } }
+          }
+        })pb",
+      &expr));
+  cel::RuntimeOptions options;
+  CelExpressionBuilderFlatImpl builder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+
+  EXPECT_THAT(
+      builder.CreateExpression(&(expr.expr()), nullptr).status(),
+      StatusIs(
+          absl::StatusCode::kInvalidArgument,
+          HasSubstr("Unexpected iter_var access in trivial comprehension")));
 }
 
 }  // namespace

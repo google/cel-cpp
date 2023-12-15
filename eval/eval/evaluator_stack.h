@@ -1,6 +1,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_STACK_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_STACK_H_
 
+#include <cstddef>
 #include <utility>
 #include <vector>
 

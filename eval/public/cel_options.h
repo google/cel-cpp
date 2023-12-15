@@ -17,9 +17,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_OPTIONS_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_OPTIONS_H_
 
-#include "google/protobuf/arena.h"
 #include "absl/base/attributes.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
