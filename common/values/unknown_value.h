@@ -20,10 +20,16 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_UNKNOWN_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_UNKNOWN_VALUE_H_
 
+#include <cstddef>
 #include <ostream>
 #include <string>
 
 #include "absl/base/attributes.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
+#include "common/any.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 
@@ -52,6 +58,28 @@ class UnknownValue final {
   UnknownTypeView type() const { return UnknownTypeView(); }
 
   std::string DebugString() const { return ""; }
+
+  // `GetSerializedSize` always returns `FAILED_PRECONDITION` as `UnknownValue`
+  // is not serializable.
+  absl::StatusOr<size_t> GetSerializedSize() const;
+
+  // `SerializeTo` always returns `FAILED_PRECONDITION` as `UnknownValue` is not
+  // serializable.
+  absl::Status SerializeTo(absl::Cord& value) const;
+
+  // `Serialize` always returns `FAILED_PRECONDITION` as `UnknownValue` is not
+  // serializable.
+  absl::StatusOr<absl::Cord> Serialize() const;
+
+  // `GetTypeUrl` always returns `FAILED_PRECONDITION` as `UnknownValue` is not
+  // serializable.
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  // `ConvertToAny` always returns `FAILED_PRECONDITION` as `UnknownValue` is
+  // not serializable.
+  absl::StatusOr<Any> ConvertToAny(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   void swap(UnknownValue& other) noexcept {}
 
@@ -88,6 +116,28 @@ class UnknownValueView final {
   UnknownTypeView type() const { return UnknownTypeView(); }
 
   std::string DebugString() const { return ""; }
+
+  // `GetSerializedSize` always returns `FAILED_PRECONDITION` as `UnknownValue`
+  // is not serializable.
+  absl::StatusOr<size_t> GetSerializedSize() const;
+
+  // `SerializeTo` always returns `FAILED_PRECONDITION` as `UnknownValue` is not
+  // serializable.
+  absl::Status SerializeTo(absl::Cord& value) const;
+
+  // `Serialize` always returns `FAILED_PRECONDITION` as `UnknownValue` is not
+  // serializable.
+  absl::StatusOr<absl::Cord> Serialize() const;
+
+  // `GetTypeUrl` always returns `FAILED_PRECONDITION` as `UnknownValue` is not
+  // serializable.
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  // `ConvertToAny` always returns `FAILED_PRECONDITION` as `UnknownValue` is
+  // not serializable.
+  absl::StatusOr<Any> ConvertToAny(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   void swap(UnknownValueView& other) noexcept {}
 
