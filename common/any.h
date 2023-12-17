@@ -52,6 +52,14 @@ class Any final {
   absl::Cord value_;
 };
 
+inline bool operator==(const Any& lhs, const Any& rhs) {
+  return lhs.type_url() == rhs.type_url() && lhs.value() == rhs.value();
+}
+
+inline bool operator!=(const Any& lhs, const Any& rhs) {
+  return !operator==(lhs, rhs);
+}
+
 inline Any MakeAny(std::string type_url, absl::Cord value) {
   Any any;
   any.set_type_url(std::move(type_url));

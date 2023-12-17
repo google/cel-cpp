@@ -308,6 +308,7 @@ cc_library(
         "value_provider.h",
     ],
     deps = [
+        ":any",
         ":casting",
         ":json",
         ":memory",
@@ -321,6 +322,7 @@ cc_library(
         "//internal:names",
         "//internal:no_destructor",
         "//internal:overloaded",
+        "//internal:serialize",
         "//internal:status_macros",
         "//internal:strings",
         "//internal:time",
@@ -360,6 +362,7 @@ cc_test(
         "value_test.cc",
     ],
     deps = [
+        ":any",
         ":casting",
         ":data",
         ":json",
