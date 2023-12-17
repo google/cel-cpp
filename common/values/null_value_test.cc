@@ -14,7 +14,10 @@
 
 #include <sstream>
 
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "common/any.h"
 #include "common/casting.h"
 #include "common/native_type.h"
 #include "common/type.h"
@@ -26,6 +29,7 @@ namespace {
 
 using testing::An;
 using testing::Ne;
+using cel::internal::IsOkAndHolds;
 
 TEST(NullValue, Kind) {
   EXPECT_EQ(NullValue().kind(), NullValue::kKind);
@@ -48,6 +52,17 @@ TEST(NullValue, DebugString) {
     out << Value(NullValue());
     EXPECT_EQ(out.str(), "null");
   }
+}
+
+TEST(NullValue, GetSerializedSize) {
+  EXPECT_THAT(NullValue().GetSerializedSize(), IsOkAndHolds(2));
+}
+
+TEST(NullValue, ConvertToAny) {
+  EXPECT_THAT(
+      NullValue().ConvertToAny(),
+      IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Value"),
+                           absl::Cord(absl::string_view("\010\000", 2)))));
 }
 
 TEST(NullValue, NativeTypeId) {
@@ -92,6 +107,17 @@ TEST(NullValueView, DebugString) {
     out << ValueView(NullValueView());
     EXPECT_EQ(out.str(), "null");
   }
+}
+
+TEST(NullValueView, GetSerializedSize) {
+  EXPECT_THAT(NullValueView().GetSerializedSize(), IsOkAndHolds(2));
+}
+
+TEST(NullValueView, ConvertToAny) {
+  EXPECT_THAT(
+      NullValueView().ConvertToAny(),
+      IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Value"),
+                           absl::Cord(absl::string_view("\010\000", 2)))));
 }
 
 TEST(NullValueView, NativeTypeId) {

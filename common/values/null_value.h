@@ -18,10 +18,16 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_NULL_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_NULL_VALUE_H_
 
+#include <cstddef>
 #include <ostream>
 #include <string>
 
 #include "absl/base/attributes.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
+#include "common/any.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 
@@ -50,6 +56,18 @@ class NullValue final {
   NullTypeView type() const { return NullTypeView(); }
 
   std::string DebugString() const { return "null"; }
+
+  absl::StatusOr<size_t> GetSerializedSize() const;
+
+  absl::Status SerializeTo(absl::Cord& value) const;
+
+  absl::StatusOr<absl::Cord> Serialize() const;
+
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Any> ConvertToAny(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   constexpr void swap(NullValue& other) noexcept {}
 
@@ -86,6 +104,18 @@ class NullValueView final {
   NullTypeView type() const { return NullTypeView(); }
 
   std::string DebugString() const { return "null"; }
+
+  absl::StatusOr<size_t> GetSerializedSize() const;
+
+  absl::Status SerializeTo(absl::Cord& value) const;
+
+  absl::StatusOr<absl::Cord> Serialize() const;
+
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Any> ConvertToAny(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   constexpr void swap(NullValueView& other) noexcept {}
 

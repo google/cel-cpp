@@ -33,8 +33,10 @@ cc_library(
 
 cc_library(
     name = "any",
+    srcs = ["any.cc"],
     hdrs = ["any.h"],
     deps = [
+        "//internal:strings",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",

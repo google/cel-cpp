@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_ANY_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_ANY_H_
 
+#include <ostream>
 #include <string>
 #include <utility>
 
@@ -47,10 +48,16 @@ class Any final {
     return value_;
   }
 
+  std::string DebugString() const;
+
  private:
   std::string type_url_;
   absl::Cord value_;
 };
+
+inline std::ostream& operator<<(std::ostream& out, const Any& any) {
+  return out << any.DebugString();
+}
 
 inline bool operator==(const Any& lhs, const Any& rhs) {
   return lhs.type_url() == rhs.type_url() && lhs.value() == rhs.value();
