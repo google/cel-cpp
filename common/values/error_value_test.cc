@@ -15,6 +15,7 @@
 #include <sstream>
 
 #include "absl/status/status.h"
+#include "absl/strings/cord.h"
 #include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/native_type.h"
@@ -63,6 +64,32 @@ TEST(ErrorValue, DebugString) {
     out << Value(ErrorValue(absl::CancelledError()));
     EXPECT_THAT(out.str(), Not(IsEmpty()));
   }
+}
+
+TEST(ErrorValue, GetSerializedSize) {
+  EXPECT_THAT(ErrorValue().GetSerializedSize(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST(ErrorValue, SerializeTo) {
+  absl::Cord value;
+  EXPECT_THAT(ErrorValue().SerializeTo(value),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST(ErrorValue, Serialize) {
+  EXPECT_THAT(ErrorValue().Serialize(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST(ErrorValue, GetTypeUrl) {
+  EXPECT_THAT(ErrorValue().GetTypeUrl(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST(ErrorValue, ConvertToAny) {
+  EXPECT_THAT(ErrorValue().ConvertToAny(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST(ErrorValue, NativeTypeId) {
@@ -125,6 +152,32 @@ TEST(ErrorValueView, DebugString) {
     out << ValueView(ErrorValueView(absl::CancelledError()));
     EXPECT_THAT(out.str(), Not(IsEmpty()));
   }
+}
+
+TEST(ErrorValueView, GetSerializedSize) {
+  EXPECT_THAT(ErrorValueView().GetSerializedSize(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST(ErrorValueView, SerializeTo) {
+  absl::Cord value;
+  EXPECT_THAT(ErrorValueView().SerializeTo(value),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST(ErrorValueView, Serialize) {
+  EXPECT_THAT(ErrorValueView().Serialize(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST(ErrorValueView, GetTypeUrl) {
+  EXPECT_THAT(ErrorValueView().GetTypeUrl(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST(ErrorValueView, ConvertToAny) {
+  EXPECT_THAT(ErrorValueView().ConvertToAny(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST(ErrorValueView, NativeTypeId) {

@@ -12,10 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstddef>
 #include <string>
 
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "common/any.h"
 #include "common/value.h"
 
 namespace cel {
@@ -31,8 +37,59 @@ std::string ErrorDebugString(const absl::Status& value) {
 
 std::string ErrorValue::DebugString() const { return ErrorDebugString(value_); }
 
+absl::StatusOr<size_t> ErrorValue::GetSerializedSize() const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(type().name(), " is unserializable"));
+}
+
+absl::Status ErrorValue::SerializeTo(absl::Cord&) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(type().name(), " is unserializable"));
+}
+
+absl::StatusOr<absl::Cord> ErrorValue::Serialize() const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(type().name(), " is unserializable"));
+}
+
+absl::StatusOr<std::string> ErrorValue::GetTypeUrl(absl::string_view) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(type().name(), " is unserializable"));
+}
+
+absl::StatusOr<Any> ErrorValue::ConvertToAny(absl::string_view) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(type().name(), " is unserializable"));
+}
+
 std::string ErrorValueView::DebugString() const {
   return ErrorDebugString(*value_);
+}
+
+absl::StatusOr<size_t> ErrorValueView::GetSerializedSize() const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(type().name(), " is unserializable"));
+}
+
+absl::Status ErrorValueView::SerializeTo(absl::Cord&) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(type().name(), " is unserializable"));
+}
+
+absl::StatusOr<absl::Cord> ErrorValueView::Serialize() const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(type().name(), " is unserializable"));
+}
+
+absl::StatusOr<std::string> ErrorValueView::GetTypeUrl(
+    absl::string_view) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(type().name(), " is unserializable"));
+}
+
+absl::StatusOr<Any> ErrorValueView::ConvertToAny(absl::string_view) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(type().name(), " is unserializable"));
 }
 
 }  // namespace cel
