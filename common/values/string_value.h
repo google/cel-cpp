@@ -26,8 +26,11 @@
 
 #include "absl/base/attributes.h"
 #include "absl/meta/type_traits.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/any.h"
 #include "common/internal/shared_byte_string.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -77,6 +80,18 @@ class StringValue final {
   StringTypeView type() const { return StringTypeView(); }
 
   std::string DebugString() const;
+
+  absl::StatusOr<size_t> GetSerializedSize() const;
+
+  absl::Status SerializeTo(absl::Cord& value) const;
+
+  absl::StatusOr<absl::Cord> Serialize() const;
+
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Any> ConvertToAny(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   std::string NativeString() const { return value_.ToString(); }
 
@@ -166,6 +181,18 @@ class StringValueView final {
   StringTypeView type() const { return StringTypeView(); }
 
   std::string DebugString() const;
+
+  absl::StatusOr<size_t> GetSerializedSize() const;
+
+  absl::Status SerializeTo(absl::Cord& value) const;
+
+  absl::StatusOr<absl::Cord> Serialize() const;
+
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Any> ConvertToAny(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   std::string NativeString() const { return value_.ToString(); }
 

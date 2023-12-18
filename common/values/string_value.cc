@@ -12,12 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstddef>
 #include <string>
+#include <utility>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/any.h"
 #include "common/value.h"
 #include "internal/overloaded.h"
+#include "internal/serialize.h"
+#include "internal/status_macros.h"
 #include "internal/strings.h"
 
 namespace cel {
@@ -44,8 +51,67 @@ std::string StringValue::DebugString() const {
   return StringDebugString(*this);
 }
 
+absl::StatusOr<size_t> StringValue::GetSerializedSize() const {
+  return NativeValue([](const auto& bytes) -> size_t {
+    return internal::SerializedStringValueSize(bytes);
+  });
+}
+
+absl::Status StringValue::SerializeTo(absl::Cord& value) const {
+  return NativeValue([&value](const auto& bytes) -> absl::Status {
+    return internal::SerializeStringValue(bytes, value);
+  });
+}
+
+absl::StatusOr<absl::Cord> StringValue::Serialize() const {
+  absl::Cord value;
+  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  return value;
+}
+
+absl::StatusOr<std::string> StringValue::GetTypeUrl(
+    absl::string_view prefix) const {
+  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.StringValue");
+}
+
+absl::StatusOr<Any> StringValue::ConvertToAny(absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
+  return MakeAny(std::move(type_url), std::move(value));
+}
+
 std::string StringValueView::DebugString() const {
   return StringDebugString(*this);
+}
+
+absl::StatusOr<size_t> StringValueView::GetSerializedSize() const {
+  return NativeValue([](const auto& bytes) -> size_t {
+    return internal::SerializedStringValueSize(bytes);
+  });
+}
+
+absl::Status StringValueView::SerializeTo(absl::Cord& value) const {
+  return NativeValue([&value](const auto& bytes) -> absl::Status {
+    return internal::SerializeStringValue(bytes, value);
+  });
+}
+
+absl::StatusOr<absl::Cord> StringValueView::Serialize() const {
+  absl::Cord value;
+  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  return value;
+}
+
+absl::StatusOr<std::string> StringValueView::GetTypeUrl(
+    absl::string_view prefix) const {
+  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.StringValue");
+}
+
+absl::StatusOr<Any> StringValueView::ConvertToAny(
+    absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
+  return MakeAny(std::move(type_url), std::move(value));
 }
 
 }  // namespace cel
