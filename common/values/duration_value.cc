@@ -12,10 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstddef>
 #include <string>
+#include <utility>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "common/any.h"
 #include "common/value.h"
+#include "internal/serialize.h"
+#include "internal/status_macros.h"
 #include "internal/time.h"
 
 namespace cel {
@@ -32,8 +41,60 @@ std::string DurationValue::DebugString() const {
   return DurationDebugString(NativeValue());
 }
 
+absl::StatusOr<size_t> DurationValue::GetSerializedSize() const {
+  return internal::SerializedDurationSize(NativeValue());
+}
+
+absl::Status DurationValue::SerializeTo(absl::Cord& value) const {
+  return internal::SerializeDuration(NativeValue(), value);
+}
+
+absl::StatusOr<absl::Cord> DurationValue::Serialize() const {
+  absl::Cord value;
+  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  return value;
+}
+
+absl::StatusOr<std::string> DurationValue::GetTypeUrl(
+    absl::string_view prefix) const {
+  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Duration");
+}
+
+absl::StatusOr<Any> DurationValue::ConvertToAny(
+    absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
+  return MakeAny(std::move(type_url), std::move(value));
+}
+
 std::string DurationValueView::DebugString() const {
   return DurationDebugString(NativeValue());
+}
+
+absl::StatusOr<size_t> DurationValueView::GetSerializedSize() const {
+  return internal::SerializedDurationSize(NativeValue());
+}
+
+absl::Status DurationValueView::SerializeTo(absl::Cord& value) const {
+  return internal::SerializeDuration(NativeValue(), value);
+}
+
+absl::StatusOr<absl::Cord> DurationValueView::Serialize() const {
+  absl::Cord value;
+  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  return value;
+}
+
+absl::StatusOr<std::string> DurationValueView::GetTypeUrl(
+    absl::string_view prefix) const {
+  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Duration");
+}
+
+absl::StatusOr<Any> DurationValueView::ConvertToAny(
+    absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
+  return MakeAny(std::move(type_url), std::move(value));
 }
 
 }  // namespace cel

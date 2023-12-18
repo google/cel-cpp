@@ -14,8 +14,10 @@
 
 #include <sstream>
 
+#include "absl/strings/cord.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
+#include "common/any.h"
 #include "common/casting.h"
 #include "common/native_type.h"
 #include "common/type.h"
@@ -27,6 +29,7 @@ namespace {
 
 using testing::An;
 using testing::Ne;
+using cel::internal::IsOkAndHolds;
 
 TEST(DurationValue, Kind) {
   EXPECT_EQ(DurationValue().kind(), DurationValue::kKind);
@@ -50,6 +53,16 @@ TEST(DurationValue, DebugString) {
     out << Value(DurationValue(absl::Seconds(1)));
     EXPECT_EQ(out.str(), "1s");
   }
+}
+
+TEST(DurationValue, GetSerializedSize) {
+  EXPECT_THAT(DurationValue().GetSerializedSize(), IsOkAndHolds(0));
+}
+
+TEST(DurationValue, ConvertToAny) {
+  EXPECT_THAT(DurationValue().ConvertToAny(),
+              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Duration"),
+                                   absl::Cord())));
 }
 
 TEST(DurationValue, NativeTypeId) {
@@ -110,6 +123,16 @@ TEST(DurationValueView, DebugString) {
     out << ValueView(DurationValueView(absl::Seconds(1)));
     EXPECT_EQ(out.str(), "1s");
   }
+}
+
+TEST(DurationValueView, GetSerializedSize) {
+  EXPECT_THAT(DurationValueView().GetSerializedSize(), IsOkAndHolds(0));
+}
+
+TEST(DurationValueView, ConvertToAny) {
+  EXPECT_THAT(DurationValueView().ConvertToAny(),
+              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Duration"),
+                                   absl::Cord())));
 }
 
 TEST(DurationValueView, NativeTypeId) {
