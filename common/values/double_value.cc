@@ -13,11 +13,20 @@
 // limitations under the License.
 
 #include <cmath>
+#include <cstddef>
 #include <string>
+#include <utility>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "common/any.h"
 #include "common/value.h"
+#include "internal/serialize.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -56,8 +65,59 @@ std::string DoubleValue::DebugString() const {
   return DoubleDebugString(NativeValue());
 }
 
+absl::StatusOr<size_t> DoubleValue::GetSerializedSize() const {
+  return internal::SerializedDoubleValueSize(NativeValue());
+}
+
+absl::Status DoubleValue::SerializeTo(absl::Cord& value) const {
+  return internal::SerializeDoubleValue(NativeValue(), value);
+}
+
+absl::StatusOr<absl::Cord> DoubleValue::Serialize() const {
+  absl::Cord value;
+  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  return value;
+}
+
+absl::StatusOr<std::string> DoubleValue::GetTypeUrl(
+    absl::string_view prefix) const {
+  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.DoubleValue");
+}
+
+absl::StatusOr<Any> DoubleValue::ConvertToAny(absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
+  return MakeAny(std::move(type_url), std::move(value));
+}
+
 std::string DoubleValueView::DebugString() const {
   return DoubleDebugString(NativeValue());
+}
+
+absl::StatusOr<size_t> DoubleValueView::GetSerializedSize() const {
+  return internal::SerializedDoubleValueSize(NativeValue());
+}
+
+absl::Status DoubleValueView::SerializeTo(absl::Cord& value) const {
+  return internal::SerializeDoubleValue(NativeValue(), value);
+}
+
+absl::StatusOr<absl::Cord> DoubleValueView::Serialize() const {
+  absl::Cord value;
+  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  return value;
+}
+
+absl::StatusOr<std::string> DoubleValueView::GetTypeUrl(
+    absl::string_view prefix) const {
+  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.DoubleValue");
+}
+
+absl::StatusOr<Any> DoubleValueView::ConvertToAny(
+    absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
+  return MakeAny(std::move(type_url), std::move(value));
 }
 
 }  // namespace cel

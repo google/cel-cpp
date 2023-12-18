@@ -18,9 +18,15 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_DOUBLE_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_DOUBLE_VALUE_H_
 
+#include <cstddef>
 #include <ostream>
 #include <string>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
+#include "common/any.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 
@@ -51,6 +57,26 @@ class DoubleValue final {
   DoubleTypeView type() const { return DoubleTypeView(); }
 
   std::string DebugString() const;
+
+  // `GetSerializedSize` determines the serialized byte size that would result
+  // from serialization, without performing the serialization. This always
+  // succeeds and only returns `absl::StatusOr` to meet concept requirements.
+  absl::StatusOr<size_t> GetSerializedSize() const;
+
+  // `SerializeTo` serializes this value and appends it to `value`.
+  absl::Status SerializeTo(absl::Cord& value) const;
+
+  // `Serialize` serializes this value and returns it as `absl::Cord`.
+  absl::StatusOr<absl::Cord> Serialize() const;
+
+  // 'GetTypeUrl' returns the type URL that can be used as the type URL for
+  // `Any`.
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  // 'ConvertToAny' converts this value to `Any`.
+  absl::StatusOr<Any> ConvertToAny(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   constexpr double NativeValue() const { return value_; }
 
@@ -118,6 +144,26 @@ class DoubleValueView final {
   DoubleTypeView type() const { return DoubleTypeView(); }
 
   std::string DebugString() const;
+
+  // `GetSerializedSize` determines the serialized byte size that would result
+  // from serialization, without performing the serialization. This always
+  // succeeds and only returns `absl::StatusOr` to meet concept requirements.
+  absl::StatusOr<size_t> GetSerializedSize() const;
+
+  // `SerializeTo` serializes this value and appends it to `value`.
+  absl::Status SerializeTo(absl::Cord& value) const;
+
+  // `Serialize` serializes this value and returns it as `absl::Cord`.
+  absl::StatusOr<absl::Cord> Serialize() const;
+
+  // 'GetTypeUrl' returns the type URL that can be used as the type URL for
+  // `Any`.
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  // 'ConvertToAny' converts this value to `Any`.
+  absl::StatusOr<Any> ConvertToAny(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   constexpr double NativeValue() const { return value_; }
 
