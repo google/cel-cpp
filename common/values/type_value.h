@@ -18,11 +18,17 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_TYPE_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_TYPE_VALUE_H_
 
+#include <cstddef>
 #include <ostream>
 #include <string>
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
+#include "common/any.h"
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -55,6 +61,28 @@ class TypeValue final {
   TypeTypeView type() const { return TypeTypeView(); }
 
   std::string DebugString() const { return value_.DebugString(); }
+
+  // `GetSerializedSize` always returns `FAILED_PRECONDITION` as `TypeValue` is
+  // not serializable.
+  absl::StatusOr<size_t> GetSerializedSize() const;
+
+  // `SerializeTo` always returns `FAILED_PRECONDITION` as `TypeValue` is not
+  // serializable.
+  absl::Status SerializeTo(absl::Cord& value) const;
+
+  // `Serialize` always returns `FAILED_PRECONDITION` as `TypeValue` is not
+  // serializable.
+  absl::StatusOr<absl::Cord> Serialize() const;
+
+  // `GetTypeUrl` always returns `FAILED_PRECONDITION` as `TypeValue` is not
+  // serializable.
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  // `ConvertToAny` always returns `FAILED_PRECONDITION` as `TypeValue` is not
+  // serializable.
+  absl::StatusOr<Any> ConvertToAny(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   TypeView NativeValue() const { return value_; }
 
@@ -107,6 +135,28 @@ class TypeValueView final {
   TypeTypeView type() const { return TypeTypeView(); }
 
   std::string DebugString() const { return value_.DebugString(); }
+
+  // `GetSerializedSize` always returns `FAILED_PRECONDITION` as `TypeValue` is
+  // not serializable.
+  absl::StatusOr<size_t> GetSerializedSize() const;
+
+  // `SerializeTo` always returns `FAILED_PRECONDITION` as `TypeValue` is not
+  // serializable.
+  absl::Status SerializeTo(absl::Cord& value) const;
+
+  // `Serialize` always returns `FAILED_PRECONDITION` as `TypeValue` is not
+  // serializable.
+  absl::StatusOr<absl::Cord> Serialize() const;
+
+  // `GetTypeUrl` always returns `FAILED_PRECONDITION` as `TypeValue` is not
+  // serializable.
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  // `ConvertToAny` always returns `FAILED_PRECONDITION` as `TypeValue` is not
+  // serializable.
+  absl::StatusOr<Any> ConvertToAny(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   TypeView NativeValue() const { return value_; }
 

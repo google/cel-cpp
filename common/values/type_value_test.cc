@@ -14,6 +14,8 @@
 
 #include <sstream>
 
+#include "absl/status/status.h"
+#include "absl/strings/cord.h"
 #include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/native_type.h"
@@ -26,6 +28,7 @@ namespace {
 
 using testing::An;
 using testing::Ne;
+using cel::internal::StatusIs;
 
 TEST(TypeValue, Kind) {
   EXPECT_EQ(TypeValue(AnyType()).kind(), TypeValue::kKind);
@@ -48,6 +51,32 @@ TEST(TypeValue, DebugString) {
     out << Value(TypeValue(AnyType()));
     EXPECT_EQ(out.str(), "google.protobuf.Any");
   }
+}
+
+TEST(TypeValue, GetSerializedSize) {
+  EXPECT_THAT(TypeValue(AnyType()).GetSerializedSize(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST(TypeValue, SerializeTo) {
+  absl::Cord value;
+  EXPECT_THAT(TypeValue(AnyType()).SerializeTo(value),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST(TypeValue, Serialize) {
+  EXPECT_THAT(TypeValue(AnyType()).Serialize(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST(TypeValue, GetTypeUrl) {
+  EXPECT_THAT(TypeValue(AnyType()).GetTypeUrl(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST(TypeValue, ConvertToAny) {
+  EXPECT_THAT(TypeValue(AnyType()).ConvertToAny(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST(TypeValue, NativeTypeId) {
@@ -94,6 +123,32 @@ TEST(TypeValueView, DebugString) {
     out << ValueView(TypeValueView(AnyTypeView()));
     EXPECT_EQ(out.str(), "google.protobuf.Any");
   }
+}
+
+TEST(TypeValueView, GetSerializedSize) {
+  EXPECT_THAT(TypeValueView(AnyTypeView()).GetSerializedSize(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST(TypeValueView, SerializeTo) {
+  absl::Cord value;
+  EXPECT_THAT(TypeValueView(AnyTypeView()).SerializeTo(value),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST(TypeValueView, Serialize) {
+  EXPECT_THAT(TypeValueView(AnyTypeView()).Serialize(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST(TypeValueView, GetTypeUrl) {
+  EXPECT_THAT(TypeValueView(AnyTypeView()).GetTypeUrl(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST(TypeValueView, ConvertToAny) {
+  EXPECT_THAT(TypeValueView(AnyTypeView()).ConvertToAny(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST(TypeValueView, NativeTypeId) {
