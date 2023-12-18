@@ -18,6 +18,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/cord_test_helpers.h"
 #include "absl/types/optional.h"
+#include "common/any.h"
 #include "common/casting.h"
 #include "common/native_type.h"
 #include "common/type.h"
@@ -29,6 +30,7 @@ namespace {
 
 using testing::An;
 using testing::Ne;
+using cel::internal::IsOkAndHolds;
 
 TEST(BytesValue, Kind) {
   EXPECT_EQ(BytesValue("foo").kind(), BytesValue::kKind);
@@ -56,6 +58,16 @@ TEST(BytesValue, DebugString) {
     out << Value(BytesValue(absl::Cord("foo")));
     EXPECT_EQ(out.str(), "b\"foo\"");
   }
+}
+
+TEST(BytesValue, GetSerializedSize) {
+  EXPECT_THAT(BytesValue().GetSerializedSize(), IsOkAndHolds(0));
+}
+
+TEST(BytesValue, ConvertToAny) {
+  EXPECT_THAT(BytesValue().ConvertToAny(),
+              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.BytesValue"),
+                                   absl::Cord())));
 }
 
 TEST(BytesValue, NativeValue) {
@@ -110,6 +122,16 @@ TEST(BytesValueView, DebugString) {
     out << ValueView(BytesValueView("foo"));
     EXPECT_EQ(out.str(), "b\"foo\"");
   }
+}
+
+TEST(BytesValueView, GetSerializedSize) {
+  EXPECT_THAT(BytesValueView().GetSerializedSize(), IsOkAndHolds(0));
+}
+
+TEST(BytesValueView, ConvertToAny) {
+  EXPECT_THAT(BytesValueView().ConvertToAny(),
+              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.BytesValue"),
+                                   absl::Cord())));
 }
 
 TEST(BytesValueView, NativeValue) {

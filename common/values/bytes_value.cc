@@ -12,12 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstddef>
 #include <string>
+#include <utility>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/any.h"
 #include "common/value.h"
 #include "internal/overloaded.h"
+#include "internal/serialize.h"
+#include "internal/status_macros.h"
 #include "internal/strings.h"
 
 namespace cel {
@@ -42,8 +49,67 @@ std::string BytesDebugString(const Bytes& value) {
 
 std::string BytesValue::DebugString() const { return BytesDebugString(*this); }
 
+absl::StatusOr<size_t> BytesValue::GetSerializedSize() const {
+  return NativeValue([](const auto& bytes) -> size_t {
+    return internal::SerializedBytesValueSize(bytes);
+  });
+}
+
+absl::Status BytesValue::SerializeTo(absl::Cord& value) const {
+  return NativeValue([&value](const auto& bytes) -> absl::Status {
+    return internal::SerializeBytesValue(bytes, value);
+  });
+}
+
+absl::StatusOr<absl::Cord> BytesValue::Serialize() const {
+  absl::Cord value;
+  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  return value;
+}
+
+absl::StatusOr<std::string> BytesValue::GetTypeUrl(
+    absl::string_view prefix) const {
+  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.BytesValue");
+}
+
+absl::StatusOr<Any> BytesValue::ConvertToAny(absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
+  return MakeAny(std::move(type_url), std::move(value));
+}
+
 std::string BytesValueView::DebugString() const {
   return BytesDebugString(*this);
+}
+
+absl::StatusOr<size_t> BytesValueView::GetSerializedSize() const {
+  return NativeValue([](const auto& bytes) -> size_t {
+    return internal::SerializedBytesValueSize(bytes);
+  });
+}
+
+absl::Status BytesValueView::SerializeTo(absl::Cord& value) const {
+  return NativeValue([&value](const auto& bytes) -> absl::Status {
+    return internal::SerializeBytesValue(bytes, value);
+  });
+}
+
+absl::StatusOr<absl::Cord> BytesValueView::Serialize() const {
+  absl::Cord value;
+  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  return value;
+}
+
+absl::StatusOr<std::string> BytesValueView::GetTypeUrl(
+    absl::string_view prefix) const {
+  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.BytesValue");
+}
+
+absl::StatusOr<Any> BytesValueView::ConvertToAny(
+    absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
+  return MakeAny(std::move(type_url), std::move(value));
 }
 
 }  // namespace cel
