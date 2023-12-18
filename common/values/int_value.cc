@@ -12,11 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
+#include <utility>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "common/any.h"
 #include "common/value.h"
+#include "internal/serialize.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -30,8 +39,58 @@ std::string IntValue::DebugString() const {
   return IntDebugString(NativeValue());
 }
 
+absl::StatusOr<size_t> IntValue::GetSerializedSize() const {
+  return internal::SerializedInt64ValueSize(NativeValue());
+}
+
+absl::Status IntValue::SerializeTo(absl::Cord& value) const {
+  return internal::SerializeInt64Value(NativeValue(), value);
+}
+
+absl::StatusOr<absl::Cord> IntValue::Serialize() const {
+  absl::Cord value;
+  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  return value;
+}
+
+absl::StatusOr<std::string> IntValue::GetTypeUrl(
+    absl::string_view prefix) const {
+  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Int64Value");
+}
+
+absl::StatusOr<Any> IntValue::ConvertToAny(absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
+  return MakeAny(std::move(type_url), std::move(value));
+}
+
 std::string IntValueView::DebugString() const {
   return IntDebugString(NativeValue());
+}
+
+absl::StatusOr<size_t> IntValueView::GetSerializedSize() const {
+  return internal::SerializedInt64ValueSize(NativeValue());
+}
+
+absl::Status IntValueView::SerializeTo(absl::Cord& value) const {
+  return internal::SerializeInt64Value(NativeValue(), value);
+}
+
+absl::StatusOr<absl::Cord> IntValueView::Serialize() const {
+  absl::Cord value;
+  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  return value;
+}
+
+absl::StatusOr<std::string> IntValueView::GetTypeUrl(
+    absl::string_view prefix) const {
+  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Int64Value");
+}
+
+absl::StatusOr<Any> IntValueView::ConvertToAny(absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
+  return MakeAny(std::move(type_url), std::move(value));
 }
 
 }  // namespace cel
