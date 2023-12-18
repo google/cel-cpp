@@ -14,8 +14,10 @@
 
 #include <sstream>
 
+#include "absl/strings/cord.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
+#include "common/any.h"
 #include "common/casting.h"
 #include "common/native_type.h"
 #include "common/type.h"
@@ -27,6 +29,7 @@ namespace {
 
 using testing::An;
 using testing::Ne;
+using cel::internal::IsOkAndHolds;
 
 TEST(TimestampValue, Kind) {
   EXPECT_EQ(TimestampValue().kind(), TimestampValue::kKind);
@@ -52,6 +55,16 @@ TEST(TimestampValue, DebugString) {
     out << Value(TimestampValue(absl::UnixEpoch() + absl::Seconds(1)));
     EXPECT_EQ(out.str(), "1970-01-01T00:00:01Z");
   }
+}
+
+TEST(TimestampValue, GetSerializedSize) {
+  EXPECT_THAT(TimestampValue().GetSerializedSize(), IsOkAndHolds(0));
+}
+
+TEST(TimestampValue, ConvertToAny) {
+  EXPECT_THAT(TimestampValue().ConvertToAny(),
+              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Timestamp"),
+                                   absl::Cord())));
 }
 
 TEST(TimestampValue, NativeTypeId) {
@@ -124,6 +137,16 @@ TEST(TimestampValueView, DebugString) {
     out << ValueView(TimestampValueView(absl::UnixEpoch() + absl::Seconds(1)));
     EXPECT_EQ(out.str(), "1970-01-01T00:00:01Z");
   }
+}
+
+TEST(TimestampValueView, GetSerializedSize) {
+  EXPECT_THAT(TimestampValueView().GetSerializedSize(), IsOkAndHolds(0));
+}
+
+TEST(TimestampValueView, ConvertToAny) {
+  EXPECT_THAT(TimestampValueView().ConvertToAny(),
+              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Timestamp"),
+                                   absl::Cord())));
 }
 
 TEST(TimestampValueView, NativeTypeId) {
