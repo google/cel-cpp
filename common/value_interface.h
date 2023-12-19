@@ -18,9 +18,15 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUE_INTERFACE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUE_INTERFACE_H_
 
+#include <cstddef>
 #include <string>
 
 #include "absl/base/attributes.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
+#include "common/any.h"
 #include "common/casting.h"
 #include "common/internal/data_interface.h"
 #include "common/type.h"
@@ -38,6 +44,32 @@ class ValueInterface : public common_internal::DataInterface {
   TypeView type() const { return get_type(); }
 
   virtual std::string DebugString() const = 0;
+
+  // `GetSerializedSize` determines the serialized byte size that would result
+  // from serialization, without performing the serialization. If this value
+  // does not support serialization, `FAILED_PRECONDITION` is returned.
+  virtual absl::StatusOr<size_t> GetSerializedSize() const;
+
+  // `SerializeTo` serializes this value and appends it to `value`. If this
+  // value does not support serialization, `FAILED_PRECONDITION` is returned.
+  virtual absl::Status SerializeTo(absl::Cord& value) const;
+
+  // `Serialize` serializes this value and returns it as `absl::Cord`. If this
+  // value does not support serialization, `FAILED_PRECONDITION` is returned.
+  absl::StatusOr<absl::Cord> Serialize() const;
+
+  // 'GetTypeUrl' returns the type URL that can be used as the type URL for
+  // `Any`. If this value does not support serialization, `FAILED_PRECONDITION`
+  // is returned.
+  // NOLINTNEXTLINE(google-default-arguments)
+  virtual absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  // 'ConvertToAny' converts this value to `Any`. If this value does not support
+  // serialization, `FAILED_PRECONDITION` is returned.
+  // NOLINTNEXTLINE(google-default-arguments)
+  absl::StatusOr<Any> ConvertToAny(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
  protected:
   ABSL_ATTRIBUTE_PURE_FUNCTION

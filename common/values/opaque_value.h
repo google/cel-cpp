@@ -24,6 +24,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_OPAQUE_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_OPAQUE_VALUE_H_
 
+#include <cstddef>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -32,6 +33,11 @@
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/meta/type_traits.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
+#include "common/any.h"
 #include "common/casting.h"
 #include "common/memory.h"
 #include "common/native_type.h"
@@ -95,6 +101,33 @@ class OpaqueValue {
   OpaqueTypeView type() const { return interface_->type(); }
 
   std::string DebugString() const { return interface_->DebugString(); }
+
+  // See `ValueInterface::GetSerializedSize`.
+  absl::StatusOr<size_t> GetSerializedSize() const {
+    return interface_->GetSerializedSize();
+  }
+
+  // See `ValueInterface::SerializeTo`.
+  absl::Status SerializeTo(absl::Cord& value) const {
+    return interface_->SerializeTo(value);
+  }
+
+  // See `ValueInterface::Serialize`.
+  absl::StatusOr<absl::Cord> Serialize() const {
+    return interface_->Serialize();
+  }
+
+  // See `ValueInterface::GetTypeUrl`.
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
+    return interface_->GetTypeUrl(prefix);
+  }
+
+  // See `ValueInterface::ConvertToAny`.
+  absl::StatusOr<Any> ConvertToAny(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
+    return interface_->ConvertToAny(prefix);
+  }
 
   void swap(OpaqueValue& other) noexcept {
     using std::swap;
@@ -201,6 +234,33 @@ class OpaqueValueView {
   OpaqueTypeView type() const { return interface_->type(); }
 
   std::string DebugString() const { return interface_->DebugString(); }
+
+  // See `ValueInterface::GetSerializedSize`.
+  absl::StatusOr<size_t> GetSerializedSize() const {
+    return interface_->GetSerializedSize();
+  }
+
+  // See `ValueInterface::SerializeTo`.
+  absl::Status SerializeTo(absl::Cord& value) const {
+    return interface_->SerializeTo(value);
+  }
+
+  // See `ValueInterface::Serialize`.
+  absl::StatusOr<absl::Cord> Serialize() const {
+    return interface_->Serialize();
+  }
+
+  // See `ValueInterface::GetTypeUrl`.
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
+    return interface_->GetTypeUrl(prefix);
+  }
+
+  // See `ValueInterface::ConvertToAny`.
+  absl::StatusOr<Any> ConvertToAny(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
+    return interface_->ConvertToAny(prefix);
+  }
 
   void swap(OpaqueValueView& other) noexcept {
     using std::swap;

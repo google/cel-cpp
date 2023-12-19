@@ -12,20 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cstdint>
-#include <memory>
-#include <ostream>
 #include <sstream>
 #include <string>
-#include <tuple>
 #include <utility>
-#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/memory.h"
-#include "common/native_type.h"
 #include "common/type.h"
 #include "common/type_factory.h"
 #include "common/value.h"
@@ -34,9 +28,6 @@
 namespace cel {
 namespace {
 
-using testing::An;
-using testing::ElementsAreArray;
-using testing::Ne;
 using testing::TestParamInfo;
 using testing::TestWithParam;
 using cel::internal::StatusIs;
@@ -120,6 +111,32 @@ TEST_P(OptionalValueTest, DebugString) {
     out << OptionalOf(IntValue());
     EXPECT_EQ(out.str(), "optional(0)");
   }
+}
+
+TEST_P(OptionalValueTest, GetSerializedSize) {
+  EXPECT_THAT(OptionalValue().GetSerializedSize(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(OptionalValueTest, SerializeTo) {
+  absl::Cord value;
+  EXPECT_THAT(OptionalValue().SerializeTo(value),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(OptionalValueTest, Serialize) {
+  EXPECT_THAT(OptionalValue().Serialize(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(OptionalValueTest, GetTypeUrl) {
+  EXPECT_THAT(OptionalValue().GetTypeUrl(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(OptionalValueTest, ConvertToAny) {
+  EXPECT_THAT(OptionalValue().ConvertToAny(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST_P(OptionalValueTest, HasValue) {
@@ -227,6 +244,32 @@ TEST_P(OptionalValueViewTest, DebugString) {
     out << OptionalOf(IntValue());
     EXPECT_EQ(out.str(), "optional(0)");
   }
+}
+
+TEST_P(OptionalValueViewTest, GetSerializedSize) {
+  EXPECT_THAT(OptionalValueView().GetSerializedSize(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(OptionalValueViewTest, SerializeTo) {
+  absl::Cord value;
+  EXPECT_THAT(OptionalValueView().SerializeTo(value),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(OptionalValueViewTest, Serialize) {
+  EXPECT_THAT(OptionalValueView().Serialize(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(OptionalValueViewTest, GetTypeUrl) {
+  EXPECT_THAT(OptionalValueView().GetTypeUrl(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(OptionalValueViewTest, ConvertToAny) {
+  EXPECT_THAT(OptionalValueView().ConvertToAny(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST_P(OptionalValueViewTest, HasValue) {

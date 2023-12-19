@@ -288,6 +288,7 @@ cc_library(
     ) + [
         "type_factory.cc",
         "value_factory.cc",
+        "value_interface.cc",
         "value_provider.cc",
     ],
     hdrs = glob(
