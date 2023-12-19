@@ -33,6 +33,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
 #include "common/casting.h"
+#include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
@@ -186,6 +187,23 @@ class Value final {
             return std::string();
           } else {
             return alternative.DebugString();
+          }
+        },
+        variant_);
+  }
+
+  absl::StatusOr<Json> ConvertToJson() const {
+    AssertIsValid();
+    return absl::visit(
+        [](const auto& alternative) -> absl::StatusOr<Json> {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return an error. In debug
+            // builds we cannot reach here.
+            return absl::InternalError("use of invalid Value");
+          } else {
+            return alternative.ConvertToJson();
           }
         },
         variant_);
@@ -495,6 +513,23 @@ class ValueView final {
             return std::string();
           } else {
             return alternative.DebugString();
+          }
+        },
+        variant_);
+  }
+
+  absl::StatusOr<Json> ConvertToJson() const {
+    AssertIsValid();
+    return absl::visit(
+        [](auto alternative) -> absl::StatusOr<Json> {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return an error. In debug
+            // builds we cannot reach here.
+            return absl::InternalError("use of invalid ValueView");
+          } else {
+            return alternative.ConvertToJson();
           }
         },
         variant_);

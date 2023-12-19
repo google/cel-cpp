@@ -36,6 +36,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "common/casting.h"
+#include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
@@ -68,6 +69,12 @@ class ListValueInterface : public ValueInterface {
   ValueKind kind() const final { return kKind; }
 
   ListTypeView type() const { return Cast<ListTypeView>(get_type()); }
+
+  absl::StatusOr<Json> ConvertToJson() const final {
+    return ConvertToJsonArray();
+  }
+
+  virtual absl::StatusOr<JsonArray> ConvertToJsonArray() const = 0;
 
   virtual bool IsEmpty() const { return Size() == 0; }
 
@@ -122,6 +129,14 @@ class ListValue {
   ListTypeView type() const { return interface_->type(); }
 
   std::string DebugString() const { return interface_->DebugString(); }
+
+  absl::StatusOr<Json> ConvertToJson() const {
+    return interface_->ConvertToJson();
+  }
+
+  absl::StatusOr<JsonArray> ConvertToJsonArray() const {
+    return interface_->ConvertToJsonArray();
+  }
 
   bool IsEmpty() const { return interface_->IsEmpty(); }
 
@@ -248,6 +263,14 @@ class ListValueView {
   ListTypeView type() const { return interface_->type(); }
 
   std::string DebugString() const { return interface_->DebugString(); }
+
+  absl::StatusOr<Json> ConvertToJson() const {
+    return interface_->ConvertToJson();
+  }
+
+  absl::StatusOr<JsonArray> ConvertToJsonArray() const {
+    return interface_->ConvertToJsonArray();
+  }
 
   bool IsEmpty() const { return interface_->IsEmpty(); }
 

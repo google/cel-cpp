@@ -22,6 +22,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/json.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
 
@@ -56,6 +57,11 @@ absl::StatusOr<Any> ValueInterface::ConvertToAny(
   CEL_ASSIGN_OR_RETURN(auto value, Serialize());
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
+}
+
+absl::StatusOr<Json> ValueInterface::ConvertToJson() const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(type().name(), " is not convertable to JSON"));
 }
 
 }  // namespace cel

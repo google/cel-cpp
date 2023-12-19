@@ -20,6 +20,7 @@
 #include "absl/types/optional.h"
 #include "common/any.h"
 #include "common/casting.h"
+#include "common/json.h"
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -63,6 +64,10 @@ TEST(UintValue, ConvertToAny) {
   EXPECT_THAT(UintValue().ConvertToAny(),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.UInt64Value"),
                                    absl::Cord())));
+}
+
+TEST(UintValue, ConvertToJson) {
+  EXPECT_THAT(UintValue(1).ConvertToJson(), IsOkAndHolds(Json(1.0)));
 }
 
 TEST(UintValue, NativeTypeId) {
@@ -133,6 +138,10 @@ TEST(UintValueView, ConvertToAny) {
   EXPECT_THAT(UintValueView().ConvertToAny(),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.UInt64Value"),
                                    absl::Cord())));
+}
+
+TEST(UintValueView, ConvertToJson) {
+  EXPECT_THAT(UintValueView(1).ConvertToJson(), IsOkAndHolds(Json(1.0)));
 }
 
 TEST(UintValueView, NativeTypeId) {

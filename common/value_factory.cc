@@ -152,6 +152,10 @@ class JsonListValue final : public ListValueInterface {
 
   size_t Size() const override { return array_.size(); }
 
+  absl::StatusOr<JsonArray> ConvertToJsonArray() const override {
+    return array_;
+  }
+
  private:
   TypeView get_type() const noexcept override {
     return ProcessLocalTypeCache::Get()->GetDynListType();
@@ -227,6 +231,10 @@ class JsonMapValue final : public MapValueInterface {
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueFactory& value_factory) const override {
     return std::make_unique<JsonMapValueKeyIterator>(object_);
+  }
+
+  absl::StatusOr<JsonObject> ConvertToJsonObject() const override {
+    return object_;
   }
 
  private:

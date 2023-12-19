@@ -15,7 +15,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
-#include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -23,6 +22,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/json.h"
 #include "common/value.h"
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
@@ -64,6 +64,10 @@ absl::StatusOr<Any> UintValue::ConvertToAny(absl::string_view prefix) const {
   return MakeAny(std::move(type_url), std::move(value));
 }
 
+absl::StatusOr<Json> UintValue::ConvertToJson() const {
+  return JsonUint(NativeValue());
+}
+
 std::string UintValueView::DebugString() const {
   return UintDebugString(NativeValue());
 }
@@ -92,6 +96,10 @@ absl::StatusOr<Any> UintValueView::ConvertToAny(
   CEL_ASSIGN_OR_RETURN(auto value, Serialize());
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
+}
+
+absl::StatusOr<Json> UintValueView::ConvertToJson() const {
+  return JsonUint(NativeValue());
 }
 
 }  // namespace cel

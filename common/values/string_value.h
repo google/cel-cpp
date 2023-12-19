@@ -32,6 +32,7 @@
 #include "absl/strings/string_view.h"
 #include "common/any.h"
 #include "common/internal/shared_byte_string.h"
+#include "common/json.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 
@@ -92,6 +93,8 @@ class StringValue final {
 
   absl::StatusOr<Any> ConvertToAny(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Json> ConvertToJson() const;
 
   std::string NativeString() const { return value_.ToString(); }
 
@@ -193,6 +196,8 @@ class StringValueView final {
 
   absl::StatusOr<Any> ConvertToAny(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Json> ConvertToJson() const;
 
   std::string NativeString() const { return value_.ToString(); }
 

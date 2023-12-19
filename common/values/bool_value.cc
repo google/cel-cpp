@@ -21,6 +21,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/json.h"
 #include "common/value.h"
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
@@ -36,6 +37,8 @@ std::string BoolDebugString(bool value) { return value ? "true" : "false"; }
 std::string BoolValue::DebugString() const {
   return BoolDebugString(NativeValue());
 }
+
+absl::StatusOr<Json> BoolValue::ConvertToJson() const { return NativeValue(); }
 
 std::string BoolValueView::DebugString() const {
   return BoolDebugString(NativeValue());
@@ -90,6 +93,10 @@ absl::StatusOr<Any> BoolValueView::ConvertToAny(
   CEL_ASSIGN_OR_RETURN(auto value, Serialize());
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
+}
+
+absl::StatusOr<Json> BoolValueView::ConvertToJson() const {
+  return NativeValue();
 }
 
 }  // namespace cel

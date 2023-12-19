@@ -22,6 +22,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "common/casting.h"
+#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_factory.h"
@@ -36,6 +37,7 @@ namespace {
 using testing::TestParamInfo;
 using testing::UnorderedElementsAreArray;
 using cel::internal::IsOk;
+using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
 TEST(MapValue, CheckKey) {
@@ -280,6 +282,18 @@ TEST_P(MapValueTest, NewIterator) {
   EXPECT_THAT(keys, UnorderedElementsAreArray({0, 1, 2}));
 }
 
+TEST_P(MapValueTest, ConvertToJson) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
+  EXPECT_THAT(value.ConvertToJson(),
+              IsOkAndHolds(Json(MakeJsonObject({{JsonString("0"), 3.0},
+                                                {JsonString("1"), 4.0},
+                                                {JsonString("2"), 5.0}}))));
+}
+
 INSTANTIATE_TEST_SUITE_P(
     MapValueTest, MapValueTest,
     ::testing::Values(MemoryManagement::kPooling,
@@ -522,6 +536,18 @@ TEST_P(MapValueViewTest, NewIterator) {
   EXPECT_THAT(iterator->Next(scratch),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(keys, UnorderedElementsAreArray({0, 1, 2}));
+}
+
+TEST_P(MapValueViewTest, ConvertToJson) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
+  EXPECT_THAT(MapValueView(value).ConvertToJson(),
+              IsOkAndHolds(Json(MakeJsonObject({{JsonString("0"), 3.0},
+                                                {JsonString("1"), 4.0},
+                                                {JsonString("2"), 5.0}}))));
 }
 
 INSTANTIATE_TEST_SUITE_P(

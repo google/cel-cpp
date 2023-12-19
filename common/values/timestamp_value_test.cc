@@ -19,6 +19,7 @@
 #include "absl/types/optional.h"
 #include "common/any.h"
 #include "common/casting.h"
+#include "common/json.h"
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -65,6 +66,11 @@ TEST(TimestampValue, ConvertToAny) {
   EXPECT_THAT(TimestampValue().ConvertToAny(),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Timestamp"),
                                    absl::Cord())));
+}
+
+TEST(TimestampValue, ConvertToJson) {
+  EXPECT_THAT(TimestampValue().ConvertToJson(),
+              IsOkAndHolds(Json(JsonString("1970-01-01T00:00:00Z"))));
 }
 
 TEST(TimestampValue, NativeTypeId) {
@@ -147,6 +153,11 @@ TEST(TimestampValueView, ConvertToAny) {
   EXPECT_THAT(TimestampValueView().ConvertToAny(),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Timestamp"),
                                    absl::Cord())));
+}
+
+TEST(TimestampValueView, ConvertToJson) {
+  EXPECT_THAT(TimestampValueView().ConvertToJson(),
+              IsOkAndHolds(Json(JsonString("1970-01-01T00:00:00Z"))));
 }
 
 TEST(TimestampValueView, NativeTypeId) {

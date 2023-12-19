@@ -22,6 +22,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/json.h"
 #include "common/value.h"
 
 namespace cel {
@@ -62,6 +63,11 @@ absl::StatusOr<Any> ErrorValue::ConvertToAny(absl::string_view) const {
       absl::StrCat(type().name(), " is unserializable"));
 }
 
+absl::StatusOr<Json> ErrorValue::ConvertToJson() const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(type().name(), " is not convertable to JSON"));
+}
+
 std::string ErrorValueView::DebugString() const {
   return ErrorDebugString(*value_);
 }
@@ -90,6 +96,11 @@ absl::StatusOr<std::string> ErrorValueView::GetTypeUrl(
 absl::StatusOr<Any> ErrorValueView::ConvertToAny(absl::string_view) const {
   return absl::FailedPreconditionError(
       absl::StrCat(type().name(), " is unserializable"));
+}
+
+absl::StatusOr<Json> ErrorValueView::ConvertToJson() const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(type().name(), " is not convertable to JSON"));
 }
 
 }  // namespace cel

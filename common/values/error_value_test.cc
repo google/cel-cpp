@@ -92,6 +92,11 @@ TEST(ErrorValue, ConvertToAny) {
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
+TEST(ErrorValue, ConvertToJson) {
+  EXPECT_THAT(ErrorValue().ConvertToJson(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
 TEST(ErrorValue, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(ErrorValue(absl::CancelledError())),
             NativeTypeId::For<ErrorValue>());
@@ -177,6 +182,11 @@ TEST(ErrorValueView, GetTypeUrl) {
 
 TEST(ErrorValueView, ConvertToAny) {
   EXPECT_THAT(ErrorValueView().ConvertToAny(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST(ErrorValueView, ConvertToJson) {
+  EXPECT_THAT(ErrorValueView().ConvertToJson(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 

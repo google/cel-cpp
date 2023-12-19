@@ -37,6 +37,7 @@
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "common/casting.h"
+#include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
@@ -73,6 +74,12 @@ class MapValueInterface : public ValueInterface {
   ValueKind kind() const final { return kKind; }
 
   MapTypeView type() const { return Cast<MapTypeView>(get_type()); }
+
+  absl::StatusOr<Json> ConvertToJson() const final {
+    return ConvertToJsonObject();
+  }
+
+  virtual absl::StatusOr<JsonObject> ConvertToJsonObject() const = 0;
 
   // Returns `true` if this map contains no entries, `false` otherwise.
   virtual bool IsEmpty() const { return Size() == 0; }
@@ -159,6 +166,14 @@ class MapValue {
   MapTypeView type() const { return interface_->type(); }
 
   std::string DebugString() const { return interface_->DebugString(); }
+
+  absl::StatusOr<Json> ConvertToJson() const {
+    return interface_->ConvertToJson();
+  }
+
+  absl::StatusOr<JsonObject> ConvertToJsonObject() const {
+    return interface_->ConvertToJsonObject();
+  }
 
   bool IsEmpty() const { return interface_->IsEmpty(); }
 
@@ -309,6 +324,14 @@ class MapValueView {
   MapTypeView type() const { return interface_->type(); }
 
   std::string DebugString() const { return interface_->DebugString(); }
+
+  absl::StatusOr<Json> ConvertToJson() const {
+    return interface_->ConvertToJson();
+  }
+
+  absl::StatusOr<JsonObject> ConvertToJsonObject() const {
+    return interface_->ConvertToJsonObject();
+  }
 
   bool IsEmpty() const { return interface_->IsEmpty(); }
 

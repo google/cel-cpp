@@ -28,6 +28,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/json.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 
@@ -68,6 +69,8 @@ class NullValue final {
 
   absl::StatusOr<Any> ConvertToAny(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Json> ConvertToJson() const { return kJsonNull; }
 
   constexpr void swap(NullValue& other) noexcept {}
 
@@ -116,6 +119,8 @@ class NullValueView final {
 
   absl::StatusOr<Any> ConvertToAny(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Json> ConvertToJson() const { return kJsonNull; }
 
   constexpr void swap(NullValueView& other) noexcept {}
 

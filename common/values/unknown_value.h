@@ -30,6 +30,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/json.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 
@@ -80,6 +81,10 @@ class UnknownValue final {
   // not serializable.
   absl::StatusOr<Any> ConvertToAny(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  // `ConvertToJson` always returns `FAILED_PRECONDITION` as `UnknownValue` is
+  // not convertible to JSON.
+  absl::StatusOr<Json> ConvertToJson() const;
 
   void swap(UnknownValue& other) noexcept {}
 
@@ -138,6 +143,10 @@ class UnknownValueView final {
   // not serializable.
   absl::StatusOr<Any> ConvertToAny(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  // `ConvertToJson` always returns `FAILED_PRECONDITION` as `UnknownValue` is
+  // not convertible to JSON.
+  absl::StatusOr<Json> ConvertToJson() const;
 
   void swap(UnknownValueView& other) noexcept {}
 

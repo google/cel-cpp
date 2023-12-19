@@ -24,6 +24,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/json.h"
 #include "common/value.h"
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
@@ -90,6 +91,10 @@ absl::StatusOr<Any> DoubleValue::ConvertToAny(absl::string_view prefix) const {
   return MakeAny(std::move(type_url), std::move(value));
 }
 
+absl::StatusOr<Json> DoubleValue::ConvertToJson() const {
+  return NativeValue();
+}
+
 std::string DoubleValueView::DebugString() const {
   return DoubleDebugString(NativeValue());
 }
@@ -118,6 +123,10 @@ absl::StatusOr<Any> DoubleValueView::ConvertToAny(
   CEL_ASSIGN_OR_RETURN(auto value, Serialize());
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
+}
+
+absl::StatusOr<Json> DoubleValueView::ConvertToJson() const {
+  return NativeValue();
 }
 
 }  // namespace cel

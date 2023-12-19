@@ -21,6 +21,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/json.h"
 #include "common/value.h"
 #include "internal/overloaded.h"
 #include "internal/serialize.h"
@@ -78,6 +79,11 @@ absl::StatusOr<Any> BytesValue::ConvertToAny(absl::string_view prefix) const {
   return MakeAny(std::move(type_url), std::move(value));
 }
 
+absl::StatusOr<Json> BytesValue::ConvertToJson() const {
+  return NativeValue(
+      [](const auto& value) -> Json { return JsonBytes(value); });
+}
+
 std::string BytesValueView::DebugString() const {
   return BytesDebugString(*this);
 }
@@ -110,6 +116,11 @@ absl::StatusOr<Any> BytesValueView::ConvertToAny(
   CEL_ASSIGN_OR_RETURN(auto value, Serialize());
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
+}
+
+absl::StatusOr<Json> BytesValueView::ConvertToJson() const {
+  return NativeValue(
+      [](const auto& value) -> Json { return JsonBytes(value); });
 }
 
 }  // namespace cel

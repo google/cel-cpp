@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -26,6 +27,7 @@
 namespace cel {
 namespace {
 
+using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
 using ValueProviderTest = common_internal::ThreadCompatibleValueTest<>;
@@ -234,6 +236,24 @@ TEST_P(ValueProviderTest, NewMapValueBuilderCoverage_DynamicStatic) {
   EXPECT_FALSE(builder->IsEmpty());
   auto value = std::move(*builder).Build();
   EXPECT_EQ(value.DebugString(), "{true: 0}");
+}
+
+TEST_P(ValueProviderTest, JsonKeyCoverage) {
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      value_provider().NewMapValueBuilder(
+          value_factory(), MapType(type_factory().GetDynDynMapType())));
+  EXPECT_OK(builder->Put(BoolValue(true), IntValue(1)));
+  EXPECT_OK(builder->Put(IntValue(1), IntValue(2)));
+  EXPECT_OK(builder->Put(UintValue(2), IntValue(3)));
+  EXPECT_OK(builder->Put(StringValue("a"), IntValue(4)));
+  auto value = std::move(*builder).Build();
+  EXPECT_THAT(
+      value.ConvertToJson(),
+      IsOkAndHolds(Json(MakeJsonObject({{JsonString("true"), Json(1.0)},
+                                        {JsonString("1"), Json(2.0)},
+                                        {JsonString("2"), Json(3.0)},
+                                        {JsonString("a"), Json(4.0)}}))));
 }
 
 INSTANTIATE_TEST_SUITE_P(

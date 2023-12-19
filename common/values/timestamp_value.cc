@@ -22,6 +22,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "common/any.h"
+#include "common/json.h"
 #include "common/value.h"
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
@@ -67,6 +68,12 @@ absl::StatusOr<Any> TimestampValue::ConvertToAny(
   return MakeAny(std::move(type_url), std::move(value));
 }
 
+absl::StatusOr<Json> TimestampValue::ConvertToJson() const {
+  CEL_ASSIGN_OR_RETURN(auto json,
+                       internal::EncodeTimestampToJson(NativeValue()));
+  return JsonString(std::move(json));
+}
+
 std::string TimestampValueView::DebugString() const {
   return TimestampDebugString(NativeValue());
 }
@@ -95,6 +102,12 @@ absl::StatusOr<Any> TimestampValueView::ConvertToAny(
   CEL_ASSIGN_OR_RETURN(auto value, Serialize());
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
+}
+
+absl::StatusOr<Json> TimestampValueView::ConvertToJson() const {
+  CEL_ASSIGN_OR_RETURN(auto json,
+                       internal::EncodeTimestampToJson(NativeValue()));
+  return JsonString(std::move(json));
 }
 
 }  // namespace cel

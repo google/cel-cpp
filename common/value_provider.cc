@@ -29,11 +29,13 @@
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/casting.h"
+#include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
@@ -55,6 +57,8 @@ struct MapValueKeyEqualTo;
 template <typename K, typename V>
 using ValueFlatHashMapFor =
     absl::flat_hash_map<K, V, MapValueKeyHash<K>, MapValueKeyEqualTo<K>>;
+template <typename T>
+struct MapValueKeyJson;
 
 template <typename T>
 struct MapValueKeyHash {
@@ -244,6 +248,53 @@ struct MapValueKeyLess<Value> {
   }
 };
 
+template <>
+struct MapValueKeyJson<BoolValue> {
+  absl::Cord operator()(BoolValue value) const {
+    return value.NativeValue() ? absl::Cord("true") : absl::Cord("false");
+  }
+};
+
+template <>
+struct MapValueKeyJson<IntValue> {
+  absl::Cord operator()(IntValue value) const {
+    return absl::Cord(absl::StrCat(value.NativeValue()));
+  }
+};
+
+template <>
+struct MapValueKeyJson<UintValue> {
+  absl::Cord operator()(UintValue value) const {
+    return absl::Cord(absl::StrCat(value.NativeValue()));
+  }
+};
+
+template <>
+struct MapValueKeyJson<StringValue> {
+  absl::Cord operator()(const StringValue& value) const {
+    return value.NativeCord();
+  }
+};
+
+template <>
+struct MapValueKeyJson<Value> {
+  absl::Cord operator()(const Value& value) const {
+    switch (value.kind()) {
+      case ValueKind::kBool:
+        return MapValueKeyJson<BoolValue>{}(Cast<BoolValue>(value));
+      case ValueKind::kInt:
+        return MapValueKeyJson<IntValue>{}(Cast<IntValue>(value));
+      case ValueKind::kUint:
+        return MapValueKeyJson<UintValue>{}(Cast<UintValue>(value));
+      case ValueKind::kString:
+        return MapValueKeyJson<StringValue>{}(Cast<StringValue>(value));
+      default:
+        ABSL_DLOG(FATAL) << "Invalid map key value: " << value;
+        return absl::Cord();
+    }
+  }
+};
+
 template <typename K, typename V>
 class TypedMapValueKeyIterator final : public ValueIterator {
  public:
@@ -283,6 +334,16 @@ class TypedListValue final : public ListValueInterface {
   bool IsEmpty() const override { return elements_.empty(); }
 
   size_t Size() const override { return elements_.size(); }
+
+  absl::StatusOr<JsonArray> ConvertToJsonArray() const override {
+    JsonArrayBuilder builder;
+    builder.reserve(Size());
+    for (const auto& element : elements_) {
+      CEL_ASSIGN_OR_RETURN(auto json_element, element.ConvertToJson());
+      builder.push_back(std::move(json_element));
+    }
+    return std::move(builder).Build();
+  }
 
  protected:
   TypeView get_type() const override { return type_; }
@@ -422,6 +483,21 @@ class TypedMapValue final : public MapValueInterface {
   bool IsEmpty() const override { return entries_.empty(); }
 
   size_t Size() const override { return entries_.size(); }
+
+  absl::StatusOr<JsonObject> ConvertToJsonObject() const override {
+    JsonObjectBuilder builder;
+    builder.reserve(Size());
+    for (const auto& entry : entries_) {
+      absl::Cord json_key = MapValueKeyJson<K>{}(entry.first);
+      CEL_ASSIGN_OR_RETURN(auto json_value, entry.second.ConvertToJson());
+      if (!builder.insert(std::pair{std::move(json_key), std::move(json_value)})
+               .second) {
+        return absl::FailedPreconditionError(
+            "cannot convert map with duplicate keys to JSON");
+      }
+    }
+    return std::move(builder).Build();
+  }
 
   absl::StatusOr<ListValueView> ListKeys(TypeFactory& type_factory,
                                          ValueFactory&,

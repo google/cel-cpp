@@ -29,6 +29,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
+#include "common/json.h"
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/types/optional_type.h"
@@ -91,6 +92,10 @@ class EmptyListValue final : public ListValueInterface {
 
   size_t Size() const override { return 0; }
 
+  absl::StatusOr<JsonArray> ConvertToJsonArray() const override {
+    return JsonArray();
+  }
+
  private:
   NativeTypeId GetNativeTypeId() const noexcept override {
     return NativeTypeId::For<EmptyListValue>();
@@ -149,6 +154,10 @@ class EmptyMapValue final : public MapValueInterface {
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueFactory&) const override {
     return std::make_unique<EmptyMapValueKeyIterator>();
+  }
+
+  absl::StatusOr<JsonObject> ConvertToJsonObject() const override {
+    return JsonObject();
   }
 
  private:

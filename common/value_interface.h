@@ -29,6 +29,7 @@
 #include "common/any.h"
 #include "common/casting.h"
 #include "common/internal/data_interface.h"
+#include "common/json.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 
@@ -70,6 +71,10 @@ class ValueInterface : public common_internal::DataInterface {
   // NOLINTNEXTLINE(google-default-arguments)
   absl::StatusOr<Any> ConvertToAny(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  // `ConvertToJson` converts this value to `Json`. If this value does not
+  // support conversion to JSON, `FAILED_PRECONDITION` is returned.
+  virtual absl::StatusOr<Json> ConvertToJson() const;
 
  protected:
   ABSL_ATTRIBUTE_PURE_FUNCTION

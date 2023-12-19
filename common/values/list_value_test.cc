@@ -21,6 +21,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "common/casting.h"
+#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_factory.h"
@@ -34,6 +35,7 @@ namespace {
 
 using testing::ElementsAreArray;
 using testing::TestParamInfo;
+using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
 class ListValueTest : public common_internal::ThreadCompatibleValueTest<> {
@@ -143,6 +145,13 @@ TEST_P(ListValueTest, NewIterator) {
   EXPECT_THAT(iterator->Next(scratch),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(elements, ElementsAreArray({0, 1, 2}));
+}
+
+TEST_P(ListValueTest, ConvertToJson) {
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
+  EXPECT_THAT(value.ConvertToJson(),
+              IsOkAndHolds(Json(MakeJsonArray({0.0, 1.0, 2.0}))));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -263,6 +272,13 @@ TEST_P(ListValueViewTest, NewIterator) {
   EXPECT_THAT(iterator->Next(scratch),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(elements, ElementsAreArray({0, 1, 2}));
+}
+
+TEST_P(ListValueViewTest, ConvertToJson) {
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
+  EXPECT_THAT(ListValueView(value).ConvertToJson(),
+              IsOkAndHolds(Json(MakeJsonArray({0.0, 1.0, 2.0}))));
 }
 
 INSTANTIATE_TEST_SUITE_P(

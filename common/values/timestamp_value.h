@@ -28,6 +28,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "common/any.h"
+#include "common/json.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 
@@ -71,6 +72,8 @@ class TimestampValue final {
 
   absl::StatusOr<Any> ConvertToAny(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Json> ConvertToJson() const;
 
   constexpr absl::Time NativeValue() const { return value_; }
 
@@ -153,6 +156,8 @@ class TimestampValueView final {
 
   absl::StatusOr<Any> ConvertToAny(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Json> ConvertToJson() const;
 
   constexpr absl::Time NativeValue() const { return value_; }
 

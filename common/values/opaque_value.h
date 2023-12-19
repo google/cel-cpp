@@ -39,6 +39,7 @@
 #include "absl/strings/string_view.h"
 #include "common/any.h"
 #include "common/casting.h"
+#include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
@@ -127,6 +128,10 @@ class OpaqueValue {
   absl::StatusOr<Any> ConvertToAny(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const {
     return interface_->ConvertToAny(prefix);
+  }
+
+  absl::StatusOr<Json> ConvertToJson() const {
+    return interface_->ConvertToJson();
   }
 
   void swap(OpaqueValue& other) noexcept {
@@ -260,6 +265,10 @@ class OpaqueValueView {
   absl::StatusOr<Any> ConvertToAny(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const {
     return interface_->ConvertToAny(prefix);
+  }
+
+  absl::StatusOr<Json> ConvertToJson() const {
+    return interface_->ConvertToJson();
   }
 
   void swap(OpaqueValueView& other) noexcept {

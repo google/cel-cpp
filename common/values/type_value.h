@@ -29,6 +29,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/json.h"
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -83,6 +84,8 @@ class TypeValue final {
   // serializable.
   absl::StatusOr<Any> ConvertToAny(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Json> ConvertToJson() const;
 
   TypeView NativeValue() const { return value_; }
 
@@ -157,6 +160,8 @@ class TypeValueView final {
   // serializable.
   absl::StatusOr<Any> ConvertToAny(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Json> ConvertToJson() const;
 
   TypeView NativeValue() const { return value_; }
 

@@ -139,6 +139,11 @@ TEST_P(OptionalValueTest, ConvertToAny) {
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
+TEST_P(OptionalValueTest, ConvertToJson) {
+  EXPECT_THAT(OptionalValue().ConvertToJson(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
 TEST_P(OptionalValueTest, HasValue) {
   auto value = OptionalNone();
   EXPECT_FALSE(value.HasValue());
@@ -269,6 +274,11 @@ TEST_P(OptionalValueViewTest, GetTypeUrl) {
 
 TEST_P(OptionalValueViewTest, ConvertToAny) {
   EXPECT_THAT(OptionalValueView().ConvertToAny(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(OptionalValueViewTest, ConvertToJson) {
+  EXPECT_THAT(OptionalValueView().ConvertToJson(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
