@@ -14,12 +14,17 @@
 
 #include <cstddef>
 #include <memory>
+#include <string>
 
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
+#include "common/any.h"
 #include "common/value.h"
+#include "internal/serialize.h"
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -49,6 +54,21 @@ class ListValueInterfaceIterator final : public ValueIterator {
   const size_t size_;
   size_t index_ = 0;
 };
+
+absl::StatusOr<size_t> ListValueInterface::GetSerializedSize() const {
+  return absl::UnimplementedError(
+      "preflighting serialization size is not implemented by this list");
+}
+
+absl::Status ListValueInterface::SerializeTo(absl::Cord& value) const {
+  CEL_ASSIGN_OR_RETURN(auto json, ConvertToJsonArray());
+  return internal::SerializeListValue(json, value);
+}
+
+absl::StatusOr<std::string> ListValueInterface::GetTypeUrl(
+    absl::string_view prefix) const {
+  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.ListValue");
+}
 
 absl::StatusOr<ValueView> ListValueInterface::Get(ValueFactory& value_factory,
                                                   size_t index,

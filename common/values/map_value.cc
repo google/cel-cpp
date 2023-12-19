@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstddef>
 #include <memory>
+#include <string>
 #include <tuple>
 #include <utility>
 
@@ -20,9 +22,13 @@
 #include "absl/base/optimization.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "common/any.h"
 #include "common/value.h"
 #include "common/value_kind.h"
+#include "internal/serialize.h"
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -54,6 +60,21 @@ absl::Status MapValueInterface::CheckKey(ValueView key) {
     default:
       return InvalidMapKeyTypeError(key.kind());
   }
+}
+
+absl::StatusOr<size_t> MapValueInterface::GetSerializedSize() const {
+  return absl::UnimplementedError(
+      "preflighting serialization size is not implemented by this map");
+}
+
+absl::Status MapValueInterface::SerializeTo(absl::Cord& value) const {
+  CEL_ASSIGN_OR_RETURN(auto json, ConvertToJsonObject());
+  return internal::SerializeStruct(json, value);
+}
+
+absl::StatusOr<std::string> MapValueInterface::GetTypeUrl(
+    absl::string_view prefix) const {
+  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Struct");
 }
 
 absl::StatusOr<ValueView> MapValueInterface::Get(ValueFactory& value_factory,

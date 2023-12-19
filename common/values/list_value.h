@@ -35,6 +35,9 @@
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
+#include "common/any.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
@@ -69,6 +72,13 @@ class ListValueInterface : public ValueInterface {
   ValueKind kind() const final { return kKind; }
 
   ListTypeView type() const { return Cast<ListTypeView>(get_type()); }
+
+  absl::StatusOr<size_t> GetSerializedSize() const override;
+
+  absl::Status SerializeTo(absl::Cord& value) const override;
+
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix) const override;
 
   absl::StatusOr<Json> ConvertToJson() const final {
     return ConvertToJsonArray();
@@ -129,6 +139,33 @@ class ListValue {
   ListTypeView type() const { return interface_->type(); }
 
   std::string DebugString() const { return interface_->DebugString(); }
+
+  // See `ValueInterface::GetSerializedSize`.
+  absl::StatusOr<size_t> GetSerializedSize() const {
+    return interface_->GetSerializedSize();
+  }
+
+  // See `ValueInterface::SerializeTo`.
+  absl::Status SerializeTo(absl::Cord& value) const {
+    return interface_->SerializeTo(value);
+  }
+
+  // See `ValueInterface::Serialize`.
+  absl::StatusOr<absl::Cord> Serialize() const {
+    return interface_->Serialize();
+  }
+
+  // See `ValueInterface::GetTypeUrl`.
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
+    return interface_->GetTypeUrl(prefix);
+  }
+
+  // See `ValueInterface::ConvertToAny`.
+  absl::StatusOr<Any> ConvertToAny(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
+    return interface_->ConvertToAny(prefix);
+  }
 
   absl::StatusOr<Json> ConvertToJson() const {
     return interface_->ConvertToJson();
@@ -263,6 +300,33 @@ class ListValueView {
   ListTypeView type() const { return interface_->type(); }
 
   std::string DebugString() const { return interface_->DebugString(); }
+
+  // See `ValueInterface::GetSerializedSize`.
+  absl::StatusOr<size_t> GetSerializedSize() const {
+    return interface_->GetSerializedSize();
+  }
+
+  // See `ValueInterface::SerializeTo`.
+  absl::Status SerializeTo(absl::Cord& value) const {
+    return interface_->SerializeTo(value);
+  }
+
+  // See `ValueInterface::Serialize`.
+  absl::StatusOr<absl::Cord> Serialize() const {
+    return interface_->Serialize();
+  }
+
+  // See `ValueInterface::GetTypeUrl`.
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
+    return interface_->GetTypeUrl(prefix);
+  }
+
+  // See `ValueInterface::ConvertToAny`.
+  absl::StatusOr<Any> ConvertToAny(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
+    return interface_->ConvertToAny(prefix);
+  }
 
   absl::StatusOr<Json> ConvertToJson() const {
     return interface_->ConvertToJson();

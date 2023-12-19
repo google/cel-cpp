@@ -20,6 +20,8 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "common/any.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
@@ -147,6 +149,19 @@ TEST_P(ListValueTest, NewIterator) {
   EXPECT_THAT(elements, ElementsAreArray({0, 1, 2}));
 }
 
+TEST_P(ListValueTest, GetSerializedSize) {
+  ASSERT_OK_AND_ASSIGN(auto value, NewIntListValue());
+  EXPECT_THAT(value.GetSerializedSize(),
+              StatusIs(absl::StatusCode::kUnimplemented));
+}
+
+TEST_P(ListValueTest, ConvertToAny) {
+  ASSERT_OK_AND_ASSIGN(auto value, NewIntListValue());
+  EXPECT_THAT(value.ConvertToAny(),
+              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.ListValue"),
+                                   absl::Cord())));
+}
+
 TEST_P(ListValueTest, ConvertToJson) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
@@ -272,6 +287,19 @@ TEST_P(ListValueViewTest, NewIterator) {
   EXPECT_THAT(iterator->Next(scratch),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(elements, ElementsAreArray({0, 1, 2}));
+}
+
+TEST_P(ListValueViewTest, GetSerializedSize) {
+  ASSERT_OK_AND_ASSIGN(auto value, NewIntListValue());
+  EXPECT_THAT(ListValueView(value).GetSerializedSize(),
+              StatusIs(absl::StatusCode::kUnimplemented));
+}
+
+TEST_P(ListValueViewTest, ConvertToAny) {
+  ASSERT_OK_AND_ASSIGN(auto value, NewIntListValue());
+  EXPECT_THAT(ListValueView(value).ConvertToAny(),
+              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.ListValue"),
+                                   absl::Cord())));
 }
 
 TEST_P(ListValueViewTest, ConvertToJson) {

@@ -21,6 +21,8 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "common/any.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
@@ -282,6 +284,23 @@ TEST_P(MapValueTest, NewIterator) {
   EXPECT_THAT(keys, UnorderedElementsAreArray({0, 1, 2}));
 }
 
+TEST_P(MapValueTest, GetSerializedSize) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
+  EXPECT_THAT(value.GetSerializedSize(),
+              StatusIs(absl::StatusCode::kUnimplemented));
+}
+
+TEST_P(MapValueTest, ConvertToAny) {
+  ASSERT_OK_AND_ASSIGN(auto value, NewIntDoubleMapValue());
+  EXPECT_THAT(value.ConvertToAny(),
+              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Struct"),
+                                   absl::Cord())));
+}
+
 TEST_P(MapValueTest, ConvertToJson) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
@@ -536,6 +555,23 @@ TEST_P(MapValueViewTest, NewIterator) {
   EXPECT_THAT(iterator->Next(scratch),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(keys, UnorderedElementsAreArray({0, 1, 2}));
+}
+
+TEST_P(MapValueViewTest, GetSerializedSize) {
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
+                           std::pair{IntValue(1), DoubleValue(4.0)},
+                           std::pair{IntValue(2), DoubleValue(5.0)}));
+  EXPECT_THAT(MapValueView(value).GetSerializedSize(),
+              StatusIs(absl::StatusCode::kUnimplemented));
+}
+
+TEST_P(MapValueViewTest, ConvertToAny) {
+  ASSERT_OK_AND_ASSIGN(auto value, NewIntDoubleMapValue());
+  EXPECT_THAT(MapValueView(value).ConvertToAny(),
+              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Struct"),
+                                   absl::Cord())));
 }
 
 TEST_P(MapValueViewTest, ConvertToJson) {

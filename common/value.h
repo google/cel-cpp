@@ -30,8 +30,10 @@
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "common/any.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
@@ -187,6 +189,107 @@ class Value final {
             return std::string();
           } else {
             return alternative.DebugString();
+          }
+        },
+        variant_);
+  }
+
+  // `GetSerializedSize` determines the serialized byte size that would result
+  // from serialization, without performing the serialization. If this value
+  // does not support serialization, `FAILED_PRECONDITION` is returned. If this
+  // value does not support calculating serialization size ahead of time,
+  // `UNIMPLEMENTED` is returned.
+  absl::StatusOr<size_t> GetSerializedSize() const {
+    AssertIsValid();
+    return absl::visit(
+        [](const auto& alternative) -> absl::StatusOr<size_t> {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return an error. In debug builds we
+            // cannot reach here.
+            return absl::InternalError("use of invalid Value");
+          } else {
+            return alternative.GetSerializedSize();
+          }
+        },
+        variant_);
+  }
+
+  // `SerializeTo` serializes this value and appends it to `value`. If this
+  // value does not support serialization, `FAILED_PRECONDITION` is returned.
+  absl::Status SerializeTo(absl::Cord& value) const {
+    AssertIsValid();
+    return absl::visit(
+        [&value](const auto& alternative) -> absl::Status {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return an error. In debug builds we
+            // cannot reach here.
+            return absl::InternalError("use of invalid Value");
+          } else {
+            return alternative.SerializeTo(value);
+          }
+        },
+        variant_);
+  }
+
+  // `Serialize` serializes this value and returns it as `absl::Cord`. If this
+  // value does not support serialization, `FAILED_PRECONDITION` is returned.
+  absl::StatusOr<absl::Cord> Serialize() const {
+    AssertIsValid();
+    return absl::visit(
+        [](const auto& alternative) -> absl::StatusOr<absl::Cord> {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return an error. In debug builds we
+            // cannot reach here.
+            return absl::InternalError("use of invalid Value");
+          } else {
+            return alternative.Serialize();
+          }
+        },
+        variant_);
+  }
+
+  // 'GetTypeUrl' returns the type URL that can be used as the type URL for
+  // `Any`. If this value does not support serialization, `FAILED_PRECONDITION`
+  // is returned.
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
+    AssertIsValid();
+    return absl::visit(
+        [prefix](const auto& alternative) -> absl::StatusOr<std::string> {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return an error. In debug builds we
+            // cannot reach here.
+            return absl::InternalError("use of invalid Value");
+          } else {
+            return alternative.GetTypeUrl(prefix);
+          }
+        },
+        variant_);
+  }
+
+  // 'ConvertToAny' converts this value to `Any`. If this value does not support
+  // serialization, `FAILED_PRECONDITION` is returned.
+  absl::StatusOr<Any> ConvertToAny(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
+    AssertIsValid();
+    return absl::visit(
+        [prefix](const auto& alternative) -> absl::StatusOr<Any> {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return an error. In debug builds we
+            // cannot reach here.
+            return absl::InternalError("use of invalid Value");
+          } else {
+            return alternative.ConvertToAny(prefix);
           }
         },
         variant_);
@@ -513,6 +616,107 @@ class ValueView final {
             return std::string();
           } else {
             return alternative.DebugString();
+          }
+        },
+        variant_);
+  }
+
+  // `GetSerializedSize` determines the serialized byte size that would result
+  // from serialization, without performing the serialization. If this value
+  // does not support serialization, `FAILED_PRECONDITION` is returned. If this
+  // value does not support calculating serialization size ahead of time,
+  // `UNIMPLEMENTED` is returned.
+  absl::StatusOr<size_t> GetSerializedSize() const {
+    AssertIsValid();
+    return absl::visit(
+        [](auto alternative) -> absl::StatusOr<size_t> {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return an error. In debug builds we
+            // cannot reach here.
+            return absl::InternalError("use of invalid ValueView");
+          } else {
+            return alternative.GetSerializedSize();
+          }
+        },
+        variant_);
+  }
+
+  // `SerializeTo` serializes this value and appends it to `value`. If this
+  // value does not support serialization, `FAILED_PRECONDITION` is returned.
+  absl::Status SerializeTo(absl::Cord& value) const {
+    AssertIsValid();
+    return absl::visit(
+        [&value](auto alternative) -> absl::Status {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return an error. In debug builds we
+            // cannot reach here.
+            return absl::InternalError("use of invalid ValueView");
+          } else {
+            return alternative.SerializeTo(value);
+          }
+        },
+        variant_);
+  }
+
+  // `Serialize` serializes this value and returns it as `absl::Cord`. If this
+  // value does not support serialization, `FAILED_PRECONDITION` is returned.
+  absl::StatusOr<absl::Cord> Serialize() const {
+    AssertIsValid();
+    return absl::visit(
+        [](auto alternative) -> absl::StatusOr<absl::Cord> {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return an error. In debug builds we
+            // cannot reach here.
+            return absl::InternalError("use of invalid ValueView");
+          } else {
+            return alternative.Serialize();
+          }
+        },
+        variant_);
+  }
+
+  // 'GetTypeUrl' returns the type URL that can be used as the type URL for
+  // `Any`. If this value does not support serialization, `FAILED_PRECONDITION`
+  // is returned.
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
+    AssertIsValid();
+    return absl::visit(
+        [prefix](auto alternative) -> absl::StatusOr<std::string> {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return an error. In debug builds we
+            // cannot reach here.
+            return absl::InternalError("use of invalid ValueView");
+          } else {
+            return alternative.GetTypeUrl(prefix);
+          }
+        },
+        variant_);
+  }
+
+  // 'ConvertToAny' converts this value to `Any`. If this value does not support
+  // serialization, `FAILED_PRECONDITION` is returned.
+  absl::StatusOr<Any> ConvertToAny(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
+    AssertIsValid();
+    return absl::visit(
+        [prefix](auto alternative) -> absl::StatusOr<Any> {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return an error. In debug builds we
+            // cannot reach here.
+            return absl::InternalError("use of invalid ValueView");
+          } else {
+            return alternative.ConvertToAny(prefix);
           }
         },
         variant_);
