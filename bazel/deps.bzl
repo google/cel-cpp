@@ -68,8 +68,8 @@ def base_deps():
 def parser_deps():
     """ANTLR dependency for the parser."""
 
-    # Apr 15, 2022
-    ANTLR4_VERSION = "4.10.1"
+    # Sept 4, 2023
+    ANTLR4_VERSION = "4.13.1"
 
     http_archive(
         name = "antlr4_runtimes",
@@ -79,17 +79,25 @@ cc_library(
     name = "cpp",
     srcs = glob(["runtime/Cpp/runtime/src/**/*.cpp"]),
     hdrs = glob(["runtime/Cpp/runtime/src/**/*.h"]),
+    defines = ["ANTLR4CPP_USING_ABSEIL"],
     includes = ["runtime/Cpp/runtime/src"],
+    deps = [
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/synchronization",
+    ],
 )
   """,
-        sha256 = "a320568b738e42735946bebc5d9d333170e14a251c5734e8b852ad1502efa8a2",
+        sha256 = "365ff6aec0b1612fb964a763ca73748d80e0b3379cbdd9f82d86333eb8ae4638",
         strip_prefix = "antlr4-" + ANTLR4_VERSION,
-        urls = ["https://github.com/antlr/antlr4/archive/v" + ANTLR4_VERSION + ".tar.gz"],
+        urls = ["https://github.com/antlr/antlr4/archive/refs/tags/" + ANTLR4_VERSION + ".zip"],
     )
     http_jar(
         name = "antlr4_jar",
         urls = ["https://www.antlr.org/download/antlr-" + ANTLR4_VERSION + "-complete.jar"],
-        sha256 = "41949d41f20d31d5b8277187735dd755108df52b38db6c865108d3382040f918",
+        sha256 = "bc13a9c57a8dd7d5196888211e5ede657cb64a3ce968608697e4f668251a8487",
     )
 
 def flatbuffers_deps():
