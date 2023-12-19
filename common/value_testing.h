@@ -19,8 +19,10 @@
 #include "common/memory.h"
 #include "common/memory_testing.h"
 #include "common/type_factory.h"
+#include "common/type_manager.h"
 #include "common/type_provider.h"
 #include "common/value_factory.h"
+#include "common/value_manager.h"
 #include "common/value_provider.h"
 
 namespace cel::common_internal {
@@ -33,27 +35,37 @@ class ThreadCompatibleValueTest : public ThreadCompatibleMemoryTest<Ts...> {
  public:
   void SetUp() override {
     Base::SetUp();
-    value_factory_ = NewThreadCompatibleValueFactory(this->memory_manager());
-    value_provider_ = NewThreadCompatibleValueProvider(this->memory_manager());
+    value_manager_ = NewThreadCompatibleValueManager(
+        this->memory_manager(),
+        NewThreadCompatibleValueFactory(this->memory_manager()),
+        NewThreadCompatibleValueProvider(this->memory_manager()));
   }
 
   void TearDown() override {
-    value_provider_.reset();
-    value_factory_.reset();
+    value_manager_.reset();
     Base::TearDown();
   }
 
-  TypeFactory& type_factory() const { return **value_factory_; }
+  ValueManager& value_manager() const { return **value_manager_; }
 
-  TypeProvider& type_provider() const { return **value_provider_; }
+  TypeFactory& type_factory() const { return value_manager().GetTypeFactory(); }
 
-  ValueFactory& value_factory() const { return **value_factory_; }
+  TypeProvider& type_provider() const {
+    return value_manager().GetTypeProvider();
+  }
 
-  ValueProvider& value_provider() const { return **value_provider_; }
+  TypeManager& type_manager() const { return value_manager(); }
+
+  ValueFactory& value_factory() const {
+    return value_manager().GetValueFactory();
+  }
+
+  ValueProvider& value_provider() const {
+    return value_manager().GetValueProvider();
+  }
 
  private:
-  absl::optional<Shared<ValueFactory>> value_factory_;
-  absl::optional<Shared<ValueProvider>> value_provider_;
+  absl::optional<Shared<ValueManager>> value_manager_;
 };
 
 }  // namespace cel::common_internal

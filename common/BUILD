@@ -287,8 +287,10 @@ cc_library(
         ],
     ) + [
         "type_factory.cc",
+        "type_manager.cc",
         "value_factory.cc",
         "value_interface.cc",
+        "value_manager.cc",
         "value_provider.cc",
     ],
     hdrs = glob(
@@ -304,10 +306,12 @@ cc_library(
         "type.h",
         "type_factory.h",
         "type_interface.h",
+        "type_manager.h",
         "type_provider.h",
         "value.h",
         "value_factory.h",
         "value_interface.h",
+        "value_manager.h",
         "value_provider.h",
     ],
     deps = [
@@ -321,7 +325,6 @@ cc_library(
         ":value_kind",
         "//common/internal:data_interface",
         "//common/internal:shared_byte_string",
-        "//internal:casts",
         "//internal:names",
         "//internal:no_destructor",
         "//internal:overloaded",

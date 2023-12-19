@@ -32,19 +32,18 @@ using cel::internal::StatusIs;
 
 using ValueProviderTest = common_internal::ThreadCompatibleValueTest<>;
 
-#define VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(element_type)           \
-  TEST_P(ValueProviderTest, NewListValueBuilder_##element_type) {          \
-    auto list_type = type_factory().CreateListType(element_type());        \
-    ASSERT_OK_AND_ASSIGN(                                                  \
-        auto list_value_builder,                                           \
-        value_provider().NewListValueBuilder(value_factory(), list_type)); \
-    EXPECT_TRUE(list_value_builder->IsEmpty());                            \
-    EXPECT_EQ(list_value_builder->Size(), 0);                              \
-    auto list_value = std::move(*list_value_builder).Build();              \
-    EXPECT_TRUE(list_value.IsEmpty());                                     \
-    EXPECT_EQ(list_value.Size(), 0);                                       \
-    EXPECT_EQ(list_value.DebugString(), "[]");                             \
-    EXPECT_EQ(list_value.type(), list_type);                               \
+#define VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(element_type)          \
+  TEST_P(ValueProviderTest, NewListValueBuilder_##element_type) {         \
+    auto list_type = type_factory().CreateListType(element_type());       \
+    ASSERT_OK_AND_ASSIGN(auto list_value_builder,                         \
+                         value_manager().NewListValueBuilder(list_type)); \
+    EXPECT_TRUE(list_value_builder->IsEmpty());                           \
+    EXPECT_EQ(list_value_builder->Size(), 0);                             \
+    auto list_value = std::move(*list_value_builder).Build();             \
+    EXPECT_TRUE(list_value.IsEmpty());                                    \
+    EXPECT_EQ(list_value.Size(), 0);                                      \
+    EXPECT_EQ(list_value.DebugString(), "[]");                            \
+    EXPECT_EQ(list_value.type(), list_type);                              \
   }
 
 VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(BoolType)
@@ -65,17 +64,16 @@ VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(DynType)
 #undef VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST
 
 TEST_P(ValueProviderTest, NewListValueBuilder_ErrorType) {
-  EXPECT_THAT(value_provider().NewListValueBuilder(
-                  value_factory(), ListType(memory_manager(), ErrorType())),
+  EXPECT_THAT(value_manager().NewListValueBuilder(
+                  ListType(memory_manager(), ErrorType())),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 #define VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(key_type, value_type)     \
   TEST_P(ValueProviderTest, NewMapValueBuilder_##key_type##_##value_type) { \
     auto map_type = type_factory().CreateMapType(key_type(), value_type()); \
-    ASSERT_OK_AND_ASSIGN(                                                   \
-        auto map_value_builder,                                             \
-        value_provider().NewMapValueBuilder(value_factory(), map_type));    \
+    ASSERT_OK_AND_ASSIGN(auto map_value_builder,                            \
+                         value_manager().NewMapValueBuilder(map_type));     \
     EXPECT_TRUE(map_value_builder->IsEmpty());                              \
     EXPECT_EQ(map_value_builder->Size(), 0);                                \
     auto map_value = std::move(*map_value_builder).Build();                 \
@@ -164,8 +162,7 @@ VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(DynType, DynType)
 
 #define VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(key_type, value_type)     \
   TEST_P(ValueProviderTest, NewMapValueBuilder_##key_type##_##value_type) { \
-    EXPECT_THAT(value_provider().NewMapValueBuilder(                        \
-                    value_factory(),                                        \
+    EXPECT_THAT(value_manager().NewMapValueBuilder(                         \
                     MapType(memory_manager(), key_type(), value_type())),   \
                 StatusIs(absl::StatusCode::kInvalidArgument));              \
   }
@@ -180,10 +177,9 @@ VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(ErrorType, ErrorType)
 #undef VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST
 
 TEST_P(ValueProviderTest, NewListValueBuilderCoverage_Dynamic) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      value_provider().NewListValueBuilder(
-          value_factory(), ListType(type_factory().GetDynListType())));
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       value_manager().NewListValueBuilder(
+                           ListType(type_factory().GetDynListType())));
   EXPECT_OK(builder->Add(IntValue(0)));
   EXPECT_OK(builder->Add(IntValue(1)));
   EXPECT_OK(builder->Add(IntValue(2)));
@@ -194,10 +190,9 @@ TEST_P(ValueProviderTest, NewListValueBuilderCoverage_Dynamic) {
 }
 
 TEST_P(ValueProviderTest, NewMapValueBuilderCoverage_DynamicDynamic) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      value_provider().NewMapValueBuilder(
-          value_factory(), type_factory().CreateMapType(DynType(), DynType())));
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       value_manager().NewMapValueBuilder(
+                           type_factory().CreateMapType(DynType(), DynType())));
   EXPECT_OK(builder->Put(BoolValue(false), IntValue(1)));
   EXPECT_OK(builder->Put(BoolValue(true), IntValue(2)));
   EXPECT_OK(builder->Put(IntValue(0), IntValue(3)));
@@ -216,8 +211,7 @@ TEST_P(ValueProviderTest, NewMapValueBuilderCoverage_DynamicDynamic) {
 
 TEST_P(ValueProviderTest, NewMapValueBuilderCoverage_StaticDynamic) {
   ASSERT_OK_AND_ASSIGN(
-      auto builder, value_provider().NewMapValueBuilder(
-                        value_factory(),
+      auto builder, value_manager().NewMapValueBuilder(
                         type_factory().CreateMapType(BoolType(), DynType())));
   EXPECT_OK(builder->Put(BoolValue(true), IntValue(0)));
   EXPECT_EQ(builder->Size(), 1);
@@ -227,10 +221,9 @@ TEST_P(ValueProviderTest, NewMapValueBuilderCoverage_StaticDynamic) {
 }
 
 TEST_P(ValueProviderTest, NewMapValueBuilderCoverage_DynamicStatic) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      value_provider().NewMapValueBuilder(
-          value_factory(), type_factory().CreateMapType(DynType(), IntType())));
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       value_manager().NewMapValueBuilder(
+                           type_factory().CreateMapType(DynType(), IntType())));
   EXPECT_OK(builder->Put(BoolValue(true), IntValue(0)));
   EXPECT_EQ(builder->Size(), 1);
   EXPECT_FALSE(builder->IsEmpty());

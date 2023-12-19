@@ -19,6 +19,7 @@
 #include "common/memory.h"
 #include "common/memory_testing.h"
 #include "common/type_factory.h"
+#include "common/type_manager.h"
 #include "common/type_provider.h"
 
 namespace cel::common_internal {
@@ -31,23 +32,27 @@ class ThreadCompatibleTypeTest : public ThreadCompatibleMemoryTest<Ts...> {
  public:
   void SetUp() override {
     Base::SetUp();
-    type_factory_ = NewThreadCompatibleTypeFactory(this->memory_manager());
-    type_provider_ = NewThreadCompatibleTypeProvider(this->memory_manager());
+    type_manager_ = NewThreadCompatibleTypeManager(
+        this->memory_manager(),
+        NewThreadCompatibleTypeFactory(this->memory_manager()),
+        NewThreadCompatibleTypeProvider(this->memory_manager()));
   }
 
   void TearDown() override {
-    type_provider_.reset();
-    type_factory_.reset();
+    type_manager_.reset();
     Base::TearDown();
   }
 
-  TypeFactory& type_factory() const { return **type_factory_; }
+  TypeManager& type_manager() const { return **type_manager_; }
 
-  TypeProvider& type_provider() const { return **type_provider_; }
+  TypeFactory& type_factory() const { return type_manager().GetTypeFactory(); }
+
+  TypeProvider& type_provider() const {
+    return type_manager().GetTypeProvider();
+  }
 
  private:
-  absl::optional<Shared<TypeFactory>> type_factory_;
-  absl::optional<Shared<TypeProvider>> type_provider_;
+  absl::optional<Shared<TypeManager>> type_manager_;
 };
 
 }  // namespace cel::common_internal
