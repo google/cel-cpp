@@ -16,7 +16,9 @@
 #include <sstream>
 
 #include "absl/hash/hash.h"
+#include "absl/strings/cord.h"
 #include "absl/types/optional.h"
+#include "common/any.h"
 #include "common/casting.h"
 #include "common/native_type.h"
 #include "common/type.h"
@@ -28,6 +30,7 @@ namespace {
 
 using testing::An;
 using testing::Ne;
+using cel::internal::IsOkAndHolds;
 
 TEST(UintValue, Kind) {
   EXPECT_EQ(UintValue(1).kind(), UintValue::kKind);
@@ -50,6 +53,16 @@ TEST(UintValue, DebugString) {
     out << Value(UintValue(1));
     EXPECT_EQ(out.str(), "1u");
   }
+}
+
+TEST(UintValue, GetSerializedSize) {
+  EXPECT_THAT(UintValue().GetSerializedSize(), IsOkAndHolds(0));
+}
+
+TEST(UintValue, ConvertToAny) {
+  EXPECT_THAT(UintValue().ConvertToAny(),
+              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.UInt64Value"),
+                                   absl::Cord())));
 }
 
 TEST(UintValue, NativeTypeId) {
@@ -110,6 +123,16 @@ TEST(UintValueView, DebugString) {
     out << ValueView(UintValueView(1));
     EXPECT_EQ(out.str(), "1u");
   }
+}
+
+TEST(UintValueView, GetSerializedSize) {
+  EXPECT_THAT(UintValueView().GetSerializedSize(), IsOkAndHolds(0));
+}
+
+TEST(UintValueView, ConvertToAny) {
+  EXPECT_THAT(UintValueView().ConvertToAny(),
+              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.UInt64Value"),
+                                   absl::Cord())));
 }
 
 TEST(UintValueView, NativeTypeId) {
