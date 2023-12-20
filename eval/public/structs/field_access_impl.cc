@@ -44,10 +44,6 @@ using ::google::protobuf::MapValueConstRef;
 using ::google::protobuf::Message;
 using ::google::protobuf::Reflection;
 
-// Well-known type protobuf type names which require special get / set behavior.
-constexpr absl::string_view kProtobufAny = "google.protobuf.Any";
-constexpr absl::string_view kTypeGoogleApisComPrefix = "type.googleapis.com/";
-
 // Singular message fields and repeated message fields have similar access model
 // To provide common approach, we implement accessor classes, based on CRTP.
 // FieldAccessor is CRTP base class, specifying Get.. method family.

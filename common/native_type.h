@@ -96,7 +96,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI NativeTypeId final {
           std::negation<HasNativeTypeTraitsId<absl::remove_cvref_t<T>>>,
           std::is_final<absl::remove_cvref_t<T>>>,
       NativeTypeId>
-  Of(const T& type) noexcept {
+  Of(const T&) noexcept {
     static_assert(!std::is_pointer_v<T>);
     static_assert(std::is_same_v<T, std::decay_t<T>>);
     static_assert(!std::is_same_v<NativeTypeId, std::decay_t<T>>);

@@ -255,7 +255,7 @@ class FlatExpression {
 
   // Move-only
   FlatExpression(FlatExpression&&) = default;
-  FlatExpression& operator=(FlatExpression&&) = default;
+  FlatExpression& operator=(FlatExpression&&) = delete;
 
   // Create new evaluator state instance with the configured options and type
   // provider.

@@ -552,10 +552,10 @@ class PoolingMemoryManager {
     ABSL_DCHECK(absl::has_single_bit(alignment))
         << "alignment must be a power of 2";
     if (ptr == nullptr) {
-      ABSL_DCHECK_EQ(size, 0);
+      ABSL_DCHECK_EQ(size, size_t(0));
       return false;
     }
-    ABSL_DCHECK_GT(size, 0);
+    ABSL_DCHECK_GT(size, size_t(0));
     return DeallocateImpl(ptr, size, alignment);
   }
 

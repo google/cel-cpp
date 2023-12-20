@@ -36,8 +36,8 @@ class ManagedValueFactory {
   // Move-only
   ManagedValueFactory(const ManagedValueFactory& other) = delete;
   ManagedValueFactory& operator=(const ManagedValueFactory& other) = delete;
-  ManagedValueFactory(ManagedValueFactory&& other) = default;
-  ManagedValueFactory& operator=(ManagedValueFactory&& other) = default;
+  ManagedValueFactory(ManagedValueFactory&& other) = delete;
+  ManagedValueFactory& operator=(ManagedValueFactory&& other) = delete;
 
   ValueFactory& get() { return value_factory_; }
 

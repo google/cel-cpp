@@ -298,7 +298,7 @@ class DoubleWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
 class StringWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
  public:
   explicit StringWellKnownTypeValueBuilder(ValueFactory& value_factory)
-      : value_factory_(value_factory), value_(value_factory.GetStringValue()) {}
+      : value_(value_factory.GetStringValue()) {}
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
     if (number != 1) {
@@ -317,7 +317,6 @@ class StringWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
   }
 
  private:
-  ValueFactory& value_factory_;
   Handle<StringValue> value_;
 };
 

@@ -52,14 +52,13 @@ using ::cel::Value;
 
 Resolver::Resolver(
     absl::string_view container, const cel::FunctionRegistry& function_registry,
-    const cel::TypeRegistry& type_registry, cel::ValueFactory& value_factory,
+    const cel::TypeRegistry&, cel::ValueFactory& value_factory,
     const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
         resolveable_enums,
     bool resolve_qualified_type_identifiers)
     : namespace_prefixes_(),
       enum_value_map_(),
       function_registry_(function_registry),
-      type_registry_(type_registry),
       value_factory_(value_factory),
       resolveable_enums_(resolveable_enums),
       resolve_qualified_type_identifiers_(resolve_qualified_type_identifiers) {

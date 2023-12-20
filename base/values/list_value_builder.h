@@ -313,7 +313,7 @@ class ListValueBuilderImpl : public ListValueBuilderInterface {
   }
 
   absl::Status Add(const Handle<T>& value) {
-    Add(value->NativeValue());
+    CEL_RETURN_IF_ERROR(Add(value->NativeValue()));
     return absl::OkStatus();
   }
 

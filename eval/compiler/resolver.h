@@ -98,7 +98,6 @@ class Resolver {
   std::vector<std::string> namespace_prefixes_;
   absl::flat_hash_map<std::string, cel::Handle<cel::Value>> enum_value_map_;
   const cel::FunctionRegistry& function_registry_;
-  const cel::TypeRegistry& type_registry_;
   cel::ValueFactory& value_factory_;
   const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
       resolveable_enums_;

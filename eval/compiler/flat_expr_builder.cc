@@ -83,8 +83,6 @@ using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::AstTraverse;
 using ::cel::runtime_internal::IssueCollector;
 
-constexpr int64_t kExprIdNotFromAst = -1;
-
 // Forward declare to resolve circular dependency for short_circuiting visitors.
 class FlatExprVisitor;
 
@@ -264,7 +262,6 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
         options_(options),
         program_optimizers_(program_optimizers),
         issue_collector_(issue_collector),
-        reference_map_(reference_map),
         program_tree_(program_tree),
         extension_context_(extension_context) {}
 
@@ -973,9 +970,6 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   const cel::ast_internal::Expr* resume_from_suppressed_branch_ = nullptr;
   absl::Span<const std::unique_ptr<ProgramOptimizer>> program_optimizers_;
   IssueCollector& issue_collector_;
-
-  const absl::flat_hash_map<int64_t, cel::ast_internal::Reference>&
-      reference_map_;
 
   PlannerContext::ProgramTree& program_tree_;
   PlannerContext extension_context_;

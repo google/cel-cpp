@@ -381,7 +381,7 @@ class JsonMapValue final : public CEL_MAP_VALUE_CLASS {
           "Expected key to be string type: ", key->type()->DebugString()));
     }
     return key->As<StringValue>().Visit(
-        [this, &value_factory, &key](const auto& value)
+        [this, &value_factory](const auto& value)
             -> absl::StatusOr<std::pair<Handle<Value>, bool>> {
           if (auto it = object_.find(value); it != object_.end()) {
             return std::make_pair(value_factory.CreateValueFromJson(it->second),

@@ -24,6 +24,8 @@ class FlatBuffersMapImpl : public CelMap {
 
   absl::optional<CelValue> operator[](CelValue cel_key) const override;
 
+  // Import base class signatures to bypass GCC warning/error.
+  using CelMap::ListKeys;
   absl::StatusOr<const CelList*> ListKeys() const override { return &keys_; }
 
  private:
