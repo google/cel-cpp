@@ -305,6 +305,11 @@ class ParserVisitor final : public CelBaseVisitor,
                    Expr* macro_expr);
   std::string ExtractQualifiedName(antlr4::ParserRuleContext* ctx,
                                    const Expr* e);
+  // Attempt to unnest parse context.
+  //
+  // Walk the parse tree to the first complex term to reduce recursive depth in
+  // the visit* calls.
+  antlr4::tree::ParseTree* UnnestContext(antlr4::tree::ParseTree* tree);
 
  private:
   absl::string_view description_;
@@ -353,6 +358,7 @@ antlrcpp::Any ParserVisitor::visit(antlr4::tree::ParseTree* tree) {
         absl::StrFormat("Exceeded max recursion depth of %d when parsing.",
                         max_recursion_depth_));
   }
+  tree = UnnestContext(tree);
   if (auto* ctx = tree_as<CelParser::StartContext>(tree)) {
     return visitStart(ctx);
   } else if (auto* ctx = tree_as<CelParser::ExprContext>(tree)) {
@@ -441,6 +447,67 @@ antlrcpp::Any ParserVisitor::visitMemberExpr(
 
 antlrcpp::Any ParserVisitor::visitStart(CelParser::StartContext* ctx) {
   return visit(ctx->expr());
+}
+
+antlr4::tree::ParseTree* ParserVisitor::UnnestContext(
+    antlr4::tree::ParseTree* tree) {
+  antlr4::tree::ParseTree* last = nullptr;
+  while (tree != last) {
+    last = tree;
+
+    if (auto* ctx = tree_as<CelParser::StartContext>(tree)) {
+      tree = ctx->expr();
+    }
+
+    if (auto* ctx = tree_as<CelParser::ExprContext>(tree)) {
+      if (ctx->op != nullptr) {
+        return ctx;
+      }
+      tree = ctx->e;
+    }
+
+    if (auto* ctx = tree_as<CelParser::ConditionalOrContext>(tree)) {
+      if (!ctx->ops.empty()) {
+        return ctx;
+      }
+      tree = ctx->e;
+    }
+
+    if (auto* ctx = tree_as<CelParser::ConditionalAndContext>(tree)) {
+      if (!ctx->ops.empty()) {
+        return ctx;
+      }
+      tree = ctx->e;
+    }
+
+    if (auto* ctx = tree_as<CelParser::RelationContext>(tree)) {
+      if (ctx->calc() == nullptr) {
+        return ctx;
+      }
+      tree = ctx->calc();
+    }
+
+    if (auto* ctx = tree_as<CelParser::CalcContext>(tree)) {
+      if (ctx->unary() == nullptr) {
+        return ctx;
+      }
+      tree = ctx->unary();
+    }
+
+    if (auto* ctx = tree_as<CelParser::MemberExprContext>(tree)) {
+      tree = ctx->member();
+    }
+
+    if (auto* ctx = tree_as<CelParser::PrimaryExprContext>(tree)) {
+      if (auto* nested = tree_as<CelParser::NestedContext>(ctx->primary())) {
+        tree = nested->e;
+      } else {
+        return ctx;
+      }
+    }
+  }
+
+  return tree;
 }
 
 antlrcpp::Any ParserVisitor::visitExpr(CelParser::ExprContext* ctx) {

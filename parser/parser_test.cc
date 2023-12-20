@@ -1473,20 +1473,24 @@ TEST(ExpressionTest, RecursionDepthLongArgList) {
 
 TEST(ExpressionTest, RecursionDepthExceeded) {
   ParserOptions options;
-  // The particular number here is an implementation detail: the underlying
-  // visitor will recurse up to 8 times before branching to the create list or
-  // const steps. The call graph looks something like:
-  // visit->visitStart->visit->visitExpr->visit->visitOr->visit->visitAnd->visit
-  // ->visitRelation->visit->visitCalc->visit->visitUnary->visit->visitPrimary
-  // ->visitCreateList->visit[arg]->visitExpr...
-  // The expected max depth for the triply nested create list is
-  // (8 + 7 + 7 + 7) = 29.
-  options.max_recursion_depth = 16;
-  auto result = Parse("[[[1, 2, 3]]]", "", options);
+  // AST visitor will recurse a variable amount depending on the terms used in
+  // the expression. This check occurs in the business logic converting the raw
+  // Antlr parse tree into an Expr. There is a separate check (via a custom
+  // listener) for AST depth while running the antlr generated parser.
+  options.max_recursion_depth = 6;
+  auto result = Parse("1 + 2 + 3 + 4 + 5 + 6 + 7", "", options);
 
   EXPECT_THAT(result, Not(IsOk()));
   EXPECT_THAT(result.status().message(),
-              HasSubstr("Exceeded max recursion depth of 16 when parsing."));
+              HasSubstr("Exceeded max recursion depth of 6 when parsing."));
+}
+
+TEST(ExpressionTest, RecursionDepthIgnoresParentheses) {
+  ParserOptions options;
+  options.max_recursion_depth = 6;
+  auto result = Parse("(((1 + 2 + 3 + 4 + (5 + 6))))", "", options);
+
+  EXPECT_THAT(result, IsOk());
 }
 
 std::string TestName(const testing::TestParamInfo<TestInfo>& test_info) {
