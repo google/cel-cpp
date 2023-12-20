@@ -39,17 +39,17 @@ class ValueProvider : public virtual TypeProvider {
   // `NewListValueBuilder` returns a new `ListValueBuilderInterface` for the
   // corresponding `ListType` `type`.
   absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(
-      ValueFactory& value_factory, ListType type);
+      ValueFactory& value_factory, ListTypeView type);
 
   // `NewMapValueBuilder` returns a new `MapValueBuilderInterface` for the
   // corresponding `MapType` `type`.
   absl::StatusOr<Unique<MapValueBuilder>> NewMapValueBuilder(
-      ValueFactory& value_factory, MapType type);
+      ValueFactory& value_factory, MapTypeView type);
 
   // `NewStructValueBuilder` returns a new `StructValueBuilder` for the
   // corresponding `StructType` `type`.
   virtual absl::StatusOr<Unique<StructValueBuilder>> NewStructValueBuilder(
-      ValueFactory& value_factory, StructType type) = 0;
+      ValueFactory& value_factory, StructTypeView type) = 0;
 
   // `NewValueBuilder` returns a new `ValueBuilder` for the corresponding type
   // `name`.  It is primarily used to handle wrapper types which sometimes show

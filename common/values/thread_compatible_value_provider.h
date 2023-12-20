@@ -36,7 +36,7 @@ class ThreadCompatibleValueProvider : public ThreadCompatibleTypeProvider,
   using ThreadCompatibleTypeProvider::GetMemoryManager;
 
   absl::StatusOr<Unique<StructValueBuilder>> NewStructValueBuilder(
-      ValueFactory& value_factory, StructType type) override;
+      ValueFactory& value_factory, StructTypeView type) override;
 
   absl::StatusOr<Unique<ValueBuilder>> NewValueBuilder(
       ValueFactory& value_factory, absl::string_view name) override;

@@ -708,51 +708,51 @@ class MapValueBuilderImpl<Value, Value> final : public MapValueBuilder {
 }  // namespace
 
 absl::StatusOr<Unique<ListValueBuilder>> ValueProvider::NewListValueBuilder(
-    ValueFactory& value_factory, ListType type) {
+    ValueFactory& value_factory, ListTypeView type) {
   auto memory_manager = GetMemoryManager();
   switch (type.element().kind()) {
     case TypeKind::kBool:
       return memory_manager.MakeUnique<ListValueBuilderImpl<UintValue>>(
-          memory_manager, std::move(type));
+          memory_manager, ListType(type));
     case TypeKind::kBytes:
       return memory_manager.MakeUnique<ListValueBuilderImpl<BytesValue>>(
-          memory_manager, std::move(type));
+          memory_manager, ListType(type));
     case TypeKind::kDouble:
       return memory_manager.MakeUnique<ListValueBuilderImpl<DoubleValue>>(
-          memory_manager, std::move(type));
+          memory_manager, ListType(type));
     case TypeKind::kDuration:
       return memory_manager.MakeUnique<ListValueBuilderImpl<DurationValue>>(
-          memory_manager, std::move(type));
+          memory_manager, ListType(type));
     case TypeKind::kInt:
       return memory_manager.MakeUnique<ListValueBuilderImpl<IntValue>>(
-          memory_manager, std::move(type));
+          memory_manager, ListType(type));
     case TypeKind::kList:
       return memory_manager.MakeUnique<ListValueBuilderImpl<ListValue>>(
-          memory_manager, std::move(type));
+          memory_manager, ListType(type));
     case TypeKind::kMap:
       return memory_manager.MakeUnique<ListValueBuilderImpl<MapValue>>(
-          memory_manager, std::move(type));
+          memory_manager, ListType(type));
     case TypeKind::kNull:
       return memory_manager.MakeUnique<ListValueBuilderImpl<NullValue>>(
-          memory_manager, std::move(type));
+          memory_manager, ListType(type));
     case TypeKind::kOpaque:
       return memory_manager.MakeUnique<ListValueBuilderImpl<OpaqueValue>>(
-          memory_manager, std::move(type));
+          memory_manager, ListType(type));
     case TypeKind::kString:
       return memory_manager.MakeUnique<ListValueBuilderImpl<StringValue>>(
-          memory_manager, std::move(type));
+          memory_manager, ListType(type));
     case TypeKind::kTimestamp:
       return memory_manager.MakeUnique<ListValueBuilderImpl<TimestampValue>>(
-          memory_manager, std::move(type));
+          memory_manager, ListType(type));
     case TypeKind::kType:
       return memory_manager.MakeUnique<ListValueBuilderImpl<TypeValue>>(
-          memory_manager, std::move(type));
+          memory_manager, ListType(type));
     case TypeKind::kUint:
       return memory_manager.MakeUnique<ListValueBuilderImpl<UintValue>>(
-          memory_manager, std::move(type));
+          memory_manager, ListType(type));
     case TypeKind::kDyn:
       return memory_manager.MakeUnique<ListValueBuilderImpl<Value>>(
-          memory_manager, std::move(type));
+          memory_manager, ListType(type));
     default:
       return absl::InvalidArgumentError(absl::StrCat(
           "invalid list element type: ", type.element().DebugString()));
@@ -760,7 +760,7 @@ absl::StatusOr<Unique<ListValueBuilder>> ValueProvider::NewListValueBuilder(
 }
 
 absl::StatusOr<Unique<MapValueBuilder>> ValueProvider::NewMapValueBuilder(
-    ValueFactory& value_factory, MapType type) {
+    ValueFactory& value_factory, MapTypeView type) {
   auto memory_manager = GetMemoryManager();
   switch (type.key().kind()) {
     case TypeKind::kBool:
@@ -768,59 +768,59 @@ absl::StatusOr<Unique<MapValueBuilder>> ValueProvider::NewMapValueBuilder(
         case TypeKind::kBool:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<BoolValue, BoolValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kBytes:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<BoolValue, BytesValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kDouble:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<BoolValue, DoubleValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kDuration:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<BoolValue, DurationValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kInt:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<BoolValue, IntValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kList:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<BoolValue, ListValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kMap:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<BoolValue, MapValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kNull:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<BoolValue, NullValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kOpaque:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<BoolValue, OpaqueValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kString:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<BoolValue, StringValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kTimestamp:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<BoolValue, TimestampValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kType:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<BoolValue, TypeValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kUint:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<BoolValue, UintValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kDyn:
           return memory_manager
-              .MakeUnique<MapValueBuilderImpl<BoolValue, Value>>(
-                  memory_manager, std::move(type));
+              .MakeUnique<MapValueBuilderImpl<BoolValue, Value>>(memory_manager,
+                                                                 MapType(type));
         default:
           return absl::InvalidArgumentError(absl::StrCat(
               "invalid map value type: ", type.value().DebugString()));
@@ -830,59 +830,59 @@ absl::StatusOr<Unique<MapValueBuilder>> ValueProvider::NewMapValueBuilder(
         case TypeKind::kBool:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<IntValue, BoolValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kBytes:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<IntValue, BytesValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kDouble:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<IntValue, DoubleValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kDuration:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<IntValue, DurationValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kInt:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<IntValue, IntValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kList:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<IntValue, ListValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kMap:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<IntValue, MapValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kNull:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<IntValue, NullValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kOpaque:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<IntValue, OpaqueValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kString:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<IntValue, StringValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kTimestamp:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<IntValue, TimestampValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kType:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<IntValue, TypeValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kUint:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<IntValue, UintValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kDyn:
           return memory_manager
-              .MakeUnique<MapValueBuilderImpl<IntValue, Value>>(
-                  memory_manager, std::move(type));
+              .MakeUnique<MapValueBuilderImpl<IntValue, Value>>(memory_manager,
+                                                                MapType(type));
         default:
           return absl::InvalidArgumentError(absl::StrCat(
               "invalid map value type: ", type.value().DebugString()));
@@ -892,59 +892,59 @@ absl::StatusOr<Unique<MapValueBuilder>> ValueProvider::NewMapValueBuilder(
         case TypeKind::kBool:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<UintValue, BoolValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kBytes:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<UintValue, BytesValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kDouble:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<UintValue, DoubleValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kDuration:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<UintValue, DurationValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kInt:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<UintValue, IntValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kList:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<UintValue, ListValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kMap:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<UintValue, MapValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kNull:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<UintValue, NullValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kOpaque:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<UintValue, OpaqueValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kString:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<UintValue, StringValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kTimestamp:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<UintValue, TimestampValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kType:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<UintValue, TypeValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kUint:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<UintValue, UintValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kDyn:
           return memory_manager
-              .MakeUnique<MapValueBuilderImpl<UintValue, Value>>(
-                  memory_manager, std::move(type));
+              .MakeUnique<MapValueBuilderImpl<UintValue, Value>>(memory_manager,
+                                                                 MapType(type));
         default:
           return absl::InvalidArgumentError(absl::StrCat(
               "invalid map value type: ", type.value().DebugString()));
@@ -954,59 +954,59 @@ absl::StatusOr<Unique<MapValueBuilder>> ValueProvider::NewMapValueBuilder(
         case TypeKind::kBool:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<StringValue, BoolValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kBytes:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<StringValue, BytesValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kDouble:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<StringValue, DoubleValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kDuration:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<StringValue, DurationValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kInt:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<StringValue, IntValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kList:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<StringValue, ListValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kMap:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<StringValue, MapValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kNull:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<StringValue, NullValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kOpaque:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<StringValue, OpaqueValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kString:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<StringValue, StringValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kTimestamp:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<StringValue, TimestampValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kType:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<StringValue, TypeValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kUint:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<StringValue, UintValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kDyn:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<StringValue, Value>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         default:
           return absl::InvalidArgumentError(absl::StrCat(
               "invalid map value type: ", type.value().DebugString()));
@@ -1015,59 +1015,59 @@ absl::StatusOr<Unique<MapValueBuilder>> ValueProvider::NewMapValueBuilder(
       switch (type.value().kind()) {
         case TypeKind::kBool:
           return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, BoolValue>>(
-                  memory_manager, std::move(type));
+              .MakeUnique<MapValueBuilderImpl<Value, BoolValue>>(memory_manager,
+                                                                 MapType(type));
         case TypeKind::kBytes:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<Value, BytesValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kDouble:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<Value, DoubleValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kDuration:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<Value, DurationValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kInt:
           return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, IntValue>>(
-                  memory_manager, std::move(type));
+              .MakeUnique<MapValueBuilderImpl<Value, IntValue>>(memory_manager,
+                                                                MapType(type));
         case TypeKind::kList:
           return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, ListValue>>(
-                  memory_manager, std::move(type));
+              .MakeUnique<MapValueBuilderImpl<Value, ListValue>>(memory_manager,
+                                                                 MapType(type));
         case TypeKind::kMap:
           return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, MapValue>>(
-                  memory_manager, std::move(type));
+              .MakeUnique<MapValueBuilderImpl<Value, MapValue>>(memory_manager,
+                                                                MapType(type));
         case TypeKind::kNull:
           return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, NullValue>>(
-                  memory_manager, std::move(type));
+              .MakeUnique<MapValueBuilderImpl<Value, NullValue>>(memory_manager,
+                                                                 MapType(type));
         case TypeKind::kOpaque:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<Value, OpaqueValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kString:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<Value, StringValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kTimestamp:
           return memory_manager
               .MakeUnique<MapValueBuilderImpl<Value, TimestampValue>>(
-                  memory_manager, std::move(type));
+                  memory_manager, MapType(type));
         case TypeKind::kType:
           return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, TypeValue>>(
-                  memory_manager, std::move(type));
+              .MakeUnique<MapValueBuilderImpl<Value, TypeValue>>(memory_manager,
+                                                                 MapType(type));
         case TypeKind::kUint:
           return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, UintValue>>(
-                  memory_manager, std::move(type));
+              .MakeUnique<MapValueBuilderImpl<Value, UintValue>>(memory_manager,
+                                                                 MapType(type));
         case TypeKind::kDyn:
           return memory_manager.MakeUnique<MapValueBuilderImpl<Value, Value>>(
-              memory_manager, std::move(type));
+              memory_manager, MapType(type));
         default:
           return absl::InvalidArgumentError(absl::StrCat(
               "invalid map value type: ", type.value().DebugString()));

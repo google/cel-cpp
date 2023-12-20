@@ -26,7 +26,7 @@ namespace cel::common_internal {
 
 absl::StatusOr<Unique<StructValueBuilder>>
 ThreadCompatibleValueProvider::NewStructValueBuilder(ValueFactory&,
-                                                     StructType type) {
+                                                     StructTypeView type) {
   return absl::NotFoundError(
       absl::StrCat("value builder for type not found: ", type.DebugString()));
 }
