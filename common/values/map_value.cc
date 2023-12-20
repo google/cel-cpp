@@ -77,12 +77,12 @@ absl::StatusOr<std::string> MapValueInterface::GetTypeUrl(
   return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Struct");
 }
 
-absl::StatusOr<ValueView> MapValueInterface::Get(ValueFactory& value_factory,
+absl::StatusOr<ValueView> MapValueInterface::Get(ValueManager& value_manager,
                                                  ValueView key,
                                                  Value& scratch) const {
   ValueView value;
   bool ok;
-  CEL_ASSIGN_OR_RETURN(std::tie(value, ok), Find(value_factory, key, scratch));
+  CEL_ASSIGN_OR_RETURN(std::tie(value, ok), Find(value_manager, key, scratch));
   if (ABSL_PREDICT_FALSE(!ok)) {
     switch (value.kind()) {
       case ValueKind::kError:
@@ -97,7 +97,7 @@ absl::StatusOr<ValueView> MapValueInterface::Get(ValueFactory& value_factory,
 }
 
 absl::StatusOr<std::pair<ValueView, bool>> MapValueInterface::Find(
-    ValueFactory& value_factory, ValueView key, Value& scratch) const {
+    ValueManager& value_manager, ValueView key, Value& scratch) const {
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
@@ -114,7 +114,7 @@ absl::StatusOr<std::pair<ValueView, bool>> MapValueInterface::Find(
     default:
       return InvalidMapKeyTypeError(key.kind());
   }
-  CEL_ASSIGN_OR_RETURN(auto value, FindImpl(value_factory, key, scratch));
+  CEL_ASSIGN_OR_RETURN(auto value, FindImpl(value_manager, key, scratch));
   if (value.has_value()) {
     return std::pair{*value, true};
   }
@@ -142,14 +142,14 @@ absl::StatusOr<ValueView> MapValueInterface::Has(ValueView key) const {
   return BoolValueView(has);
 }
 
-absl::Status MapValueInterface::ForEach(ValueFactory& value_factory,
+absl::Status MapValueInterface::ForEach(ValueManager& value_manager,
                                         ForEachCallback callback) const {
-  CEL_ASSIGN_OR_RETURN(auto iterator, NewIterator(value_factory));
+  CEL_ASSIGN_OR_RETURN(auto iterator, NewIterator(value_manager));
   while (iterator->HasNext()) {
     Value key_scratch;
     Value value_scratch;
     CEL_ASSIGN_OR_RETURN(auto key, iterator->Next(key_scratch));
-    CEL_ASSIGN_OR_RETURN(auto value, Get(value_factory, key, value_scratch));
+    CEL_ASSIGN_OR_RETURN(auto value, Get(value_manager, key, value_scratch));
     CEL_ASSIGN_OR_RETURN(auto ok, callback(key, value));
     if (!ok) {
       break;

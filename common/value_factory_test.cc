@@ -93,9 +93,11 @@ class ValueFactoryTest
 
   MemoryManagement memory_management() const { return std::get<0>(GetParam()); }
 
-  TypeFactory& type_factory() const { return **value_manager_; }
+  TypeFactory& type_factory() const { return value_manager(); }
 
-  ValueFactory& value_factory() const { return **value_manager_; }
+  ValueFactory& value_factory() const { return value_manager(); }
+
+  ValueManager& value_manager() const { return **value_manager_; }
 
   ThreadSafety thread_safety() const { return std::get<1>(GetParam()); }
 
@@ -182,7 +184,7 @@ TEST_P(ValueFactoryTest, JsonValueArray) {
             "null, \"b\": true, \"c\": 1.0, \"d\": \"foo\"}]");
   Value element;
   ASSERT_OK_AND_ASSIGN(auto element_view,
-                       list_value.Get(value_factory(), 0, element));
+                       list_value.Get(value_manager(), 0, element));
   EXPECT_TRUE(InstanceOf<NullValueView>(element_view));
 }
 
@@ -199,13 +201,12 @@ TEST_P(ValueFactoryTest, JsonValueObject) {
             "\"c\": 1.0, \"d\": \"foo\"}}");
 
   ListValue keys;
-  ASSERT_OK_AND_ASSIGN(
-      auto keys_view,
-      map_value.ListKeys(type_factory(), value_factory(), keys));
+  ASSERT_OK_AND_ASSIGN(auto keys_view,
+                       map_value.ListKeys(value_manager(), keys));
   EXPECT_EQ(keys_view.Size(), 6);
 
   ASSERT_OK_AND_ASSIGN(auto keys_iterator,
-                       map_value.NewIterator(value_factory()));
+                       map_value.NewIterator(value_manager()));
   std::vector<StringValue> string_keys;
   while (keys_iterator->HasNext()) {
     Value key;
@@ -226,11 +227,11 @@ TEST_P(ValueFactoryTest, JsonValueObject) {
 
   Value get;
   ASSERT_OK_AND_ASSIGN(
-      auto get_view, map_value.Get(value_factory(), StringValueView("a"), get));
+      auto get_view, map_value.Get(value_manager(), StringValueView("a"), get));
   ASSERT_TRUE(InstanceOf<NullValueView>(get_view));
   ASSERT_OK_AND_ASSIGN(
       get_view,
-      map_value.Get(value_factory(), StringValueView(absl::Cord("a")), get));
+      map_value.Get(value_manager(), StringValueView(absl::Cord("a")), get));
   ASSERT_TRUE(InstanceOf<NullValueView>(get_view));
 }
 

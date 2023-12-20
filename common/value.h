@@ -916,39 +916,39 @@ inline ErrorValueView::ErrorValueView()
 inline ListValue::ListValue()
     : ListValue(common_internal::GetEmptyDynListValue()) {}
 
-inline absl::StatusOr<ValueView> ListValue::Get(ValueFactory& value_factory,
+inline absl::StatusOr<ValueView> ListValue::Get(ValueManager& value_manager,
                                                 size_t index,
                                                 Value& scratch) const {
-  return interface_->Get(value_factory, index, scratch);
+  return interface_->Get(value_manager, index, scratch);
 }
 
-inline absl::Status ListValue::ForEach(ValueFactory& value_factory,
+inline absl::Status ListValue::ForEach(ValueManager& value_manager,
                                        ForEachCallback callback) const {
-  return interface_->ForEach(value_factory, callback);
+  return interface_->ForEach(value_manager, callback);
 }
 
 inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> ListValue::NewIterator(
-    ValueFactory& value_factory) const {
-  return interface_->NewIterator(value_factory);
+    ValueManager& value_manager) const {
+  return interface_->NewIterator(value_manager);
 }
 
 inline ListValueView::ListValueView()
     : ListValueView(common_internal::GetEmptyDynListValue()) {}
 
-inline absl::StatusOr<ValueView> ListValueView::Get(ValueFactory& value_factory,
+inline absl::StatusOr<ValueView> ListValueView::Get(ValueManager& value_manager,
                                                     size_t index,
                                                     Value& scratch) const {
-  return interface_->Get(value_factory, index, scratch);
+  return interface_->Get(value_manager, index, scratch);
 }
 
-inline absl::Status ListValueView::ForEach(ValueFactory& value_factory,
+inline absl::Status ListValueView::ForEach(ValueManager& value_manager,
                                            ForEachCallback callback) const {
-  return interface_->ForEach(value_factory, callback);
+  return interface_->ForEach(value_manager, callback);
 }
 
 inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
-ListValueView::NewIterator(ValueFactory& value_factory) const {
-  return interface_->NewIterator(value_factory);
+ListValueView::NewIterator(ValueManager& value_manager) const {
+  return interface_->NewIterator(value_manager);
 }
 
 inline OptionalValue OptionalValue::None() {
@@ -974,15 +974,15 @@ inline absl::Status MapValue::CheckKey(ValueView key) {
   return MapValueInterface::CheckKey(key);
 }
 
-inline absl::StatusOr<ValueView> MapValue::Get(ValueFactory& value_factory,
+inline absl::StatusOr<ValueView> MapValue::Get(ValueManager& value_manager,
                                                ValueView key,
                                                Value& scratch) const {
-  return interface_->Get(value_factory, key, scratch);
+  return interface_->Get(value_manager, key, scratch);
 }
 
 inline absl::StatusOr<std::pair<ValueView, bool>> MapValue::Find(
-    ValueFactory& value_factory, ValueView key, Value& scratch) const {
-  return interface_->Find(value_factory, key, scratch);
+    ValueManager& value_manager, ValueView key, Value& scratch) const {
+  return interface_->Find(value_manager, key, scratch);
 }
 
 inline absl::StatusOr<ValueView> MapValue::Has(ValueView key) const {
@@ -990,19 +990,18 @@ inline absl::StatusOr<ValueView> MapValue::Has(ValueView key) const {
 }
 
 inline absl::StatusOr<ListValueView> MapValue::ListKeys(
-    TypeFactory& type_factory, ValueFactory& value_factory,
-    ListValue& scratch) const {
-  return interface_->ListKeys(type_factory, value_factory, scratch);
+    ValueManager& value_manager, ListValue& scratch) const {
+  return interface_->ListKeys(value_manager, scratch);
 }
 
-inline absl::Status MapValue::ForEach(ValueFactory& value_factory,
+inline absl::Status MapValue::ForEach(ValueManager& value_manager,
                                       ForEachCallback callback) const {
-  return interface_->ForEach(value_factory, callback);
+  return interface_->ForEach(value_manager, callback);
 }
 
 inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> MapValue::NewIterator(
-    ValueFactory& value_factory) const {
-  return interface_->NewIterator(value_factory);
+    ValueManager& value_manager) const {
+  return interface_->NewIterator(value_manager);
 }
 
 inline MapValueView::MapValueView()
@@ -1012,15 +1011,15 @@ inline absl::Status MapValueView::CheckKey(ValueView key) {
   return MapValue::CheckKey(key);
 }
 
-inline absl::StatusOr<ValueView> MapValueView::Get(ValueFactory& value_factory,
+inline absl::StatusOr<ValueView> MapValueView::Get(ValueManager& value_manager,
                                                    ValueView key,
                                                    Value& scratch) const {
-  return interface_->Get(value_factory, key, scratch);
+  return interface_->Get(value_manager, key, scratch);
 }
 
 inline absl::StatusOr<std::pair<ValueView, bool>> MapValueView::Find(
-    ValueFactory& value_factory, ValueView key, Value& scratch) const {
-  return interface_->Find(value_factory, key, scratch);
+    ValueManager& value_manager, ValueView key, Value& scratch) const {
+  return interface_->Find(value_manager, key, scratch);
 }
 
 inline absl::StatusOr<ValueView> MapValueView::Has(ValueView key) const {
@@ -1028,19 +1027,18 @@ inline absl::StatusOr<ValueView> MapValueView::Has(ValueView key) const {
 }
 
 inline absl::StatusOr<ListValueView> MapValueView::ListKeys(
-    TypeFactory& type_factory, ValueFactory& value_factory,
-    ListValue& scratch) const {
-  return interface_->ListKeys(type_factory, value_factory, scratch);
+    ValueManager& value_manager, ListValue& scratch) const {
+  return interface_->ListKeys(value_manager, scratch);
 }
 
-inline absl::Status MapValueView::ForEach(ValueFactory& value_factory,
+inline absl::Status MapValueView::ForEach(ValueManager& value_manager,
                                           ForEachCallback callback) const {
-  return interface_->ForEach(value_factory, callback);
+  return interface_->ForEach(value_manager, callback);
 }
 
 inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
-MapValueView::NewIterator(ValueFactory& value_factory) const {
-  return interface_->NewIterator(value_factory);
+MapValueView::NewIterator(ValueManager& value_manager) const {
+  return interface_->NewIterator(value_manager);
 }
 
 }  // namespace cel

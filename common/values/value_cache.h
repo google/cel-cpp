@@ -103,7 +103,7 @@ class EmptyListValue final : public ListValueInterface {
 
   TypeView get_type() const override { return type_; }
 
-  absl::StatusOr<ValueView> GetImpl(ValueFactory&, size_t,
+  absl::StatusOr<ValueView> GetImpl(ValueManager&, size_t,
                                     Value&) const override {
     // Not reachable, `Get` performs index checking.
     ABSL_UNREACHABLE();
@@ -133,8 +133,7 @@ class EmptyMapValue final : public MapValueInterface {
 
   size_t Size() const override { return 0; }
 
-  absl::StatusOr<ListValueView> ListKeys(TypeFactory& type_factory,
-                                         ValueFactory& value_factory,
+  absl::StatusOr<ListValueView> ListKeys(ValueManager&,
                                          ListValue&) const override {
     auto list_type = ProcessLocalTypeCache::Get()->FindListType(type_.key());
     if (!list_type.has_value()) {
@@ -152,7 +151,7 @@ class EmptyMapValue final : public MapValueInterface {
   }
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueFactory&) const override {
+      ValueManager&) const override {
     return std::make_unique<EmptyMapValueKeyIterator>();
   }
 
@@ -167,7 +166,7 @@ class EmptyMapValue final : public MapValueInterface {
 
   TypeView get_type() const override { return type_; }
 
-  absl::StatusOr<absl::optional<ValueView>> FindImpl(ValueFactory&, ValueView,
+  absl::StatusOr<absl::optional<ValueView>> FindImpl(ValueManager&, ValueView,
                                                      Value&) const override {
     return absl::nullopt;
   }

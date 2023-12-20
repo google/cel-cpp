@@ -37,6 +37,7 @@
 #include "common/type.h"
 #include "common/types/type_cache.h"
 #include "common/value.h"
+#include "common/value_manager.h"
 #include "common/values/value_cache.h"
 #include "internal/overloaded.h"
 
@@ -159,9 +160,9 @@ class JsonListValue final : public ListValueInterface {
     return ProcessLocalTypeCache::Get()->GetDynListType();
   }
 
-  absl::StatusOr<ValueView> GetImpl(ValueFactory& value_factory, size_t index,
+  absl::StatusOr<ValueView> GetImpl(ValueManager& value_manager, size_t index,
                                     Value& scratch) const override {
-    return JsonToValue(array_[index], value_factory, scratch);
+    return JsonToValue(array_[index], value_manager, scratch);
   }
 
   NativeTypeId GetNativeTypeId() const noexcept override {
@@ -210,8 +211,7 @@ class JsonMapValue final : public MapValueInterface {
   size_t Size() const override { return object_.size(); }
 
   // Returns a new list value whose elements are the keys of this map.
-  absl::StatusOr<ListValueView> ListKeys(TypeFactory& type_factory,
-                                         ValueFactory& value_factory,
+  absl::StatusOr<ListValueView> ListKeys(ValueManager& value_manager,
                                          ListValue& scratch) const override {
     JsonArrayBuilder keys;
     keys.reserve(object_.size());
@@ -219,7 +219,7 @@ class JsonMapValue final : public MapValueInterface {
       keys.push_back(entry.first);
     }
     scratch =
-        ListValue(value_factory.GetMemoryManager().MakeShared<JsonListValue>(
+        ListValue(value_manager.GetMemoryManager().MakeShared<JsonListValue>(
             std::move(keys).Build()));
     return scratch;
   }
@@ -227,7 +227,7 @@ class JsonMapValue final : public MapValueInterface {
   // By default, implementations do not guarantee any iteration order. Unless
   // specified otherwise, assume the iteration order is random.
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueFactory& value_factory) const override {
+      ValueManager&) const override {
     return std::make_unique<JsonMapValueKeyIterator>(object_);
   }
 
@@ -238,20 +238,20 @@ class JsonMapValue final : public MapValueInterface {
  private:
   // Called by `Find` after performing various argument checks.
   absl::StatusOr<absl::optional<ValueView>> FindImpl(
-      ValueFactory& value_factory, ValueView key,
+      ValueManager& value_manager, ValueView key,
       Value& scratch) const override {
     return Cast<StringValueView>(key).NativeValue(internal::Overloaded{
-        [this, &value_factory,
+        [this, &value_manager,
          &scratch](absl::string_view value) -> absl::optional<ValueView> {
           if (auto entry = object_.find(value); entry != object_.end()) {
-            return JsonToValue(entry->second, value_factory, scratch);
+            return JsonToValue(entry->second, value_manager, scratch);
           }
           return absl::nullopt;
         },
-        [this, &value_factory,
+        [this, &value_manager,
          &scratch](const absl::Cord& value) -> absl::optional<ValueView> {
           if (auto entry = object_.find(value); entry != object_.end()) {
-            return JsonToValue(entry->second, value_factory, scratch);
+            return JsonToValue(entry->second, value_manager, scratch);
           }
           return absl::nullopt;
         },

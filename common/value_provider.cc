@@ -41,7 +41,9 @@
 #include "common/type.h"
 #include "common/type_kind.h"
 #include "common/value.h"
+#include "common/value_factory.h"
 #include "common/value_kind.h"
+#include "common/value_manager.h"
 #include "common/values/thread_compatible_value_provider.h"
 #include "common/values/thread_safe_value_provider.h"
 #include "internal/status_macros.h"
@@ -349,7 +351,7 @@ class TypedListValue final : public ListValueInterface {
   TypeView get_type() const override { return type_; }
 
  private:
-  absl::StatusOr<ValueView> GetImpl(ValueFactory&, size_t index,
+  absl::StatusOr<ValueView> GetImpl(ValueManager&, size_t index,
                                     Value&) const override {
     return elements_[index];
   }
@@ -499,14 +501,13 @@ class TypedMapValue final : public MapValueInterface {
     return std::move(builder).Build();
   }
 
-  absl::StatusOr<ListValueView> ListKeys(TypeFactory& type_factory,
-                                         ValueFactory&,
+  absl::StatusOr<ListValueView> ListKeys(ValueManager& value_manager,
                                          ListValue& scratch) const override {
     // FIXME: Update ListKeys to just take ValueProvider, or move list/map
-    // builders to ValueFactory.
+    // builders to ValueManager.
     ListValueBuilderImpl<K> keys(
-        type_factory.GetMemoryManager(),
-        type_factory.CreateListType(Cast<key_view_type>(type_.key())));
+        value_manager.GetMemoryManager(),
+        value_manager.CreateListType(Cast<key_view_type>(type_.key())));
     keys.Reserve(Size());
     for (const auto& entry : entries_) {
       CEL_RETURN_IF_ERROR(keys.Add(entry.first));
@@ -516,7 +517,7 @@ class TypedMapValue final : public MapValueInterface {
   }
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueFactory&) const override {
+      ValueManager&) const override {
     return std::make_unique<TypedMapValueKeyIterator<K, V>>(entries_);
   }
 
@@ -524,7 +525,7 @@ class TypedMapValue final : public MapValueInterface {
   TypeView get_type() const override { return type_; }
 
  private:
-  absl::StatusOr<absl::optional<ValueView>> FindImpl(ValueFactory&,
+  absl::StatusOr<absl::optional<ValueView>> FindImpl(ValueManager&,
                                                      ValueView key,
                                                      Value&) const override {
     if (auto entry =
@@ -708,7 +709,7 @@ class MapValueBuilderImpl<Value, Value> final : public MapValueBuilder {
 }  // namespace
 
 absl::StatusOr<Unique<ListValueBuilder>> ValueProvider::NewListValueBuilder(
-    ValueFactory& value_factory, ListTypeView type) {
+    ValueFactory&, ListTypeView type) {
   auto memory_manager = GetMemoryManager();
   switch (type.element().kind()) {
     case TypeKind::kBool:
@@ -760,7 +761,7 @@ absl::StatusOr<Unique<ListValueBuilder>> ValueProvider::NewListValueBuilder(
 }
 
 absl::StatusOr<Unique<MapValueBuilder>> ValueProvider::NewMapValueBuilder(
-    ValueFactory& value_factory, MapTypeView type) {
+    ValueFactory&, MapTypeView type) {
   auto memory_manager = GetMemoryManager();
   switch (type.key().kind()) {
     case TypeKind::kBool:

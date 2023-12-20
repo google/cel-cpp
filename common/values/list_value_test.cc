@@ -108,16 +108,16 @@ TEST_P(ListValueTest, Get) {
   Value scratch;
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
-  ASSERT_OK_AND_ASSIGN(auto element, value.Get(value_factory(), 0, scratch));
+  ASSERT_OK_AND_ASSIGN(auto element, value.Get(value_manager(), 0, scratch));
   ASSERT_TRUE(InstanceOf<IntValueView>(element));
   ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 0);
-  ASSERT_OK_AND_ASSIGN(element, value.Get(value_factory(), 1, scratch));
+  ASSERT_OK_AND_ASSIGN(element, value.Get(value_manager(), 1, scratch));
   ASSERT_TRUE(InstanceOf<IntValueView>(element));
   ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 1);
-  ASSERT_OK_AND_ASSIGN(element, value.Get(value_factory(), 2, scratch));
+  ASSERT_OK_AND_ASSIGN(element, value.Get(value_manager(), 2, scratch));
   ASSERT_TRUE(InstanceOf<IntValueView>(element));
   ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 2);
-  EXPECT_THAT(value.Get(value_factory(), 3, scratch),
+  EXPECT_THAT(value.Get(value_manager(), 3, scratch),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -125,7 +125,7 @@ TEST_P(ListValueTest, ForEach) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   std::vector<int64_t> elements;
-  EXPECT_OK(value.ForEach(value_factory(), [&elements](ValueView element) {
+  EXPECT_OK(value.ForEach(value_manager(), [&elements](ValueView element) {
     elements.push_back(Cast<IntValueView>(element).NativeValue());
     return true;
   }));
@@ -136,7 +136,7 @@ TEST_P(ListValueTest, NewIterator) {
   Value scratch;
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
-  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator(value_factory()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator(value_manager()));
   std::vector<int64_t> elements;
   while (iterator->HasNext()) {
     ASSERT_OK_AND_ASSIGN(auto element, iterator->Next(scratch));
@@ -244,18 +244,18 @@ TEST_P(ListValueViewTest, Get) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   ASSERT_OK_AND_ASSIGN(auto element,
-                       ListValueView(value).Get(value_factory(), 0, scratch));
+                       ListValueView(value).Get(value_manager(), 0, scratch));
   ASSERT_TRUE(InstanceOf<IntValueView>(element));
   ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 0);
   ASSERT_OK_AND_ASSIGN(element,
-                       ListValueView(value).Get(value_factory(), 1, scratch));
+                       ListValueView(value).Get(value_manager(), 1, scratch));
   ASSERT_TRUE(InstanceOf<IntValueView>(element));
   ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 1);
   ASSERT_OK_AND_ASSIGN(element,
-                       ListValueView(value).Get(value_factory(), 2, scratch));
+                       ListValueView(value).Get(value_manager(), 2, scratch));
   ASSERT_TRUE(InstanceOf<IntValueView>(element));
   ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 2);
-  EXPECT_THAT(ListValueView(value).Get(value_factory(), 3, scratch),
+  EXPECT_THAT(ListValueView(value).Get(value_manager(), 3, scratch),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -264,7 +264,7 @@ TEST_P(ListValueViewTest, ForEach) {
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   std::vector<int64_t> elements;
   EXPECT_OK(ListValueView(value).ForEach(
-      value_factory(), [&elements](ValueView element) {
+      value_manager(), [&elements](ValueView element) {
         elements.push_back(Cast<IntValueView>(element).NativeValue());
         return true;
       }));
@@ -276,7 +276,7 @@ TEST_P(ListValueViewTest, NewIterator) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   ASSERT_OK_AND_ASSIGN(auto iterator,
-                       ListValueView(value).NewIterator(value_factory()));
+                       ListValueView(value).NewIterator(value_manager()));
   std::vector<int64_t> elements;
   while (iterator->HasNext()) {
     ASSERT_OK_AND_ASSIGN(auto element, iterator->Next(scratch));

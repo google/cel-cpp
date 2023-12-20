@@ -81,14 +81,13 @@ TEST_P(MapValueTest, Default) {
   EXPECT_EQ(map_value.DebugString(), "{}");
   EXPECT_EQ(map_value.type().key(), DynTypeView());
   EXPECT_EQ(map_value.type().value(), DynTypeView());
-  ASSERT_OK_AND_ASSIGN(
-      auto list_value,
-      map_value.ListKeys(type_factory(), value_factory(), map_keys_scratch));
+  ASSERT_OK_AND_ASSIGN(auto list_value,
+                       map_value.ListKeys(value_manager(), map_keys_scratch));
   EXPECT_TRUE(list_value.IsEmpty());
   EXPECT_EQ(list_value.Size(), 0);
   EXPECT_EQ(list_value.DebugString(), "[]");
   EXPECT_EQ(list_value.type().element(), DynTypeView());
-  ASSERT_OK_AND_ASSIGN(auto iterator, map_value.NewIterator(value_factory()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, map_value.NewIterator(value_manager()));
   EXPECT_FALSE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(scratch),
               StatusIs(absl::StatusCode::kFailedPrecondition));
@@ -158,18 +157,18 @@ TEST_P(MapValueTest, Get) {
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
   ASSERT_OK_AND_ASSIGN(
-      auto value, map_value.Get(value_factory(), IntValueView(0), scratch));
+      auto value, map_value.Get(value_manager(), IntValueView(0), scratch));
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 3.0);
   ASSERT_OK_AND_ASSIGN(
-      value, map_value.Get(value_factory(), IntValueView(1), scratch));
+      value, map_value.Get(value_manager(), IntValueView(1), scratch));
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 4.0);
   ASSERT_OK_AND_ASSIGN(
-      value, map_value.Get(value_factory(), IntValueView(2), scratch));
+      value, map_value.Get(value_manager(), IntValueView(2), scratch));
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 5.0);
-  EXPECT_THAT(map_value.Get(value_factory(), IntValueView(3), scratch),
+  EXPECT_THAT(map_value.Get(value_manager(), IntValueView(3), scratch),
               StatusIs(absl::StatusCode::kNotFound));
 }
 
@@ -184,25 +183,25 @@ TEST_P(MapValueTest, Find) {
   bool ok;
   ASSERT_OK_AND_ASSIGN(
       std::tie(value, ok),
-      map_value.Find(value_factory(), IntValueView(0), scratch));
+      map_value.Find(value_manager(), IntValueView(0), scratch));
   ASSERT_TRUE(ok);
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 3.0);
   ASSERT_OK_AND_ASSIGN(
       std::tie(value, ok),
-      map_value.Find(value_factory(), IntValueView(1), scratch));
+      map_value.Find(value_manager(), IntValueView(1), scratch));
   ASSERT_TRUE(ok);
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 4.0);
   ASSERT_OK_AND_ASSIGN(
       std::tie(value, ok),
-      map_value.Find(value_factory(), IntValueView(2), scratch));
+      map_value.Find(value_manager(), IntValueView(2), scratch));
   ASSERT_TRUE(ok);
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 5.0);
   ASSERT_OK_AND_ASSIGN(
       std::tie(value, ok),
-      map_value.Find(value_factory(), IntValueView(3), scratch));
+      map_value.Find(value_manager(), IntValueView(3), scratch));
   ASSERT_FALSE(ok);
 }
 
@@ -233,12 +232,11 @@ TEST_P(MapValueTest, ListKeys) {
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
   ListValue map_keys_scratch;
-  ASSERT_OK_AND_ASSIGN(
-      auto list_keys,
-      map_value.ListKeys(type_factory(), value_factory(), map_keys_scratch));
+  ASSERT_OK_AND_ASSIGN(auto list_keys,
+                       map_value.ListKeys(value_manager(), map_keys_scratch));
   std::vector<int64_t> keys;
   ASSERT_OK(
-      list_keys.ForEach(value_factory(), [&keys](ValueView element) -> bool {
+      list_keys.ForEach(value_manager(), [&keys](ValueView element) -> bool {
         keys.push_back(Cast<IntValueView>(element).NativeValue());
         return true;
       }));
@@ -252,7 +250,7 @@ TEST_P(MapValueTest, ForEach) {
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
   std::vector<std::pair<int64_t, double>> entries;
-  EXPECT_OK(value.ForEach(value_factory(), [&entries](ValueView key,
+  EXPECT_OK(value.ForEach(value_manager(), [&entries](ValueView key,
                                                       ValueView value) {
     entries.push_back(std::pair{Cast<IntValueView>(key).NativeValue(),
                                 Cast<DoubleValueView>(value).NativeValue()});
@@ -270,7 +268,7 @@ TEST_P(MapValueTest, NewIterator) {
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
-  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator(value_factory()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator(value_manager()));
   std::vector<int64_t> keys;
   while (iterator->HasNext()) {
     ASSERT_OK_AND_ASSIGN(auto element, iterator->Next(scratch));
@@ -348,14 +346,13 @@ TEST_P(MapValueViewTest, Default) {
   EXPECT_EQ(map_value.DebugString(), "{}");
   EXPECT_EQ(map_value.type().key(), DynTypeView());
   EXPECT_EQ(map_value.type().value(), DynTypeView());
-  ASSERT_OK_AND_ASSIGN(
-      auto list_value,
-      map_value.ListKeys(type_factory(), value_factory(), map_keys_scratch));
+  ASSERT_OK_AND_ASSIGN(auto list_value,
+                       map_value.ListKeys(value_manager(), map_keys_scratch));
   EXPECT_TRUE(list_value.IsEmpty());
   EXPECT_EQ(list_value.Size(), 0);
   EXPECT_EQ(list_value.DebugString(), "[]");
   EXPECT_EQ(list_value.type().element(), DynTypeView());
-  ASSERT_OK_AND_ASSIGN(auto iterator, map_value.NewIterator(value_factory()));
+  ASSERT_OK_AND_ASSIGN(auto iterator, map_value.NewIterator(value_manager()));
   EXPECT_FALSE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(scratch),
               StatusIs(absl::StatusCode::kFailedPrecondition));
@@ -426,19 +423,19 @@ TEST_P(MapValueViewTest, Get) {
                            std::pair{IntValue(2), DoubleValue(5.0)}));
   ASSERT_OK_AND_ASSIGN(
       auto value,
-      MapValueView(map_value).Get(value_factory(), IntValueView(0), scratch));
+      MapValueView(map_value).Get(value_manager(), IntValueView(0), scratch));
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 3.0);
   ASSERT_OK_AND_ASSIGN(value, MapValueView(map_value).Get(
-                                  value_factory(), IntValueView(1), scratch));
+                                  value_manager(), IntValueView(1), scratch));
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 4.0);
   ASSERT_OK_AND_ASSIGN(value, MapValueView(map_value).Get(
-                                  value_factory(), IntValueView(2), scratch));
+                                  value_manager(), IntValueView(2), scratch));
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 5.0);
   EXPECT_THAT(
-      MapValueView(map_value).Get(value_factory(), IntValueView(3), scratch),
+      MapValueView(map_value).Get(value_manager(), IntValueView(3), scratch),
       StatusIs(absl::StatusCode::kNotFound));
 }
 
@@ -453,25 +450,25 @@ TEST_P(MapValueViewTest, Find) {
   bool ok;
   ASSERT_OK_AND_ASSIGN(
       std::tie(value, ok),
-      MapValueView(map_value).Find(value_factory(), IntValueView(0), scratch));
+      MapValueView(map_value).Find(value_manager(), IntValueView(0), scratch));
   ASSERT_TRUE(ok);
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 3.0);
   ASSERT_OK_AND_ASSIGN(
       std::tie(value, ok),
-      MapValueView(map_value).Find(value_factory(), IntValueView(1), scratch));
+      MapValueView(map_value).Find(value_manager(), IntValueView(1), scratch));
   ASSERT_TRUE(ok);
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 4.0);
   ASSERT_OK_AND_ASSIGN(
       std::tie(value, ok),
-      MapValueView(map_value).Find(value_factory(), IntValueView(2), scratch));
+      MapValueView(map_value).Find(value_manager(), IntValueView(2), scratch));
   ASSERT_TRUE(ok);
   ASSERT_TRUE(InstanceOf<DoubleValueView>(value));
   ASSERT_EQ(Cast<DoubleValueView>(value).NativeValue(), 5.0);
   ASSERT_OK_AND_ASSIGN(
       std::tie(value, ok),
-      MapValueView(map_value).Find(value_factory(), IntValueView(3), scratch));
+      MapValueView(map_value).Find(value_manager(), IntValueView(3), scratch));
   ASSERT_FALSE(ok);
 }
 
@@ -503,12 +500,11 @@ TEST_P(MapValueViewTest, ListKeys) {
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
   ListValue map_keys_scratch;
-  ASSERT_OK_AND_ASSIGN(auto list_keys,
-                       MapValueView(map_value).ListKeys(
-                           type_factory(), value_factory(), map_keys_scratch));
+  ASSERT_OK_AND_ASSIGN(auto list_keys, MapValueView(map_value).ListKeys(
+                                           value_manager(), map_keys_scratch));
   std::vector<int64_t> keys;
   ASSERT_OK(
-      list_keys.ForEach(value_factory(), [&keys](ValueView element) -> bool {
+      list_keys.ForEach(value_manager(), [&keys](ValueView element) -> bool {
         keys.push_back(Cast<IntValueView>(element).NativeValue());
         return true;
       }));
@@ -523,7 +519,7 @@ TEST_P(MapValueViewTest, ForEach) {
                            std::pair{IntValue(2), DoubleValue(5.0)}));
   std::vector<std::pair<int64_t, double>> entries;
   EXPECT_OK(MapValueView(value).ForEach(
-      value_factory(), [&entries](ValueView key, ValueView value) {
+      value_manager(), [&entries](ValueView key, ValueView value) {
         entries.push_back(
             std::pair{Cast<IntValueView>(key).NativeValue(),
                       Cast<DoubleValueView>(value).NativeValue()});
@@ -542,7 +538,7 @@ TEST_P(MapValueViewTest, NewIterator) {
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
   ASSERT_OK_AND_ASSIGN(auto iterator,
-                       MapValueView(value).NewIterator(value_factory()));
+                       MapValueView(value).NewIterator(value_manager()));
   std::vector<int64_t> keys;
   while (iterator->HasNext()) {
     ASSERT_OK_AND_ASSIGN(auto element, iterator->Next(scratch));
