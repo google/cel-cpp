@@ -179,9 +179,9 @@ cc_library(
     testonly = True,
     hdrs = ["type_testing.h"],
     deps = [
-        ":data",
         ":memory",
         ":memory_testing",
+        ":type",
         "@com_google_absl//absl/types:optional",
     ],
 )
@@ -191,9 +191,10 @@ cc_library(
     testonly = True,
     hdrs = ["value_testing.h"],
     deps = [
-        ":data",
         ":memory",
         ":memory_testing",
+        ":type",
+        ":value",
         "@com_google_absl//absl/types:optional",
     ],
 )
@@ -275,33 +276,25 @@ cc_test(
 )
 
 cc_library(
-    name = "data",
+    name = "type",
     srcs = glob(
         [
             "types/*.cc",
-            "values/*.cc",
         ],
         exclude = [
             "types/*_test.cc",
-            "values/*_test.cc",
         ],
     ) + [
         "type_factory.cc",
         "type_manager.cc",
         "type_provider.cc",
-        "value_factory.cc",
-        "value_interface.cc",
-        "value_manager.cc",
-        "value_provider.cc",
     ],
     hdrs = glob(
         [
             "types/*.h",
-            "values/*.h",
         ],
         exclude = [
             "types/*_test.h",
-            "values/*_test.h",
         ],
     ) + [
         "type.h",
@@ -309,6 +302,77 @@ cc_library(
         "type_interface.h",
         "type_manager.h",
         "type_provider.h",
+    ],
+    deps = [
+        ":casting",
+        ":memory",
+        ":native_type",
+        ":sized_input_view",
+        ":type_kind",
+        "//common/internal:data_interface",
+        "//internal:names",
+        "//internal:no_destructor",
+        "@com_google_absl//absl/algorithm:container",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:fixed_array",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/meta:type_traits",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_test(
+    name = "type_test",
+    srcs = glob([
+        "types/*_test.cc",
+    ]) + [
+        "type_factory_test.cc",
+        "type_test.cc",
+    ],
+    deps = [
+        ":casting",
+        ":memory",
+        ":native_type",
+        ":type",
+        "//internal:testing",
+        "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/hash:hash_testing",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_library(
+    name = "value",
+    srcs = glob(
+        [
+            "values/*.cc",
+        ],
+        exclude = [
+            "values/*_test.cc",
+        ],
+    ) + [
+        "value_factory.cc",
+        "value_interface.cc",
+        "value_manager.cc",
+        "value_provider.cc",
+    ],
+    hdrs = glob(
+        [
+            "values/*.h",
+        ],
+        exclude = [
+            "values/*_test.h",
+        ],
+    ) + [
         "value.h",
         "value_factory.h",
         "value_interface.h",
@@ -321,22 +385,19 @@ cc_library(
         ":json",
         ":memory",
         ":native_type",
-        ":sized_input_view",
+        ":type",
         ":type_kind",
         ":value_kind",
         "//common/internal:data_interface",
         "//common/internal:shared_byte_string",
-        "//internal:names",
         "//internal:no_destructor",
         "//internal:overloaded",
         "//internal:serialize",
         "//internal:status_macros",
         "//internal:strings",
         "//internal:time",
-        "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",
-        "@com_google_absl//absl/container:fixed_array",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/hash",
@@ -351,19 +412,15 @@ cc_library(
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
-        "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
     ],
 )
 
 cc_test(
-    name = "data_test",
+    name = "value_test",
     srcs = glob([
-        "types/*_test.cc",
         "values/*_test.cc",
     ]) + [
-        "type_factory_test.cc",
-        "type_test.cc",
         "value_factory_test.cc",
         "value_provider_test.cc",
         "value_test.cc",
@@ -371,20 +428,15 @@ cc_test(
     deps = [
         ":any",
         ":casting",
-        ":data",
         ":json",
         ":memory",
         ":native_type",
-        ":sized_input_view",
-        ":value_kind",
+        ":type",
+        ":value",
         ":value_testing",
         "//internal:status_macros",
         "//internal:testing",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/container:inlined_vector",
         "@com_google_absl//absl/hash",
-        "@com_google_absl//absl/hash:hash_testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:cord",
@@ -392,7 +444,6 @@ cc_test(
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
-        "@com_google_absl//absl/utility",
     ],
 )
 
