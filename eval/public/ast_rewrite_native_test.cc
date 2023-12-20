@@ -15,6 +15,7 @@
 #include "eval/public/ast_rewrite_native.h"
 
 #include <string>
+#include <vector>
 
 #include "google/protobuf/text_format.h"
 #include "eval/public/ast_visitor_native.h"

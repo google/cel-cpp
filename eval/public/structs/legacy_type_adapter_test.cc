@@ -14,6 +14,8 @@
 
 #include "eval/public/structs/legacy_type_adapter.h"
 
+#include <vector>
+
 #include "google/protobuf/arena.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/trivial_legacy_type_info.h"

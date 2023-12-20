@@ -14,6 +14,8 @@
 
 #include "eval/public/message_wrapper.h"
 
+#include <type_traits>
+
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
 #include "eval/public/structs/trivial_legacy_type_info.h"

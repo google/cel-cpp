@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/type_provider.h"
 #include "eval/eval/cel_expression_flat_impl.h"

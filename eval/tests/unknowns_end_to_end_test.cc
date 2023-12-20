@@ -4,6 +4,8 @@
 // the unknowns is particular to the runtime.
 
 #include <memory>
+#include <utility>
+#include <vector>
 
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/arena.h"

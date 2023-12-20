@@ -15,6 +15,7 @@
 #include "base/types/struct_type.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 

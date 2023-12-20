@@ -14,6 +14,7 @@
 
 #include "eval/public/structs/field_access_impl.h"
 
+#include <array>
 #include <limits>
 #include <string>
 

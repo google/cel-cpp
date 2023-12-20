@@ -14,6 +14,8 @@
 
 #include "eval/public/source_position_native.h"
 
+#include <utility>
+
 namespace cel {
 namespace ast_internal {
 

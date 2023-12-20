@@ -1,5 +1,7 @@
 #include "eval/public/unknown_set.h"
 
+#include <vector>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/arena.h"
 #include "eval/public/cel_attribute.h"

@@ -16,8 +16,10 @@
 
 #include <cassert>
 #include <limits>
+#include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/duration.pb.h"

@@ -17,6 +17,7 @@
 #include <functional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "internal/status_macros.h"
 #include "internal/testing.h"

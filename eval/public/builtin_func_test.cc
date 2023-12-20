@@ -14,8 +14,11 @@
 
 #include <cstdint>
 #include <limits>
+#include <map>
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/status.h"

@@ -14,6 +14,7 @@
 
 #include "internal/overflow.h"
 
+#include <cmath>
 #include <cstdint>
 #include <limits>
 

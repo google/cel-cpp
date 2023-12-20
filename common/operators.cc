@@ -1,5 +1,6 @@
 #include "common/operators.h"
 
+#include <map>
 #include <memory>
 #include <string>
 

@@ -14,6 +14,7 @@
 
 #include "eval/public/containers/field_access.h"
 
+#include <array>
 #include <limits>
 
 #include "google/protobuf/arena.h"

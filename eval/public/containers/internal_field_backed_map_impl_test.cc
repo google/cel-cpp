@@ -13,9 +13,11 @@
 // limitations under the License.
 #include "eval/public/containers/internal_field_backed_map_impl.h"
 
+#include <array>
 #include <limits>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"

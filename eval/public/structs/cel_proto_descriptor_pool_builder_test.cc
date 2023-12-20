@@ -17,6 +17,7 @@
 #include "eval/public/structs/cel_proto_descriptor_pool_builder.h"
 
 #include <string>
+#include <vector>
 
 #include "google/protobuf/any.pb.h"
 #include "absl/container/flat_hash_map.h"

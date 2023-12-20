@@ -1,5 +1,6 @@
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"

@@ -17,6 +17,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"

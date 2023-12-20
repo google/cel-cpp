@@ -14,7 +14,9 @@
 
 #include "internal/strings.h"
 
+#include <set>
 #include <string>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/strings/ascii.h"

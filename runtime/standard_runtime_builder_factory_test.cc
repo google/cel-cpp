@@ -15,6 +15,7 @@
 #include "runtime/standard_runtime_builder_factory.h"
 
 #include <functional>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <utility>

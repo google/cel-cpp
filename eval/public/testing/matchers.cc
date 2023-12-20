@@ -1,5 +1,6 @@
 #include "eval/public/testing/matchers.h"
 
+#include <ostream>
 #include <utility>
 
 #include "google/protobuf/message.h"

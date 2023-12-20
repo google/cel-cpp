@@ -1,7 +1,11 @@
 #include "eval/public/set_util.h"
 
 #include <cstddef>
+#include <set>
 #include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
 
 #include "google/protobuf/empty.pb.h"
 #include "google/protobuf/struct.pb.h"

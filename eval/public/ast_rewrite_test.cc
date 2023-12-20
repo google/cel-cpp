@@ -15,6 +15,7 @@
 #include "eval/public/ast_rewrite.h"
 
 #include <string>
+#include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "eval/public/ast_visitor.h"

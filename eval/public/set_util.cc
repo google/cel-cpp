@@ -1,6 +1,7 @@
 #include "eval/public/set_util.h"
 
 #include <algorithm>
+#include <vector>
 
 namespace google::api::expr::runtime {
 namespace {
