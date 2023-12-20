@@ -4,6 +4,7 @@ steps:
   - '--output_base=/bazel' # This is mandatory to avoid steps accidently sharing data.
   - 'test'
   - '...'
+  - '--copt=-Wno-deprecated-declarations'
   - '--compilation_mode=fastbuild'
   - '--test_output=errors'
   - '--distdir=/bazel-distdir'
@@ -19,6 +20,7 @@ steps:
   - '--output_base=/bazel' # This is mandatory to avoid steps accidently sharing data.
   - 'test'
   - '...'
+  - '--copt=-Wno-deprecated-declarations'
   - '--compilation_mode=fastbuild'
   - '--test_output=errors'
   - '--distdir=/bazel-distdir'
