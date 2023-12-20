@@ -17,48 +17,23 @@
 #include <utility>
 
 #include "common/memory.h"
-#include "common/value_factory.h"
 #include "common/value_provider.h"
+#include "common/values/thread_compatible_value_manager.h"
+#include "common/values/thread_safe_value_manager.h"
 
 namespace cel {
 
-namespace {
-
-class ValueManagerImpl final : public ValueManager {
- public:
-  ValueManagerImpl(MemoryManagerRef memory_manager,
-                   Shared<ValueFactory> value_factory,
-                   Shared<ValueProvider> value_provider)
-      : memory_manager_(memory_manager),
-        value_factory_(std::move(value_factory)),
-        value_provider_(std::move(value_provider)) {}
-
-  MemoryManagerRef GetMemoryManager() const override { return memory_manager_; }
-
-  ValueFactory& GetValueFactory() const override { return *value_factory_; }
-
-  ValueProvider& GetValueProvider() const override { return *value_provider_; }
-
- private:
-  MemoryManagerRef memory_manager_;
-  Shared<ValueFactory> value_factory_;
-  Shared<ValueProvider> value_provider_;
-};
-
-}  // namespace
-
 Shared<ValueManager> NewThreadCompatibleValueManager(
-    MemoryManagerRef memory_manager, Shared<ValueFactory> value_factory,
-    Shared<ValueProvider> value_provider) {
-  return memory_manager.MakeShared<ValueManagerImpl>(
-      memory_manager, std::move(value_factory), std::move(value_provider));
+    MemoryManagerRef memory_manager, Shared<ValueProvider> value_provider) {
+  return memory_manager
+      .MakeShared<common_internal::ThreadCompatibleValueManager>(
+          memory_manager, std::move(value_provider));
 }
 
 Shared<ValueManager> NewThreadSafeValueManager(
-    MemoryManagerRef memory_manager, Shared<ValueFactory> value_factory,
-    Shared<ValueProvider> value_provider) {
-  return memory_manager.MakeShared<ValueManagerImpl>(
-      memory_manager, std::move(value_factory), std::move(value_provider));
+    MemoryManagerRef memory_manager, Shared<ValueProvider> value_provider) {
+  return memory_manager.MakeShared<common_internal::ThreadSafeValueManager>(
+      memory_manager, std::move(value_provider));
 }
 
 }  // namespace cel

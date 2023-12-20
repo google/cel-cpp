@@ -37,8 +37,6 @@
 #include "common/type.h"
 #include "common/types/type_cache.h"
 #include "common/value.h"
-#include "common/values/thread_compatible_value_factory.h"
-#include "common/values/thread_safe_value_factory.h"
 #include "common/values/value_cache.h"
 #include "internal/overloaded.h"
 
@@ -356,19 +354,6 @@ MapValueView ValueFactory::GetZeroStringDynMapValue() {
 
 OptionalValueView ValueFactory::GetZeroDynOptionalValue() {
   return ProcessLocalValueCache::Get()->GetEmptyDynOptionalValue();
-}
-
-Shared<ValueFactory> NewThreadCompatibleValueFactory(
-    MemoryManagerRef memory_manager) {
-  return memory_manager
-      .MakeShared<common_internal::ThreadCompatibleValueFactory>(
-          memory_manager);
-}
-
-Shared<ValueFactory> NewThreadSafeValueFactory(
-    MemoryManagerRef memory_manager) {
-  return memory_manager.MakeShared<common_internal::ThreadSafeValueFactory>(
-      memory_manager);
 }
 
 }  // namespace cel

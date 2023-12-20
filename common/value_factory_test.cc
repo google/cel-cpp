@@ -30,6 +30,8 @@
 #include "common/type_factory.h"
 #include "common/types/type_cache.h"
 #include "common/value.h"
+#include "common/value_manager.h"
+#include "common/value_provider.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -69,12 +71,13 @@ class ValueFactoryTest
     }
     switch (thread_safety()) {
       case ThreadSafety::kCompatible:
-        type_factory_ = NewThreadCompatibleTypeFactory(memory_manager());
-        value_factory_ = NewThreadCompatibleValueFactory(memory_manager());
+        value_manager_ = NewThreadCompatibleValueManager(
+            memory_manager(),
+            NewThreadCompatibleValueProvider(memory_manager()));
         break;
       case ThreadSafety::kSafe:
-        type_factory_ = NewThreadSafeTypeFactory(memory_manager());
-        value_factory_ = NewThreadSafeValueFactory(memory_manager());
+        value_manager_ = NewThreadSafeValueManager(
+            memory_manager(), NewThreadSafeValueProvider(memory_manager()));
         break;
     }
   }
@@ -82,8 +85,7 @@ class ValueFactoryTest
   void TearDown() override { Finish(); }
 
   void Finish() {
-    value_factory_.reset();
-    type_factory_.reset();
+    value_manager_.reset();
     memory_manager_.reset();
   }
 
@@ -91,9 +93,9 @@ class ValueFactoryTest
 
   MemoryManagement memory_management() const { return std::get<0>(GetParam()); }
 
-  TypeFactory& type_factory() const { return **type_factory_; }
+  TypeFactory& type_factory() const { return **value_manager_; }
 
-  ValueFactory& value_factory() const { return **value_factory_; }
+  ValueFactory& value_factory() const { return **value_manager_; }
 
   ThreadSafety thread_safety() const { return std::get<1>(GetParam()); }
 
@@ -106,8 +108,7 @@ class ValueFactoryTest
 
  private:
   absl::optional<MemoryManager> memory_manager_;
-  absl::optional<Shared<TypeFactory>> type_factory_;
-  absl::optional<Shared<ValueFactory>> value_factory_;
+  absl::optional<Shared<ValueManager>> value_manager_;
 };
 
 TEST_P(ValueFactoryTest, JsonValueNull) {

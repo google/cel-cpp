@@ -19,12 +19,9 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/casting.h"
-#include "common/memory.h"
 #include "common/sized_input_view.h"
 #include "common/type.h"
 #include "common/type_kind.h"
-#include "common/types/thread_compatible_type_factory.h"
-#include "common/types/thread_safe_type_factory.h"
 #include "common/types/type_cache.h"
 #include "internal/names.h"
 
@@ -110,17 +107,6 @@ MapTypeView TypeFactory::GetStringDynMapType() {
 
 OptionalTypeView TypeFactory::GetDynOptionalType() {
   return ProcessLocalTypeCache::Get()->GetDynOptionalType();
-}
-
-Shared<TypeFactory> NewThreadCompatibleTypeFactory(
-    MemoryManagerRef memory_manager) {
-  return memory_manager
-      .MakeShared<common_internal::ThreadCompatibleTypeFactory>(memory_manager);
-}
-
-Shared<TypeFactory> NewThreadSafeTypeFactory(MemoryManagerRef memory_manager) {
-  return memory_manager.MakeShared<common_internal::ThreadSafeTypeFactory>(
-      memory_manager);
 }
 
 }  // namespace cel

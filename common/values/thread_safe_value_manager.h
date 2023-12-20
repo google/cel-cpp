@@ -14,16 +14,19 @@
 
 // IWYU pragma: private
 
-#ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_SAFE_VALUE_FACTORY_H_
-#define THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_SAFE_VALUE_FACTORY_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_SAFE_VALUE_MANAGER_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_SAFE_VALUE_MANAGER_H_
+
+#include <utility>
 
 #include "absl/base/thread_annotations.h"
 #include "absl/synchronization/mutex.h"
 #include "common/memory.h"
 #include "common/type.h"
-#include "common/types/thread_safe_type_factory.h"
+#include "common/types/thread_safe_type_manager.h"
 #include "common/value.h"
-#include "common/value_factory.h"
+#include "common/value_manager.h"
+#include "common/value_provider.h"
 #include "common/values/value_cache.h"
 
 namespace cel::common_internal {
@@ -32,13 +35,18 @@ namespace cel::common_internal {
 // All methods are safe to call from any thread. It is more efficient than using
 // external synchronization with `ThreadCompatibleValueFactory`, but less
 // efficient than using `ThreadCompatibleValueFactory` with a single thread.
-class ThreadSafeValueFactory : public ThreadSafeTypeFactory,
-                               public ValueFactory {
+class ThreadSafeValueManager : public ThreadSafeTypeManager,
+                               public ValueManager {
  public:
-  explicit ThreadSafeValueFactory(MemoryManagerRef memory_manager)
-      : ThreadSafeTypeFactory(memory_manager) {}
+  explicit ThreadSafeValueManager(MemoryManagerRef memory_manager,
+                                  Shared<ValueProvider> value_provider)
+      : ThreadSafeTypeManager(memory_manager, value_provider),
+        value_provider_(std::move(value_provider)) {}
 
-  using ThreadSafeTypeFactory::GetMemoryManager;
+  using ThreadSafeTypeManager::GetMemoryManager;
+
+ protected:
+  ValueProvider& GetValueProvider() const final { return *value_provider_; }
 
  private:
   ListValue CreateZeroListValueImpl(ListTypeView type) override;
@@ -47,6 +55,7 @@ class ThreadSafeValueFactory : public ThreadSafeTypeFactory,
 
   OptionalValue CreateZeroOptionalValueImpl(OptionalTypeView type) override;
 
+  Shared<ValueProvider> value_provider_;
   absl::Mutex list_values_mutex_;
   ListValueCacheMap list_values_ ABSL_GUARDED_BY(list_values_mutex_);
   absl::Mutex map_values_mutex_;
@@ -58,4 +67,4 @@ class ThreadSafeValueFactory : public ThreadSafeTypeFactory,
 
 }  // namespace cel::common_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_SAFE_VALUE_FACTORY_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_SAFE_VALUE_MANAGER_H_

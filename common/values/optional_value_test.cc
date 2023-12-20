@@ -13,66 +13,29 @@
 // limitations under the License.
 
 #include <sstream>
-#include <string>
 #include <utility>
 
 #include "absl/status/status.h"
-#include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/memory.h"
 #include "common/type.h"
-#include "common/type_factory.h"
 #include "common/value.h"
+#include "common/value_testing.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
 
 using testing::TestParamInfo;
-using testing::TestWithParam;
 using cel::internal::StatusIs;
 
-class OptionalValueTest : public TestWithParam<MemoryManagement> {
+class OptionalValueTest : public common_internal::ThreadCompatibleValueTest<> {
  public:
-  void SetUp() override {
-    switch (memory_management()) {
-      case MemoryManagement::kPooling:
-        memory_manager_ =
-            MemoryManager::Pooling(NewThreadCompatiblePoolingMemoryManager());
-        break;
-      case MemoryManagement::kReferenceCounting:
-        memory_manager_ = MemoryManager::ReferenceCounting();
-        break;
-    }
-    type_factory_ = NewThreadCompatibleTypeFactory(memory_manager());
-  }
-
   OptionalValue OptionalNone() { return OptionalValue::None(); }
 
   OptionalValue OptionalOf(Value value) {
     return OptionalValue::Of(memory_manager(), std::move(value));
   }
-
-  void TearDown() override { Finish(); }
-
-  void Finish() {
-    type_factory_.reset();
-    memory_manager_.reset();
-  }
-
-  MemoryManagerRef memory_manager() { return *memory_manager_; }
-
-  MemoryManagement memory_management() const { return GetParam(); }
-
-  static std::string ToString(TestParamInfo<MemoryManagement> param) {
-    std::ostringstream out;
-    out << param.param;
-    return out.str();
-  }
-
- private:
-  absl::optional<MemoryManager> memory_manager_;
-  absl::optional<Shared<TypeFactory>> type_factory_;
 };
 
 TEST_P(OptionalValueTest, Kind) {
@@ -170,47 +133,14 @@ INSTANTIATE_TEST_SUITE_P(
                       MemoryManagement::kReferenceCounting),
     OptionalValueTest::ToString);
 
-class OptionalValueViewTest : public TestWithParam<MemoryManagement> {
+class OptionalValueViewTest
+    : public common_internal::ThreadCompatibleValueTest<> {
  public:
-  void SetUp() override {
-    switch (memory_management()) {
-      case MemoryManagement::kPooling:
-        memory_manager_ =
-            MemoryManager::Pooling(NewThreadCompatiblePoolingMemoryManager());
-        break;
-      case MemoryManagement::kReferenceCounting:
-        memory_manager_ = MemoryManager::ReferenceCounting();
-        break;
-    }
-    type_factory_ = NewThreadCompatibleTypeFactory(memory_manager());
-  }
-
   OptionalValueView OptionalNone() { return OptionalValueView::None(); }
 
   OptionalValue OptionalOf(Value value) {
     return OptionalValue::Of(memory_manager(), std::move(value));
   }
-
-  void TearDown() override { Finish(); }
-
-  void Finish() {
-    type_factory_.reset();
-    memory_manager_.reset();
-  }
-
-  MemoryManagerRef memory_manager() { return *memory_manager_; }
-
-  MemoryManagement memory_management() const { return GetParam(); }
-
-  static std::string ToString(TestParamInfo<MemoryManagement> param) {
-    std::ostringstream out;
-    out << param.param;
-    return out.str();
-  }
-
- private:
-  absl::optional<MemoryManager> memory_manager_;
-  absl::optional<Shared<TypeFactory>> type_factory_;
 };
 
 TEST_P(OptionalValueViewTest, Kind) {

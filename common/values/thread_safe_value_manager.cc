@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/values/thread_safe_value_factory.h"
+#include "common/values/thread_safe_value_manager.h"
 
 #include <utility>
 
@@ -23,7 +23,7 @@
 
 namespace cel::common_internal {
 
-ListValue ThreadSafeValueFactory::CreateZeroListValueImpl(ListTypeView type) {
+ListValue ThreadSafeValueManager::CreateZeroListValueImpl(ListTypeView type) {
   {
     absl::ReaderMutexLock lock(&list_values_mutex_);
     if (auto list_value = list_values_.find(type);
@@ -39,7 +39,7 @@ ListValue ThreadSafeValueFactory::CreateZeroListValueImpl(ListTypeView type) {
       .first->second;
 }
 
-MapValue ThreadSafeValueFactory::CreateZeroMapValueImpl(MapTypeView type) {
+MapValue ThreadSafeValueManager::CreateZeroMapValueImpl(MapTypeView type) {
   {
     absl::ReaderMutexLock lock(&map_values_mutex_);
     if (auto map_value = map_values_.find(type);
@@ -55,7 +55,7 @@ MapValue ThreadSafeValueFactory::CreateZeroMapValueImpl(MapTypeView type) {
       .first->second;
 }
 
-OptionalValue ThreadSafeValueFactory::CreateZeroOptionalValueImpl(
+OptionalValue ThreadSafeValueManager::CreateZeroOptionalValueImpl(
     OptionalTypeView type) {
   {
     absl::ReaderMutexLock lock(&optional_values_mutex_);

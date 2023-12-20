@@ -288,6 +288,7 @@ cc_library(
     ) + [
         "type_factory.cc",
         "type_manager.cc",
+        "type_provider.cc",
         "value_factory.cc",
         "value_interface.cc",
         "value_manager.cc",

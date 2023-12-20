@@ -14,25 +14,33 @@
 
 // IWYU pragma: private
 
-#ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_COMPATIBLE_VALUE_FACTORY_H_
-#define THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_COMPATIBLE_VALUE_FACTORY_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_COMPATIBLE_VALUE_MANAGER_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_COMPATIBLE_VALUE_MANAGER_H_
+
+#include <utility>
 
 #include "common/memory.h"
 #include "common/type.h"
-#include "common/types/thread_compatible_type_factory.h"
+#include "common/types/thread_compatible_type_manager.h"
 #include "common/value.h"
-#include "common/value_factory.h"
+#include "common/value_manager.h"
+#include "common/value_provider.h"
 #include "common/values/value_cache.h"
 
 namespace cel::common_internal {
 
-class ThreadCompatibleValueFactory : public ThreadCompatibleTypeFactory,
-                                     public ValueFactory {
+class ThreadCompatibleValueManager : public ThreadCompatibleTypeManager,
+                                     public ValueManager {
  public:
-  explicit ThreadCompatibleValueFactory(MemoryManagerRef memory_manager)
-      : ThreadCompatibleTypeFactory(memory_manager) {}
+  explicit ThreadCompatibleValueManager(MemoryManagerRef memory_manager,
+                                        Shared<ValueProvider> value_provider)
+      : ThreadCompatibleTypeManager(memory_manager, value_provider),
+        value_provider_(std::move(value_provider)) {}
 
-  using ThreadCompatibleTypeFactory::GetMemoryManager;
+  using ThreadCompatibleTypeManager::GetMemoryManager;
+
+ protected:
+  ValueProvider& GetValueProvider() const final { return *value_provider_; }
 
  private:
   ListValue CreateZeroListValueImpl(ListTypeView type) override;
@@ -41,6 +49,7 @@ class ThreadCompatibleValueFactory : public ThreadCompatibleTypeFactory,
 
   OptionalValue CreateZeroOptionalValueImpl(OptionalTypeView type) override;
 
+  Shared<ValueProvider> value_provider_;
   ListValueCacheMap list_values_;
   MapValueCacheMap map_values_;
   OptionalValueCacheMap optional_values_;
@@ -48,4 +57,4 @@ class ThreadCompatibleValueFactory : public ThreadCompatibleTypeFactory,
 
 }  // namespace cel::common_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_COMPATIBLE_VALUE_FACTORY_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_COMPATIBLE_VALUE_MANAGER_H_

@@ -82,15 +82,6 @@ class TypeFactory {
       absl::string_view name, const SizedInputView<TypeView>& parameters) = 0;
 };
 
-// Creates a new `TypeFactory` which is thread compatible. The returned
-// `TypeFactory` and all types it creates are managed my `memory_manager`.
-Shared<TypeFactory> NewThreadCompatibleTypeFactory(
-    MemoryManagerRef memory_manager);
-
-// Creates a new `TypeFactory` which is thread safe. The returned `TypeFactory`
-// and all types it creates are managed my `memory_manager`.
-Shared<TypeFactory> NewThreadSafeTypeFactory(MemoryManagerRef memory_manager);
-
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_TYPE_FACTORY_H_

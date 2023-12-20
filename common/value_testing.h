@@ -37,7 +37,6 @@ class ThreadCompatibleValueTest : public ThreadCompatibleMemoryTest<Ts...> {
     Base::SetUp();
     value_manager_ = NewThreadCompatibleValueManager(
         this->memory_manager(),
-        NewThreadCompatibleValueFactory(this->memory_manager()),
         NewThreadCompatibleValueProvider(this->memory_manager()));
   }
 
@@ -48,21 +47,11 @@ class ThreadCompatibleValueTest : public ThreadCompatibleMemoryTest<Ts...> {
 
   ValueManager& value_manager() const { return **value_manager_; }
 
-  TypeFactory& type_factory() const { return value_manager().GetTypeFactory(); }
-
-  TypeProvider& type_provider() const {
-    return value_manager().GetTypeProvider();
-  }
+  TypeFactory& type_factory() const { return value_manager(); }
 
   TypeManager& type_manager() const { return value_manager(); }
 
-  ValueFactory& value_factory() const {
-    return value_manager().GetValueFactory();
-  }
-
-  ValueProvider& value_provider() const {
-    return value_manager().GetValueProvider();
-  }
+  ValueFactory& value_factory() const { return value_manager(); }
 
  private:
   absl::optional<Shared<ValueManager>> value_manager_;

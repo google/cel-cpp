@@ -14,26 +14,32 @@
 
 // IWYU pragma: private
 
-#ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_SAFE_TYPE_FACTORY_H_
-#define THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_SAFE_TYPE_FACTORY_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_COMPATIBLE_TYPE_MANAGER_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_COMPATIBLE_TYPE_MANAGER_H_
 
-#include "absl/base/thread_annotations.h"
+#include <utility>
+
 #include "absl/strings/string_view.h"
-#include "absl/synchronization/mutex.h"
 #include "common/memory.h"
 #include "common/sized_input_view.h"
 #include "common/type.h"
-#include "common/type_factory.h"
+#include "common/type_manager.h"
+#include "common/type_provider.h"
 #include "common/types/type_cache.h"
 
 namespace cel::common_internal {
 
-class ThreadSafeTypeFactory : public virtual TypeFactory {
+class ThreadCompatibleTypeManager : public virtual TypeManager {
  public:
-  explicit ThreadSafeTypeFactory(MemoryManagerRef memory_manager)
-      : memory_manager_(memory_manager) {}
+  explicit ThreadCompatibleTypeManager(MemoryManagerRef memory_manager,
+                                       Shared<TypeProvider> type_provider)
+      : memory_manager_(memory_manager),
+        type_provider_(std::move(type_provider)) {}
 
   MemoryManagerRef GetMemoryManager() const final { return memory_manager_; }
+
+ protected:
+  TypeProvider& GetTypeProvider() const final { return *type_provider_; }
 
  private:
   ListType CreateListTypeImpl(TypeView element) final;
@@ -46,16 +52,13 @@ class ThreadSafeTypeFactory : public virtual TypeFactory {
       absl::string_view name, const SizedInputView<TypeView>& parameters) final;
 
   MemoryManagerRef memory_manager_;
-  absl::Mutex list_types_mutex_;
-  ListTypeCacheMap list_types_ ABSL_GUARDED_BY(list_types_mutex_);
-  absl::Mutex map_types_mutex_;
-  MapTypeCacheMap map_types_ ABSL_GUARDED_BY(map_types_mutex_);
-  absl::Mutex struct_types_mutex_;
-  StructTypeCacheMap struct_types_ ABSL_GUARDED_BY(struct_types_mutex_);
-  absl::Mutex opaque_types_mutex_;
-  OpaqueTypeCacheMap opaque_types_ ABSL_GUARDED_BY(opaque_types_mutex_);
+  Shared<TypeProvider> type_provider_;
+  ListTypeCacheMap list_types_;
+  MapTypeCacheMap map_types_;
+  StructTypeCacheMap struct_types_;
+  OpaqueTypeCacheMap opaque_types_;
 };
 
 }  // namespace cel::common_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_SAFE_TYPE_FACTORY_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_COMPATIBLE_TYPE_MANAGER_H_

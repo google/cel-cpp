@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/values/thread_compatible_value_factory.h"
+#include "common/values/thread_compatible_value_manager.h"
 
 #include <utility>
 
@@ -22,7 +22,7 @@
 
 namespace cel::common_internal {
 
-ListValue ThreadCompatibleValueFactory::CreateZeroListValueImpl(
+ListValue ThreadCompatibleValueManager::CreateZeroListValueImpl(
     ListTypeView type) {
   if (auto list_value = list_values_.find(type);
       list_value != list_values_.end()) {
@@ -35,7 +35,7 @@ ListValue ThreadCompatibleValueFactory::CreateZeroListValueImpl(
       .first->second;
 }
 
-MapValue ThreadCompatibleValueFactory::CreateZeroMapValueImpl(
+MapValue ThreadCompatibleValueManager::CreateZeroMapValueImpl(
     MapTypeView type) {
   if (auto map_value = map_values_.find(type); map_value != map_values_.end()) {
     return map_value->second;
@@ -47,7 +47,7 @@ MapValue ThreadCompatibleValueFactory::CreateZeroMapValueImpl(
       .first->second;
 }
 
-OptionalValue ThreadCompatibleValueFactory::CreateZeroOptionalValueImpl(
+OptionalValue ThreadCompatibleValueManager::CreateZeroOptionalValueImpl(
     OptionalTypeView type) {
   if (auto optional_value = optional_values_.find(type);
       optional_value != optional_values_.end()) {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/types/thread_compatible_type_factory.h"
+#include "common/types/thread_compatible_type_manager.h"
 
 #include <utility>
 
@@ -23,7 +23,7 @@
 
 namespace cel::common_internal {
 
-ListType ThreadCompatibleTypeFactory::CreateListTypeImpl(TypeView element) {
+ListType ThreadCompatibleTypeManager::CreateListTypeImpl(TypeView element) {
   if (auto list_type = list_types_.find(element);
       list_type != list_types_.end()) {
     return list_type->second;
@@ -32,7 +32,7 @@ ListType ThreadCompatibleTypeFactory::CreateListTypeImpl(TypeView element) {
   return list_types_.insert({list_type.element(), list_type}).first->second;
 }
 
-MapType ThreadCompatibleTypeFactory::CreateMapTypeImpl(TypeView key,
+MapType ThreadCompatibleTypeManager::CreateMapTypeImpl(TypeView key,
                                                        TypeView value) {
   if (auto map_type = map_types_.find(std::make_pair(key, value));
       map_type != map_types_.end()) {
@@ -44,7 +44,7 @@ MapType ThreadCompatibleTypeFactory::CreateMapTypeImpl(TypeView key,
       .first->second;
 }
 
-StructType ThreadCompatibleTypeFactory::CreateStructTypeImpl(
+StructType ThreadCompatibleTypeManager::CreateStructTypeImpl(
     absl::string_view name) {
   if (auto struct_type = struct_types_.find(name);
       struct_type != struct_types_.end()) {
@@ -54,7 +54,7 @@ StructType ThreadCompatibleTypeFactory::CreateStructTypeImpl(
   return struct_types_.insert({struct_type.name(), struct_type}).first->second;
 }
 
-OpaqueType ThreadCompatibleTypeFactory::CreateOpaqueTypeImpl(
+OpaqueType ThreadCompatibleTypeManager::CreateOpaqueTypeImpl(
     absl::string_view name, const SizedInputView<TypeView>& parameters) {
   if (auto opaque_type = opaque_types_.find(
           OpaqueTypeKeyView{.name = name, .parameters = parameters});

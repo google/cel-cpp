@@ -27,49 +27,44 @@ namespace cel {
 
 // `TypeManager` is an additional layer on top of `TypeFactory` and
 // `TypeProvider` which combines the two and adds additional functionality.
-class TypeManager {
+class TypeManager : public virtual TypeFactory {
  public:
   virtual ~TypeManager() = default;
-
-  virtual MemoryManagerRef GetMemoryManager() const = 0;
-
-  virtual TypeFactory& GetTypeFactory() const = 0;
-
-  virtual TypeProvider& GetTypeProvider() const = 0;
 
   // See `TypeProvider::FindType`.
   absl::StatusOr<TypeView> FindType(
       absl::string_view name, Type& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    return GetTypeProvider().FindType(GetTypeFactory(), name, scratch);
+    return GetTypeProvider().FindType(*this, name, scratch);
   }
 
   // See `TypeProvider::FindStructTypeFieldByName`.
   absl::StatusOr<StructTypeFieldView> FindStructTypeFieldByName(
       absl::string_view type, absl::string_view name,
       StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    return GetTypeProvider().FindStructTypeFieldByName(GetTypeFactory(), type,
-                                                       name, scratch);
+    return GetTypeProvider().FindStructTypeFieldByName(*this, type, name,
+                                                       scratch);
   }
 
   // See `TypeProvider::FindStructTypeFieldByName`.
   absl::StatusOr<StructTypeFieldView> FindStructTypeFieldByName(
       StructTypeView type, absl::string_view name,
       StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    return GetTypeProvider().FindStructTypeFieldByName(GetTypeFactory(), type,
-                                                       name, scratch);
+    return GetTypeProvider().FindStructTypeFieldByName(*this, type, name,
+                                                       scratch);
   }
+
+ protected:
+  virtual TypeProvider& GetTypeProvider() const = 0;
 };
 
 // Creates a new `TypeManager` which is thread compatible.
 Shared<TypeManager> NewThreadCompatibleTypeManager(
-    MemoryManagerRef memory_manager, Shared<TypeFactory> type_factory,
-    Shared<TypeProvider> type_provider);
+    MemoryManagerRef memory_manager, Shared<TypeProvider> type_provider);
 
 // Creates a new `TypeManager` which is thread safe if and only if the provided
 // `TypeFactory` and `TypeProvider` are also thread safe.
 Shared<TypeManager> NewThreadSafeTypeManager(
-    MemoryManagerRef memory_manager, Shared<TypeFactory> type_factory,
-    Shared<TypeProvider> type_provider);
+    MemoryManagerRef memory_manager, Shared<TypeProvider> type_provider);
 
 }  // namespace cel
 

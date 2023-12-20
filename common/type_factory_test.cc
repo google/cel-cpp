@@ -22,6 +22,8 @@
 #include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type.h"
+#include "common/type_manager.h"
+#include "common/type_provider.h"
 #include "common/types/type_cache.h"
 #include "internal/testing.h"
 
@@ -34,7 +36,6 @@ using testing::Eq;
 using testing::Ne;
 using testing::TestParamInfo;
 using testing::TestWithParam;
-using cel::internal::IsOkAndHolds;
 
 enum class ThreadSafety {
   kCompatible,
@@ -65,10 +66,13 @@ class TypeFactoryTest
     }
     switch (thread_safety()) {
       case ThreadSafety::kCompatible:
-        type_factory_ = NewThreadCompatibleTypeFactory(memory_manager());
+        type_manager_ = NewThreadCompatibleTypeManager(
+            memory_manager(),
+            NewThreadCompatibleTypeProvider(memory_manager()));
         break;
       case ThreadSafety::kSafe:
-        type_factory_ = NewThreadSafeTypeFactory(memory_manager());
+        type_manager_ = NewThreadSafeTypeManager(
+            memory_manager(), NewThreadSafeTypeProvider(memory_manager()));
         break;
     }
   }
@@ -76,7 +80,7 @@ class TypeFactoryTest
   void TearDown() override { Finish(); }
 
   void Finish() {
-    type_factory_.reset();
+    type_manager_.reset();
     memory_manager_.reset();
   }
 
@@ -84,7 +88,7 @@ class TypeFactoryTest
 
   MemoryManagement memory_management() const { return std::get<0>(GetParam()); }
 
-  TypeFactory& type_factory() const { return **type_factory_; }
+  TypeFactory& type_factory() const { return **type_manager_; }
 
   ThreadSafety thread_safety() const { return std::get<1>(GetParam()); }
 
@@ -97,7 +101,7 @@ class TypeFactoryTest
 
  private:
   absl::optional<MemoryManager> memory_manager_;
-  absl::optional<Shared<TypeFactory>> type_factory_;
+  absl::optional<Shared<TypeManager>> type_manager_;
 };
 
 TEST_P(TypeFactoryTest, ListType) {

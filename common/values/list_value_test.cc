@@ -44,8 +44,8 @@ class ListValueTest : public common_internal::ThreadCompatibleValueTest<> {
  public:
   template <typename... Args>
   absl::StatusOr<ListValue> NewIntListValue(Args&&... args) {
-    CEL_ASSIGN_OR_RETURN(auto builder, value_provider().NewListValueBuilder(
-                                           value_factory(), GetIntListType()));
+    CEL_ASSIGN_OR_RETURN(auto builder,
+                         value_manager().NewListValueBuilder(GetIntListType()));
     (static_cast<void>(builder->Add(std::forward<Args>(args))), ...);
     return std::move(*builder).Build();
   }
@@ -179,8 +179,8 @@ class ListValueViewTest : public common_internal::ThreadCompatibleValueTest<> {
  public:
   template <typename... Args>
   absl::StatusOr<ListValue> NewIntListValue(Args&&... args) {
-    CEL_ASSIGN_OR_RETURN(auto builder, value_provider().NewListValueBuilder(
-                                           value_factory(), GetIntListType()));
+    CEL_ASSIGN_OR_RETURN(auto builder,
+                         value_manager().NewListValueBuilder(GetIntListType()));
     (static_cast<void>(builder->Add(std::forward<Args>(args))), ...);
     return std::move(*builder).Build();
   }

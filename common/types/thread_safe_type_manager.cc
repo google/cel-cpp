@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/types/thread_safe_type_factory.h"
+#include "common/types/thread_safe_type_manager.h"
 
 #include <utility>
 
@@ -24,7 +24,7 @@
 
 namespace cel::common_internal {
 
-ListType ThreadSafeTypeFactory::CreateListTypeImpl(TypeView element) {
+ListType ThreadSafeTypeManager::CreateListTypeImpl(TypeView element) {
   {
     absl::ReaderMutexLock lock(&list_types_mutex_);
     if (auto list_type = list_types_.find(element);
@@ -37,7 +37,7 @@ ListType ThreadSafeTypeFactory::CreateListTypeImpl(TypeView element) {
   return list_types_.insert({list_type.element(), list_type}).first->second;
 }
 
-MapType ThreadSafeTypeFactory::CreateMapTypeImpl(TypeView key, TypeView value) {
+MapType ThreadSafeTypeManager::CreateMapTypeImpl(TypeView key, TypeView value) {
   {
     absl::ReaderMutexLock lock(&map_types_mutex_);
     if (auto map_type = map_types_.find(std::make_pair(key, value));
@@ -52,7 +52,7 @@ MapType ThreadSafeTypeFactory::CreateMapTypeImpl(TypeView key, TypeView value) {
       .first->second;
 }
 
-StructType ThreadSafeTypeFactory::CreateStructTypeImpl(absl::string_view name) {
+StructType ThreadSafeTypeManager::CreateStructTypeImpl(absl::string_view name) {
   {
     absl::ReaderMutexLock lock(&struct_types_mutex_);
     if (auto struct_type = struct_types_.find(name);
@@ -65,7 +65,7 @@ StructType ThreadSafeTypeFactory::CreateStructTypeImpl(absl::string_view name) {
   return struct_types_.insert({struct_type.name(), struct_type}).first->second;
 }
 
-OpaqueType ThreadSafeTypeFactory::CreateOpaqueTypeImpl(
+OpaqueType ThreadSafeTypeManager::CreateOpaqueTypeImpl(
     absl::string_view name, const SizedInputView<TypeView>& parameters) {
   if (auto opaque_type =
           ProcessLocalTypeCache::Get()->FindOpaqueType(name, parameters);

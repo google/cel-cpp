@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/value_provider.h"
-
 #include <utility>
 
 #include "absl/status/status.h"
@@ -232,10 +230,8 @@ TEST_P(ValueProviderTest, NewMapValueBuilderCoverage_DynamicStatic) {
 }
 
 TEST_P(ValueProviderTest, JsonKeyCoverage) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      value_provider().NewMapValueBuilder(
-          value_factory(), MapType(type_factory().GetDynDynMapType())));
+  ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewMapValueBuilder(MapType(
+                                         type_factory().GetDynDynMapType())));
   EXPECT_OK(builder->Put(BoolValue(true), IntValue(1)));
   EXPECT_OK(builder->Put(IntValue(1), IntValue(2)));
   EXPECT_OK(builder->Put(UintValue(2), IntValue(3)));

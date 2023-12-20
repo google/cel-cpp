@@ -17,51 +17,23 @@
 #include <utility>
 
 #include "common/memory.h"
-#include "common/type_factory.h"
 #include "common/type_provider.h"
+#include "common/types/thread_compatible_type_manager.h"
+#include "common/types/thread_safe_type_manager.h"
 
 namespace cel {
 
-namespace {
-
-// Currently `TypeManagerImpl` is really a wrapper around `TypeFactory` and
-// `TypeProvider`, so the same implementation is used regardless of thread
-// safety.
-class TypeManagerImpl final : public TypeManager {
- public:
-  TypeManagerImpl(MemoryManagerRef memory_manager,
-                  Shared<TypeFactory> type_factory,
-                  Shared<TypeProvider> type_provider)
-      : memory_manager_(memory_manager),
-        type_factory_(std::move(type_factory)),
-        type_provider_(std::move(type_provider)) {}
-
-  MemoryManagerRef GetMemoryManager() const override { return memory_manager_; }
-
-  TypeFactory& GetTypeFactory() const override { return *type_factory_; }
-
-  TypeProvider& GetTypeProvider() const override { return *type_provider_; }
-
- private:
-  MemoryManagerRef memory_manager_;
-  Shared<TypeFactory> type_factory_;
-  Shared<TypeProvider> type_provider_;
-};
-
 Shared<TypeManager> NewThreadCompatibleTypeManager(
-    MemoryManagerRef memory_manager, Shared<TypeFactory> type_factory,
-    Shared<TypeProvider> type_provider) {
-  return memory_manager.MakeShared<TypeManagerImpl>(
-      memory_manager, std::move(type_factory), std::move(type_provider));
+    MemoryManagerRef memory_manager, Shared<TypeProvider> type_provider) {
+  return memory_manager
+      .MakeShared<common_internal::ThreadCompatibleTypeManager>(
+          memory_manager, std::move(type_provider));
 }
 
 Shared<TypeManager> NewThreadSafeTypeManager(
-    MemoryManagerRef memory_manager, Shared<TypeFactory> type_factory,
-    Shared<TypeProvider> type_provider) {
-  return memory_manager.MakeShared<TypeManagerImpl>(
-      memory_manager, std::move(type_factory), std::move(type_provider));
+    MemoryManagerRef memory_manager, Shared<TypeProvider> type_provider) {
+  return memory_manager.MakeShared<common_internal::ThreadSafeTypeManager>(
+      memory_manager, std::move(type_provider));
 }
-
-}  // namespace
 
 }  // namespace cel

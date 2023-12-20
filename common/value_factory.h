@@ -16,7 +16,6 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUE_FACTORY_H_
 
 #include "common/json.h"
-#include "common/memory.h"
 #include "common/type.h"
 #include "common/type_factory.h"
 #include "common/value.h"
@@ -70,15 +69,6 @@ class ValueFactory : public virtual TypeFactory {
 
   virtual OptionalValue CreateZeroOptionalValueImpl(OptionalTypeView type) = 0;
 };
-
-// Creates a new `ValueFactory` which is thread compatible. The returned
-// `ValueFactory` and all values it creates are managed my `memory_manager`.
-Shared<ValueFactory> NewThreadCompatibleValueFactory(
-    MemoryManagerRef memory_manager);
-
-// Creates a new `ValueFactory` which is thread safe. The returned
-// `ValueFactory` and all values it creates are managed my `memory_manager`.
-Shared<ValueFactory> NewThreadSafeValueFactory(MemoryManagerRef memory_manager);
 
 }  // namespace cel
 

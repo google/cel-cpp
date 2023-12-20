@@ -55,9 +55,8 @@ class MapValueTest : public common_internal::ThreadCompatibleValueTest<> {
  public:
   template <typename... Args>
   absl::StatusOr<MapValue> NewIntDoubleMapValue(Args&&... args) {
-    CEL_ASSIGN_OR_RETURN(auto builder,
-                         value_provider().NewMapValueBuilder(
-                             value_factory(), GetIntDoubleMapType()));
+    CEL_ASSIGN_OR_RETURN(auto builder, value_manager().NewMapValueBuilder(
+                                           GetIntDoubleMapType()));
     (static_cast<void>(builder->Put(std::forward<Args>(args).first,
                                     std::forward<Args>(args).second)),
      ...);
@@ -323,9 +322,8 @@ class MapValueViewTest : public common_internal::ThreadCompatibleValueTest<> {
  public:
   template <typename... Args>
   absl::StatusOr<MapValue> NewIntDoubleMapValue(Args&&... args) {
-    CEL_ASSIGN_OR_RETURN(auto builder,
-                         value_provider().NewMapValueBuilder(
-                             value_factory(), GetIntDoubleMapType()));
+    CEL_ASSIGN_OR_RETURN(auto builder, value_manager().NewMapValueBuilder(
+                                           GetIntDoubleMapType()));
     (static_cast<void>(builder->Put(std::forward<Args>(args).first,
                                     std::forward<Args>(args).second)),
      ...);
