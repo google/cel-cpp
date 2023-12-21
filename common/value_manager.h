@@ -15,8 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUE_MANAGER_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUE_MANAGER_H_
 
-#include <utility>
-
 #include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -34,19 +32,20 @@ namespace cel {
 class ValueManager : public virtual ValueFactory, public virtual TypeManager {
  public:
   // See `ValueProvider::NewListValueBuilder`.
-  absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(ListType type) {
-    return GetValueProvider().NewListValueBuilder(*this, std::move(type));
+  absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(
+      ListTypeView type) {
+    return GetValueProvider().NewListValueBuilder(*this, type);
   }
 
   // See `ValueProvider::NewMapValueBuilder`.
-  absl::StatusOr<Unique<MapValueBuilder>> NewMapValueBuilder(MapType type) {
-    return GetValueProvider().NewMapValueBuilder(*this, std::move(type));
+  absl::StatusOr<Unique<MapValueBuilder>> NewMapValueBuilder(MapTypeView type) {
+    return GetValueProvider().NewMapValueBuilder(*this, type);
   }
 
   // See `ValueProvider::NewStructValueBuilder`.
   absl::StatusOr<Unique<StructValueBuilder>> NewStructValueBuilder(
-      StructType type) {
-    return GetValueProvider().NewStructValueBuilder(*this, std::move(type));
+      StructTypeView type) {
+    return GetValueProvider().NewStructValueBuilder(*this, type);
   }
 
   // See `ValueProvider::NewValueBuilder`.
