@@ -28,7 +28,7 @@ using ::cel::runtime_internal::CreateMissingAttributeError;
 class IdentStep : public ExpressionStepBase {
  public:
   IdentStep(absl::string_view name, int64_t expr_id)
-      : ExpressionStepBase(expr_id), name_(name) {}
+      : ExpressionStepBase(expr_id, true, /*stack_delta=*/1), name_(name) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
@@ -93,7 +93,9 @@ absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
 class SlotStep : public ExpressionStepBase {
  public:
   SlotStep(absl::string_view name, size_t slot_index, int64_t expr_id)
-      : ExpressionStepBase(expr_id), name_(name), slot_index_(slot_index) {}
+      : ExpressionStepBase(expr_id, true, /*stack_delta=*/1),
+        name_(name),
+        slot_index_(slot_index) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 

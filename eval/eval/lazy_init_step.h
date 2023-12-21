@@ -49,11 +49,20 @@ namespace google::api::expr::runtime {
 // If it is, push to stack and jump to the step that depends on the value.
 // Otherwise, run the initialization routine (which pushes the value to top of
 // stack) and set the corresponding slot.
+//
+// stack_delta should be the worst case stack requirement initializing (calling
+// the subexpression).
 std::unique_ptr<ExpressionStep> CreateCheckLazyInitStep(
-    size_t slot_index, size_t subexpression_index, int64_t expr_id);
+    size_t slot_index, size_t subexpression_index, int stack_delta,
+    int64_t expr_id);
 
 // Helper step to assign a slot value from the top of stack on initialization.
-std::unique_ptr<ExpressionStep> CreateAssignSlotStep(size_t slot_index);
+//
+// stack_delta is used along with the corresponding CheckLazyInitStep to offset
+// the worst case stack growth if the subexpression is initialized at that
+// point.
+std::unique_ptr<ExpressionStep> CreateAssignSlotStep(size_t slot_index,
+                                                     int stack_delta);
 std::unique_ptr<ExpressionStep> CreateAssignSlotAndPopStep(size_t slot_index);
 
 // Helper step to clear a slot.

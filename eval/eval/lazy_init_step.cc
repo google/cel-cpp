@@ -29,8 +29,8 @@ namespace {
 class CheckLazyInitStep : public ExpressionStepBase {
  public:
   CheckLazyInitStep(size_t slot_index, size_t subexpression_index,
-                    int64_t expr_id)
-      : ExpressionStepBase(expr_id),
+                    int stack_delta, int64_t expr_id)
+      : ExpressionStepBase(expr_id, /*comes_from_ast=*/true, stack_delta),
         slot_index_(slot_index),
         subexpression_index_(subexpression_index) {}
 
@@ -54,8 +54,10 @@ class CheckLazyInitStep : public ExpressionStepBase {
 
 class AssignSlotStep : public ExpressionStepBase {
  public:
-  explicit AssignSlotStep(size_t slot_index, bool should_pop)
-      : ExpressionStepBase(/*expr_id=*/-1, /*comes_from_ast=*/false),
+  explicit AssignSlotStep(size_t slot_index, bool should_pop, int stack_delta)
+      : ExpressionStepBase(/*expr_id=*/-1,
+                           /*comes_from_ast=*/false,
+                           /*stack_delta=*/stack_delta),
         slot_index_(slot_index),
         should_pop_(should_pop) {}
 
@@ -82,7 +84,10 @@ class AssignSlotStep : public ExpressionStepBase {
 class ClearSlotStep : public ExpressionStepBase {
  public:
   explicit ClearSlotStep(size_t slot_index, int64_t expr_id)
-      : ExpressionStepBase(expr_id), slot_index_(slot_index) {}
+      : ExpressionStepBase(expr_id,
+                           /*comes_from_ast=*/true,
+                           /*stack_delta=*/0),
+        slot_index_(slot_index) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override {
     frame->comprehension_slots().ClearSlot(slot_index_);
@@ -96,17 +101,21 @@ class ClearSlotStep : public ExpressionStepBase {
 }  // namespace
 
 std::unique_ptr<ExpressionStep> CreateCheckLazyInitStep(
-    size_t slot_index, size_t subexpression_index, int64_t expr_id) {
+    size_t slot_index, size_t subexpression_index, int stack_delta,
+    int64_t expr_id) {
   return std::make_unique<CheckLazyInitStep>(slot_index, subexpression_index,
-                                             expr_id);
+                                             stack_delta, expr_id);
 }
 
-std::unique_ptr<ExpressionStep> CreateAssignSlotStep(size_t slot_index) {
-  return std::make_unique<AssignSlotStep>(slot_index, /*should_pop=*/false);
+std::unique_ptr<ExpressionStep> CreateAssignSlotStep(size_t slot_index,
+                                                     int stack_delta) {
+  return std::make_unique<AssignSlotStep>(slot_index, /*should_pop=*/false,
+                                          stack_delta);
 }
 
 std::unique_ptr<ExpressionStep> CreateAssignSlotAndPopStep(size_t slot_index) {
-  return std::make_unique<AssignSlotStep>(slot_index, /*should_pop=*/true);
+  return std::make_unique<AssignSlotStep>(slot_index, /*should_pop=*/true,
+                                          /*stack_delta=*/-1);
 }
 
 std::unique_ptr<ExpressionStep> CreateClearSlotStep(size_t slot_index,

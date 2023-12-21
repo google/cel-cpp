@@ -115,7 +115,7 @@ class SelectStep : public ExpressionStepBase {
   SelectStep(Handle<StringValue> value, bool test_field_presence,
              int64_t expr_id, absl::string_view select_path,
              bool enable_wrapper_type_null_unboxing)
-      : ExpressionStepBase(expr_id),
+      : ExpressionStepBase(expr_id, true, /*stack_delta=*/0),
         field_value_(std::move(value)),
         field_(field_value_->ToString()),
         test_field_presence_(test_field_presence),

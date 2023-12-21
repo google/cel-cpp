@@ -31,9 +31,11 @@ TEST(IdentStepTest, TestIdentStep) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  CelExpressionFlatImpl impl(
-      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), cel::RuntimeOptions{}));
+  CelExpressionFlatImpl impl(FlatExpression(std::move(path),
+                                            /*value_stack_size=*/1,
+                                            /*comprehension_slot_count=*/0,
+                                            TypeProvider::Builtin(),
+                                            cel::RuntimeOptions{}));
 
   Activation activation;
   Arena arena;
@@ -59,9 +61,11 @@ TEST(IdentStepTest, TestIdentStepNameNotFound) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  CelExpressionFlatImpl impl(
-      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), cel::RuntimeOptions{}));
+  CelExpressionFlatImpl impl(FlatExpression(std::move(path),
+                                            /*value_stack_size=*/1,
+                                            /*comprehension_slot_count=*/0,
+                                            TypeProvider::Builtin(),
+                                            cel::RuntimeOptions{}));
 
   Activation activation;
   Arena arena;
@@ -86,6 +90,8 @@ TEST(IdentStepTest, DisableMissingAttributeErrorsOK) {
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
   CelExpressionFlatImpl impl(FlatExpression(std::move(path),
+                                            /*value_stack_size=*/1,
+
                                             /*comprehension_slot_count=*/0,
                                             TypeProvider::Builtin(), options));
 
@@ -126,6 +132,8 @@ TEST(IdentStepTest, TestIdentStepMissingAttributeErrors) {
   options.enable_missing_attribute_errors = true;
 
   CelExpressionFlatImpl impl(FlatExpression(std::move(path),
+                                            /*value_stack_size=*/1,
+
                                             /*comprehension_slot_count=*/0,
                                             TypeProvider::Builtin(), options));
 
@@ -166,6 +174,8 @@ TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   CelExpressionFlatImpl impl(FlatExpression(std::move(path),
+                                            /*value_stack_size=*/1,
+
                                             /*comprehension_slot_count=*/0,
                                             TypeProvider::Builtin(), options));
 

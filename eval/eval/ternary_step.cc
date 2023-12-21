@@ -28,7 +28,8 @@ inline constexpr size_t kTernaryStepFalse = 2;
 class TernaryStep : public ExpressionStepBase {
  public:
   // Constructs FunctionStep that uses overloads specified.
-  explicit TernaryStep(int64_t expr_id) : ExpressionStepBase(expr_id) {}
+  explicit TernaryStep(int64_t expr_id)
+      : ExpressionStepBase(expr_id, true, /*stack_delta=*/-2) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 };

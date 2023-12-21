@@ -30,7 +30,8 @@ class LogicalOpStep : public ExpressionStepBase {
 
   // Constructs FunctionStep that uses overloads specified.
   LogicalOpStep(OpType op_type, int64_t expr_id)
-      : ExpressionStepBase(expr_id), op_type_(op_type) {
+      : ExpressionStepBase(expr_id, true, /*stack_delta=*/-1),
+        op_type_(op_type) {
     shortcircuit_ = (op_type_ == OpType::OR);
   }
 

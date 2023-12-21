@@ -49,9 +49,9 @@ class ListKeysStepTest : public testing::Test {
       options.unknown_processing =
           cel::UnknownProcessingOptions::kAttributeAndFunction;
     }
-    return std::make_unique<CelExpressionFlatImpl>(
-        FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                       TypeProvider::Builtin(), options));
+    return std::make_unique<CelExpressionFlatImpl>(FlatExpression(
+        std::move(path), /*value_stack_size=*/2, /*comprehension_slot_count=*/0,
+        TypeProvider::Builtin(), options));
   }
 
  private:

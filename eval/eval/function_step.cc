@@ -135,7 +135,7 @@ class AbstractFunctionStep : public ExpressionStepBase {
   // Constructs FunctionStep that uses overloads specified.
   AbstractFunctionStep(const std::string& name, size_t num_arguments,
                        int64_t expr_id)
-      : ExpressionStepBase(expr_id),
+      : ExpressionStepBase(expr_id, true, /*stack_delta=*/1 - num_arguments),
         name_(name),
         num_arguments_(num_arguments) {}
 

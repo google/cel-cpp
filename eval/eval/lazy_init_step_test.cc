@@ -46,13 +46,13 @@ using cel::internal::StatusIs;
 class LazyInitStepTest : public testing::Test {
  private:
   // arbitrary numbers enough for basic tests.
-  static constexpr size_t kValueStack = 5;
+  static constexpr size_t kValueStackSize = 5;
   static constexpr size_t kComprehensionSlotCount = 3;
 
  public:
   LazyInitStepTest()
       : value_factory_(TypeProvider::Builtin(), ProtoMemoryManagerRef(&arena_)),
-        evaluator_state_(kValueStack, kComprehensionSlotCount,
+        evaluator_state_(kValueStackSize, kComprehensionSlotCount,
                          value_factory_.get()) {}
 
  protected:
@@ -70,7 +70,7 @@ TEST_F(LazyInitStepTest, CreateCheckInitStepDoesInit) {
   ExecutionPath subpath;
 
   path.push_back(CreateCheckLazyInitStep(/*slot_index=*/0,
-                                         /*subexpression_index=*/1, -1));
+                                         /*subexpression_index=*/1, 1, -1));
 
   ASSERT_OK_AND_ASSIGN(
       subpath.emplace_back(),
@@ -91,11 +91,12 @@ TEST_F(LazyInitStepTest, CreateCheckInitStepSkipInit) {
   ExecutionPath subpath;
 
   path.push_back(CreateCheckLazyInitStep(/*slot_index=*/0,
-                                         /*subexpression_index=*/1, -1));
+                                         /*subexpression_index=*/1,
+                                         /*stack_requirement=*/1, -1));
   // This is the expected usage, but in this test we are just depending on the
   // fact that these don't change the stack and fit the program layout
   // requirements.
-  path.push_back(CreateAssignSlotStep(/*slot_index=*/0));
+  path.push_back(CreateAssignSlotStep(/*slot_index=*/0, 1));
   path.push_back(CreateClearSlotStep(/*slot_index=*/0, -1));
 
   ASSERT_OK_AND_ASSIGN(
@@ -116,7 +117,7 @@ TEST_F(LazyInitStepTest, CreateCheckInitStepSkipInit) {
 TEST_F(LazyInitStepTest, CreateAssignSlotStepBasic) {
   ExecutionPath path;
 
-  path.push_back(CreateAssignSlotStep(0));
+  path.push_back(CreateAssignSlotStep(0, 1));
 
   ExecutionFrame frame(path, activation_, runtime_options_, evaluator_state_);
   frame.comprehension_slots().ClearSlot(0);
@@ -156,7 +157,7 @@ TEST_F(LazyInitStepTest, CreateAssignSlotAndPopStepBasic) {
 TEST_F(LazyInitStepTest, CreateAssignSlotStepStackUnderflow) {
   ExecutionPath path;
 
-  path.push_back(CreateAssignSlotStep(0));
+  path.push_back(CreateAssignSlotStep(0, 1));
 
   ExecutionFrame frame(path, activation_, runtime_options_, evaluator_state_);
   frame.comprehension_slots().ClearSlot(0);

@@ -9,8 +9,11 @@ namespace google::api::expr::runtime {
 
 class ExpressionStepBase : public ExpressionStep {
  public:
-  explicit ExpressionStepBase(int64_t expr_id, bool comes_from_ast = true)
-      : id_(expr_id), comes_from_ast_(comes_from_ast) {}
+  explicit ExpressionStepBase(int64_t expr_id, bool comes_from_ast = true,
+                              int stack_delta = 1)
+      : id_(expr_id),
+        stack_delta_(stack_delta),
+        comes_from_ast_(comes_from_ast) {}
 
   // Non-copyable
   ExpressionStepBase(const ExpressionStepBase&) = delete;
@@ -18,6 +21,8 @@ class ExpressionStepBase : public ExpressionStep {
 
   // Returns corresponding expression object ID.
   int64_t id() const override { return id_; }
+
+  int stack_delta() const override { return stack_delta_; }
 
   // Returns if the execution step comes from AST.
   bool ComesFromAst() const override { return comes_from_ast_; }
@@ -28,6 +33,7 @@ class ExpressionStepBase : public ExpressionStep {
 
  private:
   int64_t id_;
+  int stack_delta_;
   bool comes_from_ast_;
 };
 

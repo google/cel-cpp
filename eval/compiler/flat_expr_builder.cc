@@ -16,6 +16,7 @@
 
 #include "eval/compiler/flat_expr_builder.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
@@ -117,6 +118,28 @@ class IndexManager {
   size_t next_free_slot_;
   size_t max_slot_count_;
 };
+
+// Estimate the maximum stack requirements for a subexpression.
+//
+// Maintain a running sum of the program Steps reported estimated stack change
+// upper bound.
+//
+// Assumptions: Jump steps and Call steps complicate this, but this should still
+// be valid for supported CEL expressions.
+// - While abstractly a Jump may invalidate this algorithm (e.g. deterministic
+//   jump over a stack shrinking step), the expression builder should not create
+//   programs where this is possible.
+// - Call steps are currently limited to lazy initializing cel.bind expressions,
+//   and report the estimated stack requirements for the called subexpression.
+size_t EstimateStackRequirement(const ExecutionPath& execution_path) {
+  int stack_estimate = 0;
+  int stack_limit = 1;
+  for (const auto& step : execution_path) {
+    stack_estimate += step->stack_delta();
+    stack_limit = std::max(stack_limit, stack_estimate);
+  }
+  return static_cast<size_t>(stack_limit);
+}
 
 // A convenience wrapper for offset-calculating logic.
 class Jump {
@@ -404,6 +427,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   struct SlotLookupResult {
     int slot;
     int subexpression;
+    int stack_requirement;
   };
 
   // Helper to lookup a variable mapped to a slot.
@@ -428,10 +452,12 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
             record.comprehension->accu_var() == path) {
           int slot = record.accu_slot;
           int subexpression = -1;
+          int stack_requirement = -1;
           if (record.should_lazy_eval) {
             subexpression = record.subexpression;
+            stack_requirement = record.subexpression_stack_requirement;
           }
-          return {slot, subexpression};
+          return {slot, subexpression, stack_requirement};
         }
       }
     }
@@ -490,9 +516,9 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     SlotLookupResult slot = LookupSlot(path);
 
     if (slot.subexpression >= 0) {
-      AddStep(
-          CreateCheckLazyInitStep(slot.slot, slot.subexpression, expr->id()));
-      AddStep(CreateAssignSlotStep(slot.slot));
+      AddStep(CreateCheckLazyInitStep(slot.slot, slot.subexpression,
+                                      slot.stack_requirement, expr->id()));
+      AddStep(CreateAssignSlotStep(slot.slot, (1 - slot.stack_requirement)));
       return;
     } else if (slot.slot >= 0) {
       AddStep(CreateIdentStepForSlot(*ident_expr, slot.slot, expr->id()));
@@ -728,6 +754,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     comprehension_stack_.push_back(
         {expr, comprehension, iter_slot, accu_slot,
          /*subexpression=*/-1,
+         /*subexpression_stack_requirement=*/-1,
          IsOptimizableListAppend(comprehension,
                                  options_.enable_comprehension_list_append),
          is_bind,
@@ -980,6 +1007,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     size_t accu_slot;
     // -1 indicates this shouldn't be used.
     int subexpression;
+    int subexpression_stack_requirement;
     bool is_optimizable_list_append;
     bool is_optimizable_bind;
     bool iter_var_in_scope;
@@ -1012,6 +1040,8 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     // off by one since mainline expression is handled separately.
     size_t id = expression_table_.size();
     record.subexpression = id;
+    record.subexpression_stack_requirement =
+        static_cast<int>(EstimateStackRequirement(expression_table_.back()));
 
     record.visitor->MarkAccuInitExtracted();
 
@@ -1340,11 +1370,13 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
     (*issues) = issue_collector.ExtractIssues();
   }
 
+  size_t stack_limit = EstimateStackRequirement(execution_path);
+
   std::vector<ExecutionPathView> subexpressions =
       FlattenExpressionTable(expression_table, execution_path);
 
   return FlatExpression(std::move(execution_path), std::move(subexpressions),
-                        visitor.slot_count(),
+                        stack_limit, visitor.slot_count(),
                         type_registry_.GetComposedTypeProvider(), options_);
 }
 

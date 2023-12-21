@@ -32,7 +32,7 @@ inline constexpr size_t kRegexMatchStepSubject = 0;
 class RegexMatchStep final : public ExpressionStepBase {
  public:
   RegexMatchStep(int64_t expr_id, std::shared_ptr<const RE2> re2)
-      : ExpressionStepBase(expr_id, /*comes_from_ast=*/true),
+      : ExpressionStepBase(expr_id, /*comes_from_ast=*/true, /*stack_delta=*/0),
         re2_(std::move(re2)) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override {

@@ -1,6 +1,7 @@
 #include "eval/eval/function_step.h"
 
 #include <cmath>
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <utility>
@@ -217,10 +218,11 @@ class FunctionStepTest
   std::unique_ptr<CelExpressionFlatImpl> GetExpression(ExecutionPath&& path) {
     cel::RuntimeOptions options;
     options.unknown_processing = GetParam();
-
-    return std::make_unique<CelExpressionFlatImpl>(
-        FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                       TypeProvider::Builtin(), options));
+    size_t value_stack_size = path.size();
+    return std::make_unique<CelExpressionFlatImpl>(FlatExpression(
+        std::move(path),
+        /*value_stack_size=*/value_stack_size,
+        /*comprehension_slot_count=*/0, TypeProvider::Builtin(), options));
   }
 };
 
@@ -563,10 +565,11 @@ class FunctionStepTestUnknowns
   std::unique_ptr<CelExpressionFlatImpl> GetExpression(ExecutionPath&& path) {
     cel::RuntimeOptions options;
     options.unknown_processing = GetParam();
-
-    return std::make_unique<CelExpressionFlatImpl>(
-        FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                       TypeProvider::Builtin(), options));
+    size_t stack_size = path.size();
+    return std::make_unique<CelExpressionFlatImpl>(FlatExpression(
+        std::move(path),
+        /*value_stack_size=*/stack_size,
+        /*comprehension_slot_count=*/0, TypeProvider::Builtin(), options));
   }
 };
 
@@ -702,6 +705,8 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
   CelExpressionFlatImpl impl(FlatExpression(std::move(path),
+                                            /*value_stack_size=*/1,
+
                                             /*comprehension_slot_count=*/0,
                                             TypeProvider::Builtin(), options));
 
@@ -749,6 +754,7 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
   CelExpressionFlatImpl impl(FlatExpression(std::move(path),
+                                            /*value_stack_size=*/3,
                                             /*comprehension_slot_count=*/0,
                                             TypeProvider::Builtin(), options));
 
@@ -796,6 +802,7 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
   CelExpressionFlatImpl impl(FlatExpression(std::move(path),
+                                            /*value_stack_size=*/3,
                                             /*comprehension_slot_count=*/0,
                                             TypeProvider::Builtin(), options));
 
@@ -838,6 +845,7 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
   CelExpressionFlatImpl impl(FlatExpression(std::move(path),
+                                            /*value_stack_size=*/2,
                                             /*comprehension_slot_count=*/0,
                                             TypeProvider::Builtin(), options));
 
@@ -925,6 +933,7 @@ TEST(FunctionStepStrictnessTest,
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
   CelExpressionFlatImpl impl(FlatExpression(std::move(path),
+                                            /*value_stack_size=*/2,
                                             /*comprehension_slot_count=*/0,
                                             TypeProvider::Builtin(), options));
   Activation activation;
@@ -954,6 +963,8 @@ TEST(FunctionStepStrictnessTest, IfFunctionNonStrictAndGivenUnknownInvokesIt) {
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
   CelExpressionFlatImpl impl(FlatExpression(std::move(path),
+                                            /*value_stack_size=*/2,
+
                                             /*comprehension_slot_count=*/0,
                                             TypeProvider::Builtin(), options));
   Activation activation;

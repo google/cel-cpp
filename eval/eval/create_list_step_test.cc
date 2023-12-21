@@ -54,11 +54,11 @@ absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
   if (enable_unknowns) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
-  CelExpressionFlatImpl cel_expr(
-
-      FlatExpression(std::move(path),
-                     /*comprehension_slot_count=*/0, TypeProvider::Builtin(),
-                     options));
+  size_t stack_size = path.size();
+  CelExpressionFlatImpl cel_expr(FlatExpression(
+      std::move(path),
+      /*value_stack_size=*/stack_size,
+      /*comprehension_slot_count=*/0, TypeProvider::Builtin(), options));
   Activation activation;
 
   return cel_expr.Evaluate(activation, arena);
@@ -95,9 +95,10 @@ absl::StatusOr<CelValue> RunExpressionWithCelValues(
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
 
-  CelExpressionFlatImpl cel_expr(
-      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), options));
+  CelExpressionFlatImpl cel_expr(FlatExpression(
+      std::move(path),
+      /*value_stack_size=*/values.size(),
+      /*comprehension_slot_count=*/0, TypeProvider::Builtin(), options));
 
   return cel_expr.Evaluate(activation, arena);
 }
@@ -118,9 +119,11 @@ TEST(CreateListStepTest, TestCreateListStackUnderflow) {
                        CreateCreateListStep(create_list, dummy_expr.id()));
   path.push_back(std::move(step0));
 
-  CelExpressionFlatImpl cel_expr(
-      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), cel::RuntimeOptions{}));
+  CelExpressionFlatImpl cel_expr(FlatExpression(std::move(path),
+                                                /*value_stack_size=*/1,
+                                                /*comprehension_slot_count=*/0,
+                                                TypeProvider::Builtin(),
+                                                cel::RuntimeOptions{}));
   Activation activation;
 
   google::protobuf::Arena arena;

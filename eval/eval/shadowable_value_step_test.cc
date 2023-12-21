@@ -35,9 +35,11 @@ absl::StatusOr<CelValue> RunShadowableExpression(std::string identifier,
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  CelExpressionFlatImpl impl(
-      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), cel::RuntimeOptions{}));
+  CelExpressionFlatImpl impl(FlatExpression(std::move(path),
+                                            /*stack_size=*/1,
+                                            /*comprehension_slot_count=*/0,
+                                            TypeProvider::Builtin(),
+                                            cel::RuntimeOptions{}));
   return impl.Evaluate(activation, arena);
 }
 

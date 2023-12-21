@@ -16,7 +16,7 @@ class ShadowableValueStep : public ExpressionStepBase {
  public:
   ShadowableValueStep(std::string identifier, cel::Handle<cel::Value> value,
                       int64_t expr_id)
-      : ExpressionStepBase(expr_id),
+      : ExpressionStepBase(expr_id, true, /*stack_delta=*/1),
         identifier_(std::move(identifier)),
         value_(std::move(value)) {}
 
