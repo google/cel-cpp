@@ -21,6 +21,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -143,7 +144,28 @@ class ExecutionFrame {
                            activation_.GetMissingAttributes(),
                            state_.value_factory()),
         max_iterations_(options_.comprehension_max_iterations),
-        iterations_(0) {}
+        iterations_(0),
+        subexpressions_(),
+        sub_frame_(absl::nullopt) {}
+
+  ExecutionFrame(absl::Span<const ExecutionPathView> subexpressions,
+                 const cel::ActivationInterface& activation,
+                 const cel::RuntimeOptions& options,
+                 FlatExpressionEvaluatorState& state)
+      : pc_(0UL),
+        execution_path_(subexpressions[0]),
+        activation_(activation),
+        options_(options),
+        state_(state),
+        attribute_utility_(activation_.GetUnknownAttributes(),
+                           activation_.GetMissingAttributes(),
+                           state_.value_factory()),
+        max_iterations_(options_.comprehension_max_iterations),
+        iterations_(0),
+        subexpressions_(subexpressions),
+        sub_frame_(absl::nullopt) {
+    ABSL_DCHECK(!subexpressions.empty());
+  }
 
   // Returns next expression to evaluate.
   const ExpressionStep* Next();
@@ -151,7 +173,10 @@ class ExecutionFrame {
   // Evaluate the execution frame to completion.
   absl::StatusOr<cel::Handle<cel::Value>> Evaluate(EvaluationListener listener);
 
-  // Intended for use only in conditionals.
+  // Intended for use in builtin shortcutting operations.
+  //
+  // Offset applies after normal pc increment. For example, JumpTo(0) is a
+  // no-op, JumpTo(1) skips the expected next step.
   absl::Status JumpTo(int offset) {
     int new_pc = static_cast<int>(pc_) + offset;
     if (new_pc < 0 || new_pc > static_cast<int>(execution_path_.size())) {
@@ -162,6 +187,28 @@ class ExecutionFrame {
     }
     pc_ = static_cast<size_t>(new_pc);
     return absl::OkStatus();
+  }
+
+  // Move pc to a subexpression.
+  //
+  // Unlike a `Call` in a programming language, the subexpression is evaluated
+  // in the same context as the caller (e.g. no stack isolation or scope change)
+  //
+  // Only intended for use in built-in notion of lazily evaluated
+  // subexpressions.
+  void Call(int return_pc_offset, size_t subexpression_index) {
+    ABSL_DCHECK(!sub_frame_.has_value());
+    ABSL_DCHECK_LT(subexpression_index, subexpressions_.size());
+    ExecutionPathView subexpression = subexpressions_[subexpression_index];
+    ABSL_DCHECK(subexpression != execution_path_);
+    int return_pc = static_cast<int>(pc_) + return_pc_offset;
+    // return pc == size() is supported (a tail call).
+    ABSL_DCHECK_GE(return_pc, 0);
+    ABSL_DCHECK_LE(return_pc, static_cast<int>(execution_path_.size()));
+    sub_frame_ = SubFrame{static_cast<size_t>(return_pc),
+                          value_stack().size() + 1, execution_path_};
+    pc_ = 0UL;
+    execution_path_ = subexpression;
   }
 
   EvaluatorStack& value_stack() { return state_.value_stack(); }
@@ -229,6 +276,12 @@ class ExecutionFrame {
   }
 
  private:
+  struct SubFrame {
+    size_t return_pc;
+    size_t expected_stack_size;
+    ExecutionPathView return_expression;
+  };
+
   size_t pc_;  // pc_ - Program Counter. Current position on execution path.
   ExecutionPathView execution_path_;
   const cel::ActivationInterface& activation_;
@@ -237,6 +290,8 @@ class ExecutionFrame {
   AttributeUtility attribute_utility_;
   const int max_iterations_;
   int iterations_;
+  absl::Span<const ExecutionPathView> subexpressions_;
+  absl::optional<SubFrame> sub_frame_;
 };
 
 // A flattened representation of the input CEL AST.
@@ -283,6 +338,7 @@ class FlatExpression {
   size_t comprehension_slots_size_;
   const cel::TypeProvider& type_provider_;
   cel::RuntimeOptions options_;
+  std::vector<ExecutionPath> subexpressions_;
 };
 
 }  // namespace google::api::expr::runtime

@@ -56,6 +56,7 @@
 #include "eval/eval/function_step.h"
 #include "eval/eval/ident_step.h"
 #include "eval/eval/jump_step.h"
+#include "eval/eval/lazy_init_step.h"
 #include "eval/eval/logic_step.h"
 #include "eval/eval/select_step.h"
 #include "eval/eval/shadowable_value_step.h"
@@ -1155,7 +1156,7 @@ void ComprehensionVisitor::PostVisitArgTrivial(
       break;
     }
     case cel::ast_internal::ACCU_INIT: {
-      visitor_->AddStep(CreateSetSlotVarStep(accu_slot_, expr->id()));
+      visitor_->AddStep(CreateAssignSlotAndPopStep(accu_slot_));
       break;
     }
     case cel::ast_internal::LOOP_CONDITION: {
@@ -1165,7 +1166,7 @@ void ComprehensionVisitor::PostVisitArgTrivial(
       break;
     }
     case cel::ast_internal::RESULT: {
-      visitor_->AddStep(CreateClearSlotVarStep(accu_slot_, expr->id()));
+      visitor_->AddStep(CreateClearSlotStep(accu_slot_, expr->id()));
       break;
     }
   }

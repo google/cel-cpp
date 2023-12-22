@@ -41,6 +41,7 @@ cc_library(
         "//runtime:activation_interface",
         "//runtime:managed_value_factory",
         "//runtime:runtime_options",
+        "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -853,5 +854,34 @@ cc_test(
         "//internal:testing",
         "//runtime:activation",
         "//runtime:runtime_options",
+    ],
+)
+
+cc_library(
+    name = "lazy_init_step",
+    srcs = ["lazy_init_step.cc"],
+    hdrs = ["lazy_init_step.h"],
+    deps = [
+        ":evaluator_core",
+        ":expression_step_base",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+cc_test(
+    name = "lazy_init_step_test",
+    srcs = ["lazy_init_step_test.cc"],
+    deps = [
+        ":const_value_step",
+        ":evaluator_core",
+        ":lazy_init_step",
+        "//base:data",
+        "//extensions/protobuf:memory_manager",
+        "//internal:testing",
+        "//runtime:activation",
+        "//runtime:managed_value_factory",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/status",
+        "@com_google_protobuf//:protobuf",
     ],
 )

@@ -55,15 +55,6 @@ std::unique_ptr<ExpressionStep> CreateComprehensionFinishStep(size_t accu_slot,
 // context for the comprehension.
 std::unique_ptr<ExpressionStep> CreateComprehensionInitStep(int64_t expr_id);
 
-// Creates a step that pops the given variable from the stack and assigns it to
-// a slot.
-std::unique_ptr<ExpressionStep> CreateSetSlotVarStep(size_t slot_index,
-                                                     int64_t expr_id);
-
-// Creates a step that clears a slot variable.
-std::unique_ptr<ExpressionStep> CreateClearSlotVarStep(size_t slot_index,
-                                                       int64_t expr_id);
-
 }  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_EVAL_COMPREHENSION_STEP_H_

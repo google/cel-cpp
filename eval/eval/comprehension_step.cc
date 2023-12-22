@@ -127,42 +127,6 @@ absl::Status ComprehensionInitStep::Evaluate(ExecutionFrame* frame) const {
   return absl::OkStatus();
 }
 
-class SetSlotVarStep : public ExpressionStepBase {
- public:
-  SetSlotVarStep(size_t slot_index, int64_t expr_id)
-      : ExpressionStepBase(expr_id, false), slot_index_(slot_index) {}
-
-  absl::Status Evaluate(ExecutionFrame* frame) const override {
-    if (!frame->value_stack().HasEnough(1)) {
-      return absl::Status(absl::StatusCode::kInternal,
-                          "Value stack underflow in accu_init");
-    }
-    frame->comprehension_slots().Set(slot_index_, frame->value_stack().Peek(),
-                                     frame->value_stack().PeekAttribute());
-
-    frame->value_stack().Pop(1);
-
-    return absl::OkStatus();
-  }
-
- private:
-  size_t slot_index_;
-};
-
-class ClearSlotVarStep : public ExpressionStepBase {
- public:
-  ClearSlotVarStep(size_t slot_index, int64_t expr_id)
-      : ExpressionStepBase(expr_id), slot_index_(slot_index) {}
-
-  absl::Status Evaluate(ExecutionFrame* frame) const override {
-    frame->comprehension_slots().ClearSlot(slot_index_);
-    return absl::OkStatus();
-  }
-
- private:
-  size_t slot_index_;
-};
-
 }  // namespace
 
 // Stack variables during comprehension evaluation:
@@ -347,16 +311,6 @@ std::unique_ptr<ExpressionStep> CreateComprehensionFinishStep(size_t accu_slot,
 
 std::unique_ptr<ExpressionStep> CreateComprehensionInitStep(int64_t expr_id) {
   return std::make_unique<ComprehensionInitStep>(expr_id);
-}
-
-std::unique_ptr<ExpressionStep> CreateSetSlotVarStep(size_t slot_index,
-                                                     int64_t expr_id) {
-  return std::make_unique<SetSlotVarStep>(slot_index, expr_id);
-}
-
-std::unique_ptr<ExpressionStep> CreateClearSlotVarStep(size_t slot_index,
-                                                       int64_t expr_id) {
-  return std::make_unique<ClearSlotVarStep>(slot_index, expr_id);
 }
 
 }  // namespace google::api::expr::runtime
