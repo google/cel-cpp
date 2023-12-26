@@ -360,6 +360,8 @@ cc_library(
             "values/*_test.cc",
         ],
     ) + [
+        "list_value_provider.cc",
+        "map_value_provider.cc",
         "value_factory.cc",
         "value_interface.cc",
         "value_manager.cc",
