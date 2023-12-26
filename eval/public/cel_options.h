@@ -157,6 +157,9 @@ struct InterpreterOptions {
   // Note: implementation in progress -- please consult the CEL team before
   // enabling in an existing environment.
   bool enable_select_optimization = false;
+
+  // TODO(uncreated-issue/63): Do not use -- implementation in progress.
+  bool enable_lazy_bind_initialization = false;
 };
 // LINT.ThenChange(//depot/google3/runtime/runtime_options.h)
 

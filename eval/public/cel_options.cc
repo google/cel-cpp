@@ -19,26 +19,25 @@
 namespace google::api::expr::runtime {
 
 cel::RuntimeOptions ConvertToRuntimeOptions(const InterpreterOptions& options) {
-  return cel::RuntimeOptions{
-      /*.container=*/"",
-      options.unknown_processing,
-      options.enable_missing_attribute_errors,
-      options.enable_timestamp_duration_overflow_errors,
-      options.short_circuiting,
-      options.enable_comprehension,
-      options.comprehension_max_iterations,
-      options.enable_comprehension_list_append,
-      options.enable_regex,
-      options.regex_max_program_size,
-      options.enable_string_conversion,
-      options.enable_string_concat,
-      options.enable_list_concat,
-      options.enable_list_contains,
-      options.fail_on_warnings,
-      options.enable_qualified_type_identifiers,
-      options.enable_heterogeneous_equality,
-      options.enable_empty_wrapper_null_unboxing,
-  };
+  return cel::RuntimeOptions{/*.container=*/"",
+                             options.unknown_processing,
+                             options.enable_missing_attribute_errors,
+                             options.enable_timestamp_duration_overflow_errors,
+                             options.short_circuiting,
+                             options.enable_comprehension,
+                             options.comprehension_max_iterations,
+                             options.enable_comprehension_list_append,
+                             options.enable_regex,
+                             options.regex_max_program_size,
+                             options.enable_string_conversion,
+                             options.enable_string_concat,
+                             options.enable_list_concat,
+                             options.enable_list_contains,
+                             options.fail_on_warnings,
+                             options.enable_qualified_type_identifiers,
+                             options.enable_heterogeneous_equality,
+                             options.enable_empty_wrapper_null_unboxing,
+                             options.enable_lazy_bind_initialization};
 }
 
 }  // namespace google::api::expr::runtime

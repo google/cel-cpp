@@ -154,6 +154,7 @@ cc_test(
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",
         "//eval/public:cel_expression",
+        "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//eval/public/testing:matchers",
         "//internal:benchmark",

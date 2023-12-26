@@ -128,6 +128,9 @@ struct RuntimeOptions {
   // that will result in a Null cel value, as opposed to returning the
   // cel representation of the proto defined default int64_t: 0.
   bool enable_empty_wrapper_null_unboxing = false;
+
+  // TODO(uncreated-issue/63): Do not use -- implementation in progress.
+  bool enable_lazy_bind_initialization = false;
 };
 // LINT.ThenChange(//depot/google3/eval/public/cel_options.h)
 

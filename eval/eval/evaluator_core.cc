@@ -22,6 +22,7 @@
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/utility/utility.h"
@@ -99,8 +100,9 @@ absl::StatusOr<cel::Handle<cel::Value>> ExecutionFrame::Evaluate(
 
   size_t final_stack_size = value_stack().size();
   if (final_stack_size != initial_stack_size + 1 || final_stack_size == 0) {
-    return absl::Status(absl::StatusCode::kInternal,
-                        "Stack error during evaluation");
+    return absl::InternalError(absl::StrCat(
+        "Stack error during evaluation: expected=", initial_stack_size + 1,
+        ", actual=", final_stack_size));
   }
   cel::Handle<cel::Value> value = value_stack().Peek();
   value_stack().Pop(1);
@@ -124,7 +126,7 @@ absl::StatusOr<cel::Handle<cel::Value>> FlatExpression::EvaluateWithCallback(
     FlatExpressionEvaluatorState& state) const {
   state.Reset();
 
-  ExecutionFrame frame(path_, activation, options_, state);
+  ExecutionFrame frame(subexpressions_, activation, options_, state);
 
   return frame.Evaluate(std::move(listener));
 }

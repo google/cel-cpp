@@ -22,6 +22,7 @@
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_expression.h"
+#include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/testing/matchers.h"
 #include "extensions/bindings_ext.h"
@@ -38,6 +39,7 @@ namespace {
 using ::google::api::expr::parser::ParseWithMacros;
 using ::google::api::expr::runtime::Activation;
 using ::google::api::expr::runtime::CelValue;
+using ::google::api::expr::runtime::InterpreterOptions;
 using ::google::api::expr::runtime::test::CelValueMatcher;
 using ::google::api::expr::runtime::test::IsCelBool;
 using ::google::api::expr::runtime::test::IsCelString;
@@ -106,12 +108,20 @@ const std::vector<BenchmarkCase>& BenchmarkCases() {
                 )
               )))",
            IsCelBool(true)},
-          {"ternary_dependant",
+          {"ternary_depends_on_bind",
            R"(
             cel.bind(
               a,
               "ab",
-              (false || a.startsWith("c")) ? a : "cd"
+              (true && a.startsWith("c")) ? a : "cd"
+            ))",
+           IsCelString("cd")},
+          {"ternary_does_not_depend_on_bind",
+           R"(
+            cel.bind(
+              a,
+              "ab",
+              (false && a.startsWith("c")) ? a : "cd"
             ))",
            IsCelString("cd")},
       });
@@ -134,7 +144,10 @@ TEST_P(BindingsBenchmarkTest, CheckBenchmarkCaseWorks) {
   ASSERT_OK_AND_ASSIGN(
       auto expr, ParseWithMacros(benchmark.expression, all_macros, "<input>"));
 
-  auto builder = google::api::expr::runtime::CreateCelExpressionBuilder();
+  InterpreterOptions options;
+  options.enable_lazy_bind_initialization = true;
+  auto builder =
+      google::api::expr::runtime::CreateCelExpressionBuilder(options);
 
   ASSERT_OK(google::api::expr::runtime::RegisterBuiltinFunctions(
       builder->GetRegistry()));
@@ -157,7 +170,10 @@ void RunBenchmark(const BenchmarkCase& benchmark, benchmark::State& state) {
   ASSERT_OK_AND_ASSIGN(
       auto expr, ParseWithMacros(benchmark.expression, all_macros, "<input>"));
 
-  auto builder = google::api::expr::runtime::CreateCelExpressionBuilder();
+  InterpreterOptions options;
+  options.enable_lazy_bind_initialization = true;
+  auto builder =
+      google::api::expr::runtime::CreateCelExpressionBuilder(options);
 
   ASSERT_OK(google::api::expr::runtime::RegisterBuiltinFunctions(
       builder->GetRegistry()));
@@ -196,8 +212,11 @@ void BM_BindInsideLoop(benchmark::State& state) {
 void BM_BindLoopBind(benchmark::State& state) {
   RunBenchmark(BenchmarkCases()[6], state);
 }
-void BM_TernaryDependant(benchmark::State& state) {
+void BM_TernaryDependsOnBind(benchmark::State& state) {
   RunBenchmark(BenchmarkCases()[7], state);
+}
+void BM_TernaryDoesNotDependOnBind(benchmark::State& state) {
+  RunBenchmark(BenchmarkCases()[8], state);
 }
 
 BENCHMARK(BM_Simple);
@@ -207,7 +226,8 @@ BENCHMARK(BM_NestedDefinition);
 BENCHMARK(BM_BindOusideLoop);
 BENCHMARK(BM_BindInsideLoop);
 BENCHMARK(BM_BindLoopBind);
-BENCHMARK(BM_TernaryDependant);
+BENCHMARK(BM_TernaryDependsOnBind);
+BENCHMARK(BM_TernaryDoesNotDependOnBind);
 
 INSTANTIATE_TEST_SUITE_P(BindingsBenchmarkTest, BindingsBenchmarkTest,
                          ::testing::ValuesIn(BenchmarkCases()));

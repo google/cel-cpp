@@ -304,6 +304,18 @@ class FlatExpression {
                  const cel::TypeProvider& type_provider,
                  const cel::RuntimeOptions& options)
       : path_(std::move(path)),
+        subexpressions_({path_}),
+        comprehension_slots_size_(comprehension_slots_size),
+        type_provider_(type_provider),
+        options_(options) {}
+
+  FlatExpression(ExecutionPath path,
+                 std::vector<ExecutionPathView> subexpressions,
+                 size_t comprehension_slots_size,
+                 const cel::TypeProvider& type_provider,
+                 const cel::RuntimeOptions& options)
+      : path_(std::move(path)),
+        subexpressions_(std::move(subexpressions)),
         comprehension_slots_size_(comprehension_slots_size),
         type_provider_(type_provider),
         options_(options) {}
@@ -335,10 +347,10 @@ class FlatExpression {
 
  private:
   ExecutionPath path_;
+  std::vector<ExecutionPathView> subexpressions_;
   size_t comprehension_slots_size_;
   const cel::TypeProvider& type_provider_;
   cel::RuntimeOptions options_;
-  std::vector<ExecutionPath> subexpressions_;
 };
 
 }  // namespace google::api::expr::runtime

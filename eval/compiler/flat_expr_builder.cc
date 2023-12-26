@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <iterator>
 #include <memory>
 #include <stack>
 #include <string>
@@ -26,6 +27,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/algorithm/container.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_map.h"
@@ -86,6 +88,9 @@ using ::cel::runtime_internal::IssueCollector;
 
 // Forward declare to resolve circular dependency for short_circuiting visitors.
 class FlatExprVisitor;
+
+// Representation of extracted subexpressions.
+using ExpressionTable = std::vector<ExecutionPath>;
 
 // Helper for bookkeeping variables mapped to indexes.
 class IndexManager {
@@ -200,6 +205,58 @@ class ExhaustiveTernaryCondVisitor : public CondVisitor {
   FlatExprVisitor* visitor_;
 };
 
+// Returns whether this comprehension appears to be a standard map/filter
+// macro implementation. It is not exhaustive, so it is unsafe to use with
+// custom comprehensions outside of the standard macros or hand crafted ASTs.
+bool IsOptimizableListAppend(
+    const cel::ast_internal::Comprehension* comprehension,
+    bool enable_comprehension_list_append) {
+  if (!enable_comprehension_list_append) {
+    return false;
+  }
+  absl::string_view accu_var = comprehension->accu_var();
+  if (accu_var.empty() ||
+      comprehension->result().ident_expr().name() != accu_var) {
+    return false;
+  }
+  if (!comprehension->accu_init().has_list_expr()) {
+    return false;
+  }
+
+  if (!comprehension->loop_step().has_call_expr()) {
+    return false;
+  }
+
+  // Macro loop_step for a filter() will contain a ternary:
+  //   filter ? accu_var + [elem] : accu_var
+  // Macro loop_step for a map() will contain a list concat operation:
+  //   accu_var + [elem]
+  const auto* call_expr = &comprehension->loop_step().call_expr();
+
+  if (call_expr->function() == cel::builtin::kTernary &&
+      call_expr->args().size() == 3) {
+    if (!call_expr->args()[1].has_call_expr()) {
+      return false;
+    }
+    call_expr = &(call_expr->args()[1].call_expr());
+  }
+
+  return call_expr->function() == cel::builtin::kAdd &&
+         call_expr->args().size() == 2 &&
+         call_expr->args()[0].has_ident_expr() &&
+         call_expr->args()[0].ident_expr().name() == accu_var;
+}
+
+bool IsBind(const cel::ast_internal::Comprehension* comprehension) {
+  static constexpr absl::string_view kUnusedIterVar = "#unused";
+
+  return comprehension->loop_condition().const_expr().has_bool_value() &&
+         comprehension->loop_condition().const_expr().bool_value() == false &&
+         comprehension->iter_var() == kUnusedIterVar &&
+         comprehension->iter_range().has_list_expr() &&
+         comprehension->iter_range().list_expr().elements().empty();
+}
+
 // Visitor for Comprehension expressions.
 class ComprehensionVisitor {
  public:
@@ -211,6 +268,7 @@ class ComprehensionVisitor {
         cond_step_(nullptr),
         short_circuiting_(short_circuiting),
         is_trivial_(is_trivial),
+        accu_init_extracted_(false),
         iter_slot_(iter_slot),
         accu_slot_(accu_slot) {}
 
@@ -224,6 +282,8 @@ class ComprehensionVisitor {
     }
   }
   void PostVisit(const cel::ast_internal::Expr* expr);
+
+  void MarkAccuInitExtracted() { accu_init_extracted_ = true; }
 
  private:
   void PostVisitArgTrivial(cel::ast_internal::ComprehensionArg arg_num,
@@ -239,6 +299,7 @@ class ComprehensionVisitor {
   int cond_step_pos_;
   bool short_circuiting_;
   bool is_trivial_;
+  bool accu_init_extracted_;
   size_t iter_slot_;
   size_t accu_slot_;
 };
@@ -247,21 +308,22 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
  public:
   FlatExprVisitor(
       const Resolver& resolver, const cel::RuntimeOptions& options,
-      absl::Span<const std::unique_ptr<ProgramOptimizer>> program_optimizers,
+      std::vector<std::unique_ptr<ProgramOptimizer>> program_optimizers,
       const absl::flat_hash_map<int64_t, cel::ast_internal::Reference>&
           reference_map,
-      ExecutionPath& path, ValueFactory& value_factory,
-      IssueCollector& issue_collector,
+      ExpressionTable& expression_table, ExecutionPath& path,
+      ValueFactory& value_factory, IssueCollector& issue_collector,
       PlannerContext::ProgramTree& program_tree,
       PlannerContext& extension_context)
       : resolver_(resolver),
+        expression_table_(expression_table),
         execution_path_(path),
         value_factory_(value_factory),
         progress_status_(absl::OkStatus()),
         resolved_select_expr_(nullptr),
         parent_expr_(nullptr),
         options_(options),
-        program_optimizers_(program_optimizers),
+        program_optimizers_(std::move(program_optimizers)),
         issue_collector_(issue_collector),
         program_tree_(program_tree),
         extension_context_(extension_context) {}
@@ -278,11 +340,11 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
         suppressed_branches_.find(expr) != suppressed_branches_.end()) {
       resume_from_suppressed_branch_ = expr;
     }
-    if (program_optimizers_.empty()) {
+    if (!ProgramStructureTrackingEnabled()) {
       return;
     }
     PlannerContext::ProgramInfo& info = program_tree_[expr];
-    info.range_start = execution_path_.size();
+    info.range_start = GetCurrentIndex();
     info.parent = parent_expr_;
     if (parent_expr_ != nullptr) {
       program_tree_[parent_expr_].children.push_back(expr);
@@ -306,12 +368,11 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     if (expr == resume_from_suppressed_branch_) {
       resume_from_suppressed_branch_ = nullptr;
     }
-    // TODO(uncreated-issue/27): this will be generalized later.
-    if (program_optimizers_.empty()) {
+    if (!ProgramStructureTrackingEnabled()) {
       return;
     }
     PlannerContext::ProgramInfo& info = program_tree_[expr];
-    info.range_len = execution_path_.size() - info.range_start;
+    info.range_len = GetCurrentIndex() - info.range_start;
     parent_expr_ = info.parent;
 
     for (const std::unique_ptr<ProgramOptimizer>& optimizer :
@@ -319,7 +380,14 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       absl::Status status = optimizer->OnPostVisit(extension_context_, *expr);
       if (!status.ok()) {
         SetProgressStatusError(status);
+        return;
       }
+    }
+    if (options_.enable_lazy_bind_initialization &&
+        !comprehension_stack_.empty() &&
+        (&comprehension_stack_.back().comprehension->accu_init() == expr)) {
+      SetProgressStatusError(
+          MaybeExtractSubexpression(expr, comprehension_stack_.back()));
     }
   }
 
@@ -331,6 +399,51 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     }
 
     AddStep(CreateConstValueStep(*const_expr, expr->id(), value_factory_));
+  }
+
+  struct SlotLookupResult {
+    int slot;
+    int subexpression;
+  };
+
+  // Helper to lookup a variable mapped to a slot.
+  //
+  // If lazy evaluation enabled and ided as a lazy expression,
+  // subexpression and slot will be set.
+  SlotLookupResult LookupSlot(absl::string_view path) {
+    if (!comprehension_stack_.empty()) {
+      for (int i = comprehension_stack_.size() - 1; i >= 0; i--) {
+        const ComprehensionStackRecord& record = comprehension_stack_[i];
+        if (record.iter_var_in_scope &&
+            record.comprehension->iter_var() == path) {
+          if (record.is_optimizable_bind) {
+            SetProgressStatusError(issue_collector_.AddIssue(
+                RuntimeIssue::CreateWarning(absl::InvalidArgumentError(
+                    "Unexpected iter_var access in trivial comprehension"))));
+            return {-1, -1};
+          }
+          return {static_cast<int>(record.iter_slot), -1};
+        }
+        if (record.accu_var_in_scope &&
+            record.comprehension->accu_var() == path) {
+          int slot = record.accu_slot;
+          int subexpression = -1;
+          if (record.should_lazy_eval) {
+            subexpression = record.subexpression;
+            // Invalidate any other binds that depend on this var since we
+            // don't support nested lazy init yet.
+            for (int j = comprehension_stack_.size() - 1; j > i; j--) {
+              ComprehensionStackRecord& other_record = comprehension_stack_[j];
+              if (other_record.in_accu_init && other_record.should_lazy_eval) {
+                other_record.should_lazy_eval = false;
+              }
+            }
+          }
+          return {slot, subexpression};
+        }
+      }
+    }
+    return {-1, -1};
   }
 
   // Ident node handler.
@@ -382,31 +495,15 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     }
 
     // If this is a comprehension variable, check for the assigned slot.
-    int slot = -1;
-    if (!comprehension_stack_.empty()) {
-      for (int i = comprehension_stack_.size() - 1; i >= 0; i--) {
-        const ComprehensionStackRecord& record = comprehension_stack_[i];
-        if (record.iter_var_in_scope &&
-            record.comprehension->iter_var() == path) {
-          if (record.is_optimizable_bind) {
-            SetProgressStatusError(issue_collector_.AddIssue(
-                RuntimeIssue::CreateWarning(absl::InvalidArgumentError(
-                    "Unexpected iter_var access in trivial comprehension"))));
-            break;
-          }
-          slot = record.iter_slot;
-          break;
-        }
-        if (record.accu_var_in_scope &&
-            record.comprehension->accu_var() == path) {
-          slot = record.accu_slot;
-          break;
-        }
-      }
-    }
+    SlotLookupResult slot = LookupSlot(path);
 
-    if (slot >= 0) {
-      AddStep(CreateIdentStepForSlot(*ident_expr, slot, expr->id()));
+    if (slot.subexpression >= 0) {
+      AddStep(
+          CreateCheckLazyInitStep(slot.slot, slot.subexpression, expr->id()));
+      AddStep(CreateAssignSlotStep(slot.slot));
+      return;
+    } else if (slot.slot >= 0) {
+      AddStep(CreateIdentStepForSlot(*ident_expr, slot.slot, expr->id()));
       return;
     }
 
@@ -599,58 +696,6 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     AddStep(CreateFunctionStep(*call_expr, expr->id(), std::move(overloads)));
   }
 
-  // Returns whether this comprehension appears to be a standard map/filter
-  // macro implementation. It is not exhaustive, so it is unsafe to use with
-  // custom comprehensions outside of the standard macros or hand crafted ASTs.
-  bool IsOptimizableListAppend(
-      const cel::ast_internal::Comprehension* comprehension,
-      bool enable_comprehension_list_append) {
-    if (!enable_comprehension_list_append) {
-      return false;
-    }
-    absl::string_view accu_var = comprehension->accu_var();
-    if (accu_var.empty() ||
-        comprehension->result().ident_expr().name() != accu_var) {
-      return false;
-    }
-    if (!comprehension->accu_init().has_list_expr()) {
-      return false;
-    }
-
-    if (!comprehension->loop_step().has_call_expr()) {
-      return false;
-    }
-
-    // Macro loop_step for a filter() will contain a ternary:
-    //   filter ? accu_var + [elem] : accu_var
-    // Macro loop_step for a map() will contain a list concat operation:
-    //   accu_var + [elem]
-    const auto* call_expr = &comprehension->loop_step().call_expr();
-
-    if (call_expr->function() == cel::builtin::kTernary &&
-        call_expr->args().size() == 3) {
-      if (!call_expr->args()[1].has_call_expr()) {
-        return false;
-      }
-      call_expr = &(call_expr->args()[1].call_expr());
-    }
-
-    return call_expr->function() == cel::builtin::kAdd &&
-           call_expr->args().size() == 2 &&
-           call_expr->args()[0].has_ident_expr() &&
-           call_expr->args()[0].ident_expr().name() == accu_var;
-  }
-
-  bool IsBind(const cel::ast_internal::Comprehension* comprehension) {
-    static constexpr absl::string_view kUnusedIterVar = "#unused";
-
-    return comprehension->loop_condition().const_expr().has_bool_value() &&
-           comprehension->loop_condition().const_expr().bool_value() == false &&
-           comprehension->iter_var() == kUnusedIterVar &&
-           comprehension->iter_range().has_list_expr() &&
-           comprehension->iter_range().list_expr().elements().empty();
-  }
-
   void PreVisitComprehension(
       const cel::ast_internal::Comprehension* comprehension,
       const cel::ast_internal::Expr* expr,
@@ -690,11 +735,15 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     }
     comprehension_stack_.push_back(
         {expr, comprehension, iter_slot, accu_slot,
+         /*subexpression=*/-1,
          IsOptimizableListAppend(comprehension,
                                  options_.enable_comprehension_list_append),
          is_bind,
          /*.iter_var_in_scope=*/false,
          /*.accu_var_in_scope=*/false,
+         /*.in_accu_init=*/false,
+         /*.should_lazy_eval=*/is_bind &&
+             options_.enable_lazy_bind_initialization,
          std::make_unique<ComprehensionVisitor>(
              this, options_.short_circuiting, is_bind, iter_slot, accu_slot)});
     comprehension_stack_.back().visitor->PreVisit(expr);
@@ -739,26 +788,31 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
 
     switch (comprehension_arg) {
       case cel::ast_internal::ITER_RANGE: {
+        record.in_accu_init = false;
         record.iter_var_in_scope = false;
         record.accu_var_in_scope = false;
         break;
       }
       case cel::ast_internal::ACCU_INIT: {
+        record.in_accu_init = true;
         record.iter_var_in_scope = false;
         record.accu_var_in_scope = false;
         break;
       }
       case cel::ast_internal::LOOP_CONDITION: {
+        record.in_accu_init = false;
         record.iter_var_in_scope = true;
         record.accu_var_in_scope = true;
         break;
       }
       case cel::ast_internal::LOOP_STEP: {
+        record.in_accu_init = false;
         record.iter_var_in_scope = true;
         record.accu_var_in_scope = true;
         break;
       }
       case cel::ast_internal::RESULT: {
+        record.in_accu_init = false;
         record.iter_var_in_scope = false;
         record.accu_var_in_scope = true;
         break;
@@ -908,6 +962,10 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
 
   size_t slot_count() const { return index_manager_.max_slot_count(); }
 
+  void AddOptimizer(std::unique_ptr<ProgramOptimizer> optimizer) {
+    program_optimizers_.push_back(std::move(optimizer));
+  }
+
   // Tests the boolean predicate, and if false produces an InvalidArgumentError
   // which concatenates the error_message and any optional message_parts as the
   // error status message.
@@ -928,10 +986,14 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     const cel::ast_internal::Comprehension* comprehension;
     size_t iter_slot;
     size_t accu_slot;
+    // -1 indicates this shouldn't be used.
+    int subexpression;
     bool is_optimizable_list_append;
     bool is_optimizable_bind;
     bool iter_var_in_scope;
     bool accu_var_in_scope;
+    bool in_accu_init;
+    bool should_lazy_eval;
     std::unique_ptr<ComprehensionVisitor> visitor;
   };
 
@@ -939,7 +1001,33 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     return resume_from_suppressed_branch_ != nullptr;
   }
 
+  bool ProgramStructureTrackingEnabled() {
+    return options_.enable_lazy_bind_initialization ||
+           !program_optimizers_.empty();
+  }
+
+  absl::Status MaybeExtractSubexpression(const cel::ast_internal::Expr* expr,
+                                         ComprehensionStackRecord& record) {
+    if (!record.should_lazy_eval) {
+      return absl::OkStatus();
+    }
+    CEL_ASSIGN_OR_RETURN(auto subexpr,
+                         extension_context_.ExtractSubplan(*expr));
+
+    CEL_RETURN_IF_ERROR(extension_context_.ReplaceSubplan(*expr, {}));
+
+    expression_table_.push_back(std::move(subexpr));
+    // off by one since mainline expression is handled separately.
+    size_t id = expression_table_.size();
+    record.subexpression = id;
+
+    record.visitor->MarkAccuInitExtracted();
+
+    return absl::OkStatus();
+  }
+
   const Resolver& resolver_;
+  ExpressionTable& expression_table_;
   ExecutionPath& execution_path_;
   ValueFactory& value_factory_;
   absl::Status progress_status_;
@@ -969,7 +1057,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   std::vector<ComprehensionStackRecord> comprehension_stack_;
   absl::flat_hash_set<const cel::ast_internal::Expr*> suppressed_branches_;
   const cel::ast_internal::Expr* resume_from_suppressed_branch_ = nullptr;
-  absl::Span<const std::unique_ptr<ProgramOptimizer>> program_optimizers_;
+  std::vector<std::unique_ptr<ProgramOptimizer>> program_optimizers_;
   IssueCollector& issue_collector_;
 
   PlannerContext::ProgramTree& program_tree_;
@@ -1156,7 +1244,9 @@ void ComprehensionVisitor::PostVisitArgTrivial(
       break;
     }
     case cel::ast_internal::ACCU_INIT: {
-      visitor_->AddStep(CreateAssignSlotAndPopStep(accu_slot_));
+      if (!accu_init_extracted_) {
+        visitor_->AddStep(CreateAssignSlotAndPopStep(accu_slot_));
+      }
       break;
     }
     case cel::ast_internal::LOOP_CONDITION: {
@@ -1174,11 +1264,35 @@ void ComprehensionVisitor::PostVisitArgTrivial(
 
 void ComprehensionVisitor::PostVisit(const cel::ast_internal::Expr* expr) {}
 
+// Flattens the expression table into the end of the mainline expression vector
+// and returns an index to the individual sub expressions.
+std::vector<ExecutionPathView> FlattenExpressionTable(
+    ExpressionTable& expression_table, ExecutionPath& main) {
+  std::vector<std::pair<size_t, size_t>> ranges;
+  ranges.push_back(std::make_pair(0, main.size()));
+
+  for (int i = 0; i < expression_table.size(); ++i) {
+    ExecutionPath& subexpression = expression_table[i];
+    ranges.push_back(std::make_pair(main.size(), subexpression.size()));
+    absl::c_move(subexpression, std::back_inserter(main));
+  }
+  expression_table.clear();
+  // the main program is now stable, can make the indexes.
+  std::vector<ExecutionPathView> subexpressions;
+  subexpressions.reserve(ranges.size());
+  for (const auto& range : ranges) {
+    subexpressions.push_back(
+        absl::MakeSpan(main).subspan(range.first, range.second));
+  }
+  return subexpressions;
+}
+
 }  // namespace
 
 absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
     std::unique_ptr<Ast> ast, std::vector<RuntimeIssue>* issues) const {
   ExecutionPath execution_path;
+  ExpressionTable expression_table;
 
   // These objects are expected to remain scoped to one build call -- references
   // to them shouldn't be persisted in any part of the result expression.
@@ -1216,9 +1330,11 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
     CEL_ASSIGN_OR_RETURN(optimizers.emplace_back(),
                          optimizer_factory(extension_context, ast_impl));
   }
-  FlatExprVisitor visitor(
-      resolver, options_, optimizers, ast_impl.reference_map(), execution_path,
-      value_factory, issue_collector, program_tree, extension_context);
+
+  FlatExprVisitor visitor(resolver, options_, std::move(optimizers),
+                          ast_impl.reference_map(), expression_table,
+                          execution_path, value_factory, issue_collector,
+                          program_tree, extension_context);
 
   cel::ast_internal::TraversalOptions opts;
   opts.use_comprehension_callbacks = true;
@@ -1232,7 +1348,11 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
     (*issues) = issue_collector.ExtractIssues();
   }
 
-  return FlatExpression(std::move(execution_path), visitor.slot_count(),
+  std::vector<ExecutionPathView> subexpressions =
+      FlattenExpressionTable(expression_table, execution_path);
+
+  return FlatExpression(std::move(execution_path), std::move(subexpressions),
+                        visitor.slot_count(),
                         type_registry_.GetComposedTypeProvider(), options_);
 }
 

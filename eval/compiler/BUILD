@@ -68,7 +68,6 @@ cc_library(
         "//base:memory",
         "//base/ast_internal:ast_impl",
         "//base/ast_internal:expr",
-        "//eval/eval:comprehension_slots",
         "//eval/eval:comprehension_step",
         "//eval/eval:const_value_step",
         "//eval/eval:container_access_step",
