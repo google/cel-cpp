@@ -96,12 +96,14 @@ class EmptyListValue final : public ListValueInterface {
     return JsonArray();
   }
 
+  ListTypeView GetType() const { return type_; }
+
  private:
   NativeTypeId GetNativeTypeId() const noexcept override {
     return NativeTypeId::For<EmptyListValue>();
   }
 
-  TypeView get_type() const override { return type_; }
+  Type GetTypeImpl(TypeManager&) const override { return type_; }
 
   absl::StatusOr<ValueView> GetImpl(ValueManager&, size_t,
                                     Value&) const override {
@@ -159,12 +161,14 @@ class EmptyMapValue final : public MapValueInterface {
     return JsonObject();
   }
 
+  MapTypeView GetType() const { return type_; }
+
  private:
   NativeTypeId GetNativeTypeId() const noexcept override {
     return NativeTypeId::For<EmptyMapValue>();
   }
 
-  TypeView get_type() const override { return type_; }
+  Type GetTypeImpl(TypeManager&) const override { return type_; }
 
   absl::StatusOr<absl::optional<ValueView>> FindImpl(ValueManager&, ValueView,
                                                      Value&) const override {
@@ -188,10 +192,12 @@ class EmptyOptionalValue final : public OptionalValueInterface {
     return scratch;
   }
 
+  OptionalTypeView GetType() const { return type_; }
+
  private:
   friend struct NativeTypeTraits<EmptyOptionalValue>;
 
-  TypeView get_type() const override { return type_; }
+  Type GetTypeImpl(TypeManager&) const override { return type_; }
 
   const OptionalType type_;
 };

@@ -36,12 +36,12 @@ TEST(Value, KindDebugDeath) {
   EXPECT_DEBUG_DEATH(static_cast<void>(moved_from_value.kind()), _);
 }
 
-TEST(Value, TypeDebugDeath) {
+TEST(Value, GetTypeName) {
   Value moved_from_value = BoolValue(true);
   Value value = std::move(moved_from_value);
   IS_INITIALIZED(moved_from_value);
   static_cast<void>(value);
-  EXPECT_DEBUG_DEATH(static_cast<void>(moved_from_value.type()), _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(moved_from_value.GetTypeName()), _);
 }
 
 TEST(Value, DebugStringDebugDeath) {
@@ -69,12 +69,13 @@ TEST(ValueView, KindDebugDeath) {
   EXPECT_DEBUG_DEATH(static_cast<void>(ValueView(moved_from_value).kind()), _);
 }
 
-TEST(ValueView, TypeDebugDeath) {
+TEST(ValueView, GetTypeName) {
   Value moved_from_value = BoolValue(true);
   Value value = std::move(moved_from_value);
   IS_INITIALIZED(moved_from_value);
   static_cast<void>(value);
-  EXPECT_DEBUG_DEATH(static_cast<void>(ValueView(moved_from_value).type()), _);
+  EXPECT_DEBUG_DEATH(
+      static_cast<void>(ValueView(moved_from_value).GetTypeName()), _);
 }
 
 TEST(ValueView, DebugStringDebugDeath) {

@@ -39,6 +39,7 @@
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
+#include "common/type_manager.h"
 #include "common/value_interface.h"  // IWYU pragma: export
 #include "common/value_kind.h"
 #include "common/values/bool_value.h"  // IWYU pragma: export
@@ -64,8 +65,6 @@ namespace cel {
 
 class Value;
 class ValueView;
-
-Type TypeOf(ValueView value);
 
 // `Value` is a composition type which encompasses all values supported by the
 // Common Expression Language. When default constructed or moved, `Value` is in
@@ -160,18 +159,35 @@ class Value final {
         variant_);
   }
 
-  TypeView type() const {
+  Type GetType(TypeManager& type_manager) const {
     AssertIsValid();
     return absl::visit(
-        [](const auto& alternative) -> TypeView {
+        [&type_manager](const auto& alternative) -> Type {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
             // In optimized builds, we just return an invalid type. In debug
             // builds we cannot reach here.
-            return TypeView();
+            return Type();
           } else {
-            return alternative.type();
+            return alternative.GetType(type_manager);
+          }
+        },
+        variant_);
+  }
+
+  absl::string_view GetTypeName() const {
+    AssertIsValid();
+    return absl::visit(
+        [](const auto& alternative) -> absl::string_view {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return an empty string. In debug
+            // builds we cannot reach here.
+            return absl::string_view();
+          } else {
+            return alternative.GetTypeName();
           }
         },
         variant_);
@@ -587,18 +603,35 @@ class ValueView final {
         variant_);
   }
 
-  TypeView type() const {
+  Type GetType(TypeManager& type_manager) const {
     AssertIsValid();
     return absl::visit(
-        [](auto alternative) -> TypeView {
+        [&type_manager](auto alternative) -> Type {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
             // In optimized builds, we just return an invalid type. In debug
             // builds we cannot reach here.
-            return TypeView();
+            return Type();
           } else {
-            return alternative.type();
+            return alternative.GetType(type_manager);
+          }
+        },
+        variant_);
+  }
+
+  absl::string_view GetTypeName() const {
+    AssertIsValid();
+    return absl::visit(
+        [](auto alternative) -> absl::string_view {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return an empty string. In debug
+            // builds we cannot reach here.
+            return absl::string_view();
+          } else {
+            return alternative.GetTypeName();
           }
         },
         variant_);

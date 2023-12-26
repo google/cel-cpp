@@ -37,11 +37,6 @@ TEST(NullValue, Kind) {
   EXPECT_EQ(Value(NullValue()).kind(), NullValue::kKind);
 }
 
-TEST(NullValue, Type) {
-  EXPECT_EQ(NullValue().type(), NullType());
-  EXPECT_EQ(Value(NullValue()).type(), NullType());
-}
-
 TEST(NullValue, DebugString) {
   {
     std::ostringstream out;
@@ -94,11 +89,6 @@ TEST(NullValue, As) {
 TEST(NullValueView, Kind) {
   EXPECT_EQ(NullValueView().kind(), NullValueView::kKind);
   EXPECT_EQ(ValueView(NullValueView()).kind(), NullValueView::kKind);
-}
-
-TEST(NullValueView, Type) {
-  EXPECT_EQ(NullValueView().type(), NullType());
-  EXPECT_EQ(ValueView(NullValueView()).type(), NullType());
 }
 
 TEST(NullValueView, DebugString) {

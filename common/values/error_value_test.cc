@@ -48,11 +48,6 @@ TEST(ErrorValue, Kind) {
             ErrorValue::kKind);
 }
 
-TEST(ErrorValue, Type) {
-  EXPECT_EQ(ErrorValue(absl::CancelledError()).type(), ErrorType());
-  EXPECT_EQ(Value(ErrorValue(absl::CancelledError())).type(), ErrorType());
-}
-
 TEST(ErrorValue, DebugString) {
   {
     std::ostringstream out;
@@ -138,12 +133,6 @@ TEST(ErrorValueView, Kind) {
             ErrorValueView::kKind);
   EXPECT_EQ(ValueView(ErrorValueView(absl::CancelledError())).kind(),
             ErrorValueView::kKind);
-}
-
-TEST(ErrorValueView, Type) {
-  EXPECT_EQ(ErrorValueView(absl::CancelledError()).type(), ErrorType());
-  EXPECT_EQ(ValueView(ErrorValueView(absl::CancelledError())).type(),
-            ErrorType());
 }
 
 TEST(ErrorValueView, DebugString) {

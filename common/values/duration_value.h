@@ -36,6 +36,7 @@ namespace cel {
 
 class DurationValue;
 class DurationValueView;
+class TypeManager;
 
 // `DurationValue` represents values of the primitive `duration` type.
 class DurationValue final {
@@ -57,7 +58,9 @@ class DurationValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  DurationTypeView type() const { return DurationTypeView(); }
+  DurationType GetType(TypeManager&) const { return DurationType(); }
+
+  absl::string_view GetTypeName() const { return DurationType::kName; }
 
   std::string DebugString() const;
 
@@ -141,7 +144,9 @@ class DurationValueView final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  DurationTypeView type() const { return DurationTypeView(); }
+  DurationType GetType(TypeManager&) const { return DurationType(); }
+
+  absl::string_view GetTypeName() const { return DurationType::kName; }
 
   std::string DebugString() const;
 

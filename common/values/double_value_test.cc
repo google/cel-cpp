@@ -37,11 +37,6 @@ TEST(DoubleValue, Kind) {
   EXPECT_EQ(Value(DoubleValue(1.0)).kind(), DoubleValue::kKind);
 }
 
-TEST(DoubleValue, Type) {
-  EXPECT_EQ(DoubleValue(1.0).type(), DoubleType());
-  EXPECT_EQ(Value(DoubleValue(1.0)).type(), DoubleType());
-}
-
 TEST(DoubleValue, DebugString) {
   {
     std::ostringstream out;
@@ -125,11 +120,6 @@ TEST(DoubleValue, Equality) {
 TEST(DoubleValueView, Kind) {
   EXPECT_EQ(DoubleValueView(1.0).kind(), DoubleValueView::kKind);
   EXPECT_EQ(ValueView(DoubleValueView(1.0)).kind(), DoubleValueView::kKind);
-}
-
-TEST(DoubleValueView, Type) {
-  EXPECT_EQ(DoubleValueView(1.0).type(), DoubleType());
-  EXPECT_EQ(ValueView(DoubleValueView(1.0)).type(), DoubleType());
 }
 
 TEST(DoubleValueView, DebugString) {

@@ -35,6 +35,7 @@ namespace cel {
 
 class DoubleValue;
 class DoubleValueView;
+class TypeManager;
 
 // `DoubleValue` represents values of the primitive `double` type.
 class DoubleValue final {
@@ -55,7 +56,9 @@ class DoubleValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  DoubleTypeView type() const { return DoubleTypeView(); }
+  DoubleType GetType(TypeManager&) const { return DoubleType(); }
+
+  absl::string_view GetTypeName() const { return DoubleType::kName; }
 
   std::string DebugString() const;
 
@@ -144,7 +147,9 @@ class DoubleValueView final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  DoubleTypeView type() const { return DoubleTypeView(); }
+  DoubleType GetType(TypeManager&) const { return DoubleType(); }
+
+  absl::string_view GetTypeName() const { return DoubleType::kName; }
 
   std::string DebugString() const;
 

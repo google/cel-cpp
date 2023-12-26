@@ -28,6 +28,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
+#include "absl/strings/string_view.h"
 #include "common/casting.h"
 #include "common/memory.h"
 #include "common/native_type.h"
@@ -47,7 +48,11 @@ class OptionalValueInterface : public OpaqueValueInterface {
   using alternative_type = OptionalValue;
   using view_alternative_type = OptionalValueView;
 
-  OptionalTypeView type() const { return Cast<OptionalTypeView>(get_type()); }
+  OptionalType GetType(TypeManager& type_manager) const {
+    return Cast<OptionalType>(GetTypeImpl(type_manager));
+  }
+
+  absl::string_view GetTypeName() const final { return "optional_type"; }
 
   std::string DebugString() const final;
 
@@ -57,6 +62,8 @@ class OptionalValueInterface : public OpaqueValueInterface {
       cel::Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
 
  private:
+  Type GetTypeImpl(TypeManager&) const override { return OptionalType(); }
+
   NativeTypeId GetNativeTypeId() const noexcept final {
     return NativeTypeId::For<OptionalValueInterface>();
   }
@@ -93,7 +100,9 @@ class OptionalValue final : public OpaqueValue {
   OptionalValue(Shared<const OptionalValueInterface> interface)
       : OpaqueValue(std::move(interface)) {}
 
-  OptionalTypeView type() const { return (*this)->type(); }
+  OptionalType GetType(TypeManager& type_manager) const {
+    return (*this)->GetType(type_manager);
+  }
 
   bool HasValue() const { return (*this)->HasValue(); }
 
@@ -167,7 +176,9 @@ class OptionalValueView final : public OpaqueValueView {
   OptionalValueView(const OptionalValueView&) = default;
   OptionalValueView& operator=(const OptionalValueView&) = default;
 
-  OptionalTypeView type() const { return (*this)->type(); }
+  OptionalType GetType(TypeManager& type_manager) const {
+    return (*this)->GetType(type_manager);
+  }
 
   bool HasValue() const { return (*this)->HasValue(); }
 

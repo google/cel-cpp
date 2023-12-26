@@ -44,7 +44,6 @@
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
-#include "common/type_factory.h"
 #include "common/value_interface.h"
 #include "common/value_kind.h"
 #include "common/values/values.h"
@@ -76,7 +75,11 @@ class MapValueInterface : public ValueInterface {
 
   ValueKind kind() const final { return kKind; }
 
-  MapTypeView type() const { return Cast<MapTypeView>(get_type()); }
+  MapType GetType(TypeManager& type_manager) const {
+    return Cast<MapType>(GetTypeImpl(type_manager));
+  }
+
+  absl::string_view GetTypeName() const final { return "map"; }
 
   absl::StatusOr<size_t> GetSerializedSize() const override;
 
@@ -139,6 +142,8 @@ class MapValueInterface : public ValueInterface {
       ValueManager& value_manager) const = 0;
 
  private:
+  Type GetTypeImpl(TypeManager&) const override { return MapType(); }
+
   // Called by `Find` after performing various argument checks.
   virtual absl::StatusOr<absl::optional<ValueView>> FindImpl(
       ValueManager& value_manager, ValueView key,
@@ -173,7 +178,11 @@ class MapValue {
 
   ValueKind kind() const { return interface_->kind(); }
 
-  MapTypeView type() const { return interface_->type(); }
+  MapType GetType(TypeManager& type_manager) const {
+    return interface_->GetType(type_manager);
+  }
+
+  absl::string_view GetTypeName() const { return interface_->GetTypeName(); }
 
   std::string DebugString() const { return interface_->DebugString(); }
 
@@ -357,7 +366,11 @@ class MapValueView {
 
   ValueKind kind() const { return interface_->kind(); }
 
-  MapTypeView type() const { return interface_->type(); }
+  MapType GetType(TypeManager& type_manager) const {
+    return interface_->GetType(type_manager);
+  }
+
+  absl::string_view GetTypeName() const { return interface_->GetTypeName(); }
 
   std::string DebugString() const { return interface_->DebugString(); }
 

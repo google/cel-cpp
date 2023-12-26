@@ -38,11 +38,6 @@ TEST(BytesValue, Kind) {
   EXPECT_EQ(Value(BytesValue(absl::Cord("foo"))).kind(), BytesValue::kKind);
 }
 
-TEST(BytesValue, Type) {
-  EXPECT_EQ(BytesValue("foo").type(), BytesType());
-  EXPECT_EQ(Value(BytesValue(absl::Cord("foo"))).type(), BytesType());
-}
-
 TEST(BytesValue, DebugString) {
   {
     std::ostringstream out;
@@ -110,11 +105,6 @@ TEST(BytesValue, As) {
 TEST(BytesValueView, Kind) {
   EXPECT_EQ(BytesValueView("foo").kind(), BytesValueView::kKind);
   EXPECT_EQ(ValueView(BytesValueView("foo")).kind(), BytesValueView::kKind);
-}
-
-TEST(BytesValueView, Type) {
-  EXPECT_EQ(BytesValueView("foo").type(), BytesType());
-  EXPECT_EQ(ValueView(BytesValueView("foo")).type(), BytesType());
 }
 
 TEST(BytesValueView, DebugString) {

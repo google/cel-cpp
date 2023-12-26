@@ -95,6 +95,8 @@ class ValueFactoryTest
 
   TypeFactory& type_factory() const { return value_manager(); }
 
+  TypeManager& type_manager() const { return value_manager(); }
+
   ValueFactory& value_factory() const { return value_manager(); }
 
   ValueManager& value_manager() const { return **value_manager_; }
@@ -175,7 +177,8 @@ JsonObject NewJsonObjectForTesting(bool with_array, bool with_nested_object) {
 TEST_P(ValueFactoryTest, JsonValueArray) {
   auto value = value_factory().CreateValueFromJson(NewJsonArrayForTesting());
   ASSERT_TRUE(InstanceOf<ListValue>(value));
-  EXPECT_EQ(value.type(), type_factory().GetDynListType());
+  EXPECT_EQ(TypeView(value.GetType(type_manager())),
+            type_factory().GetDynListType());
   auto& list_value = Cast<ListValue>(value);
   EXPECT_FALSE(list_value.IsEmpty());
   EXPECT_EQ(list_value.Size(), 6);
@@ -191,7 +194,8 @@ TEST_P(ValueFactoryTest, JsonValueArray) {
 TEST_P(ValueFactoryTest, JsonValueObject) {
   auto value = value_factory().CreateValueFromJson(NewJsonObjectForTesting());
   ASSERT_TRUE(InstanceOf<MapValue>(value));
-  EXPECT_EQ(value.type(), type_factory().GetStringDynMapType());
+  EXPECT_EQ(TypeView(value.GetType(type_manager())),
+            type_factory().GetStringDynMapType());
   auto& map_value = Cast<MapValue>(value);
   EXPECT_FALSE(map_value.IsEmpty());
   EXPECT_EQ(map_value.Size(), 6);
@@ -260,7 +264,7 @@ TEST_P(ValueFactoryTest, ListValue) {
   auto zero_list_value = value_factory().GetZeroDynListValue();
   EXPECT_TRUE(zero_list_value.IsEmpty());
   EXPECT_EQ(zero_list_value.Size(), 0);
-  EXPECT_EQ(zero_list_value.type(),
+  EXPECT_EQ(zero_list_value.GetType(type_manager()),
             ProcessLocalTypeCache::Get()->GetDynListType());
 }
 
@@ -289,12 +293,12 @@ TEST_P(ValueFactoryTest, MapValue) {
   auto zero_map_value = value_factory().GetZeroDynDynMapValue();
   EXPECT_TRUE(zero_map_value.IsEmpty());
   EXPECT_EQ(zero_map_value.Size(), 0);
-  EXPECT_EQ(zero_map_value.type(),
+  EXPECT_EQ(zero_map_value.GetType(type_manager()),
             ProcessLocalTypeCache::Get()->GetDynDynMapType());
   zero_map_value = value_factory().GetZeroStringDynMapValue();
   EXPECT_TRUE(zero_map_value.IsEmpty());
   EXPECT_EQ(zero_map_value.Size(), 0);
-  EXPECT_EQ(zero_map_value.type(),
+  EXPECT_EQ(zero_map_value.GetType(type_manager()),
             ProcessLocalTypeCache::Get()->GetStringDynMapType());
 }
 
@@ -322,7 +326,7 @@ TEST_P(ValueFactoryTest, OptionalType) {
 
   auto zero_optional_value = value_factory().GetZeroDynOptionalValue();
   EXPECT_FALSE(zero_optional_value.HasValue());
-  EXPECT_EQ(zero_optional_value.type(),
+  EXPECT_EQ(zero_optional_value.GetType(type_manager()),
             ProcessLocalTypeCache::Get()->GetDynOptionalType());
 }
 

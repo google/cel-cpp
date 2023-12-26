@@ -47,9 +47,9 @@ TEST_P(OptionalValueTest, Kind) {
 
 TEST_P(OptionalValueTest, Type) {
   auto value = OptionalNone();
-  EXPECT_EQ(value.type(), OptionalType());
-  EXPECT_EQ(OpaqueValue(value).type(), OptionalType());
-  EXPECT_EQ(Value(value).type(), OptionalType());
+  EXPECT_EQ(value.GetType(type_manager()), OptionalType());
+  EXPECT_EQ(OpaqueValue(value).GetType(type_manager()), OptionalType());
+  EXPECT_EQ(Value(value).GetType(type_manager()), OptionalType());
 }
 
 TEST_P(OptionalValueTest, DebugString) {
@@ -152,9 +152,9 @@ TEST_P(OptionalValueViewTest, Kind) {
 
 TEST_P(OptionalValueViewTest, Type) {
   auto value = OptionalNone();
-  EXPECT_EQ(value.type(), OptionalType());
-  EXPECT_EQ(OpaqueValueView(value).type(), OptionalType());
-  EXPECT_EQ(ValueView(value).type(), OptionalType());
+  EXPECT_EQ(value.GetType(type_manager()), OptionalType());
+  EXPECT_EQ(OpaqueValueView(value).GetType(type_manager()), OptionalType());
+  EXPECT_EQ(ValueView(value).GetType(type_manager()), OptionalType());
 }
 
 TEST_P(OptionalValueViewTest, DebugString) {

@@ -35,6 +35,8 @@
 
 namespace cel {
 
+class TypeManager;
+
 class ValueInterface : public common_internal::DataInterface {
  public:
   using DataInterface::DataInterface;
@@ -42,7 +44,11 @@ class ValueInterface : public common_internal::DataInterface {
   ABSL_ATTRIBUTE_PURE_FUNCTION
   virtual ValueKind kind() const = 0;
 
-  TypeView type() const { return get_type(); }
+  Type GetType(TypeManager& type_manager) const {
+    return GetTypeImpl(type_manager);
+  }
+
+  virtual absl::string_view GetTypeName() const = 0;
 
   virtual std::string DebugString() const = 0;
 
@@ -77,8 +83,7 @@ class ValueInterface : public common_internal::DataInterface {
   virtual absl::StatusOr<Json> ConvertToJson() const;
 
  protected:
-  ABSL_ATTRIBUTE_PURE_FUNCTION
-  virtual TypeView get_type() const = 0;
+  virtual Type GetTypeImpl(TypeManager&) const = 0;
 };
 
 // Enable `InstanceOf`, `Cast`, and `As` using subsumption relationships.

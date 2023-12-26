@@ -35,11 +35,6 @@ TEST(UnknownValue, Kind) {
   EXPECT_EQ(Value(UnknownValue()).kind(), UnknownValue::kKind);
 }
 
-TEST(UnknownValue, Type) {
-  EXPECT_EQ(UnknownValue().type(), UnknownType());
-  EXPECT_EQ(Value(UnknownValue()).type(), UnknownType());
-}
-
 TEST(UnknownValue, DebugString) {
   {
     std::ostringstream out;
@@ -109,11 +104,6 @@ TEST(UnknownValue, As) {
 TEST(UnknownValueView, Kind) {
   EXPECT_EQ(UnknownValueView().kind(), UnknownValueView::kKind);
   EXPECT_EQ(ValueView(UnknownValueView()).kind(), UnknownValueView::kKind);
-}
-
-TEST(UnknownValueView, Type) {
-  EXPECT_EQ(UnknownValueView().type(), UnknownType());
-  EXPECT_EQ(ValueView(UnknownValueView()).type(), UnknownType());
 }
 
 TEST(UnknownValueView, DebugString) {

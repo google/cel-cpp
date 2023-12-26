@@ -38,13 +38,6 @@ TEST(TimestampValue, Kind) {
             TimestampValue::kKind);
 }
 
-TEST(TimestampValue, Type) {
-  EXPECT_EQ(TimestampValue(absl::UnixEpoch() + absl::Seconds(1)).type(),
-            TimestampType());
-  EXPECT_EQ(Value(TimestampValue(absl::UnixEpoch() + absl::Seconds(1))).type(),
-            TimestampType());
-}
-
 TEST(TimestampValue, DebugString) {
   {
     std::ostringstream out;
@@ -122,14 +115,6 @@ TEST(TimestampValueView, Kind) {
   EXPECT_EQ(ValueView(TimestampValueView(absl::UnixEpoch() + absl::Seconds(1)))
                 .kind(),
             TimestampValueView::kKind);
-}
-
-TEST(TimestampValueView, Type) {
-  EXPECT_EQ(TimestampValueView(absl::UnixEpoch() + absl::Seconds(1)).type(),
-            TimestampType());
-  EXPECT_EQ(ValueView(TimestampValueView(absl::UnixEpoch() + absl::Seconds(1)))
-                .type(),
-            TimestampType());
 }
 
 TEST(TimestampValueView, DebugString) {

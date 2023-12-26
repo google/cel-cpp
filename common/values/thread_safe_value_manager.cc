@@ -31,11 +31,11 @@ ListValue ThreadSafeValueManager::CreateZeroListValueImpl(ListTypeView type) {
       return list_value->second;
     }
   }
-  ListValue list_value(
-      GetMemoryManager().MakeShared<EmptyListValue>(ListType(type)));
-  type = list_value.type();
+  auto list_value =
+      GetMemoryManager().MakeShared<EmptyListValue>(ListType(type));
+  type = list_value->GetType();
   absl::WriterMutexLock lock(&list_values_mutex_);
-  return list_values_.insert(std::pair{type, std::move(list_value)})
+  return list_values_.insert(std::pair{type, ListValue(std::move(list_value))})
       .first->second;
 }
 
@@ -47,11 +47,10 @@ MapValue ThreadSafeValueManager::CreateZeroMapValueImpl(MapTypeView type) {
       return map_value->second;
     }
   }
-  MapValue map_value(
-      GetMemoryManager().MakeShared<EmptyMapValue>(MapType(type)));
-  type = map_value.type();
+  auto map_value = GetMemoryManager().MakeShared<EmptyMapValue>(MapType(type));
+  type = map_value->GetType();
   absl::WriterMutexLock lock(&map_values_mutex_);
-  return map_values_.insert(std::pair{type, std::move(map_value)})
+  return map_values_.insert(std::pair{type, MapValue(std::move(map_value))})
       .first->second;
 }
 
@@ -64,11 +63,12 @@ OptionalValue ThreadSafeValueManager::CreateZeroOptionalValueImpl(
       return optional_value->second;
     }
   }
-  OptionalValue optional_value(
-      GetMemoryManager().MakeShared<EmptyOptionalValue>(OptionalType(type)));
-  type = optional_value.type();
+  auto optional_value =
+      GetMemoryManager().MakeShared<EmptyOptionalValue>(OptionalType(type));
+  type = optional_value->GetType();
   absl::WriterMutexLock lock(&optional_values_mutex_);
-  return optional_values_.insert(std::pair{type, std::move(optional_value)})
+  return optional_values_
+      .insert(std::pair{type, OptionalValue(std::move(optional_value))})
       .first->second;
 }
 

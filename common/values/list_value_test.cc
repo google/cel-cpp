@@ -55,12 +55,12 @@ class ListValueTest : public common_internal::ThreadCompatibleValueTest<> {
   }
 };
 
-TEST(ListValue, Default) {
+TEST_P(ListValueTest, Default) {
   ListValue value;
   EXPECT_TRUE(value.IsEmpty());
   EXPECT_EQ(value.Size(), 0);
   EXPECT_EQ(value.DebugString(), "[]");
-  EXPECT_EQ(value.type().element(), DynTypeView());
+  EXPECT_EQ(value.GetType(type_manager()).element(), DynTypeView());
 }
 
 TEST_P(ListValueTest, Kind) {
@@ -73,8 +73,8 @@ TEST_P(ListValueTest, Kind) {
 TEST_P(ListValueTest, Type) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
-  EXPECT_EQ(value.type(), GetIntListType());
-  EXPECT_EQ(Value(value).type(), GetIntListType());
+  EXPECT_EQ(value.GetType(type_manager()), GetIntListType());
+  EXPECT_EQ(Value(value).GetType(type_manager()), GetIntListType());
 }
 
 TEST_P(ListValueTest, DebugString) {
@@ -190,12 +190,12 @@ class ListValueViewTest : public common_internal::ThreadCompatibleValueTest<> {
   }
 };
 
-TEST(ListValueView, Default) {
+TEST_P(ListValueViewTest, Default) {
   ListValueView value;
   EXPECT_TRUE(value.IsEmpty());
   EXPECT_EQ(value.Size(), 0);
   EXPECT_EQ(value.DebugString(), "[]");
-  EXPECT_EQ(value.type().element(), DynTypeView());
+  EXPECT_EQ(value.GetType(type_manager()).element(), DynTypeView());
 }
 
 TEST_P(ListValueViewTest, Kind) {
@@ -208,8 +208,9 @@ TEST_P(ListValueViewTest, Kind) {
 TEST_P(ListValueViewTest, Type) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
-  EXPECT_EQ(ListValueView(value).type(), GetIntListType());
-  EXPECT_EQ(ListValue(ListValueView(value)).type(), GetIntListType());
+  EXPECT_EQ(ListValueView(value).GetType(type_manager()), GetIntListType());
+  EXPECT_EQ(ListValue(ListValueView(value)).GetType(type_manager()),
+            GetIntListType());
 }
 
 TEST_P(ListValueViewTest, DebugString) {

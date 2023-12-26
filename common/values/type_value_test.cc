@@ -35,11 +35,6 @@ TEST(TypeValue, Kind) {
   EXPECT_EQ(Value(TypeValue(AnyType())).kind(), TypeValue::kKind);
 }
 
-TEST(TypeValue, Type) {
-  EXPECT_EQ(TypeValue(AnyType()).type(), TypeType());
-  EXPECT_EQ(Value(TypeValue(AnyType())).type(), TypeType());
-}
-
 TEST(TypeValue, DebugString) {
   {
     std::ostringstream out;
@@ -110,11 +105,6 @@ TEST(TypeValueView, Kind) {
   EXPECT_EQ(TypeValueView(AnyTypeView()).kind(), TypeValueView::kKind);
   EXPECT_EQ(ValueView(TypeValueView(AnyTypeView())).kind(),
             TypeValueView::kKind);
-}
-
-TEST(TypeValueView, Type) {
-  EXPECT_EQ(TypeValueView(AnyTypeView()).type(), TypeType());
-  EXPECT_EQ(ValueView(TypeValueView(AnyTypeView())).type(), TypeType());
 }
 
 TEST(TypeValueView, DebugString) {

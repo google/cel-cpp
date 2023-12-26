@@ -38,6 +38,7 @@ namespace cel {
 
 class TypeValue;
 class TypeValueView;
+class TypeManager;
 
 // `TypeValue` represents values of the primitive `type` type.
 class TypeValue final {
@@ -59,7 +60,9 @@ class TypeValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  TypeTypeView type() const { return TypeTypeView(); }
+  TypeType GetType(TypeManager&) const { return TypeType(); }
+
+  absl::string_view GetTypeName() const { return TypeType::kName; }
 
   std::string DebugString() const { return value_.DebugString(); }
 
@@ -135,7 +138,9 @@ class TypeValueView final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  TypeTypeView type() const { return TypeTypeView(); }
+  TypeType GetType(TypeManager&) const { return TypeType(); }
+
+  absl::string_view GetTypeName() const { return TypeType::kName; }
 
   std::string DebugString() const { return value_.DebugString(); }
 

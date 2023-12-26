@@ -38,11 +38,6 @@ TEST(IntValue, Kind) {
   EXPECT_EQ(Value(IntValue(1)).kind(), IntValue::kKind);
 }
 
-TEST(IntValue, Type) {
-  EXPECT_EQ(IntValue(1).type(), IntType());
-  EXPECT_EQ(Value(IntValue(1)).type(), IntType());
-}
-
 TEST(IntValue, DebugString) {
   {
     std::ostringstream out;
@@ -110,11 +105,6 @@ TEST(IntValue, LessThan) {
 TEST(IntValueView, Kind) {
   EXPECT_EQ(IntValueView(1).kind(), IntValueView::kKind);
   EXPECT_EQ(ValueView(IntValueView(1)).kind(), IntValueView::kKind);
-}
-
-TEST(IntValueView, Type) {
-  EXPECT_EQ(IntValueView(1).type(), IntType());
-  EXPECT_EQ(ValueView(IntValueView(1)).type(), IntType());
 }
 
 TEST(IntValueView, DebugString) {

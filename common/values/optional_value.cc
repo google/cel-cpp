@@ -27,8 +27,7 @@ namespace {
 
 class FullOptionalValue final : public OptionalValueInterface {
  public:
-  explicit FullOptionalValue(OptionalType type, cel::Value value)
-      : type_(std::move(type)), value_(std::move(value)) {}
+  explicit FullOptionalValue(cel::Value value) : value_(std::move(value)) {}
 
   bool HasValue() const override { return true; }
 
@@ -37,9 +36,10 @@ class FullOptionalValue final : public OptionalValueInterface {
  private:
   friend struct NativeTypeTraits<FullOptionalValue>;
 
-  TypeView get_type() const override { return type_; }
+  Type GetTypeImpl(TypeManager& type_manager) const override {
+    return type_manager.CreateOptionalType(value_.GetType(type_manager));
+  }
 
-  const OptionalType type_;
   const cel::Value value_;
 };
 
@@ -48,8 +48,7 @@ class FullOptionalValue final : public OptionalValueInterface {
 template <>
 struct NativeTypeTraits<FullOptionalValue> {
   static bool SkipDestructor(const FullOptionalValue& value) {
-    return NativeType::SkipDestructor(value.type_) &&
-           NativeType::SkipDestructor(value.value_);
+    return NativeType::SkipDestructor(value.value_);
   }
 };
 
@@ -63,8 +62,8 @@ std::string OptionalValueInterface::DebugString() const {
 
 OptionalValue OptionalValue::Of(MemoryManagerRef memory_manager,
                                 cel::Value value) {
-  return OptionalValue(memory_manager.MakeShared<FullOptionalValue>(
-      OptionalType(), std::move(value)));
+  return OptionalValue(
+      memory_manager.MakeShared<FullOptionalValue>(std::move(value)));
 }
 
 }  // namespace cel

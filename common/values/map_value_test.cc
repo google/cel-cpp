@@ -79,14 +79,14 @@ TEST_P(MapValueTest, Default) {
   EXPECT_TRUE(map_value.IsEmpty());
   EXPECT_EQ(map_value.Size(), 0);
   EXPECT_EQ(map_value.DebugString(), "{}");
-  EXPECT_EQ(map_value.type().key(), DynTypeView());
-  EXPECT_EQ(map_value.type().value(), DynTypeView());
+  EXPECT_EQ(map_value.GetType(type_manager()).key(), DynTypeView());
+  EXPECT_EQ(map_value.GetType(type_manager()).value(), DynTypeView());
   ASSERT_OK_AND_ASSIGN(auto list_value,
                        map_value.ListKeys(value_manager(), map_keys_scratch));
   EXPECT_TRUE(list_value.IsEmpty());
   EXPECT_EQ(list_value.Size(), 0);
   EXPECT_EQ(list_value.DebugString(), "[]");
-  EXPECT_EQ(list_value.type().element(), DynTypeView());
+  EXPECT_EQ(list_value.GetType(type_manager()).element(), DynTypeView());
   ASSERT_OK_AND_ASSIGN(auto iterator, map_value.NewIterator(value_manager()));
   EXPECT_FALSE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(scratch),
@@ -109,8 +109,8 @@ TEST_P(MapValueTest, Type) {
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
-  EXPECT_EQ(value.type(), GetIntDoubleMapType());
-  EXPECT_EQ(Value(value).type(), GetIntDoubleMapType());
+  EXPECT_EQ(value.GetType(type_manager()), GetIntDoubleMapType());
+  EXPECT_EQ(Value(value).GetType(type_manager()), GetIntDoubleMapType());
 }
 
 TEST_P(MapValueTest, DebugString) {
@@ -344,14 +344,14 @@ TEST_P(MapValueViewTest, Default) {
   EXPECT_TRUE(map_value.IsEmpty());
   EXPECT_EQ(map_value.Size(), 0);
   EXPECT_EQ(map_value.DebugString(), "{}");
-  EXPECT_EQ(map_value.type().key(), DynTypeView());
-  EXPECT_EQ(map_value.type().value(), DynTypeView());
+  EXPECT_EQ(map_value.GetType(type_manager()).key(), DynTypeView());
+  EXPECT_EQ(map_value.GetType(type_manager()).value(), DynTypeView());
   ASSERT_OK_AND_ASSIGN(auto list_value,
                        map_value.ListKeys(value_manager(), map_keys_scratch));
   EXPECT_TRUE(list_value.IsEmpty());
   EXPECT_EQ(list_value.Size(), 0);
   EXPECT_EQ(list_value.DebugString(), "[]");
-  EXPECT_EQ(list_value.type().element(), DynTypeView());
+  EXPECT_EQ(list_value.GetType(type_manager()).element(), DynTypeView());
   ASSERT_OK_AND_ASSIGN(auto iterator, map_value.NewIterator(value_manager()));
   EXPECT_FALSE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(scratch),
@@ -374,8 +374,9 @@ TEST_P(MapValueViewTest, Type) {
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
-  EXPECT_EQ(MapValueView(value).type(), GetIntDoubleMapType());
-  EXPECT_EQ(ValueView(MapValueView(value)).type(), GetIntDoubleMapType());
+  EXPECT_EQ(MapValueView(value).GetType(type_manager()), GetIntDoubleMapType());
+  EXPECT_EQ(ValueView(MapValueView(value)).GetType(type_manager()),
+            GetIntDoubleMapType());
 }
 
 TEST_P(MapValueViewTest, DebugString) {

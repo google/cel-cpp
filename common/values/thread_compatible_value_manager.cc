@@ -28,10 +28,10 @@ ListValue ThreadCompatibleValueManager::CreateZeroListValueImpl(
       list_value != list_values_.end()) {
     return list_value->second;
   }
-  ListValue list_value(
-      GetMemoryManager().MakeShared<EmptyListValue>(ListType(type)));
-  type = list_value.type();
-  return list_values_.insert(std::pair{type, std::move(list_value)})
+  auto list_value =
+      GetMemoryManager().MakeShared<EmptyListValue>(ListType(type));
+  type = list_value->GetType();
+  return list_values_.insert(std::pair{type, ListValue(std::move(list_value))})
       .first->second;
 }
 
@@ -40,10 +40,9 @@ MapValue ThreadCompatibleValueManager::CreateZeroMapValueImpl(
   if (auto map_value = map_values_.find(type); map_value != map_values_.end()) {
     return map_value->second;
   }
-  MapValue map_value(
-      GetMemoryManager().MakeShared<EmptyMapValue>(MapType(type)));
-  type = map_value.type();
-  return map_values_.insert(std::pair{type, std::move(map_value)})
+  auto map_value = GetMemoryManager().MakeShared<EmptyMapValue>(MapType(type));
+  type = map_value->GetType();
+  return map_values_.insert(std::pair{type, MapValue(std::move(map_value))})
       .first->second;
 }
 
@@ -53,10 +52,11 @@ OptionalValue ThreadCompatibleValueManager::CreateZeroOptionalValueImpl(
       optional_value != optional_values_.end()) {
     return optional_value->second;
   }
-  OptionalValue optional_value(
-      GetMemoryManager().MakeShared<EmptyOptionalValue>(OptionalType(type)));
-  type = optional_value.type();
-  return optional_values_.insert(std::pair{type, std::move(optional_value)})
+  auto optional_value =
+      GetMemoryManager().MakeShared<EmptyOptionalValue>(OptionalType(type));
+  type = optional_value->GetType();
+  return optional_values_
+      .insert(std::pair{type, OptionalValue(std::move(optional_value))})
       .first->second;
 }
 

@@ -40,6 +40,7 @@ namespace cel {
 
 class BytesValue;
 class BytesValueView;
+class TypeManager;
 
 // `BytesValue` represents values of the primitive `bytes` type.
 class BytesValue final {
@@ -78,7 +79,9 @@ class BytesValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  BytesTypeView type() const { return BytesTypeView(); }
+  BytesType GetType(TypeManager&) const { return BytesType(); }
+
+  absl::string_view GetTypeName() const { return BytesType::kName; }
 
   std::string DebugString() const;
 
@@ -163,7 +166,9 @@ class BytesValueView final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  BytesTypeView type() const { return BytesTypeView(); }
+  BytesType GetType(TypeManager&) const { return BytesType(); }
+
+  absl::string_view GetTypeName() const { return BytesType::kName; }
 
   std::string DebugString() const;
 

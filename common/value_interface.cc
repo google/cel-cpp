@@ -30,12 +30,12 @@ namespace cel {
 
 absl::StatusOr<size_t> ValueInterface::GetSerializedSize() const {
   return absl::FailedPreconditionError(
-      absl::StrCat(type().name(), " is unserializable"));
+      absl::StrCat(GetTypeName(), " is unserializable"));
 }
 
 absl::Status ValueInterface::SerializeTo(absl::Cord&) const {
   return absl::FailedPreconditionError(
-      absl::StrCat(type().name(), " is unserializable"));
+      absl::StrCat(GetTypeName(), " is unserializable"));
 }
 
 absl::StatusOr<absl::Cord> ValueInterface::Serialize() const {
@@ -48,7 +48,7 @@ absl::StatusOr<absl::Cord> ValueInterface::Serialize() const {
 absl::StatusOr<std::string> ValueInterface::GetTypeUrl(
     absl::string_view) const {
   return absl::FailedPreconditionError(
-      absl::StrCat(type().name(), " is unserializable"));
+      absl::StrCat(GetTypeName(), " is unserializable"));
 }
 
 // NOLINTNEXTLINE(google-default-arguments)
@@ -61,7 +61,7 @@ absl::StatusOr<Any> ValueInterface::ConvertToAny(
 
 absl::StatusOr<Json> ValueInterface::ConvertToJson() const {
   return absl::FailedPreconditionError(
-      absl::StrCat(type().name(), " is not convertable to JSON"));
+      absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
 }  // namespace cel

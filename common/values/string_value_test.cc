@@ -40,11 +40,6 @@ TEST(StringValue, Kind) {
   EXPECT_EQ(Value(StringValue(absl::Cord("foo"))).kind(), StringValue::kKind);
 }
 
-TEST(StringValue, Type) {
-  EXPECT_EQ(StringValue("foo").type(), StringType());
-  EXPECT_EQ(Value(StringValue(absl::Cord("foo"))).type(), StringType());
-}
-
 TEST(StringValue, DebugString) {
   {
     std::ostringstream out;
@@ -137,11 +132,6 @@ TEST(StringValue, LessThan) {
 TEST(StringValueView, Kind) {
   EXPECT_EQ(StringValueView("foo").kind(), StringValueView::kKind);
   EXPECT_EQ(ValueView(StringValueView("foo")).kind(), StringValueView::kKind);
-}
-
-TEST(StringValueView, Type) {
-  EXPECT_EQ(StringValueView("foo").type(), StringType());
-  EXPECT_EQ(ValueView(StringValueView("foo")).type(), StringType());
 }
 
 TEST(StringValueView, DebugString) {

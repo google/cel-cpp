@@ -40,6 +40,7 @@ namespace cel {
 
 class ErrorValue;
 class ErrorValueView;
+class TypeManager;
 
 // `ErrorValue` represents values of the `ErrorType`.
 class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final {
@@ -71,7 +72,9 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  ErrorTypeView type() const { return ErrorTypeView(); }
+  ErrorType GetType(TypeManager&) const { return ErrorType(); }
+
+  absl::string_view GetTypeName() const { return ErrorType::kName; }
 
   std::string DebugString() const;
 
@@ -150,7 +153,9 @@ class ErrorValueView final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  ErrorTypeView type() const { return ErrorTypeView(); }
+  ErrorType GetType(TypeManager&) const { return ErrorType(); }
+
+  absl::string_view GetTypeName() const { return ErrorType::kName; }
 
   std::string DebugString() const;
 

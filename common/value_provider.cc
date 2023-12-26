@@ -348,7 +348,7 @@ class TypedListValue final : public ListValueInterface {
   }
 
  protected:
-  TypeView get_type() const override { return type_; }
+  Type GetTypeImpl(TypeManager&) const override { return type_; }
 
  private:
   absl::StatusOr<ValueView> GetImpl(ValueManager&, size_t index,
@@ -367,8 +367,9 @@ class TypedListValue final : public ListValueInterface {
 template <typename T>
 class ListValueBuilderImpl final : public ListValueBuilder {
  public:
-  using element_view_type = std::decay_t<decltype(std::declval<T>().type())>;
-  using element_type = typename element_view_type::alternative_type;
+  using element_type = std::decay_t<decltype(std::declval<T>().GetType(
+      std::declval<TypeManager&>()))>;
+  using element_view_type = typename element_type::view_alternative_type;
 
   static_assert(common_internal::IsValueAlternativeV<T>,
                 "T must be Value or one of the Value alternatives");
@@ -452,7 +453,9 @@ ListValue ListValueBuilderImpl<T>::Build() && {
 template <typename K, typename V>
 class TypedMapValue final : public MapValueInterface {
  public:
-  using key_view_type = std::decay_t<decltype(std::declval<K>().type())>;
+  using key_type = std::decay_t<decltype(std::declval<K>().GetType(
+      std::declval<TypeManager&>()))>;
+  using key_view_type = typename key_type::view_alternative_type;
 
   TypedMapValue(MapType type,
                 absl::flat_hash_map<K, V, MapValueKeyHash<K>,
@@ -522,7 +525,7 @@ class TypedMapValue final : public MapValueInterface {
   }
 
  protected:
-  TypeView get_type() const override { return type_; }
+  Type GetTypeImpl(TypeManager&) const override { return type_; }
 
  private:
   absl::StatusOr<absl::optional<ValueView>> FindImpl(ValueManager&,
@@ -557,10 +560,12 @@ class TypedMapValue final : public MapValueInterface {
 template <typename K, typename V>
 class MapValueBuilderImpl final : public MapValueBuilder {
  public:
-  using key_view_type = std::decay_t<decltype(std::declval<K>().type())>;
-  using key_type = typename key_view_type::alternative_type;
-  using value_view_type = std::decay_t<decltype(std::declval<V>().type())>;
-  using value_type = typename value_view_type::alternative_type;
+  using key_type = std::decay_t<decltype(std::declval<K>().GetType(
+      std::declval<TypeManager&>()))>;
+  using key_view_type = typename key_type::view_alternative_type;
+  using value_type = std::decay_t<decltype(std::declval<V>().GetType(
+      std::declval<TypeManager&>()))>;
+  using value_view_type = typename value_type::view_alternative_type;
 
   static_assert(common_internal::IsValueAlternativeV<K>,
                 "K must be Value or one of the Value alternatives");
@@ -603,8 +608,9 @@ class MapValueBuilderImpl final : public MapValueBuilder {
 template <typename V>
 class MapValueBuilderImpl<Value, V> final : public MapValueBuilder {
  public:
-  using value_view_type = std::decay_t<decltype(std::declval<V>().type())>;
-  using value_type = typename value_view_type::alternative_type;
+  using value_type = std::decay_t<decltype(std::declval<V>().GetType(
+      std::declval<TypeManager&>()))>;
+  using value_view_type = typename value_type::view_alternative_type;
 
   static_assert(common_internal::IsValueAlternativeV<V>,
                 "V must be Value or one of the Value alternatives");
@@ -641,8 +647,9 @@ class MapValueBuilderImpl<Value, V> final : public MapValueBuilder {
 template <typename K>
 class MapValueBuilderImpl<K, Value> final : public MapValueBuilder {
  public:
-  using key_view_type = std::decay_t<decltype(std::declval<K>().type())>;
-  using key_type = typename key_view_type::alternative_type;
+  using key_type = std::decay_t<decltype(std::declval<K>().GetType(
+      std::declval<TypeManager&>()))>;
+  using key_view_type = typename key_type::view_alternative_type;
 
   static_assert(common_internal::IsValueAlternativeV<K>,
                 "K must be Value or one of the Value alternatives");

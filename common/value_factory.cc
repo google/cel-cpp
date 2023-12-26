@@ -156,8 +156,8 @@ class JsonListValue final : public ListValueInterface {
   }
 
  private:
-  TypeView get_type() const noexcept override {
-    return ProcessLocalTypeCache::Get()->GetDynListType();
+  Type GetTypeImpl(TypeManager& type_manager) const override {
+    return ListType(type_manager.GetDynListType());
   }
 
   absl::StatusOr<ValueView> GetImpl(ValueManager& value_manager, size_t index,
@@ -270,8 +270,8 @@ class JsonMapValue final : public MapValueInterface {
     });
   }
 
-  TypeView get_type() const noexcept override {
-    return ProcessLocalTypeCache::Get()->GetStringDynMapType();
+  Type GetTypeImpl(TypeManager& type_manager) const override {
+    return MapType(type_manager.GetStringDynMapType());
   }
 
   NativeTypeId GetNativeTypeId() const noexcept override {

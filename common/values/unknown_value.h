@@ -38,6 +38,7 @@ namespace cel {
 
 class UnknownValue;
 class UnknownValueView;
+class TypeManager;
 
 // `UnknownValue` represents values of the primitive `duration` type.
 class UnknownValue final {
@@ -56,7 +57,9 @@ class UnknownValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  UnknownTypeView type() const { return UnknownTypeView(); }
+  UnknownType GetType(TypeManager&) const { return UnknownType(); }
+
+  absl::string_view GetTypeName() const { return UnknownType::kName; }
 
   std::string DebugString() const { return ""; }
 
@@ -118,7 +121,9 @@ class UnknownValueView final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  UnknownTypeView type() const { return UnknownTypeView(); }
+  UnknownType GetType(TypeManager&) const { return UnknownType(); }
+
+  absl::string_view GetTypeName() const { return UnknownType::kName; }
 
   std::string DebugString() const { return ""; }
 

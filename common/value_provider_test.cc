@@ -41,7 +41,7 @@ using ValueProviderTest = common_internal::ThreadCompatibleValueTest<>;
     EXPECT_TRUE(list_value.IsEmpty());                                    \
     EXPECT_EQ(list_value.Size(), 0);                                      \
     EXPECT_EQ(list_value.DebugString(), "[]");                            \
-    EXPECT_EQ(list_value.type(), list_type);                              \
+    EXPECT_EQ(list_value.GetType(type_manager()), list_type);             \
   }
 
 VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(BoolType)
@@ -78,7 +78,7 @@ TEST_P(ValueProviderTest, NewListValueBuilder_ErrorType) {
     EXPECT_TRUE(map_value.IsEmpty());                                       \
     EXPECT_EQ(map_value.Size(), 0);                                         \
     EXPECT_EQ(map_value.DebugString(), "{}");                               \
-    EXPECT_EQ(map_value.type(), map_type);                                  \
+    EXPECT_EQ(map_value.GetType(type_manager()), map_type);                 \
   }
 
 VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(BoolType, BoolType)

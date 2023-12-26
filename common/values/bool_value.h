@@ -35,6 +35,7 @@ namespace cel {
 
 class BoolValue;
 class BoolValueView;
+class TypeManager;
 
 // `BoolValue` represents values of the primitive `bool` type.
 class BoolValue final {
@@ -55,7 +56,9 @@ class BoolValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  BoolTypeView type() const { return BoolTypeView(); }
+  BoolType GetType(TypeManager&) const { return BoolType(); }
+
+  absl::string_view GetTypeName() const { return BoolType::kName; }
 
   std::string DebugString() const;
 
@@ -161,7 +164,9 @@ class BoolValueView final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  BoolTypeView type() const { return BoolTypeView(); }
+  BoolType GetType(TypeManager&) const { return BoolType(); }
+
+  absl::string_view GetTypeName() const { return BoolType::kName; }
 
   std::string DebugString() const;
 

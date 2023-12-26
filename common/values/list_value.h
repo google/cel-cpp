@@ -70,7 +70,11 @@ class ListValueInterface : public ValueInterface {
 
   ValueKind kind() const final { return kKind; }
 
-  ListTypeView type() const { return Cast<ListTypeView>(get_type()); }
+  ListType GetType(TypeManager& type_manager) const {
+    return Cast<ListType>(GetTypeImpl(type_manager));
+  }
+
+  absl::string_view GetTypeName() const final { return "list"; }
 
   absl::StatusOr<size_t> GetSerializedSize() const override;
 
@@ -107,6 +111,8 @@ class ListValueInterface : public ValueInterface {
  private:
   friend class ListValueInterfaceIterator;
 
+  Type GetTypeImpl(TypeManager&) const override { return ListType(); }
+
   virtual absl::StatusOr<ValueView> GetImpl(ValueManager& value_manager,
                                             size_t index,
                                             Value& scratch) const = 0;
@@ -135,7 +141,11 @@ class ListValue {
 
   ValueKind kind() const { return interface_->kind(); }
 
-  ListTypeView type() const { return interface_->type(); }
+  ListType GetType(TypeManager& type_manager) const {
+    return interface_->GetType(type_manager);
+  }
+
+  absl::string_view GetTypeName() const { return interface_->GetTypeName(); }
 
   std::string DebugString() const { return interface_->DebugString(); }
 
@@ -296,7 +306,11 @@ class ListValueView {
 
   ValueKind kind() const { return interface_->kind(); }
 
-  ListTypeView type() const { return interface_->type(); }
+  ListType GetType(TypeManager& type_manager) const {
+    return interface_->GetType(type_manager);
+  }
+
+  absl::string_view GetTypeName() const { return interface_->GetTypeName(); }
 
   std::string DebugString() const { return interface_->DebugString(); }
 

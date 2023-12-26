@@ -36,6 +36,7 @@ namespace cel {
 
 class IntValue;
 class IntValueView;
+class TypeManager;
 
 // `IntValue` represents values of the primitive `int` type.
 class IntValue final {
@@ -56,7 +57,9 @@ class IntValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  IntTypeView type() const { return IntTypeView(); }
+  IntType GetType(TypeManager&) const { return IntType(); }
+
+  absl::string_view GetTypeName() const { return IntType::kName; }
 
   std::string DebugString() const;
 
@@ -162,7 +165,9 @@ class IntValueView final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  IntTypeView type() const { return IntTypeView(); }
+  IntType GetType(TypeManager&) const { return IntType(); }
+
+  absl::string_view GetTypeName() const { return IntType::kName; }
 
   std::string DebugString() const;
 

@@ -36,6 +36,7 @@ namespace cel {
 
 class NullValue;
 class NullValueView;
+class TypeManager;
 
 // `NullValue` represents values of the primitive `duration` type.
 class NullValue final {
@@ -54,7 +55,9 @@ class NullValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  NullTypeView type() const { return NullTypeView(); }
+  NullType GetType(TypeManager&) const { return NullType(); }
+
+  absl::string_view GetTypeName() const { return NullType::kName; }
 
   std::string DebugString() const { return "null"; }
 
@@ -104,7 +107,9 @@ class NullValueView final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  NullTypeView type() const { return NullTypeView(); }
+  NullType GetType(TypeManager&) const { return NullType(); }
+
+  absl::string_view GetTypeName() const { return NullType::kName; }
 
   std::string DebugString() const { return "null"; }
 

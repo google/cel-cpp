@@ -34,6 +34,7 @@
 #include "common/internal/shared_byte_string.h"
 #include "common/json.h"
 #include "common/type.h"
+#include "common/type_manager.h"
 #include "common/value_kind.h"
 
 namespace cel {
@@ -78,7 +79,9 @@ class StringValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  StringTypeView type() const { return StringTypeView(); }
+  StringType GetType(TypeManager&) const { return StringType(); }
+
+  absl::string_view GetTypeName() const { return StringType::kName; }
 
   std::string DebugString() const;
 
@@ -181,7 +184,9 @@ class StringValueView final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  StringTypeView type() const { return StringTypeView(); }
+  StringType GetType(TypeManager&) const { return StringType(); }
+
+  absl::string_view GetTypeName() const { return StringType::kName; }
 
   std::string DebugString() const;
 

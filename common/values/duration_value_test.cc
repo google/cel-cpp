@@ -38,11 +38,6 @@ TEST(DurationValue, Kind) {
             DurationValue::kKind);
 }
 
-TEST(DurationValue, Type) {
-  EXPECT_EQ(DurationValue(absl::Seconds(1)).type(), DurationType());
-  EXPECT_EQ(Value(DurationValue(absl::Seconds(1))).type(), DurationType());
-}
-
 TEST(DurationValue, DebugString) {
   {
     std::ostringstream out;
@@ -110,12 +105,6 @@ TEST(DurationValueView, Kind) {
             DurationValueView::kKind);
   EXPECT_EQ(ValueView(DurationValueView(absl::Seconds(1))).kind(),
             DurationValueView::kKind);
-}
-
-TEST(DurationValueView, Type) {
-  EXPECT_EQ(DurationValueView(absl::Seconds(1)).type(), DurationType());
-  EXPECT_EQ(ValueView(DurationValueView(absl::Seconds(1))).type(),
-            DurationType());
 }
 
 TEST(DurationValueView, DebugString) {

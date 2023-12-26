@@ -40,32 +40,32 @@ std::string ErrorValue::DebugString() const { return ErrorDebugString(value_); }
 
 absl::StatusOr<size_t> ErrorValue::GetSerializedSize() const {
   return absl::FailedPreconditionError(
-      absl::StrCat(type().name(), " is unserializable"));
+      absl::StrCat(GetTypeName(), " is unserializable"));
 }
 
 absl::Status ErrorValue::SerializeTo(absl::Cord&) const {
   return absl::FailedPreconditionError(
-      absl::StrCat(type().name(), " is unserializable"));
+      absl::StrCat(GetTypeName(), " is unserializable"));
 }
 
 absl::StatusOr<absl::Cord> ErrorValue::Serialize() const {
   return absl::FailedPreconditionError(
-      absl::StrCat(type().name(), " is unserializable"));
+      absl::StrCat(GetTypeName(), " is unserializable"));
 }
 
 absl::StatusOr<std::string> ErrorValue::GetTypeUrl(absl::string_view) const {
   return absl::FailedPreconditionError(
-      absl::StrCat(type().name(), " is unserializable"));
+      absl::StrCat(GetTypeName(), " is unserializable"));
 }
 
 absl::StatusOr<Any> ErrorValue::ConvertToAny(absl::string_view) const {
   return absl::FailedPreconditionError(
-      absl::StrCat(type().name(), " is unserializable"));
+      absl::StrCat(GetTypeName(), " is unserializable"));
 }
 
 absl::StatusOr<Json> ErrorValue::ConvertToJson() const {
   return absl::FailedPreconditionError(
-      absl::StrCat(type().name(), " is not convertable to JSON"));
+      absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
 std::string ErrorValueView::DebugString() const {
@@ -74,33 +74,33 @@ std::string ErrorValueView::DebugString() const {
 
 absl::StatusOr<size_t> ErrorValueView::GetSerializedSize() const {
   return absl::FailedPreconditionError(
-      absl::StrCat(type().name(), " is unserializable"));
+      absl::StrCat(GetTypeName(), " is unserializable"));
 }
 
 absl::Status ErrorValueView::SerializeTo(absl::Cord&) const {
   return absl::FailedPreconditionError(
-      absl::StrCat(type().name(), " is unserializable"));
+      absl::StrCat(GetTypeName(), " is unserializable"));
 }
 
 absl::StatusOr<absl::Cord> ErrorValueView::Serialize() const {
   return absl::FailedPreconditionError(
-      absl::StrCat(type().name(), " is unserializable"));
+      absl::StrCat(GetTypeName(), " is unserializable"));
 }
 
 absl::StatusOr<std::string> ErrorValueView::GetTypeUrl(
     absl::string_view) const {
   return absl::FailedPreconditionError(
-      absl::StrCat(type().name(), " is unserializable"));
+      absl::StrCat(GetTypeName(), " is unserializable"));
 }
 
 absl::StatusOr<Any> ErrorValueView::ConvertToAny(absl::string_view) const {
   return absl::FailedPreconditionError(
-      absl::StrCat(type().name(), " is unserializable"));
+      absl::StrCat(GetTypeName(), " is unserializable"));
 }
 
 absl::StatusOr<Json> ErrorValueView::ConvertToJson() const {
   return absl::FailedPreconditionError(
-      absl::StrCat(type().name(), " is not convertable to JSON"));
+      absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
 }  // namespace cel

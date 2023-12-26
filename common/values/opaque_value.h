@@ -69,7 +69,9 @@ class OpaqueValueInterface : public ValueInterface {
 
   ValueKind kind() const final { return kKind; }
 
-  OpaqueTypeView type() const { return Cast<OpaqueTypeView>(get_type()); }
+  OpaqueType GetType(TypeManager& type_manager) const {
+    return Cast<OpaqueType>(GetTypeImpl(type_manager));
+  }
 };
 
 template <>
@@ -99,7 +101,11 @@ class OpaqueValue {
 
   ValueKind kind() const { return interface_->kind(); }
 
-  OpaqueTypeView type() const { return interface_->type(); }
+  OpaqueType GetType(TypeManager& type_manager) const {
+    return interface_->GetType(type_manager);
+  }
+
+  absl::string_view GetTypeName() const { return interface_->GetTypeName(); }
 
   std::string DebugString() const { return interface_->DebugString(); }
 
@@ -236,7 +242,11 @@ class OpaqueValueView {
 
   ValueKind kind() const { return interface_->kind(); }
 
-  OpaqueTypeView type() const { return interface_->type(); }
+  OpaqueType GetType(TypeManager& type_manager) const {
+    return interface_->GetType(type_manager);
+  }
+
+  absl::string_view GetTypeName() const { return interface_->GetTypeName(); }
 
   std::string DebugString() const { return interface_->DebugString(); }
 

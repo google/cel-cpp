@@ -75,6 +75,8 @@ class TypeView;
 // best to fail.
 class Type final {
  public:
+  using view_alternative_type = TypeView;
+
   Type() = default;
 
   Type(const Type& other) : variant_((other.AssertIsValid(), other.variant_)) {}
@@ -410,6 +412,8 @@ static_assert(std::is_nothrow_swappable_v<Type>);
 // must be assigned another type.
 class TypeView final {
  public:
+  using alternative_type = Type;
+
   TypeView() = default;
   TypeView(const TypeView&) = default;
   TypeView& operator=(const TypeView&) = default;

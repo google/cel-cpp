@@ -37,11 +37,6 @@ TEST(BoolValue, Kind) {
   EXPECT_EQ(Value(BoolValue(true)).kind(), BoolValue::kKind);
 }
 
-TEST(BoolValue, Type) {
-  EXPECT_EQ(BoolValue(true).type(), BoolType());
-  EXPECT_EQ(Value(BoolValue(true)).type(), BoolType());
-}
-
 TEST(BoolValue, DebugString) {
   {
     std::ostringstream out;
@@ -110,11 +105,6 @@ TEST(BoolValue, LessThan) {
 TEST(BoolValueView, Kind) {
   EXPECT_EQ(BoolValueView(true).kind(), BoolValueView::kKind);
   EXPECT_EQ(ValueView(BoolValueView(true)).kind(), BoolValueView::kKind);
-}
-
-TEST(BoolValueView, Type) {
-  EXPECT_EQ(BoolValueView(true).type(), BoolType());
-  EXPECT_EQ(ValueView(BoolValueView(true)).type(), BoolType());
 }
 
 TEST(BoolValueView, DebugString) {

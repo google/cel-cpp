@@ -36,6 +36,7 @@ namespace cel {
 
 class TimestampValue;
 class TimestampValueView;
+class TypeManager;
 
 // `TimestampValue` represents values of the primitive `timestamp` type.
 class TimestampValue final {
@@ -57,7 +58,9 @@ class TimestampValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  TimestampTypeView type() const { return TimestampTypeView(); }
+  TimestampType GetType(TypeManager&) const { return TimestampType(); }
+
+  absl::string_view GetTypeName() const { return TimestampType::kName; }
 
   std::string DebugString() const;
 
@@ -141,7 +144,9 @@ class TimestampValueView final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  TimestampTypeView type() const { return TimestampTypeView(); }
+  TimestampType GetType(TypeManager&) const { return TimestampType(); }
+
+  absl::string_view GetTypeName() const { return TimestampType::kName; }
 
   std::string DebugString() const;
 
