@@ -64,8 +64,8 @@ const std::vector<BenchmarkCase>& BenchmarkCases() {
               cel.bind(
                 y,
                 "cd",
-                x + y + x)))",
-           IsCelString("abcdab")},
+                x + y + "ef")))",
+           IsCelString("abcdef")},
           {"nested_defintion",
            R"(
             cel.bind(
@@ -74,9 +74,9 @@ const std::vector<BenchmarkCase>& BenchmarkCases() {
               cel.bind(
                 y,
                 x + "cd",
-                y + x
+                y + "ef"
               )))",
-           IsCelString("abcdab")},
+           IsCelString("abcdef")},
           {"bind_outside_loop",
            R"(
             cel.bind(
@@ -124,6 +124,20 @@ const std::vector<BenchmarkCase>& BenchmarkCases() {
               (false && a.startsWith("c")) ? a : "cd"
             ))",
            IsCelString("cd")},
+          {"twice_nested_defintion",
+           R"(
+            cel.bind(
+              x,
+              "ab",
+              cel.bind(
+                y,
+                x + "cd",
+                cel.bind(
+                  z,
+                  y + "ef",
+                  z)))
+             )",
+           IsCelString("abcdef")},
       });
 
   return *cases;
@@ -218,6 +232,9 @@ void BM_TernaryDependsOnBind(benchmark::State& state) {
 void BM_TernaryDoesNotDependOnBind(benchmark::State& state) {
   RunBenchmark(BenchmarkCases()[8], state);
 }
+void BM_TwiceNestedDefinition(benchmark::State& state) {
+  RunBenchmark(BenchmarkCases()[9], state);
+}
 
 BENCHMARK(BM_Simple);
 BENCHMARK(BM_MultipleReferences);
@@ -228,6 +245,7 @@ BENCHMARK(BM_BindInsideLoop);
 BENCHMARK(BM_BindLoopBind);
 BENCHMARK(BM_TernaryDependsOnBind);
 BENCHMARK(BM_TernaryDoesNotDependOnBind);
+BENCHMARK(BM_TwiceNestedDefinition);
 
 INSTANTIATE_TEST_SUITE_P(BindingsBenchmarkTest, BindingsBenchmarkTest,
                          ::testing::ValuesIn(BenchmarkCases()));
