@@ -145,8 +145,7 @@ class ExecutionFrame {
                            state_.value_factory()),
         max_iterations_(options_.comprehension_max_iterations),
         iterations_(0),
-        subexpressions_(),
-        sub_frame_(absl::nullopt) {}
+        subexpressions_() {}
 
   ExecutionFrame(absl::Span<const ExecutionPathView> subexpressions,
                  const cel::ActivationInterface& activation,
@@ -162,8 +161,7 @@ class ExecutionFrame {
                            state_.value_factory()),
         max_iterations_(options_.comprehension_max_iterations),
         iterations_(0),
-        subexpressions_(subexpressions),
-        sub_frame_(absl::nullopt) {
+        subexpressions_(subexpressions) {
     ABSL_DCHECK(!subexpressions.empty());
   }
 
@@ -197,7 +195,6 @@ class ExecutionFrame {
   // Only intended for use in built-in notion of lazily evaluated
   // subexpressions.
   void Call(int return_pc_offset, size_t subexpression_index) {
-    ABSL_DCHECK(!sub_frame_.has_value());
     ABSL_DCHECK_LT(subexpression_index, subexpressions_.size());
     ExecutionPathView subexpression = subexpressions_[subexpression_index];
     ABSL_DCHECK(subexpression != execution_path_);
@@ -205,8 +202,8 @@ class ExecutionFrame {
     // return pc == size() is supported (a tail call).
     ABSL_DCHECK_GE(return_pc, 0);
     ABSL_DCHECK_LE(return_pc, static_cast<int>(execution_path_.size()));
-    sub_frame_ = SubFrame{static_cast<size_t>(return_pc),
-                          value_stack().size() + 1, execution_path_};
+    call_stack_.push_back(SubFrame{static_cast<size_t>(return_pc),
+                                   value_stack().size() + 1, execution_path_});
     pc_ = 0UL;
     execution_path_ = subexpression;
   }
@@ -291,7 +288,7 @@ class ExecutionFrame {
   const int max_iterations_;
   int iterations_;
   absl::Span<const ExecutionPathView> subexpressions_;
-  absl::optional<SubFrame> sub_frame_;
+  std::vector<SubFrame> call_stack_;
 };
 
 // A flattened representation of the input CEL AST.

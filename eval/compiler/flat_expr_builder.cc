@@ -430,14 +430,6 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
           int subexpression = -1;
           if (record.should_lazy_eval) {
             subexpression = record.subexpression;
-            // Invalidate any other binds that depend on this var since we
-            // don't support nested lazy init yet.
-            for (int j = comprehension_stack_.size() - 1; j > i; j--) {
-              ComprehensionStackRecord& other_record = comprehension_stack_[j];
-              if (other_record.in_accu_init && other_record.should_lazy_eval) {
-                other_record.should_lazy_eval = false;
-              }
-            }
           }
           return {slot, subexpression};
         }

@@ -62,11 +62,12 @@ const ExpressionStep* ExecutionFrame::Next() {
   size_t end_pos = execution_path_.size();
 
   if (pc_ < end_pos) return execution_path_[pc_++].get();
-  if (pc_ == end_pos && sub_frame_.has_value()) {
-    pc_ = sub_frame_->return_pc;
-    execution_path_ = sub_frame_->return_expression;
-    ABSL_DCHECK_EQ(value_stack().size(), sub_frame_->expected_stack_size);
-    sub_frame_.reset();
+  if (pc_ == end_pos && !call_stack_.empty()) {
+    pc_ = call_stack_.back().return_pc;
+    execution_path_ = call_stack_.back().return_expression;
+    ABSL_DCHECK_EQ(value_stack().size(),
+                   call_stack_.back().expected_stack_size);
+    call_stack_.pop_back();
     return Next();
   }
   if (pc_ > end_pos) {
