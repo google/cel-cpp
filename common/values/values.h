@@ -26,6 +26,7 @@
 namespace cel {
 
 class ValueInterface;
+class StructValueInterface;
 
 class Value;
 class BoolValue;
@@ -39,6 +40,7 @@ class MapValue;
 class NullValue;
 class OpaqueValue;
 class StringValue;
+class StructValue;
 class TimestampValue;
 class TypeValue;
 class UintValue;
@@ -56,10 +58,15 @@ class MapValueView;
 class NullValueView;
 class OpaqueValueView;
 class StringValueView;
+class StructValueView;
 class TimestampValueView;
 class TypeValueView;
 class UintValueView;
 class UnknownValueView;
+
+class ParsedStructValue;
+class ParsedStructValueView;
+class ParsedStructValueInterface;
 
 class ValueIterator;
 using ValueIteratorPtr = std::unique_ptr<ValueIterator>;
@@ -67,6 +74,46 @@ using ValueIteratorPtr = std::unique_ptr<ValueIterator>;
 class OptionalValueView;
 
 namespace common_internal {
+
+class LegacyStructValue;
+class LegacyStructValueView;
+
+template <typename T>
+struct IsStructValueInterface
+    : std::bool_constant<std::conjunction_v<
+          std::negation<std::is_same<StructValueInterface, T>>,
+          std::is_base_of<StructValueInterface, T>>> {};
+
+template <typename T>
+inline constexpr bool IsStructValueInterfaceV =
+    IsStructValueInterface<T>::value;
+
+template <typename T>
+struct IsStructValueAlternative
+    : std::bool_constant<
+          std::disjunction_v<std::is_base_of<ParsedStructValue, T>,
+                             std::is_same<LegacyStructValue, T>>> {};
+
+template <typename T>
+inline constexpr bool IsStructValueAlternativeV =
+    IsStructValueAlternative<T>::value;
+
+using StructValueVariant =
+    absl::variant<absl::monostate, ParsedStructValue, LegacyStructValue>;
+
+template <typename T>
+struct IsStructValueViewAlternative
+    : std::bool_constant<
+          std::disjunction_v<std::is_base_of<ParsedStructValueView, T>,
+                             std::is_same<LegacyStructValueView, T>>> {};
+
+template <typename T>
+inline constexpr bool IsStructValueViewAlternativeV =
+    IsStructValueViewAlternative<T>::value;
+
+using StructValueViewVariant =
+    absl::variant<absl::monostate, ParsedStructValueView,
+                  LegacyStructValueView>;
 
 template <typename T>
 struct IsValueInterface
@@ -85,7 +132,8 @@ struct IsValueAlternative
           std::is_same<ErrorValue, T>, std::is_same<IntValue, T>,
           std::is_base_of<ListValue, T>, std::is_base_of<MapValue, T>,
           std::is_same<NullValue, T>, std::is_base_of<OpaqueValue, T>,
-          std::is_same<StringValue, T>, std::is_same<TimestampValue, T>,
+          std::is_same<StringValue, T>, IsStructValueAlternative<T>,
+          std::is_same<StructValue, T>, std::is_same<TimestampValue, T>,
           std::is_same<TypeValue, T>, std::is_same<UintValue, T>,
           std::is_same<UnknownValue, T>>> {};
 
@@ -95,8 +143,9 @@ inline constexpr bool IsValueAlternativeV = IsValueAlternative<T>::value;
 using ValueVariant =
     absl::variant<absl::monostate, BoolValue, BytesValue, DoubleValue,
                   DurationValue, ErrorValue, IntValue, ListValue, MapValue,
-                  NullValue, OpaqueValue, StringValue, TimestampValue,
-                  TypeValue, UintValue, UnknownValue>;
+                  NullValue, OpaqueValue, StringValue, LegacyStructValue,
+                  ParsedStructValue, TimestampValue, TypeValue, UintValue,
+                  UnknownValue>;
 
 template <typename T>
 struct IsValueViewAlternative
@@ -106,9 +155,10 @@ struct IsValueViewAlternative
           std::is_same<ErrorValueView, T>, std::is_same<IntValueView, T>,
           std::is_base_of<ListValueView, T>, std::is_base_of<MapValueView, T>,
           std::is_same<NullValueView, T>, std::is_base_of<OpaqueValueView, T>,
-          std::is_same<StringValueView, T>, std::is_same<TimestampValueView, T>,
-          std::is_same<TypeValueView, T>, std::is_same<UintValueView, T>,
-          std::is_same<UnknownValueView, T>>> {};
+          std::is_same<StringValueView, T>, IsStructValueViewAlternative<T>,
+          std::is_same<TimestampValueView, T>, std::is_same<TypeValueView, T>,
+          std::is_same<UintValueView, T>, std::is_same<UnknownValueView, T>>> {
+};
 
 template <typename T>
 inline constexpr bool IsValueViewAlternativeV =
@@ -118,8 +168,9 @@ using ValueViewVariant =
     absl::variant<absl::monostate, BoolValueView, BytesValueView,
                   DoubleValueView, DurationValueView, ErrorValueView,
                   IntValueView, ListValueView, MapValueView, NullValueView,
-                  OpaqueValueView, StringValueView, TimestampValueView,
-                  TypeValueView, UintValueView, UnknownValueView>;
+                  OpaqueValueView, StringValueView, LegacyStructValueView,
+                  ParsedStructValueView, TimestampValueView, TypeValueView,
+                  UintValueView, UnknownValueView>;
 
 // Get the base type alternative for the given alternative or interface. The
 // base type alternative is the type stored in the `ValueVariant`.
@@ -153,6 +204,12 @@ template <typename T>
 struct BaseValueAlternativeFor<
     T, std::enable_if_t<std::is_base_of_v<MapValue, T>>> {
   using type = MapValue;
+};
+
+template <typename T>
+struct BaseValueAlternativeFor<
+    T, std::enable_if_t<std::is_base_of_v<ParsedStructValue, T>>> {
+  using type = ParsedStructValue;
 };
 
 template <typename T>
@@ -193,8 +250,66 @@ struct BaseValueViewAlternativeFor<
 };
 
 template <typename T>
+struct BaseValueViewAlternativeFor<
+    T, std::enable_if_t<std::is_base_of_v<ParsedStructValueView, T>>> {
+  using type = ParsedStructValueView;
+};
+
+template <typename T>
 using BaseValueViewAlternativeForT =
     typename BaseValueViewAlternativeFor<T>::type;
+
+template <typename T, typename = void>
+struct BaseStructValueAlternativeFor {
+  static_assert(IsStructValueAlternativeV<T>);
+  using type = T;
+};
+
+template <typename T>
+struct BaseStructValueAlternativeFor<
+    T, std::enable_if_t<IsStructValueViewAlternativeV<T>>>
+    : BaseValueAlternativeFor<typename T::alternative_type> {};
+
+template <typename T>
+struct BaseStructValueAlternativeFor<
+    T, std::enable_if_t<IsStructValueInterfaceV<T>>>
+    : BaseValueAlternativeFor<typename T::alternative_type> {};
+
+template <typename T>
+struct BaseStructValueAlternativeFor<
+    T, std::enable_if_t<std::is_base_of_v<ParsedStructValue, T>>> {
+  using type = ParsedStructValue;
+};
+
+template <typename T>
+using BaseStructValueAlternativeForT =
+    typename BaseStructValueAlternativeFor<T>::type;
+
+template <typename T, typename = void>
+struct BaseStructValueViewAlternativeFor {
+  static_assert(IsStructValueViewAlternativeV<T>);
+  using type = T;
+};
+
+template <typename T>
+struct BaseStructValueViewAlternativeFor<
+    T, std::enable_if_t<IsStructValueAlternativeV<T>>>
+    : BaseStructValueViewAlternativeFor<typename T::view_alternative_type> {};
+
+template <typename T>
+struct BaseStructValueViewAlternativeFor<
+    T, std::enable_if_t<IsStructValueInterfaceV<T>>>
+    : BaseStructValueViewAlternativeFor<typename T::view_alternative_type> {};
+
+template <typename T>
+struct BaseStructValueViewAlternativeFor<
+    T, std::enable_if_t<std::is_base_of_v<ParsedStructValueView, T>>> {
+  using type = ParsedStructValueView;
+};
+
+template <typename T>
+using BaseStructValueViewAlternativeForT =
+    typename BaseStructValueViewAlternativeFor<T>::type;
 
 ABSL_ATTRIBUTE_PURE_FUNCTION ErrorValueView GetDefaultErrorValue();
 

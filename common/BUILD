@@ -381,6 +381,7 @@ cc_library(
         "value_manager.h",
         "value_provider.h",
     ],
+    linkopts = ["-ldl"],
     deps = [
         ":any",
         ":casting",
@@ -398,6 +399,7 @@ cc_library(
         "//internal:status_macros",
         "//internal:strings",
         "//internal:time",
+        "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -435,6 +437,7 @@ cc_test(
         ":native_type",
         ":type",
         ":value",
+        ":value_kind",
         ":value_testing",
         "//internal:status_macros",
         "//internal:testing",

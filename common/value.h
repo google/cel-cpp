@@ -1074,6 +1074,94 @@ MapValueView::NewIterator(ValueManager& value_manager) const {
   return interface_->NewIterator(value_manager);
 }
 
+inline absl::StatusOr<ValueView> ParsedStructValue::GetFieldByName(
+    ValueManager& value_manager, absl::string_view name, Value& scratch) const {
+  return interface_->GetFieldByName(value_manager, name, scratch);
+}
+
+inline absl::StatusOr<ValueView> ParsedStructValue::GetFieldByNumber(
+    ValueManager& value_manager, int64_t number, Value& scratch) const {
+  return interface_->GetFieldByNumber(value_manager, number, scratch);
+}
+
+inline absl::StatusOr<ValueView> ParsedStructValueView::GetFieldByName(
+    ValueManager& value_manager, absl::string_view name, Value& scratch) const {
+  return interface_->GetFieldByName(value_manager, name, scratch);
+}
+
+inline absl::StatusOr<ValueView> ParsedStructValueView::GetFieldByNumber(
+    ValueManager& value_manager, int64_t number, Value& scratch) const {
+  return interface_->GetFieldByNumber(value_manager, number, scratch);
+}
+
+inline absl::StatusOr<ValueView> StructValue::GetFieldByName(
+    ValueManager& value_manager, absl::string_view name, Value& scratch) const {
+  AssertIsValid();
+  return absl::visit(
+      [&value_manager, name,
+       &scratch](const auto& alternative) -> absl::StatusOr<ValueView> {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return absl::InternalError("use of invalid StructValue");
+        } else {
+          return alternative.GetFieldByName(value_manager, name, scratch);
+        }
+      },
+      variant_);
+}
+
+inline absl::StatusOr<ValueView> StructValue::GetFieldByNumber(
+    ValueManager& value_manager, int64_t number, Value& scratch) const {
+  AssertIsValid();
+  return absl::visit(
+      [&value_manager, number,
+       &scratch](const auto& alternative) -> absl::StatusOr<ValueView> {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return absl::InternalError("use of invalid StructValue");
+        } else {
+          return alternative.GetFieldByNumber(value_manager, number, scratch);
+        }
+      },
+      variant_);
+}
+
+inline absl::StatusOr<ValueView> StructValueView::GetFieldByName(
+    ValueManager& value_manager, absl::string_view name, Value& scratch) const {
+  AssertIsValid();
+  return absl::visit(
+      [&value_manager, name,
+       &scratch](const auto& alternative) -> absl::StatusOr<ValueView> {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return absl::InternalError("use of invalid StructValueView");
+        } else {
+          return alternative.GetFieldByName(value_manager, name, scratch);
+        }
+      },
+      variant_);
+}
+
+inline absl::StatusOr<ValueView> StructValueView::GetFieldByNumber(
+    ValueManager& value_manager, int64_t number, Value& scratch) const {
+  AssertIsValid();
+  return absl::visit(
+      [&value_manager, number,
+       &scratch](const auto& alternative) -> absl::StatusOr<ValueView> {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return absl::InternalError("use of invalid StructValueView");
+        } else {
+          return alternative.GetFieldByNumber(value_manager, number, scratch);
+        }
+      },
+      variant_);
+}
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUE_H_
