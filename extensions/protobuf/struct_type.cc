@@ -49,7 +49,6 @@
 #include "base/values/struct_value_builder.h"
 #include "base/values/uint_value.h"
 #include "eval/internal/errors.h"
-#include "extensions/protobuf/enum_type.h"
 #include "extensions/protobuf/internal/any.h"
 #include "extensions/protobuf/internal/duration.h"
 #include "extensions/protobuf/internal/map_reflection.h"
@@ -125,7 +124,10 @@ absl::StatusOr<Handle<Type>> FieldDescriptorToTypeSingular(
     case google::protobuf::FieldDescriptor::TYPE_BYTES:
       return type_manager.type_factory().GetBytesType();
     case google::protobuf::FieldDescriptor::TYPE_ENUM:
-      return ProtoType::Resolve(type_manager, *field_desc->enum_type());
+      if (field_desc->enum_type()->full_name() == "google.protobuf.NullValue") {
+        return type_manager.type_factory().GetNullType();
+      }
+      return type_manager.type_factory().GetIntType();
   }
 }
 
@@ -647,8 +649,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                 return absl::OkStatus();
               };
         }
-        if (ABSL_PREDICT_FALSE(!from_value_type.Is<EnumType>() &&
-                               !from_value_type.Is<IntType>() &&
+        if (ABSL_PREDICT_FALSE(!from_value_type.Is<IntType>() &&
                                !from_value_type.Is<DynType>())) {
           return TypeConversionError(from_value_type, to_value_type);
         }
@@ -659,11 +660,6 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                 CEL_ASSIGN_OR_RETURN(auto raw_value,
                                      (CheckedCast<int64_t, int32_t>::Cast(
                                          value.As<IntValue>().NativeValue())));
-                value_ref.SetEnumValue(static_cast<int>(raw_value));
-              } else if (value.Is<EnumValue>()) {
-                CEL_ASSIGN_OR_RETURN(auto raw_value,
-                                     (CheckedCast<int64_t, int32_t>::Cast(
-                                         value.As<EnumValue>().number())));
                 value_ref.SetEnumValue(static_cast<int>(raw_value));
               } else {
                 return TypeConversionError(*value.type(), to_value_type);
@@ -1005,9 +1001,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
       }
       return absl::OkStatus();
     }
-    ABSL_DCHECK(to_element_type.Is<EnumType>());
-    if (ABSL_PREDICT_FALSE(!from_element_type.Is<EnumType>() &&
-                           !from_element_type.Is<IntType>() &&
+    if (ABSL_PREDICT_FALSE(!from_element_type.Is<IntType>() &&
                            !from_element_type.Is<DynType>())) {
       return TypeConversionError(from_list_type, to_list_type);
     }
@@ -1017,18 +1011,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
     CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_factory_));
     while (iterator->HasNext()) {
       CEL_ASSIGN_OR_RETURN(auto element, iterator->Next());
-      if (element->Is<EnumValue>()) {
-        if (ABSL_PREDICT_FALSE(element->As<EnumValue>().type()->name() !=
-                               field_desc.enum_type()->full_name())) {
-          return TypeConversionError(*element->type(), to_element_type);
-        }
-        int64_t raw_value = element->As<EnumValue>().number();
-        if (ABSL_PREDICT_FALSE(raw_value < std::numeric_limits<int>::min() ||
-                               raw_value > std::numeric_limits<int>::max())) {
-          return absl::OutOfRangeError("int64 to int32_t overflow");
-        }
-        repeated_field_ref.Add(static_cast<int>(raw_value));
-      } else if (element->Is<IntValue>()) {
+      if (element->Is<IntValue>()) {
         int64_t raw_value = element->As<IntValue>().NativeValue();
         if (ABSL_PREDICT_FALSE(raw_value < std::numeric_limits<int>::min() ||
                                raw_value > std::numeric_limits<int>::max())) {
@@ -1606,8 +1589,6 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
         int64_t raw_value;
         if (value->Is<IntValue>()) {
           raw_value = value->As<IntValue>().NativeValue();
-        } else if (value->Is<EnumValue>()) {
-          raw_value = value->As<EnumValue>().number();
         } else {
           return absl::InvalidArgumentError(absl::StrCat(
               "type conversion error from ", field.type->DebugString(), " to ",

@@ -1509,18 +1509,10 @@ absl::StatusOr<Handle<Value>> ProtoValue::Create(ValueFactory& value_factory,
 absl::StatusOr<Handle<Value>> ProtoValue::Create(
     ValueFactory& value_factory, const google::protobuf::EnumDescriptor& descriptor,
     int value) {
-  CEL_ASSIGN_OR_RETURN(
-      auto type, ProtoType::Resolve(value_factory.type_manager(), descriptor));
-  switch (type->kind()) {
-    case TypeKind::kNullType:
-      // google.protobuf.NullValue is an enum, which represents JSON null.
-      return value_factory.GetNullValue();
-    case TypeKind::kEnum:
-      return value_factory.CreateEnumValue(std::move(type).As<ProtoEnumType>(),
-                                           value);
-    default:
-      ABSL_UNREACHABLE();
+  if (descriptor.full_name() == "google.protobuf.NullValue") {
+    return value_factory.GetNullValue();
   }
+  return value_factory.CreateIntValue(value);
 }
 
 namespace {

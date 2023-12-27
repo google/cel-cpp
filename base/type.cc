@@ -29,7 +29,6 @@
 #include "base/types/double_type.h"
 #include "base/types/duration_type.h"
 #include "base/types/dyn_type.h"
-#include "base/types/enum_type.h"
 #include "base/types/error_type.h"
 #include "base/types/int_type.h"
 #include "base/types/list_type.h"
@@ -74,8 +73,6 @@ absl::string_view Type::name() const {
       return static_cast<const StringType*>(this)->name();
     case TypeKind::kBytes:
       return static_cast<const BytesType*>(this)->name();
-    case TypeKind::kEnum:
-      return static_cast<const EnumType*>(this)->name();
     case TypeKind::kDuration:
       return static_cast<const DurationType*>(this)->name();
     case TypeKind::kTimestamp:
@@ -137,8 +134,6 @@ std::string Type::DebugString() const {
       return static_cast<const StringType*>(this)->DebugString();
     case TypeKind::kBytes:
       return static_cast<const BytesType*>(this)->DebugString();
-    case TypeKind::kEnum:
-      return static_cast<const EnumType*>(this)->DebugString();
     case TypeKind::kDuration:
       return static_cast<const DurationType*>(this)->DebugString();
     case TypeKind::kTimestamp:
@@ -196,9 +191,6 @@ absl::StatusOr<Handle<Value>> Type::NewValueFromAny(
     case TypeKind::kBytes:
       return static_cast<const BytesType*>(this)->NewValueFromAny(value_factory,
                                                                   value);
-    case TypeKind::kEnum:
-      return static_cast<const EnumType*>(this)->NewValueFromAny(value_factory,
-                                                                 value);
     case TypeKind::kDuration:
       return static_cast<const DurationType*>(this)->NewValueFromAny(
           value_factory, value);
@@ -256,9 +248,6 @@ bool Type::Equals(const Type& lhs, const Type& rhs, TypeKind kind) {
       return true;
     case TypeKind::kBytes:
       return true;
-    case TypeKind::kEnum:
-      return static_cast<const EnumType&>(lhs).name() ==
-             static_cast<const EnumType&>(rhs).name();
     case TypeKind::kDuration:
       return true;
     case TypeKind::kTimestamp:
@@ -343,9 +332,6 @@ void Type::HashValue(const Type& type, TypeKind kind, absl::HashState state) {
       absl::HashState::combine(std::move(state), kind,
                                static_cast<const BytesType&>(type).name());
       return;
-    case TypeKind::kEnum:
-      absl::HashState::combine(std::move(state), kind,
-                               static_cast<const EnumType&>(type).name());
       return;
     case TypeKind::kDuration:
       absl::HashState::combine(std::move(state), kind,
@@ -499,9 +485,6 @@ void TypeHandle::Delete() const {
     case TypeKind::kMap:
       delete static_cast<ModernMapType*>(
           static_cast<MapType*>(static_cast<Type*>(data_.get_heap())));
-      return;
-    case TypeKind::kEnum:
-      delete static_cast<EnumType*>(static_cast<Type*>(data_.get_heap()));
       return;
     case TypeKind::kStruct:
       delete static_cast<AbstractStructType*>(

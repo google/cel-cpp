@@ -34,7 +34,6 @@
 #include "base/value_factory.h"
 #include "base/values/duration_value.h"
 #include "base/values/timestamp_value.h"
-#include "extensions/protobuf/enum_type.h"
 #include "extensions/protobuf/struct_value.h"
 #include "extensions/protobuf/type.h"
 #include "internal/status_macros.h"
@@ -131,18 +130,6 @@ class ProtoValue final {
   using NotAnyMessage = std::negation<AnyMessage<T>>;
 
  public:
-  // Create a new EnumValue from a generated protocol buffer enum.
-  template <typename T>
-  static std::enable_if_t<
-      std::conjunction_v<DerivedEnum<T>, NotNullWrapperEnum<T>>,
-      absl::StatusOr<Handle<EnumValue>>>
-  Create(ValueFactory& value_factory, const T& value) {
-    CEL_ASSIGN_OR_RETURN(auto type,
-                         ProtoType::Resolve<T>(value_factory.type_manager()));
-    return value_factory.CreateEnumValue(
-        std::move(type), static_cast<std::underlying_type_t<T>>(value));
-  }
-
   // Create NullValue.
   template <typename T>
   static std::enable_if_t<NullWrapperEnumV<T>,

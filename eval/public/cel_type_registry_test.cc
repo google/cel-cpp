@@ -17,7 +17,6 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/type_provider.h"
-#include "base/types/enum_type.h"
 #include "base/types/struct_type.h"
 #include "base/value_factory.h"
 #include "base/values/struct_value.h"
@@ -32,7 +31,6 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::cel::EnumType;
 using ::cel::Handle;
 using ::cel::MemoryManagerRef;
 using ::cel::Type;
@@ -82,85 +80,7 @@ TEST(CelTypeRegistryTest, RegisterEnum) {
                         });
 
   EXPECT_THAT(registry.resolveable_enums(),
-              Contains(Pair(
-                  "google.api.expr.runtime.TestMessage.TestEnum",
-                  testing::Truly([](const Handle<EnumType>& enum_type) {
-                    auto constant =
-                        enum_type->FindConstantByName("TEST_ENUM_2");
-                    return enum_type->name() ==
-                               "google.api.expr.runtime.TestMessage.TestEnum" &&
-                           constant.value()->number == 20;
-                  }))));
-}
-
-MATCHER_P(ConstantIntValue, x, "") {
-  const EnumType::Constant& constant = arg;
-
-  return constant.number == x;
-}
-
-MATCHER_P(ConstantName, x, "") {
-  const EnumType::Constant& constant = arg;
-
-  return constant.name == x;
-}
-
-TEST(CelTypeRegistryTest, ImplementsEnumType) {
-  CelTypeRegistry registry;
-  registry.RegisterEnum("google.api.expr.runtime.TestMessage.TestEnum",
-                        {
-                            {"TEST_ENUM_UNSPECIFIED", 0},
-                            {"TEST_ENUM_1", 10},
-                            {"TEST_ENUM_2", 20},
-                            {"TEST_ENUM_3", 30},
-                        });
-
-  ASSERT_THAT(registry.resolveable_enums(),
               Contains(Key("google.api.expr.runtime.TestMessage.TestEnum")));
-
-  const Handle<EnumType>& enum_type = registry.resolveable_enums().at(
-      "google.api.expr.runtime.TestMessage.TestEnum");
-
-  EXPECT_TRUE(enum_type->Is<EnumType>());
-
-  EXPECT_THAT(enum_type->FindConstantByName("TEST_ENUM_UNSPECIFIED"),
-              IsOkAndHolds(Optional(ConstantIntValue(0))));
-  EXPECT_THAT(enum_type->FindConstantByName("TEST_ENUM_1"),
-              IsOkAndHolds(Optional(ConstantIntValue(10))));
-  EXPECT_THAT(enum_type->FindConstantByName("TEST_ENUM_4"),
-              IsOkAndHolds(Eq(absl::nullopt)));
-
-  EXPECT_THAT(enum_type->FindConstantByNumber(20),
-              IsOkAndHolds(Optional(ConstantName("TEST_ENUM_2"))));
-  EXPECT_THAT(enum_type->FindConstantByNumber(30),
-              IsOkAndHolds(Optional(ConstantName("TEST_ENUM_3"))));
-  EXPECT_THAT(enum_type->FindConstantByNumber(42),
-              IsOkAndHolds(Eq(absl::nullopt)));
-
-  std::vector<std::string> names;
-  ASSERT_OK_AND_ASSIGN(auto iter, enum_type->NewConstantIterator(
-                                      MemoryManagerRef::ReferenceCounting()));
-  while (iter->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(absl::string_view name, iter->NextName());
-    names.push_back(std::string(name));
-  }
-
-  EXPECT_THAT(names,
-              UnorderedElementsAre("TEST_ENUM_UNSPECIFIED", "TEST_ENUM_1",
-                                   "TEST_ENUM_2", "TEST_ENUM_3"));
-  EXPECT_THAT(iter->NextName(),
-              StatusIs(absl::StatusCode::kFailedPrecondition));
-
-  std::vector<int> numbers;
-  ASSERT_OK_AND_ASSIGN(iter, enum_type->NewConstantIterator(
-                                 MemoryManagerRef::ReferenceCounting()));
-  while (iter->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(numbers.emplace_back(), iter->NextNumber());
-  }
-
-  EXPECT_THAT(numbers, UnorderedElementsAre(0, 10, 20, 30));
-  EXPECT_THAT(iter->NextNumber(),
-              StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST(CelTypeRegistryTest, TestRegisterBuiltInEnum) {
@@ -168,11 +88,6 @@ TEST(CelTypeRegistryTest, TestRegisterBuiltInEnum) {
 
   ASSERT_THAT(registry.resolveable_enums(),
               Contains(Key("google.protobuf.NullValue")));
-  EXPECT_THAT(registry.resolveable_enums()
-                  .at("google.protobuf.NullValue")
-                  ->FindConstantByName("NULL_VALUE"),
-              IsOkAndHolds(Optional(Truly(
-                  [](const EnumType::Constant& c) { return c.number == 0; }))));
 }
 
 class TestStructType : public cel::base_internal::AbstractStructType {

@@ -722,20 +722,6 @@ TEST_P(ProtoStructValueTest, TimestampGetField) {
       });
 }
 
-TEST_P(ProtoStructValueTest, EnumGetField) {
-  TEST_GET_FIELD(
-      memory_manager(), "standalone_enum",
-      [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<EnumValue>()->number(), 0);
-      },
-      [](TestAllTypes& message) {
-        message.set_standalone_enum(TestAllTypes::BAR);
-      },
-      [](const Handle<Value>& field) {
-        EXPECT_EQ(field.As<EnumValue>()->number(), 1);
-      });
-}
-
 TEST_P(ProtoStructValueTest, MessageGetField) {
   TEST_GET_FIELD(
       memory_manager(), "standalone_message",
@@ -1304,27 +1290,6 @@ TEST_P(ProtoStructValueTest, TimestampListGetField) {
         ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
         EXPECT_EQ(field_value.As<TimestampValue>()->NativeValue(),
                   absl::UnixEpoch() + absl::Seconds(2));
-      });
-}
-
-TEST_P(ProtoStructValueTest, EnumListGetField) {
-  TEST_GET_LIST_FIELD(
-      memory_manager(), "repeated_nested_enum", EmptyListFieldTester,
-      [](TestAllTypes& message) {
-        message.add_repeated_nested_enum(TestAllTypes::FOO);
-        message.add_repeated_nested_enum(TestAllTypes::BAR);
-      },
-      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
-        EXPECT_EQ(field->Size(), 2);
-        EXPECT_FALSE(field->IsEmpty());
-        EXPECT_EQ(
-            field->DebugString(),
-            "[google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO, "
-            "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR]");
-        ASSERT_OK_AND_ASSIGN(auto field_value, field->Get(value_factory, 0));
-        EXPECT_EQ(field_value.As<EnumValue>()->number(), TestAllTypes::FOO);
-        ASSERT_OK_AND_ASSIGN(field_value, field->Get(value_factory, 1));
-        EXPECT_EQ(field_value.As<EnumValue>()->number(), TestAllTypes::BAR);
       });
 }
 
@@ -2911,16 +2876,6 @@ TEST_P(ProtoStructValueTest, BoolTimestampMapGetField) {
       nullptr);
 }
 
-TEST_P(ProtoStructValueTest, BoolEnumMapGetField) {
-  TestMapGetField<EnumValue>(
-      memory_manager(), "map_bool_enum",
-      "{false: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR, "
-      "true: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO}",
-      &TestAllTypes::mutable_map_bool_enum, &ValueFactory::CreateBoolValue,
-      &EnumValue::number, std::make_pair(false, TestAllTypes::BAR),
-      std::make_pair(true, TestAllTypes::FOO), nullptr);
-}
-
 TEST_P(ProtoStructValueTest, BoolMessageMapGetField) {
   TestMapGetField<ProtoStructValue>(
       memory_manager(), "map_bool_message",
@@ -3288,16 +3243,6 @@ TEST_P(ProtoStructValueTest, Int32TimestampMapGetField) {
       2);
 }
 
-TEST_P(ProtoStructValueTest, Int32EnumMapGetField) {
-  TestMapGetField<EnumValue>(
-      memory_manager(), "map_int32_enum",
-      "{0: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR, "
-      "1: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO}",
-      &TestAllTypes::mutable_map_int32_enum, &ValueFactory::CreateIntValue,
-      &EnumValue::number, std::make_pair(0, TestAllTypes::BAR),
-      std::make_pair(1, TestAllTypes::FOO), 2);
-}
-
 TEST_P(ProtoStructValueTest, Int32MessageMapGetField) {
   TestMapGetField<ProtoStructValue>(
       memory_manager(), "map_int32_message",
@@ -3404,16 +3349,6 @@ TEST_P(ProtoStructValueTest, Int64TimestampMapGetField) {
       std::make_pair(1,
                      NativeToProto(absl::UnixEpoch() + absl::ZeroDuration())),
       2);
-}
-
-TEST_P(ProtoStructValueTest, Int64EnumMapGetField) {
-  TestMapGetField<EnumValue>(
-      memory_manager(), "map_int64_enum",
-      "{0: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR, "
-      "1: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO}",
-      &TestAllTypes::mutable_map_int64_enum, &ValueFactory::CreateIntValue,
-      &EnumValue::number, std::make_pair(0, TestAllTypes::BAR),
-      std::make_pair(1, TestAllTypes::FOO), 2);
 }
 
 TEST_P(ProtoStructValueTest, Int64MessageMapGetField) {
@@ -3526,16 +3461,6 @@ TEST_P(ProtoStructValueTest, Uint32TimestampMapGetField) {
       2u);
 }
 
-TEST_P(ProtoStructValueTest, Uint32EnumMapGetField) {
-  TestMapGetField<EnumValue>(
-      memory_manager(), "map_uint32_enum",
-      "{0u: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR, "
-      "1u: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO}",
-      &TestAllTypes::mutable_map_uint32_enum, &ValueFactory::CreateUintValue,
-      &EnumValue::number, std::make_pair(0u, TestAllTypes::BAR),
-      std::make_pair(1u, TestAllTypes::FOO), 2u);
-}
-
 TEST_P(ProtoStructValueTest, Uint32MessageMapGetField) {
   TestMapGetField<ProtoStructValue>(
       memory_manager(), "map_uint32_message",
@@ -3646,16 +3571,6 @@ TEST_P(ProtoStructValueTest, Uint64TimestampMapGetField) {
       2u);
 }
 
-TEST_P(ProtoStructValueTest, Uint64EnumMapGetField) {
-  TestMapGetField<EnumValue>(
-      memory_manager(), "map_uint64_enum",
-      "{0u: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR, "
-      "1u: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO}",
-      &TestAllTypes::mutable_map_uint64_enum, &ValueFactory::CreateUintValue,
-      &EnumValue::number, std::make_pair(0u, TestAllTypes::BAR),
-      std::make_pair(1u, TestAllTypes::FOO), 2u);
-}
-
 TEST_P(ProtoStructValueTest, Uint64MessageMapGetField) {
   TestMapGetField<ProtoStructValue>(
       memory_manager(), "map_uint64_message",
@@ -3758,16 +3673,6 @@ TEST_P(ProtoStructValueTest, StringTimestampMapGetField) {
       std::make_pair("baz",
                      NativeToProto(absl::UnixEpoch() + absl::ZeroDuration())),
       "foo");
-}
-
-TEST_P(ProtoStructValueTest, StringEnumMapGetField) {
-  TestStringMapGetField<EnumValue>(
-      memory_manager(), "map_string_enum",
-      "{\"bar\": google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO, "
-      "\"baz\": google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR}",
-      &TestAllTypes::mutable_map_string_enum, &EnumValue::number,
-      std::make_pair("bar", TestAllTypes::FOO),
-      std::make_pair("baz", TestAllTypes::BAR), "foo");
 }
 
 TEST_P(ProtoStructValueTest, StringMessageMapGetField) {

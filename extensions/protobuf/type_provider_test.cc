@@ -19,27 +19,12 @@
 #include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
-#include "extensions/protobuf/enum_type.h"
 #include "extensions/protobuf/struct_type.h"
 #include "internal/testing.h"
 #include "google/protobuf/generated_enum_reflection.h"
 
 namespace cel::extensions {
 namespace {
-
-TEST(ProtoTypeProvider, Enum) {
-  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ASSERT_OK_AND_ASSIGN(auto type,
-                       type_manager.ResolveType("google.protobuf.Field.Kind"));
-  ASSERT_TRUE(type);
-  EXPECT_TRUE((*type)->Is<EnumType>());
-  EXPECT_TRUE((*type)->Is<ProtoEnumType>());
-  EXPECT_EQ((*type)->kind(), Kind::kEnum);
-  EXPECT_EQ(&((*type).As<ProtoEnumType>()->descriptor()),
-            google::protobuf::GetEnumDescriptor<google::protobuf::Field::Kind>());
-}
 
 TEST(ProtoTypeProvider, Struct) {
   TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());

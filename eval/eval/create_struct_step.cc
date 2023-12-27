@@ -17,7 +17,6 @@
 #include "absl/types/variant.h"
 #include "base/memory.h"
 #include "base/type.h"
-#include "base/types/enum_type.h"
 #include "base/types/struct_type.h"
 #include "base/value_factory.h"
 #include "base/values/bool_value.h"
@@ -473,15 +472,6 @@ class ValueWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
     switch (number) {
       case 1:
-        if (value->Is<EnumValue>()) {
-          if (value->type().As<cel::EnumType>()->name() !=
-              "google.protobuf.NullValue") {
-            return TypeConversionError(value->type()->name(),
-                                       "google.protobuf.NullValue");
-          }
-          value_ = cel::kJsonNull;
-          return absl::OkStatus();
-        }
         if (value->Is<IntValue>()) {
           value_ = cel::kJsonNull;
           return absl::OkStatus();

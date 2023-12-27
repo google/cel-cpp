@@ -25,7 +25,6 @@
 #include "absl/status/statusor.h"
 #include "base/type_manager.h"
 #include "base/types/wrapper_type.h"
-#include "extensions/protobuf/enum_type.h"
 #include "extensions/protobuf/struct_type.h"
 #include "google/protobuf/generated_enum_util.h"
 #include "google/protobuf/message.h"
@@ -137,15 +136,6 @@ class ProtoType final {
   // Resolve Type from a protocol buffer enum descriptor.
   static absl::StatusOr<Handle<Type>> Resolve(
       TypeManager& type_manager, const google::protobuf::EnumDescriptor& descriptor);
-
-  // Resolve ProtoEnumType from a generated protocol buffer enum.
-  template <typename T>
-  static std::enable_if_t<
-      std::conjunction_v<DerivedEnum<T>, NotNullWrapperEnum<T>>,
-      absl::StatusOr<Handle<ProtoEnumType>>>
-  Resolve(TypeManager& type_manager) {
-    return ProtoEnumType::Resolve<T>(type_manager);
-  }
 
   // Resolve ProtoEnumType from a generated protocol buffer enum.
   template <typename T>

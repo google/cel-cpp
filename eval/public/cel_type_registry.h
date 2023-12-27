@@ -24,7 +24,6 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/string_view.h"
 #include "base/handle.h"
-#include "base/types/enum_type.h"
 #include "eval/public/structs/legacy_type_provider.h"
 #include "runtime/internal/composed_type_provider.h"
 #include "runtime/type_registry.h"
@@ -47,6 +46,9 @@ class CelTypeRegistry {
  public:
   // Representation of an enum constant.
   using Enumerator = cel::TypeRegistry::Enumerator;
+
+  // Representation of an enum.
+  using Enumeration = cel::TypeRegistry::Enumeration;
 
   CelTypeRegistry();
 
@@ -99,8 +101,8 @@ class CelTypeRegistry {
 
   // Return the registered enums configured within the type registry in the
   // internal format that can be identified as int constants at plan time.
-  const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
-  resolveable_enums() const {
+  const absl::flat_hash_map<std::string, Enumeration>& resolveable_enums()
+      const {
     return modern_type_registry_.resolveable_enums();
   }
 

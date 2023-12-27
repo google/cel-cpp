@@ -32,11 +32,9 @@
 #include "base/handle.h"
 #include "base/kind.h"
 #include "base/memory.h"
-#include "base/types/enum_type.h"
 #include "base/types/struct_type.h"
 #include "base/value.h"
 #include "base/value_factory.h"
-#include "base/values/enum_value.h"
 #include "internal/status_macros.h"
 #include "runtime/function_overload_reference.h"
 #include "runtime/function_registry.h"
@@ -44,16 +42,13 @@
 
 namespace google::api::expr::runtime {
 
-using ::cel::EnumType;
 using ::cel::Handle;
-using ::cel::MemoryManager;
-using ::cel::MemoryManagerRef;
 using ::cel::Value;
 
 Resolver::Resolver(
     absl::string_view container, const cel::FunctionRegistry& function_registry,
     const cel::TypeRegistry&, cel::ValueFactory& value_factory,
-    const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
+    const absl::flat_hash_map<std::string, cel::TypeRegistry::Enumeration>&
         resolveable_enums,
     bool resolve_qualified_type_identifiers)
     : namespace_prefixes_(),
@@ -87,32 +82,12 @@ Resolver::Resolver(
       }
 
       auto remainder = absl::StripPrefix(enum_name, prefix);
-      const Handle<EnumType>& enum_type = iter->second;
+      const auto& enum_type = iter->second;
 
-      absl::StatusOr<
-          absl::Nonnull<std::unique_ptr<cel::EnumType::ConstantIterator>>>
-          enum_value_iter_or = enum_type->NewConstantIterator(
-              MemoryManagerRef::ReferenceCounting());
-
-      // Errors are not expected from the implementation in the type registry,
-      // but we need to swallow the error case to avoid compiler/lint warnings.
-      if (!enum_value_iter_or.ok()) {
-        continue;
-      }
-      auto enum_value_iter = *std::move(enum_value_iter_or);
-      while (enum_value_iter->HasNext()) {
-        absl::StatusOr<EnumType::Constant> constant = enum_value_iter->Next();
-        if (!constant.ok()) {
-          break;
-        }
-        // "prefixes" container is ascending-ordered. As such, we will be
-        // assigning enum reference to the deepest available.
-        // E.g. if both a.b.c.Name and a.b.Name are available, and
-        // we try to reference "Name" with the scope of "a.b.c",
-        // it will be resolved to "a.b.c.Name".
+      for (const auto& enumerator : enum_type.enumerators) {
         auto key = absl::StrCat(remainder, !remainder.empty() ? "." : "",
-                                constant->name);
-        enum_value_map_[key] = value_factory.CreateIntValue(constant->number);
+                                enumerator.name);
+        enum_value_map_[key] = value_factory.CreateIntValue(enumerator.number);
       }
     }
   }

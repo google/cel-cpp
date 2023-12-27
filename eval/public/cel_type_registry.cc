@@ -25,7 +25,6 @@
 #include "base/type.h"
 #include "base/type_factory.h"
 #include "base/type_provider.h"
-#include "base/types/enum_type.h"
 #include "base/types/struct_type.h"
 #include "base/value.h"
 #include "eval/internal/interop.h"

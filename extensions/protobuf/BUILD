@@ -95,8 +95,6 @@ cc_test(
 cc_library(
     name = "data",
     srcs = [
-        "enum_type.cc",
-        "enum_value.cc",
         "struct_type.cc",
         "struct_value.cc",
         "type.cc",
@@ -104,8 +102,6 @@ cc_library(
         "value.cc",
     ],
     hdrs = [
-        "enum_type.h",
-        "enum_value.h",
         "struct_type.h",
         "struct_value.h",
         "type.h",
@@ -167,7 +163,6 @@ alias(
 cc_test(
     name = "type_test",
     srcs = [
-        "enum_type_test.cc",
         "struct_type_test.cc",
         "type_provider_test.cc",
         "type_test.cc",

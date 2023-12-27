@@ -44,13 +44,13 @@ namespace google::api::expr::runtime {
 // for reference resolution.
 class Resolver {
  public:
-  Resolver(absl::string_view container,
-           const cel::FunctionRegistry& function_registry,
-           const cel::TypeRegistry& type_registry,
-           cel::ValueFactory& value_factory,
-           const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
-               resolveable_enums,
-           bool resolve_qualified_type_identifiers = true);
+  Resolver(
+      absl::string_view container,
+      const cel::FunctionRegistry& function_registry,
+      const cel::TypeRegistry& type_registry, cel::ValueFactory& value_factory,
+      const absl::flat_hash_map<std::string, cel::TypeRegistry::Enumeration>&
+          resolveable_enums,
+      bool resolve_qualified_type_identifiers = true);
 
   ~Resolver() = default;
 
@@ -99,7 +99,7 @@ class Resolver {
   absl::flat_hash_map<std::string, cel::Handle<cel::Value>> enum_value_map_;
   const cel::FunctionRegistry& function_registry_;
   cel::ValueFactory& value_factory_;
-  const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
+  const absl::flat_hash_map<std::string, cel::TypeRegistry::Enumeration>&
       resolveable_enums_;
 
   bool resolve_qualified_type_identifiers_;

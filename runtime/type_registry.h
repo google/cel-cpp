@@ -26,7 +26,6 @@
 #include "absl/strings/string_view.h"
 #include "base/handle.h"
 #include "base/type_provider.h"
-#include "base/types/enum_type.h"
 #include "runtime/internal/composed_type_provider.h"
 
 namespace cel {
@@ -40,6 +39,11 @@ class TypeRegistry {
   struct Enumerator {
     std::string name;
     int64_t number;
+  };
+
+  struct Enumeration {
+    std::string name;
+    std::vector<Enumerator> enumerators;
   };
 
   TypeRegistry();
@@ -61,7 +65,7 @@ class TypeRegistry {
   void RegisterEnum(absl::string_view enum_name,
                     std::vector<Enumerator> enumerators);
 
-  const absl::flat_hash_map<std::string, Handle<EnumType>>& resolveable_enums()
+  const absl::flat_hash_map<std::string, Enumeration>& resolveable_enums()
       const {
     return enum_types_;
   }
@@ -71,7 +75,7 @@ class TypeRegistry {
 
  private:
   runtime_internal::ComposedTypeProvider impl_;
-  absl::flat_hash_map<std::string, Handle<EnumType>> enum_types_;
+  absl::flat_hash_map<std::string, Enumeration> enum_types_;
 };
 
 }  // namespace cel

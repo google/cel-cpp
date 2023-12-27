@@ -18,7 +18,6 @@
 
 #include "absl/base/optimization.h"
 #include "absl/status/status.h"
-#include "extensions/protobuf/enum_type.h"
 #include "internal/status_macros.h"
 
 namespace cel::extensions {
@@ -45,8 +44,7 @@ absl::StatusOr<Handle<Type>> ProtoType::Resolve(
         absl::StrCat("Missing protocol buffer type implementation for \"",
                      descriptor.full_name(), "\""));
   }
-  if (ABSL_PREDICT_FALSE(!(*type)->Is<ProtoEnumType>() &&
-                         !(*type)->Is<NullType>())) {
+  if (ABSL_PREDICT_FALSE(!(*type)->Is<NullType>())) {
     return absl::FailedPreconditionError(
         absl::StrCat("Unexpected protocol buffer type implementation for \"",
                      descriptor.full_name(), "\": ", (*type)->DebugString()));

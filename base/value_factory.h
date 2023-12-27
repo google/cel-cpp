@@ -42,7 +42,6 @@
 #include "base/values/bytes_value.h"
 #include "base/values/double_value.h"
 #include "base/values/duration_value.h"
-#include "base/values/enum_value.h"
 #include "base/values/error_value.h"
 #include "base/values/int_value.h"
 #include "base/values/list_value.h"
@@ -252,36 +251,6 @@ class ValueFactory final {
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<TimestampValue>::Make<TimestampValue>(
         value);
-  }
-
-  absl::StatusOr<Handle<EnumValue>> CreateEnumValue(
-      const Handle<EnumType>& enum_type,
-      int64_t number) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    CEL_ASSIGN_OR_RETURN(auto constant,
-                         enum_type->FindConstantByNumber(number));
-    if (ABSL_PREDICT_FALSE(!constant.has_value())) {
-      return absl::NotFoundError(absl::StrCat("no such enum number", number));
-    }
-    return base_internal::HandleFactory<EnumValue>::template Make<EnumValue>(
-        enum_type, constant->number);
-  }
-
-  absl::StatusOr<Handle<EnumValue>> CreateEnumValue(
-      const Handle<EnumType>& enum_type,
-      absl::string_view name) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    CEL_ASSIGN_OR_RETURN(auto constant, enum_type->FindConstantByName(name));
-    if (ABSL_PREDICT_FALSE(!constant.has_value())) {
-      return absl::NotFoundError(absl::StrCat("no such enum value", name));
-    }
-    return base_internal::HandleFactory<EnumValue>::template Make<EnumValue>(
-        enum_type, constant->number);
-  }
-
-  template <typename T>
-  std::enable_if_t<std::is_enum_v<T>, absl::StatusOr<Handle<EnumValue>>>
-  CreateEnumValue(const Handle<EnumType>& enum_type,
-                  T value) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return CreateEnumValue(enum_type, static_cast<int64_t>(value));
   }
 
   template <typename T, typename... Args>

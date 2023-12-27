@@ -32,7 +32,6 @@
 #include "base/types/double_type.h"
 #include "base/types/duration_type.h"
 #include "base/types/dyn_type.h"
-#include "base/types/enum_type.h"
 #include "base/types/error_type.h"
 #include "base/types/int_type.h"
 #include "base/types/list_type.h"
@@ -161,13 +160,6 @@ class TypeFactory final {
 
   const Handle<MapType>& GetJsonMapType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return JsonMapType();
-  }
-
-  template <typename T, typename... Args>
-  EnableIfBaseOfT<EnumType, T, absl::StatusOr<Handle<T>>> CreateEnumType(
-      Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return base_internal::HandleFactory<T>::template Make<T>(
-        memory_manager(), std::forward<Args>(args)...);
   }
 
   template <typename T, typename... Args>

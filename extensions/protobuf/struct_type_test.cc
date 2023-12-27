@@ -135,19 +135,6 @@ TEST_P(ProtoStructTypeTest, FindFieldByNumber) {
   EXPECT_EQ(field->type, type_factory.GetStringType());
 }
 
-TEST_P(ProtoStructTypeTest, EnumField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ASSERT_OK_AND_ASSIGN(
-      auto type, ProtoType::Resolve<google::protobuf::Field>(type_manager));
-  ASSERT_OK_AND_ASSIGN(auto field,
-                       type->FindFieldByName(type_manager, "cardinality"));
-  ASSERT_TRUE(field.has_value());
-  EXPECT_TRUE(field->type->Is<EnumType>());
-  EXPECT_EQ(field->type->name(), "google.protobuf.Field.Cardinality");
-}
-
 TEST_P(ProtoStructTypeTest, BoolField) {
   TypeFactory type_factory(memory_manager());
   ProtoTypeProvider type_provider;
@@ -468,15 +455,6 @@ TEST_P(ProtoStructValueBuilderTest, Bytes) {
         return value_factory.CreateBytesValue("foo");
       },
       R"pb(single_bytes: "foo")pb");
-}
-
-TEST_P(ProtoStructValueBuilderTest, Enum) {
-  TEST_PROTO_STRUCT_VALUE_BUILDER(
-      memory_manager(), "standalone_enum",
-      [](ValueFactory& value_factory) {
-        return ProtoValue::Create(value_factory, TestAllTypes::BAR);
-      },
-      R"pb(standalone_enum: 1)pb");
 }
 
 TEST_P(ProtoStructValueBuilderTest, Struct) {
@@ -859,38 +837,6 @@ TEST_P(ProtoStructValueBuilderTest, RepeatedBytes) {
         return std::move(builder).Build();
       },
       R"pb(repeated_bytes: "foo", repeated_bytes: "bar")pb");
-}
-
-TEST_P(ProtoStructValueBuilderTest, RepeatedEnum) {
-  TEST_PROTO_STRUCT_VALUE_BUILDER(
-      memory_manager(), "repeated_nested_enum",
-      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
-        CEL_ASSIGN_OR_RETURN(auto type,
-                             ProtoType::Resolve<TestAllTypes::NestedEnum>(
-                                 value_factory.type_manager()));
-        ListValueBuilder<EnumValue> builder(value_factory, std::move(type));
-        CEL_ASSIGN_OR_RETURN(
-            auto value, ProtoValue::Create(value_factory, TestAllTypes::FOO));
-        CEL_RETURN_IF_ERROR(builder.Add(std::move(value)));
-        CEL_ASSIGN_OR_RETURN(
-            value, ProtoValue::Create(value_factory, TestAllTypes::BAR));
-        CEL_RETURN_IF_ERROR(builder.Add(std::move(value)));
-        return std::move(builder).Build();
-      },
-      R"pb(repeated_nested_enum: 0, repeated_nested_enum: 1)pb");
-}
-
-TEST_P(ProtoStructValueBuilderTest, RepeatedCoercedEnum) {
-  TEST_PROTO_STRUCT_VALUE_BUILDER(
-      memory_manager(), "repeated_nested_enum",
-      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
-        ListValueBuilder<IntValue> builder(
-            value_factory, value_factory.type_factory().GetIntType());
-        CEL_RETURN_IF_ERROR(builder.Add(TestAllTypes::FOO));
-        CEL_RETURN_IF_ERROR(builder.Add(TestAllTypes::BAR));
-        return std::move(builder).Build();
-      },
-      R"pb(repeated_nested_enum: 0, repeated_nested_enum: 1)pb");
 }
 
 TEST_P(ProtoStructValueBuilderTest, RepeatedStruct) {
@@ -1548,61 +1494,6 @@ TEST_P(ProtoStructValueBuilderTest, MapIntTimestamp) {
              key: 0,
              value: { seconds: 1, nanos: 1 }
            })pb");
-}
-
-TEST_P(ProtoStructValueBuilderTest, MapIntNull) {
-  TEST_PROTO_STRUCT_VALUE_BUILDER(
-      memory_manager(), "map_int64_null_value",
-      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
-        CEL_ASSIGN_OR_RETURN(auto type,
-                             ProtoType::Resolve<TestAllTypes::NestedEnum>(
-                                 value_factory.type_manager()));
-        MapValueBuilder<IntValue, NullValue> builder(
-            value_factory, value_factory.type_factory().GetIntType(),
-            value_factory.type_factory().GetNullType());
-        CEL_RETURN_IF_ERROR(builder.Put(1, value_factory.GetNullValue()));
-        CEL_RETURN_IF_ERROR(builder.Put(0, value_factory.GetNullValue()));
-        return std::move(builder).Build();
-      },
-      R"pb(map_int64_null_value: { key: 1, value: 0 },
-           map_int64_null_value: { key: 0, value: 0 })pb");
-}
-
-TEST_P(ProtoStructValueBuilderTest, MapIntEnum) {
-  TEST_PROTO_STRUCT_VALUE_BUILDER(
-      memory_manager(), "map_int64_enum",
-      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
-        CEL_ASSIGN_OR_RETURN(auto type,
-                             ProtoType::Resolve<TestAllTypes::NestedEnum>(
-                                 value_factory.type_manager()));
-        MapValueBuilder<IntValue, EnumValue> builder(
-            value_factory, value_factory.type_factory().GetIntType(),
-            std::move(type));
-        CEL_ASSIGN_OR_RETURN(
-            auto value, ProtoValue::Create(value_factory, TestAllTypes::FOO));
-        CEL_RETURN_IF_ERROR(builder.Put(1, std::move(value)));
-        CEL_ASSIGN_OR_RETURN(
-            value, ProtoValue::Create(value_factory, TestAllTypes::BAR));
-        CEL_RETURN_IF_ERROR(builder.Put(0, std::move(value)));
-        return std::move(builder).Build();
-      },
-      R"pb(map_int64_enum: { key: 1, value: 0 },
-           map_int64_enum: { key: 0, value: 1 })pb");
-  TEST_PROTO_STRUCT_VALUE_BUILDER(
-      memory_manager(), "map_int64_enum",
-      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
-        CEL_ASSIGN_OR_RETURN(auto type,
-                             ProtoType::Resolve<TestAllTypes::NestedEnum>(
-                                 value_factory.type_manager()));
-        MapValueBuilder<IntValue, IntValue> builder(
-            value_factory, value_factory.type_factory().GetIntType(),
-            value_factory.type_factory().GetIntType());
-        CEL_RETURN_IF_ERROR(builder.Put(1, 0));
-        CEL_RETURN_IF_ERROR(builder.Put(0, 1));
-        return std::move(builder).Build();
-      },
-      R"pb(map_int64_enum: { key: 1, value: 0 },
-           map_int64_enum: { key: 0, value: 1 })pb");
 }
 
 TEST_P(ProtoStructValueBuilderTest, MapIntMessage) {

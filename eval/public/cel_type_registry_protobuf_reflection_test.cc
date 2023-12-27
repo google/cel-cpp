@@ -20,7 +20,6 @@
 #include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
-#include "base/types/enum_type.h"
 #include "base/types/struct_type.h"
 #include "eval/public/cel_type_registry.h"
 #include "eval/public/structs/protobuf_descriptor_type_provider.h"
@@ -32,7 +31,6 @@
 namespace google::api::expr::runtime {
 namespace {
 
-using ::cel::EnumType;
 using ::cel::Handle;
 using ::cel::MemoryManagerRef;
 using ::cel::StructType;
@@ -52,32 +50,21 @@ MATCHER_P(TypeNameIs, name, "") {
 }
 
 MATCHER_P(MatchesEnumDescriptor, desc, "") {
-  const Handle<cel::EnumType>& enum_type = arg;
+  const auto& enum_type = arg;
 
-  if (enum_type->constant_count() != desc->value_count()) {
+  if (enum_type.enumerators.size() != desc->value_count()) {
     return false;
   }
-
-  auto iter_or =
-      enum_type->NewConstantIterator(MemoryManagerRef::ReferenceCounting());
-  if (!iter_or.ok()) {
-    return false;
-  }
-
-  auto iter = std::move(iter_or).value();
 
   for (int i = 0; i < desc->value_count(); i++) {
-    absl::StatusOr<EnumType::Constant> constant = iter->Next();
-    if (!constant.ok()) {
-      return false;
-    }
+    const auto& constant = enum_type.enumerators[i];
 
     const auto* value_desc = desc->value(i);
 
-    if (value_desc->name() != constant->name) {
+    if (value_desc->name() != constant.name) {
       return false;
     }
-    if (value_desc->number() != constant->number) {
+    if (value_desc->number() != constant.number) {
       return false;
     }
   }

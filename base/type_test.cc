@@ -32,7 +32,6 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/type_provider.h"
-#include "base/types/enum_type.h"
 #include "base/value.h"
 #include "base/value_factory.h"
 #include "common/memory.h"
@@ -47,57 +46,6 @@ using testing::Eq;
 using cel::internal::IsOk;
 using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
-
-enum class TestEnum {
-  kValue1 = 1,
-  kValue2 = 2,
-};
-
-class TestEnumType final : public EnumType {
- public:
-  using EnumType::EnumType;
-
-  absl::string_view name() const override { return "test_enum.TestEnum"; }
-
-  size_t constant_count() const override { return 2; }
-
-  absl::StatusOr<absl::Nonnull<std::unique_ptr<ConstantIterator>>>
-  NewConstantIterator(MemoryManagerRef memory_manager) const override {
-    return absl::UnimplementedError(
-        "EnumType::NewConstantIterator is unimplemented");
-  }
-
-  absl::StatusOr<absl::optional<Constant>> FindConstantByName(
-      absl::string_view name) const override {
-    if (name == "VALUE1") {
-      return Constant(MakeConstantId(TestEnum::kValue1), "VALUE1",
-                      static_cast<int64_t>(TestEnum::kValue1));
-    } else if (name == "VALUE2") {
-      return Constant(MakeConstantId(TestEnum::kValue2), "VALUE2",
-                      static_cast<int64_t>(TestEnum::kValue2));
-    }
-    return absl::nullopt;
-  }
-
-  absl::StatusOr<absl::optional<Constant>> FindConstantByNumber(
-      int64_t number) const override {
-    switch (number) {
-      case 1:
-        return Constant(MakeConstantId(TestEnum::kValue1), "VALUE1",
-                        static_cast<int64_t>(TestEnum::kValue1));
-      case 2:
-        return Constant(MakeConstantId(TestEnum::kValue2), "VALUE2",
-                        static_cast<int64_t>(TestEnum::kValue2));
-      default:
-        return absl::nullopt;
-    }
-  }
-
- private:
-  CEL_DECLARE_ENUM_TYPE(TestEnumType);
-};
-
-CEL_IMPLEMENT_ENUM_TYPE(TestEnumType);
 
 // struct TestStruct {
 //   bool bool_field;
@@ -270,8 +218,6 @@ void TestTypeIs(const Handle<T>& type) {
             (std::is_same<T, DurationType>::value));
   EXPECT_EQ(type->template Is<TimestampType>(),
             (std::is_same<T, TimestampType>::value));
-  EXPECT_EQ(type->template Is<EnumType>(),
-            (std::is_base_of<EnumType, T>::value));
   EXPECT_EQ(type->template Is<StructType>(),
             (std::is_base_of<StructType, T>::value));
   EXPECT_EQ(type->template Is<ListType>(), (std::is_same<T, ListType>::value));
@@ -382,15 +328,6 @@ TEST_P(TypeTest, Timestamp) {
   EXPECT_EQ(type_factory.GetTimestampType()->name(),
             "google.protobuf.Timestamp");
   TestTypeIs(type_factory.GetTimestampType());
-}
-
-TEST_P(TypeTest, Enum) {
-  TypeFactory type_factory(memory_manager());
-  ASSERT_OK_AND_ASSIGN(auto enum_type,
-                       type_factory.CreateEnumType<TestEnumType>());
-  EXPECT_EQ(enum_type->kind(), TypeKind::kEnum);
-  EXPECT_EQ(enum_type->name(), "test_enum.TestEnum");
-  TestTypeIs(enum_type);
 }
 
 TEST_P(TypeTest, Struct) {
@@ -505,39 +442,6 @@ TEST_P(TypeTest, UintWrapperType) {
             "google.protobuf.UInt64Value");
   TestTypeIs(type_factory.GetUintWrapperType());
 }
-
-using EnumTypeTest = TypeTest;
-
-TEST_P(EnumTypeTest, FindConstant) {
-  TypeFactory type_factory(memory_manager());
-  ASSERT_OK_AND_ASSIGN(auto enum_type,
-                       type_factory.CreateEnumType<TestEnumType>());
-
-  ASSERT_OK_AND_ASSIGN(auto value1, enum_type->FindConstantByName("VALUE1"));
-  EXPECT_EQ(value1->name, "VALUE1");
-  EXPECT_EQ(value1->number, 1);
-
-  ASSERT_OK_AND_ASSIGN(value1, enum_type->FindConstantByNumber(1));
-  EXPECT_EQ(value1->name, "VALUE1");
-  EXPECT_EQ(value1->number, 1);
-
-  ASSERT_OK_AND_ASSIGN(auto value2, enum_type->FindConstantByName("VALUE2"));
-  EXPECT_EQ(value2->name, "VALUE2");
-  EXPECT_EQ(value2->number, 2);
-
-  ASSERT_OK_AND_ASSIGN(value2, enum_type->FindConstantByNumber(2));
-  EXPECT_EQ(value2->name, "VALUE2");
-  EXPECT_EQ(value2->number, 2);
-
-  EXPECT_THAT(enum_type->FindConstantByName("VALUE3"),
-              IsOkAndHolds(Eq(absl::nullopt)));
-  EXPECT_THAT(enum_type->FindConstantByNumber(3),
-              IsOkAndHolds(Eq(absl::nullopt)));
-}
-
-INSTANTIATE_TEST_SUITE_P(EnumTypeTest, EnumTypeTest,
-                         base_internal::MemoryManagerTestModeAll(),
-                         base_internal::MemoryManagerTestModeName);
 
 class StructTypeTest : public TypeTest {};
 
@@ -697,13 +601,6 @@ TEST_P(TypeDebugStringTest, TimestampType) {
             "google.protobuf.Timestamp");
 }
 
-TEST_P(TypeDebugStringTest, EnumType) {
-  TypeFactory type_factory(memory_manager());
-  ASSERT_OK_AND_ASSIGN(auto enum_type,
-                       type_factory.CreateEnumType<TestEnumType>());
-  EXPECT_EQ(enum_type->DebugString(), "test_enum.TestEnum");
-}
-
 TEST_P(TypeDebugStringTest, StructType) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
@@ -818,14 +715,6 @@ TEST_P(TypeNewValueFromAnyTest, DoubleType) {
   EXPECT_THAT(type_factory().GetDoubleType().As<Type>()->NewValueFromAny(
                   value_factory(), absl::Cord()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
-}
-
-TEST_P(TypeNewValueFromAnyTest, EnumType) {
-  ASSERT_OK_AND_ASSIGN(auto enum_type,
-                       type_factory().CreateEnumType<TestEnumType>());
-  EXPECT_THAT(
-      enum_type.As<Type>()->NewValueFromAny(value_factory(), absl::Cord()),
-      StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST_P(TypeNewValueFromAnyTest, ErrorType) {
@@ -1066,7 +955,6 @@ TEST_P(TypeTest, SupportsAbslHash) {
       Handle<Type>(type_factory.GetBytesType()),
       Handle<Type>(type_factory.GetDurationType()),
       Handle<Type>(type_factory.GetTimestampType()),
-      Handle<Type>(Must(type_factory.CreateEnumType<TestEnumType>())),
       Handle<Type>(Must(type_factory.CreateStructType<TestStructType>())),
       Handle<Type>(
           Must(type_factory.CreateListType(type_factory.GetBoolType()))),

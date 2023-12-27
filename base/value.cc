@@ -29,7 +29,6 @@
 #include "base/values/bytes_value.h"
 #include "base/values/double_value.h"
 #include "base/values/duration_value.h"
-#include "base/values/enum_value.h"
 #include "base/values/error_value.h"
 #include "base/values/int_value.h"
 #include "base/values/list_value.h"
@@ -69,8 +68,6 @@ Handle<Type> Value::type() const {
       return static_cast<const StringValue*>(this)->type().As<Type>();
     case ValueKind::kBytes:
       return static_cast<const BytesValue*>(this)->type().As<Type>();
-    case ValueKind::kEnum:
-      return static_cast<const EnumValue*>(this)->type().As<Type>();
     case ValueKind::kDuration:
       return static_cast<const DurationValue*>(this)->type().As<Type>();
     case ValueKind::kTimestamp:
@@ -110,8 +107,6 @@ std::string Value::DebugString() const {
       return static_cast<const StringValue*>(this)->DebugString();
     case ValueKind::kBytes:
       return static_cast<const BytesValue*>(this)->DebugString();
-    case ValueKind::kEnum:
-      return static_cast<const EnumValue*>(this)->DebugString();
     case ValueKind::kDuration:
       return static_cast<const DurationValue*>(this)->DebugString();
     case ValueKind::kTimestamp:
@@ -151,8 +146,6 @@ absl::StatusOr<Any> Value::ConvertToAny(ValueFactory& value_factory) const {
       return static_cast<const StringValue*>(this)->ConvertToAny(value_factory);
     case ValueKind::kBytes:
       return static_cast<const BytesValue*>(this)->ConvertToAny(value_factory);
-    case ValueKind::kEnum:
-      return static_cast<const EnumValue*>(this)->ConvertToAny(value_factory);
     case ValueKind::kDuration:
       return static_cast<const DurationValue*>(this)->ConvertToAny(
           value_factory);
@@ -197,8 +190,6 @@ absl::StatusOr<Json> Value::ConvertToJson(ValueFactory& value_factory) const {
           value_factory);
     case ValueKind::kBytes:
       return static_cast<const BytesValue*>(this)->ConvertToJson(value_factory);
-    case ValueKind::kEnum:
-      return static_cast<const EnumValue*>(this)->ConvertToJson(value_factory);
     case ValueKind::kDuration:
       return static_cast<const DurationValue*>(this)->ConvertToJson(
           value_factory);
@@ -253,9 +244,6 @@ absl::StatusOr<Handle<Value>> Value::ConvertToType(
     case ValueKind::kBytes:
       return static_cast<const BytesValue*>(this)->ConvertToType(value_factory,
                                                                  type);
-    case ValueKind::kEnum:
-      return static_cast<const EnumValue*>(this)->ConvertToType(value_factory,
-                                                                type);
     case ValueKind::kDuration:
       return static_cast<const DurationValue*>(this)->ConvertToType(
           value_factory, type);
@@ -312,8 +300,6 @@ absl::StatusOr<Handle<Value>> Value::Equals(ValueFactory& value_factory,
                                                            other);
     case ValueKind::kBytes:
       return static_cast<const BytesValue*>(this)->Equals(value_factory, other);
-    case ValueKind::kEnum:
-      return static_cast<const EnumValue*>(this)->Equals(value_factory, other);
     case ValueKind::kDuration:
       return static_cast<const DurationValue*>(this)->Equals(value_factory,
                                                              other);
@@ -368,11 +354,6 @@ bool ValueHandle::Equals(const Value& lhs, const Value& rhs, ValueKind kind) {
     case ValueKind::kBytes:
       return static_cast<const BytesValue&>(lhs).Equals(
           static_cast<const BytesValue&>(rhs));
-    case ValueKind::kEnum:
-      return static_cast<const EnumValue&>(lhs).number() ==
-                 static_cast<const EnumValue&>(rhs).number() &&
-             static_cast<const EnumValue&>(lhs).type() ==
-                 static_cast<const EnumValue&>(rhs).type();
     case ValueKind::kDuration:
       return static_cast<const DurationValue&>(lhs).NativeValue() ==
              static_cast<const DurationValue&>(rhs).NativeValue();
@@ -486,10 +467,6 @@ void ValueHandle::CopyFrom(const ValueHandle& other) {
               *static_cast<const base_internal::ModernTypeValue*>(
                   other.data_.get_inline()));
           return;
-        case ValueKind::kEnum:
-          data_.ConstructInline<EnumValue>(
-              *static_cast<const EnumValue*>(other.data_.get_inline()));
-          return;
         default:
           ABSL_UNREACHABLE();
       }
@@ -557,11 +534,6 @@ void ValueHandle::MoveFrom(ValueHandle& other) {
               *static_cast<const ModernTypeValue*>(other.data_.get_inline())));
           other.data_.Destruct<ModernTypeValue>();
           break;
-        case ValueKind::kEnum:
-          data_.ConstructInline<EnumValue>(std::move(
-              *static_cast<const EnumValue*>(other.data_.get_inline())));
-          other.data_.Destruct<EnumValue>();
-          break;
         default:
           ABSL_UNREACHABLE();
       }
@@ -622,9 +594,6 @@ void ValueHandle::Destruct() {
             return;
           case ValueKind::kType:
             data_.Destruct<ModernTypeValue>();
-            return;
-          case ValueKind::kEnum:
-            data_.Destruct<EnumValue>();
             return;
           default:
             ABSL_UNREACHABLE();

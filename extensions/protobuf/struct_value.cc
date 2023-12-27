@@ -64,7 +64,6 @@
 #include "eval/internal/interop.h"
 #include "eval/public/message_wrapper.h"
 #include "eval/public/structs/proto_message_type_adapter.h"
-#include "extensions/protobuf/enum_type.h"
 #include "extensions/protobuf/internal/any.h"
 #include "extensions/protobuf/internal/duration.h"
 #include "extensions/protobuf/internal/field_mask.h"
@@ -686,50 +685,6 @@ class ParsedProtoListValue<TimestampValue, google::protobuf::Message>
   }
 
   const google::protobuf::RepeatedFieldRef<google::protobuf::Message> fields_;
-};
-
-template <>
-class ParsedProtoListValue<EnumValue, int32_t> : public CEL_LIST_VALUE_CLASS {
- public:
-  ParsedProtoListValue(Handle<ListType> type,
-                       google::protobuf::RepeatedFieldRef<int32_t> fields)
-      : CEL_LIST_VALUE_CLASS(std::move(type)), fields_(std::move(fields)) {}
-
-  std::string DebugString() const final {
-    std::string out;
-    out.push_back('[');
-    auto field = fields_.begin();
-    if (field != fields_.end()) {
-      out.append(
-          EnumValue::DebugString(*type()->element().As<EnumType>(), *field));
-      ++field;
-      for (; field != fields_.end(); ++field) {
-        out.append(", ");
-        out.append(
-            EnumValue::DebugString(*type()->element().As<EnumType>(), *field));
-      }
-    }
-    out.push_back(']');
-    return out;
-  }
-
-  size_t Size() const final { return fields_.size(); }
-
-  bool IsEmpty() const final { return fields_.empty(); }
-
- protected:
-  absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
-                                        size_t index) const final {
-    return value_factory.CreateEnumValue(type()->element().As<EnumType>(),
-                                         fields_.Get(static_cast<int>(index)));
-  }
-
- private:
-  NativeTypeId GetNativeTypeId() const final {
-    return NativeTypeId::For<ParsedProtoListValue<EnumValue, int32_t>>();
-  }
-
-  const google::protobuf::RepeatedFieldRef<int32_t> fields_;
 };
 
 template <>
@@ -1627,13 +1582,6 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
         switch (type->kind()) {
           case TypeKind::kNullType:
             return std::make_pair(value_factory.GetNullValue(), true);
-          case TypeKind::kEnum: {
-            CEL_ASSIGN_OR_RETURN(auto value,
-                                 value_factory.CreateEnumValue(
-                                     std::move(type).As<ProtoEnumType>(),
-                                     proto_value.GetEnumValue()));
-            return std::make_pair(std::move(value), true);
-          }
           default:
             return absl::InternalError(absl::StrCat(
                 "Unexpected protocol buffer type implementation for \"",
@@ -2534,11 +2482,11 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
               field.type.As<ListType>(),
               reflect.GetRepeatedFieldRef<int32_t>(value(), &field_desc)
                   .size());
-        case TypeKind::kEnum:
-          return value_factory.CreateBorrowedListValue<
-              ParsedProtoListValue<EnumValue, int32_t>>(
-              owner_from_this(), field.type.As<ListType>(),
-              reflect.GetRepeatedFieldRef<int32_t>(value(), &field_desc));
+        case TypeKind::kInt:
+          return value_factory
+              .CreateBorrowedListValue<ParsedProtoListValue<IntValue, int32_t>>(
+                  owner_from_this(), field.type.As<ListType>(),
+                  reflect.GetRepeatedFieldRef<int32_t>(value(), &field_desc));
         default:
           ABSL_UNREACHABLE();
       }
@@ -2695,9 +2643,8 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
       switch (field.type->kind()) {
         case TypeKind::kNullType:
           return value_factory.GetNullValue();
-        case TypeKind::kEnum:
-          return value_factory.CreateEnumValue(
-              field.type.As<ProtoEnumType>(),
+        case TypeKind::kInt:
+          return value_factory.CreateIntValue(
               reflect.GetEnumValue(value(), &field_desc));
         default:
           ABSL_UNREACHABLE();

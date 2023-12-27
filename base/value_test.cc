@@ -47,7 +47,6 @@
 #include "base/type.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
-#include "base/types/enum_type.h"
 #include "base/types/int_type.h"
 #include "base/types/string_type.h"
 #include "base/types/struct_type.h"
@@ -84,61 +83,6 @@ using testing::VariantWith;
 using cel::internal::IsOk;
 using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
-
-enum class TestEnum {
-  kValue0 = 0,
-  kValue1 = 1,
-  kValue2 = 2,
-};
-
-class TestEnumType final : public EnumType {
- public:
-  using EnumType::EnumType;
-
-  absl::string_view name() const override { return "test_enum.TestEnum"; }
-
-  size_t constant_count() const override { return 2; }
-
-  absl::StatusOr<absl::Nonnull<std::unique_ptr<ConstantIterator>>>
-  NewConstantIterator(MemoryManagerRef memory_manager) const override {
-    return absl::UnimplementedError(
-        "EnumType::NewConstantIterator is unimplemented");
-  }
-
- protected:
-  absl::StatusOr<absl::optional<Constant>> FindConstantByName(
-      absl::string_view name) const override {
-    if (name == "VALUE0") {
-      return Constant(MakeConstantId(0), "VALUE0", 0);
-    }
-    if (name == "VALUE1") {
-      return Constant(MakeConstantId(1), "VALUE1", 1);
-    }
-    if (name == "VALUE2") {
-      return Constant(MakeConstantId(2), "VALUE2", 2);
-    }
-    return absl::nullopt;
-  }
-
-  absl::StatusOr<absl::optional<Constant>> FindConstantByNumber(
-      int64_t number) const override {
-    switch (number) {
-      case 0:
-        return Constant(MakeConstantId(0), "VALUE0", 0);
-      case 1:
-        return Constant(MakeConstantId(1), "VALUE1", 1);
-      case 2:
-        return Constant(MakeConstantId(2), "VALUE2", 2);
-      default:
-        return absl::nullopt;
-    }
-  }
-
- private:
-  CEL_DECLARE_ENUM_TYPE(TestEnumType);
-};
-
-CEL_IMPLEMENT_ENUM_TYPE(TestEnumType);
 
 struct TestStruct final {
   bool bool_field = false;
@@ -602,12 +546,6 @@ INSTANTIATE_TEST_SUITE_P(
                 ValueFactory& value_factory) -> Handle<Value> {
                return Must(value_factory.CreateStringValue(""));
              }},
-            {"Enum",
-             [](TypeFactory& type_factory,
-                ValueFactory& value_factory) -> Handle<Value> {
-               return Must(value_factory.CreateEnumValue(
-                   Must(type_factory.CreateEnumType<TestEnumType>()), 1));
-             }},
             /*{"Struct",
              [](TypeFactory& type_factory,
                 ValueFactory& value_factory) -> Handle<Value> {
@@ -835,23 +773,6 @@ TEST_P(ValueConvertToAnyTest, DurationValue) {
   EXPECT_THAT(any.value(), Eq("\x08\x01\x10\x01"));
 }
 
-TEST_P(ValueConvertToAnyTest, EnumValue) {
-  ASSERT_OK_AND_ASSIGN(auto enum_type,
-                       type_factory().CreateEnumType<TestEnumType>());
-  ASSERT_OK_AND_ASSIGN(auto value, value_factory().CreateEnumValue(
-                                       enum_type, TestEnum::kValue0));
-  ASSERT_OK_AND_ASSIGN(auto any,
-                       value.As<Value>()->ConvertToAny(value_factory()));
-  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.Int64Value");
-  EXPECT_THAT(any.value(), IsEmpty());
-
-  ASSERT_OK_AND_ASSIGN(
-      value, value_factory().CreateEnumValue(enum_type, TestEnum::kValue1));
-  ASSERT_OK_AND_ASSIGN(any, value.As<Value>()->ConvertToAny(value_factory()));
-  EXPECT_EQ(any.type_url(), "type.googleapis.com/google.protobuf.Int64Value");
-  EXPECT_THAT(any.value(), Eq("\x08\x01"));
-}
-
 TEST_P(ValueConvertToAnyTest, ErrorValue) {
   auto value = value_factory().CreateErrorValue(absl::CancelledError());
   EXPECT_THAT(value.As<Value>()->ConvertToAny(value_factory()),
@@ -1068,21 +989,6 @@ TEST_P(ValueConvertToJsonTest, DurationValue) {
                                   absl::Seconds(1) + absl::Nanoseconds(1)));
   ASSERT_OK_AND_ASSIGN(json, value.As<Value>()->ConvertToJson(value_factory()));
   EXPECT_THAT(json, VariantWith<JsonString>(JsonString("1.000000001s")));
-}
-
-TEST_P(ValueConvertToJsonTest, EnumValue) {
-  ASSERT_OK_AND_ASSIGN(auto enum_type,
-                       type_factory().CreateEnumType<TestEnumType>());
-  ASSERT_OK_AND_ASSIGN(auto value, value_factory().CreateEnumValue(
-                                       enum_type, TestEnum::kValue0));
-  ASSERT_OK_AND_ASSIGN(auto json,
-                       value.As<Value>()->ConvertToJson(value_factory()));
-  EXPECT_THAT(json, VariantWith<JsonNumber>(0.0));
-
-  ASSERT_OK_AND_ASSIGN(
-      value, value_factory().CreateEnumValue(enum_type, TestEnum::kValue1));
-  ASSERT_OK_AND_ASSIGN(json, value.As<Value>()->ConvertToJson(value_factory()));
-  EXPECT_THAT(json, VariantWith<JsonNumber>(1.0));
 }
 
 TEST_P(ValueConvertToJsonTest, ErrorValue) {
@@ -2536,76 +2442,6 @@ INSTANTIATE_TEST_SUITE_P(
                          {"foo"},
                          {"\xef\xbf\xbd"},
                      })));
-
-TEST_P(ValueTest, Enum) {
-  TypeFactory type_factory(memory_manager());
-  TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto enum_type,
-                       type_factory.CreateEnumType<TestEnumType>());
-  ASSERT_OK_AND_ASSIGN(auto one_value,
-                       value_factory.CreateEnumValue(enum_type, "VALUE1"));
-  EXPECT_TRUE(one_value->Is<EnumValue>());
-  EXPECT_FALSE(one_value->Is<NullValue>());
-  EXPECT_EQ(one_value, one_value);
-  EXPECT_EQ(one_value,
-            Must(value_factory.CreateEnumValue(enum_type, "VALUE1")));
-  EXPECT_EQ(one_value->kind(), ValueKind::kEnum);
-  EXPECT_EQ(one_value->type(), enum_type);
-  EXPECT_EQ(one_value->name(), "VALUE1");
-  EXPECT_EQ(one_value->number(), 1);
-
-  ASSERT_OK_AND_ASSIGN(auto two_value,
-                       value_factory.CreateEnumValue(enum_type, "VALUE2"));
-  EXPECT_TRUE(two_value->Is<EnumValue>());
-  EXPECT_FALSE(two_value->Is<NullValue>());
-  EXPECT_EQ(two_value, two_value);
-  EXPECT_EQ(two_value->kind(), ValueKind::kEnum);
-  EXPECT_EQ(two_value->type(), enum_type);
-  EXPECT_EQ(two_value->name(), "VALUE2");
-  EXPECT_EQ(two_value->number(), 2);
-
-  EXPECT_NE(one_value, two_value);
-  EXPECT_NE(two_value, one_value);
-}
-
-using EnumValueTest = ValueTest;
-
-TEST_P(EnumValueTest, NewInstance) {
-  TypeFactory type_factory(memory_manager());
-  TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto enum_type,
-                       type_factory.CreateEnumType<TestEnumType>());
-  ASSERT_OK_AND_ASSIGN(auto one_value,
-                       value_factory.CreateEnumValue(enum_type, "VALUE1"));
-  ASSERT_OK_AND_ASSIGN(auto two_value,
-                       value_factory.CreateEnumValue(enum_type, "VALUE2"));
-  ASSERT_OK_AND_ASSIGN(auto one_value_by_number,
-                       value_factory.CreateEnumValue(enum_type, 1));
-  ASSERT_OK_AND_ASSIGN(auto two_value_by_number,
-                       value_factory.CreateEnumValue(enum_type, 2));
-  EXPECT_EQ(one_value, one_value_by_number);
-  EXPECT_EQ(two_value, two_value_by_number);
-
-  EXPECT_THAT(value_factory.CreateEnumValue(enum_type, "VALUE3"),
-              StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT(value_factory.CreateEnumValue(enum_type, 3),
-              StatusIs(absl::StatusCode::kNotFound));
-}
-
-TEST_P(EnumValueTest, UnknownConstantDebugString) {
-  TypeFactory type_factory(memory_manager());
-  TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto enum_type,
-                       type_factory.CreateEnumType<TestEnumType>());
-  EXPECT_EQ(EnumValue::DebugString(*enum_type, 3), "test_enum.TestEnum(3)");
-}
-
-INSTANTIATE_TEST_SUITE_P(EnumValueTest, EnumValueTest,
-                         base_internal::MemoryManagerTestModeAll(),
-                         base_internal::MemoryManagerTestModeTupleName);
 
 TEST_P(ValueTest, Struct) {
   TypeFactory type_factory(memory_manager());
