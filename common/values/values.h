@@ -133,9 +133,8 @@ struct IsValueAlternative
           std::is_base_of<ListValue, T>, std::is_base_of<MapValue, T>,
           std::is_same<NullValue, T>, std::is_base_of<OpaqueValue, T>,
           std::is_same<StringValue, T>, IsStructValueAlternative<T>,
-          std::is_same<StructValue, T>, std::is_same<TimestampValue, T>,
-          std::is_same<TypeValue, T>, std::is_same<UintValue, T>,
-          std::is_same<UnknownValue, T>>> {};
+          std::is_same<TimestampValue, T>, std::is_same<TypeValue, T>,
+          std::is_same<UintValue, T>, std::is_same<UnknownValue, T>>> {};
 
 template <typename T>
 inline constexpr bool IsValueAlternativeV = IsValueAlternative<T>::value;

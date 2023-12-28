@@ -38,9 +38,6 @@ class ThreadCompatibleValueProvider : public ThreadCompatibleTypeProvider,
   absl::StatusOr<Unique<StructValueBuilder>> NewStructValueBuilder(
       ValueFactory& value_factory, StructTypeView type) override;
 
-  absl::StatusOr<Unique<ValueBuilder>> NewValueBuilder(
-      ValueFactory& value_factory, absl::string_view name) override;
-
   absl::StatusOr<ValueView> FindValue(ValueFactory& value_factory,
                                       absl::string_view name,
                                       Value& scratch) override;

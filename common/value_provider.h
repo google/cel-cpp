@@ -17,6 +17,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/memory.h"
 #include "common/type.h"
@@ -54,14 +55,25 @@ class ValueProvider : public virtual TypeProvider {
   // `NewValueBuilder` returns a new `ValueBuilder` for the corresponding type
   // `name`.  It is primarily used to handle wrapper types which sometimes show
   // up literally in expressions.
-  virtual absl::StatusOr<Unique<ValueBuilder>> NewValueBuilder(
-      ValueFactory& value_factory, absl::string_view name) = 0;
+  absl::StatusOr<Unique<ValueBuilder>> NewValueBuilder(
+      ValueFactory& value_factory, absl::string_view name);
 
   // `FindValue` returns a new `Value` for the corresponding name `name`. This
   // can be used to translate enum names to numeric values.
   virtual absl::StatusOr<ValueView> FindValue(
       ValueFactory& value_factory, absl::string_view name,
       Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) = 0;
+
+  // `DeserializeValue` deserializes the bytes of `value` according to
+  // `type_url`. Returns `NOT_FOUND` if `type_url` is unrecognized.
+  absl::StatusOr<Value> DeserializeValue(ValueFactory& value_factory,
+                                         absl::string_view type_url,
+                                         const absl::Cord& value);
+
+ protected:
+  virtual absl::StatusOr<Value> DeserializeValueImpl(
+      ValueFactory& value_factory, absl::string_view type_url,
+      const absl::Cord& value);
 };
 
 Shared<ValueProvider> NewThreadCompatibleValueProvider(

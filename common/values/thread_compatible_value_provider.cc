@@ -31,13 +31,6 @@ ThreadCompatibleValueProvider::NewStructValueBuilder(ValueFactory&,
       absl::StrCat("value builder for type not found: ", type.DebugString()));
 }
 
-absl::StatusOr<Unique<ValueBuilder>>
-ThreadCompatibleValueProvider::NewValueBuilder(ValueFactory&,
-                                               absl::string_view name) {
-  return absl::NotFoundError(
-      absl::StrCat("value builder for type not found: ", name));
-}
-
 absl::StatusOr<ValueView> ThreadCompatibleValueProvider::FindValue(
     ValueFactory&, absl::string_view name, Value&) {
   return absl::NotFoundError(absl::StrCat("value not found: ", name));

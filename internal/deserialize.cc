@@ -15,11 +15,13 @@
 #include "internal/deserialize.h"
 
 #include <cstdint>
+#include <string>
 #include <utility>
 
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/time/time.h"
+#include "common/any.h"
 #include "common/json.h"
 #include "internal/proto_wire.h"
 #include "internal/status_macros.h"
@@ -324,6 +326,26 @@ absl::StatusOr<JsonObject> DeserializeStruct(const absl::Cord& data) {
   }
   decoder.EnsureFullyDecoded();
   return std::move(object_builder).Build();
+}
+
+absl::StatusOr<Any> DeserializeAny(const absl::Cord& data) {
+  absl::Cord type_url;
+  absl::Cord value;
+  ProtoWireDecoder decoder("google.protobuf.Any", data);
+  while (decoder.HasNext()) {
+    CEL_ASSIGN_OR_RETURN(auto tag, decoder.ReadTag());
+    if (tag == MakeProtoWireTag(1, ProtoWireType::kLengthDelimited)) {
+      CEL_ASSIGN_OR_RETURN(type_url, decoder.ReadLengthDelimited());
+      continue;
+    }
+    if (tag == MakeProtoWireTag(2, ProtoWireType::kLengthDelimited)) {
+      CEL_ASSIGN_OR_RETURN(value, decoder.ReadLengthDelimited());
+      continue;
+    }
+    CEL_RETURN_IF_ERROR(decoder.SkipLengthValue());
+  }
+  decoder.EnsureFullyDecoded();
+  return MakeAny(static_cast<std::string>(type_url), std::move(value));
 }
 
 }  // namespace cel::internal

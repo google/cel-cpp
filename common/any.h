@@ -42,10 +42,22 @@ class Any final {
     return type_url_;
   }
 
+  std::string release_type_url() {
+    std::string type_url;
+    type_url.swap(type_url_);
+    return type_url;
+  }
+
   void set_value(absl::Cord value) { value_ = std::move(value); }
 
   const absl::Cord& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return value_;
+  }
+
+  absl::Cord release_value() {
+    absl::Cord value;
+    value.swap(value_);
+    return value;
   }
 
   std::string DebugString() const;

@@ -102,6 +102,24 @@ class Value final {
     return *this;
   }
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(const StructValue& value)
+      : Value(CompositionTraits<StructValue>::Get<Value>(value)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(StructValue&& value)
+      : Value(CompositionTraits<StructValue>::Get<Value>(std::move(value))) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(const StructValue& value) {
+    return *this = CompositionTraits<StructValue>::Get<Value>(value);
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(StructValue&& value) {
+    return *this = CompositionTraits<StructValue>::Get<Value>(std::move(value));
+  }
+
   explicit Value(ValueView other);
 
   Value& operator=(ValueView other);
@@ -448,6 +466,15 @@ struct CompositionTraits<Value> final {
   }
 
   template <typename U>
+  static std::enable_if_t<std::is_same_v<StructValue, U>, bool> HasA(
+      const Value& value) {
+    value.AssertIsValid();
+    return absl::holds_alternative<common_internal::LegacyStructValue>(
+               value.variant_) ||
+           absl::holds_alternative<ParsedStructValue>(value.variant_);
+  }
+
+  template <typename U>
   static std::enable_if_t<common_internal::IsValueAlternativeV<U>, const U&>
   Get(const Value& value) {
     value.AssertIsValid();
@@ -493,6 +520,50 @@ struct CompositionTraits<Value> final {
     } else {
       return Cast<U>(absl::get<Base>(std::move(value.variant_)));
     }
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<StructValue, U>, U> Get(
+      const Value& value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyStructValue>(
+            value.variant_)) {
+      return U{absl::get<common_internal::LegacyStructValue>(value.variant_)};
+    }
+    return U{absl::get<ParsedStructValue>(value.variant_)};
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<StructValue, U>, U> Get(Value& value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyStructValue>(
+            value.variant_)) {
+      return U{absl::get<common_internal::LegacyStructValue>(value.variant_)};
+    }
+    return U{absl::get<ParsedStructValue>(value.variant_)};
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<StructValue, U>, U> Get(
+      const Value&& value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyStructValue>(
+            value.variant_)) {
+      return U{absl::get<common_internal::LegacyStructValue>(value.variant_)};
+    }
+    return U{absl::get<ParsedStructValue>(value.variant_)};
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<StructValue, U>, U> Get(
+      Value&& value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyStructValue>(
+            value.variant_)) {
+      return U{absl::get<common_internal::LegacyStructValue>(
+          std::move(value.variant_))};
+    }
+    return U{absl::get<ParsedStructValue>(std::move(value.variant_))};
   }
 };
 
@@ -874,6 +945,15 @@ struct CompositionTraits<ValueView> final {
   }
 
   template <typename U>
+  static std::enable_if_t<std::is_same_v<StructValueView, U>, bool> HasA(
+      ValueView value) {
+    value.AssertIsValid();
+    return absl::holds_alternative<common_internal::LegacyStructValueView>(
+               value.variant_) ||
+           absl::holds_alternative<ParsedStructValueView>(value.variant_);
+  }
+
+  template <typename U>
   static std::enable_if_t<common_internal::IsValueViewAlternativeV<U>, U> Get(
       ValueView value) {
     value.AssertIsValid();
@@ -883,6 +963,18 @@ struct CompositionTraits<ValueView> final {
     } else {
       return Cast<U>(absl::get<Base>(value.variant_));
     }
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<StructValueView, U>, U> Get(
+      ValueView value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyStructValueView>(
+            value.variant_)) {
+      return U{
+          absl::get<common_internal::LegacyStructValueView>(value.variant_)};
+    }
+    return U{absl::get<ParsedStructValueView>(value.variant_)};
   }
 };
 

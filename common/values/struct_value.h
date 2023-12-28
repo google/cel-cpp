@@ -23,6 +23,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -66,13 +67,16 @@ class StructValue final {
   static constexpr ValueKind kKind = StructValueInterface::kKind;
 
   // Copy constructor for alternative struct values.
-  template <typename T, typename = std::enable_if_t<
-                            common_internal::IsStructValueAlternativeV<T>>>
+  template <
+      typename T,
+      typename = std::enable_if_t<
+          common_internal::IsStructValueAlternativeV<absl::remove_cvref_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   StructValue(const T& value)
-      : variant_(absl::in_place_type<
-                     common_internal::BaseStructValueAlternativeFor<T>>,
-                 value) {}
+      : variant_(
+            absl::in_place_type<common_internal::BaseStructValueAlternativeForT<
+                absl::remove_cvref_t<T>>>,
+            value) {}
 
   // Move constructor for alternative struct values.
   template <
@@ -81,26 +85,48 @@ class StructValue final {
           common_internal::IsStructValueAlternativeV<absl::remove_cvref_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   StructValue(T&& value)
-      : variant_(absl::in_place_type<
-                     common_internal::BaseStructValueAlternativeFor<T>>,
-                 std::forward<T>(value)) {}
+      : variant_(
+            absl::in_place_type<common_internal::BaseStructValueAlternativeForT<
+                absl::remove_cvref_t<T>>>,
+            std::forward<T>(value)) {}
 
   // Constructor for struct value view.
   explicit StructValue(StructValueView value);
 
   // Constructor for alternative struct value views.
   template <typename T, typename = std::enable_if_t<
-                            common_internal::IsStructValueViewAlternativeV<T>>>
+                            common_internal::IsStructValueViewAlternativeV<
+                                absl::remove_cvref_t<T>>>>
   explicit StructValue(T value)
-      : variant_(absl::in_place_type<
-                     common_internal::BaseStructValueAlternativeForT<T>>,
-                 value) {}
+      : variant_(
+            absl::in_place_type<common_internal::BaseStructValueAlternativeForT<
+                absl::remove_cvref_t<T>>>,
+            value) {}
 
   StructValue() = default;
-  StructValue(const StructValue& other);
-  StructValue(StructValue&& other);
-  StructValue& operator=(const StructValue& other);
-  StructValue& operator=(StructValue&& other);
+
+  StructValue(const StructValue& other)
+      : variant_((other.AssertIsValid(), other.variant_)) {}
+
+  StructValue(StructValue&& other) noexcept
+      : variant_((other.AssertIsValid(), std::move(other.variant_))) {}
+
+  StructValue& operator=(const StructValue& other) {
+    other.AssertIsValid();
+    ABSL_DCHECK(this != std::addressof(other))
+        << "StructValue should not be copied to itself";
+    variant_ = other.variant_;
+    return *this;
+  }
+
+  StructValue& operator=(StructValue&& other) noexcept {
+    other.AssertIsValid();
+    ABSL_DCHECK(this != std::addressof(other))
+        << "StructValue should not be moved to itself";
+    variant_ = std::move(other.variant_);
+    other.variant_.emplace<absl::monostate>();
+    return *this;
+  }
 
   ValueKind kind() const {
     AssertIsValid();
@@ -395,6 +421,13 @@ struct CompositionTraits<StructValue> final {
   }
 
   template <typename U>
+  static std::enable_if_t<std::is_same_v<Value, U>, bool> HasA(
+      const StructValue& value) {
+    value.AssertIsValid();
+    return true;
+  }
+
+  template <typename U>
   static std::enable_if_t<common_internal::IsStructValueAlternativeV<U>,
                           const U&>
   Get(const StructValue& value) {
@@ -441,6 +474,73 @@ struct CompositionTraits<StructValue> final {
     } else {
       return Cast<U>(absl::get<Base>(std::move(value.variant_)));
     }
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<Value, U>, U> Get(
+      const StructValue& value) {
+    value.AssertIsValid();
+    return absl::visit(
+        [](const auto& alternative) -> U {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            return U{};
+          } else {
+            return U{alternative};
+          }
+        },
+        value.variant_);
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<Value, U>, U> Get(StructValue& value) {
+    value.AssertIsValid();
+    return absl::visit(
+        [](const auto& alternative) -> U {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            return U{};
+          } else {
+            return U{alternative};
+          }
+        },
+        value.variant_);
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<Value, U>, U> Get(
+      const StructValue&& value) {
+    value.AssertIsValid();
+    return absl::visit(
+        [](const auto& alternative) -> U {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            return U{};
+          } else {
+            return U{alternative};
+          }
+        },
+        value.variant_);
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<Value, U>, U> Get(
+      StructValue&& value) {
+    value.AssertIsValid();
+    return absl::visit(
+        [](auto&& alternative) -> U {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            return U{};
+          } else {
+            return U{std::move(alternative)};
+          }
+        },
+        std::move(value.variant_));
   }
 };
 
@@ -773,6 +873,13 @@ struct CompositionTraits<StructValueView> final {
   }
 
   template <typename U>
+  static std::enable_if_t<std::is_same_v<ValueView, U>, bool> HasA(
+      StructValueView value) {
+    value.AssertIsValid();
+    return true;
+  }
+
+  template <typename U>
   static std::enable_if_t<common_internal::IsStructValueViewAlternativeV<U>, U>
   Get(StructValueView value) {
     value.AssertIsValid();
@@ -782,6 +889,23 @@ struct CompositionTraits<StructValueView> final {
     } else {
       return Cast<U>(absl::get<Base>(value.variant_));
     }
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<ValueView, U>, U> Get(
+      StructValueView value) {
+    value.AssertIsValid();
+    return absl::visit(
+        [](auto alternative) -> U {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            return U{};
+          } else {
+            return U{alternative};
+          }
+        },
+        value.variant_);
   }
 };
 

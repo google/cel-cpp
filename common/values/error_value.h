@@ -102,9 +102,14 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final {
 
   absl::StatusOr<Json> ConvertToJson() const;
 
-  absl::Status NativeValue() const {
+  absl::Status NativeValue() const& {
     ABSL_DCHECK(!value_.ok()) << "use of moved-from ErrorValue";
     return value_;
+  }
+
+  absl::Status NativeValue() && {
+    ABSL_DCHECK(!value_.ok()) << "use of moved-from ErrorValue";
+    return std::move(value_);
   }
 
   void swap(ErrorValue& other) noexcept {
@@ -117,6 +122,16 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final {
 
   absl::Status value_;
 };
+
+ErrorValue NoSuchFieldError(absl::string_view field);
+
+ErrorValue NoSuchKeyError(absl::string_view key);
+
+ErrorValue DuplicateKeyError();
+
+ErrorValue TypeConversionError(absl::string_view from, absl::string_view to);
+
+ErrorValue TypeConversionError(TypeView from, TypeView to);
 
 inline void swap(ErrorValue& lhs, ErrorValue& rhs) noexcept { lhs.swap(rhs); }
 
@@ -183,7 +198,7 @@ class ErrorValueView final {
 
   absl::StatusOr<Json> ConvertToJson() const;
 
-  absl::Status NativeValue() const {
+  const absl::Status& NativeValue() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK(!value_->ok()) << "use of moved-from ErrorValue";
     return *value_;
   }
@@ -206,6 +221,10 @@ inline void swap(ErrorValueView& lhs, ErrorValueView& rhs) noexcept {
 inline std::ostream& operator<<(std::ostream& out, ErrorValueView value) {
   return out << value.DebugString();
 }
+
+bool IsNoSuchField(ErrorValueView value);
+
+bool IsNoSuchKey(ErrorValueView value);
 
 inline ErrorValue::ErrorValue(ErrorValueView value) noexcept
     : value_(value.NativeValue()) {}

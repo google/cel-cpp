@@ -19,10 +19,12 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
 #include "common/json.h"
+#include "common/type.h"
 #include "common/value.h"
 
 namespace cel {
@@ -35,6 +37,40 @@ std::string ErrorDebugString(const absl::Status& value) {
 }
 
 }  // namespace
+
+ErrorValue NoSuchFieldError(absl::string_view field) {
+  return ErrorValue(absl::NotFoundError(
+      absl::StrCat("no_such_field", field.empty() ? "" : " : ", field)));
+}
+
+ErrorValue NoSuchKeyError(absl::string_view key) {
+  return ErrorValue(
+      absl::NotFoundError(absl::StrCat("Key not found in map : ", key)));
+}
+
+ErrorValue DuplicateKeyError() {
+  return ErrorValue(absl::AlreadyExistsError("duplicate key in map"));
+}
+
+ErrorValue TypeConversionError(absl::string_view from, absl::string_view to) {
+  return ErrorValue(absl::InvalidArgumentError(
+      absl::StrCat("type conversion error from '", from, "' to '", to, "'")));
+}
+
+ErrorValue TypeConversionError(TypeView from, TypeView to) {
+  return TypeConversionError(from.DebugString(), to.DebugString());
+}
+
+bool IsNoSuchField(ErrorValueView value) {
+  return absl::IsNotFound(value.NativeValue()) &&
+         absl::StartsWith(value.NativeValue().message(), "no_such_field");
+}
+
+bool IsNoSuchKey(ErrorValueView value) {
+  return absl::IsNotFound(value.NativeValue()) &&
+         absl::StartsWith(value.NativeValue().message(),
+                          "Key not found in map");
+}
 
 std::string ErrorValue::DebugString() const { return ErrorDebugString(value_); }
 

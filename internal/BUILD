@@ -41,6 +41,7 @@ cc_library(
     deps = [
         ":proto_wire",
         ":status_macros",
+        "//common:any",
         "//common:json",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:cord",
