@@ -238,8 +238,7 @@ class ParserVisitor final : public CelBaseVisitor,
                 const int max_recursion_depth,
                 const std::vector<Macro>& macros = {},
                 const bool add_macro_calls = false,
-                bool enable_optional_syntax = false,
-                bool enable_unique_macro_numbering = false);
+                bool enable_optional_syntax = false);
   ~ParserVisitor() override;
 
   antlrcpp::Any visit(antlr4::tree::ParseTree* tree) override;
@@ -327,12 +326,10 @@ ParserVisitor::ParserVisitor(absl::string_view description,
                              const int max_recursion_depth,
                              const std::vector<Macro>& macros,
                              const bool add_macro_calls,
-                             bool enable_optional_syntax,
-                             bool enable_unique_macro_numbering)
+                             bool enable_optional_syntax)
     : description_(description),
       expression_(expression),
-      sf_(std::make_shared<SourceFactory>(expression,
-                                          enable_unique_macro_numbering)),
+      sf_(std::make_shared<SourceFactory>(expression)),
       recursion_depth_(0),
       max_recursion_depth_(max_recursion_depth),
       add_macro_calls_(add_macro_calls),
@@ -1171,8 +1168,7 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
     ExprRecursionListener listener(options.max_recursion_depth);
     ParserVisitor visitor(description, expression, options.max_recursion_depth,
                           macros, options.add_macro_calls,
-                          options.enable_optional_syntax,
-                          options.enable_unique_macro_numbering);
+                          options.enable_optional_syntax);
 
     lexer.removeErrorListeners();
     parser.removeErrorListeners();

@@ -22,7 +22,6 @@
 
 #include "google/protobuf/struct.pb.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/functional/any_invocable.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
@@ -49,9 +48,8 @@ const std::string& DefaultAccumulatorName() {
 
 }  // namespace
 
-SourceFactory::SourceFactory(absl::string_view expression,
-                             bool unique_macro_ids)
-    : next_id_(1), num_errors_(0), unique_macro_ids_(unique_macro_ids) {
+SourceFactory::SourceFactory(absl::string_view expression)
+    : next_id_(1), num_errors_(0) {
   CalcLineOffsets(expression);
 }
 
@@ -385,15 +383,9 @@ Expr SourceFactory::NewFilterExprForMacro(int64_t macro_id, const Expr& target,
 
   const Expr& filter = args[1];
 
-  absl::AnyInvocable<Expr()> accu_ident;
-  if (unique_macro_ids_) {
-    accu_ident = [this, macro_id]() {
-      return NewIdentForMacro(macro_id, DefaultAccumulatorName());
-    };
-  } else {
-    auto ident_expr = NewIdentForMacro(macro_id, DefaultAccumulatorName());
-    accu_ident = [expr = std::move(ident_expr)]() { return expr; };
-  }
+  auto accu_ident = [this, macro_id]() {
+    return NewIdentForMacro(macro_id, DefaultAccumulatorName());
+  };
 
   Expr init = NewListForMacro(macro_id, {});
   Expr condition = NewLiteralBoolForMacro(macro_id, true);
@@ -444,15 +436,10 @@ Expr SourceFactory::NewMapForMacro(int64_t macro_id, const Expr& target,
     fn = args[1];
   }
 
-  absl::AnyInvocable<Expr()> accu_ident;
-  if (unique_macro_ids_) {
-    accu_ident = [this, macro_id]() {
-      return NewIdentForMacro(macro_id, DefaultAccumulatorName());
-    };
-  } else {
-    auto ident_expr = NewIdentForMacro(macro_id, DefaultAccumulatorName());
-    accu_ident = [expr = std::move(ident_expr)]() { return expr; };
-  }
+  auto accu_ident = [this, macro_id]() {
+    return NewIdentForMacro(macro_id, DefaultAccumulatorName());
+  };
+
   Expr init = NewListForMacro(macro_id, {});
   Expr condition = NewLiteralBoolForMacro(macro_id, true);
   Expr step =

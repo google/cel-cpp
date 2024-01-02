@@ -47,9 +47,6 @@ struct ParserOptions final {
 
   // Enable support for optional syntax.
   bool enable_optional_syntax = false;
-
-  // Enable unique numbering for builtin macro expr nodes.
-  bool enable_unique_macro_numbering = true;
 };
 
 }  // namespace cel

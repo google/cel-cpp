@@ -1375,7 +1375,6 @@ TEST_P(ExpressionTest, Parse) {
   ParserOptions options;
   if (!test_info.M.empty()) {
     options.add_macro_calls = true;
-    options.enable_unique_macro_numbering = true;
   }
   options.enable_optional_syntax = true;
 
