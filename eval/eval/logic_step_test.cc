@@ -51,9 +51,10 @@ class LogicStepTest : public testing::TestWithParam<bool> {
       options.unknown_processing =
           cel::UnknownProcessingOptions::kAttributeOnly;
     }
-    CelExpressionFlatImpl impl(
-        FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                       TypeProvider::Builtin(), options));
+    CelExpressionFlatImpl impl(FlatExpression(
+        std::move(path),
+        /*value_stack_size=*/2,
+        /*comprehension_slot_count=*/0, TypeProvider::Builtin(), options));
 
     Activation activation;
     activation.InsertValue("name0", arg0);

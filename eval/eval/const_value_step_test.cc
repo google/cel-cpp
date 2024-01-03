@@ -44,9 +44,11 @@ absl::StatusOr<CelValue> RunConstantExpression(
   google::api::expr::runtime::ExecutionPath path;
   path.push_back(std::move(step));
 
-  CelExpressionFlatImpl impl(
-      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), cel::RuntimeOptions{}));
+  CelExpressionFlatImpl impl(FlatExpression(std::move(path),
+                                            /*value_stack_size=*/1,
+                                            /*comprehension_slot_count=*/0,
+                                            TypeProvider::Builtin(),
+                                            cel::RuntimeOptions{}));
 
   google::api::expr::runtime::Activation activation;
 

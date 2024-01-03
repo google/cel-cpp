@@ -14,7 +14,8 @@ namespace google::api::expr::runtime {
 class JumpStepBase : public ExpressionStepBase {
  public:
   JumpStepBase(absl::optional<int> jump_offset, int64_t expr_id)
-      : ExpressionStepBase(expr_id, false), jump_offset_(jump_offset) {}
+      : ExpressionStepBase(expr_id, false, /*stack_delta=*/0),
+        jump_offset_(jump_offset) {}
 
   void set_jump_offset(int offset) { jump_offset_ = offset; }
 

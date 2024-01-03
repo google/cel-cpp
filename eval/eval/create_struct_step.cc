@@ -1,5 +1,6 @@
 #include "eval/eval/create_struct_step.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -815,7 +816,7 @@ class CreateStructStepForStruct final : public ExpressionStepBase {
  public:
   CreateStructStepForStruct(int64_t expr_id, Handle<StructType> type,
                             std::vector<StructFieldId> entries)
-      : ExpressionStepBase(expr_id),
+      : ExpressionStepBase(expr_id, true, 1 - entries.size()),
         type_(std::move(type)),
         entries_(std::move(entries)) {}
 
@@ -853,7 +854,8 @@ class CreateStructStepForWellKnownType final : public ExpressionStepBase {
 class CreateStructStepForMap final : public ExpressionStepBase {
  public:
   CreateStructStepForMap(int64_t expr_id, size_t entry_count)
-      : ExpressionStepBase(expr_id), entry_count_(entry_count) {}
+      : ExpressionStepBase(expr_id, true, 1 - (2 * entry_count)),
+        entry_count_(entry_count) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 

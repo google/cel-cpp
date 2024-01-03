@@ -438,6 +438,7 @@ cc_test(
     deps = [
         ":cel_expression_flat_impl",
         ":evaluator_core",
+        ":expression_step_base",
         "//base:data",
         "//eval/compiler:cel_expression_builder_flat_impl",
         "//eval/internal:interop",

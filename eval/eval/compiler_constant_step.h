@@ -30,7 +30,8 @@ class CompilerConstantStep : public ExpressionStepBase {
  public:
   CompilerConstantStep(cel::Handle<cel::Value> value, int64_t expr_id,
                        bool comes_from_ast)
-      : ExpressionStepBase(expr_id, comes_from_ast), value_(std::move(value)) {}
+      : ExpressionStepBase(expr_id, comes_from_ast, /*stack_delta=*/1),
+        value_(std::move(value)) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 

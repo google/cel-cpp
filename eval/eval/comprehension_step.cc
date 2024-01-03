@@ -44,7 +44,8 @@ class ComprehensionFinish : public ExpressionStepBase {
 };
 
 ComprehensionFinish::ComprehensionFinish(size_t accu_slot, int64_t expr_id)
-    : ExpressionStepBase(expr_id), accu_slot_(accu_slot) {}
+    : ExpressionStepBase(expr_id, true, /*stack_delta=*/-2),
+      accu_slot_(accu_slot) {}
 
 // Stack changes of ComprehensionFinish.
 //
@@ -73,7 +74,7 @@ absl::Status ComprehensionFinish::Evaluate(ExecutionFrame* frame) const {
 class ComprehensionInitStep : public ExpressionStepBase {
  public:
   explicit ComprehensionInitStep(int64_t expr_id)
-      : ExpressionStepBase(expr_id, false) {}
+      : ExpressionStepBase(expr_id, false, /*stack_delta=*/1) {}
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
@@ -148,7 +149,7 @@ absl::Status ComprehensionInitStep::Evaluate(ExecutionFrame* frame) const {
 
 ComprehensionNextStep::ComprehensionNextStep(size_t iter_slot, size_t accu_slot,
                                              int64_t expr_id)
-    : ExpressionStepBase(expr_id, false),
+    : ExpressionStepBase(expr_id, false, /*stack_delta=*/-1),
       iter_slot_(iter_slot),
       accu_slot_(accu_slot) {}
 
@@ -252,7 +253,7 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
 ComprehensionCondStep::ComprehensionCondStep(size_t iter_slot, size_t accu_slot,
                                              bool shortcircuiting,
                                              int64_t expr_id)
-    : ExpressionStepBase(expr_id, false),
+    : ExpressionStepBase(expr_id, false, /*stack_delta=*/-1),
       iter_slot_(iter_slot),
       accu_slot_(accu_slot),
       shortcircuiting_(shortcircuiting) {}

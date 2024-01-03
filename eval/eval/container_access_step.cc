@@ -48,7 +48,8 @@ inline constexpr int kNumContainerAccessArguments = 2;
 // message.
 class ContainerAccessStep : public ExpressionStepBase {
  public:
-  explicit ContainerAccessStep(int64_t expr_id) : ExpressionStepBase(expr_id) {}
+  explicit ContainerAccessStep(int64_t expr_id)
+      : ExpressionStepBase(expr_id, true, /*stack_delta=*/-1) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 

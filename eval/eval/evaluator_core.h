@@ -76,6 +76,11 @@ class ExpressionStep {
   // Returns if the execution step comes from AST.
   virtual bool ComesFromAst() const = 0;
 
+  // Returns a tight upper bound for stack changes required for this expression.
+  // This is used to compute a reasonable size for the value stack to
+  // pre-allocate.
+  virtual int stack_delta() const = 0;
+
   // Return the type of the underlying expression step for special handling in
   // the planning phase. This should only be overridden by special cases, and
   // callers must not make any assumptions about the default case.
@@ -297,22 +302,25 @@ class FlatExpression {
   // path is flat execution path that is based upon the flattened AST tree
   // type_provider is the configured type system that should be used for
   //   value creation in evaluation
-  FlatExpression(ExecutionPath path, size_t comprehension_slots_size,
+  FlatExpression(ExecutionPath path, size_t value_stack_size,
+                 size_t comprehension_slots_size,
                  const cel::TypeProvider& type_provider,
                  const cel::RuntimeOptions& options)
       : path_(std::move(path)),
         subexpressions_({path_}),
+        value_stack_size_(value_stack_size),
         comprehension_slots_size_(comprehension_slots_size),
         type_provider_(type_provider),
         options_(options) {}
 
   FlatExpression(ExecutionPath path,
                  std::vector<ExecutionPathView> subexpressions,
-                 size_t comprehension_slots_size,
+                 size_t value_stack_size, size_t comprehension_slots_size,
                  const cel::TypeProvider& type_provider,
                  const cel::RuntimeOptions& options)
       : path_(std::move(path)),
         subexpressions_(std::move(subexpressions)),
+        value_stack_size_(value_stack_size),
         comprehension_slots_size_(comprehension_slots_size),
         type_provider_(type_provider),
         options_(options) {}
@@ -345,6 +353,7 @@ class FlatExpression {
  private:
   ExecutionPath path_;
   std::vector<ExecutionPathView> subexpressions_;
+  size_t value_stack_size_;
   size_t comprehension_slots_size_;
   const cel::TypeProvider& type_provider_;
   cel::RuntimeOptions options_;

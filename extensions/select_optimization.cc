@@ -551,7 +551,7 @@ class OptimizedSelectStep : public ExpressionStepBase {
                       bool presence_test,
                       bool enable_wrapper_type_null_unboxing,
                       SelectOptimizationOptions options)
-      : ExpressionStepBase(expr_id),
+      : ExpressionStepBase(expr_id, true, 0),
         select_path_(std::move(select_path)),
         qualifiers_(std::move(qualifiers)),
         presence_test_(presence_test),

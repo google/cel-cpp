@@ -112,14 +112,14 @@ absl::StatusOr<cel::Handle<cel::Value>> ExecutionFrame::Evaluate(
 
 FlatExpressionEvaluatorState FlatExpression::MakeEvaluatorState(
     cel::MemoryManagerRef manager) const {
-  return FlatExpressionEvaluatorState(path_.size(), comprehension_slots_size_,
-                                      type_provider_, manager);
+  return FlatExpressionEvaluatorState(
+      value_stack_size_, comprehension_slots_size_, type_provider_, manager);
 }
 
 FlatExpressionEvaluatorState FlatExpression::MakeEvaluatorState(
     cel::ValueFactory& value_factory) const {
-  return FlatExpressionEvaluatorState(path_.size(), comprehension_slots_size_,
-                                      value_factory);
+  return FlatExpressionEvaluatorState(value_stack_size_,
+                                      comprehension_slots_size_, value_factory);
 }
 
 absl::StatusOr<cel::Handle<cel::Value>> FlatExpression::EvaluateWithCallback(

@@ -94,9 +94,10 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
   if (enable_unknowns) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
-  CelExpressionFlatImpl cel_expr(
-      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), options));
+  CelExpressionFlatImpl cel_expr(FlatExpression(
+      std::move(path),
+      /*value_stack_size=*/1,
+      /*comprehension_slot_count=*/0, TypeProvider::Builtin(), options));
   Activation activation;
   activation.InsertValue("message", value);
 
@@ -187,9 +188,10 @@ absl::StatusOr<CelValue> RunCreateMapExpression(
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
 
-  CelExpressionFlatImpl cel_expr(
-      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), options));
+  CelExpressionFlatImpl cel_expr(FlatExpression(
+      std::move(path),
+      /*value_stack_size=*/2 * values.size(),
+      /*comprehension_slot_count=*/0, TypeProvider::Builtin(), options));
   return cel_expr.Evaluate(activation, arena);
 }
 
@@ -226,9 +228,10 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   if (GetParam()) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
-  CelExpressionFlatImpl cel_expr(
-      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), options));
+  CelExpressionFlatImpl cel_expr(FlatExpression(
+      std::move(path),
+      /*value_stack_size=*/1,
+      /*comprehension_slot_count=*/0, TypeProvider::Builtin(), options));
   Activation activation;
 
   ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr.Evaluate(activation, &arena));

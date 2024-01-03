@@ -31,7 +31,7 @@ using ::cel::runtime_internal::MutableListValue;
 class CreateListStep : public ExpressionStepBase {
  public:
   CreateListStep(int64_t expr_id, int list_size, bool immutable)
-      : ExpressionStepBase(expr_id),
+      : ExpressionStepBase(expr_id, true, /*stack_delta=*/1 - list_size),
         list_size_(list_size),
         immutable_(immutable) {}
 

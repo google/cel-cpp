@@ -7,6 +7,7 @@
 #include "base/type_provider.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/eval/cel_expression_flat_impl.h"
+#include "eval/eval/expression_step_base.h"
 #include "eval/internal/interop.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -28,26 +29,21 @@ using testing::Eq;
 
 // Fake expression implementation
 // Pushes int64_t(0) on top of value stack.
-class FakeConstExpressionStep : public ExpressionStep {
+class FakeConstExpressionStep : public ExpressionStepBase {
  public:
+  FakeConstExpressionStep() : ExpressionStepBase(0) {}
   absl::Status Evaluate(ExecutionFrame* frame) const override {
     frame->value_stack().Push(CreateIntValue(0));
     return absl::OkStatus();
-  }
-
-  int64_t id() const override { return 0; }
-
-  bool ComesFromAst() const override { return true; }
-
-  cel::NativeTypeId GetNativeTypeId() const override {
-    return cel::NativeTypeId();
   }
 };
 
 // Fake expression implementation
 // Increments argument on top of the stack.
-class FakeIncrementExpressionStep : public ExpressionStep {
+class FakeIncrementExpressionStep : public ExpressionStepBase {
  public:
+  FakeIncrementExpressionStep() : ExpressionStepBase(0) {}
+
   absl::Status Evaluate(ExecutionFrame* frame) const override {
     CelValue value = cel::interop_internal::ModernValueToLegacyValueOrDie(
         frame->memory_manager(), frame->value_stack().Peek());
@@ -56,14 +52,6 @@ class FakeIncrementExpressionStep : public ExpressionStep {
     int64_t val = value.Int64OrDie();
     frame->value_stack().Push(CreateIntValue(val + 1));
     return absl::OkStatus();
-  }
-
-  int64_t id() const override { return 0; }
-
-  bool ComesFromAst() const override { return true; }
-
-  cel::NativeTypeId GetNativeTypeId() const override {
-    return cel::NativeTypeId();
   }
 };
 
@@ -105,8 +93,9 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
   path.push_back(std::move(incr_step1));
   path.push_back(std::move(incr_step2));
 
-  CelExpressionFlatImpl impl(FlatExpression(
-      std::move(path), 0, cel::TypeProvider::Builtin(), cel::RuntimeOptions{}));
+  CelExpressionFlatImpl impl(FlatExpression(std::move(path), 1, 0,
+                                            cel::TypeProvider::Builtin(),
+                                            cel::RuntimeOptions{}));
 
   Activation activation;
   google::protobuf::Arena arena;
