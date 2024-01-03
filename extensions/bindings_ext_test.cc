@@ -20,33 +20,45 @@
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/strings/string_view.h"
+#include "base/attribute.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_expression.h"
+#include "eval/public/cel_function.h"
 #include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_options.h"
+#include "eval/public/cel_value.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "proto/test/v1/proto2/test_all_types.pb.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/text_format.h"
 
 namespace cel::extensions {
 namespace {
+
+using ::google::api::expr::v1alpha1::CheckedExpr;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::v1alpha1::SourceInfo;
-
 using ::google::api::expr::parser::ParseWithMacros;
 using ::google::api::expr::runtime::Activation;
 using ::google::api::expr::runtime::CelExpressionBuilder;
 using ::google::api::expr::runtime::CelFunction;
 using ::google::api::expr::runtime::CelFunctionDescriptor;
+using ::google::api::expr::runtime::CelProtoWrapper;
 using ::google::api::expr::runtime::CelValue;
 using ::google::api::expr::runtime::CreateCelExpressionBuilder;
 using ::google::api::expr::runtime::FunctionAdapter;
 using ::google::api::expr::runtime::InterpreterOptions;
 using ::google::api::expr::runtime::RegisterBuiltinFunctions;
-
+using ::google::api::expr::runtime::UnknownProcessingOptions;
+using ::google::api::expr::test::v1::proto2::NestedTestAllTypes;
 using ::google::protobuf::Arena;
+using ::google::protobuf::TextFormat;
 using testing::HasSubstr;
 using cel::internal::IsOk;
 using cel::internal::StatusIs;
@@ -152,6 +164,584 @@ INSTANTIATE_TEST_SUITE_P(
               "variable name must be a simple identifier"}}),
         /*constant_folding*/ testing::Bool(),
         /*lazy_bindings*/ testing::Bool()));
+
+// Test bind expression with nested field selection.
+//
+// cel.bind(submsg,
+//          msg.child.child,
+//          (false) ?
+//            TestAllTypes{single_int64: -42}.single_int64 :
+//            submsg.payload.single_int64)
+constexpr absl::string_view kFieldSelectTestExpr = R"pb(
+  reference_map: {
+    key: 4
+    value: { name: "msg" }
+  }
+  reference_map: {
+    key: 8
+    value: { overload_id: "conditional" }
+  }
+  reference_map: {
+    key: 9
+    value: { name: "google.api.expr.test.v1.proto2.TestAllTypes" }
+  }
+  reference_map: {
+    key: 13
+    value: { name: "submsg" }
+  }
+  reference_map: {
+    key: 18
+    value: { name: "submsg" }
+  }
+  type_map: {
+    key: 4
+    value: { message_type: "google.api.expr.test.v1.proto2.NestedTestAllTypes" }
+  }
+  type_map: {
+    key: 5
+    value: { message_type: "google.api.expr.test.v1.proto2.NestedTestAllTypes" }
+  }
+  type_map: {
+    key: 6
+    value: { message_type: "google.api.expr.test.v1.proto2.NestedTestAllTypes" }
+  }
+  type_map: {
+    key: 7
+    value: { primitive: BOOL }
+  }
+  type_map: {
+    key: 8
+    value: { primitive: INT64 }
+  }
+  type_map: {
+    key: 9
+    value: { message_type: "google.api.expr.test.v1.proto2.TestAllTypes" }
+  }
+  type_map: {
+    key: 11
+    value: { primitive: INT64 }
+  }
+  type_map: {
+    key: 12
+    value: { primitive: INT64 }
+  }
+  type_map: {
+    key: 13
+    value: { message_type: "google.api.expr.test.v1.proto2.NestedTestAllTypes" }
+  }
+  type_map: {
+    key: 14
+    value: { message_type: "google.api.expr.test.v1.proto2.TestAllTypes" }
+  }
+  type_map: {
+    key: 15
+    value: { primitive: INT64 }
+  }
+  type_map: {
+    key: 16
+    value: { list_type: { elem_type: { dyn: {} } } }
+  }
+  type_map: {
+    key: 17
+    value: { primitive: BOOL }
+  }
+  type_map: {
+    key: 18
+    value: { message_type: "google.api.expr.test.v1.proto2.NestedTestAllTypes" }
+  }
+  type_map: {
+    key: 19
+    value: { primitive: INT64 }
+  }
+  source_info: {
+    location: "<input>"
+    line_offsets: 120
+    positions: { key: 1 value: 0 }
+    positions: { key: 2 value: 8 }
+    positions: { key: 3 value: 9 }
+    positions: { key: 4 value: 17 }
+    positions: { key: 5 value: 20 }
+    positions: { key: 6 value: 26 }
+    positions: { key: 7 value: 35 }
+    positions: { key: 8 value: 42 }
+    positions: { key: 9 value: 56 }
+    positions: { key: 10 value: 69 }
+    positions: { key: 11 value: 71 }
+    positions: { key: 12 value: 75 }
+    positions: { key: 13 value: 91 }
+    positions: { key: 14 value: 97 }
+    positions: { key: 15 value: 105 }
+    positions: { key: 16 value: 8 }
+    positions: { key: 17 value: 8 }
+    positions: { key: 18 value: 8 }
+    positions: { key: 19 value: 8 }
+    macro_calls: {
+      key: 19
+      value: {
+        call_expr: {
+          target: {
+            id: 1
+            ident_expr: { name: "cel" }
+          }
+          function: "bind"
+          args: {
+            id: 3
+            ident_expr: { name: "submsg" }
+          }
+          args: {
+            id: 6
+            select_expr: {
+              operand: {
+                id: 5
+                select_expr: {
+                  operand: {
+                    id: 4
+                    ident_expr: { name: "msg" }
+                  }
+                  field: "child"
+                }
+              }
+              field: "child"
+            }
+          }
+          args: {
+            id: 8
+            call_expr: {
+              function: "_?_:_"
+              args: {
+                id: 7
+                const_expr: { bool_value: false }
+              }
+              args: {
+                id: 12
+                select_expr: {
+                  operand: {
+                    id: 9
+                    struct_expr: {
+                      message_name: "google.api.expr.test.v1.proto2.TestAllTypes"
+                      entries: {
+                        id: 10
+                        field_key: "single_int64"
+                        value: {
+                          id: 11
+                          const_expr: { int64_value: -42 }
+                        }
+                      }
+                    }
+                  }
+                  field: "single_int64"
+                }
+              }
+              args: {
+                id: 15
+                select_expr: {
+                  operand: {
+                    id: 14
+                    select_expr: {
+                      operand: {
+                        id: 13
+                        ident_expr: { name: "submsg" }
+                      }
+                      field: "payload"
+                    }
+                  }
+                  field: "single_int64"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  expr: {
+    id: 19
+    comprehension_expr: {
+      iter_var: "#unused"
+      iter_range: {
+        id: 16
+        list_expr: {}
+      }
+      accu_var: "submsg"
+      accu_init: {
+        id: 6
+        select_expr: {
+          operand: {
+            id: 5
+            select_expr: {
+              operand: {
+                id: 4
+                ident_expr: { name: "msg" }
+              }
+              field: "child"
+            }
+          }
+          field: "child"
+        }
+      }
+      loop_condition: {
+        id: 17
+        const_expr: { bool_value: false }
+      }
+      loop_step: {
+        id: 18
+        ident_expr: { name: "submsg" }
+      }
+      result: {
+        id: 8
+        call_expr: {
+          function: "_?_:_"
+          args: {
+            id: 7
+            const_expr: { bool_value: false }
+          }
+          args: {
+            id: 12
+            select_expr: {
+              operand: {
+                id: 9
+                struct_expr: {
+                  message_name: "google.api.expr.test.v1.proto2.TestAllTypes"
+                  entries: {
+                    id: 10
+                    field_key: "single_int64"
+                    value: {
+                      id: 11
+                      const_expr: { int64_value: -42 }
+                    }
+                  }
+                }
+              }
+              field: "single_int64"
+            }
+          }
+          args: {
+            id: 15
+            select_expr: {
+              operand: {
+                id: 14
+                select_expr: {
+                  operand: {
+                    id: 13
+                    ident_expr: { name: "submsg" }
+                  }
+                  field: "payload"
+                }
+              }
+              field: "single_int64"
+            }
+          }
+        }
+      }
+    }
+  })pb";
+
+class BindingsExtInteractionsTest
+    : public testing::TestWithParam<std::tuple<bool, bool>> {
+ protected:
+  bool GetEnableLazyBinding() { return std::get<0>(GetParam()); }
+  bool GetEnableSelectOptimization() { return std::get<1>(GetParam()); }
+};
+
+TEST_P(BindingsExtInteractionsTest, SelectOptimization) {
+  CheckedExpr expr;
+  ASSERT_TRUE(TextFormat::ParseFromString(kFieldSelectTestExpr, &expr));
+  InterpreterOptions options;
+  options.enable_empty_wrapper_null_unboxing = true;
+  options.enable_lazy_bind_initialization = GetEnableLazyBinding();
+  options.enable_select_optimization = GetEnableSelectOptimization();
+  std::unique_ptr<CelExpressionBuilder> builder =
+      CreateCelExpressionBuilder(options);
+
+  ASSERT_OK(builder->GetRegistry()->Register(CreateBindFunction()));
+
+  // Register builtins and configure the execution environment.
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+
+  // Create CelExpression from AST (Expr object).
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder->CreateExpression(&expr));
+  Arena arena;
+  Activation activation;
+
+  NestedTestAllTypes msg;
+  msg.mutable_child()->mutable_child()->mutable_payload()->set_single_int64(42);
+
+  activation.InsertValue("msg", CelProtoWrapper::CreateMessage(&msg, &arena));
+
+  // Run evaluation.
+  ASSERT_OK_AND_ASSIGN(CelValue out, cel_expr->Evaluate(activation, &arena));
+  ASSERT_TRUE(out.IsInt64());
+  EXPECT_EQ(out.Int64OrDie(), 42);
+}
+
+TEST_P(BindingsExtInteractionsTest, UnknownAttributesSelectOptimization) {
+  CheckedExpr expr;
+  ASSERT_TRUE(TextFormat::ParseFromString(kFieldSelectTestExpr, &expr));
+  InterpreterOptions options;
+  options.enable_empty_wrapper_null_unboxing = true;
+  options.unknown_processing = UnknownProcessingOptions::kAttributeOnly;
+  options.enable_lazy_bind_initialization = GetEnableLazyBinding();
+  options.enable_select_optimization = GetEnableSelectOptimization();
+  std::unique_ptr<CelExpressionBuilder> builder =
+      CreateCelExpressionBuilder(options);
+
+  ASSERT_OK(builder->GetRegistry()->Register(CreateBindFunction()));
+
+  // Register builtins and configure the execution environment.
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+
+  // Create CelExpression from AST (Expr object).
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder->CreateExpression(&expr));
+  Arena arena;
+  Activation activation;
+  activation.set_unknown_attribute_patterns({AttributePattern(
+      "msg", {AttributeQualifierPattern::OfString("child"),
+              AttributeQualifierPattern::OfString("child")})});
+
+  NestedTestAllTypes msg;
+  msg.mutable_child()->mutable_child()->mutable_payload()->set_single_int64(42);
+
+  activation.InsertValue("msg", CelProtoWrapper::CreateMessage(&msg, &arena));
+
+  // Run evaluation.
+  ASSERT_OK_AND_ASSIGN(CelValue out, cel_expr->Evaluate(activation, &arena));
+  ASSERT_TRUE(out.IsUnknownSet());
+  EXPECT_THAT(out.UnknownSetOrDie()->unknown_attributes(),
+              testing::ElementsAre(
+                  Attribute("msg", {AttributeQualifier::OfString("child"),
+                                    AttributeQualifier::OfString("child")})));
+}
+
+TEST_P(BindingsExtInteractionsTest,
+       UnknownAttributeSelectOptimizationReturnValue) {
+  CheckedExpr expr;
+  ASSERT_TRUE(TextFormat::ParseFromString(kFieldSelectTestExpr, &expr));
+  InterpreterOptions options;
+  options.enable_empty_wrapper_null_unboxing = true;
+  options.unknown_processing = UnknownProcessingOptions::kAttributeOnly;
+  options.enable_lazy_bind_initialization = GetEnableLazyBinding();
+  options.enable_select_optimization = GetEnableSelectOptimization();
+  std::unique_ptr<CelExpressionBuilder> builder =
+      CreateCelExpressionBuilder(options);
+
+  ASSERT_OK(builder->GetRegistry()->Register(CreateBindFunction()));
+
+  // Register builtins and configure the execution environment.
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+
+  // Create CelExpression from AST (Expr object).
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder->CreateExpression(&expr));
+  Arena arena;
+  Activation activation;
+  activation.set_unknown_attribute_patterns({AttributePattern(
+      "msg", {AttributeQualifierPattern::OfString("child"),
+              AttributeQualifierPattern::OfString("child"),
+              AttributeQualifierPattern::OfString("payload"),
+              AttributeQualifierPattern::OfString("single_int64")})});
+
+  NestedTestAllTypes msg;
+  msg.mutable_child()->mutable_child()->mutable_payload()->set_single_int64(42);
+
+  activation.InsertValue("msg", CelProtoWrapper::CreateMessage(&msg, &arena));
+
+  // Run evaluation.
+  ASSERT_OK_AND_ASSIGN(CelValue out, cel_expr->Evaluate(activation, &arena));
+  ASSERT_TRUE(out.IsUnknownSet()) << out.DebugString();
+  EXPECT_THAT(out.UnknownSetOrDie()->unknown_attributes(),
+              testing::ElementsAre(Attribute(
+                  "msg", {AttributeQualifier::OfString("child"),
+                          AttributeQualifier::OfString("child"),
+                          AttributeQualifier::OfString("payload"),
+                          AttributeQualifier::OfString("single_int64")})));
+}
+
+TEST_P(BindingsExtInteractionsTest, MissingAttributesSelectOptimization) {
+  CheckedExpr expr;
+  ASSERT_TRUE(TextFormat::ParseFromString(kFieldSelectTestExpr, &expr));
+  InterpreterOptions options;
+  options.enable_empty_wrapper_null_unboxing = true;
+  options.enable_missing_attribute_errors = true;
+  options.enable_lazy_bind_initialization = GetEnableLazyBinding();
+  options.enable_select_optimization = GetEnableSelectOptimization();
+  std::unique_ptr<CelExpressionBuilder> builder =
+      CreateCelExpressionBuilder(options);
+
+  ASSERT_OK(builder->GetRegistry()->Register(CreateBindFunction()));
+
+  // Register builtins and configure the execution environment.
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+
+  // Create CelExpression from AST (Expr object).
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder->CreateExpression(&expr));
+  Arena arena;
+  Activation activation;
+  activation.set_missing_attribute_patterns({AttributePattern(
+      "msg", {AttributeQualifierPattern::OfString("child"),
+              AttributeQualifierPattern::OfString("child"),
+              AttributeQualifierPattern::OfString("payload"),
+              AttributeQualifierPattern::OfString("single_int64")})});
+
+  NestedTestAllTypes msg;
+  msg.mutable_child()->mutable_child()->mutable_payload()->set_single_int64(42);
+
+  activation.InsertValue("msg", CelProtoWrapper::CreateMessage(&msg, &arena));
+
+  // Run evaluation.
+  ASSERT_OK_AND_ASSIGN(CelValue out, cel_expr->Evaluate(activation, &arena));
+  ASSERT_TRUE(out.IsError()) << out.DebugString();
+  EXPECT_THAT(out.ErrorOrDie()->ToString(),
+              HasSubstr("msg.child.child.payload.single_int64"));
+}
+
+TEST_P(BindingsExtInteractionsTest, UnknownAttribute) {
+  std::vector<Macro> all_macros = Macro::AllMacros();
+  std::vector<Macro> bindings_macros = cel::extensions::bindings_macros();
+  all_macros.insert(all_macros.end(), bindings_macros.begin(),
+                    bindings_macros.end());
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, ParseWithMacros(
+                                            R"(
+                                              cel.bind(
+                                              x,
+                                              msg.child.payload.single_int64,
+                                              x < 42 || 1 == 1))",
+                                            all_macros));
+
+  InterpreterOptions options;
+  options.enable_empty_wrapper_null_unboxing = true;
+  options.unknown_processing = UnknownProcessingOptions::kAttributeOnly;
+  options.enable_lazy_bind_initialization = GetEnableLazyBinding();
+  options.enable_select_optimization = GetEnableSelectOptimization();
+  std::unique_ptr<CelExpressionBuilder> builder =
+      CreateCelExpressionBuilder(options);
+
+  ASSERT_OK(builder->GetRegistry()->Register(CreateBindFunction()));
+
+  // Register builtins and configure the execution environment.
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+
+  // Create CelExpression from AST (Expr object).
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+  Arena arena;
+  Activation activation;
+  activation.set_unknown_attribute_patterns({AttributePattern(
+      "msg", {AttributeQualifierPattern::OfString("child"),
+              AttributeQualifierPattern::OfString("payload"),
+              AttributeQualifierPattern::OfString("single_int64")})});
+
+  NestedTestAllTypes msg;
+  msg.mutable_child()->mutable_child()->mutable_payload()->set_single_int64(42);
+
+  activation.InsertValue("msg", CelProtoWrapper::CreateMessage(&msg, &arena));
+
+  // Run evaluation.
+  ASSERT_OK_AND_ASSIGN(CelValue out, cel_expr->Evaluate(activation, &arena));
+  ASSERT_TRUE(out.IsBool()) << out.DebugString();
+  EXPECT_TRUE(out.BoolOrDie());
+}
+
+TEST_P(BindingsExtInteractionsTest, UnknownAttributeReturnValue) {
+  std::vector<Macro> all_macros = Macro::AllMacros();
+  std::vector<Macro> bindings_macros = cel::extensions::bindings_macros();
+  all_macros.insert(all_macros.end(), bindings_macros.begin(),
+                    bindings_macros.end());
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, ParseWithMacros(
+                                            R"(
+                                            cel.bind(
+                                                x,
+                                                msg.child.payload.single_int64,
+                                                x))",
+                                            all_macros));
+
+  InterpreterOptions options;
+  options.enable_empty_wrapper_null_unboxing = true;
+  options.unknown_processing = UnknownProcessingOptions::kAttributeOnly;
+  options.enable_lazy_bind_initialization = GetEnableLazyBinding();
+  options.enable_select_optimization = GetEnableSelectOptimization();
+  std::unique_ptr<CelExpressionBuilder> builder =
+      CreateCelExpressionBuilder(options);
+
+  ASSERT_OK(builder->GetRegistry()->Register(CreateBindFunction()));
+
+  // Register builtins and configure the execution environment.
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+
+  // Create CelExpression from AST (Expr object).
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+  Arena arena;
+  Activation activation;
+  activation.set_unknown_attribute_patterns({AttributePattern(
+      "msg", {AttributeQualifierPattern::OfString("child"),
+              AttributeQualifierPattern::OfString("payload"),
+              AttributeQualifierPattern::OfString("single_int64")})});
+
+  NestedTestAllTypes msg;
+  msg.mutable_child()->mutable_child()->mutable_payload()->set_single_int64(42);
+
+  activation.InsertValue("msg", CelProtoWrapper::CreateMessage(&msg, &arena));
+
+  // Run evaluation.
+  ASSERT_OK_AND_ASSIGN(CelValue out, cel_expr->Evaluate(activation, &arena));
+  ASSERT_TRUE(out.IsUnknownSet()) << out.DebugString();
+  EXPECT_THAT(out.UnknownSetOrDie()->unknown_attributes(),
+              testing::ElementsAre(Attribute(
+                  "msg", {AttributeQualifier::OfString("child"),
+                          AttributeQualifier::OfString("payload"),
+                          AttributeQualifier::OfString("single_int64")})));
+}
+
+TEST_P(BindingsExtInteractionsTest, MissingAttribute) {
+  std::vector<Macro> all_macros = Macro::AllMacros();
+  std::vector<Macro> bindings_macros = cel::extensions::bindings_macros();
+  all_macros.insert(all_macros.end(), bindings_macros.begin(),
+                    bindings_macros.end());
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, ParseWithMacros(
+                                            R"(
+                                            cel.bind(
+                                                x,
+                                                msg.child.payload.single_int64,
+                                                x < 42 || 1 == 2))",
+                                            all_macros));
+
+  InterpreterOptions options;
+  options.enable_empty_wrapper_null_unboxing = true;
+  options.enable_missing_attribute_errors = true;
+  options.enable_lazy_bind_initialization = GetEnableLazyBinding();
+  options.enable_select_optimization = GetEnableSelectOptimization();
+  std::unique_ptr<CelExpressionBuilder> builder =
+      CreateCelExpressionBuilder(options);
+
+  ASSERT_OK(builder->GetRegistry()->Register(CreateBindFunction()));
+
+  // Register builtins and configure the execution environment.
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+
+  // Create CelExpression from AST (Expr object).
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+  Arena arena;
+  Activation activation;
+  activation.set_missing_attribute_patterns({AttributePattern(
+      "msg", {AttributeQualifierPattern::OfString("child"),
+              AttributeQualifierPattern::OfString("payload"),
+              AttributeQualifierPattern::OfString("single_int64")})});
+
+  NestedTestAllTypes msg;
+  msg.mutable_child()->mutable_child()->mutable_payload()->set_single_int64(42);
+
+  activation.InsertValue("msg", CelProtoWrapper::CreateMessage(&msg, &arena));
+
+  // Run evaluation.
+  ASSERT_OK_AND_ASSIGN(CelValue out, cel_expr->Evaluate(activation, &arena));
+  ASSERT_TRUE(out.IsError()) << out.DebugString();
+  EXPECT_THAT(out.ErrorOrDie()->ToString(),
+              HasSubstr("msg.child.payload.single_int64"));
+}
+
+INSTANTIATE_TEST_SUITE_P(BindingsExtInteractionsTest,
+                         BindingsExtInteractionsTest,
+                         testing::Combine(testing::Bool(), testing::Bool()));
 
 }  // namespace
 }  // namespace cel::extensions

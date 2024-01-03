@@ -115,8 +115,10 @@ absl::Status SlotStep::Evaluate(ExecutionFrame* frame) const {
 
   if (frame->enable_missing_attribute_errors() &&
       frame->attribute_utility().CheckForMissingAttribute(attribute_trail)) {
+    CEL_ASSIGN_OR_RETURN(std::string attribute,
+                         attribute_trail.attribute().AsString());
     frame->value_stack().Push(frame->value_factory().CreateErrorValue(
-        CreateMissingAttributeError(name_)));
+        CreateMissingAttributeError(std::move(attribute))));
     return absl::OkStatus();
   }
 

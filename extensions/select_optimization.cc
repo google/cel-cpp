@@ -546,14 +546,12 @@ class RewriterImpl : public AstRewriterBase {
 
 class OptimizedSelectStep : public ExpressionStepBase {
  public:
-  OptimizedSelectStep(int expr_id, absl::optional<Attribute> attribute,
-                      std::vector<SelectQualifier> select_path,
+  OptimizedSelectStep(int expr_id, std::vector<SelectQualifier> select_path,
                       std::vector<AttributeQualifier> qualifiers,
                       bool presence_test,
                       bool enable_wrapper_type_null_unboxing,
                       SelectOptimizationOptions options)
       : ExpressionStepBase(expr_id),
-        attribute_(std::move(attribute)),
         select_path_(std::move(select_path)),
         qualifiers_(std::move(qualifiers)),
         presence_test_(presence_test),
@@ -618,11 +616,10 @@ absl::StatusOr<absl::optional<Handle<Value>>> CheckForMarkedAttributes(
 
 AttributeTrail OptimizedSelectStep::GetAttributeTrail(
     ExecutionFrame* frame) const {
-  if (attribute_.has_value()) {
-    return AttributeTrail(*attribute_);
+  const auto& attr = frame->value_stack().PeekAttribute();
+  if (attr.empty()) {
+    return AttributeTrail();
   }
-
-  auto attr = frame->value_stack().PeekAttribute();
   std::vector<AttributeQualifier> qualifiers =
       std::vector<AttributeQualifier>(attr.attribute().qualifier_path().begin(),
                                       attr.attribute().qualifier_path().end());
@@ -668,6 +665,14 @@ absl::Status OptimizedSelectStep::Evaluate(ExecutionFrame* frame) const {
   // variable names.
   constexpr size_t kStackInputs = 1;
 
+  // For now, we expect the operand to be top of stack.
+  const Handle<Value>& operand = frame->value_stack().Peek();
+
+  if (operand->Is<ErrorValue>() || operand->Is<UnknownValue>()) {
+    // Just forward the error which is already top of stack.
+    return absl::OkStatus();
+  }
+
   if (frame->enable_attribute_tracking()) {
     // Compute the attribute trail then check for any marked values.
     // When possible, this is computed at plan time based on the optimized
@@ -684,13 +689,7 @@ absl::Status OptimizedSelectStep::Evaluate(ExecutionFrame* frame) const {
     }
   }
 
-  // Otherwise, we expect the operand to be top of stack.
-  const Handle<Value>& operand = frame->value_stack().Peek();
 
-  if (operand->Is<ErrorValue>() || operand->Is<UnknownValue>()) {
-    // Just forward the error which is already top of stack.
-    return absl::OkStatus();
-  }
 
   if (!operand->Is<StructValue>()) {
     return absl::InvalidArgumentError(
@@ -756,7 +755,6 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
   }
 
   const Expr& operand = node.call_expr().args()[0];
-  absl::optional<Attribute> attribute;
   absl::string_view identifier;
   if (operand.has_ident_expr()) {
     identifier = operand.ident_expr().name();
@@ -778,10 +776,6 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
                     instruction));
   }
 
-  if (!identifier.empty()) {
-    attribute.emplace(std::string(identifier), qualifiers);
-  }
-
   // TODO(uncreated-issue/51): If the first argument is a string literal, the custom
   // step needs to handle variable lookup.
   google::api::expr::runtime::ExecutionPath path;
@@ -797,9 +791,8 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
   bool enable_wrapper_type_null_unboxing =
       context.options().enable_empty_wrapper_null_unboxing;
   path.push_back(std::make_unique<OptimizedSelectStep>(
-      node.id(), std::move(attribute), std::move(instructions),
-      std::move(qualifiers), presence_test, enable_wrapper_type_null_unboxing,
-      options_));
+      node.id(), std::move(instructions), std::move(qualifiers), presence_test,
+      enable_wrapper_type_null_unboxing, options_));
 
   return context.ReplaceSubplan(node, std::move(path));
 }

@@ -139,7 +139,8 @@ struct InterpreterOptions {
   //
   // Note: In most cases enabling this option is safe, however to perform this
   // optimization overloads are not consulted for applicable calls. If you have
-  // overriden the default `matches` function you should not enable this option.
+  // overridden the default `matches` function you should not enable this
+  // option.
   bool enable_regex_precompilation = false;
 
   // Enable select optimization, replacing long select chains with a single
@@ -158,7 +159,16 @@ struct InterpreterOptions {
   // enabling in an existing environment.
   bool enable_select_optimization = false;
 
-  // TODO(uncreated-issue/63): Do not use -- implementation in progress.
+  // Enable lazy cel.bind alias initialization.
+  //
+  // When enabled, cel.bind definition subexpression will be evaluated when the
+  // evaluator first requires the alias in the subexpression using the bound
+  // alias. When disabled, the cel.bind definition is eagerly evaluated.
+  //
+  // This prevents eagerly evaluating the definition subexpression if it is
+  // never used in the result subexpression of the cel.bind() macro. This allows
+  // for consistent behavior for CEL compiler optimized expressions that extract
+  // subexpressions to cel.bind calls.
   bool enable_lazy_bind_initialization = false;
 };
 // LINT.ThenChange(//depot/google3/runtime/runtime_options.h)

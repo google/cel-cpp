@@ -129,7 +129,16 @@ struct RuntimeOptions {
   // cel representation of the proto defined default int64_t: 0.
   bool enable_empty_wrapper_null_unboxing = false;
 
-  // TODO(uncreated-issue/63): Do not use -- implementation in progress.
+  // Enable lazy cel.bind alias initialization.
+  //
+  // When enabled, cel.bind definition subexpression will be evaluated when the
+  // evaluator first requires the alias in the subexpression using the bound
+  // alias. When disabled, the cel.bind definition is eagerly evaluated.
+  //
+  // This prevents eagerly evaluating the definition subexpression if it is
+  // never used in the result subexpression of the cel.bind() macro. This allows
+  // for consistent behavior for CEL compiler optimized expressions that extract
+  // subexpressions to cel.bind calls.
   bool enable_lazy_bind_initialization = false;
 };
 // LINT.ThenChange(//depot/google3/eval/public/cel_options.h)
