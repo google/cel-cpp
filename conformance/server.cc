@@ -21,10 +21,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/escaping.h"
 #include "absl/strings/string_view.h"
-#include "base/memory.h"
-#include "base/value.h"
-#include "base/values/error_value.h"
-#include "conformance/value_conversion.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
@@ -32,36 +28,14 @@
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/transform_utility.h"
-#include "extensions/protobuf/enum_adapter.h"
-#include "extensions/protobuf/memory_manager.h"
-#include "extensions/protobuf/runtime_adapter.h"
-#include "extensions/protobuf/type_provider.h"
 #include "internal/status_macros.h"
 #include "parser/parser.h"
-#include "runtime/activation.h"
-#include "runtime/constant_folding.h"
-#include "runtime/managed_value_factory.h"
-#include "runtime/runtime.h"
-#include "runtime/runtime_options.h"
-#include "runtime/standard_runtime_builder_factory.h"
 #include "proto/test/v1/proto2/test_all_types.pb.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
 
 
-using ::cel::CreateStandardRuntimeBuilder;
-using ::cel::Handle;
-using ::cel::MemoryManager;
-using ::cel::Runtime;
-using ::cel::RuntimeOptions;
-using ::cel::Value;
-using ::cel::conformance_internal::FromConformanceValue;
-using ::cel::conformance_internal::ToConformanceValue;
-using ::cel::extensions::ProtobufRuntimeAdapter;
-using ::cel::extensions::ProtoMemoryManager;
-using ::cel::extensions::ProtoMemoryManagerRef;
-using ::cel::extensions::RegisterProtobufEnum;
 using ::google::protobuf::Arena;
 
 ABSL_FLAG(bool, opt, false, "Enable optimizations (constant folding)");
@@ -246,156 +220,6 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
   std::unique_ptr<CelExpressionBuilder> builder_;
 };
 
-class ModernConformanceServiceImpl : public ConformanceServiceInterface {
- public:
-  static absl::StatusOr<std::unique_ptr<ModernConformanceServiceImpl>> Create(
-      bool optimize, bool use_arena) {
-    google::protobuf::LinkMessageReflection<
-        google::api::expr::test::v1::proto3::TestAllTypes>();
-    google::protobuf::LinkMessageReflection<
-        google::api::expr::test::v1::proto2::TestAllTypes>();
-    google::protobuf::LinkMessageReflection<
-        google::api::expr::test::v1::proto3::NestedTestAllTypes>();
-    google::protobuf::LinkMessageReflection<
-        google::api::expr::test::v1::proto2::NestedTestAllTypes>();
-
-    RuntimeOptions options;
-    options.enable_qualified_type_identifiers = true;
-    options.enable_timestamp_duration_overflow_errors = true;
-    options.enable_heterogeneous_equality = true;
-    options.enable_empty_wrapper_null_unboxing = true;
-
-    return absl::WrapUnique(
-        new ModernConformanceServiceImpl(options, use_arena, optimize));
-  }
-
-  absl::StatusOr<std::unique_ptr<const cel::Runtime>> Setup(
-      absl::string_view container) {
-    RuntimeOptions options(options_);
-    options.container = std::string(container);
-    CEL_ASSIGN_OR_RETURN(auto builder, CreateStandardRuntimeBuilder(options));
-
-    if (enable_optimizations_) {
-      CEL_RETURN_IF_ERROR(cel::extensions::EnableConstantFolding(
-          builder, constant_memory_manager_));
-    }
-
-    auto& type_registry = builder.type_registry();
-    // Use linked pbs in the
-    type_registry.AddTypeProvider(
-        std::make_unique<cel::extensions::ProtoTypeProvider>());
-    CEL_RETURN_IF_ERROR(RegisterProtobufEnum(
-        type_registry,
-        google::api::expr::test::v1::proto2::GlobalEnum_descriptor()));
-    CEL_RETURN_IF_ERROR(RegisterProtobufEnum(
-        type_registry,
-        google::api::expr::test::v1::proto3::GlobalEnum_descriptor()));
-    CEL_RETURN_IF_ERROR(RegisterProtobufEnum(
-        type_registry, google::api::expr::test::v1::proto2::TestAllTypes::
-                           NestedEnum_descriptor()));
-    CEL_RETURN_IF_ERROR(RegisterProtobufEnum(
-        type_registry, google::api::expr::test::v1::proto3::TestAllTypes::
-                           NestedEnum_descriptor()));
-
-    return std::move(builder).Build();
-  }
-
-  void Parse(const conformance::v1alpha1::ParseRequest& request,
-             conformance::v1alpha1::ParseResponse& response) override {
-    LegacyParse(request, response);
-  }
-
-  void Check(const conformance::v1alpha1::CheckRequest& request,
-             conformance::v1alpha1::CheckResponse& response) override {
-    auto issue = response.add_issues();
-    issue->set_message("Check is not supported");
-    issue->set_code(google::rpc::Code::UNIMPLEMENTED);
-  }
-
-  absl::Status Eval(const conformance::v1alpha1::EvalRequest& request,
-                    conformance::v1alpha1::EvalResponse& response) override {
-    google::api::expr::v1alpha1::Expr expr = ExtractExpr(request);
-    google::protobuf::Arena arena;
-    auto proto_memory_manager = ProtoMemoryManagerRef(&arena);
-    cel::MemoryManagerRef memory_manager =
-        (use_arena_ ? proto_memory_manager
-                    : cel::MemoryManagerRef::ReferenceCounting());
-
-    auto runtime_status = Setup(request.container());
-    if (!runtime_status.ok()) {
-      return absl::InternalError(runtime_status.status().ToString());
-    }
-    std::unique_ptr<const cel::Runtime> runtime =
-        std::move(runtime_status).value();
-
-    auto program_status = ProtobufRuntimeAdapter::CreateProgram(*runtime, expr);
-    if (!program_status.ok()) {
-      return absl::InternalError(program_status.status().ToString());
-    }
-    std::unique_ptr<cel::TraceableProgram> program =
-        std::move(program_status).value();
-    cel::ManagedValueFactory value_factory(program->GetTypeProvider(),
-                                           memory_manager);
-    cel::Activation activation;
-
-    for (const auto& pair : request.bindings()) {
-      google::api::expr::v1alpha1::Value import_value;
-      (import_value).MergeFrom(pair.second.value());
-      auto import_status =
-          FromConformanceValue(value_factory.get(), import_value);
-      if (!import_status.ok()) {
-        return absl::InternalError(import_status.status().ToString());
-      }
-
-      activation.InsertOrAssignValue(pair.first,
-                                     std::move(import_status).value());
-    }
-
-    auto eval_status = program->Evaluate(activation, value_factory.get());
-    if (!eval_status.ok()) {
-      *response.mutable_result()
-           ->mutable_error()
-           ->add_errors()
-           ->mutable_message() = eval_status.status().ToString();
-      return absl::OkStatus();
-    }
-
-    Handle<cel::Value> result = eval_status.value();
-    if (result->Is<cel::ErrorValue>()) {
-      const absl::Status& error = result->As<cel::ErrorValue>().NativeValue();
-      *response.mutable_result()
-           ->mutable_error()
-           ->add_errors()
-           ->mutable_message() = std::string(error.message());
-    } else {
-      auto export_status = ToConformanceValue(value_factory.get(), result);
-      if (!export_status.ok()) {
-        return absl::InternalError(export_status.status().ToString());
-      }
-      auto* result_value = response.mutable_result()->mutable_value();
-      (*result_value).MergeFrom(*export_status);
-    }
-    return absl::OkStatus();
-  }
-
- private:
-  explicit ModernConformanceServiceImpl(const RuntimeOptions& options,
-                                        bool use_arena,
-                                        bool enable_optimizations)
-      : options_(options),
-        use_arena_(use_arena),
-        enable_optimizations_(enable_optimizations),
-        constant_memory_manager_(
-            use_arena_ ? ProtoMemoryManagerRef(&constant_arena_)
-                       : cel::MemoryManagerRef::ReferenceCounting()) {}
-
-  RuntimeOptions options_;
-  bool use_arena_;
-  bool enable_optimizations_;
-  Arena constant_arena_;
-  cel::MemoryManagerRef constant_memory_manager_;
-};
-
 class PipeCodec {
  public:
   PipeCodec() = default;
@@ -420,11 +244,7 @@ class PipeCodec {
 
 int RunServer(bool optimize, bool modern, bool arena) {
   absl::StatusOr<std::unique_ptr<ConformanceServiceInterface>> service_or;
-  if (modern) {
-    service_or = ModernConformanceServiceImpl::Create(optimize, arena);
-  } else {
-    service_or = LegacyConformanceServiceImpl::Create(optimize);
-  }
+  service_or = LegacyConformanceServiceImpl::Create(optimize);
 
   if (!service_or.ok()) {
     std::cerr << "failed to create conformance service " << service_or.status()

@@ -74,7 +74,6 @@ cc_test(
         "//eval/public/structs:proto_message_type_adapter",
         "//eval/public/structs:trivial_legacy_type_info",
         "//eval/testutil:test_message_cc_proto",
-        "//extensions/protobuf:data",
         "//extensions/protobuf:memory_manager",
         "//internal:testing",
         "@com_google_absl//absl/status",
