@@ -139,7 +139,7 @@ struct RuntimeOptions {
   // never used in the result subexpression of the cel.bind() macro. This allows
   // for consistent behavior for CEL compiler optimized expressions that extract
   // subexpressions to cel.bind calls.
-  bool enable_lazy_bind_initialization = false;
+  bool enable_lazy_bind_initialization = true;
 };
 // LINT.ThenChange(//depot/google3/eval/public/cel_options.h)
 
