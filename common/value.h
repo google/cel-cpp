@@ -1242,6 +1242,11 @@ inline absl::Status ParsedListValue::ForEach(ValueManager& value_manager,
   return interface_->ForEach(value_manager, callback);
 }
 
+inline absl::Status ParsedListValue::ForEach(
+    ValueManager& value_manager, ForEachWithIndexCallback callback) const {
+  return interface_->ForEach(value_manager, callback);
+}
+
 inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
 ParsedListValue::NewIterator(ValueManager& value_manager) const {
   return interface_->NewIterator(value_manager);
@@ -1254,6 +1259,11 @@ inline absl::StatusOr<ValueView> ParsedListValueView::Get(
 
 inline absl::Status ParsedListValueView::ForEach(
     ValueManager& value_manager, ForEachCallback callback) const {
+  return interface_->ForEach(value_manager, callback);
+}
+
+inline absl::Status ParsedListValueView::ForEach(
+    ValueManager& value_manager, ForEachWithIndexCallback callback) const {
   return interface_->ForEach(value_manager, callback);
 }
 
@@ -1275,6 +1285,15 @@ inline absl::StatusOr<ValueView> ListValue::Get(ValueManager& value_manager,
 
 inline absl::Status ListValue::ForEach(ValueManager& value_manager,
                                        ForEachCallback callback) const {
+  return absl::visit(
+      [&value_manager, callback](const auto& alternative) -> absl::Status {
+        return alternative.ForEach(value_manager, callback);
+      },
+      variant_);
+}
+
+inline absl::Status ListValue::ForEach(
+    ValueManager& value_manager, ForEachWithIndexCallback callback) const {
   return absl::visit(
       [&value_manager, callback](const auto& alternative) -> absl::Status {
         return alternative.ForEach(value_manager, callback);
@@ -1305,6 +1324,15 @@ inline absl::StatusOr<ValueView> ListValueView::Get(ValueManager& value_manager,
 
 inline absl::Status ListValueView::ForEach(ValueManager& value_manager,
                                            ForEachCallback callback) const {
+  return absl::visit(
+      [&value_manager, callback](auto alternative) -> absl::Status {
+        return alternative.ForEach(value_manager, callback);
+      },
+      variant_);
+}
+
+inline absl::Status ListValueView::ForEach(
+    ValueManager& value_manager, ForEachWithIndexCallback callback) const {
   return absl::visit(
       [&value_manager, callback](auto alternative) -> absl::Status {
         return alternative.ForEach(value_manager, callback);

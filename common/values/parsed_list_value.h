@@ -84,6 +84,9 @@ class ParsedListValueInterface : public ListValueInterface {
   virtual absl::Status ForEach(ValueManager& value_manager,
                                ForEachCallback callback) const;
 
+  virtual absl::Status ForEach(ValueManager& value_manager,
+                               ForEachWithIndexCallback callback) const;
+
   virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
 
@@ -172,8 +175,14 @@ class ParsedListValue {
 
   using ForEachCallback = typename ListValueInterface::ForEachCallback;
 
+  using ForEachWithIndexCallback =
+      typename ListValueInterface::ForEachWithIndexCallback;
+
   absl::Status ForEach(ValueManager& value_manager,
                        ForEachCallback callback) const;
+
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachWithIndexCallback callback) const;
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
@@ -342,8 +351,14 @@ class ParsedListValueView {
 
   using ForEachCallback = typename ListValueInterface::ForEachCallback;
 
+  using ForEachWithIndexCallback =
+      typename ListValueInterface::ForEachWithIndexCallback;
+
   absl::Status ForEach(ValueManager& value_manager,
                        ForEachCallback callback) const;
+
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachWithIndexCallback callback) const;
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;

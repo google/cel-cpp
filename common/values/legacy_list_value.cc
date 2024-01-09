@@ -49,7 +49,7 @@ using LegacyListValue_Get = absl::StatusOr<ValueView> (*)(uintptr_t,
                                                           ValueManager&, size_t,
                                                           Value&);
 using LegacyListValue_ForEach = absl::Status (*)(
-    uintptr_t, ValueManager&, LegacyListValue::ForEachCallback);
+    uintptr_t, ValueManager&, LegacyListValue::ForEachWithIndexCallback);
 using LegacyListValue_NewIterator =
     absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> (*)(uintptr_t,
                                                         ValueManager&);
@@ -162,6 +162,14 @@ absl::StatusOr<ValueView> LegacyListValue::Get(ValueManager& value_manager,
 
 absl::Status LegacyListValue::ForEach(ValueManager& value_manager,
                                       ForEachCallback callback) const {
+  return ForEach(value_manager,
+                 [callback](size_t, ValueView value) -> absl::StatusOr<bool> {
+                   return callback(value);
+                 });
+}
+
+absl::Status LegacyListValue::ForEach(ValueManager& value_manager,
+                                      ForEachWithIndexCallback callback) const {
   InitializeLegacyListValue();
   return (*legacy_list_value_vtable.for_each)(impl_, value_manager, callback);
 }
@@ -239,6 +247,14 @@ absl::StatusOr<ValueView> LegacyListValueView::Get(ValueManager& value_manager,
 
 absl::Status LegacyListValueView::ForEach(ValueManager& value_manager,
                                           ForEachCallback callback) const {
+  return ForEach(value_manager,
+                 [callback](size_t, ValueView value) -> absl::StatusOr<bool> {
+                   return callback(value);
+                 });
+}
+
+absl::Status LegacyListValueView::ForEach(
+    ValueManager& value_manager, ForEachWithIndexCallback callback) const {
   InitializeLegacyListValue();
   return (*legacy_list_value_vtable.for_each)(impl_, value_manager, callback);
 }

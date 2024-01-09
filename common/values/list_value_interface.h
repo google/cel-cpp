@@ -18,6 +18,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_LIST_VALUE_INTERFACE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_LIST_VALUE_INTERFACE_H_
 
+#include <cstddef>
 #include <string>
 
 #include "absl/functional/function_ref.h"
@@ -60,6 +61,9 @@ class ListValueInterface : public ValueInterface {
   virtual absl::StatusOr<JsonArray> ConvertToJsonArray() const = 0;
 
   using ForEachCallback = absl::FunctionRef<absl::StatusOr<bool>(ValueView)>;
+
+  using ForEachWithIndexCallback =
+      absl::FunctionRef<absl::StatusOr<bool>(size_t, ValueView)>;
 
  protected:
   Type GetTypeImpl(TypeManager& type_manager) const override {

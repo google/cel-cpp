@@ -73,11 +73,19 @@ absl::StatusOr<ValueView> ParsedListValueInterface::Get(
 
 absl::Status ParsedListValueInterface::ForEach(ValueManager& value_manager,
                                                ForEachCallback callback) const {
+  return ForEach(value_manager,
+                 [callback](size_t, ValueView value) -> absl::StatusOr<bool> {
+                   return callback(value);
+                 });
+}
+
+absl::Status ParsedListValueInterface::ForEach(
+    ValueManager& value_manager, ForEachWithIndexCallback callback) const {
   const size_t size = Size();
   for (size_t index = 0; index < size; ++index) {
     Value scratch;
     CEL_ASSIGN_OR_RETURN(auto element, GetImpl(value_manager, index, scratch));
-    CEL_ASSIGN_OR_RETURN(auto ok, callback(element));
+    CEL_ASSIGN_OR_RETURN(auto ok, callback(index, element));
     if (!ok) {
       break;
     }
