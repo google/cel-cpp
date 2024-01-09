@@ -1,4 +1,4 @@
-// Copyright 2023 Google LLC
+// Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +22,9 @@
 #include "absl/strings/string_view.h"
 #include "common/any.h"
 #include "common/json.h"
-#include "common/type.h"
+#include "common/unknown.h"
 #include "common/value.h"
+#include "internal/no_destructor.h"
 
 namespace cel {
 
@@ -55,6 +56,11 @@ absl::StatusOr<Any> UnknownValue::ConvertToAny(absl::string_view) const {
 absl::StatusOr<Json> UnknownValue::ConvertToJson() const {
   return absl::FailedPreconditionError(
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
+}
+
+const Unknown& UnknownValueView::Empty() {
+  static const internal::NoDestructor<Unknown> empty;
+  return *empty;
 }
 
 absl::StatusOr<size_t> UnknownValueView::GetSerializedSize() const {

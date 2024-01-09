@@ -390,6 +390,7 @@ cc_library(
         ":native_type",
         ":type",
         ":type_kind",
+        ":unknown",
         ":value_kind",
         "//common/internal:data_interface",
         "//common/internal:shared_byte_string",
@@ -484,4 +485,10 @@ cc_test(
         "//internal:testing",
         "@com_google_absl//absl/strings:string_view",
     ],
+)
+
+cc_library(
+    name = "unknown",
+    hdrs = ["unknown.h"],
+    deps = ["//base/internal:unknown_set"],
 )

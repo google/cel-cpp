@@ -1,4 +1,4 @@
-// Copyright 2023 Google LLC
+// Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,14 +15,13 @@
 // IWYU pragma: private, include "common/value.h"
 // IWYU pragma: friend "common/value.h"
 
-// TODO(uncreated-issue/61): finish implementing this is just a placeholder for now
-
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_UNKNOWN_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_UNKNOWN_VALUE_H_
 
 #include <cstddef>
 #include <ostream>
 #include <string>
+#include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/status/status.h"
@@ -32,6 +31,7 @@
 #include "common/any.h"
 #include "common/json.h"
 #include "common/type.h"
+#include "common/unknown.h"
 #include "common/value_kind.h"
 
 namespace cel {
@@ -48,6 +48,8 @@ class UnknownValue final {
   static constexpr ValueKind kKind = ValueKind::kUnknown;
 
   explicit UnknownValue(UnknownValueView) noexcept;
+
+  explicit UnknownValue(Unknown unknown) : unknown_(std::move(unknown)) {}
 
   UnknownValue() = default;
   UnknownValue(const UnknownValue&) = default;
@@ -89,10 +91,24 @@ class UnknownValue final {
   // not convertible to JSON.
   absl::StatusOr<Json> ConvertToJson() const;
 
-  void swap(UnknownValue& other) noexcept {}
+  void swap(UnknownValue& other) noexcept {
+    using std::swap;
+    swap(unknown_, other.unknown_);
+  }
+
+  const Unknown& NativeValue() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return unknown_;
+  }
+
+  Unknown NativeValue() && {
+    Unknown unknown = std::move(unknown_);
+    return unknown;
+  }
 
  private:
   friend class UnknownValueView;
+
+  Unknown unknown_;
 };
 
 inline void swap(UnknownValue& lhs, UnknownValue& rhs) noexcept {
@@ -104,20 +120,49 @@ inline std::ostream& operator<<(std::ostream& out, const UnknownValue& value) {
 }
 
 class UnknownValueView final {
+ private:
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const Unknown& Empty();
+
  public:
   using alternative_type = UnknownValue;
 
   static constexpr ValueKind kKind = UnknownValue::kKind;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  UnknownValueView(const UnknownValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND
-                       ABSL_ATTRIBUTE_UNUSED) noexcept {}
+  UnknownValueView(
+      const UnknownValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
+      : unknown_(&value.unknown_) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  UnknownValueView(
+      const Unknown& unknown ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
+      : unknown_(&unknown) {}
+
+  UnknownValueView(UnknownValue&&) = delete;
+
+  UnknownValueView(Unknown&&) = delete;
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  UnknownValueView& operator=(
+      const UnknownValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
+    unknown_ = &value.unknown_;
+    return *this;
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  UnknownValueView& operator=(
+      const Unknown& unknown ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
+    unknown_ = &unknown;
+    return *this;
+  }
+
+  UnknownValueView& operator=(UnknownValue&&) = delete;
+
+  UnknownValueView& operator=(Unknown&&) = delete;
 
   UnknownValueView() = default;
   UnknownValueView(const UnknownValueView&) = default;
-  UnknownValueView(UnknownValueView&&) = default;
   UnknownValueView& operator=(const UnknownValueView&) = default;
-  UnknownValueView& operator=(UnknownValueView&&) = default;
 
   constexpr ValueKind kind() const { return kKind; }
 
@@ -153,10 +198,19 @@ class UnknownValueView final {
   // not convertible to JSON.
   absl::StatusOr<Json> ConvertToJson() const;
 
-  void swap(UnknownValueView& other) noexcept {}
+  const Unknown& NativeValue() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return *unknown_;
+  }
+
+  void swap(UnknownValueView& other) noexcept {
+    using std::swap;
+    swap(unknown_, other.unknown_);
+  }
 
  private:
   friend class UnknownValue;
+
+  const Unknown* unknown_ = &Empty();
 };
 
 inline void swap(UnknownValueView& lhs, UnknownValueView& rhs) noexcept {
@@ -167,7 +221,8 @@ inline std::ostream& operator<<(std::ostream& out, UnknownValueView value) {
   return out << value.DebugString();
 }
 
-inline UnknownValue::UnknownValue(UnknownValueView) noexcept {}
+inline UnknownValue::UnknownValue(UnknownValueView value) noexcept
+    : unknown_(*value.unknown_) {}
 
 }  // namespace cel
 
