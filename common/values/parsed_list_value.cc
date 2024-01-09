@@ -21,7 +21,9 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/casting.h"
 #include "common/value.h"
+#include "common/values/values.h"
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
 
@@ -97,6 +99,14 @@ absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
 ParsedListValueInterface::NewIterator(ValueManager& value_manager) const {
   return std::make_unique<ParsedListValueInterfaceIterator>(*this,
                                                             value_manager);
+}
+
+absl::StatusOr<ValueView> ParsedListValueInterface::Equal(
+    ValueManager& value_manager, ValueView other, Value& scratch) const {
+  if (auto list_value = As<ListValueView>(other); list_value.has_value()) {
+    return ListValueEqual(value_manager, *this, *list_value, scratch);
+  }
+  return BoolValueView{false};
 }
 
 }  // namespace cel

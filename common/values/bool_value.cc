@@ -21,6 +21,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/casting.h"
 #include "common/json.h"
 #include "common/value.h"
 #include "internal/serialize.h"
@@ -69,6 +70,14 @@ absl::StatusOr<Any> BoolValue::ConvertToAny(absl::string_view prefix) const {
   return MakeAny(std::move(type_url), std::move(value));
 }
 
+absl::StatusOr<ValueView> BoolValue::Equal(ValueManager&, ValueView other,
+                                           Value&) const {
+  if (auto other_value = As<BoolValueView>(other); other_value.has_value()) {
+    return BoolValueView{NativeValue() == other_value->NativeValue()};
+  }
+  return BoolValueView{false};
+}
+
 absl::StatusOr<size_t> BoolValueView::GetSerializedSize() const {
   return internal::SerializedBoolValueSize(NativeValue());
 }
@@ -97,6 +106,14 @@ absl::StatusOr<Any> BoolValueView::ConvertToAny(
 
 absl::StatusOr<Json> BoolValueView::ConvertToJson() const {
   return NativeValue();
+}
+
+absl::StatusOr<ValueView> BoolValueView::Equal(ValueManager&, ValueView other,
+                                               Value&) const {
+  if (auto other_value = As<BoolValueView>(other); other_value.has_value()) {
+    return BoolValueView{NativeValue() == other_value->NativeValue()};
+  }
+  return BoolValueView{false};
 }
 
 }  // namespace cel

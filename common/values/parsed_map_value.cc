@@ -24,8 +24,10 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "common/casting.h"
 #include "common/value.h"
 #include "common/value_kind.h"
+#include "common/values/values.h"
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
 
@@ -136,6 +138,14 @@ absl::Status ParsedMapValueInterface::ForEach(ValueManager& value_manager,
     }
   }
   return absl::OkStatus();
+}
+
+absl::StatusOr<ValueView> ParsedMapValueInterface::Equal(
+    ValueManager& value_manager, ValueView other, Value& scratch) const {
+  if (auto list_value = As<MapValueView>(other); list_value.has_value()) {
+    return MapValueEqual(value_manager, *this, *list_value, scratch);
+  }
+  return BoolValueView{false};
 }
 
 }  // namespace cel

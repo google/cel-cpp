@@ -295,6 +295,25 @@ class StructValue final {
         variant_);
   }
 
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const {
+    AssertIsValid();
+    return absl::visit(
+        [](const auto& alternative) -> bool {
+          if constexpr (std::is_same_v<
+                            absl::monostate,
+                            absl::remove_cvref_t<decltype(alternative)>>) {
+            return false;
+          } else {
+            return alternative.IsZeroValue();
+          }
+        },
+        variant_);
+  }
+
   void swap(StructValue& other) noexcept {
     AssertIsValid();
     other.AssertIsValid();
@@ -338,6 +357,11 @@ class StructValue final {
         },
         variant_);
   }
+
+  using ForEachFieldCallback = StructValueInterface::ForEachFieldCallback;
+
+  absl::Status ForEachField(ValueManager& value_manager,
+                            ForEachFieldCallback callback) const;
 
  private:
   friend class StructValueView;
@@ -777,6 +801,25 @@ class StructValueView final {
         variant_);
   }
 
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const {
+    AssertIsValid();
+    return absl::visit(
+        [](auto alternative) -> bool {
+          if constexpr (std::is_same_v<
+                            absl::monostate,
+                            absl::remove_cvref_t<decltype(alternative)>>) {
+            return false;
+          } else {
+            return alternative.IsZeroValue();
+          }
+        },
+        variant_);
+  }
+
   void swap(StructValueView& other) noexcept {
     AssertIsValid();
     other.AssertIsValid();
@@ -820,6 +863,11 @@ class StructValueView final {
         },
         variant_);
   }
+
+  using ForEachFieldCallback = StructValueInterface::ForEachFieldCallback;
+
+  absl::Status ForEachField(ValueManager& value_manager,
+                            ForEachFieldCallback callback) const;
 
  private:
   friend class StructValue;

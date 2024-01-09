@@ -215,6 +215,18 @@ class MapValue final {
         variant_);
   }
 
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const {
+    return absl::visit(
+        [](const auto& alternative) -> bool {
+          return alternative.IsZeroValue();
+        },
+        variant_);
+  }
+
   void swap(MapValue& other) noexcept { variant_.swap(other.variant_); }
 
   bool IsEmpty() const {
@@ -545,6 +557,16 @@ class MapValueView final {
         [](auto alternative) -> absl::StatusOr<JsonObject> {
           return alternative.ConvertToJsonObject();
         },
+        variant_);
+  }
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const {
+    return absl::visit(
+        [](auto alternative) -> bool { return alternative.IsZeroValue(); },
         variant_);
   }
 

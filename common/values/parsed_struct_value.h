@@ -54,6 +54,12 @@ class ParsedStructValueInterface : public StructValueInterface {
   using alternative_type = ParsedStructValue;
   using view_alternative_type = ParsedStructValueView;
 
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  virtual bool IsZeroValue() const = 0;
+
   virtual absl::StatusOr<ValueView> GetFieldByName(
       ValueManager& value_manager, absl::string_view name,
       Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
@@ -65,6 +71,14 @@ class ParsedStructValueInterface : public StructValueInterface {
   virtual absl::StatusOr<bool> HasFieldByName(absl::string_view name) const = 0;
 
   virtual absl::StatusOr<bool> HasFieldByNumber(int64_t number) const = 0;
+
+  virtual absl::Status ForEachField(ValueManager& value_manager,
+                                    ForEachFieldCallback callback) const = 0;
+
+ private:
+  virtual absl::StatusOr<ValueView> EqualImpl(
+      ValueManager& value_manager, ParsedStructValueView other,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
 };
 
 class ParsedStructValue {
@@ -125,6 +139,12 @@ class ParsedStructValue {
     return interface_->ConvertToJsonObject();
   }
 
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return interface_->IsZeroValue(); }
+
   void swap(ParsedStructValue& other) noexcept {
     using std::swap;
     swap(interface_, other.interface_);
@@ -145,6 +165,11 @@ class ParsedStructValue {
   absl::StatusOr<bool> HasFieldByNumber(int64_t number) const {
     return interface_->HasFieldByNumber(number);
   }
+
+  using ForEachFieldCallback = StructValueInterface::ForEachFieldCallback;
+
+  absl::Status ForEachField(ValueManager& value_manager,
+                            ForEachFieldCallback callback) const;
 
  private:
   friend class ParsedStructValueView;
@@ -258,6 +283,12 @@ class ParsedStructValueView {
     return interface_->ConvertToJsonObject();
   }
 
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return interface_->IsZeroValue(); }
+
   void swap(ParsedStructValueView& other) noexcept {
     using std::swap;
     swap(interface_, other.interface_);
@@ -278,6 +309,11 @@ class ParsedStructValueView {
   absl::StatusOr<bool> HasFieldByNumber(int64_t number) const {
     return interface_->HasFieldByNumber(number);
   }
+
+  using ForEachFieldCallback = StructValueInterface::ForEachFieldCallback;
+
+  absl::Status ForEachField(ValueManager& value_manager,
+                            ForEachFieldCallback callback) const;
 
  private:
   friend class ParsedStructValue;

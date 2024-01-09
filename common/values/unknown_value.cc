@@ -58,6 +58,11 @@ absl::StatusOr<Json> UnknownValue::ConvertToJson() const {
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
+absl::StatusOr<ValueView> UnknownValue::Equal(ValueManager&, ValueView,
+                                              Value&) const {
+  return BoolValueView{false};
+}
+
 const Unknown& UnknownValueView::Empty() {
   static const internal::NoDestructor<Unknown> empty;
   return *empty;
@@ -92,6 +97,11 @@ absl::StatusOr<Any> UnknownValueView::ConvertToAny(absl::string_view) const {
 absl::StatusOr<Json> UnknownValueView::ConvertToJson() const {
   return absl::FailedPreconditionError(
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
+}
+
+absl::StatusOr<ValueView> UnknownValueView::Equal(ValueManager&, ValueView,
+                                                  Value&) const {
+  return BoolValueView{false};
 }
 
 }  // namespace cel

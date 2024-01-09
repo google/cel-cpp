@@ -38,6 +38,9 @@
 
 namespace cel {
 
+class Value;
+class ValueView;
+class ValueManager;
 class BytesValue;
 class BytesValueView;
 class TypeManager;
@@ -98,6 +101,14 @@ class BytesValue final {
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Json> ConvertToJson() const;
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const {
+    return NativeValue([](const auto& value) -> bool { return value.empty(); });
+  }
 
   std::string NativeString() const { return value_.ToString(); }
 
@@ -185,6 +196,14 @@ class BytesValueView final {
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Json> ConvertToJson() const;
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const {
+    return NativeValue([](const auto& value) -> bool { return value.empty(); });
+  }
 
   std::string NativeString() const { return value_.ToString(); }
 

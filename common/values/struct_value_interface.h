@@ -18,7 +18,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_STRUCT_VALUE_INTERFACE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_STRUCT_VALUE_INTERFACE_H_
 
+#include "absl/functional/function_ref.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/type.h"
@@ -30,6 +32,7 @@ namespace cel {
 
 class StructValue;
 class StructValueView;
+class ValueView;
 
 class StructValueInterface : public ValueInterface {
  public:
@@ -49,6 +52,9 @@ class StructValueInterface : public ValueInterface {
   }
 
   virtual absl::StatusOr<JsonObject> ConvertToJsonObject() const = 0;
+
+  using ForEachFieldCallback =
+      absl::FunctionRef<absl::StatusOr<bool>(absl::string_view, ValueView)>;
 
  protected:
   Type GetTypeImpl(TypeManager& type_manager) const override {

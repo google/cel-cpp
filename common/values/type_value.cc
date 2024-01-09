@@ -21,6 +21,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/casting.h"
 #include "common/json.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -57,6 +58,14 @@ absl::StatusOr<Json> TypeValue::ConvertToJson() const {
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
+absl::StatusOr<ValueView> TypeValue::Equal(ValueManager&, ValueView other,
+                                           Value&) const {
+  if (auto other_value = As<TypeValueView>(other); other_value.has_value()) {
+    return BoolValueView{NativeValue() == other_value->NativeValue()};
+  }
+  return BoolValueView{false};
+}
+
 absl::StatusOr<size_t> TypeValueView::GetSerializedSize() const {
   return absl::FailedPreconditionError(
       absl::StrCat(GetTypeName(), " is unserializable"));
@@ -85,6 +94,14 @@ absl::StatusOr<Any> TypeValueView::ConvertToAny(absl::string_view) const {
 absl::StatusOr<Json> TypeValueView::ConvertToJson() const {
   return absl::FailedPreconditionError(
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
+}
+
+absl::StatusOr<ValueView> TypeValueView::Equal(ValueManager&, ValueView other,
+                                               Value&) const {
+  if (auto other_value = As<TypeValueView>(other); other_value.has_value()) {
+    return BoolValueView{NativeValue() == other_value->NativeValue()};
+  }
+  return BoolValueView{false};
 }
 
 }  // namespace cel

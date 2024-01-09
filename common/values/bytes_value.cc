@@ -21,6 +21,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/casting.h"
 #include "common/json.h"
 #include "common/value.h"
 #include "internal/overloaded.h"
@@ -84,6 +85,19 @@ absl::StatusOr<Json> BytesValue::ConvertToJson() const {
       [](const auto& value) -> Json { return JsonBytes(value); });
 }
 
+absl::StatusOr<ValueView> BytesValue::Equal(ValueManager&, ValueView other,
+                                            Value&) const {
+  if (auto other_value = As<BytesValueView>(other); other_value.has_value()) {
+    return NativeValue([other_value](const auto& value) -> BoolValueView {
+      return other_value->NativeValue(
+          [&value](const auto& other_value) -> BoolValueView {
+            return BoolValueView{value == other_value};
+          });
+    });
+  }
+  return BoolValueView{false};
+}
+
 std::string BytesValueView::DebugString() const {
   return BytesDebugString(*this);
 }
@@ -121,6 +135,19 @@ absl::StatusOr<Any> BytesValueView::ConvertToAny(
 absl::StatusOr<Json> BytesValueView::ConvertToJson() const {
   return NativeValue(
       [](const auto& value) -> Json { return JsonBytes(value); });
+}
+
+absl::StatusOr<ValueView> BytesValueView::Equal(ValueManager&, ValueView other,
+                                                Value&) const {
+  if (auto other_value = As<BytesValueView>(other); other_value.has_value()) {
+    return NativeValue([other_value](const auto& value) -> BoolValueView {
+      return other_value->NativeValue(
+          [&value](const auto& other_value) -> BoolValueView {
+            return BoolValueView{value == other_value};
+          });
+    });
+  }
+  return BoolValueView{false};
 }
 
 }  // namespace cel

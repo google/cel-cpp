@@ -36,6 +36,9 @@
 
 namespace cel {
 
+class Value;
+class ValueView;
+class ValueManager;
 class UnknownValue;
 class UnknownValueView;
 class TypeManager;
@@ -90,6 +93,12 @@ class UnknownValue final {
   // `ConvertToJson` always returns `FAILED_PRECONDITION` as `UnknownValue` is
   // not convertible to JSON.
   absl::StatusOr<Json> ConvertToJson() const;
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return false; }
 
   void swap(UnknownValue& other) noexcept {
     using std::swap;
@@ -197,6 +206,12 @@ class UnknownValueView final {
   // `ConvertToJson` always returns `FAILED_PRECONDITION` as `UnknownValue` is
   // not convertible to JSON.
   absl::StatusOr<Json> ConvertToJson() const;
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return false; }
 
   const Unknown& NativeValue() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return *unknown_;

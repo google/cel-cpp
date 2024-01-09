@@ -21,9 +21,12 @@
 #include <type_traits>
 
 #include "absl/base/attributes.h"
+#include "absl/status/statusor.h"
 #include "absl/types/variant.h"
 
 namespace cel {
+
+class ValueManager;
 
 class ValueInterface;
 class ListValueInterface;
@@ -503,6 +506,30 @@ ABSL_ATTRIBUTE_PURE_FUNCTION ParsedListValueView GetEmptyDynListValue();
 ABSL_ATTRIBUTE_PURE_FUNCTION ParsedMapValueView GetEmptyDynDynMapValue();
 
 ABSL_ATTRIBUTE_PURE_FUNCTION OptionalValueView GetEmptyDynOptionalValue();
+
+absl::StatusOr<ValueView> ListValueEqual(ValueManager& value_manager,
+                                         ListValueView lhs, ListValueView rhs,
+                                         Value& scratch);
+
+absl::StatusOr<ValueView> ListValueEqual(ValueManager& value_manager,
+                                         const ParsedListValueInterface& lhs,
+                                         ListValueView rhs, Value& scratch);
+
+absl::StatusOr<ValueView> MapValueEqual(ValueManager& value_manager,
+                                        MapValueView lhs, MapValueView rhs,
+                                        Value& scratch);
+
+absl::StatusOr<ValueView> MapValueEqual(ValueManager& value_manager,
+                                        const ParsedMapValueInterface& lhs,
+                                        MapValueView rhs, Value& scratch);
+
+absl::StatusOr<ValueView> StructValueEqual(ValueManager& value_manager,
+                                           StructValueView lhs,
+                                           StructValueView rhs, Value& scratch);
+
+absl::StatusOr<ValueView> StructValueEqual(
+    ValueManager& value_manager, const ParsedStructValueInterface& lhs,
+    StructValueView rhs, Value& scratch);
 
 }  // namespace common_internal
 

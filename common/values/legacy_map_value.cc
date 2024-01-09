@@ -27,10 +27,12 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/casting.h"
 #include "common/json.h"
 #include "common/type.h"
-#include "common/value.h"
 #include "common/value_manager.h"
+#include "common/values/map_value_interface.h"
+#include "common/values/values.h"
 #include "internal/dynamic_loader.h"
 #include "internal/status_macros.h"
 
@@ -202,6 +204,15 @@ absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyMapValue::NewIterator(
   return (*legacy_map_value_vtable.new_iterator)(impl_, value_manager);
 }
 
+absl::StatusOr<ValueView> LegacyMapValue::Equal(ValueManager& value_manager,
+                                                ValueView other,
+                                                Value& scratch) const {
+  if (auto map_value = As<MapValueView>(other); map_value.has_value()) {
+    return MapValueEqual(value_manager, *this, *map_value, scratch);
+  }
+  return BoolValueView{false};
+}
+
 MapType LegacyMapValueView::GetType(TypeManager& type_manager) const {
   return MapType(type_manager.GetDynDynMapType());
 }
@@ -291,6 +302,15 @@ absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyMapValueView::NewIterator(
     ValueManager& value_manager) const {
   InitializeLegacyMapValue();
   return (*legacy_map_value_vtable.new_iterator)(impl_, value_manager);
+}
+
+absl::StatusOr<ValueView> LegacyMapValueView::Equal(ValueManager& value_manager,
+                                                    ValueView other,
+                                                    Value& scratch) const {
+  if (auto map_value = As<MapValueView>(other); map_value.has_value()) {
+    return MapValueEqual(value_manager, *this, *map_value, scratch);
+  }
+  return BoolValueView{false};
 }
 
 }  // namespace cel::common_internal

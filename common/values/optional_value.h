@@ -28,6 +28,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "common/casting.h"
 #include "common/memory.h"
@@ -39,6 +40,9 @@
 
 namespace cel {
 
+class ValueView;
+class Value;
+class ValueManager;
 class OptionalValueInterface;
 class OptionalValue;
 class OptionalValueView;
@@ -57,6 +61,10 @@ class OptionalValueInterface : public OpaqueValueInterface {
   std::string DebugString() const final;
 
   virtual bool HasValue() const = 0;
+
+  absl::StatusOr<ValueView> Equal(
+      ValueManager& value_manager, ValueView other,
+      cel::Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const override;
 
   virtual ValueView Value(
       cel::Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;

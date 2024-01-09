@@ -104,6 +104,11 @@ absl::StatusOr<Json> ErrorValue::ConvertToJson() const {
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
+absl::StatusOr<ValueView> ErrorValue::Equal(ValueManager&, ValueView,
+                                            Value&) const {
+  return BoolValueView{false};
+}
+
 std::string ErrorValueView::DebugString() const {
   return ErrorDebugString(*value_);
 }
@@ -137,6 +142,11 @@ absl::StatusOr<Any> ErrorValueView::ConvertToAny(absl::string_view) const {
 absl::StatusOr<Json> ErrorValueView::ConvertToJson() const {
   return absl::FailedPreconditionError(
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
+}
+
+absl::StatusOr<ValueView> ErrorValueView::Equal(ValueManager&, ValueView,
+                                                Value&) const {
+  return BoolValueView{false};
 }
 
 }  // namespace cel

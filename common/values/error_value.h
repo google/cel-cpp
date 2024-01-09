@@ -38,6 +38,9 @@
 
 namespace cel {
 
+class Value;
+class ValueView;
+class ValueManager;
 class ErrorValue;
 class ErrorValueView;
 class TypeManager;
@@ -101,6 +104,12 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final {
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Json> ConvertToJson() const;
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return false; }
 
   absl::Status NativeValue() const& {
     ABSL_DCHECK(!value_.ok()) << "use of moved-from ErrorValue";
@@ -197,6 +206,12 @@ class ErrorValueView final {
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Json> ConvertToJson() const;
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return false; }
 
   const absl::Status& NativeValue() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK(!value_->ok()) << "use of moved-from ErrorValue";

@@ -98,6 +98,12 @@ class LegacyMapValue final {
 
   absl::StatusOr<JsonObject> ConvertToJsonObject() const;
 
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return IsEmpty(); }
+
   bool IsEmpty() const;
 
   size_t Size() const;
@@ -205,6 +211,12 @@ class LegacyMapValueView final {
   absl::StatusOr<Json> ConvertToJson() const { return ConvertToJsonObject(); }
 
   absl::StatusOr<JsonObject> ConvertToJsonObject() const;
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return IsEmpty(); }
 
   bool IsEmpty() const;
 

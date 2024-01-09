@@ -59,6 +59,11 @@ using LegacyStructValue_HasFieldByName =
 using LegacyStructValue_HasFieldByNumber = absl::StatusOr<bool> (*)(uintptr_t,
                                                                     uintptr_t,
                                                                     int64_t);
+using LegacyStructValue_Equal = absl::StatusOr<ValueView> (*)(
+    uintptr_t, uintptr_t, ValueManager&, ValueView, Value&);
+using LegacyStructValue_ForEachField =
+    absl::Status (*)(uintptr_t, uintptr_t, ValueManager&,
+                     LegacyStructValue::ForEachFieldCallback);
 
 ABSL_CONST_INIT struct {
   absl::once_flag init_once;
@@ -71,6 +76,8 @@ ABSL_CONST_INIT struct {
   LegacyStructValue_GetFieldByNumber get_field_by_number = nullptr;
   LegacyStructValue_HasFieldByName has_field_by_name = nullptr;
   LegacyStructValue_HasFieldByNumber has_field_by_number = nullptr;
+  LegacyStructValue_Equal equal = nullptr;
+  LegacyStructValue_ForEachField for_each_field = nullptr;
 } legacy_struct_value_vtable;
 
 void InitializeLegacyStructValue() {
@@ -100,6 +107,10 @@ void InitializeLegacyStructValue() {
     legacy_struct_value_vtable.has_field_by_number =
         symbol_finder.FindSymbolOrDie(
             "cel_common_internal_LegacyStructValue_HasFieldByNumber");
+    legacy_struct_value_vtable.equal = symbol_finder.FindSymbolOrDie(
+        "cel_common_internal_LegacyStructValue_Equal");
+    legacy_struct_value_vtable.for_each_field = symbol_finder.FindSymbolOrDie(
+        "cel_common_internal_LegacyStructValue_ForEachField");
   });
 }
 
@@ -162,6 +173,14 @@ absl::StatusOr<JsonObject> LegacyStructValue::ConvertToJsonObject() const {
                                                               type_info_);
 }
 
+absl::StatusOr<ValueView> LegacyStructValue::Equal(ValueManager& value_manager,
+                                                   ValueView other,
+                                                   Value& scratch) const {
+  InitializeLegacyStructValue();
+  return (*legacy_struct_value_vtable.equal)(message_ptr_, type_info_,
+                                             value_manager, other, scratch);
+}
+
 absl::StatusOr<ValueView> LegacyStructValue::GetFieldByName(
     ValueManager& value_manager, absl::string_view name, Value& scratch) const {
   InitializeLegacyStructValue();
@@ -187,6 +206,13 @@ absl::StatusOr<bool> LegacyStructValue::HasFieldByNumber(int64_t number) const {
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.has_field_by_number)(message_ptr_,
                                                            type_info_, number);
+}
+
+absl::Status LegacyStructValue::ForEachField(
+    ValueManager& value_manager, ForEachFieldCallback callback) const {
+  InitializeLegacyStructValue();
+  return (*legacy_struct_value_vtable.for_each_field)(message_ptr_, type_info_,
+                                                      value_manager, callback);
 }
 
 StructType LegacyStructValueView::GetType(TypeManager& type_manager) const {
@@ -246,6 +272,13 @@ absl::StatusOr<JsonObject> LegacyStructValueView::ConvertToJsonObject() const {
                                                               type_info_);
 }
 
+absl::StatusOr<ValueView> LegacyStructValueView::Equal(
+    ValueManager& value_manager, ValueView other, Value& scratch) const {
+  InitializeLegacyStructValue();
+  return (*legacy_struct_value_vtable.equal)(message_ptr_, type_info_,
+                                             value_manager, other, scratch);
+}
+
 absl::StatusOr<ValueView> LegacyStructValueView::GetFieldByName(
     ValueManager& value_manager, absl::string_view name, Value& scratch) const {
   InitializeLegacyStructValue();
@@ -272,6 +305,13 @@ absl::StatusOr<bool> LegacyStructValueView::HasFieldByNumber(
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.has_field_by_number)(message_ptr_,
                                                            type_info_, number);
+}
+
+absl::Status LegacyStructValueView::ForEachField(
+    ValueManager& value_manager, ForEachFieldCallback callback) const {
+  InitializeLegacyStructValue();
+  return (*legacy_struct_value_vtable.for_each_field)(message_ptr_, type_info_,
+                                                      value_manager, callback);
 }
 
 }  // namespace cel::common_internal

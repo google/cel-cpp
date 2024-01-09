@@ -21,6 +21,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/casting.h"
 #include "common/json.h"
 #include "common/value.h"
 #include "internal/serialize.h"
@@ -53,6 +54,11 @@ absl::StatusOr<Any> NullValue::ConvertToAny(absl::string_view prefix) const {
   return MakeAny(std::move(type_url), std::move(value));
 }
 
+absl::StatusOr<ValueView> NullValue::Equal(ValueManager&, ValueView other,
+                                           Value&) const {
+  return BoolValueView{InstanceOf<NullValueView>(other)};
+}
+
 absl::StatusOr<size_t> NullValueView::GetSerializedSize() const {
   return internal::SerializedValueSize(kJsonNull);
 }
@@ -77,6 +83,11 @@ absl::StatusOr<Any> NullValueView::ConvertToAny(
   CEL_ASSIGN_OR_RETURN(auto value, Serialize());
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
+}
+
+absl::StatusOr<ValueView> NullValueView::Equal(ValueManager&, ValueView other,
+                                               Value&) const {
+  return BoolValueView{InstanceOf<NullValueView>(other)};
 }
 
 }  // namespace cel

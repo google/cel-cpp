@@ -22,6 +22,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "common/any.h"
+#include "common/casting.h"
 #include "common/json.h"
 #include "common/value.h"
 #include "internal/serialize.h"
@@ -74,6 +75,15 @@ absl::StatusOr<Json> DurationValue::ConvertToJson() const {
   return JsonString(std::move(json));
 }
 
+absl::StatusOr<ValueView> DurationValue::Equal(ValueManager&, ValueView other,
+                                               Value&) const {
+  if (auto other_value = As<DurationValueView>(other);
+      other_value.has_value()) {
+    return BoolValueView{NativeValue() == other_value->NativeValue()};
+  }
+  return BoolValueView{false};
+}
+
 std::string DurationValueView::DebugString() const {
   return DurationDebugString(NativeValue());
 }
@@ -108,6 +118,16 @@ absl::StatusOr<Json> DurationValueView::ConvertToJson() const {
   CEL_ASSIGN_OR_RETURN(auto json,
                        internal::EncodeDurationToJson(NativeValue()));
   return JsonString(std::move(json));
+}
+
+absl::StatusOr<ValueView> DurationValueView::Equal(ValueManager&,
+                                                   ValueView other,
+                                                   Value&) const {
+  if (auto other_value = As<DurationValueView>(other);
+      other_value.has_value()) {
+    return BoolValueView{NativeValue() == other_value->NativeValue()};
+  }
+  return BoolValueView{false};
 }
 
 }  // namespace cel

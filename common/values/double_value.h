@@ -22,6 +22,7 @@
 #include <ostream>
 #include <string>
 
+#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -33,6 +34,9 @@
 
 namespace cel {
 
+class Value;
+class ValueView;
+class ValueManager;
 class DoubleValue;
 class DoubleValueView;
 class TypeManager;
@@ -83,6 +87,12 @@ class DoubleValue final {
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Json> ConvertToJson() const;
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return NativeValue() == 0.0; }
 
   constexpr double NativeValue() const { return value_; }
 
@@ -174,6 +184,12 @@ class DoubleValueView final {
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Json> ConvertToJson() const;
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return NativeValue() == 0.0; }
 
   constexpr double NativeValue() const { return value_; }
 

@@ -382,6 +382,27 @@ class Value final {
         variant_);
   }
 
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const {
+    AssertIsValid();
+    return absl::visit(
+        [](const auto& alternative) -> bool {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return false. In debug
+            // builds we cannot reach here.
+            return false;
+          } else {
+            return alternative.IsZeroValue();
+          }
+        },
+        variant_);
+  }
+
   void swap(Value& other) noexcept {
     AssertIsValid();
     other.AssertIsValid();
@@ -1005,6 +1026,43 @@ class ValueView final {
         variant_);
   }
 
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const {
+    AssertIsValid();
+    return absl::visit(
+        [&value_manager, other,
+         &scratch](auto alternative) -> absl::StatusOr<ValueView> {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return an error. In debug
+            // builds we cannot reach here.
+            return absl::InternalError("use of invalid ValueView");
+          } else {
+            return alternative.Equal(value_manager, other, scratch);
+          }
+        },
+        variant_);
+  }
+
+  bool IsZeroValue() const {
+    AssertIsValid();
+    return absl::visit(
+        [](auto alternative) -> bool {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return false. In debug
+            // builds we cannot reach here.
+            return false;
+          } else {
+            return alternative.IsZeroValue();
+          }
+        },
+        variant_);
+  }
+
   void swap(ValueView& other) noexcept {
     AssertIsValid();
     other.AssertIsValid();
@@ -1197,6 +1255,26 @@ inline Value& Value::operator=(ValueView other) {
   return *this;
 }
 
+inline absl::StatusOr<ValueView> Value::Equal(ValueManager& value_manager,
+                                              ValueView other,
+                                              Value& scratch) const {
+  AssertIsValid();
+  return absl::visit(
+      [&value_manager, other,
+       &scratch](const auto& alternative) -> absl::StatusOr<ValueView> {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          // In optimized builds, we just return an error. In debug
+          // builds we cannot reach here.
+          return absl::InternalError("use of invalid Value");
+        } else {
+          return alternative.Equal(value_manager, other, scratch);
+        }
+      },
+      variant_);
+}
+
 using ValueIteratorPtr = std::unique_ptr<ValueIterator>;
 
 class ValueIterator {
@@ -1252,6 +1330,11 @@ ParsedListValue::NewIterator(ValueManager& value_manager) const {
   return interface_->NewIterator(value_manager);
 }
 
+inline absl::StatusOr<ValueView> ParsedListValue::Equal(
+    ValueManager& value_manager, ValueView other, Value& scratch) const {
+  return interface_->Equal(value_manager, other, scratch);
+}
+
 inline absl::StatusOr<ValueView> ParsedListValueView::Get(
     ValueManager& value_manager, size_t index, Value& scratch) const {
   return interface_->Get(value_manager, index, scratch);
@@ -1270,6 +1353,11 @@ inline absl::Status ParsedListValueView::ForEach(
 inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
 ParsedListValueView::NewIterator(ValueManager& value_manager) const {
   return interface_->NewIterator(value_manager);
+}
+
+inline absl::StatusOr<ValueView> ParsedListValueView::Equal(
+    ValueManager& value_manager, ValueView other, Value& scratch) const {
+  return interface_->Equal(value_manager, other, scratch);
 }
 
 inline absl::StatusOr<ValueView> ListValue::Get(ValueManager& value_manager,
@@ -1311,6 +1399,17 @@ inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> ListValue::NewIterator(
       variant_);
 }
 
+inline absl::StatusOr<ValueView> ListValue::Equal(ValueManager& value_manager,
+                                                  ValueView other,
+                                                  Value& scratch) const {
+  return absl::visit(
+      [&value_manager, other,
+       &scratch](const auto& alternative) -> absl::StatusOr<ValueView> {
+        return alternative.Equal(value_manager, other, scratch);
+      },
+      variant_);
+}
+
 inline absl::StatusOr<ValueView> ListValueView::Get(ValueManager& value_manager,
                                                     size_t index,
                                                     Value& scratch) const {
@@ -1348,6 +1447,27 @@ ListValueView::NewIterator(ValueManager& value_manager) const {
         return alternative.NewIterator(value_manager);
       },
       variant_);
+}
+
+inline absl::StatusOr<ValueView> ListValueView::Equal(
+    ValueManager& value_manager, ValueView other, Value& scratch) const {
+  return absl::visit(
+      [&value_manager, other,
+       &scratch](auto alternative) -> absl::StatusOr<ValueView> {
+        return alternative.Equal(value_manager, other, scratch);
+      },
+      variant_);
+}
+
+inline absl::StatusOr<ValueView> OpaqueValue::Equal(ValueManager& value_manager,
+                                                    ValueView other,
+                                                    Value& scratch) const {
+  return interface_->Equal(value_manager, other, scratch);
+}
+
+inline absl::StatusOr<ValueView> OpaqueValueView::Equal(
+    ValueManager& value_manager, ValueView other, Value& scratch) const {
+  return interface_->Equal(value_manager, other, scratch);
 }
 
 inline OptionalValue OptionalValue::None() {
@@ -1396,6 +1516,11 @@ ParsedMapValue::NewIterator(ValueManager& value_manager) const {
   return interface_->NewIterator(value_manager);
 }
 
+inline absl::StatusOr<ValueView> ParsedMapValue::Equal(
+    ValueManager& value_manager, ValueView other, Value& scratch) const {
+  return interface_->Equal(value_manager, other, scratch);
+}
+
 inline absl::StatusOr<ValueView> ParsedMapValueView::Get(
     ValueManager& value_manager, ValueView key, Value& scratch) const {
   return interface_->Get(value_manager, key, scratch);
@@ -1424,6 +1549,11 @@ inline absl::Status ParsedMapValueView::ForEach(
 inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
 ParsedMapValueView::NewIterator(ValueManager& value_manager) const {
   return interface_->NewIterator(value_manager);
+}
+
+inline absl::StatusOr<ValueView> ParsedMapValueView::Equal(
+    ValueManager& value_manager, ValueView other, Value& scratch) const {
+  return interface_->Equal(value_manager, other, scratch);
 }
 
 inline absl::StatusOr<ValueView> MapValue::Get(ValueManager& value_manager,
@@ -1483,6 +1613,17 @@ inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> MapValue::NewIterator(
       [&value_manager](const auto& alternative)
           -> absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> {
         return alternative.NewIterator(value_manager);
+      },
+      variant_);
+}
+
+inline absl::StatusOr<ValueView> MapValue::Equal(ValueManager& value_manager,
+                                                 ValueView other,
+                                                 Value& scratch) const {
+  return absl::visit(
+      [&value_manager, other,
+       &scratch](const auto& alternative) -> absl::StatusOr<ValueView> {
+        return alternative.Equal(value_manager, other, scratch);
       },
       variant_);
 }
@@ -1548,6 +1689,16 @@ MapValueView::NewIterator(ValueManager& value_manager) const {
       variant_);
 }
 
+inline absl::StatusOr<ValueView> MapValueView::Equal(
+    ValueManager& value_manager, ValueView other, Value& scratch) const {
+  return absl::visit(
+      [&value_manager, other,
+       &scratch](auto alternative) -> absl::StatusOr<ValueView> {
+        return alternative.Equal(value_manager, other, scratch);
+      },
+      variant_);
+}
+
 inline absl::StatusOr<ValueView> ParsedStructValue::GetFieldByName(
     ValueManager& value_manager, absl::string_view name, Value& scratch) const {
   return interface_->GetFieldByName(value_manager, name, scratch);
@@ -1558,6 +1709,16 @@ inline absl::StatusOr<ValueView> ParsedStructValue::GetFieldByNumber(
   return interface_->GetFieldByNumber(value_manager, number, scratch);
 }
 
+inline absl::StatusOr<ValueView> ParsedStructValue::Equal(
+    ValueManager& value_manager, ValueView other, Value& scratch) const {
+  return interface_->Equal(value_manager, other, scratch);
+}
+
+inline absl::Status ParsedStructValue::ForEachField(
+    ValueManager& value_manager, ForEachFieldCallback callback) const {
+  return interface_->ForEachField(value_manager, callback);
+}
+
 inline absl::StatusOr<ValueView> ParsedStructValueView::GetFieldByName(
     ValueManager& value_manager, absl::string_view name, Value& scratch) const {
   return interface_->GetFieldByName(value_manager, name, scratch);
@@ -1566,6 +1727,16 @@ inline absl::StatusOr<ValueView> ParsedStructValueView::GetFieldByName(
 inline absl::StatusOr<ValueView> ParsedStructValueView::GetFieldByNumber(
     ValueManager& value_manager, int64_t number, Value& scratch) const {
   return interface_->GetFieldByNumber(value_manager, number, scratch);
+}
+
+inline absl::StatusOr<ValueView> ParsedStructValueView::Equal(
+    ValueManager& value_manager, ValueView other, Value& scratch) const {
+  return interface_->Equal(value_manager, other, scratch);
+}
+
+inline absl::Status ParsedStructValueView::ForEachField(
+    ValueManager& value_manager, ForEachFieldCallback callback) const {
+  return interface_->ForEachField(value_manager, callback);
 }
 
 inline absl::StatusOr<ValueView> StructValue::GetFieldByName(
@@ -1602,6 +1773,40 @@ inline absl::StatusOr<ValueView> StructValue::GetFieldByNumber(
       variant_);
 }
 
+inline absl::StatusOr<ValueView> StructValue::Equal(ValueManager& value_manager,
+                                                    ValueView other,
+                                                    Value& scratch) const {
+  AssertIsValid();
+  return absl::visit(
+      [&value_manager, other,
+       &scratch](const auto& alternative) -> absl::StatusOr<ValueView> {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return absl::InternalError("use of invalid StructValue");
+        } else {
+          return alternative.Equal(value_manager, other, scratch);
+        }
+      },
+      variant_);
+}
+
+inline absl::Status StructValue::ForEachField(
+    ValueManager& value_manager, ForEachFieldCallback callback) const {
+  AssertIsValid();
+  return absl::visit(
+      [&value_manager, callback](const auto& alternative) -> absl::Status {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return absl::InternalError("use of invalid StructValue");
+        } else {
+          return alternative.ForEachField(value_manager, callback);
+        }
+      },
+      variant_);
+}
+
 inline absl::StatusOr<ValueView> StructValueView::GetFieldByName(
     ValueManager& value_manager, absl::string_view name, Value& scratch) const {
   AssertIsValid();
@@ -1631,6 +1836,39 @@ inline absl::StatusOr<ValueView> StructValueView::GetFieldByNumber(
           return absl::InternalError("use of invalid StructValueView");
         } else {
           return alternative.GetFieldByNumber(value_manager, number, scratch);
+        }
+      },
+      variant_);
+}
+
+inline absl::StatusOr<ValueView> StructValueView::Equal(
+    ValueManager& value_manager, ValueView other, Value& scratch) const {
+  AssertIsValid();
+  return absl::visit(
+      [&value_manager, other,
+       &scratch](auto alternative) -> absl::StatusOr<ValueView> {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return absl::InternalError("use of invalid StructValueView");
+        } else {
+          return alternative.Equal(value_manager, other, scratch);
+        }
+      },
+      variant_);
+}
+
+inline absl::Status StructValueView::ForEachField(
+    ValueManager& value_manager, ForEachFieldCallback callback) const {
+  AssertIsValid();
+  return absl::visit(
+      [&value_manager, callback](auto alternative) -> absl::Status {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return absl::InternalError("use of invalid StructValueView");
+        } else {
+          return alternative.ForEachField(value_manager, callback);
         }
       },
       variant_);

@@ -15,7 +15,9 @@
 #include <string>
 #include <utility>
 
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "common/casting.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
@@ -64,6 +66,24 @@ OptionalValue OptionalValue::Of(MemoryManagerRef memory_manager,
                                 cel::Value value) {
   return OptionalValue(
       memory_manager.MakeShared<FullOptionalValue>(std::move(value)));
+}
+
+absl::StatusOr<ValueView> OptionalValueInterface::Equal(
+    ValueManager& value_manager, ValueView other, cel::Value& scratch) const {
+  if (auto other_value = As<OptionalValueView>(other);
+      other_value.has_value()) {
+    if (HasValue() != other_value->HasValue()) {
+      return BoolValueView{false};
+    }
+    if (!HasValue()) {
+      return BoolValueView{true};
+    }
+    cel::Value scratch1;
+    cel::Value scratch2;
+    return Value(scratch1).Equal(value_manager, other_value->Value(scratch2),
+                                 scratch);
+  }
+  return BoolValueView{false};
 }
 
 }  // namespace cel

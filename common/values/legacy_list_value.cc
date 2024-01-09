@@ -27,10 +27,12 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/casting.h"
 #include "common/json.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "common/value_manager.h"
+#include "common/values/values.h"
 #include "internal/dynamic_loader.h"
 #include "internal/status_macros.h"
 
@@ -180,6 +182,15 @@ absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyListValue::NewIterator(
   return (*legacy_list_value_vtable.new_iterator)(impl_, value_manager);
 }
 
+absl::StatusOr<ValueView> LegacyListValue::Equal(ValueManager& value_manager,
+                                                 ValueView other,
+                                                 Value& scratch) const {
+  if (auto list_value = As<ListValueView>(other); list_value.has_value()) {
+    return ListValueEqual(value_manager, *this, *list_value, scratch);
+  }
+  return BoolValueView{false};
+}
+
 ListType LegacyListValueView::GetType(TypeManager& type_manager) const {
   return ListType(type_manager.GetDynListType());
 }
@@ -263,6 +274,14 @@ absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
 LegacyListValueView::NewIterator(ValueManager& value_manager) const {
   InitializeLegacyListValue();
   return (*legacy_list_value_vtable.new_iterator)(impl_, value_manager);
+}
+
+absl::StatusOr<ValueView> LegacyListValueView::Equal(
+    ValueManager& value_manager, ValueView other, Value& scratch) const {
+  if (auto list_value = As<ListValueView>(other); list_value.has_value()) {
+    return ListValueEqual(value_manager, *this, *list_value, scratch);
+  }
+  return BoolValueView{false};
 }
 
 }  // namespace cel::common_internal

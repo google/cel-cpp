@@ -74,6 +74,12 @@ class ParsedMapValueInterface : public MapValueInterface {
 
   absl::Status SerializeTo(absl::Cord& value) const override;
 
+  virtual absl::StatusOr<ValueView> Equal(
+      ValueManager& value_manager, ValueView other,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return IsEmpty(); }
+
   // Returns `true` if this map contains no entries, `false` otherwise.
   virtual bool IsEmpty() const { return Size() == 0; }
 
@@ -193,6 +199,13 @@ class ParsedMapValue {
   absl::StatusOr<JsonObject> ConvertToJsonObject() const {
     return interface_->ConvertToJsonObject();
   }
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return interface_->IsZeroValue(); }
+
   bool IsEmpty() const { return interface_->IsEmpty(); }
 
   size_t Size() const { return interface_->Size(); }
@@ -385,6 +398,12 @@ class ParsedMapValueView {
   absl::StatusOr<JsonObject> ConvertToJsonObject() const {
     return interface_->ConvertToJsonObject();
   }
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return interface_->IsZeroValue(); }
 
   bool IsEmpty() const { return interface_->IsEmpty(); }
 

@@ -21,6 +21,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/casting.h"
 #include "common/json.h"
 #include "common/value.h"
 #include "internal/overloaded.h"
@@ -83,6 +84,19 @@ absl::StatusOr<Any> StringValue::ConvertToAny(absl::string_view prefix) const {
 
 absl::StatusOr<Json> StringValue::ConvertToJson() const { return NativeCord(); }
 
+absl::StatusOr<ValueView> StringValue::Equal(ValueManager&, ValueView other,
+                                             Value&) const {
+  if (auto other_value = As<StringValueView>(other); other_value.has_value()) {
+    return NativeValue([other_value](const auto& value) -> BoolValueView {
+      return other_value->NativeValue(
+          [&value](const auto& other_value) -> BoolValueView {
+            return BoolValueView{value == other_value};
+          });
+    });
+  }
+  return BoolValueView{false};
+}
+
 std::string StringValueView::DebugString() const {
   return StringDebugString(*this);
 }
@@ -119,6 +133,19 @@ absl::StatusOr<Any> StringValueView::ConvertToAny(
 
 absl::StatusOr<Json> StringValueView::ConvertToJson() const {
   return NativeCord();
+}
+
+absl::StatusOr<ValueView> StringValueView::Equal(ValueManager&, ValueView other,
+                                                 Value&) const {
+  if (auto other_value = As<StringValueView>(other); other_value.has_value()) {
+    return NativeValue([other_value](const auto& value) -> BoolValueView {
+      return other_value->NativeValue(
+          [&value](const auto& other_value) -> BoolValueView {
+            return BoolValueView{value == other_value};
+          });
+    });
+  }
+  return BoolValueView{false};
 }
 
 }  // namespace cel

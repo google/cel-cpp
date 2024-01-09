@@ -98,6 +98,12 @@ class LegacyListValue final {
 
   absl::StatusOr<JsonArray> ConvertToJsonArray() const;
 
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return IsEmpty(); }
+
   bool IsEmpty() const;
 
   size_t Size() const;
@@ -199,6 +205,12 @@ class LegacyListValueView final {
   absl::StatusOr<Json> ConvertToJson() const { return ConvertToJsonArray(); }
 
   absl::StatusOr<JsonArray> ConvertToJsonArray() const;
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return IsEmpty(); }
 
   bool IsEmpty() const;
 

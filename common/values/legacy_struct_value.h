@@ -33,6 +33,7 @@
 #include "common/json.h"
 #include "common/type.h"
 #include "common/value_kind.h"
+#include "common/values/struct_value_interface.h"
 
 namespace cel {
 
@@ -87,6 +88,12 @@ class LegacyStructValue final {
 
   absl::StatusOr<JsonObject> ConvertToJsonObject() const;
 
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const;
+
   void swap(LegacyStructValue& other) noexcept {
     using std::swap;
     swap(message_ptr_, other.message_ptr_);
@@ -104,6 +111,11 @@ class LegacyStructValue final {
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
 
   absl::StatusOr<bool> HasFieldByNumber(int64_t number) const;
+
+  using ForEachFieldCallback = StructValueInterface::ForEachFieldCallback;
+
+  absl::Status ForEachField(ValueManager& value_manager,
+                            ForEachFieldCallback callback) const;
 
  private:
   friend class LegacyStructValueView;
@@ -177,6 +189,12 @@ class LegacyStructValueView final {
 
   absl::StatusOr<JsonObject> ConvertToJsonObject() const;
 
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const;
+
   void swap(LegacyStructValueView& other) noexcept {
     using std::swap;
     swap(message_ptr_, other.message_ptr_);
@@ -194,6 +212,11 @@ class LegacyStructValueView final {
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
 
   absl::StatusOr<bool> HasFieldByNumber(int64_t number) const;
+
+  using ForEachFieldCallback = StructValueInterface::ForEachFieldCallback;
+
+  absl::Status ForEachField(ValueManager& value_manager,
+                            ForEachFieldCallback callback) const;
 
  private:
   friend class LegacyStructValue;

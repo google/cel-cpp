@@ -22,6 +22,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "common/any.h"
+#include "common/casting.h"
 #include "common/json.h"
 #include "common/value.h"
 #include "internal/serialize.h"
@@ -74,6 +75,15 @@ absl::StatusOr<Json> TimestampValue::ConvertToJson() const {
   return JsonString(std::move(json));
 }
 
+absl::StatusOr<ValueView> TimestampValue::Equal(ValueManager&, ValueView other,
+                                                Value&) const {
+  if (auto other_value = As<TimestampValueView>(other);
+      other_value.has_value()) {
+    return BoolValueView{NativeValue() == other_value->NativeValue()};
+  }
+  return BoolValueView{false};
+}
+
 std::string TimestampValueView::DebugString() const {
   return TimestampDebugString(NativeValue());
 }
@@ -108,6 +118,16 @@ absl::StatusOr<Json> TimestampValueView::ConvertToJson() const {
   CEL_ASSIGN_OR_RETURN(auto json,
                        internal::EncodeTimestampToJson(NativeValue()));
   return JsonString(std::move(json));
+}
+
+absl::StatusOr<ValueView> TimestampValueView::Equal(ValueManager&,
+                                                    ValueView other,
+                                                    Value&) const {
+  if (auto other_value = As<TimestampValueView>(other);
+      other_value.has_value()) {
+    return BoolValueView{NativeValue() == other_value->NativeValue()};
+  }
+  return BoolValueView{false};
 }
 
 }  // namespace cel

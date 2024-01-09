@@ -56,6 +56,7 @@ class OpaqueValueInterfaceIterator;
 class OpaqueValue;
 class OpaqueValueView;
 class TypeFactory;
+class ValueManager;
 
 // `Is` checks whether `lhs` and `rhs` have the same identity.
 bool Is(OpaqueValueView lhs, OpaqueValueView rhs);
@@ -72,6 +73,10 @@ class OpaqueValueInterface : public ValueInterface {
   OpaqueType GetType(TypeManager& type_manager) const {
     return Cast<OpaqueType>(GetTypeImpl(type_manager));
   }
+
+  virtual absl::StatusOr<ValueView> Equal(
+      ValueManager& value_manager, ValueView other,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
 };
 
 template <>
@@ -139,6 +144,12 @@ class OpaqueValue {
   absl::StatusOr<Json> ConvertToJson() const {
     return interface_->ConvertToJson();
   }
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return false; }
 
   void swap(OpaqueValue& other) noexcept {
     using std::swap;
@@ -280,6 +291,12 @@ class OpaqueValueView {
   absl::StatusOr<Json> ConvertToJson() const {
     return interface_->ConvertToJson();
   }
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return false; }
 
   void swap(OpaqueValueView& other) noexcept {
     using std::swap;

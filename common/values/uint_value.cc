@@ -22,6 +22,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/casting.h"
 #include "common/json.h"
 #include "common/value.h"
 #include "internal/serialize.h"
@@ -68,6 +69,14 @@ absl::StatusOr<Json> UintValue::ConvertToJson() const {
   return JsonUint(NativeValue());
 }
 
+absl::StatusOr<ValueView> UintValue::Equal(ValueManager&, ValueView other,
+                                           Value&) const {
+  if (auto other_value = As<UintValueView>(other); other_value.has_value()) {
+    return BoolValueView{NativeValue() == other_value->NativeValue()};
+  }
+  return BoolValueView{false};
+}
+
 std::string UintValueView::DebugString() const {
   return UintDebugString(NativeValue());
 }
@@ -100,6 +109,14 @@ absl::StatusOr<Any> UintValueView::ConvertToAny(
 
 absl::StatusOr<Json> UintValueView::ConvertToJson() const {
   return JsonUint(NativeValue());
+}
+
+absl::StatusOr<ValueView> UintValueView::Equal(ValueManager&, ValueView other,
+                                               Value&) const {
+  if (auto other_value = As<UintValueView>(other); other_value.has_value()) {
+    return BoolValueView{NativeValue() == other_value->NativeValue()};
+  }
+  return BoolValueView{false};
 }
 
 }  // namespace cel

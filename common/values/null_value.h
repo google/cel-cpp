@@ -34,6 +34,9 @@
 
 namespace cel {
 
+class Value;
+class ValueView;
+class ValueManager;
 class NullValue;
 class NullValueView;
 class TypeManager;
@@ -74,6 +77,12 @@ class NullValue final {
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Json> ConvertToJson() const { return kJsonNull; }
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return true; }
 
   constexpr void swap(NullValue& other) noexcept {}
 
@@ -126,6 +135,12 @@ class NullValueView final {
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Json> ConvertToJson() const { return kJsonNull; }
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  bool IsZeroValue() const { return true; }
 
   constexpr void swap(NullValueView& other) noexcept {}
 
