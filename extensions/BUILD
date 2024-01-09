@@ -155,6 +155,7 @@ cc_test(
 cc_test(
     name = "bindings_ext_benchmark_test",
     srcs = ["bindings_ext_benchmark_test.cc"],
+    tags = ["benchmark"],
     deps = [
         ":bindings_ext",
         "//eval/public:activation",
