@@ -176,7 +176,9 @@ class EmptyMapValue final : public ParsedMapValueInterface {
     return absl::nullopt;
   }
 
-  absl::StatusOr<bool> HasImpl(ValueView) const override { return false; }
+  absl::StatusOr<bool> HasImpl(ValueManager&, ValueView) const override {
+    return false;
+  }
 
   const MapType type_;
 };

@@ -221,13 +221,16 @@ TEST_P(ValueFactoryTest, JsonValueObject) {
                                {StringValueView("a"), StringValueView("b"),
                                 StringValueView("c"), StringValueView("d"),
                                 StringValueView("e"), StringValueView("f")}));
-
-  ASSERT_OK_AND_ASSIGN(auto has, map_value.Has(StringValueView("a")));
-  ASSERT_TRUE(InstanceOf<BoolValueView>(has));
-  EXPECT_TRUE(Cast<BoolValueView>(has).NativeValue());
-  ASSERT_OK_AND_ASSIGN(has, map_value.Has(StringValueView(absl::Cord("a"))));
-  ASSERT_TRUE(InstanceOf<BoolValueView>(has));
-  EXPECT_TRUE(Cast<BoolValueView>(has).NativeValue());
+  Value has;
+  ASSERT_OK_AND_ASSIGN(
+      auto has_view, map_value.Has(value_manager(), StringValueView("a"), has));
+  ASSERT_TRUE(InstanceOf<BoolValueView>(has_view));
+  EXPECT_TRUE(Cast<BoolValueView>(has_view).NativeValue());
+  ASSERT_OK_AND_ASSIGN(
+      has_view,
+      map_value.Has(value_manager(), StringValueView(absl::Cord("a")), has));
+  ASSERT_TRUE(InstanceOf<BoolValueView>(has_view));
+  EXPECT_TRUE(Cast<BoolValueView>(has_view).NativeValue());
 
   Value get;
   ASSERT_OK_AND_ASSIGN(

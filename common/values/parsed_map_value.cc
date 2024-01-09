@@ -99,12 +99,14 @@ absl::StatusOr<std::pair<ValueView, bool>> ParsedMapValueInterface::Find(
   return std::pair{NullValueView{}, false};
 }
 
-absl::StatusOr<ValueView> ParsedMapValueInterface::Has(ValueView key) const {
+absl::StatusOr<ValueView> ParsedMapValueInterface::Has(
+    ValueManager& value_manager, ValueView key, Value& scratch) const {
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kUnknown:
-      return key;
+      scratch = Value{key};
+      return scratch;
     case ValueKind::kBool:
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kInt:
@@ -116,7 +118,7 @@ absl::StatusOr<ValueView> ParsedMapValueInterface::Has(ValueView key) const {
     default:
       return InvalidMapKeyTypeError(key.kind());
   }
-  CEL_ASSIGN_OR_RETURN(auto has, HasImpl(key));
+  CEL_ASSIGN_OR_RETURN(auto has, HasImpl(value_manager, key));
   return BoolValueView(has);
 }
 

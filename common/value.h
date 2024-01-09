@@ -1376,8 +1376,9 @@ inline absl::StatusOr<std::pair<ValueView, bool>> ParsedMapValue::Find(
   return interface_->Find(value_manager, key, scratch);
 }
 
-inline absl::StatusOr<ValueView> ParsedMapValue::Has(ValueView key) const {
-  return interface_->Has(key);
+inline absl::StatusOr<ValueView> ParsedMapValue::Has(
+    ValueManager& value_manager, ValueView key, Value& scratch) const {
+  return interface_->Has(value_manager, key, scratch);
 }
 
 inline absl::StatusOr<ListValueView> ParsedMapValue::ListKeys(
@@ -1405,8 +1406,9 @@ inline absl::StatusOr<std::pair<ValueView, bool>> ParsedMapValueView::Find(
   return interface_->Find(value_manager, key, scratch);
 }
 
-inline absl::StatusOr<ValueView> ParsedMapValueView::Has(ValueView key) const {
-  return interface_->Has(key);
+inline absl::StatusOr<ValueView> ParsedMapValueView::Has(
+    ValueManager& value_manager, ValueView key, Value& scratch) const {
+  return interface_->Has(value_manager, key, scratch);
 }
 
 inline absl::StatusOr<ListValueView> ParsedMapValueView::ListKeys(
@@ -1445,10 +1447,13 @@ inline absl::StatusOr<std::pair<ValueView, bool>> MapValue::Find(
       variant_);
 }
 
-inline absl::StatusOr<ValueView> MapValue::Has(ValueView key) const {
+inline absl::StatusOr<ValueView> MapValue::Has(ValueManager& value_manager,
+                                               ValueView key,
+                                               Value& scratch) const {
   return absl::visit(
-      [key](const auto& alternative) -> absl::StatusOr<ValueView> {
-        return alternative.Has(key);
+      [&value_manager, key,
+       &scratch](const auto& alternative) -> absl::StatusOr<ValueView> {
+        return alternative.Has(value_manager, key, scratch);
       },
       variant_);
 }
@@ -1503,10 +1508,13 @@ inline absl::StatusOr<std::pair<ValueView, bool>> MapValueView::Find(
       variant_);
 }
 
-inline absl::StatusOr<ValueView> MapValueView::Has(ValueView key) const {
+inline absl::StatusOr<ValueView> MapValueView::Has(ValueManager& value_manager,
+                                                   ValueView key,
+                                                   Value& scratch) const {
   return absl::visit(
-      [key](auto alternative) -> absl::StatusOr<ValueView> {
-        return alternative.Has(key);
+      [&value_manager, key,
+       &scratch](auto alternative) -> absl::StatusOr<ValueView> {
+        return alternative.Has(value_manager, key, scratch);
       },
       variant_);
 }

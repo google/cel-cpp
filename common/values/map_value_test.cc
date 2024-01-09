@@ -206,21 +206,26 @@ TEST_P(MapValueTest, Find) {
 }
 
 TEST_P(MapValueTest, Has) {
+  Value scratch;
   ASSERT_OK_AND_ASSIGN(
       auto map_value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
-  ASSERT_OK_AND_ASSIGN(auto value, map_value.Has(IntValueView(0)));
+  ASSERT_OK_AND_ASSIGN(
+      auto value, map_value.Has(value_manager(), IntValueView(0), scratch));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
   ASSERT_TRUE(Cast<BoolValueView>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, map_value.Has(IntValueView(1)));
+  ASSERT_OK_AND_ASSIGN(
+      value, map_value.Has(value_manager(), IntValueView(1), scratch));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
   ASSERT_TRUE(Cast<BoolValueView>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, map_value.Has(IntValueView(2)));
+  ASSERT_OK_AND_ASSIGN(
+      value, map_value.Has(value_manager(), IntValueView(2), scratch));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
   ASSERT_TRUE(Cast<BoolValueView>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, map_value.Has(IntValueView(3)));
+  ASSERT_OK_AND_ASSIGN(
+      value, map_value.Has(value_manager(), IntValueView(3), scratch));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
   ASSERT_FALSE(Cast<BoolValueView>(value).NativeValue());
 }
@@ -474,22 +479,27 @@ TEST_P(MapValueViewTest, Find) {
 }
 
 TEST_P(MapValueViewTest, Has) {
+  Value scratch;
   ASSERT_OK_AND_ASSIGN(
       auto map_value,
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       MapValueView(map_value).Has(IntValueView(0)));
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      MapValueView(map_value).Has(value_manager(), IntValueView(0), scratch));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
   ASSERT_TRUE(Cast<BoolValueView>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, MapValueView(map_value).Has(IntValueView(1)));
+  ASSERT_OK_AND_ASSIGN(value, MapValueView(map_value).Has(
+                                  value_manager(), IntValueView(1), scratch));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
   ASSERT_TRUE(Cast<BoolValueView>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, MapValueView(map_value).Has(IntValueView(2)));
+  ASSERT_OK_AND_ASSIGN(value, MapValueView(map_value).Has(
+                                  value_manager(), IntValueView(2), scratch));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
   ASSERT_TRUE(Cast<BoolValueView>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, MapValueView(map_value).Has(IntValueView(3)));
+  ASSERT_OK_AND_ASSIGN(value, MapValueView(map_value).Has(
+                                  value_manager(), IntValueView(3), scratch));
   ASSERT_TRUE(InstanceOf<BoolValueView>(value));
   ASSERT_FALSE(Cast<BoolValueView>(value).NativeValue());
 }

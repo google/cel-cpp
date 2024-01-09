@@ -259,7 +259,7 @@ class JsonMapValue final : public ParsedMapValueInterface {
   }
 
   // Called by `Has` after performing various argument checks.
-  absl::StatusOr<bool> HasImpl(ValueView key) const override {
+  absl::StatusOr<bool> HasImpl(ValueManager&, ValueView key) const override {
     return Cast<StringValueView>(key).NativeValue(internal::Overloaded{
         [this](absl::string_view value) -> bool {
           return object_.contains(value);

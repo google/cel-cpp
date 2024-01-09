@@ -96,7 +96,9 @@ class ParsedMapValueInterface : public MapValueInterface {
       Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   // Checks whether the given key is present in the map.
-  absl::StatusOr<ValueView> Has(ValueView key) const;
+  absl::StatusOr<ValueView> Has(ValueManager& value_manager, ValueView key,
+                                Value& scratch
+                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   // Returns a new list value whose elements are the keys of this map.
   virtual absl::StatusOr<ListValueView> ListKeys(
@@ -122,7 +124,8 @@ class ParsedMapValueInterface : public MapValueInterface {
       Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
 
   // Called by `Has` after performing various argument checks.
-  virtual absl::StatusOr<bool> HasImpl(ValueView key) const = 0;
+  virtual absl::StatusOr<bool> HasImpl(ValueManager& value_manager,
+                                       ValueView key) const = 0;
 };
 
 class ParsedMapValue {
@@ -208,7 +211,9 @@ class ParsedMapValue {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::StatusOr<ValueView> Has(ValueView key) const;
+  absl::StatusOr<ValueView> Has(ValueManager& value_manager, ValueView key,
+                                Value& scratch
+                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
@@ -399,7 +404,9 @@ class ParsedMapValueView {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::StatusOr<ValueView> Has(ValueView key) const;
+  absl::StatusOr<ValueView> Has(ValueManager& value_manager, ValueView key,
+                                Value& scratch
+                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.

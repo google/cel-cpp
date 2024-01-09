@@ -50,7 +50,9 @@ using LegacyMapValue_Get = absl::StatusOr<ValueView> (*)(uintptr_t,
                                                          ValueView, Value&);
 using LegacyMapValue_Find = absl::StatusOr<std::pair<ValueView, bool>> (*)(
     uintptr_t, ValueManager&, ValueView, Value&);
-using LegacyMapValue_Has = absl::StatusOr<ValueView> (*)(uintptr_t, ValueView);
+using LegacyMapValue_Has = absl::StatusOr<ValueView> (*)(uintptr_t,
+                                                         ValueManager&,
+                                                         ValueView, Value&);
 using LegacyMapValue_ListKeys = absl::StatusOr<ListValueView> (*)(uintptr_t,
                                                                   ValueManager&,
                                                                   ListValue&);
@@ -175,9 +177,11 @@ absl::StatusOr<std::pair<ValueView, bool>> LegacyMapValue::Find(
   return (*legacy_map_value_vtable.find)(impl_, value_manager, key, scratch);
 }
 
-absl::StatusOr<ValueView> LegacyMapValue::Has(ValueView key) const {
+absl::StatusOr<ValueView> LegacyMapValue::Has(ValueManager& value_manager,
+                                              ValueView key,
+                                              Value& scratch) const {
   InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.has)(impl_, key);
+  return (*legacy_map_value_vtable.has)(impl_, value_manager, key, scratch);
 }
 
 absl::StatusOr<ListValueView> LegacyMapValue::ListKeys(
@@ -264,9 +268,11 @@ absl::StatusOr<std::pair<ValueView, bool>> LegacyMapValueView::Find(
   return (*legacy_map_value_vtable.find)(impl_, value_manager, key, scratch);
 }
 
-absl::StatusOr<ValueView> LegacyMapValueView::Has(ValueView key) const {
+absl::StatusOr<ValueView> LegacyMapValueView::Has(ValueManager& value_manager,
+                                                  ValueView key,
+                                                  Value& scratch) const {
   InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.has)(impl_, key);
+  return (*legacy_map_value_vtable.has)(impl_, value_manager, key, scratch);
 }
 
 absl::StatusOr<ListValueView> LegacyMapValueView::ListKeys(

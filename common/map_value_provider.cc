@@ -407,7 +407,7 @@ class TypedMapValue final : public ParsedMapValueInterface {
     return absl::nullopt;
   }
 
-  absl::StatusOr<bool> HasImpl(ValueView key) const override {
+  absl::StatusOr<bool> HasImpl(ValueManager&, ValueView key) const override {
     if (auto entry =
             entries_.find(Cast<typename K::view_alternative_type>(key));
         entry != entries_.end()) {

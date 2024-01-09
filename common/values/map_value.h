@@ -243,7 +243,9 @@ class MapValue final {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::StatusOr<ValueView> Has(ValueView key) const;
+  absl::StatusOr<ValueView> Has(ValueManager& value_manager, ValueView key,
+                                Value& scratch
+                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
@@ -574,7 +576,9 @@ class MapValueView final {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::StatusOr<ValueView> Has(ValueView key) const;
+  absl::StatusOr<ValueView> Has(ValueManager& value_manager, ValueView key,
+                                Value& scratch
+                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.

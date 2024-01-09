@@ -112,7 +112,9 @@ class LegacyMapValue final {
       ValueManager& value_manager, ValueView key,
       Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
-  absl::StatusOr<ValueView> Has(ValueView key) const;
+  absl::StatusOr<ValueView> Has(ValueManager& value_manager, ValueView key,
+                                Value& scratch
+                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   absl::StatusOr<ListValueView> ListKeys(
       ValueManager& value_manager,
@@ -218,7 +220,9 @@ class LegacyMapValueView final {
       ValueManager& value_manager, ValueView key,
       Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
-  absl::StatusOr<ValueView> Has(ValueView key) const;
+  absl::StatusOr<ValueView> Has(ValueManager& value_manager, ValueView key,
+                                Value& scratch
+                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   absl::StatusOr<ListValueView> ListKeys(
       ValueManager& value_manager,
