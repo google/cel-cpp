@@ -41,8 +41,8 @@ namespace cel {
 
 namespace common_internal {
 
-using ListValueCacheMap = absl::flat_hash_map<ListTypeView, ListValue>;
-using MapValueCacheMap = absl::flat_hash_map<MapTypeView, MapValue>;
+using ListValueCacheMap = absl::flat_hash_map<ListTypeView, ParsedListValue>;
+using MapValueCacheMap = absl::flat_hash_map<MapTypeView, ParsedMapValue>;
 using OptionalValueCacheMap =
     absl::flat_hash_map<OptionalTypeView, OptionalValue>;
 
@@ -52,15 +52,16 @@ class ProcessLocalValueCache final {
 
   ErrorValueView GetDefaultErrorValue() const;
 
-  absl::optional<ListValueView> GetEmptyListValue(ListTypeView type) const;
+  absl::optional<ParsedListValueView> GetEmptyListValue(
+      ListTypeView type) const;
 
-  ListValueView GetEmptyDynListValue() const;
+  ParsedListValueView GetEmptyDynListValue() const;
 
-  absl::optional<MapValueView> GetEmptyMapValue(MapTypeView type) const;
+  absl::optional<ParsedMapValueView> GetEmptyMapValue(MapTypeView type) const;
 
-  MapValueView GetEmptyDynDynMapValue() const;
+  ParsedMapValueView GetEmptyDynDynMapValue() const;
 
-  MapValueView GetEmptyStringDynMapValue() const;
+  ParsedMapValueView GetEmptyStringDynMapValue() const;
 
   absl::optional<OptionalValueView> GetEmptyOptionalValue(
       OptionalTypeView type) const;
@@ -76,13 +77,13 @@ class ProcessLocalValueCache final {
   ListValueCacheMap list_values_;
   MapValueCacheMap map_values_;
   OptionalValueCacheMap optional_values_;
-  absl::optional<ListValueView> dyn_list_value_;
-  absl::optional<MapValueView> dyn_dyn_map_value_;
-  absl::optional<MapValueView> string_dyn_map_value_;
+  absl::optional<ParsedListValueView> dyn_list_value_;
+  absl::optional<ParsedMapValueView> dyn_dyn_map_value_;
+  absl::optional<ParsedMapValueView> string_dyn_map_value_;
   absl::optional<OptionalValueView> dyn_optional_value_;
 };
 
-class EmptyListValue final : public ListValueInterface {
+class EmptyListValue final : public ParsedListValueInterface {
  public:
   explicit EmptyListValue(ListType type) : type_(std::move(type)) {}
 
@@ -125,7 +126,7 @@ class EmptyMapValueKeyIterator final : public ValueIterator {
   }
 };
 
-class EmptyMapValue final : public MapValueInterface {
+class EmptyMapValue final : public ParsedMapValueInterface {
  public:
   explicit EmptyMapValue(MapType type) : type_(std::move(type)) {}
 

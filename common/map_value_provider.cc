@@ -320,7 +320,7 @@ class TypedMapValueKeyIterator final : public ValueIterator {
 };
 
 template <typename K, typename V>
-class TypedMapValue final : public MapValueInterface {
+class TypedMapValue final : public ParsedMapValueInterface {
  public:
   using key_type = std::decay_t<decltype(std::declval<K>().GetType(
       std::declval<TypeManager&>()))>;
@@ -437,7 +437,8 @@ class MapValueBuilderImpl final : public MapValueBuilder {
 
   static_assert(common_internal::IsValueAlternativeV<K>,
                 "K must be Value or one of the Value alternatives");
-  static_assert(common_internal::IsValueAlternativeV<V>,
+  static_assert(common_internal::IsValueAlternativeV<V> ||
+                    std::is_same_v<ListValue, V> || std::is_same_v<MapValue, V>,
                 "V must be Value or one of the Value alternatives");
 
   MapValueBuilderImpl(MemoryManagerRef memory_manager, MapType type)
@@ -463,7 +464,7 @@ class MapValueBuilderImpl final : public MapValueBuilder {
   void Reserve(size_t capacity) override { entries_.reserve(capacity); }
 
   MapValue Build() && override {
-    return MapValue(memory_manager_.MakeShared<TypedMapValue<K, V>>(
+    return ParsedMapValue(memory_manager_.MakeShared<TypedMapValue<K, V>>(
         std::move(type_), std::move(entries_)));
   }
 
@@ -480,7 +481,8 @@ class MapValueBuilderImpl<Value, V> final : public MapValueBuilder {
       std::declval<TypeManager&>()))>;
   using value_view_type = typename value_type::view_alternative_type;
 
-  static_assert(common_internal::IsValueAlternativeV<V>,
+  static_assert(common_internal::IsValueAlternativeV<V> ||
+                    std::is_same_v<ListValue, V> || std::is_same_v<MapValue, V>,
                 "V must be Value or one of the Value alternatives");
 
   MapValueBuilderImpl(MemoryManagerRef memory_manager, MapType type)
@@ -500,7 +502,7 @@ class MapValueBuilderImpl<Value, V> final : public MapValueBuilder {
   void Reserve(size_t capacity) override { entries_.reserve(capacity); }
 
   MapValue Build() && override {
-    return MapValue(memory_manager_.MakeShared<TypedMapValue<Value, V>>(
+    return ParsedMapValue(memory_manager_.MakeShared<TypedMapValue<Value, V>>(
         std::move(type_), std::move(entries_)));
   }
 
@@ -539,7 +541,7 @@ class MapValueBuilderImpl<K, Value> final : public MapValueBuilder {
   void Reserve(size_t capacity) override { entries_.reserve(capacity); }
 
   MapValue Build() && override {
-    return MapValue(memory_manager_.MakeShared<TypedMapValue<K, Value>>(
+    return ParsedMapValue(memory_manager_.MakeShared<TypedMapValue<K, Value>>(
         std::move(type_), std::move(entries_)));
   }
 
@@ -569,8 +571,9 @@ class MapValueBuilderImpl<Value, Value> final : public MapValueBuilder {
   void Reserve(size_t capacity) override { entries_.reserve(capacity); }
 
   MapValue Build() && override {
-    return MapValue(memory_manager_.MakeShared<TypedMapValue<Value, Value>>(
-        std::move(type_), std::move(entries_)));
+    return ParsedMapValue(
+        memory_manager_.MakeShared<TypedMapValue<Value, Value>>(
+            std::move(type_), std::move(entries_)));
   }
 
  private:

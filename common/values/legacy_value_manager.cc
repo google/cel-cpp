@@ -21,12 +21,13 @@
 namespace cel::common_internal {
 
 ListValue LegacyValueManager::CreateZeroListValueImpl(ListTypeView type) {
-  return ListValue(
+  return ParsedListValue(
       GetMemoryManager().MakeShared<EmptyListValue>(ListType(type)));
 }
 
 MapValue LegacyValueManager::CreateZeroMapValueImpl(MapTypeView type) {
-  return MapValue(GetMemoryManager().MakeShared<EmptyMapValue>(MapType(type)));
+  return ParsedMapValue(
+      GetMemoryManager().MakeShared<EmptyMapValue>(MapType(type)));
 }
 
 OptionalValue LegacyValueManager::CreateZeroOptionalValueImpl(

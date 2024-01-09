@@ -31,11 +31,11 @@ ErrorValueView GetDefaultErrorValue() {
   return ProcessLocalValueCache::Get()->GetDefaultErrorValue();
 }
 
-ListValueView GetEmptyDynListValue() {
+ParsedListValueView GetEmptyDynListValue() {
   return ProcessLocalValueCache::Get()->GetEmptyDynListValue();
 }
 
-MapValueView GetEmptyDynDynMapValue() {
+ParsedMapValueView GetEmptyDynDynMapValue() {
   return ProcessLocalValueCache::Get()->GetEmptyDynDynMapValue();
 }
 
@@ -52,7 +52,7 @@ ErrorValueView ProcessLocalValueCache::GetDefaultErrorValue() const {
   return default_error_value_;
 }
 
-absl::optional<ListValueView> ProcessLocalValueCache::GetEmptyListValue(
+absl::optional<ParsedListValueView> ProcessLocalValueCache::GetEmptyListValue(
     ListTypeView type) const {
   if (auto list_value = list_values_.find(type);
       list_value != list_values_.end()) {
@@ -61,11 +61,11 @@ absl::optional<ListValueView> ProcessLocalValueCache::GetEmptyListValue(
   return absl::nullopt;
 }
 
-ListValueView ProcessLocalValueCache::GetEmptyDynListValue() const {
+ParsedListValueView ProcessLocalValueCache::GetEmptyDynListValue() const {
   return *dyn_list_value_;
 }
 
-absl::optional<MapValueView> ProcessLocalValueCache::GetEmptyMapValue(
+absl::optional<ParsedMapValueView> ProcessLocalValueCache::GetEmptyMapValue(
     MapTypeView type) const {
   if (auto map_value = map_values_.find(type); map_value != map_values_.end()) {
     return map_value->second;
@@ -73,11 +73,11 @@ absl::optional<MapValueView> ProcessLocalValueCache::GetEmptyMapValue(
   return absl::nullopt;
 }
 
-MapValueView ProcessLocalValueCache::GetEmptyDynDynMapValue() const {
+ParsedMapValueView ProcessLocalValueCache::GetEmptyDynDynMapValue() const {
   return *dyn_dyn_map_value_;
 }
 
-MapValueView ProcessLocalValueCache::GetEmptyStringDynMapValue() const {
+ParsedMapValueView ProcessLocalValueCache::GetEmptyStringDynMapValue() const {
   return *string_dyn_map_value_;
 }
 absl::optional<OptionalValueView> ProcessLocalValueCache::GetEmptyOptionalValue(
@@ -102,8 +102,9 @@ ProcessLocalValueCache::ProcessLocalValueCache()
     auto inserted =
         list_values_
             .insert_or_assign(
-                list_type, ListValue(memory_manager.MakeShared<EmptyListValue>(
-                               ListType(list_type))))
+                list_type,
+                ParsedListValue(memory_manager.MakeShared<EmptyListValue>(
+                    ListType(list_type))))
             .second;
     ABSL_DCHECK(inserted);
   }
@@ -112,9 +113,10 @@ ProcessLocalValueCache::ProcessLocalValueCache()
   for (const auto& map_type : map_types) {
     auto inserted =
         map_values_
-            .insert_or_assign(map_type,
-                              MapValue(memory_manager.MakeShared<EmptyMapValue>(
-                                  MapType(map_type))))
+            .insert_or_assign(
+                map_type,
+                ParsedMapValue(memory_manager.MakeShared<EmptyMapValue>(
+                    MapType(map_type))))
             .second;
     ABSL_DCHECK(inserted);
   }

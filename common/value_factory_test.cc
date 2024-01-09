@@ -179,7 +179,7 @@ TEST_P(ValueFactoryTest, JsonValueArray) {
   ASSERT_TRUE(InstanceOf<ListValue>(value));
   EXPECT_EQ(TypeView(value.GetType(type_manager())),
             type_factory().GetDynListType());
-  auto& list_value = Cast<ListValue>(value);
+  auto list_value = Cast<ListValue>(value);
   EXPECT_FALSE(list_value.IsEmpty());
   EXPECT_EQ(list_value.Size(), 6);
   EXPECT_EQ(list_value.DebugString(),
@@ -196,7 +196,7 @@ TEST_P(ValueFactoryTest, JsonValueObject) {
   ASSERT_TRUE(InstanceOf<MapValue>(value));
   EXPECT_EQ(TypeView(value.GetType(type_manager())),
             type_factory().GetStringDynMapType());
-  auto& map_value = Cast<MapValue>(value);
+  auto map_value = Cast<MapValue>(value);
   EXPECT_FALSE(map_value.IsEmpty());
   EXPECT_EQ(map_value.Size(), 6);
   EXPECT_EQ(map_value.DebugString(),

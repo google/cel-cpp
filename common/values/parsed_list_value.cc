@@ -14,7 +14,6 @@
 
 #include <cstddef>
 #include <memory>
-#include <string>
 
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
@@ -22,17 +21,16 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/any.h"
 #include "common/value.h"
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
 
 namespace cel {
 
-class ListValueInterfaceIterator final : public ValueIterator {
+class ParsedListValueInterfaceIterator final : public ValueIterator {
  public:
-  explicit ListValueInterfaceIterator(const ListValueInterface& interface,
-                                      ValueManager& value_manager)
+  explicit ParsedListValueInterfaceIterator(
+      const ParsedListValueInterface& interface, ValueManager& value_manager)
       : interface_(interface),
         value_manager_(value_manager),
         size_(interface_.Size()) {}
@@ -49,38 +47,32 @@ class ListValueInterfaceIterator final : public ValueIterator {
   }
 
  private:
-  const ListValueInterface& interface_;
+  const ParsedListValueInterface& interface_;
   ValueManager& value_manager_;
   const size_t size_;
   size_t index_ = 0;
 };
 
-absl::StatusOr<size_t> ListValueInterface::GetSerializedSize() const {
+absl::StatusOr<size_t> ParsedListValueInterface::GetSerializedSize() const {
   return absl::UnimplementedError(
       "preflighting serialization size is not implemented by this list");
 }
 
-absl::Status ListValueInterface::SerializeTo(absl::Cord& value) const {
+absl::Status ParsedListValueInterface::SerializeTo(absl::Cord& value) const {
   CEL_ASSIGN_OR_RETURN(auto json, ConvertToJsonArray());
   return internal::SerializeListValue(json, value);
 }
 
-absl::StatusOr<std::string> ListValueInterface::GetTypeUrl(
-    absl::string_view prefix) const {
-  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.ListValue");
-}
-
-absl::StatusOr<ValueView> ListValueInterface::Get(ValueManager& value_manager,
-                                                  size_t index,
-                                                  Value& scratch) const {
+absl::StatusOr<ValueView> ParsedListValueInterface::Get(
+    ValueManager& value_manager, size_t index, Value& scratch) const {
   if (ABSL_PREDICT_FALSE(index >= Size())) {
     return absl::InvalidArgumentError("index out of bounds");
   }
   return GetImpl(value_manager, index, scratch);
 }
 
-absl::Status ListValueInterface::ForEach(ValueManager& value_manager,
-                                         ForEachCallback callback) const {
+absl::Status ParsedListValueInterface::ForEach(ValueManager& value_manager,
+                                               ForEachCallback callback) const {
   const size_t size = Size();
   for (size_t index = 0; index < size; ++index) {
     Value scratch;
@@ -93,9 +85,10 @@ absl::Status ListValueInterface::ForEach(ValueManager& value_manager,
   return absl::OkStatus();
 }
 
-absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> ListValueInterface::NewIterator(
-    ValueManager& value_manager) const {
-  return std::make_unique<ListValueInterfaceIterator>(*this, value_manager);
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
+ParsedListValueInterface::NewIterator(ValueManager& value_manager) const {
+  return std::make_unique<ParsedListValueInterfaceIterator>(*this,
+                                                            value_manager);
 }
 
 }  // namespace cel

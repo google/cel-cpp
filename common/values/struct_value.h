@@ -344,7 +344,22 @@ class StructValue final {
   friend struct NativeTypeTraits<StructValue>;
   friend struct CompositionTraits<StructValue>;
 
-  common_internal::StructValueViewVariant ToViewVariant() const;
+  common_internal::StructValueViewVariant ToViewVariant() const {
+    return absl::visit(
+        [](const auto& alternative) -> common_internal::StructValueViewVariant {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            return common_internal::StructValueViewVariant{};
+          } else {
+            return common_internal::StructValueViewVariant(
+                absl::in_place_type<typename absl::remove_cvref_t<
+                    decltype(alternative)>::view_alternative_type>,
+                alternative);
+          }
+        },
+        variant_);
+  }
 
   constexpr bool IsValid() const {
     return !absl::holds_alternative<absl::monostate>(variant_);
@@ -811,7 +826,22 @@ class StructValueView final {
   friend struct NativeTypeTraits<StructValueView>;
   friend struct CompositionTraits<StructValueView>;
 
-  common_internal::StructValueVariant ToVariant() const;
+  common_internal::StructValueVariant ToVariant() const {
+    return absl::visit(
+        [](auto alternative) -> common_internal::StructValueVariant {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            return common_internal::StructValueVariant{};
+          } else {
+            return common_internal::StructValueVariant(
+                absl::in_place_type<typename absl::remove_cvref_t<
+                    decltype(alternative)>::alternative_type>,
+                alternative);
+          }
+        },
+        variant_);
+  }
 
   constexpr bool IsValid() const {
     return !absl::holds_alternative<absl::monostate>(variant_);

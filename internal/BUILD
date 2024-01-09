@@ -411,3 +411,11 @@ cc_test(
         ":testing",
     ],
 )
+
+cc_library(
+    name = "dynamic_loader",
+    srcs = ["dynamic_loader.cc"],
+    hdrs = ["dynamic_loader.h"],
+    linkopts = ["-ldl"],
+    deps = ["@com_google_absl//absl/log:absl_check"],
+)

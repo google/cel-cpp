@@ -15,12 +15,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
-#include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/call_once.h"
-#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -29,13 +27,8 @@
 #include "common/json.h"
 #include "common/type.h"
 #include "common/value.h"
+#include "internal/dynamic_loader.h"
 #include "internal/status_macros.h"
-
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <dlfcn.h>
-#endif
 
 namespace cel::common_internal {
 
@@ -80,80 +73,9 @@ ABSL_CONST_INIT struct {
   LegacyStructValue_HasFieldByNumber has_field_by_number = nullptr;
 } legacy_struct_value_vtable;
 
-struct DynamicLibrarySymbol {
-  void* address;
-
-  template <typename T, typename = std::enable_if_t<std::is_pointer_v<T>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  operator T() const {
-    return reinterpret_cast<T>(address);
-  }
-};
-
-class DynamicLibrarySymbolFinder {
- public:
-  DynamicLibrarySymbolFinder() {
-#ifdef _WIN32
-    DWORD modules_capacity = 16;
-    modules_ = new HMODULE[modules_capacity];
-    while (true) {
-      if (!::EnumProcessModulesEx(::GetCurrentProcessHandle(), &modules_,
-                                  modules_capacity * sizeof(HMODULE),
-                                  &modules_size_, LIST_MODULES_DEFAULT)) {
-        // Give up. Fallback to check fail.
-        delete[] modules_;
-        modules_size_ = 0;
-        break;
-      }
-      modules_size_ /= sizeof(HMODULE);
-      if (modules_size_ <= modules_capacity) {
-        break;
-      }
-      modules_capacity *= 2;
-      delete[] modules_;
-      modules_ = new HMODULE[modules_capacity];
-    }
-#endif
-  }
-
-  ~DynamicLibrarySymbolFinder() {
-#ifdef _WIN32
-    delete[] modules_;
-#endif
-  }
-
-  DynamicLibrarySymbolFinder(const DynamicLibrarySymbolFinder&) = delete;
-  DynamicLibrarySymbolFinder(DynamicLibrarySymbolFinder&&) = delete;
-  DynamicLibrarySymbolFinder& operator=(const DynamicLibrarySymbolFinder&) =
-      delete;
-  DynamicLibrarySymbolFinder& operator=(DynamicLibrarySymbolFinder&&) = delete;
-
-  DynamicLibrarySymbol FindSymbolOrDie(const char* name) const {
-    void* address = nullptr;
-#ifdef _WIN32
-    for (DWORD i = 0; address == nullptr && i < modules_size_; ++i) {
-      address = ::GetProcAddress(modules_[i], name);
-    }
-#else
-    address = ::dlsym(handle_, name);
-#endif
-    ABSL_CHECK(address != nullptr)  // Crash OK
-        << "failed to find dynamic library symbol: " << name;
-    return DynamicLibrarySymbol{address};
-  }
-
- private:
-#ifdef _WIN32
-  HMODULE* modules_ = nullptr;
-  DWORD modules_size_ = 0;
-#else
-  void* handle_ = RTLD_DEFAULT;
-#endif
-};
-
 void InitializeLegacyStructValue() {
   absl::call_once(legacy_struct_value_vtable.init_once, []() -> void {
-    DynamicLibrarySymbolFinder symbol_finder;
+    internal::DynamicLoader symbol_finder;
     legacy_struct_value_vtable.debug_string = symbol_finder.FindSymbolOrDie(
         "cel_common_internal_LegacyStructValue_DebugString");
     legacy_struct_value_vtable.get_serialized_size =

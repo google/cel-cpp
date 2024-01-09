@@ -43,11 +43,11 @@ using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
 TEST(MapValue, CheckKey) {
-  EXPECT_THAT(MapValueView::CheckKey(BoolValueView()), IsOk());
-  EXPECT_THAT(MapValueView::CheckKey(IntValueView()), IsOk());
-  EXPECT_THAT(MapValueView::CheckKey(UintValueView()), IsOk());
-  EXPECT_THAT(MapValueView::CheckKey(StringValueView()), IsOk());
-  EXPECT_THAT(MapValueView::CheckKey(BytesValueView()),
+  EXPECT_THAT(CheckMapKey(BoolValueView()), IsOk());
+  EXPECT_THAT(CheckMapKey(IntValueView()), IsOk());
+  EXPECT_THAT(CheckMapKey(UintValueView()), IsOk());
+  EXPECT_THAT(CheckMapKey(StringValueView()), IsOk());
+  EXPECT_THAT(CheckMapKey(BytesValueView()),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 

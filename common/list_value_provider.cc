@@ -39,7 +39,7 @@ namespace cel {
 namespace {
 
 template <typename T>
-class TypedListValue final : public ListValueInterface {
+class TypedListValue final : public ParsedListValueInterface {
  public:
   TypedListValue(ListType type, std::vector<T>&& elements)
       : type_(std::move(type)), elements_(std::move(elements)) {}
@@ -87,7 +87,8 @@ class ListValueBuilderImpl final : public ListValueBuilder {
       std::declval<TypeManager&>()))>;
   using element_view_type = typename element_type::view_alternative_type;
 
-  static_assert(common_internal::IsValueAlternativeV<T>,
+  static_assert(common_internal::IsValueAlternativeV<T> ||
+                    std::is_same_v<T, ListValue> || std::is_same_v<T, MapValue>,
                 "T must be Value or one of the Value alternatives");
 
   ListValueBuilderImpl(MemoryManagerRef memory_manager, ListType type)
@@ -114,8 +115,9 @@ class ListValueBuilderImpl final : public ListValueBuilder {
   void Reserve(size_t capacity) override { elements_.reserve(capacity); }
 
   ListValue Build() && override {
-    return ListValue(memory_manager_.template MakeShared<TypedListValue<T>>(
-        std::move(type_), std::move(elements_)));
+    return ParsedListValue(
+        memory_manager_.template MakeShared<TypedListValue<T>>(
+            std::move(type_), std::move(elements_)));
   }
 
  private:
@@ -147,7 +149,7 @@ class ListValueBuilderImpl<Value> final : public ListValueBuilder {
   void Reserve(size_t capacity) override { elements_.reserve(capacity); }
 
   ListValue Build() && override {
-    return ListValue(memory_manager_.MakeShared<TypedListValue<Value>>(
+    return ParsedListValue(memory_manager_.MakeShared<TypedListValue<Value>>(
         std::move(type_), std::move(elements_)));
   }
 

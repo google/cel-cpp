@@ -381,7 +381,6 @@ cc_library(
         "value_manager.h",
         "value_provider.h",
     ],
-    linkopts = ["-ldl"],
     deps = [
         ":any",
         ":casting",
@@ -395,6 +394,7 @@ cc_library(
         "//common/internal:data_interface",
         "//common/internal:shared_byte_string",
         "//internal:deserialize",
+        "//internal:dynamic_loader",
         "//internal:no_destructor",
         "//internal:overflow",
         "//internal:overloaded",

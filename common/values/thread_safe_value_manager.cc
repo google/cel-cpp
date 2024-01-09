@@ -35,7 +35,8 @@ ListValue ThreadSafeValueManager::CreateZeroListValueImpl(ListTypeView type) {
       GetMemoryManager().MakeShared<EmptyListValue>(ListType(type));
   type = list_value->GetType();
   absl::WriterMutexLock lock(&list_values_mutex_);
-  return list_values_.insert(std::pair{type, ListValue(std::move(list_value))})
+  return list_values_
+      .insert(std::pair{type, ParsedListValue(std::move(list_value))})
       .first->second;
 }
 
@@ -50,7 +51,8 @@ MapValue ThreadSafeValueManager::CreateZeroMapValueImpl(MapTypeView type) {
   auto map_value = GetMemoryManager().MakeShared<EmptyMapValue>(MapType(type));
   type = map_value->GetType();
   absl::WriterMutexLock lock(&map_values_mutex_);
-  return map_values_.insert(std::pair{type, MapValue(std::move(map_value))})
+  return map_values_
+      .insert(std::pair{type, ParsedMapValue(std::move(map_value))})
       .first->second;
 }
 

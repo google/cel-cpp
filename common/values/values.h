@@ -26,6 +26,8 @@
 namespace cel {
 
 class ValueInterface;
+class ListValueInterface;
+class MapValueInterface;
 class StructValueInterface;
 
 class Value;
@@ -64,6 +66,14 @@ class TypeValueView;
 class UintValueView;
 class UnknownValueView;
 
+class ParsedListValue;
+class ParsedListValueView;
+class ParsedListValueInterface;
+
+class ParsedMapValue;
+class ParsedMapValueView;
+class ParsedMapValueInterface;
+
 class ParsedStructValue;
 class ParsedStructValueView;
 class ParsedStructValueInterface;
@@ -75,8 +85,81 @@ class OptionalValueView;
 
 namespace common_internal {
 
+class LegacyListValue;
+class LegacyListValueView;
+
+class LegacyMapValue;
+class LegacyMapValueView;
+
 class LegacyStructValue;
 class LegacyStructValueView;
+
+template <typename T>
+struct IsListValueInterface
+    : std::bool_constant<
+          std::conjunction_v<std::negation<std::is_same<ListValueInterface, T>>,
+                             std::is_base_of<ListValueInterface, T>>> {};
+
+template <typename T>
+inline constexpr bool IsListValueInterfaceV = IsListValueInterface<T>::value;
+
+template <typename T>
+struct IsListValueAlternative
+    : std::bool_constant<std::disjunction_v<std::is_base_of<ParsedListValue, T>,
+                                            std::is_same<LegacyListValue, T>>> {
+};
+
+template <typename T>
+inline constexpr bool IsListValueAlternativeV =
+    IsListValueAlternative<T>::value;
+
+using ListValueVariant = absl::variant<ParsedListValue, LegacyListValue>;
+
+template <typename T>
+struct IsListValueViewAlternative
+    : std::bool_constant<
+          std::disjunction_v<std::is_base_of<ParsedListValueView, T>,
+                             std::is_same<LegacyListValueView, T>>> {};
+
+template <typename T>
+inline constexpr bool IsListValueViewAlternativeV =
+    IsListValueViewAlternative<T>::value;
+
+using ListValueViewVariant =
+    absl::variant<ParsedListValueView, LegacyListValueView>;
+
+template <typename T>
+struct IsMapValueInterface
+    : std::bool_constant<
+          std::conjunction_v<std::negation<std::is_same<MapValueInterface, T>>,
+                             std::is_base_of<MapValueInterface, T>>> {};
+
+template <typename T>
+inline constexpr bool IsMapValueInterfaceV = IsMapValueInterface<T>::value;
+
+template <typename T>
+struct IsMapValueAlternative
+    : std::bool_constant<std::disjunction_v<std::is_base_of<ParsedMapValue, T>,
+                                            std::is_same<LegacyMapValue, T>>> {
+};
+
+template <typename T>
+inline constexpr bool IsMapValueAlternativeV = IsMapValueAlternative<T>::value;
+
+using MapValueVariant = absl::variant<ParsedMapValue, LegacyMapValue>;
+
+template <typename T>
+struct IsMapValueViewAlternative
+    : std::bool_constant<
+          std::disjunction_v<std::is_base_of<ParsedMapValueView, T>,
+                             std::is_same<LegacyMapValueView, T>>> {};
+
+template <typename T>
+inline constexpr bool IsMapValueViewAlternativeV =
+    IsMapValueViewAlternative<T>::value;
+
+using MapValueViewVariant =
+    absl::variant<ParsedMapValueView, LegacyMapValueView>;
 
 template <typename T>
 struct IsStructValueInterface
@@ -130,7 +213,7 @@ struct IsValueAlternative
           std::is_same<BoolValue, T>, std::is_same<BytesValue, T>,
           std::is_same<DoubleValue, T>, std::is_same<DurationValue, T>,
           std::is_same<ErrorValue, T>, std::is_same<IntValue, T>,
-          std::is_base_of<ListValue, T>, std::is_base_of<MapValue, T>,
+          IsListValueAlternative<T>, IsMapValueAlternative<T>,
           std::is_same<NullValue, T>, std::is_base_of<OpaqueValue, T>,
           std::is_same<StringValue, T>, IsStructValueAlternative<T>,
           std::is_same<TimestampValue, T>, std::is_same<TypeValue, T>,
@@ -139,12 +222,11 @@ struct IsValueAlternative
 template <typename T>
 inline constexpr bool IsValueAlternativeV = IsValueAlternative<T>::value;
 
-using ValueVariant =
-    absl::variant<absl::monostate, BoolValue, BytesValue, DoubleValue,
-                  DurationValue, ErrorValue, IntValue, ListValue, MapValue,
-                  NullValue, OpaqueValue, StringValue, LegacyStructValue,
-                  ParsedStructValue, TimestampValue, TypeValue, UintValue,
-                  UnknownValue>;
+using ValueVariant = absl::variant<
+    absl::monostate, BoolValue, BytesValue, DoubleValue, DurationValue,
+    ErrorValue, IntValue, LegacyListValue, ParsedListValue, LegacyMapValue,
+    ParsedMapValue, NullValue, OpaqueValue, StringValue, LegacyStructValue,
+    ParsedStructValue, TimestampValue, TypeValue, UintValue, UnknownValue>;
 
 template <typename T>
 struct IsValueViewAlternative
@@ -152,7 +234,7 @@ struct IsValueViewAlternative
           std::is_same<BoolValueView, T>, std::is_same<BytesValueView, T>,
           std::is_same<DoubleValueView, T>, std::is_same<DurationValueView, T>,
           std::is_same<ErrorValueView, T>, std::is_same<IntValueView, T>,
-          std::is_base_of<ListValueView, T>, std::is_base_of<MapValueView, T>,
+          IsListValueViewAlternative<T>, IsMapValueViewAlternative<T>,
           std::is_same<NullValueView, T>, std::is_base_of<OpaqueValueView, T>,
           std::is_same<StringValueView, T>, IsStructValueViewAlternative<T>,
           std::is_same<TimestampValueView, T>, std::is_same<TypeValueView, T>,
@@ -166,7 +248,8 @@ inline constexpr bool IsValueViewAlternativeV =
 using ValueViewVariant =
     absl::variant<absl::monostate, BoolValueView, BytesValueView,
                   DoubleValueView, DurationValueView, ErrorValueView,
-                  IntValueView, ListValueView, MapValueView, NullValueView,
+                  IntValueView, LegacyListValueView, ParsedListValueView,
+                  LegacyMapValueView, ParsedMapValueView, NullValueView,
                   OpaqueValueView, StringValueView, LegacyStructValueView,
                   ParsedStructValueView, TimestampValueView, TypeValueView,
                   UintValueView, UnknownValueView>;
@@ -189,8 +272,8 @@ struct BaseValueAlternativeFor<T, std::enable_if_t<IsValueInterfaceV<T>>>
 
 template <typename T>
 struct BaseValueAlternativeFor<
-    T, std::enable_if_t<std::is_base_of_v<ListValue, T>>> {
-  using type = ListValue;
+    T, std::enable_if_t<std::is_base_of_v<ParsedListValue, T>>> {
+  using type = ParsedListValue;
 };
 
 template <typename T>
@@ -201,8 +284,8 @@ struct BaseValueAlternativeFor<
 
 template <typename T>
 struct BaseValueAlternativeFor<
-    T, std::enable_if_t<std::is_base_of_v<MapValue, T>>> {
-  using type = MapValue;
+    T, std::enable_if_t<std::is_base_of_v<ParsedMapValue, T>>> {
+  using type = ParsedMapValue;
 };
 
 template <typename T>
@@ -232,8 +315,8 @@ struct BaseValueViewAlternativeFor<T, std::enable_if_t<IsValueInterfaceV<T>>>
 
 template <typename T>
 struct BaseValueViewAlternativeFor<
-    T, std::enable_if_t<std::is_base_of_v<ListValueView, T>>> {
-  using type = ListValueView;
+    T, std::enable_if_t<std::is_base_of_v<ParsedListValueView, T>>> {
+  using type = ParsedListValueView;
 };
 
 template <typename T>
@@ -244,8 +327,8 @@ struct BaseValueViewAlternativeFor<
 
 template <typename T>
 struct BaseValueViewAlternativeFor<
-    T, std::enable_if_t<std::is_base_of_v<MapValueView, T>>> {
-  using type = MapValueView;
+    T, std::enable_if_t<std::is_base_of_v<ParsedMapValueView, T>>> {
+  using type = ParsedMapValueView;
 };
 
 template <typename T>
@@ -257,6 +340,109 @@ struct BaseValueViewAlternativeFor<
 template <typename T>
 using BaseValueViewAlternativeForT =
     typename BaseValueViewAlternativeFor<T>::type;
+
+template <typename T, typename = void>
+struct BaseListValueAlternativeFor {
+  static_assert(IsListValueAlternativeV<T>);
+  using type = T;
+};
+
+template <typename T>
+struct BaseListValueAlternativeFor<
+    T, std::enable_if_t<IsListValueViewAlternativeV<T>>>
+    : BaseValueAlternativeFor<typename T::alternative_type> {};
+
+template <typename T>
+struct BaseListValueAlternativeFor<T,
+                                   std::enable_if_t<IsListValueInterfaceV<T>>>
+    : BaseValueAlternativeFor<typename T::alternative_type> {};
+
+template <typename T>
+struct BaseListValueAlternativeFor<
+    T, std::enable_if_t<std::is_base_of_v<ParsedListValue, T>>> {
+  using type = ParsedListValue;
+};
+
+template <typename T>
+using BaseListValueAlternativeForT =
+    typename BaseListValueAlternativeFor<T>::type;
+
+template <typename T, typename = void>
+struct BaseListValueViewAlternativeFor {
+  static_assert(IsListValueViewAlternativeV<T>);
+  using type = T;
+};
+
+template <typename T>
+struct BaseListValueViewAlternativeFor<
+    T, std::enable_if_t<IsListValueAlternativeV<T>>>
+    : BaseListValueViewAlternativeFor<typename T::view_alternative_type> {};
+
+template <typename T>
+struct BaseListValueViewAlternativeFor<
+    T, std::enable_if_t<IsListValueInterfaceV<T>>>
+    : BaseListValueViewAlternativeFor<typename T::view_alternative_type> {};
+
+template <typename T>
+struct BaseListValueViewAlternativeFor<
+    T, std::enable_if_t<std::is_base_of_v<ParsedListValueView, T>>> {
+  using type = ParsedListValueView;
+};
+
+template <typename T>
+using BaseListValueViewAlternativeForT =
+    typename BaseListValueViewAlternativeFor<T>::type;
+
+template <typename T, typename = void>
+struct BaseMapValueAlternativeFor {
+  static_assert(IsMapValueAlternativeV<T>);
+  using type = T;
+};
+
+template <typename T>
+struct BaseMapValueAlternativeFor<
+    T, std::enable_if_t<IsMapValueViewAlternativeV<T>>>
+    : BaseValueAlternativeFor<typename T::alternative_type> {};
+
+template <typename T>
+struct BaseMapValueAlternativeFor<T, std::enable_if_t<IsMapValueInterfaceV<T>>>
+    : BaseValueAlternativeFor<typename T::alternative_type> {};
+
+template <typename T>
+struct BaseMapValueAlternativeFor<
+    T, std::enable_if_t<std::is_base_of_v<ParsedMapValue, T>>> {
+  using type = ParsedMapValue;
+};
+
+template <typename T>
+using BaseMapValueAlternativeForT =
+    typename BaseMapValueAlternativeFor<T>::type;
+
+template <typename T, typename = void>
+struct BaseMapValueViewAlternativeFor {
+  static_assert(IsMapValueViewAlternativeV<T>);
+  using type = T;
+};
+
+template <typename T>
+struct BaseMapValueViewAlternativeFor<
+    T, std::enable_if_t<IsMapValueAlternativeV<T>>>
+    : BaseMapValueViewAlternativeFor<typename T::view_alternative_type> {};
+
+template <typename T>
+struct BaseMapValueViewAlternativeFor<T,
+                                      std::enable_if_t<IsMapValueInterfaceV<T>>>
+    : BaseMapValueViewAlternativeFor<typename T::view_alternative_type> {};
+
+template <typename T>
+struct BaseMapValueViewAlternativeFor<
+    T, std::enable_if_t<std::is_base_of_v<ParsedMapValueView, T>>> {
+  using type = ParsedMapValueView;
+};
+
+template <typename T>
+using BaseMapValueViewAlternativeForT =
+    typename BaseMapValueViewAlternativeFor<T>::type;
 
 template <typename T, typename = void>
 struct BaseStructValueAlternativeFor {
@@ -312,9 +498,9 @@ using BaseStructValueViewAlternativeForT =
 
 ABSL_ATTRIBUTE_PURE_FUNCTION ErrorValueView GetDefaultErrorValue();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION ListValueView GetEmptyDynListValue();
+ABSL_ATTRIBUTE_PURE_FUNCTION ParsedListValueView GetEmptyDynListValue();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION MapValueView GetEmptyDynDynMapValue();
+ABSL_ATTRIBUTE_PURE_FUNCTION ParsedMapValueView GetEmptyDynDynMapValue();
 
 ABSL_ATTRIBUTE_PURE_FUNCTION OptionalValueView GetEmptyDynOptionalValue();
 

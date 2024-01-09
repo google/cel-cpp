@@ -103,6 +103,42 @@ class Value final {
   }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(const ListValue& value)
+      : Value(CompositionTraits<ListValue>::Get<Value>(value)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(ListValue&& value)
+      : Value(CompositionTraits<ListValue>::Get<Value>(std::move(value))) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(const ListValue& value) {
+    return *this = CompositionTraits<ListValue>::Get<Value>(value);
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(ListValue&& value) {
+    return *this = CompositionTraits<ListValue>::Get<Value>(std::move(value));
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(const MapValue& value)
+      : Value(CompositionTraits<MapValue>::Get<Value>(value)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(MapValue&& value)
+      : Value(CompositionTraits<MapValue>::Get<Value>(std::move(value))) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(const MapValue& value) {
+    return *this = CompositionTraits<MapValue>::Get<Value>(value);
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(MapValue&& value) {
+    return *this = CompositionTraits<MapValue>::Get<Value>(std::move(value));
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
   Value(const StructValue& value)
       : Value(CompositionTraits<StructValue>::Get<Value>(value)) {}
 
@@ -380,14 +416,6 @@ class Value final {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            static_assert(
-                std::is_same_v<absl::variant_alternative_t<
-                                   0, common_internal::ValueViewVariant>,
-                               absl::monostate>);
-            static_assert(std::is_same_v<absl::variant_alternative_t<
-                                             0, common_internal::ValueVariant>,
-                                         absl::monostate>);
             return common_internal::ValueViewVariant{};
           } else {
             return common_internal::ValueViewVariant(
@@ -466,6 +494,24 @@ struct CompositionTraits<Value> final {
   }
 
   template <typename U>
+  static std::enable_if_t<std::is_same_v<ListValue, U>, bool> HasA(
+      const Value& value) {
+    value.AssertIsValid();
+    return absl::holds_alternative<common_internal::LegacyListValue>(
+               value.variant_) ||
+           absl::holds_alternative<ParsedListValue>(value.variant_);
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<MapValue, U>, bool> HasA(
+      const Value& value) {
+    value.AssertIsValid();
+    return absl::holds_alternative<common_internal::LegacyMapValue>(
+               value.variant_) ||
+           absl::holds_alternative<ParsedMapValue>(value.variant_);
+  }
+
+  template <typename U>
   static std::enable_if_t<std::is_same_v<StructValue, U>, bool> HasA(
       const Value& value) {
     value.AssertIsValid();
@@ -520,6 +566,92 @@ struct CompositionTraits<Value> final {
     } else {
       return Cast<U>(absl::get<Base>(std::move(value.variant_)));
     }
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<ListValue, U>, U> Get(
+      const Value& value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyListValue>(
+            value.variant_)) {
+      return U{absl::get<common_internal::LegacyListValue>(value.variant_)};
+    }
+    return U{absl::get<ParsedListValue>(value.variant_)};
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<ListValue, U>, U> Get(Value& value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyListValue>(
+            value.variant_)) {
+      return U{absl::get<common_internal::LegacyListValue>(value.variant_)};
+    }
+    return U{absl::get<ParsedListValue>(value.variant_)};
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<ListValue, U>, U> Get(
+      const Value&& value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyListValue>(
+            value.variant_)) {
+      return U{absl::get<common_internal::LegacyListValue>(value.variant_)};
+    }
+    return U{absl::get<ParsedListValue>(value.variant_)};
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<ListValue, U>, U> Get(Value&& value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyListValue>(
+            value.variant_)) {
+      return U{absl::get<common_internal::LegacyListValue>(
+          std::move(value.variant_))};
+    }
+    return U{absl::get<ParsedListValue>(std::move(value.variant_))};
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<MapValue, U>, U> Get(
+      const Value& value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyMapValue>(
+            value.variant_)) {
+      return U{absl::get<common_internal::LegacyMapValue>(value.variant_)};
+    }
+    return U{absl::get<ParsedMapValue>(value.variant_)};
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<MapValue, U>, U> Get(Value& value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyMapValue>(
+            value.variant_)) {
+      return U{absl::get<common_internal::LegacyMapValue>(value.variant_)};
+    }
+    return U{absl::get<ParsedMapValue>(value.variant_)};
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<MapValue, U>, U> Get(
+      const Value&& value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyMapValue>(
+            value.variant_)) {
+      return U{absl::get<common_internal::LegacyMapValue>(value.variant_)};
+    }
+    return U{absl::get<ParsedMapValue>(value.variant_)};
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<MapValue, U>, U> Get(Value&& value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyMapValue>(
+            value.variant_)) {
+      return U{absl::get<common_internal::LegacyMapValue>(
+          std::move(value.variant_))};
+    }
+    return U{absl::get<ParsedMapValue>(std::move(value.variant_))};
   }
 
   template <typename U>
@@ -631,6 +763,36 @@ class ValueView final {
   }
 
   ValueView& operator=(Value&&) = delete;
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ValueView(const ListValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : ValueView(ListValueView(value)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ValueView(const MapValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : ValueView(MapValueView(value)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ValueView(const StructValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : ValueView(StructValueView(value)) {}
+
+  ValueView(ListValue&&) = delete;
+
+  ValueView(MapValue&&) = delete;
+
+  ValueView(StructValue&&) = delete;
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ValueView(ListValueView value)
+      : ValueView(CompositionTraits<ListValueView>::Get<ValueView>(value)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ValueView(MapValueView value)
+      : ValueView(CompositionTraits<MapValueView>::Get<ValueView>(value)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ValueView(StructValueView value)
+      : ValueView(CompositionTraits<StructValueView>::Get<ValueView>(value)) {}
 
   template <typename T>
   std::enable_if_t<common_internal::IsValueAlternativeV<T>, ValueView&>
@@ -877,14 +1039,6 @@ class ValueView final {
           if constexpr (std::is_same_v<
                             absl::remove_cvref_t<decltype(alternative)>,
                             absl::monostate>) {
-            // Only present in debug builds.
-            static_assert(
-                std::is_same_v<absl::variant_alternative_t<
-                                   0, common_internal::ValueViewVariant>,
-                               absl::monostate>);
-            static_assert(std::is_same_v<absl::variant_alternative_t<
-                                             0, common_internal::ValueVariant>,
-                                         absl::monostate>);
             return common_internal::ValueVariant{};
           } else {
             return common_internal::ValueVariant(
@@ -945,6 +1099,24 @@ struct CompositionTraits<ValueView> final {
   }
 
   template <typename U>
+  static std::enable_if_t<std::is_same_v<ListValueView, U>, bool> HasA(
+      ValueView value) {
+    value.AssertIsValid();
+    return absl::holds_alternative<common_internal::LegacyListValueView>(
+               value.variant_) ||
+           absl::holds_alternative<ParsedListValueView>(value.variant_);
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<MapValueView, U>, bool> HasA(
+      ValueView value) {
+    value.AssertIsValid();
+    return absl::holds_alternative<common_internal::LegacyMapValueView>(
+               value.variant_) ||
+           absl::holds_alternative<ParsedMapValueView>(value.variant_);
+  }
+
+  template <typename U>
   static std::enable_if_t<std::is_same_v<StructValueView, U>, bool> HasA(
       ValueView value) {
     value.AssertIsValid();
@@ -963,6 +1135,28 @@ struct CompositionTraits<ValueView> final {
     } else {
       return Cast<U>(absl::get<Base>(value.variant_));
     }
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<ListValueView, U>, U> Get(
+      ValueView value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyListValueView>(
+            value.variant_)) {
+      return U{absl::get<common_internal::LegacyListValueView>(value.variant_)};
+    }
+    return U{absl::get<ParsedListValueView>(value.variant_)};
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<MapValueView, U>, U> Get(
+      ValueView value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyMapValueView>(
+            value.variant_)) {
+      return U{absl::get<common_internal::LegacyMapValueView>(value.variant_)};
+    }
+    return U{absl::get<ParsedMapValueView>(value.variant_)};
   }
 
   template <typename U>
@@ -1038,42 +1232,94 @@ inline ErrorValue::ErrorValue()
 inline ErrorValueView::ErrorValueView()
     : ErrorValueView(common_internal::GetDefaultErrorValue()) {}
 
-inline ListValue::ListValue()
-    : ListValue(common_internal::GetEmptyDynListValue()) {}
-
-inline absl::StatusOr<ValueView> ListValue::Get(ValueManager& value_manager,
-                                                size_t index,
-                                                Value& scratch) const {
+inline absl::StatusOr<ValueView> ParsedListValue::Get(
+    ValueManager& value_manager, size_t index, Value& scratch) const {
   return interface_->Get(value_manager, index, scratch);
 }
 
-inline absl::Status ListValue::ForEach(ValueManager& value_manager,
-                                       ForEachCallback callback) const {
-  return interface_->ForEach(value_manager, callback);
-}
-
-inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> ListValue::NewIterator(
-    ValueManager& value_manager) const {
-  return interface_->NewIterator(value_manager);
-}
-
-inline ListValueView::ListValueView()
-    : ListValueView(common_internal::GetEmptyDynListValue()) {}
-
-inline absl::StatusOr<ValueView> ListValueView::Get(ValueManager& value_manager,
-                                                    size_t index,
-                                                    Value& scratch) const {
-  return interface_->Get(value_manager, index, scratch);
-}
-
-inline absl::Status ListValueView::ForEach(ValueManager& value_manager,
-                                           ForEachCallback callback) const {
+inline absl::Status ParsedListValue::ForEach(ValueManager& value_manager,
+                                             ForEachCallback callback) const {
   return interface_->ForEach(value_manager, callback);
 }
 
 inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
-ListValueView::NewIterator(ValueManager& value_manager) const {
+ParsedListValue::NewIterator(ValueManager& value_manager) const {
   return interface_->NewIterator(value_manager);
+}
+
+inline absl::StatusOr<ValueView> ParsedListValueView::Get(
+    ValueManager& value_manager, size_t index, Value& scratch) const {
+  return interface_->Get(value_manager, index, scratch);
+}
+
+inline absl::Status ParsedListValueView::ForEach(
+    ValueManager& value_manager, ForEachCallback callback) const {
+  return interface_->ForEach(value_manager, callback);
+}
+
+inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
+ParsedListValueView::NewIterator(ValueManager& value_manager) const {
+  return interface_->NewIterator(value_manager);
+}
+
+inline absl::StatusOr<ValueView> ListValue::Get(ValueManager& value_manager,
+                                                size_t index,
+                                                Value& scratch) const {
+  return absl::visit(
+      [&value_manager, index,
+       &scratch](const auto& alternative) -> absl::StatusOr<ValueView> {
+        return alternative.Get(value_manager, index, scratch);
+      },
+      variant_);
+}
+
+inline absl::Status ListValue::ForEach(ValueManager& value_manager,
+                                       ForEachCallback callback) const {
+  return absl::visit(
+      [&value_manager, callback](const auto& alternative) -> absl::Status {
+        return alternative.ForEach(value_manager, callback);
+      },
+      variant_);
+}
+
+inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> ListValue::NewIterator(
+    ValueManager& value_manager) const {
+  return absl::visit(
+      [&value_manager](const auto& alternative)
+          -> absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> {
+        return alternative.NewIterator(value_manager);
+      },
+      variant_);
+}
+
+inline absl::StatusOr<ValueView> ListValueView::Get(ValueManager& value_manager,
+                                                    size_t index,
+                                                    Value& scratch) const {
+  return absl::visit(
+      [&value_manager, index,
+       &scratch](auto alternative) -> absl::StatusOr<ValueView> {
+        return alternative.Get(value_manager, index, scratch);
+      },
+      variant_);
+}
+
+inline absl::Status ListValueView::ForEach(ValueManager& value_manager,
+                                           ForEachCallback callback) const {
+  return absl::visit(
+      [&value_manager, callback](auto alternative) -> absl::Status {
+        return alternative.ForEach(value_manager, callback);
+      },
+      variant_);
+}
+
+inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
+ListValueView::NewIterator(ValueManager& value_manager) const {
+  return absl::visit(
+      [&value_manager](
+          auto alternative) -> absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> {
+        return alternative.NewIterator(value_manager);
+      },
+      variant_);
 }
 
 inline OptionalValue OptionalValue::None() {
@@ -1092,78 +1338,178 @@ inline ValueView OptionalValueView::Value(cel::Value& scratch) const {
   return (*this)->Value(scratch);
 }
 
-inline MapValue::MapValue()
-    : MapValue(common_internal::GetEmptyDynDynMapValue()) {}
+inline absl::StatusOr<ValueView> ParsedMapValue::Get(
+    ValueManager& value_manager, ValueView key, Value& scratch) const {
+  return interface_->Get(value_manager, key, scratch);
+}
 
-inline absl::Status MapValue::CheckKey(ValueView key) {
-  return MapValueInterface::CheckKey(key);
+inline absl::StatusOr<std::pair<ValueView, bool>> ParsedMapValue::Find(
+    ValueManager& value_manager, ValueView key, Value& scratch) const {
+  return interface_->Find(value_manager, key, scratch);
+}
+
+inline absl::StatusOr<ValueView> ParsedMapValue::Has(ValueView key) const {
+  return interface_->Has(key);
+}
+
+inline absl::StatusOr<ListValueView> ParsedMapValue::ListKeys(
+    ValueManager& value_manager, ListValue& scratch) const {
+  return interface_->ListKeys(value_manager, scratch);
+}
+
+inline absl::Status ParsedMapValue::ForEach(ValueManager& value_manager,
+                                            ForEachCallback callback) const {
+  return interface_->ForEach(value_manager, callback);
+}
+
+inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
+ParsedMapValue::NewIterator(ValueManager& value_manager) const {
+  return interface_->NewIterator(value_manager);
+}
+
+inline absl::StatusOr<ValueView> ParsedMapValueView::Get(
+    ValueManager& value_manager, ValueView key, Value& scratch) const {
+  return interface_->Get(value_manager, key, scratch);
+}
+
+inline absl::StatusOr<std::pair<ValueView, bool>> ParsedMapValueView::Find(
+    ValueManager& value_manager, ValueView key, Value& scratch) const {
+  return interface_->Find(value_manager, key, scratch);
+}
+
+inline absl::StatusOr<ValueView> ParsedMapValueView::Has(ValueView key) const {
+  return interface_->Has(key);
+}
+
+inline absl::StatusOr<ListValueView> ParsedMapValueView::ListKeys(
+    ValueManager& value_manager, ListValue& scratch) const {
+  return interface_->ListKeys(value_manager, scratch);
+}
+
+inline absl::Status ParsedMapValueView::ForEach(
+    ValueManager& value_manager, ForEachCallback callback) const {
+  return interface_->ForEach(value_manager, callback);
+}
+
+inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
+ParsedMapValueView::NewIterator(ValueManager& value_manager) const {
+  return interface_->NewIterator(value_manager);
 }
 
 inline absl::StatusOr<ValueView> MapValue::Get(ValueManager& value_manager,
                                                ValueView key,
                                                Value& scratch) const {
-  return interface_->Get(value_manager, key, scratch);
+  return absl::visit(
+      [&value_manager, key,
+       &scratch](const auto& alternative) -> absl::StatusOr<ValueView> {
+        return alternative.Get(value_manager, key, scratch);
+      },
+      variant_);
 }
 
 inline absl::StatusOr<std::pair<ValueView, bool>> MapValue::Find(
     ValueManager& value_manager, ValueView key, Value& scratch) const {
-  return interface_->Find(value_manager, key, scratch);
+  return absl::visit(
+      [&value_manager, key, &scratch](const auto& alternative)
+          -> absl::StatusOr<std::pair<ValueView, bool>> {
+        return alternative.Find(value_manager, key, scratch);
+      },
+      variant_);
 }
 
 inline absl::StatusOr<ValueView> MapValue::Has(ValueView key) const {
-  return interface_->Has(key);
+  return absl::visit(
+      [key](const auto& alternative) -> absl::StatusOr<ValueView> {
+        return alternative.Has(key);
+      },
+      variant_);
 }
 
 inline absl::StatusOr<ListValueView> MapValue::ListKeys(
     ValueManager& value_manager, ListValue& scratch) const {
-  return interface_->ListKeys(value_manager, scratch);
+  return absl::visit(
+      [&value_manager,
+       &scratch](const auto& alternative) -> absl::StatusOr<ListValueView> {
+        return alternative.ListKeys(value_manager, scratch);
+      },
+      variant_);
 }
 
 inline absl::Status MapValue::ForEach(ValueManager& value_manager,
                                       ForEachCallback callback) const {
-  return interface_->ForEach(value_manager, callback);
+  return absl::visit(
+      [&value_manager, callback](const auto& alternative) -> absl::Status {
+        return alternative.ForEach(value_manager, callback);
+      },
+      variant_);
 }
 
 inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> MapValue::NewIterator(
     ValueManager& value_manager) const {
-  return interface_->NewIterator(value_manager);
-}
-
-inline MapValueView::MapValueView()
-    : MapValueView(common_internal::GetEmptyDynDynMapValue()) {}
-
-inline absl::Status MapValueView::CheckKey(ValueView key) {
-  return MapValue::CheckKey(key);
+  return absl::visit(
+      [&value_manager](const auto& alternative)
+          -> absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> {
+        return alternative.NewIterator(value_manager);
+      },
+      variant_);
 }
 
 inline absl::StatusOr<ValueView> MapValueView::Get(ValueManager& value_manager,
                                                    ValueView key,
                                                    Value& scratch) const {
-  return interface_->Get(value_manager, key, scratch);
+  return absl::visit(
+      [&value_manager, key,
+       &scratch](auto alternative) -> absl::StatusOr<ValueView> {
+        return alternative.Get(value_manager, key, scratch);
+      },
+      variant_);
 }
 
 inline absl::StatusOr<std::pair<ValueView, bool>> MapValueView::Find(
     ValueManager& value_manager, ValueView key, Value& scratch) const {
-  return interface_->Find(value_manager, key, scratch);
+  return absl::visit(
+      [&value_manager, key, &scratch](
+          auto alternative) -> absl::StatusOr<std::pair<ValueView, bool>> {
+        return alternative.Find(value_manager, key, scratch);
+      },
+      variant_);
 }
 
 inline absl::StatusOr<ValueView> MapValueView::Has(ValueView key) const {
-  return interface_->Has(key);
+  return absl::visit(
+      [key](auto alternative) -> absl::StatusOr<ValueView> {
+        return alternative.Has(key);
+      },
+      variant_);
 }
 
 inline absl::StatusOr<ListValueView> MapValueView::ListKeys(
     ValueManager& value_manager, ListValue& scratch) const {
-  return interface_->ListKeys(value_manager, scratch);
+  return absl::visit(
+      [&value_manager,
+       &scratch](auto alternative) -> absl::StatusOr<ListValueView> {
+        return alternative.ListKeys(value_manager, scratch);
+      },
+      variant_);
 }
 
 inline absl::Status MapValueView::ForEach(ValueManager& value_manager,
                                           ForEachCallback callback) const {
-  return interface_->ForEach(value_manager, callback);
+  return absl::visit(
+      [&value_manager, callback](auto alternative) -> absl::Status {
+        return alternative.ForEach(value_manager, callback);
+      },
+      variant_);
 }
 
 inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
 MapValueView::NewIterator(ValueManager& value_manager) const {
-  return interface_->NewIterator(value_manager);
+  return absl::visit(
+      [&value_manager](
+          auto alternative) -> absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> {
+        return alternative.NewIterator(value_manager);
+      },
+      variant_);
 }
 
 inline absl::StatusOr<ValueView> ParsedStructValue::GetFieldByName(

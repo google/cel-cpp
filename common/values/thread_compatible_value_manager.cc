@@ -31,7 +31,8 @@ ListValue ThreadCompatibleValueManager::CreateZeroListValueImpl(
   auto list_value =
       GetMemoryManager().MakeShared<EmptyListValue>(ListType(type));
   type = list_value->GetType();
-  return list_values_.insert(std::pair{type, ListValue(std::move(list_value))})
+  return list_values_
+      .insert(std::pair{type, ParsedListValue(std::move(list_value))})
       .first->second;
 }
 
@@ -42,7 +43,8 @@ MapValue ThreadCompatibleValueManager::CreateZeroMapValueImpl(
   }
   auto map_value = GetMemoryManager().MakeShared<EmptyMapValue>(MapType(type));
   type = map_value->GetType();
-  return map_values_.insert(std::pair{type, MapValue(std::move(map_value))})
+  return map_values_
+      .insert(std::pair{type, ParsedMapValue(std::move(map_value))})
       .first->second;
 }
 

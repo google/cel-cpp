@@ -137,7 +137,7 @@ void JsonDebugString(const Json& json, std::string& out) {
               json);
 }
 
-class JsonListValue final : public ListValueInterface {
+class JsonListValue final : public ParsedListValueInterface {
  public:
   explicit JsonListValue(JsonArray array) : array_(std::move(array)) {}
 
@@ -196,7 +196,7 @@ class JsonMapValueKeyIterator final : public ValueIterator {
   typename JsonObject::const_iterator end_;
 };
 
-class JsonMapValue final : public MapValueInterface {
+class JsonMapValue final : public ParsedMapValueInterface {
  public:
   explicit JsonMapValue(JsonObject object) : object_(std::move(object)) {}
 
@@ -218,8 +218,8 @@ class JsonMapValue final : public MapValueInterface {
     for (const auto& entry : object_) {
       keys.push_back(entry.first);
     }
-    scratch =
-        ListValue(value_manager.GetMemoryManager().MakeShared<JsonListValue>(
+    scratch = ParsedListValue(
+        value_manager.GetMemoryManager().MakeShared<JsonListValue>(
             std::move(keys).Build()));
     return scratch;
   }
@@ -304,7 +304,7 @@ ListValue ValueFactory::CreateListValueFromJsonArray(JsonArray json) {
   if (json.empty()) {
     return ListValue(GetZeroDynListValue());
   }
-  return ListValue(
+  return ParsedListValue(
       GetMemoryManager().MakeShared<JsonListValue>(std::move(json)));
 }
 
@@ -312,7 +312,8 @@ MapValue ValueFactory::CreateMapValueFromJsonObject(JsonObject json) {
   if (json.empty()) {
     return MapValue(GetZeroStringDynMapValue());
   }
-  return MapValue(GetMemoryManager().MakeShared<JsonMapValue>(std::move(json)));
+  return ParsedMapValue(
+      GetMemoryManager().MakeShared<JsonMapValue>(std::move(json)));
 }
 
 ListValue ValueFactory::CreateZeroListValue(ListTypeView type) {

@@ -12,24 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cstddef>
-#include <memory>
-#include <string>
-#include <tuple>
-#include <utility>
-
 #include "absl/base/attributes.h"
-#include "absl/base/optimization.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/string_view.h"
-#include "common/any.h"
 #include "common/value.h"
 #include "common/value_kind.h"
-#include "internal/serialize.h"
-#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -40,14 +27,9 @@ absl::Status InvalidMapKeyTypeError(ValueKind kind) {
       absl::StrCat("Invalid map key type: '", ValueKindToString(kind), "'"));
 }
 
-absl::Status NoSuchKeyError(ValueView key) {
-  return absl::NotFoundError(
-      absl::StrCat("Key not found in map : ", key.DebugString()));
-}
-
 }  // namespace
 
-absl::Status MapValueInterface::CheckKey(ValueView key) {
+absl::Status CheckMapKey(ValueView key) {
   switch (key.kind()) {
     case ValueKind::kBool:
       ABSL_FALLTHROUGH_INTENDED;
@@ -60,102 +42,6 @@ absl::Status MapValueInterface::CheckKey(ValueView key) {
     default:
       return InvalidMapKeyTypeError(key.kind());
   }
-}
-
-absl::StatusOr<size_t> MapValueInterface::GetSerializedSize() const {
-  return absl::UnimplementedError(
-      "preflighting serialization size is not implemented by this map");
-}
-
-absl::Status MapValueInterface::SerializeTo(absl::Cord& value) const {
-  CEL_ASSIGN_OR_RETURN(auto json, ConvertToJsonObject());
-  return internal::SerializeStruct(json, value);
-}
-
-absl::StatusOr<std::string> MapValueInterface::GetTypeUrl(
-    absl::string_view prefix) const {
-  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Struct");
-}
-
-absl::StatusOr<ValueView> MapValueInterface::Get(ValueManager& value_manager,
-                                                 ValueView key,
-                                                 Value& scratch) const {
-  ValueView value;
-  bool ok;
-  CEL_ASSIGN_OR_RETURN(std::tie(value, ok), Find(value_manager, key, scratch));
-  if (ABSL_PREDICT_FALSE(!ok)) {
-    switch (value.kind()) {
-      case ValueKind::kError:
-        ABSL_FALLTHROUGH_INTENDED;
-      case ValueKind::kUnknown:
-        return value;
-      default:
-        return NoSuchKeyError(key);
-    }
-  }
-  return value;
-}
-
-absl::StatusOr<std::pair<ValueView, bool>> MapValueInterface::Find(
-    ValueManager& value_manager, ValueView key, Value& scratch) const {
-  switch (key.kind()) {
-    case ValueKind::kError:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kUnknown:
-      return std::pair{key, false};
-    case ValueKind::kBool:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kInt:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kUint:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kString:
-      break;
-    default:
-      return InvalidMapKeyTypeError(key.kind());
-  }
-  CEL_ASSIGN_OR_RETURN(auto value, FindImpl(value_manager, key, scratch));
-  if (value.has_value()) {
-    return std::pair{*value, true};
-  }
-  return std::pair{NullValueView{}, false};
-}
-
-absl::StatusOr<ValueView> MapValueInterface::Has(ValueView key) const {
-  switch (key.kind()) {
-    case ValueKind::kError:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kUnknown:
-      return key;
-    case ValueKind::kBool:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kInt:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kUint:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kString:
-      break;
-    default:
-      return InvalidMapKeyTypeError(key.kind());
-  }
-  CEL_ASSIGN_OR_RETURN(auto has, HasImpl(key));
-  return BoolValueView(has);
-}
-
-absl::Status MapValueInterface::ForEach(ValueManager& value_manager,
-                                        ForEachCallback callback) const {
-  CEL_ASSIGN_OR_RETURN(auto iterator, NewIterator(value_manager));
-  while (iterator->HasNext()) {
-    Value key_scratch;
-    Value value_scratch;
-    CEL_ASSIGN_OR_RETURN(auto key, iterator->Next(key_scratch));
-    CEL_ASSIGN_OR_RETURN(auto value, Get(value_manager, key, value_scratch));
-    CEL_ASSIGN_OR_RETURN(auto ok, callback(key, value));
-    if (!ok) {
-      break;
-    }
-  }
-  return absl::OkStatus();
 }
 
 }  // namespace cel
