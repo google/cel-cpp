@@ -162,8 +162,8 @@ class ListValueBuilderImpl<Value> final : public ListValueBuilder {
 }  // namespace
 
 absl::StatusOr<Unique<ListValueBuilder>> ValueProvider::NewListValueBuilder(
-    ValueFactory&, ListTypeView type) {
-  auto memory_manager = GetMemoryManager();
+    ValueFactory& value_factory, ListTypeView type) {
+  auto memory_manager = value_factory.GetMemoryManager();
   switch (type.element().kind()) {
     case TypeKind::kBool:
       return memory_manager.MakeUnique<ListValueBuilderImpl<UintValue>>(

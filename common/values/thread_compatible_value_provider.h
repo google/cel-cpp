@@ -30,10 +30,7 @@ namespace cel::common_internal {
 class ThreadCompatibleValueProvider : public ThreadCompatibleTypeProvider,
                                       public ValueProvider {
  public:
-  explicit ThreadCompatibleValueProvider(MemoryManagerRef memory_manager)
-      : ThreadCompatibleTypeProvider(memory_manager) {}
-
-  using ThreadCompatibleTypeProvider::GetMemoryManager;
+  ThreadCompatibleValueProvider() : ThreadCompatibleTypeProvider() {}
 
   absl::StatusOr<Unique<StructValueBuilder>> NewStructValueBuilder(
       ValueFactory& value_factory, StructTypeView type) override;

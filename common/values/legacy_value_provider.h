@@ -30,10 +30,7 @@ namespace cel::common_internal {
 
 class LegacyValueProvider : public LegacyTypeProvider, public ValueProvider {
  public:
-  explicit LegacyValueProvider(MemoryManagerRef memory_manager)
-      : LegacyTypeProvider(memory_manager) {}
-
-  using LegacyTypeProvider::GetMemoryManager;
+  LegacyValueProvider() : LegacyTypeProvider() {}
 
   absl::StatusOr<Unique<StructValueBuilder>> NewStructValueBuilder(
       ValueFactory& value_factory, StructTypeView type) override;

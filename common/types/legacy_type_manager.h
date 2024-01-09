@@ -32,12 +32,11 @@ namespace cel::common_internal {
 // and only then.
 class LegacyTypeManager : public virtual TypeManager {
  public:
-  explicit LegacyTypeManager(LegacyTypeProvider& type_provider)
-      : type_provider_(type_provider) {}
+  LegacyTypeManager(MemoryManagerRef memory_manager,
+                    LegacyTypeProvider& type_provider)
+      : memory_manager_(memory_manager), type_provider_(type_provider) {}
 
-  MemoryManagerRef GetMemoryManager() const final {
-    return type_provider_.GetMemoryManager();
-  }
+  MemoryManagerRef GetMemoryManager() const final { return memory_manager_; }
 
  protected:
   TypeProvider& GetTypeProvider() const final { return type_provider_; }
@@ -52,6 +51,7 @@ class LegacyTypeManager : public virtual TypeManager {
   OpaqueType CreateOpaqueTypeImpl(
       absl::string_view name, const SizedInputView<TypeView>& parameters) final;
 
+  MemoryManagerRef memory_manager_;
   LegacyTypeProvider& type_provider_;
 };
 

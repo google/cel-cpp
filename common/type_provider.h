@@ -34,10 +34,6 @@ class TypeProvider {
  public:
   virtual ~TypeProvider() = default;
 
-  // Returns a `MemoryManagerRef` which is used to manage memory for the type
-  // provider itself and its internal data structures.
-  virtual MemoryManagerRef GetMemoryManager() const = 0;
-
   // `FindType` find the type corresponding to name `name`.
   virtual absl::StatusOr<TypeView> FindType(
       TypeFactory& type_factory, absl::string_view name,

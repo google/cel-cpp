@@ -886,13 +886,13 @@ absl::StatusOr<Unique<ValueBuilder>> ValueProvider::NewValueBuilder(
   const auto& well_known_value_builders = GetWellKnownValueBuilderMap();
   if (auto well_known_value_builder = well_known_value_builders.find(name);
       well_known_value_builder != well_known_value_builders.end()) {
-    return (*well_known_value_builder->second)(GetMemoryManager(), *this,
-                                               value_factory);
+    return (*well_known_value_builder->second)(value_factory.GetMemoryManager(),
+                                               *this, value_factory);
   }
   CEL_ASSIGN_OR_RETURN(
       auto builder, NewStructValueBuilder(
                         value_factory, value_factory.CreateStructType(name)));
-  return GetMemoryManager().MakeUnique<ValueBuilderForStruct>(
+  return value_factory.GetMemoryManager().MakeUnique<ValueBuilderForStruct>(
       std::move(builder));
 }
 
@@ -905,7 +905,7 @@ absl::StatusOr<Value> ValueProvider::DeserializeValue(
             absl::StripPrefix(type_url, kTypeGoogleApisComPrefix));
         well_known_value_builder != well_known_value_builders.end()) {
       auto deserializer = (*well_known_value_builder->second)(
-          GetMemoryManager(), *this, value_factory);
+          value_factory.GetMemoryManager(), *this, value_factory);
       CEL_RETURN_IF_ERROR(deserializer->Deserialize(value));
       return std::move(*deserializer).Build();
     }
@@ -922,14 +922,12 @@ absl::StatusOr<Value> ValueProvider::DeserializeValueImpl(
 Shared<ValueProvider> NewThreadCompatibleValueProvider(
     MemoryManagerRef memory_manager) {
   return memory_manager
-      .MakeShared<common_internal::ThreadCompatibleValueProvider>(
-          memory_manager);
+      .MakeShared<common_internal::ThreadCompatibleValueProvider>();
 }
 
 Shared<ValueProvider> NewThreadSafeValueProvider(
     MemoryManagerRef memory_manager) {
-  return memory_manager.MakeShared<common_internal::ThreadSafeValueProvider>(
-      memory_manager);
+  return memory_manager.MakeShared<common_internal::ThreadSafeValueProvider>();
 }
 
 }  // namespace cel

@@ -23,14 +23,12 @@ namespace cel {
 Shared<TypeProvider> NewThreadCompatibleTypeProvider(
     MemoryManagerRef memory_manager) {
   return memory_manager
-      .MakeShared<common_internal::ThreadCompatibleTypeProvider>(
-          memory_manager);
+      .MakeShared<common_internal::ThreadCompatibleTypeProvider>();
 }
 
 Shared<TypeProvider> NewThreadSafeTypeProvider(
     MemoryManagerRef memory_manager) {
-  return memory_manager.MakeShared<common_internal::ThreadSafeTypeProvider>(
-      memory_manager);
+  return memory_manager.MakeShared<common_internal::ThreadSafeTypeProvider>();
 }
 
 }  // namespace cel

@@ -17,6 +17,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_VALUE_MANAGER_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_VALUE_MANAGER_H_
 
+#include "common/memory.h"
 #include "common/type.h"
 #include "common/types/legacy_type_manager.h"
 #include "common/value.h"
@@ -28,8 +29,10 @@ namespace cel::common_internal {
 
 class LegacyValueManager : public LegacyTypeManager, public ValueManager {
  public:
-  explicit LegacyValueManager(LegacyValueProvider& value_provider)
-      : LegacyTypeManager(value_provider), value_provider_(value_provider) {}
+  LegacyValueManager(MemoryManagerRef memory_manager,
+                     LegacyValueProvider& value_provider)
+      : LegacyTypeManager(memory_manager, value_provider),
+        value_provider_(value_provider) {}
 
   using LegacyTypeManager::GetMemoryManager;
 

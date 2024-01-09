@@ -19,7 +19,6 @@
 
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "common/memory.h"
 #include "common/type.h"
 #include "common/type_provider.h"
 
@@ -30,10 +29,7 @@ namespace cel::common_internal {
 // and only then.
 class LegacyTypeProvider : public virtual TypeProvider {
  public:
-  explicit LegacyTypeProvider(MemoryManagerRef memory_manager)
-      : memory_manager_(memory_manager) {}
-
-  MemoryManagerRef GetMemoryManager() const final { return memory_manager_; }
+  LegacyTypeProvider() = default;
 
   absl::StatusOr<TypeView> FindType(TypeFactory& type_factory,
                                     absl::string_view name,
@@ -46,9 +42,6 @@ class LegacyTypeProvider : public virtual TypeProvider {
   absl::StatusOr<StructTypeFieldView> FindStructTypeFieldByName(
       TypeFactory& type_factory, StructTypeView type, absl::string_view name,
       StructTypeField& scratch) override;
-
- private:
-  MemoryManagerRef memory_manager_;
 };
 
 }  // namespace cel::common_internal
