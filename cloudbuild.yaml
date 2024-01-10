@@ -10,6 +10,8 @@ steps:
   - '--distdir=/bazel-distdir'
   - '--show_timestamps'
   - '--test_tag_filters=-benchmark'
+  - '--jobs=HOST_CPUS*.5'
+  - '--local_ram_resources=HOST_RAM*.4'
   id: gcc-9
   waitFor: ['-']
 - name: 'gcr.io/cel-analysis/gcc-9:latest'
@@ -26,6 +28,8 @@ steps:
   - '--distdir=/bazel-distdir'
   - '--show_timestamps'
   - '--test_tag_filters=-benchmark'
+  - '--jobs=HOST_CPUS*.5'
+  - '--local_ram_resources=HOST_RAM*.4'
   id: clang-11
   waitFor: ['-']
 timeout: 1h
