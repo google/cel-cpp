@@ -85,7 +85,7 @@ struct AstMetadata;
 // Internal implementation for data-structures handling cross-referencing nodes.
 //
 // This is exposed separately to allow building up the AST relationships
-// without exposing to much mutable state on the non-internal classes.
+// without exposing too much mutable state on the non-internal classes.
 struct AstNodeData {
   AstNode* parent;
   const ::google::api::expr::v1alpha1::Expr* expr;
@@ -109,13 +109,13 @@ struct AstMetadata {
 
 struct PostorderTraits {
   using UnderlyingType = const AstNode*;
-  static const AstNode* Adapt(const AstNode* const node) { return node; }
+  static const AstNode& Adapt(const AstNode* const node) { return *node; }
 };
 
 struct PreorderTraits {
   using UnderlyingType = std::unique_ptr<AstNode>;
-  static const AstNode* Adapt(const std::unique_ptr<AstNode>& node) {
-    return node.get();
+  static const AstNode& Adapt(const std::unique_ptr<AstNode>& node) {
+    return *node;
   }
 };
 
@@ -153,6 +153,11 @@ class AstNode {
   // Range over the descendants of this node (including self) using preorder
   // semantics. Each node is visited immediately before all of its descendants.
   //
+  // example:
+  //  for (const cel::AstNode& node : ast.Root().DescendantsPreorder()) {
+  //    ...
+  //  }
+  //
   // Children are traversed in their natural order:
   //   - call arguments are traversed in order (receiver if present is first)
   //   - list elements are traversed in order
@@ -189,6 +194,15 @@ class NavigableAst {
  public:
   static NavigableAst Build(const google::api::expr::v1alpha1::Expr& expr);
 
+  // Default constructor creates an empty instance.
+  //
+  // Operations other than equality are undefined on an empty instance.
+  //
+  // This is intended for composed object construction, a new NavigableAst
+  // should be obtained from the Build factory function.
+  NavigableAst() = default;
+
+  // Move only.
   NavigableAst(const NavigableAst&) = delete;
   NavigableAst& operator=(const NavigableAst&) = delete;
   NavigableAst(NavigableAst&&) = default;
@@ -227,6 +241,19 @@ class NavigableAst {
   bool IdsAreUnique() const {
     return metadata_->id_to_node.size() == metadata_->nodes.size();
   }
+
+  // Equality operators test for identity. They are intended to distinguish
+  // moved-from or uninitialized instances from initialized.
+  bool operator==(const NavigableAst& other) const {
+    return metadata_ == other.metadata_;
+  }
+
+  bool operator!=(const NavigableAst& other) const {
+    return metadata_ != other.metadata_;
+  }
+
+  // Return true if this instance is initialized.
+  explicit operator bool() const { return metadata_ != nullptr; }
 
  private:
   explicit NavigableAst(std::unique_ptr<tools_internal::AstMetadata> metadata)

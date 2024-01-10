@@ -52,6 +52,28 @@ TEST(NavigableAst, Basic) {
   EXPECT_EQ(root.parent_relation(), ChildKind::kUnspecified);
 }
 
+TEST(NavigableAst, DefaultCtorEmpty) {
+  Expr const_node;
+  const_node.set_id(1);
+  const_node.mutable_const_expr()->set_int64_value(42);
+
+  NavigableAst ast = NavigableAst::Build(const_node);
+  EXPECT_EQ(ast, ast);
+
+  NavigableAst empty;
+
+  EXPECT_NE(ast, empty);
+  EXPECT_EQ(empty, empty);
+
+  EXPECT_TRUE(static_cast<bool>(ast));
+  EXPECT_FALSE(static_cast<bool>(empty));
+
+  NavigableAst moved = std::move(ast);
+  EXPECT_EQ(ast, empty);
+  EXPECT_FALSE(static_cast<bool>(ast));
+  EXPECT_TRUE(static_cast<bool>(moved));
+}
+
 TEST(NavigableAst, FindById) {
   Expr const_node;
   const_node.set_id(1);
@@ -249,11 +271,11 @@ TEST(NavigableAst, DescendantsPostorder) {
   std::vector<int> constants;
   std::vector<NodeKind> node_kinds;
 
-  for (const AstNode* node : root.DescendantsPostorder()) {
-    if (node->node_kind() == NodeKind::kConstant) {
-      constants.push_back(node->expr()->const_expr().int64_value());
+  for (const AstNode& node : root.DescendantsPostorder()) {
+    if (node.node_kind() == NodeKind::kConstant) {
+      constants.push_back(node.expr()->const_expr().int64_value());
     }
-    node_kinds.push_back(node->node_kind());
+    node_kinds.push_back(node.node_kind());
   }
 
   EXPECT_THAT(node_kinds, ElementsAre(NodeKind::kConstant, NodeKind::kIdent,
@@ -273,11 +295,11 @@ TEST(NavigableAst, DescendantsPreorder) {
   std::vector<int> constants;
   std::vector<NodeKind> node_kinds;
 
-  for (const AstNode* node : root.DescendantsPreorder()) {
-    if (node->node_kind() == NodeKind::kConstant) {
-      constants.push_back(node->expr()->const_expr().int64_value());
+  for (const AstNode& node : root.DescendantsPreorder()) {
+    if (node.node_kind() == NodeKind::kConstant) {
+      constants.push_back(node.expr()->const_expr().int64_value());
     }
-    node_kinds.push_back(node->node_kind());
+    node_kinds.push_back(node.node_kind());
   }
 
   EXPECT_THAT(node_kinds,
@@ -296,9 +318,9 @@ TEST(NavigableAst, DescendantsPreorderComprehension) {
 
   std::vector<std::pair<NodeKind, ChildKind>> node_kinds;
 
-  for (const AstNode* node : root.DescendantsPreorder()) {
+  for (const AstNode& node : root.DescendantsPreorder()) {
     node_kinds.push_back(
-        std::make_pair(node->node_kind(), node->parent_relation()));
+        std::make_pair(node.node_kind(), node.parent_relation()));
   }
 
   EXPECT_THAT(
@@ -329,9 +351,9 @@ TEST(NavigableAst, DescendantsPreorderCreateMap) {
 
   std::vector<std::pair<NodeKind, ChildKind>> node_kinds;
 
-  for (const AstNode* node : root.DescendantsPreorder()) {
+  for (const AstNode& node : root.DescendantsPreorder()) {
     node_kinds.push_back(
-        std::make_pair(node->node_kind(), node->parent_relation()));
+        std::make_pair(node.node_kind(), node.parent_relation()));
   }
 
   EXPECT_THAT(node_kinds,

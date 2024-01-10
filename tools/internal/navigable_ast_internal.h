@@ -36,7 +36,7 @@ class SpanRange {
    public:
     SpanForwardIter(SpanType span, int i) : i_(i), span_(span) {}
 
-    auto operator*() const {
+    decltype(RangeTraits::Adapt(SpanType()[0])) operator*() const {
       ABSL_CHECK(i_ < span_.size());
       return RangeTraits::Adapt(span_[i_]);
     }
