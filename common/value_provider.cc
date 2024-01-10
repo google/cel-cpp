@@ -873,7 +873,13 @@ class ValueBuilderForStruct final : public ValueBuilder {
     return delegate_->SetFieldByNumber(number, std::move(value));
   }
 
-  Value Build() && override { return std::move(*delegate_).Build(); }
+  Value Build() && override {
+    auto status_or_value = std::move(*delegate_).Build();
+    if (!status_or_value.ok()) {
+      return ErrorValue(status_or_value.status());
+    }
+    return std::move(status_or_value).value();
+  }
 
  private:
   Unique<StructValueBuilder> delegate_;

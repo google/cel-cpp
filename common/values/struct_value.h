@@ -1004,7 +1004,7 @@ class StructValueBuilder {
 
   virtual absl::Status SetFieldByNumber(int64_t number, Value value) = 0;
 
-  virtual StructValue Build() && = 0;
+  virtual absl::StatusOr<StructValue> Build() && = 0;
 };
 
 }  // namespace cel
