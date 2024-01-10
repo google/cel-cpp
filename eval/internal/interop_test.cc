@@ -286,7 +286,8 @@ TEST(ValueInterop, TypeFromLegacy) {
 
 TEST(ValueInterop, TypeToLegacy) {
   google::protobuf::Arena arena;
-  auto modern_value = CreateTypeValueFromView("struct.that.does.not.Exist");
+  auto modern_value =
+      CreateTypeValueFromView(&arena, "struct.that.does.not.Exist");
   ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, modern_value));
   EXPECT_TRUE(legacy_value.IsCelType());
   EXPECT_EQ(legacy_value.CelTypeOrDie().value(), "struct.that.does.not.Exist");

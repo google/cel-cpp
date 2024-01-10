@@ -523,7 +523,8 @@ MessageWrapper::Builder MessageWrapperAccess::ToBuilder(
   return wrapper.ToBuilder();
 }
 
-Handle<TypeValue> CreateTypeValueFromView(absl::string_view input) {
+Handle<TypeValue> CreateTypeValueFromView(google::protobuf::Arena*,
+                                          absl::string_view input) {
   return HandleFactory<TypeValue>::Make<LegacyTypeValue>(input);
 }
 
@@ -589,7 +590,8 @@ absl::StatusOr<Handle<Value>> FromLegacyValue(google::protobuf::Arena* arena,
     case CelValue::Type::kUnknownSet:
       return CreateUnknownValueFromView(legacy_value.UnknownSetOrDie());
     case CelValue::Type::kCelType:
-      return CreateTypeValueFromView(legacy_value.CelTypeOrDie().value());
+      return CreateTypeValueFromView(arena,
+                                     legacy_value.CelTypeOrDie().value());
     case CelValue::Type::kError:
       return CreateErrorValueFromView(legacy_value.ErrorOrDie());
     case CelValue::Type::kAny:

@@ -209,7 +209,8 @@ std::vector<Handle<Value>> LegacyValueToModernValueOrDie(
 google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
     google::protobuf::Arena* arena, const Handle<Value>& value, bool unchecked = false);
 
-Handle<TypeValue> CreateTypeValueFromView(absl::string_view input);
+Handle<TypeValue> CreateTypeValueFromView(google::protobuf::Arena* arena,
+                                          absl::string_view input);
 
 }  // namespace cel::interop_internal
 

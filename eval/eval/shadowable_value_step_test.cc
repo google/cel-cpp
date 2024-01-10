@@ -47,7 +47,7 @@ TEST(ShadowableValueStepTest, TestEvaluateNoShadowing) {
   Activation activation;
   Arena arena;
 
-  auto type_value = CreateTypeValueFromView(type_name);
+  auto type_value = CreateTypeValueFromView(&arena, type_name);
   auto status =
       RunShadowableExpression(type_name, type_value, activation, &arena);
   ASSERT_OK(status);
@@ -65,7 +65,7 @@ TEST(ShadowableValueStepTest, TestEvaluateShadowedIdentifier) {
   activation.InsertValue(type_name, shadow_value);
   Arena arena;
 
-  auto type_value = CreateTypeValueFromView(type_name);
+  auto type_value = CreateTypeValueFromView(&arena, type_name);
   auto status =
       RunShadowableExpression(type_name, type_value, activation, &arena);
   ASSERT_OK(status);
