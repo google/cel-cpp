@@ -60,11 +60,12 @@
 #include "eval/public/unknown_set.h"
 #include "eval/testutil/test_message.pb.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "internal/proto_file_util.h"
+#include "internal/proto_matchers.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
 #include "runtime/runtime_options.h"
-#include "testutil/util.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/dynamic_message.h"
@@ -78,12 +79,13 @@ namespace {
 using ::cel::Handle;
 using ::cel::Value;
 using ::cel::extensions::ProtoMemoryManagerRef;
+using ::cel::internal::test::EqualsProto;
+using ::cel::internal::test::ReadBinaryProtoFromFile;
 using ::google::api::expr::v1alpha1::CheckedExpr;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::v1alpha1::SourceInfo;
 using ::google::api::expr::test::v1::proto3::TestAllTypes;
-using ::google::api::expr::testutil::EqualsProto;
 using testing::_;
 using testing::Eq;
 using testing::HasSubstr;
@@ -94,25 +96,6 @@ using cel::internal::StatusIs;
 inline constexpr absl::string_view kSimpleTestMessageDescriptorSetFile =
     "eval/testutil/"
     "simple_test_message_proto-descriptor-set.proto.bin";
-
-template <class MessageClass>
-absl::Status ReadBinaryProtoFromDisk(absl::string_view file_name,
-                                     MessageClass& message) {
-  std::ifstream file;
-  file.open(std::string(file_name), std::fstream::in);
-  if (!file.is_open()) {
-    return absl::NotFoundError(absl::StrFormat("Failed to open file '%s': %s",
-                                               file_name, strerror(errno)));
-  }
-
-  if (!message.ParseFromIstream(&file)) {
-    return absl::InvalidArgumentError(
-        absl::StrFormat("Failed to parse proto of type '%s' from file '%s'",
-                        message.GetTypeName(), file_name));
-  }
-
-  return absl::OkStatus();
-}
 
 class ConcatFunction : public CelFunction {
  public:
@@ -2104,7 +2087,7 @@ TEST(FlatExprBuilderTest, CustomDescriptorPoolForCreateStruct) {
   google::protobuf::DescriptorPool desc_pool;
   google::protobuf::FileDescriptorSet filedesc_set;
 
-  ASSERT_OK(ReadBinaryProtoFromDisk(kSimpleTestMessageDescriptorSetFile,
+  ASSERT_OK(ReadBinaryProtoFromFile(kSimpleTestMessageDescriptorSetFile,
                                     filedesc_set));
   ASSERT_EQ(filedesc_set.file_size(), 1);
   desc_pool.BuildFile(filedesc_set.file(0));
@@ -2138,7 +2121,7 @@ TEST(FlatExprBuilderTest, CustomDescriptorPoolForSelect) {
   google::protobuf::DescriptorPool desc_pool;
   google::protobuf::FileDescriptorSet filedesc_set;
 
-  ASSERT_OK(ReadBinaryProtoFromDisk(kSimpleTestMessageDescriptorSetFile,
+  ASSERT_OK(ReadBinaryProtoFromFile(kSimpleTestMessageDescriptorSetFile,
                                     filedesc_set));
   ASSERT_EQ(filedesc_set.file_size(), 1);
   desc_pool.BuildFile(filedesc_set.file(0));

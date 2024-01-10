@@ -387,6 +387,17 @@ cc_library(
         ":testing",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/memory",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "proto_file_util",
+    testonly = True,
+    hdrs = ["proto_file_util.h"],
+    deps = [
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_protobuf//:protobuf",
     ],
