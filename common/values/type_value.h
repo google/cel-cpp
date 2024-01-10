@@ -106,6 +106,8 @@ class TypeValue final {
     swap(value_, other.value_);
   }
 
+  absl::string_view name() const { return NativeValue().name(); }
+
  private:
   friend class TypeValueView;
   friend struct NativeTypeTraits<TypeValue>;
@@ -189,6 +191,8 @@ class TypeValueView final {
     using std::swap;
     swap(value_, other.value_);
   }
+
+  absl::string_view name() const { return NativeValue().name(); }
 
  private:
   friend class TypeValue;
