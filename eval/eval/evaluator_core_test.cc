@@ -18,6 +18,7 @@
 
 namespace google::api::expr::runtime {
 
+using ::cel::IntValue;
 using ::cel::TypeProvider;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::interop_internal::CreateIntValue;
@@ -49,11 +50,10 @@ class FakeConstExpressionStep : public ExpressionStep {
 class FakeIncrementExpressionStep : public ExpressionStep {
  public:
   absl::Status Evaluate(ExecutionFrame* frame) const override {
-    CelValue value = cel::interop_internal::ModernValueToLegacyValueOrDie(
-        frame->memory_manager(), frame->value_stack().Peek());
+    auto value = frame->value_stack().Peek();
     frame->value_stack().Pop(1);
-    EXPECT_TRUE(value.IsInt64());
-    int64_t val = value.Int64OrDie();
+    EXPECT_TRUE(value->Is<IntValue>());
+    int64_t val = value->As<IntValue>().NativeValue();
     frame->value_stack().Push(CreateIntValue(val + 1));
     return absl::OkStatus();
   }

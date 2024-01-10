@@ -66,8 +66,6 @@ using ::cel::UintValue;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::ValueFactory;
-using ::cel::interop_internal::CreateErrorValueFromView;
-using ::cel::interop_internal::CreateLegacyMapValue;
 
 class WellKnownTypeValueBuilder;
 
@@ -992,9 +990,7 @@ absl::StatusOr<Handle<Value>> CreateStructStepForMap::DoEvaluate(
     auto key_status =
         map_builder.Put(args[map_key_index], args[map_value_index]);
     if (!key_status.ok()) {
-      return CreateErrorValueFromView(google::protobuf::Arena::Create<absl::Status>(
-          cel::extensions::ProtoMemoryManagerArena(frame->memory_manager()),
-          key_status));
+      return frame->value_factory().CreateErrorValue(key_status);
     }
   }
 
