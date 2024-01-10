@@ -166,7 +166,7 @@ class TypeFactory final {
   EnableIfBaseOfT<StructType, T, absl::StatusOr<Handle<T>>> CreateStructType(
       Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<T>::template Make<T>(
-        memory_manager(), std::forward<Args>(args)...);
+        GetMemoryManager(), std::forward<Args>(args)...);
   }
 
   absl::StatusOr<Handle<ListType>> CreateListType(const Handle<Type>& element)
@@ -180,13 +180,13 @@ class TypeFactory final {
   EnableIfBaseOfT<OpaqueType, T, absl::StatusOr<Handle<T>>> CreateOpaqueType(
       Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<T>::template Make<T>(
-        memory_manager(), std::forward<Args>(args)...);
+        GetMemoryManager(), std::forward<Args>(args)...);
   }
 
   absl::StatusOr<Handle<OptionalType>> CreateOptionalType(
       const Handle<Type>& type) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  MemoryManagerRef memory_manager() const { return memory_manager_; }
+  MemoryManagerRef GetMemoryManager() const { return memory_manager_; }
 
  private:
   static const Handle<Type>& JsonValueType();

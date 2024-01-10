@@ -111,27 +111,27 @@ class LegacyAbstractStructValueBuilder final
 
   absl::Status SetFieldByName(absl::string_view name,
                               Handle<Value> value) override {
-    CEL_ASSIGN_OR_RETURN(
-        auto arg,
-        ToLegacyValue(ProtoMemoryManagerArena(value_factory_.memory_manager()),
-                      value, true));
-    return mutation_.SetField(name, arg, value_factory_.memory_manager(),
+    CEL_ASSIGN_OR_RETURN(auto arg,
+                         ToLegacyValue(ProtoMemoryManagerArena(
+                                           value_factory_.GetMemoryManager()),
+                                       value, true));
+    return mutation_.SetField(name, arg, value_factory_.GetMemoryManager(),
                               builder_);
   }
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
-    CEL_ASSIGN_OR_RETURN(
-        auto arg,
-        ToLegacyValue(ProtoMemoryManagerArena(value_factory_.memory_manager()),
-                      value, true));
+    CEL_ASSIGN_OR_RETURN(auto arg,
+                         ToLegacyValue(ProtoMemoryManagerArena(
+                                           value_factory_.GetMemoryManager()),
+                                       value, true));
     return mutation_.SetFieldByNumber(
-        number, arg, value_factory_.memory_manager(), builder_);
+        number, arg, value_factory_.GetMemoryManager(), builder_);
   }
 
   absl::StatusOr<cel::Handle<cel::StructValue>> Build() && override {
-    CEL_ASSIGN_OR_RETURN(
-        auto legacy, mutation_.AdaptFromWellKnownType(
-                         value_factory_.memory_manager(), std::move(builder_)));
+    CEL_ASSIGN_OR_RETURN(auto legacy, mutation_.AdaptFromWellKnownType(
+                                          value_factory_.GetMemoryManager(),
+                                          std::move(builder_)));
     if (!legacy.IsMessage()) {
       return absl::InvalidArgumentError(absl::StrCat(
           "Expected struct/message when parsing and adapting ",
@@ -139,7 +139,7 @@ class LegacyAbstractStructValueBuilder final
     }
     CEL_ASSIGN_OR_RETURN(auto modern,
                          FromLegacyValue(ProtoMemoryManagerArena(
-                                             value_factory_.memory_manager()),
+                                             value_factory_.GetMemoryManager()),
                                          legacy, true));
     return std::move(modern).As<StructValue>();
   }
@@ -426,7 +426,7 @@ LegacyAbstractStructType::NewValueBuilder(
         absl::StrCat("Missing mutation APIs for ", name()));
   }
   CEL_ASSIGN_OR_RETURN(auto builder,
-                       mutation->NewInstance(value_factory.memory_manager()));
+                       mutation->NewInstance(value_factory.GetMemoryManager()));
   return std::make_unique<LegacyAbstractStructValueBuilder>(
       value_factory, type_info_, *mutation, MessageWrapper(),
       std::move(builder));
@@ -440,13 +440,13 @@ absl::StatusOr<Handle<StructValue>> LegacyAbstractStructType::NewValueFromAny(
         absl::StrCat("Missing mutation APIs for ", name()));
   }
   CEL_ASSIGN_OR_RETURN(auto builder,
-                       mutation->NewInstance(value_factory.memory_manager()));
+                       mutation->NewInstance(value_factory.GetMemoryManager()));
   if (!builder.message_ptr()->ParsePartialFromCord(value)) {
     return absl::InvalidArgumentError(absl::StrCat("Failed to parse ", name()));
   }
   CEL_ASSIGN_OR_RETURN(auto legacy,
                        mutation->AdaptFromWellKnownType(
-                           value_factory.memory_manager(), builder));
+                           value_factory.GetMemoryManager(), builder));
   if (!legacy.IsMessage()) {
     return absl::InvalidArgumentError(
         absl::StrCat("Expected struct/message when parsing and adapting ",
@@ -454,7 +454,7 @@ absl::StatusOr<Handle<StructValue>> LegacyAbstractStructType::NewValueFromAny(
   }
   CEL_ASSIGN_OR_RETURN(
       auto modern,
-      FromLegacyValue(ProtoMemoryManagerArena(value_factory.memory_manager()),
+      FromLegacyValue(ProtoMemoryManagerArena(value_factory.GetMemoryManager()),
                       legacy, true));
   return std::move(modern).As<StructValue>();
 }
@@ -972,7 +972,8 @@ absl::StatusOr<Handle<Value>> MessageValueGetFieldByName(
   auto wrapper = MessageWrapperAccess::Make(msg, type_info);
 
   return interop_internal::LegacyStructGetFieldImpl(
-      wrapper, name, unbox_null_wrapper_types, value_factory.memory_manager());
+      wrapper, name, unbox_null_wrapper_types,
+      value_factory.GetMemoryManager());
 }
 
 absl::StatusOr<QualifyResult> MessageValueQualify(
@@ -981,14 +982,14 @@ absl::StatusOr<QualifyResult> MessageValueQualify(
   auto wrapper = MessageWrapperAccess::Make(msg, type_info);
 
   return interop_internal::LegacyStructQualifyImpl(
-      wrapper, qualifiers, presence_test, value_factory.memory_manager());
+      wrapper, qualifiers, presence_test, value_factory.GetMemoryManager());
 }
 
 absl::StatusOr<Handle<Value>> LegacyListValueGet(uintptr_t impl,
                                                  ValueFactory& value_factory,
                                                  size_t index) {
   auto* arena =
-      extensions::ProtoMemoryManagerArena(value_factory.memory_manager());
+      extensions::ProtoMemoryManagerArena(value_factory.GetMemoryManager());
   return FromLegacyValue(arena, reinterpret_cast<const CelList*>(impl)->Get(
                                     arena, static_cast<int>(index)));
 }
@@ -999,7 +1000,7 @@ absl::StatusOr<Handle<Value>> LegacyListValueContains(
   // search element to legacy type than to convert all of the elements of
   // the legacy list for 'in' checks.
   auto* arena =
-      extensions::ProtoMemoryManagerArena(value_factory.memory_manager());
+      extensions::ProtoMemoryManagerArena(value_factory.GetMemoryManager());
   CEL_ASSIGN_OR_RETURN(auto legacy_value, ToLegacyValue(arena, other));
   const auto* list = reinterpret_cast<const CelList*>(impl);
 
@@ -1029,7 +1030,7 @@ absl::StatusOr<bool> LegacyListValueAnyOf(ValueFactory& value_factory,
                                           ListValue::AnyOfCallback cb) {
   const auto* list = reinterpret_cast<const CelList*>(impl);
   auto* arena =
-      extensions::ProtoMemoryManagerArena(value_factory.memory_manager());
+      extensions::ProtoMemoryManagerArena(value_factory.GetMemoryManager());
   for (int i = 0; i < list->size(); ++i) {
     absl::StatusOr<Handle<Value>> value =
         FromLegacyValue(arena, list->Get(arena, i));
@@ -1055,7 +1056,7 @@ bool LegacyMapValueEmpty(uintptr_t impl) {
 absl::StatusOr<absl::optional<Handle<Value>>> LegacyMapValueGet(
     uintptr_t impl, ValueFactory& value_factory, const Handle<Value>& key) {
   auto* arena =
-      extensions::ProtoMemoryManagerArena(value_factory.memory_manager());
+      extensions::ProtoMemoryManagerArena(value_factory.GetMemoryManager());
   CEL_ASSIGN_OR_RETURN(auto legacy_key, ToLegacyValue(arena, key));
   auto legacy_value =
       reinterpret_cast<const CelMap*>(impl)->Get(arena, legacy_key);
@@ -1075,7 +1076,7 @@ absl::StatusOr<bool> LegacyMapValueHas(uintptr_t impl,
 absl::StatusOr<Handle<ListValue>> LegacyMapValueListKeys(
     uintptr_t impl, ValueFactory& value_factory) {
   auto* arena =
-      extensions::ProtoMemoryManagerArena(value_factory.memory_manager());
+      extensions::ProtoMemoryManagerArena(value_factory.GetMemoryManager());
   CEL_ASSIGN_OR_RETURN(auto legacy_list_keys,
                        reinterpret_cast<const CelMap*>(impl)->ListKeys(arena));
   CEL_ASSIGN_OR_RETURN(

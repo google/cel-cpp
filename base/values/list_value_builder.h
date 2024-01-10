@@ -181,7 +181,7 @@ class ListValueBuilderImpl<T, void> : public ListValueBuilderInterface {
       : ListValueBuilderInterface(value_factory),
         type_(absl::in_place_type<Handle<typename ValueTraits<T>::type_type>>,
               std::move(type)),
-        storage_(Allocator<Handle<Value>>{value_factory.memory_manager()}) {}
+        storage_(Allocator<Handle<Value>>{value_factory.GetMemoryManager()}) {}
 
   ListValueBuilderImpl(
       ComposedListType,
@@ -189,7 +189,7 @@ class ListValueBuilderImpl<T, void> : public ListValueBuilderInterface {
       Handle<ListType> type)
       : ListValueBuilderInterface(value_factory),
         type_(absl::in_place_type<Handle<ListType>>, std::move(type)),
-        storage_(Allocator<Handle<Value>>{value_factory.memory_manager()}) {}
+        storage_(Allocator<Handle<Value>>{value_factory.GetMemoryManager()}) {}
 
   std::string DebugString() const override {
     return ComposeListValueDebugString(
@@ -237,7 +237,7 @@ class ListValueBuilderImpl<Value, void> : public ListValueBuilderInterface {
       Handle<Type> type)
       : ListValueBuilderInterface(value_factory),
         type_(absl::in_place_type<Handle<Type>>, std::move(type)),
-        storage_(Allocator<Handle<Value>>{value_factory.memory_manager()}) {}
+        storage_(Allocator<Handle<Value>>{value_factory.GetMemoryManager()}) {}
 
   ListValueBuilderImpl(
       ComposedListType,
@@ -245,7 +245,7 @@ class ListValueBuilderImpl<Value, void> : public ListValueBuilderInterface {
       Handle<ListType> type)
       : ListValueBuilderInterface(value_factory),
         type_(absl::in_place_type<Handle<ListType>>, std::move(type)),
-        storage_(Allocator<Handle<Value>>{value_factory.memory_manager()}) {}
+        storage_(Allocator<Handle<Value>>{value_factory.GetMemoryManager()}) {}
 
   std::string DebugString() const override {
     return ComposeListValueDebugString(
@@ -290,7 +290,7 @@ class ListValueBuilderImpl : public ListValueBuilderInterface {
       : ListValueBuilderInterface(value_factory),
         type_(absl::in_place_type<Handle<typename ValueTraits<T>::type_type>>,
               std::move(type)),
-        storage_(Allocator<U>{value_factory.memory_manager()}) {}
+        storage_(Allocator<U>{value_factory.GetMemoryManager()}) {}
 
   ListValueBuilderImpl(
       ComposedListType,
@@ -298,7 +298,7 @@ class ListValueBuilderImpl : public ListValueBuilderInterface {
       Handle<ListType> type)
       : ListValueBuilderInterface(value_factory),
         type_(absl::in_place_type<Handle<ListType>>, std::move(type)),
-        storage_(Allocator<U>{value_factory.memory_manager()}) {}
+        storage_(Allocator<U>{value_factory.GetMemoryManager()}) {}
 
   std::string DebugString() const override {
     return ComposeListValueDebugString(storage_, [](const U& value) {

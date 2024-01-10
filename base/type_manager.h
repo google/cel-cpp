@@ -38,8 +38,8 @@ class TypeManager final {
               const TypeProvider& type_provider ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : type_factory_(type_factory), type_provider_(type_provider) {}
 
-  MemoryManagerRef memory_manager() const {
-    return type_factory().memory_manager();
+  MemoryManagerRef GetMemoryManager() const {
+    return type_factory().GetMemoryManager();
   }
 
   TypeFactory& type_factory() const { return type_factory_; }

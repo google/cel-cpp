@@ -48,7 +48,7 @@ EvaluationListener AdaptListener(const CelEvaluationListener& listener) {
       // inspectable by clients.
       return absl::OkStatus();
     }
-    google::protobuf::Arena* arena = ProtoMemoryManagerArena(factory.memory_manager());
+    google::protobuf::Arena* arena = ProtoMemoryManagerArena(factory.GetMemoryManager());
     CelValue legacy_value =
         cel::interop_internal::ModernValueToLegacyValueOrDie(arena, value);
     return listener(expr_id, legacy_value, arena);

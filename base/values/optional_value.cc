@@ -36,7 +36,7 @@ absl::StatusOr<Handle<OptionalValue>> OptionalValue::None(
       auto optional_type,
       value_factory.type_factory().CreateOptionalType(std::move(type)));
   return base_internal::HandleFactory<OptionalValue>::template Make<
-      base_internal::EmptyOptionalValue>(value_factory.memory_manager(),
+      base_internal::EmptyOptionalValue>(value_factory.GetMemoryManager(),
                                          std::move(optional_type));
 }
 
@@ -46,7 +46,7 @@ absl::StatusOr<Handle<OptionalValue>> OptionalValue::Of(
       auto optional_type,
       value_factory.type_factory().CreateOptionalType(value->type()));
   return base_internal::HandleFactory<OptionalValue>::template Make<
-      base_internal::FullOptionalValue>(value_factory.memory_manager(),
+      base_internal::FullOptionalValue>(value_factory.GetMemoryManager(),
                                         std::move(optional_type),
                                         std::move(value));
 }

@@ -106,7 +106,7 @@ class FlatExpressionEvaluatorState {
   ComprehensionSlots& comprehension_slots() { return comprehension_slots_; }
 
   cel::MemoryManagerRef memory_manager() {
-    return value_factory_->memory_manager();
+    return value_factory_->GetMemoryManager();
   }
 
   cel::TypeFactory& type_factory() { return value_factory_->type_factory(); }

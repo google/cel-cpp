@@ -123,7 +123,7 @@ absl::StatusOr<Handle<BytesValue>> ValueFactory::CreateBytesValue(
   if (value.empty()) {
     return GetEmptyBytesValue();
   }
-  return HandleFactory<BytesValue>::Make<StringBytesValue>(memory_manager(),
+  return HandleFactory<BytesValue>::Make<StringBytesValue>(GetMemoryManager(),
                                                            std::move(value));
 }
 
@@ -148,7 +148,7 @@ absl::StatusOr<Handle<StringValue>> ValueFactory::CreateStringValue(
     return absl::InvalidArgumentError(
         "Illegal byte sequence in UTF-8 encoded string");
   }
-  return HandleFactory<StringValue>::Make<StringStringValue>(memory_manager(),
+  return HandleFactory<StringValue>::Make<StringStringValue>(GetMemoryManager(),
                                                              std::move(value));
 }
 
@@ -160,7 +160,7 @@ Handle<StringValue> ValueFactory::CreateUncheckedStringValue(
     return GetEmptyStringValue();
   }
 
-  return HandleFactory<StringValue>::Make<StringStringValue>(memory_manager(),
+  return HandleFactory<StringValue>::Make<StringStringValue>(GetMemoryManager(),
                                                              std::move(value));
 }
 
@@ -368,7 +368,7 @@ class JsonMapValue final : public CEL_MAP_VALUE_CLASS {
       builder.push_back(entry.first);
     }
     return HandleFactory<ListValue>::Make<JsonListValue>(
-        value_factory.memory_manager(), std::move(type),
+        value_factory.GetMemoryManager(), std::move(type),
         std::move(builder).Build());
   }
 
@@ -415,12 +415,12 @@ class JsonMapValue final : public CEL_MAP_VALUE_CLASS {
 
 Handle<ListValue> ValueFactory::CreateListValueFromJson(JsonArray array) {
   return HandleFactory<ListValue>::Make<JsonListValue>(
-      memory_manager(), type_factory().GetJsonListType(), std::move(array));
+      GetMemoryManager(), type_factory().GetJsonListType(), std::move(array));
 }
 
 Handle<MapValue> ValueFactory::CreateMapValueFromJson(JsonObject object) {
   return HandleFactory<MapValue>::Make<JsonMapValue>(
-      memory_manager(), type_factory().GetJsonMapType(), std::move(object));
+      GetMemoryManager(), type_factory().GetJsonMapType(), std::move(object));
 }
 
 }  // namespace cel

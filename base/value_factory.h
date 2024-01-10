@@ -258,7 +258,7 @@ class ValueFactory final {
       const Handle<StructType>& type,
       Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<T>::template Make<
-        std::remove_const_t<T>>(memory_manager(), type,
+        std::remove_const_t<T>>(GetMemoryManager(), type,
                                 std::forward<Args>(args)...);
   }
 
@@ -266,7 +266,7 @@ class ValueFactory final {
   EnableIfBaseOf<StructValue, T, absl::StatusOr<Handle<T>>> CreateStructValue(
       Handle<StructType>&& type, Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<T>::template Make<
-        std::remove_const_t<T>>(memory_manager(), std::move(type),
+        std::remove_const_t<T>>(GetMemoryManager(), std::move(type),
                                 std::forward<Args>(args)...);
   }
 
@@ -279,7 +279,7 @@ class ValueFactory final {
       return CreateStructValue<T>(type, std::forward<Args>(args)...);
     }
     return base_internal::HandleFactory<T>::template Make<
-        base_internal::BorrowedValue<T>>(memory_manager(), pointer, type,
+        base_internal::BorrowedValue<T>>(GetMemoryManager(), pointer, type,
                                          std::forward<Args>(args)...);
   }
 
@@ -292,7 +292,7 @@ class ValueFactory final {
       return CreateStructValue<T>(std::move(type), std::forward<Args>(args)...);
     }
     return base_internal::HandleFactory<T>::template Make<
-        base_internal::BorrowedValue<T>>(memory_manager(), pointer,
+        base_internal::BorrowedValue<T>>(GetMemoryManager(), pointer,
                                          std::move(type),
                                          std::forward<Args>(args)...);
   }
@@ -302,7 +302,7 @@ class ValueFactory final {
       const Handle<ListType>& type,
       Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<T>::template Make<
-        std::remove_const_t<T>>(memory_manager(), type,
+        std::remove_const_t<T>>(GetMemoryManager(), type,
                                 std::forward<Args>(args)...);
   }
 
@@ -310,7 +310,7 @@ class ValueFactory final {
   EnableIfBaseOf<ListValue, T, absl::StatusOr<Handle<T>>> CreateListValue(
       Handle<ListType>&& type, Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<T>::template Make<
-        std::remove_const_t<T>>(memory_manager(), std::move(type),
+        std::remove_const_t<T>>(GetMemoryManager(), std::move(type),
                                 std::forward<Args>(args)...);
   }
 
@@ -323,7 +323,7 @@ class ValueFactory final {
       return CreateListValue<T>(type, std::forward<Args>(args)...);
     }
     return base_internal::HandleFactory<T>::template Make<
-        base_internal::BorrowedValue<T>>(memory_manager(), pointer, type,
+        base_internal::BorrowedValue<T>>(GetMemoryManager(), pointer, type,
                                          std::forward<Args>(args)...);
   }
 
@@ -336,7 +336,7 @@ class ValueFactory final {
       return CreateListValue<T>(std::move(type), std::forward<Args>(args)...);
     }
     return base_internal::HandleFactory<T>::template Make<
-        base_internal::BorrowedValue<T>>(memory_manager(), pointer,
+        base_internal::BorrowedValue<T>>(GetMemoryManager(), pointer,
                                          std::move(type),
                                          std::forward<Args>(args)...);
   }
@@ -346,7 +346,7 @@ class ValueFactory final {
       const Handle<MapType>& type,
       Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<T>::template Make<
-        std::remove_const_t<T>>(memory_manager(), type,
+        std::remove_const_t<T>>(GetMemoryManager(), type,
                                 std::forward<Args>(args)...);
   }
 
@@ -354,7 +354,7 @@ class ValueFactory final {
   EnableIfBaseOf<MapValue, T, absl::StatusOr<Handle<T>>> CreateMapValue(
       Handle<MapType>&& type, Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<T>::template Make<
-        std::remove_const_t<T>>(memory_manager(), std::move(type),
+        std::remove_const_t<T>>(GetMemoryManager(), std::move(type),
                                 std::forward<Args>(args)...);
   }
 
@@ -367,7 +367,7 @@ class ValueFactory final {
       return CreateMapValue<T>(type, std::forward<Args>(args)...);
     }
     return base_internal::HandleFactory<T>::template Make<
-        base_internal::BorrowedValue<T>>(memory_manager(), pointer, type,
+        base_internal::BorrowedValue<T>>(GetMemoryManager(), pointer, type,
                                          std::forward<Args>(args)...);
   }
 
@@ -380,7 +380,7 @@ class ValueFactory final {
       return CreateMapValue<T>(std::move(type), std::forward<Args>(args)...);
     }
     return base_internal::HandleFactory<T>::template Make<
-        base_internal::BorrowedValue<T>>(memory_manager(), pointer,
+        base_internal::BorrowedValue<T>>(GetMemoryManager(), pointer,
                                          std::move(type),
                                          std::forward<Args>(args)...);
   }
@@ -398,7 +398,7 @@ class ValueFactory final {
   CreateOpaqueValue(const Handle<TypeType>& type,
                     Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<ValueType>::template Make<
-        std::remove_const_t<ValueType>>(memory_manager(), type,
+        std::remove_const_t<ValueType>>(GetMemoryManager(), type,
                                         std::forward<Args>(args)...);
   }
 
@@ -428,8 +428,8 @@ class ValueFactory final {
   Handle<MapValue> CreateMapValueFromJson(JsonObject object)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  MemoryManagerRef memory_manager() const {
-    return type_manager().memory_manager();
+  MemoryManagerRef GetMemoryManager() const {
+    return type_manager().GetMemoryManager();
   }
 
  private:

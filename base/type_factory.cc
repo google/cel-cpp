@@ -109,8 +109,8 @@ absl::StatusOr<Handle<ListType>> TypeFactory::CreateListType(
       return existing->second;
     }
   }
-  auto list_type =
-      HandleFactory<ListType>::Make<ModernListType>(memory_manager(), element);
+  auto list_type = HandleFactory<ListType>::Make<ModernListType>(
+      GetMemoryManager(), element);
   absl::WriterMutexLock lock(&list_types_mutex_);
   return list_types_.insert({element, std::move(list_type)}).first->second;
 }
@@ -130,8 +130,8 @@ absl::StatusOr<Handle<MapType>> TypeFactory::CreateMapType(
       return existing->second;
     }
   }
-  auto map_type =
-      HandleFactory<MapType>::Make<ModernMapType>(memory_manager(), key, value);
+  auto map_type = HandleFactory<MapType>::Make<ModernMapType>(
+      GetMemoryManager(), key, value);
   absl::WriterMutexLock lock(&map_types_mutex_);
   return map_types_.insert({std::make_pair(key, value), std::move(map_type)})
       .first->second;
@@ -148,7 +148,7 @@ absl::StatusOr<Handle<OptionalType>> TypeFactory::CreateOptionalType(
     }
   }
   auto optional_type =
-      HandleFactory<OptionalType>::Make<OptionalType>(memory_manager(), type);
+      HandleFactory<OptionalType>::Make<OptionalType>(GetMemoryManager(), type);
   absl::WriterMutexLock lock(&optional_types_mutex_);
   return optional_types_.insert({type, std::move(optional_type)}).first->second;
 }

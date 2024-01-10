@@ -651,14 +651,14 @@ class MapValueBuilderImpl<K, V, void, void> : public MapValueBuilderInterface {
       : MapValueBuilderInterface(value_factory),
         type_(std::make_pair(std::move(key), std::move(value))),
         storage_(Allocator<std::pair<const Handle<Value>, Handle<Value>>>{
-            value_factory.memory_manager()}) {}
+            value_factory.GetMemoryManager()}) {}
 
   MapValueBuilderImpl(ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
                       Handle<MapType> type)
       : MapValueBuilderInterface(value_factory),
         type_(std::move(type)),
         storage_(Allocator<std::pair<const Handle<Value>, Handle<Value>>>{
-            value_factory.memory_manager()}) {}
+            value_factory.GetMemoryManager()}) {}
 
   std::string DebugString() const override {
     return ComposeMapValueDebugString(
@@ -721,7 +721,7 @@ class MapValueBuilderImpl<K, Value, void, void>
         key_(std::move(key)),
         value_(std::move(value)),
         storage_(Allocator<std::pair<const Handle<Value>, Handle<Value>>>{
-            value_factory.memory_manager()}) {}
+            value_factory.GetMemoryManager()}) {}
 
   std::string DebugString() const override {
     return ComposeMapValueDebugString(
@@ -781,7 +781,7 @@ class MapValueBuilderImpl<Value, V, void, void>
         key_(std::move(key)),
         value_(std::move(value)),
         storage_(Allocator<std::pair<const Handle<Value>, Handle<Value>>>{
-            value_factory.memory_manager()}) {}
+            value_factory.GetMemoryManager()}) {}
 
   std::string DebugString() const override {
     return ComposeMapValueDebugString(
@@ -840,14 +840,14 @@ class MapValueBuilderImpl<Value, V, void, UV>
       : MapValueBuilderInterface(value_factory),
         type_(std::make_pair(std::move(key), std::move(value))),
         storage_(Allocator<std::pair<const Handle<Value>, Handle<Value>>>{
-            value_factory.memory_manager()}) {}
+            value_factory.GetMemoryManager()}) {}
 
   MapValueBuilderImpl(ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
                       Handle<MapType> type)
       : MapValueBuilderInterface(value_factory),
         type_(std::move(type)),
         storage_(Allocator<std::pair<const Handle<Value>, Handle<Value>>>{
-            value_factory.memory_manager()}) {}
+            value_factory.GetMemoryManager()}) {}
 
   std::string DebugString() const override {
     return ComposeMapValueDebugString(
@@ -907,14 +907,14 @@ class MapValueBuilderImpl<Value, Value, void, void>
       : MapValueBuilderInterface(value_factory),
         type_(std::make_pair(std::move(key), std::move(value))),
         storage_(Allocator<std::pair<const Handle<Value>, Handle<Value>>>{
-            value_factory.memory_manager()}) {}
+            value_factory.GetMemoryManager()}) {}
 
   MapValueBuilderImpl(ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
                       Handle<MapType> type)
       : MapValueBuilderInterface(value_factory),
         type_(std::move(type)),
         storage_(Allocator<std::pair<const Handle<Value>, Handle<Value>>>{
-            value_factory.memory_manager()}) {}
+            value_factory.GetMemoryManager()}) {}
 
   std::string DebugString() const override {
     return ComposeMapValueDebugString(
@@ -971,14 +971,14 @@ class MapValueBuilderImpl<K, V, UK, void> : public MapValueBuilderInterface {
       : MapValueBuilderInterface(value_factory),
         type_(std::make_pair(std::move(key), std::move(value))),
         storage_(Allocator<std::pair<const UK, Handle<Value>>>{
-            value_factory.memory_manager()}) {}
+            value_factory.GetMemoryManager()}) {}
 
   MapValueBuilderImpl(ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
                       Handle<MapType> type)
       : MapValueBuilderInterface(value_factory),
         type_(std::move(type)),
         storage_(Allocator<std::pair<const UK, Handle<Value>>>{
-            value_factory.memory_manager()}) {}
+            value_factory.GetMemoryManager()}) {}
 
   std::string DebugString() const override {
     return ComposeMapValueDebugString(
@@ -1044,14 +1044,14 @@ class MapValueBuilderImpl<K, V, void, UV> : public MapValueBuilderInterface {
       : MapValueBuilderInterface(value_factory),
         type_(std::make_pair(std::move(key), std::move(value))),
         storage_(Allocator<std::pair<const Handle<Value>, UV>>{
-            value_factory.memory_manager()}) {}
+            value_factory.GetMemoryManager()}) {}
 
   MapValueBuilderImpl(ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
                       Handle<MapType> type)
       : MapValueBuilderInterface(value_factory),
         type_(std::move(type)),
         storage_(Allocator<std::pair<const Handle<Value>, UV>>{
-            value_factory.memory_manager()}) {}
+            value_factory.GetMemoryManager()}) {}
 
   std::string DebugString() const override {
     return ComposeMapValueDebugString(
@@ -1119,14 +1119,14 @@ class MapValueBuilderImpl : public MapValueBuilderInterface {
       : MapValueBuilderInterface(value_factory),
         type_(std::make_pair(std::move(key), std::move(value))),
         storage_(Allocator<std::pair<const UK, UV>>{
-            value_factory.memory_manager()}) {}
+            value_factory.GetMemoryManager()}) {}
 
   MapValueBuilderImpl(ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
                       Handle<MapType> type)
       : MapValueBuilderInterface(value_factory),
         type_(std::move(type)),
         storage_(Allocator<std::pair<const UK, UV>>{
-            value_factory.memory_manager()}) {}
+            value_factory.GetMemoryManager()}) {}
 
   std::string DebugString() const override {
     return ComposeMapValueDebugString(

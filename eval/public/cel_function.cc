@@ -61,7 +61,7 @@ absl::StatusOr<Handle<Value>> CelFunction::Invoke(
     const FunctionEvaluationContext& context,
     absl::Span<const Handle<Value>> arguments) const {
   google::protobuf::Arena* arena =
-      ProtoMemoryManagerArena(context.value_factory().memory_manager());
+      ProtoMemoryManagerArena(context.value_factory().GetMemoryManager());
   std::vector<CelValue> legacy_args;
   legacy_args.reserve(arguments.size());
 
