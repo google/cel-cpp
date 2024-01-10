@@ -1794,11 +1794,11 @@ TEST_P(BytesSizeTest, Size) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  EXPECT_EQ(MakeStringBytes(value_factory, test_case().data)->size(),
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case().data)->Size(),
             test_case().size);
-  EXPECT_EQ(MakeCordBytes(value_factory, test_case().data)->size(),
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case().data)->Size(),
             test_case().size);
-  EXPECT_EQ(MakeExternalBytes(value_factory, test_case().data)->size(),
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case().data)->Size(),
             test_case().size);
 }
 
@@ -1823,11 +1823,11 @@ TEST_P(BytesEmptyTest, Empty) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  EXPECT_EQ(MakeStringBytes(value_factory, test_case().data)->empty(),
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case().data)->IsEmpty(),
             test_case().empty);
-  EXPECT_EQ(MakeCordBytes(value_factory, test_case().data)->empty(),
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case().data)->IsEmpty(),
             test_case().empty);
-  EXPECT_EQ(MakeExternalBytes(value_factory, test_case().data)->empty(),
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case().data)->IsEmpty(),
             test_case().empty);
 }
 
@@ -2184,11 +2184,11 @@ TEST_P(StringSizeTest, Size) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  EXPECT_EQ(MakeStringString(value_factory, test_case().data)->size(),
+  EXPECT_EQ(MakeStringString(value_factory, test_case().data)->Size(),
             test_case().size);
-  EXPECT_EQ(MakeCordString(value_factory, test_case().data)->size(),
+  EXPECT_EQ(MakeCordString(value_factory, test_case().data)->Size(),
             test_case().size);
-  EXPECT_EQ(MakeExternalString(value_factory, test_case().data)->size(),
+  EXPECT_EQ(MakeExternalString(value_factory, test_case().data)->Size(),
             test_case().size);
 }
 
@@ -2213,11 +2213,11 @@ TEST_P(StringEmptyTest, Empty) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  EXPECT_EQ(MakeStringString(value_factory, test_case().data)->empty(),
+  EXPECT_EQ(MakeStringString(value_factory, test_case().data)->IsEmpty(),
             test_case().empty);
-  EXPECT_EQ(MakeCordString(value_factory, test_case().data)->empty(),
+  EXPECT_EQ(MakeCordString(value_factory, test_case().data)->IsEmpty(),
             test_case().empty);
-  EXPECT_EQ(MakeExternalString(value_factory, test_case().data)->empty(),
+  EXPECT_EQ(MakeExternalString(value_factory, test_case().data)->IsEmpty(),
             test_case().empty);
 }
 

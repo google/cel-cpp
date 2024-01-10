@@ -194,11 +194,11 @@ class HashValueVisitor final {
 
 }  // namespace
 
-size_t BytesValue::size() const {
+size_t BytesValue::Size() const {
   return absl::visit(BytesValueSizeVisitor{}, rep());
 }
 
-bool BytesValue::empty() const { return absl::visit(EmptyVisitor{}, rep()); }
+bool BytesValue::IsEmpty() const { return absl::visit(EmptyVisitor{}, rep()); }
 
 bool BytesValue::Equals(absl::string_view bytes) const {
   return absl::visit(EqualsVisitor<absl::string_view>(bytes), rep());

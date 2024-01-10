@@ -85,9 +85,9 @@ class BytesValue : public Value,
   absl::StatusOr<Handle<Value>> ConvertToType(ValueFactory& value_factory,
                                               const Handle<Type>& type) const;
 
-  size_t size() const;
+  size_t Size() const;
 
-  bool empty() const;
+  bool IsEmpty() const;
 
   bool Equals(absl::string_view bytes) const;
   bool Equals(const absl::Cord& bytes) const;

@@ -132,6 +132,22 @@ class BytesValue final {
     swap(value_, other.value_);
   }
 
+  size_t Size() const;
+
+  bool IsEmpty() const;
+
+  bool Equals(absl::string_view bytes) const;
+  bool Equals(const absl::Cord& bytes) const;
+  bool Equals(BytesValueView bytes) const;
+
+  int Compare(absl::string_view bytes) const;
+  int Compare(const absl::Cord& bytes) const;
+  int Compare(BytesValueView bytes) const;
+
+  std::string ToString() const { return NativeString(); }
+
+  absl::Cord ToCord() const { return NativeCord(); }
+
  private:
   friend class BytesValueView;
 
@@ -226,6 +242,22 @@ class BytesValueView final {
     using std::swap;
     swap(value_, other.value_);
   }
+
+  size_t Size() const;
+
+  bool IsEmpty() const;
+
+  bool Equals(absl::string_view bytes) const;
+  bool Equals(const absl::Cord& bytes) const;
+  bool Equals(BytesValueView bytes) const;
+
+  int Compare(absl::string_view bytes) const;
+  int Compare(const absl::Cord& bytes) const;
+  int Compare(BytesValueView bytes) const;
+
+  std::string ToString() const { return NativeString(); }
+
+  absl::Cord ToCord() const { return NativeCord(); }
 
  private:
   friend class BytesValue;

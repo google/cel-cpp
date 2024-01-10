@@ -89,9 +89,9 @@ class StringValue : public Value,
   absl::StatusOr<Handle<Value>> Equals(ValueFactory& value_factory,
                                        const Value& other) const;
 
-  size_t size() const;
+  size_t Size() const;
 
-  bool empty() const;
+  bool IsEmpty() const;
 
   bool Equals(absl::string_view string) const;
   bool Equals(const absl::Cord& string) const;

@@ -68,7 +68,7 @@ absl::Status RegisterSizeFunctions(FunctionRegistry& registry) {
   // String size
   auto size_func = [](ValueFactory& value_factory,
                       const StringValue& value) -> int64_t {
-    return value.size();
+    return value.Size();
   };
 
   // receiver style = true/false
@@ -85,7 +85,7 @@ absl::Status RegisterSizeFunctions(FunctionRegistry& registry) {
 
   // Bytes size
   auto bytes_size_func = [](ValueFactory&, const BytesValue& value) -> int64_t {
-    return value.size();
+    return value.Size();
   };
   // receiver style = true/false
   // Support global and receiver style size() operations on bytes.

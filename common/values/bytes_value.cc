@@ -98,6 +98,70 @@ absl::StatusOr<ValueView> BytesValue::Equal(ValueManager&, ValueView other,
   return BoolValueView{false};
 }
 
+size_t BytesValue::Size() const {
+  return NativeValue(
+      [](const auto& alternative) -> size_t { return alternative.size(); });
+}
+
+bool BytesValue::IsEmpty() const {
+  return NativeValue(
+      [](const auto& alternative) -> bool { return alternative.empty(); });
+}
+
+bool BytesValue::Equals(absl::string_view bytes) const {
+  return NativeValue([bytes](const auto& alternative) -> bool {
+    return alternative == bytes;
+  });
+}
+
+bool BytesValue::Equals(const absl::Cord& bytes) const {
+  return NativeValue([&bytes](const auto& alternative) -> bool {
+    return alternative == bytes;
+  });
+}
+
+bool BytesValue::Equals(BytesValueView bytes) const {
+  return bytes.NativeValue(
+      [this](const auto& alternative) -> bool { return Equals(alternative); });
+}
+
+namespace {
+
+int CompareImpl(absl::string_view lhs, absl::string_view rhs) {
+  return lhs.compare(rhs);
+}
+
+int CompareImpl(absl::string_view lhs, const absl::Cord& rhs) {
+  return -rhs.Compare(lhs);
+}
+
+int CompareImpl(const absl::Cord& lhs, absl::string_view rhs) {
+  return lhs.Compare(rhs);
+}
+
+int CompareImpl(const absl::Cord& lhs, const absl::Cord& rhs) {
+  return lhs.Compare(rhs);
+}
+
+}  // namespace
+
+int BytesValue::Compare(absl::string_view bytes) const {
+  return NativeValue([bytes](const auto& alternative) -> int {
+    return CompareImpl(alternative, bytes);
+  });
+}
+
+int BytesValue::Compare(const absl::Cord& bytes) const {
+  return NativeValue([&bytes](const auto& alternative) -> int {
+    return CompareImpl(alternative, bytes);
+  });
+}
+
+int BytesValue::Compare(BytesValueView bytes) const {
+  return bytes.NativeValue(
+      [this](const auto& alternative) -> int { return Compare(alternative); });
+}
+
 std::string BytesValueView::DebugString() const {
   return BytesDebugString(*this);
 }
@@ -148,6 +212,50 @@ absl::StatusOr<ValueView> BytesValueView::Equal(ValueManager&, ValueView other,
     });
   }
   return BoolValueView{false};
+}
+
+size_t BytesValueView::Size() const {
+  return NativeValue(
+      [](const auto& alternative) -> size_t { return alternative.size(); });
+}
+
+bool BytesValueView::IsEmpty() const {
+  return NativeValue(
+      [](const auto& alternative) -> bool { return alternative.empty(); });
+}
+
+bool BytesValueView::Equals(absl::string_view bytes) const {
+  return NativeValue([bytes](const auto& alternative) -> bool {
+    return alternative == bytes;
+  });
+}
+
+bool BytesValueView::Equals(const absl::Cord& bytes) const {
+  return NativeValue([&bytes](const auto& alternative) -> bool {
+    return alternative == bytes;
+  });
+}
+
+bool BytesValueView::Equals(BytesValueView bytes) const {
+  return bytes.NativeValue(
+      [this](const auto& alternative) -> bool { return Equals(alternative); });
+}
+
+int BytesValueView::Compare(absl::string_view bytes) const {
+  return NativeValue([bytes](const auto& alternative) -> int {
+    return CompareImpl(alternative, bytes);
+  });
+}
+
+int BytesValueView::Compare(const absl::Cord& bytes) const {
+  return NativeValue([&bytes](const auto& alternative) -> int {
+    return CompareImpl(alternative, bytes);
+  });
+}
+
+int BytesValueView::Compare(BytesValueView bytes) const {
+  return bytes.NativeValue(
+      [this](const auto& alternative) -> int { return Compare(alternative); });
 }
 
 }  // namespace cel

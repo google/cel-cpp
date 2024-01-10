@@ -215,11 +215,11 @@ class HashValueVisitor final {
 
 }  // namespace
 
-size_t StringValue::size() const {
+size_t StringValue::Size() const {
   return absl::visit(StringValueSizeVisitor{}, rep());
 }
 
-bool StringValue::empty() const { return absl::visit(EmptyVisitor{}, rep()); }
+bool StringValue::IsEmpty() const { return absl::visit(EmptyVisitor{}, rep()); }
 
 bool StringValue::Equals(absl::string_view string) const {
   return absl::visit(EqualsVisitor<absl::string_view>(string), rep());

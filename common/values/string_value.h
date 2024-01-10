@@ -133,6 +133,22 @@ class StringValue final {
     swap(value_, other.value_);
   }
 
+  size_t Size() const;
+
+  bool IsEmpty() const;
+
+  bool Equals(absl::string_view string) const;
+  bool Equals(const absl::Cord& string) const;
+  bool Equals(StringValueView string) const;
+
+  int Compare(absl::string_view string) const;
+  int Compare(const absl::Cord& string) const;
+  int Compare(StringValueView string) const;
+
+  std::string ToString() const { return NativeString(); }
+
+  absl::Cord ToCord() const { return NativeCord(); }
+
   template <typename H>
   friend H AbslHashValue(H state, const StringValue& string) {
     return H::combine(std::move(state), string.value_);
@@ -245,6 +261,22 @@ class StringValueView final {
     using std::swap;
     swap(value_, other.value_);
   }
+
+  size_t Size() const;
+
+  bool IsEmpty() const;
+
+  bool Equals(absl::string_view string) const;
+  bool Equals(const absl::Cord& string) const;
+  bool Equals(StringValueView string) const;
+
+  int Compare(absl::string_view string) const;
+  int Compare(const absl::Cord& string) const;
+  int Compare(StringValueView string) const;
+
+  std::string ToString() const { return NativeString(); }
+
+  absl::Cord ToCord() const { return NativeCord(); }
 
   template <typename H>
   friend H AbslHashValue(H state, StringValueView string) {
