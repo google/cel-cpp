@@ -25,26 +25,15 @@
 
 namespace cel::common_internal {
 
-absl::StatusOr<TypeView> ThreadCompatibleTypeProvider::FindType(
+absl::StatusOr<TypeView> ThreadCompatibleTypeProvider::FindTypeImpl(
     TypeFactory&, absl::string_view name, Type&) {
   return absl::NotFoundError(absl::StrCat("no such type: ", name));
 }
 
 absl::StatusOr<StructTypeFieldView>
-ThreadCompatibleTypeProvider::FindStructTypeFieldByName(TypeFactory&,
-                                                        absl::string_view type,
-                                                        absl::string_view,
-                                                        StructTypeField&) {
+ThreadCompatibleTypeProvider::FindStructTypeFieldByNameImpl(
+    TypeFactory&, absl::string_view type, absl::string_view, StructTypeField&) {
   return absl::NotFoundError(absl::StrCat("no such struct type: ", type));
-}
-
-absl::StatusOr<StructTypeFieldView>
-ThreadCompatibleTypeProvider::FindStructTypeFieldByName(TypeFactory&,
-                                                        StructTypeView type,
-                                                        absl::string_view,
-                                                        StructTypeField&) {
-  return absl::NotFoundError(
-      absl::StrCat("no such struct type: ", type.DebugString()));
 }
 
 }  // namespace cel::common_internal

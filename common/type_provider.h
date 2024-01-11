@@ -35,20 +35,31 @@ class TypeProvider {
   virtual ~TypeProvider() = default;
 
   // `FindType` find the type corresponding to name `name`.
-  virtual absl::StatusOr<TypeView> FindType(
+  absl::StatusOr<TypeView> FindType(
       TypeFactory& type_factory, absl::string_view name,
-      Type& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) = 0;
+      Type& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   // `FindStructTypeFieldByName` find the name, number, and type of the field
   // `name` in type `type`.
-  virtual absl::StatusOr<StructTypeFieldView> FindStructTypeFieldByName(
+  absl::StatusOr<StructTypeFieldView> FindStructTypeFieldByName(
       TypeFactory& type_factory, absl::string_view type, absl::string_view name,
-      StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) = 0;
+      StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   // `FindStructTypeFieldByName` find the name, number, and type of the field
   // `name` in struct type `type`.
-  virtual absl::StatusOr<StructTypeFieldView> FindStructTypeFieldByName(
+  absl::StatusOr<StructTypeFieldView> FindStructTypeFieldByName(
       TypeFactory& type_factory, StructTypeView type, absl::string_view name,
+      StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    return FindStructTypeFieldByName(type_factory, type.name(), name, scratch);
+  }
+
+ protected:
+  virtual absl::StatusOr<TypeView> FindTypeImpl(
+      TypeFactory& type_factory, absl::string_view name,
+      Type& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) = 0;
+
+  virtual absl::StatusOr<StructTypeFieldView> FindStructTypeFieldByNameImpl(
+      TypeFactory& type_factory, absl::string_view type, absl::string_view name,
       StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) = 0;
 };
 

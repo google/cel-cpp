@@ -31,16 +31,13 @@ class ThreadCompatibleTypeProvider : public virtual TypeProvider {
  public:
   ThreadCompatibleTypeProvider() = default;
 
-  absl::StatusOr<TypeView> FindType(TypeFactory& type_factory,
-                                    absl::string_view name,
-                                    Type& scratch) override;
+ protected:
+  absl::StatusOr<TypeView> FindTypeImpl(TypeFactory& type_factory,
+                                        absl::string_view name,
+                                        Type& scratch) override;
 
-  absl::StatusOr<StructTypeFieldView> FindStructTypeFieldByName(
+  absl::StatusOr<StructTypeFieldView> FindStructTypeFieldByNameImpl(
       TypeFactory& type_factory, absl::string_view type, absl::string_view name,
-      StructTypeField& scratch) override;
-
-  absl::StatusOr<StructTypeFieldView> FindStructTypeFieldByName(
-      TypeFactory& type_factory, StructTypeView type, absl::string_view name,
       StructTypeField& scratch) override;
 };
 

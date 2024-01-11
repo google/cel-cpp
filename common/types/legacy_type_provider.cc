@@ -24,27 +24,19 @@
 
 namespace cel::common_internal {
 
-absl::StatusOr<TypeView> LegacyTypeProvider::FindType(TypeFactory&,
-                                                      absl::string_view,
-                                                      Type&) {
+absl::StatusOr<TypeView> LegacyTypeProvider::FindTypeImpl(TypeFactory&,
+                                                          absl::string_view,
+                                                          Type&) {
   return absl::UnimplementedError(
       "google::api::expr::runtime::CelValue does not support type "
       "introspection");
 }
 
 absl::StatusOr<StructTypeFieldView>
-LegacyTypeProvider::FindStructTypeFieldByName(TypeFactory&, absl::string_view,
-                                              absl::string_view,
-                                              StructTypeField&) {
-  return absl::UnimplementedError(
-      "google::api::expr::runtime::CelValue does not support type "
-      "introspection");
-}
-
-absl::StatusOr<StructTypeFieldView>
-LegacyTypeProvider::FindStructTypeFieldByName(TypeFactory&, StructTypeView,
-                                              absl::string_view,
-                                              StructTypeField&) {
+LegacyTypeProvider::FindStructTypeFieldByNameImpl(TypeFactory&,
+                                                  absl::string_view,
+                                                  absl::string_view,
+                                                  StructTypeField&) {
   return absl::UnimplementedError(
       "google::api::expr::runtime::CelValue does not support type "
       "introspection");
