@@ -25,13 +25,13 @@ namespace cel::common_internal {
 
 absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
 ThreadCompatibleValueProvider::NewStructValueBuilder(ValueFactory&,
-                                                     StructTypeView) {
+                                                     StructTypeView) const {
   return absl::nullopt;
 }
 
 absl::StatusOr<absl::optional<ValueView>>
 ThreadCompatibleValueProvider::FindValue(ValueFactory&, absl::string_view,
-                                         Value&) {
+                                         Value&) const {
   return absl::nullopt;
 }
 

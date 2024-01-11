@@ -35,12 +35,12 @@ class ThreadCompatibleTypeProvider : public virtual TypeProvider {
  protected:
   absl::StatusOr<absl::optional<TypeView>> FindTypeImpl(
       TypeFactory& type_factory, absl::string_view name,
-      Type& scratch) override;
+      Type& scratch) const override;
 
   absl::StatusOr<absl::optional<StructTypeFieldView>>
   FindStructTypeFieldByNameImpl(TypeFactory& type_factory,
                                 absl::string_view type, absl::string_view name,
-                                StructTypeField& scratch) override;
+                                StructTypeField& scratch) const override;
 };
 
 }  // namespace cel::common_internal

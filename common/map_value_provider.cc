@@ -587,7 +587,7 @@ class MapValueBuilderImpl<Value, Value> final : public MapValueBuilder {
 }  // namespace
 
 absl::StatusOr<Unique<MapValueBuilder>> ValueProvider::NewMapValueBuilder(
-    ValueFactory& value_factory, MapTypeView type) {
+    ValueFactory& value_factory, MapTypeView type) const {
   auto memory_manager = value_factory.GetMemoryManager();
   switch (type.key().kind()) {
     case TypeKind::kBool:

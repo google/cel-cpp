@@ -26,15 +26,14 @@ namespace cel::common_internal {
 
 absl::StatusOr<absl::optional<TypeView>>
 ThreadCompatibleTypeProvider::FindTypeImpl(TypeFactory&, absl::string_view,
-                                           Type&) {
+                                           Type&) const {
   return absl::nullopt;
 }
 
 absl::StatusOr<absl::optional<StructTypeFieldView>>
-ThreadCompatibleTypeProvider::FindStructTypeFieldByNameImpl(TypeFactory&,
-                                                            absl::string_view,
-                                                            absl::string_view,
-                                                            StructTypeField&) {
+ThreadCompatibleTypeProvider::FindStructTypeFieldByNameImpl(
+    TypeFactory&, absl::string_view, absl::string_view,
+    StructTypeField&) const {
   return absl::nullopt;
 }
 

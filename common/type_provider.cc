@@ -198,7 +198,7 @@ const WellKnownTypesMap& GetWellKnownTypesMap() {
 }  // namespace
 
 absl::StatusOr<absl::optional<TypeView>> TypeProvider::FindType(
-    TypeFactory& type_factory, absl::string_view name, Type& scratch) {
+    TypeFactory& type_factory, absl::string_view name, Type& scratch) const {
   const auto& well_known_types = GetWellKnownTypesMap();
   if (auto it = well_known_types.find(name); it != well_known_types.end()) {
     return it->second.type;
@@ -210,7 +210,7 @@ absl::StatusOr<absl::optional<StructTypeFieldView>>
 TypeProvider::FindStructTypeFieldByName(TypeFactory& type_factory,
                                         absl::string_view type,
                                         absl::string_view name,
-                                        StructTypeField& scratch) {
+                                        StructTypeField& scratch) const {
   const auto& well_known_types = GetWellKnownTypesMap();
   if (auto it = well_known_types.find(type); it != well_known_types.end()) {
     return it->second.FieldByName(name);

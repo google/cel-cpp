@@ -52,7 +52,7 @@ class WellKnownValueBuilder : public ValueBuilder {
 
 class BoolValueBuilder final : public WellKnownValueBuilder {
  public:
-  explicit BoolValueBuilder(ValueProvider& value_provider,
+  explicit BoolValueBuilder(const ValueProvider& value_provider,
                             ValueFactory& value_factory) {}
 
   absl::Status SetFieldByName(absl::string_view name, Value value) override {
@@ -91,7 +91,7 @@ class BoolValueBuilder final : public WellKnownValueBuilder {
 
 class Int32ValueBuilder final : public WellKnownValueBuilder {
  public:
-  explicit Int32ValueBuilder(ValueProvider& value_provider,
+  explicit Int32ValueBuilder(const ValueProvider& value_provider,
                              ValueFactory& value_factory) {}
 
   absl::Status SetFieldByName(absl::string_view name, Value value) override {
@@ -131,7 +131,7 @@ class Int32ValueBuilder final : public WellKnownValueBuilder {
 
 class Int64ValueBuilder final : public WellKnownValueBuilder {
  public:
-  explicit Int64ValueBuilder(ValueProvider& value_provider,
+  explicit Int64ValueBuilder(const ValueProvider& value_provider,
                              ValueFactory& value_factory) {}
 
   absl::Status SetFieldByName(absl::string_view name, Value value) override {
@@ -170,7 +170,7 @@ class Int64ValueBuilder final : public WellKnownValueBuilder {
 
 class UInt32ValueBuilder final : public WellKnownValueBuilder {
  public:
-  explicit UInt32ValueBuilder(ValueProvider& value_provider,
+  explicit UInt32ValueBuilder(const ValueProvider& value_provider,
                               ValueFactory& value_factory) {}
 
   absl::Status SetFieldByName(absl::string_view name, Value value) override {
@@ -210,7 +210,7 @@ class UInt32ValueBuilder final : public WellKnownValueBuilder {
 
 class UInt64ValueBuilder final : public WellKnownValueBuilder {
  public:
-  explicit UInt64ValueBuilder(ValueProvider& value_provider,
+  explicit UInt64ValueBuilder(const ValueProvider& value_provider,
                               ValueFactory& value_factory) {}
 
   absl::Status SetFieldByName(absl::string_view name, Value value) override {
@@ -249,7 +249,7 @@ class UInt64ValueBuilder final : public WellKnownValueBuilder {
 
 class FloatValueBuilder final : public WellKnownValueBuilder {
  public:
-  explicit FloatValueBuilder(ValueProvider& value_provider,
+  explicit FloatValueBuilder(const ValueProvider& value_provider,
                              ValueFactory& value_factory) {}
 
   absl::Status SetFieldByName(absl::string_view name, Value value) override {
@@ -289,7 +289,7 @@ class FloatValueBuilder final : public WellKnownValueBuilder {
 
 class DoubleValueBuilder final : public WellKnownValueBuilder {
  public:
-  explicit DoubleValueBuilder(ValueProvider& value_provider,
+  explicit DoubleValueBuilder(const ValueProvider& value_provider,
                               ValueFactory& value_factory) {}
 
   absl::Status SetFieldByName(absl::string_view name, Value value) override {
@@ -328,7 +328,7 @@ class DoubleValueBuilder final : public WellKnownValueBuilder {
 
 class StringValueBuilder final : public WellKnownValueBuilder {
  public:
-  explicit StringValueBuilder(ValueProvider& value_provider,
+  explicit StringValueBuilder(const ValueProvider& value_provider,
                               ValueFactory& value_factory) {}
 
   absl::Status SetFieldByName(absl::string_view name, Value value) override {
@@ -367,7 +367,7 @@ class StringValueBuilder final : public WellKnownValueBuilder {
 
 class BytesValueBuilder final : public WellKnownValueBuilder {
  public:
-  explicit BytesValueBuilder(ValueProvider& value_provider,
+  explicit BytesValueBuilder(const ValueProvider& value_provider,
                              ValueFactory& value_factory) {}
 
   absl::Status SetFieldByName(absl::string_view name, Value value) override {
@@ -406,7 +406,7 @@ class BytesValueBuilder final : public WellKnownValueBuilder {
 
 class DurationValueBuilder final : public WellKnownValueBuilder {
  public:
-  explicit DurationValueBuilder(ValueProvider& value_provider,
+  explicit DurationValueBuilder(const ValueProvider& value_provider,
                                 ValueFactory& value_factory) {}
 
   absl::Status SetFieldByName(absl::string_view name, Value value) override {
@@ -466,7 +466,7 @@ class DurationValueBuilder final : public WellKnownValueBuilder {
 
 class TimestampValueBuilder final : public WellKnownValueBuilder {
  public:
-  explicit TimestampValueBuilder(ValueProvider& value_provider,
+  explicit TimestampValueBuilder(const ValueProvider& value_provider,
                                  ValueFactory& value_factory) {}
 
   absl::Status SetFieldByName(absl::string_view name, Value value) override {
@@ -528,7 +528,7 @@ class TimestampValueBuilder final : public WellKnownValueBuilder {
 
 class JsonValueBuilder final : public WellKnownValueBuilder {
  public:
-  explicit JsonValueBuilder(ValueProvider& value_provider,
+  explicit JsonValueBuilder(const ValueProvider& value_provider,
                             ValueFactory& value_factory)
       : value_factory_(value_factory) {}
 
@@ -640,7 +640,7 @@ class JsonValueBuilder final : public WellKnownValueBuilder {
 
 class JsonArrayValueBuilder final : public WellKnownValueBuilder {
  public:
-  explicit JsonArrayValueBuilder(ValueProvider& value_provider,
+  explicit JsonArrayValueBuilder(const ValueProvider& value_provider,
                                  ValueFactory& value_factory)
       : value_factory_(value_factory) {}
 
@@ -683,7 +683,7 @@ class JsonArrayValueBuilder final : public WellKnownValueBuilder {
 
 class JsonObjectValueBuilder final : public WellKnownValueBuilder {
  public:
-  explicit JsonObjectValueBuilder(ValueProvider& value_provider,
+  explicit JsonObjectValueBuilder(const ValueProvider& value_provider,
                                   ValueFactory& value_factory)
       : value_factory_(value_factory) {}
 
@@ -731,7 +731,7 @@ class JsonObjectValueBuilder final : public WellKnownValueBuilder {
 
 class AnyValueBuilder final : public WellKnownValueBuilder {
  public:
-  explicit AnyValueBuilder(ValueProvider& value_provider,
+  explicit AnyValueBuilder(const ValueProvider& value_provider,
                            ValueFactory& value_factory)
       : value_provider_(value_provider), value_factory_(value_factory) {}
 
@@ -791,18 +791,18 @@ class AnyValueBuilder final : public WellKnownValueBuilder {
     return TypeConversionError(value.GetTypeName(), "bytes").NativeValue();
   }
 
-  ValueProvider& value_provider_;
+  const ValueProvider& value_provider_;
   ValueFactory& value_factory_;
   std::string type_url_;
   absl::Cord value_;
 };
 
 using WellKnownValueBuilderProvider = Unique<WellKnownValueBuilder> (*)(
-    MemoryManagerRef, ValueProvider&, ValueFactory&);
+    MemoryManagerRef, const ValueProvider&, ValueFactory&);
 
 template <typename T>
 Unique<WellKnownValueBuilder> WellKnownValueBuilderProviderFor(
-    MemoryManagerRef memory_manager, ValueProvider& value_provider,
+    MemoryManagerRef memory_manager, const ValueProvider& value_provider,
     ValueFactory& value_factory) {
   return memory_manager.MakeUnique<T>(value_provider, value_factory);
 }
@@ -893,7 +893,7 @@ class ValueBuilderForStruct final : public ValueBuilder {
 
 absl::StatusOr<absl::optional<Unique<ValueBuilder>>>
 ValueProvider::NewValueBuilder(ValueFactory& value_factory,
-                               absl::string_view name) {
+                               absl::string_view name) const {
   const auto& well_known_value_builders = GetWellKnownValueBuilderMap();
   if (auto well_known_value_builder = well_known_value_builders.find(name);
       well_known_value_builder != well_known_value_builders.end()) {
@@ -913,7 +913,7 @@ ValueProvider::NewValueBuilder(ValueFactory& value_factory,
 
 absl::StatusOr<absl::optional<Value>> ValueProvider::DeserializeValue(
     ValueFactory& value_factory, absl::string_view type_url,
-    const absl::Cord& value) {
+    const absl::Cord& value) const {
   if (absl::StartsWith(type_url, kTypeGoogleApisComPrefix)) {
     const auto& well_known_value_builders = GetWellKnownValueBuilderMap();
     if (auto well_known_value_builder = well_known_value_builders.find(
@@ -929,7 +929,7 @@ absl::StatusOr<absl::optional<Value>> ValueProvider::DeserializeValue(
 }
 
 absl::StatusOr<absl::optional<Value>> ValueProvider::DeserializeValueImpl(
-    ValueFactory&, absl::string_view, const absl::Cord&) {
+    ValueFactory&, absl::string_view, const absl::Cord&) const {
   return absl::nullopt;
 }
 

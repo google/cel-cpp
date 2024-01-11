@@ -162,7 +162,7 @@ class ListValueBuilderImpl<Value> final : public ListValueBuilder {
 }  // namespace
 
 absl::StatusOr<Unique<ListValueBuilder>> ValueProvider::NewListValueBuilder(
-    ValueFactory& value_factory, ListTypeView type) {
+    ValueFactory& value_factory, ListTypeView type) const {
   auto memory_manager = value_factory.GetMemoryManager();
   switch (type.element().kind()) {
     case TypeKind::kBool:

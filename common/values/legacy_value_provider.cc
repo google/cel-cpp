@@ -25,12 +25,13 @@
 namespace cel::common_internal {
 
 absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
-LegacyValueProvider::NewStructValueBuilder(ValueFactory&, StructTypeView) {
+LegacyValueProvider::NewStructValueBuilder(ValueFactory&,
+                                           StructTypeView) const {
   return absl::nullopt;
 }
 
 absl::StatusOr<absl::optional<ValueView>> LegacyValueProvider::FindValue(
-    ValueFactory&, absl::string_view, Value&) {
+    ValueFactory&, absl::string_view, Value&) const {
   return absl::nullopt;
 }
 

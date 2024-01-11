@@ -35,11 +35,11 @@ class ThreadCompatibleValueProvider : public ThreadCompatibleTypeProvider,
 
   absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
   NewStructValueBuilder(ValueFactory& value_factory,
-                        StructTypeView type) override;
+                        StructTypeView type) const override;
 
   absl::StatusOr<absl::optional<ValueView>> FindValue(
       ValueFactory& value_factory, absl::string_view name,
-      Value& scratch) override;
+      Value& scratch) const override;
 };
 
 }  // namespace cel::common_internal

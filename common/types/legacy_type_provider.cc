@@ -25,7 +25,7 @@
 namespace cel::common_internal {
 
 absl::StatusOr<absl::optional<TypeView>> LegacyTypeProvider::FindTypeImpl(
-    TypeFactory&, absl::string_view, Type&) {
+    TypeFactory&, absl::string_view, Type&) const {
   return absl::nullopt;
 }
 
@@ -33,7 +33,7 @@ absl::StatusOr<absl::optional<StructTypeFieldView>>
 LegacyTypeProvider::FindStructTypeFieldByNameImpl(TypeFactory&,
                                                   absl::string_view,
                                                   absl::string_view,
-                                                  StructTypeField&) {
+                                                  StructTypeField&) const {
   return absl::nullopt;
 }
 
