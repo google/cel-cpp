@@ -19,6 +19,7 @@
 
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/types/thread_compatible_type_provider.h"
@@ -32,12 +33,13 @@ class ThreadCompatibleValueProvider : public ThreadCompatibleTypeProvider,
  public:
   ThreadCompatibleValueProvider() : ThreadCompatibleTypeProvider() {}
 
-  absl::StatusOr<Unique<StructValueBuilder>> NewStructValueBuilder(
-      ValueFactory& value_factory, StructTypeView type) override;
+  absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
+  NewStructValueBuilder(ValueFactory& value_factory,
+                        StructTypeView type) override;
 
-  absl::StatusOr<ValueView> FindValue(ValueFactory& value_factory,
-                                      absl::string_view name,
-                                      Value& scratch) override;
+  absl::StatusOr<absl::optional<ValueView>> FindValue(
+      ValueFactory& value_factory, absl::string_view name,
+      Value& scratch) override;
 };
 
 }  // namespace cel::common_internal

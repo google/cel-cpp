@@ -19,6 +19,7 @@
 
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/type.h"
 #include "common/type_provider.h"
 
@@ -32,13 +33,14 @@ class LegacyTypeProvider : public virtual TypeProvider {
   LegacyTypeProvider() = default;
 
  protected:
-  absl::StatusOr<TypeView> FindTypeImpl(TypeFactory& type_factory,
-                                        absl::string_view name,
-                                        Type& scratch) override;
+  absl::StatusOr<absl::optional<TypeView>> FindTypeImpl(
+      TypeFactory& type_factory, absl::string_view name,
+      Type& scratch) override;
 
-  absl::StatusOr<StructTypeFieldView> FindStructTypeFieldByNameImpl(
-      TypeFactory& type_factory, absl::string_view type, absl::string_view name,
-      StructTypeField& scratch) override;
+  absl::StatusOr<absl::optional<StructTypeFieldView>>
+  FindStructTypeFieldByNameImpl(TypeFactory& type_factory,
+                                absl::string_view type, absl::string_view name,
+                                StructTypeField& scratch) override;
 };
 
 }  // namespace cel::common_internal

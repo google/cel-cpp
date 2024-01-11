@@ -16,24 +16,26 @@
 
 #include "common/types/thread_compatible_type_provider.h"
 
-#include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/type.h"
 #include "common/type_provider.h"
 
 namespace cel::common_internal {
 
-absl::StatusOr<TypeView> ThreadCompatibleTypeProvider::FindTypeImpl(
-    TypeFactory&, absl::string_view name, Type&) {
-  return absl::NotFoundError(absl::StrCat("no such type: ", name));
+absl::StatusOr<absl::optional<TypeView>>
+ThreadCompatibleTypeProvider::FindTypeImpl(TypeFactory&, absl::string_view,
+                                           Type&) {
+  return absl::nullopt;
 }
 
-absl::StatusOr<StructTypeFieldView>
-ThreadCompatibleTypeProvider::FindStructTypeFieldByNameImpl(
-    TypeFactory&, absl::string_view type, absl::string_view, StructTypeField&) {
-  return absl::NotFoundError(absl::StrCat("no such struct type: ", type));
+absl::StatusOr<absl::optional<StructTypeFieldView>>
+ThreadCompatibleTypeProvider::FindStructTypeFieldByNameImpl(TypeFactory&,
+                                                            absl::string_view,
+                                                            absl::string_view,
+                                                            StructTypeField&) {
+  return absl::nullopt;
 }
 
 }  // namespace cel::common_internal

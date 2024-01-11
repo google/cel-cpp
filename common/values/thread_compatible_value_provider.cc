@@ -14,26 +14,25 @@
 
 #include "common/values/thread_compatible_value_provider.h"
 
-#include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
 
 namespace cel::common_internal {
 
-absl::StatusOr<Unique<StructValueBuilder>>
+absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
 ThreadCompatibleValueProvider::NewStructValueBuilder(ValueFactory&,
-                                                     StructTypeView type) {
-  return absl::NotFoundError(
-      absl::StrCat("value builder for type not found: ", type.DebugString()));
+                                                     StructTypeView) {
+  return absl::nullopt;
 }
 
-absl::StatusOr<ValueView> ThreadCompatibleValueProvider::FindValue(
-    ValueFactory&, absl::string_view name, Value&) {
-  return absl::NotFoundError(absl::StrCat("value not found: ", name));
+absl::StatusOr<absl::optional<ValueView>>
+ThreadCompatibleValueProvider::FindValue(ValueFactory&, absl::string_view,
+                                         Value&) {
+  return absl::nullopt;
 }
 
 }  // namespace cel::common_internal

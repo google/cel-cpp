@@ -16,30 +16,25 @@
 
 #include "common/types/legacy_type_provider.h"
 
-#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/type.h"
 #include "common/type_provider.h"
 
 namespace cel::common_internal {
 
-absl::StatusOr<TypeView> LegacyTypeProvider::FindTypeImpl(TypeFactory&,
-                                                          absl::string_view,
-                                                          Type&) {
-  return absl::UnimplementedError(
-      "google::api::expr::runtime::CelValue does not support type "
-      "introspection");
+absl::StatusOr<absl::optional<TypeView>> LegacyTypeProvider::FindTypeImpl(
+    TypeFactory&, absl::string_view, Type&) {
+  return absl::nullopt;
 }
 
-absl::StatusOr<StructTypeFieldView>
+absl::StatusOr<absl::optional<StructTypeFieldView>>
 LegacyTypeProvider::FindStructTypeFieldByNameImpl(TypeFactory&,
                                                   absl::string_view,
                                                   absl::string_view,
                                                   StructTypeField&) {
-  return absl::UnimplementedError(
-      "google::api::expr::runtime::CelValue does not support type "
-      "introspection");
+  return absl::nullopt;
 }
 
 }  // namespace cel::common_internal

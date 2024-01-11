@@ -136,6 +136,8 @@ ErrorValue NoSuchFieldError(absl::string_view field);
 
 ErrorValue NoSuchKeyError(absl::string_view key);
 
+ErrorValue NoSuchTypeError(absl::string_view type);
+
 ErrorValue DuplicateKeyError();
 
 ErrorValue TypeConversionError(absl::string_view from, absl::string_view to);

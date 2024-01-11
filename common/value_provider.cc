@@ -27,6 +27,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/strings/strip.h"
 #include "absl/time/time.h"
+#include "absl/types/optional.h"
 #include "common/any.h"
 #include "common/casting.h"
 #include "common/json.h"
@@ -760,7 +761,10 @@ class AnyValueBuilder final : public WellKnownValueBuilder {
     if (!status_or_value.ok()) {
       return ErrorValue(std::move(status_or_value).status());
     }
-    return std::move(*status_or_value);
+    if (!(*status_or_value).has_value()) {
+      return NoSuchTypeError(type_url_);
+    }
+    return std::move(*std::move(*status_or_value));
   }
 
   absl::Status Deserialize(const absl::Cord& serialized_value) override {
@@ -887,8 +891,9 @@ class ValueBuilderForStruct final : public ValueBuilder {
 
 }  // namespace
 
-absl::StatusOr<Unique<ValueBuilder>> ValueProvider::NewValueBuilder(
-    ValueFactory& value_factory, absl::string_view name) {
+absl::StatusOr<absl::optional<Unique<ValueBuilder>>>
+ValueProvider::NewValueBuilder(ValueFactory& value_factory,
+                               absl::string_view name) {
   const auto& well_known_value_builders = GetWellKnownValueBuilderMap();
   if (auto well_known_value_builder = well_known_value_builders.find(name);
       well_known_value_builder != well_known_value_builders.end()) {
@@ -896,13 +901,17 @@ absl::StatusOr<Unique<ValueBuilder>> ValueProvider::NewValueBuilder(
                                                *this, value_factory);
   }
   CEL_ASSIGN_OR_RETURN(
-      auto builder, NewStructValueBuilder(
-                        value_factory, value_factory.CreateStructType(name)));
-  return value_factory.GetMemoryManager().MakeUnique<ValueBuilderForStruct>(
-      std::move(builder));
+      auto maybe_builder,
+      NewStructValueBuilder(value_factory,
+                            value_factory.CreateStructType(name)));
+  if (maybe_builder.has_value()) {
+    return value_factory.GetMemoryManager().MakeUnique<ValueBuilderForStruct>(
+        std::move(*maybe_builder));
+  }
+  return absl::nullopt;
 }
 
-absl::StatusOr<Value> ValueProvider::DeserializeValue(
+absl::StatusOr<absl::optional<Value>> ValueProvider::DeserializeValue(
     ValueFactory& value_factory, absl::string_view type_url,
     const absl::Cord& value) {
   if (absl::StartsWith(type_url, kTypeGoogleApisComPrefix)) {
@@ -919,10 +928,9 @@ absl::StatusOr<Value> ValueProvider::DeserializeValue(
   return DeserializeValueImpl(value_factory, type_url, value);
 }
 
-absl::StatusOr<Value> ValueProvider::DeserializeValueImpl(
-    ValueFactory&, absl::string_view type_url, const absl::Cord&) {
-  return absl::NotFoundError(
-      absl::StrCat("no deserializer found for ", type_url));
+absl::StatusOr<absl::optional<Value>> ValueProvider::DeserializeValueImpl(
+    ValueFactory&, absl::string_view, const absl::Cord&) {
+  return absl::nullopt;
 }
 
 Shared<ValueProvider> NewThreadCompatibleValueProvider(

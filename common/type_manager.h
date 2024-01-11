@@ -18,6 +18,7 @@
 #include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_factory.h"
@@ -32,13 +33,13 @@ class TypeManager : public virtual TypeFactory {
   virtual ~TypeManager() = default;
 
   // See `TypeProvider::FindType`.
-  absl::StatusOr<TypeView> FindType(
+  absl::StatusOr<absl::optional<TypeView>> FindType(
       absl::string_view name, Type& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     return GetTypeProvider().FindType(*this, name, scratch);
   }
 
   // See `TypeProvider::FindStructTypeFieldByName`.
-  absl::StatusOr<StructTypeFieldView> FindStructTypeFieldByName(
+  absl::StatusOr<absl::optional<StructTypeFieldView>> FindStructTypeFieldByName(
       absl::string_view type, absl::string_view name,
       StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     return GetTypeProvider().FindStructTypeFieldByName(*this, type, name,
@@ -46,7 +47,7 @@ class TypeManager : public virtual TypeFactory {
   }
 
   // See `TypeProvider::FindStructTypeFieldByName`.
-  absl::StatusOr<StructTypeFieldView> FindStructTypeFieldByName(
+  absl::StatusOr<absl::optional<StructTypeFieldView>> FindStructTypeFieldByName(
       StructTypeView type, absl::string_view name,
       StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     return GetTypeProvider().FindStructTypeFieldByName(*this, type, name,

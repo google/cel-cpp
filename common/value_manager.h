@@ -19,6 +19,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_manager.h"
@@ -44,25 +45,26 @@ class ValueManager : public virtual ValueFactory, public virtual TypeManager {
   }
 
   // See `ValueProvider::NewStructValueBuilder`.
-  absl::StatusOr<Unique<StructValueBuilder>> NewStructValueBuilder(
-      StructTypeView type) {
+  absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
+  NewStructValueBuilder(StructTypeView type) {
     return GetValueProvider().NewStructValueBuilder(*this, type);
   }
 
   // See `ValueProvider::NewValueBuilder`.
-  absl::StatusOr<Unique<ValueBuilder>> NewValueBuilder(absl::string_view name) {
+  absl::StatusOr<absl::optional<Unique<ValueBuilder>>> NewValueBuilder(
+      absl::string_view name) {
     return GetValueProvider().NewValueBuilder(*this, name);
   }
 
   // See `ValueProvider::FindValue`.
-  absl::StatusOr<ValueView> FindValue(
+  absl::StatusOr<absl::optional<ValueView>> FindValue(
       absl::string_view name, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     return GetValueProvider().FindValue(*this, name, scratch);
   }
 
   // See `ValueProvider::DeserializeValue`.
-  absl::StatusOr<Value> DeserializeValue(absl::string_view type_url,
-                                         const absl::Cord& value) {
+  absl::StatusOr<absl::optional<Value>> DeserializeValue(
+      absl::string_view type_url, const absl::Cord& value) {
     return GetValueProvider().DeserializeValue(*this, type_url, value);
   }
 

@@ -48,6 +48,11 @@ ErrorValue NoSuchKeyError(absl::string_view key) {
       absl::NotFoundError(absl::StrCat("Key not found in map : ", key)));
 }
 
+ErrorValue NoSuchTypeError(absl::string_view type) {
+  return ErrorValue(
+      absl::NotFoundError(absl::StrCat("type not found: ", type)));
+}
+
 ErrorValue DuplicateKeyError() {
   return ErrorValue(absl::AlreadyExistsError("duplicate key in map"));
 }

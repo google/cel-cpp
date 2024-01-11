@@ -20,9 +20,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/inlined_vector.h"
-#include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/memory.h"
@@ -199,9 +197,8 @@ const WellKnownTypesMap& GetWellKnownTypesMap() {
 
 }  // namespace
 
-absl::StatusOr<TypeView> TypeProvider::FindType(TypeFactory& type_factory,
-                                                absl::string_view name,
-                                                Type& scratch) {
+absl::StatusOr<absl::optional<TypeView>> TypeProvider::FindType(
+    TypeFactory& type_factory, absl::string_view name, Type& scratch) {
   const auto& well_known_types = GetWellKnownTypesMap();
   if (auto it = well_known_types.find(name); it != well_known_types.end()) {
     return it->second.type;
@@ -209,16 +206,15 @@ absl::StatusOr<TypeView> TypeProvider::FindType(TypeFactory& type_factory,
   return FindTypeImpl(type_factory, name, scratch);
 }
 
-absl::StatusOr<StructTypeFieldView> TypeProvider::FindStructTypeFieldByName(
-    TypeFactory& type_factory, absl::string_view type, absl::string_view name,
-    StructTypeField& scratch) {
+absl::StatusOr<absl::optional<StructTypeFieldView>>
+TypeProvider::FindStructTypeFieldByName(TypeFactory& type_factory,
+                                        absl::string_view type,
+                                        absl::string_view name,
+                                        StructTypeField& scratch) {
   const auto& well_known_types = GetWellKnownTypesMap();
   if (auto it = well_known_types.find(type); it != well_known_types.end()) {
-    if (auto field = it->second.FieldByName(name); field.has_value()) {
-      return *field;
-    }
-    return absl::NotFoundError(
-        absl::StrCat("field not found: ", type, ".", name));
+    return it->second.FieldByName(name);
+    ;
   }
   return FindStructTypeFieldByNameImpl(type_factory, type, name, scratch);
 }

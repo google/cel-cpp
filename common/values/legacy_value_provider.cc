@@ -14,9 +14,9 @@
 
 #include "common/values/legacy_value_provider.h"
 
-#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -24,19 +24,14 @@
 
 namespace cel::common_internal {
 
-absl::StatusOr<Unique<StructValueBuilder>>
+absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
 LegacyValueProvider::NewStructValueBuilder(ValueFactory&, StructTypeView) {
-  return absl::UnimplementedError(
-      "google::api::expr::runtime::CelValue does not support type "
-      "reflection");
+  return absl::nullopt;
 }
 
-absl::StatusOr<ValueView> LegacyValueProvider::FindValue(ValueFactory&,
-                                                         absl::string_view,
-                                                         Value&) {
-  return absl::UnimplementedError(
-      "google::api::expr::runtime::CelValue does not support type "
-      "reflection");
+absl::StatusOr<absl::optional<ValueView>> LegacyValueProvider::FindValue(
+    ValueFactory&, absl::string_view, Value&) {
+  return absl::nullopt;
 }
 
 }  // namespace cel::common_internal

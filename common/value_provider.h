@@ -19,6 +19,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_provider.h"
@@ -43,29 +44,29 @@ class ValueProvider : public virtual TypeProvider {
 
   // `NewStructValueBuilder` returns a new `StructValueBuilder` for the
   // corresponding `StructType` `type`.
-  virtual absl::StatusOr<Unique<StructValueBuilder>> NewStructValueBuilder(
-      ValueFactory& value_factory, StructTypeView type) = 0;
+  virtual absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
+  NewStructValueBuilder(ValueFactory& value_factory, StructTypeView type) = 0;
 
   // `NewValueBuilder` returns a new `ValueBuilder` for the corresponding type
   // `name`.  It is primarily used to handle wrapper types which sometimes show
   // up literally in expressions.
-  absl::StatusOr<Unique<ValueBuilder>> NewValueBuilder(
+  absl::StatusOr<absl::optional<Unique<ValueBuilder>>> NewValueBuilder(
       ValueFactory& value_factory, absl::string_view name);
 
   // `FindValue` returns a new `Value` for the corresponding name `name`. This
   // can be used to translate enum names to numeric values.
-  virtual absl::StatusOr<ValueView> FindValue(
+  virtual absl::StatusOr<absl::optional<ValueView>> FindValue(
       ValueFactory& value_factory, absl::string_view name,
       Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) = 0;
 
   // `DeserializeValue` deserializes the bytes of `value` according to
   // `type_url`. Returns `NOT_FOUND` if `type_url` is unrecognized.
-  absl::StatusOr<Value> DeserializeValue(ValueFactory& value_factory,
-                                         absl::string_view type_url,
-                                         const absl::Cord& value);
+  absl::StatusOr<absl::optional<Value>> DeserializeValue(
+      ValueFactory& value_factory, absl::string_view type_url,
+      const absl::Cord& value);
 
  protected:
-  virtual absl::StatusOr<Value> DeserializeValueImpl(
+  virtual absl::StatusOr<absl::optional<Value>> DeserializeValueImpl(
       ValueFactory& value_factory, absl::string_view type_url,
       const absl::Cord& value);
 };
