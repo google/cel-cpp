@@ -16,7 +16,6 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_TYPE_PROVIDER_H_
 
 #include "absl/types/optional.h"
-#include "base/type_provider.h"
 #include "eval/public/structs/legacy_any_packing.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 
@@ -26,8 +25,10 @@ namespace google::api::expr::runtime {
 //
 // Note: This API is not finalized. Consult the CEL team before introducing new
 // implementations.
-class LegacyTypeProvider : public cel::TypeProvider {
+class LegacyTypeProvider {
  public:
+  virtual ~LegacyTypeProvider() = default;
+
   // Return LegacyTypeAdapter for the fully qualified type name if available.
   //
   // nullopt values are interpreted as not present.

@@ -194,7 +194,6 @@ cc_library(
     deps = [
         ":legacy_any_packing",
         ":legacy_type_adapter",
-        "//base:type",
         "@com_google_absl//absl/types:optional",
     ],
 )
