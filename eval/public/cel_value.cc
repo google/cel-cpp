@@ -4,18 +4,19 @@
 #include <string>
 #include <vector>
 
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "base/memory.h"
 #include "eval/internal/errors.h"
-#include "eval/public/cel_value_internal.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "internal/no_destructor.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
@@ -227,6 +228,57 @@ const std::string CelValue::DebugString() const {
   return absl::StrCat(CelValue::TypeName(type()), ": ",
                       InternalVisit<std::string>(DebugStringVisitor{&arena}));
 }
+
+namespace {
+
+class EmptyCelList final : public CelList {
+ public:
+  static const EmptyCelList* Get() {
+    static const cel::internal::NoDestructor<EmptyCelList> instance;
+    return &*instance;
+  }
+
+  CelValue operator[](int index) const override {
+    static const CelError* invalid_argument =
+        new CelError(absl::InvalidArgumentError("index out of bounds"));
+    return CelValue::CreateError(invalid_argument);
+  }
+
+  int size() const override { return 0; }
+
+  bool empty() const override { return true; }
+};
+
+class EmptyCelMap final : public CelMap {
+ public:
+  static const EmptyCelMap* Get() {
+    static const cel::internal::NoDestructor<EmptyCelMap> instance;
+    return &*instance;
+  }
+
+  absl::optional<CelValue> operator[](CelValue key) const override {
+    return absl::nullopt;
+  }
+
+  absl::StatusOr<bool> Has(const CelValue& key) const override {
+    CEL_RETURN_IF_ERROR(CelValue::CheckMapKeyType(key));
+    return false;
+  }
+
+  int size() const override { return 0; }
+
+  bool empty() const override { return true; }
+
+  absl::StatusOr<const CelList*> ListKeys() const override {
+    return EmptyCelList::Get();
+  }
+};
+
+}  // namespace
+
+CelValue CelValue::CreateList() { return CreateList(EmptyCelList::Get()); }
+
+CelValue CelValue::CreateMap() { return CreateMap(EmptyCelMap::Get()); }
 
 CelValue CreateErrorValue(cel::MemoryManagerRef manager,
                           absl::string_view message,

@@ -232,10 +232,16 @@ class CelValue {
     return CelValue(value);
   }
 
+  // Creates a CelValue backed by an empty immutable list.
+  static CelValue CreateList();
+
   static CelValue CreateMap(const CelMap* value) {
     CheckNullPointer(value, Type::kMap);
     return CelValue(value);
   }
+
+  // Creates a CelValue backed by an empty immutable map.
+  static CelValue CreateMap();
 
   static CelValue CreateUnknownSet(const UnknownSet* value) {
     CheckNullPointer(value, Type::kUnknownSet);

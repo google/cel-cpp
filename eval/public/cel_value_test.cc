@@ -1,23 +1,24 @@
 #include "eval/public/cel_value.h"
 
+#include <cstdint>
 #include <string>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/match.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "absl/types/optional.h"
 #include "base/memory.h"
 #include "eval/internal/errors.h"
-#include "eval/public/cel_value_internal.h"
-#include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/structs/trivial_legacy_type_info.h"
 #include "eval/public/testing/matchers.h"
-#include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 #include "eval/testutil/test_message.pb.h"
 #include "extensions/protobuf/memory_manager.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
@@ -26,6 +27,8 @@ using ::cel::runtime_internal::kDurationHigh;
 using ::cel::runtime_internal::kDurationLow;
 using testing::Eq;
 using testing::HasSubstr;
+using testing::NotNull;
+using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
 class DummyMap : public CelMap {
@@ -250,6 +253,20 @@ TEST(CelValueTest, TestList) {
   EXPECT_THAT(CountTypeMatch(value), Eq(1));
 }
 
+TEST(CelValueTest, TestEmptyList) {
+  ::google::protobuf::Arena arena;
+
+  CelValue value = CelValue::CreateList();
+  EXPECT_TRUE(value.IsList());
+
+  const CelList* value2;
+  EXPECT_TRUE(value.GetValue(&value2));
+  EXPECT_TRUE(value2->empty());
+  EXPECT_EQ(value2->size(), 0);
+  EXPECT_THAT(value2->Get(&arena, 0),
+              test::IsCelError(StatusIs(absl::StatusCode::kInvalidArgument)));
+}
+
 // This test verifies CelValue support of Map type.
 TEST(CelValueTest, TestMap) {
   DummyMap dummy_map;
@@ -263,6 +280,22 @@ TEST(CelValueTest, TestMap) {
   EXPECT_TRUE(value.GetValue(&value2));
   EXPECT_THAT(value2, Eq(&dummy_map));
   EXPECT_THAT(CountTypeMatch(value), Eq(1));
+}
+
+TEST(CelValueTest, TestEmptyMap) {
+  ::google::protobuf::Arena arena;
+
+  CelValue value = CelValue::CreateMap();
+  EXPECT_TRUE(value.IsMap());
+
+  const CelMap* value2;
+  EXPECT_TRUE(value.GetValue(&value2));
+  EXPECT_TRUE(value2->empty());
+  EXPECT_EQ(value2->size(), 0);
+  EXPECT_THAT(value2->Has(CelValue::CreateBool(false)), IsOkAndHolds(false));
+  EXPECT_THAT(value2->Get(&arena, CelValue::CreateBool(false)),
+              Eq(absl::nullopt));
+  EXPECT_THAT(value2->ListKeys(&arena), IsOkAndHolds(NotNull()));
 }
 
 TEST(CelValueTest, TestCelType) {
