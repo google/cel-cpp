@@ -32,6 +32,7 @@
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "common/value_factory.h"
 #include "common/values/thread_compatible_value_provider.h"
@@ -930,6 +931,16 @@ absl::StatusOr<absl::optional<Value>> ValueProvider::DeserializeValue(
 
 absl::StatusOr<absl::optional<Value>> ValueProvider::DeserializeValueImpl(
     ValueFactory&, absl::string_view, const absl::Cord&) const {
+  return absl::nullopt;
+}
+
+absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
+ValueProvider::NewStructValueBuilder(ValueFactory&, StructTypeView) const {
+  return absl::nullopt;
+}
+
+absl::StatusOr<absl::optional<ValueView>> ValueProvider::FindValue(
+    ValueFactory&, absl::string_view, Value&) const {
   return absl::nullopt;
 }
 

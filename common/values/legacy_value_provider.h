@@ -17,14 +17,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_VALUE_PROVIDER_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_VALUE_PROVIDER_H_
 
-#include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
-#include "common/memory.h"
-#include "common/type.h"
 #include "common/types/legacy_type_provider.h"
-#include "common/value.h"
-#include "common/value_factory.h"
 #include "common/value_provider.h"
 
 namespace cel::common_internal {
@@ -32,14 +25,6 @@ namespace cel::common_internal {
 class LegacyValueProvider : public LegacyTypeProvider, public ValueProvider {
  public:
   LegacyValueProvider() : LegacyTypeProvider() {}
-
-  absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
-  NewStructValueBuilder(ValueFactory& value_factory,
-                        StructTypeView type) const override;
-
-  absl::StatusOr<absl::optional<ValueView>> FindValue(
-      ValueFactory& value_factory, absl::string_view name,
-      Value& scratch) const override;
 };
 
 }  // namespace cel::common_internal

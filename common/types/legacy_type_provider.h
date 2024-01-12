@@ -17,10 +17,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPES_LEGACY_TYPE_PROVIDER_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPES_LEGACY_TYPE_PROVIDER_H_
 
-#include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
-#include "common/type.h"
 #include "common/type_provider.h"
 
 namespace cel::common_internal {
@@ -31,16 +27,6 @@ namespace cel::common_internal {
 class LegacyTypeProvider : public virtual TypeProvider {
  public:
   LegacyTypeProvider() = default;
-
- protected:
-  absl::StatusOr<absl::optional<TypeView>> FindTypeImpl(
-      TypeFactory& type_factory, absl::string_view name,
-      Type& scratch) const override;
-
-  absl::StatusOr<absl::optional<StructTypeFieldView>>
-  FindStructTypeFieldByNameImpl(TypeFactory& type_factory,
-                                absl::string_view type, absl::string_view name,
-                                StructTypeField& scratch) const override;
 };
 
 }  // namespace cel::common_internal

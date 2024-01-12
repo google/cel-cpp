@@ -45,8 +45,7 @@ class ValueProvider : public virtual TypeProvider {
   // `NewStructValueBuilder` returns a new `StructValueBuilder` for the
   // corresponding `StructType` `type`.
   virtual absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
-  NewStructValueBuilder(ValueFactory& value_factory,
-                        StructTypeView type) const = 0;
+  NewStructValueBuilder(ValueFactory& value_factory, StructTypeView type) const;
 
   // `NewValueBuilder` returns a new `ValueBuilder` for the corresponding type
   // `name`.  It is primarily used to handle wrapper types which sometimes show
@@ -58,7 +57,7 @@ class ValueProvider : public virtual TypeProvider {
   // can be used to translate enum names to numeric values.
   virtual absl::StatusOr<absl::optional<ValueView>> FindValue(
       ValueFactory& value_factory, absl::string_view name,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   // `DeserializeValue` deserializes the bytes of `value` according to
   // `type_url`. Returns `NOT_FOUND` if `type_url` is unrecognized.

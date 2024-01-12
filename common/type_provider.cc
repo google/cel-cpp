@@ -214,9 +214,20 @@ TypeProvider::FindStructTypeFieldByName(TypeFactory& type_factory,
   const auto& well_known_types = GetWellKnownTypesMap();
   if (auto it = well_known_types.find(type); it != well_known_types.end()) {
     return it->second.FieldByName(name);
-    ;
   }
   return FindStructTypeFieldByNameImpl(type_factory, type, name, scratch);
+}
+
+absl::StatusOr<absl::optional<TypeView>> TypeProvider::FindTypeImpl(
+    TypeFactory&, absl::string_view, Type&) const {
+  return absl::nullopt;
+}
+
+absl::StatusOr<absl::optional<StructTypeFieldView>>
+TypeProvider::FindStructTypeFieldByNameImpl(TypeFactory&, absl::string_view,
+                                            absl::string_view,
+                                            StructTypeField&) const {
+  return absl::nullopt;
 }
 
 Shared<TypeProvider> NewThreadCompatibleTypeProvider(
