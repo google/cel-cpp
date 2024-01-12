@@ -202,7 +202,7 @@ cc_library(
     name = "legacy_type_adapter",
     hdrs = ["legacy_type_adapter.h"],
     deps = [
-        "//base:data",
+        "//base:attributes",
         "//base:memory",
         "//eval/public:cel_options",
         "//eval/public:cel_value",

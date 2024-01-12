@@ -25,8 +25,8 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "base/attribute.h"
 #include "base/memory.h"
-#include "base/values/struct_value.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 

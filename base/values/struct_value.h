@@ -59,13 +59,6 @@ class ValueFactory;
 class StructValueBuilder;
 class StructValueBuilderInterface;
 
-struct FieldSpecifier {
-  int64_t number;
-  std::string name;
-};
-
-using SelectQualifier = absl::variant<FieldSpecifier, AttributeQualifier>;
-
 struct QualifyResult {
   // The possibly intermediate result of qualification.
   Handle<Value> value;

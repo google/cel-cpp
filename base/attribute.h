@@ -264,6 +264,13 @@ class AttributePattern final {
   std::vector<AttributeQualifierPattern> qualifier_path_;
 };
 
+struct FieldSpecifier {
+  int64_t number;
+  std::string name;
+};
+
+using SelectQualifier = absl::variant<FieldSpecifier, AttributeQualifier>;
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_ATTRIBUTE_H_
