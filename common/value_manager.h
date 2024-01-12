@@ -23,63 +23,63 @@
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_manager.h"
+#include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_factory.h"
-#include "common/value_provider.h"
 
 namespace cel {
 
 // `ValueManager` is an additional layer on top of `ValueFactory` and
-// `ValueProvider` which combines the two and adds additional functionality.
+// `TypeReflector` which combines the two and adds additional functionality.
 class ValueManager : public virtual ValueFactory, public virtual TypeManager {
  public:
-  // See `ValueProvider::NewListValueBuilder`.
+  // See `TypeReflector::NewListValueBuilder`.
   absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(
       ListTypeView type) {
-    return GetValueProvider().NewListValueBuilder(*this, type);
+    return GetTypeReflector().NewListValueBuilder(*this, type);
   }
 
-  // See `ValueProvider::NewMapValueBuilder`.
+  // See `TypeReflector::NewMapValueBuilder`.
   absl::StatusOr<Unique<MapValueBuilder>> NewMapValueBuilder(MapTypeView type) {
-    return GetValueProvider().NewMapValueBuilder(*this, type);
+    return GetTypeReflector().NewMapValueBuilder(*this, type);
   }
 
-  // See `ValueProvider::NewStructValueBuilder`.
+  // See `TypeReflector::NewStructValueBuilder`.
   absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
   NewStructValueBuilder(StructTypeView type) {
-    return GetValueProvider().NewStructValueBuilder(*this, type);
+    return GetTypeReflector().NewStructValueBuilder(*this, type);
   }
 
-  // See `ValueProvider::NewValueBuilder`.
+  // See `TypeReflector::NewValueBuilder`.
   absl::StatusOr<absl::optional<Unique<ValueBuilder>>> NewValueBuilder(
       absl::string_view name) {
-    return GetValueProvider().NewValueBuilder(*this, name);
+    return GetTypeReflector().NewValueBuilder(*this, name);
   }
 
-  // See `ValueProvider::FindValue`.
+  // See `TypeReflector::FindValue`.
   absl::StatusOr<absl::optional<ValueView>> FindValue(
       absl::string_view name, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    return GetValueProvider().FindValue(*this, name, scratch);
+    return GetTypeReflector().FindValue(*this, name, scratch);
   }
 
-  // See `ValueProvider::DeserializeValue`.
+  // See `TypeReflector::DeserializeValue`.
   absl::StatusOr<absl::optional<Value>> DeserializeValue(
       absl::string_view type_url, const absl::Cord& value) {
-    return GetValueProvider().DeserializeValue(*this, type_url, value);
+    return GetTypeReflector().DeserializeValue(*this, type_url, value);
   }
 
  protected:
-  virtual ValueProvider& GetValueProvider() const = 0;
+  virtual TypeReflector& GetTypeReflector() const = 0;
 };
 
 // Creates a new `ValueManager` which is thread compatible.
 Shared<ValueManager> NewThreadCompatibleValueManager(
-    MemoryManagerRef memory_manager, Shared<ValueProvider> value_provider);
+    MemoryManagerRef memory_manager, Shared<TypeReflector> type_reflector);
 
 // Creates a new `ValueManager` which is thread safe if and only if the provided
-// `ValueFactory` and `ValueProvider` are also thread safe.
+// `ValueFactory` and `TypeReflector` are also thread safe.
 Shared<ValueManager> NewThreadSafeValueManager(
-    MemoryManagerRef memory_manager, Shared<ValueProvider> value_provider);
+    MemoryManagerRef memory_manager, Shared<TypeReflector> type_reflector);
 
 }  // namespace cel
 

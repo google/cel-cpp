@@ -21,9 +21,9 @@
 #include "common/memory.h"
 #include "common/sized_input_view.h"
 #include "common/type.h"
+#include "common/type_introspector.h"
 #include "common/type_manager.h"
-#include "common/type_provider.h"
-#include "common/types/legacy_type_provider.h"
+#include "common/types/legacy_type_introspector.h"
 
 namespace cel::common_internal {
 
@@ -33,13 +33,16 @@ namespace cel::common_internal {
 class LegacyTypeManager : public virtual TypeManager {
  public:
   LegacyTypeManager(MemoryManagerRef memory_manager,
-                    LegacyTypeProvider& type_provider)
-      : memory_manager_(memory_manager), type_provider_(type_provider) {}
+                    LegacyTypeIntrospector& type_introspector)
+      : memory_manager_(memory_manager),
+        type_introspector_(type_introspector) {}
 
   MemoryManagerRef GetMemoryManager() const final { return memory_manager_; }
 
  protected:
-  TypeProvider& GetTypeProvider() const final { return type_provider_; }
+  TypeIntrospector& GetTypeIntrospector() const final {
+    return type_introspector_;
+  }
 
  private:
   ListType CreateListTypeImpl(TypeView element) final;
@@ -52,7 +55,7 @@ class LegacyTypeManager : public virtual TypeManager {
       absl::string_view name, const SizedInputView<TypeView>& parameters) final;
 
   MemoryManagerRef memory_manager_;
-  LegacyTypeProvider& type_provider_;
+  LegacyTypeIntrospector& type_introspector_;
 };
 
 }  // namespace cel::common_internal

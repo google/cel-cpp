@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/type_provider.h"
+#include "common/type_introspector.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -25,8 +25,8 @@
 #include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type.h"
-#include "common/types/thread_compatible_type_provider.h"
-#include "common/types/thread_safe_type_provider.h"
+#include "common/types/thread_compatible_type_introspector.h"
+#include "common/types/thread_safe_type_introspector.h"
 #include "common/types/type_cache.h"
 
 namespace cel {
@@ -197,7 +197,7 @@ const WellKnownTypesMap& GetWellKnownTypesMap() {
 
 }  // namespace
 
-absl::StatusOr<absl::optional<TypeView>> TypeProvider::FindType(
+absl::StatusOr<absl::optional<TypeView>> TypeIntrospector::FindType(
     TypeFactory& type_factory, absl::string_view name, Type& scratch) const {
   const auto& well_known_types = GetWellKnownTypesMap();
   if (auto it = well_known_types.find(name); it != well_known_types.end()) {
@@ -207,10 +207,10 @@ absl::StatusOr<absl::optional<TypeView>> TypeProvider::FindType(
 }
 
 absl::StatusOr<absl::optional<StructTypeFieldView>>
-TypeProvider::FindStructTypeFieldByName(TypeFactory& type_factory,
-                                        absl::string_view type,
-                                        absl::string_view name,
-                                        StructTypeField& scratch) const {
+TypeIntrospector::FindStructTypeFieldByName(TypeFactory& type_factory,
+                                            absl::string_view type,
+                                            absl::string_view name,
+                                            StructTypeField& scratch) const {
   const auto& well_known_types = GetWellKnownTypesMap();
   if (auto it = well_known_types.find(type); it != well_known_types.end()) {
     return it->second.FieldByName(name);
@@ -218,27 +218,28 @@ TypeProvider::FindStructTypeFieldByName(TypeFactory& type_factory,
   return FindStructTypeFieldByNameImpl(type_factory, type, name, scratch);
 }
 
-absl::StatusOr<absl::optional<TypeView>> TypeProvider::FindTypeImpl(
+absl::StatusOr<absl::optional<TypeView>> TypeIntrospector::FindTypeImpl(
     TypeFactory&, absl::string_view, Type&) const {
   return absl::nullopt;
 }
 
 absl::StatusOr<absl::optional<StructTypeFieldView>>
-TypeProvider::FindStructTypeFieldByNameImpl(TypeFactory&, absl::string_view,
-                                            absl::string_view,
-                                            StructTypeField&) const {
+TypeIntrospector::FindStructTypeFieldByNameImpl(TypeFactory&, absl::string_view,
+                                                absl::string_view,
+                                                StructTypeField&) const {
   return absl::nullopt;
 }
 
-Shared<TypeProvider> NewThreadCompatibleTypeProvider(
+Shared<TypeIntrospector> NewThreadCompatibleTypeIntrospector(
     MemoryManagerRef memory_manager) {
   return memory_manager
-      .MakeShared<common_internal::ThreadCompatibleTypeProvider>();
+      .MakeShared<common_internal::ThreadCompatibleTypeIntrospector>();
 }
 
-Shared<TypeProvider> NewThreadSafeTypeProvider(
+Shared<TypeIntrospector> NewThreadSafeTypeIntrospector(
     MemoryManagerRef memory_manager) {
-  return memory_manager.MakeShared<common_internal::ThreadSafeTypeProvider>();
+  return memory_manager
+      .MakeShared<common_internal::ThreadSafeTypeIntrospector>();
 }
 
 }  // namespace cel

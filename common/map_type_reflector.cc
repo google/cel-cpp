@@ -38,11 +38,11 @@
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/type_kind.h"
+#include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_factory.h"
 #include "common/value_kind.h"
 #include "common/value_manager.h"
-#include "common/value_provider.h"
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -586,7 +586,7 @@ class MapValueBuilderImpl<Value, Value> final : public MapValueBuilder {
 
 }  // namespace
 
-absl::StatusOr<Unique<MapValueBuilder>> ValueProvider::NewMapValueBuilder(
+absl::StatusOr<Unique<MapValueBuilder>> TypeReflector::NewMapValueBuilder(
     ValueFactory& value_factory, MapTypeView type) const {
   auto memory_manager = value_factory.GetMemoryManager();
   switch (type.key().kind()) {

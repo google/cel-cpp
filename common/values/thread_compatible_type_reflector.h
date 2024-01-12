@@ -14,24 +14,24 @@
 
 // IWYU pragma: private
 
-#ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_COMPATIBLE_VALUE_PROVIDER_H_
-#define THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_COMPATIBLE_VALUE_PROVIDER_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_COMPATIBLE_TYPE_REFLECTOR_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_COMPATIBLE_TYPE_REFLECTOR_H_
 
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type.h"
-#include "common/types/thread_compatible_type_provider.h"
+#include "common/type_reflector.h"
+#include "common/types/thread_compatible_type_introspector.h"
 #include "common/value.h"
-#include "common/value_provider.h"
 
 namespace cel::common_internal {
 
-class ThreadCompatibleValueProvider : public ThreadCompatibleTypeProvider,
-                                      public ValueProvider {
+class ThreadCompatibleTypeReflector : public ThreadCompatibleTypeIntrospector,
+                                      public TypeReflector {
  public:
-  ThreadCompatibleValueProvider() : ThreadCompatibleTypeProvider() {}
+  ThreadCompatibleTypeReflector() : ThreadCompatibleTypeIntrospector() {}
 
   absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
   NewStructValueBuilder(ValueFactory& value_factory,
@@ -44,4 +44,4 @@ class ThreadCompatibleValueProvider : public ThreadCompatibleTypeProvider,
 
 }  // namespace cel::common_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_COMPATIBLE_VALUE_PROVIDER_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_COMPATIBLE_TYPE_REFLECTOR_H_

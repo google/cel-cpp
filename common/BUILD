@@ -286,8 +286,8 @@ cc_library(
         ],
     ) + [
         "type_factory.cc",
+        "type_introspector.cc",
         "type_manager.cc",
-        "type_provider.cc",
     ],
     hdrs = glob(
         [
@@ -300,8 +300,8 @@ cc_library(
         "type.h",
         "type_factory.h",
         "type_interface.h",
+        "type_introspector.h",
         "type_manager.h",
-        "type_provider.h",
     ],
     deps = [
         ":casting",
@@ -361,12 +361,12 @@ cc_library(
             "values/*_test.cc",
         ],
     ) + [
-        "list_value_provider.cc",
-        "map_value_provider.cc",
+        "list_type_reflector.cc",
+        "map_type_reflector.cc",
+        "type_reflector.cc",
         "value_factory.cc",
         "value_interface.cc",
         "value_manager.cc",
-        "value_provider.cc",
     ],
     hdrs = glob(
         [
@@ -376,11 +376,11 @@ cc_library(
             "values/*_test.h",
         ],
     ) + [
+        "type_reflector.h",
         "value.h",
         "value_factory.h",
         "value_interface.h",
         "value_manager.h",
-        "value_provider.h",
     ],
     deps = [
         ":any",
@@ -430,8 +430,8 @@ cc_test(
     srcs = glob([
         "values/*_test.cc",
     ]) + [
+        "type_reflector_test.cc",
         "value_factory_test.cc",
-        "value_provider_test.cc",
         "value_test.cc",
     ],
     deps = [

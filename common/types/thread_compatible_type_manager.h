@@ -23,23 +23,26 @@
 #include "common/memory.h"
 #include "common/sized_input_view.h"
 #include "common/type.h"
+#include "common/type_introspector.h"
 #include "common/type_manager.h"
-#include "common/type_provider.h"
 #include "common/types/type_cache.h"
 
 namespace cel::common_internal {
 
 class ThreadCompatibleTypeManager : public virtual TypeManager {
  public:
-  explicit ThreadCompatibleTypeManager(MemoryManagerRef memory_manager,
-                                       Shared<TypeProvider> type_provider)
+  explicit ThreadCompatibleTypeManager(
+      MemoryManagerRef memory_manager,
+      Shared<TypeIntrospector> type_introspector)
       : memory_manager_(memory_manager),
-        type_provider_(std::move(type_provider)) {}
+        type_introspector_(std::move(type_introspector)) {}
 
   MemoryManagerRef GetMemoryManager() const final { return memory_manager_; }
 
  protected:
-  TypeProvider& GetTypeProvider() const final { return *type_provider_; }
+  TypeIntrospector& GetTypeIntrospector() const final {
+    return *type_introspector_;
+  }
 
  private:
   ListType CreateListTypeImpl(TypeView element) final;
@@ -52,7 +55,7 @@ class ThreadCompatibleTypeManager : public virtual TypeManager {
       absl::string_view name, const SizedInputView<TypeView>& parameters) final;
 
   MemoryManagerRef memory_manager_;
-  Shared<TypeProvider> type_provider_;
+  Shared<TypeIntrospector> type_introspector_;
   ListTypeCacheMap list_types_;
   MapTypeCacheMap map_types_;
   StructTypeCacheMap struct_types_;

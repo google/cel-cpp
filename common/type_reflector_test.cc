@@ -34,10 +34,10 @@ using cel::internal::IsOk;
 using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
-using ValueProviderTest = common_internal::ThreadCompatibleValueTest<>;
+using TypeReflectorTest = common_internal::ThreadCompatibleValueTest<>;
 
-#define VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(element_type)          \
-  TEST_P(ValueProviderTest, NewListValueBuilder_##element_type) {         \
+#define TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(element_type)          \
+  TEST_P(TypeReflectorTest, NewListValueBuilder_##element_type) {         \
     auto list_type = type_factory().CreateListType(element_type());       \
     ASSERT_OK_AND_ASSIGN(auto list_value_builder,                         \
                          value_manager().NewListValueBuilder(list_type)); \
@@ -50,31 +50,31 @@ using ValueProviderTest = common_internal::ThreadCompatibleValueTest<>;
     EXPECT_EQ(list_value.GetType(type_manager()), list_type);             \
   }
 
-VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(BoolType)
-VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(BytesType)
-VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(DoubleType)
-VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(DurationType)
-VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(IntType)
-VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(ListType)
-VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(MapType)
-VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(NullType)
-VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(OptionalType)
-VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(StringType)
-VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(TimestampType)
-VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(TypeType)
-VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(UintType)
-VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST(DynType)
+TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(BoolType)
+TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(BytesType)
+TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(DoubleType)
+TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(DurationType)
+TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(IntType)
+TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(ListType)
+TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(MapType)
+TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(NullType)
+TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(OptionalType)
+TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(StringType)
+TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(TimestampType)
+TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(TypeType)
+TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(UintType)
+TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(DynType)
 
-#undef VALUE_PROVIDER_NEW_LIST_VALUE_BUILDER_TEST
+#undef TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST
 
-TEST_P(ValueProviderTest, NewListValueBuilder_ErrorType) {
+TEST_P(TypeReflectorTest, NewListValueBuilder_ErrorType) {
   EXPECT_THAT(value_manager().NewListValueBuilder(
                   ListType(memory_manager(), ErrorType())),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
-#define VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(key_type, value_type)     \
-  TEST_P(ValueProviderTest, NewMapValueBuilder_##key_type##_##value_type) { \
+#define TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(key_type, value_type)     \
+  TEST_P(TypeReflectorTest, NewMapValueBuilder_##key_type##_##value_type) { \
     auto map_type = type_factory().CreateMapType(key_type(), value_type()); \
     ASSERT_OK_AND_ASSIGN(auto map_value_builder,                            \
                          value_manager().NewMapValueBuilder(map_type));     \
@@ -87,100 +87,100 @@ TEST_P(ValueProviderTest, NewListValueBuilder_ErrorType) {
     EXPECT_EQ(map_value.GetType(type_manager()), map_type);                 \
   }
 
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(BoolType, BoolType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(BoolType, BytesType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(BoolType, DoubleType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(BoolType, DurationType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(BoolType, IntType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(BoolType, ListType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(BoolType, MapType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(BoolType, NullType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(BoolType, OptionalType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(BoolType, StringType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(BoolType, TimestampType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(BoolType, TypeType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(BoolType, UintType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(BoolType, DynType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(BoolType, BoolType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(BoolType, BytesType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(BoolType, DoubleType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(BoolType, DurationType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(BoolType, IntType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(BoolType, ListType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(BoolType, MapType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(BoolType, NullType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(BoolType, OptionalType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(BoolType, StringType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(BoolType, TimestampType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(BoolType, TypeType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(BoolType, UintType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(BoolType, DynType)
 
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(IntType, BoolType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(IntType, BytesType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(IntType, DoubleType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(IntType, DurationType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(IntType, IntType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(IntType, ListType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(IntType, MapType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(IntType, NullType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(IntType, OptionalType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(IntType, StringType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(IntType, TimestampType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(IntType, TypeType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(IntType, UintType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(IntType, DynType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(IntType, BoolType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(IntType, BytesType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(IntType, DoubleType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(IntType, DurationType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(IntType, IntType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(IntType, ListType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(IntType, MapType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(IntType, NullType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(IntType, OptionalType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(IntType, StringType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(IntType, TimestampType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(IntType, TypeType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(IntType, UintType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(IntType, DynType)
 
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(UintType, BoolType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(UintType, BytesType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(UintType, DoubleType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(UintType, DurationType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(UintType, IntType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(UintType, ListType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(UintType, MapType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(UintType, NullType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(UintType, OptionalType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(UintType, StringType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(UintType, TimestampType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(UintType, TypeType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(UintType, UintType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(UintType, DynType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(UintType, BoolType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(UintType, BytesType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(UintType, DoubleType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(UintType, DurationType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(UintType, IntType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(UintType, ListType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(UintType, MapType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(UintType, NullType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(UintType, OptionalType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(UintType, StringType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(UintType, TimestampType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(UintType, TypeType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(UintType, UintType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(UintType, DynType)
 
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(StringType, BoolType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(StringType, BytesType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(StringType, DoubleType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(StringType, DurationType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(StringType, IntType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(StringType, ListType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(StringType, MapType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(StringType, NullType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(StringType, OptionalType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(StringType, StringType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(StringType, TimestampType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(StringType, TypeType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(StringType, UintType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(StringType, DynType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(StringType, BoolType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(StringType, BytesType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(StringType, DoubleType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(StringType, DurationType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(StringType, IntType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(StringType, ListType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(StringType, MapType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(StringType, NullType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(StringType, OptionalType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(StringType, StringType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(StringType, TimestampType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(StringType, TypeType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(StringType, UintType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(StringType, DynType)
 
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(DynType, BoolType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(DynType, BytesType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(DynType, DoubleType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(DynType, DurationType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(DynType, IntType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(DynType, ListType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(DynType, MapType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(DynType, NullType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(DynType, OptionalType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(DynType, StringType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(DynType, TimestampType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(DynType, TypeType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(DynType, UintType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(DynType, DynType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, BoolType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, BytesType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, DoubleType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, DurationType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, IntType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, ListType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, MapType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, NullType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, OptionalType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, StringType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, TimestampType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, TypeType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, UintType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, DynType)
 
-#undef VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST
+#undef TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST
 
-#define VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(key_type, value_type)     \
-  TEST_P(ValueProviderTest, NewMapValueBuilder_##key_type##_##value_type) { \
+#define TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(key_type, value_type)     \
+  TEST_P(TypeReflectorTest, NewMapValueBuilder_##key_type##_##value_type) { \
     EXPECT_THAT(value_manager().NewMapValueBuilder(                         \
                     MapType(memory_manager(), key_type(), value_type())),   \
                 StatusIs(absl::StatusCode::kInvalidArgument));              \
   }
 
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(BoolType, ErrorType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(IntType, ErrorType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(UintType, ErrorType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(StringType, ErrorType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(DynType, ErrorType)
-VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST(ErrorType, ErrorType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(BoolType, ErrorType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(IntType, ErrorType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(UintType, ErrorType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(StringType, ErrorType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, ErrorType)
+TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(ErrorType, ErrorType)
 
-#undef VALUE_PROVIDER_NEW_MAP_VALUE_BUILDER_TEST
+#undef TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST
 
-TEST_P(ValueProviderTest, NewListValueBuilderCoverage_Dynamic) {
+TEST_P(TypeReflectorTest, NewListValueBuilderCoverage_Dynamic) {
   ASSERT_OK_AND_ASSIGN(auto builder,
                        value_manager().NewListValueBuilder(
                            ListType(type_factory().GetDynListType())));
@@ -193,7 +193,7 @@ TEST_P(ValueProviderTest, NewListValueBuilderCoverage_Dynamic) {
   EXPECT_EQ(value.DebugString(), "[0, 1, 2]");
 }
 
-TEST_P(ValueProviderTest, NewMapValueBuilderCoverage_DynamicDynamic) {
+TEST_P(TypeReflectorTest, NewMapValueBuilderCoverage_DynamicDynamic) {
   ASSERT_OK_AND_ASSIGN(auto builder,
                        value_manager().NewMapValueBuilder(
                            type_factory().CreateMapType(DynType(), DynType())));
@@ -213,7 +213,7 @@ TEST_P(ValueProviderTest, NewMapValueBuilderCoverage_DynamicDynamic) {
       "{false: 1, true: 2, 0: 3, 1: 4, 0u: 5, 1u: 6, \"a\": 7, \"b\": 8}");
 }
 
-TEST_P(ValueProviderTest, NewMapValueBuilderCoverage_StaticDynamic) {
+TEST_P(TypeReflectorTest, NewMapValueBuilderCoverage_StaticDynamic) {
   ASSERT_OK_AND_ASSIGN(
       auto builder, value_manager().NewMapValueBuilder(
                         type_factory().CreateMapType(BoolType(), DynType())));
@@ -224,7 +224,7 @@ TEST_P(ValueProviderTest, NewMapValueBuilderCoverage_StaticDynamic) {
   EXPECT_EQ(value.DebugString(), "{true: 0}");
 }
 
-TEST_P(ValueProviderTest, NewMapValueBuilderCoverage_DynamicStatic) {
+TEST_P(TypeReflectorTest, NewMapValueBuilderCoverage_DynamicStatic) {
   ASSERT_OK_AND_ASSIGN(auto builder,
                        value_manager().NewMapValueBuilder(
                            type_factory().CreateMapType(DynType(), IntType())));
@@ -235,7 +235,7 @@ TEST_P(ValueProviderTest, NewMapValueBuilderCoverage_DynamicStatic) {
   EXPECT_EQ(value.DebugString(), "{true: 0}");
 }
 
-TEST_P(ValueProviderTest, JsonKeyCoverage) {
+TEST_P(TypeReflectorTest, JsonKeyCoverage) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewMapValueBuilder(MapType(
                                          type_factory().GetDynDynMapType())));
   EXPECT_OK(builder->Put(BoolValue(true), IntValue(1)));
@@ -251,7 +251,7 @@ TEST_P(ValueProviderTest, JsonKeyCoverage) {
                                         {JsonString("a"), Json(4.0)}}))));
 }
 
-TEST_P(ValueProviderTest, NewValueBuilder_BoolValue) {
+TEST_P(TypeReflectorTest, NewValueBuilder_BoolValue) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.BoolValue"));
   ASSERT_TRUE(builder.has_value());
@@ -270,7 +270,7 @@ TEST_P(ValueProviderTest, NewValueBuilder_BoolValue) {
   EXPECT_EQ(Cast<BoolValue>(value).NativeValue(), true);
 }
 
-TEST_P(ValueProviderTest, NewValueBuilder_Int32Value) {
+TEST_P(TypeReflectorTest, NewValueBuilder_Int32Value) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.Int32Value"));
   ASSERT_TRUE(builder.has_value());
@@ -295,7 +295,7 @@ TEST_P(ValueProviderTest, NewValueBuilder_Int32Value) {
   EXPECT_EQ(Cast<IntValue>(value).NativeValue(), 1);
 }
 
-TEST_P(ValueProviderTest, NewValueBuilder_Int64Value) {
+TEST_P(TypeReflectorTest, NewValueBuilder_Int64Value) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.Int64Value"));
   ASSERT_TRUE(builder.has_value());
@@ -314,7 +314,7 @@ TEST_P(ValueProviderTest, NewValueBuilder_Int64Value) {
   EXPECT_EQ(Cast<IntValue>(value).NativeValue(), 1);
 }
 
-TEST_P(ValueProviderTest, NewValueBuilder_UInt32Value) {
+TEST_P(TypeReflectorTest, NewValueBuilder_UInt32Value) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.UInt32Value"));
   ASSERT_TRUE(builder.has_value());
@@ -339,7 +339,7 @@ TEST_P(ValueProviderTest, NewValueBuilder_UInt32Value) {
   EXPECT_EQ(Cast<UintValue>(value).NativeValue(), 1);
 }
 
-TEST_P(ValueProviderTest, NewValueBuilder_UInt64Value) {
+TEST_P(TypeReflectorTest, NewValueBuilder_UInt64Value) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.UInt64Value"));
   ASSERT_TRUE(builder.has_value());
@@ -358,7 +358,7 @@ TEST_P(ValueProviderTest, NewValueBuilder_UInt64Value) {
   EXPECT_EQ(Cast<UintValue>(value).NativeValue(), 1);
 }
 
-TEST_P(ValueProviderTest, NewValueBuilder_FloatValue) {
+TEST_P(TypeReflectorTest, NewValueBuilder_FloatValue) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.FloatValue"));
   ASSERT_TRUE(builder.has_value());
@@ -377,7 +377,7 @@ TEST_P(ValueProviderTest, NewValueBuilder_FloatValue) {
   EXPECT_EQ(Cast<DoubleValue>(value).NativeValue(), 1);
 }
 
-TEST_P(ValueProviderTest, NewValueBuilder_DoubleValue) {
+TEST_P(TypeReflectorTest, NewValueBuilder_DoubleValue) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.DoubleValue"));
   ASSERT_TRUE(builder.has_value());
@@ -396,7 +396,7 @@ TEST_P(ValueProviderTest, NewValueBuilder_DoubleValue) {
   EXPECT_EQ(Cast<DoubleValue>(value).NativeValue(), 1);
 }
 
-TEST_P(ValueProviderTest, NewValueBuilder_StringValue) {
+TEST_P(TypeReflectorTest, NewValueBuilder_StringValue) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.StringValue"));
   ASSERT_TRUE(builder.has_value());
@@ -415,7 +415,7 @@ TEST_P(ValueProviderTest, NewValueBuilder_StringValue) {
   EXPECT_EQ(Cast<StringValue>(value).NativeString(), "foo");
 }
 
-TEST_P(ValueProviderTest, NewValueBuilder_BytesValue) {
+TEST_P(TypeReflectorTest, NewValueBuilder_BytesValue) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.BytesValue"));
   ASSERT_TRUE(builder.has_value());
@@ -434,7 +434,7 @@ TEST_P(ValueProviderTest, NewValueBuilder_BytesValue) {
   EXPECT_EQ(Cast<BytesValue>(value).NativeString(), "foo");
 }
 
-TEST_P(ValueProviderTest, NewValueBuilder_Duration) {
+TEST_P(TypeReflectorTest, NewValueBuilder_Duration) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.Duration"));
   ASSERT_TRUE(builder.has_value());
@@ -466,7 +466,7 @@ TEST_P(ValueProviderTest, NewValueBuilder_Duration) {
             absl::Seconds(1) + absl::Nanoseconds(1));
 }
 
-TEST_P(ValueProviderTest, NewValueBuilder_Timestamp) {
+TEST_P(TypeReflectorTest, NewValueBuilder_Timestamp) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.Timestamp"));
   ASSERT_TRUE(builder.has_value());
@@ -498,7 +498,7 @@ TEST_P(ValueProviderTest, NewValueBuilder_Timestamp) {
             absl::UnixEpoch() + absl::Seconds(1) + absl::Nanoseconds(1));
 }
 
-TEST_P(ValueProviderTest, NewValueBuilder_Any) {
+TEST_P(TypeReflectorTest, NewValueBuilder_Any) {
   ASSERT_OK_AND_ASSIGN(auto builder,
                        value_manager().NewValueBuilder("google.protobuf.Any"));
   ASSERT_TRUE(builder.has_value());
@@ -530,10 +530,10 @@ TEST_P(ValueProviderTest, NewValueBuilder_Any) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    ValueProviderTest, ValueProviderTest,
+    TypeReflectorTest, TypeReflectorTest,
     ::testing::Values(MemoryManagement::kPooling,
                       MemoryManagement::kReferenceCounting),
-    ValueProviderTest::ToString);
+    TypeReflectorTest::ToString);
 
 }  // namespace
 }  // namespace cel

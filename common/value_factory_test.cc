@@ -28,10 +28,10 @@
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_factory.h"
+#include "common/type_reflector.h"
 #include "common/types/type_cache.h"
 #include "common/value.h"
 #include "common/value_manager.h"
-#include "common/value_provider.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -73,11 +73,11 @@ class ValueFactoryTest
       case ThreadSafety::kCompatible:
         value_manager_ = NewThreadCompatibleValueManager(
             memory_manager(),
-            NewThreadCompatibleValueProvider(memory_manager()));
+            NewThreadCompatibleTypeReflector(memory_manager()));
         break;
       case ThreadSafety::kSafe:
         value_manager_ = NewThreadSafeValueManager(
-            memory_manager(), NewThreadSafeValueProvider(memory_manager()));
+            memory_manager(), NewThreadSafeTypeReflector(memory_manager()));
         break;
     }
   }

@@ -19,11 +19,11 @@
 #include "common/memory.h"
 #include "common/memory_testing.h"
 #include "common/type_factory.h"
+#include "common/type_introspector.h"
 #include "common/type_manager.h"
-#include "common/type_provider.h"
+#include "common/type_reflector.h"
 #include "common/value_factory.h"
 #include "common/value_manager.h"
-#include "common/value_provider.h"
 
 namespace cel::common_internal {
 
@@ -37,7 +37,7 @@ class ThreadCompatibleValueTest : public ThreadCompatibleMemoryTest<Ts...> {
     Base::SetUp();
     value_manager_ = NewThreadCompatibleValueManager(
         this->memory_manager(),
-        NewThreadCompatibleValueProvider(this->memory_manager()));
+        NewThreadCompatibleTypeReflector(this->memory_manager()));
   }
 
   void TearDown() override {

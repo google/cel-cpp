@@ -14,19 +14,21 @@
 
 // IWYU pragma: private
 
-#ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_VALUE_PROVIDER_H_
-#define THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_VALUE_PROVIDER_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPES_LEGACY_TYPE_INTROSPECTOR_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_TYPES_LEGACY_TYPE_INTROSPECTOR_H_
 
-#include "common/types/legacy_type_provider.h"
-#include "common/value_provider.h"
+#include "common/type_introspector.h"
 
 namespace cel::common_internal {
 
-class LegacyValueProvider : public LegacyTypeProvider, public ValueProvider {
+// `LegacyTypeIntrospector` is an implementation which should be used when
+// converting between `cel::Value` and `google::api::expr::runtime::CelValue`
+// and only then.
+class LegacyTypeIntrospector : public virtual TypeIntrospector {
  public:
-  LegacyValueProvider() : LegacyTypeProvider() {}
+  LegacyTypeIntrospector() = default;
 };
 
 }  // namespace cel::common_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_VALUE_PROVIDER_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_TYPES_LEGACY_TYPE_INTROSPECTOR_H_

@@ -22,50 +22,52 @@
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_factory.h"
-#include "common/type_provider.h"
+#include "common/type_introspector.h"
 
 namespace cel {
 
 // `TypeManager` is an additional layer on top of `TypeFactory` and
-// `TypeProvider` which combines the two and adds additional functionality.
+// `TypeIntrospector` which combines the two and adds additional functionality.
 class TypeManager : public virtual TypeFactory {
  public:
   virtual ~TypeManager() = default;
 
-  // See `TypeProvider::FindType`.
+  // See `TypeIntrospector::FindType`.
   absl::StatusOr<absl::optional<TypeView>> FindType(
       absl::string_view name, Type& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    return GetTypeProvider().FindType(*this, name, scratch);
+    return GetTypeIntrospector().FindType(*this, name, scratch);
   }
 
-  // See `TypeProvider::FindStructTypeFieldByName`.
+  // See `TypeIntrospector::FindStructTypeFieldByName`.
   absl::StatusOr<absl::optional<StructTypeFieldView>> FindStructTypeFieldByName(
       absl::string_view type, absl::string_view name,
       StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    return GetTypeProvider().FindStructTypeFieldByName(*this, type, name,
-                                                       scratch);
+    return GetTypeIntrospector().FindStructTypeFieldByName(*this, type, name,
+                                                           scratch);
   }
 
-  // See `TypeProvider::FindStructTypeFieldByName`.
+  // See `TypeIntrospector::FindStructTypeFieldByName`.
   absl::StatusOr<absl::optional<StructTypeFieldView>> FindStructTypeFieldByName(
       StructTypeView type, absl::string_view name,
       StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    return GetTypeProvider().FindStructTypeFieldByName(*this, type, name,
-                                                       scratch);
+    return GetTypeIntrospector().FindStructTypeFieldByName(*this, type, name,
+                                                           scratch);
   }
 
  protected:
-  virtual TypeProvider& GetTypeProvider() const = 0;
+  virtual TypeIntrospector& GetTypeIntrospector() const = 0;
 };
 
 // Creates a new `TypeManager` which is thread compatible.
 Shared<TypeManager> NewThreadCompatibleTypeManager(
-    MemoryManagerRef memory_manager, Shared<TypeProvider> type_provider);
+    MemoryManagerRef memory_manager,
+    Shared<TypeIntrospector> type_introspector);
 
 // Creates a new `TypeManager` which is thread safe if and only if the provided
-// `TypeFactory` and `TypeProvider` are also thread safe.
+// `TypeFactory` and `TypeIntrospector` are also thread safe.
 Shared<TypeManager> NewThreadSafeTypeManager(
-    MemoryManagerRef memory_manager, Shared<TypeProvider> type_provider);
+    MemoryManagerRef memory_manager,
+    Shared<TypeIntrospector> type_introspector);
 
 }  // namespace cel
 

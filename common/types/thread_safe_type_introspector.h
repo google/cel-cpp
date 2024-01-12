@@ -14,27 +14,17 @@
 
 // IWYU pragma: private
 
-#include "common/types/thread_compatible_type_provider.h"
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_SAFE_TYPE_INTROSPECTOR_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_SAFE_TYPE_INTROSPECTOR_H_
 
-#include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
-#include "common/type.h"
-#include "common/type_provider.h"
+#include "common/types/thread_compatible_type_introspector.h"
 
 namespace cel::common_internal {
 
-absl::StatusOr<absl::optional<TypeView>>
-ThreadCompatibleTypeProvider::FindTypeImpl(TypeFactory&, absl::string_view,
-                                           Type&) const {
-  return absl::nullopt;
-}
-
-absl::StatusOr<absl::optional<StructTypeFieldView>>
-ThreadCompatibleTypeProvider::FindStructTypeFieldByNameImpl(
-    TypeFactory&, absl::string_view, absl::string_view,
-    StructTypeField&) const {
-  return absl::nullopt;
-}
+// For now, `ThreadSafeTypeIntrospector` and `ThreadCompatibleTypeIntrospector`
+// are the same because the latter is thread safe at the moment.
+using ThreadSafeTypeIntrospector = ThreadCompatibleTypeIntrospector;
 
 }  // namespace cel::common_internal
+
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_SAFE_TYPE_INTROSPECTOR_H_

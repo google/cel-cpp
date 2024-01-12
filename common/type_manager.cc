@@ -17,23 +17,25 @@
 #include <utility>
 
 #include "common/memory.h"
-#include "common/type_provider.h"
+#include "common/type_introspector.h"
 #include "common/types/thread_compatible_type_manager.h"
 #include "common/types/thread_safe_type_manager.h"
 
 namespace cel {
 
 Shared<TypeManager> NewThreadCompatibleTypeManager(
-    MemoryManagerRef memory_manager, Shared<TypeProvider> type_provider) {
+    MemoryManagerRef memory_manager,
+    Shared<TypeIntrospector> type_introspector) {
   return memory_manager
       .MakeShared<common_internal::ThreadCompatibleTypeManager>(
-          memory_manager, std::move(type_provider));
+          memory_manager, std::move(type_introspector));
 }
 
 Shared<TypeManager> NewThreadSafeTypeManager(
-    MemoryManagerRef memory_manager, Shared<TypeProvider> type_provider) {
+    MemoryManagerRef memory_manager,
+    Shared<TypeIntrospector> type_introspector) {
   return memory_manager.MakeShared<common_internal::ThreadSafeTypeManager>(
-      memory_manager, std::move(type_provider));
+      memory_manager, std::move(type_introspector));
 }
 
 }  // namespace cel

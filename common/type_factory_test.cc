@@ -22,8 +22,8 @@
 #include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type.h"
+#include "common/type_introspector.h"
 #include "common/type_manager.h"
-#include "common/type_provider.h"
 #include "common/types/type_cache.h"
 #include "internal/testing.h"
 
@@ -68,11 +68,11 @@ class TypeFactoryTest
       case ThreadSafety::kCompatible:
         type_manager_ = NewThreadCompatibleTypeManager(
             memory_manager(),
-            NewThreadCompatibleTypeProvider(memory_manager()));
+            NewThreadCompatibleTypeIntrospector(memory_manager()));
         break;
       case ThreadSafety::kSafe:
         type_manager_ = NewThreadSafeTypeManager(
-            memory_manager(), NewThreadSafeTypeProvider(memory_manager()));
+            memory_manager(), NewThreadSafeTypeIntrospector(memory_manager()));
         break;
     }
   }

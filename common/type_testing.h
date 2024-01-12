@@ -19,8 +19,8 @@
 #include "common/memory.h"
 #include "common/memory_testing.h"
 #include "common/type_factory.h"
+#include "common/type_introspector.h"
 #include "common/type_manager.h"
-#include "common/type_provider.h"
 
 namespace cel::common_internal {
 
@@ -34,7 +34,7 @@ class ThreadCompatibleTypeTest : public ThreadCompatibleMemoryTest<Ts...> {
     Base::SetUp();
     type_manager_ = NewThreadCompatibleTypeManager(
         this->memory_manager(),
-        NewThreadCompatibleTypeProvider(this->memory_manager()));
+        NewThreadCompatibleTypeIntrospector(this->memory_manager()));
   }
 
   void TearDown() override {

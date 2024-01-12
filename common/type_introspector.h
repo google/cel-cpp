@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPE_PROVIDER_H_
-#define THIRD_PARTY_CEL_CPP_COMMON_TYPE_PROVIDER_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPE_INTROSPECTOR_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_TYPE_INTROSPECTOR_H_
 
 #include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
@@ -26,14 +26,14 @@ namespace cel {
 
 class TypeFactory;
 
-// `TypeProvider` is an interface which allows querying type-related
+// `TypeIntrospector` is an interface which allows querying type-related
 // information. It handles type introspection, but not type reflection. That is,
 // it is not capable of instantiating new values or understanding values. Its
 // primary usage is for type checking, and a subset of that shared functionality
 // is used by the runtime.
-class TypeProvider {
+class TypeIntrospector {
  public:
-  virtual ~TypeProvider() = default;
+  virtual ~TypeIntrospector() = default;
 
   // `FindType` find the type corresponding to name `name`.
   absl::StatusOr<absl::optional<TypeView>> FindType(
@@ -65,11 +65,12 @@ class TypeProvider {
       StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
 };
 
-Shared<TypeProvider> NewThreadCompatibleTypeProvider(
+Shared<TypeIntrospector> NewThreadCompatibleTypeIntrospector(
     MemoryManagerRef memory_manager);
 
-Shared<TypeProvider> NewThreadSafeTypeProvider(MemoryManagerRef memory_manager);
+Shared<TypeIntrospector> NewThreadSafeTypeIntrospector(
+    MemoryManagerRef memory_manager);
 
 }  // namespace cel
 
-#endif  // THIRD_PARTY_CEL_CPP_COMMON_TYPE_PROVIDER_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_TYPE_INTROSPECTOR_H_

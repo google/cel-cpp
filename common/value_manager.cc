@@ -17,23 +17,23 @@
 #include <utility>
 
 #include "common/memory.h"
-#include "common/value_provider.h"
+#include "common/type_reflector.h"
 #include "common/values/thread_compatible_value_manager.h"
 #include "common/values/thread_safe_value_manager.h"
 
 namespace cel {
 
 Shared<ValueManager> NewThreadCompatibleValueManager(
-    MemoryManagerRef memory_manager, Shared<ValueProvider> value_provider) {
+    MemoryManagerRef memory_manager, Shared<TypeReflector> type_reflector) {
   return memory_manager
       .MakeShared<common_internal::ThreadCompatibleValueManager>(
-          memory_manager, std::move(value_provider));
+          memory_manager, std::move(type_reflector));
 }
 
 Shared<ValueManager> NewThreadSafeValueManager(
-    MemoryManagerRef memory_manager, Shared<ValueProvider> value_provider) {
+    MemoryManagerRef memory_manager, Shared<TypeReflector> type_reflector) {
   return memory_manager.MakeShared<common_internal::ThreadSafeValueManager>(
-      memory_manager, std::move(value_provider));
+      memory_manager, std::move(type_reflector));
 }
 
 }  // namespace cel

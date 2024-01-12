@@ -14,23 +14,23 @@
 
 // IWYU pragma: private
 
-#ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_COMPATIBLE_TYPE_PROVIDER_H_
-#define THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_COMPATIBLE_TYPE_PROVIDER_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_COMPATIBLE_TYPE_INTROSPECTOR_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_COMPATIBLE_TYPE_INTROSPECTOR_H_
 
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/type.h"
-#include "common/type_provider.h"
+#include "common/type_introspector.h"
 
 namespace cel::common_internal {
 
-// `ThreadCompatibleTypeProvider` is a basic implementation of `TypeProvider`
-// which is thread compatible. By default this implementation just returns
-// `NOT_FOUND` for most methods.
-class ThreadCompatibleTypeProvider : public virtual TypeProvider {
+// `ThreadCompatibleTypeIntrospector` is a basic implementation of
+// `TypeIntrospector` which is thread compatible. By default this implementation
+// just returns `NOT_FOUND` for most methods.
+class ThreadCompatibleTypeIntrospector : public virtual TypeIntrospector {
  public:
-  ThreadCompatibleTypeProvider() = default;
+  ThreadCompatibleTypeIntrospector() = default;
 
  protected:
   absl::StatusOr<absl::optional<TypeView>> FindTypeImpl(
@@ -45,4 +45,4 @@ class ThreadCompatibleTypeProvider : public virtual TypeProvider {
 
 }  // namespace cel::common_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_COMPATIBLE_TYPE_PROVIDER_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_COMPATIBLE_TYPE_INTROSPECTOR_H_

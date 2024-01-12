@@ -21,10 +21,10 @@
 
 #include "common/memory.h"
 #include "common/type.h"
+#include "common/type_reflector.h"
 #include "common/types/thread_compatible_type_manager.h"
 #include "common/value.h"
 #include "common/value_manager.h"
-#include "common/value_provider.h"
 #include "common/values/value_cache.h"
 
 namespace cel::common_internal {
@@ -33,14 +33,14 @@ class ThreadCompatibleValueManager : public ThreadCompatibleTypeManager,
                                      public ValueManager {
  public:
   explicit ThreadCompatibleValueManager(MemoryManagerRef memory_manager,
-                                        Shared<ValueProvider> value_provider)
-      : ThreadCompatibleTypeManager(memory_manager, value_provider),
-        value_provider_(std::move(value_provider)) {}
+                                        Shared<TypeReflector> type_reflector)
+      : ThreadCompatibleTypeManager(memory_manager, type_reflector),
+        type_reflector_(std::move(type_reflector)) {}
 
   using ThreadCompatibleTypeManager::GetMemoryManager;
 
  protected:
-  ValueProvider& GetValueProvider() const final { return *value_provider_; }
+  TypeReflector& GetTypeReflector() const final { return *type_reflector_; }
 
  private:
   ListValue CreateZeroListValueImpl(ListTypeView type) override;
@@ -49,7 +49,7 @@ class ThreadCompatibleValueManager : public ThreadCompatibleTypeManager,
 
   OptionalValue CreateZeroOptionalValueImpl(OptionalTypeView type) override;
 
-  Shared<ValueProvider> value_provider_;
+  Shared<TypeReflector> type_reflector_;
   ListValueCacheMap list_values_;
   MapValueCacheMap map_values_;
   OptionalValueCacheMap optional_values_;

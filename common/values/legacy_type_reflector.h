@@ -1,4 +1,4 @@
-// Copyright 2023 Google LLC
+// Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,17 +14,20 @@
 
 // IWYU pragma: private
 
-#ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_SAFE_TYPE_PROVIDER_H_
-#define THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_SAFE_TYPE_PROVIDER_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_TYPE_REFLECTOR_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_TYPE_REFLECTOR_H_
 
-#include "common/types/thread_compatible_type_provider.h"
+#include "common/type_reflector.h"
+#include "common/types/legacy_type_introspector.h"
 
 namespace cel::common_internal {
 
-// For now, `ThreadSafeTypeProvider` and `ThreadCompatibleTypeProvider` are the
-// same because the latter is thread safe at the moment.
-using ThreadSafeTypeProvider = ThreadCompatibleTypeProvider;
+class LegacyTypeReflector : public LegacyTypeIntrospector,
+                            public TypeReflector {
+ public:
+  LegacyTypeReflector() : LegacyTypeIntrospector() {}
+};
 
 }  // namespace cel::common_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_COMMON_TYPES_THREAD_SAFE_TYPE_PROVIDER_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_TYPE_REFLECTOR_H_

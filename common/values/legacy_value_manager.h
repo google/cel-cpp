@@ -19,25 +19,25 @@
 
 #include "common/memory.h"
 #include "common/type.h"
+#include "common/type_reflector.h"
 #include "common/types/legacy_type_manager.h"
 #include "common/value.h"
 #include "common/value_manager.h"
-#include "common/value_provider.h"
-#include "common/values/legacy_value_provider.h"
+#include "common/values/legacy_type_reflector.h"
 
 namespace cel::common_internal {
 
 class LegacyValueManager : public LegacyTypeManager, public ValueManager {
  public:
   LegacyValueManager(MemoryManagerRef memory_manager,
-                     LegacyValueProvider& value_provider)
-      : LegacyTypeManager(memory_manager, value_provider),
-        value_provider_(value_provider) {}
+                     LegacyTypeReflector& type_reflector)
+      : LegacyTypeManager(memory_manager, type_reflector),
+        type_reflector_(type_reflector) {}
 
   using LegacyTypeManager::GetMemoryManager;
 
  protected:
-  ValueProvider& GetValueProvider() const final { return value_provider_; }
+  TypeReflector& GetTypeReflector() const final { return type_reflector_; }
 
  private:
   ListValue CreateZeroListValueImpl(ListTypeView type) override;
@@ -46,7 +46,7 @@ class LegacyValueManager : public LegacyTypeManager, public ValueManager {
 
   OptionalValue CreateZeroOptionalValueImpl(OptionalTypeView type) override;
 
-  LegacyValueProvider& value_provider_;
+  LegacyTypeReflector& type_reflector_;
 };
 
 }  // namespace cel::common_internal

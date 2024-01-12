@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUE_PROVIDER_H_
-#define THIRD_PARTY_CEL_CPP_COMMON_VALUE_PROVIDER_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPE_REFLECTOR_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_TYPE_REFLECTOR_H_
 
 #include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
@@ -22,15 +22,15 @@
 #include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type.h"
-#include "common/type_provider.h"
+#include "common/type_introspector.h"
 #include "common/value.h"
 #include "common/value_factory.h"
 
 namespace cel {
 
-// `ValueProvider` is an interface for constructing new instances of types are
+// `TypeReflector` is an interface for constructing new instances of types are
 // runtime. It handles type reflection.
-class ValueProvider : public virtual TypeProvider {
+class TypeReflector : public virtual TypeIntrospector {
  public:
   // `NewListValueBuilder` returns a new `ListValueBuilderInterface` for the
   // corresponding `ListType` `type`.
@@ -71,12 +71,12 @@ class ValueProvider : public virtual TypeProvider {
       const absl::Cord& value) const;
 };
 
-Shared<ValueProvider> NewThreadCompatibleValueProvider(
+Shared<TypeReflector> NewThreadCompatibleTypeReflector(
     MemoryManagerRef memory_manager);
 
-Shared<ValueProvider> NewThreadSafeValueProvider(
+Shared<TypeReflector> NewThreadSafeTypeReflector(
     MemoryManagerRef memory_manager);
 
 }  // namespace cel
 
-#endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUE_PROVIDER_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_TYPE_REFLECTOR_H_

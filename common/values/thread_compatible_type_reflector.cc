@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/values/thread_compatible_value_provider.h"
+#include "common/values/thread_compatible_type_reflector.h"
 
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -24,13 +24,13 @@
 namespace cel::common_internal {
 
 absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
-ThreadCompatibleValueProvider::NewStructValueBuilder(ValueFactory&,
+ThreadCompatibleTypeReflector::NewStructValueBuilder(ValueFactory&,
                                                      StructTypeView) const {
   return absl::nullopt;
 }
 
 absl::StatusOr<absl::optional<ValueView>>
-ThreadCompatibleValueProvider::FindValue(ValueFactory&, absl::string_view,
+ThreadCompatibleTypeReflector::FindValue(ValueFactory&, absl::string_view,
                                          Value&) const {
   return absl::nullopt;
 }

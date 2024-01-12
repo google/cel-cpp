@@ -28,10 +28,10 @@
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/type_kind.h"
+#include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_factory.h"
 #include "common/value_manager.h"
-#include "common/value_provider.h"
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -161,7 +161,7 @@ class ListValueBuilderImpl<Value> final : public ListValueBuilder {
 
 }  // namespace
 
-absl::StatusOr<Unique<ListValueBuilder>> ValueProvider::NewListValueBuilder(
+absl::StatusOr<Unique<ListValueBuilder>> TypeReflector::NewListValueBuilder(
     ValueFactory& value_factory, ListTypeView type) const {
   auto memory_manager = value_factory.GetMemoryManager();
   switch (type.element().kind()) {

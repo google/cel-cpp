@@ -23,10 +23,10 @@
 #include "absl/synchronization/mutex.h"
 #include "common/memory.h"
 #include "common/type.h"
+#include "common/type_reflector.h"
 #include "common/types/thread_safe_type_manager.h"
 #include "common/value.h"
 #include "common/value_manager.h"
-#include "common/value_provider.h"
 #include "common/values/value_cache.h"
 
 namespace cel::common_internal {
@@ -39,14 +39,14 @@ class ThreadSafeValueManager : public ThreadSafeTypeManager,
                                public ValueManager {
  public:
   explicit ThreadSafeValueManager(MemoryManagerRef memory_manager,
-                                  Shared<ValueProvider> value_provider)
-      : ThreadSafeTypeManager(memory_manager, value_provider),
-        value_provider_(std::move(value_provider)) {}
+                                  Shared<TypeReflector> type_reflector)
+      : ThreadSafeTypeManager(memory_manager, type_reflector),
+        type_reflector_(std::move(type_reflector)) {}
 
   using ThreadSafeTypeManager::GetMemoryManager;
 
  protected:
-  ValueProvider& GetValueProvider() const final { return *value_provider_; }
+  TypeReflector& GetTypeReflector() const final { return *type_reflector_; }
 
  private:
   ListValue CreateZeroListValueImpl(ListTypeView type) override;
@@ -55,7 +55,7 @@ class ThreadSafeValueManager : public ThreadSafeTypeManager,
 
   OptionalValue CreateZeroOptionalValueImpl(OptionalTypeView type) override;
 
-  Shared<ValueProvider> value_provider_;
+  Shared<TypeReflector> type_reflector_;
   absl::Mutex list_values_mutex_;
   ListValueCacheMap list_values_ ABSL_GUARDED_BY(list_values_mutex_);
   absl::Mutex map_values_mutex_;

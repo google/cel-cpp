@@ -14,17 +14,17 @@
 
 // IWYU pragma: private
 
-#ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_SAFE_VALUE_PROVIDER_H_
-#define THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_SAFE_VALUE_PROVIDER_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_SAFE_TYPE_REFLECTOR_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_SAFE_TYPE_REFLECTOR_H_
 
-#include "common/values/thread_compatible_value_provider.h"
+#include "common/values/thread_compatible_type_reflector.h"
 
 namespace cel::common_internal {
 
-// For now, `ThreadSafeValueProvider` and `ThreadCompatibleValueProvider` are
+// For now, `ThreadSafeTypeReflector` and `ThreadCompatibleTypeReflector` are
 // the same because the latter is thread safe at the moment.
-using ThreadSafeValueProvider = ThreadCompatibleValueProvider;
+using ThreadSafeTypeReflector = ThreadCompatibleTypeReflector;
 
 }  // namespace cel::common_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_SAFE_VALUE_PROVIDER_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_SAFE_TYPE_REFLECTOR_H_
