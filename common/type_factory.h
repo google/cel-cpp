@@ -71,6 +71,52 @@ class TypeFactory {
   // `optional(dyn)`.
   OptionalTypeView GetDynOptionalType();
 
+  NullType GetNullType() { return NullType{}; }
+
+  ErrorType GetErrorType() { return ErrorType{}; }
+
+  DynType GetDynType() { return DynType{}; }
+
+  AnyType GetAnyType() { return AnyType{}; }
+
+  BoolType GetBoolType() { return BoolType{}; }
+
+  IntType GetIntType() { return IntType{}; }
+
+  UintType GetUintType() { return UintType{}; }
+
+  DoubleType GetDoubleType() { return DoubleType{}; }
+
+  StringType GetStringType() { return StringType{}; }
+
+  BytesType GetBytesType() { return BytesType{}; }
+
+  DurationType GetDurationType() { return DurationType{}; }
+
+  TimestampType GetTimestampType() { return TimestampType{}; }
+
+  TypeType GetTypeType() { return TypeType{}; }
+
+  UnknownType GetUnknownType() { return UnknownType{}; }
+
+  BoolWrapperType GetBoolWrapperType() { return BoolWrapperType{}; }
+
+  BytesWrapperType GetBytesWrapperType() { return BytesWrapperType{}; }
+
+  DoubleWrapperType GetDoubleWrapperType() { return DoubleWrapperType{}; }
+
+  IntWrapperType GetIntWrapperType() { return IntWrapperType{}; }
+
+  StringWrapperType GetStringWrapperType() { return StringWrapperType{}; }
+
+  UintWrapperType GetUintWrapperType() { return UintWrapperType{}; }
+
+  Type GetJsonValueType() { return DynType{}; }
+
+  ListType GetJsonListType() { return ListType(GetDynListType()); }
+
+  MapType GetJsonMapType() { return MapType(GetStringDynMapType()); }
+
  private:
   virtual ListType CreateListTypeImpl(TypeView element) = 0;
 
