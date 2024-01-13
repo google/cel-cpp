@@ -136,7 +136,7 @@ TEST_P(BindingsExtTest, EndToEnd) {
   Activation activation;
   // Run evaluation.
   ASSERT_OK_AND_ASSIGN(CelValue out, cel_expr->Evaluate(activation, &arena));
-  ASSERT_TRUE(out.IsBool());
+  ASSERT_TRUE(out.IsBool()) << out.DebugString();
   EXPECT_EQ(out.BoolOrDie(), true);
 }
 
@@ -152,6 +152,15 @@ INSTANTIATE_TEST_SUITE_P(
               "[3, 4, 5].exists(e, e in valid_elems))"},
              {"cel.bind(valid_elems, [1, 2, 3], "
               "![4, 5].exists(e, e in valid_elems))"},
+             // Implementation detail: bind variables and comprehension
+             // variables get mapped to an int index in the same space. Check
+             // that mixing them works.
+             {R"(
+              cel.bind(
+                  my_list,
+                  ['a', 'b', 'c'].map(x, x + '_'),
+                  [0, 1, 2].map(y, my_list[y] + string(y))) ==
+              ['a_0', 'b_1', 'c_2'])"},
              // Check scoping rules.
              {"cel.bind(x, 1, "
               "  cel.bind(x, x + 1, x)) == 2"},

@@ -750,15 +750,29 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       return;
     }
 
+    ComprehensionStackRecord& record = comprehension_stack_.back();
     if (comprehension_stack_.empty() ||
-        comprehension_stack_.back().comprehension != comprehension_expr) {
+        record.comprehension != comprehension_expr) {
       return;
     }
 
-    comprehension_stack_.back().visitor->PostVisit(expr);
+    record.visitor->PostVisit(expr);
 
-    index_manager_.ReleaseSlots(
-        (comprehension_stack_.back().is_optimizable_bind) ? 1 : 2);
+    // TODO(uncreated-issue/64): lazy binds complicate slot assignments because we may
+    // require a slot outside of the scope expected from the AST (e.g. both the
+    // initialization and result expressions contain a comprehension).
+    //
+    // We should determine if compacting the slot assignments improves
+    // performance enough to use a better heuristic, but for now use dedicated
+    // slots inside all bind scopes.
+    if (!(options_.enable_lazy_bind_initialization && InBindScope())) {
+      // Otherwise release slots for reuse.
+      //
+      // Note: with binds, the released slot may be different than the
+      // reserved one, but the prior assignment will no longer be in scope or
+      // accessible.
+      index_manager_.ReleaseSlots((record.is_optimizable_bind) ? 1 : 2);
+    }
     comprehension_stack_.pop_back();
   }
 
@@ -996,6 +1010,15 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   bool ProgramStructureTrackingEnabled() {
     return options_.enable_lazy_bind_initialization ||
            !program_optimizers_.empty();
+  }
+
+  bool InBindScope() {
+    for (const auto& record : comprehension_stack_) {
+      if (record.is_optimizable_bind) {
+        return true;
+      }
+    }
+    return false;
   }
 
   absl::Status MaybeExtractSubexpression(const cel::ast_internal::Expr* expr,
