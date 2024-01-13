@@ -23,6 +23,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "common/any.h"
 #include "common/json.h"
 #include "common/type.h"
@@ -64,6 +65,9 @@ using LegacyStructValue_Equal = absl::StatusOr<ValueView> (*)(
 using LegacyStructValue_ForEachField =
     absl::Status (*)(uintptr_t, uintptr_t, ValueManager&,
                      LegacyStructValue::ForEachFieldCallback);
+using LegacyStructValue_Qualify = absl::StatusOr<std::pair<ValueView, int>> (*)(
+    uintptr_t, uintptr_t, ValueManager&, absl::Span<const SelectQualifier>,
+    bool, Value&);
 
 ABSL_CONST_INIT struct {
   absl::once_flag init_once;
@@ -78,6 +82,7 @@ ABSL_CONST_INIT struct {
   LegacyStructValue_HasFieldByNumber has_field_by_number = nullptr;
   LegacyStructValue_Equal equal = nullptr;
   LegacyStructValue_ForEachField for_each_field = nullptr;
+  LegacyStructValue_Qualify qualify = nullptr;
 } legacy_struct_value_vtable;
 
 void InitializeLegacyStructValue() {
@@ -111,6 +116,8 @@ void InitializeLegacyStructValue() {
         "cel_common_internal_LegacyStructValue_Equal");
     legacy_struct_value_vtable.for_each_field = symbol_finder.FindSymbolOrDie(
         "cel_common_internal_LegacyStructValue_ForEachField");
+    legacy_struct_value_vtable.qualify = symbol_finder.FindSymbolOrDie(
+        "cel_common_internal_LegacyStructValue_Qualify");
   });
 }
 
@@ -215,6 +222,15 @@ absl::Status LegacyStructValue::ForEachField(
                                                       value_manager, callback);
 }
 
+absl::StatusOr<std::pair<ValueView, int>> LegacyStructValue::Qualify(
+    ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+    bool presence_test, Value& scratch) const {
+  InitializeLegacyStructValue();
+  return (*legacy_struct_value_vtable.qualify)(message_ptr_, type_info_,
+                                               value_manager, qualifiers,
+                                               presence_test, scratch);
+}
+
 StructType LegacyStructValueView::GetType(TypeManager& type_manager) const {
   return type_manager.CreateStructType(GetTypeName());
 }
@@ -312,6 +328,15 @@ absl::Status LegacyStructValueView::ForEachField(
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.for_each_field)(message_ptr_, type_info_,
                                                       value_manager, callback);
+}
+
+absl::StatusOr<std::pair<ValueView, int>> LegacyStructValueView::Qualify(
+    ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+    bool presence_test, Value& scratch) const {
+  InitializeLegacyStructValue();
+  return (*legacy_struct_value_vtable.qualify)(message_ptr_, type_info_,
+                                               value_manager, qualifiers,
+                                               presence_test, scratch);
 }
 
 }  // namespace cel::common_internal

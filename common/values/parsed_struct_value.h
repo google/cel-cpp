@@ -30,6 +30,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "common/any.h"
 #include "common/casting.h"
 #include "common/json.h"
@@ -74,6 +75,10 @@ class ParsedStructValueInterface : public StructValueInterface {
 
   virtual absl::Status ForEachField(ValueManager& value_manager,
                                     ForEachFieldCallback callback) const = 0;
+
+  virtual absl::StatusOr<std::pair<ValueView, int>> Qualify(
+      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+      bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
  private:
   virtual absl::StatusOr<ValueView> EqualImpl(
@@ -170,6 +175,10 @@ class ParsedStructValue {
 
   absl::Status ForEachField(ValueManager& value_manager,
                             ForEachFieldCallback callback) const;
+
+  absl::StatusOr<std::pair<ValueView, int>> Qualify(
+      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+      bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
  private:
   friend class ParsedStructValueView;
@@ -314,6 +323,10 @@ class ParsedStructValueView {
 
   absl::Status ForEachField(ValueManager& value_manager,
                             ForEachFieldCallback callback) const;
+
+  absl::StatusOr<std::pair<ValueView, int>> Qualify(
+      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+      bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
  private:
   friend class ParsedStructValue;

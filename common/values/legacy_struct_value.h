@@ -22,12 +22,14 @@
 #include <cstdint>
 #include <ostream>
 #include <string>
+#include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "common/any.h"
 #include "common/casting.h"
 #include "common/json.h"
@@ -116,6 +118,10 @@ class LegacyStructValue final {
 
   absl::Status ForEachField(ValueManager& value_manager,
                             ForEachFieldCallback callback) const;
+
+  absl::StatusOr<std::pair<ValueView, int>> Qualify(
+      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+      bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
  private:
   friend class LegacyStructValueView;
@@ -217,6 +223,10 @@ class LegacyStructValueView final {
 
   absl::Status ForEachField(ValueManager& value_manager,
                             ForEachFieldCallback callback) const;
+
+  absl::StatusOr<std::pair<ValueView, int>> Qualify(
+      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+      bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
  private:
   friend class LegacyStructValue;

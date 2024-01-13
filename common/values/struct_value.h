@@ -37,6 +37,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "common/any.h"
 #include "common/casting.h"
@@ -362,6 +363,10 @@ class StructValue final {
 
   absl::Status ForEachField(ValueManager& value_manager,
                             ForEachFieldCallback callback) const;
+
+  absl::StatusOr<std::pair<ValueView, int>> Qualify(
+      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+      bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
  private:
   friend class StructValueView;
@@ -868,6 +873,10 @@ class StructValueView final {
 
   absl::Status ForEachField(ValueManager& value_manager,
                             ForEachFieldCallback callback) const;
+
+  absl::StatusOr<std::pair<ValueView, int>> Qualify(
+      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+      bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
  private:
   friend class StructValue;

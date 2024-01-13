@@ -32,6 +32,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "common/any.h"
 #include "common/casting.h"
@@ -1719,6 +1720,12 @@ inline absl::Status ParsedStructValue::ForEachField(
   return interface_->ForEachField(value_manager, callback);
 }
 
+inline absl::StatusOr<std::pair<ValueView, int>> ParsedStructValue::Qualify(
+    ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+    bool presence_test, Value& scratch) const {
+  return interface_->Qualify(value_manager, qualifiers, presence_test, scratch);
+}
+
 inline absl::StatusOr<ValueView> ParsedStructValueView::GetFieldByName(
     ValueManager& value_manager, absl::string_view name, Value& scratch) const {
   return interface_->GetFieldByName(value_manager, name, scratch);
@@ -1737,6 +1744,12 @@ inline absl::StatusOr<ValueView> ParsedStructValueView::Equal(
 inline absl::Status ParsedStructValueView::ForEachField(
     ValueManager& value_manager, ForEachFieldCallback callback) const {
   return interface_->ForEachField(value_manager, callback);
+}
+
+inline absl::StatusOr<std::pair<ValueView, int>> ParsedStructValueView::Qualify(
+    ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+    bool presence_test, Value& scratch) const {
+  return interface_->Qualify(value_manager, qualifiers, presence_test, scratch);
 }
 
 inline absl::StatusOr<ValueView> StructValue::GetFieldByName(
@@ -1807,6 +1820,26 @@ inline absl::Status StructValue::ForEachField(
       variant_);
 }
 
+inline absl::StatusOr<std::pair<ValueView, int>> StructValue::Qualify(
+    ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+    bool presence_test, Value& scratch) const {
+  AssertIsValid();
+  return absl::visit(
+      [&value_manager, qualifiers, presence_test,
+       &scratch](const auto& alternative)
+          -> absl::StatusOr<std::pair<ValueView, int>> {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return absl::InternalError("use of invalid StructValue");
+        } else {
+          return alternative.Qualify(value_manager, qualifiers, presence_test,
+                                     scratch);
+        }
+      },
+      variant_);
+}
+
 inline absl::StatusOr<ValueView> StructValueView::GetFieldByName(
     ValueManager& value_manager, absl::string_view name, Value& scratch) const {
   AssertIsValid();
@@ -1869,6 +1902,25 @@ inline absl::Status StructValueView::ForEachField(
           return absl::InternalError("use of invalid StructValueView");
         } else {
           return alternative.ForEachField(value_manager, callback);
+        }
+      },
+      variant_);
+}
+
+inline absl::StatusOr<std::pair<ValueView, int>> StructValueView::Qualify(
+    ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+    bool presence_test, Value& scratch) const {
+  AssertIsValid();
+  return absl::visit(
+      [&value_manager, qualifiers, presence_test, &scratch](
+          auto alternative) -> absl::StatusOr<std::pair<ValueView, int>> {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return absl::InternalError("use of invalid StructValueView");
+        } else {
+          return alternative.Qualify(value_manager, qualifiers, presence_test,
+                                     scratch);
         }
       },
       variant_);

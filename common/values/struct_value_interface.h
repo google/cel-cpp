@@ -21,6 +21,7 @@
 #include "absl/functional/function_ref.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "base/attribute.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/type.h"

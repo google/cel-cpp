@@ -392,6 +392,7 @@ cc_library(
         ":type_kind",
         ":unknown",
         ":value_kind",
+        "//base:attributes",
         "//common/internal:data_interface",
         "//common/internal:shared_byte_string",
         "//internal:deserialize",
@@ -421,6 +422,7 @@ cc_library(
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
     ],
 )

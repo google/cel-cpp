@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <utility>
+
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "common/casting.h"
 #include "common/native_type.h"
 #include "common/value.h"
@@ -33,6 +37,11 @@ absl::StatusOr<ValueView> ParsedStructValueInterface::Equal(
                                              *struct_value, scratch);
   }
   return BoolValueView{false};
+}
+
+absl::StatusOr<std::pair<ValueView, int>> ParsedStructValueInterface::Qualify(
+    ValueManager&, absl::Span<const SelectQualifier>, bool, Value&) const {
+  return absl::UnimplementedError("Qualify not supported.");
 }
 
 }  // namespace cel
