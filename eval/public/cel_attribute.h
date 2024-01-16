@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <initializer_list>
 #include <memory>
 #include <optional>
@@ -27,7 +28,7 @@ namespace google::api::expr::runtime {
 
 // CelAttributeQualifier represents a segment in
 // attribute resolutuion path. A segment can be qualified by values of
-// following types: string/int64_t/uint64/bool.
+// following types: string/int64_t/uint64_t/bool.
 using CelAttributeQualifier = ::cel::AttributeQualifier;
 
 // CelAttribute represents resolved attribute path.
@@ -35,7 +36,7 @@ using CelAttribute = ::cel::Attribute;
 
 // CelAttributeQualifierPattern matches a segment in
 // attribute resolutuion path. CelAttributeQualifierPattern is capable of
-// matching path elements of types string/int64_t/uint64/bool.
+// matching path elements of types string/int64_t/uint64_t/bool.
 using CelAttributeQualifierPattern = ::cel::AttributeQualifierPattern;
 
 // CelAttributePattern is a fully-qualified absolute attribute path pattern.
@@ -54,8 +55,8 @@ CelAttributeQualifier CreateCelAttributeQualifier(const CelValue& value);
 // must outlive the returned pattern.
 CelAttributePattern CreateCelAttributePattern(
     absl::string_view variable,
-    std::initializer_list<absl::variant<absl::string_view, int64_t, uint64_t, bool,
-                                        CelAttributeQualifierPattern>>
+    std::initializer_list<absl::variant<absl::string_view, int64_t, uint64_t,
+                                        bool, CelAttributeQualifierPattern>>
         path_spec = {});
 
 }  // namespace google::api::expr::runtime
