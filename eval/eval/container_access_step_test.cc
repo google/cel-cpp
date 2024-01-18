@@ -333,6 +333,18 @@ TEST_F(ContainerAccessStepTest, TestMapUnknownKey) {
   ASSERT_TRUE(result.IsUnknownSet());
 }
 
+TEST_F(ContainerAccessStepTest, TestMessageKeyAccess) {
+  v1alpha1::Constant msg;
+  *msg.mutable_string_value() = "test";
+
+  CelValue result =
+      EvaluateAttribute(CelProtoWrapper::CreateMessage(&msg, &arena_),
+                        CelValue::CreateStringView("string_value"), true, true);
+  ASSERT_TRUE(result.IsString()) << result.DebugString();
+  EXPECT_EQ(result.StringOrDie().value(), "test");
+}
+
+
 TEST_F(ContainerAccessStepTest, TestUnknownContainer) {
   UnknownSet unknown_set;
   CelValue result = EvaluateAttribute(CelValue::CreateUnknownSet(&unknown_set),

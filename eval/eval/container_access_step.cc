@@ -34,6 +34,7 @@ using ::cel::Handle;
 using ::cel::IntValue;
 using ::cel::ListValue;
 using ::cel::MapValue;
+using ::cel::StructValue;
 using ::cel::StringValue;
 using ::cel::UintValue;
 using ::cel::Value;
@@ -65,6 +66,9 @@ class ContainerAccessStep : public ExpressionStepBase {
   absl::StatusOr<Handle<Value>> LookupInList(const Handle<ListValue>& cel_list,
                                              const Handle<Value>& key,
                                              ExecutionFrame* frame) const;
+  absl::StatusOr<Handle<Value>> LookupInStruct(const Handle<StructValue>& cel_struct,
+                                               const Handle<Value>& key,
+                                               ExecutionFrame* frame) const;
 };
 
 absl::optional<Number> CelNumberFromValue(const Handle<Value>& value) {
@@ -164,6 +168,19 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInMap(
   return cel_map->Get(frame->value_factory(), key);
 }
 
+absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInStruct(
+    const Handle<StructValue>& cel_struct, const Handle<Value>& key,
+    ExecutionFrame* frame) const {
+  if (!key->Is<StringValue>()) {
+    return absl::UnknownError(
+        absl::StrCat("Index error: expected string type, got ",
+                    CelValue::TypeName(ValueKindToKind(key->kind()))));
+  }
+  const auto& fieldName = key->As<StringValue>();
+  StructValue::GetFieldContext ctx(frame->value_factory());
+  return cel_struct->GetFieldByName(ctx, fieldName.ToString());
+}
+
 absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInList(
     const Handle<ListValue>& cel_list, const Handle<Value>& key,
     ExecutionFrame* frame) const {
@@ -244,6 +261,15 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
         return {
             frame->value_factory().CreateErrorValue(std::move(result).status()),
             std::move(trail)};
+      }
+      return {std::move(result).value(), std::move(trail)};
+    }
+    case ValueKind::kStruct: {
+      auto result = LookupInStruct(container.As<StructValue>(), key, frame);
+      if (!result.ok()) {
+        return {CreateErrorValueFromView(Arena::Create<absl::Status>(
+                    arena, std::move(result).status())),
+                std::move(trail)};
       }
       return {std::move(result).value(), std::move(trail)};
     }
