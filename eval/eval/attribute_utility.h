@@ -7,7 +7,7 @@
 #include "base/function_result_set.h"
 #include "base/handle.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "eval/eval/attribute_trail.h"
 
 namespace google::api::expr::runtime {
@@ -22,7 +22,7 @@ class AttributeUtility {
   AttributeUtility(
       absl::Span<const cel::AttributePattern> unknown_patterns,
       absl::Span<const cel::AttributePattern> missing_attribute_patterns,
-      cel::ValueFactory& value_factory)
+      cel::ValueManager& value_factory)
       : unknown_patterns_(unknown_patterns),
         missing_attribute_patterns_(missing_attribute_patterns),
         value_factory_(value_factory) {}
@@ -74,7 +74,7 @@ class AttributeUtility {
  private:
   absl::Span<const cel::AttributePattern> unknown_patterns_;
   absl::Span<const cel::AttributePattern> missing_attribute_patterns_;
-  cel::ValueFactory& value_factory_;
+  cel::ValueManager& value_factory_;
 };
 
 }  // namespace google::api::expr::runtime

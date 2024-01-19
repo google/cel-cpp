@@ -28,7 +28,7 @@
 #include "base/type_manager.h"
 #include "base/type_provider.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/int_value.h"
 #include "base/values/null_value.h"
 #include "internal/status_macros.h"
@@ -78,7 +78,7 @@ class ActivationTest : public testing::Test {
  protected:
   TypeFactory type_factory_;
   TypeManager type_manager_;
-  ValueFactory value_factory_;
+  ValueManager value_factory_;
 };
 
 TEST_F(ActivationTest, ValueNotFound) {
@@ -112,7 +112,7 @@ TEST_F(ActivationTest, InsertProvider) {
   Activation activation;
 
   EXPECT_TRUE(activation.InsertOrAssignValueProvider(
-      "var1", [](ValueFactory& factory, absl::string_view name) {
+      "var1", [](ValueManager& factory, absl::string_view name) {
         return factory.CreateIntValue(42);
       }));
 
@@ -124,7 +124,7 @@ TEST_F(ActivationTest, InsertProviderForwardsNotFound) {
   Activation activation;
 
   EXPECT_TRUE(activation.InsertOrAssignValueProvider(
-      "var1", [](ValueFactory& factory, absl::string_view name) {
+      "var1", [](ValueManager& factory, absl::string_view name) {
         return absl::nullopt;
       }));
 
@@ -136,7 +136,7 @@ TEST_F(ActivationTest, InsertProviderForwardsStatus) {
   Activation activation;
 
   EXPECT_TRUE(activation.InsertOrAssignValueProvider(
-      "var1", [](ValueFactory& factory, absl::string_view name) {
+      "var1", [](ValueManager& factory, absl::string_view name) {
         return absl::InternalError("test");
       }));
 
@@ -149,7 +149,7 @@ TEST_F(ActivationTest, ProviderMemoized) {
   int call_count = 0;
 
   EXPECT_TRUE(activation.InsertOrAssignValueProvider(
-      "var1", [&call_count](ValueFactory& factory, absl::string_view name) {
+      "var1", [&call_count](ValueManager& factory, absl::string_view name) {
         call_count++;
         return factory.CreateIntValue(42);
       }));
@@ -165,11 +165,11 @@ TEST_F(ActivationTest, InsertProviderOverwrite) {
   Activation activation;
 
   EXPECT_TRUE(activation.InsertOrAssignValueProvider(
-      "var1", [](ValueFactory& factory, absl::string_view name) {
+      "var1", [](ValueManager& factory, absl::string_view name) {
         return factory.CreateIntValue(42);
       }));
   EXPECT_FALSE(activation.InsertOrAssignValueProvider(
-      "var1", [](ValueFactory& factory, absl::string_view name) {
+      "var1", [](ValueManager& factory, absl::string_view name) {
         return factory.CreateIntValue(0);
       }));
 
@@ -187,7 +187,7 @@ TEST_F(ActivationTest, ValuesAndProvidersShareNamespace) {
       "var2", value_factory_.CreateIntValue(41)));
 
   EXPECT_FALSE(activation.InsertOrAssignValueProvider(
-      "var1", [&called](ValueFactory& factory, absl::string_view name) {
+      "var1", [&called](ValueManager& factory, absl::string_view name) {
         called = true;
         return factory.CreateIntValue(42);
       }));

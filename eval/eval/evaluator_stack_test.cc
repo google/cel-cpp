@@ -5,7 +5,7 @@
 #include "base/type_manager.h"
 #include "base/type_provider.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
 
@@ -16,7 +16,7 @@ namespace {
 using ::cel::TypeFactory;
 using ::cel::TypeManager;
 using ::cel::TypeProvider;
-using ::cel::ValueFactory;
+using ::cel::ValueManager;
 using ::cel::extensions::ProtoMemoryManagerRef;
 
 // Test Value Stack Push/Pop operation
@@ -25,7 +25,7 @@ TEST(EvaluatorStackTest, StackPushPop) {
   auto manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
 
   cel::Attribute attribute("name", {});
   EvaluatorStack stack(10);
@@ -54,7 +54,7 @@ TEST(EvaluatorStackTest, StackBalanced) {
   auto manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   EvaluatorStack stack(10);
   ASSERT_EQ(stack.size(), stack.attribute_size());
 
@@ -78,7 +78,7 @@ TEST(EvaluatorStackTest, Clear) {
   auto manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   EvaluatorStack stack(10);
   ASSERT_EQ(stack.size(), stack.attribute_size());
 

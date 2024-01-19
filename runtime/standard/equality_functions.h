@@ -20,7 +20,7 @@
 #include "absl/types/optional.h"
 #include "base/handle.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
 
@@ -31,7 +31,7 @@ namespace runtime_internal {
 //
 // Nullopt is returned if the comparison is undefined (e.g. special value types
 // error and unknown).
-absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueFactory& value_factory,
+absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueManager& value_factory,
                                                     const Handle<Value>& v1,
                                                     const Handle<Value>& v2);
 }  // namespace runtime_internal

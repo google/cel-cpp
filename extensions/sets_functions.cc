@@ -18,7 +18,7 @@
 #include "absl/status/statusor.h"
 #include "base/function_adapter.h"
 #include "base/handle.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/bytes_value.h"
 #include "base/values/list_value.h"
 #include "base/values/string_value.h"
@@ -30,7 +30,7 @@ namespace cel::extensions {
 
 namespace {
 
-absl::StatusOr<Handle<Value>> SetsContains(ValueFactory& value_factory,
+absl::StatusOr<Handle<Value>> SetsContains(ValueManager& value_factory,
                                            const ListValue& list,
                                            const ListValue& sublist) {
   CEL_ASSIGN_OR_RETURN(
@@ -49,7 +49,7 @@ absl::StatusOr<Handle<Value>> SetsContains(ValueFactory& value_factory,
   return value_factory.CreateBoolValue(!any_missing);
 }
 
-absl::StatusOr<Handle<Value>> SetsIntersects(ValueFactory& value_factory,
+absl::StatusOr<Handle<Value>> SetsIntersects(ValueManager& value_factory,
                                              const ListValue& list,
                                              const ListValue& sublist) {
   CEL_ASSIGN_OR_RETURN(
@@ -69,7 +69,7 @@ absl::StatusOr<Handle<Value>> SetsIntersects(ValueFactory& value_factory,
   return value_factory.CreateBoolValue(exists);
 }
 
-absl::StatusOr<Handle<Value>> SetsEquivalent(ValueFactory& value_factory,
+absl::StatusOr<Handle<Value>> SetsEquivalent(ValueManager& value_factory,
                                              const ListValue& list,
                                              const ListValue& sublist) {
   CEL_ASSIGN_OR_RETURN(auto contains_sublist,

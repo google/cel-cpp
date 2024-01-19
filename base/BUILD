@@ -139,6 +139,7 @@ cc_library(
         "type_provider.h",
         "value.h",
         "value_factory.h",
+        "value_manager.h",
     ] + glob(
         [
             "types/*.h",

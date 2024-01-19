@@ -88,7 +88,7 @@ bool ValueEquals(const Handle<Value>& value, const BytesValue& other) {
 
 // Template function implementing CEL in() function
 template <typename T>
-absl::StatusOr<bool> In(ValueFactory& value_factory, T value,
+absl::StatusOr<bool> In(ValueManager& value_factory, T value,
                         const ListValue& list) {
   size_t size = list.Size();
   for (int i = 0; i < size; i++) {
@@ -103,7 +103,7 @@ absl::StatusOr<bool> In(ValueFactory& value_factory, T value,
 
 // Implementation for @in operator using heterogeneous equality.
 absl::StatusOr<Handle<Value>> HeterogeneousEqualityIn(
-    ValueFactory& value_factory, const Handle<Value>& value,
+    ValueManager& value_factory, const Handle<Value>& value,
     const ListValue& list) {
   // TODO(uncreated-issue/55): the generic cel::ListValue::Contains() is almost
   // identical to the in function implementation. It should be possible to
@@ -181,7 +181,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
 
   auto boolKeyInSet =
       [enable_heterogeneous_equality](
-          ValueFactory& factory, bool key,
+          ValueManager& factory, bool key,
           const MapValue& map_value) -> absl::StatusOr<Handle<Value>> {
     auto result = map_value.Has(factory, factory.CreateBoolValue(key));
     if (result.ok()) {
@@ -195,7 +195,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
 
   auto intKeyInSet =
       [enable_heterogeneous_equality](
-          ValueFactory& factory, int64_t key,
+          ValueManager& factory, int64_t key,
           const MapValue& map_value) -> absl::StatusOr<Handle<Value>> {
     Handle<Value> int_key = factory.CreateIntValue(key);
     auto result = map_value.Has(factory, int_key);
@@ -223,7 +223,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
 
   auto stringKeyInSet =
       [enable_heterogeneous_equality](
-          ValueFactory& factory, const Handle<StringValue>& key,
+          ValueManager& factory, const Handle<StringValue>& key,
           const MapValue& map_value) -> absl::StatusOr<Handle<Value>> {
     auto result = map_value.Has(factory, key);
     if (result.ok()) {
@@ -237,7 +237,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
 
   auto uintKeyInSet =
       [enable_heterogeneous_equality](
-          ValueFactory& factory, uint64_t key,
+          ValueManager& factory, uint64_t key,
           const MapValue& map_value) -> absl::StatusOr<Handle<Value>> {
     Handle<Value> uint_key = factory.CreateUintValue(key);
     const auto& result = map_value.Has(factory, uint_key);
@@ -264,7 +264,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
   };
 
   auto doubleKeyInSet =
-      [](ValueFactory& factory, double key,
+      [](ValueManager& factory, double key,
          const MapValue& map_value) -> absl::StatusOr<Handle<Value>> {
     Number number = Number::FromDouble(key);
     if (number.LosslessConvertibleToInt()) {

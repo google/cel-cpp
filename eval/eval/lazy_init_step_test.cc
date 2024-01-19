@@ -19,7 +19,7 @@
 
 #include "absl/status/status.h"
 #include "base/type_provider.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/int_value.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/evaluator_core.h"
@@ -38,7 +38,7 @@ using ::cel::IntValue;
 using ::cel::ManagedValueFactory;
 using ::cel::RuntimeOptions;
 using ::cel::TypeProvider;
-using ::cel::ValueFactory;
+using ::cel::ValueManager;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using testing::HasSubstr;
 using cel::internal::StatusIs;
@@ -56,7 +56,7 @@ class LazyInitStepTest : public testing::Test {
                          value_factory_.get()) {}
 
  protected:
-  ValueFactory& value_factory() { return value_factory_.get(); };
+  ValueManager& value_factory() { return value_factory_.get(); };
 
   google::protobuf::Arena arena_;
   ManagedValueFactory value_factory_;

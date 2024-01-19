@@ -31,7 +31,7 @@
 #include "base/ast.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/evaluator_core.h"
 #include "runtime/internal/issue_collector.h"
@@ -54,7 +54,7 @@ class PlannerContext {
 
   explicit PlannerContext(
       const Resolver& resolver, const cel::RuntimeOptions& options,
-      cel::ValueFactory& value_factory,
+      cel::ValueManager& value_factory,
       cel::runtime_internal::IssueCollector& issue_collector,
       ExecutionPath& execution_path, ProgramTree& program_tree)
       : resolver_(resolver),
@@ -78,7 +78,7 @@ class PlannerContext {
                               ExecutionPath path);
 
   const Resolver& resolver() const { return resolver_; }
-  cel::ValueFactory& value_factory() const { return value_factory_; }
+  cel::ValueManager& value_factory() const { return value_factory_; }
   const cel::RuntimeOptions& options() const { return options_; }
   cel::runtime_internal::IssueCollector& issue_collector() {
     return issue_collector_;
@@ -86,7 +86,7 @@ class PlannerContext {
 
  private:
   const Resolver& resolver_;
-  cel::ValueFactory& value_factory_;
+  cel::ValueManager& value_factory_;
   const cel::RuntimeOptions& options_;
   cel::runtime_internal::IssueCollector& issue_collector_;
   ExecutionPath& execution_path_;

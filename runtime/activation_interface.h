@@ -23,6 +23,7 @@
 #include "absl/types/span.h"
 #include "base/attribute.h"
 #include "base/value.h"
+#include "base/value_manager.h"
 #include "runtime/function_overload_reference.h"
 
 namespace cel {
@@ -39,7 +40,7 @@ class ActivationInterface {
 
   // Find value for a string (possibly qualified) variable name.
   virtual absl::StatusOr<absl::optional<Handle<Value>>> FindVariable(
-      ValueFactory& factory, absl::string_view name) const = 0;
+      ValueManager& factory, absl::string_view name) const = 0;
 
   // Find a set of context function overloads by name.
   virtual std::vector<FunctionOverloadReference> FindFunctionOverloads(

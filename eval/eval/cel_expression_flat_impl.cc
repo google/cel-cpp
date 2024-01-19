@@ -19,7 +19,7 @@
 
 #include "absl/status/status.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/opaque_value.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/internal/adapter_activation_impl.h"
@@ -34,14 +34,14 @@ namespace {
 
 using ::cel::Handle;
 using ::cel::Value;
-using ::cel::ValueFactory;
+using ::cel::ValueManager;
 using ::cel::extensions::ProtoMemoryManagerArena;
 using ::cel::extensions::ProtoMemoryManagerRef;
 
 EvaluationListener AdaptListener(const CelEvaluationListener& listener) {
   if (!listener) return nullptr;
   return [&](int64_t expr_id, const Handle<Value>& value,
-             ValueFactory& factory) -> absl::Status {
+             ValueManager& factory) -> absl::Status {
     if (value->Is<cel::OpaqueValue>()) {
       // Opaque types are used to implement some optimized operations.
       // These aren't representable as legacy values and shouldn't be

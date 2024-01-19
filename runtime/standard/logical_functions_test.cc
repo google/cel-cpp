@@ -32,7 +32,7 @@
 #include "base/type_manager.h"
 #include "base/type_provider.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/bool_value.h"
 #include "internal/testing.h"
 #include "runtime/function_overload_reference.h"
@@ -64,7 +64,7 @@ MATCHER_P(IsBool, expected, "") {
 // parser is available.
 absl::StatusOr<Handle<Value>> TestDispatchToFunction(
     const FunctionRegistry& registry, absl::string_view simple_name,
-    absl::Span<const Handle<Value>> args, ValueFactory& value_factory) {
+    absl::Span<const Handle<Value>> args, ValueManager& value_factory) {
   std::vector<Kind> arg_matcher_;
   arg_matcher_.reserve(args.size());
   for (const auto& value : args) {
@@ -109,7 +109,7 @@ TEST(RegisterLogicalFunctions, LogicalNotRegistered) {
 
 struct TestCase {
   using ArgumentFactory =
-      std::function<std::vector<Handle<Value>>(ValueFactory&)>;
+      std::function<std::vector<Handle<Value>>(ValueManager&)>;
 
   std::string function;
   ArgumentFactory arguments;
@@ -126,7 +126,7 @@ class LogicalFunctionsTest : public testing::TestWithParam<TestCase> {
  protected:
   TypeFactory type_factory_;
   TypeManager type_manager_;
-  ValueFactory value_factory_;
+  ValueManager value_factory_;
 };
 
 TEST_P(LogicalFunctionsTest, Runner) {
@@ -156,44 +156,44 @@ INSTANTIATE_TEST_SUITE_P(
     Cases, LogicalFunctionsTest,
     testing::ValuesIn(std::vector<TestCase>{
         TestCase{builtin::kNot,
-                 [](ValueFactory& value_factory) -> std::vector<Handle<Value>> {
+                 [](ValueManager& value_factory) -> std::vector<Handle<Value>> {
                    return {value_factory.CreateBoolValue(true)};
                  },
                  IsBool(false)},
         TestCase{builtin::kNot,
-                 [](ValueFactory& value_factory) -> std::vector<Handle<Value>> {
+                 [](ValueManager& value_factory) -> std::vector<Handle<Value>> {
                    return {value_factory.CreateBoolValue(false)};
                  },
                  IsBool(true)},
         TestCase{builtin::kNot,
-                 [](ValueFactory& value_factory) -> std::vector<Handle<Value>> {
+                 [](ValueManager& value_factory) -> std::vector<Handle<Value>> {
                    return {value_factory.CreateBoolValue(true),
                            value_factory.CreateBoolValue(false)};
                  },
                  absl::InvalidArgumentError("")},
         TestCase{builtin::kNotStrictlyFalse,
-                 [](ValueFactory& value_factory) -> std::vector<Handle<Value>> {
+                 [](ValueManager& value_factory) -> std::vector<Handle<Value>> {
                    return {value_factory.CreateBoolValue(true)};
                  },
                  IsBool(true)},
         TestCase{builtin::kNotStrictlyFalse,
-                 [](ValueFactory& value_factory) -> std::vector<Handle<Value>> {
+                 [](ValueManager& value_factory) -> std::vector<Handle<Value>> {
                    return {value_factory.CreateBoolValue(false)};
                  },
                  IsBool(false)},
         TestCase{builtin::kNotStrictlyFalse,
-                 [](ValueFactory& value_factory) -> std::vector<Handle<Value>> {
+                 [](ValueManager& value_factory) -> std::vector<Handle<Value>> {
                    return {value_factory.CreateErrorValue(
                        absl::InternalError("test"))};
                  },
                  IsBool(true)},
         TestCase{builtin::kNotStrictlyFalse,
-                 [](ValueFactory& value_factory) -> std::vector<Handle<Value>> {
+                 [](ValueManager& value_factory) -> std::vector<Handle<Value>> {
                    return {value_factory.CreateUnknownValue()};
                  },
                  IsBool(true)},
         TestCase{builtin::kNotStrictlyFalse,
-                 [](ValueFactory& value_factory) -> std::vector<Handle<Value>> {
+                 [](ValueManager& value_factory) -> std::vector<Handle<Value>> {
                    return {value_factory.CreateIntValue(42)};
                  },
                  Truly([](const Handle<Value>& v) {

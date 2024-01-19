@@ -46,7 +46,7 @@
 #include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_provider.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/comprehension_step.h"
@@ -81,7 +81,7 @@ using ::cel::RuntimeIssue;
 using ::cel::TypeFactory;
 using ::cel::TypeManager;
 using ::cel::Value;
-using ::cel::ValueFactory;
+using ::cel::ValueManager;
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::AstTraverse;
 using ::cel::runtime_internal::IssueCollector;
@@ -312,7 +312,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       const absl::flat_hash_map<int64_t, cel::ast_internal::Reference>&
           reference_map,
       ExpressionTable& expression_table, ExecutionPath& path,
-      ValueFactory& value_factory, IssueCollector& issue_collector,
+      ValueManager& value_factory, IssueCollector& issue_collector,
       PlannerContext::ProgramTree& program_tree,
       PlannerContext& extension_context)
       : resolver_(resolver),
@@ -921,7 +921,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
 
   absl::Status progress_status() const { return progress_status_; }
 
-  cel::ValueFactory& value_factory() { return value_factory_; }
+  cel::ValueManager& value_factory() { return value_factory_; }
 
   // Mark a branch as suppressed. The visitor will continue as normal, but
   // any emitted program steps are ignored.
@@ -1044,7 +1044,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   const Resolver& resolver_;
   ExpressionTable& expression_table_;
   ExecutionPath& execution_path_;
-  ValueFactory& value_factory_;
+  ValueManager& value_factory_;
   absl::Status progress_status_;
 
   std::stack<
@@ -1314,7 +1314,7 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
   TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory,
                            type_registry_.GetComposedTypeProvider());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
 
   RuntimeIssue::Severity max_severity = options_.fail_on_warnings
                                             ? RuntimeIssue::Severity::kWarning

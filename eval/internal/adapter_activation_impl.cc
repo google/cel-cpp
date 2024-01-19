@@ -30,7 +30,7 @@ namespace cel::interop_internal {
 using ::google::api::expr::runtime::CelFunction;
 
 absl::StatusOr<absl::optional<Handle<Value>>>
-AdapterActivationImpl::FindVariable(ValueFactory& value_factory,
+AdapterActivationImpl::FindVariable(ValueManager& value_factory,
                                     absl::string_view name) const {
   // This implementation should only be used during interop, when we can
   // always assume the memory manager is backed by a protobuf arena.

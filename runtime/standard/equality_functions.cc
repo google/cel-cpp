@@ -32,7 +32,7 @@
 #include "base/kind.h"
 #include "base/type.h"
 #include "base/types/list_type.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/bool_value.h"
 #include "base/values/bytes_value.h"
 #include "base/values/double_value.h"
@@ -67,7 +67,7 @@ using ::cel::internal::Number;
 struct HomogenousEqualProvider {
   static constexpr bool kIsHeterogeneous = false;
   absl::StatusOr<absl::optional<bool>> operator()(
-      ValueFactory& value_factory, const Handle<Value>& lhs,
+      ValueManager& value_factory, const Handle<Value>& lhs,
       const Handle<Value>& rhs) const;
 };
 
@@ -77,7 +77,7 @@ struct HeterogeneousEqualProvider {
   static constexpr bool kIsHeterogeneous = true;
 
   absl::StatusOr<absl::optional<bool>> operator()(
-      ValueFactory& value_factory, const Handle<Value>& lhs,
+      ValueManager& value_factory, const Handle<Value>& lhs,
       const Handle<Value>& rhs) const;
 };
 
@@ -135,7 +135,7 @@ absl::optional<bool> Equal(const TypeValue& lhs, const TypeValue& rhs) {
 // Equality for lists. Template parameter provides either heterogeneous or
 // homogenous equality for comparing members.
 template <typename EqualsProvider>
-absl::StatusOr<absl::optional<bool>> ListEqual(ValueFactory& factory,
+absl::StatusOr<absl::optional<bool>> ListEqual(ValueManager& factory,
                                                const ListValue& lhs,
                                                const ListValue& rhs) {
   if (&lhs == &rhs) {
@@ -170,7 +170,7 @@ absl::optional<Number> NumberFromValue(const Value& value) {
 }
 
 absl::StatusOr<absl::optional<Handle<Value>>> CheckAlternativeNumericType(
-    ValueFactory& value_factory, const Handle<Value>& key,
+    ValueManager& value_factory, const Handle<Value>& key,
     const MapValue& rhs) {
   absl::optional<Number> number = NumberFromValue(*key);
 
@@ -206,7 +206,7 @@ absl::StatusOr<absl::optional<Handle<Value>>> CheckAlternativeNumericType(
 // Equality for maps. Template parameter provides either heterogeneous or
 // homogenous equality for comparing values.
 template <typename EqualsProvider>
-absl::StatusOr<absl::optional<bool>> MapEqual(ValueFactory& value_factory,
+absl::StatusOr<absl::optional<bool>> MapEqual(ValueManager& value_factory,
                                               const MapValue& lhs,
                                               const MapValue& rhs) {
   if (&lhs == &rhs) {
@@ -254,9 +254,9 @@ absl::StatusOr<absl::optional<bool>> MapEqual(ValueFactory& value_factory,
 // Helper for wrapping ==/!= implementations.
 // Name should point to a static constexpr string so the lambda capture is safe.
 template <typename Type, typename Op>
-std::function<Handle<Value>(cel::ValueFactory& factory, Type, Type)>
+std::function<Handle<Value>(cel::ValueManager& factory, Type, Type)>
 WrapComparison(Op op, absl::string_view name) {
-  return [op = std::move(op), name](cel::ValueFactory& factory, Type lhs,
+  return [op = std::move(op), name](cel::ValueManager& factory, Type lhs,
                                     Type rhs) -> Handle<Value> {
     absl::optional<bool> result = op(lhs, rhs);
 
@@ -290,7 +290,7 @@ absl::Status RegisterEqualityFunctionsForType(cel::FunctionRegistry& registry) {
 template <typename Type, typename Op>
 auto ComplexEquality(Op&& op) {
   return [op = std::forward<Op>(op)](
-             cel::ValueFactory& f, const Type& t1,
+             cel::ValueManager& f, const Type& t1,
              const Type& t2) -> absl::StatusOr<Handle<Value>> {
     CEL_ASSIGN_OR_RETURN(absl::optional<bool> result, op(f, t1, t2));
     if (!result.has_value()) {
@@ -303,7 +303,7 @@ auto ComplexEquality(Op&& op) {
 
 template <typename Type, typename Op>
 auto ComplexInequality(Op&& op) {
-  return [op = std::forward<Op>(op)](cel::ValueFactory& f, Type t1,
+  return [op = std::forward<Op>(op)](cel::ValueManager& f, Type t1,
                                      Type t2) -> absl::StatusOr<Handle<Value>> {
     CEL_ASSIGN_OR_RETURN(absl::optional<bool> result, op(f, t1, t2));
     if (!result.has_value()) {
@@ -316,7 +316,7 @@ auto ComplexInequality(Op&& op) {
 
 template <class Type>
 absl::Status RegisterComplexEqualityFunctionsForType(
-    absl::FunctionRef<absl::StatusOr<absl::optional<bool>>(ValueFactory&, Type,
+    absl::FunctionRef<absl::StatusOr<absl::optional<bool>>(ValueManager&, Type,
                                                            Type)>
         op,
     cel::FunctionRegistry& registry) {
@@ -378,7 +378,7 @@ absl::Status RegisterNullMessageEqualityFunctions(FunctionRegistry& registry) {
           BinaryFunctionAdapter<bool, const StructValue&, const NullValue&>>::
            RegisterGlobalOverload(
                kEqual,
-               [](ValueFactory&, const StructValue&, const NullValue&) {
+               [](ValueManager&, const StructValue&, const NullValue&) {
                  return false;
                },
                registry)));
@@ -388,7 +388,7 @@ absl::Status RegisterNullMessageEqualityFunctions(FunctionRegistry& registry) {
           BinaryFunctionAdapter<bool, const NullValue&, const StructValue&>>::
            RegisterGlobalOverload(
                kEqual,
-               [](ValueFactory&, const NullValue&, const StructValue&) {
+               [](ValueManager&, const NullValue&, const StructValue&) {
                  return false;
                },
                registry)));
@@ -399,7 +399,7 @@ absl::Status RegisterNullMessageEqualityFunctions(FunctionRegistry& registry) {
           BinaryFunctionAdapter<bool, const StructValue&, const NullValue&>>::
            RegisterGlobalOverload(
                kInequal,
-               [](ValueFactory&, const StructValue&, const NullValue&) {
+               [](ValueManager&, const StructValue&, const NullValue&) {
                  return true;
                },
                registry)));
@@ -408,7 +408,7 @@ absl::Status RegisterNullMessageEqualityFunctions(FunctionRegistry& registry) {
       BinaryFunctionAdapter<bool, const NullValue&, const StructValue&>>::
       RegisterGlobalOverload(
           kInequal,
-          [](ValueFactory&, const NullValue&, const StructValue&) {
+          [](ValueManager&, const NullValue&, const StructValue&) {
             return true;
           },
           registry);
@@ -416,7 +416,7 @@ absl::Status RegisterNullMessageEqualityFunctions(FunctionRegistry& registry) {
 
 template <typename EqualsProvider>
 absl::StatusOr<absl::optional<bool>> HomogenousValueEqual(
-    ValueFactory& factory, const Handle<Value>& v1, const Handle<Value>& v2) {
+    ValueManager& factory, const Handle<Value>& v1, const Handle<Value>& v2) {
   if (v1->kind() != v2->kind()) {
     return absl::nullopt;
   }
@@ -462,7 +462,7 @@ absl::StatusOr<absl::optional<bool>> HomogenousValueEqual(
   }
 }
 
-absl::StatusOr<Handle<Value>> EqualOverloadImpl(ValueFactory& factory,
+absl::StatusOr<Handle<Value>> EqualOverloadImpl(ValueManager& factory,
                                                 const Handle<Value>& lhs,
                                                 const Handle<Value>& rhs) {
   CEL_ASSIGN_OR_RETURN(absl::optional<bool> result,
@@ -474,7 +474,7 @@ absl::StatusOr<Handle<Value>> EqualOverloadImpl(ValueFactory& factory,
       cel::runtime_internal::CreateNoMatchingOverloadError(kEqual));
 }
 
-absl::StatusOr<Handle<Value>> InequalOverloadImpl(ValueFactory& factory,
+absl::StatusOr<Handle<Value>> InequalOverloadImpl(ValueManager& factory,
                                                   const Handle<Value>& lhs,
                                                   const Handle<Value>& rhs) {
   CEL_ASSIGN_OR_RETURN(absl::optional<bool> result,
@@ -501,13 +501,13 @@ absl::Status RegisterHeterogeneousEqualityFunctions(
 }
 
 absl::StatusOr<absl::optional<bool>> HomogenousEqualProvider::operator()(
-    ValueFactory& factory, const Handle<Value>& lhs,
+    ValueManager& factory, const Handle<Value>& lhs,
     const Handle<Value>& rhs) const {
   return HomogenousValueEqual<HomogenousEqualProvider>(factory, lhs, rhs);
 }
 
 absl::StatusOr<absl::optional<bool>> HeterogeneousEqualProvider::operator()(
-    ValueFactory& factory, const Handle<Value>& lhs,
+    ValueManager& factory, const Handle<Value>& lhs,
     const Handle<Value>& rhs) const {
   return runtime_internal::ValueEqualImpl(factory, lhs, rhs);
 }
@@ -516,7 +516,7 @@ absl::StatusOr<absl::optional<bool>> HeterogeneousEqualProvider::operator()(
 
 namespace runtime_internal {
 
-absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueFactory& value_factory,
+absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueManager& value_factory,
                                                     const Handle<Value>& v1,
                                                     const Handle<Value>& v2) {
   if (v1->kind() == v2->kind()) {

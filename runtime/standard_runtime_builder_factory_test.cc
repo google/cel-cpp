@@ -29,7 +29,7 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/bool_value.h"
 #include "extensions/bindings_ext.h"
 #include "extensions/protobuf/memory_manager.h"
@@ -59,7 +59,7 @@ struct EvaluateResultTestCase {
   std::string name;
   std::string expression;
   bool expected_result;
-  std::function<absl::Status(ValueFactory&, Activation&)> activation_builder;
+  std::function<absl::Status(ValueManager&, Activation&)> activation_builder;
 };
 
 const std::vector<google::api::expr::parser::Macro>& GetMacros() {
@@ -94,7 +94,7 @@ TEST_P(StandardRuntimeTest, DefaultsRefCounted) {
 
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, runtime->GetTypeProvider());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
 
   Activation activation;
   activation.InsertOrAssignValue("int_var", value_factory.CreateIntValue(42));
@@ -125,7 +125,7 @@ TEST_P(StandardRuntimeTest, DefaultsArena) {
 
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, runtime->GetTypeProvider());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
 
   Activation activation;
   if (test_case.activation_builder != nullptr) {
@@ -149,7 +149,7 @@ INSTANTIATE_TEST_SUITE_P(
     Basic, StandardRuntimeTest,
     testing::ValuesIn(std::vector<EvaluateResultTestCase>{
         {"int_identifier", "int_var == 42", true,
-         [](ValueFactory& value_factory, Activation& activation) {
+         [](ValueManager& value_factory, Activation& activation) {
            activation.InsertOrAssignValue("int_var",
                                           value_factory.CreateIntValue(42));
            return absl::OkStatus();

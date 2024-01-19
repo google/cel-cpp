@@ -18,6 +18,7 @@
 #include "base/ast_internal/expr.h"
 #include "base/handle.h"
 #include "base/value.h"
+#include "base/value_manager.h"
 
 namespace cel::runtime_internal {
 
@@ -26,13 +27,13 @@ namespace cel::runtime_internal {
 // Underlying data is copied for string types to keep the program independent
 // from the input AST.
 //
-// The evaluator assumes most ast constants are valid so unchecked ValueFactory
+// The evaluator assumes most ast constants are valid so unchecked ValueManager
 // methods are used.
 //
 // A status may still be returned if value creation fails according to
 // value_factory's policy.
 absl::StatusOr<Handle<Value>> ConvertConstant(
-    const ast_internal::Constant& constant, ValueFactory& value_factory);
+    const ast_internal::Constant& constant, ValueManager& value_factory);
 
 }  // namespace cel::runtime_internal
 

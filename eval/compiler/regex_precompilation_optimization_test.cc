@@ -24,7 +24,7 @@
 #include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder.h"
@@ -79,7 +79,7 @@ class RegexPrecompilationExtensionTest : public testing::Test {
   cel::RuntimeOptions runtime_options_;
   cel::TypeFactory type_factory_;
   cel::TypeManager type_manager_;
-  cel::ValueFactory value_factory_;
+  cel::ValueManager value_factory_;
   Resolver resolver_;
   IssueCollector issue_collector_;
 };

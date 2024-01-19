@@ -18,7 +18,7 @@
 #include "base/memory.h"
 #include "base/type.h"
 #include "base/types/struct_type.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/bool_value.h"
 #include "base/values/bytes_value.h"
 #include "base/values/double_value.h"
@@ -65,7 +65,7 @@ using ::cel::TypeManager;
 using ::cel::UintValue;
 using ::cel::UnknownValue;
 using ::cel::Value;
-using ::cel::ValueFactory;
+using ::cel::ValueManager;
 
 class WellKnownTypeValueBuilder;
 
@@ -79,7 +79,7 @@ class WellKnownType {
       absl::string_view name) const = 0;
 
   virtual std::unique_ptr<WellKnownTypeValueBuilder> NewValueBuilder(
-      ValueFactory& value_factory) const = 0;
+      ValueManager& value_factory) const = 0;
 };
 
 absl::Status TypeConversionError(absl::string_view from, absl::string_view to) {
@@ -103,7 +103,7 @@ class WellKnownTypeValueBuilder {
 // `WellKnownTypeValueBuilder` for `google.protobuf.BoolValue`.
 class BoolWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
  public:
-  explicit BoolWellKnownTypeValueBuilder(ValueFactory& value_factory)
+  explicit BoolWellKnownTypeValueBuilder(ValueManager& value_factory)
       : value_factory_(value_factory) {}
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
@@ -123,14 +123,14 @@ class BoolWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
   }
 
  private:
-  ValueFactory& value_factory_;
+  ValueManager& value_factory_;
   bool value_ = false;
 };
 
 // `WellKnownTypeValueBuilder` for `google.protobuf.Int32Value`.
 class Int32WellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
  public:
-  explicit Int32WellKnownTypeValueBuilder(ValueFactory& value_factory)
+  explicit Int32WellKnownTypeValueBuilder(ValueManager& value_factory)
       : value_factory_(value_factory) {}
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
@@ -151,14 +151,14 @@ class Int32WellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
   }
 
  private:
-  ValueFactory& value_factory_;
+  ValueManager& value_factory_;
   int32_t value_ = 0;
 };
 
 // `WellKnownTypeValueBuilder` for `google.protobuf.Int64Value`.
 class Int64WellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
  public:
-  explicit Int64WellKnownTypeValueBuilder(ValueFactory& value_factory)
+  explicit Int64WellKnownTypeValueBuilder(ValueManager& value_factory)
       : value_factory_(value_factory) {}
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
@@ -178,14 +178,14 @@ class Int64WellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
   }
 
  private:
-  ValueFactory& value_factory_;
+  ValueManager& value_factory_;
   int64_t value_ = 0;
 };
 
 // `WellKnownTypeValueBuilder` for `google.protobuf.UInt32Value`.
 class UInt32WellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
  public:
-  explicit UInt32WellKnownTypeValueBuilder(ValueFactory& value_factory)
+  explicit UInt32WellKnownTypeValueBuilder(ValueManager& value_factory)
       : value_factory_(value_factory) {}
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
@@ -206,14 +206,14 @@ class UInt32WellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
   }
 
  private:
-  ValueFactory& value_factory_;
+  ValueManager& value_factory_;
   uint32_t value_ = 0;
 };
 
 // `WellKnownTypeValueBuilder` for `google.protobuf.UInt64Value`.
 class UInt64WellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
  public:
-  explicit UInt64WellKnownTypeValueBuilder(ValueFactory& value_factory)
+  explicit UInt64WellKnownTypeValueBuilder(ValueManager& value_factory)
       : value_factory_(value_factory) {}
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
@@ -233,14 +233,14 @@ class UInt64WellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
   }
 
  private:
-  ValueFactory& value_factory_;
+  ValueManager& value_factory_;
   uint64_t value_ = 0;
 };
 
 // `WellKnownTypeValueBuilder` for `google.protobuf.FloatValue`.
 class FloatWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
  public:
-  explicit FloatWellKnownTypeValueBuilder(ValueFactory& value_factory)
+  explicit FloatWellKnownTypeValueBuilder(ValueManager& value_factory)
       : value_factory_(value_factory) {}
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
@@ -260,14 +260,14 @@ class FloatWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
   }
 
  private:
-  ValueFactory& value_factory_;
+  ValueManager& value_factory_;
   float value_ = 0;
 };
 
 // `WellKnownTypeValueBuilder` for `google.protobuf.DoubleValue`.
 class DoubleWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
  public:
-  explicit DoubleWellKnownTypeValueBuilder(ValueFactory& value_factory)
+  explicit DoubleWellKnownTypeValueBuilder(ValueManager& value_factory)
       : value_factory_(value_factory) {}
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
@@ -287,14 +287,14 @@ class DoubleWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
   }
 
  private:
-  ValueFactory& value_factory_;
+  ValueManager& value_factory_;
   double value_ = 0;
 };
 
 // `WellKnownTypeValueBuilder` for `google.protobuf.StringValue`.
 class StringWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
  public:
-  explicit StringWellKnownTypeValueBuilder(ValueFactory& value_factory)
+  explicit StringWellKnownTypeValueBuilder(ValueManager& value_factory)
       : value_(value_factory.GetStringValue()) {}
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
@@ -320,7 +320,7 @@ class StringWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
 // `WellKnownTypeValueBuilder` for `google.protobuf.BytesValue`.
 class BytesWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
  public:
-  explicit BytesWellKnownTypeValueBuilder(ValueFactory& value_factory)
+  explicit BytesWellKnownTypeValueBuilder(ValueManager& value_factory)
       : value_factory_(value_factory), value_(value_factory_.GetBytesValue()) {}
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
@@ -340,7 +340,7 @@ class BytesWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
   }
 
  private:
-  ValueFactory& value_factory_;
+  ValueManager& value_factory_;
   Handle<BytesValue> value_;
 };
 
@@ -348,7 +348,7 @@ class BytesWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
 class DurationWellKnownTypeValueBuilder final
     : public WellKnownTypeValueBuilder {
  public:
-  explicit DurationWellKnownTypeValueBuilder(ValueFactory& value_factory)
+  explicit DurationWellKnownTypeValueBuilder(ValueManager& value_factory)
       : value_factory_(value_factory) {}
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
@@ -376,7 +376,7 @@ class DurationWellKnownTypeValueBuilder final
   }
 
  private:
-  ValueFactory& value_factory_;
+  ValueManager& value_factory_;
   int64_t seconds_ = 0;
   int32_t nanos_ = 0;
 };
@@ -385,7 +385,7 @@ class DurationWellKnownTypeValueBuilder final
 class TimestampWellKnownTypeValueBuilder final
     : public WellKnownTypeValueBuilder {
  public:
-  explicit TimestampWellKnownTypeValueBuilder(ValueFactory& value_factory)
+  explicit TimestampWellKnownTypeValueBuilder(ValueManager& value_factory)
       : value_factory_(value_factory) {}
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
@@ -414,7 +414,7 @@ class TimestampWellKnownTypeValueBuilder final
   }
 
  private:
-  ValueFactory& value_factory_;
+  ValueManager& value_factory_;
   int64_t seconds_ = 0;
   int32_t nanos_ = 0;
 };
@@ -422,7 +422,7 @@ class TimestampWellKnownTypeValueBuilder final
 // `WellKnownTypeValueBuilder` for `google.protobuf.Any`.
 class AnyWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
  public:
-  explicit AnyWellKnownTypeValueBuilder(ValueFactory& value_factory)
+  explicit AnyWellKnownTypeValueBuilder(ValueManager& value_factory)
       : value_factory_(value_factory) {}
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
@@ -456,7 +456,7 @@ class AnyWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
   }
 
  private:
-  ValueFactory& value_factory_;
+  ValueManager& value_factory_;
   std::string type_url_;
   absl::Cord value_;
 };
@@ -464,7 +464,7 @@ class AnyWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
 // `WellKnownTypeValueBuilder` for `google.protobuf.Value`.
 class ValueWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
  public:
-  explicit ValueWellKnownTypeValueBuilder(ValueFactory& value_factory)
+  explicit ValueWellKnownTypeValueBuilder(ValueManager& value_factory)
       : value_factory_(value_factory), value_(cel::kJsonNull) {}
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
@@ -533,14 +533,14 @@ class ValueWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
   }
 
  private:
-  ValueFactory& value_factory_;
+  ValueManager& value_factory_;
   cel::Json value_;
 };
 
 // `WellKnownTypeValueBuilder` for `google.protobuf.ListValue`.
 class ListWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
  public:
-  explicit ListWellKnownTypeValueBuilder(ValueFactory& value_factory)
+  explicit ListWellKnownTypeValueBuilder(ValueManager& value_factory)
       : value_factory_(value_factory) {}
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
@@ -561,14 +561,14 @@ class ListWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
   }
 
  private:
-  ValueFactory& value_factory_;
+  ValueManager& value_factory_;
   cel::JsonArray value_;
 };
 
 // `WellKnownTypeValueBuilder` for `google.protobuf.Struct`.
 class StructWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
  public:
-  explicit StructWellKnownTypeValueBuilder(ValueFactory& value_factory)
+  explicit StructWellKnownTypeValueBuilder(ValueManager& value_factory)
       : value_factory_(value_factory) {}
 
   absl::Status SetFieldByNumber(int64_t number, Handle<Value> value) override {
@@ -598,7 +598,7 @@ class StructWellKnownTypeValueBuilder final : public WellKnownTypeValueBuilder {
   }
 
  private:
-  ValueFactory& value_factory_;
+  ValueManager& value_factory_;
   cel::JsonObject value_;
 };
 
@@ -614,7 +614,7 @@ class WrapperWellKnownType final : public WellKnownType {
   }
 
   std::unique_ptr<WellKnownTypeValueBuilder> NewValueBuilder(
-      ValueFactory& value_factory) const override {
+      ValueManager& value_factory) const override {
     return std::make_unique<T>(value_factory);
   }
 };
@@ -657,7 +657,7 @@ class DurationOrTimestampWellKnownType final : public WellKnownType {
   }
 
   std::unique_ptr<WellKnownTypeValueBuilder> NewValueBuilder(
-      ValueFactory& value_factory) const override {
+      ValueManager& value_factory) const override {
     return std::make_unique<T>(value_factory);
   }
 };
@@ -684,7 +684,7 @@ class AnyWellKnownType final : public WellKnownType {
   }
 
   std::unique_ptr<WellKnownTypeValueBuilder> NewValueBuilder(
-      ValueFactory& value_factory) const override {
+      ValueManager& value_factory) const override {
     return std::make_unique<AnyWellKnownTypeValueBuilder>(value_factory);
   }
 };
@@ -716,7 +716,7 @@ class ValueWellKnownType final : public WellKnownType {
   }
 
   std::unique_ptr<WellKnownTypeValueBuilder> NewValueBuilder(
-      ValueFactory& value_factory) const override {
+      ValueManager& value_factory) const override {
     return std::make_unique<ValueWellKnownTypeValueBuilder>(value_factory);
   }
 };
@@ -733,7 +733,7 @@ class ListWellKnownType final : public WellKnownType {
   }
 
   std::unique_ptr<WellKnownTypeValueBuilder> NewValueBuilder(
-      ValueFactory& value_factory) const override {
+      ValueManager& value_factory) const override {
     return std::make_unique<ListWellKnownTypeValueBuilder>(value_factory);
   }
 };
@@ -750,7 +750,7 @@ class StructWellKnownType final : public WellKnownType {
   }
 
   std::unique_ptr<WellKnownTypeValueBuilder> NewValueBuilder(
-      ValueFactory& value_factory) const override {
+      ValueManager& value_factory) const override {
     return std::make_unique<StructWellKnownTypeValueBuilder>(value_factory);
   }
 };

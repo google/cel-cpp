@@ -18,7 +18,7 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/type_provider.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/int_value.h"
 #include "common/native_type.h"
 #include "eval/eval/evaluator_core.h"
@@ -47,7 +47,7 @@ class CompilerConstantStepTest : public testing::Test {
   google::protobuf::Arena arena_;
   cel::TypeFactory type_factory_;
   cel::TypeManager type_manager_;
-  cel::ValueFactory value_factory_;
+  cel::ValueManager value_factory_;
 
   FlatExpressionEvaluatorState state_;
   cel::Activation empty_activation_;

@@ -27,7 +27,7 @@
 #include "base/handle.h"
 #include "base/kind.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "runtime/function_overload_reference.h"
 #include "runtime/function_registry.h"
 #include "runtime/type_registry.h"
@@ -47,7 +47,7 @@ class Resolver {
   Resolver(
       absl::string_view container,
       const cel::FunctionRegistry& function_registry,
-      const cel::TypeRegistry& type_registry, cel::ValueFactory& value_factory,
+      const cel::TypeRegistry& type_registry, cel::ValueManager& value_factory,
       const absl::flat_hash_map<std::string, cel::TypeRegistry::Enumeration>&
           resolveable_enums,
       bool resolve_qualified_type_identifiers = true);
@@ -98,7 +98,7 @@ class Resolver {
   std::vector<std::string> namespace_prefixes_;
   absl::flat_hash_map<std::string, cel::Handle<cel::Value>> enum_value_map_;
   const cel::FunctionRegistry& function_registry_;
-  cel::ValueFactory& value_factory_;
+  cel::ValueManager& value_factory_;
   const absl::flat_hash_map<std::string, cel::TypeRegistry::Enumeration>&
       resolveable_enums_;
 

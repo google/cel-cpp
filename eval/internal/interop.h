@@ -29,7 +29,7 @@
 #include "absl/types/variant.h"
 #include "base/types/struct_type.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/struct_value_builder.h"
 #include "base/values/type_value.h"
 #include "common/native_type.h"
@@ -73,10 +73,10 @@ class LegacyAbstractStructType : public base_internal::AbstractStructType {
 
   absl::StatusOr<absl::Nonnull<std::unique_ptr<StructValueBuilderInterface>>>
   NewValueBuilder(
-      ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND) const override;
+      ValueManager& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND) const override;
 
   absl::StatusOr<Handle<StructValue>> NewValueFromAny(
-      ValueFactory& value_factory, const absl::Cord& value) const override;
+      ValueManager& value_factory, const absl::Cord& value) const override;
 
  private:
   NativeTypeId GetNativeTypeId() const override {
@@ -127,11 +127,11 @@ Handle<StructType> CreateStructTypeFromLegacyTypeInfo(
 const google::api::expr::runtime::LegacyTypeInfoApis* LegacyTypeInfoFromType(
     const Handle<Type>& type);
 
-// Unlike ValueFactory::CreateStringValue, this does not copy input and instead
+// Unlike ValueManager::CreateStringValue, this does not copy input and instead
 // wraps it. It should only be used for interop with the legacy CelValue.
 Handle<StringValue> CreateStringValueFromView(absl::string_view value);
 
-// Unlike ValueFactory::CreateBytesValue, this does not copy input and instead
+// Unlike ValueManager::CreateBytesValue, this does not copy input and instead
 // wraps it. It should only be used for interop with the legacy CelValue.
 Handle<BytesValue> CreateBytesValueFromView(absl::string_view value);
 

@@ -185,12 +185,12 @@ class DynamicMap : public CelMap {
   const DynamicMapKeyList key_list_;
 };
 
-// ValueFactory provides ValueFromMessage(....) function family.
+// ValueManager provides ValueFromMessage(....) function family.
 // Functions of this family create CelValue object from specific subtypes of
 // protobuf message.
-class ValueFactory {
+class ValueManager {
  public:
-  ValueFactory(const ProtobufValueFactory& value_factory,
+  ValueManager(const ProtobufValueFactory& value_factory,
                const google::protobuf::DescriptorPool* descriptor_pool,
                google::protobuf::Arena* arena, google::protobuf::MessageFactory* message_factory)
       : value_factory_(value_factory),
@@ -201,7 +201,7 @@ class ValueFactory {
   // Note: this overload should only be used in the context of accessing struct
   // value members, which have already been adapted to the generated message
   // types.
-  ValueFactory(const ProtobufValueFactory& value_factory, google::protobuf::Arena* arena)
+  ValueManager(const ProtobufValueFactory& value_factory, google::protobuf::Arena* arena)
       : value_factory_(value_factory),
         descriptor_pool_(DescriptorPool::generated_pool()),
         arena_(arena),
@@ -366,7 +366,7 @@ class ValueFromMessageMaker {
         }
       }
     }
-    return ValueFactory(factory, pool, arena, message_factory)
+    return ValueManager(factory, pool, arena, message_factory)
         .ValueFromMessage(message);
   }
 
@@ -416,7 +416,7 @@ class ValueFromMessageMaker {
 };
 
 CelValue DynamicList::operator[](int index) const {
-  return ValueFactory(factory_, arena_)
+  return ValueManager(factory_, arena_)
       .ValueFromMessage(&values_->values(index));
 }
 
@@ -434,7 +434,7 @@ absl::optional<CelValue> DynamicMap::operator[](CelValue key) const {
     return absl::nullopt;
   }
 
-  return ValueFactory(factory_, arena_).ValueFromMessage(&it->second);
+  return ValueManager(factory_, arena_).ValueFromMessage(&it->second);
 }
 
 google::protobuf::Message* MessageFromValue(

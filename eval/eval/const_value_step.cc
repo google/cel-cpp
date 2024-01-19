@@ -8,7 +8,7 @@
 #include "base/ast_internal/expr.h"
 #include "base/handle.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "eval/eval/compiler_constant_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "internal/status_macros.h"
@@ -26,7 +26,7 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
-    const Constant& value, int64_t expr_id, cel::ValueFactory& value_factory,
+    const Constant& value, int64_t expr_id, cel::ValueManager& value_factory,
     bool comes_from_ast) {
   CEL_ASSIGN_OR_RETURN(cel::Handle<cel::Value> converted_value,
                        ConvertConstant(value, value_factory));

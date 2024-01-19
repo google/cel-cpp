@@ -39,13 +39,13 @@ class ProgramImpl final : public TraceableProgram {
 
   absl::StatusOr<Handle<Value>> Evaluate(
       const ActivationInterface& activation,
-      ValueFactory& value_factory) const override {
+      ValueManager& value_factory) const override {
     return Trace(activation, EvaluationListener(), value_factory);
   }
 
   absl::StatusOr<Handle<Value>> Trace(
       const ActivationInterface& activation, EvaluationListener callback,
-      ValueFactory& value_factory) const override {
+      ValueManager& value_factory) const override {
     auto state = impl_.MakeEvaluatorState(value_factory);
     return impl_.EvaluateWithCallback(activation, std::move(callback), state);
   }

@@ -34,7 +34,7 @@
 #include "base/type_manager.h"
 #include "base/type_provider.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "common/native_type.h"
 #include "eval/eval/attribute_utility.h"
 #include "eval/eval/comprehension_slots.h"
@@ -97,7 +97,7 @@ class FlatExpressionEvaluatorState {
 
   FlatExpressionEvaluatorState(size_t value_stack_size,
                                size_t comprehension_slot_count,
-                               cel::ValueFactory& value_factory);
+                               cel::ValueManager& value_factory);
 
   void Reset();
 
@@ -113,13 +113,13 @@ class FlatExpressionEvaluatorState {
 
   cel::TypeManager& type_manager() { return value_factory_->type_manager(); }
 
-  cel::ValueFactory& value_factory() { return *value_factory_; }
+  cel::ValueManager& value_factory() { return *value_factory_; }
 
  private:
   EvaluatorStack value_stack_;
   ComprehensionSlots comprehension_slots_;
   absl::optional<cel::ManagedValueFactory> managed_value_factory_;
-  cel::ValueFactory* value_factory_;
+  cel::ValueManager* value_factory_;
 };
 
 // ExecutionFrame manages the context needed for expression evaluation.
@@ -247,7 +247,7 @@ class ExecutionFrame {
 
   cel::TypeManager& type_manager() { return state_.type_manager(); }
 
-  cel::ValueFactory& value_factory() { return state_.value_factory(); }
+  cel::ValueManager& value_factory() { return state_.value_factory(); }
 
   const AttributeUtility& attribute_utility() const {
     return attribute_utility_;
@@ -326,7 +326,7 @@ class FlatExpression {
   FlatExpressionEvaluatorState MakeEvaluatorState(
       cel::MemoryManagerRef memory_manager) const;
   FlatExpressionEvaluatorState MakeEvaluatorState(
-      cel::ValueFactory& value_factory) const;
+      cel::ValueManager& value_factory) const;
 
   // Evaluate the expression.
   //

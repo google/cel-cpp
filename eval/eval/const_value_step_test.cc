@@ -9,7 +9,7 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/type_provider.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/internal/errors.h"
@@ -37,7 +37,7 @@ using cel::internal::StatusIs;
 
 absl::StatusOr<CelValue> RunConstantExpression(
     const Expr* expr, const Constant& const_expr, google::protobuf::Arena* arena,
-    cel::ValueFactory& value_factory) {
+    cel::ValueManager& value_factory) {
   CEL_ASSIGN_OR_RETURN(
       auto step, CreateConstValueStep(const_expr, expr->id(), value_factory));
 
@@ -64,7 +64,7 @@ class ConstValueStepTest : public ::testing::Test {
   google::protobuf::Arena arena_;
   cel::TypeFactory type_factory_;
   cel::TypeManager type_manager_;
-  cel::ValueFactory value_factory_;
+  cel::ValueManager value_factory_;
 };
 
 TEST_F(ConstValueStepTest, TestEvaluationConstInt64) {

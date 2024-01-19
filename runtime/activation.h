@@ -33,7 +33,7 @@
 #include "base/function_descriptor.h"
 #include "base/handle.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "runtime/activation_interface.h"
 #include "runtime/function_overload_reference.h"
 
@@ -47,13 +47,13 @@ class Activation final : public ActivationInterface {
   // Definition for value providers.
   using ValueProvider =
       absl::AnyInvocable<absl::StatusOr<absl::optional<Handle<Value>>>(
-          ValueFactory&, absl::string_view)>;
+          ValueManager&, absl::string_view)>;
 
   Activation() = default;
 
   // Implements ActivationInterface.
   absl::StatusOr<absl::optional<Handle<Value>>> FindVariable(
-      ValueFactory& factory, absl::string_view name) const override;
+      ValueManager& factory, absl::string_view name) const override;
 
   std::vector<FunctionOverloadReference> FindFunctionOverloads(
       absl::string_view name) const override;
@@ -110,7 +110,7 @@ class Activation final : public ActivationInterface {
   // Assumes entry for name is present and is a provided value.
   // Handles synchronization for caching the provided value.
   absl::StatusOr<absl::optional<Handle<Value>>> ProvideValue(
-      ValueFactory& value_factory, absl::string_view name) const;
+      ValueManager& value_factory, absl::string_view name) const;
 
   // mutex_ used for safe caching of provided variables
   mutable absl::Mutex mutex_;

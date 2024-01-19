@@ -20,7 +20,7 @@
 #include "base/function_adapter.h"
 #include "base/handle.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/bool_value.h"
 #include "base/values/error_value.h"
 #include "base/values/unknown_value.h"
@@ -33,7 +33,7 @@ namespace {
 
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;
 
-Handle<Value> NotStrictlyFalseImpl(ValueFactory& value_factory,
+Handle<Value> NotStrictlyFalseImpl(ValueManager& value_factory,
                                    const Handle<Value>& value) {
   if (value->Is<BoolValue>()) {
     return value;
@@ -56,7 +56,7 @@ absl::Status RegisterLogicalFunctions(FunctionRegistry& registry,
   CEL_RETURN_IF_ERROR(
       (RegisterHelper<UnaryFunctionAdapter<bool, bool>>::RegisterGlobalOverload(
           builtin::kNot,
-          [](ValueFactory&, bool value) -> bool { return !value; }, registry)));
+          [](ValueManager&, bool value) -> bool { return !value; }, registry)));
 
   // Strictness
   using StrictnessHelper =

@@ -34,7 +34,7 @@ namespace google::api::expr::runtime {
 
 // Interface for mutation apis.
 // Note: in the new type system, a type provider represents this by returning
-// a cel::Type and cel::ValueFactory for the type.
+// a cel::Type and cel::ValueManager for the type.
 class LegacyTypeMutationApis {
  public:
   virtual ~LegacyTypeMutationApis() = default;
@@ -142,7 +142,7 @@ class LegacyTypeAccessApis {
 // Provides methods to the interpreter for interacting with a custom type.
 //
 // mutation_apis() provide equivalent behavior to a cel::Type and
-// cel::ValueFactory (resolved from a type name).
+// cel::ValueManager (resolved from a type name).
 //
 // access_apis() provide equivalent behavior to cel::StructValue accessors
 // (virtual dispatch to a concrete implementation for accessing underlying

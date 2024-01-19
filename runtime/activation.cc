@@ -31,7 +31,7 @@
 namespace cel {
 
 absl::StatusOr<absl::optional<Handle<Value>>> Activation::FindVariable(
-    ValueFactory& factory, absl::string_view name) const {
+    ValueManager& factory, absl::string_view name) const {
   auto iter = values_.find(name);
   if (iter == values_.end()) {
     return absl::nullopt;
@@ -45,7 +45,7 @@ absl::StatusOr<absl::optional<Handle<Value>>> Activation::FindVariable(
 }
 
 absl::StatusOr<absl::optional<Handle<Value>>> Activation::ProvideValue(
-    ValueFactory& factory, absl::string_view name) const {
+    ValueManager& factory, absl::string_view name) const {
   absl::MutexLock lock(&mutex_);
   auto iter = values_.find(name);
   ABSL_ASSERT(iter != values_.end());

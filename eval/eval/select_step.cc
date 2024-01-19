@@ -13,7 +13,7 @@
 #include "base/handle.h"
 #include "base/kind.h"
 #include "base/types/wrapper_type.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/error_value.h"
 #include "base/values/map_value.h"
 #include "base/values/null_value.h"
@@ -82,7 +82,7 @@ absl::optional<Handle<Value>> CheckForMarkedAttributes(
 
 Handle<Value> TestOnlySelect(const Handle<StructValue>& msg,
                              const std::string& field,
-                             cel::ValueFactory& value_factory) {
+                             cel::ValueManager& value_factory) {
   absl::StatusOr<bool> result =
       msg->HasFieldByName(value_factory.type_manager(), field);
 
@@ -94,7 +94,7 @@ Handle<Value> TestOnlySelect(const Handle<StructValue>& msg,
 
 Handle<Value> TestOnlySelect(const Handle<MapValue>& map,
                              const Handle<StringValue>& field_name,
-                             cel::ValueFactory& value_factory) {
+                             cel::ValueManager& value_factory) {
   // Field presence only supports string keys containing valid identifier
   // characters.
   auto presence = map->Has(value_factory, field_name);
@@ -235,7 +235,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
     const cel::ast_internal::Select& select_expr, int64_t expr_id,
     absl::string_view select_path, bool enable_wrapper_type_null_unboxing,
-    cel::ValueFactory& value_factory) {
+    cel::ValueManager& value_factory) {
   return std::make_unique<SelectStep>(
       value_factory.CreateUncheckedStringValue(select_expr.field()),
       select_expr.test_only(), expr_id, select_path,

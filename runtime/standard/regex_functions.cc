@@ -19,7 +19,7 @@
 #include "base/function_adapter.h"
 #include "base/handle.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "internal/status_macros.h"
 #include "re2/re2.h"
 
@@ -30,7 +30,7 @@ absl::Status RegisterRegexFunctions(FunctionRegistry& registry,
                                     const RuntimeOptions& options) {
   if (options.enable_regex) {
     auto regex_matches = [max_size = options.regex_max_program_size](
-                             ValueFactory& value_factory,
+                             ValueManager& value_factory,
                              const StringValue& target,
                              const StringValue& regex) -> Handle<Value> {
       RE2 re2(regex.ToString());

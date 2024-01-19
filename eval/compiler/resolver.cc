@@ -34,7 +34,7 @@
 #include "base/memory.h"
 #include "base/types/struct_type.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "internal/status_macros.h"
 #include "runtime/function_overload_reference.h"
 #include "runtime/function_registry.h"
@@ -47,7 +47,7 @@ using ::cel::Value;
 
 Resolver::Resolver(
     absl::string_view container, const cel::FunctionRegistry& function_registry,
-    const cel::TypeRegistry&, cel::ValueFactory& value_factory,
+    const cel::TypeRegistry&, cel::ValueManager& value_factory,
     const absl::flat_hash_map<std::string, cel::TypeRegistry::Enumeration>&
         resolveable_enums,
     bool resolve_qualified_type_identifiers)

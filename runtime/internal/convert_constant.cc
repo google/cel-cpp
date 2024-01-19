@@ -23,7 +23,7 @@
 #include "base/ast_internal/expr.h"
 #include "base/handle.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "eval/internal/errors.h"
 
 namespace cel::runtime_internal {
@@ -31,7 +31,7 @@ namespace {
 using ::cel::ast_internal::Constant;
 
 struct ConvertVisitor {
-  cel::ValueFactory& value_factory;
+  cel::ValueManager& value_factory;
 
   absl::StatusOr<cel::Handle<cel::Value>> operator()(
       const cel::ast_internal::NullValue& value) {
@@ -75,7 +75,7 @@ struct ConvertVisitor {
 //
 // A status maybe returned if value creation fails.
 absl::StatusOr<Handle<Value>> ConvertConstant(const Constant& constant,
-                                              ValueFactory& value_factory) {
+                                              ValueManager& value_factory) {
   return absl::visit(ConvertVisitor{value_factory}, constant.constant_kind());
 }
 

@@ -88,7 +88,7 @@ TEST_P(RegexPrecompilationTest, Basic) {
       absl::StatusOr<Handle<Value>>, const StringValue&, const StringValue&>>::
       RegisterGlobalOverload(
           "prepend",
-          [](ValueFactory& f, const StringValue& value,
+          [](ValueManager& f, const StringValue& value,
              const StringValue& prefix) {
             return StringValue::Concat(f, prefix, value);
           },
@@ -134,7 +134,7 @@ TEST_P(RegexPrecompilationTest, WithConstantFolding) {
       absl::StatusOr<Handle<Value>>, const StringValue&, const StringValue&>>::
       RegisterGlobalOverload(
           "prepend",
-          [](ValueFactory& f, const StringValue& value,
+          [](ValueManager& f, const StringValue& value,
              const StringValue& prefix) {
             return StringValue::Concat(f, prefix, value);
           },

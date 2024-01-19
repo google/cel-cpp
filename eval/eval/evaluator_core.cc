@@ -30,7 +30,7 @@
 #include "base/memory.h"
 #include "base/type_provider.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "internal/status_macros.h"
 #include "runtime/activation_interface.h"
 
@@ -47,7 +47,7 @@ FlatExpressionEvaluatorState::FlatExpressionEvaluatorState(
 
 FlatExpressionEvaluatorState::FlatExpressionEvaluatorState(
     size_t value_stack_size, size_t comprehension_slot_count,
-    cel::ValueFactory& value_factory)
+    cel::ValueManager& value_factory)
     : value_stack_(value_stack_size),
       comprehension_slots_(comprehension_slot_count),
       managed_value_factory_(absl::nullopt),
@@ -117,7 +117,7 @@ FlatExpressionEvaluatorState FlatExpression::MakeEvaluatorState(
 }
 
 FlatExpressionEvaluatorState FlatExpression::MakeEvaluatorState(
-    cel::ValueFactory& value_factory) const {
+    cel::ValueManager& value_factory) const {
   return FlatExpressionEvaluatorState(path_.size(), comprehension_slots_size_,
                                       value_factory);
 }

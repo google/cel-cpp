@@ -24,7 +24,7 @@
 #include "base/attribute.h"
 #include "base/handle.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "eval/public/base_activation.h"
 #include "runtime/activation_interface.h"
 #include "runtime/function_overload_reference.h"
@@ -41,7 +41,7 @@ class AdapterActivationImpl : public ActivationInterface {
       : legacy_activation_(legacy_activation) {}
 
   absl::StatusOr<absl::optional<Handle<Value>>> FindVariable(
-      ValueFactory& value_factory, absl::string_view name) const override;
+      ValueManager& value_factory, absl::string_view name) const override;
 
   std::vector<FunctionOverloadReference> FindFunctionOverloads(
       absl::string_view name) const override;

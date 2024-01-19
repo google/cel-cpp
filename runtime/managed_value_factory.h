@@ -19,11 +19,11 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/type_provider.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 
 namespace cel {
 
-// A convenience class for managing objects associated with a ValueFactory.
+// A convenience class for managing objects associated with a ValueManager.
 class ManagedValueFactory {
  public:
   // type_provider and memory_manager must outlive the ManagedValueFactory.
@@ -39,12 +39,12 @@ class ManagedValueFactory {
   ManagedValueFactory(ManagedValueFactory&& other) = delete;
   ManagedValueFactory& operator=(ManagedValueFactory&& other) = delete;
 
-  ValueFactory& get() { return value_factory_; }
+  ValueManager& get() { return value_factory_; }
 
  private:
   TypeFactory type_factory_;
   TypeManager type_manager_;
-  ValueFactory value_factory_;
+  ValueManager value_factory_;
 };
 
 }  // namespace cel

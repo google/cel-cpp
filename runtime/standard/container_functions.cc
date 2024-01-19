@@ -21,7 +21,7 @@
 #include "base/function_adapter.h"
 #include "base/handle.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
 #include "internal/status_macros.h"
@@ -34,16 +34,16 @@ namespace {
 
 using cel::runtime_internal::MutableListValue;
 
-int64_t MapSizeImpl(ValueFactory&, const MapValue& value) {
+int64_t MapSizeImpl(ValueManager&, const MapValue& value) {
   return value.Size();
 }
 
-int64_t ListSizeImpl(ValueFactory&, const ListValue& value) {
+int64_t ListSizeImpl(ValueManager&, const ListValue& value) {
   return value.Size();
 }
 
 // Concatenation for CelList type.
-absl::StatusOr<Handle<ListValue>> ConcatList(ValueFactory& factory,
+absl::StatusOr<Handle<ListValue>> ConcatList(ValueManager& factory,
                                              const Handle<ListValue>& value1,
                                              const Handle<ListValue>& value2) {
   int size1 = value1->Size();
@@ -81,7 +81,7 @@ absl::StatusOr<Handle<ListValue>> ConcatList(ValueFactory& factory,
 // This call will only be invoked within comprehensions where `value1` is an
 // intermediate result which cannot be directly assigned or co-mingled with a
 // user-provided list.
-absl::StatusOr<Handle<OpaqueValue>> AppendList(ValueFactory& factory,
+absl::StatusOr<Handle<OpaqueValue>> AppendList(ValueManager& factory,
                                                Handle<OpaqueValue> value1,
                                                const ListValue& value2) {
   // The `value1` object cannot be directly addressed and is an intermediate

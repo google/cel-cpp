@@ -21,7 +21,7 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/type_provider.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/string_value.h"
 #include "eval/eval/attribute_trail.h"
 #include "internal/testing.h"
@@ -36,14 +36,14 @@ using ::cel::TypeFactory;
 using ::cel::TypeManager;
 using ::cel::TypeProvider;
 using ::cel::Value;
-using ::cel::ValueFactory;
+using ::cel::ValueManager;
 using testing::Truly;
 using cel::internal::IsOkAndHolds;
 
 TEST(ComprehensionSlots, Basic) {
   TypeFactory tf(MemoryManagerRef::ReferenceCounting());
   TypeManager tm(tf, TypeProvider::Builtin());
-  ValueFactory factory(tm);
+  ValueManager factory(tm);
 
   ComprehensionSlots slots(4);
 

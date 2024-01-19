@@ -24,7 +24,7 @@
 #include "base/function_adapter.h"
 #include "base/function_descriptor.h"
 #include "base/kind.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "internal/testing.h"
 #include "runtime/activation.h"
 #include "runtime/function_overload_reference.h"
@@ -134,11 +134,11 @@ TEST(FunctionRegistryTest, DefaultLazyProviderReturnsImpl) {
   EXPECT_TRUE(activation.InsertFunction(
       FunctionDescriptor("LazyFunction", false, {Kind::kInt}),
       UnaryFunctionAdapter<int64_t, int64_t>::WrapFunction(
-          [](ValueFactory&, int64_t x) { return 2 * x; })));
+          [](ValueManager&, int64_t x) { return 2 * x; })));
   EXPECT_TRUE(activation.InsertFunction(
       FunctionDescriptor("LazyFunction", false, {Kind::kDouble}),
       UnaryFunctionAdapter<double, double>::WrapFunction(
-          [](ValueFactory&, double x) { return 2 * x; })));
+          [](ValueManager&, double x) { return 2 * x; })));
 
   auto providers =
       registry.FindLazyOverloads("LazyFunction", false, {Kind::kInt});
@@ -162,11 +162,11 @@ TEST(FunctionRegistryTest, DefaultLazyProviderAmbiguousOverload) {
   EXPECT_TRUE(activation.InsertFunction(
       FunctionDescriptor("LazyFunction", false, {Kind::kInt}),
       UnaryFunctionAdapter<int64_t, int64_t>::WrapFunction(
-          [](ValueFactory&, int64_t x) { return 2 * x; })));
+          [](ValueManager&, int64_t x) { return 2 * x; })));
   EXPECT_TRUE(activation.InsertFunction(
       FunctionDescriptor("LazyFunction", false, {Kind::kDouble}),
       UnaryFunctionAdapter<double, double>::WrapFunction(
-          [](ValueFactory&, double x) { return 2 * x; })));
+          [](ValueManager&, double x) { return 2 * x; })));
 
   auto providers =
       registry.FindLazyOverloads("LazyFunction", false, {Kind::kInt});

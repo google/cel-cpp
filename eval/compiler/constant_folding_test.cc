@@ -26,7 +26,7 @@
 #include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/list_value.h"
 #include "base/values/string_value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
@@ -85,7 +85,7 @@ class UpdatedConstantFoldingTest : public testing::Test {
   cel::TypeRegistry type_registry_;
   cel::TypeFactory type_factory_;
   cel::TypeManager type_manager_;
-  cel::ValueFactory value_factory_;
+  cel::ValueManager value_factory_;
   cel::RuntimeOptions options_;
   IssueCollector issue_collector_;
   Resolver resolver_;

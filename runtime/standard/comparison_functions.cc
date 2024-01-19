@@ -21,7 +21,7 @@
 #include "base/builtins.h"
 #include "base/function_adapter.h"
 #include "base/handle.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/bytes_value.h"
 #include "base/values/string_value.h"
 #include "internal/number.h"
@@ -37,134 +37,134 @@ using ::cel::internal::Number;
 
 // Comparison template functions
 template <class Type>
-bool LessThan(ValueFactory&, Type t1, Type t2) {
+bool LessThan(ValueManager&, Type t1, Type t2) {
   return (t1 < t2);
 }
 
 template <class Type>
-bool LessThanOrEqual(ValueFactory&, Type t1, Type t2) {
+bool LessThanOrEqual(ValueManager&, Type t1, Type t2) {
   return (t1 <= t2);
 }
 
 template <class Type>
-bool GreaterThan(ValueFactory& factory, Type t1, Type t2) {
+bool GreaterThan(ValueManager& factory, Type t1, Type t2) {
   return LessThan(factory, t2, t1);
 }
 
 template <class Type>
-bool GreaterThanOrEqual(ValueFactory& factory, Type t1, Type t2) {
+bool GreaterThanOrEqual(ValueManager& factory, Type t1, Type t2) {
   return LessThanOrEqual(factory, t2, t1);
 }
 
 // String value comparions specializations
 template <>
-bool LessThan(ValueFactory&, const Handle<StringValue>& t1,
+bool LessThan(ValueManager&, const Handle<StringValue>& t1,
               const Handle<StringValue>& t2) {
   return t1->Compare(*t2) < 0;
 }
 
 template <>
-bool LessThanOrEqual(ValueFactory&, const Handle<StringValue>& t1,
+bool LessThanOrEqual(ValueManager&, const Handle<StringValue>& t1,
                      const Handle<StringValue>& t2) {
   return t1->Compare(*t2) <= 0;
 }
 
 template <>
-bool GreaterThan(ValueFactory&, const Handle<StringValue>& t1,
+bool GreaterThan(ValueManager&, const Handle<StringValue>& t1,
                  const Handle<StringValue>& t2) {
   return t1->Compare(*t2) > 0;
 }
 
 template <>
-bool GreaterThanOrEqual(ValueFactory&, const Handle<StringValue>& t1,
+bool GreaterThanOrEqual(ValueManager&, const Handle<StringValue>& t1,
                         const Handle<StringValue>& t2) {
   return t1->Compare(*t2) >= 0;
 }
 
 // bytes value comparions specializations
 template <>
-bool LessThan(ValueFactory&, const Handle<BytesValue>& t1,
+bool LessThan(ValueManager&, const Handle<BytesValue>& t1,
               const Handle<BytesValue>& t2) {
   return t1->Compare(*t2) < 0;
 }
 
 template <>
-bool LessThanOrEqual(ValueFactory&, const Handle<BytesValue>& t1,
+bool LessThanOrEqual(ValueManager&, const Handle<BytesValue>& t1,
                      const Handle<BytesValue>& t2) {
   return t1->Compare(*t2) <= 0;
 }
 
 template <>
-bool GreaterThan(ValueFactory&, const Handle<BytesValue>& t1,
+bool GreaterThan(ValueManager&, const Handle<BytesValue>& t1,
                  const Handle<BytesValue>& t2) {
   return t1->Compare(*t2) > 0;
 }
 
 template <>
-bool GreaterThanOrEqual(ValueFactory&, const Handle<BytesValue>& t1,
+bool GreaterThanOrEqual(ValueManager&, const Handle<BytesValue>& t1,
                         const Handle<BytesValue>& t2) {
   return t1->Compare(*t2) >= 0;
 }
 
 // Duration comparison specializations
 template <>
-bool LessThan(ValueFactory&, absl::Duration t1, absl::Duration t2) {
+bool LessThan(ValueManager&, absl::Duration t1, absl::Duration t2) {
   return absl::operator<(t1, t2);
 }
 
 template <>
-bool LessThanOrEqual(ValueFactory&, absl::Duration t1, absl::Duration t2) {
+bool LessThanOrEqual(ValueManager&, absl::Duration t1, absl::Duration t2) {
   return absl::operator<=(t1, t2);
 }
 
 template <>
-bool GreaterThan(ValueFactory&, absl::Duration t1, absl::Duration t2) {
+bool GreaterThan(ValueManager&, absl::Duration t1, absl::Duration t2) {
   return absl::operator>(t1, t2);
 }
 
 template <>
-bool GreaterThanOrEqual(ValueFactory&, absl::Duration t1, absl::Duration t2) {
+bool GreaterThanOrEqual(ValueManager&, absl::Duration t1, absl::Duration t2) {
   return absl::operator>=(t1, t2);
 }
 
 // Timestamp comparison specializations
 template <>
-bool LessThan(ValueFactory&, absl::Time t1, absl::Time t2) {
+bool LessThan(ValueManager&, absl::Time t1, absl::Time t2) {
   return absl::operator<(t1, t2);
 }
 
 template <>
-bool LessThanOrEqual(ValueFactory&, absl::Time t1, absl::Time t2) {
+bool LessThanOrEqual(ValueManager&, absl::Time t1, absl::Time t2) {
   return absl::operator<=(t1, t2);
 }
 
 template <>
-bool GreaterThan(ValueFactory&, absl::Time t1, absl::Time t2) {
+bool GreaterThan(ValueManager&, absl::Time t1, absl::Time t2) {
   return absl::operator>(t1, t2);
 }
 
 template <>
-bool GreaterThanOrEqual(ValueFactory&, absl::Time t1, absl::Time t2) {
+bool GreaterThanOrEqual(ValueManager&, absl::Time t1, absl::Time t2) {
   return absl::operator>=(t1, t2);
 }
 
 template <typename T, typename U>
-bool CrossNumericLessThan(ValueFactory&, T t, U u) {
+bool CrossNumericLessThan(ValueManager&, T t, U u) {
   return Number(t) < Number(u);
 }
 
 template <typename T, typename U>
-bool CrossNumericGreaterThan(ValueFactory&, T t, U u) {
+bool CrossNumericGreaterThan(ValueManager&, T t, U u) {
   return Number(t) > Number(u);
 }
 
 template <typename T, typename U>
-bool CrossNumericLessOrEqualTo(ValueFactory&, T t, U u) {
+bool CrossNumericLessOrEqualTo(ValueManager&, T t, U u) {
   return Number(t) <= Number(u);
 }
 
 template <typename T, typename U>
-bool CrossNumericGreaterOrEqualTo(ValueFactory&, T t, U u) {
+bool CrossNumericGreaterOrEqualTo(ValueManager&, T t, U u) {
   return Number(t) >= Number(u);
 }
 

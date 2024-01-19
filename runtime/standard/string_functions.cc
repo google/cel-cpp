@@ -21,14 +21,14 @@
 #include "base/function_adapter.h"
 #include "base/handle.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "internal/status_macros.h"
 
 namespace cel {
 namespace {
 
 // Concatenation for string type.
-absl::StatusOr<Handle<StringValue>> ConcatString(ValueFactory& factory,
+absl::StatusOr<Handle<StringValue>> ConcatString(ValueManager& factory,
                                                  const StringValue& value1,
                                                  const StringValue& value2) {
   // TODO(uncreated-issue/53): use StringValue::Concat when remaining interop usages
@@ -39,7 +39,7 @@ absl::StatusOr<Handle<StringValue>> ConcatString(ValueFactory& factory,
 }
 
 // Concatenation for bytes type.
-absl::StatusOr<Handle<BytesValue>> ConcatBytes(ValueFactory& factory,
+absl::StatusOr<Handle<BytesValue>> ConcatBytes(ValueManager& factory,
                                                const BytesValue& value1,
                                                const BytesValue& value2) {
   // TODO(uncreated-issue/53): use BytesValue::Concat when remaining interop usages
@@ -49,24 +49,24 @@ absl::StatusOr<Handle<BytesValue>> ConcatBytes(ValueFactory& factory,
       absl::StrCat(value1.ToString(), value2.ToString()));
 }
 
-bool StringContains(ValueFactory&, const StringValue& value,
+bool StringContains(ValueManager&, const StringValue& value,
                     const StringValue& substr) {
   return absl::StrContains(value.ToString(), substr.ToString());
 }
 
-bool StringEndsWith(ValueFactory&, const StringValue& value,
+bool StringEndsWith(ValueManager&, const StringValue& value,
                     const StringValue& suffix) {
   return absl::EndsWith(value.ToString(), suffix.ToString());
 }
 
-bool StringStartsWith(ValueFactory&, const StringValue& value,
+bool StringStartsWith(ValueManager&, const StringValue& value,
                       const StringValue& prefix) {
   return absl::StartsWith(value.ToString(), prefix.ToString());
 }
 
 absl::Status RegisterSizeFunctions(FunctionRegistry& registry) {
   // String size
-  auto size_func = [](ValueFactory& value_factory,
+  auto size_func = [](ValueManager& value_factory,
                       const StringValue& value) -> int64_t {
     return value.Size();
   };
@@ -84,7 +84,7 @@ absl::Status RegisterSizeFunctions(FunctionRegistry& registry) {
                         StrSizeFnAdapter::WrapFunction(size_func)));
 
   // Bytes size
-  auto bytes_size_func = [](ValueFactory&, const BytesValue& value) -> int64_t {
+  auto bytes_size_func = [](ValueManager&, const BytesValue& value) -> int64_t {
     return value.Size();
   };
   // receiver style = true/false

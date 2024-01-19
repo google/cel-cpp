@@ -20,7 +20,7 @@
 #include "base/function_adapter.h"
 #include "base/handle.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "internal/overflow.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
@@ -42,14 +42,14 @@ absl::Status RegisterIntConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<int64_t, bool>::CreateDescriptor(cel::builtin::kInt,
                                                             false),
       UnaryFunctionAdapter<int64_t, bool>::WrapFunction(
-          [](ValueFactory&, bool v) { return static_cast<int64_t>(v); })));
+          [](ValueManager&, bool v) { return static_cast<int64_t>(v); })));
 
   // double -> int
   CEL_RETURN_IF_ERROR(registry.Register(
       UnaryFunctionAdapter<Handle<Value>, double>::CreateDescriptor(
           cel::builtin::kInt, false),
       UnaryFunctionAdapter<Handle<Value>, double>::WrapFunction(
-          [](ValueFactory& value_factory, double v) -> Handle<Value> {
+          [](ValueManager& value_factory, double v) -> Handle<Value> {
             auto conv = cel::internal::CheckedDoubleToInt64(v);
             if (!conv.ok()) {
               return value_factory.CreateErrorValue(conv.status());
@@ -62,14 +62,14 @@ absl::Status RegisterIntConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<int64_t, int64_t>::CreateDescriptor(
           cel::builtin::kInt, false),
       UnaryFunctionAdapter<int64_t, int64_t>::WrapFunction(
-          [](ValueFactory&, int64_t v) { return v; })));
+          [](ValueManager&, int64_t v) { return v; })));
 
   // string -> int
   CEL_RETURN_IF_ERROR(registry.Register(
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::CreateDescriptor(
           cel::builtin::kInt, false),
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::WrapFunction(
-          [](ValueFactory& value_factory,
+          [](ValueManager& value_factory,
              const StringValue& s) -> Handle<Value> {
             int64_t result;
             if (!absl::SimpleAtoi(s.ToString(), &result)) {
@@ -84,14 +84,14 @@ absl::Status RegisterIntConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<int64_t, absl::Time>::CreateDescriptor(
           cel::builtin::kInt, false),
       UnaryFunctionAdapter<int64_t, absl::Time>::WrapFunction(
-          [](ValueFactory&, absl::Time t) { return absl::ToUnixSeconds(t); })));
+          [](ValueManager&, absl::Time t) { return absl::ToUnixSeconds(t); })));
 
   // uint -> int
   return registry.Register(
       UnaryFunctionAdapter<Handle<Value>, uint64_t>::CreateDescriptor(
           cel::builtin::kInt, false),
       UnaryFunctionAdapter<Handle<Value>, uint64_t>::WrapFunction(
-          [](ValueFactory& value_factory, uint64_t v) -> Handle<Value> {
+          [](ValueManager& value_factory, uint64_t v) -> Handle<Value> {
             auto conv = cel::internal::CheckedUint64ToInt64(v);
             if (!conv.ok()) {
               return value_factory.CreateErrorValue(conv.status());
@@ -111,7 +111,7 @@ absl::Status RegisterStringConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<Handle<Value>, const BytesValue&>::CreateDescriptor(
           cel::builtin::kString, false),
       UnaryFunctionAdapter<Handle<Value>, const BytesValue&>::WrapFunction(
-          [](ValueFactory& value_factory,
+          [](ValueManager& value_factory,
              const BytesValue& value) -> Handle<Value> {
             auto handle_or = value_factory.CreateStringValue(value.ToString());
             if (!handle_or.ok()) {
@@ -125,7 +125,7 @@ absl::Status RegisterStringConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<Handle<StringValue>, double>::CreateDescriptor(
           cel::builtin::kString, false),
       UnaryFunctionAdapter<Handle<StringValue>, double>::WrapFunction(
-          [](ValueFactory& value_factory, double value) -> Handle<StringValue> {
+          [](ValueManager& value_factory, double value) -> Handle<StringValue> {
             return value_factory.CreateUncheckedStringValue(
                 absl::StrCat(value));
           })));
@@ -135,7 +135,7 @@ absl::Status RegisterStringConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<Handle<StringValue>, int64_t>::CreateDescriptor(
           cel::builtin::kString, false),
       UnaryFunctionAdapter<Handle<StringValue>, int64_t>::WrapFunction(
-          [](ValueFactory& value_factory,
+          [](ValueManager& value_factory,
              int64_t value) -> Handle<StringValue> {
             return value_factory.CreateUncheckedStringValue(
                 absl::StrCat(value));
@@ -146,7 +146,7 @@ absl::Status RegisterStringConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<Handle<StringValue>, Handle<StringValue>>::
           CreateDescriptor(cel::builtin::kString, false),
       UnaryFunctionAdapter<Handle<StringValue>, Handle<StringValue>>::
-          WrapFunction([](ValueFactory&, Handle<StringValue> value)
+          WrapFunction([](ValueManager&, Handle<StringValue> value)
                            -> Handle<StringValue> { return value; })));
 
   // uint -> string
@@ -154,7 +154,7 @@ absl::Status RegisterStringConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<Handle<StringValue>, uint64_t>::CreateDescriptor(
           cel::builtin::kString, false),
       UnaryFunctionAdapter<Handle<StringValue>, uint64_t>::WrapFunction(
-          [](ValueFactory& value_factory,
+          [](ValueManager& value_factory,
              uint64_t value) -> Handle<StringValue> {
             return value_factory.CreateUncheckedStringValue(
                 absl::StrCat(value));
@@ -165,7 +165,7 @@ absl::Status RegisterStringConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<Handle<Value>, absl::Duration>::CreateDescriptor(
           cel::builtin::kString, false),
       UnaryFunctionAdapter<Handle<Value>, absl::Duration>::WrapFunction(
-          [](ValueFactory& value_factory,
+          [](ValueManager& value_factory,
              absl::Duration value) -> Handle<Value> {
             auto encode = EncodeDurationToJson(value);
             if (!encode.ok()) {
@@ -179,7 +179,7 @@ absl::Status RegisterStringConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::CreateDescriptor(
           cel::builtin::kString, false),
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::WrapFunction(
-          [](ValueFactory& value_factory, absl::Time value) -> Handle<Value> {
+          [](ValueManager& value_factory, absl::Time value) -> Handle<Value> {
             auto encode = EncodeTimestampToJson(value);
             if (!encode.ok()) {
               return value_factory.CreateErrorValue(encode.status());
@@ -195,7 +195,7 @@ absl::Status RegisterUintConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<Handle<Value>, double>::CreateDescriptor(
           cel::builtin::kUint, false),
       UnaryFunctionAdapter<Handle<Value>, double>::WrapFunction(
-          [](ValueFactory& value_factory, double v) -> Handle<Value> {
+          [](ValueManager& value_factory, double v) -> Handle<Value> {
             auto conv = cel::internal::CheckedDoubleToUint64(v);
             if (!conv.ok()) {
               return value_factory.CreateErrorValue(conv.status());
@@ -208,7 +208,7 @@ absl::Status RegisterUintConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<Handle<Value>, int64_t>::CreateDescriptor(
           cel::builtin::kUint, false),
       UnaryFunctionAdapter<Handle<Value>, int64_t>::WrapFunction(
-          [](ValueFactory& value_factory, int64_t v) -> Handle<Value> {
+          [](ValueManager& value_factory, int64_t v) -> Handle<Value> {
             auto conv = cel::internal::CheckedInt64ToUint64(v);
             if (!conv.ok()) {
               return value_factory.CreateErrorValue(conv.status());
@@ -221,7 +221,7 @@ absl::Status RegisterUintConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::CreateDescriptor(
           cel::builtin::kUint, false),
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::WrapFunction(
-          [](ValueFactory& value_factory,
+          [](ValueManager& value_factory,
              const StringValue& s) -> Handle<Value> {
             uint64_t result;
             if (!absl::SimpleAtoi(s.ToString(), &result)) {
@@ -236,7 +236,7 @@ absl::Status RegisterUintConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<uint64_t, uint64_t>::CreateDescriptor(
           cel::builtin::kUint, false),
       UnaryFunctionAdapter<uint64_t, uint64_t>::WrapFunction(
-          [](ValueFactory&, uint64_t v) { return v; }));
+          [](ValueManager&, uint64_t v) { return v; }));
 }
 
 absl::Status RegisterBytesConversionFunctions(FunctionRegistry& registry,
@@ -246,7 +246,7 @@ absl::Status RegisterBytesConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<Handle<BytesValue>, Handle<BytesValue>>::
           CreateDescriptor(cel::builtin::kBytes, false),
       UnaryFunctionAdapter<Handle<BytesValue>, Handle<BytesValue>>::
-          WrapFunction([](ValueFactory&, Handle<BytesValue> value)
+          WrapFunction([](ValueManager&, Handle<BytesValue> value)
                            -> Handle<BytesValue> { return value; })));
 
   // string -> bytes
@@ -256,7 +256,7 @@ absl::Status RegisterBytesConversionFunctions(FunctionRegistry& registry,
           const StringValue&>::CreateDescriptor(cel::builtin::kBytes, false),
       UnaryFunctionAdapter<
           absl::StatusOr<Handle<BytesValue>>,
-          const StringValue&>::WrapFunction([](ValueFactory& value_factory,
+          const StringValue&>::WrapFunction([](ValueManager& value_factory,
                                                const StringValue& value) {
         return value_factory.CreateBytesValue(value.ToString());
       }));
@@ -269,21 +269,21 @@ absl::Status RegisterDoubleConversionFunctions(FunctionRegistry& registry,
       registry.Register(UnaryFunctionAdapter<double, double>::CreateDescriptor(
                             cel::builtin::kDouble, false),
                         UnaryFunctionAdapter<double, double>::WrapFunction(
-                            [](ValueFactory&, double v) { return v; })));
+                            [](ValueManager&, double v) { return v; })));
 
   // int -> double
   CEL_RETURN_IF_ERROR(registry.Register(
       UnaryFunctionAdapter<double, int64_t>::CreateDescriptor(
           cel::builtin::kDouble, false),
       UnaryFunctionAdapter<double, int64_t>::WrapFunction(
-          [](ValueFactory&, int64_t v) { return static_cast<double>(v); })));
+          [](ValueManager&, int64_t v) { return static_cast<double>(v); })));
 
   // string -> double
   CEL_RETURN_IF_ERROR(registry.Register(
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::CreateDescriptor(
           cel::builtin::kDouble, false),
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::WrapFunction(
-          [](ValueFactory& value_factory,
+          [](ValueManager& value_factory,
              const StringValue& s) -> Handle<Value> {
             double result;
             if (absl::SimpleAtod(s.ToString(), &result)) {
@@ -299,10 +299,10 @@ absl::Status RegisterDoubleConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<double, uint64_t>::CreateDescriptor(
           cel::builtin::kDouble, false),
       UnaryFunctionAdapter<double, uint64_t>::WrapFunction(
-          [](ValueFactory&, uint64_t v) { return static_cast<double>(v); }));
+          [](ValueManager&, uint64_t v) { return static_cast<double>(v); }));
 }
 
-Handle<Value> CreateDurationFromString(ValueFactory& value_factory,
+Handle<Value> CreateDurationFromString(ValueManager& value_factory,
                                        const StringValue& dur_str) {
   absl::Duration d;
   if (!absl::ParseDuration(dur_str.ToString(), &d)) {
@@ -333,7 +333,7 @@ absl::Status RegisterTimeConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<Handle<Value>, int64_t>::CreateDescriptor(
           cel::builtin::kTimestamp, false),
       UnaryFunctionAdapter<Handle<Value>, int64_t>::WrapFunction(
-          [](ValueFactory& value_factory,
+          [](ValueManager& value_factory,
              int64_t epoch_seconds) -> Handle<Value> {
             return value_factory.CreateUncheckedTimestampValue(
                 absl::FromUnixSeconds(epoch_seconds));
@@ -346,7 +346,7 @@ absl::Status RegisterTimeConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::CreateDescriptor(
           cel::builtin::kTimestamp, false),
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::WrapFunction(
-          [=](ValueFactory& value_factory,
+          [=](ValueManager& value_factory,
               const StringValue& time_str) -> Handle<Value> {
             absl::Time ts;
             if (!absl::ParseTime(absl::RFC3339_full, time_str.ToString(), &ts,
@@ -386,7 +386,7 @@ absl::Status RegisterTypeConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<Handle<Value>, const Handle<Value>&>::
           CreateDescriptor(cel::builtin::kDyn, false),
       UnaryFunctionAdapter<Handle<Value>, const Handle<Value>&>::WrapFunction(
-          [](ValueFactory&, const Handle<Value>& value) -> Handle<Value> {
+          [](ValueManager&, const Handle<Value>& value) -> Handle<Value> {
             return value;
           })));
 
@@ -395,7 +395,7 @@ absl::Status RegisterTypeConversionFunctions(FunctionRegistry& registry,
       UnaryFunctionAdapter<Handle<Value>, const Handle<Value>&>::
           CreateDescriptor(cel::builtin::kType, false),
       UnaryFunctionAdapter<Handle<Value>, const Handle<Value>&>::WrapFunction(
-          [](ValueFactory& factory, const Handle<Value>& value) {
+          [](ValueManager& factory, const Handle<Value>& value) {
             return factory.CreateTypeValue(value->type());
           }));
 }

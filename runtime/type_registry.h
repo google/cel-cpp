@@ -32,7 +32,7 @@ namespace cel {
 
 // TypeRegistry manages composing TypeProviders used with a Runtime.
 //
-// It provides a single effective type provider to be used in a ValueFactory.
+// It provides a single effective type provider to be used in a ValueManager.
 class TypeRegistry {
  public:
   // Representation for a custom enum constant.

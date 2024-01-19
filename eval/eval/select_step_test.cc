@@ -12,7 +12,7 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/type_provider.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
@@ -161,7 +161,7 @@ class SelectStepTest : public testing::Test {
   google::protobuf::Arena arena_;
   cel::TypeFactory type_factory_;
   cel::TypeManager type_manager_;
-  cel::ValueFactory value_factory_;
+  cel::ValueManager value_factory_;
 };
 
 class SelectStepConformanceTest : public SelectStepTest,

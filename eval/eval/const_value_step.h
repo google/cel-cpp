@@ -8,7 +8,7 @@
 #include "base/ast_internal/expr.h"
 #include "base/handle.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "eval/eval/evaluator_core.h"
 
 namespace google::api::expr::runtime {
@@ -22,7 +22,7 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
 // expression.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
     const cel::ast_internal::Constant&, int64_t expr_id,
-    cel::ValueFactory& value_factory, bool comes_from_ast = true);
+    cel::ValueManager& value_factory, bool comes_from_ast = true);
 
 }  // namespace google::api::expr::runtime
 

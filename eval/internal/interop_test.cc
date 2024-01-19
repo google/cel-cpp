@@ -30,7 +30,7 @@
 #include "base/type.h"
 #include "base/type_manager.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/error_value.h"
 #include "base/values/int_value.h"
 #include "base/values/struct_value.h"
@@ -73,7 +73,7 @@ TEST(ValueInterop, NullFromLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto legacy_value = CelValue::CreateNull();
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<NullValue>());
@@ -84,7 +84,7 @@ TEST(ValueInterop, NullToLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto value = value_factory.GetNullValue();
   ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsNull());
@@ -95,7 +95,7 @@ TEST(ValueInterop, BoolFromLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto legacy_value = CelValue::CreateBool(true);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<BoolValue>());
@@ -107,7 +107,7 @@ TEST(ValueInterop, BoolToLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto value = value_factory.CreateBoolValue(true);
   ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsBool());
@@ -119,7 +119,7 @@ TEST(ValueInterop, IntFromLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto legacy_value = CelValue::CreateInt64(1);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<IntValue>());
@@ -131,7 +131,7 @@ TEST(ValueInterop, IntToLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto value = value_factory.CreateIntValue(1);
   ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsInt64());
@@ -143,7 +143,7 @@ TEST(ValueInterop, UintFromLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto legacy_value = CelValue::CreateUint64(1);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<UintValue>());
@@ -155,7 +155,7 @@ TEST(ValueInterop, UintToLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto value = value_factory.CreateUintValue(1);
   ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsUint64());
@@ -167,7 +167,7 @@ TEST(ValueInterop, DoubleFromLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto legacy_value = CelValue::CreateDouble(1.0);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<DoubleValue>());
@@ -179,7 +179,7 @@ TEST(ValueInterop, DoubleToLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto value = value_factory.CreateDoubleValue(1.0);
   ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsDouble());
@@ -191,7 +191,7 @@ TEST(ValueInterop, DurationFromLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto duration = absl::ZeroDuration() + absl::Seconds(1);
   auto legacy_value = CelValue::CreateDuration(duration);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
@@ -204,7 +204,7 @@ TEST(ValueInterop, DurationToLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto duration = absl::ZeroDuration() + absl::Seconds(1);
   ASSERT_OK_AND_ASSIGN(auto value, value_factory.CreateDurationValue(duration));
   ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
@@ -240,7 +240,7 @@ TEST(ValueInterop, TimestampFromLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto timestamp = absl::UnixEpoch() + absl::Seconds(1);
   auto legacy_value = CelValue::CreateTimestamp(timestamp);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
@@ -253,7 +253,7 @@ TEST(ValueInterop, TimestampToLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto timestamp = absl::UnixEpoch() + absl::Seconds(1);
   ASSERT_OK_AND_ASSIGN(auto value,
                        value_factory.CreateTimestampValue(timestamp));
@@ -268,7 +268,7 @@ TEST(ValueInterop, ErrorFromLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto legacy_value = CelValue::CreateError(&error);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<ErrorValue>());
@@ -298,7 +298,7 @@ TEST(ValueInterop, ModernTypeToStringView) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto value = value_factory.CreateTypeValue(type_factory.GetBoolType());
   ASSERT_OK_AND_ASSIGN(CelValue legacy_value, ToLegacyValue(&arena, value));
   ASSERT_TRUE(legacy_value.IsCelType());
@@ -310,7 +310,7 @@ TEST(ValueInterop, StringFromLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto legacy_value = CelValue::CreateStringView("test");
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<StringValue>());
@@ -322,7 +322,7 @@ TEST(ValueInterop, StringToLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value, value_factory.CreateStringValue("test"));
   ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsString());
@@ -334,7 +334,7 @@ TEST(ValueInterop, CordStringToLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value,
                        value_factory.CreateStringValue(absl::Cord("test")));
   ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
@@ -347,7 +347,7 @@ TEST(ValueInterop, BytesFromLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto legacy_value = CelValue::CreateBytesView("test");
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<BytesValue>());
@@ -359,7 +359,7 @@ TEST(ValueInterop, BytesToLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value, value_factory.CreateBytesValue("test"));
   ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsBytes());
@@ -371,7 +371,7 @@ TEST(ValueInterop, CordBytesToLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value,
                        value_factory.CreateBytesValue(absl::Cord("test")));
   ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
@@ -384,7 +384,7 @@ TEST(ValueInterop, ListFromLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto legacy_value =
       CelValue::CreateList(google::protobuf::Arena::Create<
                            google::api::expr::runtime::ContainerBackedListImpl>(
@@ -447,7 +447,7 @@ class TestListValue final : public CEL_LIST_VALUE_CLASS {
   const std::vector<int64_t>& value() const { return elements_; }
 
  protected:
-  absl::StatusOr<Handle<Value>> GetImpl(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> GetImpl(ValueManager& value_factory,
                                         size_t index) const override {
     return value_factory.CreateIntValue(elements_[index]);
   }
@@ -465,7 +465,7 @@ TEST(ValueInterop, ListToLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto type,
                        value_factory.type_factory().CreateListType(
                            value_factory.type_factory().GetIntType()));
@@ -483,7 +483,7 @@ TEST(ValueInterop, ModernListRoundtrip) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto type,
                        value_factory.type_factory().CreateListType(
                            value_factory.type_factory().GetIntType()));
@@ -501,7 +501,7 @@ TEST(ValueInterop, LegacyListRoundtrip) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto value =
       CelValue::CreateList(google::protobuf::Arena::Create<
                            google::api::expr::runtime::ContainerBackedListImpl>(
@@ -516,7 +516,7 @@ TEST(ValueInterop, LegacyListNewIteratorValues) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto value =
       CelValue::CreateList(google::protobuf::Arena::Create<
                            google::api::expr::runtime::ContainerBackedListImpl>(
@@ -542,7 +542,7 @@ TEST(ValueInterop, MapFromLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto* legacy_map =
       google::protobuf::Arena::Create<google::api::expr::runtime::CelMapBuilder>(&arena);
   ASSERT_OK(legacy_map->Add(CelValue::CreateInt64(1),
@@ -585,7 +585,7 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
   bool IsEmpty() const override { return entries_.empty(); }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
-      ValueFactory& value_factory) const override {
+      ValueManager& value_factory) const override {
     CEL_ASSIGN_OR_RETURN(auto type,
                          value_factory.type_factory().CreateListType(
                              value_factory.type_factory().GetIntType()));
@@ -599,7 +599,7 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
 
  private:
   absl::StatusOr<std::pair<Handle<Value>, bool>> FindImpl(
-      ValueFactory& value_factory, const Handle<Value>& key) const override {
+      ValueManager& value_factory, const Handle<Value>& key) const override {
     auto existing = entries_.find(key.As<IntValue>()->NativeValue());
     if (existing == entries_.end()) {
       return std::make_pair(Handle<Value>(), false);
@@ -609,7 +609,7 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
   }
 
   absl::StatusOr<Handle<Value>> HasImpl(
-      ValueFactory& value_factory, const Handle<Value>& key) const override {
+      ValueManager& value_factory, const Handle<Value>& key) const override {
     return value_factory.CreateBoolValue(
         entries_.find(key.As<IntValue>()->NativeValue()) != entries_.end());
   }
@@ -626,7 +626,7 @@ TEST(ValueInterop, MapToLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto type,
                        value_factory.type_factory().CreateMapType(
                            value_factory.type_factory().GetIntType(),
@@ -645,7 +645,7 @@ TEST(ValueInterop, ModernMapRoundtrip) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto type,
                        value_factory.type_factory().CreateMapType(
                            value_factory.type_factory().GetIntType(),
@@ -673,7 +673,7 @@ TEST(ValueInterop, LegacyMapRoundtrip) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto value = CelValue::CreateMap(
       google::protobuf::Arena::Create<google::api::expr::runtime::CelMapBuilder>(&arena));
   ASSERT_OK_AND_ASSIGN(auto modern_value, FromLegacyValue(&arena, value));
@@ -686,7 +686,7 @@ TEST(ValueInterop, LegacyMapNewIteratorKeys) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto* map_builder =
       google::protobuf::Arena::Create<google::api::expr::runtime::CelMapBuilder>(&arena);
   ASSERT_OK(map_builder->Add(CelValue::CreateStringView("foo"),
@@ -715,7 +715,7 @@ TEST(ValueInterop, StructFromLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   google::protobuf::Api api;
   api.set_name("foo");
   auto legacy_value = CelProtoWrapper::CreateMessage(&api, &arena);
@@ -748,7 +748,7 @@ TEST(ValueInterop, StructFromLegacyMessageLite) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   google::protobuf::Empty opaque;
   MessageWrapper wrapper(
       static_cast<const google::protobuf::MessageLite*>(&opaque),
@@ -778,7 +778,7 @@ TEST(ValueInterop, StructTypeFromLegacyTypeInfo) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   google::protobuf::LinkMessageReflection<google::api::expr::runtime::TestMessage>();
 
   google::api::expr::runtime::ProtoMessageTypeAdapter adapter(
@@ -795,7 +795,7 @@ TEST(ValueInterop, AbstractStructTypeFromLegacyTypeInfo) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   google::protobuf::LinkMessageReflection<google::api::expr::runtime::TestMessage>();
 
   google::api::expr::runtime::ProtoMessageTypeAdapter adapter(
@@ -834,7 +834,7 @@ TEST(ValueInterop, StructTypeLegacyTypeInfoRoundTrip) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   google::protobuf::LinkMessageReflection<google::api::expr::runtime::TestMessage>();
 
   google::api::expr::runtime::ProtoMessageTypeAdapter adapter(
@@ -853,7 +853,7 @@ TEST(ValueInterop, LegacyStructRoundtrip) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   google::protobuf::Api api;
   api.set_name("foo");
   auto value = CelProtoWrapper::CreateMessage(&api, &arena);
@@ -872,7 +872,7 @@ TEST(ValueInterop, LegacyStructEquality) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   google::protobuf::Api api;
   api.set_name("foo");
   ASSERT_OK_AND_ASSIGN(
@@ -891,7 +891,7 @@ TEST(ValueInterop, LegacyStructNewFieldIteratorIds) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   google::protobuf::Api api;
   api.set_name("foo");
   api.set_version("bar");
@@ -918,7 +918,7 @@ TEST(ValueInterop, LegacyStructNewFieldIteratorValues) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   google::protobuf::Api api;
   api.set_name("foo");
   api.set_version("bar");
@@ -947,7 +947,7 @@ TEST(ValueInterop, UnknownFromLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   UnknownSet unknown_set(attributes, function_results);
   auto legacy_value = CelValue::CreateUnknownSet(&unknown_set);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
@@ -964,7 +964,7 @@ TEST(ValueInterop, UnknownToLegacy) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
   auto value = value_factory.CreateUnknownValue(attributes, function_results);
   ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsUnknownSet());

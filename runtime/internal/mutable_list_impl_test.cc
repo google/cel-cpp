@@ -19,7 +19,7 @@
 #include "base/type_factory.h"
 #include "base/type_provider.h"
 #include "base/types/opaque_type.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/list_value.h"
 #include "base/values/opaque_value.h"
 #include "internal/testing.h"
@@ -44,7 +44,7 @@ TEST(MutableListImplType, Creation) {
 TEST(MutableListImplValue, Creation) {
   TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
 
   ASSERT_OK_AND_ASSIGN(Handle<MutableListType> mutable_list_type,
                        type_factory.CreateOpaqueType<MutableListType>());
@@ -68,7 +68,7 @@ TEST(MutableListImplValue, Creation) {
 TEST(MutableListImplValue, ListBuilding) {
   TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
+  ValueManager value_factory(type_manager);
 
   ASSERT_OK_AND_ASSIGN(Handle<MutableListType> mutable_list_type,
                        type_factory.CreateOpaqueType<MutableListType>());

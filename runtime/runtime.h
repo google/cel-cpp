@@ -29,7 +29,7 @@
 #include "base/handle.h"
 #include "base/type_provider.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "common/native_type.h"
 #include "runtime/activation_interface.h"
 #include "runtime/runtime_issue.h"
@@ -75,7 +75,7 @@ class Program {
   //  in the activation and for Program evaluation.
   virtual absl::StatusOr<Handle<Value>> Evaluate(
       const ActivationInterface& activation,
-      ValueFactory& value_factory) const = 0;
+      ValueManager& value_factory) const = 0;
 
   virtual const TypeProvider& GetTypeProvider() const = 0;
 };
@@ -96,7 +96,7 @@ class TraceableProgram : public Program {
   //
   // A returning a non-ok status stops evaluation and forwards the error.
   using EvaluationListener = absl::AnyInvocable<absl::Status(
-      int64_t expr_id, const Handle<Value>&, ValueFactory&)>;
+      int64_t expr_id, const Handle<Value>&, ValueManager&)>;
 
   // Evaluate the Program plan with a Listener.
   //
@@ -107,7 +107,7 @@ class TraceableProgram : public Program {
   // is forwarded as the result of the EvaluateWithCallback call.
   virtual absl::StatusOr<Handle<Value>> Trace(
       const ActivationInterface&, EvaluationListener evaluation_listener,
-      ValueFactory& value_factory) const = 0;
+      ValueManager& value_factory) const = 0;
 };
 
 // Interface for a CEL runtime.

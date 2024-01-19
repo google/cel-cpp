@@ -41,7 +41,7 @@
 #include "base/type.h"
 #include "base/type_factory.h"
 #include "base/types/struct_type.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/error_value.h"
 #include "base/values/map_value.h"
 #include "base/values/struct_value.h"
@@ -240,7 +240,7 @@ absl::StatusOr<size_t> ListIndexFromQualifier(const AttributeQualifier& qual) {
 }
 
 absl::StatusOr<Handle<Value>> MapKeyFromQualifier(
-    const AttributeQualifier& qual, ValueFactory& factory) {
+    const AttributeQualifier& qual, ValueManager& factory) {
   switch (qual.kind()) {
     case Kind::kInt:
       return factory.CreateIntValue(*qual.GetInt64Key());
@@ -258,7 +258,7 @@ absl::StatusOr<Handle<Value>> MapKeyFromQualifier(
 
 absl::StatusOr<Handle<Value>> ApplyQualifier(const Value& operand,
                                              const SelectQualifier& qualifier,
-                                             ValueFactory& value_factory) {
+                                             ValueManager& value_factory) {
   return absl::visit(
       cel::internal::Overloaded{
           [&](const FieldSpecifier& field_specifier)
@@ -295,7 +295,7 @@ absl::StatusOr<Handle<Value>> ApplyQualifier(const Value& operand,
 
 absl::StatusOr<Handle<Value>> FallbackSelect(
     const Value& root, absl::Span<const SelectQualifier> select_path,
-    bool presence_test, ValueFactory& value_factory) {
+    bool presence_test, ValueManager& value_factory) {
   const Value* elem = &root;
   Handle<Value> result;
 

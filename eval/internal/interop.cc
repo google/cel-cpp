@@ -42,7 +42,7 @@
 #include "base/type_provider.h"
 #include "base/types/struct_type.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/bool_value.h"
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
@@ -98,7 +98,7 @@ using ::google::api::expr::runtime::UnknownSet;
 class LegacyAbstractStructValueBuilder final
     : public StructValueBuilderInterface {
  public:
-  LegacyAbstractStructValueBuilder(ValueFactory& value_factory,
+  LegacyAbstractStructValueBuilder(ValueManager& value_factory,
                                    const LegacyTypeInfoApis& type_info,
                                    const LegacyTypeMutationApis& mutation,
                                    MessageWrapper instance,
@@ -145,7 +145,7 @@ class LegacyAbstractStructValueBuilder final
   }
 
  private:
-  ValueFactory& value_factory_;
+  ValueManager& value_factory_;
   const LegacyTypeInfoApis& type_info_;
   const LegacyTypeMutationApis& mutation_;
   MessageWrapper instance_;
@@ -178,7 +178,7 @@ class LegacyCelList final : public CelList {
     auto memory_manager = ProtoMemoryManagerRef(arena);
     TypeFactory type_factory(memory_manager);
     TypeManager type_manager(type_factory, TypeProvider::Builtin());
-    ValueFactory value_factory(type_manager);
+    ValueManager value_factory(type_manager);
     auto value = impl_->Get(value_factory, static_cast<size_t>(index));
     if (!value.ok()) {
       return CelValue::CreateError(
@@ -239,7 +239,7 @@ class LegacyCelMap final : public CelMap {
     auto memory_manager = ProtoMemoryManagerRef(arena);
     TypeFactory type_factory(memory_manager);
     TypeManager type_manager(type_factory, TypeProvider::Builtin());
-    ValueFactory value_factory(type_manager);
+    ValueManager value_factory(type_manager);
     auto modern_value = impl_->Find(value_factory, *modern_key);
     if (!modern_value.ok()) {
       return CelValue::CreateError(
@@ -264,7 +264,7 @@ class LegacyCelMap final : public CelMap {
     auto memory_manager = ProtoMemoryManagerRef(&arena);
     TypeFactory type_factory(memory_manager);
     TypeManager type_manager(type_factory, TypeProvider::Builtin());
-    ValueFactory value_factory(type_manager);
+    ValueManager value_factory(type_manager);
     CEL_ASSIGN_OR_RETURN(auto modern_key, FromLegacyValue(&arena, key));
     CEL_ASSIGN_OR_RETURN(auto has, impl_->Has(value_factory, modern_key));
     return has->Is<BoolValue>() && has->As<BoolValue>().NativeValue();
@@ -293,7 +293,7 @@ class LegacyCelMap final : public CelMap {
     auto memory_manager = ProtoMemoryManagerRef(arena);
     TypeFactory type_factory(memory_manager);
     TypeManager type_manager(type_factory, TypeProvider::Builtin());
-    ValueFactory value_factory(type_manager);
+    ValueManager value_factory(type_manager);
     CEL_ASSIGN_OR_RETURN(auto list_keys, impl_->ListKeys(value_factory));
     CEL_ASSIGN_OR_RETURN(auto legacy_list_keys,
                          ToLegacyValue(arena, list_keys));
@@ -419,7 +419,7 @@ LegacyAbstractStructType::NewFieldIterator(TypeManager& type_manager) const {
 
 absl::StatusOr<absl::Nonnull<std::unique_ptr<StructValueBuilderInterface>>>
 LegacyAbstractStructType::NewValueBuilder(
-    ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND) const {
+    ValueManager& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND) const {
   const auto* mutation = type_info_.GetMutationApis(MessageWrapper());
   if (mutation == nullptr) {
     return absl::FailedPreconditionError(
@@ -433,7 +433,7 @@ LegacyAbstractStructType::NewValueBuilder(
 }
 
 absl::StatusOr<Handle<StructValue>> LegacyAbstractStructType::NewValueFromAny(
-    ValueFactory& value_factory, const absl::Cord& value) const {
+    ValueManager& value_factory, const absl::Cord& value) const {
   const auto* mutation = type_info_.GetMutationApis(MessageWrapper());
   if (mutation == nullptr) {
     return absl::FailedPreconditionError(
@@ -962,14 +962,14 @@ absl::StatusOr<bool> MessageValueHasFieldByName(uintptr_t msg,
 }
 
 absl::StatusOr<Handle<Value>> MessageValueGetFieldByNumber(
-    uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
+    uintptr_t msg, uintptr_t type_info, ValueManager& value_factory,
     int64_t number, bool unbox_null_wrapper_types) {
   return absl::UnimplementedError(
       "legacy struct values do not supported looking up fields by number");
 }
 
 absl::StatusOr<Handle<Value>> MessageValueGetFieldByName(
-    uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
+    uintptr_t msg, uintptr_t type_info, ValueManager& value_factory,
     absl::string_view name, bool unbox_null_wrapper_types) {
   auto wrapper = MessageWrapperAccess::Make(msg, type_info);
 
@@ -979,7 +979,7 @@ absl::StatusOr<Handle<Value>> MessageValueGetFieldByName(
 }
 
 absl::StatusOr<QualifyResult> MessageValueQualify(
-    uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
+    uintptr_t msg, uintptr_t type_info, ValueManager& value_factory,
     absl::Span<const SelectQualifier> qualifiers, bool presence_test) {
   auto wrapper = MessageWrapperAccess::Make(msg, type_info);
 
@@ -988,7 +988,7 @@ absl::StatusOr<QualifyResult> MessageValueQualify(
 }
 
 absl::StatusOr<Handle<Value>> LegacyListValueGet(uintptr_t impl,
-                                                 ValueFactory& value_factory,
+                                                 ValueManager& value_factory,
                                                  size_t index) {
   auto* arena =
       extensions::ProtoMemoryManagerArena(value_factory.GetMemoryManager());
@@ -997,7 +997,7 @@ absl::StatusOr<Handle<Value>> LegacyListValueGet(uintptr_t impl,
 }
 
 absl::StatusOr<Handle<Value>> LegacyListValueContains(
-    ValueFactory& value_factory, uintptr_t impl, const Handle<Value>& other) {
+    ValueManager& value_factory, uintptr_t impl, const Handle<Value>& other) {
   // Specialization for contains on a legacy list. It's cheaper to convert the
   // search element to legacy type than to convert all of the elements of
   // the legacy list for 'in' checks.
@@ -1027,7 +1027,7 @@ bool LegacyListValueEmpty(uintptr_t impl) {
   return reinterpret_cast<const CelList*>(impl)->empty();
 }
 
-absl::StatusOr<bool> LegacyListValueAnyOf(ValueFactory& value_factory,
+absl::StatusOr<bool> LegacyListValueAnyOf(ValueManager& value_factory,
                                           uintptr_t impl,
                                           ListValue::AnyOfCallback cb) {
   const auto* list = reinterpret_cast<const CelList*>(impl);
@@ -1056,7 +1056,7 @@ bool LegacyMapValueEmpty(uintptr_t impl) {
 }
 
 absl::StatusOr<absl::optional<Handle<Value>>> LegacyMapValueGet(
-    uintptr_t impl, ValueFactory& value_factory, const Handle<Value>& key) {
+    uintptr_t impl, ValueManager& value_factory, const Handle<Value>& key) {
   auto* arena =
       extensions::ProtoMemoryManagerArena(value_factory.GetMemoryManager());
   CEL_ASSIGN_OR_RETURN(auto legacy_key, ToLegacyValue(arena, key));
@@ -1076,7 +1076,7 @@ absl::StatusOr<bool> LegacyMapValueHas(uintptr_t impl,
 }
 
 absl::StatusOr<Handle<ListValue>> LegacyMapValueListKeys(
-    uintptr_t impl, ValueFactory& value_factory) {
+    uintptr_t impl, ValueManager& value_factory) {
   auto* arena =
       extensions::ProtoMemoryManagerArena(value_factory.GetMemoryManager());
   CEL_ASSIGN_OR_RETURN(auto legacy_list_keys,

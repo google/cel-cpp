@@ -27,7 +27,7 @@
 #include "base/type_manager.h"
 #include "base/type_provider.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/list_value_builder.h"
 #include "eval/internal/interop.h"
 #include "eval/public/activation.h"
@@ -172,7 +172,7 @@ std::string ConstantList(bool overlap, int len) {
 }
 
 absl::StatusOr<std::unique_ptr<ListStorage>> RegisterModernLists(
-    bool overlap, int len, cel::ValueFactory& value_factory,
+    bool overlap, int len, cel::ValueManager& value_factory,
     Activation& activation) {
   CEL_ASSIGN_OR_RETURN(auto list_type,
                        value_factory.type_factory().CreateListType(
@@ -208,7 +208,7 @@ absl::StatusOr<std::unique_ptr<ListStorage>> RegisterModernLists(
 }
 
 absl::StatusOr<std::unique_ptr<ListStorage>> RegisterLists(
-    bool overlap, int len, bool use_modern, cel::ValueFactory& value_factory,
+    bool overlap, int len, bool use_modern, cel::ValueManager& value_factory,
     Activation& activation) {
   if (use_modern) {
     return RegisterModernLists(overlap, len, value_factory, activation);
@@ -231,7 +231,7 @@ void RunBenchmark(const TestCase& test_case, benchmark::State& state) {
   auto manager = ProtoMemoryManagerRef(&arena);
   cel::TypeFactory type_factory = cel::TypeFactory(manager);
   cel::TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  cel::ValueFactory value_factory(type_manager);
+  cel::ValueManager value_factory(type_manager);
 
   InterpreterOptions options;
   options.constant_folding = true;

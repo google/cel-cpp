@@ -18,7 +18,7 @@
 #include "base/type_manager.h"
 #include "base/type_provider.h"
 #include "base/types/struct_type.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/struct_value.h"
 #include "base/values/struct_value_builder.h"
 #include "base/values/type_value.h"
@@ -37,7 +37,7 @@ using ::cel::Type;
 using ::cel::TypeFactory;
 using ::cel::TypeManager;
 using ::cel::TypeProvider;
-using ::cel::ValueFactory;
+using ::cel::ValueManager;
 using testing::Contains;
 using testing::Eq;
 using testing::Key;
@@ -115,7 +115,7 @@ class TestStructType : public cel::base_internal::AbstractStructType {
 
   absl::StatusOr<
       absl::Nonnull<std::unique_ptr<cel::StructValueBuilderInterface>>>
-  NewValueBuilder(ValueFactory& value_factory
+  NewValueBuilder(ValueManager& value_factory
                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const override {
     return absl::UnimplementedError("");
   }

@@ -24,7 +24,7 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/type_provider.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "base/values/int_value.h"
 #include "base/values/type_value.h"
 #include "eval/public/cel_function.h"
@@ -43,7 +43,7 @@ using ::cel::IntValue;
 using ::cel::TypeFactory;
 using ::cel::TypeManager;
 using ::cel::TypeValue;
-using ::cel::ValueFactory;
+using ::cel::ValueManager;
 using testing::Eq;
 
 class FakeFunction : public CelFunction {
@@ -68,7 +68,7 @@ class ResolverTest : public testing::Test {
   CelTypeRegistry type_registry_;
   TypeFactory type_factory_;
   TypeManager type_manager_;
-  ValueFactory value_factory_;
+  ValueManager value_factory_;
 };
 
 TEST_F(ResolverTest, TestFullyQualifiedNames) {

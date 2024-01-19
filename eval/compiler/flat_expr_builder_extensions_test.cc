@@ -54,7 +54,7 @@ class PlannerContextTest : public testing::Test {
   cel::RuntimeOptions options_;
   cel::TypeFactory type_factory_;
   cel::TypeManager type_manager_;
-  cel::ValueFactory value_factory_;
+  cel::ValueManager value_factory_;
   Resolver resolver_;
   IssueCollector issue_collector_;
 };
@@ -70,7 +70,7 @@ MATCHER_P(UniquePtrHolds, ptr, "") {
 //  b   c
 absl::StatusOr<ExecutionPath> InitSimpleTree(
     const Expr& a, const Expr& b, const Expr& c,
-    cel::ValueFactory& value_factory, PlannerContext::ProgramTree& tree) {
+    cel::ValueManager& value_factory, PlannerContext::ProgramTree& tree) {
   CEL_ASSIGN_OR_RETURN(auto a_step,
                        CreateConstValueStep(value_factory.GetNullValue(), -1));
   CEL_ASSIGN_OR_RETURN(auto b_step,

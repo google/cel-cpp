@@ -16,7 +16,7 @@
 #include "base/type_manager.h"
 #include "base/type_provider.h"
 #include "base/value.h"
-#include "base/value_factory.h"
+#include "base/value_manager.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_options.h"
@@ -52,7 +52,7 @@ class ProxyToModernCelFunction : public CelFunction {
     auto memory_manager = ProtoMemoryManagerRef(arena);
     cel::TypeFactory type_factory(memory_manager);
     cel::TypeManager type_manager(type_factory, cel::TypeProvider::Builtin());
-    cel::ValueFactory value_factory(type_manager);
+    cel::ValueManager value_factory(type_manager);
     cel::FunctionEvaluationContext context(value_factory);
 
     std::vector<cel::Handle<cel::Value>> modern_args =
