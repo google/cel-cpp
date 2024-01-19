@@ -40,6 +40,7 @@
 #include "common/type_manager.h"
 #include "common/value_kind.h"
 #include "common/values/struct_value_interface.h"
+#include "runtime/runtime_options.h"
 
 namespace cel {
 
@@ -63,11 +64,13 @@ class ParsedStructValueInterface : public StructValueInterface {
 
   virtual absl::StatusOr<ValueView> GetFieldByName(
       ValueManager& value_manager, absl::string_view name,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      ProtoWrapperTypeOptions unboxing_options) const = 0;
 
   virtual absl::StatusOr<ValueView> GetFieldByNumber(
       ValueManager& value_manager, int64_t number,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      ProtoWrapperTypeOptions unboxing_options) const = 0;
 
   virtual absl::StatusOr<bool> HasFieldByName(absl::string_view name) const = 0;
 
@@ -157,11 +160,13 @@ class ParsedStructValue {
 
   absl::StatusOr<ValueView> GetFieldByName(
       ValueManager& value_manager, absl::string_view name,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      ProtoWrapperTypeOptions unboxing_options) const;
 
   absl::StatusOr<ValueView> GetFieldByNumber(
       ValueManager& value_manager, int64_t number,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      ProtoWrapperTypeOptions unboxing_options) const;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const {
     return interface_->HasFieldByName(name);
@@ -305,11 +310,13 @@ class ParsedStructValueView {
 
   absl::StatusOr<ValueView> GetFieldByName(
       ValueManager& value_manager, absl::string_view name,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      ProtoWrapperTypeOptions unboxing_options) const;
 
   absl::StatusOr<ValueView> GetFieldByNumber(
       ValueManager& value_manager, int64_t number,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      ProtoWrapperTypeOptions unboxing_options) const;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const {
     return interface_->HasFieldByName(name);

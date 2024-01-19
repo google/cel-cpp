@@ -27,6 +27,7 @@
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/value.h"
+#include "internal/number.h"
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
 
@@ -101,6 +102,16 @@ absl::StatusOr<ValueView> DoubleValue::Equal(ValueManager&, ValueView other,
   if (auto other_value = As<DoubleValueView>(other); other_value.has_value()) {
     return BoolValueView{NativeValue() == other_value->NativeValue()};
   }
+  if (auto other_value = As<IntValueView>(other); other_value.has_value()) {
+    return BoolValueView{
+        internal::Number::FromDouble(NativeValue()) ==
+        internal::Number::FromInt64(other_value->NativeValue())};
+  }
+  if (auto other_value = As<UintValueView>(other); other_value.has_value()) {
+    return BoolValueView{
+        internal::Number::FromDouble(NativeValue()) ==
+        internal::Number::FromUint64(other_value->NativeValue())};
+  }
   return BoolValueView{false};
 }
 
@@ -142,6 +153,16 @@ absl::StatusOr<ValueView> DoubleValueView::Equal(ValueManager&, ValueView other,
                                                  Value&) const {
   if (auto other_value = As<DoubleValueView>(other); other_value.has_value()) {
     return BoolValueView{NativeValue() == other_value->NativeValue()};
+  }
+  if (auto other_value = As<IntValueView>(other); other_value.has_value()) {
+    return BoolValueView{
+        internal::Number::FromDouble(NativeValue()) ==
+        internal::Number::FromInt64(other_value->NativeValue())};
+  }
+  if (auto other_value = As<UintValueView>(other); other_value.has_value()) {
+    return BoolValueView{
+        internal::Number::FromDouble(NativeValue()) ==
+        internal::Number::FromUint64(other_value->NativeValue())};
   }
   return BoolValueView{false};
 }

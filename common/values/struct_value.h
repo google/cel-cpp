@@ -49,6 +49,7 @@
 #include "common/values/parsed_struct_value.h"  // IWYU pragma: export
 #include "common/values/struct_value_interface.h"  // IWYU pragma: export
 #include "common/values/values.h"
+#include "runtime/runtime_options.h"
 
 namespace cel {
 
@@ -299,6 +300,8 @@ class StructValue final {
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
 
   bool IsZeroValue() const {
     AssertIsValid();
@@ -323,11 +326,23 @@ class StructValue final {
 
   absl::StatusOr<ValueView> GetFieldByName(
       ValueManager& value_manager, absl::string_view name,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::StatusOr<Value> GetFieldByName(
+      ValueManager& value_manager, absl::string_view name,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
 
   absl::StatusOr<ValueView> GetFieldByNumber(
       ValueManager& value_manager, int64_t number,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::StatusOr<Value> GetFieldByNumber(
+      ValueManager& value_manager, int64_t number,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const {
     AssertIsValid();
@@ -367,6 +382,9 @@ class StructValue final {
   absl::StatusOr<std::pair<ValueView, int>> Qualify(
       ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
       bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<std::pair<Value, int>> Qualify(
+      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+      bool presence_test) const;
 
  private:
   friend class StructValueView;
@@ -809,6 +827,8 @@ class StructValueView final {
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
 
   bool IsZeroValue() const {
     AssertIsValid();
@@ -833,11 +853,23 @@ class StructValueView final {
 
   absl::StatusOr<ValueView> GetFieldByName(
       ValueManager& value_manager, absl::string_view name,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::StatusOr<Value> GetFieldByName(
+      ValueManager& value_manager, absl::string_view name,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
 
   absl::StatusOr<ValueView> GetFieldByNumber(
       ValueManager& value_manager, int64_t number,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::StatusOr<Value> GetFieldByNumber(
+      ValueManager& value_manager, int64_t number,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const {
     AssertIsValid();
@@ -877,6 +909,9 @@ class StructValueView final {
   absl::StatusOr<std::pair<ValueView, int>> Qualify(
       ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
       bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<std::pair<Value, int>> Qualify(
+      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+      bool presence_test) const;
 
  private:
   friend class StructValue;

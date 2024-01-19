@@ -85,6 +85,8 @@ class DurationValue final {
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
 
   bool IsZeroValue() const { return NativeValue() == absl::ZeroDuration(); }
 
@@ -177,6 +179,8 @@ class DurationValueView final {
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
 
   bool IsZeroValue() const { return NativeValue() == absl::ZeroDuration(); }
 

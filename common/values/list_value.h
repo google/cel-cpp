@@ -217,6 +217,8 @@ class ListValue final {
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
 
   bool IsZeroValue() const {
     return absl::visit(
@@ -244,6 +246,7 @@ class ListValue final {
   absl::StatusOr<ValueView> Get(ValueManager& value_manager, size_t index,
                                 Value& scratch
                                     ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Get(ValueManager& value_manager, size_t index) const;
 
   using ForEachCallback = typename ListValueInterface::ForEachCallback;
 
@@ -258,6 +261,12 @@ class ListValue final {
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
+
+  absl::StatusOr<ValueView> Contains(
+      ValueManager& value_manager, ValueView other,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Contains(ValueManager& value_manager,
+                                 ValueView other) const;
 
  private:
   friend class ListValueView;
@@ -544,6 +553,8 @@ class ListValueView final {
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
 
   bool IsZeroValue() const {
     return absl::visit(
@@ -569,6 +580,7 @@ class ListValueView final {
   absl::StatusOr<ValueView> Get(ValueManager& value_manager, size_t index,
                                 Value& scratch
                                     ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Get(ValueManager& value_manager, size_t index) const;
 
   using ForEachCallback = typename ListValueInterface::ForEachCallback;
 
@@ -583,6 +595,12 @@ class ListValueView final {
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
+
+  absl::StatusOr<ValueView> Contains(
+      ValueManager& value_manager, ValueView other,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Contains(ValueManager& value_manager,
+                                 ValueView other) const;
 
  private:
   friend class ListValue;

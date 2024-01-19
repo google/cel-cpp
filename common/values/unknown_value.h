@@ -97,6 +97,8 @@ class UnknownValue final {
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
 
   bool IsZeroValue() const { return false; }
 
@@ -112,6 +114,14 @@ class UnknownValue final {
   Unknown NativeValue() && {
     Unknown unknown = std::move(unknown_);
     return unknown;
+  }
+
+  const AttributeSet& attribute_set() const {
+    return unknown_.unknown_attributes();
+  }
+
+  const FunctionResultSet& function_result_set() const {
+    return unknown_.unknown_function_results();
   }
 
  private:
@@ -210,6 +220,8 @@ class UnknownValueView final {
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
 
   bool IsZeroValue() const { return false; }
 
@@ -220,6 +232,14 @@ class UnknownValueView final {
   void swap(UnknownValueView& other) noexcept {
     using std::swap;
     swap(unknown_, other.unknown_);
+  }
+
+  const AttributeSet& attribute_set() const {
+    return unknown_->unknown_attributes();
+  }
+
+  const FunctionResultSet& function_result_set() const {
+    return unknown_->unknown_function_results();
   }
 
  private:

@@ -33,6 +33,10 @@ namespace cel {
 // `TypeReflector` which combines the two and adds additional functionality.
 class ValueManager : public virtual ValueFactory, public virtual TypeManager {
  public:
+  TypeManager& type_manager() { return *this; }
+
+  const TypeReflector& type_provider() const { return GetTypeReflector(); }
+
   // See `TypeReflector::NewListValueBuilder`.
   absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(
       ListTypeView type) {
@@ -61,6 +65,9 @@ class ValueManager : public virtual ValueFactory, public virtual TypeManager {
       absl::string_view name, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     return GetTypeReflector().FindValue(*this, name, scratch);
   }
+  absl::StatusOr<absl::optional<Value>> FindValue(absl::string_view name) {
+    return GetTypeReflector().FindValue(*this, name);
+  }
 
   // See `TypeReflector::DeserializeValue`.
   absl::StatusOr<absl::optional<Value>> DeserializeValue(
@@ -69,7 +76,7 @@ class ValueManager : public virtual ValueFactory, public virtual TypeManager {
   }
 
  protected:
-  virtual TypeReflector& GetTypeReflector() const = 0;
+  virtual const TypeReflector& GetTypeReflector() const = 0;
 };
 
 // Creates a new `ValueManager` which is thread compatible.

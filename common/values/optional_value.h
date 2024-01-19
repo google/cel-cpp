@@ -104,9 +104,10 @@ class OptionalValue final : public OpaqueValue {
   OptionalValue& operator=(const OptionalValue&) = default;
   OptionalValue& operator=(OptionalValue&&) = default;
 
+  template <typename T, typename = std::enable_if_t<std::is_base_of_v<
+                            OptionalValueInterface, std::remove_const_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  OptionalValue(Shared<const OptionalValueInterface> interface)
-      : OpaqueValue(std::move(interface)) {}
+  OptionalValue(Shared<T> interface) : OpaqueValue(std::move(interface)) {}
 
   OptionalType GetType(TypeManager& type_manager) const {
     return (*this)->GetType(type_manager);

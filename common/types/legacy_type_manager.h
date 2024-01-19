@@ -33,14 +33,14 @@ namespace cel::common_internal {
 class LegacyTypeManager : public virtual TypeManager {
  public:
   LegacyTypeManager(MemoryManagerRef memory_manager,
-                    LegacyTypeIntrospector& type_introspector)
+                    const TypeIntrospector& type_introspector)
       : memory_manager_(memory_manager),
         type_introspector_(type_introspector) {}
 
   MemoryManagerRef GetMemoryManager() const final { return memory_manager_; }
 
  protected:
-  TypeIntrospector& GetTypeIntrospector() const final {
+  const TypeIntrospector& GetTypeIntrospector() const final {
     return type_introspector_;
   }
 
@@ -55,7 +55,7 @@ class LegacyTypeManager : public virtual TypeManager {
       absl::string_view name, const SizedInputView<TypeView>& parameters) final;
 
   MemoryManagerRef memory_manager_;
-  LegacyTypeIntrospector& type_introspector_;
+  const TypeIntrospector& type_introspector_;
 };
 
 }  // namespace cel::common_internal

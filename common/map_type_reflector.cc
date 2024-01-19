@@ -450,10 +450,18 @@ class MapValueBuilderImpl final : public MapValueBuilder {
   MapValueBuilderImpl& operator=(MapValueBuilderImpl&&) = delete;
 
   absl::Status Put(Value key, Value value) override {
+    if (key.Is<ErrorValue>()) {
+      return key.As<ErrorValue>().NativeValue();
+    }
+    if (value.Is<ErrorValue>()) {
+      return value.As<ErrorValue>().NativeValue();
+    }
     auto inserted =
         entries_.insert({Cast<K>(std::move(key)), Cast<V>(std::move(value))})
             .second;
-    ABSL_DCHECK(inserted) << "inserting duplicate keys is undefined behavior";
+    if (!inserted) {
+      return DuplicateKeyError().NativeValue();
+    }
     return absl::OkStatus();
   }
 
@@ -489,9 +497,17 @@ class MapValueBuilderImpl<Value, V> final : public MapValueBuilder {
       : memory_manager_(memory_manager), type_(std::move(type)) {}
 
   absl::Status Put(Value key, Value value) override {
+    if (key.Is<ErrorValue>()) {
+      return key.As<ErrorValue>().NativeValue();
+    }
+    if (value.Is<ErrorValue>()) {
+      return value.As<ErrorValue>().NativeValue();
+    }
     auto inserted =
         entries_.insert({std::move(key), Cast<V>(std::move(value))}).second;
-    ABSL_DCHECK(inserted) << "inserting duplicate keys is undefined behavior";
+    if (!inserted) {
+      return DuplicateKeyError().NativeValue();
+    }
     return absl::OkStatus();
   }
 
@@ -528,9 +544,17 @@ class MapValueBuilderImpl<K, Value> final : public MapValueBuilder {
       : memory_manager_(memory_manager), type_(std::move(type)) {}
 
   absl::Status Put(Value key, Value value) override {
+    if (key.Is<ErrorValue>()) {
+      return key.As<ErrorValue>().NativeValue();
+    }
+    if (value.Is<ErrorValue>()) {
+      return value.As<ErrorValue>().NativeValue();
+    }
     auto inserted =
         entries_.insert({Cast<K>(std::move(key)), std::move(value)}).second;
-    ABSL_DCHECK(inserted) << "inserting duplicate keys is undefined behavior";
+    if (!inserted) {
+      return DuplicateKeyError().NativeValue();
+    }
     return absl::OkStatus();
   }
 
@@ -559,8 +583,16 @@ class MapValueBuilderImpl<Value, Value> final : public MapValueBuilder {
       : memory_manager_(memory_manager), type_(std::move(type)) {}
 
   absl::Status Put(Value key, Value value) override {
+    if (key.Is<ErrorValue>()) {
+      return key.As<ErrorValue>().NativeValue();
+    }
+    if (value.Is<ErrorValue>()) {
+      return value.As<ErrorValue>().NativeValue();
+    }
     auto inserted = entries_.insert({std::move(key), std::move(value)}).second;
-    ABSL_DCHECK(inserted) << "inserting duplicate keys is undefined behavior";
+    if (!inserted) {
+      return DuplicateKeyError().NativeValue();
+    }
     return absl::OkStatus();
   }
 

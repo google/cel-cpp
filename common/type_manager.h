@@ -32,10 +32,19 @@ class TypeManager : public virtual TypeFactory {
  public:
   virtual ~TypeManager() = default;
 
+  TypeFactory& type_factory() { return *this; }
+
+  const TypeIntrospector& type_provider() const {
+    return GetTypeIntrospector();
+  }
+
   // See `TypeIntrospector::FindType`.
   absl::StatusOr<absl::optional<TypeView>> FindType(
       absl::string_view name, Type& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
     return GetTypeIntrospector().FindType(*this, name, scratch);
+  }
+  absl::StatusOr<absl::optional<Type>> FindType(absl::string_view name) {
+    return GetTypeIntrospector().FindType(*this, name);
   }
 
   // See `TypeIntrospector::FindStructTypeFieldByName`.
@@ -45,6 +54,10 @@ class TypeManager : public virtual TypeFactory {
     return GetTypeIntrospector().FindStructTypeFieldByName(*this, type, name,
                                                            scratch);
   }
+  absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByName(
+      absl::string_view type, absl::string_view name) {
+    return GetTypeIntrospector().FindStructTypeFieldByName(*this, type, name);
+  }
 
   // See `TypeIntrospector::FindStructTypeFieldByName`.
   absl::StatusOr<absl::optional<StructTypeFieldView>> FindStructTypeFieldByName(
@@ -53,9 +66,13 @@ class TypeManager : public virtual TypeFactory {
     return GetTypeIntrospector().FindStructTypeFieldByName(*this, type, name,
                                                            scratch);
   }
+  absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByName(
+      StructTypeView type, absl::string_view name) {
+    return GetTypeIntrospector().FindStructTypeFieldByName(*this, type, name);
+  }
 
  protected:
-  virtual TypeIntrospector& GetTypeIntrospector() const = 0;
+  virtual const TypeIntrospector& GetTypeIntrospector() const = 0;
 };
 
 // Creates a new `TypeManager` which is thread compatible.

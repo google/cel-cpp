@@ -88,7 +88,9 @@ class ListValueBuilderImpl final : public ListValueBuilder {
   using element_view_type = typename element_type::view_alternative_type;
 
   static_assert(common_internal::IsValueAlternativeV<T> ||
-                    std::is_same_v<T, ListValue> || std::is_same_v<T, MapValue>,
+                    std::is_same_v<T, ListValue> ||
+                    std::is_same_v<T, MapValue> ||
+                    std::is_same_v<T, StructValue>,
                 "T must be Value or one of the Value alternatives");
 
   ListValueBuilderImpl(MemoryManagerRef memory_manager, ListType type)
@@ -166,7 +168,7 @@ absl::StatusOr<Unique<ListValueBuilder>> TypeReflector::NewListValueBuilder(
   auto memory_manager = value_factory.GetMemoryManager();
   switch (type.element().kind()) {
     case TypeKind::kBool:
-      return memory_manager.MakeUnique<ListValueBuilderImpl<UintValue>>(
+      return memory_manager.MakeUnique<ListValueBuilderImpl<BoolValue>>(
           memory_manager, ListType(type));
     case TypeKind::kBytes:
       return memory_manager.MakeUnique<ListValueBuilderImpl<BytesValue>>(
@@ -203,6 +205,9 @@ absl::StatusOr<Unique<ListValueBuilder>> TypeReflector::NewListValueBuilder(
           memory_manager, ListType(type));
     case TypeKind::kUint:
       return memory_manager.MakeUnique<ListValueBuilderImpl<UintValue>>(
+          memory_manager, ListType(type));
+    case TypeKind::kStruct:
+      return memory_manager.MakeUnique<ListValueBuilderImpl<StructValue>>(
           memory_manager, ListType(type));
     case TypeKind::kDyn:
       return memory_manager.MakeUnique<ListValueBuilderImpl<Value>>(

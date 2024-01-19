@@ -109,4 +109,23 @@ absl::StatusOr<ValueView> ParsedListValueInterface::Equal(
   return BoolValueView{false};
 }
 
+absl::StatusOr<ValueView> ParsedListValueInterface::Contains(
+    ValueManager& value_manager, ValueView other, Value& scratch) const {
+  ValueView outcome = BoolValueView{false};
+  CEL_RETURN_IF_ERROR(
+      ForEach(value_manager,
+              [&value_manager, other, &scratch,
+               &outcome](ValueView element) -> absl::StatusOr<bool> {
+                CEL_ASSIGN_OR_RETURN(
+                    auto result, element.Equal(value_manager, other, scratch));
+                if (auto bool_result = As<BoolValueView>(result);
+                    bool_result.has_value() && bool_result->NativeValue()) {
+                  outcome = *bool_result;
+                  return false;
+                }
+                return true;
+              }));
+  return outcome;
+}
+
 }  // namespace cel

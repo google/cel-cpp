@@ -96,6 +96,10 @@ class ParsedListValueInterface : public ListValueInterface {
   virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
 
+  virtual absl::StatusOr<ValueView> Contains(
+      ValueManager& value_manager, ValueView other,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
  private:
   friend class ParsedListValueInterfaceIterator;
 
@@ -198,6 +202,10 @@ class ParsedListValue {
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
+
+  absl::StatusOr<ValueView> Contains(
+      ValueManager& value_manager, ValueView other,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   void swap(ParsedListValue& other) noexcept {
     using std::swap;
@@ -380,6 +388,10 @@ class ParsedListValueView {
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
+
+  absl::StatusOr<ValueView> Contains(
+      ValueManager& value_manager, ValueView other,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   void swap(ParsedListValueView& other) noexcept {
     using std::swap;

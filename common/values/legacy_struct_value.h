@@ -36,6 +36,7 @@
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/struct_value_interface.h"
+#include "runtime/runtime_options.h"
 
 namespace cel {
 
@@ -104,11 +105,15 @@ class LegacyStructValue final {
 
   absl::StatusOr<ValueView> GetFieldByName(
       ValueManager& value_manager, absl::string_view name,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
 
   absl::StatusOr<ValueView> GetFieldByNumber(
       ValueManager& value_manager, int64_t number,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
 
@@ -209,11 +214,15 @@ class LegacyStructValueView final {
 
   absl::StatusOr<ValueView> GetFieldByName(
       ValueManager& value_manager, absl::string_view name,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
 
   absl::StatusOr<ValueView> GetFieldByNumber(
       ValueManager& value_manager, int64_t number,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
 

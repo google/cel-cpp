@@ -244,6 +244,40 @@ class Type final {
         type.variant_);
   }
 
+  template <typename T>
+  ABSL_DEPRECATED("Use cel::InstanceOf")
+  bool Is() const {
+    return cel::InstanceOf<T>(*this);
+  }
+
+  template <typename T>
+  ABSL_DEPRECATED("Use cel::Cast or cel::As")
+  auto As() const& {
+    return cel::Cast<T>(*this);
+  }
+
+  template <typename T>
+  ABSL_DEPRECATED("Use cel::Cast or cel::As")
+  auto As() & {
+    return cel::Cast<T>(*this);
+  }
+
+  template <typename T>
+  ABSL_DEPRECATED("Use cel::Cast or cel::As")
+  auto As() const&& {
+    return cel::Cast<T>(std::move(*this));
+  }
+
+  template <typename T>
+  ABSL_DEPRECATED("Use cel::Cast or cel::As")
+  auto As() && {
+    return cel::Cast<T>(std::move(*this));
+  }
+
+  Type* operator->() { return this; }
+
+  const Type* operator->() const { return this; }
+
  private:
   friend class TypeView;
   friend struct NativeTypeTraits<Type>;

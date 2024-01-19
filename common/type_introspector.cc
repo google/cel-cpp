@@ -81,6 +81,8 @@ struct WellKnownType {
               FieldNumberComparer{});
   }
 
+  explicit WellKnownType(TypeView type) : WellKnownType(type, {}) {}
+
   TypeView type;
   // We use `2` as that accommodates most well known types.
   absl::InlinedVector<StructTypeFieldView, 2> fields_by_name;
@@ -190,6 +192,18 @@ const WellKnownTypesMap& GetWellKnownTypesMap() {
         WellKnownType{AnyTypeView{},
                       {StructTypeFieldView{"type_url", StringTypeView{}, 1},
                        StructTypeFieldView{"value", BytesTypeView{}, 2}}});
+    types->insert_or_assign("null_type", WellKnownType{NullTypeView{}});
+    types->insert_or_assign("google.protobuf.NullValue",
+                            WellKnownType{NullTypeView{}});
+    types->insert_or_assign("bool", WellKnownType{BoolTypeView{}});
+    types->insert_or_assign("int", WellKnownType{IntTypeView{}});
+    types->insert_or_assign("uint", WellKnownType{UintTypeView{}});
+    types->insert_or_assign("double", WellKnownType{DoubleTypeView{}});
+    types->insert_or_assign("bytes", WellKnownType{BytesTypeView{}});
+    types->insert_or_assign("string", WellKnownType{StringTypeView{}});
+    types->insert_or_assign("list", WellKnownType{ListTypeView{}});
+    types->insert_or_assign("map", WellKnownType{MapTypeView{}});
+    types->insert_or_assign("type", WellKnownType{TypeTypeView{}});
     return types;
   }();
   return *types;

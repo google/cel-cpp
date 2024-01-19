@@ -53,6 +53,9 @@ class StringValue final {
 
   static constexpr ValueKind kKind = ValueKind::kString;
 
+  static StringValue Concat(ValueManager&, StringValueView lhs,
+                            StringValueView rhs);
+
   explicit StringValue(absl::Cord value) noexcept : value_(std::move(value)) {}
 
   explicit StringValue(absl::string_view value) noexcept
@@ -106,6 +109,8 @@ class StringValue final {
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
 
   bool IsZeroValue() const {
     return NativeValue([](const auto& value) -> bool { return value.empty(); });
@@ -235,6 +240,8 @@ class StringValueView final {
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
 
   bool IsZeroValue() const {
     return NativeValue([](const auto& value) -> bool { return value.empty(); });
@@ -359,6 +366,14 @@ inline std::ostream& operator<<(std::ostream& out, StringValueView value) {
 
 inline StringValue::StringValue(StringValueView value) noexcept
     : value_(value.value_) {}
+
+inline StringValue StringValue::Concat(ValueManager&, StringValueView lhs,
+                                       StringValueView rhs) {
+  absl::Cord result;
+  result.Append(lhs.ToCord());
+  result.Append(rhs.ToCord());
+  return StringValue(std::move(result));
+}
 
 }  // namespace cel
 

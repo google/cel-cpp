@@ -95,10 +95,12 @@ class OpaqueValue {
 
   explicit OpaqueValue(OpaqueValueView value);
 
+  template <typename T, typename = std::enable_if_t<std::is_base_of_v<
+                            OpaqueValueInterface, std::remove_const_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  OpaqueValue(Shared<const OpaqueValueInterface> interface)
-      : interface_(std::move(interface)) {}
+  OpaqueValue(Shared<T> interface) : interface_(std::move(interface)) {}
 
+  OpaqueValue() = default;
   OpaqueValue(const OpaqueValue&) = default;
   OpaqueValue(OpaqueValue&&) = default;
   OpaqueValue& operator=(const OpaqueValue&) = default;
@@ -148,6 +150,8 @@ class OpaqueValue {
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
 
   bool IsZeroValue() const { return false; }
 
@@ -295,6 +299,8 @@ class OpaqueValueView {
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
 
   bool IsZeroValue() const { return false; }
 

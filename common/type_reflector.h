@@ -25,6 +25,7 @@
 #include "common/type_introspector.h"
 #include "common/value.h"
 #include "common/value_factory.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -32,6 +33,8 @@ namespace cel {
 // runtime. It handles type reflection.
 class TypeReflector : public virtual TypeIntrospector {
  public:
+  static TypeReflector& Builtin();
+
   // `NewListValueBuilder` returns a new `ListValueBuilderInterface` for the
   // corresponding `ListType` `type`.
   absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(
@@ -58,6 +61,15 @@ class TypeReflector : public virtual TypeIntrospector {
   virtual absl::StatusOr<absl::optional<ValueView>> FindValue(
       ValueFactory& value_factory, absl::string_view name,
       Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<absl::optional<Value>> FindValue(
+      ValueFactory& value_factory, absl::string_view name) const {
+    Value scratch;
+    CEL_ASSIGN_OR_RETURN(auto result, FindValue(value_factory, name, scratch));
+    if (result.has_value()) {
+      return Value{*result};
+    }
+    return absl::nullopt;
+  }
 
   // `DeserializeValue` deserializes the bytes of `value` according to
   // `type_url`. Returns `NOT_FOUND` if `type_url` is unrecognized.

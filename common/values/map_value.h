@@ -218,6 +218,8 @@ class MapValue final {
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
 
   bool IsZeroValue() const {
     return absl::visit(
@@ -246,24 +248,29 @@ class MapValue final {
   absl::StatusOr<ValueView> Get(ValueManager& value_manager, ValueView key,
                                 Value& scratch
                                     ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Get(ValueManager& value_manager, ValueView key) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::StatusOr<std::pair<ValueView, bool>> Find(
       ValueManager& value_manager, ValueView key,
       Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<std::pair<Value, bool>> Find(ValueManager& value_manager,
+                                              ValueView key) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::StatusOr<ValueView> Has(ValueManager& value_manager, ValueView key,
                                 Value& scratch
                                     ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Has(ValueManager& value_manager, ValueView key) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::StatusOr<ListValueView> ListKeys(
       ValueManager& value_manager,
       ListValue& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<ListValue> ListKeys(ValueManager& value_manager) const;
 
   // See the corresponding type declaration of `MapValueInterface` for
   // documentation.
@@ -563,6 +570,8 @@ class MapValueView final {
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
 
   bool IsZeroValue() const {
     return absl::visit(
@@ -589,24 +598,29 @@ class MapValueView final {
   absl::StatusOr<ValueView> Get(ValueManager& value_manager, ValueView key,
                                 Value& scratch
                                     ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Get(ValueManager& value_manager, ValueView key) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::StatusOr<std::pair<ValueView, bool>> Find(
       ValueManager& value_manager, ValueView key,
       Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<std::pair<Value, bool>> Find(ValueManager& value_manager,
+                                              ValueView key) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::StatusOr<ValueView> Has(ValueManager& value_manager, ValueView key,
                                 Value& scratch
                                     ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Has(ValueManager& value_manager, ValueView key) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
   absl::StatusOr<ListValueView> ListKeys(
       ValueManager& value_manager,
       ListValue& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<ListValue> ListKeys(ValueManager& value_manager) const;
 
   // See the corresponding type declaration of `MapValueInterface` for
   // documentation.

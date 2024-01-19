@@ -30,14 +30,16 @@ namespace cel::common_internal {
 class LegacyValueManager : public LegacyTypeManager, public ValueManager {
  public:
   LegacyValueManager(MemoryManagerRef memory_manager,
-                     LegacyTypeReflector& type_reflector)
+                     const TypeReflector& type_reflector)
       : LegacyTypeManager(memory_manager, type_reflector),
         type_reflector_(type_reflector) {}
 
   using LegacyTypeManager::GetMemoryManager;
 
  protected:
-  TypeReflector& GetTypeReflector() const final { return type_reflector_; }
+  const TypeReflector& GetTypeReflector() const final {
+    return type_reflector_;
+  }
 
  private:
   ListValue CreateZeroListValueImpl(ListTypeView type) override;
@@ -46,7 +48,7 @@ class LegacyValueManager : public LegacyTypeManager, public ValueManager {
 
   OptionalValue CreateZeroOptionalValueImpl(OptionalTypeView type) override;
 
-  LegacyTypeReflector& type_reflector_;
+  const TypeReflector& type_reflector_;
 };
 
 }  // namespace cel::common_internal

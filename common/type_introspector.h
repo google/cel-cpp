@@ -15,12 +15,15 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPE_INTROSPECTOR_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_INTROSPECTOR_H_
 
+#include <string>
+
 #include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -39,12 +42,33 @@ class TypeIntrospector {
   absl::StatusOr<absl::optional<TypeView>> FindType(
       TypeFactory& type_factory, absl::string_view name,
       Type& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<absl::optional<Type>> FindType(TypeFactory& type_factory,
+                                                absl::string_view name) const {
+    Type scratch;
+    CEL_ASSIGN_OR_RETURN(auto result, FindType(type_factory, name, scratch));
+    if (result.has_value()) {
+      return Type{*result};
+    }
+    return absl::nullopt;
+  }
 
   // `FindStructTypeFieldByName` find the name, number, and type of the field
   // `name` in type `type`.
   absl::StatusOr<absl::optional<StructTypeFieldView>> FindStructTypeFieldByName(
       TypeFactory& type_factory, absl::string_view type, absl::string_view name,
       StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByName(
+      TypeFactory& type_factory, absl::string_view type,
+      absl::string_view name) const {
+    StructTypeField scratch;
+    CEL_ASSIGN_OR_RETURN(auto result, FindStructTypeFieldByName(
+                                          type_factory, type, name, scratch));
+    if (result.has_value()) {
+      return StructTypeField{std::string(result->name), Type{result->type},
+                             result->number};
+    }
+    return absl::nullopt;
+  }
 
   // `FindStructTypeFieldByName` find the name, number, and type of the field
   // `name` in struct type `type`.
@@ -53,16 +77,28 @@ class TypeIntrospector {
       StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const {
     return FindStructTypeFieldByName(type_factory, type.name(), name, scratch);
   }
+  absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByName(
+      TypeFactory& type_factory, StructTypeView type,
+      absl::string_view name) const {
+    StructTypeField scratch;
+    CEL_ASSIGN_OR_RETURN(auto result, FindStructTypeFieldByName(
+                                          type_factory, type, name, scratch));
+    if (result.has_value()) {
+      return StructTypeField{std::string(result->name), Type{result->type},
+                             result->number};
+    }
+    return absl::nullopt;
+  }
 
  protected:
   virtual absl::StatusOr<absl::optional<TypeView>> FindTypeImpl(
       TypeFactory& type_factory, absl::string_view name,
-      Type& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
+      Type& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   virtual absl::StatusOr<absl::optional<StructTypeFieldView>>
   FindStructTypeFieldByNameImpl(
       TypeFactory& type_factory, absl::string_view type, absl::string_view name,
-      StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
+      StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 };
 
 Shared<TypeIntrospector> NewThreadCompatibleTypeIntrospector(

@@ -38,6 +38,7 @@
 #include "common/values/thread_compatible_type_reflector.h"
 #include "common/values/thread_safe_type_reflector.h"
 #include "internal/deserialize.h"
+#include "internal/no_destructor.h"
 #include "internal/overflow.h"
 #include "internal/status_macros.h"
 
@@ -461,8 +462,8 @@ class DurationValueBuilder final : public WellKnownValueBuilder {
     return TypeConversionError(value.GetTypeName(), "int").NativeValue();
   }
 
-  int64_t seconds_;
-  int32_t nanos_;
+  int64_t seconds_ = 0;
+  int32_t nanos_ = 0;
 };
 
 class TimestampValueBuilder final : public WellKnownValueBuilder {
@@ -523,8 +524,8 @@ class TimestampValueBuilder final : public WellKnownValueBuilder {
     return TypeConversionError(value.GetTypeName(), "int").NativeValue();
   }
 
-  int64_t seconds_;
-  int32_t nanos_;
+  int64_t seconds_ = 0;
+  int32_t nanos_ = 0;
 };
 
 class JsonValueBuilder final : public WellKnownValueBuilder {
@@ -942,6 +943,11 @@ TypeReflector::NewStructValueBuilder(ValueFactory&, StructTypeView) const {
 absl::StatusOr<absl::optional<ValueView>> TypeReflector::FindValue(
     ValueFactory&, absl::string_view, Value&) const {
   return absl::nullopt;
+}
+
+TypeReflector& TypeReflector::Builtin() {
+  static internal::NoDestructor<TypeReflector> instance;
+  return *instance;
 }
 
 Shared<TypeReflector> NewThreadCompatibleTypeReflector(

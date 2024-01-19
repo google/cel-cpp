@@ -30,6 +30,7 @@
 #include "common/value.h"
 #include "internal/dynamic_loader.h"
 #include "internal/status_macros.h"
+#include "runtime/runtime_options.h"
 
 namespace cel::common_internal {
 
@@ -47,14 +48,17 @@ using LegacyStructValue_GetSerializedSize =
     absl::StatusOr<size_t> (*)(uintptr_t, uintptr_t);
 using LegacyStructValue_SerializeTo = absl::Status (*)(uintptr_t, uintptr_t,
                                                        absl::Cord&);
+using LegacyStructValue_GetType = std::string (*)(uintptr_t, uintptr_t);
 using LegacyStructValue_GetTypeName = absl::string_view (*)(uintptr_t,
                                                             uintptr_t);
 using LegacyStructValue_ConvertToJsonObject =
     absl::StatusOr<JsonObject> (*)(uintptr_t, uintptr_t);
 using LegacyStructValue_GetFieldByName = absl::StatusOr<ValueView> (*)(
-    uintptr_t, uintptr_t, ValueManager&, absl::string_view, Value&);
-using LegacyStructValue_GetFieldByNumber = absl::StatusOr<ValueView> (*)(
-    uintptr_t, uintptr_t, ValueManager&, int64_t, Value&);
+    uintptr_t, uintptr_t, ValueManager&, absl::string_view, Value&,
+    ProtoWrapperTypeOptions);
+using LegacyStructValue_GetFieldByNumber =
+    absl::StatusOr<ValueView> (*)(uintptr_t, uintptr_t, ValueManager&, int64_t,
+                                  Value&, ProtoWrapperTypeOptions);
 using LegacyStructValue_HasFieldByName =
     absl::StatusOr<bool> (*)(uintptr_t, uintptr_t, absl::string_view);
 using LegacyStructValue_HasFieldByNumber = absl::StatusOr<bool> (*)(uintptr_t,
@@ -74,6 +78,7 @@ ABSL_CONST_INIT struct {
   LegacyStructValue_DebugString debug_string = nullptr;
   LegacyStructValue_GetSerializedSize get_serialized_size = nullptr;
   LegacyStructValue_SerializeTo serialize_to = nullptr;
+  LegacyStructValue_GetType get_type = nullptr;
   LegacyStructValue_GetTypeName get_type_name = nullptr;
   LegacyStructValue_ConvertToJsonObject convert_to_json_object = nullptr;
   LegacyStructValue_GetFieldByName get_field_by_name = nullptr;
@@ -95,6 +100,8 @@ void InitializeLegacyStructValue() {
             "cel_common_internal_LegacyStructValue_GetSerializedSize");
     legacy_struct_value_vtable.serialize_to = symbol_finder.FindSymbolOrDie(
         "cel_common_internal_LegacyStructValue_SerializeTo");
+    legacy_struct_value_vtable.get_type = symbol_finder.FindSymbolOrDie(
+        "cel_common_internal_LegacyStructValue_GetType");
     legacy_struct_value_vtable.get_type_name = symbol_finder.FindSymbolOrDie(
         "cel_common_internal_LegacyStructValue_GetTypeName");
     legacy_struct_value_vtable.convert_to_json_object =
@@ -124,7 +131,9 @@ void InitializeLegacyStructValue() {
 }  // namespace
 
 StructType LegacyStructValue::GetType(TypeManager& type_manager) const {
-  return type_manager.CreateStructType(GetTypeName());
+  InitializeLegacyStructValue();
+  return type_manager.CreateStructType(
+      (*legacy_struct_value_vtable.get_type)(message_ptr_, type_info_));
 }
 
 absl::string_view LegacyStructValue::GetTypeName() const {
@@ -189,17 +198,20 @@ absl::StatusOr<ValueView> LegacyStructValue::Equal(ValueManager& value_manager,
 }
 
 absl::StatusOr<ValueView> LegacyStructValue::GetFieldByName(
-    ValueManager& value_manager, absl::string_view name, Value& scratch) const {
+    ValueManager& value_manager, absl::string_view name, Value& scratch,
+    ProtoWrapperTypeOptions unboxing_options) const {
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.get_field_by_name)(
-      message_ptr_, type_info_, value_manager, name, scratch);
+      message_ptr_, type_info_, value_manager, name, scratch, unboxing_options);
 }
 
 absl::StatusOr<ValueView> LegacyStructValue::GetFieldByNumber(
-    ValueManager& value_manager, int64_t number, Value& scratch) const {
+    ValueManager& value_manager, int64_t number, Value& scratch,
+    ProtoWrapperTypeOptions unboxing_options) const {
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.get_field_by_number)(
-      message_ptr_, type_info_, value_manager, number, scratch);
+      message_ptr_, type_info_, value_manager, number, scratch,
+      unboxing_options);
 }
 
 absl::StatusOr<bool> LegacyStructValue::HasFieldByName(
@@ -232,7 +244,9 @@ absl::StatusOr<std::pair<ValueView, int>> LegacyStructValue::Qualify(
 }
 
 StructType LegacyStructValueView::GetType(TypeManager& type_manager) const {
-  return type_manager.CreateStructType(GetTypeName());
+  InitializeLegacyStructValue();
+  return type_manager.CreateStructType(
+      (*legacy_struct_value_vtable.get_type)(message_ptr_, type_info_));
 }
 
 absl::string_view LegacyStructValueView::GetTypeName() const {
@@ -296,17 +310,20 @@ absl::StatusOr<ValueView> LegacyStructValueView::Equal(
 }
 
 absl::StatusOr<ValueView> LegacyStructValueView::GetFieldByName(
-    ValueManager& value_manager, absl::string_view name, Value& scratch) const {
+    ValueManager& value_manager, absl::string_view name, Value& scratch,
+    ProtoWrapperTypeOptions unboxing_options) const {
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.get_field_by_name)(
-      message_ptr_, type_info_, value_manager, name, scratch);
+      message_ptr_, type_info_, value_manager, name, scratch, unboxing_options);
 }
 
 absl::StatusOr<ValueView> LegacyStructValueView::GetFieldByNumber(
-    ValueManager& value_manager, int64_t number, Value& scratch) const {
+    ValueManager& value_manager, int64_t number, Value& scratch,
+    ProtoWrapperTypeOptions unboxing_options) const {
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.get_field_by_number)(
-      message_ptr_, type_info_, value_manager, number, scratch);
+      message_ptr_, type_info_, value_manager, number, scratch,
+      unboxing_options);
 }
 
 absl::StatusOr<bool> LegacyStructValueView::HasFieldByName(

@@ -20,6 +20,7 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
@@ -34,6 +35,8 @@ namespace cel {
 // `ValueFactory` is the preferred way for constructing values.
 class ValueFactory : public virtual TypeFactory {
  public:
+  TypeFactory& type_factory() { return *this; }
+
   // `CreateValueFromJson` constructs a new `Value` that is equivalent to the
   // JSON value `json`.
   Value CreateValueFromJson(Json json);
@@ -87,46 +90,46 @@ class ValueFactory : public virtual TypeFactory {
 
   BytesValue GetBytesValue() { return BytesValue(); }
 
-  BytesValue CreateBytesValue(const char* value) { return BytesValue(value); }
-
-  BytesValue CreateBytesValue(absl::string_view value) {
+  absl::StatusOr<BytesValue> CreateBytesValue(const char* value) {
     return BytesValue(value);
   }
 
-  BytesValue CreateBytesValue(std::string value) {
+  absl::StatusOr<BytesValue> CreateBytesValue(absl::string_view value) {
+    return BytesValue(value);
+  }
+
+  absl::StatusOr<BytesValue> CreateBytesValue(std::string value) {
     return BytesValue(std::move(value));
   }
 
-  BytesValue CreateBytesValue(absl::Cord value) {
+  absl::StatusOr<BytesValue> CreateBytesValue(absl::Cord value) {
     return BytesValue(std::move(value));
   }
 
   template <typename Releaser>
-  BytesValue CreateBytesValue(absl::string_view value, Releaser&& releaser) {
+  absl::StatusOr<BytesValue> CreateBytesValue(absl::string_view value,
+                                              Releaser&& releaser) {
     return BytesValue(
         absl::MakeCordFromExternal(value, std::forward<Releaser>(releaser)));
   }
 
   StringValue GetStringValue() { return StringValue(); }
 
-  StringValue CreateStringValue(const char* value) {
-    return StringValue(value);
+  absl::StatusOr<StringValue> CreateStringValue(const char* value) {
+    return CreateStringValue(absl::string_view(value));
   }
 
-  StringValue CreateStringValue(absl::string_view value) {
-    return StringValue(value);
+  absl::StatusOr<StringValue> CreateStringValue(absl::string_view value) {
+    return CreateStringValue(std::string(value));
   }
 
-  StringValue CreateStringValue(std::string value) {
-    return StringValue(std::move(value));
-  }
+  absl::StatusOr<StringValue> CreateStringValue(std::string value);
 
-  StringValue CreateStringValue(absl::Cord value) {
-    return StringValue(std::move(value));
-  }
+  absl::StatusOr<StringValue> CreateStringValue(absl::Cord value);
 
   template <typename Releaser>
-  StringValue CreateStringValue(absl::string_view value, Releaser&& releaser) {
+  absl::StatusOr<StringValue> CreateStringValue(absl::string_view value,
+                                                Releaser&& releaser) {
     return StringValue(
         absl::MakeCordFromExternal(value, std::forward<Releaser>(releaser)));
   }
@@ -154,17 +157,13 @@ class ValueFactory : public virtual TypeFactory {
         absl::MakeCordFromExternal(value, std::forward<Releaser>(releaser)));
   }
 
-  DurationValue CreateDurationValue(absl::Duration value) {
-    return DurationValue{value};
-  }
+  absl::StatusOr<DurationValue> CreateDurationValue(absl::Duration value);
 
   DurationValue CreateUncheckedDurationValue(absl::Duration value) {
     return DurationValue{value};
   }
 
-  TimestampValue CreateTimestampValue(absl::Time value) {
-    return TimestampValue{value};
-  }
+  absl::StatusOr<TimestampValue> CreateTimestampValue(absl::Time value);
 
   TimestampValue CreateUncheckedTimestampValue(absl::Time value) {
     return TimestampValue{value};

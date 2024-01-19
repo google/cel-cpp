@@ -102,6 +102,10 @@ class LegacyListValue final {
                                   Value& scratch
                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
+  absl::StatusOr<ValueView> Contains(
+      ValueManager& value_manager, ValueView other,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
   bool IsZeroValue() const { return IsEmpty(); }
 
   bool IsEmpty() const;
@@ -234,6 +238,10 @@ class LegacyListValueView final {
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
+
+  absl::StatusOr<ValueView> Contains(
+      ValueManager& value_manager, ValueView other,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   void swap(LegacyListValueView& other) noexcept {
     using std::swap;

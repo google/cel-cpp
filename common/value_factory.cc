@@ -28,6 +28,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "common/casting.h"
@@ -35,17 +36,18 @@
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
-#include "common/types/type_cache.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "common/values/value_cache.h"
 #include "internal/overloaded.h"
+#include "internal/status_macros.h"
+#include "internal/time.h"
+#include "internal/utf8.h"
 
 namespace cel {
 
 namespace {
 
-using common_internal::ProcessLocalTypeCache;
 using common_internal::ProcessLocalValueCache;
 
 ValueView JsonToValue(const Json& json, ValueFactory& value_factory,
@@ -355,6 +357,36 @@ MapValueView ValueFactory::GetZeroStringDynMapValue() {
 
 OptionalValueView ValueFactory::GetZeroDynOptionalValue() {
   return ProcessLocalValueCache::Get()->GetEmptyDynOptionalValue();
+}
+
+absl::StatusOr<StringValue> ValueFactory::CreateStringValue(std::string value) {
+  auto [count, ok] = internal::Utf8Validate(value);
+  if (ABSL_PREDICT_FALSE(!ok)) {
+    return absl::InvalidArgumentError(
+        "Illegal byte sequence in UTF-8 encoded string");
+  }
+  return StringValue(std::move(value));
+}
+
+absl::StatusOr<StringValue> ValueFactory::CreateStringValue(absl::Cord value) {
+  auto [count, ok] = internal::Utf8Validate(value);
+  if (ABSL_PREDICT_FALSE(!ok)) {
+    return absl::InvalidArgumentError(
+        "Illegal byte sequence in UTF-8 encoded string");
+  }
+  return StringValue(std::move(value));
+}
+
+absl::StatusOr<DurationValue> ValueFactory::CreateDurationValue(
+    absl::Duration value) {
+  CEL_RETURN_IF_ERROR(internal::ValidateDuration(value));
+  return DurationValue{value};
+}
+
+absl::StatusOr<TimestampValue> ValueFactory::CreateTimestampValue(
+    absl::Time value) {
+  CEL_RETURN_IF_ERROR(internal::ValidateTimestamp(value));
+  return TimestampValue{value};
 }
 
 }  // namespace cel
