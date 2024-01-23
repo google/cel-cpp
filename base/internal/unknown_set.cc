@@ -14,19 +14,18 @@
 
 #include "base/internal/unknown_set.h"
 
-#include "internal/no_destructor.h"
+#include "absl/base/no_destructor.h"
 
 namespace cel::base_internal {
 
 const AttributeSet& EmptyAttributeSet() {
-  static const internal::NoDestructor<AttributeSet> empty_attribute_set;
-  return empty_attribute_set.get();
+  static const absl::NoDestructor<AttributeSet> empty_attribute_set;
+  return *empty_attribute_set;
 }
 
 const FunctionResultSet& EmptyFunctionResultSet() {
-  static const internal::NoDestructor<FunctionResultSet>
-      empty_function_result_set;
-  return empty_function_result_set.get();
+  static const absl::NoDestructor<FunctionResultSet> empty_function_result_set;
+  return *empty_function_result_set;
 }
 
 }  // namespace cel::base_internal

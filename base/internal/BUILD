@@ -88,8 +88,8 @@ cc_library(
     deps = [
         "//base:attributes",
         "//base:function_result_set",
-        "//internal:no_destructor",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:no_destructor",
     ],
 )
 

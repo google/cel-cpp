@@ -17,6 +17,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/no_destructor.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -26,7 +27,6 @@
 #include "absl/types/variant.h"
 #include "common/any.h"
 #include "internal/copy_on_write.h"
-#include "internal/no_destructor.h"
 #include "internal/overloaded.h"
 #include "internal/proto_wire.h"
 #include "internal/status_macros.h"
@@ -34,13 +34,13 @@
 namespace cel {
 
 internal::CopyOnWrite<typename JsonArray::Container> JsonArray::Empty() {
-  static const internal::NoDestructor<internal::CopyOnWrite<Container>> empty;
-  return empty.get();
+  static const absl::NoDestructor<internal::CopyOnWrite<Container>> empty;
+  return *empty;
 }
 
 internal::CopyOnWrite<typename JsonObject::Container> JsonObject::Empty() {
-  static const internal::NoDestructor<internal::CopyOnWrite<Container>> empty;
-  return empty.get();
+  static const absl::NoDestructor<internal::CopyOnWrite<Container>> empty;
+  return *empty;
 }
 
 Json JsonInt(int64_t value) {

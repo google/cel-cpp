@@ -21,13 +21,13 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "common/operators.h"
 #include "internal/lexis.h"
-#include "internal/no_destructor.h"
 #include "parser/source_factory.h"
 
 namespace cel {
@@ -96,7 +96,7 @@ std::vector<Macro> Macro::AllMacros() {
 Macro HasMacro() {
   // The macro "has(m.f)" which tests the presence of a field, avoiding the
   // need to specify the field as a string.
-  static const internal::NoDestructor<Macro> macro(
+  static const absl::NoDestructor<Macro> macro(
       CelOperator::HAS, 1,
       [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
          const Expr& target, const std::vector<Expr>& args) {
@@ -109,13 +109,13 @@ Macro HasMacro() {
           return Expr();
         }
       });
-  return macro.get();
+  return *macro;
 }
 
 Macro AllMacro() {
   // The macro "range.all(var, predicate)", which is true if for all
   // elements in range the predicate holds.
-  static const internal::NoDestructor<Macro> macro(
+  static const absl::NoDestructor<Macro> macro(
       CelOperator::ALL, 2,
       [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
          const Expr& target, const std::vector<Expr>& args) {
@@ -123,13 +123,13 @@ Macro AllMacro() {
                                              macro_id, target, args);
       },
       /* receiver style*/ true);
-  return macro.get();
+  return *macro;
 }
 
 Macro ExistsMacro() {
   // The macro "range.exists(var, predicate)", which is true if for at least
   // one element in range the predicate holds.
-  static const internal::NoDestructor<Macro> macro(
+  static const absl::NoDestructor<Macro> macro(
       CelOperator::EXISTS, 2,
       [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
          const Expr& target, const std::vector<Expr>& args) {
@@ -137,13 +137,13 @@ Macro ExistsMacro() {
                                              macro_id, target, args);
       },
       /* receiver style*/ true);
-  return macro.get();
+  return *macro;
 }
 
 Macro ExistsOneMacro() {
   // The macro "range.exists_one(var, predicate)", which is true if for
   // exactly one element in range the predicate holds.
-  static const internal::NoDestructor<Macro> macro(
+  static const absl::NoDestructor<Macro> macro(
       CelOperator::EXISTS_ONE, 2,
       [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
          const Expr& target, const std::vector<Expr>& args) {
@@ -151,51 +151,51 @@ Macro ExistsOneMacro() {
             SourceFactory::QUANTIFIER_EXISTS_ONE, macro_id, target, args);
       },
       /* receiver style*/ true);
-  return macro.get();
+  return *macro;
 }
 
 Macro Map2Macro() {
   // The macro "range.map(var, function)", applies the function to the vars
   // in the range.
-  static const internal::NoDestructor<Macro> macro(
+  static const absl::NoDestructor<Macro> macro(
       CelOperator::MAP, 2,
       [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
          const Expr& target, const std::vector<Expr>& args) {
         return sf->NewMapForMacro(macro_id, target, args);
       },
       /* receiver style*/ true);
-  return macro.get();
+  return *macro;
 }
 
 Macro Map3Macro() {
   // The macro "range.map(var, predicate, function)", applies the function
   // to the vars in the range for which the predicate holds true. The other
   // variables are filtered out.
-  static const internal::NoDestructor<Macro> macro(
+  static const absl::NoDestructor<Macro> macro(
       CelOperator::MAP, 3,
       [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
          const Expr& target, const std::vector<Expr>& args) {
         return sf->NewMapForMacro(macro_id, target, args);
       },
       /* receiver style*/ true);
-  return macro.get();
+  return *macro;
 }
 
 Macro FilterMacro() {
   // The macro "range.filter(var, predicate)", filters out the variables for
   // which the predicate is false.
-  static const internal::NoDestructor<Macro> macro(
+  static const absl::NoDestructor<Macro> macro(
       CelOperator::FILTER, 2,
       [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
          const Expr& target, const std::vector<Expr>& args) {
         return sf->NewFilterExprForMacro(macro_id, target, args);
       },
       /* receiver style*/ true);
-  return macro.get();
+  return *macro;
 }
 
 Macro OptMapMacro() {
-  static const internal::NoDestructor<Macro> macro(
+  static const absl::NoDestructor<Macro> macro(
       "optMap", 2,
       [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
          const Expr& target, const std::vector<Expr>& args) -> Expr {
@@ -229,11 +229,11 @@ Macro OptMapMacro() {
                                          call_args);
       },
       true);
-  return macro.get();
+  return *macro;
 }
 
 Macro OptFlatMapMacro() {
-  static const internal::NoDestructor<Macro> macro(
+  static const absl::NoDestructor<Macro> macro(
       "optFlatMap", 2,
       [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
          const Expr& target, const std::vector<Expr>& args) -> Expr {
@@ -266,7 +266,7 @@ Macro OptFlatMapMacro() {
                                          call_args);
       },
       true);
-  return macro.get();
+  return *macro;
 }
 
 }  // namespace cel

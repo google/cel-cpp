@@ -16,6 +16,7 @@
 
 #include <utility>
 
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
@@ -23,12 +24,11 @@
 #include "common/memory.h"
 #include "common/sized_input_view.h"
 #include "common/type.h"
-#include "internal/no_destructor.h"
 
 namespace cel::common_internal {
 
 const ProcessLocalTypeCache* ProcessLocalTypeCache::Get() {
-  static const internal::NoDestructor<ProcessLocalTypeCache> type_cache;
+  static const absl::NoDestructor<ProcessLocalTypeCache> type_cache;
   return &*type_cache;
 }
 

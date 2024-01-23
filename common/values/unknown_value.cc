@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <string>
 
+#include "absl/base/no_destructor.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -24,7 +25,6 @@
 #include "common/json.h"
 #include "common/unknown.h"
 #include "common/value.h"
-#include "internal/no_destructor.h"
 
 namespace cel {
 
@@ -64,7 +64,7 @@ absl::StatusOr<ValueView> UnknownValue::Equal(ValueManager&, ValueView,
 }
 
 const Unknown& UnknownValueView::Empty() {
-  static const internal::NoDestructor<Unknown> empty;
+  static const absl::NoDestructor<Unknown> empty;
   return *empty;
 }
 

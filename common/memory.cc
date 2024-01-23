@@ -24,8 +24,8 @@
 #include <new>  // IWYU pragma: keep
 #include <ostream>
 
+#include "absl/base/no_destructor.h"
 #include "common/native_type.h"
-#include "internal/no_destructor.h"
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -420,8 +420,8 @@ NewThreadCompatiblePoolingMemoryManager() {
 
 absl::Nonnull<PoolingMemoryManager*>
 MemoryManager::UnreachablePooling() noexcept {
-  static internal::NoDestructor<UnreachablePoolingMemoryManager> instance;
-  return &instance.get();
+  static absl::NoDestructor<UnreachablePoolingMemoryManager> instance;
+  return &*instance;
 }
 
 MemoryManagerRef MemoryManagerRef::Unmanaged() {

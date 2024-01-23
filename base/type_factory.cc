@@ -16,6 +16,7 @@
 
 #include <utility>
 
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
@@ -28,7 +29,6 @@
 #include "base/types/optional_type.h"
 #include "base/types/string_type.h"
 #include "common/memory.h"
-#include "internal/no_destructor.h"
 
 namespace cel {
 
@@ -37,7 +37,6 @@ namespace {
 using base_internal::HandleFactory;
 using base_internal::ModernListType;
 using base_internal::ModernMapType;
-using ::cel::internal::NoDestructor;
 
 }  // namespace
 
@@ -45,12 +44,12 @@ TypeFactory::TypeFactory(MemoryManagerRef memory_manager)
     : memory_manager_(memory_manager) {}
 
 const Handle<Type>& TypeFactory::JsonValueType() {
-  static NoDestructor<Handle<Type>> kValueType(DynType::Get());
+  static absl::NoDestructor<Handle<Type>> kValueType(DynType::Get());
   return *kValueType;
 }
 
 const Handle<ListType>& TypeFactory::JsonListType() {
-  static NoDestructor<Handle<ListType>> kListType(
+  static absl::NoDestructor<Handle<ListType>> kListType(
       HandleFactory<ListType>::Make<ModernListType>(
           MemoryManagerRef::ReferenceCounting(), JsonValueType()));
 
@@ -58,7 +57,7 @@ const Handle<ListType>& TypeFactory::JsonListType() {
 }
 
 const Handle<MapType>& TypeFactory::JsonMapType() {
-  static NoDestructor<Handle<MapType>> kMapType(
+  static absl::NoDestructor<Handle<MapType>> kMapType(
       HandleFactory<MapType>::Make<ModernMapType>(
           MemoryManagerRef::ReferenceCounting(), StringType::Get(),
           JsonValueType()));
@@ -67,7 +66,7 @@ const Handle<MapType>& TypeFactory::JsonMapType() {
 
 const absl::flat_hash_map<Handle<Type>, Handle<ListType>>&
 TypeFactory::BuiltinListTypes() {
-  static NoDestructor<absl::flat_hash_map<Handle<Type>, Handle<ListType>>>
+  static absl::NoDestructor<absl::flat_hash_map<Handle<Type>, Handle<ListType>>>
       kTypes([]() -> absl::flat_hash_map<Handle<Type>, Handle<ListType>> {
         return {std::make_pair(JsonValueType(), JsonListType())};
       }());
@@ -78,8 +77,8 @@ TypeFactory::BuiltinListTypes() {
 const absl::flat_hash_map<std::pair<Handle<Type>, Handle<Type>>,
                           Handle<MapType>>&
 TypeFactory::BuiltinMapTypes() {
-  static NoDestructor<absl::flat_hash_map<std::pair<Handle<Type>, Handle<Type>>,
-                                          Handle<MapType>>>
+  static absl::NoDestructor<absl::flat_hash_map<
+      std::pair<Handle<Type>, Handle<Type>>, Handle<MapType>>>
       kTypes([]() -> absl::flat_hash_map<std::pair<Handle<Type>, Handle<Type>>,
                                          Handle<MapType>> {
         return {std::make_pair(std::make_pair(StringType::Get().As<Type>(),

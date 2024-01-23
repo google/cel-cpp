@@ -23,6 +23,7 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/container/flat_hash_map.h"
@@ -35,7 +36,6 @@
 #include "common/types/optional_type.h"
 #include "common/types/type_cache.h"
 #include "common/value.h"
-#include "internal/no_destructor.h"
 
 namespace cel {
 
@@ -69,7 +69,7 @@ class ProcessLocalValueCache final {
   OptionalValueView GetEmptyDynOptionalValue() const;
 
  private:
-  friend class internal::NoDestructor<ProcessLocalValueCache>;
+  friend class absl::NoDestructor<ProcessLocalValueCache>;
 
   ProcessLocalValueCache();
 

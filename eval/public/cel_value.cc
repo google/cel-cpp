@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
@@ -15,7 +16,6 @@
 #include "eval/internal/errors.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "extensions/protobuf/memory_manager.h"
-#include "internal/no_destructor.h"
 #include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
@@ -234,7 +234,7 @@ namespace {
 class EmptyCelList final : public CelList {
  public:
   static const EmptyCelList* Get() {
-    static const cel::internal::NoDestructor<EmptyCelList> instance;
+    static const absl::NoDestructor<EmptyCelList> instance;
     return &*instance;
   }
 
@@ -252,7 +252,7 @@ class EmptyCelList final : public CelList {
 class EmptyCelMap final : public CelMap {
  public:
   static const EmptyCelMap* Get() {
-    static const cel::internal::NoDestructor<EmptyCelMap> instance;
+    static const absl::NoDestructor<EmptyCelMap> instance;
     return &*instance;
   }
 

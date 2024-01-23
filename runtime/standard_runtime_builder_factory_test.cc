@@ -23,6 +23,7 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/algorithm/container.h"
+#include "absl/base/no_destructor.h"
 #include "absl/status/status.h"
 #include "base/handle.h"
 #include "base/memory.h"
@@ -34,7 +35,6 @@
 #include "extensions/bindings_ext.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/runtime_adapter.h"
-#include "internal/no_destructor.h"
 #include "internal/testing.h"
 #include "parser/macro.h"
 #include "parser/parser.h"
@@ -63,7 +63,7 @@ struct EvaluateResultTestCase {
 };
 
 const std::vector<google::api::expr::parser::Macro>& GetMacros() {
-  static internal::NoDestructor<std::vector<google::api::expr::parser::Macro>>
+  static absl::NoDestructor<std::vector<google::api::expr::parser::Macro>>
       macros([]() {
         std::vector<google::api::expr::parser::Macro> value;
         absl::c_copy(google::api::expr::parser::Macro::AllMacros(),

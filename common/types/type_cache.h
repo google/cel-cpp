@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/hash/hash.h"
 #include "absl/strings/string_view.h"
@@ -30,7 +31,6 @@
 #include "common/memory.h"
 #include "common/sized_input_view.h"
 #include "common/type.h"
-#include "internal/no_destructor.h"
 
 namespace cel::common_internal {
 
@@ -146,7 +146,7 @@ class ProcessLocalTypeCache final {
   OptionalTypeView GetDynOptionalType() const { return *dyn_optional_type_; }
 
  private:
-  friend class internal::NoDestructor<ProcessLocalTypeCache>;
+  friend class absl::NoDestructor<ProcessLocalTypeCache>;
 
   ProcessLocalTypeCache();
 

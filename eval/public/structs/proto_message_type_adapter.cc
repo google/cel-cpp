@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "google/protobuf/util/message_differencer.h"
+#include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
@@ -48,7 +49,6 @@
 #include "extensions/protobuf/internal/map_reflection.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/casts.h"
-#include "internal/no_destructor.h"
 #include "internal/overloaded.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/errors.h"
@@ -62,7 +62,6 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::extensions::ProtoMemoryManagerArena;
-using ::cel::internal::NoDestructor;
 using ::cel::internal::Overloaded;
 using ::cel::runtime_internal::CreateInvalidMapKeyTypeError;
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;
@@ -76,7 +75,7 @@ using ::google::protobuf::Reflection;
 using LegacyQualifyResult = LegacyTypeAccessApis::LegacyQualifyResult;
 
 const std::string& UnsupportedTypeName() {
-  static cel::internal::NoDestructor<std::string> kUnsupportedTypeName(
+  static absl::NoDestructor<std::string> kUnsupportedTypeName(
       "<unknown message>");
   return *kUnsupportedTypeName;
 }
@@ -782,7 +781,7 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
   }
 
   static const DucktypedMessageAdapter& GetSingleton() {
-    static cel::internal::NoDestructor<DucktypedMessageAdapter> instance;
+    static absl::NoDestructor<DucktypedMessageAdapter> instance;
     return *instance;
   }
 };

@@ -18,8 +18,8 @@
 #include <array>
 #include <utility>
 
+#include "absl/base/no_destructor.h"
 #include "base/type_factory.h"
-#include "internal/no_destructor.h"
 
 namespace cel {
 
@@ -183,7 +183,7 @@ class BuiltinTypeProvider final : public TypeProvider {
 }  // namespace
 
 TypeProvider& TypeProvider::Builtin() {
-  static internal::NoDestructor<BuiltinTypeProvider> instance;
+  static absl::NoDestructor<BuiltinTypeProvider> instance;
   return *instance;
 }
 

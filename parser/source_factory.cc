@@ -21,13 +21,13 @@
 #include <utility>
 
 #include "google/protobuf/struct.pb.h"
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "common/operators.h"
-#include "internal/no_destructor.h"
 
 namespace google::api::expr::parser {
 namespace {
@@ -42,7 +42,7 @@ int32_t PositiveOrMax(int32_t value) {
 }
 
 const std::string& DefaultAccumulatorName() {
-  static cel::internal::NoDestructor<std::string> kName("__result__");
+  static absl::NoDestructor<std::string> kName("__result__");
   return *kName;
 }
 

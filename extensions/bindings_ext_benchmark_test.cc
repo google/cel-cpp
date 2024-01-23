@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/base/no_destructor.h"
 #include "absl/log/absl_check.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -27,7 +28,6 @@
 #include "eval/public/testing/matchers.h"
 #include "extensions/bindings_ext.h"
 #include "internal/benchmark.h"
-#include "internal/no_destructor.h"
 #include "internal/testing.h"
 #include "parser/macro.h"
 #include "parser/parser.h"
@@ -51,7 +51,7 @@ struct BenchmarkCase {
 };
 
 const std::vector<BenchmarkCase>& BenchmarkCases() {
-  static cel::internal::NoDestructor<std::vector<BenchmarkCase>> cases(
+  static absl::NoDestructor<std::vector<BenchmarkCase>> cases(
       std::vector<BenchmarkCase>{
           {"simple", R"(cel.bind(x, "ab", x))", IsCelString("ab")},
           {"multiple_references", R"(cel.bind(x, "ab", x + x + x + x))",

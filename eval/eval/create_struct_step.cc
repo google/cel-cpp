@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -39,7 +40,6 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "extensions/protobuf/memory_manager.h"
-#include "internal/no_destructor.h"
 #include "internal/overflow.h"
 #include "internal/overloaded.h"
 #include "internal/status_macros.h"
@@ -780,8 +780,8 @@ struct WellKnownTypes {
 };
 
 const WellKnownTypes& WellKnownTypes::Get() {
-  static const cel::internal::NoDestructor<WellKnownTypes> well_known_types;
-  return well_known_types.get();
+  static const absl::NoDestructor<WellKnownTypes> well_known_types;
+  return *well_known_types;
 }
 
 WellKnownTypes::WellKnownTypes() {

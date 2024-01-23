@@ -18,6 +18,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -38,7 +39,6 @@
 #include "common/values/thread_compatible_type_reflector.h"
 #include "common/values/thread_safe_type_reflector.h"
 #include "internal/deserialize.h"
-#include "internal/no_destructor.h"
 #include "internal/overflow.h"
 #include "internal/status_macros.h"
 
@@ -946,7 +946,7 @@ absl::StatusOr<absl::optional<ValueView>> TypeReflector::FindValue(
 }
 
 TypeReflector& TypeReflector::Builtin() {
-  static internal::NoDestructor<TypeReflector> instance;
+  static absl::NoDestructor<TypeReflector> instance;
   return *instance;
 }
 

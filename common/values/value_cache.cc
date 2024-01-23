@@ -16,6 +16,7 @@
 
 #include <utility>
 
+#include "absl/base/no_destructor.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
@@ -23,7 +24,6 @@
 #include "common/type.h"
 #include "common/types/type_cache.h"
 #include "common/value.h"
-#include "internal/no_destructor.h"
 
 namespace cel::common_internal {
 
@@ -44,7 +44,7 @@ OptionalValueView GetEmptyDynOptionalValue() {
 }
 
 const ProcessLocalValueCache* ProcessLocalValueCache::Get() {
-  static const internal::NoDestructor<ProcessLocalValueCache> instance;
+  static const absl::NoDestructor<ProcessLocalValueCache> instance;
   return &*instance;
 }
 

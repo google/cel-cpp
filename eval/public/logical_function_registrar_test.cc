@@ -21,6 +21,7 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/arena.h"
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -31,7 +32,6 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/portable_cel_function_adapter.h"
 #include "eval/public/testing/matchers.h"
-#include "internal/no_destructor.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
 
@@ -51,10 +51,10 @@ struct TestCase {
 };
 
 const CelError* ExampleError() {
-  static cel::internal::NoDestructor<absl::Status> error(
+  static absl::NoDestructor<absl::Status> error(
       absl::InternalError("test example error"));
 
-  return &error.get();
+  return &*error;
 }
 
 void ExpectResult(const TestCase& test_case) {

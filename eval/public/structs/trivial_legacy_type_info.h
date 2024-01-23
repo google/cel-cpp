@@ -17,9 +17,9 @@
 
 #include <string>
 
+#include "absl/base/no_destructor.h"
 #include "eval/public/message_wrapper.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
-#include "internal/no_destructor.h"
 
 namespace google::api::expr::runtime {
 
@@ -28,7 +28,7 @@ namespace google::api::expr::runtime {
 class TrivialTypeInfo : public LegacyTypeInfoApis {
  public:
   const std::string& GetTypename(const MessageWrapper& wrapper) const override {
-    static cel::internal::NoDestructor<std::string> kTypename("opaque");
+    static absl::NoDestructor<std::string> kTypename("opaque");
     return *kTypename;
   }
 
@@ -44,8 +44,8 @@ class TrivialTypeInfo : public LegacyTypeInfoApis {
   }
 
   static const TrivialTypeInfo* GetInstance() {
-    static cel::internal::NoDestructor<TrivialTypeInfo> kInstance;
-    return &(kInstance.get());
+    static absl::NoDestructor<TrivialTypeInfo> kInstance;
+    return &*kInstance;
   }
 };
 
