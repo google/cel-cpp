@@ -18,6 +18,7 @@
 #include "base/ast_internal/expr.h"
 #include "base/handle.h"
 #include "base/value.h"
+#include "base/value_factory.h"
 #include "base/value_manager.h"
 
 namespace cel::runtime_internal {

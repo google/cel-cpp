@@ -19,7 +19,6 @@
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
-#include "base/values/map_value.h"
 
 namespace cel::runtime_internal {
 

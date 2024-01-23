@@ -136,6 +136,8 @@ class LegacyListValue final {
     swap(impl_, other.impl_);
   }
 
+  uintptr_t NativeValue() const { return impl_; }
+
  private:
   friend class LegacyListValueView;
 

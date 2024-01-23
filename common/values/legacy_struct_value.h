@@ -128,6 +128,10 @@ class LegacyStructValue final {
       ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
       bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
+  uintptr_t message_ptr() const { return message_ptr_; }
+
+  uintptr_t legacy_type_info() const { return type_info_; }
+
  private:
   friend class LegacyStructValueView;
 
@@ -236,6 +240,10 @@ class LegacyStructValueView final {
   absl::StatusOr<std::pair<ValueView, int>> Qualify(
       ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
       bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  uintptr_t message_ptr() const { return message_ptr_; }
+
+  uintptr_t legacy_type_info() const { return type_info_; }
 
  private:
   friend class LegacyStructValue;
