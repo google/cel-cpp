@@ -14,8 +14,16 @@
 
 #include "base/attribute.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <string>
 
+#include "absl/base/macros.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "absl/types/variant.h"
+#include "base/kind.h"
 #include "internal/status_macros.h"
 
 namespace cel {

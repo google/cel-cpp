@@ -31,7 +31,9 @@ cc_library(
     deps = [
         ":kind",
         "//internal:status_macros",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
