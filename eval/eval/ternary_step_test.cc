@@ -102,7 +102,7 @@ TEST_P(LogicStepTest, TestBoolCond) {
 
 TEST_P(LogicStepTest, TestErrorHandling) {
   CelValue result;
-  CelError error;
+  CelError error = absl::CancelledError();
   CelValue error_value = CelValue::CreateError(&error);
   ASSERT_OK(EvaluateLogic(error_value, CelValue::CreateBool(true),
                           CelValue::CreateBool(false), &result, GetParam()));
@@ -121,7 +121,7 @@ TEST_P(LogicStepTest, TestErrorHandling) {
 TEST_F(LogicStepTest, TestUnknownHandling) {
   CelValue result;
   UnknownSet unknown_set;
-  CelError cel_error;
+  CelError cel_error = absl::CancelledError();
   CelValue unknown_value = CelValue::CreateUnknownSet(&unknown_set);
   CelValue error_value = CelValue::CreateError(&cel_error);
   ASSERT_OK(EvaluateLogic(unknown_value, CelValue::CreateBool(true),

@@ -97,7 +97,7 @@ class Activation final : public ActivationInterface {
   struct ValueEntry {
     // If provider is present, then access must be synchronized to maintain
     // thread-compatible semantics for the lazily provided value.
-    Handle<Value> value;
+    absl::optional<Handle<Value>> value;
     absl::optional<ValueProvider> provider;
   };
 

@@ -28,7 +28,7 @@ namespace google::api::expr::runtime {
 class TrivialTypeInfo : public LegacyTypeInfoApis {
  public:
   const std::string& GetTypename(const MessageWrapper& wrapper) const override {
-    static cel::internal::NoDestructor<std::string> kTypename("opaque type");
+    static cel::internal::NoDestructor<std::string> kTypename("opaque");
     return *kTypename;
   }
 

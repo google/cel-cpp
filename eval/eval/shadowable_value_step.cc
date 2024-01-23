@@ -7,6 +7,7 @@
 
 #include "absl/status/statusor.h"
 #include "eval/eval/expression_step_base.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 

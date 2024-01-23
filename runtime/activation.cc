@@ -50,8 +50,8 @@ absl::StatusOr<absl::optional<Handle<Value>>> Activation::ProvideValue(
   auto iter = values_.find(name);
   ABSL_ASSERT(iter != values_.end());
   ValueEntry& entry = iter->second;
-  if (entry.value) {
-    return entry.value;
+  if (entry.value.has_value()) {
+    return *entry.value;
   }
 
   auto result = (*entry.provider)(factory, name);
@@ -77,14 +77,15 @@ std::vector<FunctionOverloadReference> Activation::FindFunctionOverloads(
 
 bool Activation::InsertOrAssignValue(absl::string_view name,
                                      Handle<Value> value) {
-  return values_.insert_or_assign(name, {std::move(value), absl::nullopt})
+  return values_
+      .insert_or_assign(name, ValueEntry{std::move(value), absl::nullopt})
       .second;
 }
 
 bool Activation::InsertOrAssignValueProvider(absl::string_view name,
                                              ValueProvider provider) {
   return values_
-      .insert_or_assign(name, ValueEntry{Handle<Value>(), std::move(provider)})
+      .insert_or_assign(name, ValueEntry{absl::nullopt, std::move(provider)})
       .second;
 }
 

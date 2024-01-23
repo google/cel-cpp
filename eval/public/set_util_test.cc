@@ -261,8 +261,8 @@ TEST(CelValueLessThan, PtrCmpUnknownSet) {
 TEST(CelValueLessThan, PtrCmpError) {
   Arena arena;
 
-  CelValue lhs = CreateErrorValue(&arena, "test", absl::StatusCode::kInternal);
-  CelValue rhs = CreateErrorValue(&arena, "test", absl::StatusCode::kInternal);
+  CelValue lhs = CreateErrorValue(&arena, "test1", absl::StatusCode::kInternal);
+  CelValue rhs = CreateErrorValue(&arena, "test2", absl::StatusCode::kInternal);
 
   if (lhs.ErrorOrDie() > rhs.ErrorOrDie()) {
     std::swap(lhs, rhs);

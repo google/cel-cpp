@@ -26,7 +26,7 @@ namespace cel::runtime_internal {
 constexpr absl::string_view kErrNoMatchingOverload =
     "No matching overloads found";
 constexpr absl::string_view kErrNoSuchField = "no_such_field";
-using base_internal::kErrNoSuchKey;
+constexpr absl::string_view kErrNoSuchKey = "Key not found in map";
 // Error name for MissingAttributeError indicating that evaluation has
 // accessed an attribute whose value is undefined. go/terminal-unknown
 constexpr absl::string_view kErrMissingAttribute = "MissingAttributeError: ";
@@ -48,7 +48,7 @@ absl::Status CreateNoMatchingOverloadError(absl::string_view fn);
 absl::Status CreateNoSuchFieldError(absl::string_view field);
 
 // No such key for map access.
-using base_internal::CreateNoSuchKeyError;
+absl::Status CreateNoSuchKeyError(absl::string_view key);
 
 // Invalid key type used for map index.
 absl::Status CreateInvalidMapKeyTypeError(absl::string_view key_type);

@@ -197,6 +197,7 @@ cc_test(
         "//internal:status_macros",
         "//internal:testing",
         "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
         "@com_google_protobuf//:protobuf",

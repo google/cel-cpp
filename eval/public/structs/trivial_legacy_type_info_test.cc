@@ -24,9 +24,8 @@ TEST(TrivialTypeInfo, GetTypename) {
   TrivialTypeInfo info;
   MessageWrapper wrapper;
 
-  EXPECT_EQ(info.GetTypename(wrapper), "opaque type");
-  EXPECT_EQ(TrivialTypeInfo::GetInstance()->GetTypename(wrapper),
-            "opaque type");
+  EXPECT_EQ(info.GetTypename(wrapper), "opaque");
+  EXPECT_EQ(TrivialTypeInfo::GetInstance()->GetTypename(wrapper), "opaque");
 }
 
 TEST(TrivialTypeInfo, DebugString) {

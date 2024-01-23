@@ -11,6 +11,7 @@
 #include "google/protobuf/arena.h"
 #include "google/protobuf/text_format.h"
 #include "absl/container/btree_map.h"
+#include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
@@ -723,7 +724,7 @@ TEST(UnknownsIterAttrTest, IterAttributeTrailMapKeyTypes) {
   Arena arena;
 
   UnknownSet unknown_set;
-  CelError error;
+  CelError error = absl::CancelledError();
 
   std::vector<std::pair<CelValue, CelValue>> backing;
 
@@ -765,7 +766,7 @@ TEST(UnknownsIterAttrTest, IterAttributeTrailMapKeyTypesShortcutted) {
   Arena arena;
 
   UnknownSet unknown_set;
-  CelError error;
+  CelError error = absl::CancelledError();
 
   std::vector<std::pair<CelValue, CelValue>> backing;
 

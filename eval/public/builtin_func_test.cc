@@ -933,7 +933,7 @@ TEST_F(BuiltinsTest, TestLogicalOr) {
   TestLogicalOperation(op_name, true, false, true);
   TestLogicalOperation(op_name, false, false, false);
 
-  CelError error;
+  CelError error = absl::CancelledError();
   // Test special cases - mix of bool and error
   // true || error
   CelValue result;
@@ -984,7 +984,7 @@ TEST_F(BuiltinsTest, TestLogicalAnd) {
   TestLogicalOperation(op_name, true, false, false);
   TestLogicalOperation(op_name, false, false, false);
 
-  CelError error;
+  CelError error = absl::CancelledError();
   // Test special cases - mix of bool and error
   // true && error
   CelValue result;
@@ -1041,7 +1041,7 @@ TEST_F(BuiltinsTest, TestTernary) {
 }
 
 TEST_F(BuiltinsTest, TestTernaryErrorAsCondition) {
-  CelError cel_error;
+  CelError cel_error = absl::CancelledError();
   std::vector<CelValue> args = {CelValue::CreateError(&cel_error),
                                 CelValue::CreateInt64(1),
                                 CelValue::CreateInt64(2)};

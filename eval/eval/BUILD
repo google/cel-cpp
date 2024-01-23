@@ -807,6 +807,7 @@ cc_library(
         ":expression_step_base",
         "//base:data",
         "//base:handle",
+        "//internal:status_macros",
         "@com_google_absl//absl/status:statusor",
     ],
 )

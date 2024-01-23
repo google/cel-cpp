@@ -26,6 +26,10 @@ const absl::Status* DurationOverflowError() {
   return kDurationOverflow;
 }
 
+absl::Status CreateNoSuchKeyError(absl::string_view key) {
+  return absl::NotFoundError(absl::StrCat(kErrNoSuchKey, " : ", key));
+}
+
 absl::Status CreateNoMatchingOverloadError(absl::string_view fn) {
   return absl::UnknownError(
       absl::StrCat(kErrNoMatchingOverload, fn.empty() ? "" : " : ", fn));

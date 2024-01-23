@@ -363,8 +363,8 @@ TEST_P(FunctionStepTest,
   CelFunctionRegistry registry;
   AddDefaults(registry);
 
-  CelError error0;
-  CelError error1;
+  CelError error0 = absl::CancelledError();
+  CelError error1 = absl::CancelledError();
 
   // Constants have ERROR type, while AddFunction expects INT.
   ASSERT_TRUE(registry
@@ -506,8 +506,8 @@ TEST_P(FunctionStepTest,
 
   AddDefaults(registry);
 
-  CelError error0;
-  CelError error1;
+  CelError error0 = absl::CancelledError();
+  CelError error1 = absl::CancelledError();
 
   // Constants have ERROR type, while AddFunction expects INT.
   ASSERT_OK(registry.RegisterLazyFunction(
@@ -639,7 +639,7 @@ TEST_P(FunctionStepTestUnknowns, UnknownVsErrorPrecedenceTest) {
   CelFunctionRegistry registry;
   AddDefaults(registry);
 
-  CelError error0;
+  CelError error0 = absl::CancelledError();
   CelValue error_value = CelValue::CreateError(&error0);
 
   ASSERT_TRUE(
@@ -810,7 +810,7 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   ExecutionPath path;
   CelFunctionRegistry registry;
 
-  CelError error0;
+  CelError error0 = absl::CancelledError();
   CelValue error_value = CelValue::CreateError(&error0);
   UnknownSet unknown_set;
   CelValue unknown_value = CelValue::CreateUnknownSet(&unknown_set);

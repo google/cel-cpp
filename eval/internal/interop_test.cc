@@ -757,13 +757,13 @@ TEST(ValueInterop, StructFromLegacyMessageLite) {
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_EQ(value->kind(), Kind::kStruct);
   EXPECT_EQ(value->type()->kind(), Kind::kStruct);
-  EXPECT_EQ(value->type()->name(), "opaque type");
+  EXPECT_EQ(value->type()->name(), "opaque");
   EXPECT_THAT(
       value.As<StructValue>()->HasFieldByName(type_manager, "name"),
       StatusIs(absl::StatusCode::kNotFound, HasSubstr("no_such_field")));
   EXPECT_THAT(value.As<StructValue>()->HasFieldByNumber(type_manager, 1),
               StatusIs(absl::StatusCode::kUnimplemented));
-  EXPECT_EQ(value.As<StructValue>()->DebugString(), "opaque type");
+  EXPECT_EQ(value.As<StructValue>()->DebugString(), "opaque");
   auto value_wrapper = LegacyStructValueAccess::ToMessageWrapper(
       *value.As<base_internal::LegacyStructValue>());
   auto legacy_value_wrapper = legacy_value.MessageWrapperOrDie();
