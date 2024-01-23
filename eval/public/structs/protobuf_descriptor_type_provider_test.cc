@@ -86,7 +86,7 @@ TEST(ProtobufDescriptorProvider, NotFound) {
   auto type_info = provider.ProvideLegacyTypeInfo("UnknownType");
 
   ASSERT_FALSE(type_adapter.has_value());
-  ASSERT_TRUE(type_info.has_value());
+  ASSERT_FALSE(type_info.has_value());
 }
 
 }  // namespace

@@ -36,7 +36,11 @@ absl::optional<LegacyTypeAdapter> ProtobufDescriptorProvider::ProvideLegacyType(
 absl::optional<const LegacyTypeInfoApis*>
 ProtobufDescriptorProvider::ProvideLegacyTypeInfo(
     absl::string_view name) const {
-  return GetTypeAdapter(name);
+  const ProtoMessageTypeAdapter* result = GetTypeAdapter(name);
+  if (result == nullptr) {
+    return absl::nullopt;
+  }
+  return result;
 }
 
 std::unique_ptr<ProtoMessageTypeAdapter>
