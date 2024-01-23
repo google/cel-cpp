@@ -23,6 +23,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
+#include "absl/functional/overload.h"
 #include "absl/hash/hash.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -38,7 +39,6 @@
 #include "base/values/string_value.h"
 #include "common/any.h"
 #include "common/json.h"
-#include "internal/overloaded.h"
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
 #include "internal/strings.h"
@@ -301,9 +301,8 @@ absl::StatusOr<Any> BytesValue::ConvertToAny(ValueFactory&) const {
 
 absl::StatusOr<Json> BytesValue::ConvertToJson(ValueFactory&) const {
   return absl::visit(
-      internal::Overloaded{
-          [](absl::string_view value) { return JsonBytes(value); },
-          [](const absl::Cord& value) { return JsonBytes(value); }},
+      absl::Overload([](absl::string_view value) { return JsonBytes(value); },
+                     [](const absl::Cord& value) { return JsonBytes(value); }),
       rep());
 }
 

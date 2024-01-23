@@ -21,6 +21,7 @@
 
 #include "absl/base/macros.h"
 #include "absl/base/nullability.h"
+#include "absl/functional/overload.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -32,7 +33,6 @@
 #include "base/value_factory.h"
 #include "base/values/struct_value_builder.h"
 #include "common/native_type.h"
-#include "internal/overloaded.h"
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -41,37 +41,35 @@ CEL_INTERNAL_TYPE_IMPL(StructType);
 
 bool operator<(const StructType::FieldId& lhs, const StructType::FieldId& rhs) {
   return absl::visit(
-      internal::Overloaded{
+      absl::Overload(
           [&rhs](absl::string_view lhs_name) {
             return absl::visit(
-                internal::Overloaded{// (absl::string_view, absl::string_view)
-                                     [lhs_name](absl::string_view rhs_name) {
-                                       return lhs_name < rhs_name;
-                                     },
-                                     // (absl::string_view, int64_t)
-                                     [](int64_t rhs_number) { return false; }},
+                absl::Overload(  // (absl::string_view, absl::string_view)
+                    [lhs_name](absl::string_view rhs_name) {
+                      return lhs_name < rhs_name;
+                    },
+                    // (absl::string_view, int64_t)
+                    [](int64_t rhs_number) { return false; }),
                 rhs.data_);
           },
           [&rhs](int64_t lhs_number) {
             return absl::visit(
-                internal::Overloaded{
+                absl::Overload(
                     // (int64_t, absl::string_view)
                     [](absl::string_view rhs_name) { return true; },
                     // (int64_t, int64_t)
                     [lhs_number](int64_t rhs_number) {
                       return lhs_number < rhs_number;
-                    },
-                },
+                    }),
                 rhs.data_);
-          }},
+          }),
       lhs.data_);
 }
 
 std::string StructType::FieldId::DebugString() const {
   return absl::visit(
-      internal::Overloaded{
-          [](absl::string_view name) { return std::string(name); },
-          [](int64_t number) { return absl::StrCat(number); }},
+      absl::Overload([](absl::string_view name) { return std::string(name); },
+                     [](int64_t number) { return absl::StrCat(number); }),
       data_);
 }
 

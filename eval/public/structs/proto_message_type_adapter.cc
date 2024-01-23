@@ -23,6 +23,7 @@
 #include "google/protobuf/util/message_differencer.h"
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
+#include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -49,7 +50,6 @@
 #include "extensions/protobuf/internal/map_reflection.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/casts.h"
-#include "internal/overloaded.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/errors.h"
 #include "runtime/runtime_options.h"
@@ -62,7 +62,6 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::extensions::ProtoMemoryManagerArena;
-using ::cel::internal::Overloaded;
 using ::cel::runtime_internal::CreateInvalidMapKeyTypeError;
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;
 using ::cel::runtime_internal::CreateNoSuchKeyError;
@@ -330,7 +329,7 @@ class QualifyState {
 
                                     google::protobuf::Arena* arena) {
     return absl::visit(
-        Overloaded{
+        absl::Overload(
             [&](const cel::AttributeQualifier& qualifier) -> absl::Status {
               if (repeated_field_desc_ == nullptr) {
                 return absl::UnimplementedError(
@@ -344,7 +343,7 @@ class QualifyState {
                     "strong field access on container not supported");
               }
               return ApplyFieldSpecifier(field_specifier, arena);
-            }},
+            }),
         qualifier);
   }
 
@@ -353,51 +352,53 @@ class QualifyState {
     const cel::FieldSpecifier* specifier =
         absl::get_if<cel::FieldSpecifier>(&qualifier);
     return absl::visit(
-        Overloaded{[&](const cel::AttributeQualifier& qualifier)
-                       -> absl::StatusOr<CelValue> {
-                     if (qualifier.kind() != cel::Kind::kString ||
-                         repeated_field_desc_ == nullptr ||
-                         !repeated_field_desc_->is_map()) {
-                       return CreateErrorValue(
-                           arena, CreateNoMatchingOverloadError("has"));
-                     }
-                     return MapHas(qualifier, arena);
-                   },
-                   [&](const cel::FieldSpecifier& field_specifier)
-                       -> absl::StatusOr<CelValue> {
-                     const auto* field_desc = GetNormalizedFieldByNumber(
-                         descriptor_, reflection_, specifier->number);
-                     if (field_desc == nullptr) {
-                       return CreateNoSuchFieldError(arena, specifier->name);
-                     }
-                     return CelValue::CreateBool(
-                         CelFieldIsPresent(message_, field_desc, reflection_));
-                   }},
+        absl::Overload(
+            [&](const cel::AttributeQualifier& qualifier)
+                -> absl::StatusOr<CelValue> {
+              if (qualifier.kind() != cel::Kind::kString ||
+                  repeated_field_desc_ == nullptr ||
+                  !repeated_field_desc_->is_map()) {
+                return CreateErrorValue(arena,
+                                        CreateNoMatchingOverloadError("has"));
+              }
+              return MapHas(qualifier, arena);
+            },
+            [&](const cel::FieldSpecifier& field_specifier)
+                -> absl::StatusOr<CelValue> {
+              const auto* field_desc = GetNormalizedFieldByNumber(
+                  descriptor_, reflection_, specifier->number);
+              if (field_desc == nullptr) {
+                return CreateNoSuchFieldError(arena, specifier->name);
+              }
+              return CelValue::CreateBool(
+                  CelFieldIsPresent(message_, field_desc, reflection_));
+            }),
         qualifier);
   }
 
   absl::StatusOr<CelValue> ApplyLastQualifierGet(
       const cel::SelectQualifier& qualifier, google::protobuf::Arena* arena) const {
     return absl::visit(
-        Overloaded{[&](const cel::AttributeQualifier& attr_qualifier)
-                       -> absl::StatusOr<CelValue> {
-                     if (repeated_field_desc_ == nullptr) {
-                       return absl::UnimplementedError(
-                           "dynamic field access on message not supported");
-                     }
-                     if (repeated_field_desc_->is_map()) {
-                       return ApplyLastQualifierGetMap(attr_qualifier, arena);
-                     }
-                     return ApplyLastQualifierGetList(attr_qualifier, arena);
-                   },
-                   [&](const cel::FieldSpecifier& specifier)
-                       -> absl::StatusOr<CelValue> {
-                     if (repeated_field_desc_ != nullptr) {
-                       return absl::UnimplementedError(
-                           "strong field access on container not supported");
-                     }
-                     return ApplyLastQualifierMessageGet(specifier, arena);
-                   }},
+        absl::Overload(
+            [&](const cel::AttributeQualifier& attr_qualifier)
+                -> absl::StatusOr<CelValue> {
+              if (repeated_field_desc_ == nullptr) {
+                return absl::UnimplementedError(
+                    "dynamic field access on message not supported");
+              }
+              if (repeated_field_desc_->is_map()) {
+                return ApplyLastQualifierGetMap(attr_qualifier, arena);
+              }
+              return ApplyLastQualifierGetList(attr_qualifier, arena);
+            },
+            [&](const cel::FieldSpecifier& specifier)
+                -> absl::StatusOr<CelValue> {
+              if (repeated_field_desc_ != nullptr) {
+                return absl::UnimplementedError(
+                    "strong field access on container not supported");
+              }
+              return ApplyLastQualifierMessageGet(specifier, arena);
+            }),
         qualifier);
   }
 

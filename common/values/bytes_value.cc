@@ -16,6 +16,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/functional/overload.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -24,7 +25,6 @@
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/value.h"
-#include "internal/overloaded.h"
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
 #include "internal/strings.h"
@@ -35,7 +35,7 @@ namespace {
 
 template <typename Bytes>
 std::string BytesDebugString(const Bytes& value) {
-  return value.NativeValue(internal::Overloaded{
+  return value.NativeValue(absl::Overload(
       [](absl::string_view string) -> std::string {
         return internal::FormatBytesLiteral(string);
       },
@@ -44,7 +44,7 @@ std::string BytesDebugString(const Bytes& value) {
           return internal::FormatBytesLiteral(*flat);
         }
         return internal::FormatBytesLiteral(static_cast<std::string>(cord));
-      }});
+      }));
 }
 
 }  // namespace

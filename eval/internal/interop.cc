@@ -23,6 +23,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
+#include "absl/functional/overload.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -59,7 +60,6 @@
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/unknown_set.h"
 #include "extensions/protobuf/memory_manager.h"
-#include "internal/overloaded.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
@@ -345,13 +345,13 @@ absl::StatusOr<QualifyResult> LegacyStructQualifyImpl(
   google::protobuf::Arena* arena = extensions::ProtoMemoryManagerArena(memory_manager);
   if (access_api == nullptr) {
     absl::string_view field_name = absl::visit(
-        cel::internal::Overloaded{
+        absl::Overload(
             [](const cel::FieldSpecifier& field) -> absl::string_view {
               return field.name;
             },
             [](const cel::AttributeQualifier& field) -> absl::string_view {
               return field.GetStringKey().value_or("<invalid field>");
-            }},
+            }),
         path.front());
     return QualifyResult{
         interop_internal::CreateErrorValueFromView(

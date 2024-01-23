@@ -8,6 +8,7 @@
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/overload.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -41,7 +42,6 @@
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/overflow.h"
-#include "internal/overloaded.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
@@ -891,13 +891,13 @@ absl::Status CreateStructStepForStruct::SetField(
     StructValueBuilderInterface& builder, const StructFieldId& id,
     Handle<Value> value) {
   return absl::visit(
-      cel::internal::Overloaded{
+      absl::Overload(
           [&builder, &value](absl::string_view name) mutable -> absl::Status {
             return builder.SetFieldByName(name, std::move(value));
           },
           [&builder, &value](int64_t number) mutable -> absl::Status {
             return builder.SetFieldByNumber(number, std::move(value));
-          }},
+          }),
       id);
 }
 

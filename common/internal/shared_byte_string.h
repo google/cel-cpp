@@ -22,11 +22,11 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/casts.h"
+#include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/internal/reference_count.h"
-#include "internal/overloaded.h"
 
 namespace cel::common_internal {
 
@@ -177,7 +177,7 @@ class SharedByteString final {
   // of `scratch`.
   absl::string_view ToString(std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND)
       const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return Visit(internal::Overloaded{
+    return Visit(absl::Overload(
         [](absl::string_view string) -> absl::string_view { return string; },
         [&scratch](const absl::Cord& cord) -> absl::string_view {
           if (auto flat = cord.TryFlat(); flat.has_value()) {
@@ -185,21 +185,21 @@ class SharedByteString final {
           }
           scratch = static_cast<std::string>(cord);
           return absl::string_view(scratch);
-        }});
+        }));
   }
 
   std::string ToString() const {
-    return Visit(
-        internal::Overloaded{[](absl::string_view string) -> std::string {
-                               return std::string(string);
-                             },
-                             [](const absl::Cord& cord) -> std::string {
-                               return static_cast<std::string>(cord);
-                             }});
+    return Visit(absl::Overload(
+        [](absl::string_view string) -> std::string {
+          return std::string(string);
+        },
+        [](const absl::Cord& cord) -> std::string {
+          return static_cast<std::string>(cord);
+        }));
   }
 
   absl::Cord ToCord() const {
-    return Visit(internal::Overloaded{
+    return Visit(absl::Overload(
         [this](absl::string_view string) -> absl::Cord {
           const auto* refcount = content_.string.refcount;
           if (refcount != nullptr) {
@@ -209,7 +209,7 @@ class SharedByteString final {
           }
           return absl::Cord(string);
         },
-        [](const absl::Cord& cord) -> absl::Cord { return cord; }});
+        [](const absl::Cord& cord) -> absl::Cord { return cord; }));
   }
 
   template <typename H>
@@ -367,7 +367,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedByteStringView final {
   // of `scratch`.
   absl::string_view ToString(std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND)
       const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return Visit(internal::Overloaded{
+    return Visit(absl::Overload(
         [](absl::string_view string) -> absl::string_view { return string; },
         [&scratch](const absl::Cord& cord) -> absl::string_view {
           if (auto flat = cord.TryFlat(); flat.has_value()) {
@@ -375,21 +375,21 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedByteStringView final {
           }
           scratch = static_cast<std::string>(cord);
           return absl::string_view(scratch);
-        }});
+        }));
   }
 
   std::string ToString() const {
-    return Visit(
-        internal::Overloaded{[](absl::string_view string) -> std::string {
-                               return std::string(string);
-                             },
-                             [](const absl::Cord& cord) -> std::string {
-                               return static_cast<std::string>(cord);
-                             }});
+    return Visit(absl::Overload(
+        [](absl::string_view string) -> std::string {
+          return std::string(string);
+        },
+        [](const absl::Cord& cord) -> std::string {
+          return static_cast<std::string>(cord);
+        }));
   }
 
   absl::Cord ToCord() const {
-    return Visit(internal::Overloaded{
+    return Visit(absl::Overload(
         [this](absl::string_view string) -> absl::Cord {
           const auto* refcount = content_.string.refcount;
           if (refcount != nullptr) {
@@ -399,7 +399,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedByteStringView final {
           }
           return absl::Cord(string);
         },
-        [](const absl::Cord& cord) -> absl::Cord { return cord; }});
+        [](const absl::Cord& cord) -> absl::Cord { return cord; }));
   }
 
   template <typename H>

@@ -18,6 +18,7 @@
 #include <cstdint>
 
 #include "absl/base/casts.h"
+#include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
@@ -25,7 +26,6 @@
 #include "absl/time/time.h"
 #include "absl/types/variant.h"
 #include "common/json.h"
-#include "internal/overloaded.h"
 #include "internal/proto_wire.h"
 #include "internal/status_macros.h"
 
@@ -136,7 +136,7 @@ size_t SerializedDoubleValueSize(double value) {
 
 size_t SerializedValueSize(const Json& value) {
   return absl::visit(
-      internal::Overloaded{
+      absl::Overload(
           [](JsonNull) -> size_t {
             return VarintSize(MakeProtoWireTag(1, ProtoWireType::kVarint)) +
                    VarintSize(0);
@@ -164,7 +164,7 @@ size_t SerializedValueSize(const Json& value) {
             return VarintSize(
                        MakeProtoWireTag(5, ProtoWireType::kLengthDelimited)) +
                    VarintSize(value_size) + value_size;
-          }},
+          }),
       value);
 }
 

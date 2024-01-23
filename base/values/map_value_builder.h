@@ -23,6 +23,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/overload.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/variant.h"
@@ -30,7 +31,6 @@
 #include "base/value_factory.h"
 #include "base/values/list_value_builder.h"
 #include "base/values/map_value.h"
-#include "internal/overloaded.h"
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -159,13 +159,13 @@ struct MapKeyHasher<UintValue> {
 template <>
 struct MapKeyHasher<StringValue> {
   inline size_t operator()(const StringValue& key) const {
-    return key.Visit(cel::internal::Overloaded{
+    return key.Visit(absl::Overload(
         [](absl::string_view string_key) -> size_t {
           return MapKeyHasher<absl::string_view>{}(string_key);
         },
         [](const absl::Cord& string_key) -> size_t {
           return MapKeyHasher<absl::Cord>{}(string_key);
-        }});
+        }));
   }
 };
 
@@ -583,7 +583,7 @@ template <typename K, typename V>
 absl::StatusOr<Handle<MapType>> ComposeMapType(
     ValueFactory& value_factory, ComposableMapType<K, V>&& composable) {
   return absl::visit(
-      internal::Overloaded{
+      absl::Overload(
           [&value_factory](std::pair<Handle<K>, Handle<V>>&& key_value)
               -> absl::StatusOr<Handle<MapType>> {
             return value_factory.type_factory().CreateMapType(
@@ -591,34 +591,29 @@ absl::StatusOr<Handle<MapType>> ComposeMapType(
           },
           [](Handle<MapType>&& map) -> absl::StatusOr<Handle<MapType>> {
             return std::move(map);
-          },
-      },
+          }),
       std::move(composable));
 }
 
 template <typename K, typename V>
 const Type& ComposableMapTypeKey(const ComposableMapType<K, V>& composable) {
   return absl::visit(
-      internal::Overloaded{
-          [](const std::pair<Handle<K>, Handle<V>>& key_value) -> const Type& {
-            return *key_value.first;
-          },
-          [](const Handle<MapType>& map) -> const Type& { return *map->key(); },
-      },
+      absl::Overload([](const std::pair<Handle<K>, Handle<V>>& key_value)
+                         -> const Type& { return *key_value.first; },
+                     [](const Handle<MapType>& map) -> const Type& {
+                       return *map->key();
+                     }),
       composable);
 }
 
 template <typename K, typename V>
 const Type& ComposableMapTypeValue(const ComposableMapType<K, V>& composable) {
   return absl::visit(
-      internal::Overloaded{
-          [](const std::pair<Handle<K>, Handle<V>>& key_value) -> const Type& {
-            return *key_value.second;
-          },
-          [](const Handle<MapType>& map) -> const Type& {
-            return *map->value();
-          },
-      },
+      absl::Overload([](const std::pair<Handle<K>, Handle<V>>& key_value)
+                         -> const Type& { return *key_value.second; },
+                     [](const Handle<MapType>& map) -> const Type& {
+                       return *map->value();
+                     }),
       composable);
 }
 

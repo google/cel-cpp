@@ -54,11 +54,11 @@ cc_library(
     srcs = ["serialize.cc"],
     hdrs = ["serialize.h"],
     deps = [
-        ":overloaded",
         ":proto_wire",
         ":status_macros",
         "//common:json",
         "@com_google_absl//absl/base",
+        "@com_google_absl//absl/functional:overload",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings:cord",
@@ -148,11 +148,6 @@ cc_library(
     name = "exceptions",
     hdrs = ["exceptions.h"],
     deps = ["@com_google_absl//absl/base:config"],
-)
-
-cc_library(
-    name = "overloaded",
-    hdrs = ["overloaded.h"],
 )
 
 cc_library(

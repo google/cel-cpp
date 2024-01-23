@@ -16,21 +16,21 @@
 
 #include <utility>
 
+#include "absl/functional/overload.h"
 #include "absl/types/variant.h"
-#include "internal/overloaded.h"
 
 namespace cel {
 
 absl::Status StructValueBuilderInterface::SetField(StructValue::FieldId id,
                                                    Handle<Value> value) {
-  return absl::visit(
-      internal::Overloaded{[this, &value](absl::string_view name) {
-                             return SetFieldByName(name, std::move(value));
-                           },
-                           [this, &value](int64_t number) {
-                             return SetFieldByNumber(number, std::move(value));
-                           }},
-      id.data_);
+  return absl::visit(absl::Overload(
+                         [this, &value](absl::string_view name) {
+                           return SetFieldByName(name, std::move(value));
+                         },
+                         [this, &value](int64_t number) {
+                           return SetFieldByNumber(number, std::move(value));
+                         }),
+                     id.data_);
 }
 
 }  // namespace cel

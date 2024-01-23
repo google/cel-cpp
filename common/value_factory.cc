@@ -24,6 +24,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
+#include "absl/functional/overload.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -39,7 +40,6 @@
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "common/values/value_cache.h"
-#include "internal/overloaded.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
 #include "internal/utf8.h"
@@ -53,7 +53,7 @@ using common_internal::ProcessLocalValueCache;
 ValueView JsonToValue(const Json& json, ValueFactory& value_factory,
                       Value& scratch) {
   return absl::visit(
-      internal::Overloaded{
+      absl::Overload(
           [](JsonNull) -> ValueView { return NullValueView(); },
           [](JsonBool value) -> ValueView { return BoolValueView(value); },
           [](JsonNumber value) -> ValueView { return DoubleValueView(value); },
@@ -67,8 +67,7 @@ ValueView JsonToValue(const Json& json, ValueFactory& value_factory,
           [&value_factory, &scratch](const JsonObject& value) -> ValueView {
             scratch = value_factory.CreateMapValueFromJsonObject(value);
             return scratch;
-          },
-      },
+          }),
       json);
 }
 
@@ -116,7 +115,7 @@ void JsonObjectDebugString(const JsonObject& json, std::string& out) {
 }
 
 void JsonDebugString(const Json& json, std::string& out) {
-  absl::visit(internal::Overloaded{
+  absl::visit(absl::Overload(
                   [&out](JsonNull) -> void {
                     out.append(NullValueView().DebugString());
                   },
@@ -134,8 +133,7 @@ void JsonDebugString(const Json& json, std::string& out) {
                   },
                   [&out](const JsonObject& value) -> void {
                     JsonObjectDebugString(value, out);
-                  },
-              },
+                  }),
               json);
 }
 
@@ -242,7 +240,7 @@ class JsonMapValue final : public ParsedMapValueInterface {
   absl::StatusOr<absl::optional<ValueView>> FindImpl(
       ValueManager& value_manager, ValueView key,
       Value& scratch) const override {
-    return Cast<StringValueView>(key).NativeValue(internal::Overloaded{
+    return Cast<StringValueView>(key).NativeValue(absl::Overload(
         [this, &value_manager,
          &scratch](absl::string_view value) -> absl::optional<ValueView> {
           if (auto entry = object_.find(value); entry != object_.end()) {
@@ -256,20 +254,18 @@ class JsonMapValue final : public ParsedMapValueInterface {
             return JsonToValue(entry->second, value_manager, scratch);
           }
           return absl::nullopt;
-        },
-    });
+        }));
   }
 
   // Called by `Has` after performing various argument checks.
   absl::StatusOr<bool> HasImpl(ValueManager&, ValueView key) const override {
-    return Cast<StringValueView>(key).NativeValue(internal::Overloaded{
+    return Cast<StringValueView>(key).NativeValue(absl::Overload(
         [this](absl::string_view value) -> bool {
           return object_.contains(value);
         },
         [this](const absl::Cord& value) -> bool {
           return object_.contains(value);
-        },
-    });
+        }));
   }
 
   Type GetTypeImpl(TypeManager& type_manager) const override {
@@ -287,7 +283,7 @@ class JsonMapValue final : public ParsedMapValueInterface {
 
 Value ValueFactory::CreateValueFromJson(Json json) {
   return absl::visit(
-      internal::Overloaded{
+      absl::Overload(
           [](JsonNull) -> Value { return NullValue(); },
           [](JsonBool value) -> Value { return BoolValue(value); },
           [](JsonNumber value) -> Value { return DoubleValue(value); },
@@ -297,8 +293,7 @@ Value ValueFactory::CreateValueFromJson(Json json) {
           },
           [this](JsonObject value) -> Value {
             return CreateMapValueFromJsonObject(std::move(value));
-          },
-      },
+          }),
       std::move(json));
 }
 

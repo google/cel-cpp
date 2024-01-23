@@ -19,6 +19,7 @@
 #include <utility>
 
 #include "absl/base/optimization.h"
+#include "absl/functional/overload.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -28,7 +29,6 @@
 #include "base/values/list_value.h"
 #include "base/values/string_value.h"
 #include "common/json.h"
-#include "internal/overloaded.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
 #include "internal/utf8.h"
@@ -220,7 +220,7 @@ absl::StatusOr<Handle<StringValue>> ValueFactory::CreateStringValueFromView(
 
 Handle<Value> ValueFactory::CreateValueFromJson(Json json) {
   return absl::visit(
-      internal::Overloaded{
+      absl::Overload(
           [this](JsonNull) -> Handle<Value> { return GetNullValue(); },
           [this](JsonBool value) -> Handle<Value> {
             return CreateBoolValue(value);
@@ -236,7 +236,7 @@ Handle<Value> ValueFactory::CreateValueFromJson(Json json) {
           },
           [this](JsonObject value) -> Handle<Value> {
             return CreateMapValueFromJson(std::move(value));
-          }},
+          }),
       std::move(json));
 }
 
@@ -278,23 +278,23 @@ void JsonObjectAppendDebugString(const JsonObject& object, std::string& out) {
 }
 
 void JsonAppendDebugString(const Json& json, std::string& out) {
-  absl::visit(
-      internal::Overloaded{
-          [&out](JsonNull) { out.append("null"); },
-          [&out](JsonBool value) { out.append(value ? "true" : "false"); },
-          [&out](JsonNumber value) {
-            out.append(DoubleValue::DebugString(value));
-          },
-          [&out](const JsonString& value) {
-            out.append(StringValue::DebugString(value));
-          },
-          [&out](const JsonArray& value) {
-            JsonArrayAppendDebugString(value, out);
-          },
-          [&out](const JsonObject& value) {
-            JsonObjectAppendDebugString(value, out);
-          }},
-      json);
+  absl::visit(absl::Overload([&out](JsonNull) { out.append("null"); },
+                             [&out](JsonBool value) {
+                               out.append(value ? "true" : "false");
+                             },
+                             [&out](JsonNumber value) {
+                               out.append(DoubleValue::DebugString(value));
+                             },
+                             [&out](const JsonString& value) {
+                               out.append(StringValue::DebugString(value));
+                             },
+                             [&out](const JsonArray& value) {
+                               JsonArrayAppendDebugString(value, out);
+                             },
+                             [&out](const JsonObject& value) {
+                               JsonObjectAppendDebugString(value, out);
+                             }),
+              json);
 }
 
 std::string JsonArrayDebugString(const JsonArray& array) {

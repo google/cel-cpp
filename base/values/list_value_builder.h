@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "absl/base/attributes.h"
+#include "absl/functional/overload.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/variant.h"
@@ -32,7 +33,6 @@
 #include "base/value.h"
 #include "base/value_factory.h"
 #include "base/values/list_value.h"
-#include "internal/overloaded.h"
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -111,7 +111,7 @@ template <typename T>
 absl::StatusOr<Handle<ListType>> ComposeListType(
     ValueFactory& value_factory, ComposableListType<T>&& composable) {
   return absl::visit(
-      internal::Overloaded{
+      absl::Overload(
           [&value_factory](
               Handle<T>&& element) -> absl::StatusOr<Handle<ListType>> {
             return value_factory.type_factory().CreateListType(
@@ -119,20 +119,18 @@ absl::StatusOr<Handle<ListType>> ComposeListType(
           },
           [](Handle<ListType>&& list) -> absl::StatusOr<Handle<ListType>> {
             return std::move(list);
-          },
-      },
+          }),
       std::move(composable));
 }
 
 template <typename T>
 const Type& ComposableListTypeElement(const ComposableListType<T>& composable) {
   return absl::visit(
-      internal::Overloaded{
+      absl::Overload(
           [](const Handle<T>& element) -> const Type& { return *element; },
           [](const Handle<ListType>& list) -> const Type& {
             return *list->element();
-          },
-      },
+          }),
       composable);
 }
 

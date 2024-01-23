@@ -72,9 +72,9 @@ cc_library(
     hdrs = ["shared_byte_string.h"],
     deps = [
         ":reference_count",
-        "//internal:overloaded",
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/functional:overload",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/strings:string_view",

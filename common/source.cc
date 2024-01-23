@@ -25,13 +25,13 @@
 #include "absl/base/casts.h"
 #include "absl/base/optimization.h"
 #include "absl/container/inlined_vector.h"
+#include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
-#include "internal/overloaded.h"
 #include "internal/unicode.h"
 #include "internal/utf8.h"
 
@@ -39,23 +39,21 @@ namespace cel {
 
 SourcePosition SourceContentView::size() const {
   return static_cast<SourcePosition>(absl::visit(
-      internal::Overloaded{
+      absl::Overload(
           [](absl::Span<const char> view) { return view.size(); },
           [](absl::Span<const uint8_t> view) { return view.size(); },
           [](absl::Span<const char16_t> view) { return view.size(); },
-          [](absl::Span<const char32_t> view) { return view.size(); },
-      },
+          [](absl::Span<const char32_t> view) { return view.size(); }),
       view_));
 }
 
 bool SourceContentView::empty() const {
   return absl::visit(
-      internal::Overloaded{
+      absl::Overload(
           [](absl::Span<const char> view) { return view.empty(); },
           [](absl::Span<const uint8_t> view) { return view.empty(); },
           [](absl::Span<const char16_t> view) { return view.empty(); },
-          [](absl::Span<const char32_t> view) { return view.empty(); },
-      },
+          [](absl::Span<const char32_t> view) { return view.empty(); }),
       view_);
 }
 
@@ -63,7 +61,7 @@ char32_t SourceContentView::at(SourcePosition position) const {
   ABSL_DCHECK_GE(position, 0);
   ABSL_DCHECK_LT(position, size());
   return absl::visit(
-      internal::Overloaded{
+      absl::Overload(
           [position =
                static_cast<size_t>(position)](absl::Span<const char> view) {
             return static_cast<char32_t>(static_cast<uint8_t>(view[position]));
@@ -79,8 +77,7 @@ char32_t SourceContentView::at(SourcePosition position) const {
           [position =
                static_cast<size_t>(position)](absl::Span<const char32_t> view) {
             return static_cast<char32_t>(view[position]);
-          },
-      },
+          }),
       view_);
 }
 
@@ -90,7 +87,7 @@ std::string SourceContentView::ToString(SourcePosition begin,
   ABSL_DCHECK_LE(end, size());
   ABSL_DCHECK_LE(begin, end);
   return absl::visit(
-      internal::Overloaded{
+      absl::Overload(
           [begin = static_cast<size_t>(begin),
            end = static_cast<size_t>(end)](absl::Span<const char> view) {
             view = view.subspan(begin, end - begin);
@@ -128,13 +125,12 @@ std::string SourceContentView::ToString(SourcePosition begin,
             }
             result.shrink_to_fit();
             return result;
-          },
-      },
+          }),
       view_);
 }
 
 void SourceContentView::AppendToString(std::string& dest) const {
-  absl::visit(internal::Overloaded{
+  absl::visit(absl::Overload(
                   [&dest](absl::Span<const char> view) {
                     dest.append(view.data(), view.size());
                   },
@@ -152,8 +148,7 @@ void SourceContentView::AppendToString(std::string& dest) const {
                     for (const auto& code_point : view) {
                       internal::Utf8Encode(dest, code_point);
                     }
-                  },
-              },
+                  }),
               view_);
 }
 

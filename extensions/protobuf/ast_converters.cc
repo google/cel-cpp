@@ -28,6 +28,7 @@
 #include "google/protobuf/timestamp.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/overload.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
@@ -35,7 +36,6 @@
 #include "base/ast.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
-#include "internal/overloaded.h"
 #include "internal/proto_time_encoding.h"
 #include "internal/status_macros.h"
 
@@ -621,7 +621,7 @@ struct ToProtoStackEntry {
 
 absl::Status ConstantToProto(const ast_internal::Constant& source,
                              google::api::expr::v1alpha1::Constant& dest) {
-  return absl::visit(cel::internal::Overloaded{
+  return absl::visit(absl::Overload(
                          [&](NullValue) -> absl::Status {
                            dest.set_null_value(google::protobuf::NULL_VALUE);
                            return absl::OkStatus();
@@ -657,7 +657,7 @@ absl::Status ConstantToProto(const ast_internal::Constant& source,
                          [&](absl::Duration duration) {
                            return cel::internal::EncodeDuration(
                                duration, dest.mutable_duration_value());
-                         }},
+                         }),
                      source.constant_kind());
 }
 

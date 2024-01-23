@@ -24,6 +24,7 @@
 
 #include "absl/algorithm/container.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -53,7 +54,6 @@
 #include "eval/eval/expression_step_base.h"
 #include "eval/public/ast_rewrite_native.h"
 #include "eval/public/source_position_native.h"
-#include "internal/overloaded.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/errors.h"
 #include "runtime/runtime_options.h"
@@ -104,7 +104,7 @@ Expr MakeSelectPathExpr(
   Expr result;
   auto& ast_list = result.mutable_list_expr().mutable_elements();
   ast_list.reserve(select_instructions.size());
-  cel::internal::Overloaded visitor{
+  auto visitor = absl::Overload(
       [&](const SelectInstruction& instruction) {
         Expr ast_instruction;
         Expr field_number;
@@ -139,7 +139,7 @@ Expr MakeSelectPathExpr(
         Expr const_expr;
         const_expr.mutable_const_expr().set_bool_value(instruction);
         ast_list.push_back(std::move(const_expr));
-      }};
+      });
 
   for (const auto& instruction : select_instructions) {
     absl::visit(visitor, instruction);
@@ -260,7 +260,7 @@ absl::StatusOr<Handle<Value>> ApplyQualifier(const Value& operand,
                                              const SelectQualifier& qualifier,
                                              ValueManager& value_factory) {
   return absl::visit(
-      cel::internal::Overloaded{
+      absl::Overload(
           [&](const FieldSpecifier& field_specifier)
               -> absl::StatusOr<Handle<Value>> {
             if (!operand.Is<StructValue>()) {
@@ -289,7 +289,7 @@ absl::StatusOr<Handle<Value>> ApplyQualifier(const Value& operand,
             return value_factory.CreateErrorValue(
                 cel::runtime_internal::CreateNoMatchingOverloadError(
                     cel::builtin::kIndex));
-          }},
+          }),
       qualifier);
 }
 
@@ -312,7 +312,7 @@ absl::StatusOr<Handle<Value>> FallbackSelect(
   const auto& last_instruction = select_path.back();
   if (presence_test) {
     return absl::visit(
-        cel::internal::Overloaded{
+        absl::Overload(
             [&](const FieldSpecifier& field_specifier)
                 -> absl::StatusOr<Handle<Value>> {
               if (!elem->Is<StructValue>()) {
@@ -337,7 +337,7 @@ absl::StatusOr<Handle<Value>> FallbackSelect(
               return elem->As<MapValue>().Has(
                   value_factory, value_factory.CreateUncheckedStringValue(
                                      std::string(*qualifier.GetStringKey())));
-            }},
+            }),
         last_instruction);
   }
 
@@ -768,11 +768,11 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
   qualifiers.reserve(instructions.size());
   for (const auto& instruction : instructions) {
     qualifiers.push_back(
-        absl::visit(cel::internal::Overloaded{
+        absl::visit(absl::Overload(
                         [](const FieldSpecifier& field) {
                           return AttributeQualifier::OfString(field.name);
                         },
-                        [](const AttributeQualifier& q) { return q; }},
+                        [](const AttributeQualifier& q) { return q; }),
                     instruction));
   }
 

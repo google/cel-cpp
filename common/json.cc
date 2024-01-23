@@ -18,6 +18,7 @@
 #include <utility>
 
 #include "absl/base/no_destructor.h"
+#include "absl/functional/overload.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -27,7 +28,6 @@
 #include "absl/types/variant.h"
 #include "common/any.h"
 #include "internal/copy_on_write.h"
-#include "internal/overloaded.h"
 #include "internal/proto_wire.h"
 #include "internal/status_macros.h"
 
@@ -123,7 +123,7 @@ inline constexpr ProtoWireTag kStructFieldsFieldTag =
 absl::Status JsonToAnyValue(const Json& json, absl::Cord& data) {
   ProtoWireEncoder encoder(kJsonTypeName, data);
   absl::Status status = absl::visit(
-      internal::Overloaded{
+      absl::Overload(
           [&encoder](JsonNull) -> absl::Status {
             CEL_RETURN_IF_ERROR(encoder.WriteTag(kValueNullValueFieldTag));
             return encoder.WriteVarint(0);
@@ -151,7 +151,7 @@ absl::Status JsonToAnyValue(const Json& json, absl::Cord& data) {
             CEL_RETURN_IF_ERROR(JsonObjectToAnyValue(value, subdata));
             CEL_RETURN_IF_ERROR(encoder.WriteTag(kValueStructValueFieldTag));
             return encoder.WriteLengthDelimited(std::move(subdata));
-          }},
+          }),
       json);
   CEL_RETURN_IF_ERROR(status);
   encoder.EnsureFullyEncoded();

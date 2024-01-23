@@ -18,8 +18,8 @@
 #include <stack>
 #include <vector>
 
+#include "absl/functional/overload.h"
 #include "absl/types/variant.h"
-#include "internal/overloaded.h"
 
 namespace cel::ast_internal {
 
@@ -45,7 +45,7 @@ void CopyNode(const Expr& src, std::stack<CopyRecord>& records, Expr& dest) {
 
   const auto& src_kind = src.expr_kind();
   absl::visit(
-      cel::internal::Overloaded{
+      absl::Overload(
           [&](const Constant& constant) {
             dest.mutable_expr_kind() = constant;
           },
@@ -121,19 +121,19 @@ void CopyNode(const Expr& src, std::stack<CopyRecord>& records, Expr& dest) {
           },
           [&](absl::monostate) {
             // unset expr kind, nothing todo.
-          }},
+          }),
       src_kind);
 }
 
 TypeKind CopyImpl(const TypeKind& other) {
-  return absl::visit(cel::internal::Overloaded{
+  return absl::visit(absl::Overload(
                          [](const std::unique_ptr<Type>& other) -> TypeKind {
                            return std::make_unique<Type>(*other);
                          },
                          [](const auto& other) -> TypeKind {
                            // Other variants define copy ctor.
                            return other;
-                         }},
+                         }),
                      other);
 }
 
