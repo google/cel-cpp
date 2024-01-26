@@ -339,5 +339,86 @@ TEST_F(PlannerContextTest, ReplacePlanFailsOnUnfinishedNode) {
               StatusIs(absl::StatusCode::kInternal));
 }
 
+TEST_F(PlannerContextTest, AddSubplanStep) {
+  Expr a;
+  Expr b;
+  Expr c;
+  PlannerContext::ProgramTree tree;
+
+  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
+                       InitSimpleTree(a, b, c, value_factory_, tree));
+
+  const ExpressionStep* b_step_ptr = path[0].get();
+  const ExpressionStep* c_step_ptr = path[1].get();
+  const ExpressionStep* a_step_ptr = path[2].get();
+
+  ASSERT_OK_AND_ASSIGN(auto b2_step,
+                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
+
+  const ExpressionStep* b2_step_ptr = b2_step.get();
+
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
+                         path, tree);
+
+  EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
+                                                 UniquePtrHolds(c_step_ptr),
+                                                 UniquePtrHolds(a_step_ptr)));
+
+  ASSERT_OK(context.AddSubplanStep(b, std::move(b2_step)));
+
+  EXPECT_THAT(
+      context.GetSubplan(a),
+      ElementsAre(UniquePtrHolds(b_step_ptr), UniquePtrHolds(b2_step_ptr),
+                  UniquePtrHolds(c_step_ptr), UniquePtrHolds(a_step_ptr)));
+  EXPECT_THAT(context.GetSubplan(b), ElementsAre(UniquePtrHolds(b_step_ptr),
+                                                 UniquePtrHolds(b2_step_ptr)));
+  EXPECT_THAT(context.GetSubplan(c), ElementsAre(UniquePtrHolds(c_step_ptr)));
+}
+
+TEST_F(PlannerContextTest, AddSubplanStepFailsOnUnfinishedNode) {
+  Expr a;
+  Expr b;
+  Expr c;
+  PlannerContext::ProgramTree tree;
+
+  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
+                       InitSimpleTree(a, b, c, value_factory_, tree));
+
+  tree[&a].range_len = -1;
+
+  ASSERT_OK_AND_ASSIGN(auto b2_step,
+                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
+
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
+                         path, tree);
+
+  EXPECT_THAT(context.GetSubplan(a), IsEmpty());
+
+  EXPECT_THAT(context.AddSubplanStep(a, std::move(b2_step)),
+              StatusIs(absl::StatusCode::kInternal));
+}
+
+TEST_F(PlannerContextTest, AddSubplanStepFailsOnUnknownNode) {
+  Expr a;
+  Expr b;
+  Expr c;
+  Expr d;
+  PlannerContext::ProgramTree tree;
+
+  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
+                       InitSimpleTree(a, b, c, value_factory_, tree));
+
+  ASSERT_OK_AND_ASSIGN(auto b2_step,
+                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
+
+  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
+                         path, tree);
+
+  EXPECT_THAT(context.GetSubplan(d), IsEmpty());
+
+  EXPECT_THAT(context.AddSubplanStep(d, std::move(b2_step)),
+              StatusIs(absl::StatusCode::kInternal));
+}
+
 }  // namespace
 }  // namespace google::api::expr::runtime

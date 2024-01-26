@@ -491,3 +491,50 @@ cc_library(
         "@com_google_absl//absl/types:variant",
     ],
 )
+
+cc_library(
+    name = "instrumentation",
+    srcs = ["instrumentation.cc"],
+    hdrs = ["instrumentation.h"],
+    deps = [
+        ":flat_expr_builder_extensions",
+        "//base:data",
+        "//base:handle",
+        "//base/ast_internal:ast_impl",
+        "//base/ast_internal:expr",
+        "//eval/eval:evaluator_core",
+        "//eval/eval:expression_step_base",
+        "@com_google_absl//absl/functional:any_invocable",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_test(
+    name = "instrumentation_test",
+    srcs = ["instrumentation_test.cc"],
+    deps = [
+        ":constant_folding",
+        ":flat_expr_builder",
+        ":instrumentation",
+        ":regex_precompilation_optimization",
+        "//base:data",
+        "//base:handle",
+        "//base/ast_internal:ast_impl",
+        "//eval/eval:evaluator_core",
+        "//extensions/protobuf:ast_converters",
+        "//extensions/protobuf:memory_manager",
+        "//internal:testing",
+        "//parser",
+        "//runtime:activation",
+        "//runtime:function_registry",
+        "//runtime:managed_value_factory",
+        "//runtime:runtime_options",
+        "//runtime:standard_functions",
+        "//runtime:type_registry",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)

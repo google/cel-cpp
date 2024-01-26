@@ -64,6 +64,8 @@ class PlannerContext {
         execution_path_(execution_path),
         program_tree_(program_tree) {}
 
+  // Return a view to the current subplan representing node.
+  //
   // Note: this is invalidated after a sibling or parent is updated.
   ExecutionPathView GetSubplan(const cel::ast_internal::Expr& node) const;
 
@@ -73,9 +75,18 @@ class PlannerContext {
   absl::StatusOr<ExecutionPath> ExtractSubplan(
       const cel::ast_internal::Expr& node);
 
+  // Replace the subplan associated with node with new subplan. This resizes
+  // the backing array to accommodate the newly sized subplan.
+  //
   // Note: this can only safely be called on the node being visited.
   absl::Status ReplaceSubplan(const cel::ast_internal::Expr& node,
                               ExecutionPath path);
+
+  // Extend the current subplan with the given expression step.
+  //
+  // Note: this can only safely be called on the node being visited.
+  absl::Status AddSubplanStep(const cel::ast_internal::Expr& node,
+                              std::unique_ptr<ExpressionStep> step);
 
   const Resolver& resolver() const { return resolver_; }
   cel::ValueManager& value_factory() const { return value_factory_; }

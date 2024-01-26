@@ -1342,8 +1342,11 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
 
   std::vector<std::unique_ptr<ProgramOptimizer>> optimizers;
   for (const ProgramOptimizerFactory& optimizer_factory : program_optimizers_) {
-    CEL_ASSIGN_OR_RETURN(optimizers.emplace_back(),
+    CEL_ASSIGN_OR_RETURN(auto optimizer,
                          optimizer_factory(extension_context, ast_impl));
+    if (optimizer != nullptr) {
+      optimizers.push_back(std::move(optimizer));
+    }
   }
 
   FlatExprVisitor visitor(resolver, options_, std::move(optimizers),

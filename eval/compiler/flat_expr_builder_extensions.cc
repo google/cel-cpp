@@ -13,6 +13,8 @@
 // limitations under the License.
 #include "eval/compiler/flat_expr_builder_extensions.h"
 
+#include <iterator>
+#include <memory>
 #include <utility>
 
 #include "absl/algorithm/container.h"
@@ -133,6 +135,56 @@ absl::Status PlannerContext::ReplaceSubplan(const cel::ast_internal::Expr& node,
   // node.
   for (const cel::ast_internal::Expr* e : info.children) {
     program_tree_.erase(e);
+  }
+
+  return absl::OkStatus();
+}
+
+absl::Status PlannerContext::AddSubplanStep(
+    const cel::ast_internal::Expr& node, std::unique_ptr<ExpressionStep> step) {
+  auto iter = program_tree_.find(&node);
+  if (iter == program_tree_.end()) {
+    return absl::InternalError("attempted to update unknown program step");
+  }
+
+  ProgramInfo& info = iter->second;
+
+  if (info.range_len == -1) {
+    // Initial planning for this node hasn't finished.
+    return absl::InternalError(
+        "attempted to modify program step before completion.");
+  }
+
+  // Insert at the end of the program plan for the subprogram.
+  execution_path_.insert(
+      execution_path_.begin() + info.range_start + info.range_len,
+      std::move(step));
+
+  info.range_len++;
+
+  // Adjust program range for parent and sibling expr nodes if we needed to
+  // realign them for the replacement. Note: the program structure is only
+  // maintained for the immediate neighborhood of node being processed by the
+  // planner, so descendants are not recursively updated.
+  auto parent_iter = program_tree_.find(info.parent);
+  if (parent_iter != program_tree_.end()) {
+    ProgramInfo& parent_info = parent_iter->second;
+    if (parent_info.range_len != -1) {
+      parent_info.range_len += 1;
+    }
+
+    int idx = -1;
+    for (int i = 0; i < parent_info.children.size(); ++i) {
+      if (parent_info.children[i] == &node) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx > -1) {
+      for (int j = idx + 1; j < parent_info.children.size(); ++j) {
+        program_tree_[parent_info.children[j]].range_start += 1;
+      }
+    }
   }
 
   return absl::OkStatus();
