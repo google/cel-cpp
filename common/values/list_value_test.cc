@@ -132,6 +132,19 @@ TEST_P(ListValueTest, ForEach) {
   EXPECT_THAT(elements, ElementsAreArray({0, 1, 2}));
 }
 
+TEST_P(ListValueTest, Contains) {
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
+  ASSERT_OK_AND_ASSIGN(auto contained,
+                       value.Contains(value_manager(), IntValueView(2)));
+  ASSERT_TRUE(InstanceOf<BoolValue>(contained));
+  EXPECT_TRUE(Cast<BoolValue>(contained).NativeValue());
+  ASSERT_OK_AND_ASSIGN(contained,
+                       value.Contains(value_manager(), IntValueView(3)));
+  ASSERT_TRUE(InstanceOf<BoolValue>(contained));
+  EXPECT_FALSE(Cast<BoolValue>(contained).NativeValue());
+}
+
 TEST_P(ListValueTest, NewIterator) {
   Value scratch;
   ASSERT_OK_AND_ASSIGN(auto value,
@@ -270,6 +283,19 @@ TEST_P(ListValueViewTest, ForEach) {
         return true;
       }));
   EXPECT_THAT(elements, ElementsAreArray({0, 1, 2}));
+}
+
+TEST_P(ListValueViewTest, Contains) {
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
+  ASSERT_OK_AND_ASSIGN(auto contained, ListValueView(value).Contains(
+                                           value_manager(), IntValueView(2)));
+  ASSERT_TRUE(InstanceOf<BoolValue>(contained));
+  EXPECT_TRUE(Cast<BoolValue>(contained).NativeValue());
+  ASSERT_OK_AND_ASSIGN(contained, ListValueView(value).Contains(
+                                      value_manager(), IntValueView(3)));
+  ASSERT_TRUE(InstanceOf<BoolValue>(contained));
+  EXPECT_FALSE(Cast<BoolValue>(contained).NativeValue());
 }
 
 TEST_P(ListValueViewTest, NewIterator) {

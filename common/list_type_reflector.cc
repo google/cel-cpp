@@ -63,6 +63,44 @@ class TypedListValue final : public ParsedListValueInterface {
     return std::move(builder).Build();
   }
 
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachCallback callback) const override {
+    for (const auto& element : elements_) {
+      CEL_ASSIGN_OR_RETURN(auto ok, callback(element));
+      if (!ok) {
+        break;
+      }
+    }
+    return absl::OkStatus();
+  }
+
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachWithIndexCallback callback) const override {
+    for (size_t i = 0; i < elements_.size(); ++i) {
+      CEL_ASSIGN_OR_RETURN(auto ok, callback(i, elements_[i]));
+      if (!ok) {
+        break;
+      }
+    }
+    return absl::OkStatus();
+  }
+
+  absl::StatusOr<ValueView> Contains(
+      ValueManager& value_manager, ValueView other,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const override {
+    ValueView outcome = BoolValueView{false};
+    for (size_t i = 0; i < elements_.size(); ++i) {
+      CEL_ASSIGN_OR_RETURN(auto result,
+                           elements_[i].Equal(value_manager, other, scratch));
+      if (auto bool_result = As<BoolValueView>(result);
+          bool_result.has_value() && bool_result->NativeValue()) {
+        outcome = *bool_result;
+        break;
+      }
+    }
+    return outcome;
+  }
+
  protected:
   Type GetTypeImpl(TypeManager&) const override { return type_; }
 

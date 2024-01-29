@@ -387,6 +387,17 @@ class TypedMapValue final : public ParsedMapValueInterface {
     return scratch;
   }
 
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachCallback callback) const override {
+    for (const auto& entry : entries_) {
+      CEL_ASSIGN_OR_RETURN(auto ok, callback(entry.first, entry.second));
+      if (!ok) {
+        break;
+      }
+    }
+    return absl::OkStatus();
+  }
+
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager&) const override {
     return std::make_unique<TypedMapValueKeyIterator<K, V>>(entries_);
