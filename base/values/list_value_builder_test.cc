@@ -323,7 +323,7 @@ TEST(ListValueBuilder, Dynamic) {
   TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-#ifdef ABSL_INTERNAL_HAS_RTTI
+#ifdef ABSL_HAVE_RTTI
   ASSERT_NO_FATAL_FAILURE(
       ((TestListValueBuilderImpl<ListValueBuilder<BoolValue>>(
           value_factory, type_factory.GetBoolType()))));
