@@ -16,21 +16,28 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_INTERNAL_SHARED_BYTE_STRING_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/casts.h"
+#include "absl/base/macros.h"
+#include "absl/base/optimization.h"
 #include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/internal/arena_string.h"
 #include "common/internal/reference_count.h"
 
 namespace cel::common_internal {
 
 constexpr bool IsStringLiteral(absl::string_view string);
+
+inline constexpr uintptr_t kByteStringReferenceCountPooledBit = uintptr_t{1}
+                                                                << 0;
 
 #ifdef _MSC_VER
 #pragma pack(pack, 1)
@@ -80,7 +87,9 @@ class SharedByteString final {
                    absl::string_view string_view) noexcept
       : header_(false, string_view.size()) {
     content_.string.data = string_view.data();
-    content_.string.refcount = refcount;
+    content_.string.refcount = reinterpret_cast<uintptr_t>(refcount);
+    ABSL_ASSERT(
+        (content_.string.refcount & kByteStringReferenceCountPooledBit) == 0);
     (StrongRef)(refcount);
   }
 
@@ -97,7 +106,9 @@ class SharedByteString final {
     } else {
       content_.string.data = other.content_.string.data;
       content_.string.refcount = other.content_.string.refcount;
-      (StrongRef)(content_.string.refcount);
+      if (IsReferenceCountedString()) {
+        (StrongRef)(*GetReferenceCount());
+      }
     }
   }
 
@@ -109,28 +120,41 @@ class SharedByteString final {
       content_.string.data = other.content_.string.data;
       content_.string.refcount = other.content_.string.refcount;
       other.content_.string.data = "";
-      other.content_.string.refcount = nullptr;
+      other.content_.string.refcount = 0;
       other.header_.size = 0;
     }
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  explicit SharedByteString(ArenaString string) noexcept
+      : header_(false, string.size()) {
+    content_.string.data = string.data();
+    content_.string.refcount = kByteStringReferenceCountPooledBit;
   }
 
   ~SharedByteString() noexcept {
     if (header_.is_cord) {
       cord_ptr()->~Cord();
     } else {
-      (StrongUnref)(content_.string.refcount);
+      if (IsReferenceCountedString()) {
+        (StrongUnref)(*GetReferenceCount());
+      }
     }
   }
 
   SharedByteString& operator=(const SharedByteString& other) noexcept {
-    this->~SharedByteString();
-    ::new (static_cast<void*>(this)) SharedByteString(other);
+    if (ABSL_PREDICT_TRUE(this != &other)) {
+      this->~SharedByteString();
+      ::new (static_cast<void*>(this)) SharedByteString(other);
+    }
     return *this;
   }
 
   SharedByteString& operator=(SharedByteString&& other) noexcept {
-    this->~SharedByteString();
-    ::new (static_cast<void*>(this)) SharedByteString(std::move(other));
+    if (ABSL_PREDICT_TRUE(this != &other)) {
+      this->~SharedByteString();
+      ::new (static_cast<void*>(this)) SharedByteString(std::move(other));
+    }
     return *this;
   }
 
@@ -198,11 +222,16 @@ class SharedByteString final {
         }));
   }
 
+  absl::string_view AsStringView() const {
+    ABSL_DCHECK(!header_.is_cord);
+    return absl::string_view(content_.string.data, header_.size);
+  }
+
   absl::Cord ToCord() const {
     return Visit(absl::Overload(
         [this](absl::string_view string) -> absl::Cord {
-          const auto* refcount = content_.string.refcount;
-          if (refcount != nullptr) {
+          if (IsReferenceCountedString()) {
+            const auto* refcount = GetReferenceCount();
             (StrongRef)(*refcount);
             return absl::MakeCordFromExternal(
                 string, [refcount]() { (StrongUnref)(*refcount); });
@@ -263,18 +292,38 @@ class SharedByteString final {
     }
   }
 
+  bool IsPooledString() const {
+    return !header_.is_cord &&
+           (content_.string.refcount & kByteStringReferenceCountPooledBit) != 0;
+  }
+
  private:
   friend class SharedByteStringView;
 
   static void SwapMixed(SharedByteString& cord,
                         SharedByteString& string) noexcept {
     const auto* string_data = string.content_.string.data;
-    const auto* string_refcount = string.content_.string.refcount;
+    const auto string_refcount = string.content_.string.refcount;
     ::new (static_cast<void*>(string.cord_ptr()))
         absl::Cord(std::move(*cord.cord_ptr()));
     cord.cord_ptr()->~Cord();
     cord.content_.string.data = string_data;
     cord.content_.string.refcount = string_refcount;
+  }
+
+  bool IsManagedString() const {
+    ABSL_ASSERT(!header_.is_cord);
+    return content_.string.refcount != 0;
+  }
+
+  bool IsReferenceCountedString() const {
+    return IsManagedString() &&
+           (content_.string.refcount & kByteStringReferenceCountPooledBit) == 0;
+  }
+
+  const ReferenceCount* GetReferenceCount() const {
+    ABSL_ASSERT(IsReferenceCountedString());
+    return reinterpret_cast<const ReferenceCount*>(content_.string.refcount);
   }
 
   absl::Cord* cord_ptr() noexcept {
@@ -289,7 +338,7 @@ class SharedByteString final {
   union {
     struct {
       const char* data;
-      const ReferenceCount* refcount;
+      uintptr_t refcount;
     } string;
     alignas(absl::Cord) char cord[sizeof(absl::Cord)];
   } content_;
@@ -319,7 +368,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedByteStringView final {
                        absl::string_view string) noexcept
       : header_(false, string.size()) {
     content_.string.data = string.data();
-    content_.string.refcount = refcount;
+    content_.string.refcount = reinterpret_cast<uintptr_t>(refcount);
   }
 
   explicit SharedByteStringView(
@@ -338,6 +387,12 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedByteStringView final {
       content_.string.data = other.content_.string.data;
       content_.string.refcount = other.content_.string.refcount;
     }
+  }
+
+  explicit SharedByteStringView(ArenaString string) noexcept
+      : header_(false, string.size()) {
+    content_.string.data = string.data();
+    content_.string.refcount = kByteStringReferenceCountPooledBit;
   }
 
   SharedByteStringView(const SharedByteStringView&) = default;
@@ -388,11 +443,16 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedByteStringView final {
         }));
   }
 
+  absl::string_view AsStringView() const {
+    ABSL_DCHECK(!header_.is_cord);
+    return absl::string_view(content_.string.data, header_.size);
+  }
+
   absl::Cord ToCord() const {
     return Visit(absl::Overload(
         [this](absl::string_view string) -> absl::Cord {
-          const auto* refcount = content_.string.refcount;
-          if (refcount != nullptr) {
+          if (IsReferenceCountedString()) {
+            const auto* refcount = GetReferenceCount();
             (StrongRef)(*refcount);
             return absl::MakeCordFromExternal(
                 string, [refcount]() { (StrongUnref)(*refcount); });
@@ -451,14 +511,34 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedByteStringView final {
     }
   }
 
+  bool IsPooledString() const {
+    return !header_.is_cord &&
+           (content_.string.refcount & kByteStringReferenceCountPooledBit) != 0;
+  }
+
  private:
   friend class SharedByteString;
+
+  bool IsManagedString() const {
+    ABSL_ASSERT(!header_.is_cord);
+    return content_.string.refcount != 0;
+  }
+
+  bool IsReferenceCountedString() const {
+    return IsManagedString() &&
+           (content_.string.refcount & kByteStringReferenceCountPooledBit) == 0;
+  }
+
+  const ReferenceCount* GetReferenceCount() const {
+    ABSL_ASSERT(IsReferenceCountedString());
+    return reinterpret_cast<const ReferenceCount*>(content_.string.refcount);
+  }
 
   SharedByteStringHeader header_;
   union {
     struct {
       const char* data;
-      const ReferenceCount* refcount;
+      uintptr_t refcount;
     } string;
     const absl::Cord* cord;
   } content_;
@@ -473,7 +553,7 @@ inline SharedByteString::SharedByteString(SharedByteStringView other) noexcept
   if (header_.is_cord) {
     ::new (static_cast<void*>(cord_ptr())) absl::Cord(*other.content_.cord);
   } else {
-    if (other.content_.string.refcount == nullptr) {
+    if (other.content_.string.refcount == 0) {
       // Unfortunately since we cannot guarantee lifetimes when using arenas or
       // without a reference count, we are forced to transform this into a cord.
       header_.is_cord = true;
@@ -483,7 +563,9 @@ inline SharedByteString::SharedByteString(SharedByteStringView other) noexcept
     } else {
       content_.string.data = other.content_.string.data;
       content_.string.refcount = other.content_.string.refcount;
-      (StrongRef)(content_.string.refcount);
+      if (IsReferenceCountedString()) {
+        (StrongRef)(*GetReferenceCount());
+      }
     }
   }
 }

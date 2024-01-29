@@ -88,6 +88,9 @@ class OptionalValueView;
 
 namespace common_internal {
 
+class SharedByteString;
+class SharedByteStringView;
+
 class LegacyListValue;
 class LegacyListValueView;
 
@@ -530,6 +533,12 @@ absl::StatusOr<ValueView> StructValueEqual(ValueManager& value_manager,
 absl::StatusOr<ValueView> StructValueEqual(
     ValueManager& value_manager, const ParsedStructValueInterface& lhs,
     StructValueView rhs, Value& scratch);
+
+const SharedByteString& AsSharedByteString(const BytesValue& value);
+SharedByteStringView AsSharedByteStringView(BytesValueView value);
+
+const SharedByteString& AsSharedByteString(const StringValue& value);
+SharedByteStringView AsSharedByteStringView(StringValueView value);
 
 }  // namespace common_internal
 

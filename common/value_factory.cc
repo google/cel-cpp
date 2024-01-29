@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <memory>
+#include <new>
 #include <string>
 #include <utility>
 #include <vector>
@@ -33,6 +34,8 @@
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "common/casting.h"
+#include "common/internal/arena_string.h"
+#include "common/internal/reference_count.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
@@ -354,13 +357,91 @@ OptionalValueView ValueFactory::GetZeroDynOptionalValue() {
   return ProcessLocalValueCache::Get()->GetEmptyDynOptionalValue();
 }
 
+namespace {
+
+class ReferenceCountedString final : public common_internal::ReferenceCount {
+ public:
+  static const ReferenceCountedString* New(std::string&& string) {
+    return new ReferenceCountedString(std::move(string));
+  }
+
+  const char* data() const {
+    return std::launder(reinterpret_cast<const std::string*>(&string_[0]))
+        ->data();
+  }
+
+  size_t size() const {
+    return std::launder(reinterpret_cast<const std::string*>(&string_[0]))
+        ->size();
+  }
+
+ private:
+  explicit ReferenceCountedString(std::string&& robbed) : ReferenceCount() {
+    ::new (static_cast<void*>(&string_[0])) std::string(std::move(robbed));
+  }
+
+  void Finalize() const noexcept override {
+    std::launder(const_cast<std::string*>(
+                     reinterpret_cast<const std::string*>(&string_[0])))
+        ->~basic_string();
+  }
+
+  alignas(std::string) char string_[sizeof(std::string)];
+};
+
+}  // namespace
+
+static void StringDestructor(void* string) {
+  static_cast<std::string*>(string)->~basic_string();
+}
+
+absl::StatusOr<BytesValue> ValueFactory::CreateBytesValue(std::string value) {
+  auto memory_manager = GetMemoryManager();
+  switch (memory_manager.memory_management()) {
+    case MemoryManagement::kPooling: {
+      auto* string = ::new (
+          memory_manager.Allocate(sizeof(std::string), alignof(std::string)))
+          std::string(std::move(value));
+      memory_manager.OwnCustomDestructor(string, &StringDestructor);
+      return BytesValue{common_internal::ArenaString(*string)};
+    }
+    case MemoryManagement::kReferenceCounting: {
+      auto* refcount = ReferenceCountedString::New(std::move(value));
+      auto bytes_value = BytesValue{common_internal::SharedByteString(
+          refcount, absl::string_view(refcount->data(), refcount->size()))};
+      common_internal::StrongUnref(*refcount);
+      return bytes_value;
+    }
+  }
+}
+
+StringValue ValueFactory::CreateUncheckedStringValue(std::string value) {
+  auto memory_manager = GetMemoryManager();
+  switch (memory_manager.memory_management()) {
+    case MemoryManagement::kPooling: {
+      auto* string = ::new (
+          memory_manager.Allocate(sizeof(std::string), alignof(std::string)))
+          std::string(std::move(value));
+      memory_manager.OwnCustomDestructor(string, &StringDestructor);
+      return StringValue{common_internal::ArenaString(*string)};
+    }
+    case MemoryManagement::kReferenceCounting: {
+      auto* refcount = ReferenceCountedString::New(std::move(value));
+      auto string_value = StringValue{common_internal::SharedByteString(
+          refcount, absl::string_view(refcount->data(), refcount->size()))};
+      common_internal::StrongUnref(*refcount);
+      return string_value;
+    }
+  }
+}
+
 absl::StatusOr<StringValue> ValueFactory::CreateStringValue(std::string value) {
   auto [count, ok] = internal::Utf8Validate(value);
   if (ABSL_PREDICT_FALSE(!ok)) {
     return absl::InvalidArgumentError(
         "Illegal byte sequence in UTF-8 encoded string");
   }
-  return StringValue(std::move(value));
+  return CreateUncheckedStringValue(std::move(value));
 }
 
 absl::StatusOr<StringValue> ValueFactory::CreateStringValue(absl::Cord value) {

@@ -15,6 +15,12 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "arena_string",
+    hdrs = ["arena_string.h"],
+    deps = ["@com_google_absl//absl/strings:string_view"],
+)
+
+cc_library(
     name = "casting",
     hdrs = ["casting.h"],
     deps = [
@@ -71,6 +77,7 @@ cc_library(
     name = "shared_byte_string",
     hdrs = ["shared_byte_string.h"],
     deps = [
+        ":arena_string",
         ":reference_count",
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",

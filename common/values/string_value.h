@@ -31,11 +31,13 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "common/internal/arena_string.h"
 #include "common/internal/shared_byte_string.h"
 #include "common/json.h"
 #include "common/type.h"
 #include "common/type_manager.h"
 #include "common/value_kind.h"
+#include "common/values/values.h"
 
 namespace cel {
 
@@ -60,6 +62,12 @@ class StringValue final {
 
   explicit StringValue(absl::string_view value) noexcept
       : value_(absl::Cord(value)) {}
+
+  explicit StringValue(common_internal::ArenaString value) noexcept
+      : value_(value) {}
+
+  explicit StringValue(common_internal::SharedByteString value) noexcept
+      : value_(std::move(value)) {}
 
   template <typename T, typename = std::enable_if_t<std::is_same_v<
                             absl::remove_cvref_t<T>, std::string>>>
@@ -169,6 +177,8 @@ class StringValue final {
 
  private:
   friend class StringValueView;
+  friend const common_internal::SharedByteString&
+  common_internal::AsSharedByteString(const StringValue& value);
 
   common_internal::SharedByteString value_;
 };
@@ -194,6 +204,12 @@ class StringValueView final {
       : value_(value) {}
 
   explicit StringValueView(absl::string_view value) noexcept : value_(value) {}
+
+  explicit StringValueView(common_internal::ArenaString value) noexcept
+      : value_(value) {}
+
+  explicit StringValueView(common_internal::SharedByteStringView value) noexcept
+      : value_(value) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   StringValueView(
@@ -300,6 +316,8 @@ class StringValueView final {
 
  private:
   friend class StringValue;
+  friend common_internal::SharedByteStringView
+  common_internal::AsSharedByteStringView(StringValueView value);
 
   common_internal::SharedByteStringView value_;
 };
@@ -374,6 +392,18 @@ inline StringValue StringValue::Concat(ValueManager&, StringValueView lhs,
   result.Append(rhs.ToCord());
   return StringValue(std::move(result));
 }
+
+namespace common_internal {
+
+inline const SharedByteString& AsSharedByteString(const StringValue& value) {
+  return value.value_;
+}
+
+inline SharedByteStringView AsSharedByteStringView(StringValueView value) {
+  return value.value_;
+}
+
+}  // namespace common_internal
 
 }  // namespace cel
 

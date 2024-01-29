@@ -91,16 +91,14 @@ class ValueFactory : public virtual TypeFactory {
   BytesValue GetBytesValue() { return BytesValue(); }
 
   absl::StatusOr<BytesValue> CreateBytesValue(const char* value) {
-    return BytesValue(value);
+    return CreateBytesValue(absl::string_view(value));
   }
 
   absl::StatusOr<BytesValue> CreateBytesValue(absl::string_view value) {
-    return BytesValue(value);
+    return CreateBytesValue(std::string(value));
   }
 
-  absl::StatusOr<BytesValue> CreateBytesValue(std::string value) {
-    return BytesValue(std::move(value));
-  }
+  absl::StatusOr<BytesValue> CreateBytesValue(std::string value);
 
   absl::StatusOr<BytesValue> CreateBytesValue(absl::Cord value) {
     return BytesValue(std::move(value));
@@ -135,16 +133,14 @@ class ValueFactory : public virtual TypeFactory {
   }
 
   StringValue CreateUncheckedStringValue(const char* value) {
-    return StringValue(value);
+    return CreateUncheckedStringValue(absl::string_view(value));
   }
 
   StringValue CreateUncheckedStringValue(absl::string_view value) {
-    return StringValue(value);
+    return CreateUncheckedStringValue(std::string(value));
   }
 
-  StringValue CreateUncheckedStringValue(std::string value) {
-    return StringValue(std::move(value));
-  }
+  StringValue CreateUncheckedStringValue(std::string value);
 
   StringValue CreateUncheckedStringValue(absl::Cord value) {
     return StringValue(std::move(value));
