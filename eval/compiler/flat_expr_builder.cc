@@ -717,16 +717,33 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     ValidateOrError(comprehension->has_result(),
                     "Invalid comprehension: 'result' must be set");
 
-    size_t iter_slot, accu_slot;
+    size_t iter_slot, accu_slot, slot_count;
     bool is_bind = IsBind(comprehension);
     if (is_bind) {
       accu_slot = iter_slot = index_manager_.ReserveSlots(1);
+      slot_count = 1;
     } else {
       iter_slot = index_manager_.ReserveSlots(2);
       accu_slot = iter_slot + 1;
+      slot_count = 2;
     }
+    // If this is in the scope of an optimized bind accu-init, account the slots
+    // to the outermost bind-init scope.
+    //
+    // The init expression is effectively inlined at the first usage in the
+    // critical path (which is unknown at plan time), so the used slots need to
+    // be dedicated for the entire scope of that bind.
+    for (ComprehensionStackRecord& record : comprehension_stack_) {
+      if (record.in_accu_init && record.should_lazy_eval) {
+        record.slot_count += slot_count;
+        slot_count = 0;
+        break;
+      }
+      // If no bind init subexpression, account normally.
+    }
+
     comprehension_stack_.push_back(
-        {expr, comprehension, iter_slot, accu_slot,
+        {expr, comprehension, iter_slot, accu_slot, slot_count,
          /*subexpression=*/-1,
          IsOptimizableListAppend(comprehension,
                                  options_.enable_comprehension_list_append),
@@ -758,21 +775,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
 
     record.visitor->PostVisit(expr);
 
-    // TODO(uncreated-issue/64): lazy binds complicate slot assignments because we may
-    // require a slot outside of the scope expected from the AST (e.g. both the
-    // initialization and result expressions contain a comprehension).
-    //
-    // We should determine if compacting the slot assignments improves
-    // performance enough to use a better heuristic, but for now use dedicated
-    // slots inside all bind scopes.
-    if (!(options_.enable_lazy_bind_initialization && InBindScope())) {
-      // Otherwise release slots for reuse.
-      //
-      // Note: with binds, the released slot may be different than the
-      // reserved one, but the prior assignment will no longer be in scope or
-      // accessible.
-      index_manager_.ReleaseSlots((record.is_optimizable_bind) ? 1 : 2);
-    }
+    index_manager_.ReleaseSlots(record.slot_count);
     comprehension_stack_.pop_back();
   }
 
@@ -992,6 +995,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     const cel::ast_internal::Comprehension* comprehension;
     size_t iter_slot;
     size_t accu_slot;
+    size_t slot_count;
     // -1 indicates this shouldn't be used.
     int subexpression;
     bool is_optimizable_list_append;
