@@ -29,6 +29,11 @@ flatbuffer_library_public(
     reflection_name = "flatbuffers_reflection",
 )
 
+filegroup(
+    name = "coverage_testdata",
+    srcs = ["coverage_example.textproto"],
+)
+
 cc_library(
     name = "flatbuffers_test_cc",
     srcs = [":flatbuffers_test"],

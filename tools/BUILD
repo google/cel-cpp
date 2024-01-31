@@ -72,3 +72,55 @@ cc_test(
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
+
+cc_library(
+    name = "branch_coverage",
+    srcs = ["branch_coverage.cc"],
+    hdrs = ["branch_coverage.h"],
+    deps = [
+        ":navigable_ast",
+        "//base:data",
+        "//base:handle",
+        "//eval/internal:interop",
+        "//eval/public:cel_value",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/functional:overload",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/types:variant",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "branch_coverage_test",
+    srcs = ["branch_coverage_test.cc"],
+    data = [
+        "//tools/testdata:coverage_testdata",
+    ],
+    deps = [
+        ":branch_coverage",
+        ":navigable_ast",
+        "//base:builtins",
+        "//base:data",
+        "//common:memory",
+        "//eval/public:activation",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_expr_builder_factory",
+        "//eval/public:cel_expression",
+        "//eval/public:cel_value",
+        "//internal:proto_file_util",
+        "//internal:testing",
+        "//runtime:managed_value_factory",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
