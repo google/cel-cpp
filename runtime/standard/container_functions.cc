@@ -22,8 +22,7 @@
 #include "base/handle.h"
 #include "base/value.h"
 #include "base/value_manager.h"
-#include "base/values/list_value.h"
-#include "base/values/map_value.h"
+#include "common/value.h"
 #include "internal/status_macros.h"
 #include "runtime/function_registry.h"
 #include "runtime/internal/mutable_list_impl.h"
@@ -46,30 +45,28 @@ int64_t ListSizeImpl(ValueManager&, const ListValue& value) {
 absl::StatusOr<Handle<ListValue>> ConcatList(ValueManager& factory,
                                              const Handle<ListValue>& value1,
                                              const Handle<ListValue>& value2) {
-  int size1 = value1->Size();
+  int size1 = value1.Size();
   if (size1 == 0) {
     return value2;
   }
-  int size2 = value2->Size();
+  int size2 = value2.Size();
   if (size2 == 0) {
     return value1;
   }
 
   // TODO(uncreated-issue/50): add option for checking lists have homogenous element
   // types and use a more specialized list type when possible.
-  CEL_ASSIGN_OR_RETURN(Handle<ListType> list_type,
-                       factory.type_factory().CreateListType(
-                           factory.type_factory().GetDynType()));
-  CEL_ASSIGN_OR_RETURN(auto list_builder, list_type->NewValueBuilder(factory));
+  CEL_ASSIGN_OR_RETURN(auto list_builder,
+                       factory.NewListValueBuilder(factory.GetDynListType()));
 
   list_builder->Reserve(size1 + size2);
 
   for (int i = 0; i < size1; i++) {
-    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value1->Get(factory, i));
+    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value1.Get(factory, i));
     CEL_RETURN_IF_ERROR(list_builder->Add(std::move(elem)));
   }
   for (int i = 0; i < size2; i++) {
-    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value2->Get(factory, i));
+    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value2.Get(factory, i));
     CEL_RETURN_IF_ERROR(list_builder->Add(std::move(elem)));
   }
 
@@ -87,12 +84,11 @@ absl::StatusOr<Handle<OpaqueValue>> AppendList(ValueManager& factory,
   // The `value1` object cannot be directly addressed and is an intermediate
   // variable. Once the comprehension completes this value will in effect be
   // treated as immutable.
-  if (!value1->Is<MutableListValue>()) {
+  if (!MutableListValue::Is(value1)) {
     return absl::InvalidArgumentError(
         "Unexpected call to runtime list append.");
   }
-  MutableListValue& mutable_list =
-      const_cast<MutableListValue&>(value1->As<MutableListValue>());
+  MutableListValue& mutable_list = MutableListValue::Cast(value1);
   for (int i = 0; i < value2.Size(); i++) {
     CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value2.Get(factory, i));
     CEL_RETURN_IF_ERROR(mutable_list.Append(std::move(elem)));

@@ -106,7 +106,7 @@ class OpaqueValue {
   OpaqueValue& operator=(const OpaqueValue&) = default;
   OpaqueValue& operator=(OpaqueValue&&) = default;
 
-  ValueKind kind() const { return interface_->kind(); }
+  constexpr ValueKind kind() const { return kKind; }
 
   OpaqueType GetType(TypeManager& type_manager) const {
     return interface_->GetType(type_manager);
@@ -255,7 +255,7 @@ class OpaqueValueView {
   OpaqueValueView(const OpaqueValueView&) = default;
   OpaqueValueView& operator=(const OpaqueValueView&) = default;
 
-  ValueKind kind() const { return interface_->kind(); }
+  constexpr ValueKind kind() const { return kKind; }
 
   OpaqueType GetType(TypeManager& type_manager) const {
     return interface_->GetType(type_manager);

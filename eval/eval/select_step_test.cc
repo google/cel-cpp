@@ -13,6 +13,7 @@
 #include "base/type_manager.h"
 #include "base/type_provider.h"
 #include "base/value_manager.h"
+#include "common/values/legacy_value_manager.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
@@ -81,9 +82,8 @@ class MockAccessor : public LegacyTypeAccessApis, public LegacyTypeInfoApis {
 class SelectStepTest : public testing::Test {
  public:
   SelectStepTest()
-      : type_factory_(ProtoMemoryManagerRef(&arena_)),
-        type_manager_(type_factory_, cel::TypeProvider::Builtin()),
-        value_factory_(type_manager_) {}
+      : value_factory_(ProtoMemoryManagerRef(&arena_),
+                       cel::TypeProvider::Builtin()) {}
   // Helper method. Creates simple pipeline containing Select step and runs it.
   absl::StatusOr<CelValue> RunExpression(const CelValue target,
                                          absl::string_view field, bool test,
@@ -159,9 +159,7 @@ class SelectStepTest : public testing::Test {
 
  protected:
   google::protobuf::Arena arena_;
-  cel::TypeFactory type_factory_;
-  cel::TypeManager type_manager_;
-  cel::ValueManager value_factory_;
+  cel::common_internal::LegacyValueManager value_factory_;
 };
 
 class SelectStepConformanceTest : public SelectStepTest,
@@ -812,7 +810,7 @@ TEST_P(SelectStepConformanceTest, CelErrorAsArgument) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
 
-  CelError error;
+  CelError error = absl::CancelledError();
 
   cel::RuntimeOptions options;
   if (GetParam()) {

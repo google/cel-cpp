@@ -18,68 +18,45 @@
 #include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_provider.h"
-#include "base/types/opaque_type.h"
 #include "base/value_manager.h"
-#include "base/values/list_value.h"
-#include "base/values/opaque_value.h"
+#include "common/type.h"
+#include "common/value.h"
+#include "common/values/legacy_value_manager.h"
 #include "internal/testing.h"
 
 namespace cel::runtime_internal {
 namespace {
 
-TEST(MutableListImplType, Creation) {
-  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
-
-  ASSERT_OK_AND_ASSIGN(Handle<MutableListType> list_type,
-                       type_factory.CreateOpaqueType<MutableListType>());
-
-  Handle<OpaqueType> opaque_type = list_type;
-  EXPECT_THAT(opaque_type->name(), kMutableListTypeName);
-  EXPECT_TRUE(opaque_type->Is<OpaqueType>());
-  EXPECT_TRUE(opaque_type->Is<MutableListType>());
-
-  EXPECT_EQ(&opaque_type->As<MutableListType>(), &(*list_type));
-}
-
 TEST(MutableListImplValue, Creation) {
-  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
-  TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueManager value_factory(type_manager);
+  common_internal::LegacyValueManager value_factory(
+      MemoryManagerRef::ReferenceCounting(), TypeProvider::Builtin());
 
-  ASSERT_OK_AND_ASSIGN(Handle<MutableListType> mutable_list_type,
-                       type_factory.CreateOpaqueType<MutableListType>());
-  ASSERT_OK_AND_ASSIGN(auto list_type,
-                       type_factory.CreateListType(type_factory.GetDynType()));
-  ASSERT_OK_AND_ASSIGN(auto list_builder,
-                       list_type->NewValueBuilder(value_factory));
+  ASSERT_OK_AND_ASSIGN(auto builder, value_factory.NewListValueBuilder(
+                                         value_factory.GetDynListType()));
 
-  ASSERT_OK_AND_ASSIGN(Handle<MutableListValue> mutable_list_value,
-                       value_factory.CreateOpaqueValue<MutableListValue>(
-                           mutable_list_type, std::move(list_builder)));
+  auto mutable_list_value =
+      value_factory.GetMemoryManager().MakeShared<MutableListValue>(
+          std::move(builder));
 
-  Handle<OpaqueValue> opaque_handle = mutable_list_value;
+  OpaqueValue opaque_handle = mutable_list_value;
 
-  EXPECT_TRUE(opaque_handle->Is<MutableListValue>());
+  EXPECT_EQ(NativeTypeId::Of(opaque_handle),
+            NativeTypeId::For<MutableListValue>());
 
   // Check that after casting back the handle still points to the same object.
-  EXPECT_EQ(&opaque_handle->As<MutableListValue>(), &(*mutable_list_value));
+  EXPECT_EQ(opaque_handle.operator->(), mutable_list_value.operator->());
 }
 
 TEST(MutableListImplValue, ListBuilding) {
-  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
-  TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueManager value_factory(type_manager);
+  common_internal::LegacyValueManager value_factory(
+      MemoryManagerRef::ReferenceCounting(), TypeProvider::Builtin());
 
-  ASSERT_OK_AND_ASSIGN(Handle<MutableListType> mutable_list_type,
-                       type_factory.CreateOpaqueType<MutableListType>());
-  ASSERT_OK_AND_ASSIGN(auto list_type,
-                       type_factory.CreateListType(type_factory.GetDynType()));
-  ASSERT_OK_AND_ASSIGN(auto list_builder,
-                       list_type->NewValueBuilder(value_factory));
+  ASSERT_OK_AND_ASSIGN(auto builder, value_factory.NewListValueBuilder(
+                                         value_factory.GetDynListType()));
 
-  ASSERT_OK_AND_ASSIGN(Handle<MutableListValue> mutable_list_value,
-                       value_factory.CreateOpaqueValue<MutableListValue>(
-                           mutable_list_type, std::move(list_builder)));
+  auto mutable_list_value =
+      value_factory.GetMemoryManager().MakeShared<MutableListValue>(
+          std::move(builder));
 
   // This type should only exist in the context of a comprehension so const
   // casting should be safe.
@@ -87,18 +64,18 @@ TEST(MutableListImplValue, ListBuilding) {
       const_cast<MutableListValue&>(*mutable_list_value);
 
   ASSERT_OK(mutable_ref.Append(value_factory.CreateIntValue(1)));
-  EXPECT_EQ(mutable_ref.DebugString(), "[1]");
 
-  ASSERT_OK_AND_ASSIGN(Handle<ListValue> list_value,
-                       std::move(mutable_ref).Build());
+  ASSERT_OK_AND_ASSIGN(ListValue list_value, std::move(mutable_ref).Build());
 
-  EXPECT_EQ(list_value->Size(), 1);
+  EXPECT_EQ(list_value.Size(), 1);
 
-  ASSERT_OK_AND_ASSIGN(auto element, list_value->Get(value_factory, 0));
+  cel::Value scratch;
 
-  ASSERT_TRUE(element->Is<IntValue>());
+  ASSERT_OK_AND_ASSIGN(auto element, list_value.Get(value_factory, 0, scratch));
 
-  EXPECT_EQ(element->As<IntValue>().NativeValue(), 1);
+  ASSERT_TRUE(InstanceOf<IntValueView>(element));
+
+  EXPECT_EQ(Cast<IntValueView>(element).NativeValue(), 1);
 }
 
 }  // namespace

@@ -32,9 +32,9 @@
 #include "base/handle.h"
 #include "base/kind.h"
 #include "base/memory.h"
-#include "base/types/struct_type.h"
 #include "base/value.h"
 #include "base/value_manager.h"
+#include "common/type.h"
 #include "internal/status_macros.h"
 #include "runtime/function_overload_reference.h"
 #include "runtime/function_registry.h"
@@ -116,8 +116,8 @@ std::vector<std::string> Resolver::FullyQualifiedNames(absl::string_view name,
   return names;
 }
 
-Handle<Value> Resolver::FindConstant(absl::string_view name,
-                                     int64_t expr_id) const {
+absl::optional<cel::Handle<cel::Value>> Resolver::FindConstant(
+    absl::string_view name, int64_t expr_id) const {
   auto names = FullyQualifiedNames(name, expr_id);
   for (const auto& name : names) {
     // Attempt to resolve the fully qualified name to a known enum.
@@ -129,14 +129,14 @@ Handle<Value> Resolver::FindConstant(absl::string_view name,
     // to do so is configured in the expression builder. If the type name is
     // not qualified, then it too may be returned as a constant value.
     if (resolve_qualified_type_identifiers_ || !absl::StrContains(name, ".")) {
-      auto type_value = value_factory_.type_manager().ResolveType(name);
+      auto type_value = value_factory_.FindType(name);
       if (type_value.ok() && type_value->has_value()) {
         return value_factory_.CreateTypeValue(**type_value);
       }
     }
   }
 
-  return Handle<Value>();
+  return absl::nullopt;
 }
 
 std::vector<cel::FunctionOverloadReference> Resolver::FindOverloads(
@@ -178,12 +178,13 @@ std::vector<cel::FunctionRegistry::LazyOverload> Resolver::FindLazyOverloads(
 
 absl::StatusOr<absl::optional<std::pair<std::string, cel::Handle<cel::Type>>>>
 Resolver::FindType(absl::string_view name, int64_t expr_id) const {
-  auto names = FullyQualifiedNames(name, expr_id);
-  for (auto& name : names) {
-    CEL_ASSIGN_OR_RETURN(auto maybe_type,
-                         value_factory_.type_manager().ResolveType(name));
+  auto qualified_names = FullyQualifiedNames(name, expr_id);
+  for (auto& qualified_name : qualified_names) {
+    CEL_ASSIGN_OR_RETURN(
+        auto maybe_type,
+        value_factory_.type_manager().FindType(qualified_name));
     if (maybe_type.has_value()) {
-      return std::make_pair(std::move(name), std::move(*maybe_type));
+      return std::make_pair(std::move(qualified_name), std::move(*maybe_type));
     }
   }
   return absl::nullopt;

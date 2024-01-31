@@ -19,6 +19,14 @@ int ComparisonImpl(T lhs, T rhs) {
   }
 }
 
+template <>
+int ComparisonImpl(const CelError* lhs, const CelError* rhs) {
+  if (*lhs == *rhs) {
+    return 0;
+  }
+  return lhs < rhs ? -1 : 1;
+}
+
 // Message wrapper specialization
 template <>
 int ComparisonImpl(CelValue::MessageWrapper lhs_wrapper,

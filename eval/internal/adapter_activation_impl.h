@@ -40,8 +40,9 @@ class AdapterActivationImpl : public ActivationInterface {
       const google::api::expr::runtime::BaseActivation& legacy_activation)
       : legacy_activation_(legacy_activation) {}
 
-  absl::StatusOr<absl::optional<Handle<Value>>> FindVariable(
-      ValueManager& value_factory, absl::string_view name) const override;
+  absl::StatusOr<absl::optional<ValueView>> FindVariable(
+      ValueManager& value_factory, absl::string_view name,
+      Value& scratch) const override;
 
   std::vector<FunctionOverloadReference> FindFunctionOverloads(
       absl::string_view name) const override;

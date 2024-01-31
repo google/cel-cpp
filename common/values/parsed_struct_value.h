@@ -107,7 +107,7 @@ class ParsedStructValue {
   ParsedStructValue& operator=(const ParsedStructValue&) = default;
   ParsedStructValue& operator=(ParsedStructValue&&) = default;
 
-  ValueKind kind() const { return interface_->kind(); }
+  constexpr ValueKind kind() const { return kKind; }
 
   StructType GetType(TypeManager& type_manager) const {
     return interface_->GetType(type_manager);
@@ -257,7 +257,7 @@ class ParsedStructValueView {
 
   ParsedStructValueView& operator=(ParsedStructValue&&) = delete;
 
-  ValueKind kind() const { return interface_->kind(); }
+  constexpr ValueKind kind() const { return kKind; }
 
   StructType GetType(TypeManager& type_manager) const {
     return interface_->GetType(type_manager);

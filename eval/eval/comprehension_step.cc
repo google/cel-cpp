@@ -11,16 +11,13 @@
 #include "base/attribute.h"
 #include "base/kind.h"
 #include "base/value.h"
-#include "base/values/bool_value.h"
-#include "base/values/error_value.h"
-#include "base/values/int_value.h"
-#include "base/values/list_value.h"
-#include "base/values/unknown_value.h"
+#include "common/value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/comprehension_slots.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
+#include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/mutable_list_impl.h"
 
@@ -57,12 +54,11 @@ absl::Status ComprehensionFinish::Evaluate(ExecutionFrame* frame) const {
   Handle<Value> result = frame->value_stack().Peek();
   frame->value_stack().Pop(3);
   if (frame->enable_comprehension_list_append() &&
-      result->Is<MutableListValue>()) {
+      MutableListValue::Is(result)) {
     // We assume this is 'owned' by the evaluator stack so const cast is safe
     // here.
     // Convert the buildable list to an actual cel::ListValue.
-    MutableListValue& list_value =
-        const_cast<MutableListValue&>(result->As<MutableListValue>());
+    MutableListValue& list_value = MutableListValue::Cast(result);
     CEL_ASSIGN_OR_RETURN(result, std::move(list_value).Build());
   }
   frame->value_stack().Push(std::move(result));
@@ -95,9 +91,9 @@ absl::Status ComprehensionInitStep::ProjectKeys(ExecutionFrame* frame) const {
     }
   }
 
-  CEL_ASSIGN_OR_RETURN(
-      auto list_keys, frame->value_stack().Peek().As<cel::MapValue>()->ListKeys(
-                          frame->value_factory()));
+  CEL_ASSIGN_OR_RETURN(auto list_keys,
+                       frame->value_stack().Peek().As<cel::MapValue>().ListKeys(
+                           frame->value_factory()));
   frame->value_stack().PopAndPush(std::move(list_keys));
   return absl::OkStatus();
 }
@@ -190,18 +186,19 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   auto state = frame->value_stack().GetSpan(kStackSize);
 
   // Get range from the stack.
-  auto iter_range = state[POS_ITER_RANGE];
+  auto& iter_range = state[POS_ITER_RANGE];
   if (!iter_range->Is<cel::ListValue>()) {
-    frame->value_stack().Pop(kStackSize);
     if (iter_range->Is<cel::ErrorValue>() ||
         iter_range->Is<cel::UnknownValue>()) {
-      frame->value_stack().Push(std::move(iter_range));
+      frame->value_stack().PopAndPush(kStackSize, std::move(iter_range));
     } else {
-      frame->value_stack().Push(frame->value_factory().CreateErrorValue(
-          CreateNoMatchingOverloadError("<iter_range>")));
+      frame->value_stack().PopAndPush(
+          kStackSize, frame->value_factory().CreateErrorValue(
+                          CreateNoMatchingOverloadError("<iter_range>")));
     }
     return frame->JumpTo(error_jump_offset_);
   }
+  auto iter_range_list = iter_range.As<cel::ListValue>();
 
   // Get the current index off the stack.
   const auto& current_index_value = state[POS_CURRENT_INDEX];
@@ -212,8 +209,7 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   }
   CEL_RETURN_IF_ERROR(frame->IncrementIterations());
 
-  int64_t current_index =
-      current_index_value.As<cel::IntValue>()->NativeValue();
+  int64_t current_index = current_index_value.As<cel::IntValue>().NativeValue();
 
   AttributeTrail iter_range_attr;
   AttributeTrail iter_trail;
@@ -225,22 +221,20 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   }
 
   // Pop invalidates references to the stack on the following line so copy.
-  Handle<Value> loop_step = state[POS_LOOP_STEP_ACCU];
+  Handle<Value> loop_step = std::move(state[POS_LOOP_STEP_ACCU]);
   frame->value_stack().Pop(1);
   frame->comprehension_slots().Set(accu_slot_, std::move(loop_step));
 
   // Make sure the iter var is out of scope.
-  if (current_index >=
-      static_cast<int64_t>(iter_range.As<cel::ListValue>()->Size()) - 1) {
+  if (current_index >= static_cast<int64_t>(iter_range_list.Size()) - 1) {
     frame->comprehension_slots().ClearSlot(iter_slot_);
     return frame->JumpTo(jump_offset_);
   }
 
   current_index += 1;
 
-  CEL_ASSIGN_OR_RETURN(
-      auto current_value,
-      iter_range.As<cel::ListValue>()->Get(frame->value_factory(),
+  CEL_ASSIGN_OR_RETURN(auto current_value,
+                       iter_range_list.Get(frame->value_factory(),
                                            static_cast<size_t>(current_index)));
   frame->value_stack().PopAndPush(
       frame->value_factory().CreateIntValue(current_index));
@@ -279,15 +273,15 @@ absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(3)) {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
-  auto loop_condition_value = frame->value_stack().Peek();
+  auto& loop_condition_value = frame->value_stack().Peek();
   if (!loop_condition_value->Is<cel::BoolValue>()) {
-    frame->value_stack().Pop(3);
     if (loop_condition_value->Is<cel::ErrorValue>() ||
         loop_condition_value->Is<cel::UnknownValue>()) {
-      frame->value_stack().Push(std::move(loop_condition_value));
+      frame->value_stack().PopAndPush(3, std::move(loop_condition_value));
     } else {
-      frame->value_stack().Push(frame->value_factory().CreateErrorValue(
-          CreateNoMatchingOverloadError("<loop_condition>")));
+      frame->value_stack().PopAndPush(
+          3, frame->value_factory().CreateErrorValue(
+                 CreateNoMatchingOverloadError("<loop_condition>")));
     }
     // The error jump skips the ComprehensionFinish clean-up step, so we
     // need to update the iteration variable stack here.
@@ -295,8 +289,7 @@ absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
     frame->comprehension_slots().ClearSlot(accu_slot_);
     return frame->JumpTo(error_jump_offset_);
   }
-  bool loop_condition =
-      loop_condition_value.As<cel::BoolValue>()->NativeValue();
+  bool loop_condition = loop_condition_value.As<cel::BoolValue>().NativeValue();
   frame->value_stack().Pop(1);  // loop_condition
   if (!loop_condition && shortcircuiting_) {
     return frame->JumpTo(jump_offset_);

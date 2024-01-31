@@ -47,6 +47,7 @@
 #include "base/type_factory.h"
 #include "base/type_provider.h"
 #include "base/value_manager.h"
+#include "common/values/legacy_value_manager.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/comprehension_step.h"
@@ -466,11 +467,11 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       // qualified path present in the expression. Whether the identifier
       // can be resolved to a type instance depends on whether the option to
       // 'enable_qualified_type_identifiers' is set to true.
-      Handle<Value> const_value =
+      auto const_value =
           resolver_.FindConstant(qualified_path, select_expr->id());
       if (const_value) {
         AddStep(CreateShadowableValueStep(
-            qualified_path, std::move(const_value), select_expr->id()));
+            qualified_path, std::move(*const_value), select_expr->id()));
         resolved_select_expr_ = select_expr;
         namespace_stack_.clear();
         return;
@@ -479,10 +480,10 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     }
 
     // Attempt to resolve a simple identifier as an enum or type constant value.
-    Handle<Value> const_value = resolver_.FindConstant(path, expr->id());
+    auto const_value = resolver_.FindConstant(path, expr->id());
     if (const_value) {
       AddStep(
-          CreateShadowableValueStep(path, std::move(const_value), expr->id()));
+          CreateShadowableValueStep(path, std::move(*const_value), expr->id()));
       return;
     }
 
@@ -916,9 +917,8 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
                         "Invalid struct creation: missing type info for '",
                         message_name, "'")) {
       AddStep(CreateCreateStructStepForStruct(
-          *struct_expr, (*status_or_maybe_type)->first,
-          std::move((*status_or_maybe_type)->second), expr->id(),
-          value_factory().type_manager()));
+          *struct_expr, std::move((*status_or_maybe_type)->first), expr->id(),
+          value_factory()));
     }
   }
 
@@ -1315,10 +1315,9 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
 
   // These objects are expected to remain scoped to one build call -- references
   // to them shouldn't be persisted in any part of the result expression.
-  TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  TypeManager type_manager(type_factory,
-                           type_registry_.GetComposedTypeProvider());
-  ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry_.GetComposedTypeProvider());
 
   RuntimeIssue::Severity max_severity = options_.fail_on_warnings
                                             ? RuntimeIssue::Severity::kWarning

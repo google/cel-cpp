@@ -25,8 +25,8 @@
 #include "base/type_manager.h"
 #include "base/type_provider.h"
 #include "base/value_manager.h"
-#include "base/values/int_value.h"
-#include "base/values/type_value.h"
+#include "common/value.h"
+#include "common/values/legacy_value_manager.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
@@ -60,15 +60,12 @@ class FakeFunction : public CelFunction {
 class ResolverTest : public testing::Test {
  public:
   ResolverTest()
-      : type_factory_(cel::MemoryManagerRef::ReferenceCounting()),
-        type_manager_(type_factory_, type_registry_.GetTypeProvider()),
-        value_factory_(type_manager_) {}
+      : value_factory_(cel::MemoryManagerRef::ReferenceCounting(),
+                       type_registry_.GetTypeProvider()) {}
 
  protected:
   CelTypeRegistry type_registry_;
-  TypeFactory type_factory_;
-  TypeManager type_manager_;
-  ValueManager value_factory_;
+  cel::common_internal::LegacyValueManager value_factory_;
 };
 
 TEST_F(ResolverTest, TestFullyQualifiedNames) {
@@ -120,13 +117,13 @@ TEST_F(ResolverTest, TestFindConstantEnum) {
   auto enum_value = resolver.FindConstant("TestEnum.TEST_ENUM_1", -1);
   ASSERT_TRUE(enum_value);
   ASSERT_TRUE(enum_value->Is<IntValue>());
-  EXPECT_THAT(enum_value.As<IntValue>()->NativeValue(), Eq(1L));
+  EXPECT_THAT((*enum_value).As<IntValue>().NativeValue(), Eq(1L));
 
   enum_value = resolver.FindConstant(
       ".google.api.expr.runtime.TestMessage.TestEnum.TEST_ENUM_2", -1);
   ASSERT_TRUE(enum_value);
   ASSERT_TRUE(enum_value->Is<IntValue>());
-  EXPECT_THAT(enum_value.As<IntValue>()->NativeValue(), Eq(2L));
+  EXPECT_THAT((*enum_value).As<IntValue>().NativeValue(), Eq(2L));
 }
 
 TEST_F(ResolverTest, TestFindConstantUnqualifiedType) {
@@ -138,7 +135,7 @@ TEST_F(ResolverTest, TestFindConstantUnqualifiedType) {
   auto type_value = resolver.FindConstant("int", -1);
   EXPECT_TRUE(type_value);
   EXPECT_TRUE(type_value->Is<TypeValue>());
-  EXPECT_THAT(type_value.As<TypeValue>()->name(), Eq("int"));
+  EXPECT_THAT((*type_value).As<TypeValue>().name(), Eq("int"));
 }
 
 TEST_F(ResolverTest, TestFindConstantFullyQualifiedType) {
@@ -156,7 +153,7 @@ TEST_F(ResolverTest, TestFindConstantFullyQualifiedType) {
       resolver.FindConstant(".google.api.expr.runtime.TestMessage", -1);
   ASSERT_TRUE(type_value);
   ASSERT_TRUE(type_value->Is<TypeValue>());
-  EXPECT_THAT(type_value.As<TypeValue>()->name(),
+  EXPECT_THAT((*type_value).As<TypeValue>().name(),
               Eq("google.api.expr.runtime.TestMessage"));
 }
 
@@ -219,7 +216,7 @@ TEST_F(ResolverTest, TestFindDescriptorNotFound) {
                     type_registry_.resolveable_enums());
 
   ASSERT_OK_AND_ASSIGN(auto type, resolver.FindType("UndefinedMessage", -1));
-  EXPECT_FALSE(type.has_value());
+  EXPECT_FALSE(type.has_value()) << type->second;
 }
 
 TEST_F(ResolverTest, TestFindOverloads) {

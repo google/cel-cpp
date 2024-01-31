@@ -15,12 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUE_MANAGER_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUE_MANAGER_H_
 
-#include "base/value_factory.h"
-
-namespace cel {
-
-using ValueManager = ValueFactory;
-
-}
+#include "common/value_manager.h"  // IWYU pragma: export
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_VALUE_MANAGER_H_

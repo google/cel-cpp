@@ -18,6 +18,9 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/attributes.h"
+#include "absl/base/call_once.h"
+#include "absl/base/macros.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -32,6 +35,7 @@
 #include "common/value.h"
 #include "common/value_factory.h"
 #include "common/value_manager.h"
+#include "internal/dynamic_loader.h"
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -140,6 +144,9 @@ class ListValueBuilderImpl final : public ListValueBuilder {
   ListValueBuilderImpl& operator=(ListValueBuilderImpl&&) = delete;
 
   absl::Status Add(Value value) override {
+    if (value.Is<ErrorValue>()) {
+      return value.As<ErrorValue>().NativeValue();
+    }
     return Add(Cast<T>(std::move(value)));
   }
 
@@ -178,6 +185,9 @@ class ListValueBuilderImpl<Value> final : public ListValueBuilder {
   ListValueBuilderImpl& operator=(ListValueBuilderImpl&&) = delete;
 
   absl::Status Add(Value value) override {
+    if (value.Is<ErrorValue>()) {
+      return value.As<ErrorValue>().NativeValue();
+    }
     elements_.push_back(std::move(value));
     return absl::OkStatus();
   }
@@ -199,11 +209,55 @@ class ListValueBuilderImpl<Value> final : public ListValueBuilder {
   std::vector<Value> elements_;
 };
 
+using LegacyTypeReflector_NewListValueBuilder =
+    absl::StatusOr<Unique<ListValueBuilder>> (*)(ValueFactory&, ListTypeView);
+
+ABSL_CONST_INIT struct {
+  absl::once_flag init_once;
+  LegacyTypeReflector_NewListValueBuilder new_list_value_builder = nullptr;
+} legacy_type_reflector_vtable;
+
+#if ABSL_HAVE_ATTRIBUTE_WEAK
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<Unique<ListValueBuilder>>
+cel_common_internal_LegacyTypeReflector_NewListValueBuilder(
+    ValueFactory& value_factory, ListTypeView type);
+#endif
+
+void InitializeLegacyTypeReflector() {
+  absl::call_once(legacy_type_reflector_vtable.init_once, []() -> void {
+#if ABSL_HAVE_ATTRIBUTE_WEAK
+    legacy_type_reflector_vtable.new_list_value_builder =
+        cel_common_internal_LegacyTypeReflector_NewListValueBuilder;
+#else
+    internal::DynamicLoader dynamic_loader;
+    if (auto new_list_value_builder = dynamic_loader.FindSymbol(
+            "cel_common_internal_LegacyTypeReflector_NewListValueBuilder");
+        new_list_value_builder) {
+      legacy_type_reflector_vtable.new_list_value_builder =
+          *new_list_value_builder;
+    }
+#endif
+  });
+}
+
 }  // namespace
 
 absl::StatusOr<Unique<ListValueBuilder>> TypeReflector::NewListValueBuilder(
     ValueFactory& value_factory, ListTypeView type) const {
+  InitializeLegacyTypeReflector();
   auto memory_manager = value_factory.GetMemoryManager();
+  if (memory_manager.memory_management() == MemoryManagement::kPooling &&
+      legacy_type_reflector_vtable.new_list_value_builder != nullptr) {
+    auto status_or_builder =
+        (*legacy_type_reflector_vtable.new_list_value_builder)(value_factory,
+                                                               type);
+    if (status_or_builder.ok()) {
+      return std::move(status_or_builder).value();
+    }
+    if (!absl::IsUnimplemented(status_or_builder.status())) {
+      return status_or_builder;
+    }
+  }
   switch (type.element().kind()) {
     case TypeKind::kBool:
       return memory_manager.MakeUnique<ListValueBuilderImpl<BoolValue>>(

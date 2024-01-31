@@ -25,6 +25,8 @@
 #include <dlfcn.h>
 #endif
 
+#include "absl/types/optional.h"
+
 namespace cel::internal {
 
 class DynamicallyLoadedSymbol final {
@@ -56,6 +58,8 @@ class DynamicLoader final {
   DynamicLoader& operator=(DynamicLoader&&) = delete;
 
   DynamicallyLoadedSymbol FindSymbolOrDie(const char* name) const;
+
+  absl::optional<DynamicallyLoadedSymbol> FindSymbol(const char* name) const;
 
  private:
 #ifdef _WIN32

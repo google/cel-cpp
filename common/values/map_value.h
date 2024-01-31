@@ -127,11 +127,7 @@ class MapValue final {
     return *this;
   }
 
-  ValueKind kind() const {
-    return absl::visit(
-        [](const auto& alternative) -> ValueKind { return alternative.kind(); },
-        variant_);
-  }
+  constexpr ValueKind kind() const { return kKind; }
 
   MapType GetType(TypeManager& type_manager) const {
     return absl::visit(
@@ -479,11 +475,7 @@ class MapValueView final {
   MapValueView(const MapValueView&) = default;
   MapValueView& operator=(const MapValueView&) = default;
 
-  ValueKind kind() const {
-    return absl::visit(
-        [](auto alternative) -> ValueKind { return alternative.kind(); },
-        variant_);
-  }
+  constexpr ValueKind kind() const { return kKind; }
 
   MapType GetType(TypeManager& type_manager) const {
     return absl::visit(

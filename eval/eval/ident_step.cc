@@ -22,6 +22,7 @@ namespace {
 
 using ::cel::Handle;
 using ::cel::Value;
+using ::cel::ValueView;
 using ::cel::runtime_internal::CreateError;
 using ::cel::runtime_internal::CreateMissingAttributeError;
 
@@ -34,17 +35,18 @@ class IdentStep : public ExpressionStepBase {
 
  private:
   struct IdentResult {
-    Handle<Value> value;
+    ValueView value;
     AttributeTrail trail;
   };
 
-  absl::StatusOr<IdentResult> DoEvaluate(ExecutionFrame* frame) const;
+  absl::StatusOr<IdentResult> DoEvaluate(ExecutionFrame* frame,
+                                         Value& scratch) const;
 
   std::string name_;
 };
 
 absl::StatusOr<IdentStep::IdentResult> IdentStep::DoEvaluate(
-    ExecutionFrame* frame) const {
+    ExecutionFrame* frame, Value& scratch) const {
   IdentResult result;
   // Populate trails if either MissingAttributeError or UnknownPattern
   // is enabled.
@@ -54,38 +56,41 @@ absl::StatusOr<IdentStep::IdentResult> IdentStep::DoEvaluate(
 
   if (frame->enable_missing_attribute_errors() && !name_.empty() &&
       frame->attribute_utility().CheckForMissingAttribute(result.trail)) {
-    result.value = frame->value_factory().CreateErrorValue(
+    scratch = frame->value_factory().CreateErrorValue(
         CreateMissingAttributeError(name_));
+    result.value = scratch;
     return result;
   }
 
   if (frame->enable_unknowns()) {
     if (frame->attribute_utility().CheckForUnknown(result.trail, false)) {
-      auto unknown_set =
+      scratch =
           frame->attribute_utility().CreateUnknownSet(result.trail.attribute());
-      result.value = std::move(unknown_set);
+      result.value = scratch;
       return result;
     }
   }
 
   CEL_ASSIGN_OR_RETURN(auto value, frame->modern_activation().FindVariable(
-                                       frame->value_factory(), name_));
+                                       frame->value_factory(), name_, scratch));
 
   if (value.has_value()) {
-    result.value = std::move(value).value();
+    result.value = *value;
     return result;
   }
 
-  result.value = frame->value_factory().CreateErrorValue(CreateError(
+  scratch = frame->value_factory().CreateErrorValue(CreateError(
       absl::StrCat("No value with name \"", name_, "\" found in Activation")));
+  result.value = scratch;
 
   return result;
 }
 
 absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
-  CEL_ASSIGN_OR_RETURN(IdentResult result, DoEvaluate(frame));
+  Value scratch;
+  CEL_ASSIGN_OR_RETURN(IdentResult result, DoEvaluate(frame, scratch));
 
-  frame->value_stack().Push(std::move(result.value), std::move(result.trail));
+  frame->value_stack().Push(Value{result.value}, std::move(result.trail));
 
   return absl::OkStatus();
 }

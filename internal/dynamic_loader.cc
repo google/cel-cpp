@@ -55,6 +55,14 @@ DynamicLoader::~DynamicLoader() {
 }
 
 DynamicallyLoadedSymbol DynamicLoader::FindSymbolOrDie(const char* name) const {
+  auto address = FindSymbol(name);
+  ABSL_CHECK(address)  // Crash OK
+      << "failed to find dynamic library symbol: " << name;
+  return *address;
+}
+
+absl::optional<DynamicallyLoadedSymbol> DynamicLoader::FindSymbol(
+    const char* name) const {
   void* address = nullptr;
 #ifdef _WIN32
   for (DWORD i = 0; address == nullptr && i < modules_size_; ++i) {
@@ -63,8 +71,9 @@ DynamicallyLoadedSymbol DynamicLoader::FindSymbolOrDie(const char* name) const {
 #else
   address = ::dlsym(handle_, name);
 #endif
-  ABSL_CHECK(address != nullptr)  // Crash OK
-      << "failed to find dynamic library symbol: " << name;
+  if (address == nullptr) {
+    return absl::nullopt;
+  }
   return DynamicallyLoadedSymbol{address};
 }
 

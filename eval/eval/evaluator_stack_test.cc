@@ -6,6 +6,7 @@
 #include "base/type_provider.h"
 #include "base/value.h"
 #include "base/value_manager.h"
+#include "common/values/legacy_value_manager.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
 
@@ -23,9 +24,8 @@ using ::cel::extensions::ProtoMemoryManagerRef;
 TEST(EvaluatorStackTest, StackPushPop) {
   google::protobuf::Arena arena;
   auto manager = ProtoMemoryManagerRef(&arena);
-  TypeFactory type_factory(manager);
-  TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      manager, TypeProvider::Builtin());
 
   cel::Attribute attribute("name", {});
   EvaluatorStack stack(10);
@@ -33,18 +33,18 @@ TEST(EvaluatorStackTest, StackPushPop) {
   stack.Push(value_factory.CreateIntValue(2), AttributeTrail());
   stack.Push(value_factory.CreateIntValue(3), AttributeTrail("name"));
 
-  ASSERT_EQ(stack.Peek().As<cel::IntValue>()->NativeValue(), 3);
+  ASSERT_EQ(stack.Peek().As<cel::IntValue>().NativeValue(), 3);
   ASSERT_FALSE(stack.PeekAttribute().empty());
   ASSERT_EQ(stack.PeekAttribute().attribute(), attribute);
 
   stack.Pop(1);
 
-  ASSERT_EQ(stack.Peek().As<cel::IntValue>()->NativeValue(), 2);
+  ASSERT_EQ(stack.Peek().As<cel::IntValue>().NativeValue(), 2);
   ASSERT_TRUE(stack.PeekAttribute().empty());
 
   stack.Pop(1);
 
-  ASSERT_EQ(stack.Peek().As<cel::IntValue>()->NativeValue(), 1);
+  ASSERT_EQ(stack.Peek().As<cel::IntValue>().NativeValue(), 1);
   ASSERT_TRUE(stack.PeekAttribute().empty());
 }
 
@@ -52,9 +52,8 @@ TEST(EvaluatorStackTest, StackPushPop) {
 TEST(EvaluatorStackTest, StackBalanced) {
   google::protobuf::Arena arena;
   auto manager = ProtoMemoryManagerRef(&arena);
-  TypeFactory type_factory(manager);
-  TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      manager, TypeProvider::Builtin());
   EvaluatorStack stack(10);
   ASSERT_EQ(stack.size(), stack.attribute_size());
 
@@ -76,9 +75,8 @@ TEST(EvaluatorStackTest, StackBalanced) {
 TEST(EvaluatorStackTest, Clear) {
   google::protobuf::Arena arena;
   auto manager = ProtoMemoryManagerRef(&arena);
-  TypeFactory type_factory(manager);
-  TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      manager, TypeProvider::Builtin());
   EvaluatorStack stack(10);
   ASSERT_EQ(stack.size(), stack.attribute_size());
 

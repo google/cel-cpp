@@ -396,7 +396,7 @@ absl::Status RegisterTypeConversionFunctions(FunctionRegistry& registry,
           CreateDescriptor(cel::builtin::kType, false),
       UnaryFunctionAdapter<Handle<Value>, const Handle<Value>&>::WrapFunction(
           [](ValueManager& factory, const Handle<Value>& value) {
-            return factory.CreateTypeValue(value->type());
+            return factory.CreateTypeValue(value.GetType(factory));
           }));
 }
 

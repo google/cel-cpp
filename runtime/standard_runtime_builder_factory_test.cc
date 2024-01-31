@@ -31,7 +31,8 @@
 #include "base/type_manager.h"
 #include "base/value.h"
 #include "base/value_manager.h"
-#include "base/values/bool_value.h"
+#include "common/value.h"
+#include "common/values/legacy_value_manager.h"
 #include "extensions/bindings_ext.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/runtime_adapter.h"
@@ -92,9 +93,8 @@ TEST_P(StandardRuntimeTest, DefaultsRefCounted) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
                        ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
 
-  TypeFactory type_factory(memory_manager);
-  TypeManager type_manager(type_factory, runtime->GetTypeProvider());
-  ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      memory_manager, runtime->GetTypeProvider());
 
   Activation activation;
   activation.InsertOrAssignValue("int_var", value_factory.CreateIntValue(42));
@@ -123,9 +123,8 @@ TEST_P(StandardRuntimeTest, DefaultsArena) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
                        ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
 
-  TypeFactory type_factory(memory_manager);
-  TypeManager type_manager(type_factory, runtime->GetTypeProvider());
-  ValueManager value_factory(type_manager);
+  common_internal::LegacyValueManager value_factory(memory_manager,
+                                                    runtime->GetTypeProvider());
 
   Activation activation;
   if (test_case.activation_builder != nullptr) {

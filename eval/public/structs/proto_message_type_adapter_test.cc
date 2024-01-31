@@ -20,7 +20,7 @@
 #include "google/protobuf/descriptor.pb.h"
 #include "absl/status/status.h"
 #include "base/attribute.h"
-#include "base/values/struct_value.h"
+#include "common/value.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"

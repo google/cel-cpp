@@ -222,7 +222,7 @@ class BuiltinsTest : public ::testing::Test {
 
     ASSERT_NO_FATAL_FAILURE(PerformRun(operation, {}, {ref}, &result_value));
 
-    ASSERT_EQ(result_value.IsError(), true);
+    ASSERT_EQ(result_value.IsError(), true) << result_value.DebugString();
   }
 
   // Helper method. Looks up in registry and tests functions without params.

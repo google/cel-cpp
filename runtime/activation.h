@@ -52,8 +52,10 @@ class Activation final : public ActivationInterface {
   Activation() = default;
 
   // Implements ActivationInterface.
-  absl::StatusOr<absl::optional<Handle<Value>>> FindVariable(
-      ValueManager& factory, absl::string_view name) const override;
+  absl::StatusOr<absl::optional<ValueView>> FindVariable(
+      ValueManager& factory, absl::string_view name,
+      Value& scratch) const override;
+  using ActivationInterface::FindVariable;
 
   std::vector<FunctionOverloadReference> FindFunctionOverloads(
       absl::string_view name) const override;
@@ -109,8 +111,9 @@ class Activation final : public ActivationInterface {
   // Internal getter for provided values.
   // Assumes entry for name is present and is a provided value.
   // Handles synchronization for caching the provided value.
-  absl::StatusOr<absl::optional<Handle<Value>>> ProvideValue(
-      ValueManager& value_factory, absl::string_view name) const;
+  absl::StatusOr<absl::optional<ValueView>> ProvideValue(
+      ValueManager& value_factory, absl::string_view name,
+      Value& scratch) const;
 
   // mutex_ used for safe caching of provided variables
   mutable absl::Mutex mutex_;

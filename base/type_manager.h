@@ -15,55 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPE_MANAGER_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPE_MANAGER_H_
 
-#include "absl/base/attributes.h"
-#include "absl/base/thread_annotations.h"
-#include "absl/container/flat_hash_map.h"
-#include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
-#include "absl/synchronization/mutex.h"
-#include "base/type.h"
-#include "base/type_factory.h"
-#include "base/type_provider.h"
-
-namespace cel {
-
-// TypeManager is a union of the TypeFactory and TypeProvider, allowing for both
-// the instantiation of type implementations, loading of type implementations,
-// and registering type implementations.
-//
-// TODO(uncreated-issue/8): more comments after solidifying role
-class TypeManager final {
- public:
-  TypeManager(TypeFactory& type_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
-              const TypeProvider& type_provider ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : type_factory_(type_factory), type_provider_(type_provider) {}
-
-  MemoryManagerRef GetMemoryManager() const {
-    return type_factory().GetMemoryManager();
-  }
-
-  TypeFactory& type_factory() const { return type_factory_; }
-
-  const TypeProvider& type_provider() const { return type_provider_; }
-
-  absl::StatusOr<absl::optional<Handle<Type>>> ResolveType(
-      absl::string_view name);
-
- private:
-  Handle<Type> CacheType(absl::string_view name, Handle<Type>&& type);
-
-  Handle<Type> CacheTypeWithAliases(absl::string_view name,
-                                    Handle<Type>&& type);
-
-  TypeFactory& type_factory_;
-  const TypeProvider& type_provider_;
-
-  absl::Mutex mutex_;
-  // std::string as the key because we also cache types which do not exist.
-  absl::flat_hash_map<absl::string_view, Handle<Type>> types_
-      ABSL_GUARDED_BY(mutex_);
-};
-
-}  // namespace cel
+#include "common/type_manager.h"  // IWYU pragma: export
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPE_MANAGER_H_

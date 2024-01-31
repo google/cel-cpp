@@ -26,12 +26,13 @@
 #include "base/function_descriptor.h"
 #include "base/handle.h"
 #include "base/value.h"
+#include "internal/status_macros.h"
 #include "runtime/function_overload_reference.h"
 
 namespace cel {
 
-absl::StatusOr<absl::optional<Handle<Value>>> Activation::FindVariable(
-    ValueManager& factory, absl::string_view name) const {
+absl::StatusOr<absl::optional<ValueView>> Activation::FindVariable(
+    ValueManager& factory, absl::string_view name, Value& scratch) const {
   auto iter = values_.find(name);
   if (iter == values_.end()) {
     return absl::nullopt;
@@ -39,26 +40,33 @@ absl::StatusOr<absl::optional<Handle<Value>>> Activation::FindVariable(
 
   const ValueEntry& entry = iter->second;
   if (entry.provider.has_value()) {
-    return ProvideValue(factory, name);
+    return ProvideValue(factory, name, scratch);
   }
-  return entry.value;
+  if (entry.value.has_value()) {
+    scratch = *entry.value;
+    return scratch;
+  }
+  return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<Handle<Value>>> Activation::ProvideValue(
-    ValueManager& factory, absl::string_view name) const {
+absl::StatusOr<absl::optional<ValueView>> Activation::ProvideValue(
+    ValueManager& factory, absl::string_view name, Value& scratch) const {
   absl::MutexLock lock(&mutex_);
   auto iter = values_.find(name);
   ABSL_ASSERT(iter != values_.end());
   ValueEntry& entry = iter->second;
   if (entry.value.has_value()) {
-    return *entry.value;
+    scratch = *entry.value;
+    return scratch;
   }
 
-  auto result = (*entry.provider)(factory, name);
-  if (result.ok() && result->has_value()) {
-    entry.value = **result;
+  CEL_ASSIGN_OR_RETURN(auto result, (*entry.provider)(factory, name));
+  if (result.has_value()) {
+    entry.value = std::move(result);
+    scratch = *entry.value;
+    return scratch;
   }
-  return result;
+  return absl::nullopt;
 }
 
 std::vector<FunctionOverloadReference> Activation::FindFunctionOverloads(

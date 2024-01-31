@@ -5,8 +5,7 @@
 #include "base/attribute_set.h"
 #include "base/handle.h"
 #include "base/internal/unknown_set.h"
-#include "base/values/error_value.h"
-#include "base/values/unknown_value.h"
+#include "common/value.h"
 #include "eval/internal/errors.h"
 
 namespace google::api::expr::runtime {
@@ -70,8 +69,8 @@ absl::optional<Handle<UnknownValue>> AttributeUtility::MergeUnknowns(
     const auto& current_set = value.As<cel::UnknownValue>();
 
     cel::base_internal::UnknownSetAccess::Add(
-        *result_set, UnknownSet(current_set->attribute_set(),
-                                current_set->function_result_set()));
+        *result_set, UnknownSet(current_set.attribute_set(),
+                                current_set.function_result_set()));
   }
 
   if (!result_set.has_value()) {
@@ -128,8 +127,8 @@ absl::optional<Handle<UnknownValue>> AttributeUtility::IdentifyAndMergeUnknowns(
 
   if (arg_unknowns.has_value()) {
     cel::base_internal::UnknownSetAccess::Add(
-        *result_set, UnknownSet((*arg_unknowns)->attribute_set(),
-                                (*arg_unknowns)->function_result_set()));
+        *result_set, UnknownSet((*arg_unknowns).attribute_set(),
+                                (*arg_unknowns).function_result_set()));
   }
 
   return value_factory_.CreateUnknownValue(

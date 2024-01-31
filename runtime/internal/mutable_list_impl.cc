@@ -19,50 +19,36 @@
 #include <string>
 #include <utility>
 
-#include "base/types/opaque_type.h"
 #include "base/value.h"
-#include "base/values/list_value_builder.h"
 #include "common/native_type.h"
+#include "common/type.h"
+#include "common/value.h"
 
 namespace cel::runtime_internal {
 using ::cel::NativeTypeId;
 
-bool MutableListType::Is(const cel::Type& type) {
-  return OpaqueType::Is(type) &&
-         OpaqueType::TypeId(static_cast<const OpaqueType&>(type)) ==
-             cel::NativeTypeId::For<MutableListType>();
-}
-
-NativeTypeId MutableListType::GetNativeTypeId() const {
-  return cel::NativeTypeId::For<MutableListType>();
-}
-
 MutableListValue::MutableListValue(
-    cel::Handle<MutableListType> type,
-    absl::Nonnull<std::unique_ptr<cel::ListValueBuilderInterface>> list_builder)
-    : cel::OpaqueValue(std::move(type)),
-      list_builder_(std::move(list_builder)) {}
+    cel::Unique<cel::ListValueBuilder> list_builder)
+    : cel::OpaqueValueInterface(), list_builder_(std::move(list_builder)) {}
 
-absl::Status MutableListValue::Append(cel::Handle<cel::Value> element) {
+absl::Status MutableListValue::Append(cel::Value element) {
   return list_builder_->Add(std::move(element));
 }
 
-absl::StatusOr<cel::Handle<cel::ListValue>> MutableListValue::Build() && {
+absl::StatusOr<cel::ListValue> MutableListValue::Build() && {
   return std::move(*list_builder_).Build();
 }
 
 std::string MutableListValue::DebugString() const {
-  return list_builder_->DebugString();
+  return kMutableListTypeName;
+}
+
+Type MutableListValue::GetTypeImpl(TypeManager& type_manager) const {
+  return type_manager.CreateOpaqueType(kMutableListTypeName, {});
 }
 
 NativeTypeId MutableListValue::GetNativeTypeId() const {
   return cel::NativeTypeId::For<MutableListValue>();
-}
-
-bool MutableListValue::Is(const cel::Value& value) {
-  return OpaqueValue::Is(value) &&
-         OpaqueValue::TypeId(static_cast<const OpaqueValue&>(value)) ==
-             cel::NativeTypeId::For<MutableListValue>();
 }
 
 }  // namespace cel::runtime_internal

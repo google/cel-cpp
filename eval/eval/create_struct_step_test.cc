@@ -14,6 +14,7 @@
 #include "base/type_manager.h"
 #include "base/type_provider.h"
 #include "base/value_manager.h"
+#include "common/values/legacy_value_manager.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
@@ -60,8 +61,8 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
   auto memory_manager = ProtoMemoryManagerRef(arena);
-  cel::TypeFactory type_factory(memory_manager);
-  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::common_internal::LegacyValueManager type_manager(
+      memory_manager, type_registry.GetTypeProvider());
 
   Expr expr0;
   Expr expr1;
@@ -77,7 +78,7 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
   entry.set_field_key(std::string(field));
 
   CEL_ASSIGN_OR_RETURN(auto maybe_type,
-                       type_manager.ResolveType(create_struct.message_name()));
+                       type_manager.FindType(create_struct.message_name()));
   if (!maybe_type.has_value()) {
     return absl::Status(absl::StatusCode::kFailedPrecondition,
                         "missing proto message type");
@@ -85,7 +86,7 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
   CEL_ASSIGN_OR_RETURN(auto step1,
                        CreateCreateStructStepForStruct(
                            create_struct, "google.api.expr.runtime.TestMessage",
-                           std::move((*maybe_type)), expr1.id(), type_manager));
+                           expr1.id(), type_manager));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
@@ -96,7 +97,7 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
   }
   CelExpressionFlatImpl cel_expr(
       FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), options));
+                     type_registry.GetTypeProvider(), options));
   Activation activation;
   activation.InsertValue("message", value);
 
@@ -108,7 +109,7 @@ void RunExpressionAndGetMessage(absl::string_view field, const CelValue& value,
                                 bool enable_unknowns) {
   ASSERT_OK_AND_ASSIGN(auto result,
                        RunExpression(field, value, arena, enable_unknowns));
-  ASSERT_TRUE(result.IsMessage());
+  ASSERT_TRUE(result.IsMessage()) << result.DebugString();
 
   const Message* msg = result.MessageOrDie();
   ASSERT_THAT(msg, Not(IsNull()));
@@ -127,7 +128,7 @@ void RunExpressionAndGetMessage(absl::string_view field,
 
   ASSERT_OK_AND_ASSIGN(auto result,
                        RunExpression(field, value, arena, enable_unknowns));
-  ASSERT_TRUE(result.IsMessage());
+  ASSERT_TRUE(result.IsMessage()) << result.DebugString();
 
   const Message* msg = result.MessageOrDie();
   ASSERT_THAT(msg, Not(IsNull()));
@@ -204,8 +205,8 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
           google::protobuf::MessageFactory::generated_factory()));
   google::protobuf::Arena arena;
   auto memory_manager = ProtoMemoryManagerRef(&arena);
-  cel::TypeFactory type_factory(memory_manager);
-  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::common_internal::LegacyValueManager type_manager(
+      memory_manager, type_registry.GetTypeProvider());
   Expr expr1;
 
   auto& create_struct = expr1.mutable_struct_expr();
@@ -214,12 +215,12 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   ASSERT_TRUE(adapter.has_value() && adapter->mutation_apis() != nullptr);
 
   ASSERT_OK_AND_ASSIGN(auto maybe_type,
-                       type_manager.ResolveType(create_struct.message_name()));
+                       type_manager.FindType(create_struct.message_name()));
   ASSERT_TRUE(maybe_type.has_value());
   ASSERT_OK_AND_ASSIGN(auto step,
                        CreateCreateStructStepForStruct(
                            create_struct, "google.api.expr.runtime.TestMessage",
-                           std::move((*maybe_type)), expr1.id(), type_manager));
+                           expr1.id(), type_manager));
   path.push_back(std::move(step));
 
   cel::RuntimeOptions options;
@@ -228,11 +229,11 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   }
   CelExpressionFlatImpl cel_expr(
       FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), options));
+                     type_registry.GetTypeProvider(), options));
   Activation activation;
 
   ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr.Evaluate(activation, &arena));
-  ASSERT_TRUE(result.IsMessage());
+  ASSERT_TRUE(result.IsMessage()) << result.DebugString();
   const Message* msg = result.MessageOrDie();
   ASSERT_THAT(msg, Not(IsNull()));
 
@@ -248,8 +249,8 @@ TEST_P(CreateCreateStructStepTest, TestMessageCreationBadField) {
           google::protobuf::MessageFactory::generated_factory()));
   google::protobuf::Arena arena;
   auto memory_manager = ProtoMemoryManagerRef(&arena);
-  cel::TypeFactory type_factory(memory_manager);
-  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::common_internal::LegacyValueManager type_manager(
+      memory_manager, type_registry.GetTypeProvider());
   Expr expr1;
 
   auto& create_struct = expr1.mutable_struct_expr();
@@ -262,11 +263,11 @@ TEST_P(CreateCreateStructStepTest, TestMessageCreationBadField) {
   ASSERT_TRUE(adapter.has_value() && adapter->mutation_apis() != nullptr);
 
   ASSERT_OK_AND_ASSIGN(auto maybe_type,
-                       type_manager.ResolveType(create_struct.message_name()));
+                       type_manager.FindType(create_struct.message_name()));
   ASSERT_TRUE(maybe_type.has_value());
   EXPECT_THAT(CreateCreateStructStepForStruct(
                   create_struct, "google.api.expr.runtime.TestMessage",
-                  std::move(*(maybe_type)), expr1.id(), type_manager)
+                  expr1.id(), type_manager)
                   .status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        testing::HasSubstr("'bad_field'")));

@@ -11,12 +11,7 @@
 #include "base/attribute.h"
 #include "base/kind.h"
 #include "base/value.h"
-#include "base/values/bool_value.h"
-#include "base/values/double_value.h"
-#include "base/values/int_value.h"
-#include "base/values/list_value.h"
-#include "base/values/string_value.h"
-#include "base/values/uint_value.h"
+#include "common/value.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
@@ -39,6 +34,7 @@ using ::cel::UintValue;
 using ::cel::Value;
 using ::cel::ValueKind;
 using ::cel::ValueKindToString;
+using ::cel::ValueView;
 using ::cel::internal::Number;
 using ::cel::runtime_internal::CreateNoSuchKeyError;
 
@@ -54,27 +50,28 @@ class ContainerAccessStep : public ExpressionStepBase {
 
  private:
   struct LookupResult {
-    Handle<Value> value;
+    ValueView value;
     AttributeTrail trail;
   };
 
-  LookupResult PerformLookup(ExecutionFrame* frame) const;
-  absl::StatusOr<Handle<Value>> LookupInMap(const Handle<MapValue>& cel_map,
-                                            const Handle<Value>& key,
-                                            ExecutionFrame* frame) const;
-  absl::StatusOr<Handle<Value>> LookupInList(const Handle<ListValue>& cel_list,
-                                             const Handle<Value>& key,
-                                             ExecutionFrame* frame) const;
+  LookupResult PerformLookup(ExecutionFrame* frame, Value& scratch) const;
+  absl::StatusOr<Handle<ValueView>> LookupInMap(const Handle<MapValue>& cel_map,
+                                                const Handle<Value>& key,
+                                                ExecutionFrame* frame,
+                                                Value& scratch) const;
+  absl::StatusOr<Handle<ValueView>> LookupInList(
+      const Handle<ListValue>& cel_list, const Handle<Value>& key,
+      ExecutionFrame* frame, Value& scratch) const;
 };
 
 absl::optional<Number> CelNumberFromValue(const Handle<Value>& value) {
   switch (value->kind()) {
     case ValueKind::kInt64:
-      return Number::FromInt64(value.As<IntValue>()->NativeValue());
+      return Number::FromInt64(value.As<IntValue>().NativeValue());
     case ValueKind::kUint64:
-      return Number::FromUint64(value.As<UintValue>()->NativeValue());
+      return Number::FromUint64(value.As<UintValue>().NativeValue());
     case ValueKind::kDouble:
-      return Number::FromDouble(value.As<DoubleValue>()->NativeValue());
+      return Number::FromDouble(value.As<DoubleValue>().NativeValue());
     default:
       return absl::nullopt;
   }
@@ -97,22 +94,22 @@ absl::Status CheckMapKeyType(const Handle<Value>& key) {
 AttributeQualifier AttributeQualifierFromValue(const Handle<Value>& v) {
   switch (v->kind()) {
     case ValueKind::kString:
-      return AttributeQualifier::OfString(v.As<StringValue>()->ToString());
+      return AttributeQualifier::OfString(v.As<StringValue>().ToString());
     case ValueKind::kInt64:
-      return AttributeQualifier::OfInt(v.As<IntValue>()->NativeValue());
+      return AttributeQualifier::OfInt(v.As<IntValue>().NativeValue());
     case ValueKind::kUint64:
-      return AttributeQualifier::OfUint(v.As<UintValue>()->NativeValue());
+      return AttributeQualifier::OfUint(v.As<UintValue>().NativeValue());
     case ValueKind::kBool:
-      return AttributeQualifier::OfBool(v.As<BoolValue>()->NativeValue());
+      return AttributeQualifier::OfBool(v.As<BoolValue>().NativeValue());
     default:
       // Non-matching qualifier.
       return AttributeQualifier();
   }
 }
 
-absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInMap(
+absl::StatusOr<Handle<ValueView>> ContainerAccessStep::LookupInMap(
     const Handle<MapValue>& cel_map, const Handle<Value>& key,
-    ExecutionFrame* frame) const {
+    ExecutionFrame* frame, Value& scratch) const {
   if (frame->enable_heterogeneous_numeric_lookups()) {
     // Double isn't a supported key type but may be convertible to an integer.
     absl::optional<Number> number = CelNumberFromValue(key);
@@ -120,53 +117,56 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInMap(
       // Consider uint as uint first then try coercion (prefer matching the
       // original type of the key value).
       if (key->Is<UintValue>()) {
-        Handle<Value> value;
+        ValueView value;
         bool ok;
-        CEL_ASSIGN_OR_RETURN(std::tie(value, ok),
-                             cel_map->Find(frame->value_factory(), key));
+        CEL_ASSIGN_OR_RETURN(
+            std::tie(value, ok),
+            cel_map.Find(frame->value_factory(), key, scratch));
         if (ok) {
           return value;
         }
       }
       // double / int / uint -> int
       if (number->LosslessConvertibleToInt()) {
-        Handle<Value> value;
+        ValueView value;
         bool ok;
         CEL_ASSIGN_OR_RETURN(
             std::tie(value, ok),
-            cel_map->Find(
-                frame->value_factory(),
-                frame->value_factory().CreateIntValue(number->AsInt())));
+            cel_map.Find(frame->value_factory(),
+                         frame->value_factory().CreateIntValue(number->AsInt()),
+                         scratch));
         if (ok) {
           return value;
         }
       }
       // double / int -> uint
       if (number->LosslessConvertibleToUint()) {
-        Handle<Value> value;
+        ValueView value;
         bool ok;
         CEL_ASSIGN_OR_RETURN(
             std::tie(value, ok),
-            cel_map->Find(
+            cel_map.Find(
                 frame->value_factory(),
-                frame->value_factory().CreateUintValue(number->AsUint())));
+                frame->value_factory().CreateUintValue(number->AsUint()),
+                scratch));
         if (ok) {
           return value;
         }
       }
-      return frame->value_factory().CreateErrorValue(
+      scratch = frame->value_factory().CreateErrorValue(
           CreateNoSuchKeyError(key->DebugString()));
+      return scratch;
     }
   }
 
   CEL_RETURN_IF_ERROR(CheckMapKeyType(key));
 
-  return cel_map->Get(frame->value_factory(), key);
+  return cel_map.Get(frame->value_factory(), key, scratch);
 }
 
-absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInList(
+absl::StatusOr<Handle<ValueView>> ContainerAccessStep::LookupInList(
     const Handle<ListValue>& cel_list, const Handle<Value>& key,
-    ExecutionFrame* frame) const {
+    ExecutionFrame* frame, Value& scratch) const {
   absl::optional<int64_t> maybe_idx;
   if (frame->enable_heterogeneous_numeric_lookups()) {
     auto number = CelNumberFromValue(key);
@@ -174,16 +174,16 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInList(
       maybe_idx = number->AsInt();
     }
   } else if (key->Is<IntValue>()) {
-    maybe_idx = key.As<IntValue>()->NativeValue();
+    maybe_idx = key.As<IntValue>().NativeValue();
   }
 
   if (maybe_idx.has_value()) {
     int64_t idx = *maybe_idx;
-    if (idx < 0 || idx >= cel_list->Size()) {
+    if (idx < 0 || idx >= cel_list.Size()) {
       return absl::UnknownError(
-          absl::StrCat("Index error: index=", idx, " size=", cel_list->Size()));
+          absl::StrCat("Index error: index=", idx, " size=", cel_list.Size()));
     }
-    return cel_list->Get(frame->value_factory(), idx);
+    return cel_list.Get(frame->value_factory(), idx, scratch);
   }
 
   return absl::UnknownError(
@@ -192,7 +192,7 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInList(
 }
 
 ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
-    ExecutionFrame* frame) const {
+    ExecutionFrame* frame, Value& scratch) const {
   auto input_args = frame->value_stack().GetSpan(kNumContainerAccessArguments);
   AttributeTrail trail;
 
@@ -203,7 +203,8 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
     auto unknown_set = frame->attribute_utility().MergeUnknowns(input_args);
 
     if (unknown_set) {
-      return {std::move(unknown_set).value(), std::move(trail)};
+      scratch = std::move(unknown_set).value();
+      return {ValueView{scratch}, std::move(trail)};
     }
 
     // We guarantee that GetAttributeSpan can acquire this number of arguments
@@ -216,43 +217,44 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
     if (frame->attribute_utility().CheckForUnknown(trail,
                                                    /*use_partial=*/false)) {
       cel::Attribute attr = trail.attribute();
-      return {frame->attribute_utility().CreateUnknownSet(attr),
-              std::move(trail)};
+      scratch = frame->attribute_utility().CreateUnknownSet(attr);
+      return {ValueView{scratch}, std::move(trail)};
     }
   }
 
   for (const auto& value : input_args) {
     if (value->Is<cel::ErrorValue>()) {
-      return {value, std::move(trail)};
+      return {ValueView{value}, std::move(trail)};
     }
   }
 
   // Select steps can be applied to either maps or messages
   switch (container->kind()) {
     case ValueKind::kMap: {
-      auto result = LookupInMap(container.As<MapValue>(), key, frame);
+      auto result = LookupInMap(container.As<MapValue>(), key, frame, scratch);
       if (!result.ok()) {
-        return {
-            frame->value_factory().CreateErrorValue(std::move(result).status()),
-            std::move(trail)};
+        scratch =
+            frame->value_factory().CreateErrorValue(std::move(result).status());
+        return {ValueView{scratch}, std::move(trail)};
       }
-      return {std::move(result).value(), std::move(trail)};
+      return {*result, std::move(trail)};
     }
     case ValueKind::kList: {
-      auto result = LookupInList(container.As<ListValue>(), key, frame);
+      auto result =
+          LookupInList(container.As<ListValue>(), key, frame, scratch);
       if (!result.ok()) {
-        return {
-            frame->value_factory().CreateErrorValue(std::move(result).status()),
-            std::move(trail)};
+        scratch =
+            frame->value_factory().CreateErrorValue(std::move(result).status());
+        return {ValueView{scratch}, std::move(trail)};
       }
-      return {std::move(result).value(), std::move(trail)};
+      return {*result, std::move(trail)};
     }
     default:
-      return {
+      scratch =
           frame->value_factory().CreateErrorValue(absl::InvalidArgumentError(
               absl::StrCat("Invalid container type: '",
-                           ValueKindToString(container->kind()), "'"))),
-          std::move(trail)};
+                           ValueKindToString(container->kind()), "'")));
+      return {ValueView{scratch}, std::move(trail)};
   }
 }
 
@@ -263,9 +265,10 @@ absl::Status ContainerAccessStep::Evaluate(ExecutionFrame* frame) const {
         "Insufficient arguments supplied for ContainerAccess-type expression");
   }
 
-  auto result = PerformLookup(frame);
-  frame->value_stack().Pop(kNumContainerAccessArguments);
-  frame->value_stack().Push(std::move(result.value), std::move(result.trail));
+  Value scratch;
+  auto result = PerformLookup(frame, scratch);
+  frame->value_stack().PopAndPush(kNumContainerAccessArguments,
+                                  Value{result.value}, std::move(result.trail));
 
   return absl::OkStatus();
 }

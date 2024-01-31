@@ -19,8 +19,9 @@
 #include "base/type_manager.h"
 #include "base/type_provider.h"
 #include "base/value_manager.h"
-#include "base/values/int_value.h"
 #include "common/native_type.h"
+#include "common/value.h"
+#include "common/values/legacy_value_manager.h"
 #include "eval/eval/evaluator_core.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
@@ -37,17 +38,14 @@ using ::cel::extensions::ProtoMemoryManagerRef;
 class CompilerConstantStepTest : public testing::Test {
  public:
   CompilerConstantStepTest()
-      : type_factory_(ProtoMemoryManagerRef(&arena_)),
-        type_manager_(type_factory_, cel::TypeProvider::Builtin()),
-        value_factory_(type_manager_),
+      : value_factory_(ProtoMemoryManagerRef(&arena_),
+                       cel::TypeProvider::Builtin()),
         state_(2, 0, cel::TypeProvider::Builtin(),
                ProtoMemoryManagerRef(&arena_)) {}
 
  protected:
   google::protobuf::Arena arena_;
-  cel::TypeFactory type_factory_;
-  cel::TypeManager type_manager_;
-  cel::ValueManager value_factory_;
+  cel::common_internal::LegacyValueManager value_factory_;
 
   FlatExpressionEvaluatorState state_;
   cel::Activation empty_activation_;

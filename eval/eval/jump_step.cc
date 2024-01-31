@@ -7,9 +7,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
-#include "base/values/bool_value.h"
-#include "base/values/error_value.h"
-#include "base/values/unknown_value.h"
+#include "common/value.h"
 #include "eval/internal/errors.h"
 
 namespace google::api::expr::runtime {
@@ -48,14 +46,16 @@ class CondJumpStep : public JumpStepBase {
       return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
     }
 
-    Handle<Value> value = frame->value_stack().Peek();
+    const auto& value = frame->value_stack().Peek();
+    const auto should_jump =
+        value->Is<BoolValue>() &&
+        jump_condition_ == value.As<BoolValue>().NativeValue();
 
     if (!leave_on_stack_) {
       frame->value_stack().Pop(1);
     }
 
-    if (value->Is<BoolValue>() &&
-        jump_condition_ == value.As<BoolValue>()->NativeValue()) {
+    if (should_jump) {
       return Jump(frame);
     }
 

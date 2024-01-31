@@ -25,8 +25,6 @@
 #include "base/handle.h"
 #include "base/type.h"
 #include "base/value.h"
-#include "base/values/bool_value.h"
-#include "base/values/int_value.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/compiler/regex_precompilation_optimization.h"

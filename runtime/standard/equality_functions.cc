@@ -31,22 +31,9 @@
 #include "base/handle.h"
 #include "base/kind.h"
 #include "base/type.h"
-#include "base/types/list_type.h"
 #include "base/value_manager.h"
-#include "base/values/bool_value.h"
-#include "base/values/bytes_value.h"
-#include "base/values/double_value.h"
-#include "base/values/duration_value.h"
-#include "base/values/error_value.h"
-#include "base/values/int_value.h"
-#include "base/values/map_value.h"
-#include "base/values/null_value.h"
-#include "base/values/string_value.h"
-#include "base/values/struct_value.h"
-#include "base/values/timestamp_value.h"
-#include "base/values/type_value.h"
-#include "base/values/uint_value.h"
-#include "base/values/unknown_value.h"
+#include "common/type.h"
+#include "common/value.h"
 #include "internal/number.h"
 #include "internal/status_macros.h"
 #include "runtime/function_registry.h"
@@ -172,7 +159,7 @@ absl::optional<Number> NumberFromValue(const Value& value) {
 absl::StatusOr<absl::optional<Handle<Value>>> CheckAlternativeNumericType(
     ValueManager& value_factory, const Handle<Value>& key,
     const MapValue& rhs) {
-  absl::optional<Number> number = NumberFromValue(*key);
+  absl::optional<Number> number = NumberFromValue(key);
 
   if (!number.has_value()) {
     return absl::nullopt;
@@ -521,9 +508,8 @@ absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueManager& value_factory,
                                                     const Handle<Value>& v2) {
   if (v1->kind() == v2->kind()) {
     if (v1->Is<StructValue>() && v2->Is<StructValue>()) {
-      CEL_ASSIGN_OR_RETURN(
-          Handle<Value> result,
-          v1->As<StructValue>().Equals(value_factory, v2->As<StructValue>()));
+      CEL_ASSIGN_OR_RETURN(Handle<Value> result,
+                           v1->As<StructValue>().Equal(value_factory, v2));
       if (result->Is<BoolValue>()) {
         return result->As<BoolValue>().NativeValue();
       }
@@ -533,8 +519,8 @@ absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueManager& value_factory,
                                                             v2);
   }
 
-  absl::optional<Number> lhs = NumberFromValue(*v1);
-  absl::optional<Number> rhs = NumberFromValue(*v2);
+  absl::optional<Number> lhs = NumberFromValue(v1);
+  absl::optional<Number> rhs = NumberFromValue(v2);
 
   if (rhs.has_value() && lhs.has_value()) {
     return *lhs == *rhs;

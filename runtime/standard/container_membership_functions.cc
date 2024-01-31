@@ -27,10 +27,7 @@
 #include "base/function_adapter.h"
 #include "base/handle.h"
 #include "base/value.h"
-#include "base/values/bool_value.h"
-#include "base/values/double_value.h"
-#include "base/values/int_value.h"
-#include "base/values/uint_value.h"
+#include "common/value.h"
 #include "internal/number.h"
 #include "internal/status_macros.h"
 #include "runtime/function_registry.h"
@@ -50,40 +47,54 @@ static constexpr std::array<absl::string_view, 3> in_operators = {
 };
 
 template <class T>
-bool ValueEquals(const Handle<Value>& value, T other);
+bool ValueEquals(ValueView value, T other);
 
 template <>
-bool ValueEquals(const Handle<Value>& value, bool other) {
-  return value->Is<BoolValue>() &&
-         value->As<BoolValue>().NativeValue() == other;
+bool ValueEquals(ValueView value, bool other) {
+  if (auto bool_value = As<BoolValueView>(value); bool_value) {
+    return bool_value->NativeValue() == other;
+  }
+  return false;
 }
 
 template <>
-bool ValueEquals(const Handle<Value>& value, int64_t other) {
-  return value->Is<IntValue>() &&
-         (value->As<IntValue>().NativeValue() == other);
+bool ValueEquals(ValueView value, int64_t other) {
+  if (auto int_value = As<IntValueView>(value); int_value) {
+    return int_value->NativeValue() == other;
+  }
+  return false;
 }
 
 template <>
-bool ValueEquals(const Handle<Value>& value, uint64_t other) {
-  return value->Is<UintValue>() &&
-         (value->As<UintValue>().NativeValue() == other);
+bool ValueEquals(ValueView value, uint64_t other) {
+  if (auto uint_value = As<UintValueView>(value); uint_value) {
+    return uint_value->NativeValue() == other;
+  }
+  return false;
 }
 
 template <>
-bool ValueEquals(const Handle<Value>& value, double other) {
-  return value->Is<DoubleValue>() &&
-         (value->As<DoubleValue>().NativeValue() == other);
+bool ValueEquals(ValueView value, double other) {
+  if (auto double_value = As<DoubleValueView>(value); double_value) {
+    return double_value->NativeValue() == other;
+  }
+  return false;
 }
 
 template <>
-bool ValueEquals(const Handle<Value>& value, const StringValue& other) {
-  return value->Is<StringValue>() && (value->As<StringValue>().Equals(other));
+bool ValueEquals(ValueView value, const StringValue& other) {
+  if (auto string_value = As<StringValueView>(value); string_value) {
+    return string_value->Equals(other);
+  }
+  return false;
 }
 
 template <>
-bool ValueEquals(const Handle<Value>& value, const BytesValue& other) {
-  return value->Is<BytesValue>() && (value->As<BytesValue>().Equals(other));
+bool ValueEquals(ValueView value, const BytesValue& other) {
+  if (auto bytes_value = As<BytesValueView>(value); bytes_value) {
+    return bytes_value->Equals(other);
+  }
+  return false;
 }
 
 // Template function implementing CEL in() function
@@ -91,8 +102,10 @@ template <typename T>
 absl::StatusOr<bool> In(ValueManager& value_factory, T value,
                         const ListValue& list) {
   size_t size = list.Size();
+  Value element_scratch;
   for (int i = 0; i < size; i++) {
-    CEL_ASSIGN_OR_RETURN(Handle<Value> element, list.Get(value_factory, i));
+    CEL_ASSIGN_OR_RETURN(ValueView element,
+                         list.Get(value_factory, i, element_scratch));
     if (ValueEquals<T>(element, value)) {
       return true;
     }
@@ -105,34 +118,7 @@ absl::StatusOr<bool> In(ValueManager& value_factory, T value,
 absl::StatusOr<Handle<Value>> HeterogeneousEqualityIn(
     ValueManager& value_factory, const Handle<Value>& value,
     const ListValue& list) {
-  // TODO(uncreated-issue/55): the generic cel::ListValue::Contains() is almost
-  // identical to the in function implementation. It should be possible to
-  // consolidate, but separating the value type migration from swapping the
-  // equals implementation to isolate the two changes. For the sake of
-  // migration, LegacyLists use a special implementation of Contains that
-  // operate using the CelValueEqualsImpl to minimize the number of modern <->
-  // legacy conversions.
-  if (list.Is<base_internal::LegacyListValue>()) {
-    return list.Contains(value_factory, value);
-  }
-  CEL_ASSIGN_OR_RETURN(
-      bool exists,
-      list.AnyOf(value_factory,
-                 [&value, &value_factory](
-                     const Handle<Value>& elem) -> absl::StatusOr<bool> {
-                   CEL_ASSIGN_OR_RETURN(absl::optional<bool> element_equals,
-                                        runtime_internal::ValueEqualImpl(
-                                            value_factory, elem, value));
-
-                   // If equality is undefined, just consider the comparison
-                   // as false and continue searching (as opposed to returning
-                   // error as in element-wise equal).
-                   if (!element_equals.has_value()) {
-                     return false;  // continue
-                   }
-                   return *element_equals;
-                 }));
-  return value_factory.CreateBoolValue(exists);
+  return list.Contains(value_factory, value);
 }
 
 absl::Status RegisterListMembershipFunctions(FunctionRegistry& registry,

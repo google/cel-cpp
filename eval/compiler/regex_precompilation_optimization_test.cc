@@ -25,6 +25,7 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value_manager.h"
+#include "common/values/legacy_value_manager.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder.h"
@@ -54,9 +55,8 @@ class RegexPrecompilationExtensionTest : public testing::Test {
   RegexPrecompilationExtensionTest()
       : type_registry_(*builder_.GetTypeRegistry()),
         function_registry_(*builder_.GetRegistry()),
-        type_factory_(cel::MemoryManagerRef::ReferenceCounting()),
-        type_manager_(type_factory_, type_registry_.GetTypeProvider()),
-        value_factory_(type_manager_),
+        value_factory_(cel::MemoryManagerRef::ReferenceCounting(),
+                       type_registry_.GetTypeProvider()),
         resolver_("", function_registry_.InternalGetRegistry(),
                   type_registry_.InternalGetModernRegistry(), value_factory_,
                   type_registry_.resolveable_enums()),
@@ -77,9 +77,7 @@ class RegexPrecompilationExtensionTest : public testing::Test {
   CelFunctionRegistry& function_registry_;
   InterpreterOptions options_;
   cel::RuntimeOptions runtime_options_;
-  cel::TypeFactory type_factory_;
-  cel::TypeManager type_manager_;
-  cel::ValueManager value_factory_;
+  cel::common_internal::LegacyValueManager value_factory_;
   Resolver resolver_;
   IssueCollector issue_collector_;
 };

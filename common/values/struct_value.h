@@ -130,20 +130,7 @@ class StructValue final {
     return *this;
   }
 
-  ValueKind kind() const {
-    AssertIsValid();
-    return absl::visit(
-        [](const auto& alternative) -> ValueKind {
-          if constexpr (std::is_same_v<
-                            absl::monostate,
-                            absl::remove_cvref_t<decltype(alternative)>>) {
-            return ValueKind::kStruct;
-          } else {
-            return alternative.kind();
-          }
-        },
-        variant_);
-  }
+  constexpr ValueKind kind() const { return kKind; }
 
   StructType GetType(TypeManager& type_manager) const {
     AssertIsValid();
@@ -657,20 +644,7 @@ class StructValueView final {
   StructValueView(const StructValueView&) = default;
   StructValueView& operator=(const StructValueView&) = default;
 
-  ValueKind kind() const {
-    AssertIsValid();
-    return absl::visit(
-        [](auto alternative) -> ValueKind {
-          if constexpr (std::is_same_v<
-                            absl::monostate,
-                            absl::remove_cvref_t<decltype(alternative)>>) {
-            return ValueKind::kStruct;
-          } else {
-            return alternative.kind();
-          }
-        },
-        variant_);
-  }
+  constexpr ValueKind kind() const { return kKind; }
 
   StructType GetType(TypeManager& type_manager) const {
     AssertIsValid();

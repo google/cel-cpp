@@ -33,7 +33,8 @@
 #include "base/type_provider.h"
 #include "base/value.h"
 #include "base/value_manager.h"
-#include "base/values/bool_value.h"
+#include "common/value.h"
+#include "common/values/legacy_value_manager.h"
 #include "internal/testing.h"
 #include "runtime/function_overload_reference.h"
 #include "runtime/function_registry.h"
@@ -119,14 +120,11 @@ struct TestCase {
 class LogicalFunctionsTest : public testing::TestWithParam<TestCase> {
  public:
   LogicalFunctionsTest()
-      : type_factory_(MemoryManagerRef::ReferenceCounting()),
-        type_manager_(type_factory_, TypeProvider::Builtin()),
-        value_factory_(type_manager_) {}
+      : value_factory_(MemoryManagerRef::ReferenceCounting(),
+                       TypeProvider::Builtin()) {}
 
  protected:
-  TypeFactory type_factory_;
-  TypeManager type_manager_;
-  ValueManager value_factory_;
+  common_internal::LegacyValueManager value_factory_;
 };
 
 TEST_P(LogicalFunctionsTest, Runner) {

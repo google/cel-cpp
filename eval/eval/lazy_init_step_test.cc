@@ -20,7 +20,7 @@
 #include "absl/status/status.h"
 #include "base/type_provider.h"
 #include "base/value_manager.h"
-#include "base/values/int_value.h"
+#include "common/value.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "extensions/protobuf/memory_manager.h"

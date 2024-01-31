@@ -23,9 +23,6 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
-#include "base/handle.h"
-#include "base/internal/data.h"
-#include "base/internal/memory_manager.h"
 #include "common/memory.h"  // IWYU pragma: export
 
 namespace cel {
@@ -142,84 +139,6 @@ class Allocator {
   // instantiating their own MemoryManager.
   bool allocation_only_;
 };
-
-// GCC before 12 has buggy friendship. Instead of calculating friendship at the
-// point of evaluation it does so at the point where it is written. This macro
-// ensures compatibility by friending both so IsDestructorSkippable works
-// correctly.
-#define CEL_INTERNAL_IS_DESTRUCTOR_SKIPPABLE()                  \
- private:                                                       \
-  template <typename>                                           \
-  friend struct ::cel::base_internal::HandleFactory;            \
-  template <typename, typename>                                 \
-  friend struct ::cel::base_internal::HasIsDestructorSkippable; \
-                                                                \
-  bool IsDestructorSkippable() const
-
-namespace base_internal {
-
-template <typename T>
-template <typename F, typename... Args>
-std::enable_if_t<IsDerivedHeapDataV<F>, Handle<T>> HandleFactory<T>::Make(
-    MemoryManagerRef memory_manager, Args&&... args) {
-  static_assert(std::is_base_of_v<T, F>, "F is not derived from T");
-#if defined(__cpp_lib_is_pointer_interconvertible) && \
-    __cpp_lib_is_pointer_interconvertible >= 201907L
-  // Only available in C++20.
-  static_assert(std::is_pointer_interconvertible_base_of_v<Data, F>,
-                "F must be pointer interconvertible to Data");
-#endif
-  if (memory_manager.memory_management() == MemoryManagement::kPooling) {
-    void* addr;
-    if (memory_manager.pointer_ == nullptr) {
-      addr = static_cast<PoolingMemoryManager*>(memory_manager.vpointer_)
-                 ->Allocate(sizeof(F), alignof(F));
-    } else {
-      addr = static_cast<const PoolingMemoryManagerVirtualTable*>(
-                 memory_manager.vpointer_)
-                 ->Allocate(memory_manager.pointer_, sizeof(F), alignof(F));
-    }
-    F* pointer = ::new (addr) F(std::forward<Args>(args)...);
-    if constexpr (!std::is_trivially_destructible_v<F>) {
-      if constexpr (base_internal::HasIsDestructorSkippable<F>::value) {
-        if (!pointer->IsDestructorSkippable()) {
-          if (memory_manager.pointer_ == nullptr) {
-            static_cast<PoolingMemoryManager*>(memory_manager.vpointer_)
-                ->OwnCustomDestructor(
-                    pointer,
-                    &base_internal::MemoryManagerDestructor<F>::Destruct);
-          } else {
-            static_cast<const PoolingMemoryManagerVirtualTable*>(
-                memory_manager.vpointer_)
-                ->OwnCustomDestructor(
-                    memory_manager.pointer_, pointer,
-                    &base_internal::MemoryManagerDestructor<F>::Destruct);
-          }
-        }
-      } else {
-        if (memory_manager.pointer_ == nullptr) {
-          static_cast<PoolingMemoryManager*>(memory_manager.vpointer_)
-              ->OwnCustomDestructor(
-                  pointer,
-                  &base_internal::MemoryManagerDestructor<F>::Destruct);
-        } else {
-          static_cast<const PoolingMemoryManagerVirtualTable*>(
-              memory_manager.vpointer_)
-              ->OwnCustomDestructor(
-                  memory_manager.pointer_, pointer,
-                  &base_internal::MemoryManagerDestructor<F>::Destruct);
-        }
-      }
-    }
-    base_internal::Metadata::SetArenaAllocated(*pointer);
-    return Handle<F>(base_internal::kInPlaceArenaAllocated, *pointer);
-  }
-  F* pointer = new F(std::forward<Args>(args)...);
-  base_internal::Metadata::SetReferenceCounted(*pointer);
-  return Handle<F>(base_internal::kInPlaceReferenceCounted, *pointer);
-}
-
-}  // namespace base_internal
 
 }  // namespace cel
 

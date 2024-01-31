@@ -155,7 +155,7 @@ class ParsedMapValue {
   ParsedMapValue& operator=(const ParsedMapValue&) = default;
   ParsedMapValue& operator=(ParsedMapValue&&) = default;
 
-  ValueKind kind() const { return interface_->kind(); }
+  constexpr ValueKind kind() const { return kKind; }
 
   MapType GetType(TypeManager& type_manager) const {
     return interface_->GetType(type_manager);
@@ -354,7 +354,7 @@ class ParsedMapValueView {
   ParsedMapValueView& operator=(const ParsedMapValueView&) = default;
   ParsedMapValueView& operator=(ParsedMapValueView&&) = default;
 
-  ValueKind kind() const { return interface_->kind(); }
+  constexpr ValueKind kind() const { return kKind; }
 
   MapType GetType(TypeManager& type_manager) const {
     return interface_->GetType(type_manager);

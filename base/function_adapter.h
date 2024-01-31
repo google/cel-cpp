@@ -33,7 +33,6 @@
 #include "absl/types/span.h"
 #include "base/function.h"
 #include "base/function_descriptor.h"
-#include "base/handle.h"
 #include "base/internal/function_adapter.h"
 #include "base/kind.h"
 #include "base/value.h"
@@ -53,11 +52,9 @@ struct AdaptedTypeTraits {
 // underlying handle argument.
 template <typename T>
 struct AdaptedTypeTraits<const T&> {
-  using AssignableType = const T*;
+  using AssignableType = T;
 
-  static std::reference_wrapper<const T> ToArg(AssignableType v) {
-    return *ABSL_DIE_IF_NULL(v);  // Crash OK
-  }
+  static T ToArg(AssignableType v) { return v; }
 };
 
 template <typename... Args>
@@ -115,7 +112,7 @@ template <int N, typename... Args>
 struct ApplyHelper {
   template <typename T, typename Op>
   static typename ApplyReturnType<T>::type Apply(
-      Op&& op, absl::Span<const Handle<Value>> input) {
+      Op&& op, absl::Span<const Value> input) {
     constexpr int idx = sizeof...(Args) - N;
     using Arg = typename Indexer<idx, Args...>::type;
     using ArgTraits = internal::AdaptedTypeTraits<Arg>;
@@ -131,7 +128,7 @@ template <typename... Args>
 struct ApplyHelper<0, Args...> {
   template <typename T, typename Op>
   static typename ApplyReturnType<T>::type Apply(
-      Op&& op, absl::Span<const Handle<Value>> input) {
+      Op&& op, absl::Span<const Value> input) {
     return op();
   }
 };
@@ -145,7 +142,7 @@ struct ApplyHelper<0, Args...> {
 // Extension functions must distinguish between recoverable errors (error that
 // should participate in CEL's error pruning) and unrecoverable errors (a non-ok
 // absl::Status that stops evaluation). The function to wrap may return
-// StatusOr<T> to propagate a Status, or return a Handle<Value> with an Error
+// StatusOr<T> to propagate a Status, or return a Value with an Error
 // value to introduce a CEL error.
 //
 // To introduce an extension function that may accept any kind of CEL value as
@@ -161,21 +158,21 @@ struct ApplyHelper<0, Args...> {
 // duration -> absl::Duration
 //
 // Complex types may be referred to by cref or handle.
-// To return these, users should return a Handle<Value>.
-// any/dyn -> Handle<Value>, const Value&
-// string -> Handle<StringValue> | const StringValue&
-// bytes -> Handle<BytesValue> | const BytesValue&
-// list -> Handle<ListValue> | const ListValue&
-// map -> Handle<MapValue> | const MapValue&
-// struct -> Handle<StructValue> | const StructValue&
-// null -> Handle<NullValue> | const NullValue&
+// To return these, users should return a Value.
+// any/dyn -> Value, const Value&
+// string -> StringValue | const StringValue&
+// bytes -> BytesValue | const BytesValue&
+// list -> ListValue | const ListValue&
+// map -> MapValue | const MapValue&
+// struct -> StructValue | const StructValue&
+// null -> NullValue | const NullValue&
 //
 // To intercept error and unknown arguments, users must use a non-strict
 // overload with all arguments typed as any and check the kind of the
-// Handle<Value> argument.
+// Value argument.
 //
 // Example Usage:
-//  double SquareDifference(ValueFactory&, double x, double y) {
+//  double SquareDifference(ValueManager&, double x, double y) {
 //    return x * x - y * y;
 //  }
 //
@@ -197,7 +194,7 @@ struct ApplyHelper<0, Args...> {
 template <typename T, typename U, typename V>
 class BinaryFunctionAdapter {
  public:
-  using FunctionType = std::function<T(ValueFactory&, U, V)>;
+  using FunctionType = std::function<T(ValueManager&, U, V)>;
 
   static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
     return std::make_unique<BinaryFunctionImpl>(std::move(fn));
@@ -215,9 +212,8 @@ class BinaryFunctionAdapter {
   class BinaryFunctionImpl : public cel::Function {
    public:
     explicit BinaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
-    absl::StatusOr<Handle<Value>> Invoke(
-        const FunctionEvaluationContext& context,
-        absl::Span<const Handle<Value>> args) const override {
+    absl::StatusOr<Value> Invoke(const FunctionEvaluationContext& context,
+                                 absl::Span<const Value> args) const override {
       using Arg1Traits = internal::AdaptedTypeTraits<U>;
       using Arg2Traits = internal::AdaptedTypeTraits<V>;
       if (args.size() != 2) {
@@ -247,7 +243,7 @@ class BinaryFunctionAdapter {
 // See documentation for Binary Function adapter for general recommendations.
 //
 // Example Usage:
-//  double Invert(ValueFactory&, double x) {
+//  double Invert(ValueManager&, double x) {
 //   return 1 / x;
 //  }
 //
@@ -265,7 +261,7 @@ class BinaryFunctionAdapter {
 template <typename T, typename U>
 class UnaryFunctionAdapter {
  public:
-  using FunctionType = std::function<T(ValueFactory&, U)>;
+  using FunctionType = std::function<T(ValueManager&, U)>;
 
   static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
     return std::make_unique<UnaryFunctionImpl>(std::move(fn));
@@ -282,9 +278,8 @@ class UnaryFunctionAdapter {
   class UnaryFunctionImpl : public cel::Function {
    public:
     explicit UnaryFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
-    absl::StatusOr<Handle<Value>> Invoke(
-        const FunctionEvaluationContext& context,
-        absl::Span<const Handle<Value>> args) const override {
+    absl::StatusOr<Value> Invoke(const FunctionEvaluationContext& context,
+                                 absl::Span<const Value> args) const override {
       using ArgTraits = internal::AdaptedTypeTraits<U>;
       if (args.size() != 1) {
         return absl::InvalidArgumentError(
@@ -313,7 +308,7 @@ class UnaryFunctionAdapter {
 template <typename T, typename... Args>
 class VariadicFunctionAdapter {
  public:
-  using FunctionType = std::function<T(ValueFactory&, Args...)>;
+  using FunctionType = std::function<T(ValueManager&, Args...)>;
 
   static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
     return std::make_unique<VariadicFunctionImpl>(std::move(fn));
@@ -331,9 +326,8 @@ class VariadicFunctionAdapter {
    public:
     explicit VariadicFunctionImpl(FunctionType fn) : fn_(std::move(fn)) {}
 
-    absl::StatusOr<Handle<Value>> Invoke(
-        const FunctionEvaluationContext& context,
-        absl::Span<const Handle<Value>> args) const override {
+    absl::StatusOr<Value> Invoke(const FunctionEvaluationContext& context,
+                                 absl::Span<const Value> args) const override {
       if (args.size() != sizeof...(Args)) {
         return absl::InvalidArgumentError(
             absl::StrCat("unexpected number of arguments for variadic(",

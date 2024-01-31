@@ -20,6 +20,11 @@ package(
 licenses(["notice"])
 
 cc_library(
+    name = "handle",
+    hdrs = ["handle.h"],
+)
+
+cc_library(
     name = "attributes",
     srcs = [
         "attribute.cc",
@@ -43,27 +48,6 @@ cc_library(
 )
 
 cc_library(
-    name = "handle",
-    hdrs = ["handle.h"],
-    deps = [
-        "//base/internal:data",
-        "//base/internal:handle",
-        "//common:memory",
-        "@com_google_absl//absl/base",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/log:absl_check",
-    ],
-)
-
-cc_library(
-    name = "owner",
-    hdrs = ["owner.h"],
-    deps = [
-        "//base/internal:data",
-    ],
-)
-
-cc_library(
     name = "kind",
     hdrs = ["kind.h"],
     deps = [
@@ -79,9 +63,6 @@ cc_library(
         "memory.h",
     ],
     deps = [
-        ":handle",
-        "//base/internal:data",
-        "//base/internal:memory_manager",
         "//common:memory",
         "@com_google_absl//absl/base:core_headers",
     ],
@@ -117,23 +98,6 @@ cc_test(
 # Build target encompassing cel::Type, cel::Value, and their related classes.
 cc_library(
     name = "data",
-    srcs = [
-        "type.cc",
-        "type_factory.cc",
-        "type_manager.cc",
-        "type_provider.cc",
-        "value.cc",
-        "value_factory.cc",
-    ] + glob(
-        [
-            "types/*.cc",
-            "values/*.cc",
-        ],
-        exclude = [
-            "types/*_test.cc",
-            "values/*_test.cc",
-        ],
-    ),
     hdrs = [
         "type.h",
         "type_factory.h",
@@ -142,100 +106,11 @@ cc_library(
         "value.h",
         "value_factory.h",
         "value_manager.h",
-    ] + glob(
-        [
-            "types/*.h",
-            "values/*.h",
-        ],
-    ),
-    deps = [
-        ":attributes",
-        ":function_result_set",
-        ":handle",
-        ":kind",
-        ":memory",
-        ":owner",
-        "//base/internal:data",
-        "//base/internal:message_wrapper",
-        "//base/internal:type",
-        "//base/internal:unknown_set",
-        "//base/internal:value",
-        "//common:any",
-        "//common:json",
-        "//common:memory",
-        "//common:native_type",
-        "//internal:casts",
-        "//internal:deserialize",
-        "//internal:number",
-        "//internal:proto_wire",
-        "//internal:serialize",
-        "//internal:status_macros",
-        "//internal:strings",
-        "//internal:time",
-        "//internal:utf8",
-        "@com_google_absl//absl/base",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/base:no_destructor",
-        "@com_google_absl//absl/base:nullability",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/functional:function_ref",
-        "@com_google_absl//absl/functional:overload",
-        "@com_google_absl//absl/hash",
-        "@com_google_absl//absl/log:absl_check",
-        "@com_google_absl//absl/log:absl_log",
-        "@com_google_absl//absl/log:die_if_null",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/synchronization",
-        "@com_google_absl//absl/time",
-        "@com_google_absl//absl/types:optional",
-        "@com_google_absl//absl/types:span",
-        "@com_google_absl//absl/types:variant",
-        "@com_google_absl//absl/utility",
-        "@com_googlesource_code_re2//:re2",
     ],
-)
-
-cc_test(
-    name = "data_test",
-    srcs = [
-        "type_factory_test.cc",
-        "type_provider_test.cc",
-        "type_test.cc",
-        "value_factory_test.cc",
-        "value_test.cc",
-    ] + glob([
-        "types/*_test.cc",
-        "values/*_test.cc",
-    ]),
     deps = [
-        ":data",
         ":handle",
-        ":kind",
-        ":memory",
-        "//base/internal:data",
-        "//base/internal:memory_manager_testing",
-        "//base/testing:value_matchers",
-        "//common:json",
-        "//common:memory",
-        "//common:type_kind",
-        "//internal:benchmark",
-        "//internal:status_macros",
-        "//internal:strings",
-        "//internal:testing",
-        "//internal:time",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/base:nullability",
-        "@com_google_absl//absl/hash:hash_testing",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/time",
-        "@com_google_absl//absl/types:optional",
+        "//common:type",
+        "//common:value",
     ],
 )
 
@@ -258,7 +133,6 @@ cc_library(
     ],
     deps = [
         ":data",
-        ":handle",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
     ],
@@ -314,7 +188,6 @@ cc_library(
         ":data",
         ":function",
         ":function_descriptor",
-        ":handle",
         ":kind",
         "//base/internal:function_adapter",
         "//internal:status_macros",
@@ -335,9 +208,9 @@ cc_test(
         ":function",
         ":function_adapter",
         ":function_descriptor",
-        ":handle",
         ":kind",
         ":memory",
+        "//common:value",
         "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",

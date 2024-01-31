@@ -29,10 +29,12 @@ class ShadowableValueStep : public ExpressionStepBase {
 };
 
 absl::Status ShadowableValueStep::Evaluate(ExecutionFrame* frame) const {
-  CEL_ASSIGN_OR_RETURN(auto var, frame->modern_activation().FindVariable(
-                                     frame->value_factory(), identifier_));
+  cel::Value scratch;
+  CEL_ASSIGN_OR_RETURN(
+      auto var, frame->modern_activation().FindVariable(frame->value_factory(),
+                                                        identifier_, scratch));
   if (var.has_value()) {
-    frame->value_stack().Push(std::move(var).value());
+    frame->value_stack().Push(cel::Value{*var});
   } else {
     frame->value_stack().Push(value_);
   }

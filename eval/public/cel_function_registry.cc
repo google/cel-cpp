@@ -17,6 +17,7 @@
 #include "base/type_provider.h"
 #include "base/value.h"
 #include "base/value_manager.h"
+#include "common/values/legacy_value_manager.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_options.h"
@@ -50,10 +51,9 @@ class ProxyToModernCelFunction : public CelFunction {
     // dependencies on legacy CelFunction are removed, we can remove this
     // implementation.
     auto memory_manager = ProtoMemoryManagerRef(arena);
-    cel::TypeFactory type_factory(memory_manager);
-    cel::TypeManager type_manager(type_factory, cel::TypeProvider::Builtin());
-    cel::ValueManager value_factory(type_manager);
-    cel::FunctionEvaluationContext context(value_factory);
+    cel::common_internal::LegacyValueManager manager(
+        memory_manager, cel::TypeProvider::Builtin());
+    cel::FunctionEvaluationContext context(manager);
 
     std::vector<cel::Handle<cel::Value>> modern_args =
         cel::interop_internal::LegacyValueToModernValueOrDie(arena, args);

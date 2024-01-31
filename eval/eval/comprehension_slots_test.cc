@@ -22,7 +22,8 @@
 #include "base/type_manager.h"
 #include "base/type_provider.h"
 #include "base/value_manager.h"
-#include "base/values/string_value.h"
+#include "common/value.h"
+#include "common/values/legacy_value_manager.h"
 #include "eval/eval/attribute_trail.h"
 #include "internal/testing.h"
 
@@ -41,9 +42,8 @@ using testing::Truly;
 using cel::internal::IsOkAndHolds;
 
 TEST(ComprehensionSlots, Basic) {
-  TypeFactory tf(MemoryManagerRef::ReferenceCounting());
-  TypeManager tm(tf, TypeProvider::Builtin());
-  ValueManager factory(tm);
+  cel::common_internal::LegacyValueManager factory(
+      MemoryManagerRef::ReferenceCounting(), TypeProvider::Builtin());
 
   ComprehensionSlots slots(4);
 

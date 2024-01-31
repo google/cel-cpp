@@ -18,8 +18,7 @@
 #include "base/handle.h"
 #include "base/kind.h"
 #include "base/value.h"
-#include "base/values/error_value.h"
-#include "base/values/unknown_value.h"
+#include "common/value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
@@ -102,7 +101,7 @@ bool IsUnknownFunctionResultError(const Handle<Value>& result) {
     return false;
   }
 
-  const auto& status = result.As<cel::ErrorValue>()->NativeValue();
+  const auto& status = result.As<cel::ErrorValue>().NativeValue();
 
   if (status.code() != absl::StatusCode::kUnavailable) {
     return false;
@@ -240,8 +239,7 @@ absl::Status AbstractFunctionStep::Evaluate(ExecutionFrame* frame) const {
   // reasonably be handled as a cel error will appear in the result value.
   CEL_ASSIGN_OR_RETURN(auto result, DoEvaluate(frame));
 
-  frame->value_stack().Pop(num_arguments_);
-  frame->value_stack().Push(std::move(result));
+  frame->value_stack().PopAndPush(num_arguments_, std::move(result));
 
   return absl::OkStatus();
 }

@@ -8,9 +8,7 @@
 #include "base/builtins.h"
 #include "base/handle.h"
 #include "base/value.h"
-#include "base/values/bool_value.h"
-#include "base/values/error_value.h"
-#include "base/values/unknown_value.h"
+#include "common/value.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
 
@@ -63,14 +61,13 @@ absl::Status TernaryStep::Evaluate(ExecutionFrame* frame) const {
   if (!condition->Is<cel::BoolValue>()) {
     result = frame->value_factory().CreateErrorValue(
         CreateNoMatchingOverloadError(kTernary));
-  } else if (condition.As<cel::BoolValue>()->NativeValue()) {
+  } else if (condition.As<cel::BoolValue>().NativeValue()) {
     result = args[kTernaryStepTrue];
   } else {
     result = args[kTernaryStepFalse];
   }
 
-  frame->value_stack().Pop(args.size());
-  frame->value_stack().Push(std::move(result));
+  frame->value_stack().PopAndPush(args.size(), std::move(result));
 
   return absl::OkStatus();
 }

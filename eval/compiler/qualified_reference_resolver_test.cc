@@ -31,6 +31,7 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value_manager.h"
+#include "common/values/legacy_value_manager.h"
 #include "eval/compiler/resolver.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_function.h"
@@ -129,10 +130,9 @@ TEST(ResolveReferences, Basic) {
   IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
 
@@ -162,10 +162,9 @@ TEST(ResolveReferences, ReturnsFalseIfNoChanges) {
   IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
 
@@ -186,10 +185,9 @@ TEST(ResolveReferences, NamespacedIdent) {
   IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[2].set_name("foo.bar.var1");
@@ -251,10 +249,9 @@ TEST(ResolveReferences, WarningOnPresenceTest) {
   IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[1].set_name("foo.bar.var1");
@@ -304,10 +301,9 @@ TEST(ResolveReferences, EnumConstReferenceUsed) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[2].set_name("foo.bar.var1");
@@ -344,10 +340,9 @@ TEST(ResolveReferences, EnumConstReferenceUsedSelect) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[2].set_name("foo.bar.var1");
@@ -385,10 +380,9 @@ TEST(ResolveReferences, ConstReferenceSkipped) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[2].set_name("foo.bar.var1");
@@ -460,10 +454,9 @@ TEST(ResolveReferences, FunctionReferenceBasic) {
                                 CelValue::Type::kBool,
                             })));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
   IssueCollector issues(RuntimeIssue::Severity::kError);
@@ -481,10 +474,9 @@ TEST(ResolveReferences, FunctionReferenceMissingOverloadDetected) {
 
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
   IssueCollector issues(RuntimeIssue::Severity::kError);
@@ -521,10 +513,9 @@ TEST(ResolveReferences, SpecialBuiltinsNotWarned) {
     // Builtins aren't in the function registry.
     CelFunctionRegistry func_registry;
     cel::TypeRegistry type_registry;
-    cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-    cel::TypeManager type_manager(type_factory,
-                                  type_registry.GetComposedTypeProvider());
-    cel::ValueManager value_factory(type_manager);
+    cel::common_internal::LegacyValueManager value_factory(
+        cel::MemoryManagerRef::ReferenceCounting(),
+        type_registry.GetComposedTypeProvider());
     Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                       value_factory, type_registry.resolveable_enums());
     IssueCollector issues(RuntimeIssue::Severity::kError);
@@ -546,10 +537,9 @@ TEST(ResolveReferences,
 
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
   IssueCollector issues(RuntimeIssue::Severity::kError);
@@ -573,10 +563,9 @@ TEST(ResolveReferences, EmulatesEagerFailing) {
 
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
   IssueCollector issues(RuntimeIssue::Severity::kWarning);
@@ -595,10 +584,9 @@ TEST(ResolveReferences, FunctionReferenceToWrongExprKind) {
   IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[2].mutable_overload_id().push_back(
@@ -639,10 +627,9 @@ TEST(ResolveReferences, FunctionReferenceWithTargetNoChange) {
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "boolean_and", true, {CelValue::Type::kBool, CelValue::Type::kBool})));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[1].mutable_overload_id().push_back(
@@ -663,10 +650,9 @@ TEST(ResolveReferences,
   IssueCollector issues(RuntimeIssue::Severity::kError);
   CelFunctionRegistry func_registry;
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[1].mutable_overload_id().push_back(
@@ -689,10 +675,9 @@ TEST(ResolveReferences, FunctionReferenceWithTargetToNamespacedFunction) {
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "ext.boolean_and", false, {CelValue::Type::kBool})));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[1].mutable_overload_id().push_back(
@@ -731,10 +716,9 @@ TEST(ResolveReferences,
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "com.google.ext.boolean_and", false, {CelValue::Type::kBool})));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("com.google", func_registry.InternalGetRegistry(),
                     type_registry, value_factory,
                     type_registry.resolveable_enums());
@@ -796,10 +780,9 @@ TEST(ResolveReferences, FunctionReferenceWithHasTargetNoChange) {
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "ext.option.boolean_and", true, {CelValue::Type::kBool})));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[1].mutable_overload_id().push_back(
@@ -892,10 +875,9 @@ TEST(ResolveReferences, EnumConstReferenceUsedInComprehension) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[3].set_name("ENUM");
@@ -1003,10 +985,9 @@ TEST(ResolveReferences, ReferenceToId0Warns) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   cel::TypeRegistry type_registry;
-  cel::TypeFactory type_factory(cel::MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory,
-                                type_registry.GetComposedTypeProvider());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      cel::MemoryManagerRef::ReferenceCounting(),
+      type_registry.GetComposedTypeProvider());
   Resolver registry("", func_registry.InternalGetRegistry(), type_registry,
                     value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[0].set_name("pkg.var");

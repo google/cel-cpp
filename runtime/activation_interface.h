@@ -24,6 +24,7 @@
 #include "base/attribute.h"
 #include "base/value.h"
 #include "base/value_manager.h"
+#include "internal/status_macros.h"
 #include "runtime/function_overload_reference.h"
 
 namespace cel {
@@ -39,8 +40,18 @@ class ActivationInterface {
   virtual ~ActivationInterface() = default;
 
   // Find value for a string (possibly qualified) variable name.
+  virtual absl::StatusOr<absl::optional<ValueView>> FindVariable(
+      ValueManager& factory, absl::string_view name,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
   virtual absl::StatusOr<absl::optional<Handle<Value>>> FindVariable(
-      ValueManager& factory, absl::string_view name) const = 0;
+      ValueManager& factory, absl::string_view name) const {
+    Value scratch;
+    CEL_ASSIGN_OR_RETURN(auto maybe, FindVariable(factory, name, scratch));
+    if (!maybe.has_value()) {
+      return absl::nullopt;
+    }
+    return Value{*maybe};
+  }
 
   // Find a set of context function overloads by name.
   virtual std::vector<FunctionOverloadReference> FindFunctionOverloads(

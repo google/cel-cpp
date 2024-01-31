@@ -29,9 +29,8 @@ namespace cel::interop_internal {
 
 using ::google::api::expr::runtime::CelFunction;
 
-absl::StatusOr<absl::optional<Handle<Value>>>
-AdapterActivationImpl::FindVariable(ValueManager& value_factory,
-                                    absl::string_view name) const {
+absl::StatusOr<absl::optional<ValueView>> AdapterActivationImpl::FindVariable(
+    ValueManager& value_factory, absl::string_view name, Value& scratch) const {
   // This implementation should only be used during interop, when we can
   // always assume the memory manager is backed by a protobuf arena.
   google::protobuf::Arena* arena =
@@ -42,7 +41,7 @@ AdapterActivationImpl::FindVariable(ValueManager& value_factory,
   if (!legacy_value.has_value()) {
     return absl::nullopt;
   }
-  return LegacyValueToModernValueOrDie(arena, *legacy_value);
+  return ModernValue(arena, *legacy_value, scratch);
 }
 
 std::vector<FunctionOverloadReference>

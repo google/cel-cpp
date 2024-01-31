@@ -41,9 +41,8 @@ class PlannerContextTest : public testing::Test {
   PlannerContextTest()
       : type_registry_(),
         function_registry_(),
-        type_factory_(cel::MemoryManagerRef::ReferenceCounting()),
-        type_manager_(type_factory_, type_registry_.GetComposedTypeProvider()),
-        value_factory_(type_manager_),
+        value_factory_(cel::MemoryManagerRef::ReferenceCounting(),
+                       type_registry_.GetComposedTypeProvider()),
         resolver_("", function_registry_, type_registry_, value_factory_,
                   type_registry_.resolveable_enums()),
         issue_collector_(RuntimeIssue::Severity::kError) {}
@@ -52,9 +51,7 @@ class PlannerContextTest : public testing::Test {
   cel::TypeRegistry type_registry_;
   cel::FunctionRegistry function_registry_;
   cel::RuntimeOptions options_;
-  cel::TypeFactory type_factory_;
-  cel::TypeManager type_manager_;
-  cel::ValueManager value_factory_;
+  cel::common_internal::LegacyValueManager value_factory_;
   Resolver resolver_;
   IssueCollector issue_collector_;
 };

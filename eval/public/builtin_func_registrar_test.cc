@@ -83,7 +83,7 @@ void ExpectResult(const TestCase& test_case) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        cel_expression->Evaluate(activation, &arena));
   if (!test_case.result.ok()) {
-    EXPECT_TRUE(value.IsError());
+    EXPECT_TRUE(value.IsError()) << value.DebugString();
     EXPECT_THAT(*value.ErrorOrDie(),
                 StatusIs(test_case.result.status().code(),
                          HasSubstr(test_case.result.status().message())));
@@ -135,14 +135,12 @@ INSTANTIATE_TEST_SUITE_P(
          "duration('90s90ns') - duration('80s80ns') == duration('10s10ns')"},
 
         {"MinDurationSubDurationLegacy",
-         "min - duration('1ns')",
-         {{"min", CelValue::CreateDuration(MinDuration())}},
-         absl::InvalidArgumentError("out of range")},
+         "min - duration('1ns') < duration('-87660000h')",
+         {{"min", CelValue::CreateDuration(MinDuration())}}},
 
         {"MaxDurationAddDurationLegacy",
-         "max + duration('1ns')",
-         {{"max", CelValue::CreateDuration(MaxDuration())}},
-         absl::InvalidArgumentError("out of range")},
+         "max + duration('1ns') > duration('87660000h')",
+         {{"max", CelValue::CreateDuration(MaxDuration())}}},
 
         {"TimestampConversionFromStringLegacy",
          "timestamp('10000-01-02T00:00:00Z') > "

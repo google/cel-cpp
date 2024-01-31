@@ -15,49 +15,12 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPE_PROVIDER_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPE_PROVIDER_H_
 
-#include "absl/base/attributes.h"
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
-#include "base/handle.h"
-#include "base/type.h"
+#include "common/type_reflector.h"  // IWYU pragma: export
 
 namespace cel {
 
-class TypeFactory;
+using TypeProvider = TypeReflector;
 
-// Interface for a TypeProvider, allowing host applications to inject
-// functionality for operating on custom types in the CEL interpreter.
-//
-// Type providers are registered with a TypeRegistry. When resolving a type,
-// the registry will check if it is a well known type, then check against each
-// of the registered providers. If the type can't be resolved, the operation
-// will result in an error.
-//
-// Type provider implementations must be effectively immutable and threadsafe.
-// The type registry uses this property to aggressively cache results.
-//
-// Note: This API is not finalized. Consult the CEL team before introducing new
-// implementations.
-class TypeProvider {
- public:
-  // Returns a TypeProvider which provides all of CEL's builtin types. It is
-  // thread safe.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static TypeProvider& Builtin();
-
-  virtual ~TypeProvider() = default;
-
-  // Return a Handle handle to a Type for the fully qualified type name, if
-  // available.
-  //
-  // An empty handle is returned if the provider cannot find the requested type.
-  virtual absl::StatusOr<absl::optional<Handle<Type>>> ProvideType(
-      TypeFactory&, absl::string_view) const {
-    return absl::UnimplementedError("ProvideType is not yet implemented");
-  }
-};
-
-}  // namespace cel
+}
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPE_PROVIDER_H_

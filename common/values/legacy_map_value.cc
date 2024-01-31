@@ -22,6 +22,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/call_once.h"
 #include "absl/base/nullability.h"
+#include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -40,6 +41,7 @@ namespace cel::common_internal {
 
 namespace {
 
+using LegacyMapValue_GetType = MapType (*)(uintptr_t, TypeManager&);
 using LegacyMapValue_DebugString = std::string (*)(uintptr_t);
 using LegacyMapValue_GetSerializedSize = absl::StatusOr<size_t> (*)(uintptr_t);
 using LegacyMapValue_SerializeTo = absl::Status (*)(uintptr_t, absl::Cord&);
@@ -66,6 +68,7 @@ using LegacyMapValue_NewIterator =
 
 ABSL_CONST_INIT struct {
   absl::once_flag init_once;
+  LegacyMapValue_GetType get_type = nullptr;
   LegacyMapValue_DebugString debug_string = nullptr;
   LegacyMapValue_GetSerializedSize get_serialized_size = nullptr;
   LegacyMapValue_SerializeTo serialize_to = nullptr;
@@ -80,9 +83,82 @@ ABSL_CONST_INIT struct {
   LegacyMapValue_NewIterator new_iterator = nullptr;
 } legacy_map_value_vtable;
 
+#if ABSL_HAVE_ATTRIBUTE_WEAK
+extern "C" ABSL_ATTRIBUTE_WEAK MapType
+cel_common_internal_LegacyMapValue_GetType(uintptr_t impl,
+                                           TypeManager& type_manager);
+extern "C" ABSL_ATTRIBUTE_WEAK std::string
+cel_common_internal_LegacyMapValue_DebugString(uintptr_t impl);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<size_t>
+cel_common_internal_LegacyMapValue_GetSerializedSize(uintptr_t impl);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
+cel_common_internal_LegacyMapValue_SerializeTo(uintptr_t impl,
+                                               absl::Cord& serialized_value);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<JsonObject>
+cel_common_internal_LegacyMapValue_ConvertToJsonObject(uintptr_t impl);
+extern "C" ABSL_ATTRIBUTE_WEAK bool cel_common_internal_LegacyMapValue_IsEmpty(
+    uintptr_t impl);
+extern "C" ABSL_ATTRIBUTE_WEAK size_t
+cel_common_internal_LegacyMapValue_Size(uintptr_t impl);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<std::pair<ValueView, bool>>
+cel_common_internal_LegacyMapValue_Find(uintptr_t impl,
+                                        ValueManager& value_manager,
+                                        ValueView key, Value& scratch);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<ValueView>
+cel_common_internal_LegacyMapValue_Get(uintptr_t impl,
+                                       ValueManager& value_manager,
+                                       ValueView key, Value& scratch);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<ValueView>
+cel_common_internal_LegacyMapValue_Has(uintptr_t impl,
+                                       ValueManager& value_manager,
+                                       ValueView key, Value& scratch);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<ListValueView>
+cel_common_internal_LegacyMapValue_ListKeys(uintptr_t impl,
+                                            ValueManager& value_manager,
+                                            ListValue& scratch);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
+cel_common_internal_LegacyMapValue_ForEach(uintptr_t impl,
+                                           ValueManager& value_manager,
+                                           MapValue::ForEachCallback callback);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
+cel_common_internal_LegacyMapValue_NewIterator(uintptr_t impl,
+                                               ValueManager& value_manager);
+#endif
+
 void InitializeLegacyMapValue() {
   absl::call_once(legacy_map_value_vtable.init_once, []() -> void {
+#if ABSL_HAVE_ATTRIBUTE_WEAK
+    legacy_map_value_vtable.get_type = ABSL_DIE_IF_NULL(  // Crash OK
+        cel_common_internal_LegacyMapValue_GetType);
+    legacy_map_value_vtable.debug_string = ABSL_DIE_IF_NULL(  // Crash OK
+        cel_common_internal_LegacyMapValue_DebugString);
+    legacy_map_value_vtable.get_serialized_size = ABSL_DIE_IF_NULL(  // Crash OK
+        cel_common_internal_LegacyMapValue_GetSerializedSize);
+    legacy_map_value_vtable.serialize_to = ABSL_DIE_IF_NULL(  // Crash OK
+        cel_common_internal_LegacyMapValue_SerializeTo);
+    legacy_map_value_vtable.convert_to_json_object =
+        ABSL_DIE_IF_NULL(  // Crash OK
+            cel_common_internal_LegacyMapValue_ConvertToJsonObject);
+    legacy_map_value_vtable.is_empty = ABSL_DIE_IF_NULL(  // Crash OK
+        cel_common_internal_LegacyMapValue_IsEmpty);
+    legacy_map_value_vtable.size =
+        ABSL_DIE_IF_NULL(cel_common_internal_LegacyMapValue_Size);  // Crash OK
+    legacy_map_value_vtable.get =
+        ABSL_DIE_IF_NULL(cel_common_internal_LegacyMapValue_Get);  // Crash OK
+    legacy_map_value_vtable.find =
+        ABSL_DIE_IF_NULL(cel_common_internal_LegacyMapValue_Find);  // Crash OK
+    legacy_map_value_vtable.has =
+        ABSL_DIE_IF_NULL(cel_common_internal_LegacyMapValue_Has);  // Crash OK
+    legacy_map_value_vtable.list_keys = ABSL_DIE_IF_NULL(          // Crash OK
+        cel_common_internal_LegacyMapValue_ListKeys);
+    legacy_map_value_vtable.for_each = ABSL_DIE_IF_NULL(  // Crash OK
+        cel_common_internal_LegacyMapValue_ForEach);
+    legacy_map_value_vtable.new_iterator = ABSL_DIE_IF_NULL(  // Crash OK
+        cel_common_internal_LegacyMapValue_NewIterator);
+#else
     internal::DynamicLoader dynamic_loader;
+    legacy_map_value_vtable.get_type = dynamic_loader.FindSymbolOrDie(
+        "cel_common_internal_LegacyMapValue_GetType");
     legacy_map_value_vtable.debug_string = dynamic_loader.FindSymbolOrDie(
         "cel_common_internal_LegacyMapValue_DebugString");
     legacy_map_value_vtable.get_serialized_size =
@@ -109,13 +185,15 @@ void InitializeLegacyMapValue() {
         "cel_common_internal_LegacyMapValue_ForEach");
     legacy_map_value_vtable.new_iterator = dynamic_loader.FindSymbolOrDie(
         "cel_common_internal_LegacyMapValue_NewIterator");
+#endif
   });
 }
 
 }  // namespace
 
 MapType LegacyMapValue::GetType(TypeManager& type_manager) const {
-  return MapType(type_manager.GetDynDynMapType());
+  InitializeLegacyMapValue();
+  return (*legacy_map_value_vtable.get_type)(impl_, type_manager);
 }
 
 std::string LegacyMapValue::DebugString() const {
@@ -214,7 +292,8 @@ absl::StatusOr<ValueView> LegacyMapValue::Equal(ValueManager& value_manager,
 }
 
 MapType LegacyMapValueView::GetType(TypeManager& type_manager) const {
-  return MapType(type_manager.GetDynDynMapType());
+  InitializeLegacyMapValue();
+  return (*legacy_map_value_vtable.get_type)(impl_, type_manager);
 }
 
 std::string LegacyMapValueView::DebugString() const {

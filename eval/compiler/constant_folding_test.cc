@@ -27,8 +27,8 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value_manager.h"
-#include "base/values/list_value.h"
-#include "base/values/string_value.h"
+#include "common/value.h"
+#include "common/values/legacy_value_manager.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/const_value_step.h"
@@ -72,9 +72,8 @@ using cel::internal::StatusIs;
 class UpdatedConstantFoldingTest : public testing::Test {
  public:
   UpdatedConstantFoldingTest()
-      : type_factory_(ProtoMemoryManagerRef(&arena_)),
-        type_manager_(type_factory_, type_registry_.GetComposedTypeProvider()),
-        value_factory_(type_manager_),
+      : value_factory_(ProtoMemoryManagerRef(&arena_),
+                       type_registry_.GetComposedTypeProvider()),
         issue_collector_(RuntimeIssue::Severity::kError),
         resolver_("", function_registry_, type_registry_, value_factory_,
                   type_registry_.resolveable_enums()) {}
@@ -83,9 +82,7 @@ class UpdatedConstantFoldingTest : public testing::Test {
   google::protobuf::Arena arena_;
   cel::FunctionRegistry function_registry_;
   cel::TypeRegistry type_registry_;
-  cel::TypeFactory type_factory_;
-  cel::TypeManager type_manager_;
-  cel::ValueManager value_factory_;
+  cel::common_internal::LegacyValueManager value_factory_;
   cel::RuntimeOptions options_;
   IssueCollector issue_collector_;
   Resolver resolver_;

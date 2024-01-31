@@ -23,24 +23,11 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
-#include "base/handle.h"
 #include "base/kind.h"
 #include "base/value.h"
 #include "base/value_factory.h"
-#include "base/values/bool_value.h"
-#include "base/values/bytes_value.h"
-#include "base/values/double_value.h"
-#include "base/values/duration_value.h"
-#include "base/values/int_value.h"
-#include "base/values/list_value.h"
-#include "base/values/map_value.h"
-#include "base/values/null_value.h"
-#include "base/values/string_value.h"
-#include "base/values/struct_value.h"
-#include "base/values/timestamp_value.h"
-#include "base/values/uint_value.h"
+#include "common/casting.h"
 #include "internal/status_macros.h"
 
 namespace cel::internal {
@@ -92,20 +79,15 @@ constexpr Kind AdaptedKind<absl::Duration>() {
 
 // ValueTypes without a canonical c++ type representation can be referenced by
 // Handle, cref Handle, or cref ValueType.
-#define HANDLE_ADAPTED_KIND_OVL(value_type, kind)           \
-  template <>                                               \
-  constexpr Kind AdaptedKind<const value_type&>() {         \
-    return kind;                                            \
-  }                                                         \
-                                                            \
-  template <>                                               \
-  constexpr Kind AdaptedKind<Handle<value_type>>() {        \
-    return kind;                                            \
-  }                                                         \
-                                                            \
-  template <>                                               \
-  constexpr Kind AdaptedKind<const Handle<value_type>&>() { \
-    return kind;                                            \
+#define HANDLE_ADAPTED_KIND_OVL(value_type, kind)   \
+  template <>                                       \
+  constexpr Kind AdaptedKind<const value_type&>() { \
+    return kind;                                    \
+  }                                                 \
+                                                    \
+  template <>                                       \
+  constexpr Kind AdaptedKind<value_type>() {        \
+    return kind;                                    \
   }
 
 HANDLE_ADAPTED_KIND_OVL(Value, Kind::kAny);
@@ -120,141 +102,114 @@ HANDLE_ADAPTED_KIND_OVL(TypeValue, Kind::kType);
 
 #undef HANDLE_ADAPTED_KIND_OVL
 
-// Adapt a Handle<Value> to its corresponding argument type in a wrapped c++
+// Adapt a Value to its corresponding argument type in a wrapped c++
 // function.
 struct HandleToAdaptedVisitor {
   absl::Status operator()(int64_t* out) {
-    if (!input->Is<IntValue>()) {
+    if (!InstanceOf<IntValue>(input)) {
       return absl::InvalidArgumentError("expected int value");
     }
-    *out = input.As<IntValue>()->NativeValue();
+    *out = Cast<IntValue>(input).NativeValue();
     return absl::OkStatus();
   }
 
   absl::Status operator()(uint64_t* out) {
-    if (!input->Is<UintValue>()) {
+    if (!InstanceOf<UintValue>(input)) {
       return absl::InvalidArgumentError("expected uint value");
     }
-    *out = input.As<UintValue>()->NativeValue();
+    *out = Cast<UintValue>(input).NativeValue();
     return absl::OkStatus();
   }
 
   absl::Status operator()(double* out) {
-    if (!input->Is<DoubleValue>()) {
+    if (!InstanceOf<DoubleValue>(input)) {
       return absl::InvalidArgumentError("expected double value");
     }
-    *out = input.As<DoubleValue>()->NativeValue();
+    *out = Cast<DoubleValue>(input).NativeValue();
     return absl::OkStatus();
   }
 
   absl::Status operator()(bool* out) {
-    if (!input->Is<BoolValue>()) {
+    if (!InstanceOf<BoolValue>(input)) {
       return absl::InvalidArgumentError("expected bool value");
     }
-    *out = input.As<BoolValue>()->NativeValue();
+    *out = Cast<BoolValue>(input).NativeValue();
     return absl::OkStatus();
   }
 
   absl::Status operator()(absl::Time* out) {
-    if (!input->Is<TimestampValue>()) {
+    if (!InstanceOf<TimestampValue>(input)) {
       return absl::InvalidArgumentError("expected timestamp value");
     }
-    *out = input.As<TimestampValue>()->NativeValue();
+    *out = Cast<TimestampValue>(input).NativeValue();
     return absl::OkStatus();
   }
 
   absl::Status operator()(absl::Duration* out) {
-    if (!input->Is<DurationValue>()) {
+    if (!InstanceOf<DurationValue>(input)) {
       return absl::InvalidArgumentError("expected duration value");
     }
-    *out = input.As<DurationValue>()->NativeValue();
+    *out = Cast<DurationValue>(input).NativeValue();
     return absl::OkStatus();
   }
 
-  absl::Status operator()(Handle<Value>* out) {
+  absl::Status operator()(Value* out) {
     *out = input;
     return absl::OkStatus();
   }
 
-  absl::Status operator()(const Handle<Value>** out) {
+  absl::Status operator()(const Value** out) {
     *out = &input;
     return absl::OkStatus();
   }
 
-  // Used to implement adapter for pass by const reference functions.
   template <typename T>
-  absl::Status operator()(const Handle<T>** out) {
-    if (!input->Is<T>()) {
+  absl::Status operator()(T* out) {
+    if (!InstanceOf<std::remove_const_t<T>>(input)) {
       return absl::InvalidArgumentError(
           absl::StrCat("expected ", ValueKindToString(T::kKind), " value"));
     }
-    *out = &(input.As<T>());
+    *out = Cast<std::remove_const_t<T>>(input);
     return absl::OkStatus();
   }
 
-  template <typename T>
-  absl::Status operator()(const T** out) {
-    if (!input->Is<T>()) {
-      return absl::InvalidArgumentError(
-          absl::StrCat("expected ", ValueKindToString(T::kKind), " value"));
-    }
-    *out = &(*input.As<T>());
-    return absl::OkStatus();
-  }
-
-  template <typename T>
-  absl::Status operator()(Handle<T>* out) {
-    const Handle<T>* out_ptr;
-    CEL_RETURN_IF_ERROR(this->operator()(&out_ptr));
-    *out = *out_ptr;
-    return absl::OkStatus();
-  }
-
-  const Handle<Value>& input;
+  const Value& input;
 };
 
 // Adapts the return value of a wrapped C++ function to its corresponding
-// Handle<Value> representation.
+// Value representation.
 struct AdaptedToHandleVisitor {
-  absl::StatusOr<Handle<Value>> operator()(int64_t in) {
-    return value_factory.CreateIntValue(in);
-  }
+  absl::StatusOr<Value> operator()(int64_t in) { return IntValue(in); }
 
-  absl::StatusOr<Handle<Value>> operator()(uint64_t in) {
-    return value_factory.CreateUintValue(in);
-  }
+  absl::StatusOr<Value> operator()(uint64_t in) { return UintValue(in); }
 
-  absl::StatusOr<Handle<Value>> operator()(double in) {
-    return value_factory.CreateDoubleValue(in);
-  }
+  absl::StatusOr<Value> operator()(double in) { return DoubleValue(in); }
 
-  absl::StatusOr<Handle<Value>> operator()(bool in) {
-    return value_factory.CreateBoolValue(in);
-  }
+  absl::StatusOr<Value> operator()(bool in) { return BoolValue(in); }
 
-  absl::StatusOr<Handle<Value>> operator()(absl::Time in) {
+  absl::StatusOr<Value> operator()(absl::Time in) {
     // Type matching may have already occurred. It's too late to change up the
     // type and return an error.
-    return value_factory.CreateUncheckedTimestampValue(in);
+    return TimestampValue(in);
   }
 
-  absl::StatusOr<Handle<Value>> operator()(absl::Duration in) {
+  absl::StatusOr<Value> operator()(absl::Duration in) {
     // Type matching may have already occurred. It's too late to change up the
     // type and return an error.
-    return value_factory.CreateUncheckedDurationValue(in);
+    return DurationValue(in);
   }
 
-  absl::StatusOr<Handle<Value>> operator()(Handle<Value> in) { return in; }
+  absl::StatusOr<Value> operator()(Value in) { return in; }
 
   template <typename T>
-  absl::StatusOr<Handle<Value>> operator()(Handle<T> in) {
+  absl::StatusOr<Value> operator()(T in) {
     return in;
   }
 
   // Special case for StatusOr<T> return value -- wrap the underlying value if
   // present, otherwise return the status.
   template <typename T>
-  absl::StatusOr<Handle<Value>> operator()(absl::StatusOr<T> wrapped) {
+  absl::StatusOr<Value> operator()(absl::StatusOr<T> wrapped) {
     CEL_ASSIGN_OR_RETURN(auto value, wrapped);
     return this->operator()(std::move(value));
   }

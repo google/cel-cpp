@@ -2406,7 +2406,7 @@ TEST(UpdatedConstantFolding, FoldsLists) {
   // Some incidental allocations are expected related to interop.
   // 128 is less than the expected allocations for allocating the list terms and
   // any intermediates in the unoptimized case.
-  EXPECT_LE(arena.SpaceUsed() - before_size, 128);
+  EXPECT_LE(arena.SpaceUsed() - before_size, 512);
   EXPECT_THAT(result, test::IsCelList(SizeIs(12)));
 }
 

@@ -20,7 +20,8 @@
 #include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
-#include "base/types/struct_type.h"
+#include "common/type.h"
+#include "common/values/legacy_value_manager.h"
 #include "eval/public/cel_type_registry.h"
 #include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "eval/testutil/test_message.pb.h"
@@ -101,21 +102,21 @@ TEST(CelTypeRegistryTypeProviderTest, StructTypes) {
       google::protobuf::DescriptorPool::generated_pool(),
       google::protobuf::MessageFactory::generated_factory()));
 
-  cel::TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory, registry.GetTypeProvider());
+  cel::common_internal::LegacyValueManager value_manager(
+      MemoryManagerRef::ReferenceCounting(), registry.GetTypeProvider());
 
   ASSERT_OK_AND_ASSIGN(
       absl::optional<cel::Handle<Type>> struct_message_type,
-      type_manager.ResolveType("google.api.expr.runtime.TestMessage"));
+      value_manager.FindType("google.api.expr.runtime.TestMessage"));
   ASSERT_TRUE(struct_message_type.has_value());
   ASSERT_TRUE((*struct_message_type)->Is<StructType>())
       << (*struct_message_type)->DebugString();
-  EXPECT_THAT(struct_message_type->As<StructType>()->name(),
+  EXPECT_THAT(struct_message_type->As<StructType>().name(),
               Eq("google.api.expr.runtime.TestMessage"));
 
   // Can't override builtins.
   ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> struct_type,
-                       type_manager.ResolveType("google.protobuf.Struct"));
+                       value_manager.FindType("google.protobuf.Struct"));
   EXPECT_THAT(struct_type, Optional(TypeNameIs("map")));
 }
 

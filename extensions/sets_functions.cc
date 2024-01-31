@@ -19,9 +19,7 @@
 #include "base/function_adapter.h"
 #include "base/handle.h"
 #include "base/value_manager.h"
-#include "base/values/bytes_value.h"
-#include "base/values/list_value.h"
-#include "base/values/string_value.h"
+#include "common/value.h"
 #include "internal/status_macros.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
@@ -33,38 +31,39 @@ namespace {
 absl::StatusOr<Handle<Value>> SetsContains(ValueManager& value_factory,
                                            const ListValue& list,
                                            const ListValue& sublist) {
-  CEL_ASSIGN_OR_RETURN(
-      bool any_missing,
-      sublist.AnyOf(
-          value_factory,
-          [&list, &value_factory](
-              const Handle<Value>& sublist_element) -> absl::StatusOr<bool> {
-            CEL_ASSIGN_OR_RETURN(auto contains,
-                                 list.Contains(value_factory, sublist_element));
+  bool any_missing = false;
+  CEL_RETURN_IF_ERROR(sublist.ForEach(
+      value_factory,
+      [&list, &value_factory,
+       &any_missing](ValueView sublist_element) -> absl::StatusOr<bool> {
+        CEL_ASSIGN_OR_RETURN(auto contains,
+                             list.Contains(value_factory, sublist_element));
 
-            // Treat CEL error as missing
-            return !contains->Is<BoolValue>() ||
-                   !contains->As<BoolValue>().NativeValue();
-          }));
+        // Treat CEL error as missing
+        any_missing = !contains->Is<BoolValue>() ||
+                      !contains->As<BoolValue>().NativeValue();
+        // The first false result will terminate the loop.
+        return !any_missing;
+      }));
   return value_factory.CreateBoolValue(!any_missing);
 }
 
 absl::StatusOr<Handle<Value>> SetsIntersects(ValueManager& value_factory,
                                              const ListValue& list,
                                              const ListValue& sublist) {
-  CEL_ASSIGN_OR_RETURN(
-      bool exists,
-      list.AnyOf(
-          value_factory,
-          [&value_factory, &sublist](
-              const Handle<Value>& list_element) -> absl::StatusOr<bool> {
-            CEL_ASSIGN_OR_RETURN(auto contains,
-                                 sublist.Contains(value_factory, list_element));
-            // Treat contains return CEL error as false for the sake of
-            // intersecting.
-            return contains->Is<BoolValue>() &&
-                   contains->As<BoolValue>().NativeValue();
-          }));
+  bool exists = false;
+  CEL_RETURN_IF_ERROR(list.ForEach(
+      value_factory,
+      [&value_factory, &sublist,
+       &exists](ValueView list_element) -> absl::StatusOr<bool> {
+        CEL_ASSIGN_OR_RETURN(auto contains,
+                             sublist.Contains(value_factory, list_element));
+        // Treat contains return CEL error as false for the sake of
+        // intersecting.
+        exists = contains->Is<BoolValue>() &&
+                 contains->As<BoolValue>().NativeValue();
+        return !exists;
+      }));
 
   return value_factory.CreateBoolValue(exists);
 }

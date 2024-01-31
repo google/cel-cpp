@@ -41,13 +41,10 @@
 #include "base/memory.h"
 #include "base/type.h"
 #include "base/type_factory.h"
-#include "base/types/struct_type.h"
 #include "base/value_manager.h"
-#include "base/values/error_value.h"
-#include "base/values/map_value.h"
-#include "base/values/struct_value.h"
-#include "base/values/unknown_value.h"
 #include "common/kind.h"
+#include "common/type.h"
+#include "common/value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
@@ -80,8 +77,7 @@ using ::google::api::expr::runtime::ProgramOptimizer;
 // number.
 struct SelectInstruction {
   int64_t number;
-  // backed by the underlying type.
-  absl::string_view name;
+  std::string name;
 };
 
 // Represents a single qualifier in a traversal path.
@@ -153,11 +149,9 @@ Expr MakeSelectPathExpr(
 absl::optional<SelectInstruction> GetSelectInstruction(
     const StructType& runtime_type, PlannerContext& planner_context,
     absl::string_view field_name) {
-  auto field_or =
-      runtime_type
-          .FindFieldByName(planner_context.value_factory().type_manager(),
-                           field_name)
-          .value_or(absl::nullopt);
+  auto field_or = planner_context.value_factory()
+                      .FindStructTypeFieldByName(runtime_type, field_name)
+                      .value_or(absl::nullopt);
   if (field_or.has_value()) {
     return SelectInstruction{field_or->number, field_or->name};
   }
@@ -297,7 +291,7 @@ absl::StatusOr<Handle<Value>> FallbackSelect(
     const Value& root, absl::Span<const SelectQualifier> select_path,
     bool presence_test, ValueManager& value_factory) {
   const Value* elem = &root;
-  Handle<Value> result;
+  Value result;
 
   for (const auto& instruction :
        select_path.subspan(0, select_path.size() - 1)) {
@@ -306,7 +300,7 @@ absl::StatusOr<Handle<Value>> FallbackSelect(
     if (result->Is<ErrorValue>()) {
       return result;
     }
-    elem = &(*result);
+    elem = &result;
   }
 
   const auto& last_instruction = select_path.back();
@@ -322,8 +316,7 @@ absl::StatusOr<Handle<Value>> FallbackSelect(
               }
               CEL_ASSIGN_OR_RETURN(
                   bool present,
-                  elem->As<StructValue>().HasFieldByName(
-                      value_factory.type_manager(), field_specifier.name));
+                  elem->As<StructValue>().HasFieldByName(field_specifier.name));
               return value_factory.CreateBoolValue(present);
             },
             [&](const AttributeQualifier& qualifier)
@@ -374,9 +367,7 @@ absl::StatusOr<std::vector<SelectQualifier>> SelectInstructionsFromCall(
 class RewriterImpl : public AstRewriterBase {
  public:
   RewriterImpl(const AstImpl& ast, PlannerContext& planner_context)
-      : ast_(ast),
-        planner_context_(planner_context),
-        type_factory_(MemoryManagerRef::ReferenceCounting()) {}
+      : ast_(ast), planner_context_(planner_context) {}
 
   void PreVisitExpr(const Expr* expr, const SourcePosition* position) override {
     path_.push_back(expr);
@@ -394,7 +385,7 @@ class RewriterImpl : public AstRewriterBase {
         (checker_type.has_message_type())
             ? GetRuntimeType(checker_type.message_type().type())
             : absl::nullopt;
-    if (rt_type.has_value() && (*rt_type)->Is<StructType>()) {
+    if (rt_type.has_value() && (*rt_type).Is<StructType>()) {
       const StructType& runtime_type = (*rt_type)->As<StructType>();
       absl::optional<SelectInstruction> field_or =
           GetSelectInstruction(runtime_type, planner_context_, field_name);
@@ -523,10 +514,8 @@ class RewriterImpl : public AstRewriterBase {
   }
 
   absl::optional<Handle<Type>> GetRuntimeType(absl::string_view type_name) {
-    return planner_context_.value_factory()
-        .type_manager()
-        .ResolveType(type_name)
-        .value_or(absl::nullopt);
+    return planner_context_.value_factory().FindType(type_name).value_or(
+        absl::nullopt);
   }
 
   void SetProgressStatus(const absl::Status& status) {
@@ -537,7 +526,6 @@ class RewriterImpl : public AstRewriterBase {
 
   const AstImpl& ast_;
   PlannerContext& planner_context_;
-  TypeFactory type_factory_;
   // ids of potentially optimizeable expr nodes.
   absl::flat_hash_map<const Expr*, QualifierInstruction> candidates_;
   std::vector<const Expr*> path_;
@@ -632,11 +620,10 @@ AttributeTrail OptimizedSelectStep::GetAttributeTrail(
 
 absl::StatusOr<Handle<Value>> OptimizedSelectStep::ApplySelect(
     ExecutionFrame* frame, const StructValue& struct_value) const {
-  absl::StatusOr<QualifyResult> value_or =
-      (options_.force_fallback_implementation)
-          ? absl::UnimplementedError("Forced fallback impl")
-          : struct_value.Qualify(frame->value_factory(), select_path_,
-                                 presence_test_);
+  auto value_or = (options_.force_fallback_implementation)
+                      ? absl::UnimplementedError("Forced fallback impl")
+                      : struct_value.Qualify(frame->value_factory(),
+                                             select_path_, presence_test_);
 
   if (!value_or.ok()) {
     if (value_or.status().code() == absl::StatusCode::kUnimplemented) {
@@ -647,14 +634,13 @@ absl::StatusOr<Handle<Value>> OptimizedSelectStep::ApplySelect(
     return value_or.status();
   }
 
-  if (value_or->qualifier_count < 0 ||
-      value_or->qualifier_count >= select_path_.size()) {
-    return std::move(value_or->value);
+  if (value_or->second < 0 || value_or->second >= select_path_.size()) {
+    return std::move(value_or->first);
   }
 
   return FallbackSelect(
-      *value_or->value,
-      absl::MakeConstSpan(select_path_).subspan(value_or->qualifier_count),
+      value_or->first,
+      absl::MakeConstSpan(select_path_).subspan(value_or->second),
       presence_test_, frame->value_factory());
 }
 

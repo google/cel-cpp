@@ -6,6 +6,7 @@
 #include "base/type_factory.h"
 #include "base/type_provider.h"
 #include "base/value_manager.h"
+#include "common/values/legacy_value_manager.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
@@ -27,15 +28,12 @@ using testing::UnorderedPointwise;
 class AttributeUtilityTest : public ::testing::Test {
  public:
   AttributeUtilityTest()
-      : type_factory_(ProtoMemoryManagerRef(&arena_)),
-        type_manager_(type_factory_, cel::TypeProvider::Builtin()),
-        value_factory_(type_manager_) {}
+      : value_factory_(ProtoMemoryManagerRef(&arena_),
+                       cel::TypeProvider::Builtin()) {}
 
  protected:
   google::protobuf::Arena arena_;
-  cel::TypeFactory type_factory_;
-  cel::TypeManager type_manager_;
-  cel::ValueManager value_factory_;
+  cel::common_internal::LegacyValueManager value_factory_;
 };
 
 TEST_F(AttributeUtilityTest, UnknownsUtilityCheckUnknowns) {
@@ -103,7 +101,7 @@ TEST_F(AttributeUtilityTest, UnknownsUtilityMergeUnknownsFromValues) {
   absl::optional<Handle<UnknownValue>> unknown_set =
       utility.MergeUnknowns(values);
   ASSERT_TRUE(unknown_set.has_value());
-  EXPECT_THAT((*unknown_set)->attribute_set(),
+  EXPECT_THAT((*unknown_set).attribute_set(),
               UnorderedPointwise(
                   Eq(), std::vector<CelAttribute>{attribute0, attribute1}));
 }
@@ -169,8 +167,8 @@ TEST_F(AttributeUtilityTest, CreateUnknownSet) {
   AttributeUtility utility(empty_patterns, empty_patterns, value_factory_);
 
   Handle<UnknownValue> set = utility.CreateUnknownSet(trail.attribute());
-  ASSERT_THAT(set->attribute_set(), SizeIs(1));
-  ASSERT_OK_AND_ASSIGN(auto elem, set->attribute_set().begin()->AsString());
+  ASSERT_THAT(set.attribute_set(), SizeIs(1));
+  ASSERT_OK_AND_ASSIGN(auto elem, set.attribute_set().begin()->AsString());
   EXPECT_EQ(elem, "destination.ip");
 }
 

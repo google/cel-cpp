@@ -15,7 +15,15 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_TYPE_PROVIDER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_TYPE_PROVIDER_H_
 
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "common/memory.h"
+#include "common/type.h"
+#include "common/type_reflector.h"
+#include "common/value.h"
+#include "common/value_factory.h"
 #include "eval/public/structs/legacy_any_packing.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 
@@ -25,7 +33,7 @@ namespace google::api::expr::runtime {
 //
 // Note: This API is not finalized. Consult the CEL team before introducing new
 // implementations.
-class LegacyTypeProvider {
+class LegacyTypeProvider : public cel::TypeReflector {
  public:
   virtual ~LegacyTypeProvider() = default;
 
@@ -66,6 +74,24 @@ class LegacyTypeProvider {
       ABSL_ATTRIBUTE_UNUSED absl::string_view name) const {
     return absl::nullopt;
   }
+
+  absl::StatusOr<absl::optional<cel::Unique<cel::StructValueBuilder>>>
+  NewStructValueBuilder(cel::ValueFactory& value_factory,
+                        cel::StructTypeView type) const final;
+
+ protected:
+  absl::StatusOr<absl::optional<cel::Value>> DeserializeValueImpl(
+      cel::ValueFactory& value_factory, absl::string_view type_url,
+      const absl::Cord& value) const final;
+
+  absl::StatusOr<absl::optional<cel::TypeView>> FindTypeImpl(
+      cel::TypeFactory& type_factory, absl::string_view name,
+      cel::Type& scratch) const final;
+
+  absl::StatusOr<absl::optional<cel::StructTypeFieldView>>
+  FindStructTypeFieldByNameImpl(cel::TypeFactory& type_factory,
+                                absl::string_view type, absl::string_view name,
+                                cel::StructTypeField& scratch) const final;
 };
 
 }  // namespace google::api::expr::runtime

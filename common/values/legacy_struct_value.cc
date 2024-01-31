@@ -19,6 +19,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/call_once.h"
+#include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -90,8 +91,95 @@ ABSL_CONST_INIT struct {
   LegacyStructValue_Qualify qualify = nullptr;
 } legacy_struct_value_vtable;
 
+#if ABSL_HAVE_ATTRIBUTE_WEAK
+extern "C" ABSL_ATTRIBUTE_WEAK std::string
+cel_common_internal_LegacyStructValue_DebugString(uintptr_t message_ptr,
+                                                  uintptr_t type_info);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<size_t>
+cel_common_internal_LegacyStructValue_GetSerializedSize(uintptr_t message_ptr,
+                                                        uintptr_t type_info);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
+cel_common_internal_LegacyStructValue_SerializeTo(uintptr_t message_ptr,
+                                                  uintptr_t type_info,
+                                                  absl::Cord& value);
+extern "C" ABSL_ATTRIBUTE_WEAK std::string
+cel_common_internal_LegacyStructValue_GetType(uintptr_t message_ptr,
+                                              uintptr_t type_info);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::string_view
+cel_common_internal_LegacyStructValue_GetTypeName(uintptr_t message_ptr,
+                                                  uintptr_t type_info);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<JsonObject>
+cel_common_internal_LegacyStructValue_ConvertToJsonObject(uintptr_t message_ptr,
+                                                          uintptr_t type_info);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<ValueView>
+cel_common_internal_LegacyStructValue_GetFieldByName(
+    uintptr_t message_ptr, uintptr_t type_info, ValueManager& value_manager,
+    absl::string_view name, Value& scratch,
+    ProtoWrapperTypeOptions unboxing_options);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<ValueView>
+cel_common_internal_LegacyStructValue_GetFieldByNumber(uintptr_t, uintptr_t,
+                                                       ValueManager&, int64_t,
+                                                       Value&,
+                                                       ProtoWrapperTypeOptions);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool>
+cel_common_internal_LegacyStructValue_HasFieldByName(uintptr_t message_ptr,
+                                                     uintptr_t type_info,
+                                                     absl::string_view name);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool>
+    cel_common_internal_LegacyStructValue_HasFieldByNumber(uintptr_t, uintptr_t,
+                                                           int64_t);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<ValueView>
+cel_common_internal_LegacyStructValue_Equal(uintptr_t message_ptr,
+                                            uintptr_t type_info,
+                                            ValueManager& value_manager,
+                                            ValueView other, Value& scratch);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
+cel_common_internal_LegacyStructValue_ForEachField(
+    uintptr_t message_ptr, uintptr_t type_info, ValueManager& value_manager,
+    StructValue::ForEachFieldCallback callback);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<std::pair<ValueView, int>>
+cel_common_internal_LegacyStructValue_Qualify(
+    uintptr_t message_ptr, uintptr_t type_info, ValueManager& value_manager,
+    absl::Span<const SelectQualifier> qualifiers, bool presence_test,
+    Value& scratch);
+#endif
+
 void InitializeLegacyStructValue() {
   absl::call_once(legacy_struct_value_vtable.init_once, []() -> void {
+#if ABSL_HAVE_ATTRIBUTE_WEAK
+    legacy_struct_value_vtable.debug_string = ABSL_DIE_IF_NULL(  // Crash OK
+        cel_common_internal_LegacyStructValue_DebugString);
+    legacy_struct_value_vtable.get_serialized_size =
+        ABSL_DIE_IF_NULL(  // Crash OK
+            cel_common_internal_LegacyStructValue_GetSerializedSize);
+    legacy_struct_value_vtable.serialize_to = ABSL_DIE_IF_NULL(  // Crash OK
+        cel_common_internal_LegacyStructValue_SerializeTo);
+    legacy_struct_value_vtable.get_type = ABSL_DIE_IF_NULL(  // Crash OK
+        cel_common_internal_LegacyStructValue_GetType);
+    legacy_struct_value_vtable.get_type_name = ABSL_DIE_IF_NULL(  // Crash OK
+        cel_common_internal_LegacyStructValue_GetTypeName);
+    legacy_struct_value_vtable.convert_to_json_object =
+        ABSL_DIE_IF_NULL(  // Crash OK
+            cel_common_internal_LegacyStructValue_ConvertToJsonObject);
+    legacy_struct_value_vtable.get_field_by_name =
+        ABSL_DIE_IF_NULL(  // Crash OK
+            cel_common_internal_LegacyStructValue_GetFieldByName);
+    legacy_struct_value_vtable.get_field_by_number =
+        ABSL_DIE_IF_NULL(  // Crash OK
+            cel_common_internal_LegacyStructValue_GetFieldByNumber);
+    legacy_struct_value_vtable.has_field_by_name =
+        ABSL_DIE_IF_NULL(  // Crash OK
+            cel_common_internal_LegacyStructValue_HasFieldByName);
+    legacy_struct_value_vtable.has_field_by_number =
+        ABSL_DIE_IF_NULL(  // Crash OK
+            cel_common_internal_LegacyStructValue_HasFieldByNumber);
+    legacy_struct_value_vtable.equal = ABSL_DIE_IF_NULL(  // Crash OK
+        cel_common_internal_LegacyStructValue_Equal);
+    legacy_struct_value_vtable.for_each_field = ABSL_DIE_IF_NULL(  // Crash OK
+        cel_common_internal_LegacyStructValue_ForEachField);
+    legacy_struct_value_vtable.qualify = ABSL_DIE_IF_NULL(  // Crash OK
+        cel_common_internal_LegacyStructValue_Qualify);
+#else
     internal::DynamicLoader symbol_finder;
     legacy_struct_value_vtable.debug_string = symbol_finder.FindSymbolOrDie(
         "cel_common_internal_LegacyStructValue_DebugString");
@@ -125,6 +213,7 @@ void InitializeLegacyStructValue() {
         "cel_common_internal_LegacyStructValue_ForEachField");
     legacy_struct_value_vtable.qualify = symbol_finder.FindSymbolOrDie(
         "cel_common_internal_LegacyStructValue_Qualify");
+#endif
   });
 }
 

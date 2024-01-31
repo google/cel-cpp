@@ -9,10 +9,9 @@
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "base/handle.h"
-#include "base/types/list_type.h"
 #include "base/value.h"
-#include "base/values/list_value_builder.h"
-#include "base/values/unknown_value.h"
+#include "common/type.h"
+#include "common/value.h"
 #include "eval/eval/expression_step_base.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/mutable_list_impl.h"
@@ -25,7 +24,6 @@ using ::cel::Handle;
 using ::cel::ListType;
 using ::cel::ListValueBuilderInterface;
 using ::cel::UnknownValue;
-using ::cel::runtime_internal::MutableListType;
 using ::cel::runtime_internal::MutableListValue;
 
 class CreateListStep : public ExpressionStepBase {
@@ -77,32 +75,23 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
     }
   }
 
-  auto& type_factory = frame->value_factory().type_factory();
-  // TODO(uncreated-issue/50): add option for checking lists have homogenous element
-  // types and use a more specific list type.
-  CEL_ASSIGN_OR_RETURN(Handle<ListType> type,
-                       type_factory.CreateListType(type_factory.GetDynType()));
-
-  CEL_ASSIGN_OR_RETURN(
-      absl::Nonnull<std::unique_ptr<ListValueBuilderInterface>> builder,
-      type->NewValueBuilder(frame->value_factory()));
+  CEL_ASSIGN_OR_RETURN(auto builder,
+                       frame->value_manager().NewListValueBuilder(
+                           frame->value_manager().GetDynListType()));
 
   builder->Reserve(args.size());
-  for (const auto& arg : args) {
-    CEL_RETURN_IF_ERROR(builder->Add(arg));
+  for (auto& arg : args) {
+    CEL_RETURN_IF_ERROR(builder->Add(std::move(arg)));
   }
 
   if (immutable_) {
-    CEL_ASSIGN_OR_RETURN(result, std::move(*builder).Build());
+    result = std::move(*builder).Build();
   } else {
-    CEL_ASSIGN_OR_RETURN(auto opaque_type,
-                         type_factory.CreateOpaqueType<MutableListType>());
-    CEL_ASSIGN_OR_RETURN(
-        result, frame->value_factory().CreateOpaqueValue<MutableListValue>(
-                    std::move(opaque_type), std::move(builder)));
+    result = cel::OpaqueValue{
+        frame->value_manager().GetMemoryManager().MakeShared<MutableListValue>(
+            std::move(builder))};
   }
-  frame->value_stack().Pop(list_size_);
-  frame->value_stack().Push(std::move(result));
+  frame->value_stack().PopAndPush(list_size_, std::move(result));
   return absl::OkStatus();
 }
 

@@ -19,6 +19,8 @@
 #include <vector>
 
 #include "absl/base/attributes.h"
+#include "absl/base/call_once.h"
+#include "absl/base/macros.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/container/flat_hash_map.h"
@@ -43,6 +45,7 @@
 #include "common/value_factory.h"
 #include "common/value_kind.h"
 #include "common/value_manager.h"
+#include "internal/dynamic_loader.h"
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -627,11 +630,55 @@ class MapValueBuilderImpl<Value, Value> final : public MapValueBuilder {
       entries_;
 };
 
+using LegacyTypeReflector_NewMapValueBuilder =
+    absl::StatusOr<Unique<MapValueBuilder>> (*)(ValueFactory&, MapTypeView);
+
+ABSL_CONST_INIT struct {
+  absl::once_flag init_once;
+  LegacyTypeReflector_NewMapValueBuilder new_map_value_builder = nullptr;
+} legacy_type_reflector_vtable;
+
+#if ABSL_HAVE_ATTRIBUTE_WEAK
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<Unique<MapValueBuilder>>
+cel_common_internal_LegacyTypeReflector_NewMapValueBuilder(
+    ValueFactory& value_factory, MapTypeView type);
+#endif
+
+void InitializeLegacyTypeReflector() {
+  absl::call_once(legacy_type_reflector_vtable.init_once, []() -> void {
+#if ABSL_HAVE_ATTRIBUTE_WEAK
+    legacy_type_reflector_vtable.new_map_value_builder =
+        cel_common_internal_LegacyTypeReflector_NewMapValueBuilder;
+#else
+    internal::DynamicLoader dynamic_loader;
+    if (auto new_map_value_builder = dynamic_loader.FindSymbol(
+            "cel_common_internal_LegacyTypeReflector_NewMapValueBuilder");
+        new_map_value_builder) {
+      legacy_type_reflector_vtable.new_map_value_builder =
+          *new_map_value_builder;
+    }
+#endif
+  });
+}
+
 }  // namespace
 
 absl::StatusOr<Unique<MapValueBuilder>> TypeReflector::NewMapValueBuilder(
     ValueFactory& value_factory, MapTypeView type) const {
+  InitializeLegacyTypeReflector();
   auto memory_manager = value_factory.GetMemoryManager();
+  if (memory_manager.memory_management() == MemoryManagement::kPooling &&
+      legacy_type_reflector_vtable.new_map_value_builder != nullptr) {
+    auto status_or_builder =
+        (*legacy_type_reflector_vtable.new_map_value_builder)(value_factory,
+                                                              type);
+    if (status_or_builder.ok()) {
+      return std::move(status_or_builder).value();
+    }
+    if (!absl::IsUnimplemented(status_or_builder.status())) {
+      return status_or_builder;
+    }
+  }
   switch (type.key().kind()) {
     case TypeKind::kBool:
       switch (type.value().kind()) {

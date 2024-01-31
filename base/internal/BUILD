@@ -17,27 +17,6 @@ package(default_visibility = ["//visibility:public"])
 licenses(["notice"])
 
 cc_library(
-    name = "data",
-    hdrs = ["data.h"],
-    deps = [
-        "//base:kind",
-        "@com_google_absl//absl/base",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/numeric:bits",
-    ],
-)
-
-# These headers should only ever be used by ../handle.h. They are here to avoid putting
-# large amounts of implementation details in public headers.
-cc_library(
-    name = "handle",
-    hdrs = ["handle.h"],
-    deps = [
-        ":data",
-    ],
-)
-
-cc_library(
     name = "memory_manager",
     hdrs = [
         "memory_manager.h",
@@ -67,20 +46,6 @@ cc_library(
     ],
 )
 
-# These headers should only ever be used by ../type.h. They are here to avoid putting
-# large amounts of implementation details in public headers.
-cc_library(
-    name = "type",
-    textual_hdrs = [
-        "type.h",
-    ],
-    deps = [
-        ":data",
-        "//base:kind",
-        "//common:native_type",
-    ],
-)
-
 cc_library(
     name = "unknown_set",
     srcs = ["unknown_set.cc"],
@@ -94,36 +59,17 @@ cc_library(
 )
 
 cc_library(
-    name = "value",
-    textual_hdrs = [
-        "value.h",
-    ],
-    deps = [
-        ":data",
-        ":type",
-        "//base:handle",
-        "//common:native_type",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/time",
-        "@com_google_absl//absl/types:variant",
-    ],
-)
-
-cc_library(
     name = "function_adapter",
     hdrs = [
         "function_adapter.h",
     ],
     deps = [
         "//base:data",
-        "//base:handle",
         "//base:kind",
+        "//common:casting",
         "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
     ],
 )
@@ -134,9 +80,9 @@ cc_test(
     deps = [
         ":function_adapter",
         "//base:data",
-        "//base:handle",
         "//base:kind",
         "//base:memory",
+        "//common:value",
         "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",

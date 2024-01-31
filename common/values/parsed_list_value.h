@@ -129,7 +129,7 @@ class ParsedListValue {
   ParsedListValue& operator=(const ParsedListValue&) = default;
   ParsedListValue& operator=(ParsedListValue&&) = default;
 
-  ValueKind kind() const { return interface_->kind(); }
+  constexpr ValueKind kind() const { return kKind; }
 
   ListType GetType(TypeManager& type_manager) const {
     return interface_->GetType(type_manager);
@@ -315,7 +315,7 @@ class ParsedListValueView {
   ParsedListValueView& operator=(const ParsedListValueView&) = default;
   ParsedListValueView& operator=(ParsedListValueView&&) = default;
 
-  ValueKind kind() const { return interface_->kind(); }
+  constexpr ValueKind kind() const { return kKind; }
 
   ListType GetType(TypeManager& type_manager) const {
     return interface_->GetType(type_manager);

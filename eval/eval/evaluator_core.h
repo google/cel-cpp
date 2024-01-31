@@ -109,11 +109,13 @@ class FlatExpressionEvaluatorState {
     return value_factory_->GetMemoryManager();
   }
 
-  cel::TypeFactory& type_factory() { return value_factory_->type_factory(); }
+  cel::TypeFactory& type_factory() { return *value_factory_; }
 
-  cel::TypeManager& type_manager() { return value_factory_->type_manager(); }
+  cel::TypeManager& type_manager() { return *value_factory_; }
 
   cel::ValueManager& value_factory() { return *value_factory_; }
+
+  cel::ValueManager& value_manager() { return *value_factory_; }
 
  private:
   EvaluatorStack value_stack_;
@@ -248,6 +250,8 @@ class ExecutionFrame {
   cel::TypeManager& type_manager() { return state_.type_manager(); }
 
   cel::ValueManager& value_factory() { return state_.value_factory(); }
+
+  cel::ValueManager& value_manager() { return state_.value_factory(); }
 
   const AttributeUtility& attribute_utility() const {
     return attribute_utility_;

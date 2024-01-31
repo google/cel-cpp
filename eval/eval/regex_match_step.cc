@@ -18,7 +18,7 @@
 #include <utility>
 
 #include "absl/status/status.h"
-#include "base/values/string_value.h"
+#include "common/value.h"
 #include "eval/eval/expression_step_base.h"
 #include "re2/re2.h"
 
@@ -28,6 +28,21 @@ namespace {
 
 inline constexpr int kNumRegexMatchArguments = 1;
 inline constexpr size_t kRegexMatchStepSubject = 0;
+
+struct MatchesVisitor final {
+  const RE2& re;
+
+  bool operator()(const absl::Cord& value) const {
+    if (auto flat = value.TryFlat(); flat.has_value()) {
+      return RE2::PartialMatch(*flat, re);
+    }
+    return RE2::PartialMatch(static_cast<std::string>(value), re);
+  }
+
+  bool operator()(absl::string_view value) const {
+    return RE2::PartialMatch(value, re);
+  }
+};
 
 class RegexMatchStep final : public ExpressionStepBase {
  public:
@@ -48,7 +63,8 @@ class RegexMatchStep final : public ExpressionStepBase {
                           "First argument for regular "
                           "expression match must be a string");
     }
-    bool match = subject.As<cel::StringValue>()->Matches(*re2_);
+    bool match =
+        subject.As<cel::StringValue>().NativeValue(MatchesVisitor{*re2_});
     frame->value_stack().Pop(kNumRegexMatchArguments);
     frame->value_stack().Push(frame->value_factory().CreateBoolValue(match));
     return absl::OkStatus();

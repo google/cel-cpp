@@ -10,8 +10,7 @@
 #include "base/builtins.h"
 #include "base/handle.h"
 #include "base/value.h"
-#include "base/values/bool_value.h"
-#include "base/values/unknown_value.h"
+#include "common/value.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
 
@@ -20,8 +19,10 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::BoolValue;
+using ::cel::BoolValueView;
 using ::cel::Handle;
 using ::cel::Value;
+using ::cel::ValueView;
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;
 
 class LogicalOpStep : public ExpressionStepBase {
@@ -37,17 +38,18 @@ class LogicalOpStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  Handle<Value> Calculate(ExecutionFrame* frame,
-                          absl::Span<const Handle<Value>> args) const {
+  ValueView Calculate(ExecutionFrame* frame,
+                      absl::Span<const Handle<Value>> args,
+                      Value& scratch) const {
     bool bool_args[2];
     bool has_bool_args[2];
 
     for (size_t i = 0; i < args.size(); i++) {
       has_bool_args[i] = args[i]->Is<BoolValue>();
       if (has_bool_args[i]) {
-        bool_args[i] = args[i].As<BoolValue>()->NativeValue();
+        bool_args[i] = args[i].As<BoolValue>().NativeValue();
         if (bool_args[i] == shortcircuit_) {
-          return args[i];
+          return BoolValueView{bool_args[i]};
         }
       }
     }
@@ -55,11 +57,9 @@ class LogicalOpStep : public ExpressionStepBase {
     if (has_bool_args[0] && has_bool_args[1]) {
       switch (op_type_) {
         case OpType::AND:
-          return frame->value_factory().CreateBoolValue(bool_args[0] &&
-                                                        bool_args[1]);
+          return BoolValueView{bool_args[0] && bool_args[1]};
         case OpType::OR:
-          return frame->value_factory().CreateBoolValue(bool_args[0] ||
-                                                        bool_args[1]);
+          return BoolValueView{bool_args[0] || bool_args[1]};
       }
     }
 
@@ -72,7 +72,8 @@ class LogicalOpStep : public ExpressionStepBase {
       absl::optional<Handle<cel::UnknownValue>> unknown_set =
           frame->attribute_utility().MergeUnknowns(args);
       if (unknown_set.has_value()) {
-        return *unknown_set;
+        scratch = *unknown_set;
+        return scratch;
       }
     }
 
@@ -83,9 +84,10 @@ class LogicalOpStep : public ExpressionStepBase {
     }
 
     // Fallback.
-    return frame->value_factory().CreateErrorValue(
-        CreateNoMatchingOverloadError(
+    scratch =
+        frame->value_factory().CreateErrorValue(CreateNoMatchingOverloadError(
             (op_type_ == OpType::OR) ? cel::builtin::kOr : cel::builtin::kAnd));
+    return scratch;
   }
 
   const OpType op_type_;
@@ -100,9 +102,9 @@ absl::Status LogicalOpStep::Evaluate(ExecutionFrame* frame) const {
 
   // Create Span object that contains input arguments to the function.
   auto args = frame->value_stack().GetSpan(2);
-  Handle<Value> result = Calculate(frame, args);
-  frame->value_stack().Pop(args.size());
-  frame->value_stack().Push(std::move(result));
+  Value scratch;
+  auto result = Calculate(frame, args, scratch);
+  frame->value_stack().PopAndPush(args.size(), Value{result});
 
   return absl::OkStatus();
 }

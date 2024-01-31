@@ -29,14 +29,15 @@
 #include "base/type_provider.h"
 #include "base/value.h"
 #include "base/value_manager.h"
-#include "base/values/int_value.h"
-#include "base/values/null_value.h"
+#include "common/value.h"
+#include "common/values/legacy_value_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
 using testing::ElementsAre;
+using testing::Eq;
 using testing::IsEmpty;
 using testing::Optional;
 using testing::Truly;
@@ -47,7 +48,7 @@ using cel::internal::StatusIs;
 MATCHER_P(IsIntValue, x, absl::StrCat("is IntValue Handle with value ", x)) {
   const Handle<Value>& handle = arg;
 
-  return handle->Is<IntValue>() && handle.As<IntValue>()->NativeValue() == x;
+  return handle->Is<IntValue>() && handle.As<IntValue>().NativeValue() == x;
 }
 
 MATCHER_P(AttributePatternMatches, val, "matches AttributePattern") {
@@ -71,21 +72,18 @@ class FunctionImpl : public cel::Function {
 class ActivationTest : public testing::Test {
  public:
   ActivationTest()
-      : type_factory_(MemoryManagerRef::ReferenceCounting()),
-        type_manager_(type_factory_, TypeProvider::Builtin()),
-        value_factory_(type_manager_) {}
+      : value_factory_(MemoryManagerRef::ReferenceCounting(),
+                       TypeProvider::Builtin()) {}
 
  protected:
-  TypeFactory type_factory_;
-  TypeManager type_manager_;
-  ValueManager value_factory_;
+  common_internal::LegacyValueManager value_factory_;
 };
 
 TEST_F(ActivationTest, ValueNotFound) {
   Activation activation;
 
   EXPECT_THAT(activation.FindVariable(value_factory_, "var1"),
-              IsOkAndHolds(absl::nullopt));
+              IsOkAndHolds(Eq(absl::nullopt)));
 }
 
 TEST_F(ActivationTest, InsertValue) {
@@ -129,7 +127,7 @@ TEST_F(ActivationTest, InsertProviderForwardsNotFound) {
       }));
 
   EXPECT_THAT(activation.FindVariable(value_factory_, "var1"),
-              IsOkAndHolds(absl::nullopt));
+              IsOkAndHolds(Eq(absl::nullopt)));
 }
 
 TEST_F(ActivationTest, InsertProviderForwardsStatus) {

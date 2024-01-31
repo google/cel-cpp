@@ -22,8 +22,7 @@
 #include "base/function_adapter.h"
 #include "base/handle.h"
 #include "base/value_manager.h"
-#include "base/values/bytes_value.h"
-#include "base/values/string_value.h"
+#include "common/value.h"
 #include "internal/number.h"
 #include "internal/status_macros.h"
 #include "runtime/function_registry.h"
@@ -60,50 +59,50 @@ bool GreaterThanOrEqual(ValueManager& factory, Type t1, Type t2) {
 template <>
 bool LessThan(ValueManager&, const Handle<StringValue>& t1,
               const Handle<StringValue>& t2) {
-  return t1->Compare(*t2) < 0;
+  return t1.Compare(t2) < 0;
 }
 
 template <>
 bool LessThanOrEqual(ValueManager&, const Handle<StringValue>& t1,
                      const Handle<StringValue>& t2) {
-  return t1->Compare(*t2) <= 0;
+  return t1.Compare(t2) <= 0;
 }
 
 template <>
 bool GreaterThan(ValueManager&, const Handle<StringValue>& t1,
                  const Handle<StringValue>& t2) {
-  return t1->Compare(*t2) > 0;
+  return t1.Compare(t2) > 0;
 }
 
 template <>
 bool GreaterThanOrEqual(ValueManager&, const Handle<StringValue>& t1,
                         const Handle<StringValue>& t2) {
-  return t1->Compare(*t2) >= 0;
+  return t1.Compare(t2) >= 0;
 }
 
 // bytes value comparions specializations
 template <>
 bool LessThan(ValueManager&, const Handle<BytesValue>& t1,
               const Handle<BytesValue>& t2) {
-  return t1->Compare(*t2) < 0;
+  return t1.Compare(t2) < 0;
 }
 
 template <>
 bool LessThanOrEqual(ValueManager&, const Handle<BytesValue>& t1,
                      const Handle<BytesValue>& t2) {
-  return t1->Compare(*t2) <= 0;
+  return t1.Compare(t2) <= 0;
 }
 
 template <>
 bool GreaterThan(ValueManager&, const Handle<BytesValue>& t1,
                  const Handle<BytesValue>& t2) {
-  return t1->Compare(*t2) > 0;
+  return t1.Compare(t2) > 0;
 }
 
 template <>
 bool GreaterThanOrEqual(ValueManager&, const Handle<BytesValue>& t1,
                         const Handle<BytesValue>& t2) {
-  return t1->Compare(*t2) >= 0;
+  return t1.Compare(t2) >= 0;
 }
 
 // Duration comparison specializations

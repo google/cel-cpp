@@ -28,7 +28,8 @@
 #include "base/type_provider.h"
 #include "base/value.h"
 #include "base/value_manager.h"
-#include "base/values/list_value_builder.h"
+#include "common/value.h"
+#include "common/values/legacy_value_manager.h"
 #include "eval/internal/interop.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -174,16 +175,12 @@ std::string ConstantList(bool overlap, int len) {
 absl::StatusOr<std::unique_ptr<ListStorage>> RegisterModernLists(
     bool overlap, int len, cel::ValueManager& value_factory,
     Activation& activation) {
-  CEL_ASSIGN_OR_RETURN(auto list_type,
-                       value_factory.type_factory().CreateListType(
-                           value_factory.type_factory().GetDynType()));
+  auto list_type = value_factory.CreateListType(value_factory.GetDynType());
 
-  CEL_ASSIGN_OR_RETURN(
-      absl::Nonnull<std::unique_ptr<cel::ListValueBuilderInterface>> x_builder,
-      list_type->NewValueBuilder(value_factory));
-  CEL_ASSIGN_OR_RETURN(
-      absl::Nonnull<std::unique_ptr<cel::ListValueBuilderInterface>> y_builder,
-      list_type->NewValueBuilder(value_factory));
+  CEL_ASSIGN_OR_RETURN(auto x_builder,
+                       value_factory.NewListValueBuilder(list_type));
+  CEL_ASSIGN_OR_RETURN(auto y_builder,
+                       value_factory.NewListValueBuilder(list_type));
 
   x_builder->Reserve(len + 1);
   y_builder->Reserve(len + 1);
@@ -198,8 +195,8 @@ absl::StatusOr<std::unique_ptr<ListStorage>> RegisterModernLists(
     CEL_RETURN_IF_ERROR(y_builder->Add(value_factory.CreateIntValue(2)));
   }
 
-  CEL_ASSIGN_OR_RETURN(auto x, std::move(*x_builder).Build());
-  CEL_ASSIGN_OR_RETURN(auto y, std::move(*y_builder).Build());
+  auto x = std::move(*x_builder).Build();
+  auto y = std::move(*y_builder).Build();
   auto result = std::make_unique<ModernListStorage>(std::move(x), std::move(y));
   activation.InsertValue("x", result->x());
   activation.InsertValue("y", result->y());
@@ -229,9 +226,8 @@ void RunBenchmark(const TestCase& test_case, benchmark::State& state) {
 
   google::protobuf::Arena arena;
   auto manager = ProtoMemoryManagerRef(&arena);
-  cel::TypeFactory type_factory = cel::TypeFactory(manager);
-  cel::TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  cel::ValueManager value_factory(type_manager);
+  cel::common_internal::LegacyValueManager value_factory(
+      manager, TypeProvider::Builtin());
 
   InterpreterOptions options;
   options.constant_folding = true;

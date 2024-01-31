@@ -555,6 +555,7 @@ class CelList {
 
  private:
   friend struct cel::interop_internal::CelListAccess;
+  friend struct cel::NativeTypeTraits<CelList>;
 
   virtual cel::NativeTypeId GetNativeTypeId() const {
     return cel::NativeTypeId();
@@ -633,6 +634,7 @@ class CelMap {
 
  private:
   friend struct cel::interop_internal::CelMapAccess;
+  friend struct cel::NativeTypeTraits<CelMap>;
 
   virtual cel::NativeTypeId GetNativeTypeId() const {
     return cel::NativeTypeId();
@@ -714,5 +716,46 @@ CelValue CreateUnknownFunctionResultError(google::protobuf::Arena* arena,
 bool IsUnknownFunctionResult(const CelValue& value);
 
 }  // namespace google::api::expr::runtime
+
+namespace cel {
+
+template <>
+struct NativeTypeTraits<google::api::expr::runtime::CelList> final {
+  static NativeTypeId Id(const google::api::expr::runtime::CelList& cel_list) {
+    return cel_list.GetNativeTypeId();
+  }
+};
+
+template <typename T>
+struct NativeTypeTraits<
+    T,
+    std::enable_if_t<std::conjunction_v<
+        std::is_base_of<google::api::expr::runtime::CelList, T>,
+        std::negation<std::is_same<T, google::api::expr::runtime::CelList>>>>>
+    final {
+  static NativeTypeId Id(const google::api::expr::runtime::CelList& cel_list) {
+    return NativeTypeTraits<google::api::expr::runtime::CelList>::Id(cel_list);
+  }
+};
+
+template <>
+struct NativeTypeTraits<google::api::expr::runtime::CelMap> final {
+  static NativeTypeId Id(const google::api::expr::runtime::CelMap& cel_map) {
+    return cel_map.GetNativeTypeId();
+  }
+};
+
+template <typename T>
+struct NativeTypeTraits<
+    T, std::enable_if_t<std::conjunction_v<
+           std::is_base_of<google::api::expr::runtime::CelMap, T>,
+           std::negation<std::is_same<T, google::api::expr::runtime::CelMap>>>>>
+    final {
+  static NativeTypeId Id(const google::api::expr::runtime::CelMap& cel_map) {
+    return NativeTypeTraits<google::api::expr::runtime::CelMap>::Id(cel_map);
+  }
+};
+
+}  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_VALUE_H_

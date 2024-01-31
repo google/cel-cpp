@@ -25,7 +25,6 @@
 #include "base/type.h"
 #include "base/type_factory.h"
 #include "base/type_provider.h"
-#include "base/types/struct_type.h"
 #include "base/value.h"
 #include "eval/internal/interop.h"
 #include "eval/public/structs/legacy_type_adapter.h"
@@ -41,23 +40,24 @@ using cel::Handle;
 using cel::Type;
 using cel::TypeFactory;
 
-class LegacyToModernTypeProviderAdapter : public cel::TypeProvider {
+class LegacyToModernTypeProviderAdapter : public LegacyTypeProvider {
  public:
   explicit LegacyToModernTypeProviderAdapter(const LegacyTypeProvider& provider)
       : provider_(provider) {}
 
-  absl::StatusOr<absl::optional<Handle<Type>>> ProvideType(
-      TypeFactory& factory, absl::string_view name) const override {
-    absl::optional<const LegacyTypeInfoApis*> type_info =
-        provider_.ProvideLegacyTypeInfo(name);
+  absl::optional<LegacyTypeAdapter> ProvideLegacyType(
+      absl::string_view name) const override {
+    return provider_.ProvideLegacyType(name);
+  }
 
-    if (!type_info.has_value() || *type_info == nullptr) {
-      return absl::nullopt;
-    }
+  absl::optional<const LegacyTypeInfoApis*> ProvideLegacyTypeInfo(
+      absl::string_view name) const override {
+    return provider_.ProvideLegacyTypeInfo(name);
+  }
 
-    return factory
-        .CreateStructType<cel::interop_internal::LegacyAbstractStructType>(
-            **type_info);
+  absl::optional<const LegacyAnyPackingApis*> ProvideLegacyAnyPackingApis(
+      absl::string_view name) const override {
+    return provider_.ProvideLegacyAnyPackingApis(name);
   }
 
  private:

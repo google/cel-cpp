@@ -17,12 +17,11 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/type_provider.h"
-#include "base/types/struct_type.h"
 #include "base/value_manager.h"
-#include "base/values/struct_value.h"
-#include "base/values/struct_value_builder.h"
-#include "base/values/type_value.h"
 #include "common/native_type.h"
+#include "common/type.h"
+#include "common/value.h"
+#include "common/values/legacy_value_manager.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_provider.h"
 #include "internal/testing.h"
@@ -90,70 +89,6 @@ TEST(CelTypeRegistryTest, TestRegisterBuiltInEnum) {
               Contains(Key("google.protobuf.NullValue")));
 }
 
-class TestStructType : public cel::base_internal::AbstractStructType {
- public:
-  explicit TestStructType(absl::string_view name) : name_(name) {}
-
-  absl::string_view name() const override { return name_; }
-
-  size_t field_count() const override { return 0; }
-
-  absl::StatusOr<absl::optional<Field>> FindFieldByName(
-      TypeManager& type_manager, absl::string_view name) const override {
-    return absl::nullopt;
-  }
-
-  absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
-      TypeManager& type_manager, int64_t number) const override {
-    return absl::nullopt;
-  }
-
-  absl::StatusOr<absl::Nonnull<std::unique_ptr<FieldIterator>>>
-  NewFieldIterator(TypeManager& type_manager) const override {
-    return absl::UnimplementedError("");
-  }
-
-  absl::StatusOr<
-      absl::Nonnull<std::unique_ptr<cel::StructValueBuilderInterface>>>
-  NewValueBuilder(ValueManager& value_factory
-                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const override {
-    return absl::UnimplementedError("");
-  }
-
-  cel::NativeTypeId GetNativeTypeId() const override {
-    return cel::NativeTypeId::For<TestStructType>();
-  }
-
- private:
-  std::string name_;
-};
-
-TEST(CelTypeRegistryTest, RegisterModernProvider) {
-  CelTypeRegistry registry;
-
-  class ExampleTypeProvider : public TypeProvider {
-    absl::StatusOr<absl::optional<Handle<Type>>> ProvideType(
-        TypeFactory& factory, absl::string_view name) const override {
-      if (name == "custom_type") {
-        return factory.CreateStructType<TestStructType>("custom_type");
-      }
-      return absl::nullopt;
-    }
-  };
-
-  registry.RegisterModernTypeProvider(std::make_unique<ExampleTypeProvider>());
-  TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
-  TypeManager type_manager(type_factory, registry.GetTypeProvider());
-
-  ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> type_value,
-                       type_manager.ResolveType("custom_type"));
-  ASSERT_TRUE(type_value.has_value());
-  EXPECT_EQ((*type_value)->name(), "custom_type");
-
-  ASSERT_OK_AND_ASSIGN(type_value, type_manager.ResolveType("custom_type2"));
-  EXPECT_EQ(type_value, absl::nullopt);
-}
-
 TEST(CelTypeRegistryTest, TestGetFirstTypeProviderSuccess) {
   CelTypeRegistry registry;
   registry.RegisterTypeProvider(std::make_unique<TestTypeProvider>(
@@ -207,30 +142,30 @@ MATCHER_P(TypeNameIs, name, "") {
 TEST(CelTypeRegistryTypeProviderTest, Builtins) {
   CelTypeRegistry registry;
 
-  cel::TypeFactory type_factory(MemoryManagerRef::ReferenceCounting());
-  cel::TypeManager type_manager(type_factory, registry.GetTypeProvider());
+  cel::common_internal::LegacyValueManager value_factory(
+      MemoryManagerRef::ReferenceCounting(), registry.GetTypeProvider());
 
   // simple
   ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> bool_type,
-                       type_manager.ResolveType("bool"));
+                       value_factory.FindType("bool"));
   EXPECT_THAT(bool_type, Optional(TypeNameIs("bool")));
   // opaque
   ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> timestamp_type,
-                       type_manager.ResolveType("google.protobuf.Timestamp"));
+                       value_factory.FindType("google.protobuf.Timestamp"));
   EXPECT_THAT(timestamp_type,
               Optional(TypeNameIs("google.protobuf.Timestamp")));
   // wrapper
   ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> int_wrapper_type,
-                       type_manager.ResolveType("google.protobuf.Int64Value"));
+                       value_factory.FindType("google.protobuf.Int64Value"));
   EXPECT_THAT(int_wrapper_type,
               Optional(TypeNameIs("google.protobuf.Int64Value")));
   // json
   ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> json_struct_type,
-                       type_manager.ResolveType("google.protobuf.Struct"));
+                       value_factory.FindType("google.protobuf.Struct"));
   EXPECT_THAT(json_struct_type, Optional(TypeNameIs("map")));
   // special
   ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> any_type,
-                       type_manager.ResolveType("google.protobuf.Any"));
+                       value_factory.FindType("google.protobuf.Any"));
   EXPECT_THAT(any_type, Optional(TypeNameIs("google.protobuf.Any")));
 }
 

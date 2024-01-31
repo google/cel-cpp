@@ -37,8 +37,27 @@ class ComposedTypeProvider : public TypeProvider {
     providers_.push_back(std::move(provider));
   }
 
-  absl::StatusOr<absl::optional<Handle<Type>>> ProvideType(
-      TypeFactory& factory, absl::string_view name) const override;
+  absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
+  NewStructValueBuilder(ValueFactory& value_factory,
+                        StructTypeView type) const override;
+
+  absl::StatusOr<absl::optional<ValueView>> FindValue(
+      ValueFactory& value_factory, absl::string_view name,
+      Value& scratch) const override;
+
+ protected:
+  absl::StatusOr<absl::optional<Value>> DeserializeValueImpl(
+      ValueFactory& value_factory, absl::string_view type_url,
+      const absl::Cord& value) const override;
+
+  absl::StatusOr<absl::optional<TypeView>> FindTypeImpl(
+      TypeFactory& type_factory, absl::string_view name,
+      Type& scratch) const override;
+
+  absl::StatusOr<absl::optional<StructTypeFieldView>>
+  FindStructTypeFieldByNameImpl(TypeFactory& type_factory,
+                                absl::string_view type, absl::string_view name,
+                                StructTypeField& scratch) const override;
 
   // Implements TypeProvider
  private:

@@ -23,7 +23,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "base/memory.h"
-#include "base/values/struct_value.h"
+#include "common/value.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/legacy_type_adapter.h"

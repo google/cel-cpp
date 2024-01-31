@@ -17,7 +17,6 @@
 
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "base/value_factory.h"
 
@@ -36,17 +35,17 @@ class Function {
   // InvokeContext provides access to current evaluator state.
   class InvokeContext final {
    public:
-    explicit InvokeContext(ValueFactory& value_factory)
-        : value_factory_(value_factory) {}
+    explicit InvokeContext(cel::ValueManager& value_manager)
+        : value_manager_(value_manager) {}
 
     // Return the value_factory defined for the evaluation invoking the
     // extension function.
-    cel::ValueFactory& value_factory() const { return value_factory_; }
+    cel::ValueManager& value_factory() const { return value_manager_; }
 
     // TODO(uncreated-issue/24): Add accessors for getting attribute stack and mutable
     // value stack.
    private:
-    cel::ValueFactory& value_factory_;
+    cel::ValueManager& value_manager_;
   };
 
   // Attempt to evaluate an extension function based on the runtime arguments
@@ -57,9 +56,8 @@ class Function {
   //
   // A cel::ErrorValue typed result is considered a recoverable error and
   // follows CEL's logical short-circuiting behavior.
-  virtual absl::StatusOr<Handle<Value>> Invoke(
-      const InvokeContext& context,
-      absl::Span<const Handle<Value>> args) const = 0;
+  virtual absl::StatusOr<Value> Invoke(const InvokeContext& context,
+                                       absl::Span<const Value> args) const = 0;
 };
 
 // Legacy type, aliased to the actual type.

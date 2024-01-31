@@ -12,14 +12,9 @@
 #include "absl/strings/string_view.h"
 #include "base/handle.h"
 #include "base/kind.h"
-#include "base/types/wrapper_type.h"
 #include "base/value_manager.h"
-#include "base/values/error_value.h"
-#include "base/values/map_value.h"
-#include "base/values/null_value.h"
-#include "base/values/string_value.h"
-#include "base/values/struct_value.h"
-#include "base/values/unknown_value.h"
+#include "common/type.h"
+#include "common/value.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
@@ -30,6 +25,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::BoolValueView;
 using ::cel::ErrorValue;
 using ::cel::Handle;
 using ::cel::MapValue;
@@ -40,6 +36,7 @@ using ::cel::StructValue;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::ValueKind;
+using ::cel::ValueView;
 using ::cel::runtime_internal::CreateMissingAttributeError;
 using ::cel::runtime_internal::CreateNoSuchKeyError;
 
@@ -80,30 +77,33 @@ absl::optional<Handle<Value>> CheckForMarkedAttributes(
   return absl::nullopt;
 }
 
-Handle<Value> TestOnlySelect(const Handle<StructValue>& msg,
-                             const std::string& field,
-                             cel::ValueManager& value_factory) {
-  absl::StatusOr<bool> result =
-      msg->HasFieldByName(value_factory.type_manager(), field);
+Handle<ValueView> TestOnlySelect(const Handle<StructValue>& msg,
+                                 const std::string& field,
+                                 cel::ValueManager& value_factory,
+                                 Value& scratch) {
+  absl::StatusOr<bool> result = msg.HasFieldByName(field);
 
   if (!result.ok()) {
-    return value_factory.CreateErrorValue(std::move(result).status());
+    scratch = value_factory.CreateErrorValue(std::move(result).status());
+    return scratch;
   }
-  return value_factory.CreateBoolValue(*result);
+  return BoolValueView(*result);
 }
 
-Handle<Value> TestOnlySelect(const Handle<MapValue>& map,
-                             const Handle<StringValue>& field_name,
-                             cel::ValueManager& value_factory) {
+Handle<ValueView> TestOnlySelect(const Handle<MapValue>& map,
+                                 const Handle<StringValue>& field_name,
+                                 cel::ValueManager& value_factory,
+                                 Value& scratch) {
   // Field presence only supports string keys containing valid identifier
   // characters.
-  auto presence = map->Has(value_factory, field_name);
+  auto presence = map.Has(value_factory, field_name, scratch);
 
   if (!presence.ok()) {
-    return value_factory.CreateErrorValue(std::move(presence).status());
+    scratch = value_factory.CreateErrorValue(std::move(presence).status());
+    return scratch;
   }
 
-  return std::move(*presence);
+  return *presence;
 }
 
 }  // namespace
@@ -117,7 +117,7 @@ class SelectStep : public ExpressionStepBase {
              bool enable_wrapper_type_null_unboxing)
       : ExpressionStepBase(expr_id),
         field_value_(std::move(value)),
-        field_(field_value_->ToString()),
+        field_(field_value_.ToString()),
         test_field_presence_(test_field_presence),
         select_path_(select_path),
         unboxing_option_(enable_wrapper_type_null_unboxing
@@ -127,23 +127,12 @@ class SelectStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  absl::StatusOr<Handle<Value>> CreateValueFromField(
-      const Handle<StructValue>& msg, ExecutionFrame* frame) const;
   cel::Handle<StringValue> field_value_;
   std::string field_;
   bool test_field_presence_;
   std::string select_path_;
   ProtoWrapperTypeOptions unboxing_option_;
 };
-
-absl::StatusOr<Handle<Value>> SelectStep::CreateValueFromField(
-    const Handle<StructValue>& msg, ExecutionFrame* frame) const {
-  if (unboxing_option_ == ProtoWrapperTypeOptions::kUnsetProtoDefault) {
-    return msg->GetWrappedFieldByName(frame->value_factory(), field_);
-  } else {
-    return msg->GetFieldByName(frame->value_factory(), field_);
-  }
-}
 
 absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(1)) {
@@ -189,16 +178,20 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     return absl::OkStatus();
   }
 
+  Value result_scratch;
+
   // Handle test only Select.
   if (test_field_presence_) {
     switch (arg->kind()) {
       case ValueKind::kMap:
-        frame->value_stack().PopAndPush(TestOnlySelect(
-            arg.As<MapValue>(), field_value_, frame->value_factory()));
+        frame->value_stack().PopAndPush(
+            Value{TestOnlySelect(arg.As<MapValue>(), field_value_,
+                                 frame->value_factory(), result_scratch)});
         return absl::OkStatus();
       case ValueKind::kMessage:
-        frame->value_stack().PopAndPush(TestOnlySelect(
-            arg.As<StructValue>(), field_, frame->value_factory()));
+        frame->value_stack().PopAndPush(
+            Value{TestOnlySelect(arg.As<StructValue>(), field_,
+                                 frame->value_factory(), result_scratch)});
         return absl::OkStatus();
       default:
         // Control flow should have returned earlier.
@@ -210,19 +203,17 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   // Select steps can be applied to either maps or messages
   switch (arg->kind()) {
     case ValueKind::kStruct: {
-      CEL_ASSIGN_OR_RETURN(Handle<Value> result,
-                           CreateValueFromField(arg.As<StructValue>(), frame));
-      frame->value_stack().PopAndPush(std::move(result),
-                                      std::move(result_trail));
-
+      CEL_ASSIGN_OR_RETURN(auto result, arg.As<StructValue>().GetFieldByName(
+                                            frame->value_factory(), field_,
+                                            result_scratch, unboxing_option_));
+      frame->value_stack().PopAndPush(Value{result}, std::move(result_trail));
       return absl::OkStatus();
     }
     case ValueKind::kMap: {
-      const auto& cel_map = arg.As<MapValue>();
-      CEL_ASSIGN_OR_RETURN(auto result,
-                           cel_map->Get(frame->value_factory(), field_value_));
-      frame->value_stack().PopAndPush(std::move(result),
-                                      std::move(result_trail));
+      CEL_ASSIGN_OR_RETURN(
+          auto result, arg.As<MapValue>().Get(frame->value_factory(),
+                                              field_value_, result_scratch));
+      frame->value_stack().PopAndPush(Value{result}, std::move(result_trail));
       return absl::OkStatus();
     }
     default:

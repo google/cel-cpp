@@ -63,17 +63,9 @@ class Resolver {
   // based type name. For this reason, within parsed only expressions, the
   // constant should be treated as a value that can be shadowed by a runtime
   // provided value.
-  cel::Handle<cel::Value> FindConstant(absl::string_view name,
-                                       int64_t expr_id) const;
+  absl::optional<cel::Handle<cel::Value>> FindConstant(absl::string_view name,
+                                                       int64_t expr_id) const;
 
-  // FindType returns the type and resolved type name for the given potentially
-  // unqualified type name if one exists, following resolution rules for the
-  // expression container.
-  //
-  // NOTE: The resolved type name is not necessarily the same as returned by
-  // `cel::Type::name`, especially for some of the well known types. For example
-  // `google.protobuf.Int32Value` and `google.protobuf.Int64Value` both resolve
-  // to `IntWrapperType`.
   absl::StatusOr<absl::optional<std::pair<std::string, cel::Handle<cel::Type>>>>
   FindType(absl::string_view name, int64_t expr_id) const;
 
