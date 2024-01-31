@@ -89,8 +89,14 @@ class Allocator {
 
   void deallocate(pointer p, size_type n) {
     if (!allocation_only_) {
-      ::operator delete(static_cast<void*>(p), n * sizeof(T),
+#if defined(__cpp_sized_deallocation) && __cpp_sized_deallocation >= 201309L
+      ::operator delete(static_cast<void *>(p), n * sizeof(T),
                         static_cast<std::align_val_t>(alignof(T)));
+#else
+      ::operator delete(static_cast<void *>(p),
+                        static_cast<std::align_val_t>(alignof(T)));
+      static_cast<void>(n); // unused
+#endif
     }
   }
 
