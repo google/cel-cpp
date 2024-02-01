@@ -69,12 +69,13 @@ class ProtoPoolingMemoryManager final : public PoolingMemoryManager {
   google::protobuf::Arena arena_;
 };
 
-const PoolingMemoryManagerVirtualTable kProtoMemoryManagerVirtualTable = {
-    NativeTypeId::For<google::protobuf::Arena>(),
-    &ProtoPoolingMemoryManagerAllocate,
-    &ProtoPoolingMemoryManagerDeallocate,
-    &ProtoPoolingMemoryManagerOwnCustomDestructor,
-};
+const PoolingMemoryManagerVirtualTable& ProtoMemoryManagerVirtualTable() {
+  static const PoolingMemoryManagerVirtualTable vtable{
+      NativeTypeId::For<google::protobuf::Arena>(), &ProtoPoolingMemoryManagerAllocate,
+      &ProtoPoolingMemoryManagerDeallocate,
+      &ProtoPoolingMemoryManagerOwnCustomDestructor};
+  return vtable;
+}
 
 }  // namespace
 
@@ -92,7 +93,7 @@ namespace extensions {
 
 MemoryManagerRef ProtoMemoryManagerRef(google::protobuf::Arena* arena) {
   return arena != nullptr ? MemoryManagerRef::Pooling(
-                                kProtoMemoryManagerVirtualTable, *arena)
+                                ProtoMemoryManagerVirtualTable(), *arena)
                           : MemoryManagerRef::ReferenceCounting();
 }
 
@@ -116,7 +117,7 @@ absl::Nullable<google::protobuf::Arena*> ProtoMemoryManagerArena(
           As<PoolingMemoryManagerVirtualDispatcher>(memory_manager);
       virtual_dispatcher &&
       virtual_dispatcher->vtable() ==
-          std::addressof(kProtoMemoryManagerVirtualTable)) {
+          std::addressof(ProtoMemoryManagerVirtualTable())) {
     return static_cast<google::protobuf::Arena*>(virtual_dispatcher->callee());
   }
   return nullptr;

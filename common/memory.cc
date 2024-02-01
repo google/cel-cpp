@@ -356,12 +356,14 @@ bool UnmanagedPoolingMemoryManagerDeallocate(absl::Nonnull<void*>,
 void UnmanagedPoolingMemoryManagerOwnCustomDestructor(
     absl::Nonnull<void*>, void*, absl::Nonnull<void (*)(void*)>) {}
 
-const PoolingMemoryManagerVirtualTable kUnmanagedMemoryManagerVirtualTable = {
-    NativeTypeId::For<UnmanagedPoolingMemoryManager>(),
-    &UnmanagedPoolingMemoryManagerAllocate,
-    &UnmanagedPoolingMemoryManagerDeallocate,
-    &UnmanagedPoolingMemoryManagerOwnCustomDestructor,
-};
+const PoolingMemoryManagerVirtualTable& UnmanagedMemoryManagerVirtualTable() {
+  static const PoolingMemoryManagerVirtualTable vtable{
+      NativeTypeId::For<UnmanagedPoolingMemoryManager>(),
+      &UnmanagedPoolingMemoryManagerAllocate,
+      &UnmanagedPoolingMemoryManagerDeallocate,
+      &UnmanagedPoolingMemoryManagerOwnCustomDestructor};
+  return vtable;
+}
 
 }  // namespace
 
@@ -426,7 +428,7 @@ MemoryManager::UnreachablePooling() noexcept {
 
 MemoryManagerRef MemoryManagerRef::Unmanaged() {
   static UnmanagedPoolingMemoryManager instance;
-  return MemoryManagerRef::Pooling(kUnmanagedMemoryManagerVirtualTable,
+  return MemoryManagerRef::Pooling(UnmanagedMemoryManagerVirtualTable(),
                                    instance);
 }
 
