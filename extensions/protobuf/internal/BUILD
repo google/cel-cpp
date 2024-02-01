@@ -20,11 +20,169 @@ package(
 licenses(["notice"])
 
 cc_library(
+    name = "duration",
+    srcs = ["duration.cc"],
+    hdrs = ["duration.h"],
+    deps = [
+        "//internal:casts",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "duration_test",
+    srcs = ["duration_test.cc"],
+    deps = [
+        ":duration",
+        "//internal:testing",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "timestamp",
+    srcs = ["timestamp.cc"],
+    hdrs = ["timestamp.h"],
+    deps = [
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "timestamp_test",
+    srcs = ["timestamp_test.cc"],
+    deps = [
+        ":timestamp",
+        "//internal:testing",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "map_reflection",
     srcs = ["map_reflection.cc"],
     hdrs = ["map_reflection.h"],
     deps = [
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "reflection",
+    srcs = ["reflection.cc"],
+    hdrs = ["reflection.h"],
+    deps = [
+        "//common:value",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "wrappers",
+    srcs = ["wrappers.cc"],
+    hdrs = ["wrappers.h"],
+    deps = [
+        "//internal:casts",
+        "@com_google_absl//absl/functional:function_ref",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "wrappers_test",
+    srcs = ["wrappers_test.cc"],
+    deps = [
+        ":wrappers",
+        "//internal:testing",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "field_mask",
+    srcs = ["field_mask.cc"],
+    hdrs = ["field_mask.h"],
+    deps = [
+        "//common:json",
+        "//internal:casts",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "field_mask_test",
+    srcs = ["field_mask_test.cc"],
+    deps = [
+        ":field_mask",
+        "//internal:testing",
+        "@com_google_absl//absl/memory",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "struct",
+    srcs = ["struct.cc"],
+    hdrs = ["struct.h"],
+    deps = [
+        ":map_reflection",
+        "//common:json",
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/functional:overload",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/types:variant",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "struct_test",
+    srcs = ["struct_test.cc"],
+    deps = [
+        ":struct",
+        "//common:json",
+        "//internal:testing",
+        "//testutil:util",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/memory",
         "@com_google_protobuf//:protobuf",
     ],
 )
