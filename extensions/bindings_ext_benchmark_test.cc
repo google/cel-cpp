@@ -159,7 +159,6 @@ TEST_P(BindingsBenchmarkTest, CheckBenchmarkCaseWorks) {
       auto expr, ParseWithMacros(benchmark.expression, all_macros, "<input>"));
 
   InterpreterOptions options;
-  options.enable_lazy_bind_initialization = true;
   auto builder =
       google::api::expr::runtime::CreateCelExpressionBuilder(options);
 
@@ -185,7 +184,6 @@ void RunBenchmark(const BenchmarkCase& benchmark, benchmark::State& state) {
       auto expr, ParseWithMacros(benchmark.expression, all_macros, "<input>"));
 
   InterpreterOptions options;
-  options.enable_lazy_bind_initialization = true;
   auto builder =
       google::api::expr::runtime::CreateCelExpressionBuilder(options);
 

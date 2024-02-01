@@ -90,11 +90,10 @@ std::unique_ptr<CelFunction> CreateBindFunction() {
 }
 
 class BindingsExtTest
-    : public testing::TestWithParam<std::tuple<TestInfo, bool, bool>> {
+    : public testing::TestWithParam<std::tuple<TestInfo, bool>> {
  protected:
   const TestInfo& GetTestInfo() { return std::get<0>(GetParam()); }
   bool GetEnableConstantFolding() { return std::get<1>(GetParam()); }
-  bool GetLazyBindings() { return std::get<2>(GetParam()); }
 };
 
 TEST_P(BindingsExtTest, EndToEnd) {
@@ -122,7 +121,6 @@ TEST_P(BindingsExtTest, EndToEnd) {
   options.enable_empty_wrapper_null_unboxing = true;
   options.constant_folding = GetEnableConstantFolding();
   options.constant_arena = &arena;
-  options.enable_lazy_bind_initialization = GetLazyBindings();
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(options);
   ASSERT_OK(builder->GetRegistry()->Register(CreateBindFunction()));
@@ -171,8 +169,7 @@ INSTANTIATE_TEST_SUITE_P(
              // Error case where the variable name is not a simple identifier.
              {"cel.bind(bad.name, true, bad.name)",
               "variable name must be a simple identifier"}}),
-        /*constant_folding*/ testing::Bool(),
-        /*lazy_bindings*/ testing::Bool()));
+        /*constant_folding*/ testing::Bool()));
 
 // Test bind expression with nested field selection.
 //
@@ -445,11 +442,9 @@ constexpr absl::string_view kFieldSelectTestExpr = R"pb(
     }
   })pb";
 
-class BindingsExtInteractionsTest
-    : public testing::TestWithParam<std::tuple<bool, bool>> {
+class BindingsExtInteractionsTest : public testing::TestWithParam<bool> {
  protected:
-  bool GetEnableLazyBinding() { return std::get<0>(GetParam()); }
-  bool GetEnableSelectOptimization() { return std::get<1>(GetParam()); }
+  bool GetEnableSelectOptimization() { return GetParam(); }
 };
 
 TEST_P(BindingsExtInteractionsTest, SelectOptimization) {
@@ -457,7 +452,6 @@ TEST_P(BindingsExtInteractionsTest, SelectOptimization) {
   ASSERT_TRUE(TextFormat::ParseFromString(kFieldSelectTestExpr, &expr));
   InterpreterOptions options;
   options.enable_empty_wrapper_null_unboxing = true;
-  options.enable_lazy_bind_initialization = GetEnableLazyBinding();
   options.enable_select_optimization = GetEnableSelectOptimization();
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(options);
@@ -489,7 +483,6 @@ TEST_P(BindingsExtInteractionsTest, UnknownAttributesSelectOptimization) {
   InterpreterOptions options;
   options.enable_empty_wrapper_null_unboxing = true;
   options.unknown_processing = UnknownProcessingOptions::kAttributeOnly;
-  options.enable_lazy_bind_initialization = GetEnableLazyBinding();
   options.enable_select_optimization = GetEnableSelectOptimization();
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(options);
@@ -528,7 +521,6 @@ TEST_P(BindingsExtInteractionsTest,
   InterpreterOptions options;
   options.enable_empty_wrapper_null_unboxing = true;
   options.unknown_processing = UnknownProcessingOptions::kAttributeOnly;
-  options.enable_lazy_bind_initialization = GetEnableLazyBinding();
   options.enable_select_optimization = GetEnableSelectOptimization();
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(options);
@@ -570,7 +562,6 @@ TEST_P(BindingsExtInteractionsTest, MissingAttributesSelectOptimization) {
   InterpreterOptions options;
   options.enable_empty_wrapper_null_unboxing = true;
   options.enable_missing_attribute_errors = true;
-  options.enable_lazy_bind_initialization = GetEnableLazyBinding();
   options.enable_select_optimization = GetEnableSelectOptimization();
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(options);
@@ -618,7 +609,6 @@ TEST_P(BindingsExtInteractionsTest, UnknownAttribute) {
   InterpreterOptions options;
   options.enable_empty_wrapper_null_unboxing = true;
   options.unknown_processing = UnknownProcessingOptions::kAttributeOnly;
-  options.enable_lazy_bind_initialization = GetEnableLazyBinding();
   options.enable_select_optimization = GetEnableSelectOptimization();
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(options);
@@ -665,7 +655,6 @@ TEST_P(BindingsExtInteractionsTest, UnknownAttributeReturnValue) {
   InterpreterOptions options;
   options.enable_empty_wrapper_null_unboxing = true;
   options.unknown_processing = UnknownProcessingOptions::kAttributeOnly;
-  options.enable_lazy_bind_initialization = GetEnableLazyBinding();
   options.enable_select_optimization = GetEnableSelectOptimization();
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(options);
@@ -716,7 +705,6 @@ TEST_P(BindingsExtInteractionsTest, MissingAttribute) {
   InterpreterOptions options;
   options.enable_empty_wrapper_null_unboxing = true;
   options.enable_missing_attribute_errors = true;
-  options.enable_lazy_bind_initialization = GetEnableLazyBinding();
   options.enable_select_optimization = GetEnableSelectOptimization();
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(options);
@@ -750,7 +738,7 @@ TEST_P(BindingsExtInteractionsTest, MissingAttribute) {
 
 INSTANTIATE_TEST_SUITE_P(BindingsExtInteractionsTest,
                          BindingsExtInteractionsTest,
-                         testing::Combine(testing::Bool(), testing::Bool()));
+                         /*enable_select_optimization=*/testing::Bool());
 
 }  // namespace
 }  // namespace cel::extensions

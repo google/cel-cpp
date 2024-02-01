@@ -341,9 +341,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
         suppressed_branches_.find(expr) != suppressed_branches_.end()) {
       resume_from_suppressed_branch_ = expr;
     }
-    if (!ProgramStructureTrackingEnabled()) {
-      return;
-    }
+
     PlannerContext::ProgramInfo& info = program_tree_[expr];
     info.range_start = GetCurrentIndex();
     info.parent = parent_expr_;
@@ -369,9 +367,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     if (expr == resume_from_suppressed_branch_) {
       resume_from_suppressed_branch_ = nullptr;
     }
-    if (!ProgramStructureTrackingEnabled()) {
-      return;
-    }
+
     PlannerContext::ProgramInfo& info = program_tree_[expr];
     info.range_len = GetCurrentIndex() - info.range_start;
     parent_expr_ = info.parent;
@@ -384,8 +380,8 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
         return;
       }
     }
-    if (options_.enable_lazy_bind_initialization &&
-        !comprehension_stack_.empty() &&
+    if (!comprehension_stack_.empty() &&
+        comprehension_stack_.back().is_optimizable_bind &&
         (&comprehension_stack_.back().comprehension->accu_init() == expr)) {
       SetProgressStatusError(
           MaybeExtractSubexpression(expr, comprehension_stack_.back()));
@@ -429,7 +425,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
             record.comprehension->accu_var() == path) {
           int slot = record.accu_slot;
           int subexpression = -1;
-          if (record.should_lazy_eval) {
+          if (record.is_optimizable_bind) {
             subexpression = record.subexpression;
           }
           return {slot, subexpression};
@@ -735,7 +731,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     // critical path (which is unknown at plan time), so the used slots need to
     // be dedicated for the entire scope of that bind.
     for (ComprehensionStackRecord& record : comprehension_stack_) {
-      if (record.in_accu_init && record.should_lazy_eval) {
+      if (record.in_accu_init && record.is_optimizable_bind) {
         record.slot_count += slot_count;
         slot_count = 0;
         break;
@@ -752,8 +748,6 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
          /*.iter_var_in_scope=*/false,
          /*.accu_var_in_scope=*/false,
          /*.in_accu_init=*/false,
-         /*.should_lazy_eval=*/is_bind &&
-             options_.enable_lazy_bind_initialization,
          std::make_unique<ComprehensionVisitor>(
              this, options_.short_circuiting, is_bind, iter_slot, accu_slot)});
     comprehension_stack_.back().visitor->PreVisit(expr);
@@ -1003,7 +997,6 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     bool iter_var_in_scope;
     bool accu_var_in_scope;
     bool in_accu_init;
-    bool should_lazy_eval;
     std::unique_ptr<ComprehensionVisitor> visitor;
   };
 
@@ -1011,23 +1004,9 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     return resume_from_suppressed_branch_ != nullptr;
   }
 
-  bool ProgramStructureTrackingEnabled() {
-    return options_.enable_lazy_bind_initialization ||
-           !program_optimizers_.empty();
-  }
-
-  bool InBindScope() {
-    for (const auto& record : comprehension_stack_) {
-      if (record.is_optimizable_bind) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   absl::Status MaybeExtractSubexpression(const cel::ast_internal::Expr* expr,
                                          ComprehensionStackRecord& record) {
-    if (!record.should_lazy_eval) {
+    if (!record.is_optimizable_bind) {
       return absl::OkStatus();
     }
     CEL_ASSIGN_OR_RETURN(auto subexpr,

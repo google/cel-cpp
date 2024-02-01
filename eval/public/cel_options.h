@@ -161,14 +161,8 @@ struct InterpreterOptions {
 
   // Enable lazy cel.bind alias initialization.
   //
-  // When enabled, cel.bind definition subexpression will be evaluated when the
-  // evaluator first requires the alias in the subexpression using the bound
-  // alias. When disabled, the cel.bind definition is eagerly evaluated.
-  //
-  // This prevents eagerly evaluating the definition subexpression if it is
-  // never used in the result subexpression of the cel.bind() macro. This allows
-  // for consistent behavior for CEL compiler optimized expressions that extract
-  // subexpressions to cel.bind calls.
+  // This is now always enabled. Setting this option has no effect. It will be
+  // removed in a later update.
   bool enable_lazy_bind_initialization = true;
 };
 // LINT.ThenChange(//depot/google3/runtime/runtime_options.h)
