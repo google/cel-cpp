@@ -16,6 +16,7 @@
 
 #include <string>
 
+#include "absl/base/nullability.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "internal/strings.h"
@@ -35,6 +36,22 @@ std::string Any::DebugString() const {
                       internal::FormatStringLiteral(type_url()),
                       ", value: ", internal::FormatBytesLiteral(value_view),
                       "}");
+}
+
+bool ParseTypeUrl(absl::string_view type_url,
+                  absl::Nullable<absl::string_view*> prefix,
+                  absl::Nullable<absl::string_view*> type_name) {
+  auto pos = type_url.find_last_of('/');
+  if (pos == absl::string_view::npos || pos + 1 == type_url.size()) {
+    return false;
+  }
+  if (prefix) {
+    *prefix = type_url.substr(0, pos + 1);
+  }
+  if (type_name) {
+    *type_name = type_url.substr(pos + 1);
+  }
+  return true;
 }
 
 }  // namespace cel

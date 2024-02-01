@@ -20,6 +20,7 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -100,6 +101,17 @@ inline std::string MakeTypeUrlWithPrefix(absl::string_view prefix,
 
 inline std::string MakeTypeUrl(absl::string_view type_name) {
   return MakeTypeUrlWithPrefix(kTypeGoogleApisComPrefix, type_name);
+}
+
+bool ParseTypeUrl(absl::string_view type_url,
+                  absl::Nullable<absl::string_view*> prefix,
+                  absl::Nullable<absl::string_view*> type_name);
+inline bool ParseTypeUrl(absl::string_view type_url,
+                         absl::Nullable<absl::string_view*> type_name) {
+  return ParseTypeUrl(type_url, nullptr, type_name);
+}
+inline bool ParseTypeUrl(absl::string_view type_url) {
+  return ParseTypeUrl(type_url, nullptr);
 }
 
 }  // namespace cel

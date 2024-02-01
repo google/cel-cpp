@@ -14,6 +14,7 @@
 
 #include "common/any.h"
 
+#include "absl/strings/string_view.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -26,6 +27,33 @@ TEST(MakeTypeUrlWithPrefix, Basic) {
 
 TEST(MakeTypeUrl, Basic) {
   EXPECT_EQ(MakeTypeUrl("bar.Baz"), "type.googleapis.com/bar.Baz");
+}
+
+TEST(ParseTypeUrl, Valid) {
+  EXPECT_TRUE(ParseTypeUrl("type.googleapis.com/bar.Baz"));
+  EXPECT_FALSE(ParseTypeUrl("type.googleapis.com"));
+  EXPECT_FALSE(ParseTypeUrl("type.googleapis.com/"));
+  EXPECT_FALSE(ParseTypeUrl("type.googleapis.com/foo/"));
+}
+
+TEST(ParseTypeUrl, TypeName) {
+  absl::string_view type_name;
+  EXPECT_TRUE(ParseTypeUrl("type.googleapis.com/bar.Baz", &type_name));
+  EXPECT_EQ(type_name, "bar.Baz");
+  EXPECT_FALSE(ParseTypeUrl("type.googleapis.com", &type_name));
+  EXPECT_FALSE(ParseTypeUrl("type.googleapis.com/", &type_name));
+  EXPECT_FALSE(ParseTypeUrl("type.googleapis.com/foo/", &type_name));
+}
+
+TEST(ParseTypeUrl, PrefixAndTypeName) {
+  absl::string_view prefix;
+  absl::string_view type_name;
+  EXPECT_TRUE(ParseTypeUrl("type.googleapis.com/bar.Baz", &prefix, &type_name));
+  EXPECT_EQ(prefix, "type.googleapis.com/");
+  EXPECT_EQ(type_name, "bar.Baz");
+  EXPECT_FALSE(ParseTypeUrl("type.googleapis.com", &prefix, &type_name));
+  EXPECT_FALSE(ParseTypeUrl("type.googleapis.com/", &prefix, &type_name));
+  EXPECT_FALSE(ParseTypeUrl("type.googleapis.com/foo/", &prefix, &type_name));
 }
 
 }  // namespace
