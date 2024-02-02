@@ -56,8 +56,8 @@ def base_deps():
         urls = ["https://github.com/protocolbuffers/protobuf/archive/v" + PROTOBUF_VERSION + ".tar.gz"],
     )
 
-    GOOGLEAPIS_GIT_SHA = "07c27163ac591955d736f3057b1619ece66f5b99"  # May 26, 2023
-    GOOGLEAPIS_SHA = "bd8e735d881fb829751ecb1a77038dda4a8d274c45490cb9fcf004583ee10571"
+    GOOGLEAPIS_GIT_SHA = "5e6eb76b661f7002a944add149e1ed840ca82bae"  # Feb 1, 2024
+    GOOGLEAPIS_SHA = "3285aa5fadc1ea023a82109cf417d818e593df1698faba47ca451ea2502dc43c"
     http_archive(
         name = "com_google_googleapis",
         sha256 = GOOGLEAPIS_SHA,
@@ -130,10 +130,10 @@ def cel_spec_deps():
         ],
     )
 
-    CEL_SPEC_GIT_SHA = "7eb4db1aa8cebecb71b2b33a0ced33b9ae5f4fdc"  # 10/05/2023
+    CEL_SPEC_GIT_SHA = "910da5b5d08378a9a1f3ea3ba1979e16e6c6dbc1"  # Jan 9, 2024
     http_archive(
         name = "com_google_cel_spec",
-        sha256 = "30cd1ab2675c64e1a489c3c40d04086d3598ba05dee938ddb5295d67bbe71ac9",
+        sha256 = "34b16043c86de5d15b2024fd5c7be6eddc5ce346677192774c3d536fd97d4596",
         strip_prefix = "cel-spec-" + CEL_SPEC_GIT_SHA,
         urls = ["https://github.com/google/cel-spec/archive/" + CEL_SPEC_GIT_SHA + ".zip"],
     )
