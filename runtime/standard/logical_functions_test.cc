@@ -56,16 +56,17 @@ MATCHER_P3(DescriptorIs, name, arg_kinds, is_receiver, "") {
 }
 
 MATCHER_P(IsBool, expected, "") {
-  const Handle<Value>& value = arg;
+  const Value& value = arg;
   return value->Is<BoolValue>() &&
          value->As<BoolValue>().NativeValue() == expected;
 }
 
 // TODO(uncreated-issue/48): replace this with a parsed expr when the non-protobuf
 // parser is available.
-absl::StatusOr<Handle<Value>> TestDispatchToFunction(
-    const FunctionRegistry& registry, absl::string_view simple_name,
-    absl::Span<const Handle<Value>> args, ValueManager& value_factory) {
+absl::StatusOr<Value> TestDispatchToFunction(const FunctionRegistry& registry,
+                                             absl::string_view simple_name,
+                                             absl::Span<const Value> args,
+                                             ValueManager& value_factory) {
   std::vector<Kind> arg_matcher_;
   arg_matcher_.reserve(args.size());
   for (const auto& value : args) {
@@ -109,12 +110,11 @@ TEST(RegisterLogicalFunctions, LogicalNotRegistered) {
 }
 
 struct TestCase {
-  using ArgumentFactory =
-      std::function<std::vector<Handle<Value>>(ValueManager&)>;
+  using ArgumentFactory = std::function<std::vector<Value>(ValueManager&)>;
 
   std::string function;
   ArgumentFactory arguments;
-  absl::StatusOr<Matcher<Handle<Value>>> result_matcher;
+  absl::StatusOr<Matcher<Value>> result_matcher;
 };
 
 class LogicalFunctionsTest : public testing::TestWithParam<TestCase> {
@@ -133,9 +133,9 @@ TEST_P(LogicalFunctionsTest, Runner) {
 
   ASSERT_OK(RegisterLogicalFunctions(registry, RuntimeOptions()));
 
-  std::vector<Handle<Value>> args = test_case.arguments(value_factory_);
+  std::vector<Value> args = test_case.arguments(value_factory_);
 
-  absl::StatusOr<Handle<Value>> result = TestDispatchToFunction(
+  absl::StatusOr<Value> result = TestDispatchToFunction(
       registry, test_case.function, args, value_factory_);
 
   EXPECT_EQ(result.ok(), test_case.result_matcher.ok());
@@ -154,47 +154,47 @@ INSTANTIATE_TEST_SUITE_P(
     Cases, LogicalFunctionsTest,
     testing::ValuesIn(std::vector<TestCase>{
         TestCase{builtin::kNot,
-                 [](ValueManager& value_factory) -> std::vector<Handle<Value>> {
+                 [](ValueManager& value_factory) -> std::vector<Value> {
                    return {value_factory.CreateBoolValue(true)};
                  },
                  IsBool(false)},
         TestCase{builtin::kNot,
-                 [](ValueManager& value_factory) -> std::vector<Handle<Value>> {
+                 [](ValueManager& value_factory) -> std::vector<Value> {
                    return {value_factory.CreateBoolValue(false)};
                  },
                  IsBool(true)},
         TestCase{builtin::kNot,
-                 [](ValueManager& value_factory) -> std::vector<Handle<Value>> {
+                 [](ValueManager& value_factory) -> std::vector<Value> {
                    return {value_factory.CreateBoolValue(true),
                            value_factory.CreateBoolValue(false)};
                  },
                  absl::InvalidArgumentError("")},
         TestCase{builtin::kNotStrictlyFalse,
-                 [](ValueManager& value_factory) -> std::vector<Handle<Value>> {
+                 [](ValueManager& value_factory) -> std::vector<Value> {
                    return {value_factory.CreateBoolValue(true)};
                  },
                  IsBool(true)},
         TestCase{builtin::kNotStrictlyFalse,
-                 [](ValueManager& value_factory) -> std::vector<Handle<Value>> {
+                 [](ValueManager& value_factory) -> std::vector<Value> {
                    return {value_factory.CreateBoolValue(false)};
                  },
                  IsBool(false)},
         TestCase{builtin::kNotStrictlyFalse,
-                 [](ValueManager& value_factory) -> std::vector<Handle<Value>> {
+                 [](ValueManager& value_factory) -> std::vector<Value> {
                    return {value_factory.CreateErrorValue(
                        absl::InternalError("test"))};
                  },
                  IsBool(true)},
         TestCase{builtin::kNotStrictlyFalse,
-                 [](ValueManager& value_factory) -> std::vector<Handle<Value>> {
+                 [](ValueManager& value_factory) -> std::vector<Value> {
                    return {value_factory.CreateUnknownValue()};
                  },
                  IsBool(true)},
         TestCase{builtin::kNotStrictlyFalse,
-                 [](ValueManager& value_factory) -> std::vector<Handle<Value>> {
+                 [](ValueManager& value_factory) -> std::vector<Value> {
                    return {value_factory.CreateIntValue(42)};
                  },
-                 Truly([](const Handle<Value>& v) {
+                 Truly([](const Value& v) {
                    return v->Is<ErrorValue>() &&
                           absl::StrContains(
                               v->As<ErrorValue>().NativeValue().message(),

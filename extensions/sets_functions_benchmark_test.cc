@@ -121,8 +121,7 @@ class LegacyListStorage : public ListStorage {
 
 class ModernListStorage : public ListStorage {
  public:
-  ModernListStorage(Handle<Value> x, Handle<Value> y)
-      : x_(std::move(x)), y_(std::move(y)) {}
+  ModernListStorage(Value x, Value y) : x_(std::move(x)), y_(std::move(y)) {}
 
   CelValue x() {
     return interop_internal::ModernValueToLegacyValueOrDie(&arena_, x_);
@@ -133,8 +132,8 @@ class ModernListStorage : public ListStorage {
 
  private:
   google::protobuf::Arena arena_;
-  Handle<Value> x_;
-  Handle<Value> y_;
+  Value x_;
+  Value y_;
 };
 
 absl::StatusOr<std::unique_ptr<ListStorage>> RegisterLegacyLists(

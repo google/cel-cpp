@@ -46,7 +46,7 @@ using testing::_;
 using testing::HasSubstr;
 using cel::internal::StatusIs;
 
-using ValueMatcher = testing::Matcher<Handle<Value>>;
+using ValueMatcher = testing::Matcher<Value>;
 
 struct TestCase {
   std::string name;
@@ -56,19 +56,19 @@ struct TestCase {
 };
 
 MATCHER_P(IsIntValue, expected, "") {
-  const Handle<Value>& value = arg;
+  const Value& value = arg;
   return value->Is<IntValue>() &&
          value->As<IntValue>().NativeValue() == expected;
 }
 
 MATCHER_P(IsBoolValue, expected, "") {
-  const Handle<Value>& value = arg;
+  const Value& value = arg;
   return value->Is<BoolValue>() &&
          value->As<BoolValue>().NativeValue() == expected;
 }
 
 MATCHER_P(IsErrorValue, expected_substr, "") {
-  const Handle<Value>& value = arg;
+  const Value& value = arg;
   return value->Is<ErrorValue>() &&
          absl::StrContains(value->As<ErrorValue>().NativeValue().message(),
                            expected_substr);
@@ -83,7 +83,7 @@ TEST_P(RegexPrecompilationTest, Basic) {
                        CreateStandardRuntimeBuilder(options));
 
   auto status = RegisterHelper<BinaryFunctionAdapter<
-      absl::StatusOr<Handle<Value>>, const StringValue&, const StringValue&>>::
+      absl::StatusOr<Value>, const StringValue&, const StringValue&>>::
       RegisterGlobalOverload(
           "prepend",
           [](ValueManager& f, const StringValue& value,
@@ -117,7 +117,7 @@ TEST_P(RegexPrecompilationTest, Basic) {
                        value_factory.get().CreateStringValue("string_var"));
   activation.InsertOrAssignValue("string_var", var);
 
-  ASSERT_OK_AND_ASSIGN(Handle<Value> value,
+  ASSERT_OK_AND_ASSIGN(Value value,
                        program->Evaluate(activation, value_factory.get()));
   EXPECT_THAT(value, test_case.result_matcher);
 }
@@ -129,7 +129,7 @@ TEST_P(RegexPrecompilationTest, WithConstantFolding) {
                        CreateStandardRuntimeBuilder(options));
 
   auto status = RegisterHelper<BinaryFunctionAdapter<
-      absl::StatusOr<Handle<Value>>, const StringValue&, const StringValue&>>::
+      absl::StatusOr<Value>, const StringValue&, const StringValue&>>::
       RegisterGlobalOverload(
           "prepend",
           [](ValueManager& f, const StringValue& value,
@@ -164,7 +164,7 @@ TEST_P(RegexPrecompilationTest, WithConstantFolding) {
                        value_factory.get().CreateStringValue("string_var"));
   activation.InsertOrAssignValue("string_var", var);
 
-  ASSERT_OK_AND_ASSIGN(Handle<Value> value,
+  ASSERT_OK_AND_ASSIGN(Value value,
                        program->Evaluate(activation, value_factory.get()));
   EXPECT_THAT(value, test_case.result_matcher);
 }

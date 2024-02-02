@@ -187,7 +187,7 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
     return absl::OkStatus();
   }
   // copy string to managed handle if backed by the original program.
-  Handle<Value> value;
+  Value value;
   if (node.has_const_expr()) {
     CEL_ASSIGN_OR_RETURN(
         value, ConvertConstant(node.const_expr(), state_.value_factory()));

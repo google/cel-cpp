@@ -44,7 +44,7 @@ using ::google::api::expr::parser::Parse;
 using testing::HasSubstr;
 using cel::internal::StatusIs;
 
-using ValueMatcher = testing::Matcher<Handle<Value>>;
+using ValueMatcher = testing::Matcher<Value>;
 
 struct TestCase {
   std::string name;
@@ -54,19 +54,19 @@ struct TestCase {
 };
 
 MATCHER_P(IsIntValue, expected, "") {
-  const Handle<Value>& value = arg;
+  const Value& value = arg;
   return value->Is<IntValue>() &&
          value->As<IntValue>().NativeValue() == expected;
 }
 
 MATCHER_P(IsBoolValue, expected, "") {
-  const Handle<Value>& value = arg;
+  const Value& value = arg;
   return value->Is<BoolValue>() &&
          value->As<BoolValue>().NativeValue() == expected;
 }
 
 MATCHER_P(IsErrorValue, expected_substr, "") {
-  const Handle<Value>& value = arg;
+  const Value& value = arg;
   return value->Is<ErrorValue>() &&
          absl::StrContains(value->As<ErrorValue>().NativeValue().message(),
                            expected_substr);
@@ -81,7 +81,7 @@ TEST_P(ConstantFoldingExtTest, Runner) {
                        CreateStandardRuntimeBuilder(options));
 
   auto status = RegisterHelper<BinaryFunctionAdapter<
-      absl::StatusOr<Handle<Value>>, const StringValue&, const StringValue&>>::
+      absl::StatusOr<Value>, const StringValue&, const StringValue&>>::
       RegisterGlobalOverload(
           "prepend",
           [](ValueManager& f, const StringValue& value,
@@ -107,7 +107,7 @@ TEST_P(ConstantFoldingExtTest, Runner) {
 
   auto result = program->Evaluate(activation, value_factory.get());
   if (test_case.status.ok()) {
-    ASSERT_OK_AND_ASSIGN(Handle<Value> value, std::move(result));
+    ASSERT_OK_AND_ASSIGN(Value value, std::move(result));
 
     EXPECT_THAT(value, test_case.result_matcher);
     return;

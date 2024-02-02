@@ -2274,9 +2274,8 @@ struct ConstantFoldingTestCase {
 };
 
 class UnknownFunctionImpl : public cel::Function {
-  absl::StatusOr<Handle<Value>> Invoke(
-      const cel::Function::InvokeContext& ctx,
-      absl::Span<const Handle<Value>> args) const override {
+  absl::StatusOr<Value> Invoke(const cel::Function::InvokeContext& ctx,
+                               absl::Span<const Value> args) const override {
     return ctx.value_factory().CreateUnknownValue();
   }
 };

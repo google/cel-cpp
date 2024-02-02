@@ -48,28 +48,28 @@ class AttributeUtility {
   // Creates merged UnknownValue.
   // Scans over the args collection, merges any UnknownValues found.
   // Returns the merged UnknownValue or nullopt if not found.
-  absl::optional<cel::Handle<cel::UnknownValue>> MergeUnknowns(
-      absl::Span<const cel::Handle<cel::Value>> args) const;
+  absl::optional<cel::UnknownValue> MergeUnknowns(
+      absl::Span<const cel::Value> args) const;
 
   // Creates merged UnknownValue.
   // Merges together UnknownValues found in the args
   // along with attributes from attr that match the configured unknown patterns
   // Returns returns the merged UnknownValue if available or nullopt.
-  absl::optional<cel::Handle<cel::UnknownValue>> IdentifyAndMergeUnknowns(
-      absl::Span<const cel::Handle<cel::Value>> args,
-      absl::Span<const AttributeTrail> attrs, bool use_partial) const;
+  absl::optional<cel::UnknownValue> IdentifyAndMergeUnknowns(
+      absl::Span<const cel::Value> args, absl::Span<const AttributeTrail> attrs,
+      bool use_partial) const;
 
   // Create an initial UnknownSet from a single attribute.
-  cel::Handle<cel::UnknownValue> CreateUnknownSet(cel::Attribute attr) const;
+  cel::UnknownValue CreateUnknownSet(cel::Attribute attr) const;
 
   // Factory function for missing attribute errors.
-  absl::StatusOr<cel::Handle<cel::ErrorValue>> CreateMissingAttributeError(
+  absl::StatusOr<cel::ErrorValue> CreateMissingAttributeError(
       const cel::Attribute& attr) const;
 
   // Create an initial UnknownSet from a single missing function call.
-  cel::Handle<cel::UnknownValue> CreateUnknownSet(
+  cel::UnknownValue CreateUnknownSet(
       const cel::FunctionDescriptor& fn_descriptor, int64_t expr_id,
-      absl::Span<const cel::Handle<cel::Value>> args) const;
+      absl::Span<const cel::Value> args) const;
 
  private:
   absl::Span<const cel::AttributePattern> unknown_patterns_;

@@ -53,7 +53,7 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
 
   auto args = frame->value_stack().GetSpan(list_size_);
 
-  cel::Handle<cel::Value> result;
+  cel::Value result;
   for (const auto& arg : args) {
     if (arg->Is<cel::ErrorValue>()) {
       result = arg;
@@ -64,7 +64,7 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
   }
 
   if (frame->enable_unknowns()) {
-    absl::optional<Handle<UnknownValue>> unknown_set =
+    absl::optional<UnknownValue> unknown_set =
         frame->attribute_utility().IdentifyAndMergeUnknowns(
             args, frame->value_stack().GetAttributeSpan(list_size_),
             /*use_partial=*/true);

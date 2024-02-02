@@ -28,9 +28,9 @@ namespace cel {
 namespace {
 
 // Concatenation for string type.
-absl::StatusOr<Handle<StringValue>> ConcatString(ValueManager& factory,
-                                                 const StringValue& value1,
-                                                 const StringValue& value2) {
+absl::StatusOr<StringValue> ConcatString(ValueManager& factory,
+                                         const StringValue& value1,
+                                         const StringValue& value2) {
   // TODO(uncreated-issue/53): use StringValue::Concat when remaining interop usages
   // removed. Modern concat implementation forces additional copies when
   // converting to legacy string values.
@@ -39,9 +39,9 @@ absl::StatusOr<Handle<StringValue>> ConcatString(ValueManager& factory,
 }
 
 // Concatenation for bytes type.
-absl::StatusOr<Handle<BytesValue>> ConcatBytes(ValueManager& factory,
-                                               const BytesValue& value1,
-                                               const BytesValue& value2) {
+absl::StatusOr<BytesValue> ConcatBytes(ValueManager& factory,
+                                       const BytesValue& value1,
+                                       const BytesValue& value2) {
   // TODO(uncreated-issue/53): use BytesValue::Concat when remaining interop usages
   // removed. Modern concat implementation forces additional copies when
   // converting to legacy string values.
@@ -101,15 +101,15 @@ absl::Status RegisterSizeFunctions(FunctionRegistry& registry) {
 
 absl::Status RegisterConcatFunctions(FunctionRegistry& registry) {
   using StrCatFnAdapter =
-      BinaryFunctionAdapter<absl::StatusOr<Handle<StringValue>>,
-                            const StringValue&, const StringValue&>;
+      BinaryFunctionAdapter<absl::StatusOr<StringValue>, const StringValue&,
+                            const StringValue&>;
   CEL_RETURN_IF_ERROR(registry.Register(
       StrCatFnAdapter::CreateDescriptor(cel::builtin::kAdd, false),
       StrCatFnAdapter::WrapFunction(&ConcatString)));
 
   using BytesCatFnAdapter =
-      BinaryFunctionAdapter<absl::StatusOr<Handle<BytesValue>>,
-                            const BytesValue&, const BytesValue&>;
+      BinaryFunctionAdapter<absl::StatusOr<BytesValue>, const BytesValue&,
+                            const BytesValue&>;
   return registry.Register(
       BytesCatFnAdapter::CreateDescriptor(cel::builtin::kAdd, false),
       BytesCatFnAdapter::WrapFunction(&ConcatBytes));

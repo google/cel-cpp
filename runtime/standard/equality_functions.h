@@ -32,8 +32,8 @@ namespace runtime_internal {
 // Nullopt is returned if the comparison is undefined (e.g. special value types
 // error and unknown).
 absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueManager& value_factory,
-                                                    const Handle<Value>& v1,
-                                                    const Handle<Value>& v2);
+                                                    const Value& v1,
+                                                    const Value& v2);
 }  // namespace runtime_internal
 
 // Register equality functions

@@ -15,11 +15,12 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_HANDLE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_HANDLE_H_
 
+#include "absl/base/attributes.h"
+
 namespace cel {
 
 template <typename T>
-using Handle = T;
-
+using Handle ABSL_DEPRECATED("Just use T") = T;
 }
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_HANDLE_H_

@@ -72,7 +72,7 @@ class InstrumentationTest : public ::testing::Test {
 };
 
 MATCHER_P(IsIntValue, expected, "") {
-  const Handle<Value>& got = arg;
+  const Value& got = arg;
 
   return got->Is<IntValue>() && got->As<IntValue>().NativeValue() == expected;
 }
@@ -82,8 +82,7 @@ TEST_F(InstrumentationTest, Basic) {
 
   std::vector<int64_t> expr_ids;
   Instrumentation expr_id_recorder =
-      [&expr_ids](int64_t expr_id,
-                  const cel::Handle<cel::Value>&) -> absl::Status {
+      [&expr_ids](int64_t expr_id, const cel::Value&) -> absl::Status {
     expr_ids.push_back(expr_id);
     return absl::OkStatus();
   };
@@ -119,10 +118,10 @@ TEST_F(InstrumentationTest, Basic) {
 TEST_F(InstrumentationTest, BasicWithConstFolding) {
   FlatExprBuilder builder(function_registry_, type_registry_, options_);
 
-  absl::flat_hash_map<int64_t, cel::Handle<cel::Value>> expr_id_to_value;
-  Instrumentation expr_id_recorder =
-      [&expr_id_to_value](int64_t expr_id,
-                          const cel::Handle<cel::Value>& v) -> absl::Status {
+  absl::flat_hash_map<int64_t, cel::Value> expr_id_to_value;
+  Instrumentation expr_id_recorder = [&expr_id_to_value](
+                                         int64_t expr_id,
+                                         const cel::Value& v) -> absl::Status {
     expr_id_to_value[expr_id] = v;
     return absl::OkStatus();
   };
@@ -168,8 +167,7 @@ TEST_F(InstrumentationTest, AndShortCircuit) {
 
   std::vector<int64_t> expr_ids;
   Instrumentation expr_id_recorder =
-      [&expr_ids](int64_t expr_id,
-                  const cel::Handle<cel::Value>&) -> absl::Status {
+      [&expr_ids](int64_t expr_id, const cel::Value&) -> absl::Status {
     expr_ids.push_back(expr_id);
     return absl::OkStatus();
   };
@@ -214,8 +212,7 @@ TEST_F(InstrumentationTest, OrShortCircuit) {
 
   std::vector<int64_t> expr_ids;
   Instrumentation expr_id_recorder =
-      [&expr_ids](int64_t expr_id,
-                  const cel::Handle<cel::Value>&) -> absl::Status {
+      [&expr_ids](int64_t expr_id, const cel::Value&) -> absl::Status {
     expr_ids.push_back(expr_id);
     return absl::OkStatus();
   };
@@ -260,8 +257,7 @@ TEST_F(InstrumentationTest, Ternary) {
 
   std::vector<int64_t> expr_ids;
   Instrumentation expr_id_recorder =
-      [&expr_ids](int64_t expr_id,
-                  const cel::Handle<cel::Value>&) -> absl::Status {
+      [&expr_ids](int64_t expr_id, const cel::Value&) -> absl::Status {
     expr_ids.push_back(expr_id);
     return absl::OkStatus();
   };
@@ -316,8 +312,7 @@ TEST_F(InstrumentationTest, OptimizedStepsNotEvaluated) {
 
   std::vector<int64_t> expr_ids;
   Instrumentation expr_id_recorder =
-      [&expr_ids](int64_t expr_id,
-                  const cel::Handle<cel::Value>&) -> absl::Status {
+      [&expr_ids](int64_t expr_id, const cel::Value&) -> absl::Status {
     expr_ids.push_back(expr_id);
     return absl::OkStatus();
   };

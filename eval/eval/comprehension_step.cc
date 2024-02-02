@@ -51,7 +51,7 @@ absl::Status ComprehensionFinish::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(3)) {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
-  Handle<Value> result = frame->value_stack().Peek();
+  Value result = frame->value_stack().Peek();
   frame->value_stack().Pop(3);
   if (frame->enable_comprehension_list_append() &&
       MutableListValue::Is(result)) {
@@ -80,7 +80,7 @@ absl::Status ComprehensionInitStep::ProjectKeys(ExecutionFrame* frame) const {
   // Top of stack is map, but could be partially unknown. To tolerate cases when
   // keys are not set for declared unknown values, convert to an unknown set.
   if (frame->enable_unknowns()) {
-    absl::optional<Handle<UnknownValue>> unknown =
+    absl::optional<UnknownValue> unknown =
         frame->attribute_utility().IdentifyAndMergeUnknowns(
             frame->value_stack().GetSpan(1),
             frame->value_stack().GetAttributeSpan(1),
@@ -221,7 +221,7 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   }
 
   // Pop invalidates references to the stack on the following line so copy.
-  Handle<Value> loop_step = std::move(state[POS_LOOP_STEP_ACCU]);
+  Value loop_step = std::move(state[POS_LOOP_STEP_ACCU]);
   frame->value_stack().Pop(1);
   frame->comprehension_slots().Set(accu_slot_, std::move(loop_step));
 

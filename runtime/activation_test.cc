@@ -46,7 +46,7 @@ using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
 MATCHER_P(IsIntValue, x, absl::StrCat("is IntValue Handle with value ", x)) {
-  const Handle<Value>& handle = arg;
+  const Value& handle = arg;
 
   return handle->Is<IntValue>() && handle.As<IntValue>().NativeValue() == x;
 }
@@ -62,10 +62,9 @@ class FunctionImpl : public cel::Function {
  public:
   FunctionImpl() = default;
 
-  absl::StatusOr<Handle<Value>> Invoke(
-      const FunctionEvaluationContext& ctx,
-      absl::Span<const Handle<Value>> args) const override {
-    return Handle<NullValue>();
+  absl::StatusOr<Value> Invoke(const FunctionEvaluationContext& ctx,
+                               absl::Span<const Value> args) const override {
+    return NullValue();
   }
 };
 

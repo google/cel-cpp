@@ -28,9 +28,9 @@ namespace cel::extensions {
 
 namespace {
 
-absl::StatusOr<Handle<Value>> SetsContains(ValueManager& value_factory,
-                                           const ListValue& list,
-                                           const ListValue& sublist) {
+absl::StatusOr<Value> SetsContains(ValueManager& value_factory,
+                                   const ListValue& list,
+                                   const ListValue& sublist) {
   bool any_missing = false;
   CEL_RETURN_IF_ERROR(sublist.ForEach(
       value_factory,
@@ -48,9 +48,9 @@ absl::StatusOr<Handle<Value>> SetsContains(ValueManager& value_factory,
   return value_factory.CreateBoolValue(!any_missing);
 }
 
-absl::StatusOr<Handle<Value>> SetsIntersects(ValueManager& value_factory,
-                                             const ListValue& list,
-                                             const ListValue& sublist) {
+absl::StatusOr<Value> SetsIntersects(ValueManager& value_factory,
+                                     const ListValue& list,
+                                     const ListValue& sublist) {
   bool exists = false;
   CEL_RETURN_IF_ERROR(list.ForEach(
       value_factory,
@@ -68,9 +68,9 @@ absl::StatusOr<Handle<Value>> SetsIntersects(ValueManager& value_factory,
   return value_factory.CreateBoolValue(exists);
 }
 
-absl::StatusOr<Handle<Value>> SetsEquivalent(ValueManager& value_factory,
-                                             const ListValue& list,
-                                             const ListValue& sublist) {
+absl::StatusOr<Value> SetsEquivalent(ValueManager& value_factory,
+                                     const ListValue& list,
+                                     const ListValue& sublist) {
   CEL_ASSIGN_OR_RETURN(auto contains_sublist,
                        SetsContains(value_factory, list, sublist));
   if (contains_sublist->Is<BoolValue>() &&
@@ -83,30 +83,30 @@ absl::StatusOr<Handle<Value>> SetsEquivalent(ValueManager& value_factory,
 absl::Status RegisterSetsContainsFunction(FunctionRegistry& registry) {
   return registry.Register(
       BinaryFunctionAdapter<
-          absl::StatusOr<Handle<Value>>, const ListValue&,
+          absl::StatusOr<Value>, const ListValue&,
           const ListValue&>::CreateDescriptor("sets.contains",
                                               /*receiver_style=*/false),
-      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, const ListValue&,
+      BinaryFunctionAdapter<absl::StatusOr<Value>, const ListValue&,
                             const ListValue&>::WrapFunction(SetsContains));
 }
 
 absl::Status RegisterSetsIntersectsFunction(FunctionRegistry& registry) {
   return registry.Register(
       BinaryFunctionAdapter<
-          absl::StatusOr<Handle<Value>>, const ListValue&,
+          absl::StatusOr<Value>, const ListValue&,
           const ListValue&>::CreateDescriptor("sets.intersects",
                                               /*receiver_style=*/false),
-      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, const ListValue&,
+      BinaryFunctionAdapter<absl::StatusOr<Value>, const ListValue&,
                             const ListValue&>::WrapFunction(SetsIntersects));
 }
 
 absl::Status RegisterSetsEquivalentFunction(FunctionRegistry& registry) {
   return registry.Register(
       BinaryFunctionAdapter<
-          absl::StatusOr<Handle<Value>>, const ListValue&,
+          absl::StatusOr<Value>, const ListValue&,
           const ListValue&>::CreateDescriptor("sets.equivalent",
                                               /*receiver_style=*/false),
-      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, const ListValue&,
+      BinaryFunctionAdapter<absl::StatusOr<Value>, const ListValue&,
                             const ListValue&>::WrapFunction(SetsEquivalent));
 }
 

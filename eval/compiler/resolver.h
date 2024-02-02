@@ -63,11 +63,11 @@ class Resolver {
   // based type name. For this reason, within parsed only expressions, the
   // constant should be treated as a value that can be shadowed by a runtime
   // provided value.
-  absl::optional<cel::Handle<cel::Value>> FindConstant(absl::string_view name,
-                                                       int64_t expr_id) const;
+  absl::optional<cel::Value> FindConstant(absl::string_view name,
+                                          int64_t expr_id) const;
 
-  absl::StatusOr<absl::optional<std::pair<std::string, cel::Handle<cel::Type>>>>
-  FindType(absl::string_view name, int64_t expr_id) const;
+  absl::StatusOr<absl::optional<std::pair<std::string, cel::Type>>> FindType(
+      absl::string_view name, int64_t expr_id) const;
 
   // FindLazyOverloads returns the set, possibly empty, of lazy overloads
   // matching the given function signature.
@@ -88,7 +88,7 @@ class Resolver {
 
  private:
   std::vector<std::string> namespace_prefixes_;
-  absl::flat_hash_map<std::string, cel::Handle<cel::Value>> enum_value_map_;
+  absl::flat_hash_map<std::string, cel::Value> enum_value_map_;
   const cel::FunctionRegistry& function_registry_;
   cel::ValueManager& value_factory_;
   const absl::flat_hash_map<std::string, cel::TypeRegistry::Enumeration>&

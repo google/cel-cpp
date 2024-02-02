@@ -38,8 +38,7 @@ class LogicalOpStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  ValueView Calculate(ExecutionFrame* frame,
-                      absl::Span<const Handle<Value>> args,
+  ValueView Calculate(ExecutionFrame* frame, absl::Span<const Value> args,
                       Value& scratch) const {
     bool bool_args[2];
     bool has_bool_args[2];
@@ -69,7 +68,7 @@ class LogicalOpStep : public ExpressionStepBase {
     // error.
     if (frame->enable_unknowns()) {
       // Check if unknown?
-      absl::optional<Handle<cel::UnknownValue>> unknown_set =
+      absl::optional<cel::UnknownValue> unknown_set =
           frame->attribute_utility().MergeUnknowns(args);
       if (unknown_set.has_value()) {
         scratch = *unknown_set;

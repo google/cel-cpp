@@ -83,8 +83,7 @@ std::vector<FunctionOverloadReference> Activation::FindFunctionOverloads(
   return result;
 }
 
-bool Activation::InsertOrAssignValue(absl::string_view name,
-                                     Handle<Value> value) {
+bool Activation::InsertOrAssignValue(absl::string_view name, Value value) {
   return values_
       .insert_or_assign(name, ValueEntry{std::move(value), absl::nullopt})
       .second;

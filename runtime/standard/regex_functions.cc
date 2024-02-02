@@ -32,7 +32,7 @@ absl::Status RegisterRegexFunctions(FunctionRegistry& registry,
     auto regex_matches = [max_size = options.regex_max_program_size](
                              ValueManager& value_factory,
                              const StringValue& target,
-                             const StringValue& regex) -> Handle<Value> {
+                             const StringValue& regex) -> Value {
       RE2 re2(regex.ToString());
       if (max_size > 0 && re2.ProgramSize() > max_size) {
         return value_factory.CreateErrorValue(
@@ -49,8 +49,7 @@ absl::Status RegisterRegexFunctions(FunctionRegistry& registry,
     // bind str.matches(re) and matches(str, re)
     for (bool receiver_style : {true, false}) {
       using MatchFnAdapter =
-          BinaryFunctionAdapter<Handle<Value>, const StringValue&,
-                                const StringValue&>;
+          BinaryFunctionAdapter<Value, const StringValue&, const StringValue&>;
       CEL_RETURN_IF_ERROR(
           registry.Register(MatchFnAdapter::CreateDescriptor(
                                 cel::builtin::kRegexMatch, receiver_style),

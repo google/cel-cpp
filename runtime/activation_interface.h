@@ -43,7 +43,7 @@ class ActivationInterface {
   virtual absl::StatusOr<absl::optional<ValueView>> FindVariable(
       ValueManager& factory, absl::string_view name,
       Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
-  virtual absl::StatusOr<absl::optional<Handle<Value>>> FindVariable(
+  virtual absl::StatusOr<absl::optional<Value>> FindVariable(
       ValueManager& factory, absl::string_view name) const {
     Value scratch;
     CEL_ASSIGN_OR_RETURN(auto maybe, FindVariable(factory, name, scratch));

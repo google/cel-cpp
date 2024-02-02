@@ -45,13 +45,13 @@ class EvaluatorStack {
   // Gets the last size elements of the stack.
   // Checking that stack has enough elements is caller's responsibility.
   // Please note that calls to Push may invalidate returned Span object.
-  absl::Span<const cel::Handle<cel::Value>> GetSpan(size_t size) const {
+  absl::Span<const cel::Value> GetSpan(size_t size) const {
     if (!HasEnough(size)) {
       ABSL_LOG(ERROR) << "Requested span size (" << size
                       << ") exceeds current stack size: " << current_size_;
     }
-    return absl::Span<const cel::Handle<cel::Value>>(
-        stack_.data() + current_size_ - size, size);
+    return absl::Span<const cel::Value>(stack_.data() + current_size_ - size,
+                                        size);
   }
 
   // Gets the last size attribute trails of the stack.
@@ -64,7 +64,7 @@ class EvaluatorStack {
 
   // Peeks the last element of the stack.
   // Checking that stack is not empty is caller's responsibility.
-  const cel::Handle<cel::Value>& Peek() const {
+  const cel::Value& Peek() const {
     if (empty()) {
       ABSL_LOG(ERROR) << "Peeking on empty EvaluatorStack";
     }
@@ -96,11 +96,9 @@ class EvaluatorStack {
   }
 
   // Put element on the top of the stack.
-  void Push(cel::Handle<cel::Value> value) {
-    Push(std::move(value), AttributeTrail());
-  }
+  void Push(cel::Value value) { Push(std::move(value), AttributeTrail()); }
 
-  void Push(cel::Handle<cel::Value> value, AttributeTrail attribute) {
+  void Push(cel::Value value, AttributeTrail attribute) {
     if (ABSL_PREDICT_FALSE(current_size_ >= max_size())) {
       ABSL_LOG(ERROR) << "No room to push more elements on to EvaluatorStack";
     }
@@ -121,13 +119,13 @@ class EvaluatorStack {
 
   // Replace element on the top of the stack.
   // Checking that stack is not empty is caller's responsibility.
-  void PopAndPush(cel::Handle<cel::Value> value) {
+  void PopAndPush(cel::Value value) {
     PopAndPush(std::move(value), AttributeTrail());
   }
 
   // Replace element on the top of the stack.
   // Checking that stack is not empty is caller's responsibility.
-  void PopAndPush(cel::Handle<cel::Value> value, AttributeTrail attribute) {
+  void PopAndPush(cel::Value value, AttributeTrail attribute) {
     PopAndPush(1, std::move(value), std::move(attribute));
   }
 
@@ -148,7 +146,7 @@ class EvaluatorStack {
     attribute_stack_.reserve(size);
   }
 
-  std::vector<cel::Handle<cel::Value>> stack_;
+  std::vector<cel::Value> stack_;
   std::vector<AttributeTrail> attribute_stack_;
   size_t max_size_;
   size_t current_size_;

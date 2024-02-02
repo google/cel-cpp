@@ -40,7 +40,7 @@ using ::cel::extensions::ProtoMemoryManagerRef;
 
 EvaluationListener AdaptListener(const CelEvaluationListener& listener) {
   if (!listener) return nullptr;
-  return [&](int64_t expr_id, const Handle<Value>& value,
+  return [&](int64_t expr_id, const Value& value,
              ValueManager& factory) -> absl::Status {
     if (value->Is<cel::OpaqueValue>()) {
       // Opaque types are used to implement some optimized operations.
@@ -70,7 +70,7 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
   cel::interop_internal::AdapterActivationImpl modern_activation(activation);
 
   CEL_ASSIGN_OR_RETURN(
-      cel::Handle<cel::Value> value,
+      cel::Value value,
       flat_expression_.EvaluateWithCallback(
           modern_activation, AdaptListener(callback), state->state()));
 

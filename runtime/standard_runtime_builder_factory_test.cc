@@ -99,7 +99,7 @@ TEST_P(StandardRuntimeTest, DefaultsRefCounted) {
   Activation activation;
   activation.InsertOrAssignValue("int_var", value_factory.CreateIntValue(42));
 
-  ASSERT_OK_AND_ASSIGN(Handle<Value> result,
+  ASSERT_OK_AND_ASSIGN(Value result,
                        program->Evaluate(activation, value_factory));
 
   ASSERT_TRUE(result->Is<BoolValue>()) << result->DebugString();
@@ -131,7 +131,7 @@ TEST_P(StandardRuntimeTest, DefaultsArena) {
     ASSERT_OK(test_case.activation_builder(value_factory, activation));
   }
 
-  ASSERT_OK_AND_ASSIGN(Handle<Value> result,
+  ASSERT_OK_AND_ASSIGN(Value result,
                        program->Evaluate(activation, value_factory));
 
   ASSERT_TRUE(result->Is<BoolValue>()) << result->DebugString();

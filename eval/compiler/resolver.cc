@@ -116,8 +116,8 @@ std::vector<std::string> Resolver::FullyQualifiedNames(absl::string_view name,
   return names;
 }
 
-absl::optional<cel::Handle<cel::Value>> Resolver::FindConstant(
-    absl::string_view name, int64_t expr_id) const {
+absl::optional<cel::Value> Resolver::FindConstant(absl::string_view name,
+                                                  int64_t expr_id) const {
   auto names = FullyQualifiedNames(name, expr_id);
   for (const auto& name : names) {
     // Attempt to resolve the fully qualified name to a known enum.
@@ -176,7 +176,7 @@ std::vector<cel::FunctionRegistry::LazyOverload> Resolver::FindLazyOverloads(
   return funcs;
 }
 
-absl::StatusOr<absl::optional<std::pair<std::string, cel::Handle<cel::Type>>>>
+absl::StatusOr<absl::optional<std::pair<std::string, cel::Type>>>
 Resolver::FindType(absl::string_view name, int64_t expr_id) const {
   auto qualified_names = FullyQualifiedNames(name, expr_id);
   for (auto& qualified_name : qualified_names) {

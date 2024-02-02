@@ -47,9 +47,8 @@ class ConstIntFunction : public cel::Function {
     return {"ConstFunction", false, {}};
   }
 
-  absl::StatusOr<Handle<Value>> Invoke(
-      const FunctionEvaluationContext& context,
-      absl::Span<const Handle<Value>> args) const override {
+  absl::StatusOr<Value> Invoke(const FunctionEvaluationContext& context,
+                               absl::Span<const Value> args) const override {
     return context.value_factory().CreateIntValue(42);
   }
 };

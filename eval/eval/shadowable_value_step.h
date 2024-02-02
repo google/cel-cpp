@@ -16,7 +16,7 @@ namespace google::api::expr::runtime {
 // shadowed by an identifier of the same name within the runtime-provided
 // Activation.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateShadowableValueStep(
-    std::string identifier, cel::Handle<cel::Value> value, int64_t expr_id);
+    std::string identifier, cel::Value value, int64_t expr_id);
 
 }  // namespace google::api::expr::runtime
 

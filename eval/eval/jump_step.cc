@@ -84,7 +84,7 @@ class BoolCheckJumpStep : public JumpStepBase {
       return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
     }
 
-    const Handle<Value>& value = frame->value_stack().Peek();
+    const Value& value = frame->value_stack().Peek();
 
     if (value->Is<BoolValue>()) {
       return absl::OkStatus();
@@ -95,7 +95,7 @@ class BoolCheckJumpStep : public JumpStepBase {
     }
 
     // Neither bool, error, nor unknown set.
-    Handle<Value> error_value = frame->value_factory().CreateErrorValue(
+    Value error_value = frame->value_factory().CreateErrorValue(
         CreateNoMatchingOverloadError("<jump_condition>"));
 
     frame->value_stack().PopAndPush(std::move(error_value));

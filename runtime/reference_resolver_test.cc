@@ -83,7 +83,7 @@ TEST(ReferenceResolver, ResolveQualifiedFunctions) {
                                     MemoryManagerRef::ReferenceCounting());
   Activation activation;
 
-  ASSERT_OK_AND_ASSIGN(Handle<Value> value,
+  ASSERT_OK_AND_ASSIGN(Value value,
                        program->Evaluate(activation, value_factory.get()));
   ASSERT_TRUE(value->Is<BoolValue>());
   EXPECT_TRUE(value->As<BoolValue>().NativeValue());
@@ -214,7 +214,7 @@ TEST(ReferenceResolver, ResolveQualifiedIdentifiers) {
   activation.InsertOrAssignValue("com.example.y",
                                  value_factory.get().CreateIntValue(4));
 
-  ASSERT_OK_AND_ASSIGN(Handle<Value> value,
+  ASSERT_OK_AND_ASSIGN(Value value,
                        program->Evaluate(activation, value_factory.get()));
 
   ASSERT_TRUE(value->Is<IntValue>());
@@ -249,7 +249,7 @@ TEST(ReferenceResolver, ResolveQualifiedIdentifiersSkipParseOnly) {
   activation.InsertOrAssignValue("com.example.y",
                                  value_factory.get().CreateIntValue(4));
 
-  ASSERT_OK_AND_ASSIGN(Handle<Value> value,
+  ASSERT_OK_AND_ASSIGN(Value value,
                        program->Evaluate(activation, value_factory.get()));
 
   ASSERT_TRUE(value->Is<ErrorValue>());
@@ -333,7 +333,7 @@ TEST(ReferenceResolver, ResolveEnumConstants) {
                                     MemoryManagerRef::ReferenceCounting());
   Activation activation;
 
-  ASSERT_OK_AND_ASSIGN(Handle<Value> value,
+  ASSERT_OK_AND_ASSIGN(Value value,
                        program->Evaluate(activation, value_factory.get()));
 
   ASSERT_TRUE(value->Is<BoolValue>());
@@ -361,7 +361,7 @@ TEST(ReferenceResolver, ResolveEnumConstantsSkipParseOnly) {
                                     MemoryManagerRef::ReferenceCounting());
   Activation activation;
 
-  ASSERT_OK_AND_ASSIGN(Handle<Value> value,
+  ASSERT_OK_AND_ASSIGN(Value value,
                        program->Evaluate(activation, value_factory.get()));
 
   ASSERT_TRUE(value->Is<ErrorValue>());

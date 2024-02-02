@@ -233,8 +233,8 @@ absl::StatusOr<size_t> ListIndexFromQualifier(const AttributeQualifier& qual) {
   return static_cast<size_t>(value);
 }
 
-absl::StatusOr<Handle<Value>> MapKeyFromQualifier(
-    const AttributeQualifier& qual, ValueManager& factory) {
+absl::StatusOr<Value> MapKeyFromQualifier(const AttributeQualifier& qual,
+                                          ValueManager& factory) {
   switch (qual.kind()) {
     case Kind::kInt:
       return factory.CreateIntValue(*qual.GetInt64Key());
@@ -250,13 +250,12 @@ absl::StatusOr<Handle<Value>> MapKeyFromQualifier(
   }
 }
 
-absl::StatusOr<Handle<Value>> ApplyQualifier(const Value& operand,
-                                             const SelectQualifier& qualifier,
-                                             ValueManager& value_factory) {
+absl::StatusOr<Value> ApplyQualifier(const Value& operand,
+                                     const SelectQualifier& qualifier,
+                                     ValueManager& value_factory) {
   return absl::visit(
       absl::Overload(
-          [&](const FieldSpecifier& field_specifier)
-              -> absl::StatusOr<Handle<Value>> {
+          [&](const FieldSpecifier& field_specifier) -> absl::StatusOr<Value> {
             if (!operand.Is<StructValue>()) {
               return value_factory.CreateErrorValue(
                   cel::runtime_internal::CreateNoMatchingOverloadError(
@@ -265,8 +264,7 @@ absl::StatusOr<Handle<Value>> ApplyQualifier(const Value& operand,
             return operand.As<StructValue>().GetFieldByName(
                 value_factory, field_specifier.name);
           },
-          [&](const AttributeQualifier& qualifier)
-              -> absl::StatusOr<Handle<Value>> {
+          [&](const AttributeQualifier& qualifier) -> absl::StatusOr<Value> {
             if (operand.Is<ListValue>()) {
               auto index_or = ListIndexFromQualifier(qualifier);
               if (!index_or.ok()) {
@@ -287,7 +285,7 @@ absl::StatusOr<Handle<Value>> ApplyQualifier(const Value& operand,
       qualifier);
 }
 
-absl::StatusOr<Handle<Value>> FallbackSelect(
+absl::StatusOr<Value> FallbackSelect(
     const Value& root, absl::Span<const SelectQualifier> select_path,
     bool presence_test, ValueManager& value_factory) {
   const Value* elem = &root;
@@ -308,7 +306,7 @@ absl::StatusOr<Handle<Value>> FallbackSelect(
     return absl::visit(
         absl::Overload(
             [&](const FieldSpecifier& field_specifier)
-                -> absl::StatusOr<Handle<Value>> {
+                -> absl::StatusOr<Value> {
               if (!elem->Is<StructValue>()) {
                 return value_factory.CreateErrorValue(
                     cel::runtime_internal::CreateNoMatchingOverloadError(
@@ -319,8 +317,7 @@ absl::StatusOr<Handle<Value>> FallbackSelect(
                   elem->As<StructValue>().HasFieldByName(field_specifier.name));
               return value_factory.CreateBoolValue(present);
             },
-            [&](const AttributeQualifier& qualifier)
-                -> absl::StatusOr<Handle<Value>> {
+            [&](const AttributeQualifier& qualifier) -> absl::StatusOr<Value> {
               if (!elem->Is<MapValue>() || qualifier.kind() != Kind::kString) {
                 return value_factory.CreateErrorValue(
                     cel::runtime_internal::CreateNoMatchingOverloadError(
@@ -381,7 +378,7 @@ class RewriterImpl : public AstRewriterBase {
     // support message traversal.
     const ast_internal::Type& checker_type = ast_.GetType(operand.id());
 
-    absl::optional<Handle<Type>> rt_type =
+    absl::optional<Type> rt_type =
         (checker_type.has_message_type())
             ? GetRuntimeType(checker_type.message_type().type())
             : absl::nullopt;
@@ -513,7 +510,7 @@ class RewriterImpl : public AstRewriterBase {
     return candidates_.find(operand) != candidates_.end();
   }
 
-  absl::optional<Handle<Type>> GetRuntimeType(absl::string_view type_name) {
+  absl::optional<Type> GetRuntimeType(absl::string_view type_name) {
     return planner_context_.value_factory().FindType(type_name).value_or(
         absl::nullopt);
   }
@@ -553,8 +550,8 @@ class OptimizedSelectStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  absl::StatusOr<Handle<Value>> ApplySelect(
-      ExecutionFrame* frame, const StructValue& struct_value) const;
+  absl::StatusOr<Value> ApplySelect(ExecutionFrame* frame,
+                                    const StructValue& struct_value) const;
 
   // Get the effective attribute for the optimized select expression.
   // Assumes the operand is the top of stack if the attribute wasn't known at
@@ -570,7 +567,7 @@ class OptimizedSelectStep : public ExpressionStepBase {
 };
 
 // Check for unknowns or missing attributes.
-absl::StatusOr<absl::optional<Handle<Value>>> CheckForMarkedAttributes(
+absl::StatusOr<absl::optional<Value>> CheckForMarkedAttributes(
     ExecutionFrame* frame, const AttributeTrail& attribute_trail) {
   if (attribute_trail.empty()) {
     return absl::nullopt;
@@ -618,7 +615,7 @@ AttributeTrail OptimizedSelectStep::GetAttributeTrail(
   return result;
 }
 
-absl::StatusOr<Handle<Value>> OptimizedSelectStep::ApplySelect(
+absl::StatusOr<Value> OptimizedSelectStep::ApplySelect(
     ExecutionFrame* frame, const StructValue& struct_value) const {
   auto value_or = (options_.force_fallback_implementation)
                       ? absl::UnimplementedError("Forced fallback impl")
@@ -652,7 +649,7 @@ absl::Status OptimizedSelectStep::Evaluate(ExecutionFrame* frame) const {
   constexpr size_t kStackInputs = 1;
 
   // For now, we expect the operand to be top of stack.
-  const Handle<Value>& operand = frame->value_stack().Peek();
+  const Value& operand = frame->value_stack().Peek();
 
   if (operand->Is<ErrorValue>() || operand->Is<UnknownValue>()) {
     // Just forward the error which is already top of stack.
@@ -665,7 +662,7 @@ absl::Status OptimizedSelectStep::Evaluate(ExecutionFrame* frame) const {
     // select arguments.
     // TODO(uncreated-issue/51): add support variable qualifiers
     attribute_trail = GetAttributeTrail(frame);
-    CEL_ASSIGN_OR_RETURN(absl::optional<Handle<Value>> value,
+    CEL_ASSIGN_OR_RETURN(absl::optional<Value> value,
                          CheckForMarkedAttributes(frame, attribute_trail));
     if (value.has_value()) {
       frame->value_stack().Pop(kStackInputs);
@@ -682,7 +679,7 @@ absl::Status OptimizedSelectStep::Evaluate(ExecutionFrame* frame) const {
         "Expected struct type for select optimization.");
   }
 
-  CEL_ASSIGN_OR_RETURN(Handle<Value> result,
+  CEL_ASSIGN_OR_RETURN(Value result,
                        ApplySelect(frame, operand->As<StructValue>()));
 
   frame->value_stack().Pop(kStackInputs);

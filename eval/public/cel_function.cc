@@ -39,8 +39,7 @@ bool CelFunction::MatchArguments(absl::Span<const CelValue> arguments) const {
   return true;
 }
 
-bool CelFunction::MatchArguments(
-    absl::Span<const cel::Handle<cel::Value>> arguments) const {
+bool CelFunction::MatchArguments(absl::Span<const cel::Value> arguments) const {
   auto types_size = descriptor().types().size();
 
   if (types_size != arguments.size()) {
@@ -57,9 +56,9 @@ bool CelFunction::MatchArguments(
   return true;
 }
 
-absl::StatusOr<Handle<Value>> CelFunction::Invoke(
+absl::StatusOr<Value> CelFunction::Invoke(
     const FunctionEvaluationContext& context,
-    absl::Span<const Handle<Value>> arguments) const {
+    absl::Span<const Value> arguments) const {
   google::protobuf::Arena* arena =
       ProtoMemoryManagerArena(context.value_factory().GetMemoryManager());
   std::vector<CelValue> legacy_args;

@@ -55,8 +55,8 @@ bool AttributeUtility::CheckForUnknown(const AttributeTrail& trail,
 // Scans over the args collection, merges any UnknownSets found in
 // it together with initial_set (if initial_set is not null).
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
-absl::optional<Handle<UnknownValue>> AttributeUtility::MergeUnknowns(
-    absl::Span<const cel::Handle<cel::Value>> args) const {
+absl::optional<UnknownValue> AttributeUtility::MergeUnknowns(
+    absl::Span<const cel::Value> args) const {
   // Empty unknown value may be used as a sentinel in some tests so need to
   // distinguish unset (nullopt) and empty(engaged empty value).
   absl::optional<UnknownSet> result_set;
@@ -105,9 +105,9 @@ cel::AttributeSet AttributeUtility::CheckForUnknowns(
 // patterns, and attributes from initial_set
 // (if initial_set is not null).
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
-absl::optional<Handle<UnknownValue>> AttributeUtility::IdentifyAndMergeUnknowns(
-    absl::Span<const cel::Handle<cel::Value>> args,
-    absl::Span<const AttributeTrail> attrs, bool use_partial) const {
+absl::optional<UnknownValue> AttributeUtility::IdentifyAndMergeUnknowns(
+    absl::Span<const cel::Value> args, absl::Span<const AttributeTrail> attrs,
+    bool use_partial) const {
   absl::optional<UnknownSet> result_set;
 
   // Identify new unknowns by attribute patterns.
@@ -117,7 +117,7 @@ absl::optional<Handle<UnknownValue>> AttributeUtility::IdentifyAndMergeUnknowns(
   }
 
   // merge down existing unknown sets
-  absl::optional<Handle<UnknownValue>> arg_unknowns = MergeUnknowns(args);
+  absl::optional<UnknownValue> arg_unknowns = MergeUnknowns(args);
 
   if (!result_set.has_value()) {
     // No new unknowns so no need to check for presence of existing unknowns --
@@ -135,22 +135,20 @@ absl::optional<Handle<UnknownValue>> AttributeUtility::IdentifyAndMergeUnknowns(
       result_set->unknown_attributes(), result_set->unknown_function_results());
 }
 
-Handle<UnknownValue> AttributeUtility::CreateUnknownSet(
-    cel::Attribute attr) const {
+UnknownValue AttributeUtility::CreateUnknownSet(cel::Attribute attr) const {
   return value_factory_.CreateUnknownValue(AttributeSet({std::move(attr)}));
 }
 
-absl::StatusOr<Handle<ErrorValue>>
-AttributeUtility::CreateMissingAttributeError(
+absl::StatusOr<ErrorValue> AttributeUtility::CreateMissingAttributeError(
     const cel::Attribute& attr) const {
   CEL_ASSIGN_OR_RETURN(std::string message, attr.AsString());
   return value_factory_.CreateErrorValue(
       cel::runtime_internal::CreateMissingAttributeError(message));
 }
 
-Handle<UnknownValue> AttributeUtility::CreateUnknownSet(
+UnknownValue AttributeUtility::CreateUnknownSet(
     const cel::FunctionDescriptor& fn_descriptor, int64_t expr_id,
-    absl::Span<const cel::Handle<cel::Value>> args) const {
+    absl::Span<const cel::Value> args) const {
   return value_factory_.CreateUnknownValue(
       cel::FunctionResultSet(cel::FunctionResult(fn_descriptor, expr_id)));
 }

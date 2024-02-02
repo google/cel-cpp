@@ -55,7 +55,7 @@ class ProxyToModernCelFunction : public CelFunction {
         memory_manager, cel::TypeProvider::Builtin());
     cel::FunctionEvaluationContext context(manager);
 
-    std::vector<cel::Handle<cel::Value>> modern_args =
+    std::vector<cel::Value> modern_args =
         cel::interop_internal::LegacyValueToModernValueOrDie(arena, args);
 
     CEL_ASSIGN_OR_RETURN(auto modern_result,

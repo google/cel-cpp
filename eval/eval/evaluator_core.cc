@@ -76,7 +76,7 @@ const ExpressionStep* ExecutionFrame::Next() {
   return nullptr;
 }
 
-absl::StatusOr<cel::Handle<cel::Value>> ExecutionFrame::Evaluate(
+absl::StatusOr<cel::Value> ExecutionFrame::Evaluate(
     EvaluationListener listener) {
   size_t initial_stack_size = value_stack().size();
   const ExpressionStep* expr;
@@ -105,7 +105,7 @@ absl::StatusOr<cel::Handle<cel::Value>> ExecutionFrame::Evaluate(
         "Stack error during evaluation: expected=", initial_stack_size + 1,
         ", actual=", final_stack_size));
   }
-  cel::Handle<cel::Value> value = value_stack().Peek();
+  cel::Value value = value_stack().Peek();
   value_stack().Pop(1);
   return value;
 }
@@ -122,7 +122,7 @@ FlatExpressionEvaluatorState FlatExpression::MakeEvaluatorState(
                                       value_factory);
 }
 
-absl::StatusOr<cel::Handle<cel::Value>> FlatExpression::EvaluateWithCallback(
+absl::StatusOr<cel::Value> FlatExpression::EvaluateWithCallback(
     const cel::ActivationInterface& activation, EvaluationListener listener,
     FlatExpressionEvaluatorState& state) const {
   state.Reset();

@@ -171,7 +171,7 @@ class ExecutionFrame {
   const ExpressionStep* Next();
 
   // Evaluate the execution frame to completion.
-  absl::StatusOr<cel::Handle<cel::Value>> Evaluate(EvaluationListener listener);
+  absl::StatusOr<cel::Value> Evaluate(EvaluationListener listener);
 
   // Intended for use in builtin shortcutting operations.
   //
@@ -340,7 +340,7 @@ class FlatExpression {
   // If the listener is not empty, it will be called after each evaluation step
   // that correlates to an AST node. The value passed to the will be the top of
   // the evaluation stack, corresponding to the result of the subexpression.
-  absl::StatusOr<cel::Handle<cel::Value>> EvaluateWithCallback(
+  absl::StatusOr<cel::Value> EvaluateWithCallback(
       const cel::ActivationInterface& activation, EvaluationListener listener,
       FlatExpressionEvaluatorState& state) const;
 

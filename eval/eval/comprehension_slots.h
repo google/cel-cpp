@@ -37,7 +37,7 @@ namespace google::api::expr::runtime {
 class ComprehensionSlots {
  public:
   struct Slot {
-    cel::Handle<cel::Value> value;
+    cel::Value value;
     AttributeTrail attribute;
   };
 
@@ -68,12 +68,11 @@ class ComprehensionSlots {
     slots_[index] = absl::nullopt;
   }
 
-  void Set(size_t index, cel::Handle<cel::Value> value) {
+  void Set(size_t index, cel::Value value) {
     Set(index, std::move(value), AttributeTrail());
   }
 
-  void Set(size_t index, cel::Handle<cel::Value> value,
-           AttributeTrail attribute) {
+  void Set(size_t index, cel::Value value, AttributeTrail attribute) {
     ABSL_ASSERT(index >= 0 && index < slots_.size());
     slots_[index] = Slot{std::move(value), std::move(attribute)};
   }

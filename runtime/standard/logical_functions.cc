@@ -31,8 +31,7 @@ namespace {
 
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;
 
-Handle<Value> NotStrictlyFalseImpl(ValueManager& value_factory,
-                                   const Handle<Value>& value) {
+Value NotStrictlyFalseImpl(ValueManager& value_factory, const Value& value) {
   if (value->Is<BoolValue>()) {
     return value;
   }
@@ -57,8 +56,7 @@ absl::Status RegisterLogicalFunctions(FunctionRegistry& registry,
           [](ValueManager&, bool value) -> bool { return !value; }, registry)));
 
   // Strictness
-  using StrictnessHelper =
-      RegisterHelper<UnaryFunctionAdapter<Handle<Value>, Handle<Value>>>;
+  using StrictnessHelper = RegisterHelper<UnaryFunctionAdapter<Value, Value>>;
   CEL_RETURN_IF_ERROR(StrictnessHelper::RegisterNonStrictOverload(
       builtin::kNotStrictlyFalse, &NotStrictlyFalseImpl, registry));
 

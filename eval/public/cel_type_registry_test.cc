@@ -134,7 +134,7 @@ TEST(CelTypeRegistryTest, TestFindTypeAdapterNotFound) {
 }
 
 MATCHER_P(TypeNameIs, name, "") {
-  const Handle<Type>& type = arg;
+  const Type& type = arg;
   *result_listener << "got typename: " << type->name();
   return type->name() == name;
 }
@@ -146,25 +146,25 @@ TEST(CelTypeRegistryTypeProviderTest, Builtins) {
       MemoryManagerRef::ReferenceCounting(), registry.GetTypeProvider());
 
   // simple
-  ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> bool_type,
+  ASSERT_OK_AND_ASSIGN(absl::optional<Type> bool_type,
                        value_factory.FindType("bool"));
   EXPECT_THAT(bool_type, Optional(TypeNameIs("bool")));
   // opaque
-  ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> timestamp_type,
+  ASSERT_OK_AND_ASSIGN(absl::optional<Type> timestamp_type,
                        value_factory.FindType("google.protobuf.Timestamp"));
   EXPECT_THAT(timestamp_type,
               Optional(TypeNameIs("google.protobuf.Timestamp")));
   // wrapper
-  ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> int_wrapper_type,
+  ASSERT_OK_AND_ASSIGN(absl::optional<Type> int_wrapper_type,
                        value_factory.FindType("google.protobuf.Int64Value"));
   EXPECT_THAT(int_wrapper_type,
               Optional(TypeNameIs("google.protobuf.Int64Value")));
   // json
-  ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> json_struct_type,
+  ASSERT_OK_AND_ASSIGN(absl::optional<Type> json_struct_type,
                        value_factory.FindType("google.protobuf.Struct"));
   EXPECT_THAT(json_struct_type, Optional(TypeNameIs("map")));
   // special
-  ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> any_type,
+  ASSERT_OK_AND_ASSIGN(absl::optional<Type> any_type,
                        value_factory.FindType("google.protobuf.Any"));
   EXPECT_THAT(any_type, Optional(TypeNameIs("google.protobuf.Any")));
 }

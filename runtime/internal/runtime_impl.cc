@@ -37,15 +37,14 @@ class ProgramImpl final : public TraceableProgram {
       google::api::expr::runtime::FlatExpression impl)
       : environment_(environment), impl_(std::move(impl)) {}
 
-  absl::StatusOr<Handle<Value>> Evaluate(
-      const ActivationInterface& activation,
-      ValueManager& value_factory) const override {
+  absl::StatusOr<Value> Evaluate(const ActivationInterface& activation,
+                                 ValueManager& value_factory) const override {
     return Trace(activation, EvaluationListener(), value_factory);
   }
 
-  absl::StatusOr<Handle<Value>> Trace(
-      const ActivationInterface& activation, EvaluationListener callback,
-      ValueManager& value_factory) const override {
+  absl::StatusOr<Value> Trace(const ActivationInterface& activation,
+                              EvaluationListener callback,
+                              ValueManager& value_factory) const override {
     auto state = impl_.MakeEvaluatorState(value_factory);
     return impl_.EvaluateWithCallback(activation, std::move(callback), state);
   }

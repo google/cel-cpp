@@ -115,9 +115,9 @@ absl::StatusOr<bool> In(ValueManager& value_factory, T value,
 }
 
 // Implementation for @in operator using heterogeneous equality.
-absl::StatusOr<Handle<Value>> HeterogeneousEqualityIn(
-    ValueManager& value_factory, const Handle<Value>& value,
-    const ListValue& list) {
+absl::StatusOr<Value> HeterogeneousEqualityIn(ValueManager& value_factory,
+                                              const Value& value,
+                                              const ListValue& list) {
   return list.Contains(value_factory, value);
 }
 
@@ -126,9 +126,8 @@ absl::Status RegisterListMembershipFunctions(FunctionRegistry& registry,
   for (absl::string_view op : in_operators) {
     if (options.enable_heterogeneous_equality) {
       CEL_RETURN_IF_ERROR(
-          (RegisterHelper<
-              BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>,
-                                    const Handle<Value>&, const ListValue&>>::
+          (RegisterHelper<BinaryFunctionAdapter<
+               absl::StatusOr<Value>, const Value&, const ListValue&>>::
                RegisterGlobalOverload(op, &HeterogeneousEqualityIn, registry)));
     } else {
       CEL_RETURN_IF_ERROR(
@@ -165,10 +164,9 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
   const bool enable_heterogeneous_equality =
       options.enable_heterogeneous_equality;
 
-  auto boolKeyInSet =
-      [enable_heterogeneous_equality](
-          ValueManager& factory, bool key,
-          const MapValue& map_value) -> absl::StatusOr<Handle<Value>> {
+  auto boolKeyInSet = [enable_heterogeneous_equality](
+                          ValueManager& factory, bool key,
+                          const MapValue& map_value) -> absl::StatusOr<Value> {
     auto result = map_value.Has(factory, factory.CreateBoolValue(key));
     if (result.ok()) {
       return std::move(*result);
@@ -179,11 +177,10 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
     return factory.CreateErrorValue(result.status());
   };
 
-  auto intKeyInSet =
-      [enable_heterogeneous_equality](
-          ValueManager& factory, int64_t key,
-          const MapValue& map_value) -> absl::StatusOr<Handle<Value>> {
-    Handle<Value> int_key = factory.CreateIntValue(key);
+  auto intKeyInSet = [enable_heterogeneous_equality](
+                         ValueManager& factory, int64_t key,
+                         const MapValue& map_value) -> absl::StatusOr<Value> {
+    Value int_key = factory.CreateIntValue(key);
     auto result = map_value.Has(factory, int_key);
     if (enable_heterogeneous_equality) {
       if (result.ok() && (*result)->Is<BoolValue>() &&
@@ -209,8 +206,8 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
 
   auto stringKeyInSet =
       [enable_heterogeneous_equality](
-          ValueManager& factory, const Handle<StringValue>& key,
-          const MapValue& map_value) -> absl::StatusOr<Handle<Value>> {
+          ValueManager& factory, const StringValue& key,
+          const MapValue& map_value) -> absl::StatusOr<Value> {
     auto result = map_value.Has(factory, key);
     if (result.ok()) {
       return std::move(*result);
@@ -221,11 +218,10 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
     return factory.CreateErrorValue(result.status());
   };
 
-  auto uintKeyInSet =
-      [enable_heterogeneous_equality](
-          ValueManager& factory, uint64_t key,
-          const MapValue& map_value) -> absl::StatusOr<Handle<Value>> {
-    Handle<Value> uint_key = factory.CreateUintValue(key);
+  auto uintKeyInSet = [enable_heterogeneous_equality](
+                          ValueManager& factory, uint64_t key,
+                          const MapValue& map_value) -> absl::StatusOr<Value> {
+    Value uint_key = factory.CreateUintValue(key);
     const auto& result = map_value.Has(factory, uint_key);
     if (enable_heterogeneous_equality) {
       if (result.ok() && (*result)->Is<BoolValue>() &&
@@ -249,9 +245,8 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
     return std::move(*result);
   };
 
-  auto doubleKeyInSet =
-      [](ValueManager& factory, double key,
-         const MapValue& map_value) -> absl::StatusOr<Handle<Value>> {
+  auto doubleKeyInSet = [](ValueManager& factory, double key,
+                           const MapValue& map_value) -> absl::StatusOr<Value> {
     Number number = Number::FromDouble(key);
     if (number.LosslessConvertibleToInt()) {
       const auto& result =
@@ -274,30 +269,29 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
 
   for (auto op : in_operators) {
     auto status = RegisterHelper<BinaryFunctionAdapter<
-        absl::StatusOr<Handle<Value>>, const Handle<StringValue>&,
+        absl::StatusOr<Value>, const StringValue&,
         const MapValue&>>::RegisterGlobalOverload(op, stringKeyInSet, registry);
     if (!status.ok()) return status;
 
-    status = RegisterHelper<BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>,
-                                                  bool, const MapValue&>>::
+    status = RegisterHelper<
+        BinaryFunctionAdapter<absl::StatusOr<Value>, bool, const MapValue&>>::
         RegisterGlobalOverload(op, boolKeyInSet, registry);
     if (!status.ok()) return status;
 
-    status = RegisterHelper<BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>,
+    status = RegisterHelper<BinaryFunctionAdapter<absl::StatusOr<Value>,
                                                   int64_t, const MapValue&>>::
         RegisterGlobalOverload(op, intKeyInSet, registry);
     if (!status.ok()) return status;
 
-    status = RegisterHelper<BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>,
+    status = RegisterHelper<BinaryFunctionAdapter<absl::StatusOr<Value>,
                                                   uint64_t, const MapValue&>>::
         RegisterGlobalOverload(op, uintKeyInSet, registry);
     if (!status.ok()) return status;
 
     if (enable_heterogeneous_equality) {
-      status =
-          RegisterHelper<BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>,
-                                               double, const MapValue&>>::
-              RegisterGlobalOverload(op, doubleKeyInSet, registry);
+      status = RegisterHelper<BinaryFunctionAdapter<absl::StatusOr<Value>,
+                                                    double, const MapValue&>>::
+          RegisterGlobalOverload(op, doubleKeyInSet, registry);
       if (!status.ok()) return status;
     }
   }

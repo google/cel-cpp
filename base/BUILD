@@ -22,6 +22,7 @@ licenses(["notice"])
 cc_library(
     name = "handle",
     hdrs = ["handle.h"],
+    deps = ["@com_google_absl//absl/base:core_headers"],
 )
 
 cc_library(

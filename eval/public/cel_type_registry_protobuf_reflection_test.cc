@@ -45,7 +45,7 @@ using testing::Pair;
 using testing::UnorderedElementsAre;
 
 MATCHER_P(TypeNameIs, name, "") {
-  const Handle<Type>& type = arg;
+  const Type& type = arg;
   *result_listener << "got typename: " << type->name();
   return type->name() == name;
 }
@@ -106,7 +106,7 @@ TEST(CelTypeRegistryTypeProviderTest, StructTypes) {
       MemoryManagerRef::ReferenceCounting(), registry.GetTypeProvider());
 
   ASSERT_OK_AND_ASSIGN(
-      absl::optional<cel::Handle<Type>> struct_message_type,
+      absl::optional<cel::Type> struct_message_type,
       value_manager.FindType("google.api.expr.runtime.TestMessage"));
   ASSERT_TRUE(struct_message_type.has_value());
   ASSERT_TRUE((*struct_message_type)->Is<StructType>())
@@ -115,7 +115,7 @@ TEST(CelTypeRegistryTypeProviderTest, StructTypes) {
               Eq("google.api.expr.runtime.TestMessage"));
 
   // Can't override builtins.
-  ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> struct_type,
+  ASSERT_OK_AND_ASSIGN(absl::optional<Type> struct_type,
                        value_manager.FindType("google.protobuf.Struct"));
   EXPECT_THAT(struct_type, Optional(TypeNameIs("map")));
 }

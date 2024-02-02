@@ -20,7 +20,7 @@ using ::cel::ast_internal::Constant;
 using ::cel::runtime_internal::ConvertConstant;
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
-    cel::Handle<cel::Value> value, int64_t expr_id, bool comes_from_ast) {
+    cel::Value value, int64_t expr_id, bool comes_from_ast) {
   return std::make_unique<CompilerConstantStep>(std::move(value), expr_id,
                                                 comes_from_ast);
 }
@@ -28,7 +28,7 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
     const Constant& value, int64_t expr_id, cel::ValueManager& value_factory,
     bool comes_from_ast) {
-  CEL_ASSIGN_OR_RETURN(cel::Handle<cel::Value> converted_value,
+  CEL_ASSIGN_OR_RETURN(cel::Value converted_value,
                        ConvertConstant(value, value_factory));
 
   return std::make_unique<CompilerConstantStep>(std::move(converted_value),

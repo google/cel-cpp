@@ -73,9 +73,8 @@ class Program {
   //
   //  For consistency, users should use the same memory manager to create values
   //  in the activation and for Program evaluation.
-  virtual absl::StatusOr<Handle<Value>> Evaluate(
-      const ActivationInterface& activation,
-      ValueManager& value_factory) const = 0;
+  virtual absl::StatusOr<Value> Evaluate(const ActivationInterface& activation,
+                                         ValueManager& value_factory) const = 0;
 
   virtual const TypeProvider& GetTypeProvider() const = 0;
 };
@@ -96,7 +95,7 @@ class TraceableProgram : public Program {
   //
   // A returning a non-ok status stops evaluation and forwards the error.
   using EvaluationListener = absl::AnyInvocable<absl::Status(
-      int64_t expr_id, const Handle<Value>&, ValueManager&)>;
+      int64_t expr_id, const Value&, ValueManager&)>;
 
   // Evaluate the Program plan with a Listener.
   //
@@ -105,9 +104,9 @@ class TraceableProgram : public Program {
   //
   // If the callback returns a non-ok status, evaluation stops and the Status
   // is forwarded as the result of the EvaluateWithCallback call.
-  virtual absl::StatusOr<Handle<Value>> Trace(
-      const ActivationInterface&, EvaluationListener evaluation_listener,
-      ValueManager& value_factory) const = 0;
+  virtual absl::StatusOr<Value> Trace(const ActivationInterface&,
+                                      EvaluationListener evaluation_listener,
+                                      ValueManager& value_factory) const = 0;
 };
 
 // Interface for a CEL runtime.

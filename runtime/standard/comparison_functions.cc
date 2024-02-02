@@ -57,51 +57,47 @@ bool GreaterThanOrEqual(ValueManager& factory, Type t1, Type t2) {
 
 // String value comparions specializations
 template <>
-bool LessThan(ValueManager&, const Handle<StringValue>& t1,
-              const Handle<StringValue>& t2) {
+bool LessThan(ValueManager&, const StringValue& t1, const StringValue& t2) {
   return t1.Compare(t2) < 0;
 }
 
 template <>
-bool LessThanOrEqual(ValueManager&, const Handle<StringValue>& t1,
-                     const Handle<StringValue>& t2) {
+bool LessThanOrEqual(ValueManager&, const StringValue& t1,
+                     const StringValue& t2) {
   return t1.Compare(t2) <= 0;
 }
 
 template <>
-bool GreaterThan(ValueManager&, const Handle<StringValue>& t1,
-                 const Handle<StringValue>& t2) {
+bool GreaterThan(ValueManager&, const StringValue& t1, const StringValue& t2) {
   return t1.Compare(t2) > 0;
 }
 
 template <>
-bool GreaterThanOrEqual(ValueManager&, const Handle<StringValue>& t1,
-                        const Handle<StringValue>& t2) {
+bool GreaterThanOrEqual(ValueManager&, const StringValue& t1,
+                        const StringValue& t2) {
   return t1.Compare(t2) >= 0;
 }
 
 // bytes value comparions specializations
 template <>
-bool LessThan(ValueManager&, const Handle<BytesValue>& t1,
-              const Handle<BytesValue>& t2) {
+bool LessThan(ValueManager&, const BytesValue& t1, const BytesValue& t2) {
   return t1.Compare(t2) < 0;
 }
 
 template <>
-bool LessThanOrEqual(ValueManager&, const Handle<BytesValue>& t1,
-                     const Handle<BytesValue>& t2) {
+bool LessThanOrEqual(ValueManager&, const BytesValue& t1,
+                     const BytesValue& t2) {
   return t1.Compare(t2) <= 0;
 }
 
 template <>
-bool GreaterThan(ValueManager&, const Handle<BytesValue>& t1,
-                 const Handle<BytesValue>& t2) {
+bool GreaterThan(ValueManager&, const BytesValue& t1, const BytesValue& t2) {
   return t1.Compare(t2) > 0;
 }
 
 template <>
-bool GreaterThanOrEqual(ValueManager&, const Handle<BytesValue>& t1,
-                        const Handle<BytesValue>& t2) {
+bool GreaterThanOrEqual(ValueManager&, const BytesValue& t1,
+                        const BytesValue& t2) {
   return t1.Compare(t2) >= 0;
 }
 
@@ -201,10 +197,10 @@ absl::Status RegisterHomogenousComparisonFunctions(
   CEL_RETURN_IF_ERROR(RegisterComparisonFunctionsForType<double>(registry));
 
   CEL_RETURN_IF_ERROR(
-      RegisterComparisonFunctionsForType<const Handle<StringValue>&>(registry));
+      RegisterComparisonFunctionsForType<const StringValue&>(registry));
 
   CEL_RETURN_IF_ERROR(
-      RegisterComparisonFunctionsForType<const Handle<BytesValue>&>(registry));
+      RegisterComparisonFunctionsForType<const BytesValue&>(registry));
 
   CEL_RETURN_IF_ERROR(
       RegisterComparisonFunctionsForType<absl::Duration>(registry));
@@ -258,9 +254,9 @@ absl::Status RegisterHeterogeneousComparisonFunctions(
   CEL_RETURN_IF_ERROR(RegisterComparisonFunctionsForType<uint64_t>(registry));
   CEL_RETURN_IF_ERROR(RegisterComparisonFunctionsForType<double>(registry));
   CEL_RETURN_IF_ERROR(
-      RegisterComparisonFunctionsForType<const Handle<StringValue>&>(registry));
+      RegisterComparisonFunctionsForType<const StringValue&>(registry));
   CEL_RETURN_IF_ERROR(
-      RegisterComparisonFunctionsForType<const Handle<BytesValue>&>(registry));
+      RegisterComparisonFunctionsForType<const BytesValue&>(registry));
   CEL_RETURN_IF_ERROR(
       RegisterComparisonFunctionsForType<absl::Duration>(registry));
   CEL_RETURN_IF_ERROR(RegisterComparisonFunctionsForType<absl::Time>(registry));

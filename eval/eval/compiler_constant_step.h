@@ -28,8 +28,7 @@ namespace google::api::expr::runtime {
 // inspect the underlying value.
 class CompilerConstantStep : public ExpressionStepBase {
  public:
-  CompilerConstantStep(cel::Handle<cel::Value> value, int64_t expr_id,
-                       bool comes_from_ast)
+  CompilerConstantStep(cel::Value value, int64_t expr_id, bool comes_from_ast)
       : ExpressionStepBase(expr_id, comes_from_ast), value_(std::move(value)) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
@@ -38,10 +37,10 @@ class CompilerConstantStep : public ExpressionStepBase {
     return cel::NativeTypeId::For<CompilerConstantStep>();
   }
 
-  const cel::Handle<cel::Value>& value() const { return value_; }
+  const cel::Value& value() const { return value_; }
 
  private:
-  cel::Handle<cel::Value> value_;
+  cel::Value value_;
 };
 
 }  // namespace google::api::expr::runtime

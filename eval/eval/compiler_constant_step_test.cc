@@ -59,8 +59,7 @@ TEST_F(CompilerConstantStepTest, Evaluate) {
 
   ExecutionFrame frame(path, empty_activation_, options_, state_);
 
-  ASSERT_OK_AND_ASSIGN(cel::Handle<cel::Value> result,
-                       frame.Evaluate(EvaluationListener()));
+  ASSERT_OK_AND_ASSIGN(cel::Value result, frame.Evaluate(EvaluationListener()));
 
   EXPECT_EQ(result->As<cel::IntValue>().NativeValue(), 42);
 }

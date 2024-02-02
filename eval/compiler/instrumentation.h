@@ -36,8 +36,8 @@ namespace google::api::expr::runtime {
 // Unlike traceable expressions, this callback is applied across all
 // evaluations of an expression. Implementations must be thread safe if the
 // expression is evaluated concurrently.
-using Instrumentation = std::function<absl::Status(
-    int64_t expr_id, const cel::Handle<cel::Value>&)>;
+using Instrumentation =
+    std::function<absl::Status(int64_t expr_id, const cel::Value&)>;
 
 // A factory for creating Instrumentation instances.
 //

@@ -26,7 +26,7 @@ using ::google::protobuf::Arena;
 using testing::Eq;
 
 absl::StatusOr<CelValue> RunShadowableExpression(std::string identifier,
-                                                 cel::Handle<cel::Value> value,
+                                                 cel::Value value,
                                                  const Activation& activation,
                                                  Arena* arena) {
   CEL_ASSIGN_OR_RETURN(

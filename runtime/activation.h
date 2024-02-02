@@ -46,7 +46,7 @@ class Activation final : public ActivationInterface {
  public:
   // Definition for value providers.
   using ValueProvider =
-      absl::AnyInvocable<absl::StatusOr<absl::optional<Handle<Value>>>(
+      absl::AnyInvocable<absl::StatusOr<absl::optional<Value>>(
           ValueManager&, absl::string_view)>;
 
   Activation() = default;
@@ -73,7 +73,7 @@ class Activation final : public ActivationInterface {
   // Bind a value to a named variable.
   //
   // Returns false if the entry for name was overwritten.
-  bool InsertOrAssignValue(absl::string_view name, Handle<Value> value);
+  bool InsertOrAssignValue(absl::string_view name, Value value);
 
   // Bind a provider to a named variable. The result of the provider may be
   // memoized by the activation.
@@ -99,7 +99,7 @@ class Activation final : public ActivationInterface {
   struct ValueEntry {
     // If provider is present, then access must be synchronized to maintain
     // thread-compatible semantics for the lazily provided value.
-    absl::optional<Handle<Value>> value;
+    absl::optional<Value> value;
     absl::optional<ValueProvider> provider;
   };
 

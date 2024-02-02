@@ -50,8 +50,8 @@ absl::Status InvalidSelectTargetError() {
                       "Applying SELECT to non-message type");
 }
 
-absl::optional<Handle<Value>> CheckForMarkedAttributes(
-    const AttributeTrail& trail, ExecutionFrame* frame) {
+absl::optional<Value> CheckForMarkedAttributes(const AttributeTrail& trail,
+                                               ExecutionFrame* frame) {
   if (frame->enable_unknowns() &&
       frame->attribute_utility().CheckForUnknown(trail,
                                                  /*use_partial=*/false)) {
@@ -77,10 +77,8 @@ absl::optional<Handle<Value>> CheckForMarkedAttributes(
   return absl::nullopt;
 }
 
-Handle<ValueView> TestOnlySelect(const Handle<StructValue>& msg,
-                                 const std::string& field,
-                                 cel::ValueManager& value_factory,
-                                 Value& scratch) {
+ValueView TestOnlySelect(const StructValue& msg, const std::string& field,
+                         cel::ValueManager& value_factory, Value& scratch) {
   absl::StatusOr<bool> result = msg.HasFieldByName(field);
 
   if (!result.ok()) {
@@ -90,10 +88,8 @@ Handle<ValueView> TestOnlySelect(const Handle<StructValue>& msg,
   return BoolValueView(*result);
 }
 
-Handle<ValueView> TestOnlySelect(const Handle<MapValue>& map,
-                                 const Handle<StringValue>& field_name,
-                                 cel::ValueManager& value_factory,
-                                 Value& scratch) {
+ValueView TestOnlySelect(const MapValue& map, const StringValue& field_name,
+                         cel::ValueManager& value_factory, Value& scratch) {
   // Field presence only supports string keys containing valid identifier
   // characters.
   auto presence = map.Has(value_factory, field_name, scratch);
@@ -112,8 +108,8 @@ Handle<ValueView> TestOnlySelect(const Handle<MapValue>& map,
 // message.
 class SelectStep : public ExpressionStepBase {
  public:
-  SelectStep(Handle<StringValue> value, bool test_field_presence,
-             int64_t expr_id, absl::string_view select_path,
+  SelectStep(StringValue value, bool test_field_presence, int64_t expr_id,
+             absl::string_view select_path,
              bool enable_wrapper_type_null_unboxing)
       : ExpressionStepBase(expr_id),
         field_value_(std::move(value)),
@@ -127,7 +123,7 @@ class SelectStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  cel::Handle<StringValue> field_value_;
+  cel::StringValue field_value_;
   std::string field_;
   bool test_field_presence_;
   std::string select_path_;
@@ -140,7 +136,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
                         "No arguments supplied for Select-type expression");
   }
 
-  const Handle<Value>& arg = frame->value_stack().Peek();
+  const Value& arg = frame->value_stack().Peek();
   const AttributeTrail& trail = frame->value_stack().PeekAttribute();
 
   if (arg->Is<UnknownValue>() || arg->Is<ErrorValue>()) {
@@ -170,7 +166,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     return absl::OkStatus();
   }
 
-  absl::optional<Handle<Value>> marked_attribute_check =
+  absl::optional<Value> marked_attribute_check =
       CheckForMarkedAttributes(result_trail, frame);
   if (marked_attribute_check.has_value()) {
     frame->value_stack().PopAndPush(std::move(marked_attribute_check).value(),

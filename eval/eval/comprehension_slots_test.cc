@@ -56,7 +56,7 @@ TEST(ComprehensionSlots, Basic) {
   auto* slot0 = slots.Get(0);
   ASSERT_TRUE(slot0 != nullptr);
 
-  EXPECT_THAT(slot0->value, Truly([](const Handle<Value>& v) {
+  EXPECT_THAT(slot0->value, Truly([](const Value& v) {
                 return v->Is<StringValue>() &&
                        v->As<StringValue>().ToString() == "abcd";
               }))
@@ -74,7 +74,7 @@ TEST(ComprehensionSlots, Basic) {
   auto* slot3 = slots.Get(3);
 
   ASSERT_TRUE(slot3 != nullptr);
-  EXPECT_THAT(slot3->value, Truly([](const Handle<Value>& v) {
+  EXPECT_THAT(slot3->value, Truly([](const Value& v) {
                 return v->Is<StringValue>() &&
                        v->As<StringValue>().ToString() == "abcd";
               }))

@@ -33,38 +33,35 @@ using ::cel::ast_internal::Constant;
 struct ConvertVisitor {
   cel::ValueManager& value_factory;
 
-  absl::StatusOr<cel::Handle<cel::Value>> operator()(
+  absl::StatusOr<cel::Value> operator()(
       const cel::ast_internal::NullValue& value) {
     return value_factory.GetNullValue();
   }
-  absl::StatusOr<cel::Handle<cel::Value>> operator()(bool value) {
+  absl::StatusOr<cel::Value> operator()(bool value) {
     return value_factory.CreateBoolValue(value);
   }
-  absl::StatusOr<cel::Handle<cel::Value>> operator()(int64_t value) {
+  absl::StatusOr<cel::Value> operator()(int64_t value) {
     return value_factory.CreateIntValue(value);
   }
-  absl::StatusOr<cel::Handle<cel::Value>> operator()(uint64_t value) {
+  absl::StatusOr<cel::Value> operator()(uint64_t value) {
     return value_factory.CreateUintValue(value);
   }
-  absl::StatusOr<cel::Handle<cel::Value>> operator()(double value) {
+  absl::StatusOr<cel::Value> operator()(double value) {
     return value_factory.CreateDoubleValue(value);
   }
-  absl::StatusOr<cel::Handle<cel::Value>> operator()(const std::string& value) {
+  absl::StatusOr<cel::Value> operator()(const std::string& value) {
     return value_factory.CreateUncheckedStringValue(value);
   }
-  absl::StatusOr<cel::Handle<cel::Value>> operator()(
-      const cel::ast_internal::Bytes& value) {
+  absl::StatusOr<cel::Value> operator()(const cel::ast_internal::Bytes& value) {
     return value_factory.CreateBytesValue(value.bytes);
   }
-  absl::StatusOr<cel::Handle<cel::Value>> operator()(
-      const absl::Duration duration) {
+  absl::StatusOr<cel::Value> operator()(const absl::Duration duration) {
     if (duration >= kDurationHigh || duration <= kDurationLow) {
       return value_factory.CreateErrorValue(*DurationOverflowError());
     }
     return value_factory.CreateUncheckedDurationValue(duration);
   }
-  absl::StatusOr<cel::Handle<cel::Value>> operator()(
-      const absl::Time timestamp) {
+  absl::StatusOr<cel::Value> operator()(const absl::Time timestamp) {
     return value_factory.CreateUncheckedTimestampValue(timestamp);
   }
 };
@@ -74,8 +71,8 @@ struct ConvertVisitor {
 // given value factory.
 //
 // A status maybe returned if value creation fails.
-absl::StatusOr<Handle<Value>> ConvertConstant(const Constant& constant,
-                                              ValueManager& value_factory) {
+absl::StatusOr<Value> ConvertConstant(const Constant& constant,
+                                      ValueManager& value_factory) {
   return absl::visit(ConvertVisitor{value_factory}, constant.constant_kind());
 }
 

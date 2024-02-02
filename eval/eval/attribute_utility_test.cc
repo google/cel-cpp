@@ -86,20 +86,19 @@ TEST_F(AttributeUtilityTest, UnknownsUtilityMergeUnknownsFromValues) {
   AttributeUtility utility(unknown_patterns, missing_attribute_patterns,
                            value_factory_);
 
-  Handle<UnknownValue> unknown_set0 =
+  UnknownValue unknown_set0 =
       value_factory_.CreateUnknownValue(AttributeSet({attribute0}));
-  Handle<UnknownValue> unknown_set1 =
+  UnknownValue unknown_set1 =
       value_factory_.CreateUnknownValue(AttributeSet({attribute1}));
 
-  std::vector<cel::Handle<cel::Value>> values = {
+  std::vector<cel::Value> values = {
       unknown_set0,
       unknown_set1,
       value_factory_.CreateBoolValue(true),
       value_factory_.CreateIntValue(1),
   };
 
-  absl::optional<Handle<UnknownValue>> unknown_set =
-      utility.MergeUnknowns(values);
+  absl::optional<UnknownValue> unknown_set = utility.MergeUnknowns(values);
   ASSERT_TRUE(unknown_set.has_value());
   EXPECT_THAT((*unknown_set).attribute_set(),
               UnorderedPointwise(
@@ -166,7 +165,7 @@ TEST_F(AttributeUtilityTest, CreateUnknownSet) {
   std::vector<CelAttributePattern> empty_patterns;
   AttributeUtility utility(empty_patterns, empty_patterns, value_factory_);
 
-  Handle<UnknownValue> set = utility.CreateUnknownSet(trail.attribute());
+  UnknownValue set = utility.CreateUnknownSet(trail.attribute());
   ASSERT_THAT(set.attribute_set(), SizeIs(1));
   ASSERT_OK_AND_ASSIGN(auto elem, set.attribute_set().begin()->AsString());
   EXPECT_EQ(elem, "destination.ip");

@@ -15,8 +15,7 @@ namespace {
 
 class ShadowableValueStep : public ExpressionStepBase {
  public:
-  ShadowableValueStep(std::string identifier, cel::Handle<cel::Value> value,
-                      int64_t expr_id)
+  ShadowableValueStep(std::string identifier, cel::Value value, int64_t expr_id)
       : ExpressionStepBase(expr_id),
         identifier_(std::move(identifier)),
         value_(std::move(value)) {}
@@ -25,7 +24,7 @@ class ShadowableValueStep : public ExpressionStepBase {
 
  private:
   std::string identifier_;
-  cel::Handle<cel::Value> value_;
+  cel::Value value_;
 };
 
 absl::Status ShadowableValueStep::Evaluate(ExecutionFrame* frame) const {
@@ -44,7 +43,7 @@ absl::Status ShadowableValueStep::Evaluate(ExecutionFrame* frame) const {
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateShadowableValueStep(
-    std::string identifier, cel::Handle<cel::Value> value, int64_t expr_id) {
+    std::string identifier, cel::Value value, int64_t expr_id) {
   return absl::make_unique<ShadowableValueStep>(std::move(identifier),
                                                 std::move(value), expr_id);
 }

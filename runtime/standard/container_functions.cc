@@ -42,9 +42,9 @@ int64_t ListSizeImpl(ValueManager&, const ListValue& value) {
 }
 
 // Concatenation for CelList type.
-absl::StatusOr<Handle<ListValue>> ConcatList(ValueManager& factory,
-                                             const Handle<ListValue>& value1,
-                                             const Handle<ListValue>& value2) {
+absl::StatusOr<ListValue> ConcatList(ValueManager& factory,
+                                     const ListValue& value1,
+                                     const ListValue& value2) {
   int size1 = value1.Size();
   if (size1 == 0) {
     return value2;
@@ -62,11 +62,11 @@ absl::StatusOr<Handle<ListValue>> ConcatList(ValueManager& factory,
   list_builder->Reserve(size1 + size2);
 
   for (int i = 0; i < size1; i++) {
-    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value1.Get(factory, i));
+    CEL_ASSIGN_OR_RETURN(Value elem, value1.Get(factory, i));
     CEL_RETURN_IF_ERROR(list_builder->Add(std::move(elem)));
   }
   for (int i = 0; i < size2; i++) {
-    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value2.Get(factory, i));
+    CEL_ASSIGN_OR_RETURN(Value elem, value2.Get(factory, i));
     CEL_RETURN_IF_ERROR(list_builder->Add(std::move(elem)));
   }
 
@@ -78,9 +78,9 @@ absl::StatusOr<Handle<ListValue>> ConcatList(ValueManager& factory,
 // This call will only be invoked within comprehensions where `value1` is an
 // intermediate result which cannot be directly assigned or co-mingled with a
 // user-provided list.
-absl::StatusOr<Handle<OpaqueValue>> AppendList(ValueManager& factory,
-                                               Handle<OpaqueValue> value1,
-                                               const ListValue& value2) {
+absl::StatusOr<OpaqueValue> AppendList(ValueManager& factory,
+                                       OpaqueValue value1,
+                                       const ListValue& value2) {
   // The `value1` object cannot be directly addressed and is an intermediate
   // variable. Once the comprehension completes this value will in effect be
   // treated as immutable.
@@ -90,7 +90,7 @@ absl::StatusOr<Handle<OpaqueValue>> AppendList(ValueManager& factory,
   }
   MutableListValue& mutable_list = MutableListValue::Cast(value1);
   for (int i = 0; i < value2.Size(); i++) {
-    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value2.Get(factory, i));
+    CEL_ASSIGN_OR_RETURN(Value elem, value2.Get(factory, i));
     CEL_RETURN_IF_ERROR(mutable_list.Append(std::move(elem)));
   }
   return value1;
@@ -118,20 +118,18 @@ absl::Status RegisterContainerFunctions(FunctionRegistry& registry,
   if (options.enable_list_concat) {
     CEL_RETURN_IF_ERROR(registry.Register(
         BinaryFunctionAdapter<
-            absl::StatusOr<Handle<Value>>, const ListValue&,
+            absl::StatusOr<Value>, const ListValue&,
             const ListValue&>::CreateDescriptor(cel::builtin::kAdd, false),
-        BinaryFunctionAdapter<
-            absl::StatusOr<Handle<Value>>, const Handle<ListValue>&,
-            const Handle<ListValue>&>::WrapFunction(ConcatList)));
+        BinaryFunctionAdapter<absl::StatusOr<Value>, const ListValue&,
+                              const ListValue&>::WrapFunction(ConcatList)));
   }
 
   return registry.Register(
       BinaryFunctionAdapter<
-          absl::StatusOr<Handle<OpaqueValue>>, Handle<OpaqueValue>,
+          absl::StatusOr<OpaqueValue>, OpaqueValue,
           const ListValue&>::CreateDescriptor(cel::builtin::kRuntimeListAppend,
                                               false),
-      BinaryFunctionAdapter<absl::StatusOr<Handle<OpaqueValue>>,
-                            Handle<OpaqueValue>,
+      BinaryFunctionAdapter<absl::StatusOr<OpaqueValue>, OpaqueValue,
                             const ListValue&>::WrapFunction(AppendList));
 }
 

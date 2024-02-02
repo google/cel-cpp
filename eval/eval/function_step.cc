@@ -42,7 +42,7 @@ using ::cel::ValueKindToKind;
 // Determine if the overload should be considered. Overloads that can consume
 // errors or unknown sets must be allowed as a non-strict function.
 bool ShouldAcceptOverload(const cel::FunctionDescriptor& descriptor,
-                          absl::Span<const cel::Handle<cel::Value>> arguments) {
+                          absl::Span<const cel::Value> arguments) {
   for (size_t i = 0; i < arguments.size(); i++) {
     if (arguments[i]->Is<cel::UnknownValue>() ||
         arguments[i]->Is<cel::ErrorValue>()) {
@@ -53,7 +53,7 @@ bool ShouldAcceptOverload(const cel::FunctionDescriptor& descriptor,
 }
 
 bool ArgumentKindsMatch(const cel::FunctionDescriptor& descriptor,
-                        absl::Span<const cel::Handle<cel::Value>> arguments) {
+                        absl::Span<const cel::Value> arguments) {
   auto types_size = descriptor.types().size();
 
   if (types_size != arguments.size()) {
@@ -76,10 +76,10 @@ bool ArgumentKindsMatch(const cel::FunctionDescriptor& descriptor,
 // TODO(issues/52): See if this can be refactored to remove the eager
 // arguments copy.
 // Argument and attribute spans are expected to be equal length.
-std::vector<cel::Handle<cel::Value>> CheckForPartialUnknowns(
-    ExecutionFrame* frame, absl::Span<const cel::Handle<cel::Value>> args,
+std::vector<cel::Value> CheckForPartialUnknowns(
+    ExecutionFrame* frame, absl::Span<const cel::Value> args,
     absl::Span<const AttributeTrail> attrs) {
-  std::vector<cel::Handle<cel::Value>> result;
+  std::vector<cel::Value> result;
   result.reserve(args.size());
   for (size_t i = 0; i < args.size(); i++) {
     const AttributeTrail& trail = attrs.subspan(i, 1)[0];
@@ -96,7 +96,7 @@ std::vector<cel::Handle<cel::Value>> CheckForPartialUnknowns(
   return result;
 }
 
-bool IsUnknownFunctionResultError(const Handle<Value>& result) {
+bool IsUnknownFunctionResultError(const Value& result) {
   if (!result->Is<cel::ErrorValue>()) {
     return false;
   }
@@ -147,23 +147,22 @@ class AbstractFunctionStep : public ExpressionStepBase {
   // evaluation state or forwarded from an extension function. Errors where
   // evaluation can reasonably condition are returned in the result as a
   // cel::ErrorValue.
-  absl::StatusOr<Handle<Value>> DoEvaluate(ExecutionFrame* frame) const;
+  absl::StatusOr<Value> DoEvaluate(ExecutionFrame* frame) const;
 
   virtual absl::StatusOr<ResolveResult> ResolveFunction(
-      absl::Span<const cel::Handle<cel::Value>> args,
-      const ExecutionFrame* frame) const = 0;
+      absl::Span<const cel::Value> args, const ExecutionFrame* frame) const = 0;
 
  protected:
   std::string name_;
   size_t num_arguments_;
 };
 
-absl::StatusOr<Handle<Value>> AbstractFunctionStep::DoEvaluate(
+absl::StatusOr<Value> AbstractFunctionStep::DoEvaluate(
     ExecutionFrame* frame) const {
   // Create Span object that contains input arguments to the function.
   auto input_args = frame->value_stack().GetSpan(num_arguments_);
 
-  std::vector<cel::Handle<cel::Value>> unknowns_args;
+  std::vector<cel::Value> unknowns_args;
   // Preprocess args. If an argument is partially unknown, convert it to an
   // unknown attribute set.
   if (frame->enable_unknowns()) {
@@ -181,9 +180,8 @@ absl::StatusOr<Handle<Value>> AbstractFunctionStep::DoEvaluate(
       ShouldAcceptOverload(matched_function->descriptor, input_args)) {
     FunctionEvaluationContext context(frame->value_factory());
 
-    CEL_ASSIGN_OR_RETURN(
-        Handle<Value> result,
-        matched_function->implementation.Invoke(context, input_args));
+    CEL_ASSIGN_OR_RETURN(Value result, matched_function->implementation.Invoke(
+                                           context, input_args));
 
     if (frame->enable_unknown_function_results() &&
         IsUnknownFunctionResultError(result)) {
@@ -205,7 +203,7 @@ absl::StatusOr<Handle<Value>> AbstractFunctionStep::DoEvaluate(
 
   if (frame->enable_unknowns()) {
     // Already converted partial unknowns to unknown sets so just merge.
-    absl::optional<Handle<UnknownValue>> unknown_set =
+    absl::optional<UnknownValue> unknown_set =
         frame->attribute_utility().MergeUnknowns(input_args);
     if (unknown_set.has_value()) {
       return *unknown_set;
@@ -252,7 +250,7 @@ class EagerFunctionStep : public AbstractFunctionStep {
         overloads_(std::move(overloads)) {}
 
   absl::StatusOr<ResolveResult> ResolveFunction(
-      absl::Span<const cel::Handle<cel::Value>> input_args,
+      absl::Span<const cel::Value> input_args,
       const ExecutionFrame* frame) const override;
 
  private:
@@ -260,7 +258,7 @@ class EagerFunctionStep : public AbstractFunctionStep {
 };
 
 absl::StatusOr<ResolveResult> EagerFunctionStep::ResolveFunction(
-    absl::Span<const cel::Handle<cel::Value>> input_args,
+    absl::Span<const cel::Value> input_args,
     const ExecutionFrame* frame) const {
   ResolveResult result = absl::nullopt;
 
@@ -291,7 +289,7 @@ class LazyFunctionStep : public AbstractFunctionStep {
         providers_(std::move(providers)) {}
 
   absl::StatusOr<ResolveResult> ResolveFunction(
-      absl::Span<const cel::Handle<cel::Value>> input_args,
+      absl::Span<const cel::Value> input_args,
       const ExecutionFrame* frame) const override;
 
  private:
@@ -300,16 +298,15 @@ class LazyFunctionStep : public AbstractFunctionStep {
 };
 
 absl::StatusOr<ResolveResult> LazyFunctionStep::ResolveFunction(
-    absl::Span<const cel::Handle<cel::Value>> input_args,
+    absl::Span<const cel::Value> input_args,
     const ExecutionFrame* frame) const {
   ResolveResult result = absl::nullopt;
 
   std::vector<cel::Kind> arg_types(num_arguments_);
 
-  std::transform(input_args.begin(), input_args.end(), arg_types.begin(),
-                 [](const cel::Handle<cel::Value>& value) {
-                   return ValueKindToKind(value->kind());
-                 });
+  std::transform(
+      input_args.begin(), input_args.end(), arg_types.begin(),
+      [](const cel::Value& value) { return ValueKindToKind(value->kind()); });
 
   cel::FunctionDescriptor matcher{name_, receiver_style_, arg_types};
 

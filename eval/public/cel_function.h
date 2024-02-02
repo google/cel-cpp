@@ -62,13 +62,12 @@ class CelFunction : public ::cel::Function {
   // Method is called during runtime.
   bool MatchArguments(absl::Span<const CelValue> arguments) const;
 
-  bool MatchArguments(
-      absl::Span<const cel::Handle<cel::Value>> arguments) const;
+  bool MatchArguments(absl::Span<const cel::Value> arguments) const;
 
   // Implements cel::Function.
-  absl::StatusOr<cel::Handle<cel::Value>> Invoke(
+  absl::StatusOr<cel::Value> Invoke(
       const cel::FunctionEvaluationContext& context,
-      absl::Span<const cel::Handle<cel::Value>> arguments) const override;
+      absl::Span<const cel::Value> arguments) const override;
 
   // CelFunction descriptor
   const CelFunctionDescriptor& descriptor() const { return descriptor_; }

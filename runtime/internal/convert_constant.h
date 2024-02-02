@@ -23,7 +23,7 @@
 
 namespace cel::runtime_internal {
 
-// Adapt AST constant to a Handle<Value>.
+// Adapt AST constant to a Value.
 //
 // Underlying data is copied for string types to keep the program independent
 // from the input AST.
@@ -33,8 +33,8 @@ namespace cel::runtime_internal {
 //
 // A status may still be returned if value creation fails according to
 // value_factory's policy.
-absl::StatusOr<Handle<Value>> ConvertConstant(
-    const ast_internal::Constant& constant, ValueManager& value_factory);
+absl::StatusOr<Value> ConvertConstant(const ast_internal::Constant& constant,
+                                      ValueManager& value_factory);
 
 }  // namespace cel::runtime_internal
 

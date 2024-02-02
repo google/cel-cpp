@@ -55,16 +55,16 @@ class ContainerAccessStep : public ExpressionStepBase {
   };
 
   LookupResult PerformLookup(ExecutionFrame* frame, Value& scratch) const;
-  absl::StatusOr<Handle<ValueView>> LookupInMap(const Handle<MapValue>& cel_map,
-                                                const Handle<Value>& key,
-                                                ExecutionFrame* frame,
-                                                Value& scratch) const;
-  absl::StatusOr<Handle<ValueView>> LookupInList(
-      const Handle<ListValue>& cel_list, const Handle<Value>& key,
-      ExecutionFrame* frame, Value& scratch) const;
+  absl::StatusOr<ValueView> LookupInMap(const MapValue& cel_map,
+                                        const Value& key, ExecutionFrame* frame,
+                                        Value& scratch) const;
+  absl::StatusOr<ValueView> LookupInList(const ListValue& cel_list,
+                                         const Value& key,
+                                         ExecutionFrame* frame,
+                                         Value& scratch) const;
 };
 
-absl::optional<Number> CelNumberFromValue(const Handle<Value>& value) {
+absl::optional<Number> CelNumberFromValue(const Value& value) {
   switch (value->kind()) {
     case ValueKind::kInt64:
       return Number::FromInt64(value.As<IntValue>().NativeValue());
@@ -77,7 +77,7 @@ absl::optional<Number> CelNumberFromValue(const Handle<Value>& value) {
   }
 }
 
-absl::Status CheckMapKeyType(const Handle<Value>& key) {
+absl::Status CheckMapKeyType(const Value& key) {
   ValueKind kind = key->kind();
   switch (kind) {
     case ValueKind::kString:
@@ -91,7 +91,7 @@ absl::Status CheckMapKeyType(const Handle<Value>& key) {
   }
 }
 
-AttributeQualifier AttributeQualifierFromValue(const Handle<Value>& v) {
+AttributeQualifier AttributeQualifierFromValue(const Value& v) {
   switch (v->kind()) {
     case ValueKind::kString:
       return AttributeQualifier::OfString(v.As<StringValue>().ToString());
@@ -107,9 +107,9 @@ AttributeQualifier AttributeQualifierFromValue(const Handle<Value>& v) {
   }
 }
 
-absl::StatusOr<Handle<ValueView>> ContainerAccessStep::LookupInMap(
-    const Handle<MapValue>& cel_map, const Handle<Value>& key,
-    ExecutionFrame* frame, Value& scratch) const {
+absl::StatusOr<ValueView> ContainerAccessStep::LookupInMap(
+    const MapValue& cel_map, const Value& key, ExecutionFrame* frame,
+    Value& scratch) const {
   if (frame->enable_heterogeneous_numeric_lookups()) {
     // Double isn't a supported key type but may be convertible to an integer.
     absl::optional<Number> number = CelNumberFromValue(key);
@@ -164,9 +164,9 @@ absl::StatusOr<Handle<ValueView>> ContainerAccessStep::LookupInMap(
   return cel_map.Get(frame->value_factory(), key, scratch);
 }
 
-absl::StatusOr<Handle<ValueView>> ContainerAccessStep::LookupInList(
-    const Handle<ListValue>& cel_list, const Handle<Value>& key,
-    ExecutionFrame* frame, Value& scratch) const {
+absl::StatusOr<ValueView> ContainerAccessStep::LookupInList(
+    const ListValue& cel_list, const Value& key, ExecutionFrame* frame,
+    Value& scratch) const {
   absl::optional<int64_t> maybe_idx;
   if (frame->enable_heterogeneous_numeric_lookups()) {
     auto number = CelNumberFromValue(key);
@@ -196,8 +196,8 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
   auto input_args = frame->value_stack().GetSpan(kNumContainerAccessArguments);
   AttributeTrail trail;
 
-  const Handle<Value> container = input_args[0];
-  const Handle<Value> key = input_args[1];
+  const Value container = input_args[0];
+  const Value key = input_args[1];
 
   if (frame->enable_unknowns()) {
     auto unknown_set = frame->attribute_utility().MergeUnknowns(input_args);
