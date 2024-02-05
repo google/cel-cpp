@@ -15,10 +15,10 @@
 
 #include "runtime/internal/mutable_list_impl.h"
 
-#include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_provider.h"
 #include "base/value_manager.h"
+#include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "common/values/legacy_value_manager.h"

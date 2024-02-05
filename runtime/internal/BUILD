@@ -37,7 +37,7 @@ cc_library(
     hdrs = ["mutable_list_impl.h"],
     deps = [
         "//base:data",
-        "//base:memory",
+        "//common:memory",
         "//common:native_type",
         "//common:type",
         "//common:value",
@@ -51,7 +51,7 @@ cc_test(
     deps = [
         ":mutable_list_impl",
         "//base:data",
-        "//base:memory",
+        "//common:memory",
         "//common:type",
         "//common:value",
         "//internal:testing",

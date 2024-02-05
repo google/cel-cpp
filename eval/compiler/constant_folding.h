@@ -15,7 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_COMPILER_CONSTANT_FOLDING_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_CONSTANT_FOLDING_H_
 
-#include "base/memory.h"
+#include "common/memory.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 
 namespace cel::runtime_internal {

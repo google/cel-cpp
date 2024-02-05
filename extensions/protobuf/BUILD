@@ -24,7 +24,6 @@ cc_library(
     srcs = ["memory_manager.cc"],
     hdrs = ["memory_manager.h"],
     deps = [
-        "//base:memory",
         "//common:casting",
         "//common:memory",
         "//common:native_type",

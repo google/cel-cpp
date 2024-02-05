@@ -17,7 +17,7 @@
 #include "absl/base/macros.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "base/memory.h"
+#include "common/memory.h"
 #include "common/native_type.h"
 #include "eval/compiler/constant_folding.h"
 #include "internal/casts.h"

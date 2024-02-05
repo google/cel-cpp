@@ -22,7 +22,7 @@
 #include "google/protobuf/message.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
-#include "base/memory.h"
+#include "common/memory.h"
 #include "common/value.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"

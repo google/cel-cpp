@@ -24,7 +24,7 @@
 #include "absl/status/statusor.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/kind.h"
-#include "base/memory.h"
+#include "common/memory.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/comprehension_vulnerability_check.h"
 #include "eval/compiler/constant_folding.h"

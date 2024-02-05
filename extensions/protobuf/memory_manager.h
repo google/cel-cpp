@@ -19,7 +19,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
-#include "base/memory.h"
+#include "common/memory.h"
 #include "google/protobuf/arena.h"
 
 namespace cel::extensions {

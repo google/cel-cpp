@@ -48,8 +48,8 @@ cc_binary(
     deps = [
         "//base:data",
         "//base:kind",
-        "//base:memory",
         "//common:any",
+        "//common:memory",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",

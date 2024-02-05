@@ -85,7 +85,7 @@ cc_test(
         "//base:data",
         "//base:function",
         "//base:function_descriptor",
-        "//base:memory",
+        "//common:memory",
         "//common:value",
         "//internal:status_macros",
         "//internal:testing",
@@ -158,7 +158,7 @@ cc_library(
     hdrs = ["type_registry.h"],
     deps = [
         "//base:data",
-        "//base:memory",
+        "//common:memory",
         "//common:native_type",
         "//internal:status_macros",
         "//runtime/internal:composed_type_provider",
@@ -205,7 +205,7 @@ cc_library(
     hdrs = ["managed_value_factory.h"],
     deps = [
         "//base:data",
-        "//base:memory",
+        "//common:memory",
         "//common:value",
     ],
 )
@@ -247,7 +247,7 @@ cc_test(
         ":runtime_options",
         ":standard_runtime_builder_factory",
         "//base:data",
-        "//base:memory",
+        "//common:memory",
         "//common:value",
         "//extensions:bindings_ext",
         "//extensions/protobuf:memory_manager",
@@ -292,7 +292,7 @@ cc_library(
     deps = [
         ":runtime",
         ":runtime_builder",
-        "//base:memory",
+        "//common:memory",
         "//common:native_type",
         "//eval/compiler:constant_folding",
         "//internal:casts",
@@ -336,7 +336,7 @@ cc_library(
     deps = [
         ":runtime",
         ":runtime_builder",
-        "//base:memory",
+        "//common:memory",
         "//common:native_type",
         "//eval/compiler:regex_precompilation_optimization",
         "//internal:casts",

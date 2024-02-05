@@ -218,7 +218,7 @@ cc_library(
     hdrs = ["legacy_type_adapter.h"],
     deps = [
         "//base:attributes",
-        "//base:memory",
+        "//common:memory",
         "//eval/public:cel_options",
         "//eval/public:cel_value",
         "@com_google_absl//absl/status",
@@ -255,8 +255,8 @@ cc_library(
         ":legacy_type_info_apis",
         "//base:attributes",
         "//base:builtins",
-        "//base:memory",
         "//common:kind",
+        "//common:memory",
         "//common:value",
         "//eval/public:cel_options",
         "//eval/public:cel_value",

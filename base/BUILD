@@ -53,17 +53,6 @@ cc_library(
 )
 
 cc_library(
-    name = "memory",
-    hdrs = [
-        "memory.h",
-    ],
-    deps = [
-        "//common:memory",
-        "@com_google_absl//absl/base:core_headers",
-    ],
-)
-
-cc_library(
     name = "operators",
     srcs = ["operators.cc"],
     hdrs = ["operators.h"],
@@ -203,7 +192,7 @@ cc_test(
         ":function_adapter",
         ":function_descriptor",
         ":kind",
-        ":memory",
+        "//common:memory",
         "//common:value",
         "//internal:testing",
         "@com_google_absl//absl/status",

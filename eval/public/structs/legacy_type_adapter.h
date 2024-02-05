@@ -26,7 +26,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
-#include "base/memory.h"
+#include "common/memory.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 

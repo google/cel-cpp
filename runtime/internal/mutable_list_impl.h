@@ -19,7 +19,7 @@
 
 #include <string>
 
-#include "base/memory.h"
+#include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "internal/casts.h"

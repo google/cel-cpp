@@ -20,11 +20,11 @@
 
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
-#include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/type_provider.h"
 #include "base/value_manager.h"
+#include "common/memory.h"
 #include "common/value.h"
 #include "common/values/legacy_value_manager.h"
 #include "eval/public/cel_function.h"

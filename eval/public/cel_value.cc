@@ -12,7 +12,7 @@
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "base/memory.h"
+#include "common/memory.h"
 #include "eval/internal/errors.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "extensions/protobuf/memory_manager.h"

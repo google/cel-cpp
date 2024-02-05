@@ -18,7 +18,7 @@
 
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "base/memory.h"
+#include "common/memory.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
 #include "extensions/protobuf/memory_manager.h"

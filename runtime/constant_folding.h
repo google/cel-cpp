@@ -16,7 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_RUNTIME_CONSTANT_FOLDING_H_
 
 #include "absl/status/status.h"
-#include "base/memory.h"
+#include "common/memory.h"
 #include "runtime/runtime_builder.h"
 
 namespace cel::extensions {

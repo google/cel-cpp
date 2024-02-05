@@ -16,9 +16,9 @@
 
 #include "google/protobuf/struct.pb.h"
 #include "absl/types/optional.h"
-#include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
+#include "common/memory.h"
 #include "common/type.h"
 #include "common/values/legacy_value_manager.h"
 #include "eval/public/cel_type_registry.h"

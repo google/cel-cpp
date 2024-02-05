@@ -81,7 +81,7 @@ cc_test(
         ":function_adapter",
         "//base:data",
         "//base:kind",
-        "//base:memory",
+        "//common:memory",
         "//common:value",
         "//internal:testing",
         "@com_google_absl//absl/status",

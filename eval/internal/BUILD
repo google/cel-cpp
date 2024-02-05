@@ -83,7 +83,7 @@ cc_library(
         ":interop",
         "//base:attributes",
         "//base:data",
-        "//base:memory",
+        "//common:memory",
         "//eval/public:base_activation",
         "//eval/public:cel_value",
         "//extensions/protobuf:memory_manager",

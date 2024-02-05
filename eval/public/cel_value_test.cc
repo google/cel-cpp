@@ -10,7 +10,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
-#include "base/memory.h"
+#include "common/memory.h"
 #include "eval/internal/errors.h"
 #include "eval/public/structs/trivial_legacy_type_info.h"
 #include "eval/public/testing/matchers.h"
