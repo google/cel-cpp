@@ -12,6 +12,13 @@ licenses(["notice"])
 
 exports_files(["LICENSE"])
 
+package_group(
+    name = "coverage_visibility",
+    packages = [
+        "//tools/...",
+    ],
+)
+
 cc_library(
     name = "flat_expr_builder_extensions",
     srcs = ["flat_expr_builder_extensions.cc"],

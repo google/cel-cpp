@@ -27,7 +27,6 @@
 #include "absl/status/status.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/variant.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
@@ -88,7 +87,7 @@ class BranchCoverageImpl : public BranchCoverage {
   explicit BranchCoverageImpl(const CheckedExpr& expr) : expr_(expr) {}
 
   // Implement public interface.
-  void Record(int64_t expr_id, const Handle<Value>& value) override {
+  void Record(int64_t expr_id, const Value& value) override {
     auto value_or = interop_internal::ToLegacyValue(&arena_, value);
 
     if (!value_or.ok()) {
