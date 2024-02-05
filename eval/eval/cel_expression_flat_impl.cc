@@ -32,7 +32,6 @@
 namespace google::api::expr::runtime {
 namespace {
 
-using ::cel::Handle;
 using ::cel::Value;
 using ::cel::ValueManager;
 using ::cel::extensions::ProtoMemoryManagerArena;

@@ -6,7 +6,6 @@
 
 #include "absl/status/statusor.h"
 #include "base/ast_internal/expr.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "base/value_manager.h"
 #include "eval/eval/compiler_constant_step.h"

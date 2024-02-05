@@ -15,7 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPE_H_
 
-#include "base/handle.h"
 #include "common/type.h"  // IWYU pragma: export
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPE_H_

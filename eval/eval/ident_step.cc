@@ -20,7 +20,6 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::cel::Handle;
 using ::cel::Value;
 using ::cel::ValueView;
 using ::cel::runtime_internal::CreateError;

@@ -21,7 +21,6 @@
 #include "absl/time/time.h"
 #include "absl/types/variant.h"
 #include "base/ast_internal/expr.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "base/value_manager.h"
 #include "eval/internal/errors.h"

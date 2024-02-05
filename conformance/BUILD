@@ -47,7 +47,6 @@ cc_binary(
     ],
     deps = [
         "//base:data",
-        "//base:handle",
         "//base:kind",
         "//base:memory",
         "//common:any",

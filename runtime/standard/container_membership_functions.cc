@@ -25,7 +25,6 @@
 #include "absl/types/optional.h"
 #include "base/builtins.h"
 #include "base/function_adapter.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "common/value.h"
 #include "internal/number.h"

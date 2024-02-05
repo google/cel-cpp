@@ -77,7 +77,7 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::Ast;
-using ::cel::Handle;
+
 using ::cel::RuntimeIssue;
 using ::cel::TypeFactory;
 using ::cel::TypeManager;

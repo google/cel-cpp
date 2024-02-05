@@ -15,7 +15,6 @@
 #include "eval/eval/comprehension_slots.h"
 
 #include "base/attribute.h"
-#include "base/handle.h"
 #include "base/memory.h"
 #include "base/type.h"
 #include "base/type_factory.h"
@@ -30,7 +29,7 @@
 namespace google::api::expr::runtime {
 
 using ::cel::Attribute;
-using ::cel::Handle;
+
 using ::cel::MemoryManagerRef;
 using ::cel::StringValue;
 using ::cel::TypeFactory;

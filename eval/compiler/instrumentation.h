@@ -24,7 +24,6 @@
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "base/ast_internal/ast_impl.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 

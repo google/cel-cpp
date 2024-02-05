@@ -28,7 +28,6 @@
 #include "absl/types/optional.h"
 #include "base/builtins.h"
 #include "base/function_adapter.h"
-#include "base/handle.h"
 #include "base/kind.h"
 #include "base/type.h"
 #include "base/value_manager.h"

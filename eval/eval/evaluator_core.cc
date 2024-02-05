@@ -26,7 +26,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/utility/utility.h"
-#include "base/handle.h"
 #include "base/memory.h"
 #include "base/type_provider.h"
 #include "base/value.h"

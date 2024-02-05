@@ -80,7 +80,6 @@ cc_library(
     deps = [
         ":navigable_ast",
         "//base:data",
-        "//base:handle",
         "//eval/internal:interop",
         "//eval/public:cel_value",
         "@com_google_absl//absl/base:core_headers",

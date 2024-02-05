@@ -17,7 +17,6 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/function_adapter.h"
-#include "base/handle.h"
 #include "base/value_manager.h"
 #include "common/value.h"
 #include "internal/status_macros.h"

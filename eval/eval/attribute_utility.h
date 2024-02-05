@@ -5,7 +5,6 @@
 #include "base/attribute_set.h"
 #include "base/function_descriptor.h"
 #include "base/function_result_set.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "base/value_manager.h"
 #include "eval/eval/attribute_trail.h"

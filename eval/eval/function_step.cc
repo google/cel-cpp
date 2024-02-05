@@ -15,7 +15,6 @@
 #include "absl/types/span.h"
 #include "base/function.h"
 #include "base/function_descriptor.h"
-#include "base/handle.h"
 #include "base/kind.h"
 #include "base/value.h"
 #include "common/value.h"
@@ -34,7 +33,7 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::FunctionEvaluationContext;
-using ::cel::Handle;
+
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::ValueKindToKind;

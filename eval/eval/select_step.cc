@@ -10,7 +10,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "base/handle.h"
 #include "base/kind.h"
 #include "base/value_manager.h"
 #include "common/type.h"
@@ -27,7 +26,6 @@ namespace {
 
 using ::cel::BoolValueView;
 using ::cel::ErrorValue;
-using ::cel::Handle;
 using ::cel::MapValue;
 using ::cel::NullValue;
 using ::cel::ProtoWrapperTypeOptions;

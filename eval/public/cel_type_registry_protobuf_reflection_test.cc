@@ -16,7 +16,6 @@
 
 #include "google/protobuf/struct.pb.h"
 #include "absl/types/optional.h"
-#include "base/handle.h"
 #include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
@@ -32,7 +31,6 @@
 namespace google::api::expr::runtime {
 namespace {
 
-using ::cel::Handle;
 using ::cel::MemoryManagerRef;
 using ::cel::StructType;
 using ::cel::Type;

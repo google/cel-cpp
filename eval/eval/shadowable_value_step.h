@@ -6,7 +6,6 @@
 #include <string>
 
 #include "absl/status/statusor.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "eval/eval/evaluator_core.h"
 

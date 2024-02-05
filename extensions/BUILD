@@ -184,7 +184,6 @@ cc_library(
         "//base:attributes",
         "//base:builtins",
         "//base:data",
-        "//base:handle",
         "//base:memory",
         "//base/ast_internal:ast_impl",
         "//base/ast_internal:expr",
@@ -220,7 +219,6 @@ cc_library(
     deps = [
         "//base:data",
         "//base:function_adapter",
-        "//base:handle",
         "//common:value",
         "//internal:status_macros",
         "//runtime:function_registry",

@@ -18,7 +18,6 @@
 
 #include "absl/status/statusor.h"
 #include "base/ast.h"
-#include "base/handle.h"
 #include "base/type_provider.h"
 #include "base/value.h"
 #include "eval/eval/evaluator_core.h"

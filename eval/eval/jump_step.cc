@@ -15,7 +15,7 @@ namespace google::api::expr::runtime {
 namespace {
 using ::cel::BoolValue;
 using ::cel::ErrorValue;
-using ::cel::Handle;
+
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;

@@ -30,7 +30,6 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::cel::Handle;
 using ::cel::MemoryManagerRef;
 using ::cel::Type;
 using ::cel::TypeFactory;

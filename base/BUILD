@@ -20,12 +20,6 @@ package(
 licenses(["notice"])
 
 cc_library(
-    name = "handle",
-    hdrs = ["handle.h"],
-    deps = ["@com_google_absl//absl/base:core_headers"],
-)
-
-cc_library(
     name = "attributes",
     srcs = [
         "attribute.cc",
@@ -109,7 +103,6 @@ cc_library(
         "value_manager.h",
     ],
     deps = [
-        ":handle",
         "//common:type",
         "//common:value",
     ],

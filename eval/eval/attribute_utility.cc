@@ -3,7 +3,6 @@
 #include <utility>
 
 #include "base/attribute_set.h"
-#include "base/handle.h"
 #include "base/internal/unknown_set.h"
 #include "common/value.h"
 #include "eval/internal/errors.h"
@@ -12,7 +11,6 @@ namespace google::api::expr::runtime {
 
 using ::cel::AttributeSet;
 using ::cel::ErrorValue;
-using ::cel::Handle;
 using ::cel::UnknownValue;
 using ::cel::base_internal::UnknownSet;
 

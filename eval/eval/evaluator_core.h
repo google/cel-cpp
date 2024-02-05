@@ -28,7 +28,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "base/handle.h"
 #include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"

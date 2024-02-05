@@ -22,7 +22,6 @@
 #include "base/attribute.h"
 #include "base/function.h"
 #include "base/function_descriptor.h"
-#include "base/handle.h"
 #include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"

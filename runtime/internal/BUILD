@@ -25,7 +25,6 @@ cc_library(
     hdrs = ["composed_type_provider.h"],
     deps = [
         "//base:data",
-        "//base:handle",
         "//internal:status_macros",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:optional",
@@ -76,7 +75,6 @@ cc_library(
     deps = [
         "//base:ast",
         "//base:data",
-        "//base:handle",
         "//common:native_type",
         "//eval/compiler:flat_expr_builder",
         "//eval/eval:evaluator_core",
@@ -96,7 +94,6 @@ cc_library(
     hdrs = ["convert_constant.h"],
     deps = [
         "//base:data",
-        "//base:handle",
         "//base/ast_internal:expr",
         "//eval/internal:errors",
         "@com_google_absl//absl/status:statusor",

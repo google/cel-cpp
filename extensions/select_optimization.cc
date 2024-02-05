@@ -37,7 +37,6 @@
 #include "base/ast_internal/expr.h"
 #include "base/attribute.h"
 #include "base/builtins.h"
-#include "base/handle.h"
 #include "base/memory.h"
 #include "base/type.h"
 #include "base/type_factory.h"

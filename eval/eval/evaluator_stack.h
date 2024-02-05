@@ -8,7 +8,6 @@
 #include "absl/base/optimization.h"
 #include "absl/log/absl_log.h"
 #include "absl/types/span.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "eval/eval/attribute_trail.h"
 

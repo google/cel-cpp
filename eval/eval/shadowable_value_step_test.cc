@@ -4,7 +4,6 @@
 #include <utility>
 
 #include "absl/status/statusor.h"
-#include "base/handle.h"
 #include "base/type_provider.h"
 #include "base/value.h"
 #include "eval/eval/cel_expression_flat_impl.h"

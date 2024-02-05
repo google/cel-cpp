@@ -17,7 +17,7 @@
 namespace google::api::expr::runtime {
 
 using ::cel::AttributeSet;
-using ::cel::Handle;
+
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::extensions::ProtoMemoryManagerRef;

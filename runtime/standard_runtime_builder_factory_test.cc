@@ -25,7 +25,6 @@
 #include "absl/algorithm/container.h"
 #include "absl/base/no_destructor.h"
 #include "absl/status/status.h"
-#include "base/handle.h"
 #include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"

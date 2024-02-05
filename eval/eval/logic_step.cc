@@ -8,7 +8,6 @@
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "base/builtins.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "common/value.h"
 #include "eval/eval/expression_step_base.h"
@@ -20,7 +19,7 @@ namespace {
 
 using ::cel::BoolValue;
 using ::cel::BoolValueView;
-using ::cel::Handle;
+
 using ::cel::Value;
 using ::cel::ValueView;
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;

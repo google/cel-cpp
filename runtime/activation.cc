@@ -24,7 +24,6 @@
 #include "absl/types/optional.h"
 #include "base/function.h"
 #include "base/function_descriptor.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "internal/status_macros.h"
 #include "runtime/function_overload_reference.h"

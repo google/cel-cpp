@@ -83,7 +83,6 @@ cc_library(
         ":interop",
         "//base:attributes",
         "//base:data",
-        "//base:handle",
         "//base:memory",
         "//eval/public:base_activation",
         "//eval/public:cel_value",

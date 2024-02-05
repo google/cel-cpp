@@ -24,7 +24,6 @@
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
-#include "base/handle.h"
 #include "base/type_provider.h"
 #include "runtime/internal/composed_type_provider.h"
 

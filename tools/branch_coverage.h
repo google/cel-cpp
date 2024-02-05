@@ -20,7 +20,6 @@
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "absl/base/attributes.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "eval/public/cel_value.h"
 #include "tools/navigable_ast.h"
@@ -49,7 +48,7 @@ class BranchCoverage {
 
   virtual ~BranchCoverage() = default;
 
-  virtual void Record(int64_t expr_id, const Handle<Value>& value) = 0;
+  virtual void Record(int64_t expr_id, const Value& value) = 0;
   virtual void RecordLegacyValue(
       int64_t expr_id, const google::api::expr::runtime::CelValue& value) = 0;
 

@@ -40,7 +40,7 @@ namespace {
 using ::cel::BoolValue;
 using ::cel::BytesValue;
 using ::cel::DoubleValue;
-using ::cel::Handle;
+
 using ::cel::IntValue;
 using ::cel::ListValue;
 using ::cel::MapValue;

@@ -17,7 +17,6 @@
 
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
-#include "base/handle.h"
 #include "base/type.h"
 #include "internal/status_macros.h"
 

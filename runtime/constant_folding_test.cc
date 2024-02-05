@@ -23,7 +23,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "base/function_adapter.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "common/value.h"
 #include "extensions/protobuf/runtime_adapter.h"

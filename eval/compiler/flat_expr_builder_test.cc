@@ -76,7 +76,6 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::cel::Handle;
 using ::cel::Value;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::internal::test::EqualsProto;

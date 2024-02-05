@@ -6,7 +6,6 @@
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "base/function.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
@@ -17,7 +16,7 @@
 namespace google::api::expr::runtime {
 
 using ::cel::FunctionEvaluationContext;
-using ::cel::Handle;
+
 using ::cel::Value;
 using ::cel::extensions::ProtoMemoryManagerArena;
 using ::cel::interop_internal::ToLegacyValue;

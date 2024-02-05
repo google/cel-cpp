@@ -21,7 +21,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "base/handle.h"
 #include "base/type.h"
 #include "base/type_factory.h"
 #include "base/type_provider.h"
@@ -36,7 +35,6 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using cel::Handle;
 using cel::Type;
 using cel::TypeFactory;
 

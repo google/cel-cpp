@@ -8,7 +8,6 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -20,7 +19,6 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::cel::Handle;
 using ::cel::ListType;
 using ::cel::ListValueBuilderInterface;
 using ::cel::UnknownValue;

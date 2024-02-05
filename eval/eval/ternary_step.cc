@@ -6,7 +6,6 @@
 
 #include "absl/status/statusor.h"
 #include "base/builtins.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "common/value.h"
 #include "eval/eval/expression_step_base.h"

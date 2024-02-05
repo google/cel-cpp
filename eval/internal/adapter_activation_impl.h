@@ -22,7 +22,6 @@
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "base/value_manager.h"
 #include "eval/public/base_activation.h"

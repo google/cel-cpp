@@ -29,7 +29,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/strings/strip.h"
 #include "absl/types/optional.h"
-#include "base/handle.h"
 #include "base/kind.h"
 #include "base/memory.h"
 #include "base/value.h"
@@ -42,7 +41,6 @@
 
 namespace google::api::expr::runtime {
 
-using ::cel::Handle;
 using ::cel::Value;
 
 Resolver::Resolver(

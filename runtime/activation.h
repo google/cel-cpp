@@ -31,7 +31,6 @@
 #include "base/attribute.h"
 #include "base/function.h"
 #include "base/function_descriptor.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "base/value_manager.h"
 #include "runtime/activation_interface.h"

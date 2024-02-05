@@ -21,7 +21,6 @@
 
 #include "absl/base/macros.h"
 #include "absl/types/optional.h"
-#include "base/handle.h"
 #include "base/value.h"
 #include "eval/eval/attribute_trail.h"
 

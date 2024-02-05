@@ -15,7 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUE_H_
 
-#include "base/handle.h"
 #include "common/value.h"  // IWYU pragma: export
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_VALUE_H_

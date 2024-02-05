@@ -22,7 +22,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "base/ast_internal/ast_impl.h"
-#include "base/handle.h"
 #include "base/type.h"
 #include "base/value.h"
 #include "eval/compiler/constant_folding.h"
@@ -44,7 +43,6 @@
 namespace google::api::expr::runtime {
 namespace {
 
-using ::cel::Handle;
 using ::cel::IntValue;
 using ::cel::Value;
 using ::google::api::expr::v1alpha1::ParsedExpr;

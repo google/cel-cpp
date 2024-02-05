@@ -20,7 +20,6 @@
 #include "absl/time/time.h"
 #include "base/builtins.h"
 #include "base/function_adapter.h"
-#include "base/handle.h"
 #include "base/value_manager.h"
 #include "common/value.h"
 #include "internal/number.h"

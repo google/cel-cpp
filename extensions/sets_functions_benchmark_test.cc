@@ -50,7 +50,6 @@
 namespace cel::extensions {
 namespace {
 
-using ::cel::Handle;
 using ::cel::Value;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::Parse;

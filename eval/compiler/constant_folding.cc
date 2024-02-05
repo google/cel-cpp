@@ -26,7 +26,6 @@
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "base/builtins.h"
-#include "base/handle.h"
 #include "base/kind.h"
 #include "base/type_provider.h"
 #include "base/value.h"

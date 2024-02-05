@@ -257,7 +257,6 @@ cc_library(
         ":resolver",
         "//base:builtins",
         "//base:data",
-        "//base:handle",
         "//base:kind",
         "//base:memory",
         "//base/ast_internal:ast_impl",
@@ -346,7 +345,6 @@ cc_library(
     hdrs = ["resolver.h"],
     deps = [
         "//base:data",
-        "//base:handle",
         "//base:kind",
         "//base:memory",
         "//common:type",
@@ -513,7 +511,6 @@ cc_library(
     deps = [
         ":flat_expr_builder_extensions",
         "//base:data",
-        "//base:handle",
         "//base/ast_internal:ast_impl",
         "//base/ast_internal:expr",
         "//eval/eval:evaluator_core",
@@ -533,7 +530,6 @@ cc_test(
         ":instrumentation",
         ":regex_precompilation_optimization",
         "//base:data",
-        "//base:handle",
         "//base/ast_internal:ast_impl",
         "//eval/eval:evaluator_core",
         "//extensions/protobuf:ast_converters",

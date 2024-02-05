@@ -25,7 +25,7 @@ namespace {
 using ::cel::AttributeQualifier;
 using ::cel::BoolValue;
 using ::cel::DoubleValue;
-using ::cel::Handle;
+
 using ::cel::IntValue;
 using ::cel::ListValue;
 using ::cel::MapValue;

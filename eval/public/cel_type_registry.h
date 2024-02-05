@@ -23,7 +23,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/string_view.h"
-#include "base/handle.h"
 #include "eval/public/structs/legacy_type_provider.h"
 #include "runtime/internal/composed_type_provider.h"
 #include "runtime/type_registry.h"
