@@ -116,6 +116,7 @@ cc_library(
     ],
     deps = [
         ":data",
+        "//common:value",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
     ],
@@ -168,11 +169,11 @@ cc_library(
     name = "function_adapter",
     hdrs = ["function_adapter.h"],
     deps = [
-        ":data",
         ":function",
         ":function_descriptor",
         ":kind",
         "//base/internal:function_adapter",
+        "//common:value",
         "//internal:status_macros",
         "@com_google_absl//absl/functional:bind_front",
         "@com_google_absl//absl/log:die_if_null",
@@ -193,6 +194,7 @@ cc_test(
         ":function_descriptor",
         ":kind",
         "//common:memory",
+        "//common:type",
         "//common:value",
         "//internal:testing",
         "@com_google_absl//absl/status",

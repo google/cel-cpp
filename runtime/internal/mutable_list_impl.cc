@@ -19,7 +19,6 @@
 #include <string>
 #include <utility>
 
-#include "base/value.h"
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value.h"

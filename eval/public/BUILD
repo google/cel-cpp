@@ -191,9 +191,9 @@ cc_library(
     ],
     deps = [
         ":cel_value",
-        "//base:data",
         "//base:function",
         "//base:function_descriptor",
+        "//common:value",
         "//eval/internal:interop",
         "//extensions/protobuf:memory_manager",
         "//internal:status_macros",
@@ -689,6 +689,7 @@ cc_library(
         "//base:function",
         "//base:function_descriptor",
         "//base:kind",
+        "//common:type",
         "//common:value",
         "//eval/internal:interop",
         "//extensions/protobuf:memory_manager",
@@ -915,6 +916,8 @@ cc_library(
     hdrs = ["cel_type_registry.h"],
     deps = [
         "//base:data",
+        "//common:type",
+        "//common:value",
         "//eval/internal:interop",
         "//eval/public/structs:legacy_type_adapter",
         "//eval/public/structs:legacy_type_info_apis",
@@ -957,7 +960,6 @@ cc_test(
     srcs = ["cel_type_registry_protobuf_reflection_test.cc"],
     deps = [
         ":cel_type_registry",
-        "//base:data",
         "//common:memory",
         "//common:type",
         "//common:value",

@@ -6,8 +6,8 @@
 
 #include "absl/status/statusor.h"
 #include "base/ast_internal/expr.h"
-#include "base/value.h"
-#include "base/value_manager.h"
+#include "common/value.h"
+#include "common/value_manager.h"
 #include "eval/eval/compiler_constant_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "internal/status_macros.h"

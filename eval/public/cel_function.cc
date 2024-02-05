@@ -6,7 +6,7 @@
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "base/function.h"
-#include "base/value.h"
+#include "common/value.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
 #include "extensions/protobuf/memory_manager.h"

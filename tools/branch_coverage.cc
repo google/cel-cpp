@@ -27,7 +27,7 @@
 #include "absl/status/status.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/variant.h"
-#include "base/value.h"
+#include "common/value.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
 #include "tools/navigable_ast.h"

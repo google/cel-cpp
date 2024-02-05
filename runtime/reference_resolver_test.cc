@@ -21,7 +21,6 @@
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "base/function_adapter.h"
-#include "base/value.h"
 #include "common/value.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/testing.h"

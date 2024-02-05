@@ -27,9 +27,9 @@
 #include "absl/types/optional.h"
 #include "absl/utility/utility.h"
 #include "base/type_provider.h"
-#include "base/value.h"
-#include "base/value_manager.h"
 #include "common/memory.h"
+#include "common/value.h"
+#include "common/value_manager.h"
 #include "internal/status_macros.h"
 #include "runtime/activation_interface.h"
 

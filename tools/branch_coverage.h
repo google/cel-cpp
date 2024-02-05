@@ -20,7 +20,7 @@
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "absl/base/attributes.h"
-#include "base/value.h"
+#include "common/value.h"
 #include "eval/public/cel_value.h"
 #include "tools/navigable_ast.h"
 

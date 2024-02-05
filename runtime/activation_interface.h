@@ -22,8 +22,8 @@
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
-#include "base/value.h"
-#include "base/value_manager.h"
+#include "common/value.h"
+#include "common/value_manager.h"
 #include "internal/status_macros.h"
 #include "runtime/function_overload_reference.h"
 

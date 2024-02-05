@@ -27,9 +27,9 @@
 #include "absl/status/statusor.h"
 #include "base/ast.h"
 #include "base/type_provider.h"
-#include "base/value.h"
-#include "base/value_manager.h"
 #include "common/native_type.h"
+#include "common/value.h"
+#include "common/value_manager.h"
 #include "runtime/activation_interface.h"
 #include "runtime/runtime_issue.h"
 

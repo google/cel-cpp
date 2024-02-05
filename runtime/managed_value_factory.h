@@ -15,10 +15,10 @@
 #ifndef THIRD_PARTY_CEL_CPP_RUNTIME_MANAGED_VALUE_FACTORY_H_
 #define THIRD_PARTY_CEL_CPP_RUNTIME_MANAGED_VALUE_FACTORY_H_
 
-#include "base/type_factory.h"
-#include "base/type_manager.h"
 #include "base/type_provider.h"
 #include "common/memory.h"
+#include "common/type_factory.h"
+#include "common/type_manager.h"
 #include "common/value_manager.h"
 #include "common/values/legacy_value_manager.h"
 

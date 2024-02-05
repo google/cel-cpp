@@ -18,9 +18,8 @@
 #include <memory>
 
 #include "absl/status/status.h"
-#include "base/value.h"
-#include "base/value_manager.h"
 #include "common/value.h"
+#include "common/value_manager.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/internal/adapter_activation_impl.h"
 #include "eval/internal/interop.h"

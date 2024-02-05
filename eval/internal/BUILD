@@ -82,8 +82,8 @@ cc_library(
     deps = [
         ":interop",
         "//base:attributes",
-        "//base:data",
         "//common:memory",
+        "//common:value",
         "//eval/public:base_activation",
         "//eval/public:cel_value",
         "//extensions/protobuf:memory_manager",

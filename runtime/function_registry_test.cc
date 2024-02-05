@@ -24,7 +24,7 @@
 #include "base/function_adapter.h"
 #include "base/function_descriptor.h"
 #include "base/kind.h"
-#include "base/value_manager.h"
+#include "common/value_manager.h"
 #include "internal/testing.h"
 #include "runtime/activation.h"
 #include "runtime/function_overload_reference.h"

@@ -16,9 +16,9 @@
 
 #include "absl/status/statusor.h"
 #include "base/ast_internal/expr.h"
-#include "base/value.h"
 #include "base/value_factory.h"
-#include "base/value_manager.h"
+#include "common/value.h"
+#include "common/value_manager.h"
 
 namespace cel::runtime_internal {
 

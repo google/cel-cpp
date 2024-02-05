@@ -17,8 +17,8 @@
 
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
-#include "base/value.h"
 #include "base/value_factory.h"
+#include "common/value.h"
 
 namespace cel {
 

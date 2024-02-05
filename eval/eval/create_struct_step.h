@@ -9,7 +9,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "base/ast_internal/expr.h"
-#include "base/type.h"
 #include "common/type.h"
 #include "eval/eval/evaluator_core.h"
 

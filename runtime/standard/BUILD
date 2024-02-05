@@ -30,7 +30,6 @@ cc_library(
     ],
     deps = [
         "//base:builtins",
-        "//base:data",
         "//base:function_adapter",
         "//common:value",
         "//internal:number",
@@ -68,7 +67,6 @@ cc_library(
     deps = [
         ":equality_functions",
         "//base:builtins",
-        "//base:data",
         "//base:function_adapter",
         "//common:value",
         "//internal:number",
@@ -107,7 +105,6 @@ cc_library(
     hdrs = ["equality_functions.h"],
     deps = [
         "//base:builtins",
-        "//base:data",
         "//base:function_adapter",
         "//base:kind",
         "//common:type",
@@ -155,7 +152,6 @@ cc_library(
     ],
     deps = [
         "//base:builtins",
-        "//base:data",
         "//base:function_adapter",
         "//common:value",
         "//internal:status_macros",
@@ -181,6 +177,7 @@ cc_test(
         "//base:function",
         "//base:function_descriptor",
         "//base:kind",
+        "//common:type",
         "//common:value",
         "//internal:testing",
         "//runtime:function_overload_reference",
@@ -199,7 +196,6 @@ cc_library(
     hdrs = ["container_functions.h"],
     deps = [
         "//base:builtins",
-        "//base:data",
         "//base:function_adapter",
         "//common:value",
         "//internal:status_macros",
@@ -230,8 +226,8 @@ cc_library(
     hdrs = ["type_conversion_functions.h"],
     deps = [
         "//base:builtins",
-        "//base:data",
         "//base:function_adapter",
+        "//common:value",
         "//internal:overflow",
         "//internal:status_macros",
         "//internal:time",
@@ -262,8 +258,8 @@ cc_library(
     hdrs = ["arithmetic_functions.h"],
     deps = [
         "//base:builtins",
-        "//base:data",
         "//base:function_adapter",
+        "//common:value",
         "//internal:overflow",
         "//internal:status_macros",
         "//runtime:function_registry",
@@ -293,8 +289,8 @@ cc_library(
     hdrs = ["time_functions.h"],
     deps = [
         "//base:builtins",
-        "//base:data",
         "//base:function_adapter",
+        "//common:value",
         "//internal:overflow",
         "//internal:status_macros",
         "//runtime:function_registry",
@@ -324,8 +320,8 @@ cc_library(
     hdrs = ["string_functions.h"],
     deps = [
         "//base:builtins",
-        "//base:data",
         "//base:function_adapter",
+        "//common:value",
         "//internal:status_macros",
         "//runtime:function_registry",
         "//runtime:runtime_options",
@@ -354,8 +350,8 @@ cc_library(
     hdrs = ["regex_functions.h"],
     deps = [
         "//base:builtins",
-        "//base:data",
         "//base:function_adapter",
+        "//common:value",
         "//internal:status_macros",
         "//runtime:function_registry",
         "//runtime:runtime_options",

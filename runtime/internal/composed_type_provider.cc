@@ -17,7 +17,7 @@
 
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
-#include "base/type.h"
+#include "common/type.h"
 #include "internal/status_macros.h"
 
 namespace cel::runtime_internal {

@@ -8,7 +8,6 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
-#include "base/value.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "eval/eval/expression_step_base.h"

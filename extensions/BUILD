@@ -183,7 +183,6 @@ cc_library(
     deps = [
         "//base:attributes",
         "//base:builtins",
-        "//base:data",
         "//base/ast_internal:ast_impl",
         "//base/ast_internal:expr",
         "//common:kind",
@@ -217,7 +216,6 @@ cc_library(
     srcs = ["sets_functions.cc"],
     hdrs = ["sets_functions.h"],
     deps = [
-        "//base:data",
         "//base:function_adapter",
         "//common:value",
         "//internal:status_macros",
@@ -255,6 +253,7 @@ cc_test(
         ":sets_functions",
         "//base:data",
         "//common:memory",
+        "//common:type",
         "//common:value",
         "//eval/internal:interop",
         "//eval/public:activation",

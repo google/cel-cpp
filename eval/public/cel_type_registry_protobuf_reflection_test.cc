@@ -16,10 +16,10 @@
 
 #include "google/protobuf/struct.pb.h"
 #include "absl/types/optional.h"
-#include "base/type_factory.h"
-#include "base/type_manager.h"
 #include "common/memory.h"
 #include "common/type.h"
+#include "common/type_factory.h"
+#include "common/type_manager.h"
 #include "common/values/legacy_value_manager.h"
 #include "eval/public/cel_type_registry.h"
 #include "eval/public/structs/protobuf_descriptor_type_provider.h"

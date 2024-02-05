@@ -10,7 +10,6 @@
 #include "absl/types/span.h"
 #include "base/attribute.h"
 #include "base/kind.h"
-#include "base/value.h"
 #include "common/value.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"

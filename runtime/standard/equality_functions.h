@@ -18,8 +18,8 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
-#include "base/value.h"
-#include "base/value_manager.h"
+#include "common/value.h"
+#include "common/value_manager.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
 

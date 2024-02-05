@@ -5,7 +5,7 @@
 
 #include "absl/status/statusor.h"
 #include "base/type_provider.h"
-#include "base/value.h"
+#include "common/value.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/internal/interop.h"

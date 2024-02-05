@@ -6,7 +6,7 @@
 #include <string>
 
 #include "absl/status/statusor.h"
-#include "base/value.h"
+#include "common/value.h"
 #include "eval/eval/evaluator_core.h"
 
 namespace google::api::expr::runtime {

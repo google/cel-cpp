@@ -3,9 +3,9 @@
 #include <vector>
 
 #include "base/attribute_set.h"
-#include "base/type_factory.h"
 #include "base/type_provider.h"
-#include "base/value_manager.h"
+#include "common/type_factory.h"
+#include "common/value_manager.h"
 #include "common/values/legacy_value_manager.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"

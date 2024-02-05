@@ -17,8 +17,8 @@
 #include "absl/strings/string_view.h"
 #include "base/builtins.h"
 #include "base/function_adapter.h"
-#include "base/value.h"
-#include "base/value_manager.h"
+#include "common/value.h"
+#include "common/value_manager.h"
 #include "internal/status_macros.h"
 #include "re2/re2.h"
 
