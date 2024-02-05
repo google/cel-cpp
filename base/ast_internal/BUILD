@@ -52,9 +52,11 @@ cc_library(
         "expr.h",
     ],
     deps = [
+        "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/functional:overload",
         "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:variant",
     ],
 )

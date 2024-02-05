@@ -18,6 +18,7 @@
 #include <stack>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
 #include "absl/functional/overload.h"
 #include "absl/types/variant.h"
 
@@ -26,12 +27,12 @@ namespace cel::ast_internal {
 namespace {
 
 const Expr& default_expr() {
-  static Expr* expr = new Expr();
+  static absl::NoDestructor<Expr> expr;
   return *expr;
 }
 
 const Type& default_type() {
-  static Type* type = new Type();
+  static absl::NoDestructor<Type> type;
   return *type;
 }
 
@@ -151,6 +152,28 @@ Expr Expr::DeepCopy() const {
   return copy;
 }
 
+const Extension::Version& Extension::Version::DefaultInstance() {
+  static absl::NoDestructor<Version> instance;
+  return *instance;
+}
+
+const Extension& Extension::DefaultInstance() {
+  static absl::NoDestructor<Extension> instance;
+  return *instance;
+}
+
+Extension::Extension(const Extension& other)
+    : id_(other.id_),
+      affected_components_(other.affected_components_),
+      version_(std::make_unique<Version>(*other.version_)) {}
+
+Extension& Extension::operator=(const Extension& other) {
+  id_ = other.id_;
+  affected_components_ = other.affected_components_;
+  version_ = std::make_unique<Version>(*other.version_);
+  return *this;
+}
+
 SourceInfo SourceInfo::DeepCopy() const {
   SourceInfo copy;
   copy.location_ = location_;
@@ -161,6 +184,7 @@ SourceInfo SourceInfo::DeepCopy() const {
   for (auto it = macro_calls_.begin(); it != macro_calls_.end(); ++it) {
     copy.macro_calls_.insert_or_assign(it->first, it->second.DeepCopy());
   }
+  copy.extensions_ = extensions_;
   return copy;
 }
 

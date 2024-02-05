@@ -25,6 +25,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/time/time.h"
+#include "absl/types/optional.h"
 #include "absl/types/variant.h"
 
 namespace cel::ast_internal {
@@ -892,6 +893,121 @@ class Expr {
   ExprKind expr_kind_;
 };
 
+// An extension that was requested for the source expression.
+class Extension {
+ public:
+  // Version
+  class Version {
+   public:
+    Version() : major_(0), minor_(0) {}
+    Version(int64_t major, int64_t minor) : major_(major), minor_(minor) {}
+
+    Version(const Version& other) = default;
+    Version(Version&& other) = default;
+    Version& operator=(const Version& other) = default;
+    Version& operator=(Version&& other) = default;
+
+    static const Version& DefaultInstance();
+
+    // Major version changes indicate different required support level from
+    // the required components.
+    int64_t major() const { return major_; }
+    void set_major(int64_t val) { major_ = val; }
+
+    // Minor version changes must not change the observed behavior from
+    // existing implementations, but may be provided informationally.
+    int64_t minor() const { return minor_; }
+    void set_minor(int64_t val) { minor_ = val; }
+
+    bool operator==(const Version& other) const {
+      return major_ == other.major_ && minor_ == other.minor_;
+    }
+
+    bool operator!=(const Version& other) const { return !operator==(other); }
+
+   private:
+    int64_t major_;
+    int64_t minor_;
+  };
+
+  // CEL component specifier.
+  enum class Component {
+    // Unspecified, default.
+    kUnspecified,
+    // Parser. Converts a CEL string to an AST.
+    kParser,
+    // Type checker. Checks that references in an AST are defined and types
+    // agree.
+    kTypeChecker,
+    // Runtime. Evaluates a parsed and optionally checked CEL AST against a
+    // context.
+    kRuntime
+  };
+
+  static const Extension& DefaultInstance();
+
+  Extension() = default;
+  Extension(std::string id, std::unique_ptr<Version> version,
+            std::vector<Component> affected_components)
+      : id_(std::move(id)),
+        affected_components_(std::move(affected_components)),
+        version_(std::move(version)) {}
+
+  Extension(const Extension& other);
+  Extension(Extension&& other) = default;
+  Extension& operator=(const Extension& other);
+  Extension& operator=(Extension&& other) = default;
+
+  // Identifier for the extension. Example: constant_folding
+  const std::string& id() const { return id_; }
+  void set_id(std::string id) { id_ = std::move(id); }
+
+  // If set, the listed components must understand the extension for the
+  // expression to evaluate correctly.
+  //
+  // This field has set semantics, repeated values should be deduplicated.
+  const std::vector<Component>& affected_components() const {
+    return affected_components_;
+  }
+
+  std::vector<Component>& mutable_affected_components() {
+    return affected_components_;
+  }
+
+  // Version info. May be skipped if it isn't meaningful for the extension.
+  // (for example constant_folding might always be v0.0).
+  const Version& version() const {
+    if (version_ == nullptr) {
+      return Version::DefaultInstance();
+    }
+    return *version_;
+  }
+
+  Version& mutable_version() {
+    if (version_ == nullptr) {
+      version_ = std::make_unique<Version>();
+    }
+    return *version_;
+  }
+
+  void set_version(std::unique_ptr<Version> version) {
+    version_ = std::move(version);
+  }
+
+  bool operator==(const Extension& other) const {
+    return id_ == other.id_ &&
+           affected_components_ == other.affected_components_ &&
+           version() == other.version();
+  }
+
+  bool operator!=(const Extension& other) const { return !operator==(other); }
+
+ private:
+  std::string id_;
+  std::vector<Component> affected_components_;
+  std::unique_ptr<Version> version_;
+};
+
 // Source information collected at parse time.
 class SourceInfo {
  public:
@@ -952,8 +1068,16 @@ class SourceInfo {
     return syntax_version_ == other.syntax_version_ &&
            location_ == other.location_ &&
            line_offsets_ == other.line_offsets_ &&
-           positions_ == other.positions_ && macro_calls_ == other.macro_calls_;
+           positions_ == other.positions_ &&
+           macro_calls_ == other.macro_calls_ &&
+           extensions_ == other.extensions_;
   }
+
+  bool operator!=(const SourceInfo& other) const { return !operator==(other); }
+
+  const std::vector<Extension>& extensions() const { return extensions_; }
+
+  std::vector<Extension>& mutable_extensions() { return extensions_; }
 
   SourceInfo DeepCopy() const;
 
@@ -991,6 +1115,15 @@ class SourceInfo {
   // in the map corresponds to the expression id of the expanded macro, and the
   // value is the call `Expr` that was replaced.
   absl::flat_hash_map<int64_t, Expr> macro_calls_;
+
+  // A list of tags for extensions that were used while parsing or type checking
+  // the source expression. For example, optimizations that require special
+  // runtime support may be specified.
+  //
+  // These are used to check feature support between components in separate
+  // implementations. This can be used to either skip redundant work or
+  // report an error if the extension is unsupported.
+  std::vector<Extension> extensions_;
 };
 
 // Analogous to google::api::expr::v1alpha1::ParsedExpr

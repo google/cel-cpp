@@ -669,6 +669,49 @@ TEST(AstTest, NestedTypeKindCopyAssignable) {
   EXPECT_EQ(function_type2, function_type);
 }
 
+TEST(AstTest, ExtensionSupported) {
+  SourceInfo source_info;
+
+  source_info.mutable_extensions().push_back(
+      Extension("constant_folding", nullptr, {}));
+
+  EXPECT_EQ(source_info.extensions()[0],
+            Extension("constant_folding", nullptr, {}));
+}
+
+TEST(AstTest, ExtensionEquality) {
+  Extension extension1("constant_folding", nullptr, {});
+
+  EXPECT_EQ(extension1, Extension("constant_folding", nullptr, {}));
+
+  EXPECT_NE(extension1,
+            Extension("constant_folding",
+                      std::make_unique<Extension::Version>(1, 0), {}));
+  EXPECT_NE(extension1, Extension("constant_folding", nullptr,
+                                  {Extension::Component::kRuntime}));
+
+  EXPECT_EQ(extension1,
+            Extension("constant_folding",
+                      std::make_unique<Extension::Version>(0, 0), {}));
+}
+
+TEST(AstTest, ExtensionsCopyable) {
+  SourceInfo source_info;
+
+  source_info.mutable_extensions().push_back(Extension(
+      "extension", std::make_unique<Extension::Version>(1, 2),
+      {Extension::Component::kTypeChecker, Extension::Component::kRuntime}));
+
+  SourceInfo source_info_copy = source_info.DeepCopy();
+
+  EXPECT_EQ(source_info_copy, source_info);
+
+  EXPECT_EQ(source_info_copy.extensions()[0],
+            Extension("extension", std::make_unique<Extension::Version>(1, 2),
+                      {Extension::Component::kTypeChecker,
+                       Extension::Component::kRuntime}));
+}
+
 }  // namespace
 }  // namespace ast_internal
 }  // namespace cel
