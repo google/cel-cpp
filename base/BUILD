@@ -83,26 +83,11 @@ cc_test(
 cc_library(
     name = "data",
     hdrs = [
-        "type.h",
         "type_provider.h",
-        "value.h",
     ],
     deps = [
-        "//common:type",
         "//common:value",
     ],
-)
-
-alias(
-    name = "type",
-    actual = ":data",
-    deprecation = "Use :data instead.",
-)
-
-alias(
-    name = "value",
-    actual = ":data",
-    deprecation = "Use :data instead.",
 )
 
 cc_library(
