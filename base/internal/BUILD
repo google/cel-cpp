@@ -64,7 +64,6 @@ cc_library(
         "function_adapter.h",
     ],
     deps = [
-        "//base:data",
         "//base:kind",
         "//common:casting",
         "//common:value",

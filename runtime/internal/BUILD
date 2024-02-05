@@ -94,7 +94,6 @@ cc_library(
     srcs = ["convert_constant.cc"],
     hdrs = ["convert_constant.h"],
     deps = [
-        "//base:data",
         "//base/ast_internal:expr",
         "//common:value",
         "//eval/internal:errors",

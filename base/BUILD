@@ -84,12 +84,8 @@ cc_library(
     name = "data",
     hdrs = [
         "type.h",
-        "type_factory.h",
-        "type_manager.h",
         "type_provider.h",
         "value.h",
-        "value_factory.h",
-        "value_manager.h",
     ],
     deps = [
         "//common:type",
@@ -115,7 +111,6 @@ cc_library(
         "function.h",
     ],
     deps = [
-        ":data",
         "//common:value",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",

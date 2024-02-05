@@ -25,9 +25,9 @@
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
 #include "base/kind.h"
-#include "base/value_factory.h"
 #include "common/casting.h"
 #include "common/value.h"
+#include "common/value_manager.h"
 #include "internal/status_macros.h"
 
 namespace cel::internal {

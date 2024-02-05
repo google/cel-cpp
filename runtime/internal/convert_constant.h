@@ -16,7 +16,6 @@
 
 #include "absl/status/statusor.h"
 #include "base/ast_internal/expr.h"
-#include "base/value_factory.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 
