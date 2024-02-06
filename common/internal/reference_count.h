@@ -22,12 +22,12 @@
 
 #include <atomic>
 #include <cstdint>
-#include <memory>
 #include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
+#include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 
 namespace cel::common_internal {
@@ -41,13 +41,12 @@ inline constexpr AdoptRef kAdoptRef{};
 class ReferenceCount;
 struct ReferenceCountFromThis;
 
-void SetReferenceCountForThat(
-    ReferenceCountFromThis& that,
-    absl::Nullable<ReferenceCount*> refcount) noexcept;
+void SetReferenceCountForThat(ReferenceCountFromThis& that,
+                              absl::Nullable<ReferenceCount*> refcount);
 
 ABSL_ATTRIBUTE_PURE_FUNCTION
 absl::Nullable<ReferenceCount*> GetReferenceCountForThat(
-    const ReferenceCountFromThis& that) noexcept;
+    const ReferenceCountFromThis& that);
 
 // `ReferenceCountFromThis` is similar to `std::enable_shared_from_this`. It
 // allows the derived object to inspect its own reference count. It should not
@@ -56,10 +55,9 @@ absl::Nullable<ReferenceCount*> GetReferenceCountForThat(
 struct ReferenceCountFromThis {
  private:
   friend void SetReferenceCountForThat(
-      ReferenceCountFromThis& that,
-      absl::Nullable<ReferenceCount*> refcount) noexcept;
+      ReferenceCountFromThis& that, absl::Nullable<ReferenceCount*> refcount);
   friend absl::Nullable<ReferenceCount*> GetReferenceCountForThat(
-      const ReferenceCountFromThis& that) noexcept;
+      const ReferenceCountFromThis& that);
 
   static constexpr uintptr_t kNullPtr = uintptr_t{0};
   static constexpr uintptr_t kSentinelPtr = ~kNullPtr;
@@ -67,54 +65,53 @@ struct ReferenceCountFromThis {
   absl::Nullable<void*> refcount = reinterpret_cast<void*>(kSentinelPtr);
 };
 
-inline void SetReferenceCountForThat(
-    ReferenceCountFromThis& that,
-    absl::Nullable<ReferenceCount*> refcount) noexcept {
+inline void SetReferenceCountForThat(ReferenceCountFromThis& that,
+                                     absl::Nullable<ReferenceCount*> refcount) {
   ABSL_DCHECK_EQ(that.refcount,
                  reinterpret_cast<void*>(ReferenceCountFromThis::kSentinelPtr));
   that.refcount = static_cast<void*>(refcount);
 }
 
 inline absl::Nullable<ReferenceCount*> GetReferenceCountForThat(
-    const ReferenceCountFromThis& that) noexcept {
+    const ReferenceCountFromThis& that) {
   ABSL_DCHECK_NE(that.refcount,
                  reinterpret_cast<void*>(ReferenceCountFromThis::kSentinelPtr));
   return static_cast<ReferenceCount*>(that.refcount);
 }
 
-void StrongRef(const ReferenceCount& refcount) noexcept;
+void StrongRef(const ReferenceCount& refcount);
 
-void StrongRef(absl::Nullable<const ReferenceCount*> refcount) noexcept;
+void StrongRef(absl::Nullable<const ReferenceCount*> refcount);
 
-void StrongUnref(const ReferenceCount& refcount) noexcept;
+void StrongUnref(const ReferenceCount& refcount);
 
-void StrongUnref(absl::Nullable<const ReferenceCount*> refcount) noexcept;
-
-ABSL_MUST_USE_RESULT
-bool StrengthenRef(const ReferenceCount& refcount) noexcept;
+void StrongUnref(absl::Nullable<const ReferenceCount*> refcount);
 
 ABSL_MUST_USE_RESULT
-bool StrengthenRef(absl::Nullable<const ReferenceCount*> refcount) noexcept;
-
-void WeakRef(const ReferenceCount& refcount) noexcept;
-
-void WeakRef(absl::Nullable<const ReferenceCount*> refcount) noexcept;
-
-void WeakUnref(const ReferenceCount& refcount) noexcept;
-
-void WeakUnref(absl::Nullable<const ReferenceCount*> refcount) noexcept;
+bool StrengthenRef(const ReferenceCount& refcount);
 
 ABSL_MUST_USE_RESULT
-bool IsUniqueRef(const ReferenceCount& refcount) noexcept;
+bool StrengthenRef(absl::Nullable<const ReferenceCount*> refcount);
+
+void WeakRef(const ReferenceCount& refcount);
+
+void WeakRef(absl::Nullable<const ReferenceCount*> refcount);
+
+void WeakUnref(const ReferenceCount& refcount);
+
+void WeakUnref(absl::Nullable<const ReferenceCount*> refcount);
 
 ABSL_MUST_USE_RESULT
-bool IsUniqueRef(absl::Nullable<const ReferenceCount*> refcount) noexcept;
+bool IsUniqueRef(const ReferenceCount& refcount);
 
 ABSL_MUST_USE_RESULT
-bool IsExpiredRef(const ReferenceCount& refcount) noexcept;
+bool IsUniqueRef(absl::Nullable<const ReferenceCount*> refcount);
 
 ABSL_MUST_USE_RESULT
-bool IsExpiredRef(absl::Nullable<const ReferenceCount*> refcount) noexcept;
+bool IsExpiredRef(const ReferenceCount& refcount);
+
+ABSL_MUST_USE_RESULT
+bool IsExpiredRef(absl::Nullable<const ReferenceCount*> refcount);
 
 // `ReferenceCount` is similar to the control block used by `std::shared_ptr`.
 // It is not meant to be interacted with directly in most cases, instead
@@ -131,26 +128,37 @@ class ReferenceCount {
   virtual ~ReferenceCount() = default;
 
  private:
-  friend void StrongRef(const ReferenceCount& refcount) noexcept;
-  friend void StrongUnref(const ReferenceCount& refcount) noexcept;
-  friend bool StrengthenRef(const ReferenceCount& refcount) noexcept;
-  friend void WeakRef(const ReferenceCount& refcount) noexcept;
-  friend void WeakUnref(const ReferenceCount& refcount) noexcept;
-  friend bool IsUniqueRef(const ReferenceCount& refcount) noexcept;
-  friend bool IsExpiredRef(const ReferenceCount& refcount) noexcept;
+  friend void StrongRef(const ReferenceCount& refcount);
+  friend void StrongUnref(const ReferenceCount& refcount);
+  friend bool StrengthenRef(const ReferenceCount& refcount);
+  friend void WeakRef(const ReferenceCount& refcount);
+  friend void WeakUnref(const ReferenceCount& refcount);
+  friend bool IsUniqueRef(const ReferenceCount& refcount);
+  friend bool IsExpiredRef(const ReferenceCount& refcount);
 
-  virtual void Finalize() const noexcept = 0;
+  virtual void Finalize() noexcept = 0;
+
+  virtual void Delete() noexcept = 0;
 
   mutable std::atomic<int32_t> strong_refcount_ = 1;
   mutable std::atomic<int32_t> weak_refcount_ = 1;
 };
 
+// `ReferenceCounted` is a base class for classes which should be reference
+// counted. It provides default implementations for `Finalize()` and `Delete()`.
+class ReferenceCounted : public ReferenceCount {
+ private:
+  void Finalize() noexcept override {}
+
+  void Delete() noexcept override { delete this; }
+};
+
 template <typename T>
-class InlinedReferenceCount final : public ReferenceCount {
+class InlinedReferenceCount final : public ReferenceCounted {
  public:
   template <typename... Args>
   explicit InlinedReferenceCount(std::in_place_t, Args&&... args)
-      : ReferenceCount() {
+      : ReferenceCounted() {
     ::new (static_cast<void*>(value())) T(std::forward<Args>(args)...);
   }
 
@@ -163,7 +171,7 @@ class InlinedReferenceCount final : public ReferenceCount {
   }
 
  private:
-  void Finalize() const noexcept override { value()->~T(); }
+  void Finalize() noexcept override { value()->~T(); }
 
   // We store the instance of `T` in a char buffer and use placement new and
   // direct calls to the destructor. The reason for this is `Finalize()` is
@@ -187,36 +195,35 @@ std::pair<absl::Nonnull<T*>, absl::Nonnull<ReferenceCount*>> MakeReferenceCount(
                         static_cast<ReferenceCount*>(refcount));
 }
 
-inline void StrongRef(const ReferenceCount& refcount) noexcept {
+inline void StrongRef(const ReferenceCount& refcount) {
   const auto count =
       refcount.strong_refcount_.fetch_add(1, std::memory_order_relaxed);
   ABSL_DCHECK_GT(count, 0);
 }
 
-inline void StrongRef(absl::Nullable<const ReferenceCount*> refcount) noexcept {
+inline void StrongRef(absl::Nullable<const ReferenceCount*> refcount) {
   if (refcount != nullptr) {
     StrongRef(*refcount);
   }
 }
 
-inline void StrongUnref(const ReferenceCount& refcount) noexcept {
+inline void StrongUnref(const ReferenceCount& refcount) {
   const auto count =
       refcount.strong_refcount_.fetch_sub(1, std::memory_order_acq_rel);
   ABSL_DCHECK_GT(count, 0);
-  if (count == 1) {
+  if (ABSL_PREDICT_FALSE(count == 1)) {
     const_cast<ReferenceCount&>(refcount).Finalize();
     WeakUnref(refcount);
   }
 }
 
-inline void StrongUnref(
-    absl::Nullable<const ReferenceCount*> refcount) noexcept {
+inline void StrongUnref(absl::Nullable<const ReferenceCount*> refcount) {
   if (refcount != nullptr) {
     StrongUnref(*refcount);
   }
 }
 
-inline bool StrengthenRef(const ReferenceCount& refcount) noexcept {
+inline bool StrengthenRef(const ReferenceCount& refcount) {
   auto count = refcount.strong_refcount_.load(std::memory_order_relaxed);
   while (true) {
     ABSL_DCHECK_GE(count, 0);
@@ -231,57 +238,54 @@ inline bool StrengthenRef(const ReferenceCount& refcount) noexcept {
   }
 }
 
-inline bool StrengthenRef(
-    absl::Nullable<const ReferenceCount*> refcount) noexcept {
+inline bool StrengthenRef(absl::Nullable<const ReferenceCount*> refcount) {
   return refcount != nullptr ? StrengthenRef(*refcount) : false;
 }
 
-inline void WeakRef(const ReferenceCount& refcount) noexcept {
+inline void WeakRef(const ReferenceCount& refcount) {
   const auto count =
       refcount.weak_refcount_.fetch_add(1, std::memory_order_relaxed);
   ABSL_DCHECK_GT(count, 0);
 }
 
-inline void WeakRef(absl::Nullable<const ReferenceCount*> refcount) noexcept {
+inline void WeakRef(absl::Nullable<const ReferenceCount*> refcount) {
   if (refcount != nullptr) {
     WeakRef(*refcount);
   }
 }
 
-inline void WeakUnref(const ReferenceCount& refcount) noexcept {
+inline void WeakUnref(const ReferenceCount& refcount) {
   const auto count =
       refcount.weak_refcount_.fetch_sub(1, std::memory_order_acq_rel);
   ABSL_DCHECK_GT(count, 0);
-  if (count == 1) {
-    delete std::addressof(refcount);
+  if (ABSL_PREDICT_FALSE(count == 1)) {
+    const_cast<ReferenceCount&>(refcount).Delete();
   }
 }
 
-inline void WeakUnref(absl::Nullable<const ReferenceCount*> refcount) noexcept {
+inline void WeakUnref(absl::Nullable<const ReferenceCount*> refcount) {
   if (refcount != nullptr) {
     WeakUnref(*refcount);
   }
 }
 
-inline bool IsUniqueRef(const ReferenceCount& refcount) noexcept {
+inline bool IsUniqueRef(const ReferenceCount& refcount) {
   const auto count = refcount.strong_refcount_.load(std::memory_order_acquire);
   ABSL_DCHECK_GT(count, 0);
   return count == 1;
 }
 
-inline bool IsUniqueRef(
-    absl::Nullable<const ReferenceCount*> refcount) noexcept {
+inline bool IsUniqueRef(absl::Nullable<const ReferenceCount*> refcount) {
   return refcount != nullptr ? IsUniqueRef(*refcount) : false;
 }
 
-inline bool IsExpiredRef(const ReferenceCount& refcount) noexcept {
+inline bool IsExpiredRef(const ReferenceCount& refcount) {
   const auto count = refcount.strong_refcount_.load(std::memory_order_acquire);
   ABSL_DCHECK_GE(count, 0);
   return count == 0;
 }
 
-inline bool IsExpiredRef(
-    absl::Nullable<const ReferenceCount*> refcount) noexcept {
+inline bool IsExpiredRef(absl::Nullable<const ReferenceCount*> refcount) {
   return refcount != nullptr ? IsExpiredRef(*refcount) : false;
 }
 

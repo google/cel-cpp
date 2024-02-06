@@ -359,7 +359,7 @@ OptionalValueView ValueFactory::GetZeroDynOptionalValue() {
 
 namespace {
 
-class ReferenceCountedString final : public common_internal::ReferenceCount {
+class ReferenceCountedString final : public common_internal::ReferenceCounted {
  public:
   static const ReferenceCountedString* New(std::string&& string) {
     return new ReferenceCountedString(std::move(string));
@@ -376,13 +376,12 @@ class ReferenceCountedString final : public common_internal::ReferenceCount {
   }
 
  private:
-  explicit ReferenceCountedString(std::string&& robbed) : ReferenceCount() {
+  explicit ReferenceCountedString(std::string&& robbed) : ReferenceCounted() {
     ::new (static_cast<void*>(&string_[0])) std::string(std::move(robbed));
   }
 
-  void Finalize() const noexcept override {
-    std::launder(const_cast<std::string*>(
-                     reinterpret_cast<const std::string*>(&string_[0])))
+  void Finalize() noexcept override {
+    std::launder(reinterpret_cast<const std::string*>(&string_[0]))
         ->~basic_string();
   }
 

@@ -31,16 +31,16 @@ using testing::IsEmpty;
 using testing::Ne;
 using testing::Not;
 
-class OwningObject final : public ReferenceCount {
+class OwningObject final : public ReferenceCounted {
  public:
   explicit OwningObject(std::string string) : string_(std::move(string)) {}
 
   absl::string_view owned_string() const { return string_; }
 
  private:
-  void Finalize() const noexcept override { std::string().swap(string_); }
+  void Finalize() noexcept override { std::string().swap(string_); }
 
-  mutable std::string string_;
+  std::string string_;
 };
 
 TEST(SharedByteString, DefaultConstructor) {
