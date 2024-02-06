@@ -17,13 +17,6 @@ package(default_visibility = ["//visibility:public"])
 licenses(["notice"])
 
 cc_library(
-    name = "memory_manager",
-    hdrs = [
-        "memory_manager.h",
-    ],
-)
-
-cc_library(
     name = "memory_manager_testing",
     testonly = True,
     srcs = ["memory_manager_testing.cc"],
