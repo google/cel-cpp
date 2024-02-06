@@ -40,14 +40,12 @@ TEST(Kind, ToString) {
   EXPECT_EQ(KindToString(Kind::kDouble), "double");
   EXPECT_EQ(KindToString(Kind::kString), "string");
   EXPECT_EQ(KindToString(Kind::kBytes), "bytes");
-  EXPECT_EQ(KindToString(Kind::kEnum), "enum");
   EXPECT_EQ(KindToString(Kind::kDuration), "duration");
   EXPECT_EQ(KindToString(Kind::kTimestamp), "timestamp");
   EXPECT_EQ(KindToString(Kind::kList), "list");
   EXPECT_EQ(KindToString(Kind::kMap), "map");
   EXPECT_EQ(KindToString(Kind::kStruct), "struct");
   EXPECT_EQ(KindToString(Kind::kUnknown), "*unknown*");
-  EXPECT_EQ(KindToString(Kind::kWrapper), "*wrapper*");
   EXPECT_EQ(KindToString(Kind::kOpaque), "*opaque*");
   EXPECT_EQ(KindToString(Kind::kBoolWrapper), "google.protobuf.BoolValue");
   EXPECT_EQ(KindToString(Kind::kIntWrapper), "google.protobuf.Int64Value");
@@ -71,14 +69,12 @@ TEST(Kind, IsTypeKind) {
   EXPECT_TRUE(KindIsTypeKind(Kind::kBool));
   EXPECT_TRUE(KindIsTypeKind(Kind::kAny));
   EXPECT_TRUE(KindIsTypeKind(Kind::kDyn));
-  EXPECT_TRUE(KindIsTypeKind(Kind::kWrapper));
 }
 
 TEST(Kind, IsValueKind) {
   EXPECT_TRUE(KindIsValueKind(Kind::kBool));
   EXPECT_FALSE(KindIsValueKind(Kind::kAny));
   EXPECT_FALSE(KindIsValueKind(Kind::kDyn));
-  EXPECT_FALSE(KindIsValueKind(Kind::kWrapper));
 }
 
 TEST(Kind, Equality) {

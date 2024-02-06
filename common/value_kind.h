@@ -42,7 +42,6 @@ enum class ValueKind : std::underlying_type_t<Kind> {
   kUnknown = static_cast<int>(Kind::kUnknown),
   kType = static_cast<int>(Kind::kType),
   kError = static_cast<int>(Kind::kError),
-  kEnum = static_cast<int>(Kind::kEnum),
   kOpaque = static_cast<int>(Kind::kOpaque),
 
   // Legacy aliases, deprecated do not use.
@@ -65,7 +64,10 @@ constexpr Kind ValueKindToKind(ValueKind kind) {
 }
 
 constexpr bool KindIsValueKind(Kind kind) {
-  return kind != Kind::kWrapper && kind != Kind::kDyn && kind != Kind::kAny;
+  return kind != Kind::kBoolWrapper && kind != Kind::kIntWrapper &&
+         kind != Kind::kUintWrapper && kind != Kind::kDoubleWrapper &&
+         kind != Kind::kStringWrapper && kind != Kind::kBytesWrapper &&
+         kind != Kind::kDyn && kind != Kind::kAny;
 }
 
 constexpr bool operator==(Kind lhs, ValueKind rhs) {

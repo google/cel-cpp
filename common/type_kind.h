@@ -44,9 +44,7 @@ enum class TypeKind : std::underlying_type_t<Kind> {
   kType = static_cast<int>(Kind::kType),
   kError = static_cast<int>(Kind::kError),
   kAny = static_cast<int>(Kind::kAny),
-  kEnum = static_cast<int>(Kind::kEnum),
   kDyn = static_cast<int>(Kind::kDyn),
-  kWrapper = static_cast<int>(Kind::kWrapper),
   kOpaque = static_cast<int>(Kind::kOpaque),
 
   kBoolWrapper = static_cast<int>(Kind::kBoolWrapper),

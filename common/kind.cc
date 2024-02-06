@@ -40,8 +40,6 @@ absl::string_view KindToString(Kind kind) {
       return "string";
     case Kind::kBytes:
       return "bytes";
-    case Kind::kEnum:
-      return "enum";
     case Kind::kDuration:
       return "duration";
     case Kind::kTimestamp:
@@ -54,8 +52,6 @@ absl::string_view KindToString(Kind kind) {
       return "struct";
     case Kind::kUnknown:
       return "*unknown*";
-    case Kind::kWrapper:
-      return "*wrapper*";
     case Kind::kOpaque:
       return "*opaque*";
     case Kind::kBoolWrapper:

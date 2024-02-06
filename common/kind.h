@@ -40,9 +40,7 @@ enum class Kind /* : uint8_t */ {
   kAny,
 
   // New kinds not present in legacy CelValue.
-  kEnum,
   kDyn,
-  kWrapper,
   kOpaque,
 
   kBoolWrapper,
