@@ -1290,5 +1290,42 @@ INSTANTIATE_TEST_SUITE_P(
          {R"cel({?"abc": {}[?1]}.?abc.orValue(42) == 42)cel"},
          {R"cel([1, 2, ?optional.none()].size() == 2)cel"}}));
 
+TEST(ExtensionConversionRoundTripTest, RoundTrip) {
+  ParsedExprPb parsed_expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr {
+          id: 1
+          ident_expr { name: "unused" }
+        }
+        source_info {
+          extensions {
+            id: "extension"
+            version { major: 1 minor: 2 }
+            affected_components: COMPONENT_UNSPECIFIED
+            affected_components: COMPONENT_PARSER
+            affected_components: COMPONENT_TYPE_CHECKER
+            affected_components: COMPONENT_RUNTIME
+          }
+        }
+      )pb",
+      &parsed_expr));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> ast,
+                       CreateAstFromParsedExpr(parsed_expr));
+
+  const auto& impl = ast_internal::AstImpl::CastFromPublicAst(*ast);
+  ast_internal::AstImpl copy_of_impl = impl.DeepCopy();
+
+  EXPECT_EQ(copy_of_impl.root_expr(), impl.root_expr());
+  EXPECT_EQ(copy_of_impl.source_info(), impl.source_info());
+
+  EXPECT_THAT(CreateCheckedExprFromAst(copy_of_impl),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("AST is not type-checked")));
+  EXPECT_THAT(CreateParsedExprFromAst(copy_of_impl),
+              IsOkAndHolds(EqualsProto(parsed_expr)));
+}
+
 }  // namespace
 }  // namespace cel::extensions

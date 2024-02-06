@@ -1015,12 +1015,14 @@ class SourceInfo {
   SourceInfo(std::string syntax_version, std::string location,
              std::vector<int32_t> line_offsets,
              absl::flat_hash_map<int64_t, int32_t> positions,
-             absl::flat_hash_map<int64_t, Expr> macro_calls)
+             absl::flat_hash_map<int64_t, Expr> macro_calls,
+             std::vector<Extension> extensions)
       : syntax_version_(std::move(syntax_version)),
         location_(std::move(location)),
         line_offsets_(std::move(line_offsets)),
         positions_(std::move(positions)),
-        macro_calls_(std::move(macro_calls)) {}
+        macro_calls_(std::move(macro_calls)),
+        extensions_(std::move(extensions)) {}
 
   void set_syntax_version(std::string syntax_version) {
     syntax_version_ = std::move(syntax_version);

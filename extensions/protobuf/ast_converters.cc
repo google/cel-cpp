@@ -56,6 +56,7 @@ using ::cel::ast_internal::CreateStruct;
 using ::cel::ast_internal::DynamicType;
 using ::cel::ast_internal::ErrorType;
 using ::cel::ast_internal::Expr;
+using ::cel::ast_internal::Extension;
 using ::cel::ast_internal::FunctionType;
 using ::cel::ast_internal::Ident;
 using ::cel::ast_internal::ListType;
@@ -75,6 +76,7 @@ using ::cel::ast_internal::WellKnownType;
 using ExprPb = google::api::expr::v1alpha1::Expr;
 using ParsedExprPb = google::api::expr::v1alpha1::ParsedExpr;
 using CheckedExprPb = google::api::expr::v1alpha1::CheckedExpr;
+using ExtensionPb = google::api::expr::v1alpha1::SourceInfo::Extension;
 
 struct ConversionStackEntry {
   absl::Nonnull<Expr*> expr;
@@ -331,13 +333,40 @@ absl::StatusOr<SourceInfo> ConvertProtoSourceInfoToNative(
     }
     macro_calls.emplace(pair.first, *(std::move(native_expr)));
   }
+  std::vector<Extension> extensions;
+  extensions.reserve(source_info.extensions_size());
+  for (const auto& extension : source_info.extensions()) {
+    std::vector<Extension::Component> components;
+    components.reserve(extension.affected_components().size());
+    for (const auto& component : extension.affected_components()) {
+      switch (component) {
+        case ExtensionPb::COMPONENT_PARSER:
+          components.push_back(Extension::Component::kParser);
+          break;
+        case ExtensionPb::COMPONENT_TYPE_CHECKER:
+          components.push_back(Extension::Component::kTypeChecker);
+          break;
+        case ExtensionPb::COMPONENT_RUNTIME:
+          components.push_back(Extension::Component::kRuntime);
+          break;
+        default:
+          components.push_back(Extension::Component::kUnspecified);
+          break;
+      }
+    }
+    extensions.push_back(
+        Extension(extension.id(),
+                  std::make_unique<Extension::Version>(
+                      extension.version().major(), extension.version().minor()),
+                  std::move(components)));
+  }
   return SourceInfo(
       source_info.syntax_version(), source_info.location(),
       std::vector<int32_t>(source_info.line_offsets().begin(),
                            source_info.line_offsets().end()),
       absl::flat_hash_map<int64_t, int32_t>(source_info.positions().begin(),
                                             source_info.positions().end()),
-      std::move(macro_calls));
+      std::move(macro_calls), std::move(extensions));
 }
 
 absl::StatusOr<ParsedExpr> ConvertProtoParsedExprToNative(
@@ -592,6 +621,7 @@ using ::cel::ast_internal::CreateStruct;
 using ::cel::ast_internal::DynamicType;
 using ::cel::ast_internal::ErrorType;
 using ::cel::ast_internal::Expr;
+using ::cel::ast_internal::Extension;
 using ::cel::ast_internal::FunctionType;
 using ::cel::ast_internal::Ident;
 using ::cel::ast_internal::ListType;
@@ -611,6 +641,7 @@ using ExprPb = google::api::expr::v1alpha1::Expr;
 using ParsedExprPb = google::api::expr::v1alpha1::ParsedExpr;
 using CheckedExprPb = google::api::expr::v1alpha1::CheckedExpr;
 using SourceInfoPb = google::api::expr::v1alpha1::SourceInfo;
+using ExtensionPb = google::api::expr::v1alpha1::SourceInfo::Extension;
 using ReferencePb = google::api::expr::v1alpha1::Reference;
 using TypePb = google::api::expr::v1alpha1::Type;
 
@@ -794,6 +825,33 @@ absl::StatusOr<SourceInfoPb> SourceInfoToProto(const SourceInfo& source_info) {
        macro_iter != source_info.macro_calls().end(); ++macro_iter) {
     ExprPb& dest_macro = (*result.mutable_macro_calls())[macro_iter->first];
     CEL_ASSIGN_OR_RETURN(dest_macro, ExprToProto(macro_iter->second));
+  }
+
+  for (const auto& extension : source_info.extensions()) {
+    auto* extension_pb = result.add_extensions();
+    extension_pb->set_id(extension.id());
+    auto* version_pb = extension_pb->mutable_version();
+    version_pb->set_major(extension.version().major());
+    version_pb->set_minor(extension.version().minor());
+
+    for (auto component : extension.affected_components()) {
+      switch (component) {
+        case Extension::Component::kParser:
+          extension_pb->add_affected_components(ExtensionPb::COMPONENT_PARSER);
+          break;
+        case Extension::Component::kTypeChecker:
+          extension_pb->add_affected_components(
+              ExtensionPb::COMPONENT_TYPE_CHECKER);
+          break;
+        case Extension::Component::kRuntime:
+          extension_pb->add_affected_components(ExtensionPb::COMPONENT_RUNTIME);
+          break;
+        default:
+          extension_pb->add_affected_components(
+              ExtensionPb::COMPONENT_UNSPECIFIED);
+          break;
+      }
+    }
   }
 
   return result;
