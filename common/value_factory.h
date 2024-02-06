@@ -35,8 +35,6 @@ namespace cel {
 // `ValueFactory` is the preferred way for constructing values.
 class ValueFactory : public virtual TypeFactory {
  public:
-  TypeFactory& type_factory() { return *this; }
-
   // `CreateValueFromJson` constructs a new `Value` that is equivalent to the
   // JSON value `json`.
   Value CreateValueFromJson(Json json);

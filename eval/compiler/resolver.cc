@@ -178,9 +178,8 @@ absl::StatusOr<absl::optional<std::pair<std::string, cel::Type>>>
 Resolver::FindType(absl::string_view name, int64_t expr_id) const {
   auto qualified_names = FullyQualifiedNames(name, expr_id);
   for (auto& qualified_name : qualified_names) {
-    CEL_ASSIGN_OR_RETURN(
-        auto maybe_type,
-        value_factory_.type_manager().FindType(qualified_name));
+    CEL_ASSIGN_OR_RETURN(auto maybe_type,
+                         value_factory_.FindType(qualified_name));
     if (maybe_type.has_value()) {
       return std::make_pair(std::move(qualified_name), std::move(*maybe_type));
     }

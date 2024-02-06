@@ -33,8 +33,6 @@ namespace cel {
 // `TypeReflector` which combines the two and adds additional functionality.
 class ValueManager : public virtual ValueFactory, public virtual TypeManager {
  public:
-  TypeManager& type_manager() { return *this; }
-
   const TypeReflector& type_provider() const { return GetTypeReflector(); }
 
   // See `TypeReflector::NewListValueBuilder`.

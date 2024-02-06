@@ -32,12 +32,6 @@ class TypeManager : public virtual TypeFactory {
  public:
   virtual ~TypeManager() = default;
 
-  TypeFactory& type_factory() { return *this; }
-
-  const TypeIntrospector& type_provider() const {
-    return GetTypeIntrospector();
-  }
-
   // See `TypeIntrospector::FindType`.
   absl::StatusOr<absl::optional<TypeView>> FindType(
       absl::string_view name, Type& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
