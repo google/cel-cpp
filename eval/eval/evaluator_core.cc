@@ -138,7 +138,7 @@ absl::StatusOr<cel::Value> ExecutionFrame::Evaluate(
         return std::move(status).Consume();
       }
 
-      if (!expr->ComesFromAst()) {
+      if (!expr->comes_from_ast()) {
         continue;
       }
 

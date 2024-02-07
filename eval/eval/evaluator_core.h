@@ -53,6 +53,12 @@ using EvaluationListener = cel::TraceableProgram::EvaluationListener;
 // Class Expression represents single execution step.
 class ExpressionStep {
  public:
+  explicit ExpressionStep(int64_t id, bool comes_from_ast = true)
+      : id_(id), comes_from_ast_(comes_from_ast) {}
+
+  ExpressionStep(const ExpressionStep&) = delete;
+  ExpressionStep& operator=(const ExpressionStep&) = delete;
+
   virtual ~ExpressionStep() = default;
 
   // Performs actual evaluation.
@@ -70,15 +76,21 @@ class ExpressionStep {
   // expression associated (e.g. a jump step), or if there is no ID assigned to
   // the corresponding expression. Useful for error scenarios where information
   // from Expr object is needed to create CelError.
-  virtual int64_t id() const = 0;
+  int64_t id() const { return id_; }
 
   // Returns if the execution step comes from AST.
-  virtual bool ComesFromAst() const = 0;
+  bool comes_from_ast() const { return comes_from_ast_; }
 
   // Return the type of the underlying expression step for special handling in
   // the planning phase. This should only be overridden by special cases, and
   // callers must not make any assumptions about the default case.
-  virtual cel::NativeTypeId GetNativeTypeId() const = 0;
+  virtual cel::NativeTypeId GetNativeTypeId() const {
+    return cel::NativeTypeId();
+  }
+
+ private:
+  const int64_t id_;
+  const bool comes_from_ast_;
 };
 
 using ExecutionPath = std::vector<std::unique_ptr<const ExpressionStep>>;

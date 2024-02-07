@@ -31,17 +31,11 @@ using testing::Eq;
 // Pushes int64_t(0) on top of value stack.
 class FakeConstExpressionStep : public ExpressionStep {
  public:
+  FakeConstExpressionStep() : ExpressionStep(0, true) {}
+
   absl::Status Evaluate(ExecutionFrame* frame) const override {
     frame->value_stack().Push(CreateIntValue(0));
     return absl::OkStatus();
-  }
-
-  int64_t id() const override { return 0; }
-
-  bool ComesFromAst() const override { return true; }
-
-  cel::NativeTypeId GetNativeTypeId() const override {
-    return cel::NativeTypeId();
   }
 };
 
@@ -49,6 +43,8 @@ class FakeConstExpressionStep : public ExpressionStep {
 // Increments argument on top of the stack.
 class FakeIncrementExpressionStep : public ExpressionStep {
  public:
+  FakeIncrementExpressionStep() : ExpressionStep(0, true) {}
+
   absl::Status Evaluate(ExecutionFrame* frame) const override {
     auto value = frame->value_stack().Peek();
     frame->value_stack().Pop(1);
@@ -56,14 +52,6 @@ class FakeIncrementExpressionStep : public ExpressionStep {
     int64_t val = value->As<IntValue>().NativeValue();
     frame->value_stack().Push(CreateIntValue(val + 1));
     return absl::OkStatus();
-  }
-
-  int64_t id() const override { return 0; }
-
-  bool ComesFromAst() const override { return true; }
-
-  cel::NativeTypeId GetNativeTypeId() const override {
-    return cel::NativeTypeId();
   }
 };
 
