@@ -45,8 +45,8 @@ class EvaluatorStack {
   // Checking that stack has enough elements is caller's responsibility.
   // Please note that calls to Push may invalidate returned Span object.
   absl::Span<const cel::Value> GetSpan(size_t size) const {
-    if (!HasEnough(size)) {
-      ABSL_LOG(ERROR) << "Requested span size (" << size
+    if (ABSL_PREDICT_FALSE(!HasEnough(size))) {
+      ABSL_LOG(FATAL) << "Requested span size (" << size
                       << ") exceeds current stack size: " << current_size_;
     }
     return absl::Span<const cel::Value>(stack_.data() + current_size_ - size,
@@ -57,15 +57,28 @@ class EvaluatorStack {
   // Checking that stack has enough elements is caller's responsibility.
   // Please note that calls to Push may invalidate returned Span object.
   absl::Span<const AttributeTrail> GetAttributeSpan(size_t size) const {
+    if (ABSL_PREDICT_FALSE(!HasEnough(size))) {
+      ABSL_LOG(FATAL) << "Requested span size (" << size
+                      << ") exceeds current stack size: " << current_size_;
+    }
     return absl::Span<const AttributeTrail>(
         attribute_stack_.data() + current_size_ - size, size);
   }
 
   // Peeks the last element of the stack.
   // Checking that stack is not empty is caller's responsibility.
+  cel::Value& Peek() {
+    if (ABSL_PREDICT_FALSE(empty())) {
+      ABSL_LOG(FATAL) << "Peeking on empty EvaluatorStack";
+    }
+    return stack_[current_size_ - 1];
+  }
+
+  // Peeks the last element of the stack.
+  // Checking that stack is not empty is caller's responsibility.
   const cel::Value& Peek() const {
-    if (empty()) {
-      ABSL_LOG(ERROR) << "Peeking on empty EvaluatorStack";
+    if (ABSL_PREDICT_FALSE(empty())) {
+      ABSL_LOG(FATAL) << "Peeking on empty EvaluatorStack";
     }
     return stack_[current_size_ - 1];
   }
@@ -73,8 +86,8 @@ class EvaluatorStack {
   // Peeks the last element of the attribute stack.
   // Checking that stack is not empty is caller's responsibility.
   const AttributeTrail& PeekAttribute() const {
-    if (empty()) {
-      ABSL_LOG(ERROR) << "Peeking on empty EvaluatorStack";
+    if (ABSL_PREDICT_FALSE(empty())) {
+      ABSL_LOG(FATAL) << "Peeking on empty EvaluatorStack";
     }
     return attribute_stack_[current_size_ - 1];
   }
@@ -83,7 +96,7 @@ class EvaluatorStack {
   // Checking that stack has enough elements is caller's responsibility.
   void Pop(size_t size) {
     if (ABSL_PREDICT_FALSE(!HasEnough(size))) {
-      ABSL_LOG(ERROR) << "Trying to pop more elements (" << size
+      ABSL_LOG(FATAL) << "Trying to pop more elements (" << size
                       << ") than the current stack size: " << current_size_;
     }
     while (size > 0) {
