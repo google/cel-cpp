@@ -42,6 +42,7 @@ cc_library(
         "//runtime:activation_interface",
         "//runtime:managed_value_factory",
         "//runtime:runtime_options",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/status",

@@ -18,6 +18,7 @@
 #include <memory>
 #include <utility>
 
+#include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
@@ -58,53 +59,111 @@ void FlatExpressionEvaluatorState::Reset() {
 }
 
 const ExpressionStep* ExecutionFrame::Next() {
-  size_t end_pos = execution_path_.size();
+  while (true) {
+    const size_t end_pos = execution_path_.size();
 
-  if (pc_ < end_pos) return execution_path_[pc_++].get();
-  if (pc_ == end_pos && !call_stack_.empty()) {
-    pc_ = call_stack_.back().return_pc;
-    execution_path_ = call_stack_.back().return_expression;
-    ABSL_DCHECK_EQ(value_stack().size(),
-                   call_stack_.back().expected_stack_size);
-    call_stack_.pop_back();
-    return Next();
+    if (ABSL_PREDICT_TRUE(pc_ < end_pos)) {
+      const auto* step = execution_path_[pc_++].get();
+      ABSL_ASSUME(step != nullptr);
+      return step;
+    }
+    if (ABSL_PREDICT_TRUE(pc_ == end_pos)) {
+      if (!call_stack_.empty()) {
+        pc_ = call_stack_.back().return_pc;
+        execution_path_ = call_stack_.back().return_expression;
+        ABSL_DCHECK_EQ(value_stack().size(),
+                       call_stack_.back().expected_stack_size);
+        call_stack_.pop_back();
+        continue;
+      }
+    } else {
+      ABSL_LOG(ERROR) << "Attempting to step beyond the end of execution path.";
+    }
+    return nullptr;
   }
-  if (pc_ > end_pos) {
-    ABSL_LOG(ERROR) << "Attempting to step beyond the end of execution path.";
-  }
-  return nullptr;
 }
+
+namespace {
+
+// This class abuses the fact that `absl::Status` is trivially destructible when
+// `absl::Status::ok()` is `true`. If the implementation of `absl::Status` every
+// changes, LSan and ASan should catch it. We cannot deal with the cost of extra
+// move assignment and destructor calls.
+//
+// This is useful only in the evaluation loop and is a direct replacement for
+// `RETURN_IF_ERROR`. It yields the most improvements on benchmarks with lots of
+// steps which never return non-OK `absl::Status`.
+class EvaluationStatus final {
+ public:
+  explicit EvaluationStatus(absl::Status&& status) {
+    ::new (static_cast<void*>(&status_[0])) absl::Status(std::move(status));
+  }
+
+  EvaluationStatus() = delete;
+  EvaluationStatus(const EvaluationStatus&) = delete;
+  EvaluationStatus(EvaluationStatus&&) = delete;
+  EvaluationStatus& operator=(const EvaluationStatus&) = delete;
+  EvaluationStatus& operator=(EvaluationStatus&&) = delete;
+
+  absl::Status Consume() && {
+    return std::move(*reinterpret_cast<absl::Status*>(&status_[0]));
+  }
+
+  bool ok() const {
+    return ABSL_PREDICT_TRUE(
+        reinterpret_cast<const absl::Status*>(&status_[0])->ok());
+  }
+
+ private:
+  alignas(absl::Status) char status_[sizeof(absl::Status)];
+};
+
+}  // namespace
 
 absl::StatusOr<cel::Value> ExecutionFrame::Evaluate(
     EvaluationListener listener) {
-  size_t initial_stack_size = value_stack().size();
-  const ExpressionStep* expr;
+  const size_t initial_stack_size = value_stack().size();
 
-  while ((expr = Next()) != nullptr) {
-    CEL_RETURN_IF_ERROR(expr->Evaluate(this));
-
-    if (!listener ||
-        // This step was added during compilation (e.g. Int64ConstImpl).
-        !expr->ComesFromAst()) {
-      continue;
+  if (!listener) {
+    for (const ExpressionStep* expr = Next();
+         ABSL_PREDICT_TRUE(expr != nullptr); expr = Next()) {
+      if (EvaluationStatus status(expr->Evaluate(this)); !status.ok()) {
+        return std::move(status).Consume();
+      }
     }
+  } else {
+    for (const ExpressionStep* expr = Next();
+         ABSL_PREDICT_TRUE(expr != nullptr); expr = Next()) {
+      if (EvaluationStatus status(expr->Evaluate(this)); !status.ok()) {
+        return std::move(status).Consume();
+      }
 
-    if (value_stack().empty()) {
-      ABSL_LOG(ERROR) << "Stack is empty after a ExpressionStep.Evaluate. "
-                         "Try to disable short-circuiting.";
-      continue;
+      if (!expr->ComesFromAst()) {
+        continue;
+      }
+
+      if (ABSL_PREDICT_FALSE(value_stack().empty())) {
+        ABSL_LOG(ERROR) << "Stack is empty after a ExpressionStep.Evaluate. "
+                           "Try to disable short-circuiting.";
+        continue;
+      }
+      if (EvaluationStatus status(
+              listener(expr->id(), value_stack().Peek(), value_factory()));
+          !status.ok()) {
+        return std::move(status).Consume();
+      }
     }
-    CEL_RETURN_IF_ERROR(
-        listener(expr->id(), value_stack().Peek(), value_factory()));
   }
 
-  size_t final_stack_size = value_stack().size();
-  if (final_stack_size != initial_stack_size + 1 || final_stack_size == 0) {
+  const size_t final_stack_size = value_stack().size();
+  if (ABSL_PREDICT_FALSE(final_stack_size != initial_stack_size + 1 ||
+                         final_stack_size == 0)) {
     return absl::InternalError(absl::StrCat(
         "Stack error during evaluation: expected=", initial_stack_size + 1,
         ", actual=", final_stack_size));
   }
-  cel::Value value = value_stack().Peek();
+
+  cel::Value value = std::move(value_stack().Peek());
   value_stack().Pop(1);
   return value;
 }
