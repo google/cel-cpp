@@ -195,8 +195,8 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
   auto input_args = frame->value_stack().GetSpan(kNumContainerAccessArguments);
   AttributeTrail trail;
 
-  const Value container = input_args[0];
-  const Value key = input_args[1];
+  const Value& container = input_args[0];
+  const Value& key = input_args[1];
 
   if (frame->enable_unknowns()) {
     auto unknown_set = frame->attribute_utility().MergeUnknowns(input_args);
@@ -221,10 +221,13 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
     }
   }
 
-  for (const auto& value : input_args) {
-    if (value->Is<cel::ErrorValue>()) {
-      return {ValueView{value}, std::move(trail)};
-    }
+  if (container.Is<cel::ErrorValue>()) {
+    scratch = container;
+    return {ValueView{scratch}, std::move(trail)};
+  }
+  if (key.Is<cel::ErrorValue>()) {
+    scratch = key;
+    return {ValueView{scratch}, std::move(trail)};
   }
 
   // Select steps can be applied to either maps or messages
