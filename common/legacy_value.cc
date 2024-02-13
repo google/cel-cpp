@@ -963,6 +963,18 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
   return BoolValueView{false};
 }
 
+extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY bool
+cel_common_internal_LegacyStructValue_IsZeroValue(uintptr_t message_ptr,
+                                                  uintptr_t type_info) {
+  auto message_wrapper = AsMessageWrapper(message_ptr, type_info);
+  const auto* access_apis =
+      message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
+  if (ABSL_PREDICT_FALSE(access_apis == nullptr)) {
+    return false;
+  }
+  return access_apis->ListFields(message_wrapper).empty();
+}
+
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY absl::Status
 cel_common_internal_LegacyStructValue_ForEachField(
     uintptr_t message_ptr, uintptr_t type_info, ValueManager& value_manager,

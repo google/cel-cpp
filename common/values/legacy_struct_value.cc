@@ -67,6 +67,7 @@ using LegacyStructValue_HasFieldByNumber = absl::StatusOr<bool> (*)(uintptr_t,
                                                                     int64_t);
 using LegacyStructValue_Equal = absl::StatusOr<ValueView> (*)(
     uintptr_t, uintptr_t, ValueManager&, ValueView, Value&);
+using LegacyStructValue_IsZeroValue = bool (*)(uintptr_t, uintptr_t);
 using LegacyStructValue_ForEachField =
     absl::Status (*)(uintptr_t, uintptr_t, ValueManager&,
                      LegacyStructValue::ForEachFieldCallback);
@@ -87,6 +88,7 @@ ABSL_CONST_INIT struct {
   LegacyStructValue_HasFieldByName has_field_by_name = nullptr;
   LegacyStructValue_HasFieldByNumber has_field_by_number = nullptr;
   LegacyStructValue_Equal equal = nullptr;
+  LegacyStructValue_IsZeroValue is_zero_value = nullptr;
   LegacyStructValue_ForEachField for_each_field = nullptr;
   LegacyStructValue_Qualify qualify = nullptr;
 } legacy_struct_value_vtable;
@@ -133,6 +135,9 @@ cel_common_internal_LegacyStructValue_Equal(uintptr_t message_ptr,
                                             uintptr_t type_info,
                                             ValueManager& value_manager,
                                             ValueView other, Value& scratch);
+extern "C" ABSL_ATTRIBUTE_WEAK bool
+cel_common_internal_LegacyStructValue_IsZeroValue(uintptr_t message_ptr,
+                                                  uintptr_t type_info);
 extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
 cel_common_internal_LegacyStructValue_ForEachField(
     uintptr_t message_ptr, uintptr_t type_info, ValueManager& value_manager,
@@ -175,6 +180,8 @@ void InitializeLegacyStructValue() {
             cel_common_internal_LegacyStructValue_HasFieldByNumber);
     legacy_struct_value_vtable.equal = ABSL_DIE_IF_NULL(  // Crash OK
         cel_common_internal_LegacyStructValue_Equal);
+    legacy_struct_value_vtable.is_zero_value = ABSL_DIE_IF_NULL(  // Crash OK
+        cel_common_internal_LegacyStructValue_IsZeroValue);
     legacy_struct_value_vtable.for_each_field = ABSL_DIE_IF_NULL(  // Crash OK
         cel_common_internal_LegacyStructValue_ForEachField);
     legacy_struct_value_vtable.qualify = ABSL_DIE_IF_NULL(  // Crash OK
@@ -209,6 +216,8 @@ void InitializeLegacyStructValue() {
             "cel_common_internal_LegacyStructValue_HasFieldByNumber");
     legacy_struct_value_vtable.equal = symbol_finder.FindSymbolOrDie(
         "cel_common_internal_LegacyStructValue_Equal");
+    legacy_struct_value_vtable.is_zero_value = symbol_finder.FindSymbolOrDie(
+        "cel_common_internal_LegacyStructValue_IsZeroValue");
     legacy_struct_value_vtable.for_each_field = symbol_finder.FindSymbolOrDie(
         "cel_common_internal_LegacyStructValue_ForEachField");
     legacy_struct_value_vtable.qualify = symbol_finder.FindSymbolOrDie(
@@ -284,6 +293,11 @@ absl::StatusOr<ValueView> LegacyStructValue::Equal(ValueManager& value_manager,
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.equal)(message_ptr_, type_info_,
                                              value_manager, other, scratch);
+}
+
+bool LegacyStructValue::IsZeroValue() const {
+  InitializeLegacyStructValue();
+  return (*legacy_struct_value_vtable.is_zero_value)(message_ptr_, type_info_);
 }
 
 absl::StatusOr<ValueView> LegacyStructValue::GetFieldByName(
@@ -396,6 +410,11 @@ absl::StatusOr<ValueView> LegacyStructValueView::Equal(
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.equal)(message_ptr_, type_info_,
                                              value_manager, other, scratch);
+}
+
+bool LegacyStructValueView::IsZeroValue() const {
+  InitializeLegacyStructValue();
+  return (*legacy_struct_value_vtable.is_zero_value)(message_ptr_, type_info_);
 }
 
 absl::StatusOr<ValueView> LegacyStructValueView::GetFieldByName(
