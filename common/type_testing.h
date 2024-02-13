@@ -33,8 +33,7 @@ class ThreadCompatibleTypeTest : public ThreadCompatibleMemoryTest<Ts...> {
   void SetUp() override {
     Base::SetUp();
     type_manager_ = NewThreadCompatibleTypeManager(
-        this->memory_manager(),
-        NewThreadCompatibleTypeIntrospector(this->memory_manager()));
+        this->memory_manager(), NewTypeIntrospector(this->memory_manager()));
   }
 
   void TearDown() override {
@@ -47,6 +46,11 @@ class ThreadCompatibleTypeTest : public ThreadCompatibleMemoryTest<Ts...> {
   TypeFactory& type_factory() const { return type_manager(); }
 
  private:
+  virtual Shared<TypeIntrospector> NewTypeIntrospector(
+      MemoryManagerRef memory_manager) {
+    return NewThreadCompatibleTypeIntrospector(this->memory_manager());
+  }
+
   absl::optional<Shared<TypeManager>> type_manager_;
 };
 
