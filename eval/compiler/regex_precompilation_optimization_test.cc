@@ -86,11 +86,11 @@ TEST_F(RegexPrecompilationExtensionTest, SmokeTest) {
   ProgramOptimizerFactory factory =
       CreateRegexPrecompilationExtension(options_.regex_max_program_size);
   ExecutionPath path;
-  PlannerContext::ProgramTree program_tree;
+  ProgramBuilder program_builder;
   CheckedExpr expr;
   cel::ast_internal::AstImpl ast_impl(std::move(expr));
   PlannerContext context(resolver_, runtime_options_, value_factory_,
-                         issue_collector_, path, program_tree);
+                         issue_collector_, program_builder);
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> optimizer,
                        factory(context, ast_impl));

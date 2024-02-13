@@ -16,15 +16,21 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "base/ast_internal/expr.h"
+#include "common/memory.h"
+#include "common/value_manager.h"
+#include "common/values/legacy_value_manager.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/evaluator_core.h"
+#include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "runtime/function_registry.h"
 #include "runtime/internal/issue_collector.h"
 #include "runtime/runtime_issue.h"
 #include "runtime/runtime_options.h"
+#include "runtime/type_registry.h"
 
 namespace google::api::expr::runtime {
 namespace {
@@ -61,13 +67,19 @@ MATCHER_P(UniquePtrHolds, ptr, "") {
   return ptr == got.get();
 }
 
+struct SimpleTreeSteps {
+  const ExpressionStep* a;
+  const ExpressionStep* b;
+  const ExpressionStep* c;
+};
+
 // simulate a program of:
 //    a
 //   / \
 //  b   c
-absl::StatusOr<ExecutionPath> InitSimpleTree(
+absl::StatusOr<SimpleTreeSteps> InitSimpleTree(
     const Expr& a, const Expr& b, const Expr& c,
-    cel::ValueManager& value_factory, PlannerContext::ProgramTree& tree) {
+    cel::ValueManager& value_factory, ProgramBuilder& program_builder) {
   CEL_ASSIGN_OR_RETURN(auto a_step,
                        CreateConstValueStep(value_factory.GetNullValue(), -1));
   CEL_ASSIGN_OR_RETURN(auto b_step,
@@ -75,54 +87,43 @@ absl::StatusOr<ExecutionPath> InitSimpleTree(
   CEL_ASSIGN_OR_RETURN(auto c_step,
                        CreateConstValueStep(value_factory.GetNullValue(), -1));
 
-  ExecutionPath path;
-  path.push_back(std::move(b_step));
-  path.push_back(std::move(c_step));
-  path.push_back(std::move(a_step));
+  SimpleTreeSteps result{a_step.get(), b_step.get(), c_step.get()};
 
-  PlannerContext::ProgramInfo& a_info = tree[&a];
-  a_info.range_start = 0;
-  a_info.range_len = 3;
-  a_info.children = {&b, &c};
+  program_builder.EnterSubexpression(&a);
+  program_builder.EnterSubexpression(&b);
+  program_builder.AddStep(std::move(b_step));
+  program_builder.ExitSubexpression(&b);
+  program_builder.EnterSubexpression(&c);
+  program_builder.AddStep(std::move(c_step));
+  program_builder.ExitSubexpression(&c);
+  program_builder.AddStep(std::move(a_step));
+  program_builder.ExitSubexpression(&a);
 
-  PlannerContext::ProgramInfo& b_info = tree[&b];
-  b_info.range_start = 0;
-  b_info.range_len = 1;
-  b_info.parent = &a;
-
-  PlannerContext::ProgramInfo& c_info = tree[&c];
-  c_info.range_start = 1;
-  c_info.range_len = 1;
-  c_info.parent = &a;
-
-  return path;
+  return result;
 }
 
 TEST_F(PlannerContextTest, GetPlan) {
   Expr a;
   Expr b;
   Expr c;
-  PlannerContext::ProgramTree tree;
+  ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
-                       InitSimpleTree(a, b, c, value_factory_, tree));
-
-  const ExpressionStep* b_step_ptr = path[0].get();
-  const ExpressionStep* c_step_ptr = path[1].get();
-  const ExpressionStep* a_step_ptr = path[2].get();
+  ASSERT_OK_AND_ASSIGN(
+      auto step_ptrs, InitSimpleTree(a, b, c, value_factory_, program_builder));
 
   PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
+                         program_builder);
 
-  EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
-                                                 UniquePtrHolds(c_step_ptr),
-                                                 UniquePtrHolds(a_step_ptr)));
+  EXPECT_THAT(context.GetSubplan(b), ElementsAre(UniquePtrHolds(step_ptrs.b)));
 
-  EXPECT_THAT(context.GetSubplan(b), ElementsAre(UniquePtrHolds(b_step_ptr)));
+  EXPECT_THAT(context.GetSubplan(c), ElementsAre(UniquePtrHolds(step_ptrs.c)));
 
-  EXPECT_THAT(context.GetSubplan(c), ElementsAre(UniquePtrHolds(c_step_ptr)));
+  EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(step_ptrs.b),
+                                                 UniquePtrHolds(step_ptrs.c),
+                                                 UniquePtrHolds(step_ptrs.a)));
 
   Expr d;
+  EXPECT_FALSE(context.IsSubplanInspectable(d));
   EXPECT_THAT(context.GetSubplan(d), IsEmpty());
 }
 
@@ -130,21 +131,17 @@ TEST_F(PlannerContextTest, ReplacePlan) {
   Expr a;
   Expr b;
   Expr c;
-  PlannerContext::ProgramTree tree;
+  ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
-                       InitSimpleTree(a, b, c, value_factory_, tree));
-
-  const ExpressionStep* b_step_ptr = path[0].get();
-  const ExpressionStep* c_step_ptr = path[1].get();
-  const ExpressionStep* a_step_ptr = path[2].get();
+  ASSERT_OK_AND_ASSIGN(
+      auto step_ptrs, InitSimpleTree(a, b, c, value_factory_, program_builder));
 
   PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
+                         program_builder);
 
-  EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
-                                                 UniquePtrHolds(c_step_ptr),
-                                                 UniquePtrHolds(a_step_ptr)));
+  EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(step_ptrs.b),
+                                                 UniquePtrHolds(step_ptrs.c),
+                                                 UniquePtrHolds(step_ptrs.a)));
 
   ExecutionPath new_a;
 
@@ -164,58 +161,32 @@ TEST_F(PlannerContextTest, ExtractPlan) {
   Expr a;
   Expr b;
   Expr c;
-  PlannerContext::ProgramTree tree;
+  ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
-                       InitSimpleTree(a, b, c, value_factory_, tree));
-
-  const ExpressionStep* b_step_ptr = path[0].get();
-  const ExpressionStep* c_step_ptr = path[1].get();
-  const ExpressionStep* a_step_ptr = path[2].get();
+  ASSERT_OK_AND_ASSIGN(auto plan_steps, InitSimpleTree(a, b, c, value_factory_,
+                                                       program_builder));
 
   PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
+                         program_builder);
 
-  EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
-                                                 UniquePtrHolds(c_step_ptr),
-                                                 UniquePtrHolds(a_step_ptr)));
+  EXPECT_TRUE(context.IsSubplanInspectable(a));
+  EXPECT_TRUE(context.IsSubplanInspectable(b));
 
   ASSERT_OK_AND_ASSIGN(ExecutionPath extracted, context.ExtractSubplan(b));
 
-  EXPECT_THAT(extracted, ElementsAre(UniquePtrHolds(b_step_ptr)));
-  // Check that ownership was passed.
-  EXPECT_NE(extracted[0], path[0]);
-}
-
-TEST_F(PlannerContextTest, ExtractPlanFailsOnUnfinishedNode) {
-  Expr a;
-  Expr b;
-  Expr c;
-  PlannerContext::ProgramTree tree;
-
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
-                       InitSimpleTree(a, b, c, value_factory_, tree));
-
-  // Mark a incomplete.
-  tree[&a].range_len = -1;
-
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
-
-  EXPECT_THAT(context.ExtractSubplan(a), StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(extracted, ElementsAre(UniquePtrHolds(plan_steps.b)));
 }
 
 TEST_F(PlannerContextTest, ExtractFailsOnReplacedNode) {
   Expr a;
   Expr b;
   Expr c;
-  PlannerContext::ProgramTree tree;
+  ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
-                       InitSimpleTree(a, b, c, value_factory_, tree));
+  ASSERT_OK(InitSimpleTree(a, b, c, value_factory_, program_builder).status());
 
   PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
+                         program_builder);
 
   ASSERT_OK(context.ReplaceSubplan(a, {}));
 
@@ -226,26 +197,20 @@ TEST_F(PlannerContextTest, ReplacePlanUpdatesParent) {
   Expr a;
   Expr b;
   Expr c;
-  PlannerContext::ProgramTree tree;
+  ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
-                       InitSimpleTree(a, b, c, value_factory_, tree));
-
-  const ExpressionStep* b_step_ptr = path[0].get();
-  const ExpressionStep* c_step_ptr = path[1].get();
-  const ExpressionStep* a_step_ptr = path[2].get();
+  ASSERT_OK_AND_ASSIGN(auto plan_steps, InitSimpleTree(a, b, c, value_factory_,
+                                                       program_builder));
 
   PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
+                         program_builder);
 
-  EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
-                                                 UniquePtrHolds(c_step_ptr),
-                                                 UniquePtrHolds(a_step_ptr)));
+  EXPECT_TRUE(context.IsSubplanInspectable(a));
 
   ASSERT_OK(context.ReplaceSubplan(c, {}));
 
-  EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
-                                                 UniquePtrHolds(a_step_ptr)));
+  EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(plan_steps.b),
+                                                 UniquePtrHolds(plan_steps.a)));
   EXPECT_THAT(context.GetSubplan(c), IsEmpty());
 }
 
@@ -253,21 +218,13 @@ TEST_F(PlannerContextTest, ReplacePlanUpdatesSibling) {
   Expr a;
   Expr b;
   Expr c;
-  PlannerContext::ProgramTree tree;
+  ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
-                       InitSimpleTree(a, b, c, value_factory_, tree));
-
-  const ExpressionStep* b_step_ptr = path[0].get();
-  const ExpressionStep* c_step_ptr = path[1].get();
-  const ExpressionStep* a_step_ptr = path[2].get();
+  ASSERT_OK_AND_ASSIGN(auto plan_steps, InitSimpleTree(a, b, c, value_factory_,
+                                                       program_builder));
 
   PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
-
-  EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
-                                                 UniquePtrHolds(c_step_ptr),
-                                                 UniquePtrHolds(a_step_ptr)));
+                         program_builder);
 
   ExecutionPath new_b;
 
@@ -282,57 +239,33 @@ TEST_F(PlannerContextTest, ReplacePlanUpdatesSibling) {
 
   ASSERT_OK(context.ReplaceSubplan(b, std::move(new_b)));
 
-  EXPECT_THAT(context.GetSubplan(c), ElementsAre(UniquePtrHolds(c_step_ptr)));
+  EXPECT_THAT(context.GetSubplan(c), ElementsAre(UniquePtrHolds(plan_steps.c)));
   EXPECT_THAT(context.GetSubplan(b), ElementsAre(UniquePtrHolds(b1_step_ptr),
                                                  UniquePtrHolds(b2_step_ptr)));
   EXPECT_THAT(
       context.GetSubplan(a),
       ElementsAre(UniquePtrHolds(b1_step_ptr), UniquePtrHolds(b2_step_ptr),
-                  UniquePtrHolds(c_step_ptr), UniquePtrHolds(a_step_ptr)));
+                  UniquePtrHolds(plan_steps.c), UniquePtrHolds(plan_steps.a)));
 }
 
 TEST_F(PlannerContextTest, ReplacePlanFailsOnUpdatedNode) {
   Expr a;
   Expr b;
   Expr c;
-  PlannerContext::ProgramTree tree;
+  ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
-                       InitSimpleTree(a, b, c, value_factory_, tree));
-
-  const ExpressionStep* b_step_ptr = path[0].get();
-  const ExpressionStep* c_step_ptr = path[1].get();
-  const ExpressionStep* a_step_ptr = path[2].get();
+  ASSERT_OK_AND_ASSIGN(auto plan_steps, InitSimpleTree(a, b, c, value_factory_,
+                                                       program_builder));
 
   PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
+                         program_builder);
 
-  EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
-                                                 UniquePtrHolds(c_step_ptr),
-                                                 UniquePtrHolds(a_step_ptr)));
+  EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(plan_steps.b),
+                                                 UniquePtrHolds(plan_steps.c),
+                                                 UniquePtrHolds(plan_steps.a)));
 
   ASSERT_OK(context.ReplaceSubplan(a, {}));
   EXPECT_THAT(context.ReplaceSubplan(b, {}),
-              StatusIs(absl::StatusCode::kInternal));
-}
-
-TEST_F(PlannerContextTest, ReplacePlanFailsOnUnfinishedNode) {
-  Expr a;
-  Expr b;
-  Expr c;
-  PlannerContext::ProgramTree tree;
-
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
-                       InitSimpleTree(a, b, c, value_factory_, tree));
-
-  tree[&a].range_len = -1;
-
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
-
-  EXPECT_THAT(context.GetSubplan(a), IsEmpty());
-
-  EXPECT_THAT(context.ReplaceSubplan(a, {}),
               StatusIs(absl::StatusCode::kInternal));
 }
 
@@ -340,14 +273,10 @@ TEST_F(PlannerContextTest, AddSubplanStep) {
   Expr a;
   Expr b;
   Expr c;
-  PlannerContext::ProgramTree tree;
+  ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
-                       InitSimpleTree(a, b, c, value_factory_, tree));
-
-  const ExpressionStep* b_step_ptr = path[0].get();
-  const ExpressionStep* c_step_ptr = path[1].get();
-  const ExpressionStep* a_step_ptr = path[2].get();
+  ASSERT_OK_AND_ASSIGN(auto plan_steps, InitSimpleTree(a, b, c, value_factory_,
+                                                       program_builder));
 
   ASSERT_OK_AND_ASSIGN(auto b2_step,
                        CreateConstValueStep(value_factory_.GetNullValue(), -1));
@@ -355,44 +284,17 @@ TEST_F(PlannerContextTest, AddSubplanStep) {
   const ExpressionStep* b2_step_ptr = b2_step.get();
 
   PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
-
-  EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
-                                                 UniquePtrHolds(c_step_ptr),
-                                                 UniquePtrHolds(a_step_ptr)));
+                         program_builder);
 
   ASSERT_OK(context.AddSubplanStep(b, std::move(b2_step)));
 
+  EXPECT_THAT(context.GetSubplan(b), ElementsAre(UniquePtrHolds(plan_steps.b),
+                                                 UniquePtrHolds(b2_step_ptr)));
+  EXPECT_THAT(context.GetSubplan(c), ElementsAre(UniquePtrHolds(plan_steps.c)));
   EXPECT_THAT(
       context.GetSubplan(a),
-      ElementsAre(UniquePtrHolds(b_step_ptr), UniquePtrHolds(b2_step_ptr),
-                  UniquePtrHolds(c_step_ptr), UniquePtrHolds(a_step_ptr)));
-  EXPECT_THAT(context.GetSubplan(b), ElementsAre(UniquePtrHolds(b_step_ptr),
-                                                 UniquePtrHolds(b2_step_ptr)));
-  EXPECT_THAT(context.GetSubplan(c), ElementsAre(UniquePtrHolds(c_step_ptr)));
-}
-
-TEST_F(PlannerContextTest, AddSubplanStepFailsOnUnfinishedNode) {
-  Expr a;
-  Expr b;
-  Expr c;
-  PlannerContext::ProgramTree tree;
-
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
-                       InitSimpleTree(a, b, c, value_factory_, tree));
-
-  tree[&a].range_len = -1;
-
-  ASSERT_OK_AND_ASSIGN(auto b2_step,
-                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
-
-  PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
-
-  EXPECT_THAT(context.GetSubplan(a), IsEmpty());
-
-  EXPECT_THAT(context.AddSubplanStep(a, std::move(b2_step)),
-              StatusIs(absl::StatusCode::kInternal));
+      ElementsAre(UniquePtrHolds(plan_steps.b), UniquePtrHolds(b2_step_ptr),
+                  UniquePtrHolds(plan_steps.c), UniquePtrHolds(plan_steps.a)));
 }
 
 TEST_F(PlannerContextTest, AddSubplanStepFailsOnUnknownNode) {
@@ -400,21 +302,170 @@ TEST_F(PlannerContextTest, AddSubplanStepFailsOnUnknownNode) {
   Expr b;
   Expr c;
   Expr d;
-  PlannerContext::ProgramTree tree;
+  ProgramBuilder program_builder;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
-                       InitSimpleTree(a, b, c, value_factory_, tree));
+  ASSERT_OK(InitSimpleTree(a, b, c, value_factory_, program_builder).status());
 
   ASSERT_OK_AND_ASSIGN(auto b2_step,
                        CreateConstValueStep(value_factory_.GetNullValue(), -1));
 
   PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
+                         program_builder);
 
   EXPECT_THAT(context.GetSubplan(d), IsEmpty());
 
   EXPECT_THAT(context.AddSubplanStep(d, std::move(b2_step)),
               StatusIs(absl::StatusCode::kInternal));
+}
+
+class ProgramBuilderTest : public testing::Test {
+ public:
+  ProgramBuilderTest()
+      : type_registry_(),
+        function_registry_(),
+        value_factory_(cel::MemoryManagerRef::ReferenceCounting(),
+                       type_registry_.GetComposedTypeProvider()) {}
+
+ protected:
+  cel::TypeRegistry type_registry_;
+  cel::FunctionRegistry function_registry_;
+  cel::common_internal::LegacyValueManager value_factory_;
+};
+
+TEST_F(ProgramBuilderTest, ExtractSubexpression) {
+  Expr a;
+  Expr b;
+  Expr c;
+  ProgramBuilder program_builder;
+
+  ASSERT_OK_AND_ASSIGN(
+      SimpleTreeSteps step_ptrs,
+      InitSimpleTree(a, b, c, value_factory_, program_builder));
+  EXPECT_EQ(program_builder.ExtractSubexpression(&c), 0);
+  EXPECT_EQ(program_builder.ExtractSubexpression(&b), 1);
+
+  EXPECT_THAT(program_builder.FlattenMain(),
+              ElementsAre(UniquePtrHolds(step_ptrs.a)));
+  EXPECT_THAT(program_builder.FlattenSubexpressions(),
+              ElementsAre(ElementsAre(UniquePtrHolds(step_ptrs.c)),
+                          ElementsAre(UniquePtrHolds(step_ptrs.b))));
+}
+
+TEST_F(ProgramBuilderTest, FlattenRemovesChildrenReferences) {
+  Expr a;
+  Expr b;
+  Expr c;
+  ProgramBuilder program_builder;
+
+  program_builder.EnterSubexpression(&a);
+  program_builder.EnterSubexpression(&b);
+  program_builder.EnterSubexpression(&c);
+  program_builder.ExitSubexpression(&c);
+  program_builder.ExitSubexpression(&b);
+  program_builder.ExitSubexpression(&a);
+
+  auto subexpr_b = program_builder.GetSubexpression(&b);
+  ASSERT_TRUE(subexpr_b != nullptr);
+  subexpr_b->Flatten();
+
+  EXPECT_EQ(program_builder.GetSubexpression(&c), nullptr);
+}
+
+TEST_F(ProgramBuilderTest, ExtractReturnsNullOnFlattendExpr) {
+  Expr a;
+  Expr b;
+  ProgramBuilder program_builder;
+
+  program_builder.EnterSubexpression(&a);
+  program_builder.EnterSubexpression(&b);
+  program_builder.ExitSubexpression(&b);
+  program_builder.ExitSubexpression(&a);
+
+  auto* subexpr_a = program_builder.GetSubexpression(&a);
+  auto* subexpr_b = program_builder.GetSubexpression(&b);
+
+  ASSERT_TRUE(subexpr_a != nullptr);
+  ASSERT_TRUE(subexpr_b != nullptr);
+
+  subexpr_a->Flatten();
+  // subexpr_b is now freed.
+
+  EXPECT_EQ(subexpr_a->ExtractChild(subexpr_b), nullptr);
+  EXPECT_EQ(program_builder.ExtractSubexpression(&b), -1);
+}
+
+TEST_F(ProgramBuilderTest, ExtractReturnsNullOnNonChildren) {
+  Expr a;
+  Expr b;
+  Expr c;
+
+  ProgramBuilder program_builder;
+
+  program_builder.EnterSubexpression(&a);
+  program_builder.EnterSubexpression(&b);
+  program_builder.EnterSubexpression(&c);
+  program_builder.ExitSubexpression(&c);
+  program_builder.ExitSubexpression(&b);
+  program_builder.ExitSubexpression(&a);
+
+  auto* subexpr_a = program_builder.GetSubexpression(&a);
+  auto* subexpr_c = program_builder.GetSubexpression(&c);
+
+  ASSERT_TRUE(subexpr_a != nullptr);
+  ASSERT_TRUE(subexpr_c != nullptr);
+
+  EXPECT_EQ(subexpr_a->ExtractChild(subexpr_c), nullptr);
+}
+
+TEST_F(ProgramBuilderTest, ExtractWorks) {
+  Expr a;
+  Expr b;
+  Expr c;
+
+  ProgramBuilder program_builder;
+
+  program_builder.EnterSubexpression(&a);
+  program_builder.EnterSubexpression(&b);
+  program_builder.ExitSubexpression(&b);
+
+  ASSERT_OK_AND_ASSIGN(auto a_step,
+                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
+  program_builder.AddStep(std::move(a_step));
+  program_builder.EnterSubexpression(&c);
+  program_builder.ExitSubexpression(&c);
+  program_builder.ExitSubexpression(&a);
+
+  auto* subexpr_a = program_builder.GetSubexpression(&a);
+  auto* subexpr_c = program_builder.GetSubexpression(&c);
+
+  ASSERT_TRUE(subexpr_a != nullptr);
+  ASSERT_TRUE(subexpr_c != nullptr);
+
+  EXPECT_THAT(subexpr_a->ExtractChild(subexpr_c), UniquePtrHolds(subexpr_c));
+}
+
+TEST_F(ProgramBuilderTest, ExtractToRequiresFlatten) {
+  Expr a;
+  Expr b;
+  Expr c;
+
+  ProgramBuilder program_builder;
+
+  ASSERT_OK_AND_ASSIGN(
+      SimpleTreeSteps step_ptrs,
+      InitSimpleTree(a, b, c, value_factory_, program_builder));
+
+  auto* subexpr_a = program_builder.GetSubexpression(&a);
+  ExecutionPath path;
+
+  EXPECT_FALSE(subexpr_a->ExtractTo(path));
+
+  subexpr_a->Flatten();
+  EXPECT_TRUE(subexpr_a->ExtractTo(path));
+
+  EXPECT_THAT(path, ElementsAre(UniquePtrHolds(step_ptrs.b),
+                                UniquePtrHolds(step_ptrs.c),
+                                UniquePtrHolds(step_ptrs.a)));
 }
 
 }  // namespace

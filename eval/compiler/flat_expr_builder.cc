@@ -31,6 +31,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_map.h"
+#include "absl/log/absl_check.h"
 #include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -43,9 +44,7 @@
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "base/builtins.h"
-#include "base/type_provider.h"
 #include "common/memory.h"
-#include "common/type_factory.h"
 #include "common/value_manager.h"
 #include "common/values/legacy_value_manager.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
@@ -79,9 +78,6 @@ namespace {
 using ::cel::Ast;
 
 using ::cel::RuntimeIssue;
-using ::cel::TypeFactory;
-using ::cel::TypeManager;
-using ::cel::Value;
 using ::cel::ValueManager;
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::AstTraverse;
@@ -89,9 +85,6 @@ using ::cel::runtime_internal::IssueCollector;
 
 // Forward declare to resolve circular dependency for short_circuiting visitors.
 class FlatExprVisitor;
-
-// Representation of extracted subexpressions.
-using ExpressionTable = std::vector<ExecutionPath>;
 
 // Helper for bookkeeping variables mapped to indexes.
 class IndexManager {
@@ -119,20 +112,48 @@ class IndexManager {
   size_t max_slot_count_;
 };
 
+// Helper for computing jump offsets.
+//
+// Jumps should be self-contained to a single expression node -- jumping
+// outside that range is a bug.
+struct ProgramStepIndex {
+  int index;
+  ProgramBuilder::Subexpression* subexpression;
+};
+
 // A convenience wrapper for offset-calculating logic.
 class Jump {
  public:
-  explicit Jump() : self_index_(-1), jump_step_(nullptr) {}
-  explicit Jump(int self_index, JumpStepBase* jump_step)
+  // Default constructor for empty jump.
+  //
+  // Users must check that jump is non-empty before calling member functions.
+  explicit Jump() : self_index_{-1, nullptr}, jump_step_(nullptr) {}
+  Jump(ProgramStepIndex self_index, JumpStepBase* jump_step)
       : self_index_(self_index), jump_step_(jump_step) {}
-  void set_target(int index) {
-    // 0 offset means no-op.
-    jump_step_->set_jump_offset(index - self_index_ - 1);
+
+  static absl::StatusOr<int> CalculateOffset(ProgramStepIndex base,
+                                             ProgramStepIndex target) {
+    if (target.subexpression != base.subexpression) {
+      return absl::InternalError(
+          "Jump target must be contained in the parent"
+          "subexpression");
+    }
+
+    int offset = base.subexpression->CalculateOffset(base.index, target.index);
+    return offset;
   }
+
+  absl::Status set_target(ProgramStepIndex target) {
+    CEL_ASSIGN_OR_RETURN(int offset, CalculateOffset(self_index_, target));
+
+    jump_step_->set_jump_offset(offset);
+    return absl::OkStatus();
+  }
+
   bool exists() { return jump_step_ != nullptr; }
 
  private:
-  int self_index_;
+  ProgramStepIndex self_index_;
   JumpStepBase* jump_step_;
 };
 
@@ -274,12 +295,13 @@ class ComprehensionVisitor {
         accu_slot_(accu_slot) {}
 
   void PreVisit(const cel::ast_internal::Expr* expr);
-  void PostVisitArg(cel::ast_internal::ComprehensionArg arg_num,
-                    const cel::ast_internal::Expr* comprehension_expr) {
+  absl::Status PostVisitArg(cel::ast_internal::ComprehensionArg arg_num,
+                            const cel::ast_internal::Expr* comprehension_expr) {
     if (is_trivial_) {
       PostVisitArgTrivial(arg_num, comprehension_expr);
+      return absl::OkStatus();
     } else {
-      PostVisitArgDefault(arg_num, comprehension_expr);
+      return PostVisitArgDefault(arg_num, comprehension_expr);
     }
   }
   void PostVisit(const cel::ast_internal::Expr* expr);
@@ -290,14 +312,15 @@ class ComprehensionVisitor {
   void PostVisitArgTrivial(cel::ast_internal::ComprehensionArg arg_num,
                            const cel::ast_internal::Expr* comprehension_expr);
 
-  void PostVisitArgDefault(cel::ast_internal::ComprehensionArg arg_num,
-                           const cel::ast_internal::Expr* comprehension_expr);
+  absl::Status PostVisitArgDefault(
+      cel::ast_internal::ComprehensionArg arg_num,
+      const cel::ast_internal::Expr* comprehension_expr);
 
   FlatExprVisitor* visitor_;
   ComprehensionNextStep* next_step_;
   ComprehensionCondStep* cond_step_;
-  int next_step_pos_;
-  int cond_step_pos_;
+  ProgramStepIndex next_step_pos_;
+  ProgramStepIndex cond_step_pos_;
   bool short_circuiting_;
   bool is_trivial_;
   bool accu_init_extracted_;
@@ -312,13 +335,9 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       std::vector<std::unique_ptr<ProgramOptimizer>> program_optimizers,
       const absl::flat_hash_map<int64_t, cel::ast_internal::Reference>&
           reference_map,
-      ExpressionTable& expression_table, ExecutionPath& path,
       ValueManager& value_factory, IssueCollector& issue_collector,
-      PlannerContext::ProgramTree& program_tree,
-      PlannerContext& extension_context)
+      ProgramBuilder& program_builder, PlannerContext& extension_context)
       : resolver_(resolver),
-        expression_table_(expression_table),
-        execution_path_(path),
         value_factory_(value_factory),
         progress_status_(absl::OkStatus()),
         resolved_select_expr_(nullptr),
@@ -326,7 +345,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
         options_(options),
         program_optimizers_(std::move(program_optimizers)),
         issue_collector_(issue_collector),
-        program_tree_(program_tree),
+        program_builder_(program_builder),
         extension_context_(extension_context) {}
 
   void PreVisitExpr(const cel::ast_internal::Expr* expr,
@@ -342,12 +361,8 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       resume_from_suppressed_branch_ = expr;
     }
 
-    PlannerContext::ProgramInfo& info = program_tree_[expr];
-    info.range_start = GetCurrentIndex();
-    info.parent = parent_expr_;
-    if (parent_expr_ != nullptr) {
-      program_tree_[parent_expr_].children.push_back(expr);
-    }
+    program_builder_.EnterSubexpression(expr);
+
     parent_expr_ = expr;
 
     for (const std::unique_ptr<ProgramOptimizer>& optimizer :
@@ -368,10 +383,6 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       resume_from_suppressed_branch_ = nullptr;
     }
 
-    PlannerContext::ProgramInfo& info = program_tree_[expr];
-    info.range_len = GetCurrentIndex() - info.range_start;
-    parent_expr_ = info.parent;
-
     for (const std::unique_ptr<ProgramOptimizer>& optimizer :
          program_optimizers_) {
       absl::Status status = optimizer->OnPostVisit(extension_context_, *expr);
@@ -380,6 +391,9 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
         return;
       }
     }
+
+    program_builder_.ExitSubexpression(expr);
+
     if (!comprehension_stack_.empty() &&
         comprehension_stack_.back().is_optimizable_bind &&
         (&comprehension_stack_.back().comprehension->accu_init() == expr)) {
@@ -838,8 +852,8 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       return;
     }
 
-    comprehension_stack_.back().visitor->PostVisitArg(
-        comprehension_arg, comprehension_stack_.back().expr);
+    SetProgressStatusError(comprehension_stack_.back().visitor->PostVisitArg(
+        comprehension_arg, comprehension_stack_.back().expr));
   }
 
   // Invoked after each argument node processed.
@@ -938,7 +952,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
 
   void AddStep(std::unique_ptr<ExpressionStep> step) {
     if (progress_status_.ok() && !PlanningSuppressed()) {
-      execution_path_.push_back(std::move(step));
+      program_builder_.AddStep(std::move(step));
     }
   }
 
@@ -948,8 +962,14 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     }
   }
 
-  // Index of the next step to be inserted.
-  int GetCurrentIndex() const { return execution_path_.size(); }
+  // Index of the next step to be inserted, in terms of the current
+  // subexpression
+  ProgramStepIndex GetCurrentIndex() const {
+    // Nonnull while active -- nullptr indicates logic error in the builder.
+    ABSL_DCHECK(program_builder_.current() != nullptr);
+    return {static_cast<int>(program_builder_.current()->elements().size()),
+            program_builder_.current()};
+  }
 
   CondVisitor* FindCondVisitor(const cel::ast_internal::Expr* expr) const {
     if (cond_visitor_stack_.empty()) {
@@ -1009,15 +1029,14 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     if (!record.is_optimizable_bind) {
       return absl::OkStatus();
     }
-    CEL_ASSIGN_OR_RETURN(auto subexpr,
-                         extension_context_.ExtractSubplan(*expr));
 
-    CEL_RETURN_IF_ERROR(extension_context_.ReplaceSubplan(*expr, {}));
+    int index = program_builder_.ExtractSubexpression(expr);
+    if (index == -1) {
+      return absl::InternalError("Failed to extract subexpression");
+    }
 
-    expression_table_.push_back(std::move(subexpr));
     // off by one since mainline expression is handled separately.
-    size_t id = expression_table_.size();
-    record.subexpression = id;
+    record.subexpression = index + 1;
 
     record.visitor->MarkAccuInitExtracted();
 
@@ -1025,8 +1044,6 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   }
 
   const Resolver& resolver_;
-  ExpressionTable& expression_table_;
-  ExecutionPath& execution_path_;
   ValueManager& value_factory_;
   absl::Status progress_status_;
 
@@ -1058,7 +1075,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   std::vector<std::unique_ptr<ProgramOptimizer>> program_optimizers_;
   IssueCollector& issue_collector_;
 
-  PlannerContext::ProgramTree& program_tree_;
+  ProgramBuilder& program_builder_;
   PlannerContext extension_context_;
   IndexManager index_manager_;
 };
@@ -1091,7 +1108,8 @@ void BinaryCondVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
   if (short_circuiting_) {
     // If shortcircuiting is enabled, point the conditional jump past the
     // boolean operator step.
-    jump_step_.set_target(visitor_->GetCurrentIndex());
+    visitor_->SetProgressStatusError(
+        jump_step_.set_target(visitor_->GetCurrentIndex()));
   }
 }
 
@@ -1135,16 +1153,20 @@ void TernaryCondVisitor::PostVisitArg(int arg_num,
     // Jump after the first and over the second branch of execution.
     // Value is to be removed from the stack.
     auto jump_after_first = CreateJumpStep({}, expr->id());
-    if (jump_after_first.ok()) {
-      jump_after_first_ =
-          Jump(visitor_->GetCurrentIndex(), jump_after_first->get());
+    if (!jump_after_first.ok()) {
+      visitor_->SetProgressStatusError(jump_after_first.status());
     }
+
+    jump_after_first_ =
+        Jump(visitor_->GetCurrentIndex(), jump_after_first->get());
+
     visitor_->AddStep(std::move(jump_after_first));
 
     if (visitor_->ValidateOrError(
             jump_to_second_.exists(),
             "Error configuring ternary operator: jump_to_second_ is null")) {
-      jump_to_second_.set_target(visitor_->GetCurrentIndex());
+      visitor_->SetProgressStatusError(
+          jump_to_second_.set_target(visitor_->GetCurrentIndex()));
     }
   }
   // Code executed after traversing the final branch of execution
@@ -1157,12 +1179,14 @@ void TernaryCondVisitor::PostVisit(const cel::ast_internal::Expr*) {
   if (visitor_->ValidateOrError(
           error_jump_.exists(),
           "Error configuring ternary operator: error_jump_ is null")) {
-    error_jump_.set_target(visitor_->GetCurrentIndex());
+    visitor_->SetProgressStatusError(
+        error_jump_.set_target(visitor_->GetCurrentIndex()));
   }
   if (visitor_->ValidateOrError(
           jump_after_first_.exists(),
           "Error configuring ternary operator: jump_after_first_ is null")) {
-    jump_after_first_.set_target(visitor_->GetCurrentIndex());
+    visitor_->SetProgressStatusError(
+        jump_after_first_.set_target(visitor_->GetCurrentIndex()));
   }
 }
 
@@ -1186,7 +1210,7 @@ void ComprehensionVisitor::PreVisit(const cel::ast_internal::Expr* expr) {
   }
 }
 
-void ComprehensionVisitor::PostVisitArgDefault(
+absl::Status ComprehensionVisitor::PostVisitArgDefault(
     cel::ast_internal::ComprehensionArg arg_num,
     const cel::ast_internal::Expr* expr) {
   switch (arg_num) {
@@ -1211,27 +1235,41 @@ void ComprehensionVisitor::PostVisitArgDefault(
       break;
     }
     case cel::ast_internal::LOOP_STEP: {
-      auto jump_to_next = CreateJumpStep(
-          next_step_pos_ - visitor_->GetCurrentIndex() - 1, expr->id());
-      if (jump_to_next.ok()) {
-        visitor_->AddStep(std::move(jump_to_next));
-      }
+      auto jump_to_next = CreateJumpStep({}, expr->id());
+      Jump jump_helper(visitor_->GetCurrentIndex(), jump_to_next->get());
+      visitor_->AddStep(std::move(jump_to_next));
+      visitor_->SetProgressStatusError(jump_helper.set_target(next_step_pos_));
+
       // Set offsets.
-      cond_step_->set_jump_offset(visitor_->GetCurrentIndex() - cond_step_pos_ -
-                                  1);
-      next_step_->set_jump_offset(visitor_->GetCurrentIndex() - next_step_pos_ -
-                                  1);
+      CEL_ASSIGN_OR_RETURN(
+          int jump_from_cond,
+          Jump::CalculateOffset(cond_step_pos_, visitor_->GetCurrentIndex()));
+
+      cond_step_->set_jump_offset(jump_from_cond);
+
+      CEL_ASSIGN_OR_RETURN(
+          int jump_from_next,
+          Jump::CalculateOffset(next_step_pos_, visitor_->GetCurrentIndex()));
+
+      next_step_->set_jump_offset(jump_from_next);
       break;
     }
     case cel::ast_internal::RESULT: {
       visitor_->AddStep(CreateComprehensionFinishStep(accu_slot_, expr->id()));
-      next_step_->set_error_jump_offset(visitor_->GetCurrentIndex() -
-                                        next_step_pos_ - 1);
-      cond_step_->set_error_jump_offset(visitor_->GetCurrentIndex() -
-                                        cond_step_pos_ - 1);
+
+      CEL_ASSIGN_OR_RETURN(
+          int jump_from_next,
+          Jump::CalculateOffset(next_step_pos_, visitor_->GetCurrentIndex()));
+      next_step_->set_error_jump_offset(jump_from_next);
+
+      CEL_ASSIGN_OR_RETURN(
+          int jump_from_cond,
+          Jump::CalculateOffset(cond_step_pos_, visitor_->GetCurrentIndex()));
+      cond_step_->set_error_jump_offset(jump_from_cond);
       break;
     }
   }
+  return absl::OkStatus();
 }
 
 void ComprehensionVisitor::PostVisitArgTrivial(
@@ -1265,32 +1303,31 @@ void ComprehensionVisitor::PostVisit(const cel::ast_internal::Expr* expr) {}
 // Flattens the expression table into the end of the mainline expression vector
 // and returns an index to the individual sub expressions.
 std::vector<ExecutionPathView> FlattenExpressionTable(
-    ExpressionTable& expression_table, ExecutionPath& main) {
+    ProgramBuilder& program_builder, ExecutionPath& main) {
   std::vector<std::pair<size_t, size_t>> ranges;
+  main = program_builder.FlattenMain();
   ranges.push_back(std::make_pair(0, main.size()));
 
-  for (int i = 0; i < expression_table.size(); ++i) {
-    ExecutionPath& subexpression = expression_table[i];
+  std::vector<ExecutionPath> subexpressions =
+      program_builder.FlattenSubexpressions();
+  for (auto& subexpression : subexpressions) {
     ranges.push_back(std::make_pair(main.size(), subexpression.size()));
     absl::c_move(subexpression, std::back_inserter(main));
   }
-  expression_table.clear();
-  // the main program is now stable, can make the indexes.
-  std::vector<ExecutionPathView> subexpressions;
-  subexpressions.reserve(ranges.size());
+
+  std::vector<ExecutionPathView> subexpression_indexes;
+  subexpression_indexes.reserve(ranges.size());
   for (const auto& range : ranges) {
-    subexpressions.push_back(
+    subexpression_indexes.push_back(
         absl::MakeSpan(main).subspan(range.first, range.second));
   }
-  return subexpressions;
+  return subexpression_indexes;
 }
 
 }  // namespace
 
 absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
     std::unique_ptr<Ast> ast, std::vector<RuntimeIssue>* issues) const {
-  ExecutionPath execution_path;
-  ExpressionTable expression_table;
 
   // These objects are expected to remain scoped to one build call -- references
   // to them shouldn't be persisted in any part of the result expression.
@@ -1306,10 +1343,9 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
                     value_factory, type_registry_.resolveable_enums(),
                     options_.enable_qualified_type_identifiers);
 
-  PlannerContext::ProgramTree program_tree;
+  ProgramBuilder program_builder;
   PlannerContext extension_context(resolver, options_, value_factory,
-                                   issue_collector, execution_path,
-                                   program_tree);
+                                   issue_collector, program_builder);
 
   auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
@@ -1332,9 +1368,8 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
   }
 
   FlatExprVisitor visitor(resolver, options_, std::move(optimizers),
-                          ast_impl.reference_map(), expression_table,
-                          execution_path, value_factory, issue_collector,
-                          program_tree, extension_context);
+                          ast_impl.reference_map(), value_factory,
+                          issue_collector, program_builder, extension_context);
 
   cel::ast_internal::TraversalOptions opts;
   opts.use_comprehension_callbacks = true;
@@ -1348,8 +1383,9 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
     (*issues) = issue_collector.ExtractIssues();
   }
 
+  ExecutionPath execution_path;
   std::vector<ExecutionPathView> subexpressions =
-      FlattenExpressionTable(expression_table, execution_path);
+      FlattenExpressionTable(program_builder, execution_path);
 
   return FlatExpression(std::move(execution_path), std::move(subexpressions),
                         visitor.slot_count(),

@@ -15,6 +15,7 @@
 #include "eval/compiler/constant_folding.h"
 
 #include <memory>
+#include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/status.h"
@@ -63,6 +64,7 @@ using ::google::api::expr::runtime::CreateCreateListStep;
 using ::google::api::expr::runtime::CreateCreateStructStepForMap;
 using ::google::api::expr::runtime::ExecutionPath;
 using ::google::api::expr::runtime::PlannerContext;
+using ::google::api::expr::runtime::ProgramBuilder;
 using ::google::api::expr::runtime::ProgramOptimizer;
 using ::google::api::expr::runtime::ProgramOptimizerFactory;
 using ::google::api::expr::runtime::Resolver;
@@ -111,49 +113,38 @@ TEST_F(UpdatedConstantFoldingTest, SkipsTernary) {
   const Expr& true_branch = call.call_expr().args()[1];
   const Expr& false_branch = call.call_expr().args()[2];
 
-  PlannerContext::ProgramTree tree;
-  PlannerContext::ProgramInfo& call_info = tree[&call];
-  call_info.range_start = 0;
-  call_info.range_len = 4;
-  call_info.children = {&condition, &true_branch, &false_branch};
-
-  PlannerContext::ProgramInfo& condition_info = tree[&condition];
-  condition_info.range_start = 0;
-  condition_info.range_len = 1;
-  condition_info.parent = &call;
-
-  PlannerContext::ProgramInfo& true_branch_info = tree[&true_branch];
-  true_branch_info.range_start = 1;
-  true_branch_info.range_len = 1;
-  true_branch_info.parent = &call;
-
-  PlannerContext::ProgramInfo& false_branch_info = tree[&false_branch];
-  false_branch_info.range_start = 2;
-  false_branch_info.range_len = 1;
-  false_branch_info.parent = &call;
-
-  // Mock execution path that has placeholders for the non-shortcircuiting
-  // version of ternary.
-  ExecutionPath path;
-
+  ProgramBuilder program_builder;
+  program_builder.EnterSubexpression(&call);
+  // condition
+  program_builder.EnterSubexpression(&condition);
   ASSERT_OK_AND_ASSIGN(
-      path.emplace_back(),
+      auto step,
       CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&condition);
 
+  // true
+  program_builder.EnterSubexpression(&true_branch);
   ASSERT_OK_AND_ASSIGN(
-      path.emplace_back(),
-      CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+      step, CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&true_branch);
 
+  // false
+  program_builder.EnterSubexpression(&false_branch);
   ASSERT_OK_AND_ASSIGN(
-      path.emplace_back(),
-      CreateConstValueStep(value_factory_.CreateBoolValue(false), -1));
+      step, CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&false_branch);
 
-  // Just a placeholder.
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+  // ternary.
+  ASSERT_OK_AND_ASSIGN(step,
                        CreateConstValueStep(value_factory_.GetNullValue(), -1));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&call);
 
   PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
+                         program_builder);
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
@@ -174,6 +165,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsTernary) {
 
   // Assert
   // No changes attempted.
+  auto path = std::move(program_builder).FlattenMain();
   EXPECT_THAT(path, SizeIs(4));
 }
 
@@ -187,40 +179,34 @@ TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
   const Expr& left_condition = call.call_expr().args()[0];
   const Expr& right_condition = call.call_expr().args()[1];
 
-  PlannerContext::ProgramTree tree;
-  PlannerContext::ProgramInfo& call_info = tree[&call];
-  call_info.range_start = 0;
-  call_info.range_len = 4;
-  call_info.children = {&left_condition, &right_condition};
+  ProgramBuilder program_builder;
 
-  PlannerContext::ProgramInfo& left_condition_info = tree[&left_condition];
-  left_condition_info.range_start = 0;
-  left_condition_info.range_len = 1;
-  left_condition_info.parent = &call;
+  program_builder.EnterSubexpression(&call);
 
-  PlannerContext::ProgramInfo& right_condition_info = tree[&right_condition];
-  right_condition_info.range_start = 1;
-  right_condition_info.range_len = 1;
-  right_condition_info.parent = &call;
-
-  // Mock execution path that has placeholders for the non-shortcircuiting
-  // version of ternary.
-  ExecutionPath path;
-
+  // left
+  program_builder.EnterSubexpression(&left_condition);
   ASSERT_OK_AND_ASSIGN(
-      path.emplace_back(),
+      auto step,
       CreateConstValueStep(value_factory_.CreateBoolValue(false), -1));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&left_condition);
 
+  // right
+  program_builder.EnterSubexpression(&right_condition);
   ASSERT_OK_AND_ASSIGN(
-      path.emplace_back(),
-      CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+      step, CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&right_condition);
 
+  // op
   // Just a placeholder.
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+  ASSERT_OK_AND_ASSIGN(step,
                        CreateConstValueStep(value_factory_.GetNullValue(), -1));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&call);
 
   PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
+                         program_builder);
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
@@ -239,6 +225,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
 
   // Assert
   // No changes attempted.
+  auto path = std::move(program_builder).FlattenMain();
   EXPECT_THAT(path, SizeIs(3));
 }
 
@@ -252,40 +239,33 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
   const Expr& left_condition = call.call_expr().args()[0];
   const Expr& right_condition = call.call_expr().args()[1];
 
-  PlannerContext::ProgramTree tree;
-  PlannerContext::ProgramInfo& call_info = tree[&call];
-  call_info.range_start = 0;
-  call_info.range_len = 4;
-  call_info.children = {&left_condition, &right_condition};
+  ProgramBuilder program_builder;
+  program_builder.EnterSubexpression(&call);
 
-  PlannerContext::ProgramInfo& left_condition_info = tree[&left_condition];
-  left_condition_info.range_start = 0;
-  left_condition_info.range_len = 1;
-  left_condition_info.parent = &call;
-
-  PlannerContext::ProgramInfo& right_condition_info = tree[&right_condition];
-  right_condition_info.range_start = 1;
-  right_condition_info.range_len = 1;
-  right_condition_info.parent = &call;
-
-  // Mock execution path that has placeholders for the non-shortcircuiting
-  // version of ternary.
-  ExecutionPath path;
-
+  // left
+  program_builder.EnterSubexpression(&left_condition);
   ASSERT_OK_AND_ASSIGN(
-      path.emplace_back(),
+      auto step,
       CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&left_condition);
 
+  // right
+  program_builder.EnterSubexpression(&right_condition);
   ASSERT_OK_AND_ASSIGN(
-      path.emplace_back(),
-      CreateConstValueStep(value_factory_.CreateBoolValue(false), -1));
+      step, CreateConstValueStep(value_factory_.CreateBoolValue(false), -1));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&right_condition);
 
+  // op
   // Just a placeholder.
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+  ASSERT_OK_AND_ASSIGN(step,
                        CreateConstValueStep(value_factory_.GetNullValue(), -1));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&call);
 
   PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
+                         program_builder);
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
@@ -304,6 +284,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
 
   // Assert
   // No changes attempted.
+  ExecutionPath path = std::move(program_builder).FlattenMain();
   EXPECT_THAT(path, SizeIs(3));
 }
 
@@ -316,37 +297,31 @@ TEST_F(UpdatedConstantFoldingTest, CreatesList) {
   const Expr& elem_one = create_list.list_expr().elements()[0];
   const Expr& elem_two = create_list.list_expr().elements()[1];
 
-  PlannerContext::ProgramTree tree;
-  PlannerContext::ProgramInfo& create_list_info = tree[&create_list];
-  create_list_info.range_start = 0;
-  create_list_info.range_len = 3;
-  create_list_info.children = {&elem_one, &elem_two};
+  ProgramBuilder program_builder;
+  program_builder.EnterSubexpression(&create_list);
 
-  PlannerContext::ProgramInfo& elem_one_info = tree[&elem_one];
-  elem_one_info.range_start = 0;
-  elem_one_info.range_len = 1;
-  elem_one_info.parent = &create_list;
-
-  PlannerContext::ProgramInfo& elem_two_info = tree[&elem_two];
-  elem_two_info.range_start = 1;
-  elem_two_info.range_len = 1;
-  elem_two_info.parent = &create_list;
-
-  ExecutionPath path;
+  // elem one
+  program_builder.EnterSubexpression(&elem_one);
   ASSERT_OK_AND_ASSIGN(
-      path.emplace_back(),
-      CreateConstValueStep(value_factory_.CreateIntValue(1L), 1));
+      auto step, CreateConstValueStep(value_factory_.CreateIntValue(1L), 1));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&elem_one);
 
+  // elem two
+  program_builder.EnterSubexpression(&elem_two);
   ASSERT_OK_AND_ASSIGN(
-      path.emplace_back(),
-      CreateConstValueStep(value_factory_.CreateIntValue(2L), 2));
+      step, CreateConstValueStep(value_factory_.CreateIntValue(2L), 2));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&elem_two);
+
+  // createlist
+  ASSERT_OK_AND_ASSIGN(step, CreateCreateListStep(create_list.list_expr(), 3));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&create_list);
 
   // Insert the list creation step
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateCreateListStep(create_list.list_expr(), 3));
-
   PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
+                         program_builder);
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
@@ -365,6 +340,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesList) {
 
   // Assert
   // Single constant value for the two element list.
+  ExecutionPath path = std::move(program_builder).FlattenMain();
   EXPECT_THAT(path, SizeIs(1));
 }
 
@@ -377,37 +353,31 @@ TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
   const Expr& key = create_map.struct_expr().entries()[0].map_key();
   const Expr& value = create_map.struct_expr().entries()[0].value();
 
-  PlannerContext::ProgramTree tree;
-  PlannerContext::ProgramInfo& create_list_info = tree[&create_map];
-  create_list_info.range_start = 0;
-  create_list_info.range_len = 3;
-  create_list_info.children = {&key, &value};
+  ProgramBuilder program_builder;
+  program_builder.EnterSubexpression(&create_map);
 
-  PlannerContext::ProgramInfo& key_info = tree[&key];
-  key_info.range_start = 0;
-  key_info.range_len = 1;
-  key_info.parent = &create_map;
-
-  PlannerContext::ProgramInfo& value_info = tree[&value];
-  value_info.range_start = 1;
-  value_info.range_len = 1;
-  value_info.parent = &create_map;
-
-  ExecutionPath path;
+  // key
+  program_builder.EnterSubexpression(&key);
   ASSERT_OK_AND_ASSIGN(
-      path.emplace_back(),
-      CreateConstValueStep(value_factory_.CreateIntValue(1L), 1));
+      auto step, CreateConstValueStep(value_factory_.CreateIntValue(1L), 1));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&key);
 
+  // value
+  program_builder.EnterSubexpression(&value);
   ASSERT_OK_AND_ASSIGN(
-      path.emplace_back(),
-      CreateConstValueStep(value_factory_.CreateIntValue(2L), 2));
+      step, CreateConstValueStep(value_factory_.CreateIntValue(2L), 2));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&value);
 
-  // Insert the map creation step
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(), CreateCreateStructStepForMap(
-                                                create_map.struct_expr(), 3));
+  // create map
+  ASSERT_OK_AND_ASSIGN(
+      step, CreateCreateStructStepForMap(create_map.struct_expr(), 3));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&create_map);
 
   PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
+                         program_builder);
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
@@ -426,6 +396,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
 
   // Assert
   // Single constant value for the map.
+  ExecutionPath path = std::move(program_builder).FlattenMain();
   EXPECT_THAT(path, SizeIs(1));
 }
 
@@ -438,37 +409,32 @@ TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
   const Expr& key = create_map.struct_expr().entries()[0].map_key();
   const Expr& value = create_map.struct_expr().entries()[0].value();
 
-  PlannerContext::ProgramTree tree;
-  PlannerContext::ProgramInfo& create_list_info = tree[&create_map];
-  create_list_info.range_start = 0;
-  create_list_info.range_len = 3;
-  create_list_info.children = {&key, &value};
+  ProgramBuilder program_builder;
+  program_builder.EnterSubexpression(&create_map);
 
-  PlannerContext::ProgramInfo& key_info = tree[&key];
-  key_info.range_start = 0;
-  key_info.range_len = 1;
-  key_info.parent = &create_map;
-
-  PlannerContext::ProgramInfo& value_info = tree[&value];
-  value_info.range_start = 1;
-  value_info.range_len = 1;
-  value_info.parent = &create_map;
-
-  ExecutionPath path;
+  // key
+  program_builder.EnterSubexpression(&key);
   ASSERT_OK_AND_ASSIGN(
-      path.emplace_back(),
+      auto step,
       CreateConstValueStep(value_factory_.CreateDoubleValue(1.0), 1));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&key);
 
+  // value
+  program_builder.EnterSubexpression(&value);
   ASSERT_OK_AND_ASSIGN(
-      path.emplace_back(),
-      CreateConstValueStep(value_factory_.CreateIntValue(2L), 2));
+      step, CreateConstValueStep(value_factory_.CreateIntValue(2L), 2));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&value);
 
-  // Insert the map creation step
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(), CreateCreateStructStepForMap(
-                                                create_map.struct_expr(), 3));
+  // create map
+  ASSERT_OK_AND_ASSIGN(
+      step, CreateCreateStructStepForMap(create_map.struct_expr(), 3));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&create_map);
 
   PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
+                         program_builder);
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
@@ -487,6 +453,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
 
   // Assert
   // No change in the map layout since it will generate a runtime error.
+  ExecutionPath path = std::move(program_builder).FlattenMain();
   EXPECT_THAT(path, SizeIs(3));
 }
 
@@ -500,40 +467,33 @@ TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
   const Expr& left_condition = call.call_expr().args()[0];
   const Expr& right_condition = call.call_expr().args()[1];
 
-  PlannerContext::ProgramTree tree;
-  PlannerContext::ProgramInfo& call_info = tree[&call];
-  call_info.range_start = 0;
-  call_info.range_len = 4;
-  call_info.children = {&left_condition, &right_condition};
+  ProgramBuilder program_builder;
 
-  PlannerContext::ProgramInfo& left_condition_info = tree[&left_condition];
-  left_condition_info.range_start = 0;
-  left_condition_info.range_len = 1;
-  left_condition_info.parent = &call;
-
-  PlannerContext::ProgramInfo& right_condition_info = tree[&right_condition];
-  right_condition_info.range_start = 1;
-  right_condition_info.range_len = 1;
-  right_condition_info.parent = &call;
-
-  // Mock execution path that has placeholders for the non-shortcircuiting
-  // version of ternary.
-  ExecutionPath path;
-
+  program_builder.EnterSubexpression(&call);
+  // left
+  program_builder.EnterSubexpression(&left_condition);
   ASSERT_OK_AND_ASSIGN(
-      path.emplace_back(),
+      auto step,
       CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&left_condition);
 
+  // right
+  program_builder.EnterSubexpression(&right_condition);
   ASSERT_OK_AND_ASSIGN(
-      path.emplace_back(),
-      CreateConstValueStep(value_factory_.CreateBoolValue(false), -1));
+      step, CreateConstValueStep(value_factory_.CreateBoolValue(false), -1));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&right_condition);
 
+  // op
   // Just a placeholder.
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+  ASSERT_OK_AND_ASSIGN(step,
                        CreateConstValueStep(value_factory_.GetNullValue(), -1));
+  program_builder.AddStep(std::move(step));
+  program_builder.ExitSubexpression(&call);
 
   PlannerContext context(resolver_, options_, value_factory_, issue_collector_,
-                         path, tree);
+                         program_builder);
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
