@@ -233,6 +233,8 @@ class Object {
     }
   }
 
+  int member = 0;
+
  private:
   bool* deleted_;
 };
@@ -256,6 +258,56 @@ TEST_P(MemoryManagerTest, Shared) {
     case MemoryManagement::kReferenceCounting:
       EXPECT_TRUE(deleted);
       break;
+  }
+  Finish();
+}
+
+TEST_P(MemoryManagerTest, SharedAliasCopy) {
+  bool deleted = false;
+  {
+    auto object = memory_manager().MakeShared<Object>(deleted);
+    EXPECT_TRUE(object);
+    EXPECT_FALSE(deleted);
+    {
+      auto member = Shared<int>(object, &object->member);
+      EXPECT_TRUE(object);
+      EXPECT_FALSE(deleted);
+      EXPECT_TRUE(member);
+    }
+    EXPECT_TRUE(object);
+    EXPECT_FALSE(deleted);
+  }
+  switch (memory_management()) {
+    case MemoryManagement::kPooling:
+      EXPECT_FALSE(deleted);
+      break;
+    case MemoryManagement::kReferenceCounting:
+      EXPECT_TRUE(deleted);
+      break;
+  }
+  Finish();
+}
+
+TEST_P(MemoryManagerTest, SharedAliasMove) {
+  bool deleted = false;
+  {
+    auto object = memory_manager().MakeShared<Object>(deleted);
+    EXPECT_TRUE(object);
+    EXPECT_FALSE(deleted);
+    {
+      auto member = Shared<int>(std::move(object), &object->member);
+      EXPECT_FALSE(object);
+      EXPECT_FALSE(deleted);
+      EXPECT_TRUE(member);
+    }
+    switch (memory_management()) {
+      case MemoryManagement::kPooling:
+        EXPECT_FALSE(deleted);
+        break;
+      case MemoryManagement::kReferenceCounting:
+        EXPECT_TRUE(deleted);
+        break;
+    }
   }
   Finish();
 }

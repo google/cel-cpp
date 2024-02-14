@@ -119,6 +119,27 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Shared final {
   // NOLINTNEXTLINE(google-explicit-constructor)
   explicit Shared(SharedView<U> other);
 
+  // An aliasing constructor. The resulting `Shared` shares ownership
+  // information with `alias`, but holds an unmanaged pointer to `T`.
+  //
+  // Usage:
+  //   Shared<Object> object;
+  //   Shared<Member> member = Shared<Member>(object, &object->member);
+  template <typename U>
+  Shared(const Shared<U>& alias, T* ptr)
+      : value_(ptr), refcount_(alias.refcount_) {
+    common_internal::StrongRef(refcount_);
+  }
+
+  // An aliasing constructor. The resulting `Shared` shares ownership
+  // information with `alias`, but holds an unmanaged pointer to `T`.
+  template <typename U>
+  Shared(Shared<U>&& alias, T* ptr) noexcept
+      : value_(ptr), refcount_(alias.refcount_) {
+    alias.value_ = nullptr;
+    alias.refcount_ = nullptr;
+  }
+
   ~Shared() { common_internal::StrongUnref(refcount_); }
 
   Shared& operator=(const Shared& other) {
@@ -244,6 +265,10 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedView final {
   // NOLINTNEXTLINE(google-explicit-constructor)
   SharedView(const Shared<U>& other ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
       : value_(other.value_), refcount_(other.refcount_) {}
+
+  template <typename U>
+  SharedView(SharedView<U> alias, T* ptr)
+      : value_(ptr), refcount_(alias.refcount_) {}
 
   template <
       typename U,
