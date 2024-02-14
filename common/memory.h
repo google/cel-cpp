@@ -68,11 +68,6 @@ class PoolingMemoryManagerVirtualDispatcher;
 template <typename T>
 class Allocator;
 
-namespace base_internal {
-template <typename T>
-struct HandleFactory;
-}  // namespace base_internal
-
 // `Shared` points to an object allocated in memory which is managed by a
 // `MemoryManager`. The pointed to object is valid so long as the managing
 // `MemoryManager` is alive and one or more valid `Shared` exist pointing to the
@@ -575,8 +570,6 @@ class PoolingMemoryManager {
   friend struct NativeTypeTraits<PoolingMemoryManager>;
   template <typename T>
   friend class Allocator;
-  template <typename T>
-  friend struct base_internal::HandleFactory;
 
   template <typename T>
   static void DefaultDestructor(void* ptr) {
@@ -666,8 +659,6 @@ class PoolingMemoryManagerVirtualDispatcher final
   friend struct CompositionTraits<MemoryManagerRef>;
   template <typename T>
   friend class Allocator;
-  template <typename T>
-  friend struct base_internal::HandleFactory;
 
   explicit PoolingMemoryManagerVirtualDispatcher(
       absl::Nonnull<const PoolingMemoryManagerVirtualTable*> vtable,
@@ -1100,8 +1091,6 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManagerRef final {
   friend struct CompositionTraits<MemoryManagerRef>;
   template <typename T>
   friend class Allocator;
-  template <typename T>
-  friend struct base_internal::HandleFactory;
 
   explicit MemoryManagerRef(void* vpointer, void* pointer)
       : vpointer_(vpointer), pointer_(pointer) {}
