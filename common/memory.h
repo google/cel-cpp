@@ -165,12 +165,12 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Shared final {
     return *this;
   }
 
-  T& operator*() const noexcept {
+  T& operator*() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK(!IsEmpty());
     return *value_;
   }
 
-  absl::Nonnull<T*> operator->() const noexcept {
+  absl::Nonnull<T*> operator->() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK(!IsEmpty());
     return value_;
   }
