@@ -65,8 +65,29 @@ class PoolingMemoryManager;
 struct PoolingMemoryManagerVirtualTable;
 class PoolingMemoryManagerVirtualDispatcher;
 
+namespace common_internal {
 template <typename T>
-class Allocator;
+T* GetPointer(const Shared<T>& shared);
+template <typename T>
+const ReferenceCount* GetReferenceCount(const Shared<T>& shared);
+template <typename T>
+Shared<T> MakeShared(AdoptRef, T* value, const ReferenceCount* refcount);
+template <typename T>
+Shared<T> MakeShared(T* value, const ReferenceCount* refcount);
+template <typename T>
+T* GetPointer(SharedView<T> shared);
+template <typename T>
+const ReferenceCount* GetReferenceCount(SharedView<T> shared);
+template <typename T>
+SharedView<T> MakeSharedView(T* value, const ReferenceCount* refcount);
+}  // namespace common_internal
+
+template <typename To, typename From>
+Shared<To> StaticCast(const Shared<From>& from);
+template <typename To, typename From>
+Shared<To> StaticCast(Shared<From>&& from);
+template <typename To, typename From>
+SharedView<To> StaticCast(SharedView<From> from);
 
 // `Shared` points to an object allocated in memory which is managed by a
 // `MemoryManager`. The pointed to object is valid so long as the managing
@@ -186,7 +207,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Shared final {
     return *this;
   }
 
-  T& operator*() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
+  U& operator*() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK(!IsEmpty());
     return *value_;
   }
@@ -205,19 +227,30 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Shared final {
   }
 
  private:
-  friend class ReferenceCountingMemoryManager;
-  friend class PoolingMemoryManager;
   template <typename U>
   friend class Shared;
   template <typename U>
   friend class SharedView;
+  template <typename To, typename From>
+  friend Shared<To> StaticCast(Shared<From>&& from);
   template <typename U>
-  friend struct EnableSharedFromThis;
-  friend struct NativeTypeTraits<Shared<T>>;
+  friend U* common_internal::GetPointer(const Shared<U>& shared);
+  template <typename U>
+  friend const common_internal::ReferenceCount*
+  common_internal::GetReferenceCount(const Shared<U>& shared);
+  template <typename U>
+  friend Shared<U> common_internal::MakeShared(
+      common_internal::AdoptRef, U* value,
+      const common_internal::ReferenceCount* refcount);
 
   Shared(common_internal::AdoptRef, T* value,
          const common_internal::ReferenceCount* refcount) noexcept
       : value_(value), refcount_(refcount) {}
+
+  Shared(T* value, const common_internal::ReferenceCount* refcount) noexcept
+      : value_(value), refcount_(refcount) {
+    common_internal::StrongRef(refcount_);
+  }
 
   bool IsEmpty() const noexcept { return value_ == nullptr; }
 
@@ -225,10 +258,26 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Shared final {
   const common_internal::ReferenceCount* refcount_ = nullptr;
 };
 
+template <typename To, typename From>
+inline Shared<To> StaticCast(const Shared<From>& from) {
+  return common_internal::MakeShared(
+      static_cast<To*>(common_internal::GetPointer(from)),
+      common_internal::GetReferenceCount(from));
+}
+
+template <typename To, typename From>
+inline Shared<To> StaticCast(Shared<From>&& from) {
+  To* value = static_cast<To*>(from.value_);
+  const auto* refcount = from.refcount_;
+  from.value_ = nullptr;
+  from.refcount_ = nullptr;
+  return Shared<To>(common_internal::kAdoptRef, value, refcount);
+}
+
 template <typename T>
 struct NativeTypeTraits<Shared<T>> final {
   static bool SkipDestructor(const Shared<T>& shared) {
-    return shared.refcount_ == nullptr;
+    return common_internal::GetReferenceCount(shared) == nullptr;
   }
 };
 
@@ -307,7 +356,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedView final {
   // NOLINTNEXTLINE(google-explicit-constructor)
   SharedView& operator=(Shared<U>&&) = delete;
 
-  T& operator*() const noexcept {
+  template <typename U = T, typename = std::enable_if_t<!std::is_void_v<U>>>
+  U& operator*() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK(!IsEmpty());
     return *value_;
   }
@@ -330,6 +380,17 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedView final {
   friend class Shared;
   template <typename U>
   friend class SharedView;
+  template <typename U>
+  friend U* common_internal::GetPointer(SharedView<U> shared);
+  template <typename U>
+  friend const common_internal::ReferenceCount*
+  common_internal::GetReferenceCount(SharedView<U> shared);
+  template <typename U>
+  friend SharedView<U> common_internal::MakeSharedView(
+      U* value, const common_internal::ReferenceCount* refcount);
+
+  SharedView(T* value, const common_internal::ReferenceCount* refcount)
+      : value_(value), refcount_(refcount) {}
 
   bool IsEmpty() const noexcept { return value_ == nullptr; }
 
@@ -344,6 +405,13 @@ Shared<T>::Shared(SharedView<U> other)
   StrongRef(refcount_);
 }
 
+template <typename To, typename From>
+SharedView<To> StaticCast(SharedView<From> from) {
+  return common_internal::MakeSharedView(
+      static_cast<To*>(common_internal::GetPointer(from)),
+      common_internal::GetReferenceCount(from));
+}
+
 template <typename T>
 struct EnableSharedFromThis
     : public virtual common_internal::ReferenceCountFromThis {
@@ -351,15 +419,13 @@ struct EnableSharedFromThis
   Shared<T> shared_from_this() noexcept {
     auto* const derived = static_cast<T*>(this);
     auto* const refcount = common_internal::GetReferenceCountForThat(*this);
-    common_internal::StrongRef(refcount);
-    return Shared<T>(common_internal::kAdoptRef, derived, refcount);
+    return common_internal::MakeShared(derived, refcount);
   }
 
   Shared<const T> shared_from_this() const noexcept {
     auto* const derived = static_cast<const T*>(this);
     auto* const refcount = common_internal::GetReferenceCountForThat(*this);
-    common_internal::StrongRef(refcount);
-    return Shared<const T>(common_internal::kAdoptRef, derived, refcount);
+    return common_internal::MakeShared(derived, refcount);
   }
 };
 
@@ -482,8 +548,8 @@ class ReferenceCountingMemoryManager final {
     common_internal::ReferenceCount* refcount;
     std::tie(ptr, refcount) =
         common_internal::MakeReferenceCount<U>(std::forward<Args>(args)...);
-    return Shared<T>(common_internal::kAdoptRef, static_cast<T*>(ptr),
-                     refcount);
+    return common_internal::MakeShared(common_internal::kAdoptRef,
+                                       static_cast<T*>(ptr), refcount);
   }
 
   template <typename T, typename... Args>
@@ -534,7 +600,8 @@ class PoolingMemoryManager {
       Deallocate(addr, sizeof(U), alignof(U));
       CEL_INTERNAL_RETHROW;
     }
-    return Shared<T>(common_internal::kAdoptRef, static_cast<T*>(ptr), nullptr);
+    return common_internal::MakeShared(common_internal::kAdoptRef,
+                                       static_cast<T*>(ptr), nullptr);
   }
 
   template <typename T, typename... Args>
@@ -593,8 +660,6 @@ class PoolingMemoryManager {
   friend class MemoryManager;
   friend class MemoryManagerRef;
   friend struct NativeTypeTraits<PoolingMemoryManager>;
-  template <typename T>
-  friend class Allocator;
 
   template <typename T>
   static void DefaultDestructor(void* ptr) {
@@ -682,8 +747,6 @@ class PoolingMemoryManagerVirtualDispatcher final
  private:
   friend class MemoryManagerRef;
   friend struct CompositionTraits<MemoryManagerRef>;
-  template <typename T>
-  friend class Allocator;
 
   explicit PoolingMemoryManagerVirtualDispatcher(
       absl::Nonnull<const PoolingMemoryManagerVirtualTable*> vtable,
@@ -1114,8 +1177,6 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManagerRef final {
   friend class PoolingMemoryManagerVirtualDispatcher;
   friend struct NativeTypeTraits<MemoryManagerRef>;
   friend struct CompositionTraits<MemoryManagerRef>;
-  template <typename T>
-  friend class Allocator;
 
   explicit MemoryManagerRef(void* vpointer, void* pointer)
       : vpointer_(vpointer), pointer_(pointer) {}
@@ -1206,6 +1267,47 @@ struct CastTraits<To, From,
                   std::enable_if_t<std::is_same_v<MemoryManagerRef,
                                                   absl::remove_cvref_t<From>>>>
     : CompositionCastTraits<To, From> {};
+
+namespace common_internal {
+
+template <typename T>
+inline T* GetPointer(const Shared<T>& shared) {
+  return shared.value_;
+}
+
+template <typename T>
+inline const ReferenceCount* GetReferenceCount(const Shared<T>& shared) {
+  return shared.refcount_;
+}
+
+template <typename T>
+inline Shared<T> MakeShared(T* value, const ReferenceCount* refcount) {
+  StrongRef(refcount);
+  return MakeShared(kAdoptRef, value, refcount);
+}
+
+template <typename T>
+inline Shared<T> MakeShared(AdoptRef, T* value,
+                            const ReferenceCount* refcount) {
+  return Shared<T>(kAdoptRef, value, refcount);
+}
+
+template <typename T>
+inline T* GetPointer(SharedView<T> shared) {
+  return shared.value_;
+}
+
+template <typename T>
+inline const ReferenceCount* GetReferenceCount(SharedView<T> shared) {
+  return shared.refcount_;
+}
+
+template <typename T>
+inline SharedView<T> MakeSharedView(T* value, const ReferenceCount* refcount) {
+  return SharedView<T>(value, refcount);
+}
+
+}  // namespace common_internal
 
 }  // namespace cel
 

@@ -312,6 +312,56 @@ TEST_P(MemoryManagerTest, SharedAliasMove) {
   Finish();
 }
 
+TEST_P(MemoryManagerTest, SharedStaticCastCopy) {
+  bool deleted = false;
+  {
+    auto object = memory_manager().MakeShared<Object>(deleted);
+    EXPECT_TRUE(object);
+    EXPECT_FALSE(deleted);
+    {
+      auto member = StaticCast<void>(object);
+      EXPECT_TRUE(object);
+      EXPECT_FALSE(deleted);
+      EXPECT_TRUE(member);
+    }
+    EXPECT_TRUE(object);
+    EXPECT_FALSE(deleted);
+  }
+  switch (memory_management()) {
+    case MemoryManagement::kPooling:
+      EXPECT_FALSE(deleted);
+      break;
+    case MemoryManagement::kReferenceCounting:
+      EXPECT_TRUE(deleted);
+      break;
+  }
+  Finish();
+}
+
+TEST_P(MemoryManagerTest, SharedStaticCastMove) {
+  bool deleted = false;
+  {
+    auto object = memory_manager().MakeShared<Object>(deleted);
+    EXPECT_TRUE(object);
+    EXPECT_FALSE(deleted);
+    {
+      auto member = StaticCast<void>(std::move(object));
+      EXPECT_FALSE(object);
+      EXPECT_FALSE(deleted);
+      EXPECT_TRUE(member);
+    }
+    switch (memory_management()) {
+      case MemoryManagement::kPooling:
+        EXPECT_FALSE(deleted);
+        break;
+      case MemoryManagement::kReferenceCounting:
+        EXPECT_TRUE(deleted);
+        break;
+    }
+  }
+  Finish();
+}
+
 TEST_P(MemoryManagerTest, SharedCopyConstruct) {
   bool deleted = false;
   {
