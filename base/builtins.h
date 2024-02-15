@@ -79,6 +79,8 @@ constexpr char kHours[] = "getHours";
 constexpr char kMinutes[] = "getMinutes";
 constexpr char kSeconds[] = "getSeconds";
 constexpr char kMilliseconds[] = "getMilliseconds";
+constexpr char kMicroseonds[] = "getMicroseconds";
+constexpr char kNanoseconds[] = "getNanoseconds";
 
 // Type conversions
 // TODO(issues/23): Add other type conversion methods.
