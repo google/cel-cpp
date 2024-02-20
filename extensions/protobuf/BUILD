@@ -160,3 +160,35 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "value",
+    srcs = ["value.cc"],
+    hdrs = ["value.h"],
+    deps = [
+        "//common:casting",
+        "//common:value",
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "value_test",
+    srcs = ["value_test.cc"],
+    deps = [
+        ":value",
+        "//common:casting",
+        "//common:value",
+        "//common:value_testing",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_cel_spec//proto/test/v1/proto2:test_all_types_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
