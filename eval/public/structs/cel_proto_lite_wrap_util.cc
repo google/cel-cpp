@@ -665,7 +665,7 @@ absl::StatusOr<Duration*> CreateMessageFromValue(
     return absl::InternalError("cel_value is expected to have Duration type.");
   }
   if (wrapper == nullptr) {
-    wrapper = google::protobuf::Arena::CreateMessage<Duration>(arena);
+    wrapper = google::protobuf::Arena::Create<Duration>(arena);
   }
   absl::Status status = cel::internal::EncodeDuration(val, wrapper);
   if (!status.ok()) {
@@ -682,7 +682,7 @@ absl::StatusOr<BoolValue*> CreateMessageFromValue(
     return absl::InternalError("cel_value is expected to have Bool type.");
   }
   if (wrapper == nullptr) {
-    wrapper = google::protobuf::Arena::CreateMessage<BoolValue>(arena);
+    wrapper = google::protobuf::Arena::Create<BoolValue>(arena);
   }
   wrapper->set_value(val);
   return wrapper;
@@ -696,7 +696,7 @@ absl::StatusOr<BytesValue*> CreateMessageFromValue(
     return absl::InternalError("cel_value is expected to have Bytes type.");
   }
   if (wrapper == nullptr) {
-    wrapper = google::protobuf::Arena::CreateMessage<BytesValue>(arena);
+    wrapper = google::protobuf::Arena::Create<BytesValue>(arena);
   }
   wrapper->set_value(view_val.value());
   return wrapper;
@@ -710,7 +710,7 @@ absl::StatusOr<DoubleValue*> CreateMessageFromValue(
     return absl::InternalError("cel_value is expected to have Double type.");
   }
   if (wrapper == nullptr) {
-    wrapper = google::protobuf::Arena::CreateMessage<DoubleValue>(arena);
+    wrapper = google::protobuf::Arena::Create<DoubleValue>(arena);
   }
   wrapper->set_value(val);
   return wrapper;
@@ -724,7 +724,7 @@ absl::StatusOr<FloatValue*> CreateMessageFromValue(
     return absl::InternalError("cel_value is expected to have Double type.");
   }
   if (wrapper == nullptr) {
-    wrapper = google::protobuf::Arena::CreateMessage<FloatValue>(arena);
+    wrapper = google::protobuf::Arena::Create<FloatValue>(arena);
   }
   // Abort the conversion if the value is outside the float range.
   if (val > std::numeric_limits<float>::max()) {
@@ -752,7 +752,7 @@ absl::StatusOr<Int32Value*> CreateMessageFromValue(
         "Integer overflow on Int32 to Int64 conversion.");
   }
   if (wrapper == nullptr) {
-    wrapper = google::protobuf::Arena::CreateMessage<Int32Value>(arena);
+    wrapper = google::protobuf::Arena::Create<Int32Value>(arena);
   }
   wrapper->set_value(val);
   return wrapper;
@@ -766,7 +766,7 @@ absl::StatusOr<Int64Value*> CreateMessageFromValue(
     return absl::InternalError("cel_value is expected to have Int64 type.");
   }
   if (wrapper == nullptr) {
-    wrapper = google::protobuf::Arena::CreateMessage<Int64Value>(arena);
+    wrapper = google::protobuf::Arena::Create<Int64Value>(arena);
   }
   wrapper->set_value(val);
   return wrapper;
@@ -780,7 +780,7 @@ absl::StatusOr<StringValue*> CreateMessageFromValue(
     return absl::InternalError("cel_value is expected to have String type.");
   }
   if (wrapper == nullptr) {
-    wrapper = google::protobuf::Arena::CreateMessage<StringValue>(arena);
+    wrapper = google::protobuf::Arena::Create<StringValue>(arena);
   }
   wrapper->set_value(view_val.value());
   return wrapper;
@@ -794,7 +794,7 @@ absl::StatusOr<Timestamp*> CreateMessageFromValue(
     return absl::InternalError("cel_value is expected to have Timestamp type.");
   }
   if (wrapper == nullptr) {
-    wrapper = google::protobuf::Arena::CreateMessage<Timestamp>(arena);
+    wrapper = google::protobuf::Arena::Create<Timestamp>(arena);
   }
   absl::Status status = EncodeTime(val, wrapper);
   if (!status.ok()) {
@@ -816,7 +816,7 @@ absl::StatusOr<UInt32Value*> CreateMessageFromValue(
         "Integer overflow on UInt32 to UInt64 conversion.");
   }
   if (wrapper == nullptr) {
-    wrapper = google::protobuf::Arena::CreateMessage<UInt32Value>(arena);
+    wrapper = google::protobuf::Arena::Create<UInt32Value>(arena);
   }
   wrapper->set_value(val);
   return wrapper;
@@ -830,7 +830,7 @@ absl::StatusOr<UInt64Value*> CreateMessageFromValue(
     return absl::InternalError("cel_value is expected to have UInt64 type.");
   }
   if (wrapper == nullptr) {
-    wrapper = google::protobuf::Arena::CreateMessage<UInt64Value>(arena);
+    wrapper = google::protobuf::Arena::Create<UInt64Value>(arena);
   }
   wrapper->set_value(val);
   return wrapper;
@@ -844,7 +844,7 @@ absl::StatusOr<ListValue*> CreateMessageFromValue(
   }
   const google::api::expr::runtime::CelList& list = *cel_value.ListOrDie();
   if (wrapper == nullptr) {
-    wrapper = google::protobuf::Arena::CreateMessage<ListValue>(arena);
+    wrapper = google::protobuf::Arena::Create<ListValue>(arena);
   }
   for (int i = 0; i < list.size(); i++) {
     auto element = list.Get(arena, i);
@@ -867,7 +867,7 @@ absl::StatusOr<Struct*> CreateMessageFromValue(
     return absl::InternalError("cel_value is expected to have Map type.");
   }
   if (wrapper == nullptr) {
-    wrapper = google::protobuf::Arena::CreateMessage<Struct>(arena);
+    wrapper = google::protobuf::Arena::Create<Struct>(arena);
   }
   const google::api::expr::runtime::CelMap& map = *cel_value.MapOrDie();
   const auto& keys = *map.ListKeys(arena).value();
@@ -900,7 +900,7 @@ absl::StatusOr<Value*> CreateMessageFromValue(
     const CelValue& cel_value, Value* wrapper,
     const LegacyTypeProvider* type_provider, google::protobuf::Arena* arena) {
   if (wrapper == nullptr) {
-    wrapper = google::protobuf::Arena::CreateMessage<Value>(arena);
+    wrapper = google::protobuf::Arena::Create<Value>(arena);
   }
   CelValue::Type type = cel_value.type();
   switch (type) {
@@ -1005,7 +1005,7 @@ absl::StatusOr<Any*> CreateMessageFromValue(
     const CelValue& cel_value, Any* wrapper,
     const LegacyTypeProvider* type_provider, google::protobuf::Arena* arena) {
   if (wrapper == nullptr) {
-    wrapper = google::protobuf::Arena::CreateMessage<Any>(arena);
+    wrapper = google::protobuf::Arena::Create<Any>(arena);
   }
   CelValue::Type type = cel_value.type();
   // In open source, any->PackFrom() returns void rather than boolean.

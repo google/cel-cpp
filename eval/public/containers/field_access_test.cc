@@ -141,7 +141,7 @@ TEST(FieldAccessTest, SetMessage) {
   const FieldDescriptor* field =
       TestAllTypes::descriptor()->FindFieldByName("standalone_message");
   TestAllTypes::NestedMessage* nested_msg =
-      google::protobuf::Arena::CreateMessage<TestAllTypes::NestedMessage>(&arena);
+      google::protobuf::Arena::Create<TestAllTypes::NestedMessage>(&arena);
   nested_msg->set_bb(1);
   auto status = SetValueToSingleField(
       CelProtoWrapper::CreateMessage(nested_msg, &arena), field, &msg, &arena);

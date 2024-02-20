@@ -137,8 +137,7 @@ TEST(CelFunctionAdapterTest, TestTypeDeductionForCelValueBasicTypes) {
 TEST(CelFunctionAdapterTest, TestAdapterStatusOrMessage) {
   auto func =
       [](google::protobuf::Arena* arena) -> absl::StatusOr<const google::protobuf::Message*> {
-    auto* ret =
-        google::protobuf::Arena::CreateMessage<google::protobuf::Timestamp>(arena);
+    auto* ret = google::protobuf::Arena::Create<google::protobuf::Timestamp>(arena);
     ret->set_seconds(123);
     return ret;
   };

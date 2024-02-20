@@ -16,7 +16,7 @@
 //    string* msg = google::protobuf::Arena::Create<string>(arena,"test");
 //    CelValue value = CelValue::CreateString(msg);
 // (c) For messages:
-//    const MyMessage * msg = google::protobuf::Arena::CreateMessage<MyMessage>(arena);
+//    const MyMessage * msg = google::protobuf::Arena::Create<MyMessage>(arena);
 //    CelValue value = CelProtoWrapper::CreateMessage(msg, &arena);
 
 #include <cstdint>

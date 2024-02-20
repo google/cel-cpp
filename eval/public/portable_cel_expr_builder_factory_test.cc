@@ -444,7 +444,7 @@ const LegacyTypeAccessApis* DemoTypeInfo::GetAccessApis(
 
 absl::StatusOr<CelValue::MessageWrapper::Builder> DemoTimestamp::NewInstance(
     cel::MemoryManagerRef memory_manager) const {
-  auto* ts = google::protobuf::Arena::CreateMessage<google::protobuf::Timestamp>(
+  auto* ts = google::protobuf::Arena::Create<google::protobuf::Timestamp>(
       cel::extensions::ProtoMemoryManagerArena(memory_manager));
   return CelValue::MessageWrapper::Builder(ts);
 }
@@ -496,7 +496,7 @@ DemoTestMessage::DemoTestMessage(const DemoTypeProvider* owning_provider)
 
 absl::StatusOr<CelValue::MessageWrapper::Builder> DemoTestMessage::NewInstance(
     cel::MemoryManagerRef memory_manager) const {
-  auto* ts = google::protobuf::Arena::CreateMessage<TestMessage>(
+  auto* ts = google::protobuf::Arena::Create<TestMessage>(
       cel::extensions::ProtoMemoryManagerArena(memory_manager));
   return CelValue::MessageWrapper::Builder(ts);
 }
