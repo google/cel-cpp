@@ -36,7 +36,7 @@ absl::StatusOr<int> ProtoEnumFromValue(
         .NativeValue();
   }
   if (auto int_value = As<IntValueView>(value); int_value) {
-    if (int_value->NativeValue() >= 0 ||
+    if (int_value->NativeValue() >= 0 &&
         int_value->NativeValue() <= std::numeric_limits<int>::max()) {
       const auto* value_desc =
           desc->FindValueByNumber(static_cast<int>(int_value->NativeValue()));
