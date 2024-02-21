@@ -37,6 +37,20 @@ cc_test(
 )
 
 cc_library(
+    name = "new",
+    hdrs = ["new.h"],
+)
+
+cc_test(
+    name = "new_test",
+    srcs = ["new_test.cc"],
+    deps = [
+        ":new",
+        ":testing",
+    ],
+)
+
+cc_library(
     name = "copy_on_write",
     hdrs = ["copy_on_write.h"],
     deps = [
