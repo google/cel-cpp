@@ -26,6 +26,8 @@
 
 #include "absl/base/no_destructor.h"
 #include "common/native_type.h"
+#include "internal/align.h"
+#include "internal/new.h"
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -76,46 +78,6 @@ size_t GetPageSize() {
   return page_size;
 }
 
-uintptr_t AlignmentMask(size_t align) {
-  ABSL_DCHECK(absl::has_single_bit(align));  // Assert aligned to power of 2.
-  return align - size_t{1};
-}
-
-bool IsAligned(uintptr_t size, size_t align) {
-  ABSL_DCHECK_NE(size, 0);
-  ABSL_DCHECK(absl::has_single_bit(align));  // Assert aligned to power of 2.
-  return (size & AlignmentMask(align)) == 0;
-}
-
-template <typename T>
-bool IsAligned(T* pointer, size_t align) {
-  return IsAligned(reinterpret_cast<uintptr_t>(pointer), align);
-}
-
-uintptr_t AlignDown(uintptr_t size, size_t align) {
-  ABSL_DCHECK_NE(size, 0);
-  ABSL_DCHECK(absl::has_single_bit(align));  // Assert aligned to power of 2.
-  return size & ~AlignmentMask(align);
-}
-
-template <typename T>
-T* AlignDown(T* pointer, size_t align) {
-  return reinterpret_cast<T*>(
-      AlignDown(reinterpret_cast<uintptr_t>(pointer), align));
-}
-
-uintptr_t AlignUp(uintptr_t size, size_t align) {
-  ABSL_DCHECK_NE(size, 0);
-  ABSL_DCHECK(absl::has_single_bit(align));  // Assert aligned to power of 2.
-  return AlignDown(size + AlignmentMask(align), align);
-}
-
-template <typename T>
-T* AlignUp(T* pointer, size_t align) {
-  return reinterpret_cast<T*>(
-      AlignUp(reinterpret_cast<uintptr_t>(pointer), align));
-}
-
 struct CleanupAction final {
   void* pointer;
   void (*destruct)(void*);
@@ -123,7 +85,9 @@ struct CleanupAction final {
 
 struct Region final {
   static Region* Create(size_t size, Region* prev) {
-    return ::new (::operator new(size + sizeof(Region))) Region(size, prev);
+    auto sized_ptr = internal::SizeReturningNew(size + sizeof(Region));
+    return ::new (sized_ptr.first)
+        Region(sized_ptr.second - sizeof(Region), prev);
   }
 
   const size_t size;
@@ -146,15 +110,9 @@ struct Region final {
   void Destroy() noexcept {
     ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void*>(begin()), size);
     void* const address = this;
-#if defined(__cpp_sized_deallocation) && __cpp_sized_deallocation >= 201309L
     const auto total_size = size + sizeof(Region);
-#endif
     this->~Region();
-#if defined(__cpp_sized_deallocation) && __cpp_sized_deallocation >= 201309L
-    ::operator delete(address, total_size);
-#else
-    ::operator delete(address);
-#endif
+    internal::SizedDelete(address, total_size);
   }
 };
 
@@ -221,23 +179,23 @@ class ThreadCompatiblePoolingMemoryManager final : public PoolingMemoryManager {
         // Allocate first region.
         ABSL_DCHECK(first_ == nullptr);
         ABSL_DCHECK(last_ == nullptr);
-        const size_t capacity =
-            CalculateRegionSize(AlignUp(size + sizeof(Region), align));
+        const size_t capacity = CalculateRegionSize(
+            internal::AlignUp(size + sizeof(Region), align));
         first_ = last_ = Region::Create(capacity - sizeof(Region), nullptr);
         prev_ = next_ = last_->begin();
       }
-      uintptr_t address = AlignUp(next_, align);
+      uintptr_t address = internal::AlignUp(next_, align);
       if (ABSL_PREDICT_FALSE(address < next_ || address >= last_->end() ||
                              last_->end() - address < size)) {
         // Allocate new region.
-        const size_t capacity =
-            CalculateRegionSize(AlignUp(size + sizeof(Region), align));
+        const size_t capacity = CalculateRegionSize(
+            internal::AlignUp(size + sizeof(Region), align));
         min_region_size_ = std::min(min_region_size_ * 2, max_region_size_);
         last_ = Region::Create(capacity - sizeof(Region), last_);
-        address = AlignUp(last_->begin(), align);
+        address = internal::AlignUp(last_->begin(), align);
       }
       void* pointer = reinterpret_cast<void*>(address);
-      ABSL_DCHECK(IsAligned(pointer, align));
+      ABSL_DCHECK(internal::IsAligned(pointer, align));
       next_ = address + size;
       ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void*>(address), size);
       return pointer;
@@ -253,7 +211,7 @@ class ThreadCompatiblePoolingMemoryManager final : public PoolingMemoryManager {
                       size_t align) noexcept override {
     ABSL_DCHECK(absl::has_single_bit(align));
     ABSL_DCHECK_NE(size, 0);
-    ABSL_DCHECK(IsAligned(pointer, align));
+    ABSL_DCHECK(internal::IsAligned(pointer, align));
     ABSL_DCHECK(!IsSizeTooLarge(size));
     ABSL_DCHECK(!IsAlignmentTooLarge(align));
     auto address = reinterpret_cast<uintptr_t>(pointer);
