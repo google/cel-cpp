@@ -17,6 +17,26 @@ package(default_visibility = ["//visibility:public"])
 licenses(["notice"])
 
 cc_library(
+    name = "align",
+    hdrs = ["align.h"],
+    deps = [
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:config",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/numeric:bits",
+    ],
+)
+
+cc_test(
+    name = "align_test",
+    srcs = ["align_test.cc"],
+    deps = [
+        ":align",
+        ":testing",
+    ],
+)
+
+cc_library(
     name = "copy_on_write",
     hdrs = ["copy_on_write.h"],
     deps = [
