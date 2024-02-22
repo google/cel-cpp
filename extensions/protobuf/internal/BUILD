@@ -20,6 +20,36 @@ package(
 licenses(["notice"])
 
 cc_library(
+    name = "any",
+    srcs = ["any.cc"],
+    hdrs = ["any.h"],
+    deps = [
+        "//common:any",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "any_test",
+    srcs = ["any_test.cc"],
+    deps = [
+        ":any",
+        "//common:any",
+        "//internal:testing",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "duration",
     srcs = ["duration.cc"],
     hdrs = ["duration.h"],
