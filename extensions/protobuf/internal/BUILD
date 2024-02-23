@@ -77,6 +77,12 @@ cc_test(
 )
 
 cc_library(
+    name = "enum",
+    hdrs = ["enum.h"],
+    deps = ["@com_google_protobuf//:protobuf"],
+)
+
+cc_library(
     name = "timestamp",
     srcs = ["timestamp.cc"],
     hdrs = ["timestamp.h"],

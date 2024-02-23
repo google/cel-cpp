@@ -168,6 +168,7 @@ cc_library(
     deps = [
         "//common:casting",
         "//common:value",
+        "//extensions/protobuf/internal:enum",
         "//internal:status_macros",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",

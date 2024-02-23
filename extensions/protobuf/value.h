@@ -23,20 +23,18 @@
 #include "absl/status/statusor.h"
 #include "common/value.h"
 #include "common/value_factory.h"
+#include "extensions/protobuf/internal/enum.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/generated_enum_reflection.h"
-#include "google/protobuf/generated_enum_util.h"
 
 namespace cel::extensions {
 
 template <typename T>
-inline constexpr bool IsProtoEnum = google::protobuf::is_proto_enum<T>::value;
-
-template <typename T>
-std::enable_if_t<IsProtoEnum<T>, absl::StatusOr<ValueView>> ProtoEnumToValue(
-    ValueFactory&, T value,
-    Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND ABSL_ATTRIBUTE_UNUSED) {
+std::enable_if_t<protobuf_internal::IsProtoEnum<T>, absl::StatusOr<ValueView>>
+ProtoEnumToValue(ValueFactory&, T value,
+                 Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND
+                     ABSL_ATTRIBUTE_UNUSED) {
   if constexpr (std::is_same_v<T, google::protobuf::NullValue>) {
     return NullValueView{};
   }
@@ -44,8 +42,8 @@ std::enable_if_t<IsProtoEnum<T>, absl::StatusOr<ValueView>> ProtoEnumToValue(
 }
 
 template <typename T>
-std::enable_if_t<IsProtoEnum<T>, absl::StatusOr<Value>> ProtoEnumToValue(
-    ValueFactory&, T value) {
+std::enable_if_t<protobuf_internal::IsProtoEnum<T>, absl::StatusOr<Value>>
+ProtoEnumToValue(ValueFactory&, T value) {
   if constexpr (std::is_same_v<T, google::protobuf::NullValue>) {
     return NullValue{};
   }
@@ -56,8 +54,8 @@ absl::StatusOr<int> ProtoEnumFromValue(
     ValueView value, absl::Nonnull<const google::protobuf::EnumDescriptor*> desc);
 
 template <typename T>
-std::enable_if_t<IsProtoEnum<T>, absl::StatusOr<T>> ProtoEnumFromValue(
-    ValueView value) {
+std::enable_if_t<protobuf_internal::IsProtoEnum<T>, absl::StatusOr<T>>
+ProtoEnumFromValue(ValueView value) {
   CEL_ASSIGN_OR_RETURN(
       auto enum_value,
       ProtoEnumFromValue(value, google::protobuf::GetEnumDescriptor<T>()));
