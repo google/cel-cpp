@@ -186,6 +186,14 @@ class StringValue final {
 
 inline void swap(StringValue& lhs, StringValue& rhs) noexcept { lhs.swap(rhs); }
 
+inline bool operator==(const StringValue& lhs, absl::string_view rhs) {
+  return lhs.Equals(rhs);
+}
+
+inline bool operator==(absl::string_view lhs, const StringValue& rhs) {
+  return rhs == lhs;
+}
+
 inline bool operator!=(const StringValue& lhs, const StringValue& rhs) {
   return !operator==(lhs, rhs);
 }

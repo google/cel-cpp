@@ -195,6 +195,7 @@ cc_library(
     testonly = True,
     hdrs = ["value_testing.h"],
     deps = [
+        ":casting",
         ":memory",
         ":memory_testing",
         ":type",
