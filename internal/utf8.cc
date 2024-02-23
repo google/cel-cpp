@@ -36,35 +36,35 @@ namespace cel::internal {
 
 namespace {
 
-ABSL_CONST_INIT constexpr uint8_t kUtf8RuneSelf = 0x80;
-ABSL_CONST_INIT constexpr size_t kUtf8Max = 4;
+constexpr uint8_t kUtf8RuneSelf = 0x80;
+constexpr size_t kUtf8Max = 4;
 
-ABSL_CONST_INIT constexpr uint8_t kLow = 0x80;
-ABSL_CONST_INIT constexpr uint8_t kHigh = 0xbf;
+constexpr uint8_t kLow = 0x80;
+constexpr uint8_t kHigh = 0xbf;
 
-ABSL_CONST_INIT constexpr uint8_t kMaskX = 0x3f;
-ABSL_CONST_INIT constexpr uint8_t kMask2 = 0x1f;
-ABSL_CONST_INIT constexpr uint8_t kMask3 = 0xf;
-ABSL_CONST_INIT constexpr uint8_t kMask4 = 0x7;
+constexpr uint8_t kMaskX = 0x3f;
+constexpr uint8_t kMask2 = 0x1f;
+constexpr uint8_t kMask3 = 0xf;
+constexpr uint8_t kMask4 = 0x7;
 
-ABSL_CONST_INIT constexpr uint8_t kTX = 0x80;
-ABSL_CONST_INIT constexpr uint8_t kT2 = 0xc0;
-ABSL_CONST_INIT constexpr uint8_t kT3 = 0xe0;
-ABSL_CONST_INIT constexpr uint8_t kT4 = 0xf0;
+constexpr uint8_t kTX = 0x80;
+constexpr uint8_t kT2 = 0xc0;
+constexpr uint8_t kT3 = 0xe0;
+constexpr uint8_t kT4 = 0xf0;
 
-ABSL_CONST_INIT constexpr uint8_t kXX = 0xf1;
-ABSL_CONST_INIT constexpr uint8_t kAS = 0xf0;
-ABSL_CONST_INIT constexpr uint8_t kS1 = 0x02;
-ABSL_CONST_INIT constexpr uint8_t kS2 = 0x13;
-ABSL_CONST_INIT constexpr uint8_t kS3 = 0x03;
-ABSL_CONST_INIT constexpr uint8_t kS4 = 0x23;
-ABSL_CONST_INIT constexpr uint8_t kS5 = 0x34;
-ABSL_CONST_INIT constexpr uint8_t kS6 = 0x04;
-ABSL_CONST_INIT constexpr uint8_t kS7 = 0x44;
+constexpr uint8_t kXX = 0xf1;
+constexpr uint8_t kAS = 0xf0;
+constexpr uint8_t kS1 = 0x02;
+constexpr uint8_t kS2 = 0x13;
+constexpr uint8_t kS3 = 0x03;
+constexpr uint8_t kS4 = 0x23;
+constexpr uint8_t kS5 = 0x34;
+constexpr uint8_t kS6 = 0x04;
+constexpr uint8_t kS7 = 0x44;
 
 // NOLINTBEGIN
 // clang-format off
-ABSL_CONST_INIT constexpr uint8_t kLeading[256] = {
+constexpr uint8_t kLeading[256] = {
   //   1    2    3    4    5    6    7    8    9    A    B    C    D    E    F
   kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, // 0x00-0x0F
   kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, kAS, // 0x10-0x1F
@@ -87,12 +87,11 @@ ABSL_CONST_INIT constexpr uint8_t kLeading[256] = {
 // clang-format on
 // NOLINTEND
 
-ABSL_CONST_INIT constexpr std::pair<const uint8_t, const uint8_t> kAccept[16] =
-    {
-        {kLow, kHigh}, {0xa0, kHigh}, {kLow, 0x9f}, {0x90, kHigh},
-        {kLow, 0x8f},  {0x0, 0x0},    {0x0, 0x0},   {0x0, 0x0},
-        {0x0, 0x0},    {0x0, 0x0},    {0x0, 0x0},   {0x0, 0x0},
-        {0x0, 0x0},    {0x0, 0x0},    {0x0, 0x0},   {0x0, 0x0},
+constexpr std::pair<const uint8_t, const uint8_t> kAccept[16] = {
+    {kLow, kHigh}, {0xa0, kHigh}, {kLow, 0x9f}, {0x90, kHigh},
+    {kLow, 0x8f},  {0x0, 0x0},    {0x0, 0x0},   {0x0, 0x0},
+    {0x0, 0x0},    {0x0, 0x0},    {0x0, 0x0},   {0x0, 0x0},
+    {0x0, 0x0},    {0x0, 0x0},    {0x0, 0x0},   {0x0, 0x0},
 };
 
 class StringReader final {
