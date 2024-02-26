@@ -14,6 +14,7 @@
 
 #include "common/value.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <ostream>
@@ -22,6 +23,7 @@
 #include <utility>
 
 #include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -32,11 +34,33 @@
 #include "common/any.h"
 #include "common/json.h"
 #include "common/type.h"
+#include "common/value_kind.h"
 #include "common/values/values.h"
 #include "internal/status_macros.h"
 #include "runtime/runtime_options.h"
 
 namespace cel {
+namespace {
+
+static constexpr std::array<ValueKind, 20> kValueToKindArray = {
+    ValueKind::kError,  ValueKind::kBool,      ValueKind::kBytes,
+    ValueKind::kDouble, ValueKind::kDuration,  ValueKind::kError,
+    ValueKind::kInt,    ValueKind::kList,      ValueKind::kList,
+    ValueKind::kMap,    ValueKind::kMap,       ValueKind::kNull,
+    ValueKind::kOpaque, ValueKind::kString,    ValueKind::kStruct,
+    ValueKind::kStruct, ValueKind::kTimestamp, ValueKind::kType,
+    ValueKind::kUint,   ValueKind::kUnknown};
+
+static_assert(kValueToKindArray.size() ==
+                  absl::variant_size<common_internal::ValueVariant>(),
+              "Kind indexer must match variant declaration for cel::Value.");
+
+static_assert(
+    kValueToKindArray.size() ==
+        absl::variant_size<common_internal::ValueViewVariant>(),
+    "Kind indexer must match variant declaration for cel::ValueView.");
+
+}  // namespace
 
 Type Value::GetType(TypeManager& type_manager) const {
   AssertIsValid();
@@ -53,6 +77,12 @@ Type Value::GetType(TypeManager& type_manager) const {
         }
       },
       variant_);
+}
+
+ValueKind Value::kind() const {
+  ABSL_DCHECK_NE(variant_.index(), 0)
+      << "kind() called on uninitialized cel::Value.";
+  return kValueToKindArray[variant_.index()];
 }
 
 absl::string_view Value::GetTypeName() const {
@@ -266,6 +296,12 @@ common_internal::ValueViewVariant Value::ToViewVariant() const {
         }
       },
       variant_);
+}
+
+ValueKind ValueView::kind() const {
+  ABSL_DCHECK_NE(variant_.index(), 0)
+      << "kind() called on uninitialized cel::ValueView.";
+  return kValueToKindArray[variant_.index()];
 }
 
 Type ValueView::GetType(TypeManager& type_manager) const {

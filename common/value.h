@@ -199,22 +199,7 @@ class Value final {
     return *this;
   }
 
-  ValueKind kind() const {
-    AssertIsValid();
-    return absl::visit(
-        [](const auto& alternative) -> ValueKind {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we just return ValueKind::kError. In debug
-            // builds we cannot reach here.
-            return ValueKind::kError;
-          } else {
-            return alternative.kind();
-          }
-        },
-        variant_);
-  }
+  ValueKind kind() const;
 
   Type GetType(TypeManager& type_manager) const;
 
@@ -699,22 +684,7 @@ class ValueView final {
     return *this;
   }
 
-  ValueKind kind() const {
-    AssertIsValid();
-    return absl::visit(
-        [](auto alternative) -> ValueKind {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we just return ValueKind::kError. In debug
-            // builds we cannot reach here.
-            return ValueKind::kError;
-          } else {
-            return alternative.kind();
-          }
-        },
-        variant_);
-  }
+  ValueKind kind() const;
 
   Type GetType(TypeManager& type_manager) const;
 
