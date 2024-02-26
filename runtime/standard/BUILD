@@ -107,6 +107,7 @@ cc_library(
         "//base:builtins",
         "//base:function_adapter",
         "//base:kind",
+        "//common:casting",
         "//common:type",
         "//common:value",
         "//internal:number",
@@ -153,6 +154,7 @@ cc_library(
     deps = [
         "//base:builtins",
         "//base:function_adapter",
+        "//common:casting",
         "//common:value",
         "//internal:status_macros",
         "//runtime:function_registry",

@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <functional>
 #include <optional>
+#include <type_traits>
 #include <utility>
 
 #include "absl/base/macros.h"
@@ -29,6 +30,7 @@
 #include "base/builtins.h"
 #include "base/function_adapter.h"
 #include "base/kind.h"
+#include "common/casting.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "common/value_manager.h"
@@ -42,6 +44,8 @@
 namespace cel {
 namespace {
 
+using ::cel::Cast;
+using ::cel::InstanceOf;
 using ::cel::builtin::kEqual;
 using ::cel::builtin::kInequal;
 using ::cel::internal::Number;
@@ -162,7 +166,7 @@ absl::StatusOr<absl::optional<Value>> CheckAlternativeNumericType(
     return absl::nullopt;
   }
 
-  if (!key->Is<IntValue>() && number->LosslessConvertibleToInt()) {
+  if (!InstanceOf<IntValue>(key) && number->LosslessConvertibleToInt()) {
     Value entry;
     bool ok;
     CEL_ASSIGN_OR_RETURN(
@@ -173,7 +177,7 @@ absl::StatusOr<absl::optional<Value>> CheckAlternativeNumericType(
     }
   }
 
-  if (!key->Is<UintValue>() && number->LosslessConvertibleToUint()) {
+  if (!InstanceOf<UintValue>(key) && number->LosslessConvertibleToUint()) {
     Value entry;
     bool ok;
     CEL_ASSIGN_OR_RETURN(std::tie(entry, ok),
@@ -405,41 +409,44 @@ absl::StatusOr<absl::optional<bool>> HomogenousValueEqual(ValueManager& factory,
     return absl::nullopt;
   }
 
+  static_assert(std::is_lvalue_reference_v<decltype(Cast<StringValue>(v1))>,
+                "unexpected value copy");
+
   switch (v1->kind()) {
     case ValueKind::kBool:
-      return Equal<bool>(v1->As<BoolValue>().NativeValue(),
-                         v2->As<BoolValue>().NativeValue());
+      return Equal<bool>(Cast<BoolValue>(v1).NativeValue(),
+                         Cast<BoolValue>(v2).NativeValue());
     case ValueKind::kNull:
-      return Equal<const NullValue&>(v1->As<NullValue>(), v2->As<NullValue>());
+      return Equal<const NullValue&>(Cast<NullValue>(v1), Cast<NullValue>(v2));
     case ValueKind::kInt:
-      return Equal<int64_t>(v1->As<IntValue>().NativeValue(),
-                            v2->As<IntValue>().NativeValue());
+      return Equal<int64_t>(Cast<IntValue>(v1).NativeValue(),
+                            Cast<IntValue>(v2).NativeValue());
     case ValueKind::kUint:
-      return Equal<uint64_t>(v1->As<UintValue>().NativeValue(),
-                             v2->As<UintValue>().NativeValue());
+      return Equal<uint64_t>(Cast<UintValue>(v1).NativeValue(),
+                             Cast<UintValue>(v2).NativeValue());
     case ValueKind::kDouble:
-      return Equal<double>(v1->As<DoubleValue>().NativeValue(),
-                           v2->As<DoubleValue>().NativeValue());
+      return Equal<double>(Cast<DoubleValue>(v1).NativeValue(),
+                           Cast<DoubleValue>(v2).NativeValue());
     case ValueKind::kDuration:
-      return Equal<absl::Duration>(v1->As<DurationValue>().NativeValue(),
-                                   v2->As<DurationValue>().NativeValue());
+      return Equal<absl::Duration>(Cast<DurationValue>(v1).NativeValue(),
+                                   Cast<DurationValue>(v2).NativeValue());
     case ValueKind::kTimestamp:
-      return Equal<absl::Time>(v1->As<TimestampValue>().NativeValue(),
-                               v2->As<TimestampValue>().NativeValue());
+      return Equal<absl::Time>(Cast<TimestampValue>(v1).NativeValue(),
+                               Cast<TimestampValue>(v2).NativeValue());
     case ValueKind::kCelType:
-      return Equal<const TypeValue&>(v1->As<TypeValue>(), v2->As<TypeValue>());
+      return Equal<const TypeValue&>(Cast<TypeValue>(v1), Cast<TypeValue>(v2));
     case ValueKind::kString:
-      return Equal<const StringValue&>(v1->As<StringValue>(),
-                                       v2->As<StringValue>());
+      return Equal<const StringValue&>(Cast<StringValue>(v1),
+                                       Cast<StringValue>(v2));
     case ValueKind::kBytes:
       return Equal<const cel::BytesValue&>(v1->As<cel::BytesValue>(),
                                            v2->As<cel::BytesValue>());
     case ValueKind::kList:
-      return ListEqual<EqualsProvider>(factory, v1->As<ListValue>(),
-                                       v2->As<ListValue>());
+      return ListEqual<EqualsProvider>(factory, Cast<ListValue>(v1),
+                                       Cast<ListValue>(v2));
     case ValueKind::kMap:
-      return MapEqual<EqualsProvider>(factory, v1->As<MapValue>(),
-                                      v2->As<MapValue>());
+      return MapEqual<EqualsProvider>(factory, Cast<MapValue>(v1),
+                                      Cast<MapValue>(v2));
     default:
 
       return absl::nullopt;
@@ -499,11 +506,11 @@ absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueManager& value_factory,
                                                     const Value& v1,
                                                     const Value& v2) {
   if (v1->kind() == v2->kind()) {
-    if (v1->Is<StructValue>() && v2->Is<StructValue>()) {
+    if (InstanceOf<StructValue>(v1) && InstanceOf<StructValue>(v2)) {
       CEL_ASSIGN_OR_RETURN(Value result,
-                           v1->As<StructValue>().Equal(value_factory, v2));
-      if (result->Is<BoolValue>()) {
-        return result->As<BoolValue>().NativeValue();
+                           Cast<StructValue>(v1).Equal(value_factory, v2));
+      if (InstanceOf<BoolValue>(result)) {
+        return Cast<BoolValue>(result).NativeValue();
       }
       return false;
     }
@@ -521,8 +528,8 @@ absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueManager& value_factory,
   // TODO(uncreated-issue/6): It's currently possible for the interpreter to create a
   // map containing an Error. Return no matching overload to propagate an error
   // instead of a false result.
-  if (v1->Is<ErrorValue>() || v1->Is<UnknownValue>() || v2->Is<ErrorValue>() ||
-      v2->Is<UnknownValue>()) {
+  if (InstanceOf<ErrorValue>(v1) || InstanceOf<UnknownValue>(v1) ||
+      InstanceOf<ErrorValue>(v2) || InstanceOf<UnknownValue>(v2)) {
     return absl::nullopt;
   }
 

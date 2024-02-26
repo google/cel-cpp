@@ -18,9 +18,11 @@
 #include "absl/strings/string_view.h"
 #include "base/builtins.h"
 #include "base/function_adapter.h"
+#include "common/casting.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "internal/status_macros.h"
+#include "runtime/function_registry.h"
 #include "runtime/internal/errors.h"
 #include "runtime/register_function_helper.h"
 
@@ -30,11 +32,11 @@ namespace {
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;
 
 Value NotStrictlyFalseImpl(ValueManager& value_factory, const Value& value) {
-  if (value->Is<BoolValue>()) {
+  if (InstanceOf<BoolValue>(value)) {
     return value;
   }
 
-  if (value->Is<ErrorValue>() || value->Is<UnknownValue>()) {
+  if (InstanceOf<ErrorValue>(value) || InstanceOf<UnknownValue>(value)) {
     return value_factory.CreateBoolValue(true);
   }
 

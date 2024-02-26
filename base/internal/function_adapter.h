@@ -27,6 +27,7 @@
 #include "base/kind.h"
 #include "common/casting.h"
 #include "common/value.h"
+#include "common/value_factory.h"
 #include "common/value_manager.h"
 #include "internal/status_macros.h"
 
@@ -173,6 +174,19 @@ struct HandleToAdaptedVisitor {
     return absl::OkStatus();
   }
 
+  template <typename T>
+  absl::Status operator()(T** out) {
+    if (!InstanceOf<std::remove_const_t<T>>(input)) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("expected ", ValueKindToString(T::kKind), " value"));
+    }
+    static_assert(std::is_lvalue_reference_v<
+                      decltype(Cast<std::remove_const_t<T>>(input))>,
+                  "expected l-value reference return type for Cast.");
+    *out = &Cast<std::remove_const_t<T>>(input);
+    return absl::OkStatus();
+  }
+
   const Value& input;
 };
 
@@ -210,8 +224,10 @@ struct AdaptedToHandleVisitor {
   // present, otherwise return the status.
   template <typename T>
   absl::StatusOr<Value> operator()(absl::StatusOr<T> wrapped) {
-    CEL_ASSIGN_OR_RETURN(auto value, wrapped);
-    return this->operator()(std::move(value));
+    if (!wrapped.ok()) {
+      return std::move(wrapped).status();
+    }
+    return this->operator()(std::move(wrapped).value());
   }
 
   cel::ValueFactory& value_factory;

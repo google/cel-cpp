@@ -25,7 +25,6 @@
 #include <vector>
 
 #include "absl/functional/bind_front.h"
-#include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -50,6 +49,39 @@ struct AdaptedTypeTraits {
 
 // Specialization for cref parameters without forcing a temporary copy of the
 // underlying handle argument.
+template <>
+struct AdaptedTypeTraits<const Value&> {
+  using AssignableType = const Value*;
+
+  static std::reference_wrapper<const Value> ToArg(AssignableType v) {
+    return *v;
+  }
+};
+
+template <>
+struct AdaptedTypeTraits<const StringValue&> {
+  using AssignableType = const StringValue*;
+
+  static std::reference_wrapper<const StringValue> ToArg(AssignableType v) {
+    return *v;
+  }
+};
+
+template <>
+struct AdaptedTypeTraits<const BytesValue&> {
+  using AssignableType = const BytesValue*;
+
+  static std::reference_wrapper<const BytesValue> ToArg(AssignableType v) {
+    return *v;
+  }
+};
+
+// Partial specialization for other cases.
+//
+// These types aren't referenceable since they aren't actually
+// represented as alternatives in the underlying variant.
+//
+// This still requires an implicit copy and corresponding ref-count increase.
 template <typename T>
 struct AdaptedTypeTraits<const T&> {
   using AssignableType = T;

@@ -72,8 +72,8 @@ cc_test(
     srcs = ["function_adapter_test.cc"],
     deps = [
         ":function_adapter",
-        "//base:data",
         "//base:kind",
+        "//common:casting",
         "//common:memory",
         "//common:type",
         "//common:value",
