@@ -901,12 +901,13 @@ class ValueIterator {
   // Returns a view of the next value. If the underlying implementation cannot
   // directly return a view of a value, the value will be stored in `scratch`,
   // and the returned view will be that of `scratch`.
-  virtual absl::StatusOr<ValueView> Next(
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) = 0;
+  virtual absl::StatusOr<ValueView> Next(ValueManager& value_manager,
+                                         Value& scratch
+                                             ABSL_ATTRIBUTE_LIFETIME_BOUND) = 0;
 
-  absl::StatusOr<Value> Next() {
+  absl::StatusOr<Value> Next(ValueManager& value_manager) {
     Value scratch;
-    CEL_ASSIGN_OR_RETURN(auto result, Next(scratch));
+    CEL_ASSIGN_OR_RETURN(auto result, Next(value_manager, scratch));
     return Value{result};
   }
 };

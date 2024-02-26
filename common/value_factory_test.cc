@@ -214,7 +214,8 @@ TEST_P(ValueFactoryTest, JsonValueObject) {
   std::vector<StringValue> string_keys;
   while (keys_iterator->HasNext()) {
     Value key;
-    ASSERT_OK_AND_ASSIGN(auto key_view, keys_iterator->Next(key));
+    ASSERT_OK_AND_ASSIGN(auto key_view,
+                         keys_iterator->Next(value_manager(), key));
     string_keys.push_back(StringValue(Cast<StringValueView>(key_view)));
   }
   EXPECT_THAT(string_keys, UnorderedElementsAreArray(

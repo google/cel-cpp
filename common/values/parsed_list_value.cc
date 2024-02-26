@@ -39,7 +39,7 @@ class ParsedListValueInterfaceIterator final : public ValueIterator {
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::StatusOr<ValueView> Next(Value& scratch) override {
+  absl::StatusOr<ValueView> Next(ValueManager&, Value& scratch) override {
     if (ABSL_PREDICT_FALSE(index_ >= size_)) {
       return absl::FailedPreconditionError(
           "ValueIterator::Next() called when "

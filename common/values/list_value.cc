@@ -42,8 +42,10 @@ absl::StatusOr<ValueView> ListValueEqual(ValueManager& value_manager,
   for (size_t index = 0; index < lhs_size; ++index) {
     ABSL_CHECK(lhs_iterator->HasNext());  // Crash OK
     ABSL_CHECK(rhs_iterator->HasNext());  // Crash OK
-    CEL_ASSIGN_OR_RETURN(auto lhs_element, lhs_iterator->Next(lhs_scratch));
-    CEL_ASSIGN_OR_RETURN(auto rhs_element, rhs_iterator->Next(lhs_scratch));
+    CEL_ASSIGN_OR_RETURN(auto lhs_element,
+                         lhs_iterator->Next(value_manager, lhs_scratch));
+    CEL_ASSIGN_OR_RETURN(auto rhs_element,
+                         rhs_iterator->Next(value_manager, lhs_scratch));
     CEL_ASSIGN_OR_RETURN(
         auto result, lhs_element.Equal(value_manager, rhs_element, scratch));
     if (auto bool_value = As<BoolValueView>(result);
@@ -71,8 +73,10 @@ absl::StatusOr<ValueView> ListValueEqual(ValueManager& value_manager,
   for (size_t index = 0; index < lhs_size; ++index) {
     ABSL_CHECK(lhs_iterator->HasNext());  // Crash OK
     ABSL_CHECK(rhs_iterator->HasNext());  // Crash OK
-    CEL_ASSIGN_OR_RETURN(auto lhs_element, lhs_iterator->Next(lhs_scratch));
-    CEL_ASSIGN_OR_RETURN(auto rhs_element, rhs_iterator->Next(lhs_scratch));
+    CEL_ASSIGN_OR_RETURN(auto lhs_element,
+                         lhs_iterator->Next(value_manager, lhs_scratch));
+    CEL_ASSIGN_OR_RETURN(auto rhs_element,
+                         rhs_iterator->Next(value_manager, lhs_scratch));
     CEL_ASSIGN_OR_RETURN(
         auto result, lhs_element.Equal(value_manager, rhs_element, scratch));
     if (auto bool_value = As<BoolValueView>(result);

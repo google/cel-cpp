@@ -130,7 +130,7 @@ absl::Status ParsedMapValueInterface::ForEach(ValueManager& value_manager,
   while (iterator->HasNext()) {
     Value key_scratch;
     Value value_scratch;
-    CEL_ASSIGN_OR_RETURN(auto key, iterator->Next(key_scratch));
+    CEL_ASSIGN_OR_RETURN(auto key, iterator->Next(value_manager, key_scratch));
     CEL_ASSIGN_OR_RETURN(auto value, Get(value_manager, key, value_scratch));
     CEL_ASSIGN_OR_RETURN(auto ok, callback(key, value));
     if (!ok) {

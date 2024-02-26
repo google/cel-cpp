@@ -207,7 +207,7 @@ absl::StatusOr<absl::optional<bool>> MapEqual(ValueManager& value_factory,
   CEL_ASSIGN_OR_RETURN(auto iter, lhs.NewIterator(value_factory));
 
   while (iter->HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto lhs_key, iter->Next());
+    CEL_ASSIGN_OR_RETURN(auto lhs_key, iter->Next(value_factory));
 
     Value rhs_value;
     bool rhs_ok;

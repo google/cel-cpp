@@ -119,7 +119,7 @@ class EmptyMapValueKeyIterator final : public ValueIterator {
  public:
   bool HasNext() override { return false; }
 
-  absl::StatusOr<ValueView> Next(Value&) override {
+  absl::StatusOr<ValueView> Next(ValueManager&, Value&) override {
     return absl::FailedPreconditionError(
         "ValueIterator::Next() called when "
         "ValueIterator::HasNext() returns false");

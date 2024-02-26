@@ -89,7 +89,7 @@ TEST_P(MapValueTest, Default) {
   EXPECT_EQ(list_value.GetType(type_manager()).element(), DynTypeView());
   ASSERT_OK_AND_ASSIGN(auto iterator, map_value.NewIterator(value_manager()));
   EXPECT_FALSE(iterator->HasNext());
-  EXPECT_THAT(iterator->Next(scratch),
+  EXPECT_THAT(iterator->Next(value_manager(), scratch),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
@@ -276,12 +276,13 @@ TEST_P(MapValueTest, NewIterator) {
   ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator(value_manager()));
   std::vector<int64_t> keys;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(auto element, iterator->Next(scratch));
+    ASSERT_OK_AND_ASSIGN(auto element,
+                         iterator->Next(value_manager(), scratch));
     ASSERT_TRUE(InstanceOf<IntValueView>(element));
     keys.push_back(Cast<IntValueView>(element).NativeValue());
   }
   EXPECT_EQ(iterator->HasNext(), false);
-  EXPECT_THAT(iterator->Next(scratch),
+  EXPECT_THAT(iterator->Next(value_manager(), scratch),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(keys, UnorderedElementsAreArray({0, 1, 2}));
 }
@@ -359,7 +360,7 @@ TEST_P(MapValueViewTest, Default) {
   EXPECT_EQ(list_value.GetType(type_manager()).element(), DynTypeView());
   ASSERT_OK_AND_ASSIGN(auto iterator, map_value.NewIterator(value_manager()));
   EXPECT_FALSE(iterator->HasNext());
-  EXPECT_THAT(iterator->Next(scratch),
+  EXPECT_THAT(iterator->Next(value_manager(), scratch),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
@@ -552,12 +553,13 @@ TEST_P(MapValueViewTest, NewIterator) {
                        MapValueView(value).NewIterator(value_manager()));
   std::vector<int64_t> keys;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(auto element, iterator->Next(scratch));
+    ASSERT_OK_AND_ASSIGN(auto element,
+                         iterator->Next(value_manager(), scratch));
     ASSERT_TRUE(InstanceOf<IntValueView>(element));
     keys.push_back(Cast<IntValueView>(element).NativeValue());
   }
   EXPECT_EQ(iterator->HasNext(), false);
-  EXPECT_THAT(iterator->Next(scratch),
+  EXPECT_THAT(iterator->Next(value_manager(), scratch),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(keys, UnorderedElementsAreArray({0, 1, 2}));
 }

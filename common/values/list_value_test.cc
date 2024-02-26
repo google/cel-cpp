@@ -152,12 +152,13 @@ TEST_P(ListValueTest, NewIterator) {
   ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator(value_manager()));
   std::vector<int64_t> elements;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(auto element, iterator->Next(scratch));
+    ASSERT_OK_AND_ASSIGN(auto element,
+                         iterator->Next(value_manager(), scratch));
     ASSERT_TRUE(InstanceOf<IntValueView>(element));
     elements.push_back(Cast<IntValueView>(element).NativeValue());
   }
   EXPECT_EQ(iterator->HasNext(), false);
-  EXPECT_THAT(iterator->Next(scratch),
+  EXPECT_THAT(iterator->Next(value_manager(), scratch),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(elements, ElementsAreArray({0, 1, 2}));
 }
@@ -306,12 +307,13 @@ TEST_P(ListValueViewTest, NewIterator) {
                        ListValueView(value).NewIterator(value_manager()));
   std::vector<int64_t> elements;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(auto element, iterator->Next(scratch));
+    ASSERT_OK_AND_ASSIGN(auto element,
+                         iterator->Next(value_manager(), scratch));
     ASSERT_TRUE(InstanceOf<IntValueView>(element));
     elements.push_back(Cast<IntValueView>(element).NativeValue());
   }
   EXPECT_EQ(iterator->HasNext(), false);
-  EXPECT_THAT(iterator->Next(scratch),
+  EXPECT_THAT(iterator->Next(value_manager(), scratch),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(elements, ElementsAreArray({0, 1, 2}));
 }

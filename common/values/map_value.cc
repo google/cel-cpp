@@ -56,7 +56,8 @@ absl::StatusOr<ValueView> MapValueEqual(ValueManager& value_manager,
   Value lhs_value_scratch;
   for (size_t index = 0; index < lhs_size; ++index) {
     ABSL_CHECK(lhs_iterator->HasNext());  // Crash OK
-    CEL_ASSIGN_OR_RETURN(auto lhs_key, lhs_iterator->Next(lhs_key_scratch));
+    CEL_ASSIGN_OR_RETURN(auto lhs_key,
+                         lhs_iterator->Next(value_manager, lhs_key_scratch));
     bool rhs_value_found;
     CEL_ASSIGN_OR_RETURN(std::tie(rhs_value, rhs_value_found),
                          rhs.Find(value_manager, lhs_key, rhs_value_scratch));
@@ -91,7 +92,8 @@ absl::StatusOr<ValueView> MapValueEqual(ValueManager& value_manager,
   Value lhs_value_scratch;
   for (size_t index = 0; index < lhs_size; ++index) {
     ABSL_CHECK(lhs_iterator->HasNext());  // Crash OK
-    CEL_ASSIGN_OR_RETURN(auto lhs_key, lhs_iterator->Next(lhs_key_scratch));
+    CEL_ASSIGN_OR_RETURN(auto lhs_key,
+                         lhs_iterator->Next(value_manager, lhs_key_scratch));
     bool rhs_value_found;
     CEL_ASSIGN_OR_RETURN(std::tie(rhs_value, rhs_value_found),
                          rhs.Find(value_manager, lhs_key, rhs_value_scratch));

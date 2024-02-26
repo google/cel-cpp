@@ -183,7 +183,7 @@ class JsonMapValueKeyIterator final : public ValueIterator {
 
   bool HasNext() override { return begin_ != end_; }
 
-  absl::StatusOr<ValueView> Next(Value&) override {
+  absl::StatusOr<ValueView> Next(ValueManager&, Value&) override {
     if (ABSL_PREDICT_FALSE(begin_ == end_)) {
       return absl::FailedPreconditionError(
           "ValueIterator::Next() called when "

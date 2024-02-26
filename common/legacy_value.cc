@@ -138,7 +138,7 @@ class CelListIterator final : public ValueIterator {
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::StatusOr<ValueView> Next(Value& scratch) override {
+  absl::StatusOr<ValueView> Next(ValueManager&, Value& scratch) override {
     auto cel_value = cel_list_->Get(arena_, index_++);
     return ModernValue(arena_, cel_value, scratch);
   }
