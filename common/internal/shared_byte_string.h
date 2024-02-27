@@ -27,6 +27,7 @@
 #include "absl/base/optimization.h"
 #include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
+#include "absl/meta/type_traits.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/internal/arena_string.h"
@@ -34,7 +35,19 @@
 
 namespace cel::common_internal {
 
-constexpr bool IsStringLiteral(absl::string_view string);
+inline constexpr bool IsStringLiteral(absl::string_view string) {
+#ifdef ABSL_HAVE_CONSTANT_EVALUATED
+  if (!absl::is_constant_evaluated()) {
+    return false;
+  }
+#endif
+  for (const auto& c : string) {
+    if (c == '\0') {
+      return false;
+    }
+  }
+  return true;
+}
 
 inline constexpr uintptr_t kByteStringReferenceCountPooledBit = uintptr_t{1}
                                                                 << 0;
