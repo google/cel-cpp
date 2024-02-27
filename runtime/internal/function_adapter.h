@@ -14,8 +14,8 @@
 //
 // Definitions for implementation details of the function adapter utility.
 
-#ifndef THIRD_PARTY_CEL_CPP_BASE_INTERNAL_FUNCTION_ADAPTER_H_
-#define THIRD_PARTY_CEL_CPP_BASE_INTERNAL_FUNCTION_ADAPTER_H_
+#ifndef THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_FUNCTION_ADAPTER_H_
+#define THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_FUNCTION_ADAPTER_H_
 
 #include <cstdint>
 #include <type_traits>
@@ -24,14 +24,11 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
-#include "base/kind.h"
 #include "common/casting.h"
+#include "common/kind.h"
 #include "common/value.h"
-#include "common/value_factory.h"
-#include "common/value_manager.h"
-#include "internal/status_macros.h"
 
-namespace cel::internal {
+namespace cel::runtime_internal {
 
 // Helper for triggering static asserts in an unspecialized template overload.
 template <typename T>
@@ -40,7 +37,6 @@ struct UnhandledType : std::false_type {};
 // Adapts the type param Type to the appropriate Kind.
 // A static assertion fails if the provided type does not map to a cel::Value
 // kind.
-// TODO(uncreated-issue/20): Add support for remaining kinds.
 template <typename Type>
 constexpr Kind AdaptedKind() {
   static_assert(UnhandledType<Type>::value,
@@ -229,10 +225,8 @@ struct AdaptedToHandleVisitor {
     }
     return this->operator()(std::move(wrapped).value());
   }
-
-  cel::ValueFactory& value_factory;
 };
 
-}  // namespace cel::internal
+}  // namespace cel::runtime_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_BASE_INTERNAL_FUNCTION_ADAPTER_H_
+#endif  // THIRD_PARTY_CEL_CPP_RUNTIME_INTERNAL_FUNCTION_ADAPTER_H_

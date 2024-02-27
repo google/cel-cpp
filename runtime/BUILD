@@ -461,3 +461,39 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "function_adapter",
+    hdrs = ["function_adapter.h"],
+    deps = [
+        "//base:function",
+        "//base:function_descriptor",
+        "//common:kind",
+        "//common:value",
+        "//internal:status_macros",
+        "//runtime/internal:function_adapter",
+        "@com_google_absl//absl/functional:bind_front",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "function_adapter_test",
+    srcs = ["function_adapter_test.cc"],
+    deps = [
+        ":function_adapter",
+        "//base:function",
+        "//base:function_descriptor",
+        "//common:kind",
+        "//common:memory",
+        "//common:value",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+    ],
+)

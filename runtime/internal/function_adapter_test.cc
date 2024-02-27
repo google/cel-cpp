@@ -12,25 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "base/internal/function_adapter.h"
+#include "runtime/internal/function_adapter.h"
 
 #include <cstdint>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
-#include "base/kind.h"
 #include "common/casting.h"
+#include "common/kind.h"
 #include "common/memory.h"
-#include "common/type_factory.h"
-#include "common/type_manager.h"
 #include "common/value.h"
-#include "common/value_manager.h"
 #include "common/values/legacy_type_reflector.h"
 #include "common/values/legacy_value_manager.h"
 #include "internal/testing.h"
 
-namespace cel::internal {
+namespace cel::runtime_internal {
 namespace {
 
 using cel::internal::StatusIs;
@@ -240,8 +237,7 @@ class AdaptedToHandleVisitorTest : public ValueFactoryTestBase {};
 TEST_F(AdaptedToHandleVisitorTest, Int) {
   int64_t value = 10;
 
-  ASSERT_OK_AND_ASSIGN(auto result,
-                       AdaptedToHandleVisitor{value_factory()}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
 
   ASSERT_TRUE(InstanceOf<IntValue>(result));
   EXPECT_EQ(Cast<IntValue>(result).NativeValue(), 10);
@@ -250,8 +246,7 @@ TEST_F(AdaptedToHandleVisitorTest, Int) {
 TEST_F(AdaptedToHandleVisitorTest, Double) {
   double value = 10;
 
-  ASSERT_OK_AND_ASSIGN(auto result,
-                       AdaptedToHandleVisitor{value_factory()}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
 
   ASSERT_TRUE(InstanceOf<DoubleValue>(result));
   EXPECT_EQ(Cast<DoubleValue>(result).NativeValue(), 10.0);
@@ -260,8 +255,7 @@ TEST_F(AdaptedToHandleVisitorTest, Double) {
 TEST_F(AdaptedToHandleVisitorTest, Uint) {
   uint64_t value = 10;
 
-  ASSERT_OK_AND_ASSIGN(auto result,
-                       AdaptedToHandleVisitor{value_factory()}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
 
   ASSERT_TRUE(InstanceOf<UintValue>(result));
   EXPECT_EQ(Cast<UintValue>(result).NativeValue(), 10);
@@ -270,8 +264,7 @@ TEST_F(AdaptedToHandleVisitorTest, Uint) {
 TEST_F(AdaptedToHandleVisitorTest, Bool) {
   bool value = true;
 
-  ASSERT_OK_AND_ASSIGN(auto result,
-                       AdaptedToHandleVisitor{value_factory()}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
 
   ASSERT_TRUE(InstanceOf<BoolValue>(result));
   EXPECT_EQ(Cast<BoolValue>(result).NativeValue(), true);
@@ -280,8 +273,7 @@ TEST_F(AdaptedToHandleVisitorTest, Bool) {
 TEST_F(AdaptedToHandleVisitorTest, Timestamp) {
   absl::Time value = absl::UnixEpoch() + absl::Seconds(10);
 
-  ASSERT_OK_AND_ASSIGN(auto result,
-                       AdaptedToHandleVisitor{value_factory()}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
 
   ASSERT_TRUE(InstanceOf<TimestampValue>(result));
   EXPECT_EQ(Cast<TimestampValue>(result).NativeValue(),
@@ -291,8 +283,7 @@ TEST_F(AdaptedToHandleVisitorTest, Timestamp) {
 TEST_F(AdaptedToHandleVisitorTest, Duration) {
   absl::Duration value = absl::Seconds(5);
 
-  ASSERT_OK_AND_ASSIGN(auto result,
-                       AdaptedToHandleVisitor{value_factory()}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
 
   ASSERT_TRUE(InstanceOf<DurationValue>(result));
   EXPECT_EQ(Cast<DurationValue>(result).NativeValue(), absl::Seconds(5));
@@ -302,8 +293,7 @@ TEST_F(AdaptedToHandleVisitorTest, String) {
   ASSERT_OK_AND_ASSIGN(StringValue value,
                        value_factory().CreateStringValue("str"));
 
-  ASSERT_OK_AND_ASSIGN(auto result,
-                       AdaptedToHandleVisitor{value_factory()}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
 
   ASSERT_TRUE(InstanceOf<StringValue>(result));
   EXPECT_EQ(Cast<StringValue>(result).ToString(), "str");
@@ -313,8 +303,7 @@ TEST_F(AdaptedToHandleVisitorTest, Bytes) {
   ASSERT_OK_AND_ASSIGN(BytesValue value,
                        value_factory().CreateBytesValue("bytes"));
 
-  ASSERT_OK_AND_ASSIGN(auto result,
-                       AdaptedToHandleVisitor{value_factory()}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
 
   ASSERT_TRUE(InstanceOf<BytesValue>(result));
   EXPECT_EQ(Cast<BytesValue>(result).ToString(), "bytes");
@@ -323,8 +312,7 @@ TEST_F(AdaptedToHandleVisitorTest, Bytes) {
 TEST_F(AdaptedToHandleVisitorTest, StatusOrValue) {
   absl::StatusOr<int64_t> value = 10;
 
-  ASSERT_OK_AND_ASSIGN(auto result,
-                       AdaptedToHandleVisitor{value_factory()}(value));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(value));
 
   ASSERT_TRUE(InstanceOf<IntValue>(result));
   EXPECT_EQ(Cast<IntValue>(result).NativeValue(), 10);
@@ -333,7 +321,7 @@ TEST_F(AdaptedToHandleVisitorTest, StatusOrValue) {
 TEST_F(AdaptedToHandleVisitorTest, StatusOrError) {
   absl::StatusOr<int64_t> value = absl::InternalError("test_error");
 
-  EXPECT_THAT(AdaptedToHandleVisitor{value_factory()}(value).status(),
+  EXPECT_THAT(AdaptedToHandleVisitor{}(value).status(),
               StatusIs(absl::StatusCode::kInternal, "test_error"));
 }
 
@@ -341,8 +329,7 @@ TEST_F(AdaptedToHandleVisitorTest, Any) {
   auto handle =
       value_factory().CreateErrorValue(absl::InternalError("test_error"));
 
-  ASSERT_OK_AND_ASSIGN(auto result,
-                       AdaptedToHandleVisitor{value_factory()}(handle));
+  ASSERT_OK_AND_ASSIGN(auto result, AdaptedToHandleVisitor{}(handle));
 
   ASSERT_TRUE(InstanceOf<ErrorValue>(result));
   EXPECT_THAT(Cast<ErrorValue>(result).NativeValue(),
@@ -350,4 +337,4 @@ TEST_F(AdaptedToHandleVisitorTest, Any) {
 }
 
 }  // namespace
-}  // namespace cel::internal
+}  // namespace cel::runtime_internal

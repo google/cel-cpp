@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "base/function_adapter.h"
+#include "runtime/function_adapter.h"
 
 #include <cstdint>
 #include <memory>
@@ -24,11 +24,8 @@
 #include "absl/time/time.h"
 #include "base/function.h"
 #include "base/function_descriptor.h"
-#include "base/kind.h"
-#include "base/type_provider.h"
+#include "common/kind.h"
 #include "common/memory.h"
-#include "common/type_factory.h"
-#include "common/type_manager.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "common/values/legacy_type_reflector.h"
@@ -50,7 +47,7 @@ class FunctionAdapterTest : public ::testing::Test {
         value_manager_(MemoryManagerRef::ReferenceCounting(), type_reflector_),
         test_context_(value_manager_) {}
 
-  ValueFactory& value_factory() { return value_manager_; }
+  ValueManager& value_factory() { return value_manager_; }
 
   const FunctionEvaluationContext& test_context() { return test_context_; }
 
@@ -64,7 +61,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionInt) {
   using FunctionAdapter = UnaryFunctionAdapter<int64_t, int64_t>;
 
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory&, int64_t x) -> int64_t { return x + 2; });
+      [](ValueManager&, int64_t x) -> int64_t { return x + 2; });
 
   std::vector<Value> args{value_factory().CreateIntValue(40)};
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
@@ -76,7 +73,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionInt) {
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionDouble) {
   using FunctionAdapter = UnaryFunctionAdapter<double, double>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory&, double x) -> double { return x * 2; });
+      [](ValueManager&, double x) -> double { return x * 2; });
 
   std::vector<Value> args{value_factory().CreateDoubleValue(40.0)};
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
@@ -88,7 +85,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionDouble) {
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionUint) {
   using FunctionAdapter = UnaryFunctionAdapter<uint64_t, uint64_t>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory&, uint64_t x) -> uint64_t { return x - 2; });
+      [](ValueManager&, uint64_t x) -> uint64_t { return x - 2; });
 
   std::vector<Value> args{value_factory().CreateUintValue(44)};
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
@@ -100,7 +97,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionUint) {
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionBool) {
   using FunctionAdapter = UnaryFunctionAdapter<bool, bool>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory&, bool x) -> bool { return !x; });
+      [](ValueManager&, bool x) -> bool { return !x; });
 
   std::vector<Value> args{value_factory().CreateBoolValue(true)};
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
@@ -112,7 +109,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionBool) {
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionTimestamp) {
   using FunctionAdapter = UnaryFunctionAdapter<absl::Time, absl::Time>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory&, absl::Time x) -> absl::Time {
+      [](ValueManager&, absl::Time x) -> absl::Time {
         return x + absl::Minutes(1);
       });
 
@@ -129,7 +126,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionTimestamp) {
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionDuration) {
   using FunctionAdapter = UnaryFunctionAdapter<absl::Duration, absl::Duration>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory&, absl::Duration x) -> absl::Duration {
+      [](ValueManager&, absl::Duration x) -> absl::Duration {
         return x + absl::Seconds(2);
       });
 
@@ -145,7 +142,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionDuration) {
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionString) {
   using FunctionAdapter = UnaryFunctionAdapter<StringValue, StringValue>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory& value_factory, const StringValue& x) -> StringValue {
+      [](ValueManager& value_factory, const StringValue& x) -> StringValue {
         return value_factory.CreateStringValue("pre_" + x.ToString()).value();
       });
 
@@ -161,7 +158,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionString) {
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionBytes) {
   using FunctionAdapter = UnaryFunctionAdapter<BytesValue, BytesValue>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory& value_factory, const BytesValue& x) -> BytesValue {
+      [](ValueManager& value_factory, const BytesValue& x) -> BytesValue {
         return value_factory.CreateBytesValue("pre_" + x.ToString()).value();
       });
 
@@ -177,7 +174,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionBytes) {
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionAny) {
   using FunctionAdapter = UnaryFunctionAdapter<uint64_t, Value>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory&, const Value& x) -> uint64_t {
+      [](ValueManager&, const Value& x) -> uint64_t {
         return x.As<UintValue>().NativeValue() - 2;
       });
 
@@ -191,7 +188,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionAny) {
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionReturnError) {
   using FunctionAdapter = UnaryFunctionAdapter<Value, uint64_t>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory& value_factory, uint64_t x) -> Value {
+      [](ValueManager& value_factory, uint64_t x) -> Value {
         return value_factory.CreateErrorValue(
             absl::InvalidArgumentError("test_error"));
       });
@@ -208,7 +205,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionPropagateStatus) {
   using FunctionAdapter =
       UnaryFunctionAdapter<absl::StatusOr<uint64_t>, uint64_t>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory& value_factory, uint64_t x) -> absl::StatusOr<uint64_t> {
+      [](ValueManager& value_factory, uint64_t x) -> absl::StatusOr<uint64_t> {
         // Returning a status directly stops CEL evaluation and
         // immediately returns.
         return absl::InternalError("test_error");
@@ -224,7 +221,7 @@ TEST_F(FunctionAdapterTest,
   using FunctionAdapter =
       UnaryFunctionAdapter<absl::StatusOr<uint64_t>, uint64_t>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory& value_factory, uint64_t x) -> absl::StatusOr<uint64_t> {
+      [](ValueManager& value_factory, uint64_t x) -> absl::StatusOr<uint64_t> {
         return x;
       });
 
@@ -238,7 +235,7 @@ TEST_F(FunctionAdapterTest,
   using FunctionAdapter =
       UnaryFunctionAdapter<absl::StatusOr<uint64_t>, uint64_t>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory& value_factory, uint64_t x) -> absl::StatusOr<uint64_t> {
+      [](ValueManager& value_factory, uint64_t x) -> absl::StatusOr<uint64_t> {
         return 42;
       });
 
@@ -253,7 +250,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionWrongArgTypeError) {
   using FunctionAdapter =
       UnaryFunctionAdapter<absl::StatusOr<uint64_t>, uint64_t>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory& value_factory, uint64_t x) -> absl::StatusOr<uint64_t> {
+      [](ValueManager& value_factory, uint64_t x) -> absl::StatusOr<uint64_t> {
         return 42;
       });
 
@@ -378,7 +375,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterCreateDescriptorNonStrict) {
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionInt) {
   using FunctionAdapter = BinaryFunctionAdapter<int64_t, int64_t, int64_t>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory&, int64_t x, int64_t y) -> int64_t { return x + y; });
+      [](ValueManager&, int64_t x, int64_t y) -> int64_t { return x + y; });
 
   std::vector<Value> args{value_factory().CreateIntValue(21),
                           value_factory().CreateIntValue(21)};
@@ -391,7 +388,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionInt) {
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionDouble) {
   using FunctionAdapter = BinaryFunctionAdapter<double, double, double>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory&, double x, double y) -> double { return x * y; });
+      [](ValueManager&, double x, double y) -> double { return x * y; });
 
   std::vector<Value> args{value_factory().CreateDoubleValue(40.0),
                           value_factory().CreateDoubleValue(2.0)};
@@ -404,7 +401,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionDouble) {
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionUint) {
   using FunctionAdapter = BinaryFunctionAdapter<uint64_t, uint64_t, uint64_t>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory&, uint64_t x, uint64_t y) -> uint64_t { return x - y; });
+      [](ValueManager&, uint64_t x, uint64_t y) -> uint64_t { return x - y; });
 
   std::vector<Value> args{value_factory().CreateUintValue(44),
                           value_factory().CreateUintValue(2)};
@@ -417,7 +414,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionUint) {
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionBool) {
   using FunctionAdapter = BinaryFunctionAdapter<bool, bool, bool>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory&, bool x, bool y) -> bool { return x != y; });
+      [](ValueManager&, bool x, bool y) -> bool { return x != y; });
 
   std::vector<Value> args{value_factory().CreateBoolValue(false),
                           value_factory().CreateBoolValue(true)};
@@ -431,7 +428,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionTimestamp) {
   using FunctionAdapter =
       BinaryFunctionAdapter<absl::Time, absl::Time, absl::Time>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory&, absl::Time x, absl::Time y) -> absl::Time {
+      [](ValueManager&, absl::Time x, absl::Time y) -> absl::Time {
         return x > y ? x : y;
       });
 
@@ -454,7 +451,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionDuration) {
   using FunctionAdapter =
       BinaryFunctionAdapter<absl::Duration, absl::Duration, absl::Duration>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory&, absl::Duration x, absl::Duration y) -> absl::Duration {
+      [](ValueManager&, absl::Duration x, absl::Duration y) -> absl::Duration {
         return x > y ? x : y;
       });
 
@@ -475,7 +472,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionString) {
       BinaryFunctionAdapter<absl::StatusOr<StringValue>, const StringValue&,
                             const StringValue&>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory& value_factory, const StringValue& x,
+      [](ValueManager& value_factory, const StringValue& x,
          const StringValue& y) -> absl::StatusOr<StringValue> {
         return value_factory.CreateStringValue(x.ToString() + y.ToString());
       });
@@ -497,7 +494,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionBytes) {
       BinaryFunctionAdapter<absl::StatusOr<BytesValue>, const BytesValue&,
                             const BytesValue&>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory& value_factory, const BytesValue& x,
+      [](ValueManager& value_factory, const BytesValue& x,
          const BytesValue& y) -> absl::StatusOr<BytesValue> {
         return value_factory.CreateBytesValue(x.ToString() + y.ToString());
       });
@@ -517,7 +514,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionBytes) {
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionAny) {
   using FunctionAdapter = BinaryFunctionAdapter<uint64_t, Value, Value>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory&, const Value& x, const Value& y) -> uint64_t {
+      [](ValueManager&, const Value& x, const Value& y) -> uint64_t {
         return x.As<UintValue>().NativeValue() -
                static_cast<int64_t>(y.As<DoubleValue>().NativeValue());
       });
@@ -533,7 +530,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionAny) {
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionReturnError) {
   using FunctionAdapter = BinaryFunctionAdapter<Value, int64_t, uint64_t>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory& value_factory, int64_t x, uint64_t y) -> Value {
+      [](ValueManager& value_factory, int64_t x, uint64_t y) -> Value {
         return value_factory.CreateErrorValue(
             absl::InvalidArgumentError("test_error"));
       });
@@ -551,7 +548,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionPropagateStatus) {
   using FunctionAdapter =
       BinaryFunctionAdapter<absl::StatusOr<uint64_t>, int64_t, uint64_t>;
   std::unique_ptr<Function> wrapped =
-      FunctionAdapter::WrapFunction([](ValueFactory& value_factory, int64_t,
+      FunctionAdapter::WrapFunction([](ValueManager& value_factory, int64_t,
                                        uint64_t x) -> absl::StatusOr<uint64_t> {
         // Returning a status directly stops CEL evaluation and
         // immediately returns.
@@ -569,7 +566,7 @@ TEST_F(FunctionAdapterTest,
   using FunctionAdapter =
       BinaryFunctionAdapter<absl::StatusOr<uint64_t>, uint64_t, double>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory& value_factory, uint64_t x,
+      [](ValueManager& value_factory, uint64_t x,
          double y) -> absl::StatusOr<uint64_t> { return 42; });
 
   std::vector<Value> args{value_factory().CreateUintValue(44)};
@@ -583,7 +580,7 @@ TEST_F(FunctionAdapterTest,
   using FunctionAdapter =
       BinaryFunctionAdapter<absl::StatusOr<uint64_t>, uint64_t, uint64_t>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
-      [](ValueFactory& value_factory, int64_t x,
+      [](ValueManager& value_factory, int64_t x,
          int64_t y) -> absl::StatusOr<uint64_t> { return 42; });
 
   std::vector<Value> args{value_factory().CreateDoubleValue(44),
@@ -715,7 +712,7 @@ TEST_F(FunctionAdapterTest, VariadicFunctionAdapterCreateDescriptor0Args) {
 TEST_F(FunctionAdapterTest, VariadicFunctionAdapterWrapFunction0Args) {
   std::unique_ptr<Function> fn =
       VariadicFunctionAdapter<absl::StatusOr<Value>>::WrapFunction(
-          [](ValueFactory& value_factory) {
+          [](ValueManager& value_factory) {
             return value_factory.CreateStringValue("abc");
           });
 
@@ -739,7 +736,7 @@ TEST_F(FunctionAdapterTest, VariadicFunctionAdapterCreateDescriptor3Args) {
 TEST_F(FunctionAdapterTest, VariadicFunctionAdapterWrapFunction3Args) {
   std::unique_ptr<Function> fn = VariadicFunctionAdapter<
       absl::StatusOr<Value>, int64_t, bool,
-      const StringValue&>::WrapFunction([](ValueFactory& value_factory,
+      const StringValue&>::WrapFunction([](ValueManager& value_factory,
                                            int64_t int_val, bool bool_val,
                                            const StringValue& string_val)
                                             -> absl::StatusOr<Value> {
@@ -761,7 +758,7 @@ TEST_F(FunctionAdapterTest,
        VariadicFunctionAdapterWrapFunction3ArgsBadArgType) {
   std::unique_ptr<Function> fn = VariadicFunctionAdapter<
       absl::StatusOr<Value>, int64_t, bool,
-      const StringValue&>::WrapFunction([](ValueFactory& value_factory,
+      const StringValue&>::WrapFunction([](ValueManager& value_factory,
                                            int64_t int_val, bool bool_val,
                                            const StringValue& string_val)
                                             -> absl::StatusOr<Value> {
@@ -783,7 +780,7 @@ TEST_F(FunctionAdapterTest,
        VariadicFunctionAdapterWrapFunction3ArgsBadArgCount) {
   std::unique_ptr<Function> fn = VariadicFunctionAdapter<
       absl::StatusOr<Value>, int64_t, bool,
-      const StringValue&>::WrapFunction([](ValueFactory& value_factory,
+      const StringValue&>::WrapFunction([](ValueManager& value_factory,
                                            int64_t int_val, bool bool_val,
                                            const StringValue& string_val)
                                             -> absl::StatusOr<Value> {

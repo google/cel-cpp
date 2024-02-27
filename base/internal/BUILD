@@ -50,36 +50,3 @@ cc_library(
         "@com_google_absl//absl/base:no_destructor",
     ],
 )
-
-cc_library(
-    name = "function_adapter",
-    hdrs = [
-        "function_adapter.h",
-    ],
-    deps = [
-        "//base:kind",
-        "//common:casting",
-        "//common:value",
-        "//internal:status_macros",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/time",
-    ],
-)
-
-cc_test(
-    name = "function_adapter_test",
-    srcs = ["function_adapter_test.cc"],
-    deps = [
-        ":function_adapter",
-        "//base:kind",
-        "//common:casting",
-        "//common:memory",
-        "//common:type",
-        "//common:value",
-        "//internal:testing",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/time",
-    ],
-)

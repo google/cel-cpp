@@ -135,3 +135,34 @@ cc_test(
         "@com_google_absl//absl/status",
     ],
 )
+
+cc_library(
+    name = "function_adapter",
+    hdrs = [
+        "function_adapter.h",
+    ],
+    deps = [
+        "//common:casting",
+        "//common:kind",
+        "//common:value",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+cc_test(
+    name = "function_adapter_test",
+    srcs = ["function_adapter_test.cc"],
+    deps = [
+        ":function_adapter",
+        "//common:casting",
+        "//common:kind",
+        "//common:memory",
+        "//common:value",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/time",
+    ],
+)
