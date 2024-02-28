@@ -34,6 +34,7 @@
 #include "common/value.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/function_adapter.h"
+#include "runtime/register_function_helper.h"
 
 namespace cel {
 
@@ -188,7 +189,7 @@ struct ApplyHelper<0, Args...> {
 // timestamp -> absl::Time
 // duration -> absl::Duration
 //
-// Complex types may be referred to by cref or handle.
+// Complex types may be referred to by cref or value.
 // To return these, users should return a Value.
 // any/dyn -> Value, const Value&
 // string -> StringValue | const StringValue&
@@ -208,22 +209,32 @@ struct ApplyHelper<0, Args...> {
 //  }
 //
 //  {
-//    std::unique_ptr<CelExpressionBuilder> builder;
+//    RuntimeBuilder builder;
 //    // Initialize Expression builder with built-ins as needed.
 //
 //    CEL_RETURN_IF_ERROR(
-//      builder->GetRegistry()->Register(
-//        UnaryFunctionAdapter<double, double, double>::CreateDescriptor(
+//      builder.function_registry().Register(
+//        BinaryFunctionAdapter<double, double, double>::CreateDescriptor(
 //          "sq_diff", /*receiver_style=*/false),
 //        BinaryFunctionAdapter<double, double, double>::WrapFunction(
 //          &SquareDifference)));
+//
+//
+//    // Alternative shorthand
+//    auto status = BinaryFunctionAdapter<double, double, double>::
+//        RegisterGlobalOverload(
+//            "sq_diff",
+//            &SquareDifference,
+//            builder.function_registry());
+//    CEL_RETURN_IF_ERROR(status);
 //  }
 //
 // example CEL expression:
 //  sq_diff(4, 3) == 7 [true]
 //
 template <typename T, typename U, typename V>
-class BinaryFunctionAdapter {
+class BinaryFunctionAdapter
+    : public RegisterHelper<BinaryFunctionAdapter<T, U, V>> {
  public:
   using FunctionType = std::function<T(ValueManager&, U, V)>;
 
@@ -292,7 +303,7 @@ class BinaryFunctionAdapter {
 //  // example CEL expression
 //  inv(4) == 1/4 [true]
 template <typename T, typename U>
-class UnaryFunctionAdapter {
+class UnaryFunctionAdapter : public RegisterHelper<UnaryFunctionAdapter<T, U>> {
  public:
   using FunctionType = std::function<T(ValueManager&, U)>;
 
@@ -339,7 +350,8 @@ class UnaryFunctionAdapter {
 //
 // See documentation for Binary Function adapter for general recommendations.
 template <typename T, typename... Args>
-class VariadicFunctionAdapter {
+class VariadicFunctionAdapter
+    : public RegisterHelper<VariadicFunctionAdapter<T, Args...>> {
  public:
   using FunctionType = std::function<T(ValueManager&, Args...)>;
 

@@ -14,8 +14,14 @@
 
 #include "runtime/standard/type_conversion_functions.h"
 
+#include <cstdint>
+
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/numbers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/time/time.h"
 #include "base/builtins.h"
 #include "base/function_adapter.h"
 #include "common/value.h"
@@ -23,6 +29,8 @@
 #include "internal/overflow.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
+#include "runtime/function_registry.h"
+#include "runtime/runtime_options.h"
 
 namespace cel {
 namespace {
@@ -37,37 +45,35 @@ const absl::Time kMaxTime = MaxTimestamp();
 absl::Status RegisterIntConversionFunctions(FunctionRegistry& registry,
                                             const RuntimeOptions&) {
   // bool -> int
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<int64_t, bool>::CreateDescriptor(cel::builtin::kInt,
-                                                            false),
-      UnaryFunctionAdapter<int64_t, bool>::WrapFunction(
-          [](ValueManager&, bool v) { return static_cast<int64_t>(v); })));
+  absl::Status status =
+      UnaryFunctionAdapter<int64_t, bool>::RegisterGlobalOverload(
+          cel::builtin::kInt,
+          [](ValueManager&, bool v) { return static_cast<int64_t>(v); },
+          registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // double -> int
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, double>::CreateDescriptor(cel::builtin::kInt,
-                                                            false),
-      UnaryFunctionAdapter<Value, double>::WrapFunction(
-          [](ValueManager& value_factory, double v) -> Value {
-            auto conv = cel::internal::CheckedDoubleToInt64(v);
-            if (!conv.ok()) {
-              return value_factory.CreateErrorValue(conv.status());
-            }
-            return value_factory.CreateIntValue(*conv);
-          })));
+  status = UnaryFunctionAdapter<Value, double>::RegisterGlobalOverload(
+      cel::builtin::kInt,
+      [](ValueManager& value_factory, double v) -> Value {
+        auto conv = cel::internal::CheckedDoubleToInt64(v);
+        if (!conv.ok()) {
+          return value_factory.CreateErrorValue(conv.status());
+        }
+        return value_factory.CreateIntValue(*conv);
+      },
+      registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // int -> int
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<int64_t, int64_t>::CreateDescriptor(
-          cel::builtin::kInt, false),
-      UnaryFunctionAdapter<int64_t, int64_t>::WrapFunction(
-          [](ValueManager&, int64_t v) { return v; })));
+  status = UnaryFunctionAdapter<int64_t, int64_t>::RegisterGlobalOverload(
+      cel::builtin::kInt, [](ValueManager&, int64_t v) { return v; }, registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // string -> int
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, const StringValue&>::CreateDescriptor(
-          cel::builtin::kInt, false),
-      UnaryFunctionAdapter<Value, const StringValue&>::WrapFunction(
+  status =
+      UnaryFunctionAdapter<Value, const StringValue&>::RegisterGlobalOverload(
+          cel::builtin::kInt,
           [](ValueManager& value_factory, const StringValue& s) -> Value {
             int64_t result;
             if (!absl::SimpleAtoi(s.ToString(), &result)) {
@@ -75,27 +81,28 @@ absl::Status RegisterIntConversionFunctions(FunctionRegistry& registry,
                   absl::InvalidArgumentError("cannot convert string to int"));
             }
             return value_factory.CreateIntValue(result);
-          })));
+          },
+          registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // time -> int
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<int64_t, absl::Time>::CreateDescriptor(
-          cel::builtin::kInt, false),
-      UnaryFunctionAdapter<int64_t, absl::Time>::WrapFunction(
-          [](ValueManager&, absl::Time t) { return absl::ToUnixSeconds(t); })));
+  status = UnaryFunctionAdapter<int64_t, absl::Time>::RegisterGlobalOverload(
+      cel::builtin::kInt,
+      [](ValueManager&, absl::Time t) { return absl::ToUnixSeconds(t); },
+      registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // uint -> int
-  return registry.Register(
-      UnaryFunctionAdapter<Value, uint64_t>::CreateDescriptor(
-          cel::builtin::kInt, false),
-      UnaryFunctionAdapter<Value, uint64_t>::WrapFunction(
-          [](ValueManager& value_factory, uint64_t v) -> Value {
-            auto conv = cel::internal::CheckedUint64ToInt64(v);
-            if (!conv.ok()) {
-              return value_factory.CreateErrorValue(conv.status());
-            }
-            return value_factory.CreateIntValue(*conv);
-          }));
+  return UnaryFunctionAdapter<Value, uint64_t>::RegisterGlobalOverload(
+      cel::builtin::kInt,
+      [](ValueManager& value_factory, uint64_t v) -> Value {
+        auto conv = cel::internal::CheckedUint64ToInt64(v);
+        if (!conv.ok()) {
+          return value_factory.CreateErrorValue(conv.status());
+        }
+        return value_factory.CreateIntValue(*conv);
+      },
+      registry);
 }
 
 absl::Status RegisterStringConversionFunctions(FunctionRegistry& registry,
@@ -105,117 +112,114 @@ absl::Status RegisterStringConversionFunctions(FunctionRegistry& registry,
     return absl::OkStatus();
   }
 
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, const BytesValue&>::CreateDescriptor(
-          cel::builtin::kString, false),
-      UnaryFunctionAdapter<Value, const BytesValue&>::WrapFunction(
+  absl::Status status =
+      UnaryFunctionAdapter<Value, const BytesValue&>::RegisterGlobalOverload(
+          cel::builtin::kString,
+
           [](ValueManager& value_factory, const BytesValue& value) -> Value {
             auto handle_or = value_factory.CreateStringValue(value.ToString());
             if (!handle_or.ok()) {
               return value_factory.CreateErrorValue(handle_or.status());
             }
             return *handle_or;
-          })));
+          },
+          registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // double -> string
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<StringValue, double>::CreateDescriptor(
-          cel::builtin::kString, false),
-      UnaryFunctionAdapter<StringValue, double>::WrapFunction(
-          [](ValueManager& value_factory, double value) -> StringValue {
-            return value_factory.CreateUncheckedStringValue(
-                absl::StrCat(value));
-          })));
+  status = UnaryFunctionAdapter<StringValue, double>::RegisterGlobalOverload(
+      cel::builtin::kString,
+      [](ValueManager& value_factory, double value) -> StringValue {
+        return value_factory.CreateUncheckedStringValue(absl::StrCat(value));
+      },
+      registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // int -> string
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<StringValue, int64_t>::CreateDescriptor(
-          cel::builtin::kString, false),
-      UnaryFunctionAdapter<StringValue, int64_t>::WrapFunction(
-          [](ValueManager& value_factory, int64_t value) -> StringValue {
-            return value_factory.CreateUncheckedStringValue(
-                absl::StrCat(value));
-          })));
+  status = UnaryFunctionAdapter<StringValue, int64_t>::RegisterGlobalOverload(
+      cel::builtin::kString,
+      [](ValueManager& value_factory, int64_t value) -> StringValue {
+        return value_factory.CreateUncheckedStringValue(absl::StrCat(value));
+      },
+      registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // string -> string
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<StringValue, StringValue>::CreateDescriptor(
-          cel::builtin::kString, false),
-      UnaryFunctionAdapter<StringValue, StringValue>::WrapFunction(
-          [](ValueManager&, StringValue value) -> StringValue {
-            return value;
-          })));
+  status =
+      UnaryFunctionAdapter<StringValue, StringValue>::RegisterGlobalOverload(
+          cel::builtin::kString,
+          [](ValueManager&, StringValue value) -> StringValue { return value; },
+          registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // uint -> string
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<StringValue, uint64_t>::CreateDescriptor(
-          cel::builtin::kString, false),
-      UnaryFunctionAdapter<StringValue, uint64_t>::WrapFunction(
-          [](ValueManager& value_factory, uint64_t value) -> StringValue {
-            return value_factory.CreateUncheckedStringValue(
-                absl::StrCat(value));
-          })));
+  status = UnaryFunctionAdapter<StringValue, uint64_t>::RegisterGlobalOverload(
+      cel::builtin::kString,
+      [](ValueManager& value_factory, uint64_t value) -> StringValue {
+        return value_factory.CreateUncheckedStringValue(absl::StrCat(value));
+      },
+      registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // duration -> string
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, absl::Duration>::CreateDescriptor(
-          cel::builtin::kString, false),
-      UnaryFunctionAdapter<Value, absl::Duration>::WrapFunction(
-          [](ValueManager& value_factory, absl::Duration value) -> Value {
-            auto encode = EncodeDurationToJson(value);
-            if (!encode.ok()) {
-              return value_factory.CreateErrorValue(encode.status());
-            }
-            return value_factory.CreateUncheckedStringValue(*encode);
-          })));
+  status = UnaryFunctionAdapter<Value, absl::Duration>::RegisterGlobalOverload(
+      cel::builtin::kString,
+      [](ValueManager& value_factory, absl::Duration value) -> Value {
+        auto encode = EncodeDurationToJson(value);
+        if (!encode.ok()) {
+          return value_factory.CreateErrorValue(encode.status());
+        }
+        return value_factory.CreateUncheckedStringValue(*encode);
+      },
+      registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // timestamp -> string
-  return registry.Register(
-      UnaryFunctionAdapter<Value, absl::Time>::CreateDescriptor(
-          cel::builtin::kString, false),
-      UnaryFunctionAdapter<Value, absl::Time>::WrapFunction(
-          [](ValueManager& value_factory, absl::Time value) -> Value {
-            auto encode = EncodeTimestampToJson(value);
-            if (!encode.ok()) {
-              return value_factory.CreateErrorValue(encode.status());
-            }
-            return value_factory.CreateUncheckedStringValue(*encode);
-          }));
+  return UnaryFunctionAdapter<Value, absl::Time>::RegisterGlobalOverload(
+      cel::builtin::kString,
+      [](ValueManager& value_factory, absl::Time value) -> Value {
+        auto encode = EncodeTimestampToJson(value);
+        if (!encode.ok()) {
+          return value_factory.CreateErrorValue(encode.status());
+        }
+        return value_factory.CreateUncheckedStringValue(*encode);
+      },
+      registry);
 }
 
 absl::Status RegisterUintConversionFunctions(FunctionRegistry& registry,
                                              const RuntimeOptions&) {
   // double -> uint
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, double>::CreateDescriptor(cel::builtin::kUint,
-                                                            false),
-      UnaryFunctionAdapter<Value, double>::WrapFunction(
+  absl::Status status =
+      UnaryFunctionAdapter<Value, double>::RegisterGlobalOverload(
+          cel::builtin::kUint,
           [](ValueManager& value_factory, double v) -> Value {
             auto conv = cel::internal::CheckedDoubleToUint64(v);
             if (!conv.ok()) {
               return value_factory.CreateErrorValue(conv.status());
             }
             return value_factory.CreateUintValue(*conv);
-          })));
+          },
+          registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // int -> uint
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, int64_t>::CreateDescriptor(
-          cel::builtin::kUint, false),
-      UnaryFunctionAdapter<Value, int64_t>::WrapFunction(
-          [](ValueManager& value_factory, int64_t v) -> Value {
-            auto conv = cel::internal::CheckedInt64ToUint64(v);
-            if (!conv.ok()) {
-              return value_factory.CreateErrorValue(conv.status());
-            }
-            return value_factory.CreateUintValue(*conv);
-          })));
+  status = UnaryFunctionAdapter<Value, int64_t>::RegisterGlobalOverload(
+      cel::builtin::kUint,
+      [](ValueManager& value_factory, int64_t v) -> Value {
+        auto conv = cel::internal::CheckedInt64ToUint64(v);
+        if (!conv.ok()) {
+          return value_factory.CreateErrorValue(conv.status());
+        }
+        return value_factory.CreateUintValue(*conv);
+      },
+      registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // string -> uint
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, const StringValue&>::CreateDescriptor(
-          cel::builtin::kUint, false),
-      UnaryFunctionAdapter<Value, const StringValue&>::WrapFunction(
+  status =
+      UnaryFunctionAdapter<Value, const StringValue&>::RegisterGlobalOverload(
+          cel::builtin::kUint,
           [](ValueManager& value_factory, const StringValue& s) -> Value {
             uint64_t result;
             if (!absl::SimpleAtoi(s.ToString(), &result)) {
@@ -223,59 +227,57 @@ absl::Status RegisterUintConversionFunctions(FunctionRegistry& registry,
                   absl::InvalidArgumentError("doesn't convert to a string"));
             }
             return value_factory.CreateUintValue(result);
-          })));
+          },
+          registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // uint -> uint
-  return registry.Register(
-      UnaryFunctionAdapter<uint64_t, uint64_t>::CreateDescriptor(
-          cel::builtin::kUint, false),
-      UnaryFunctionAdapter<uint64_t, uint64_t>::WrapFunction(
-          [](ValueManager&, uint64_t v) { return v; }));
+  return UnaryFunctionAdapter<uint64_t, uint64_t>::RegisterGlobalOverload(
+      cel::builtin::kUint, [](ValueManager&, uint64_t v) { return v; },
+      registry);
 }
 
 absl::Status RegisterBytesConversionFunctions(FunctionRegistry& registry,
                                               const RuntimeOptions&) {
   // bytes -> bytes
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<BytesValue, BytesValue>::CreateDescriptor(
-          cel::builtin::kBytes, false),
-      UnaryFunctionAdapter<BytesValue, BytesValue>::WrapFunction(
-          [](ValueManager&, BytesValue value) -> BytesValue {
-            return value;
-          })));
+  absl::Status status =
+      UnaryFunctionAdapter<BytesValue, BytesValue>::RegisterGlobalOverload(
+          cel::builtin::kBytes,
+
+          [](ValueManager&, BytesValue value) -> BytesValue { return value; },
+          registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // string -> bytes
-  return registry.Register(
-      UnaryFunctionAdapter<absl::StatusOr<BytesValue>, const StringValue&>::
-          CreateDescriptor(cel::builtin::kBytes, false),
-      UnaryFunctionAdapter<absl::StatusOr<BytesValue>, const StringValue&>::
-          WrapFunction(
-              [](ValueManager& value_factory, const StringValue& value) {
-                return value_factory.CreateBytesValue(value.ToString());
-              }));
+  return UnaryFunctionAdapter<absl::StatusOr<BytesValue>, const StringValue&>::
+      RegisterGlobalOverload(
+          cel::builtin::kBytes,
+          [](ValueManager& value_factory, const StringValue& value) {
+            return value_factory.CreateBytesValue(value.ToString());
+          },
+          registry);
 }
 
 absl::Status RegisterDoubleConversionFunctions(FunctionRegistry& registry,
                                                const RuntimeOptions&) {
   // double -> double
-  CEL_RETURN_IF_ERROR(
-      registry.Register(UnaryFunctionAdapter<double, double>::CreateDescriptor(
-                            cel::builtin::kDouble, false),
-                        UnaryFunctionAdapter<double, double>::WrapFunction(
-                            [](ValueManager&, double v) { return v; })));
+  absl::Status status =
+      UnaryFunctionAdapter<double, double>::RegisterGlobalOverload(
+          cel::builtin::kDouble, [](ValueManager&, double v) { return v; },
+          registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // int -> double
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<double, int64_t>::CreateDescriptor(
-          cel::builtin::kDouble, false),
-      UnaryFunctionAdapter<double, int64_t>::WrapFunction(
-          [](ValueManager&, int64_t v) { return static_cast<double>(v); })));
+  status = UnaryFunctionAdapter<double, int64_t>::RegisterGlobalOverload(
+      cel::builtin::kDouble,
+      [](ValueManager&, int64_t v) { return static_cast<double>(v); },
+      registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // string -> double
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, const StringValue&>::CreateDescriptor(
-          cel::builtin::kDouble, false),
-      UnaryFunctionAdapter<Value, const StringValue&>::WrapFunction(
+  status =
+      UnaryFunctionAdapter<Value, const StringValue&>::RegisterGlobalOverload(
+          cel::builtin::kDouble,
           [](ValueManager& value_factory, const StringValue& s) -> Value {
             double result;
             if (absl::SimpleAtod(s.ToString(), &result)) {
@@ -284,14 +286,15 @@ absl::Status RegisterDoubleConversionFunctions(FunctionRegistry& registry,
               return value_factory.CreateErrorValue(absl::InvalidArgumentError(
                   "cannot convert string to double"));
             }
-          })));
+          },
+          registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // uint -> double
-  return registry.Register(
-      UnaryFunctionAdapter<double, uint64_t>::CreateDescriptor(
-          cel::builtin::kDouble, false),
-      UnaryFunctionAdapter<double, uint64_t>::WrapFunction(
-          [](ValueManager&, uint64_t v) { return static_cast<double>(v); }));
+  return UnaryFunctionAdapter<double, uint64_t>::RegisterGlobalOverload(
+      cel::builtin::kDouble,
+      [](ValueManager&, uint64_t v) { return static_cast<double>(v); },
+      registry);
 }
 
 Value CreateDurationFromString(ValueManager& value_factory,
@@ -314,29 +317,28 @@ Value CreateDurationFromString(ValueManager& value_factory,
 absl::Status RegisterTimeConversionFunctions(FunctionRegistry& registry,
                                              const RuntimeOptions& options) {
   // duration() conversion from string.
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, const StringValue&>::CreateDescriptor(
-          cel::builtin::kDuration, false),
-      UnaryFunctionAdapter<Value, const StringValue&>::WrapFunction(
-          CreateDurationFromString)));
+  absl::Status status =
+      UnaryFunctionAdapter<Value, const StringValue&>::RegisterGlobalOverload(
+          cel::builtin::kDuration, CreateDurationFromString, registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // timestamp conversion from int.
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, int64_t>::CreateDescriptor(
-          cel::builtin::kTimestamp, false),
-      UnaryFunctionAdapter<Value, int64_t>::WrapFunction(
+  status =
+      UnaryFunctionAdapter<Value, int64_t>::RegisterGlobalOverload(
+          cel::builtin::kTimestamp,
           [](ValueManager& value_factory, int64_t epoch_seconds) -> Value {
             return value_factory.CreateUncheckedTimestampValue(
                 absl::FromUnixSeconds(epoch_seconds));
-          })));
+          },
+          registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // timestamp() conversion from string.
   bool enable_timestamp_duration_overflow_errors =
       options.enable_timestamp_duration_overflow_errors;
-  return registry.Register(
-      UnaryFunctionAdapter<Value, const StringValue&>::CreateDescriptor(
-          cel::builtin::kTimestamp, false),
-      UnaryFunctionAdapter<Value, const StringValue&>::WrapFunction(
+  return UnaryFunctionAdapter<Value, const StringValue&>::
+      RegisterGlobalOverload(
+          cel::builtin::kTimestamp,
           [=](ValueManager& value_factory,
               const StringValue& time_str) -> Value {
             absl::Time ts;
@@ -352,7 +354,8 @@ absl::Status RegisterTimeConversionFunctions(FunctionRegistry& registry,
               }
             }
             return value_factory.CreateUncheckedTimestampValue(ts);
-          }));
+          },
+          registry);
 }
 
 }  // namespace
@@ -373,20 +376,20 @@ absl::Status RegisterTypeConversionFunctions(FunctionRegistry& registry,
 
   // dyn() identity function.
   // TODO(issues/102): strip dyn() function references at type-check time.
-  CEL_RETURN_IF_ERROR(registry.Register(
-      UnaryFunctionAdapter<Value, const Value&>::CreateDescriptor(
-          cel::builtin::kDyn, false),
-      UnaryFunctionAdapter<Value, const Value&>::WrapFunction(
-          [](ValueManager&, const Value& value) -> Value { return value; })));
+  absl::Status status =
+      UnaryFunctionAdapter<Value, const Value&>::RegisterGlobalOverload(
+          cel::builtin::kDyn,
+          [](ValueManager&, const Value& value) -> Value { return value; },
+          registry);
+  CEL_RETURN_IF_ERROR(status);
 
   // type(dyn) -> type
-  return registry.Register(
-      UnaryFunctionAdapter<Value, const Value&>::CreateDescriptor(
-          cel::builtin::kType, false),
-      UnaryFunctionAdapter<Value, const Value&>::WrapFunction(
-          [](ValueManager& factory, const Value& value) {
-            return factory.CreateTypeValue(value.GetType(factory));
-          }));
+  return UnaryFunctionAdapter<Value, const Value&>::RegisterGlobalOverload(
+      cel::builtin::kType,
+      [](ValueManager& factory, const Value& value) {
+        return factory.CreateTypeValue(value.GetType(factory));
+      },
+      registry);
 }
 
 }  // namespace cel

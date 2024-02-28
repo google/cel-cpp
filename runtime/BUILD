@@ -466,6 +466,7 @@ cc_library(
     name = "function_adapter",
     hdrs = ["function_adapter.h"],
     deps = [
+        ":register_function_helper",
         "//base:function",
         "//base:function_descriptor",
         "//common:kind",
