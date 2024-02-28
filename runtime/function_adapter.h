@@ -270,10 +270,16 @@ class BinaryFunctionAdapter
       CEL_RETURN_IF_ERROR(
           runtime_internal::HandleToAdaptedVisitor{args[1]}(&arg2));
 
-      T result = fn_(context.value_factory(), Arg1Traits::ToArg(arg1),
-                     Arg2Traits::ToArg(arg2));
+      if constexpr (std::is_same_v<T, Value> ||
+                    std::is_same_v<T, absl::StatusOr<Value>>) {
+        return fn_(context.value_factory(), Arg1Traits::ToArg(arg1),
+                   Arg2Traits::ToArg(arg2));
+      } else {
+        T result = fn_(context.value_factory(), Arg1Traits::ToArg(arg1),
+                       Arg2Traits::ToArg(arg2));
 
-      return runtime_internal::AdaptedToHandleVisitor{}(std::move(result));
+        return runtime_internal::AdaptedToHandleVisitor{}(std::move(result));
+      }
     }
 
    private:
@@ -333,10 +339,14 @@ class UnaryFunctionAdapter : public RegisterHelper<UnaryFunctionAdapter<T, U>> {
 
       CEL_RETURN_IF_ERROR(
           runtime_internal::HandleToAdaptedVisitor{args[0]}(&arg1));
+      if constexpr (std::is_same_v<T, Value> ||
+                    std::is_same_v<T, absl::StatusOr<Value>>) {
+        return fn_(context.value_factory(), ArgTraits::ToArg(arg1));
+      } else {
+        T result = fn_(context.value_factory(), ArgTraits::ToArg(arg1));
 
-      T result = fn_(context.value_factory(), ArgTraits::ToArg(arg1));
-
-      return runtime_internal::AdaptedToHandleVisitor{}(std::move(result));
+        return runtime_internal::AdaptedToHandleVisitor{}(std::move(result));
+      }
     }
 
    private:
