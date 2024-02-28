@@ -175,8 +175,7 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
     Activation activation;
 
     for (const auto& pair : request.bindings()) {
-      auto* import_value =
-          Arena::CreateMessage<google::api::expr::v1alpha1::Value>(&arena);
+      auto* import_value = Arena::Create<google::api::expr::v1alpha1::Value>(&arena);
       (*import_value).MergeFrom(pair.second.value());
       auto import_status = ValueToCelValue(*import_value, &arena);
       if (!import_status.ok()) {
