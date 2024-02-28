@@ -23,6 +23,7 @@
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value.h"
+#include "common/value_testing.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -32,12 +33,14 @@ using testing::An;
 using testing::Ne;
 using cel::internal::IsOkAndHolds;
 
-TEST(BoolValue, Kind) {
+using BoolValueTest = common_internal::ThreadCompatibleValueTest<>;
+
+TEST_P(BoolValueTest, Kind) {
   EXPECT_EQ(BoolValue(true).kind(), BoolValue::kKind);
   EXPECT_EQ(Value(BoolValue(true)).kind(), BoolValue::kKind);
 }
 
-TEST(BoolValue, DebugString) {
+TEST_P(BoolValueTest, DebugString) {
   {
     std::ostringstream out;
     out << BoolValue(true);
@@ -50,64 +53,75 @@ TEST(BoolValue, DebugString) {
   }
 }
 
-TEST(BoolValue, GetSerializedSize) {
-  EXPECT_THAT(BoolValue(false).GetSerializedSize(), IsOkAndHolds(0));
-  EXPECT_THAT(BoolValue(true).GetSerializedSize(), IsOkAndHolds(2));
+TEST_P(BoolValueTest, GetSerializedSize) {
+  EXPECT_THAT(BoolValue(false).GetSerializedSize(value_manager()),
+              IsOkAndHolds(0));
+  EXPECT_THAT(BoolValue(true).GetSerializedSize(value_manager()),
+              IsOkAndHolds(2));
 }
 
-TEST(BoolValue, ConvertToAny) {
-  EXPECT_THAT(BoolValue(false).ConvertToAny(),
+TEST_P(BoolValueTest, ConvertToAny) {
+  EXPECT_THAT(BoolValue(false).ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.BoolValue"),
                                    absl::Cord())));
 }
 
-TEST(BoolValue, ConvertToJson) {
-  EXPECT_THAT(BoolValue(false).ConvertToJson(), IsOkAndHolds(Json(false)));
+TEST_P(BoolValueTest, ConvertToJson) {
+  EXPECT_THAT(BoolValue(false).ConvertToJson(value_manager()),
+              IsOkAndHolds(Json(false)));
 }
 
-TEST(BoolValue, NativeTypeId) {
+TEST_P(BoolValueTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(BoolValue(true)), NativeTypeId::For<BoolValue>());
   EXPECT_EQ(NativeTypeId::Of(Value(BoolValue(true))),
             NativeTypeId::For<BoolValue>());
 }
 
-TEST(BoolValue, InstanceOf) {
+TEST_P(BoolValueTest, InstanceOf) {
   EXPECT_TRUE(InstanceOf<BoolValue>(BoolValue(true)));
   EXPECT_TRUE(InstanceOf<BoolValue>(Value(BoolValue(true))));
 }
 
-TEST(BoolValue, Cast) {
+TEST_P(BoolValueTest, Cast) {
   EXPECT_THAT(Cast<BoolValue>(BoolValue(true)), An<BoolValue>());
   EXPECT_THAT(Cast<BoolValue>(Value(BoolValue(true))), An<BoolValue>());
 }
 
-TEST(BoolValue, As) {
+TEST_P(BoolValueTest, As) {
   EXPECT_THAT(As<BoolValue>(BoolValue(true)), Ne(absl::nullopt));
   EXPECT_THAT(As<BoolValue>(Value(BoolValue(true))), Ne(absl::nullopt));
 }
 
-TEST(BoolValue, HashValue) {
+TEST_P(BoolValueTest, HashValue) {
   EXPECT_EQ(absl::HashOf(BoolValue(true)), absl::HashOf(true));
 }
 
-TEST(BoolValue, Equality) {
+TEST_P(BoolValueTest, Equality) {
   EXPECT_NE(BoolValue(false), true);
   EXPECT_NE(true, BoolValue(false));
   EXPECT_NE(BoolValue(false), BoolValue(true));
 }
 
-TEST(BoolValue, LessThan) {
+TEST_P(BoolValueTest, LessThan) {
   EXPECT_LT(BoolValue(false), true);
   EXPECT_LT(false, BoolValue(true));
   EXPECT_LT(BoolValue(false), BoolValue(true));
 }
 
-TEST(BoolValueView, Kind) {
+INSTANTIATE_TEST_SUITE_P(
+    BoolValueTest, BoolValueTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    BoolValueTest::ToString);
+
+using BoolValueViewTest = common_internal::ThreadCompatibleValueTest<>;
+
+TEST_P(BoolValueViewTest, Kind) {
   EXPECT_EQ(BoolValueView(true).kind(), BoolValueView::kKind);
   EXPECT_EQ(ValueView(BoolValueView(true)).kind(), BoolValueView::kKind);
 }
 
-TEST(BoolValueView, DebugString) {
+TEST_P(BoolValueViewTest, DebugString) {
   {
     std::ostringstream out;
     out << BoolValueView(true);
@@ -120,50 +134,53 @@ TEST(BoolValueView, DebugString) {
   }
 }
 
-TEST(BoolValueView, GetSerializedSize) {
-  EXPECT_THAT(BoolValueView(false).GetSerializedSize(), IsOkAndHolds(0));
-  EXPECT_THAT(BoolValueView(true).GetSerializedSize(), IsOkAndHolds(2));
+TEST_P(BoolValueViewTest, GetSerializedSize) {
+  EXPECT_THAT(BoolValueView(false).GetSerializedSize(value_manager()),
+              IsOkAndHolds(0));
+  EXPECT_THAT(BoolValueView(true).GetSerializedSize(value_manager()),
+              IsOkAndHolds(2));
 }
 
-TEST(BoolValueView, ConvertToAny) {
-  EXPECT_THAT(BoolValueView(false).ConvertToAny(),
+TEST_P(BoolValueViewTest, ConvertToAny) {
+  EXPECT_THAT(BoolValueView(false).ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.BoolValue"),
                                    absl::Cord())));
 }
 
-TEST(BoolValueView, ConvertToJson) {
-  EXPECT_THAT(BoolValueView(false).ConvertToJson(), IsOkAndHolds(Json(false)));
+TEST_P(BoolValueViewTest, ConvertToJson) {
+  EXPECT_THAT(BoolValueView(false).ConvertToJson(value_manager()),
+              IsOkAndHolds(Json(false)));
 }
 
-TEST(BoolValueView, NativeTypeId) {
+TEST_P(BoolValueViewTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(BoolValueView(true)),
             NativeTypeId::For<BoolValueView>());
   EXPECT_EQ(NativeTypeId::Of(ValueView(BoolValueView(true))),
             NativeTypeId::For<BoolValueView>());
 }
 
-TEST(BoolValueView, InstanceOf) {
+TEST_P(BoolValueViewTest, InstanceOf) {
   EXPECT_TRUE(InstanceOf<BoolValueView>(BoolValueView(true)));
   EXPECT_TRUE(InstanceOf<BoolValueView>(ValueView(BoolValueView(true))));
 }
 
-TEST(BoolValueView, Cast) {
+TEST_P(BoolValueViewTest, Cast) {
   EXPECT_THAT(Cast<BoolValueView>(BoolValueView(true)), An<BoolValueView>());
   EXPECT_THAT(Cast<BoolValueView>(ValueView(BoolValueView(true))),
               An<BoolValueView>());
 }
 
-TEST(BoolValueView, As) {
+TEST_P(BoolValueViewTest, As) {
   EXPECT_THAT(As<BoolValueView>(BoolValueView(true)), Ne(absl::nullopt));
   EXPECT_THAT(As<BoolValueView>(ValueView(BoolValueView(true))),
               Ne(absl::nullopt));
 }
 
-TEST(BoolValueView, HashValue) {
+TEST_P(BoolValueViewTest, HashValue) {
   EXPECT_EQ(absl::HashOf(BoolValueView(true)), absl::HashOf(true));
 }
 
-TEST(BoolValueView, Equality) {
+TEST_P(BoolValueViewTest, Equality) {
   EXPECT_NE(BoolValueView(BoolValue(false)), true);
   EXPECT_NE(true, BoolValueView(false));
   EXPECT_NE(BoolValueView(false), BoolValueView(true));
@@ -171,13 +188,19 @@ TEST(BoolValueView, Equality) {
   EXPECT_NE(BoolValue(true), BoolValueView(false));
 }
 
-TEST(BoolValueView, LessThan) {
+TEST_P(BoolValueViewTest, LessThan) {
   EXPECT_LT(BoolValueView(false), true);
   EXPECT_LT(false, BoolValueView(true));
   EXPECT_LT(BoolValueView(false), BoolValueView(true));
   EXPECT_LT(BoolValueView(false), BoolValue(true));
   EXPECT_LT(BoolValue(false), BoolValueView(true));
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    BoolValueViewTest, BoolValueViewTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    BoolValueViewTest::ToString);
 
 }  // namespace
 }  // namespace cel

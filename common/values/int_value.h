@@ -70,13 +70,13 @@ class IntValue final {
   // `GetSerializedSize` determines the serialized byte size that would result
   // from serialization, without performing the serialization. This always
   // succeeds and only returns `absl::StatusOr` to meet concept requirements.
-  absl::StatusOr<size_t> GetSerializedSize() const;
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager&) const;
 
   // `SerializeTo` serializes this value and appends it to `value`.
-  absl::Status SerializeTo(absl::Cord& value) const;
+  absl::Status SerializeTo(ValueManager&, absl::Cord& value) const;
 
   // `Serialize` serializes this value and returns it as `absl::Cord`.
-  absl::StatusOr<absl::Cord> Serialize() const;
+  absl::StatusOr<absl::Cord> Serialize(ValueManager&) const;
 
   // 'GetTypeUrl' returns the type URL that can be used as the type URL for
   // `Any`.
@@ -85,9 +85,9 @@ class IntValue final {
 
   // 'ConvertToAny' converts this value to `Any`.
   absl::StatusOr<Any> ConvertToAny(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+      ValueManager&, absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson() const;
+  absl::StatusOr<Json> ConvertToJson(ValueManager&) const;
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
@@ -186,13 +186,13 @@ class IntValueView final {
   // `GetSerializedSize` determines the serialized byte size that would result
   // from serialization, without performing the serialization. This always
   // succeeds and only returns `absl::StatusOr` to meet concept requirements.
-  absl::StatusOr<size_t> GetSerializedSize() const;
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager&) const;
 
   // `SerializeTo` serializes this value and appends it to `value`.
-  absl::Status SerializeTo(absl::Cord& value) const;
+  absl::Status SerializeTo(ValueManager&, absl::Cord& value) const;
 
   // `Serialize` serializes this value and returns it as `absl::Cord`.
-  absl::StatusOr<absl::Cord> Serialize() const;
+  absl::StatusOr<absl::Cord> Serialize(ValueManager&) const;
 
   // 'GetTypeUrl' returns the type URL that can be used as the type URL for
   // `Any`.
@@ -201,9 +201,9 @@ class IntValueView final {
 
   // 'ConvertToAny' converts this value to `Any`.
   absl::StatusOr<Any> ConvertToAny(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+      ValueManager&, absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson() const;
+  absl::StatusOr<Json> ConvertToJson(ValueManager&) const;
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch

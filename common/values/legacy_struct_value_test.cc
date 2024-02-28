@@ -44,19 +44,21 @@ TEST_P(LegacyStructValueTest, DebugString) {
 }
 
 TEST_P(LegacyStructValueTest, GetSerializedSize) {
-  EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).GetSerializedSize()),
+  EXPECT_DEATH(static_cast<void>(
+                   LegacyStructValue(0, 0).GetSerializedSize(value_manager())),
                _);
 }
 
 TEST_P(LegacyStructValueTest, Serialize) {
-  EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).Serialize()), _);
+  EXPECT_DEATH(
+      static_cast<void>(LegacyStructValue(0, 0).Serialize(value_manager())), _);
 }
 
 TEST_P(LegacyStructValueTest, SerializeTo) {
   absl::Cord serialize_value;
-  EXPECT_DEATH(
-      static_cast<void>(LegacyStructValue(0, 0).SerializeTo(serialize_value)),
-      _);
+  EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).SerializeTo(
+                   value_manager(), serialize_value)),
+               _);
 }
 
 TEST_P(LegacyStructValueTest, GetTypeUrl) {
@@ -64,15 +66,20 @@ TEST_P(LegacyStructValueTest, GetTypeUrl) {
 }
 
 TEST_P(LegacyStructValueTest, ConvertToAny) {
-  EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).ConvertToAny()), _);
+  EXPECT_DEATH(
+      static_cast<void>(LegacyStructValue(0, 0).ConvertToAny(value_manager())),
+      _);
 }
 
 TEST_P(LegacyStructValueTest, ConvertToJson) {
-  EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).ConvertToJson()), _);
+  EXPECT_DEATH(
+      static_cast<void>(LegacyStructValue(0, 0).ConvertToJson(value_manager())),
+      _);
 }
 
 TEST_P(LegacyStructValueTest, ConvertToJsonObject) {
-  EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).ConvertToJsonObject()),
+  EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).ConvertToJsonObject(
+                   value_manager())),
                _);
 }
 
@@ -126,19 +133,21 @@ TEST_P(LegacyStructValueViewTest, DebugString) {
 }
 
 TEST_P(LegacyStructValueViewTest, GetSerializedSize) {
-  EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).GetSerializedSize()),
+  EXPECT_DEATH(static_cast<void>(
+                   LegacyStructValue(0, 0).GetSerializedSize(value_manager())),
                _);
 }
 
 TEST_P(LegacyStructValueViewTest, Serialize) {
-  EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).Serialize()), _);
+  EXPECT_DEATH(
+      static_cast<void>(LegacyStructValue(0, 0).Serialize(value_manager())), _);
 }
 
 TEST_P(LegacyStructValueViewTest, SerializeTo) {
   absl::Cord serialize_value;
-  EXPECT_DEATH(
-      static_cast<void>(LegacyStructValue(0, 0).SerializeTo(serialize_value)),
-      _);
+  EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).SerializeTo(
+                   value_manager(), serialize_value)),
+               _);
 }
 
 TEST_P(LegacyStructValueViewTest, GetTypeUrl) {
@@ -146,15 +155,20 @@ TEST_P(LegacyStructValueViewTest, GetTypeUrl) {
 }
 
 TEST_P(LegacyStructValueViewTest, ConvertToAny) {
-  EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).ConvertToAny()), _);
+  EXPECT_DEATH(
+      static_cast<void>(LegacyStructValue(0, 0).ConvertToAny(value_manager())),
+      _);
 }
 
 TEST_P(LegacyStructValueViewTest, ConvertToJson) {
-  EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).ConvertToJson()), _);
+  EXPECT_DEATH(
+      static_cast<void>(LegacyStructValue(0, 0).ConvertToJson(value_manager())),
+      _);
 }
 
 TEST_P(LegacyStructValueViewTest, ConvertToJsonObject) {
-  EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).ConvertToJsonObject()),
+  EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).ConvertToJsonObject(
+                   value_manager())),
                _);
 }
 

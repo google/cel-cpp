@@ -42,17 +42,18 @@ std::string IntValue::DebugString() const {
   return IntDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> IntValue::GetSerializedSize() const {
+absl::StatusOr<size_t> IntValue::GetSerializedSize(ValueManager&) const {
   return internal::SerializedInt64ValueSize(NativeValue());
 }
 
-absl::Status IntValue::SerializeTo(absl::Cord& value) const {
+absl::Status IntValue::SerializeTo(ValueManager&, absl::Cord& value) const {
   return internal::SerializeInt64Value(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> IntValue::Serialize() const {
+absl::StatusOr<absl::Cord> IntValue::Serialize(
+    ValueManager& value_manager) const {
   absl::Cord value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
 }
 
@@ -61,13 +62,14 @@ absl::StatusOr<std::string> IntValue::GetTypeUrl(
   return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Int64Value");
 }
 
-absl::StatusOr<Any> IntValue::ConvertToAny(absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+absl::StatusOr<Any> IntValue::ConvertToAny(ValueManager& value_manager,
+                                           absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> IntValue::ConvertToJson() const {
+absl::StatusOr<Json> IntValue::ConvertToJson(ValueManager&) const {
   return JsonInt(NativeValue());
 }
 
@@ -93,17 +95,18 @@ std::string IntValueView::DebugString() const {
   return IntDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> IntValueView::GetSerializedSize() const {
+absl::StatusOr<size_t> IntValueView::GetSerializedSize(ValueManager&) const {
   return internal::SerializedInt64ValueSize(NativeValue());
 }
 
-absl::Status IntValueView::SerializeTo(absl::Cord& value) const {
+absl::Status IntValueView::SerializeTo(ValueManager&, absl::Cord& value) const {
   return internal::SerializeInt64Value(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> IntValueView::Serialize() const {
+absl::StatusOr<absl::Cord> IntValueView::Serialize(
+    ValueManager& value_manager) const {
   absl::Cord value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
 }
 
@@ -112,13 +115,14 @@ absl::StatusOr<std::string> IntValueView::GetTypeUrl(
   return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Int64Value");
 }
 
-absl::StatusOr<Any> IntValueView::ConvertToAny(absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+absl::StatusOr<Any> IntValueView::ConvertToAny(ValueManager& value_manager,
+                                               absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> IntValueView::ConvertToJson() const {
+absl::StatusOr<Json> IntValueView::ConvertToJson(ValueManager&) const {
   return JsonInt(NativeValue());
 }
 

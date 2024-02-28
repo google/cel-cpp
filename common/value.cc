@@ -119,10 +119,11 @@ std::string Value::DebugString() const {
       variant_);
 }
 
-absl::StatusOr<size_t> Value::GetSerializedSize() const {
+absl::StatusOr<size_t> Value::GetSerializedSize(
+    ValueManager& value_manager) const {
   AssertIsValid();
   return absl::visit(
-      [](const auto& alternative) -> absl::StatusOr<size_t> {
+      [&value_manager](const auto& alternative) -> absl::StatusOr<size_t> {
         if constexpr (std::is_same_v<
                           absl::remove_cvref_t<decltype(alternative)>,
                           absl::monostate>) {
@@ -130,16 +131,17 @@ absl::StatusOr<size_t> Value::GetSerializedSize() const {
           // cannot reach here.
           return absl::InternalError("use of invalid Value");
         } else {
-          return alternative.GetSerializedSize();
+          return alternative.GetSerializedSize(value_manager);
         }
       },
       variant_);
 }
 
-absl::Status Value::SerializeTo(absl::Cord& value) const {
+absl::Status Value::SerializeTo(ValueManager& value_manager,
+                                absl::Cord& value) const {
   AssertIsValid();
   return absl::visit(
-      [&value](const auto& alternative) -> absl::Status {
+      [&value_manager, &value](const auto& alternative) -> absl::Status {
         if constexpr (std::is_same_v<
                           absl::remove_cvref_t<decltype(alternative)>,
                           absl::monostate>) {
@@ -147,16 +149,16 @@ absl::Status Value::SerializeTo(absl::Cord& value) const {
           // cannot reach here.
           return absl::InternalError("use of invalid Value");
         } else {
-          return alternative.SerializeTo(value);
+          return alternative.SerializeTo(value_manager, value);
         }
       },
       variant_);
 }
 
-absl::StatusOr<absl::Cord> Value::Serialize() const {
+absl::StatusOr<absl::Cord> Value::Serialize(ValueManager& value_manager) const {
   AssertIsValid();
   return absl::visit(
-      [](const auto& alternative) -> absl::StatusOr<absl::Cord> {
+      [&value_manager](const auto& alternative) -> absl::StatusOr<absl::Cord> {
         if constexpr (std::is_same_v<
                           absl::remove_cvref_t<decltype(alternative)>,
                           absl::monostate>) {
@@ -164,7 +166,7 @@ absl::StatusOr<absl::Cord> Value::Serialize() const {
           // cannot reach here.
           return absl::InternalError("use of invalid Value");
         } else {
-          return alternative.Serialize();
+          return alternative.Serialize(value_manager);
         }
       },
       variant_);
@@ -187,10 +189,11 @@ absl::StatusOr<std::string> Value::GetTypeUrl(absl::string_view prefix) const {
       variant_);
 }
 
-absl::StatusOr<Any> Value::ConvertToAny(absl::string_view prefix) const {
+absl::StatusOr<Any> Value::ConvertToAny(ValueManager& value_manager,
+                                        absl::string_view prefix) const {
   AssertIsValid();
   return absl::visit(
-      [prefix](const auto& alternative) -> absl::StatusOr<Any> {
+      [&value_manager, prefix](const auto& alternative) -> absl::StatusOr<Any> {
         if constexpr (std::is_same_v<
                           absl::remove_cvref_t<decltype(alternative)>,
                           absl::monostate>) {
@@ -198,16 +201,16 @@ absl::StatusOr<Any> Value::ConvertToAny(absl::string_view prefix) const {
           // cannot reach here.
           return absl::InternalError("use of invalid Value");
         } else {
-          return alternative.ConvertToAny(prefix);
+          return alternative.ConvertToAny(value_manager, prefix);
         }
       },
       variant_);
 }
 
-absl::StatusOr<Json> Value::ConvertToJson() const {
+absl::StatusOr<Json> Value::ConvertToJson(ValueManager& value_manager) const {
   AssertIsValid();
   return absl::visit(
-      [](const auto& alternative) -> absl::StatusOr<Json> {
+      [&value_manager](const auto& alternative) -> absl::StatusOr<Json> {
         if constexpr (std::is_same_v<
                           absl::remove_cvref_t<decltype(alternative)>,
                           absl::monostate>) {
@@ -215,7 +218,7 @@ absl::StatusOr<Json> Value::ConvertToJson() const {
           // builds we cannot reach here.
           return absl::InternalError("use of invalid Value");
         } else {
-          return alternative.ConvertToJson();
+          return alternative.ConvertToJson(value_manager);
         }
       },
       variant_);
@@ -355,10 +358,11 @@ std::string ValueView::DebugString() const {
       variant_);
 }
 
-absl::StatusOr<size_t> ValueView::GetSerializedSize() const {
+absl::StatusOr<size_t> ValueView::GetSerializedSize(
+    ValueManager& value_manager) const {
   AssertIsValid();
   return absl::visit(
-      [](auto alternative) -> absl::StatusOr<size_t> {
+      [&value_manager](auto alternative) -> absl::StatusOr<size_t> {
         if constexpr (std::is_same_v<
                           absl::remove_cvref_t<decltype(alternative)>,
                           absl::monostate>) {
@@ -366,16 +370,17 @@ absl::StatusOr<size_t> ValueView::GetSerializedSize() const {
           // cannot reach here.
           return absl::InternalError("use of invalid ValueView");
         } else {
-          return alternative.GetSerializedSize();
+          return alternative.GetSerializedSize(value_manager);
         }
       },
       variant_);
 }
 
-absl::Status ValueView::SerializeTo(absl::Cord& value) const {
+absl::Status ValueView::SerializeTo(ValueManager& value_manager,
+                                    absl::Cord& value) const {
   AssertIsValid();
   return absl::visit(
-      [&value](auto alternative) -> absl::Status {
+      [&value_manager, &value](auto alternative) -> absl::Status {
         if constexpr (std::is_same_v<
                           absl::remove_cvref_t<decltype(alternative)>,
                           absl::monostate>) {
@@ -383,16 +388,17 @@ absl::Status ValueView::SerializeTo(absl::Cord& value) const {
           // cannot reach here.
           return absl::InternalError("use of invalid ValueView");
         } else {
-          return alternative.SerializeTo(value);
+          return alternative.SerializeTo(value_manager, value);
         }
       },
       variant_);
 }
 
-absl::StatusOr<absl::Cord> ValueView::Serialize() const {
+absl::StatusOr<absl::Cord> ValueView::Serialize(
+    ValueManager& value_manager) const {
   AssertIsValid();
   return absl::visit(
-      [](auto alternative) -> absl::StatusOr<absl::Cord> {
+      [&value_manager](auto alternative) -> absl::StatusOr<absl::Cord> {
         if constexpr (std::is_same_v<
                           absl::remove_cvref_t<decltype(alternative)>,
                           absl::monostate>) {
@@ -400,7 +406,7 @@ absl::StatusOr<absl::Cord> ValueView::Serialize() const {
           // cannot reach here.
           return absl::InternalError("use of invalid ValueView");
         } else {
-          return alternative.Serialize();
+          return alternative.Serialize(value_manager);
         }
       },
       variant_);
@@ -424,10 +430,11 @@ absl::StatusOr<std::string> ValueView::GetTypeUrl(
       variant_);
 }
 
-absl::StatusOr<Any> ValueView::ConvertToAny(absl::string_view prefix) const {
+absl::StatusOr<Any> ValueView::ConvertToAny(ValueManager& value_manager,
+                                            absl::string_view prefix) const {
   AssertIsValid();
   return absl::visit(
-      [prefix](auto alternative) -> absl::StatusOr<Any> {
+      [&value_manager, prefix](auto alternative) -> absl::StatusOr<Any> {
         if constexpr (std::is_same_v<
                           absl::remove_cvref_t<decltype(alternative)>,
                           absl::monostate>) {
@@ -435,16 +442,17 @@ absl::StatusOr<Any> ValueView::ConvertToAny(absl::string_view prefix) const {
           // cannot reach here.
           return absl::InternalError("use of invalid ValueView");
         } else {
-          return alternative.ConvertToAny(prefix);
+          return alternative.ConvertToAny(value_manager, prefix);
         }
       },
       variant_);
 }
 
-absl::StatusOr<Json> ValueView::ConvertToJson() const {
+absl::StatusOr<Json> ValueView::ConvertToJson(
+    ValueManager& value_manager) const {
   AssertIsValid();
   return absl::visit(
-      [](auto alternative) -> absl::StatusOr<Json> {
+      [&value_manager](auto alternative) -> absl::StatusOr<Json> {
         if constexpr (std::is_same_v<
                           absl::remove_cvref_t<decltype(alternative)>,
                           absl::monostate>) {
@@ -452,7 +460,7 @@ absl::StatusOr<Json> ValueView::ConvertToJson() const {
           // builds we cannot reach here.
           return absl::InternalError("use of invalid ValueView");
         } else {
-          return alternative.ConvertToJson();
+          return alternative.ConvertToJson(value_manager);
         }
       },
       variant_);

@@ -47,13 +47,15 @@ absl::Status InvalidMapKeyTypeError(ValueKind kind) {
 
 }  // namespace
 
-absl::StatusOr<size_t> ParsedMapValueInterface::GetSerializedSize() const {
+absl::StatusOr<size_t> ParsedMapValueInterface::GetSerializedSize(
+    ValueManager&) const {
   return absl::UnimplementedError(
       "preflighting serialization size is not implemented by this map");
 }
 
-absl::Status ParsedMapValueInterface::SerializeTo(absl::Cord& value) const {
-  CEL_ASSIGN_OR_RETURN(auto json, ConvertToJsonObject());
+absl::Status ParsedMapValueInterface::SerializeTo(ValueManager& value_manager,
+                                                  absl::Cord& value) const {
+  CEL_ASSIGN_OR_RETURN(auto json, ConvertToJsonObject(value_manager));
   return internal::SerializeStruct(json, value);
 }
 

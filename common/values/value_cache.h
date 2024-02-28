@@ -93,7 +93,7 @@ class EmptyListValue final : public ParsedListValueInterface {
 
   size_t Size() const override { return 0; }
 
-  absl::StatusOr<JsonArray> ConvertToJsonArray() const override {
+  absl::StatusOr<JsonArray> ConvertToJsonArray(ValueManager&) const override {
     return JsonArray();
   }
 
@@ -158,7 +158,7 @@ class EmptyMapValue final : public ParsedMapValueInterface {
     return std::make_unique<EmptyMapValueKeyIterator>();
   }
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject() const override {
+  absl::StatusOr<JsonObject> ConvertToJsonObject(ValueManager&) const override {
     return JsonObject();
   }
 

@@ -165,13 +165,13 @@ TEST_P(ListValueTest, NewIterator) {
 
 TEST_P(ListValueTest, GetSerializedSize) {
   ASSERT_OK_AND_ASSIGN(auto value, NewIntListValue());
-  EXPECT_THAT(value.GetSerializedSize(),
+  EXPECT_THAT(value.GetSerializedSize(value_manager()),
               StatusIs(absl::StatusCode::kUnimplemented));
 }
 
 TEST_P(ListValueTest, ConvertToAny) {
   ASSERT_OK_AND_ASSIGN(auto value, NewIntListValue());
-  EXPECT_THAT(value.ConvertToAny(),
+  EXPECT_THAT(value.ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.ListValue"),
                                    absl::Cord())));
 }
@@ -179,7 +179,7 @@ TEST_P(ListValueTest, ConvertToAny) {
 TEST_P(ListValueTest, ConvertToJson) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
-  EXPECT_THAT(value.ConvertToJson(),
+  EXPECT_THAT(value.ConvertToJson(value_manager()),
               IsOkAndHolds(Json(MakeJsonArray({0.0, 1.0, 2.0}))));
 }
 
@@ -320,13 +320,13 @@ TEST_P(ListValueViewTest, NewIterator) {
 
 TEST_P(ListValueViewTest, GetSerializedSize) {
   ASSERT_OK_AND_ASSIGN(auto value, NewIntListValue());
-  EXPECT_THAT(ListValueView(value).GetSerializedSize(),
+  EXPECT_THAT(ListValueView(value).GetSerializedSize(value_manager()),
               StatusIs(absl::StatusCode::kUnimplemented));
 }
 
 TEST_P(ListValueViewTest, ConvertToAny) {
   ASSERT_OK_AND_ASSIGN(auto value, NewIntListValue());
-  EXPECT_THAT(ListValueView(value).ConvertToAny(),
+  EXPECT_THAT(ListValueView(value).ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.ListValue"),
                                    absl::Cord())));
 }
@@ -334,7 +334,7 @@ TEST_P(ListValueViewTest, ConvertToAny) {
 TEST_P(ListValueViewTest, ConvertToJson) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
-  EXPECT_THAT(ListValueView(value).ConvertToJson(),
+  EXPECT_THAT(ListValueView(value).ConvertToJson(value_manager()),
               IsOkAndHolds(Json(MakeJsonArray({0.0, 1.0, 2.0}))));
 }
 

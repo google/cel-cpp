@@ -22,6 +22,8 @@
 
 namespace cel {
 
+class JsonValueManager;
+
 // `TypeFactory` is the preferred way for constructing compound types such as
 // lists, maps, structs, and opaques. It caches types and avoids constructing
 // them multiple times.
@@ -117,7 +119,9 @@ class TypeFactory {
 
   MapType GetJsonMapType() { return MapType(GetStringDynMapType()); }
 
- private:
+ protected:
+  friend class JsonValueManager;
+
   virtual ListType CreateListTypeImpl(TypeView element) = 0;
 
   virtual MapType CreateMapTypeImpl(TypeView key, TypeView value) = 0;

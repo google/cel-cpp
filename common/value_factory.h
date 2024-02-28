@@ -32,6 +32,8 @@
 
 namespace cel {
 
+class JsonValueManager;
+
 // `ValueFactory` is the preferred way for constructing values.
 class ValueFactory : public virtual TypeFactory {
  public:
@@ -183,7 +185,9 @@ class ValueFactory : public virtual TypeFactory {
         Unknown{std::move(attribute_set), std::move(function_result_set)}};
   }
 
- private:
+ protected:
+  friend class JsonValueManager;
+
   virtual ListValue CreateZeroListValueImpl(ListTypeView type) = 0;
 
   virtual MapValue CreateZeroMapValueImpl(MapTypeView type) = 0;

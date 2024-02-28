@@ -54,11 +54,12 @@ class ListValueInterface : public ValueInterface {
 
   absl::StatusOr<std::string> GetTypeUrl(absl::string_view prefix) const final;
 
-  absl::StatusOr<Json> ConvertToJson() const final {
-    return ConvertToJsonArray();
+  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const final {
+    return ConvertToJsonArray(value_manager);
   }
 
-  virtual absl::StatusOr<JsonArray> ConvertToJsonArray() const = 0;
+  virtual absl::StatusOr<JsonArray> ConvertToJsonArray(
+      ValueManager& value_manager) const = 0;
 
   using ForEachCallback = absl::FunctionRef<absl::StatusOr<bool>(ValueView)>;
 

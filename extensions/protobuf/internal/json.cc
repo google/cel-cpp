@@ -465,7 +465,7 @@ absl::StatusOr<Json> ProtoAnyToJson(ValueManager& value_manager,
     return absl::NotFoundError(
         absl::StrCat("deserializer missing for `", any.type_url(), "`"));
   }
-  CEL_ASSIGN_OR_RETURN(auto json_value, value->ConvertToJson());
+  CEL_ASSIGN_OR_RETURN(auto json_value, value->ConvertToJson(value_manager));
   if (!absl::holds_alternative<JsonObject>(json_value)) {
     return absl::InternalError("expected JSON object");
   }

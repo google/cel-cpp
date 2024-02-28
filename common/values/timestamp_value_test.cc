@@ -23,6 +23,7 @@
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value.h"
+#include "common/value_testing.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -32,13 +33,15 @@ using testing::An;
 using testing::Ne;
 using cel::internal::IsOkAndHolds;
 
-TEST(TimestampValue, Kind) {
+using TimestampValueTest = common_internal::ThreadCompatibleValueTest<>;
+
+TEST_P(TimestampValueTest, Kind) {
   EXPECT_EQ(TimestampValue().kind(), TimestampValue::kKind);
   EXPECT_EQ(Value(TimestampValue(absl::UnixEpoch() + absl::Seconds(1))).kind(),
             TimestampValue::kKind);
 }
 
-TEST(TimestampValue, DebugString) {
+TEST_P(TimestampValueTest, DebugString) {
   {
     std::ostringstream out;
     out << TimestampValue(absl::UnixEpoch() + absl::Seconds(1));
@@ -51,22 +54,23 @@ TEST(TimestampValue, DebugString) {
   }
 }
 
-TEST(TimestampValue, GetSerializedSize) {
-  EXPECT_THAT(TimestampValue().GetSerializedSize(), IsOkAndHolds(0));
+TEST_P(TimestampValueTest, GetSerializedSize) {
+  EXPECT_THAT(TimestampValue().GetSerializedSize(value_manager()),
+              IsOkAndHolds(0));
 }
 
-TEST(TimestampValue, ConvertToAny) {
-  EXPECT_THAT(TimestampValue().ConvertToAny(),
+TEST_P(TimestampValueTest, ConvertToAny) {
+  EXPECT_THAT(TimestampValue().ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Timestamp"),
                                    absl::Cord())));
 }
 
-TEST(TimestampValue, ConvertToJson) {
-  EXPECT_THAT(TimestampValue().ConvertToJson(),
+TEST_P(TimestampValueTest, ConvertToJson) {
+  EXPECT_THAT(TimestampValue().ConvertToJson(value_manager()),
               IsOkAndHolds(Json(JsonString("1970-01-01T00:00:00Z"))));
 }
 
-TEST(TimestampValue, NativeTypeId) {
+TEST_P(TimestampValueTest, NativeTypeId) {
   EXPECT_EQ(
       NativeTypeId::Of(TimestampValue(absl::UnixEpoch() + absl::Seconds(1))),
       NativeTypeId::For<TimestampValue>());
@@ -75,14 +79,14 @@ TEST(TimestampValue, NativeTypeId) {
             NativeTypeId::For<TimestampValue>());
 }
 
-TEST(TimestampValue, InstanceOf) {
+TEST_P(TimestampValueTest, InstanceOf) {
   EXPECT_TRUE(InstanceOf<TimestampValue>(
       TimestampValue(absl::UnixEpoch() + absl::Seconds(1))));
   EXPECT_TRUE(InstanceOf<TimestampValue>(
       Value(TimestampValue(absl::UnixEpoch() + absl::Seconds(1)))));
 }
 
-TEST(TimestampValue, Cast) {
+TEST_P(TimestampValueTest, Cast) {
   EXPECT_THAT(Cast<TimestampValue>(
                   TimestampValue(absl::UnixEpoch() + absl::Seconds(1))),
               An<TimestampValue>());
@@ -91,7 +95,7 @@ TEST(TimestampValue, Cast) {
               An<TimestampValue>());
 }
 
-TEST(TimestampValue, As) {
+TEST_P(TimestampValueTest, As) {
   EXPECT_THAT(
       As<TimestampValue>(TimestampValue(absl::UnixEpoch() + absl::Seconds(1))),
       Ne(absl::nullopt));
@@ -100,7 +104,7 @@ TEST(TimestampValue, As) {
               Ne(absl::nullopt));
 }
 
-TEST(TimestampValue, Equality) {
+TEST_P(TimestampValueTest, Equality) {
   EXPECT_NE(TimestampValue(absl::UnixEpoch()),
             absl::UnixEpoch() + absl::Seconds(1));
   EXPECT_NE(absl::UnixEpoch() + absl::Seconds(1),
@@ -109,7 +113,15 @@ TEST(TimestampValue, Equality) {
             TimestampValue(absl::UnixEpoch() + absl::Seconds(1)));
 }
 
-TEST(TimestampValueView, Kind) {
+INSTANTIATE_TEST_SUITE_P(
+    TimestampValueTest, TimestampValueTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    TimestampValueTest::ToString);
+
+using TimestampValueViewTest = common_internal::ThreadCompatibleValueTest<>;
+
+TEST_P(TimestampValueViewTest, Kind) {
   EXPECT_EQ(TimestampValueView(absl::UnixEpoch() + absl::Seconds(1)).kind(),
             TimestampValueView::kKind);
   EXPECT_EQ(ValueView(TimestampValueView(absl::UnixEpoch() + absl::Seconds(1)))
@@ -117,7 +129,7 @@ TEST(TimestampValueView, Kind) {
             TimestampValueView::kKind);
 }
 
-TEST(TimestampValueView, DebugString) {
+TEST_P(TimestampValueViewTest, DebugString) {
   {
     std::ostringstream out;
     out << TimestampValueView(absl::UnixEpoch() + absl::Seconds(1));
@@ -130,22 +142,23 @@ TEST(TimestampValueView, DebugString) {
   }
 }
 
-TEST(TimestampValueView, GetSerializedSize) {
-  EXPECT_THAT(TimestampValueView().GetSerializedSize(), IsOkAndHolds(0));
+TEST_P(TimestampValueViewTest, GetSerializedSize) {
+  EXPECT_THAT(TimestampValueView().GetSerializedSize(value_manager()),
+              IsOkAndHolds(0));
 }
 
-TEST(TimestampValueView, ConvertToAny) {
-  EXPECT_THAT(TimestampValueView().ConvertToAny(),
+TEST_P(TimestampValueViewTest, ConvertToAny) {
+  EXPECT_THAT(TimestampValueView().ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Timestamp"),
                                    absl::Cord())));
 }
 
-TEST(TimestampValueView, ConvertToJson) {
-  EXPECT_THAT(TimestampValueView().ConvertToJson(),
+TEST_P(TimestampValueViewTest, ConvertToJson) {
+  EXPECT_THAT(TimestampValueView().ConvertToJson(value_manager()),
               IsOkAndHolds(Json(JsonString("1970-01-01T00:00:00Z"))));
 }
 
-TEST(TimestampValueView, NativeTypeId) {
+TEST_P(TimestampValueViewTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(
                 TimestampValueView(absl::UnixEpoch() + absl::Seconds(1))),
             NativeTypeId::For<TimestampValueView>());
@@ -154,14 +167,14 @@ TEST(TimestampValueView, NativeTypeId) {
             NativeTypeId::For<TimestampValueView>());
 }
 
-TEST(TimestampValueView, InstanceOf) {
+TEST_P(TimestampValueViewTest, InstanceOf) {
   EXPECT_TRUE(InstanceOf<TimestampValueView>(
       TimestampValueView(absl::UnixEpoch() + absl::Seconds(1))));
   EXPECT_TRUE(InstanceOf<TimestampValueView>(
       ValueView(TimestampValueView(absl::UnixEpoch() + absl::Seconds(1)))));
 }
 
-TEST(TimestampValueView, Cast) {
+TEST_P(TimestampValueViewTest, Cast) {
   EXPECT_THAT(Cast<TimestampValueView>(
                   TimestampValueView(absl::UnixEpoch() + absl::Seconds(1))),
               An<TimestampValueView>());
@@ -170,7 +183,7 @@ TEST(TimestampValueView, Cast) {
               An<TimestampValueView>());
 }
 
-TEST(TimestampValueView, As) {
+TEST_P(TimestampValueViewTest, As) {
   EXPECT_THAT(As<TimestampValueView>(
                   TimestampValueView(absl::UnixEpoch() + absl::Seconds(1))),
               Ne(absl::nullopt));
@@ -179,7 +192,7 @@ TEST(TimestampValueView, As) {
               Ne(absl::nullopt));
 }
 
-TEST(DurationValueView, Equality) {
+TEST_P(TimestampValueViewTest, Equality) {
   EXPECT_NE(TimestampValueView(TimestampValue(absl::UnixEpoch())),
             absl::UnixEpoch() + absl::Seconds(1));
   EXPECT_NE(absl::UnixEpoch() + absl::Seconds(1),
@@ -191,6 +204,12 @@ TEST(DurationValueView, Equality) {
   EXPECT_NE(TimestampValue(absl::UnixEpoch() + absl::Seconds(1)),
             TimestampValueView(absl::UnixEpoch()));
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    TimestampValueViewTest, TimestampValueViewTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    TimestampValueViewTest::ToString);
 
 }  // namespace
 }  // namespace cel

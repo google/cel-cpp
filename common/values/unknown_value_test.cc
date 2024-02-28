@@ -21,6 +21,7 @@
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value.h"
+#include "common/value_testing.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -30,12 +31,14 @@ using testing::An;
 using testing::Ne;
 using cel::internal::StatusIs;
 
-TEST(UnknownValue, Kind) {
+using UnknownValueTest = common_internal::ThreadCompatibleValueTest<>;
+
+TEST_P(UnknownValueTest, Kind) {
   EXPECT_EQ(UnknownValue().kind(), UnknownValue::kKind);
   EXPECT_EQ(Value(UnknownValue()).kind(), UnknownValue::kKind);
 }
 
-TEST(UnknownValue, DebugString) {
+TEST_P(UnknownValueTest, DebugString) {
   {
     std::ostringstream out;
     out << UnknownValue();
@@ -48,65 +51,73 @@ TEST(UnknownValue, DebugString) {
   }
 }
 
-TEST(UnknownValue, GetSerializedSize) {
-  EXPECT_THAT(UnknownValue().GetSerializedSize(),
+TEST_P(UnknownValueTest, GetSerializedSize) {
+  EXPECT_THAT(UnknownValue().GetSerializedSize(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST(UnknownValue, SerializeTo) {
+TEST_P(UnknownValueTest, SerializeTo) {
   absl::Cord value;
-  EXPECT_THAT(UnknownValue().SerializeTo(value),
+  EXPECT_THAT(UnknownValue().SerializeTo(value_manager(), value),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST(UnknownValue, Serialize) {
-  EXPECT_THAT(UnknownValue().Serialize(),
+TEST_P(UnknownValueTest, Serialize) {
+  EXPECT_THAT(UnknownValue().Serialize(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST(UnknownValue, GetTypeUrl) {
+TEST_P(UnknownValueTest, GetTypeUrl) {
   EXPECT_THAT(UnknownValue().GetTypeUrl(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST(UnknownValue, ConvertToAny) {
-  EXPECT_THAT(UnknownValue().ConvertToAny(),
+TEST_P(UnknownValueTest, ConvertToAny) {
+  EXPECT_THAT(UnknownValue().ConvertToAny(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST(UnknownValue, ConvertToJson) {
-  EXPECT_THAT(UnknownValue().ConvertToJson(),
+TEST_P(UnknownValueTest, ConvertToJson) {
+  EXPECT_THAT(UnknownValue().ConvertToJson(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST(UnknownValue, NativeTypeId) {
+TEST_P(UnknownValueTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(UnknownValue()),
             NativeTypeId::For<UnknownValue>());
   EXPECT_EQ(NativeTypeId::Of(Value(UnknownValue())),
             NativeTypeId::For<UnknownValue>());
 }
 
-TEST(UnknownValue, InstanceOf) {
+TEST_P(UnknownValueTest, InstanceOf) {
   EXPECT_TRUE(InstanceOf<UnknownValue>(UnknownValue()));
   EXPECT_TRUE(InstanceOf<UnknownValue>(Value(UnknownValue())));
 }
 
-TEST(UnknownValue, Cast) {
+TEST_P(UnknownValueTest, Cast) {
   EXPECT_THAT(Cast<UnknownValue>(UnknownValue()), An<UnknownValue>());
   EXPECT_THAT(Cast<UnknownValue>(Value(UnknownValue())), An<UnknownValue>());
 }
 
-TEST(UnknownValue, As) {
+TEST_P(UnknownValueTest, As) {
   EXPECT_THAT(As<UnknownValue>(UnknownValue()), Ne(absl::nullopt));
   EXPECT_THAT(As<UnknownValue>(Value(UnknownValue())), Ne(absl::nullopt));
 }
 
-TEST(UnknownValueView, Kind) {
+INSTANTIATE_TEST_SUITE_P(
+    UnknownValueTest, UnknownValueTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    UnknownValueTest::ToString);
+
+using UnknownValueViewTest = common_internal::ThreadCompatibleValueTest<>;
+
+TEST_P(UnknownValueViewTest, Kind) {
   EXPECT_EQ(UnknownValueView().kind(), UnknownValueView::kKind);
   EXPECT_EQ(ValueView(UnknownValueView()).kind(), UnknownValueView::kKind);
 }
 
-TEST(UnknownValueView, DebugString) {
+TEST_P(UnknownValueViewTest, DebugString) {
   {
     std::ostringstream out;
     out << UnknownValueView();
@@ -119,61 +130,67 @@ TEST(UnknownValueView, DebugString) {
   }
 }
 
-TEST(UnknownValueView, GetSerializedSize) {
-  EXPECT_THAT(UnknownValueView().GetSerializedSize(),
+TEST_P(UnknownValueViewTest, GetSerializedSize) {
+  EXPECT_THAT(UnknownValueView().GetSerializedSize(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST(UnknownValueView, SerializeTo) {
+TEST_P(UnknownValueViewTest, SerializeTo) {
   absl::Cord value;
-  EXPECT_THAT(UnknownValueView().SerializeTo(value),
+  EXPECT_THAT(UnknownValueView().SerializeTo(value_manager(), value),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST(UnknownValueView, Serialize) {
-  EXPECT_THAT(UnknownValueView().Serialize(),
+TEST_P(UnknownValueViewTest, Serialize) {
+  EXPECT_THAT(UnknownValueView().Serialize(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST(UnknownValueView, GetTypeUrl) {
+TEST_P(UnknownValueViewTest, GetTypeUrl) {
   EXPECT_THAT(UnknownValueView().GetTypeUrl(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST(UnknownValueView, ConvertToAny) {
-  EXPECT_THAT(UnknownValueView().ConvertToAny(),
+TEST_P(UnknownValueViewTest, ConvertToAny) {
+  EXPECT_THAT(UnknownValueView().ConvertToAny(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST(UnknownValueView, ConvertToJson) {
-  EXPECT_THAT(UnknownValueView().ConvertToJson(),
+TEST_P(UnknownValueViewTest, ConvertToJson) {
+  EXPECT_THAT(UnknownValueView().ConvertToJson(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST(UnknownValueView, NativeTypeId) {
+TEST_P(UnknownValueViewTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(UnknownValueView()),
             NativeTypeId::For<UnknownValueView>());
   EXPECT_EQ(NativeTypeId::Of(ValueView(UnknownValueView())),
             NativeTypeId::For<UnknownValueView>());
 }
 
-TEST(UnknownValueView, InstanceOf) {
+TEST_P(UnknownValueViewTest, InstanceOf) {
   EXPECT_TRUE(InstanceOf<UnknownValueView>(UnknownValueView()));
   EXPECT_TRUE(InstanceOf<UnknownValueView>(ValueView(UnknownValueView())));
 }
 
-TEST(UnknownValueView, Cast) {
+TEST_P(UnknownValueViewTest, Cast) {
   EXPECT_THAT(Cast<UnknownValueView>(UnknownValueView()),
               An<UnknownValueView>());
   EXPECT_THAT(Cast<UnknownValueView>(ValueView(UnknownValueView())),
               An<UnknownValueView>());
 }
 
-TEST(UnknownValueView, As) {
+TEST_P(UnknownValueViewTest, As) {
   EXPECT_THAT(As<UnknownValueView>(UnknownValueView()), Ne(absl::nullopt));
   EXPECT_THAT(As<UnknownValueView>(ValueView(UnknownValueView())),
               Ne(absl::nullopt));
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    UnknownValueViewTest, UnknownValueViewTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    UnknownValueViewTest::ToString);
 
 }  // namespace
 }  // namespace cel

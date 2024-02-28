@@ -177,46 +177,48 @@ class StructValue final {
         variant_);
   }
 
-  absl::StatusOr<size_t> GetSerializedSize() const {
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const {
     AssertIsValid();
     return absl::visit(
-        [](const auto& alternative) -> absl::StatusOr<size_t> {
+        [&value_manager](const auto& alternative) -> absl::StatusOr<size_t> {
           if constexpr (std::is_same_v<
                             absl::monostate,
                             absl::remove_cvref_t<decltype(alternative)>>) {
             return absl::InternalError("use of invalid StructValue");
           } else {
-            return alternative.GetSerializedSize();
+            return alternative.GetSerializedSize(value_manager);
           }
         },
         variant_);
   }
 
-  absl::Status SerializeTo(absl::Cord& value) const {
+  absl::Status SerializeTo(ValueManager& value_manager,
+                           absl::Cord& value) const {
     AssertIsValid();
     return absl::visit(
-        [&value](const auto& alternative) -> absl::Status {
+        [&value_manager, &value](const auto& alternative) -> absl::Status {
           if constexpr (std::is_same_v<
                             absl::monostate,
                             absl::remove_cvref_t<decltype(alternative)>>) {
             return absl::InternalError("use of invalid StructValue");
           } else {
-            return alternative.SerializeTo(value);
+            return alternative.SerializeTo(value_manager, value);
           }
         },
         variant_);
   }
 
-  absl::StatusOr<absl::Cord> Serialize() const {
+  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const {
     AssertIsValid();
     return absl::visit(
-        [](const auto& alternative) -> absl::StatusOr<absl::Cord> {
+        [&value_manager](
+            const auto& alternative) -> absl::StatusOr<absl::Cord> {
           if constexpr (std::is_same_v<
                             absl::monostate,
                             absl::remove_cvref_t<decltype(alternative)>>) {
             return absl::InternalError("use of invalid StructValue");
           } else {
-            return alternative.Serialize();
+            return alternative.Serialize(value_manager);
           }
         },
         variant_);
@@ -239,46 +241,50 @@ class StructValue final {
   }
 
   absl::StatusOr<Any> ConvertToAny(
+      ValueManager& value_manager,
       absl::string_view prefix = kTypeGoogleApisComPrefix) const {
     AssertIsValid();
     return absl::visit(
-        [prefix](const auto& alternative) -> absl::StatusOr<Any> {
+        [&value_manager,
+         prefix](const auto& alternative) -> absl::StatusOr<Any> {
           if constexpr (std::is_same_v<
                             absl::monostate,
                             absl::remove_cvref_t<decltype(alternative)>>) {
             return absl::InternalError("use of invalid StructValue");
           } else {
-            return alternative.ConvertToAny(prefix);
+            return alternative.ConvertToAny(value_manager, prefix);
           }
         },
         variant_);
   }
 
-  absl::StatusOr<Json> ConvertToJson() const {
+  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const {
     AssertIsValid();
     return absl::visit(
-        [](const auto& alternative) -> absl::StatusOr<Json> {
+        [&value_manager](const auto& alternative) -> absl::StatusOr<Json> {
           if constexpr (std::is_same_v<
                             absl::monostate,
                             absl::remove_cvref_t<decltype(alternative)>>) {
             return absl::InternalError("use of invalid StructValue");
           } else {
-            return alternative.ConvertToJson();
+            return alternative.ConvertToJson(value_manager);
           }
         },
         variant_);
   }
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject() const {
+  absl::StatusOr<JsonObject> ConvertToJsonObject(
+      ValueManager& value_manager) const {
     AssertIsValid();
     return absl::visit(
-        [](const auto& alternative) -> absl::StatusOr<JsonObject> {
+        [&value_manager](
+            const auto& alternative) -> absl::StatusOr<JsonObject> {
           if constexpr (std::is_same_v<
                             absl::monostate,
                             absl::remove_cvref_t<decltype(alternative)>>) {
             return absl::InternalError("use of invalid StructValue");
           } else {
-            return alternative.ConvertToJsonObject();
+            return alternative.ConvertToJsonObject(value_manager);
           }
         },
         variant_);
@@ -691,46 +697,47 @@ class StructValueView final {
         variant_);
   }
 
-  absl::StatusOr<size_t> GetSerializedSize() const {
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const {
     AssertIsValid();
     return absl::visit(
-        [](auto alternative) -> absl::StatusOr<size_t> {
+        [&value_manager](auto alternative) -> absl::StatusOr<size_t> {
           if constexpr (std::is_same_v<
                             absl::monostate,
                             absl::remove_cvref_t<decltype(alternative)>>) {
             return absl::InternalError("use of invalid StructValueView");
           } else {
-            return alternative.GetSerializedSize();
+            return alternative.GetSerializedSize(value_manager);
           }
         },
         variant_);
   }
 
-  absl::Status SerializeTo(absl::Cord& value) const {
+  absl::Status SerializeTo(ValueManager& value_manager,
+                           absl::Cord& value) const {
     AssertIsValid();
     return absl::visit(
-        [&value](auto alternative) -> absl::Status {
+        [&value_manager, &value](auto alternative) -> absl::Status {
           if constexpr (std::is_same_v<
                             absl::monostate,
                             absl::remove_cvref_t<decltype(alternative)>>) {
             return absl::InternalError("use of invalid StructValueView");
           } else {
-            return alternative.SerializeTo(value);
+            return alternative.SerializeTo(value_manager, value);
           }
         },
         variant_);
   }
 
-  absl::StatusOr<absl::Cord> Serialize() const {
+  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const {
     AssertIsValid();
     return absl::visit(
-        [](auto alternative) -> absl::StatusOr<absl::Cord> {
+        [&value_manager](auto alternative) -> absl::StatusOr<absl::Cord> {
           if constexpr (std::is_same_v<
                             absl::monostate,
                             absl::remove_cvref_t<decltype(alternative)>>) {
             return absl::InternalError("use of invalid StructValueView");
           } else {
-            return alternative.Serialize();
+            return alternative.Serialize(value_manager);
           }
         },
         variant_);
@@ -753,46 +760,48 @@ class StructValueView final {
   }
 
   absl::StatusOr<Any> ConvertToAny(
+      ValueManager& value_manager,
       absl::string_view prefix = kTypeGoogleApisComPrefix) const {
     AssertIsValid();
     return absl::visit(
-        [prefix](auto alternative) -> absl::StatusOr<Any> {
+        [&value_manager, prefix](auto alternative) -> absl::StatusOr<Any> {
           if constexpr (std::is_same_v<
                             absl::monostate,
                             absl::remove_cvref_t<decltype(alternative)>>) {
             return absl::InternalError("use of invalid StructValueView");
           } else {
-            return alternative.ConvertToAny(prefix);
+            return alternative.ConvertToAny(value_manager, prefix);
           }
         },
         variant_);
   }
 
-  absl::StatusOr<Json> ConvertToJson() const {
+  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const {
     AssertIsValid();
     return absl::visit(
-        [](auto alternative) -> absl::StatusOr<Json> {
+        [&value_manager](auto alternative) -> absl::StatusOr<Json> {
           if constexpr (std::is_same_v<
                             absl::monostate,
                             absl::remove_cvref_t<decltype(alternative)>>) {
             return absl::InternalError("use of invalid StructValueView");
           } else {
-            return alternative.ConvertToJson();
+            return alternative.ConvertToJson(value_manager);
           }
         },
         variant_);
   }
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject() const {
+  absl::StatusOr<JsonObject> ConvertToJsonObject(
+      ValueManager& value_manager) const {
     AssertIsValid();
     return absl::visit(
-        [](auto alternative) -> absl::StatusOr<JsonObject> {
+        [&value_manager](auto alternative) -> absl::StatusOr<JsonObject> {
           if constexpr (std::is_same_v<
                             absl::monostate,
                             absl::remove_cvref_t<decltype(alternative)>>) {
             return absl::InternalError("use of invalid StructValueView");
           } else {
-            return alternative.ConvertToJsonObject();
+            return alternative.ConvertToJsonObject(value_manager);
           }
         },
         variant_);

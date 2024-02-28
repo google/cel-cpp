@@ -293,13 +293,13 @@ TEST_P(MapValueTest, GetSerializedSize) {
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
-  EXPECT_THAT(value.GetSerializedSize(),
+  EXPECT_THAT(value.GetSerializedSize(value_manager()),
               StatusIs(absl::StatusCode::kUnimplemented));
 }
 
 TEST_P(MapValueTest, ConvertToAny) {
   ASSERT_OK_AND_ASSIGN(auto value, NewIntDoubleMapValue());
-  EXPECT_THAT(value.ConvertToAny(),
+  EXPECT_THAT(value.ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Struct"),
                                    absl::Cord())));
 }
@@ -310,7 +310,7 @@ TEST_P(MapValueTest, ConvertToJson) {
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
-  EXPECT_THAT(value.ConvertToJson(),
+  EXPECT_THAT(value.ConvertToJson(value_manager()),
               IsOkAndHolds(Json(MakeJsonObject({{JsonString("0"), 3.0},
                                                 {JsonString("1"), 4.0},
                                                 {JsonString("2"), 5.0}}))));
@@ -570,13 +570,13 @@ TEST_P(MapValueViewTest, GetSerializedSize) {
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
-  EXPECT_THAT(MapValueView(value).GetSerializedSize(),
+  EXPECT_THAT(MapValueView(value).GetSerializedSize(value_manager()),
               StatusIs(absl::StatusCode::kUnimplemented));
 }
 
 TEST_P(MapValueViewTest, ConvertToAny) {
   ASSERT_OK_AND_ASSIGN(auto value, NewIntDoubleMapValue());
-  EXPECT_THAT(MapValueView(value).ConvertToAny(),
+  EXPECT_THAT(MapValueView(value).ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Struct"),
                                    absl::Cord())));
 }
@@ -587,7 +587,7 @@ TEST_P(MapValueViewTest, ConvertToJson) {
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
-  EXPECT_THAT(MapValueView(value).ConvertToJson(),
+  EXPECT_THAT(MapValueView(value).ConvertToJson(value_manager()),
               IsOkAndHolds(Json(MakeJsonObject({{JsonString("0"), 3.0},
                                                 {JsonString("1"), 4.0},
                                                 {JsonString("2"), 5.0}}))));

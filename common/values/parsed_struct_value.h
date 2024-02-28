@@ -117,16 +117,17 @@ class ParsedStructValue {
 
   std::string DebugString() const { return interface_->DebugString(); }
 
-  absl::StatusOr<size_t> GetSerializedSize() const {
-    return interface_->GetSerializedSize();
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const {
+    return interface_->GetSerializedSize(value_manager);
   }
 
-  absl::Status SerializeTo(absl::Cord& value) const {
-    return interface_->SerializeTo(value);
+  absl::Status SerializeTo(ValueManager& value_manager,
+                           absl::Cord& value) const {
+    return interface_->SerializeTo(value_manager, value);
   }
 
-  absl::StatusOr<absl::Cord> Serialize() const {
-    return interface_->Serialize();
+  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const {
+    return interface_->Serialize(value_manager);
   }
 
   absl::StatusOr<std::string> GetTypeUrl(
@@ -135,16 +136,18 @@ class ParsedStructValue {
   }
 
   absl::StatusOr<Any> ConvertToAny(
+      ValueManager& value_manager,
       absl::string_view prefix = kTypeGoogleApisComPrefix) const {
-    return interface_->ConvertToAny(prefix);
+    return interface_->ConvertToAny(value_manager, prefix);
   }
 
-  absl::StatusOr<Json> ConvertToJson() const {
-    return interface_->ConvertToJson();
+  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const {
+    return interface_->ConvertToJson(value_manager);
   }
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject() const {
-    return interface_->ConvertToJsonObject();
+  absl::StatusOr<JsonObject> ConvertToJsonObject(
+      ValueManager& value_manager) const {
+    return interface_->ConvertToJsonObject(value_manager);
   }
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
@@ -267,16 +270,17 @@ class ParsedStructValueView {
 
   std::string DebugString() const { return interface_->DebugString(); }
 
-  absl::StatusOr<size_t> GetSerializedSize() const {
-    return interface_->GetSerializedSize();
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const {
+    return interface_->GetSerializedSize(value_manager);
   }
 
-  absl::Status SerializeTo(absl::Cord& value) const {
-    return interface_->SerializeTo(value);
+  absl::Status SerializeTo(ValueManager& value_manager,
+                           absl::Cord& value) const {
+    return interface_->SerializeTo(value_manager, value);
   }
 
-  absl::StatusOr<absl::Cord> Serialize() const {
-    return interface_->Serialize();
+  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const {
+    return interface_->Serialize(value_manager);
   }
 
   absl::StatusOr<std::string> GetTypeUrl(
@@ -285,16 +289,18 @@ class ParsedStructValueView {
   }
 
   absl::StatusOr<Any> ConvertToAny(
+      ValueManager& value_manager,
       absl::string_view prefix = kTypeGoogleApisComPrefix) const {
-    return interface_->ConvertToAny(prefix);
+    return interface_->ConvertToAny(value_manager, prefix);
   }
 
-  absl::StatusOr<Json> ConvertToJson() const {
-    return interface_->ConvertToJson();
+  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const {
+    return interface_->ConvertToJson(value_manager);
   }
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject() const {
-    return interface_->ConvertToJsonObject();
+  absl::StatusOr<JsonObject> ConvertToJsonObject(
+      ValueManager& value_manager) const {
+    return interface_->ConvertToJsonObject(value_manager);
   }
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,

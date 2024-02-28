@@ -23,6 +23,7 @@
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value.h"
+#include "common/value_testing.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -32,12 +33,14 @@ using testing::An;
 using testing::Ne;
 using cel::internal::IsOkAndHolds;
 
-TEST(DoubleValue, Kind) {
+using DoubleValueTest = common_internal::ThreadCompatibleValueTest<>;
+
+TEST_P(DoubleValueTest, Kind) {
   EXPECT_EQ(DoubleValue(1.0).kind(), DoubleValue::kKind);
   EXPECT_EQ(Value(DoubleValue(1.0)).kind(), DoubleValue::kKind);
 }
 
-TEST(DoubleValue, DebugString) {
+TEST_P(DoubleValueTest, DebugString) {
   {
     std::ostringstream out;
     out << DoubleValue(0.0);
@@ -75,54 +78,64 @@ TEST(DoubleValue, DebugString) {
   }
 }
 
-TEST(DoubleValue, GetSerializedSize) {
-  EXPECT_THAT(DoubleValue().GetSerializedSize(), IsOkAndHolds(0));
+TEST_P(DoubleValueTest, GetSerializedSize) {
+  EXPECT_THAT(DoubleValue().GetSerializedSize(value_manager()),
+              IsOkAndHolds(0));
 }
 
-TEST(DoubleValue, ConvertToAny) {
-  EXPECT_THAT(DoubleValue().ConvertToAny(),
+TEST_P(DoubleValueTest, ConvertToAny) {
+  EXPECT_THAT(DoubleValue().ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.DoubleValue"),
                                    absl::Cord())));
 }
 
-TEST(DoubleValue, ConvertToJson) {
-  EXPECT_THAT(DoubleValue(1.0).ConvertToJson(), IsOkAndHolds(Json(1.0)));
+TEST_P(DoubleValueTest, ConvertToJson) {
+  EXPECT_THAT(DoubleValue(1.0).ConvertToJson(value_manager()),
+              IsOkAndHolds(Json(1.0)));
 }
 
-TEST(DoubleValue, NativeTypeId) {
+TEST_P(DoubleValueTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(DoubleValue(1.0)),
             NativeTypeId::For<DoubleValue>());
   EXPECT_EQ(NativeTypeId::Of(Value(DoubleValue(1.0))),
             NativeTypeId::For<DoubleValue>());
 }
 
-TEST(DoubleValue, InstanceOf) {
+TEST_P(DoubleValueTest, InstanceOf) {
   EXPECT_TRUE(InstanceOf<DoubleValue>(DoubleValue(1.0)));
   EXPECT_TRUE(InstanceOf<DoubleValue>(Value(DoubleValue(1.0))));
 }
 
-TEST(DoubleValue, Cast) {
+TEST_P(DoubleValueTest, Cast) {
   EXPECT_THAT(Cast<DoubleValue>(DoubleValue(1.0)), An<DoubleValue>());
   EXPECT_THAT(Cast<DoubleValue>(Value(DoubleValue(1.0))), An<DoubleValue>());
 }
 
-TEST(DoubleValue, As) {
+TEST_P(DoubleValueTest, As) {
   EXPECT_THAT(As<DoubleValue>(DoubleValue(1.0)), Ne(absl::nullopt));
   EXPECT_THAT(As<DoubleValue>(Value(DoubleValue(1.0))), Ne(absl::nullopt));
 }
 
-TEST(DoubleValue, Equality) {
+TEST_P(DoubleValueTest, Equality) {
   EXPECT_NE(DoubleValue(0.0), 1.0);
   EXPECT_NE(1.0, DoubleValue(0.0));
   EXPECT_NE(DoubleValue(0.0), DoubleValue(1.0));
 }
 
-TEST(DoubleValueView, Kind) {
+INSTANTIATE_TEST_SUITE_P(
+    DoubleValueTest, DoubleValueTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    DoubleValueTest::ToString);
+
+using DoubleValueViewTest = common_internal::ThreadCompatibleValueTest<>;
+
+TEST_P(DoubleValueViewTest, Kind) {
   EXPECT_EQ(DoubleValueView(1.0).kind(), DoubleValueView::kKind);
   EXPECT_EQ(ValueView(DoubleValueView(1.0)).kind(), DoubleValueView::kKind);
 }
 
-TEST(DoubleValueView, DebugString) {
+TEST_P(DoubleValueViewTest, DebugString) {
   {
     std::ostringstream out;
     out << DoubleValueView(0.0);
@@ -160,52 +173,60 @@ TEST(DoubleValueView, DebugString) {
   }
 }
 
-TEST(DoubleValueView, GetSerializedSize) {
-  EXPECT_THAT(DoubleValue().GetSerializedSize(), IsOkAndHolds(0));
+TEST_P(DoubleValueViewTest, GetSerializedSize) {
+  EXPECT_THAT(DoubleValue().GetSerializedSize(value_manager()),
+              IsOkAndHolds(0));
 }
 
-TEST(DoubleValueView, ConvertToAny) {
-  EXPECT_THAT(DoubleValue().ConvertToAny(),
+TEST_P(DoubleValueViewTest, ConvertToAny) {
+  EXPECT_THAT(DoubleValue().ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.DoubleValue"),
                                    absl::Cord())));
 }
 
-TEST(DoubleValueView, ConvertToJson) {
-  EXPECT_THAT(DoubleValueView(1.0).ConvertToJson(), IsOkAndHolds(Json(1.0)));
+TEST_P(DoubleValueViewTest, ConvertToJson) {
+  EXPECT_THAT(DoubleValueView(1.0).ConvertToJson(value_manager()),
+              IsOkAndHolds(Json(1.0)));
 }
 
-TEST(DoubleValueView, NativeTypeId) {
+TEST_P(DoubleValueViewTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(DoubleValueView(1.0)),
             NativeTypeId::For<DoubleValueView>());
   EXPECT_EQ(NativeTypeId::Of(ValueView(DoubleValueView(1.0))),
             NativeTypeId::For<DoubleValueView>());
 }
 
-TEST(DoubleValueView, InstanceOf) {
+TEST_P(DoubleValueViewTest, InstanceOf) {
   EXPECT_TRUE(InstanceOf<DoubleValueView>(DoubleValueView(1.0)));
   EXPECT_TRUE(InstanceOf<DoubleValueView>(ValueView(DoubleValueView(1.0))));
 }
 
-TEST(DoubleValueView, Cast) {
+TEST_P(DoubleValueViewTest, Cast) {
   EXPECT_THAT(Cast<DoubleValueView>(DoubleValueView(1.0)),
               An<DoubleValueView>());
   EXPECT_THAT(Cast<DoubleValueView>(ValueView(DoubleValueView(1.0))),
               An<DoubleValueView>());
 }
 
-TEST(DoubleValueView, As) {
+TEST_P(DoubleValueViewTest, As) {
   EXPECT_THAT(As<DoubleValueView>(DoubleValueView(1.0)), Ne(absl::nullopt));
   EXPECT_THAT(As<DoubleValueView>(ValueView(DoubleValueView(1.0))),
               Ne(absl::nullopt));
 }
 
-TEST(DoubleValueView, Equality) {
+TEST_P(DoubleValueViewTest, Equality) {
   EXPECT_NE(DoubleValueView(DoubleValue(0.0)), 1.0);
   EXPECT_NE(1.0, DoubleValueView(0.0));
   EXPECT_NE(DoubleValueView(0.0), DoubleValueView(1.0));
   EXPECT_NE(DoubleValueView(0.0), DoubleValue(1.0));
   EXPECT_NE(DoubleValue(1.0), DoubleValueView(0.0));
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    DoubleValueViewTest, DoubleValueViewTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    DoubleValueViewTest::ToString);
 
 }  // namespace
 }  // namespace cel

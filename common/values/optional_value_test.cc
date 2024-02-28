@@ -77,18 +77,18 @@ TEST_P(OptionalValueTest, DebugString) {
 }
 
 TEST_P(OptionalValueTest, GetSerializedSize) {
-  EXPECT_THAT(OptionalValue().GetSerializedSize(),
+  EXPECT_THAT(OptionalValue().GetSerializedSize(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST_P(OptionalValueTest, SerializeTo) {
   absl::Cord value;
-  EXPECT_THAT(OptionalValue().SerializeTo(value),
+  EXPECT_THAT(OptionalValue().SerializeTo(value_manager(), value),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST_P(OptionalValueTest, Serialize) {
-  EXPECT_THAT(OptionalValue().Serialize(),
+  EXPECT_THAT(OptionalValue().Serialize(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
@@ -98,12 +98,12 @@ TEST_P(OptionalValueTest, GetTypeUrl) {
 }
 
 TEST_P(OptionalValueTest, ConvertToAny) {
-  EXPECT_THAT(OptionalValue().ConvertToAny(),
+  EXPECT_THAT(OptionalValue().ConvertToAny(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST_P(OptionalValueTest, ConvertToJson) {
-  EXPECT_THAT(OptionalValue().ConvertToJson(),
+  EXPECT_THAT(OptionalValue().ConvertToJson(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
@@ -182,18 +182,18 @@ TEST_P(OptionalValueViewTest, DebugString) {
 }
 
 TEST_P(OptionalValueViewTest, GetSerializedSize) {
-  EXPECT_THAT(OptionalValueView().GetSerializedSize(),
+  EXPECT_THAT(OptionalValueView().GetSerializedSize(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST_P(OptionalValueViewTest, SerializeTo) {
   absl::Cord value;
-  EXPECT_THAT(OptionalValueView().SerializeTo(value),
+  EXPECT_THAT(OptionalValueView().SerializeTo(value_manager(), value),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST_P(OptionalValueViewTest, Serialize) {
-  EXPECT_THAT(OptionalValueView().Serialize(),
+  EXPECT_THAT(OptionalValueView().Serialize(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
@@ -203,12 +203,12 @@ TEST_P(OptionalValueViewTest, GetTypeUrl) {
 }
 
 TEST_P(OptionalValueViewTest, ConvertToAny) {
-  EXPECT_THAT(OptionalValueView().ConvertToAny(),
+  EXPECT_THAT(OptionalValueView().ConvertToAny(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST_P(OptionalValueViewTest, ConvertToJson) {
-  EXPECT_THAT(OptionalValueView().ConvertToJson(),
+  EXPECT_THAT(OptionalValueView().ConvertToJson(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 

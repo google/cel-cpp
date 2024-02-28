@@ -68,17 +68,18 @@ std::string DoubleValue::DebugString() const {
   return DoubleDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> DoubleValue::GetSerializedSize() const {
+absl::StatusOr<size_t> DoubleValue::GetSerializedSize(ValueManager&) const {
   return internal::SerializedDoubleValueSize(NativeValue());
 }
 
-absl::Status DoubleValue::SerializeTo(absl::Cord& value) const {
+absl::Status DoubleValue::SerializeTo(ValueManager&, absl::Cord& value) const {
   return internal::SerializeDoubleValue(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> DoubleValue::Serialize() const {
+absl::StatusOr<absl::Cord> DoubleValue::Serialize(
+    ValueManager& value_manager) const {
   absl::Cord value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
 }
 
@@ -87,13 +88,14 @@ absl::StatusOr<std::string> DoubleValue::GetTypeUrl(
   return MakeTypeUrlWithPrefix(prefix, "google.protobuf.DoubleValue");
 }
 
-absl::StatusOr<Any> DoubleValue::ConvertToAny(absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+absl::StatusOr<Any> DoubleValue::ConvertToAny(ValueManager& value_manager,
+                                              absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> DoubleValue::ConvertToJson() const {
+absl::StatusOr<Json> DoubleValue::ConvertToJson(ValueManager&) const {
   return NativeValue();
 }
 
@@ -119,17 +121,19 @@ std::string DoubleValueView::DebugString() const {
   return DoubleDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> DoubleValueView::GetSerializedSize() const {
+absl::StatusOr<size_t> DoubleValueView::GetSerializedSize(ValueManager&) const {
   return internal::SerializedDoubleValueSize(NativeValue());
 }
 
-absl::Status DoubleValueView::SerializeTo(absl::Cord& value) const {
+absl::Status DoubleValueView::SerializeTo(ValueManager&,
+                                          absl::Cord& value) const {
   return internal::SerializeDoubleValue(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> DoubleValueView::Serialize() const {
+absl::StatusOr<absl::Cord> DoubleValueView::Serialize(
+    ValueManager& value_manager) const {
   absl::Cord value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
 }
 
@@ -139,13 +143,13 @@ absl::StatusOr<std::string> DoubleValueView::GetTypeUrl(
 }
 
 absl::StatusOr<Any> DoubleValueView::ConvertToAny(
-    absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+    ValueManager& value_manager, absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> DoubleValueView::ConvertToJson() const {
+absl::StatusOr<Json> DoubleValueView::ConvertToJson(ValueManager&) const {
   return NativeValue();
 }
 

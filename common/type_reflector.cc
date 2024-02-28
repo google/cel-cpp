@@ -36,6 +36,7 @@
 #include "common/type.h"
 #include "common/value.h"
 #include "common/value_factory.h"
+#include "common/value_manager.h"
 #include "common/values/thread_compatible_type_reflector.h"
 #include "common/values/thread_safe_type_reflector.h"
 #include "internal/deserialize.h"
@@ -43,6 +44,62 @@
 #include "internal/status_macros.h"
 
 namespace cel {
+
+// Hacky class which allows `TypeReflector` to have a light weight value manager
+// in order to marshal to JSON.
+class JsonValueManager final : public ValueManager {
+ public:
+  JsonValueManager(const TypeReflector& type_reflector,
+                   ValueFactory& value_factory)
+      : type_reflector_(type_reflector), value_factory_(value_factory) {}
+
+  MemoryManagerRef GetMemoryManager() const override {
+    return value_factory_.GetMemoryManager();
+  }
+
+ protected:
+  const TypeIntrospector& GetTypeIntrospector() const override {
+    return type_reflector_;
+  }
+
+  const TypeReflector& GetTypeReflector() const override {
+    return type_reflector_;
+  }
+
+ private:
+  ListType CreateListTypeImpl(TypeView element) override {
+    return value_factory_.CreateListTypeImpl(element);
+  }
+
+  MapType CreateMapTypeImpl(TypeView key, TypeView value) override {
+    return value_factory_.CreateMapTypeImpl(key, value);
+  }
+
+  StructType CreateStructTypeImpl(absl::string_view name) override {
+    return value_factory_.CreateStructTypeImpl(name);
+  }
+
+  OpaqueType CreateOpaqueTypeImpl(
+      absl::string_view name,
+      const SizedInputView<TypeView>& parameters) override {
+    return value_factory_.CreateOpaqueTypeImpl(name, parameters);
+  }
+
+  ListValue CreateZeroListValueImpl(ListTypeView type) override {
+    return value_factory_.CreateZeroListValueImpl(type);
+  }
+
+  MapValue CreateZeroMapValueImpl(MapTypeView type) override {
+    return value_factory_.CreateZeroMapValueImpl(type);
+  }
+
+  OptionalValue CreateZeroOptionalValueImpl(OptionalTypeView type) override {
+    return value_factory_.CreateZeroOptionalValueImpl(type);
+  }
+
+  const TypeReflector& type_reflector_;
+  ValueFactory& value_factory_;
+};
 
 namespace {
 
@@ -532,7 +589,7 @@ class JsonValueBuilder final : public WellKnownValueBuilder {
  public:
   explicit JsonValueBuilder(const TypeReflector& type_reflector,
                             ValueFactory& value_factory)
-      : value_factory_(value_factory) {}
+      : type_reflector_(type_reflector), value_factory_(value_factory) {}
 
   absl::Status SetFieldByName(absl::string_view name, Value value) override {
     if (name == "null_value") {
@@ -616,11 +673,13 @@ class JsonValueBuilder final : public WellKnownValueBuilder {
 
   absl::Status SetStructValue(Value value) {
     if (auto map_value = As<MapValue>(value); map_value.has_value()) {
-      CEL_ASSIGN_OR_RETURN(json_, map_value->ConvertToJson());
+      JsonValueManager value_manager(type_reflector_, value_factory_);
+      CEL_ASSIGN_OR_RETURN(json_, map_value->ConvertToJson(value_manager));
       return absl::OkStatus();
     }
     if (auto struct_value = As<StructValue>(value); struct_value.has_value()) {
-      CEL_ASSIGN_OR_RETURN(json_, struct_value->ConvertToJson());
+      JsonValueManager value_manager(type_reflector_, value_factory_);
+      CEL_ASSIGN_OR_RETURN(json_, struct_value->ConvertToJson(value_manager));
       return absl::OkStatus();
     }
     return TypeConversionError(value.GetTypeName(), "google.protobuf.Struct")
@@ -629,13 +688,15 @@ class JsonValueBuilder final : public WellKnownValueBuilder {
 
   absl::Status SetListValue(Value value) {
     if (auto list_value = As<ListValue>(value); list_value.has_value()) {
-      CEL_ASSIGN_OR_RETURN(json_, list_value->ConvertToJson());
+      JsonValueManager value_manager(type_reflector_, value_factory_);
+      CEL_ASSIGN_OR_RETURN(json_, list_value->ConvertToJson(value_manager));
       return absl::OkStatus();
     }
     return TypeConversionError(value.GetTypeName(), "google.protobuf.ListValue")
         .NativeValue();
   }
 
+  const TypeReflector& type_reflector_;
   ValueFactory& value_factory_;
   Json json_;
 };
@@ -644,7 +705,7 @@ class JsonArrayValueBuilder final : public WellKnownValueBuilder {
  public:
   explicit JsonArrayValueBuilder(const TypeReflector& type_reflector,
                                  ValueFactory& value_factory)
-      : value_factory_(value_factory) {}
+      : type_reflector_(type_reflector), value_factory_(value_factory) {}
 
   absl::Status SetFieldByName(absl::string_view name, Value value) override {
     if (name == "values") {
@@ -673,12 +734,15 @@ class JsonArrayValueBuilder final : public WellKnownValueBuilder {
  private:
   absl::Status SetValues(Value value) {
     if (auto list_value = As<ListValue>(value); list_value.has_value()) {
-      CEL_ASSIGN_OR_RETURN(array_, list_value->ConvertToJsonArray());
+      JsonValueManager value_manager(type_reflector_, value_factory_);
+      CEL_ASSIGN_OR_RETURN(array_,
+                           list_value->ConvertToJsonArray(value_manager));
       return absl::OkStatus();
     }
     return TypeConversionError(value.GetTypeName(), "list(dyn)").NativeValue();
   }
 
+  const TypeReflector& type_reflector_;
   ValueFactory& value_factory_;
   JsonArray array_;
 };
@@ -687,7 +751,7 @@ class JsonObjectValueBuilder final : public WellKnownValueBuilder {
  public:
   explicit JsonObjectValueBuilder(const TypeReflector& type_reflector,
                                   ValueFactory& value_factory)
-      : value_factory_(value_factory) {}
+      : type_reflector_(type_reflector), value_factory_(value_factory) {}
 
   absl::Status SetFieldByName(absl::string_view name, Value value) override {
     if (name == "fields") {
@@ -716,17 +780,22 @@ class JsonObjectValueBuilder final : public WellKnownValueBuilder {
  private:
   absl::Status SetFields(Value value) {
     if (auto map_value = As<MapValue>(value); map_value.has_value()) {
-      CEL_ASSIGN_OR_RETURN(object_, map_value->ConvertToJsonObject());
+      JsonValueManager value_manager(type_reflector_, value_factory_);
+      CEL_ASSIGN_OR_RETURN(object_,
+                           map_value->ConvertToJsonObject(value_manager));
       return absl::OkStatus();
     }
     if (auto struct_value = As<StructValue>(value); struct_value.has_value()) {
-      CEL_ASSIGN_OR_RETURN(object_, struct_value->ConvertToJsonObject());
+      JsonValueManager value_manager(type_reflector_, value_factory_);
+      CEL_ASSIGN_OR_RETURN(object_,
+                           struct_value->ConvertToJsonObject(value_manager));
       return absl::OkStatus();
     }
     return TypeConversionError(value.GetTypeName(), "map(string, dyn)")
         .NativeValue();
   }
 
+  const TypeReflector& type_reflector_;
   ValueFactory& value_factory_;
   JsonObject object_;
 };

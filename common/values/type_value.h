@@ -71,15 +71,15 @@ class TypeValue final {
 
   // `GetSerializedSize` always returns `FAILED_PRECONDITION` as `TypeValue` is
   // not serializable.
-  absl::StatusOr<size_t> GetSerializedSize() const;
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager&) const;
 
   // `SerializeTo` always returns `FAILED_PRECONDITION` as `TypeValue` is not
   // serializable.
-  absl::Status SerializeTo(absl::Cord& value) const;
+  absl::Status SerializeTo(ValueManager&, absl::Cord& value) const;
 
   // `Serialize` always returns `FAILED_PRECONDITION` as `TypeValue` is not
   // serializable.
-  absl::StatusOr<absl::Cord> Serialize() const;
+  absl::StatusOr<absl::Cord> Serialize(ValueManager&) const;
 
   // `GetTypeUrl` always returns `FAILED_PRECONDITION` as `TypeValue` is not
   // serializable.
@@ -89,9 +89,9 @@ class TypeValue final {
   // `ConvertToAny` always returns `FAILED_PRECONDITION` as `TypeValue` is not
   // serializable.
   absl::StatusOr<Any> ConvertToAny(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+      ValueManager&, absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson() const;
+  absl::StatusOr<Json> ConvertToJson(ValueManager&) const;
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
@@ -159,15 +159,15 @@ class TypeValueView final {
 
   // `GetSerializedSize` always returns `FAILED_PRECONDITION` as `TypeValue` is
   // not serializable.
-  absl::StatusOr<size_t> GetSerializedSize() const;
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager&) const;
 
   // `SerializeTo` always returns `FAILED_PRECONDITION` as `TypeValue` is not
   // serializable.
-  absl::Status SerializeTo(absl::Cord& value) const;
+  absl::Status SerializeTo(ValueManager&, absl::Cord& value) const;
 
   // `Serialize` always returns `FAILED_PRECONDITION` as `TypeValue` is not
   // serializable.
-  absl::StatusOr<absl::Cord> Serialize() const;
+  absl::StatusOr<absl::Cord> Serialize(ValueManager&) const;
 
   // `GetTypeUrl` always returns `FAILED_PRECONDITION` as `TypeValue` is not
   // serializable.
@@ -177,9 +177,9 @@ class TypeValueView final {
   // `ConvertToAny` always returns `FAILED_PRECONDITION` as `TypeValue` is not
   // serializable.
   absl::StatusOr<Any> ConvertToAny(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+      ValueManager&, absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson() const;
+  absl::StatusOr<Json> ConvertToJson(ValueManager&) const;
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch

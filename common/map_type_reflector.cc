@@ -361,12 +361,14 @@ class TypedMapValue final : public ParsedMapValueInterface {
 
   size_t Size() const override { return entries_.size(); }
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject() const override {
+  absl::StatusOr<JsonObject> ConvertToJsonObject(
+      ValueManager& value_manager) const override {
     JsonObjectBuilder builder;
     builder.reserve(Size());
     for (const auto& entry : entries_) {
       absl::Cord json_key = MapValueKeyJson<K>{}(entry.first);
-      CEL_ASSIGN_OR_RETURN(auto json_value, entry.second.ConvertToJson());
+      CEL_ASSIGN_OR_RETURN(auto json_value,
+                           entry.second.ConvertToJson(value_manager));
       if (!builder.insert(std::pair{std::move(json_key), std::move(json_value)})
                .second) {
         return absl::FailedPreconditionError(

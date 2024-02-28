@@ -23,6 +23,7 @@
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value.h"
+#include "common/value_testing.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -32,13 +33,15 @@ using testing::An;
 using testing::Ne;
 using cel::internal::IsOkAndHolds;
 
-TEST(DurationValue, Kind) {
+using DurationValueTest = common_internal::ThreadCompatibleValueTest<>;
+
+TEST_P(DurationValueTest, Kind) {
   EXPECT_EQ(DurationValue().kind(), DurationValue::kKind);
   EXPECT_EQ(Value(DurationValue(absl::Seconds(1))).kind(),
             DurationValue::kKind);
 }
 
-TEST(DurationValue, DebugString) {
+TEST_P(DurationValueTest, DebugString) {
   {
     std::ostringstream out;
     out << DurationValue(absl::Seconds(1));
@@ -51,63 +54,72 @@ TEST(DurationValue, DebugString) {
   }
 }
 
-TEST(DurationValue, GetSerializedSize) {
-  EXPECT_THAT(DurationValue().GetSerializedSize(), IsOkAndHolds(0));
+TEST_P(DurationValueTest, GetSerializedSize) {
+  EXPECT_THAT(DurationValue().GetSerializedSize(value_manager()),
+              IsOkAndHolds(0));
 }
 
-TEST(DurationValue, ConvertToAny) {
-  EXPECT_THAT(DurationValue().ConvertToAny(),
+TEST_P(DurationValueTest, ConvertToAny) {
+  EXPECT_THAT(DurationValue().ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Duration"),
                                    absl::Cord())));
 }
 
-TEST(DurationValue, ConvertToJson) {
-  EXPECT_THAT(DurationValue().ConvertToJson(),
+TEST_P(DurationValueTest, ConvertToJson) {
+  EXPECT_THAT(DurationValue().ConvertToJson(value_manager()),
               IsOkAndHolds(Json(JsonString("0s"))));
 }
 
-TEST(DurationValue, NativeTypeId) {
+TEST_P(DurationValueTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(DurationValue(absl::Seconds(1))),
             NativeTypeId::For<DurationValue>());
   EXPECT_EQ(NativeTypeId::Of(Value(DurationValue(absl::Seconds(1)))),
             NativeTypeId::For<DurationValue>());
 }
 
-TEST(DurationValue, InstanceOf) {
+TEST_P(DurationValueTest, InstanceOf) {
   EXPECT_TRUE(InstanceOf<DurationValue>(DurationValue(absl::Seconds(1))));
   EXPECT_TRUE(
       InstanceOf<DurationValue>(Value(DurationValue(absl::Seconds(1)))));
 }
 
-TEST(DurationValue, Cast) {
+TEST_P(DurationValueTest, Cast) {
   EXPECT_THAT(Cast<DurationValue>(DurationValue(absl::Seconds(1))),
               An<DurationValue>());
   EXPECT_THAT(Cast<DurationValue>(Value(DurationValue(absl::Seconds(1)))),
               An<DurationValue>());
 }
 
-TEST(DurationValue, As) {
+TEST_P(DurationValueTest, As) {
   EXPECT_THAT(As<DurationValue>(DurationValue(absl::Seconds(1))),
               Ne(absl::nullopt));
   EXPECT_THAT(As<DurationValue>(Value(DurationValue(absl::Seconds(1)))),
               Ne(absl::nullopt));
 }
 
-TEST(DurationValue, Equality) {
+TEST_P(DurationValueTest, Equality) {
   EXPECT_NE(DurationValue(absl::ZeroDuration()), absl::Seconds(1));
   EXPECT_NE(absl::Seconds(1), DurationValue(absl::ZeroDuration()));
   EXPECT_NE(DurationValue(absl::ZeroDuration()),
             DurationValue(absl::Seconds(1)));
 }
 
-TEST(DurationValueView, Kind) {
+INSTANTIATE_TEST_SUITE_P(
+    DurationValueTest, DurationValueTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    DurationValueTest::ToString);
+
+using DurationValueViewTest = common_internal::ThreadCompatibleValueTest<>;
+
+TEST_P(DurationValueViewTest, Kind) {
   EXPECT_EQ(DurationValueView(absl::Seconds(1)).kind(),
             DurationValueView::kKind);
   EXPECT_EQ(ValueView(DurationValueView(absl::Seconds(1))).kind(),
             DurationValueView::kKind);
 }
 
-TEST(DurationValueView, DebugString) {
+TEST_P(DurationValueViewTest, DebugString) {
   {
     std::ostringstream out;
     out << DurationValueView(absl::Seconds(1));
@@ -120,36 +132,37 @@ TEST(DurationValueView, DebugString) {
   }
 }
 
-TEST(DurationValueView, GetSerializedSize) {
-  EXPECT_THAT(DurationValueView().GetSerializedSize(), IsOkAndHolds(0));
+TEST_P(DurationValueViewTest, GetSerializedSize) {
+  EXPECT_THAT(DurationValueView().GetSerializedSize(value_manager()),
+              IsOkAndHolds(0));
 }
 
-TEST(DurationValueView, ConvertToAny) {
-  EXPECT_THAT(DurationValueView().ConvertToAny(),
+TEST_P(DurationValueViewTest, ConvertToAny) {
+  EXPECT_THAT(DurationValueView().ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Duration"),
                                    absl::Cord())));
 }
 
-TEST(DurationValueView, ConvertToJson) {
-  EXPECT_THAT(DurationValueView().ConvertToJson(),
+TEST_P(DurationValueViewTest, ConvertToJson) {
+  EXPECT_THAT(DurationValueView().ConvertToJson(value_manager()),
               IsOkAndHolds(Json(JsonString("0s"))));
 }
 
-TEST(DurationValueView, NativeTypeId) {
+TEST_P(DurationValueViewTest, NativeTypeId) {
   EXPECT_EQ(NativeTypeId::Of(DurationValueView(absl::Seconds(1))),
             NativeTypeId::For<DurationValueView>());
   EXPECT_EQ(NativeTypeId::Of(ValueView(DurationValueView(absl::Seconds(1)))),
             NativeTypeId::For<DurationValueView>());
 }
 
-TEST(DurationValueView, InstanceOf) {
+TEST_P(DurationValueViewTest, InstanceOf) {
   EXPECT_TRUE(
       InstanceOf<DurationValueView>(DurationValueView(absl::Seconds(1))));
   EXPECT_TRUE(InstanceOf<DurationValueView>(
       ValueView(DurationValueView(absl::Seconds(1)))));
 }
 
-TEST(DurationValueView, Cast) {
+TEST_P(DurationValueViewTest, Cast) {
   EXPECT_THAT(Cast<DurationValueView>(DurationValueView(absl::Seconds(1))),
               An<DurationValueView>());
   EXPECT_THAT(
@@ -157,7 +170,7 @@ TEST(DurationValueView, Cast) {
       An<DurationValueView>());
 }
 
-TEST(DurationValueView, As) {
+TEST_P(DurationValueViewTest, As) {
   EXPECT_THAT(As<DurationValueView>(DurationValueView(absl::Seconds(1))),
               Ne(absl::nullopt));
   EXPECT_THAT(
@@ -165,7 +178,7 @@ TEST(DurationValueView, As) {
       Ne(absl::nullopt));
 }
 
-TEST(DurationValueView, Equality) {
+TEST_P(DurationValueViewTest, Equality) {
   EXPECT_NE(DurationValueView(DurationValue(absl::ZeroDuration())),
             absl::Seconds(1));
   EXPECT_NE(absl::Seconds(1), DurationValueView(absl::ZeroDuration()));
@@ -176,6 +189,12 @@ TEST(DurationValueView, Equality) {
   EXPECT_NE(DurationValue(absl::Seconds(1)),
             DurationValueView(absl::ZeroDuration()));
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    DurationValueViewTest, DurationValueViewTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    DurationValueViewTest::ToString);
 
 }  // namespace
 }  // namespace cel

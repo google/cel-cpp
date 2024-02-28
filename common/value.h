@@ -212,15 +212,16 @@ class Value final {
   // does not support serialization, `FAILED_PRECONDITION` is returned. If this
   // value does not support calculating serialization size ahead of time,
   // `UNIMPLEMENTED` is returned.
-  absl::StatusOr<size_t> GetSerializedSize() const;
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const;
 
   // `SerializeTo` serializes this value and appends it to `value`. If this
   // value does not support serialization, `FAILED_PRECONDITION` is returned.
-  absl::Status SerializeTo(absl::Cord& value) const;
+  absl::Status SerializeTo(ValueManager& value_manager,
+                           absl::Cord& value) const;
 
   // `Serialize` serializes this value and returns it as `absl::Cord`. If this
   // value does not support serialization, `FAILED_PRECONDITION` is returned.
-  absl::StatusOr<absl::Cord> Serialize() const;
+  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const;
 
   // 'GetTypeUrl' returns the type URL that can be used as the type URL for
   // `Any`. If this value does not support serialization, `FAILED_PRECONDITION`
@@ -231,9 +232,10 @@ class Value final {
   // 'ConvertToAny' converts this value to `Any`. If this value does not support
   // serialization, `FAILED_PRECONDITION` is returned.
   absl::StatusOr<Any> ConvertToAny(
+      ValueManager& value_manager,
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson() const;
+  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const;
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
@@ -697,15 +699,16 @@ class ValueView final {
   // does not support serialization, `FAILED_PRECONDITION` is returned. If this
   // value does not support calculating serialization size ahead of time,
   // `UNIMPLEMENTED` is returned.
-  absl::StatusOr<size_t> GetSerializedSize() const;
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const;
 
   // `SerializeTo` serializes this value and appends it to `value`. If this
   // value does not support serialization, `FAILED_PRECONDITION` is returned.
-  absl::Status SerializeTo(absl::Cord& value) const;
+  absl::Status SerializeTo(ValueManager& value_manager,
+                           absl::Cord& value) const;
 
   // `Serialize` serializes this value and returns it as `absl::Cord`. If this
   // value does not support serialization, `FAILED_PRECONDITION` is returned.
-  absl::StatusOr<absl::Cord> Serialize() const;
+  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const;
 
   // 'GetTypeUrl' returns the type URL that can be used as the type URL for
   // `Any`. If this value does not support serialization, `FAILED_PRECONDITION`
@@ -716,9 +719,10 @@ class ValueView final {
   // 'ConvertToAny' converts this value to `Any`. If this value does not support
   // serialization, `FAILED_PRECONDITION` is returned.
   absl::StatusOr<Any> ConvertToAny(
+      ValueManager& value_manager,
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson() const;
+  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const;
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch

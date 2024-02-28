@@ -70,9 +70,11 @@ class ParsedMapValueInterface : public MapValueInterface {
 
   static constexpr ValueKind kKind = MapValueInterface::kKind;
 
-  absl::StatusOr<size_t> GetSerializedSize() const override;
+  absl::StatusOr<size_t> GetSerializedSize(
+      ValueManager& value_manager) const override;
 
-  absl::Status SerializeTo(absl::Cord& value) const override;
+  absl::Status SerializeTo(ValueManager& value_manager,
+                           absl::Cord& value) const override;
 
   virtual absl::StatusOr<ValueView> Equal(
       ValueManager& value_manager, ValueView other,
@@ -166,18 +168,19 @@ class ParsedMapValue {
   std::string DebugString() const { return interface_->DebugString(); }
 
   // See `ValueInterface::GetSerializedSize`.
-  absl::StatusOr<size_t> GetSerializedSize() const {
-    return interface_->GetSerializedSize();
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const {
+    return interface_->GetSerializedSize(value_manager);
   }
 
   // See `ValueInterface::SerializeTo`.
-  absl::Status SerializeTo(absl::Cord& value) const {
-    return interface_->SerializeTo(value);
+  absl::Status SerializeTo(ValueManager& value_manager,
+                           absl::Cord& value) const {
+    return interface_->SerializeTo(value_manager, value);
   }
 
   // See `ValueInterface::Serialize`.
-  absl::StatusOr<absl::Cord> Serialize() const {
-    return interface_->Serialize();
+  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const {
+    return interface_->Serialize(value_manager);
   }
 
   // See `ValueInterface::GetTypeUrl`.
@@ -188,16 +191,18 @@ class ParsedMapValue {
 
   // See `ValueInterface::ConvertToAny`.
   absl::StatusOr<Any> ConvertToAny(
+      ValueManager& value_manager,
       absl::string_view prefix = kTypeGoogleApisComPrefix) const {
-    return interface_->ConvertToAny(prefix);
+    return interface_->ConvertToAny(value_manager, prefix);
   }
 
-  absl::StatusOr<Json> ConvertToJson() const {
-    return interface_->ConvertToJson();
+  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const {
+    return interface_->ConvertToJson(value_manager);
   }
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject() const {
-    return interface_->ConvertToJsonObject();
+  absl::StatusOr<JsonObject> ConvertToJsonObject(
+      ValueManager& value_manager) const {
+    return interface_->ConvertToJsonObject(value_manager);
   }
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
@@ -365,18 +370,19 @@ class ParsedMapValueView {
   std::string DebugString() const { return interface_->DebugString(); }
 
   // See `ValueInterface::GetSerializedSize`.
-  absl::StatusOr<size_t> GetSerializedSize() const {
-    return interface_->GetSerializedSize();
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const {
+    return interface_->GetSerializedSize(value_manager);
   }
 
   // See `ValueInterface::SerializeTo`.
-  absl::Status SerializeTo(absl::Cord& value) const {
-    return interface_->SerializeTo(value);
+  absl::Status SerializeTo(ValueManager& value_manager,
+                           absl::Cord& value) const {
+    return interface_->SerializeTo(value_manager, value);
   }
 
   // See `ValueInterface::Serialize`.
-  absl::StatusOr<absl::Cord> Serialize() const {
-    return interface_->Serialize();
+  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const {
+    return interface_->Serialize(value_manager);
   }
 
   // See `ValueInterface::GetTypeUrl`.
@@ -387,16 +393,18 @@ class ParsedMapValueView {
 
   // See `ValueInterface::ConvertToAny`.
   absl::StatusOr<Any> ConvertToAny(
+      ValueManager& value_manager,
       absl::string_view prefix = kTypeGoogleApisComPrefix) const {
-    return interface_->ConvertToAny(prefix);
+    return interface_->ConvertToAny(value_manager, prefix);
   }
 
-  absl::StatusOr<Json> ConvertToJson() const {
-    return interface_->ConvertToJson();
+  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const {
+    return interface_->ConvertToJson(value_manager);
   }
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject() const {
-    return interface_->ConvertToJsonObject();
+  absl::StatusOr<JsonObject> ConvertToJsonObject(
+      ValueManager& value_manager) const {
+    return interface_->ConvertToJsonObject(value_manager);
   }
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,

@@ -57,11 +57,13 @@ class TypedListValue final : public ParsedListValueInterface {
 
   size_t Size() const override { return elements_.size(); }
 
-  absl::StatusOr<JsonArray> ConvertToJsonArray() const override {
+  absl::StatusOr<JsonArray> ConvertToJsonArray(
+      ValueManager& value_manager) const override {
     JsonArrayBuilder builder;
     builder.reserve(Size());
     for (const auto& element : elements_) {
-      CEL_ASSIGN_OR_RETURN(auto json_element, element.ConvertToJson());
+      CEL_ASSIGN_OR_RETURN(auto json_element,
+                           element.ConvertToJson(value_manager));
       builder.push_back(std::move(json_element));
     }
     return std::move(builder).Build();

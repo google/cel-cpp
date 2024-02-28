@@ -152,26 +152,28 @@ class ListValue final {
         variant_);
   }
 
-  absl::StatusOr<size_t> GetSerializedSize() const {
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const {
     return absl::visit(
-        [](const auto& alternative) -> absl::StatusOr<size_t> {
-          return alternative.GetSerializedSize();
+        [&value_manager](const auto& alternative) -> absl::StatusOr<size_t> {
+          return alternative.GetSerializedSize(value_manager);
         },
         variant_);
   }
 
-  absl::Status SerializeTo(absl::Cord& value) const {
+  absl::Status SerializeTo(ValueManager& value_manager,
+                           absl::Cord& value) const {
     return absl::visit(
-        [&value](const auto& alternative) -> absl::Status {
-          return alternative.SerializeTo(value);
+        [&value_manager, &value](const auto& alternative) -> absl::Status {
+          return alternative.SerializeTo(value_manager, value);
         },
         variant_);
   }
 
-  absl::StatusOr<absl::Cord> Serialize() const {
+  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const {
     return absl::visit(
-        [](const auto& alternative) -> absl::StatusOr<absl::Cord> {
-          return alternative.Serialize();
+        [&value_manager](
+            const auto& alternative) -> absl::StatusOr<absl::Cord> {
+          return alternative.Serialize(value_manager);
         },
         variant_);
   }
@@ -186,26 +188,29 @@ class ListValue final {
   }
 
   absl::StatusOr<Any> ConvertToAny(
+      ValueManager& value_manager,
       absl::string_view prefix = kTypeGoogleApisComPrefix) const {
     return absl::visit(
-        [prefix](const auto& alternative) -> absl::StatusOr<Any> {
-          return alternative.ConvertToAny(prefix);
+        [&value_manager,
+         prefix](const auto& alternative) -> absl::StatusOr<Any> {
+          return alternative.ConvertToAny(value_manager, prefix);
         },
         variant_);
   }
 
-  absl::StatusOr<Json> ConvertToJson() const {
+  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const {
     return absl::visit(
-        [](const auto& alternative) -> absl::StatusOr<Json> {
-          return alternative.ConvertToJson();
+        [&value_manager](const auto& alternative) -> absl::StatusOr<Json> {
+          return alternative.ConvertToJson(value_manager);
         },
         variant_);
   }
 
-  absl::StatusOr<JsonArray> ConvertToJsonArray() const {
+  absl::StatusOr<JsonArray> ConvertToJsonArray(
+      ValueManager& value_manager) const {
     return absl::visit(
-        [](const auto& alternative) -> absl::StatusOr<JsonArray> {
-          return alternative.ConvertToJsonArray();
+        [&value_manager](const auto& alternative) -> absl::StatusOr<JsonArray> {
+          return alternative.ConvertToJsonArray(value_manager);
         },
         variant_);
   }
@@ -484,26 +489,27 @@ class ListValueView final {
         variant_);
   }
 
-  absl::StatusOr<size_t> GetSerializedSize() const {
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const {
     return absl::visit(
-        [](auto alternative) -> absl::StatusOr<size_t> {
-          return alternative.GetSerializedSize();
+        [&value_manager](auto alternative) -> absl::StatusOr<size_t> {
+          return alternative.GetSerializedSize(value_manager);
         },
         variant_);
   }
 
-  absl::Status SerializeTo(absl::Cord& value) const {
+  absl::Status SerializeTo(ValueManager& value_manager,
+                           absl::Cord& value) const {
     return absl::visit(
-        [&value](auto alternative) -> absl::Status {
-          return alternative.SerializeTo(value);
+        [&value_manager, &value](auto alternative) -> absl::Status {
+          return alternative.SerializeTo(value_manager, value);
         },
         variant_);
   }
 
-  absl::StatusOr<absl::Cord> Serialize() const {
+  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const {
     return absl::visit(
-        [](auto alternative) -> absl::StatusOr<absl::Cord> {
-          return alternative.Serialize();
+        [&value_manager](auto alternative) -> absl::StatusOr<absl::Cord> {
+          return alternative.Serialize(value_manager);
         },
         variant_);
   }
@@ -518,26 +524,28 @@ class ListValueView final {
   }
 
   absl::StatusOr<Any> ConvertToAny(
+      ValueManager& value_manager,
       absl::string_view prefix = kTypeGoogleApisComPrefix) const {
     return absl::visit(
-        [prefix](auto alternative) -> absl::StatusOr<Any> {
-          return alternative.ConvertToAny(prefix);
+        [&value_manager, prefix](auto alternative) -> absl::StatusOr<Any> {
+          return alternative.ConvertToAny(value_manager, prefix);
         },
         variant_);
   }
 
-  absl::StatusOr<Json> ConvertToJson() const {
+  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const {
     return absl::visit(
-        [](auto alternative) -> absl::StatusOr<Json> {
-          return alternative.ConvertToJson();
+        [&value_manager](auto alternative) -> absl::StatusOr<Json> {
+          return alternative.ConvertToJson(value_manager);
         },
         variant_);
   }
 
-  absl::StatusOr<JsonArray> ConvertToJsonArray() const {
+  absl::StatusOr<JsonArray> ConvertToJsonArray(
+      ValueManager& value_manager) const {
     return absl::visit(
-        [](auto alternative) -> absl::StatusOr<JsonArray> {
-          return alternative.ConvertToJsonArray();
+        [&value_manager](auto alternative) -> absl::StatusOr<JsonArray> {
+          return alternative.ConvertToJsonArray(value_manager);
         },
         variant_);
   }

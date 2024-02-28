@@ -100,19 +100,19 @@ class StringValue final {
 
   std::string DebugString() const;
 
-  absl::StatusOr<size_t> GetSerializedSize() const;
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager&) const;
 
-  absl::Status SerializeTo(absl::Cord& value) const;
+  absl::Status SerializeTo(ValueManager&, absl::Cord& value) const;
 
-  absl::StatusOr<absl::Cord> Serialize() const;
+  absl::StatusOr<absl::Cord> Serialize(ValueManager&) const;
 
   absl::StatusOr<std::string> GetTypeUrl(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Any> ConvertToAny(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+      ValueManager&, absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson() const;
+  absl::StatusOr<Json> ConvertToJson(ValueManager&) const;
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
@@ -239,19 +239,19 @@ class StringValueView final {
 
   std::string DebugString() const;
 
-  absl::StatusOr<size_t> GetSerializedSize() const;
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager&) const;
 
-  absl::Status SerializeTo(absl::Cord& value) const;
+  absl::Status SerializeTo(ValueManager&, absl::Cord& value) const;
 
-  absl::StatusOr<absl::Cord> Serialize() const;
+  absl::StatusOr<absl::Cord> Serialize(ValueManager&) const;
 
   absl::StatusOr<std::string> GetTypeUrl(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Any> ConvertToAny(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+      ValueManager&, absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson() const;
+  absl::StatusOr<Json> ConvertToJson(ValueManager&) const;
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch

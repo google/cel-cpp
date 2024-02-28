@@ -43,17 +43,19 @@ std::string TimestampValue::DebugString() const {
   return TimestampDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> TimestampValue::GetSerializedSize() const {
+absl::StatusOr<size_t> TimestampValue::GetSerializedSize(ValueManager&) const {
   return internal::SerializedTimestampSize(NativeValue());
 }
 
-absl::Status TimestampValue::SerializeTo(absl::Cord& value) const {
+absl::Status TimestampValue::SerializeTo(ValueManager&,
+                                         absl::Cord& value) const {
   return internal::SerializeTimestamp(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> TimestampValue::Serialize() const {
+absl::StatusOr<absl::Cord> TimestampValue::Serialize(
+    ValueManager& value_manager) const {
   absl::Cord value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
 }
 
@@ -63,13 +65,13 @@ absl::StatusOr<std::string> TimestampValue::GetTypeUrl(
 }
 
 absl::StatusOr<Any> TimestampValue::ConvertToAny(
-    absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+    ValueManager& value_manager, absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> TimestampValue::ConvertToJson() const {
+absl::StatusOr<Json> TimestampValue::ConvertToJson(ValueManager&) const {
   CEL_ASSIGN_OR_RETURN(auto json,
                        internal::EncodeTimestampToJson(NativeValue()));
   return JsonString(std::move(json));
@@ -88,17 +90,20 @@ std::string TimestampValueView::DebugString() const {
   return TimestampDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> TimestampValueView::GetSerializedSize() const {
+absl::StatusOr<size_t> TimestampValueView::GetSerializedSize(
+    ValueManager&) const {
   return internal::SerializedTimestampSize(NativeValue());
 }
 
-absl::Status TimestampValueView::SerializeTo(absl::Cord& value) const {
+absl::Status TimestampValueView::SerializeTo(ValueManager&,
+                                             absl::Cord& value) const {
   return internal::SerializeTimestamp(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> TimestampValueView::Serialize() const {
+absl::StatusOr<absl::Cord> TimestampValueView::Serialize(
+    ValueManager& value_manager) const {
   absl::Cord value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
 }
 
@@ -108,13 +113,13 @@ absl::StatusOr<std::string> TimestampValueView::GetTypeUrl(
 }
 
 absl::StatusOr<Any> TimestampValueView::ConvertToAny(
-    absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+    ValueManager& value_manager, absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> TimestampValueView::ConvertToJson() const {
+absl::StatusOr<Json> TimestampValueView::ConvertToJson(ValueManager&) const {
   CEL_ASSIGN_OR_RETURN(auto json,
                        internal::EncodeTimestampToJson(NativeValue()));
   return JsonString(std::move(json));

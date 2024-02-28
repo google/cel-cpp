@@ -39,23 +39,26 @@ std::string BoolValue::DebugString() const {
   return BoolDebugString(NativeValue());
 }
 
-absl::StatusOr<Json> BoolValue::ConvertToJson() const { return NativeValue(); }
+absl::StatusOr<Json> BoolValue::ConvertToJson(ValueManager&) const {
+  return NativeValue();
+}
 
 std::string BoolValueView::DebugString() const {
   return BoolDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> BoolValue::GetSerializedSize() const {
+absl::StatusOr<size_t> BoolValue::GetSerializedSize(ValueManager&) const {
   return internal::SerializedBoolValueSize(NativeValue());
 }
 
-absl::Status BoolValue::SerializeTo(absl::Cord& value) const {
+absl::Status BoolValue::SerializeTo(ValueManager&, absl::Cord& value) const {
   return internal::SerializeBoolValue(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> BoolValue::Serialize() const {
+absl::StatusOr<absl::Cord> BoolValue::Serialize(
+    ValueManager& value_manager) const {
   absl::Cord value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
 }
 
@@ -64,8 +67,9 @@ absl::StatusOr<std::string> BoolValue::GetTypeUrl(
   return MakeTypeUrlWithPrefix(prefix, "google.protobuf.BoolValue");
 }
 
-absl::StatusOr<Any> BoolValue::ConvertToAny(absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+absl::StatusOr<Any> BoolValue::ConvertToAny(ValueManager& value_manager,
+                                            absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
@@ -78,17 +82,19 @@ absl::StatusOr<ValueView> BoolValue::Equal(ValueManager&, ValueView other,
   return BoolValueView{false};
 }
 
-absl::StatusOr<size_t> BoolValueView::GetSerializedSize() const {
+absl::StatusOr<size_t> BoolValueView::GetSerializedSize(ValueManager&) const {
   return internal::SerializedBoolValueSize(NativeValue());
 }
 
-absl::Status BoolValueView::SerializeTo(absl::Cord& value) const {
+absl::Status BoolValueView::SerializeTo(ValueManager&,
+                                        absl::Cord& value) const {
   return internal::SerializeBoolValue(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> BoolValueView::Serialize() const {
+absl::StatusOr<absl::Cord> BoolValueView::Serialize(
+    ValueManager& value_manager) const {
   absl::Cord value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value));
+  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
 }
 
@@ -98,13 +104,13 @@ absl::StatusOr<std::string> BoolValueView::GetTypeUrl(
 }
 
 absl::StatusOr<Any> BoolValueView::ConvertToAny(
-    absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize());
+    ValueManager& value_manager, absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> BoolValueView::ConvertToJson() const {
+absl::StatusOr<Json> BoolValueView::ConvertToJson(ValueManager&) const {
   return NativeValue();
 }
 
