@@ -128,92 +128,30 @@ class ListValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  ListType GetType(TypeManager& type_manager) const {
-    return absl::visit(
-        [&type_manager](const auto& alternative) -> ListType {
-          return alternative.GetType(type_manager);
-        },
-        variant_);
-  }
+  ListType GetType(TypeManager& type_manager) const;
 
-  absl::string_view GetTypeName() const {
-    return absl::visit(
-        [](const auto& alternative) -> absl::string_view {
-          return alternative.GetTypeName();
-        },
-        variant_);
-  }
+  absl::string_view GetTypeName() const;
 
-  std::string DebugString() const {
-    return absl::visit(
-        [](const auto& alternative) -> std::string {
-          return alternative.DebugString();
-        },
-        variant_);
-  }
+  std::string DebugString() const;
 
-  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const {
-    return absl::visit(
-        [&value_manager](const auto& alternative) -> absl::StatusOr<size_t> {
-          return alternative.GetSerializedSize(value_manager);
-        },
-        variant_);
-  }
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const;
 
   absl::Status SerializeTo(ValueManager& value_manager,
-                           absl::Cord& value) const {
-    return absl::visit(
-        [&value_manager, &value](const auto& alternative) -> absl::Status {
-          return alternative.SerializeTo(value_manager, value);
-        },
-        variant_);
-  }
+                           absl::Cord& value) const;
 
-  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const {
-    return absl::visit(
-        [&value_manager](
-            const auto& alternative) -> absl::StatusOr<absl::Cord> {
-          return alternative.Serialize(value_manager);
-        },
-        variant_);
-  }
+  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const;
 
   absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
-    return absl::visit(
-        [prefix](const auto& alternative) -> absl::StatusOr<std::string> {
-          return alternative.GetTypeUrl(prefix);
-        },
-        variant_);
-  }
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Any> ConvertToAny(
       ValueManager& value_manager,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
-    return absl::visit(
-        [&value_manager,
-         prefix](const auto& alternative) -> absl::StatusOr<Any> {
-          return alternative.ConvertToAny(value_manager, prefix);
-        },
-        variant_);
-  }
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const {
-    return absl::visit(
-        [&value_manager](const auto& alternative) -> absl::StatusOr<Json> {
-          return alternative.ConvertToJson(value_manager);
-        },
-        variant_);
-  }
+  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const;
 
   absl::StatusOr<JsonArray> ConvertToJsonArray(
-      ValueManager& value_manager) const {
-    return absl::visit(
-        [&value_manager](const auto& alternative) -> absl::StatusOr<JsonArray> {
-          return alternative.ConvertToJsonArray(value_manager);
-        },
-        variant_);
-  }
+      ValueManager& value_manager) const;
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
@@ -221,27 +159,13 @@ class ListValue final {
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
                               ValueView other) const;
 
-  bool IsZeroValue() const {
-    return absl::visit(
-        [](const auto& alternative) -> bool {
-          return alternative.IsZeroValue();
-        },
-        variant_);
-  }
+  bool IsZeroValue() const;
 
   void swap(ListValue& other) noexcept { variant_.swap(other.variant_); }
 
-  bool IsEmpty() const {
-    return absl::visit(
-        [](const auto& alternative) -> bool { return alternative.IsEmpty(); },
-        variant_);
-  }
+  bool IsEmpty() const;
 
-  size_t Size() const {
-    return absl::visit(
-        [](const auto& alternative) -> size_t { return alternative.Size(); },
-        variant_);
-  }
+  size_t Size() const;
 
   // See ListValueInterface::Get for documentation.
   absl::StatusOr<ValueView> Get(ValueManager& value_manager, size_t index,
@@ -274,16 +198,7 @@ class ListValue final {
   friend struct NativeTypeTraits<ListValue>;
   friend struct CompositionTraits<ListValue>;
 
-  common_internal::ListValueViewVariant ToViewVariant() const {
-    return absl::visit(
-        [](const auto& alternative) -> common_internal::ListValueViewVariant {
-          return common_internal::ListValueViewVariant{
-              absl::in_place_type<typename absl::remove_cvref_t<
-                  decltype(alternative)>::view_alternative_type>,
-              alternative};
-        },
-        variant_);
-  }
+  common_internal::ListValueViewVariant ToViewVariant() const;
 
   // Unlike many of the other derived values, `ListValue` is itself a composed
   // type. This is to avoid making `ListValue` too big and by extension
@@ -465,90 +380,30 @@ class ListValueView final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  ListType GetType(TypeManager& type_manager) const {
-    return absl::visit(
-        [&type_manager](auto alternative) -> ListType {
-          return alternative.GetType(type_manager);
-        },
-        variant_);
-  }
+  ListType GetType(TypeManager& type_manager) const;
 
-  absl::string_view GetTypeName() const {
-    return absl::visit(
-        [](auto alternative) -> absl::string_view {
-          return alternative.GetTypeName();
-        },
-        variant_);
-  }
+  absl::string_view GetTypeName() const;
 
-  std::string DebugString() const {
-    return absl::visit(
-        [](auto alternative) -> std::string {
-          return alternative.DebugString();
-        },
-        variant_);
-  }
+  std::string DebugString() const;
 
-  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const {
-    return absl::visit(
-        [&value_manager](auto alternative) -> absl::StatusOr<size_t> {
-          return alternative.GetSerializedSize(value_manager);
-        },
-        variant_);
-  }
+  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const;
 
   absl::Status SerializeTo(ValueManager& value_manager,
-                           absl::Cord& value) const {
-    return absl::visit(
-        [&value_manager, &value](auto alternative) -> absl::Status {
-          return alternative.SerializeTo(value_manager, value);
-        },
-        variant_);
-  }
+                           absl::Cord& value) const;
 
-  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const {
-    return absl::visit(
-        [&value_manager](auto alternative) -> absl::StatusOr<absl::Cord> {
-          return alternative.Serialize(value_manager);
-        },
-        variant_);
-  }
+  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const;
 
   absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
-    return absl::visit(
-        [prefix](auto alternative) -> absl::StatusOr<std::string> {
-          return alternative.GetTypeUrl(prefix);
-        },
-        variant_);
-  }
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Any> ConvertToAny(
       ValueManager& value_manager,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
-    return absl::visit(
-        [&value_manager, prefix](auto alternative) -> absl::StatusOr<Any> {
-          return alternative.ConvertToAny(value_manager, prefix);
-        },
-        variant_);
-  }
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const {
-    return absl::visit(
-        [&value_manager](auto alternative) -> absl::StatusOr<Json> {
-          return alternative.ConvertToJson(value_manager);
-        },
-        variant_);
-  }
+  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const;
 
   absl::StatusOr<JsonArray> ConvertToJsonArray(
-      ValueManager& value_manager) const {
-    return absl::visit(
-        [&value_manager](auto alternative) -> absl::StatusOr<JsonArray> {
-          return alternative.ConvertToJsonArray(value_manager);
-        },
-        variant_);
-  }
+      ValueManager& value_manager) const;
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
@@ -556,25 +411,13 @@ class ListValueView final {
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
                               ValueView other) const;
 
-  bool IsZeroValue() const {
-    return absl::visit(
-        [](auto alternative) -> bool { return alternative.IsZeroValue(); },
-        variant_);
-  }
+  bool IsZeroValue() const;
 
   void swap(ListValueView& other) noexcept { variant_.swap(other.variant_); }
 
-  bool IsEmpty() const {
-    return absl::visit(
-        [](auto alternative) -> bool { return alternative.IsEmpty(); },
-        variant_);
-  }
+  bool IsEmpty() const;
 
-  size_t Size() const {
-    return absl::visit(
-        [](auto alternative) -> size_t { return alternative.Size(); },
-        variant_);
-  }
+  size_t Size() const;
 
   // See ListValueInterface::Get for documentation.
   absl::StatusOr<ValueView> Get(ValueManager& value_manager, size_t index,
@@ -608,16 +451,7 @@ class ListValueView final {
   friend struct CompositionTraits<ListValueView>;
   friend bool Is(ListValueView lhs, ListValueView rhs);
 
-  common_internal::ListValueVariant ToVariant() const {
-    return absl::visit(
-        [](auto alternative) -> common_internal::ListValueVariant {
-          return common_internal::ListValueVariant{
-              absl::in_place_type<typename absl::remove_cvref_t<
-                  decltype(alternative)>::alternative_type>,
-              alternative};
-        },
-        variant_);
-  }
+  common_internal::ListValueVariant ToVariant() const;
 
   // Unlike many of the other derived values, `ListValue` is itself a composed
   // type. This is to avoid making `ListValue` too big and by extension
