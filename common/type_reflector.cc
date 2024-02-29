@@ -787,9 +787,12 @@ class JsonObjectValueBuilder final : public WellKnownValueBuilder {
     }
     if (auto struct_value = As<StructValue>(value); struct_value.has_value()) {
       JsonValueManager value_manager(type_reflector_, value_factory_);
-      CEL_ASSIGN_OR_RETURN(object_,
-                           struct_value->ConvertToJsonObject(value_manager));
-      return absl::OkStatus();
+      CEL_ASSIGN_OR_RETURN(auto json_value,
+                           struct_value->ConvertToJson(value_manager));
+      if (absl::holds_alternative<JsonObject>(json_value)) {
+        object_ = absl::get<JsonObject>(std::move(json_value));
+        return absl::OkStatus();
+      }
     }
     return TypeConversionError(value.GetTypeName(), "map(string, dyn)")
         .NativeValue();

@@ -77,12 +77,6 @@ TEST_P(LegacyStructValueTest, ConvertToJson) {
       _);
 }
 
-TEST_P(LegacyStructValueTest, ConvertToJsonObject) {
-  EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).ConvertToJsonObject(
-                   value_manager())),
-               _);
-}
-
 TEST_P(LegacyStructValueTest, GetFieldByName) {
   Value scratch;
   EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).GetFieldByName(
@@ -164,12 +158,6 @@ TEST_P(LegacyStructValueViewTest, ConvertToJson) {
   EXPECT_DEATH(
       static_cast<void>(LegacyStructValue(0, 0).ConvertToJson(value_manager())),
       _);
-}
-
-TEST_P(LegacyStructValueViewTest, ConvertToJsonObject) {
-  EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).ConvertToJsonObject(
-                   value_manager())),
-               _);
 }
 
 TEST_P(LegacyStructValueViewTest, GetFieldByName) {

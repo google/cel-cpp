@@ -91,9 +91,6 @@ class LegacyStructValue final {
 
   absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const;
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject(
-      ValueManager& value_manager) const;
-
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
@@ -206,9 +203,6 @@ class LegacyStructValueView final {
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const;
-
-  absl::StatusOr<JsonObject> ConvertToJsonObject(
-      ValueManager& value_manager) const;
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch

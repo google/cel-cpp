@@ -145,11 +145,6 @@ class ParsedStructValue {
     return interface_->ConvertToJson(value_manager);
   }
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject(
-      ValueManager& value_manager) const {
-    return interface_->ConvertToJsonObject(value_manager);
-  }
-
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
                                       ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
@@ -296,11 +291,6 @@ class ParsedStructValueView {
 
   absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const {
     return interface_->ConvertToJson(value_manager);
-  }
-
-  absl::StatusOr<JsonObject> ConvertToJsonObject(
-      ValueManager& value_manager) const {
-    return interface_->ConvertToJsonObject(value_manager);
   }
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,

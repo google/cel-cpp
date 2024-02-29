@@ -48,13 +48,6 @@ class StructValueInterface : public ValueInterface {
     return Cast<StructType>(GetTypeImpl(type_manager));
   }
 
-  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const final {
-    return ConvertToJsonObject(value_manager);
-  }
-
-  virtual absl::StatusOr<JsonObject> ConvertToJsonObject(
-      ValueManager& value_manager) const = 0;
-
   using ForEachFieldCallback =
       absl::FunctionRef<absl::StatusOr<bool>(absl::string_view, ValueView)>;
 

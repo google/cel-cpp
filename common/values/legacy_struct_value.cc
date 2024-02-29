@@ -282,11 +282,6 @@ absl::StatusOr<Any> LegacyStructValue::ConvertToAny(
 
 absl::StatusOr<Json> LegacyStructValue::ConvertToJson(
     ValueManager& value_manager) const {
-  return ConvertToJsonObject(value_manager);
-}
-
-absl::StatusOr<JsonObject> LegacyStructValue::ConvertToJsonObject(
-    ValueManager&) const {
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.convert_to_json_object)(message_ptr_,
                                                               type_info_);
@@ -405,11 +400,6 @@ absl::StatusOr<Any> LegacyStructValueView::ConvertToAny(
 
 absl::StatusOr<Json> LegacyStructValueView::ConvertToJson(
     ValueManager& value_manager) const {
-  return ConvertToJsonObject(value_manager);
-}
-
-absl::StatusOr<JsonObject> LegacyStructValueView::ConvertToJsonObject(
-    ValueManager&) const {
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.convert_to_json_object)(message_ptr_,
                                                               type_info_);

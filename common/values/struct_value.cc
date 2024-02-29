@@ -166,22 +166,6 @@ absl::StatusOr<Json> StructValue::ConvertToJson(
       variant_);
 }
 
-absl::StatusOr<JsonObject> StructValue::ConvertToJsonObject(
-    ValueManager& value_manager) const {
-  AssertIsValid();
-  return absl::visit(
-      [&value_manager](const auto& alternative) -> absl::StatusOr<JsonObject> {
-        if constexpr (std::is_same_v<
-                          absl::monostate,
-                          absl::remove_cvref_t<decltype(alternative)>>) {
-          return absl::InternalError("use of invalid StructValue");
-        } else {
-          return alternative.ConvertToJsonObject(value_manager);
-        }
-      },
-      variant_);
-}
-
 bool StructValue::IsZeroValue() const {
   AssertIsValid();
   return absl::visit(
@@ -380,22 +364,6 @@ absl::StatusOr<Json> StructValueView::ConvertToJson(
           return absl::InternalError("use of invalid StructValueView");
         } else {
           return alternative.ConvertToJson(value_manager);
-        }
-      },
-      variant_);
-}
-
-absl::StatusOr<JsonObject> StructValueView::ConvertToJsonObject(
-    ValueManager& value_manager) const {
-  AssertIsValid();
-  return absl::visit(
-      [&value_manager](auto alternative) -> absl::StatusOr<JsonObject> {
-        if constexpr (std::is_same_v<
-                          absl::monostate,
-                          absl::remove_cvref_t<decltype(alternative)>>) {
-          return absl::InternalError("use of invalid StructValueView");
-        } else {
-          return alternative.ConvertToJsonObject(value_manager);
         }
       },
       variant_);
