@@ -62,28 +62,28 @@ std::string MapValue::DebugString() const {
 }
 
 absl::StatusOr<size_t> MapValue::GetSerializedSize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& converter) const {
   return absl::visit(
-      [&value_manager](const auto& alternative) -> absl::StatusOr<size_t> {
-        return alternative.GetSerializedSize(value_manager);
+      [&converter](const auto& alternative) -> absl::StatusOr<size_t> {
+        return alternative.GetSerializedSize(converter);
       },
       variant_);
 }
 
-absl::Status MapValue::SerializeTo(ValueManager& value_manager,
+absl::Status MapValue::SerializeTo(AnyToJsonConverter& converter,
                                    absl::Cord& value) const {
   return absl::visit(
-      [&value_manager, &value](const auto& alternative) -> absl::Status {
-        return alternative.SerializeTo(value_manager, value);
+      [&converter, &value](const auto& alternative) -> absl::Status {
+        return alternative.SerializeTo(converter, value);
       },
       variant_);
 }
 
 absl::StatusOr<absl::Cord> MapValue::Serialize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& converter) const {
   return absl::visit(
-      [&value_manager](const auto& alternative) -> absl::StatusOr<absl::Cord> {
-        return alternative.Serialize(value_manager);
+      [&converter](const auto& alternative) -> absl::StatusOr<absl::Cord> {
+        return alternative.Serialize(converter);
       },
       variant_);
 }
@@ -97,29 +97,29 @@ absl::StatusOr<std::string> MapValue::GetTypeUrl(
       variant_);
 }
 
-absl::StatusOr<Any> MapValue::ConvertToAny(ValueManager& value_manager,
+absl::StatusOr<Any> MapValue::ConvertToAny(AnyToJsonConverter& converter,
                                            absl::string_view prefix) const {
   return absl::visit(
-      [&value_manager, prefix](const auto& alternative) -> absl::StatusOr<Any> {
-        return alternative.ConvertToAny(value_manager, prefix);
+      [&converter, prefix](const auto& alternative) -> absl::StatusOr<Any> {
+        return alternative.ConvertToAny(converter, prefix);
       },
       variant_);
 }
 
 absl::StatusOr<Json> MapValue::ConvertToJson(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& converter) const {
   return absl::visit(
-      [&value_manager](const auto& alternative) -> absl::StatusOr<Json> {
-        return alternative.ConvertToJson(value_manager);
+      [&converter](const auto& alternative) -> absl::StatusOr<Json> {
+        return alternative.ConvertToJson(converter);
       },
       variant_);
 }
 
 absl::StatusOr<JsonObject> MapValue::ConvertToJsonObject(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& converter) const {
   return absl::visit(
-      [&value_manager](const auto& alternative) -> absl::StatusOr<JsonObject> {
-        return alternative.ConvertToJsonObject(value_manager);
+      [&converter](const auto& alternative) -> absl::StatusOr<JsonObject> {
+        return alternative.ConvertToJsonObject(converter);
       },
       variant_);
 }
@@ -176,28 +176,28 @@ std::string MapValueView::DebugString() const {
 }
 
 absl::StatusOr<size_t> MapValueView::GetSerializedSize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& converter) const {
   return absl::visit(
-      [&value_manager](auto alternative) -> absl::StatusOr<size_t> {
-        return alternative.GetSerializedSize(value_manager);
+      [&converter](auto alternative) -> absl::StatusOr<size_t> {
+        return alternative.GetSerializedSize(converter);
       },
       variant_);
 }
 
-absl::Status MapValueView::SerializeTo(ValueManager& value_manager,
+absl::Status MapValueView::SerializeTo(AnyToJsonConverter& converter,
                                        absl::Cord& value) const {
   return absl::visit(
-      [&value_manager, &value](auto alternative) -> absl::Status {
-        return alternative.SerializeTo(value_manager, value);
+      [&converter, &value](auto alternative) -> absl::Status {
+        return alternative.SerializeTo(converter, value);
       },
       variant_);
 }
 
 absl::StatusOr<absl::Cord> MapValueView::Serialize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& converter) const {
   return absl::visit(
-      [&value_manager](auto alternative) -> absl::StatusOr<absl::Cord> {
-        return alternative.Serialize(value_manager);
+      [&converter](auto alternative) -> absl::StatusOr<absl::Cord> {
+        return alternative.Serialize(converter);
       },
       variant_);
 }
@@ -211,29 +211,29 @@ absl::StatusOr<std::string> MapValueView::GetTypeUrl(
       variant_);
 }
 
-absl::StatusOr<Any> MapValueView::ConvertToAny(ValueManager& value_manager,
+absl::StatusOr<Any> MapValueView::ConvertToAny(AnyToJsonConverter& converter,
                                                absl::string_view prefix) const {
   return absl::visit(
-      [&value_manager, prefix](auto alternative) -> absl::StatusOr<Any> {
-        return alternative.ConvertToAny(value_manager, prefix);
+      [&converter, prefix](auto alternative) -> absl::StatusOr<Any> {
+        return alternative.ConvertToAny(converter, prefix);
       },
       variant_);
 }
 
 absl::StatusOr<Json> MapValueView::ConvertToJson(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& converter) const {
   return absl::visit(
-      [&value_manager](auto alternative) -> absl::StatusOr<Json> {
-        return alternative.ConvertToJson(value_manager);
+      [&converter](auto alternative) -> absl::StatusOr<Json> {
+        return alternative.ConvertToJson(converter);
       },
       variant_);
 }
 
 absl::StatusOr<JsonObject> MapValueView::ConvertToJsonObject(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& converter) const {
   return absl::visit(
-      [&value_manager](auto alternative) -> absl::StatusOr<JsonObject> {
-        return alternative.ConvertToJsonObject(value_manager);
+      [&converter](auto alternative) -> absl::StatusOr<JsonObject> {
+        return alternative.ConvertToJsonObject(converter);
       },
       variant_);
 }

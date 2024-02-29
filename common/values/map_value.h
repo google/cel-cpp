@@ -135,24 +135,24 @@ class MapValue final {
 
   std::string DebugString() const;
 
-  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const;
+  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter& converter) const;
 
-  absl::Status SerializeTo(ValueManager& value_manager,
+  absl::Status SerializeTo(AnyToJsonConverter& converter,
                            absl::Cord& value) const;
 
-  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const;
+  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& converter) const;
 
   absl::StatusOr<std::string> GetTypeUrl(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Any> ConvertToAny(
-      ValueManager& value_manager,
+      AnyToJsonConverter& converter,
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const;
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const;
 
   absl::StatusOr<JsonObject> ConvertToJsonObject(
-      ValueManager& value_manager) const;
+      AnyToJsonConverter& converter) const;
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
@@ -403,24 +403,24 @@ class MapValueView final {
 
   std::string DebugString() const;
 
-  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const;
+  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter& converter) const;
 
-  absl::Status SerializeTo(ValueManager& value_manager,
+  absl::Status SerializeTo(AnyToJsonConverter& converter,
                            absl::Cord& value) const;
 
-  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const;
+  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& converter) const;
 
   absl::StatusOr<std::string> GetTypeUrl(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Any> ConvertToAny(
-      ValueManager& value_manager,
+      AnyToJsonConverter& converter,
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const;
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const;
 
   absl::StatusOr<JsonObject> ConvertToJsonObject(
-      ValueManager& value_manager) const;
+      AnyToJsonConverter& converter) const;
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch

@@ -117,19 +117,20 @@ class OpaqueValue {
   std::string DebugString() const { return interface_->DebugString(); }
 
   // See `ValueInterface::GetSerializedSize`.
-  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const {
-    return interface_->GetSerializedSize(value_manager);
+  absl::StatusOr<size_t> GetSerializedSize(
+      AnyToJsonConverter& converter) const {
+    return interface_->GetSerializedSize(converter);
   }
 
   // See `ValueInterface::SerializeTo`.
-  absl::Status SerializeTo(ValueManager& value_manager,
+  absl::Status SerializeTo(AnyToJsonConverter& converter,
                            absl::Cord& value) const {
-    return interface_->SerializeTo(value_manager, value);
+    return interface_->SerializeTo(converter, value);
   }
 
   // See `ValueInterface::Serialize`.
-  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const {
-    return interface_->Serialize(value_manager);
+  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& converter) const {
+    return interface_->Serialize(converter);
   }
 
   // See `ValueInterface::GetTypeUrl`.
@@ -140,13 +141,13 @@ class OpaqueValue {
 
   // See `ValueInterface::ConvertToAny`.
   absl::StatusOr<Any> ConvertToAny(
-      ValueManager& value_manager,
+      AnyToJsonConverter& converter,
       absl::string_view prefix = kTypeGoogleApisComPrefix) const {
-    return interface_->ConvertToAny(value_manager, prefix);
+    return interface_->ConvertToAny(converter, prefix);
   }
 
-  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const {
-    return interface_->ConvertToJson(value_manager);
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const {
+    return interface_->ConvertToJson(converter);
   }
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
@@ -268,19 +269,20 @@ class OpaqueValueView {
   std::string DebugString() const { return interface_->DebugString(); }
 
   // See `ValueInterface::GetSerializedSize`.
-  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const {
-    return interface_->GetSerializedSize(value_manager);
+  absl::StatusOr<size_t> GetSerializedSize(
+      AnyToJsonConverter& converter) const {
+    return interface_->GetSerializedSize(converter);
   }
 
   // See `ValueInterface::SerializeTo`.
-  absl::Status SerializeTo(ValueManager& value_manager,
+  absl::Status SerializeTo(AnyToJsonConverter& converter,
                            absl::Cord& value) const {
-    return interface_->SerializeTo(value_manager, value);
+    return interface_->SerializeTo(converter, value);
   }
 
   // See `ValueInterface::Serialize`.
-  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const {
-    return interface_->Serialize(value_manager);
+  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& converter) const {
+    return interface_->Serialize(converter);
   }
 
   // See `ValueInterface::GetTypeUrl`.
@@ -291,13 +293,13 @@ class OpaqueValueView {
 
   // See `ValueInterface::ConvertToAny`.
   absl::StatusOr<Any> ConvertToAny(
-      ValueManager& value_manager,
+      AnyToJsonConverter& converter,
       absl::string_view prefix = kTypeGoogleApisComPrefix) const {
-    return interface_->ConvertToAny(value_manager, prefix);
+    return interface_->ConvertToAny(converter, prefix);
   }
 
-  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const {
-    return interface_->ConvertToJson(value_manager);
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const {
+    return interface_->ConvertToJson(converter);
   }
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,

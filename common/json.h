@@ -25,6 +25,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
 #include "common/any.h"
 #include "internal/copy_on_write.h"
@@ -452,6 +453,18 @@ absl::Status JsonArrayToAnyValue(const JsonArray& json, absl::Cord& data);
 // `google.protobuf.Struct`.
 absl::StatusOr<Any> JsonObjectToAny(const JsonObject& json);
 absl::Status JsonObjectToAnyValue(const JsonObject& json, absl::Cord& data);
+
+class AnyToJsonConverter {
+ public:
+  virtual ~AnyToJsonConverter() = default;
+
+  virtual absl::StatusOr<Json> ConvertToJson(absl::string_view type_url,
+                                             const absl::Cord& value) = 0;
+
+  absl::StatusOr<Json> ConvertToJson(const Any& any) {
+    return ConvertToJson(any.type_url(), any.value());
+  }
+};
 
 template <typename T>
 inline JsonArray MakeJsonArray(std::initializer_list<T> il) {

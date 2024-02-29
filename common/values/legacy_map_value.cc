@@ -201,19 +201,20 @@ std::string LegacyMapValue::DebugString() const {
   return (*legacy_map_value_vtable.debug_string)(impl_);
 }
 
-absl::StatusOr<size_t> LegacyMapValue::GetSerializedSize(ValueManager&) const {
+absl::StatusOr<size_t> LegacyMapValue::GetSerializedSize(
+    AnyToJsonConverter&) const {
   InitializeLegacyMapValue();
   return (*legacy_map_value_vtable.get_serialized_size)(impl_);
 }
 
-absl::Status LegacyMapValue::SerializeTo(ValueManager&,
+absl::Status LegacyMapValue::SerializeTo(AnyToJsonConverter&,
                                          absl::Cord& value) const {
   InitializeLegacyMapValue();
   return (*legacy_map_value_vtable.serialize_to)(impl_, value);
 }
 
 absl::StatusOr<absl::Cord> LegacyMapValue::Serialize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& value_manager) const {
   absl::Cord serialized_value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, serialized_value));
   return serialized_value;
@@ -225,14 +226,14 @@ absl::StatusOr<std::string> LegacyMapValue::GetTypeUrl(
 }
 
 absl::StatusOr<Any> LegacyMapValue::ConvertToAny(
-    ValueManager& value_manager, absl::string_view prefix) const {
+    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
 absl::StatusOr<JsonObject> LegacyMapValue::ConvertToJsonObject(
-    ValueManager&) const {
+    AnyToJsonConverter&) const {
   InitializeLegacyMapValue();
   return (*legacy_map_value_vtable.convert_to_json_object)(impl_);
 }
@@ -305,12 +306,12 @@ std::string LegacyMapValueView::DebugString() const {
 }
 
 absl::StatusOr<size_t> LegacyMapValueView::GetSerializedSize(
-    ValueManager&) const {
+    AnyToJsonConverter&) const {
   InitializeLegacyMapValue();
   return (*legacy_map_value_vtable.get_serialized_size)(impl_);
 }
 
-absl::Status LegacyMapValueView::SerializeTo(ValueManager&,
+absl::Status LegacyMapValueView::SerializeTo(AnyToJsonConverter&,
                                              absl::Cord& value) const {
   InitializeLegacyMapValue();
   return (*legacy_map_value_vtable.serialize_to)(impl_, value);
@@ -318,7 +319,7 @@ absl::Status LegacyMapValueView::SerializeTo(ValueManager&,
 
 // See `ValueInterface::Serialize`.
 absl::StatusOr<absl::Cord> LegacyMapValueView::Serialize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& value_manager) const {
   absl::Cord serialized_value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, serialized_value));
   return serialized_value;
@@ -330,14 +331,14 @@ absl::StatusOr<std::string> LegacyMapValueView::GetTypeUrl(
 }
 
 absl::StatusOr<Any> LegacyMapValueView::ConvertToAny(
-    ValueManager& value_manager, absl::string_view prefix) const {
+    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
 absl::StatusOr<JsonObject> LegacyMapValueView::ConvertToJsonObject(
-    ValueManager&) const {
+    AnyToJsonConverter&) const {
   InitializeLegacyMapValue();
   return (*legacy_map_value_vtable.convert_to_json_object)(impl_);
 }

@@ -68,19 +68,20 @@ class DurationValue final {
 
   std::string DebugString() const;
 
-  absl::StatusOr<size_t> GetSerializedSize(ValueManager&) const;
+  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
 
-  absl::Status SerializeTo(ValueManager&, absl::Cord& value) const;
+  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
 
-  absl::StatusOr<absl::Cord> Serialize(ValueManager&) const;
+  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
 
   absl::StatusOr<std::string> GetTypeUrl(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Any> ConvertToAny(
-      ValueManager&, absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+      AnyToJsonConverter&,
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson(ValueManager&) const;
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
@@ -162,19 +163,20 @@ class DurationValueView final {
 
   std::string DebugString() const;
 
-  absl::StatusOr<size_t> GetSerializedSize(ValueManager&) const;
+  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
 
-  absl::Status SerializeTo(ValueManager&, absl::Cord& value) const;
+  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
 
-  absl::StatusOr<absl::Cord> Serialize(ValueManager&) const;
+  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
 
   absl::StatusOr<std::string> GetTypeUrl(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Any> ConvertToAny(
-      ValueManager&, absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+      AnyToJsonConverter&,
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson(ValueManager&) const;
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch

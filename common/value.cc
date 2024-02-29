@@ -120,7 +120,7 @@ std::string Value::DebugString() const {
 }
 
 absl::StatusOr<size_t> Value::GetSerializedSize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& value_manager) const {
   AssertIsValid();
   return absl::visit(
       [&value_manager](const auto& alternative) -> absl::StatusOr<size_t> {
@@ -137,7 +137,7 @@ absl::StatusOr<size_t> Value::GetSerializedSize(
       variant_);
 }
 
-absl::Status Value::SerializeTo(ValueManager& value_manager,
+absl::Status Value::SerializeTo(AnyToJsonConverter& value_manager,
                                 absl::Cord& value) const {
   AssertIsValid();
   return absl::visit(
@@ -155,7 +155,8 @@ absl::Status Value::SerializeTo(ValueManager& value_manager,
       variant_);
 }
 
-absl::StatusOr<absl::Cord> Value::Serialize(ValueManager& value_manager) const {
+absl::StatusOr<absl::Cord> Value::Serialize(
+    AnyToJsonConverter& value_manager) const {
   AssertIsValid();
   return absl::visit(
       [&value_manager](const auto& alternative) -> absl::StatusOr<absl::Cord> {
@@ -189,7 +190,7 @@ absl::StatusOr<std::string> Value::GetTypeUrl(absl::string_view prefix) const {
       variant_);
 }
 
-absl::StatusOr<Any> Value::ConvertToAny(ValueManager& value_manager,
+absl::StatusOr<Any> Value::ConvertToAny(AnyToJsonConverter& value_manager,
                                         absl::string_view prefix) const {
   AssertIsValid();
   return absl::visit(
@@ -207,7 +208,8 @@ absl::StatusOr<Any> Value::ConvertToAny(ValueManager& value_manager,
       variant_);
 }
 
-absl::StatusOr<Json> Value::ConvertToJson(ValueManager& value_manager) const {
+absl::StatusOr<Json> Value::ConvertToJson(
+    AnyToJsonConverter& value_manager) const {
   AssertIsValid();
   return absl::visit(
       [&value_manager](const auto& alternative) -> absl::StatusOr<Json> {
@@ -359,7 +361,7 @@ std::string ValueView::DebugString() const {
 }
 
 absl::StatusOr<size_t> ValueView::GetSerializedSize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& value_manager) const {
   AssertIsValid();
   return absl::visit(
       [&value_manager](auto alternative) -> absl::StatusOr<size_t> {
@@ -376,7 +378,7 @@ absl::StatusOr<size_t> ValueView::GetSerializedSize(
       variant_);
 }
 
-absl::Status ValueView::SerializeTo(ValueManager& value_manager,
+absl::Status ValueView::SerializeTo(AnyToJsonConverter& value_manager,
                                     absl::Cord& value) const {
   AssertIsValid();
   return absl::visit(
@@ -395,7 +397,7 @@ absl::Status ValueView::SerializeTo(ValueManager& value_manager,
 }
 
 absl::StatusOr<absl::Cord> ValueView::Serialize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& value_manager) const {
   AssertIsValid();
   return absl::visit(
       [&value_manager](auto alternative) -> absl::StatusOr<absl::Cord> {
@@ -430,7 +432,7 @@ absl::StatusOr<std::string> ValueView::GetTypeUrl(
       variant_);
 }
 
-absl::StatusOr<Any> ValueView::ConvertToAny(ValueManager& value_manager,
+absl::StatusOr<Any> ValueView::ConvertToAny(AnyToJsonConverter& value_manager,
                                             absl::string_view prefix) const {
   AssertIsValid();
   return absl::visit(
@@ -449,7 +451,7 @@ absl::StatusOr<Any> ValueView::ConvertToAny(ValueManager& value_manager,
 }
 
 absl::StatusOr<Json> ValueView::ConvertToJson(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& value_manager) const {
   AssertIsValid();
   return absl::visit(
       [&value_manager](auto alternative) -> absl::StatusOr<Json> {

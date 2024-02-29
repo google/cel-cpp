@@ -181,13 +181,14 @@ std::string LegacyListValue::DebugString() const {
 }
 
 // See `ValueInterface::GetSerializedSize`.
-absl::StatusOr<size_t> LegacyListValue::GetSerializedSize(ValueManager&) const {
+absl::StatusOr<size_t> LegacyListValue::GetSerializedSize(
+    AnyToJsonConverter&) const {
   InitializeLegacyListValue();
   return (*legacy_list_value_vtable.get_serialized_size)(impl_);
 }
 
 // See `ValueInterface::SerializeTo`.
-absl::Status LegacyListValue::SerializeTo(ValueManager&,
+absl::Status LegacyListValue::SerializeTo(AnyToJsonConverter&,
                                           absl::Cord& value) const {
   InitializeLegacyListValue();
   return (*legacy_list_value_vtable.serialize_to)(impl_, value);
@@ -195,7 +196,7 @@ absl::Status LegacyListValue::SerializeTo(ValueManager&,
 
 // See `ValueInterface::Serialize`.
 absl::StatusOr<absl::Cord> LegacyListValue::Serialize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& value_manager) const {
   absl::Cord serialized_value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, serialized_value));
   return serialized_value;
@@ -209,14 +210,14 @@ absl::StatusOr<std::string> LegacyListValue::GetTypeUrl(
 
 // See `ValueInterface::ConvertToAny`.
 absl::StatusOr<Any> LegacyListValue::ConvertToAny(
-    ValueManager& value_manager, absl::string_view prefix) const {
+    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
 absl::StatusOr<JsonArray> LegacyListValue::ConvertToJsonArray(
-    ValueManager&) const {
+    AnyToJsonConverter&) const {
   InitializeLegacyListValue();
   return (*legacy_list_value_vtable.convert_to_json_array)(impl_);
 }
@@ -288,13 +289,13 @@ std::string LegacyListValueView::DebugString() const {
 
 // See `ValueInterface::GetSerializedSize`.
 absl::StatusOr<size_t> LegacyListValueView::GetSerializedSize(
-    ValueManager&) const {
+    AnyToJsonConverter&) const {
   InitializeLegacyListValue();
   return (*legacy_list_value_vtable.get_serialized_size)(impl_);
 }
 
 // See `ValueInterface::SerializeTo`.
-absl::Status LegacyListValueView::SerializeTo(ValueManager&,
+absl::Status LegacyListValueView::SerializeTo(AnyToJsonConverter&,
                                               absl::Cord& value) const {
   InitializeLegacyListValue();
   return (*legacy_list_value_vtable.serialize_to)(impl_, value);
@@ -302,7 +303,7 @@ absl::Status LegacyListValueView::SerializeTo(ValueManager&,
 
 // See `ValueInterface::Serialize`.
 absl::StatusOr<absl::Cord> LegacyListValueView::Serialize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& value_manager) const {
   absl::Cord serialized_value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, serialized_value));
   return serialized_value;
@@ -316,14 +317,14 @@ absl::StatusOr<std::string> LegacyListValueView::GetTypeUrl(
 
 // See `ValueInterface::ConvertToAny`.
 absl::StatusOr<Any> LegacyListValueView::ConvertToAny(
-    ValueManager& value_manager, absl::string_view prefix) const {
+    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
 absl::StatusOr<JsonArray> LegacyListValueView::ConvertToJsonArray(
-    ValueManager&) const {
+    AnyToJsonConverter&) const {
   InitializeLegacyListValue();
   return (*legacy_list_value_vtable.convert_to_json_array)(impl_);
 }

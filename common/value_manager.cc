@@ -16,10 +16,17 @@
 
 #include <utility>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "common/json.h"
 #include "common/memory.h"
 #include "common/type_reflector.h"
 #include "common/values/thread_compatible_value_manager.h"
 #include "common/values/thread_safe_value_manager.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -34,6 +41,17 @@ Shared<ValueManager> NewThreadSafeValueManager(
     MemoryManagerRef memory_manager, Shared<TypeReflector> type_reflector) {
   return memory_manager.MakeShared<common_internal::ThreadSafeValueManager>(
       memory_manager, std::move(type_reflector));
+}
+
+absl::StatusOr<Json> ValueManager::ConvertToJson(absl::string_view type_url,
+                                                 const absl::Cord& value) {
+  CEL_ASSIGN_OR_RETURN(auto deserialized_value,
+                       DeserializeValue(type_url, value));
+  if (!deserialized_value.has_value()) {
+    return absl::NotFoundError(
+        absl::StrCat("no deserializer for `", type_url, "`"));
+  }
+  return deserialized_value->ConvertToJson(*this);
 }
 
 }  // namespace cel

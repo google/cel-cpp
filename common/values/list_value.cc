@@ -48,28 +48,28 @@ std::string ListValue::DebugString() const {
 }
 
 absl::StatusOr<size_t> ListValue::GetSerializedSize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& converter) const {
   return absl::visit(
-      [&value_manager](const auto& alternative) -> absl::StatusOr<size_t> {
-        return alternative.GetSerializedSize(value_manager);
+      [&converter](const auto& alternative) -> absl::StatusOr<size_t> {
+        return alternative.GetSerializedSize(converter);
       },
       variant_);
 }
 
-absl::Status ListValue::SerializeTo(ValueManager& value_manager,
+absl::Status ListValue::SerializeTo(AnyToJsonConverter& converter,
                                     absl::Cord& value) const {
   return absl::visit(
-      [&value_manager, &value](const auto& alternative) -> absl::Status {
-        return alternative.SerializeTo(value_manager, value);
+      [&converter, &value](const auto& alternative) -> absl::Status {
+        return alternative.SerializeTo(converter, value);
       },
       variant_);
 }
 
 absl::StatusOr<absl::Cord> ListValue::Serialize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& converter) const {
   return absl::visit(
-      [&value_manager](const auto& alternative) -> absl::StatusOr<absl::Cord> {
-        return alternative.Serialize(value_manager);
+      [&converter](const auto& alternative) -> absl::StatusOr<absl::Cord> {
+        return alternative.Serialize(converter);
       },
       variant_);
 }
@@ -83,29 +83,29 @@ absl::StatusOr<std::string> ListValue::GetTypeUrl(
       variant_);
 }
 
-absl::StatusOr<Any> ListValue::ConvertToAny(ValueManager& value_manager,
+absl::StatusOr<Any> ListValue::ConvertToAny(AnyToJsonConverter& converter,
                                             absl::string_view prefix) const {
   return absl::visit(
-      [&value_manager, prefix](const auto& alternative) -> absl::StatusOr<Any> {
-        return alternative.ConvertToAny(value_manager, prefix);
+      [&converter, prefix](const auto& alternative) -> absl::StatusOr<Any> {
+        return alternative.ConvertToAny(converter, prefix);
       },
       variant_);
 }
 
 absl::StatusOr<Json> ListValue::ConvertToJson(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& converter) const {
   return absl::visit(
-      [&value_manager](const auto& alternative) -> absl::StatusOr<Json> {
-        return alternative.ConvertToJson(value_manager);
+      [&converter](const auto& alternative) -> absl::StatusOr<Json> {
+        return alternative.ConvertToJson(converter);
       },
       variant_);
 }
 
 absl::StatusOr<JsonArray> ListValue::ConvertToJsonArray(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& converter) const {
   return absl::visit(
-      [&value_manager](const auto& alternative) -> absl::StatusOr<JsonArray> {
-        return alternative.ConvertToJsonArray(value_manager);
+      [&converter](const auto& alternative) -> absl::StatusOr<JsonArray> {
+        return alternative.ConvertToJsonArray(converter);
       },
       variant_);
 }
@@ -162,28 +162,28 @@ std::string ListValueView::DebugString() const {
 }
 
 absl::StatusOr<size_t> ListValueView::GetSerializedSize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& converter) const {
   return absl::visit(
-      [&value_manager](auto alternative) -> absl::StatusOr<size_t> {
-        return alternative.GetSerializedSize(value_manager);
+      [&converter](auto alternative) -> absl::StatusOr<size_t> {
+        return alternative.GetSerializedSize(converter);
       },
       variant_);
 }
 
-absl::Status ListValueView::SerializeTo(ValueManager& value_manager,
+absl::Status ListValueView::SerializeTo(AnyToJsonConverter& converter,
                                         absl::Cord& value) const {
   return absl::visit(
-      [&value_manager, &value](auto alternative) -> absl::Status {
-        return alternative.SerializeTo(value_manager, value);
+      [&converter, &value](auto alternative) -> absl::Status {
+        return alternative.SerializeTo(converter, value);
       },
       variant_);
 }
 
 absl::StatusOr<absl::Cord> ListValueView::Serialize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& converter) const {
   return absl::visit(
-      [&value_manager](auto alternative) -> absl::StatusOr<absl::Cord> {
-        return alternative.Serialize(value_manager);
+      [&converter](auto alternative) -> absl::StatusOr<absl::Cord> {
+        return alternative.Serialize(converter);
       },
       variant_);
 }
@@ -198,28 +198,28 @@ absl::StatusOr<std::string> ListValueView::GetTypeUrl(
 }
 
 absl::StatusOr<Any> ListValueView::ConvertToAny(
-    ValueManager& value_manager, absl::string_view prefix) const {
+    AnyToJsonConverter& converter, absl::string_view prefix) const {
   return absl::visit(
-      [&value_manager, prefix](auto alternative) -> absl::StatusOr<Any> {
-        return alternative.ConvertToAny(value_manager, prefix);
+      [&converter, prefix](auto alternative) -> absl::StatusOr<Any> {
+        return alternative.ConvertToAny(converter, prefix);
       },
       variant_);
 }
 
 absl::StatusOr<Json> ListValueView::ConvertToJson(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& converter) const {
   return absl::visit(
-      [&value_manager](auto alternative) -> absl::StatusOr<Json> {
-        return alternative.ConvertToJson(value_manager);
+      [&converter](auto alternative) -> absl::StatusOr<Json> {
+        return alternative.ConvertToJson(converter);
       },
       variant_);
 }
 
 absl::StatusOr<JsonArray> ListValueView::ConvertToJsonArray(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& converter) const {
   return absl::visit(
-      [&value_manager](auto alternative) -> absl::StatusOr<JsonArray> {
-        return alternative.ConvertToJsonArray(value_manager);
+      [&converter](auto alternative) -> absl::StatusOr<JsonArray> {
+        return alternative.ConvertToJsonArray(converter);
       },
       variant_);
 }

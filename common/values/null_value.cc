@@ -29,16 +29,17 @@
 
 namespace cel {
 
-absl::StatusOr<size_t> NullValue::GetSerializedSize(ValueManager&) const {
+absl::StatusOr<size_t> NullValue::GetSerializedSize(AnyToJsonConverter&) const {
   return internal::SerializedValueSize(kJsonNull);
 }
 
-absl::Status NullValue::SerializeTo(ValueManager&, absl::Cord& value) const {
+absl::Status NullValue::SerializeTo(AnyToJsonConverter&,
+                                    absl::Cord& value) const {
   return internal::SerializeValue(kJsonNull, value);
 }
 
 absl::StatusOr<absl::Cord> NullValue::Serialize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& value_manager) const {
   absl::Cord value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
@@ -49,7 +50,7 @@ absl::StatusOr<std::string> NullValue::GetTypeUrl(
   return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Value");
 }
 
-absl::StatusOr<Any> NullValue::ConvertToAny(ValueManager& value_manager,
+absl::StatusOr<Any> NullValue::ConvertToAny(AnyToJsonConverter& value_manager,
                                             absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
@@ -61,17 +62,18 @@ absl::StatusOr<ValueView> NullValue::Equal(ValueManager&, ValueView other,
   return BoolValueView{InstanceOf<NullValueView>(other)};
 }
 
-absl::StatusOr<size_t> NullValueView::GetSerializedSize(ValueManager&) const {
+absl::StatusOr<size_t> NullValueView::GetSerializedSize(
+    AnyToJsonConverter&) const {
   return internal::SerializedValueSize(kJsonNull);
 }
 
-absl::Status NullValueView::SerializeTo(ValueManager&,
+absl::Status NullValueView::SerializeTo(AnyToJsonConverter&,
                                         absl::Cord& value) const {
   return internal::SerializeValue(kJsonNull, value);
 }
 
 absl::StatusOr<absl::Cord> NullValueView::Serialize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& value_manager) const {
   absl::Cord value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
@@ -83,7 +85,7 @@ absl::StatusOr<std::string> NullValueView::GetTypeUrl(
 }
 
 absl::StatusOr<Any> NullValueView::ConvertToAny(
-    ValueManager& value_manager, absl::string_view prefix) const {
+    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));

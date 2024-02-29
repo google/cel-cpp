@@ -78,14 +78,15 @@ class LegacyMapValue final {
   std::string DebugString() const;
 
   // See `ValueInterface::GetSerializedSize`.
-  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const;
+  absl::StatusOr<size_t> GetSerializedSize(
+      AnyToJsonConverter& value_manager) const;
 
   // See `ValueInterface::SerializeTo`.
-  absl::Status SerializeTo(ValueManager& value_manager,
+  absl::Status SerializeTo(AnyToJsonConverter& value_manager,
                            absl::Cord& value) const;
 
   // See `ValueInterface::Serialize`.
-  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const;
+  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& value_manager) const;
 
   // See `ValueInterface::GetTypeUrl`.
   absl::StatusOr<std::string> GetTypeUrl(
@@ -93,15 +94,15 @@ class LegacyMapValue final {
 
   // See `ValueInterface::ConvertToAny`.
   absl::StatusOr<Any> ConvertToAny(
-      ValueManager& value_manager,
+      AnyToJsonConverter& value_manager,
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const {
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const {
     return ConvertToJsonObject(value_manager);
   }
 
   absl::StatusOr<JsonObject> ConvertToJsonObject(
-      ValueManager& value_manager) const;
+      AnyToJsonConverter& value_manager) const;
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
@@ -199,14 +200,15 @@ class LegacyMapValueView final {
   std::string DebugString() const;
 
   // See `ValueInterface::GetSerializedSize`.
-  absl::StatusOr<size_t> GetSerializedSize(ValueManager& value_manager) const;
+  absl::StatusOr<size_t> GetSerializedSize(
+      AnyToJsonConverter& value_manager) const;
 
   // See `ValueInterface::SerializeTo`.
-  absl::Status SerializeTo(ValueManager& value_manager,
+  absl::Status SerializeTo(AnyToJsonConverter& value_manager,
                            absl::Cord& value) const;
 
   // See `ValueInterface::Serialize`.
-  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const;
+  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& value_manager) const;
 
   // See `ValueInterface::GetTypeUrl`.
   absl::StatusOr<std::string> GetTypeUrl(
@@ -214,15 +216,15 @@ class LegacyMapValueView final {
 
   // See `ValueInterface::ConvertToAny`.
   absl::StatusOr<Any> ConvertToAny(
-      ValueManager& value_manager,
+      AnyToJsonConverter& value_manager,
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const {
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const {
     return ConvertToJsonObject(value_manager);
   }
 
   absl::StatusOr<JsonObject> ConvertToJsonObject(
-      ValueManager& value_manager) const;
+      AnyToJsonConverter& value_manager) const;
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch

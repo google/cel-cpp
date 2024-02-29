@@ -64,19 +64,22 @@ class NullValue final {
 
   std::string DebugString() const { return "null"; }
 
-  absl::StatusOr<size_t> GetSerializedSize(ValueManager&) const;
+  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
 
-  absl::Status SerializeTo(ValueManager&, absl::Cord& value) const;
+  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
 
-  absl::StatusOr<absl::Cord> Serialize(ValueManager&) const;
+  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
 
   absl::StatusOr<std::string> GetTypeUrl(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Any> ConvertToAny(
-      ValueManager&, absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+      AnyToJsonConverter&,
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson(ValueManager&) const { return kJsonNull; }
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const {
+    return kJsonNull;
+  }
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch
@@ -124,19 +127,22 @@ class NullValueView final {
 
   std::string DebugString() const { return "null"; }
 
-  absl::StatusOr<size_t> GetSerializedSize(ValueManager&) const;
+  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
 
-  absl::Status SerializeTo(ValueManager&, absl::Cord& value) const;
+  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
 
-  absl::StatusOr<absl::Cord> Serialize(ValueManager&) const;
+  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
 
   absl::StatusOr<std::string> GetTypeUrl(
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   absl::StatusOr<Any> ConvertToAny(
-      ValueManager&, absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+      AnyToJsonConverter&,
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
-  absl::StatusOr<Json> ConvertToJson(ValueManager&) const { return kJsonNull; }
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const {
+    return kJsonNull;
+  }
 
   absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
                                   Value& scratch

@@ -43,17 +43,18 @@ std::string DurationValue::DebugString() const {
   return DurationDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> DurationValue::GetSerializedSize(ValueManager&) const {
+absl::StatusOr<size_t> DurationValue::GetSerializedSize(
+    AnyToJsonConverter&) const {
   return internal::SerializedDurationSize(NativeValue());
 }
 
-absl::Status DurationValue::SerializeTo(ValueManager&,
+absl::Status DurationValue::SerializeTo(AnyToJsonConverter&,
                                         absl::Cord& value) const {
   return internal::SerializeDuration(NativeValue(), value);
 }
 
 absl::StatusOr<absl::Cord> DurationValue::Serialize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& value_manager) const {
   absl::Cord value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
@@ -65,13 +66,13 @@ absl::StatusOr<std::string> DurationValue::GetTypeUrl(
 }
 
 absl::StatusOr<Any> DurationValue::ConvertToAny(
-    ValueManager& value_manager, absl::string_view prefix) const {
+    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> DurationValue::ConvertToJson(ValueManager&) const {
+absl::StatusOr<Json> DurationValue::ConvertToJson(AnyToJsonConverter&) const {
   CEL_ASSIGN_OR_RETURN(auto json,
                        internal::EncodeDurationToJson(NativeValue()));
   return JsonString(std::move(json));
@@ -91,17 +92,17 @@ std::string DurationValueView::DebugString() const {
 }
 
 absl::StatusOr<size_t> DurationValueView::GetSerializedSize(
-    ValueManager&) const {
+    AnyToJsonConverter&) const {
   return internal::SerializedDurationSize(NativeValue());
 }
 
-absl::Status DurationValueView::SerializeTo(ValueManager&,
+absl::Status DurationValueView::SerializeTo(AnyToJsonConverter&,
                                             absl::Cord& value) const {
   return internal::SerializeDuration(NativeValue(), value);
 }
 
 absl::StatusOr<absl::Cord> DurationValueView::Serialize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& value_manager) const {
   absl::Cord value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
@@ -113,13 +114,14 @@ absl::StatusOr<std::string> DurationValueView::GetTypeUrl(
 }
 
 absl::StatusOr<Any> DurationValueView::ConvertToAny(
-    ValueManager& value_manager, absl::string_view prefix) const {
+    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> DurationValueView::ConvertToJson(ValueManager&) const {
+absl::StatusOr<Json> DurationValueView::ConvertToJson(
+    AnyToJsonConverter&) const {
   CEL_ASSIGN_OR_RETURN(auto json,
                        internal::EncodeDurationToJson(NativeValue()));
   return JsonString(std::move(json));

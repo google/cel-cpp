@@ -57,16 +57,16 @@ class ValueInterface : public common_internal::DataInterface {
   // from serialization, without performing the serialization. If this value
   // does not support serialization, `FAILED_PRECONDITION` is returned.
   virtual absl::StatusOr<size_t> GetSerializedSize(
-      ValueManager& value_manager) const;
+      AnyToJsonConverter& converter) const;
 
   // `SerializeTo` serializes this value and appends it to `value`. If this
   // value does not support serialization, `FAILED_PRECONDITION` is returned.
-  virtual absl::Status SerializeTo(ValueManager& value_manager,
+  virtual absl::Status SerializeTo(AnyToJsonConverter& converter,
                                    absl::Cord& value) const;
 
   // `Serialize` serializes this value and returns it as `absl::Cord`. If this
   // value does not support serialization, `FAILED_PRECONDITION` is returned.
-  absl::StatusOr<absl::Cord> Serialize(ValueManager& value_manager) const;
+  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& converter) const;
 
   // 'GetTypeUrl' returns the type URL that can be used as the type URL for
   // `Any`. If this value does not support serialization, `FAILED_PRECONDITION`
@@ -79,12 +79,13 @@ class ValueInterface : public common_internal::DataInterface {
   // serialization, `FAILED_PRECONDITION` is returned.
   // NOLINTNEXTLINE(google-default-arguments)
   absl::StatusOr<Any> ConvertToAny(
-      ValueManager& value_manager,
+      AnyToJsonConverter& converter,
       absl::string_view prefix = kTypeGoogleApisComPrefix) const;
 
   // `ConvertToJson` converts this value to `Json`. If this value does not
   // support conversion to JSON, `FAILED_PRECONDITION` is returned.
-  virtual absl::StatusOr<Json> ConvertToJson(ValueManager& value_manager) const;
+  virtual absl::StatusOr<Json> ConvertToJson(
+      AnyToJsonConverter& converter) const;
 
  protected:
   virtual Type GetTypeImpl(TypeManager&) const = 0;

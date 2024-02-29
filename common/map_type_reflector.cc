@@ -362,7 +362,7 @@ class TypedMapValue final : public ParsedMapValueInterface {
   size_t Size() const override { return entries_.size(); }
 
   absl::StatusOr<JsonObject> ConvertToJsonObject(
-      ValueManager& value_manager) const override {
+      AnyToJsonConverter& value_manager) const override {
     JsonObjectBuilder builder;
     builder.reserve(Size());
     for (const auto& entry : entries_) {

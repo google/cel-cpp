@@ -51,20 +51,22 @@ std::string BytesDebugString(const Bytes& value) {
 
 std::string BytesValue::DebugString() const { return BytesDebugString(*this); }
 
-absl::StatusOr<size_t> BytesValue::GetSerializedSize(ValueManager&) const {
+absl::StatusOr<size_t> BytesValue::GetSerializedSize(
+    AnyToJsonConverter&) const {
   return NativeValue([](const auto& bytes) -> size_t {
     return internal::SerializedBytesValueSize(bytes);
   });
 }
 
-absl::Status BytesValue::SerializeTo(ValueManager&, absl::Cord& value) const {
+absl::Status BytesValue::SerializeTo(AnyToJsonConverter&,
+                                     absl::Cord& value) const {
   return NativeValue([&value](const auto& bytes) -> absl::Status {
     return internal::SerializeBytesValue(bytes, value);
   });
 }
 
 absl::StatusOr<absl::Cord> BytesValue::Serialize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& value_manager) const {
   absl::Cord value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
@@ -75,14 +77,14 @@ absl::StatusOr<std::string> BytesValue::GetTypeUrl(
   return MakeTypeUrlWithPrefix(prefix, "google.protobuf.BytesValue");
 }
 
-absl::StatusOr<Any> BytesValue::ConvertToAny(ValueManager& value_manager,
+absl::StatusOr<Any> BytesValue::ConvertToAny(AnyToJsonConverter& value_manager,
                                              absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> BytesValue::ConvertToJson(ValueManager&) const {
+absl::StatusOr<Json> BytesValue::ConvertToJson(AnyToJsonConverter&) const {
   return NativeValue(
       [](const auto& value) -> Json { return JsonBytes(value); });
 }
@@ -168,13 +170,14 @@ std::string BytesValueView::DebugString() const {
   return BytesDebugString(*this);
 }
 
-absl::StatusOr<size_t> BytesValueView::GetSerializedSize(ValueManager&) const {
+absl::StatusOr<size_t> BytesValueView::GetSerializedSize(
+    AnyToJsonConverter&) const {
   return NativeValue([](const auto& bytes) -> size_t {
     return internal::SerializedBytesValueSize(bytes);
   });
 }
 
-absl::Status BytesValueView::SerializeTo(ValueManager&,
+absl::Status BytesValueView::SerializeTo(AnyToJsonConverter&,
                                          absl::Cord& value) const {
   return NativeValue([&value](const auto& bytes) -> absl::Status {
     return internal::SerializeBytesValue(bytes, value);
@@ -182,7 +185,7 @@ absl::Status BytesValueView::SerializeTo(ValueManager&,
 }
 
 absl::StatusOr<absl::Cord> BytesValueView::Serialize(
-    ValueManager& value_manager) const {
+    AnyToJsonConverter& value_manager) const {
   absl::Cord value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
@@ -194,13 +197,13 @@ absl::StatusOr<std::string> BytesValueView::GetTypeUrl(
 }
 
 absl::StatusOr<Any> BytesValueView::ConvertToAny(
-    ValueManager& value_manager, absl::string_view prefix) const {
+    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> BytesValueView::ConvertToJson(ValueManager&) const {
+absl::StatusOr<Json> BytesValueView::ConvertToJson(AnyToJsonConverter&) const {
   return NativeValue(
       [](const auto& value) -> Json { return JsonBytes(value); });
 }

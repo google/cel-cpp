@@ -56,13 +56,13 @@ class ParsedListValueInterfaceIterator final : public ValueIterator {
 };
 
 absl::StatusOr<size_t> ParsedListValueInterface::GetSerializedSize(
-    ValueManager&) const {
+    AnyToJsonConverter&) const {
   return absl::UnimplementedError(
       "preflighting serialization size is not implemented by this list");
 }
 
-absl::Status ParsedListValueInterface::SerializeTo(ValueManager& value_manager,
-                                                   absl::Cord& value) const {
+absl::Status ParsedListValueInterface::SerializeTo(
+    AnyToJsonConverter& value_manager, absl::Cord& value) const {
   CEL_ASSIGN_OR_RETURN(auto json, ConvertToJsonArray(value_manager));
   return internal::SerializeListValue(json, value);
 }

@@ -20,6 +20,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_manager.h"
@@ -31,7 +32,9 @@ namespace cel {
 
 // `ValueManager` is an additional layer on top of `ValueFactory` and
 // `TypeReflector` which combines the two and adds additional functionality.
-class ValueManager : public virtual ValueFactory, public virtual TypeManager {
+class ValueManager : public virtual ValueFactory,
+                     public virtual TypeManager,
+                     public AnyToJsonConverter {
  public:
   const TypeReflector& type_provider() const { return GetTypeReflector(); }
 
@@ -72,6 +75,9 @@ class ValueManager : public virtual ValueFactory, public virtual TypeManager {
       absl::string_view type_url, const absl::Cord& value) {
     return GetTypeReflector().DeserializeValue(*this, type_url, value);
   }
+
+  absl::StatusOr<Json> ConvertToJson(absl::string_view type_url,
+                                     const absl::Cord& value) final;
 
  protected:
   virtual const TypeReflector& GetTypeReflector() const = 0;

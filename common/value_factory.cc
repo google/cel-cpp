@@ -154,7 +154,8 @@ class JsonListValue final : public ParsedListValueInterface {
 
   size_t Size() const override { return array_.size(); }
 
-  absl::StatusOr<JsonArray> ConvertToJsonArray(ValueManager&) const override {
+  absl::StatusOr<JsonArray> ConvertToJsonArray(
+      AnyToJsonConverter&) const override {
     return array_;
   }
 
@@ -234,7 +235,8 @@ class JsonMapValue final : public ParsedMapValueInterface {
     return std::make_unique<JsonMapValueKeyIterator>(object_);
   }
 
-  absl::StatusOr<JsonObject> ConvertToJsonObject(ValueManager&) const override {
+  absl::StatusOr<JsonObject> ConvertToJsonObject(
+      AnyToJsonConverter&) const override {
     return object_;
   }
 
