@@ -31,7 +31,6 @@
 #include "absl/types/variant.h"
 #include "common/any.h"
 #include "common/json.h"
-#include "common/value_manager.h"
 #include "extensions/protobuf/internal/any.h"
 #include "extensions/protobuf/internal/duration.h"
 #include "extensions/protobuf/internal/field_mask.h"
@@ -50,7 +49,7 @@ namespace cel::extensions::protobuf_internal {
 namespace {
 
 absl::StatusOr<Json> ProtoSingularFieldToJson(
-    ValueManager& value_manager, const google::protobuf::Message& message,
+    AnyToJsonConverter& converter, const google::protobuf::Message& message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
   switch (field->cpp_type()) {
@@ -81,7 +80,7 @@ absl::StatusOr<Json> ProtoSingularFieldToJson(
       return reflection->GetCord(message, field);
     }
     case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
-      return ProtoMessageToJson(value_manager,
+      return ProtoMessageToJson(converter,
                                 reflection->GetMessage(message, field));
     default:
       return absl::InvalidArgumentError(absl::StrCat(
@@ -112,7 +111,7 @@ absl::StatusOr<JsonString> ProtoMapKeyToJsonString(const google::protobuf::MapKe
 }
 
 absl::StatusOr<Json> ProtoMapValueToJson(
-    ValueManager& value_manager,
+    AnyToJsonConverter& converter,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     const google::protobuf::MapValueRef& value) {
   switch (field->cpp_type()) {
@@ -139,7 +138,7 @@ absl::StatusOr<Json> ProtoMapValueToJson(
       return JsonString(value.GetStringValue());
     }
     case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
-      return ProtoMessageToJson(value_manager, value.GetMessageValue());
+      return ProtoMessageToJson(converter, value.GetMessageValue());
     default:
       return absl::InvalidArgumentError(absl::StrCat(
           "unexpected protocol buffer field type: ",
@@ -148,7 +147,7 @@ absl::StatusOr<Json> ProtoMapValueToJson(
 }
 
 absl::StatusOr<Json> ProtoMapFieldToJson(
-    ValueManager& value_manager, const google::protobuf::Message& message,
+    AnyToJsonConverter& converter, const google::protobuf::Message& message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
   JsonObjectBuilder builder;
@@ -160,7 +159,7 @@ absl::StatusOr<Json> ProtoMapFieldToJson(
     CEL_ASSIGN_OR_RETURN(auto key, ProtoMapKeyToJsonString(begin.GetKey()));
     CEL_ASSIGN_OR_RETURN(
         auto value,
-        ProtoMapValueToJson(value_manager, field->message_type()->map_value(),
+        ProtoMapValueToJson(converter, field->message_type()->map_value(),
                             begin.GetValueRef()));
     builder.insert_or_assign(std::move(key), std::move(value));
     ++begin;
@@ -169,7 +168,7 @@ absl::StatusOr<Json> ProtoMapFieldToJson(
 }
 
 absl::StatusOr<Json> ProtoRepeatedFieldToJson(
-    ValueManager& value_manager, const google::protobuf::Message& message,
+    AnyToJsonConverter& converter, const google::protobuf::Message& message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
   JsonArrayBuilder builder;
@@ -248,8 +247,8 @@ absl::StatusOr<Json> ProtoRepeatedFieldToJson(
     case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
       for (int field_index = 0; field_index < field_size; ++field_index) {
         CEL_ASSIGN_OR_RETURN(
-            auto json, ProtoMessageToJson(value_manager,
-                                          reflection->GetRepeatedMessage(
+            auto json,
+            ProtoMessageToJson(converter, reflection->GetRepeatedMessage(
                                               message, field, field_index)));
         builder.push_back(std::move(json));
       }
@@ -263,19 +262,19 @@ absl::StatusOr<Json> ProtoRepeatedFieldToJson(
 }
 
 absl::StatusOr<Json> ProtoFieldToJson(
-    ValueManager& value_manager, const google::protobuf::Message& message,
+    AnyToJsonConverter& converter, const google::protobuf::Message& message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
   if (field->is_map()) {
-    return ProtoMapFieldToJson(value_manager, message, reflection, field);
+    return ProtoMapFieldToJson(converter, message, reflection, field);
   }
   if (field->is_repeated()) {
-    return ProtoRepeatedFieldToJson(value_manager, message, reflection, field);
+    return ProtoRepeatedFieldToJson(converter, message, reflection, field);
   }
-  return ProtoSingularFieldToJson(value_manager, message, reflection, field);
+  return ProtoSingularFieldToJson(converter, message, reflection, field);
 }
 
-absl::StatusOr<Json> ProtoAnyToJson(ValueManager& value_manager,
+absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
                                     const google::protobuf::Message& message) {
   CEL_ASSIGN_OR_RETURN(auto any, UnwrapDynamicAnyProto(message));
   absl::string_view type_name;
@@ -459,13 +458,8 @@ absl::StatusOr<Json> ProtoAnyToJson(ValueManager& value_manager,
     return absl::InvalidArgumentError(
         "refusing to convert recursive `google.protobuf.Any` to JSON");
   }
-  CEL_ASSIGN_OR_RETURN(
-      auto value, value_manager.DeserializeValue(any.type_url(), any.value()));
-  if (!value.has_value()) {
-    return absl::NotFoundError(
-        absl::StrCat("deserializer missing for `", any.type_url(), "`"));
-  }
-  CEL_ASSIGN_OR_RETURN(auto json_value, value->ConvertToJson(value_manager));
+  CEL_ASSIGN_OR_RETURN(auto json_value,
+                       converter.ConvertToJson(any.type_url(), any.value()));
   if (!absl::holds_alternative<JsonObject>(json_value)) {
     return absl::InternalError("expected JSON object");
   }
@@ -479,7 +473,7 @@ absl::StatusOr<Json> ProtoAnyToJson(ValueManager& value_manager,
 
 }  // namespace
 
-absl::StatusOr<Json> ProtoMessageToJson(ValueManager& value_manager,
+absl::StatusOr<Json> ProtoMessageToJson(AnyToJsonConverter& converter,
                                         const google::protobuf::Message& message) {
   const auto* descriptor = message.GetDescriptor();
   if (ABSL_PREDICT_FALSE(descriptor == nullptr)) {
@@ -529,7 +523,7 @@ absl::StatusOr<Json> ProtoMessageToJson(ValueManager& value_manager,
       return value;
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_ANY:
-      return ProtoAnyToJson(value_manager, message);
+      return ProtoAnyToJson(converter, message);
     case google::protobuf::Descriptor::WELLKNOWNTYPE_FIELDMASK: {
       CEL_ASSIGN_OR_RETURN(auto value,
                            DynamicFieldMaskProtoToJsonString(message));
@@ -562,9 +556,8 @@ absl::StatusOr<Json> ProtoMessageToJson(ValueManager& value_manager,
   reflection->ListFields(message, &fields);
   builder.reserve(fields.size());
   for (const auto* field : fields) {
-    CEL_ASSIGN_OR_RETURN(
-        auto field_value,
-        ProtoFieldToJson(value_manager, message, reflection, field));
+    CEL_ASSIGN_OR_RETURN(auto field_value, ProtoFieldToJson(converter, message,
+                                                            reflection, field));
     builder.insert_or_assign(JsonString(field->json_name()),
                              std::move(field_value));
   }

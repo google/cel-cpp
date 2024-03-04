@@ -20,14 +20,13 @@
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "common/json.h"
-#include "common/value_manager.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
 namespace cel::extensions::protobuf_internal {
 
 // `value_manager` is used if `message` is `google.protobuf.Any`.
-absl::StatusOr<Json> ProtoMessageToJson(ValueManager& value_manager,
+absl::StatusOr<Json> ProtoMessageToJson(AnyToJsonConverter& converter,
                                         const google::protobuf::Message& message);
 
 // Convert a protocol buffer enum to JSON. Prefers the name, but will fallback

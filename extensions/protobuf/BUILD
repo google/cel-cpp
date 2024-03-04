@@ -20,6 +20,25 @@ package(
 licenses(["notice"])
 
 cc_library(
+    name = "json",
+    srcs = ["json.cc"],
+    hdrs = ["json.h"],
+    deps = [
+        "//common:any",
+        "//common:json",
+        "//extensions/protobuf/internal:json",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "memory_manager",
     srcs = ["memory_manager.cc"],
     hdrs = ["memory_manager.h"],
