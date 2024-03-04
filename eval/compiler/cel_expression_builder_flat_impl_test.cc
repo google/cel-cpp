@@ -23,6 +23,7 @@
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/status.h"
+#include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/testing/matchers.h"
@@ -42,6 +43,7 @@ using ::google::api::expr::parser::Parse;
 using testing::_;
 using testing::Contains;
 using testing::HasSubstr;
+using testing::NotNull;
 using cel::internal::StatusIs;
 
 TEST(CelExpressionBuilderFlatImplTest, Error) {
@@ -68,6 +70,49 @@ TEST(CelExpressionBuilderFlatImplTest, ParsedExpr) {
   ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
   EXPECT_THAT(result, test::IsCelInt64(3));
 }
+
+struct RecursiveTestCase {
+  std::string test_name;
+  std::string expr;
+  test::CelValueMatcher matcher;
+};
+
+class RecursivePlanTest : public ::testing::TestWithParam<RecursiveTestCase> {};
+
+TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
+  const RecursiveTestCase& test_case = GetParam();
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, Parse(test_case.expr));
+  cel::RuntimeOptions options;
+  // Unbounded.
+  options.max_recursion_depth = -1;
+  CelExpressionBuilderFlatImpl builder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  EXPECT_THAT(dynamic_cast<const CelExpressionRecursiveImpl*>(plan.get()),
+              NotNull());
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
+  EXPECT_THAT(result, test_case.matcher);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    RecursivePlanTest, RecursivePlanTest,
+    testing::ValuesIn(std::vector<RecursiveTestCase>{
+        {"constant", "'abc'", test::IsCelString("abc")},
+        {"call", "1 + 2", test::IsCelInt64(3)},
+        {"nested_call", "1 + 1 + 1 + 1", test::IsCelInt64(4)},
+        {"and", "true && false", test::IsCelBool(false)},
+        {"or", "true || false", test::IsCelBool(true)},
+        {"ternary", "(true || false) ? 2 + 2 : 3 + 3", test::IsCelInt64(4)}}),
+    [](const testing::TestParamInfo<RecursiveTestCase>& info) -> std::string {
+      return info.param.test_name;
+    });
 
 TEST(CelExpressionBuilderFlatImplTest, ParsedExprWithWarnings) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, Parse("1 + 2"));
