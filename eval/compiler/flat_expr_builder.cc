@@ -471,7 +471,6 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       // Generate path in format "<ident>.<field 0>.<field 1>...".
       auto select_expr = select_node.first;
       auto qualified_path = absl::StrCat(path, ".", select_node.second);
-      namespace_map_[select_expr] = qualified_path;
 
       // Attempt to find a constant enum or type value which matches the
       // qualified path present in the expression. Whether the identifier
@@ -573,13 +572,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       return;
     }
 
-    std::string select_path = "";
-    auto it = namespace_map_.find(expr);
-    if (it != namespace_map_.end()) {
-      select_path = it->second;
-    }
-
-    AddStep(CreateSelectStep(*select_expr, expr->id(), select_path,
+    AddStep(CreateSelectStep(*select_expr, expr->id(),
                              options_.enable_empty_wrapper_null_unboxing,
                              value_factory_));
   }
@@ -1051,10 +1044,6 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       std::pair<const cel::ast_internal::Expr*, std::unique_ptr<CondVisitor>>>
       cond_visitor_stack_;
 
-  // Maps effective namespace names to Expr objects (IDENTs/SELECTs) that
-  // define scopes for those namespaces.
-  std::unordered_map<const cel::ast_internal::Expr*, std::string>
-      namespace_map_;
   // Tracks SELECT-...SELECT-IDENT chains.
   std::deque<std::pair<const cel::ast_internal::Expr*, std::string>>
       namespace_stack_;

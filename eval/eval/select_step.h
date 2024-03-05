@@ -15,8 +15,7 @@ namespace google::api::expr::runtime {
 // Factory method for Select - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
     const cel::ast_internal::Select& select_expr, int64_t expr_id,
-    absl::string_view select_path, bool enable_wrapper_type_null_unboxing,
-    cel::ValueManager& value_factory);
+    bool enable_wrapper_type_null_unboxing, cel::ValueManager& value_factory);
 
 }  // namespace google::api::expr::runtime
 

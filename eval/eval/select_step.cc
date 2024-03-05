@@ -107,13 +107,11 @@ ValueView TestOnlySelect(const MapValue& map, const StringValue& field_name,
 class SelectStep : public ExpressionStepBase {
  public:
   SelectStep(StringValue value, bool test_field_presence, int64_t expr_id,
-             absl::string_view select_path,
              bool enable_wrapper_type_null_unboxing)
       : ExpressionStepBase(expr_id),
         field_value_(std::move(value)),
         field_(field_value_.ToString()),
         test_field_presence_(test_field_presence),
-        select_path_(select_path),
         unboxing_option_(enable_wrapper_type_null_unboxing
                              ? ProtoWrapperTypeOptions::kUnsetNull
                              : ProtoWrapperTypeOptions::kUnsetProtoDefault) {}
@@ -124,7 +122,6 @@ class SelectStep : public ExpressionStepBase {
   cel::StringValue field_value_;
   std::string field_;
   bool test_field_presence_;
-  std::string select_path_;
   ProtoWrapperTypeOptions unboxing_option_;
 };
 
@@ -219,12 +216,10 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 // Factory method for Select - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
     const cel::ast_internal::Select& select_expr, int64_t expr_id,
-    absl::string_view select_path, bool enable_wrapper_type_null_unboxing,
-    cel::ValueManager& value_factory) {
+    bool enable_wrapper_type_null_unboxing, cel::ValueManager& value_factory) {
   return std::make_unique<SelectStep>(
       value_factory.CreateUncheckedStringValue(select_expr.field()),
-      select_expr.test_only(), expr_id, select_path,
-      enable_wrapper_type_null_unboxing);
+      select_expr.test_only(), expr_id, enable_wrapper_type_null_unboxing);
 }
 
 }  // namespace google::api::expr::runtime
