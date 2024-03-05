@@ -29,6 +29,27 @@ namespace cel::extensions::protobuf_internal {
 absl::StatusOr<Json> ProtoMessageToJson(AnyToJsonConverter& converter,
                                         const google::protobuf::Message& message);
 
+// Convert a protocol buffer message field to JSON.
+absl::StatusOr<Json> ProtoFieldToJson(
+    AnyToJsonConverter& converter,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field);
+
+// Convert a protocol buffer message repeated field to JSON.
+absl::StatusOr<JsonArray> ProtoRepeatedFieldToJsonArray(
+    AnyToJsonConverter& converter,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field);
+
+// Convert a protocol buffer message map field to JSON.
+absl::StatusOr<JsonObject> ProtoMapFieldToJsonObject(
+    AnyToJsonConverter& converter,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field);
+
 // Convert a protocol buffer enum to JSON. Prefers the name, but will fallback
 // to stringifying the number if the name is unavailable.
 Json ProtoEnumToJson(absl::Nonnull<const google::protobuf::EnumDescriptor*> descriptor,

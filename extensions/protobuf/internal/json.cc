@@ -23,6 +23,7 @@
 #include "google/protobuf/wrappers.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -144,134 +145,6 @@ absl::StatusOr<Json> ProtoMapValueToJson(
           "unexpected protocol buffer field type: ",
           google::protobuf::FieldDescriptor::CppTypeName(field->cpp_type())));
   }
-}
-
-absl::StatusOr<Json> ProtoMapFieldToJson(
-    AnyToJsonConverter& converter, const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
-  JsonObjectBuilder builder;
-  const auto field_size = reflection->FieldSize(message, field);
-  builder.reserve(static_cast<size_t>(field_size));
-  auto begin = MapBegin(*reflection, message, *field);
-  auto end = MapEnd(*reflection, message, *field);
-  while (begin != end) {
-    CEL_ASSIGN_OR_RETURN(auto key, ProtoMapKeyToJsonString(begin.GetKey()));
-    CEL_ASSIGN_OR_RETURN(
-        auto value,
-        ProtoMapValueToJson(converter, field->message_type()->map_value(),
-                            begin.GetValueRef()));
-    builder.insert_or_assign(std::move(key), std::move(value));
-    ++begin;
-  }
-  return std::move(builder).Build();
-}
-
-absl::StatusOr<Json> ProtoRepeatedFieldToJson(
-    AnyToJsonConverter& converter, const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
-  JsonArrayBuilder builder;
-  const auto field_size = reflection->FieldSize(message, field);
-  builder.reserve(static_cast<size_t>(field_size));
-  switch (field->cpp_type()) {
-    case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
-      for (int field_index = 0; field_index < field_size; ++field_index) {
-        builder.push_back(
-            JsonInt(reflection->GetRepeatedInt32(message, field, field_index)));
-      }
-      break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
-      for (int field_index = 0; field_index < field_size; ++field_index) {
-        builder.push_back(
-            JsonInt(reflection->GetRepeatedInt64(message, field, field_index)));
-      }
-      break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
-      for (int field_index = 0; field_index < field_size; ++field_index) {
-        builder.push_back(JsonUint(
-            reflection->GetRepeatedUInt32(message, field, field_index)));
-      }
-      break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
-      for (int field_index = 0; field_index < field_size; ++field_index) {
-        builder.push_back(JsonUint(
-            reflection->GetRepeatedUInt64(message, field, field_index)));
-      }
-      break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
-      for (int field_index = 0; field_index < field_size; ++field_index) {
-        builder.push_back(
-            reflection->GetRepeatedDouble(message, field, field_index));
-      }
-      break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
-      for (int field_index = 0; field_index < field_size; ++field_index) {
-        builder.push_back(static_cast<double>(
-            reflection->GetRepeatedFloat(message, field, field_index)));
-      }
-      break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
-      for (int field_index = 0; field_index < field_size; ++field_index) {
-        builder.push_back(
-            reflection->GetRepeatedBool(message, field, field_index));
-      }
-      break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
-      for (int field_index = 0; field_index < field_size; ++field_index) {
-        builder.push_back(ProtoEnumToJson(
-            field->enum_type(),
-            reflection->GetRepeatedEnumValue(message, field, field_index)));
-      }
-      break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
-      if (field->type() == google::protobuf::FieldDescriptor::TYPE_BYTES) {
-        std::string scratch;
-        for (int field_index = 0; field_index < field_size; ++field_index) {
-          builder.push_back(JsonBytes(reflection->GetRepeatedStringReference(
-              message, field, field_index, &scratch)));
-        }
-      } else {
-        std::string scratch;
-        for (int field_index = 0; field_index < field_size; ++field_index) {
-          const auto& field_value = reflection->GetRepeatedStringReference(
-              message, field, field_index, &scratch);
-          if (&field_value == &scratch) {
-            builder.push_back(JsonString(std::move(scratch)));
-          } else {
-            builder.push_back(JsonString(field_value));
-          }
-        }
-      }
-      break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
-      for (int field_index = 0; field_index < field_size; ++field_index) {
-        CEL_ASSIGN_OR_RETURN(
-            auto json,
-            ProtoMessageToJson(converter, reflection->GetRepeatedMessage(
-                                              message, field, field_index)));
-        builder.push_back(std::move(json));
-      }
-      break;
-    default:
-      return absl::InvalidArgumentError(absl::StrCat(
-          "unexpected protocol buffer field type: ",
-          google::protobuf::FieldDescriptor::CppTypeName(field->cpp_type())));
-  }
-  return std::move(builder).Build();
-}
-
-absl::StatusOr<Json> ProtoFieldToJson(
-    AnyToJsonConverter& converter, const google::protobuf::Message& message,
-    absl::Nonnull<const google::protobuf::Reflection*> reflection,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
-  if (field->is_map()) {
-    return ProtoMapFieldToJson(converter, message, reflection, field);
-  }
-  if (field->is_repeated()) {
-    return ProtoRepeatedFieldToJson(converter, message, reflection, field);
-  }
-  return ProtoSingularFieldToJson(converter, message, reflection, field);
 }
 
 absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
@@ -556,10 +429,144 @@ absl::StatusOr<Json> ProtoMessageToJson(AnyToJsonConverter& converter,
   reflection->ListFields(message, &fields);
   builder.reserve(fields.size());
   for (const auto* field : fields) {
-    CEL_ASSIGN_OR_RETURN(auto field_value, ProtoFieldToJson(converter, message,
-                                                            reflection, field));
+    CEL_ASSIGN_OR_RETURN(
+        auto field_value,
+        ProtoFieldToJson(converter, reflection, message, field));
     builder.insert_or_assign(JsonString(field->json_name()),
                              std::move(field_value));
+  }
+  return std::move(builder).Build();
+}
+
+absl::StatusOr<Json> ProtoFieldToJson(
+    AnyToJsonConverter& converter,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
+  if (field->is_map()) {
+    return ProtoMapFieldToJsonObject(converter, reflection, message, field);
+  }
+  if (field->is_repeated()) {
+    return ProtoRepeatedFieldToJsonArray(converter, reflection, message, field);
+  }
+  return ProtoSingularFieldToJson(converter, message, reflection, field);
+}
+
+absl::StatusOr<JsonObject> ProtoMapFieldToJsonObject(
+    AnyToJsonConverter& converter,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
+  ABSL_DCHECK(field->is_map());
+  JsonObjectBuilder builder;
+  const auto field_size = reflection->FieldSize(message, field);
+  builder.reserve(static_cast<size_t>(field_size));
+  auto begin = MapBegin(*reflection, message, *field);
+  auto end = MapEnd(*reflection, message, *field);
+  while (begin != end) {
+    CEL_ASSIGN_OR_RETURN(auto key, ProtoMapKeyToJsonString(begin.GetKey()));
+    CEL_ASSIGN_OR_RETURN(
+        auto value,
+        ProtoMapValueToJson(converter, field->message_type()->map_value(),
+                            begin.GetValueRef()));
+    builder.insert_or_assign(std::move(key), std::move(value));
+    ++begin;
+  }
+  return std::move(builder).Build();
+}
+
+absl::StatusOr<JsonArray> ProtoRepeatedFieldToJsonArray(
+    AnyToJsonConverter& converter,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection,
+    const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
+  ABSL_DCHECK(field->is_repeated() && !field->is_map());
+  JsonArrayBuilder builder;
+  const auto field_size = reflection->FieldSize(message, field);
+  builder.reserve(static_cast<size_t>(field_size));
+  switch (field->cpp_type()) {
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
+      for (int field_index = 0; field_index < field_size; ++field_index) {
+        builder.push_back(
+            JsonInt(reflection->GetRepeatedInt32(message, field, field_index)));
+      }
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
+      for (int field_index = 0; field_index < field_size; ++field_index) {
+        builder.push_back(
+            JsonInt(reflection->GetRepeatedInt64(message, field, field_index)));
+      }
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
+      for (int field_index = 0; field_index < field_size; ++field_index) {
+        builder.push_back(JsonUint(
+            reflection->GetRepeatedUInt32(message, field, field_index)));
+      }
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+      for (int field_index = 0; field_index < field_size; ++field_index) {
+        builder.push_back(JsonUint(
+            reflection->GetRepeatedUInt64(message, field, field_index)));
+      }
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
+      for (int field_index = 0; field_index < field_size; ++field_index) {
+        builder.push_back(
+            reflection->GetRepeatedDouble(message, field, field_index));
+      }
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
+      for (int field_index = 0; field_index < field_size; ++field_index) {
+        builder.push_back(static_cast<double>(
+            reflection->GetRepeatedFloat(message, field, field_index)));
+      }
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
+      for (int field_index = 0; field_index < field_size; ++field_index) {
+        builder.push_back(
+            reflection->GetRepeatedBool(message, field, field_index));
+      }
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
+      for (int field_index = 0; field_index < field_size; ++field_index) {
+        builder.push_back(ProtoEnumToJson(
+            field->enum_type(),
+            reflection->GetRepeatedEnumValue(message, field, field_index)));
+      }
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
+      if (field->type() == google::protobuf::FieldDescriptor::TYPE_BYTES) {
+        std::string scratch;
+        for (int field_index = 0; field_index < field_size; ++field_index) {
+          builder.push_back(JsonBytes(reflection->GetRepeatedStringReference(
+              message, field, field_index, &scratch)));
+        }
+      } else {
+        std::string scratch;
+        for (int field_index = 0; field_index < field_size; ++field_index) {
+          const auto& field_value = reflection->GetRepeatedStringReference(
+              message, field, field_index, &scratch);
+          if (&field_value == &scratch) {
+            builder.push_back(JsonString(std::move(scratch)));
+          } else {
+            builder.push_back(JsonString(field_value));
+          }
+        }
+      }
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
+      for (int field_index = 0; field_index < field_size; ++field_index) {
+        CEL_ASSIGN_OR_RETURN(
+            auto json,
+            ProtoMessageToJson(converter, reflection->GetRepeatedMessage(
+                                              message, field, field_index)));
+        builder.push_back(std::move(json));
+      }
+      break;
+    default:
+      return absl::InvalidArgumentError(absl::StrCat(
+          "unexpected protocol buffer field type: ",
+          google::protobuf::FieldDescriptor::CppTypeName(field->cpp_type())));
   }
   return std::move(builder).Build();
 }
