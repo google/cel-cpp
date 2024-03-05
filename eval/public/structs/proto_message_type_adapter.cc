@@ -22,8 +22,6 @@
 
 #include "google/protobuf/util/message_differencer.h"
 #include "absl/base/no_destructor.h"
-#include "absl/base/nullability.h"
-#include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -32,12 +30,8 @@
 #include "absl/strings/substitute.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "absl/types/variant.h"
 #include "base/attribute.h"
-#include "base/builtins.h"
-#include "common/kind.h"
 #include "common/memory.h"
-#include "common/value.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/internal_field_backed_list_impl.h"
@@ -47,12 +41,10 @@
 #include "eval/public/structs/field_access_impl.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
-#include "extensions/protobuf/internal/map_reflection.h"
+#include "extensions/protobuf/internal/qualify.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/casts.h"
 #include "internal/status_macros.h"
-#include "runtime/internal/errors.h"
-#include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/map_field.h"
@@ -62,12 +54,8 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::extensions::ProtoMemoryManagerArena;
-using ::cel::runtime_internal::CreateInvalidMapKeyTypeError;
-using ::cel::runtime_internal::CreateNoMatchingOverloadError;
-using ::cel::runtime_internal::CreateNoSuchKeyError;
-using ::google::protobuf::Descriptor;
+using ::cel::extensions::ProtoMemoryManagerRef;
 using ::google::protobuf::FieldDescriptor;
-using ::google::protobuf::MapValueConstRef;
 using ::google::protobuf::Message;
 using ::google::protobuf::Reflection;
 
@@ -77,22 +65,6 @@ const std::string& UnsupportedTypeName() {
   static absl::NoDestructor<std::string> kUnsupportedTypeName(
       "<unknown message>");
   return *kUnsupportedTypeName;
-}
-
-// JSON container types and Any have special unpacking rules.
-//
-// Not considered for qualify traversal for simplicity, but
-// could be supported in a follow-up if needed.
-bool IsUnsupportedQualifyType(const Descriptor& desc) {
-  switch (desc.well_known_type()) {
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_ANY:
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT:
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE:
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE:
-      return true;
-    default:
-      return false;
-  }
 }
 
 CelValue MessageCelValueFactory(const google::protobuf::Message* message);
@@ -215,390 +187,63 @@ absl::StatusOr<CelValue> GetFieldImpl(const google::protobuf::Message* message,
   return CreateCelValueFromField(message, field_desc, unboxing_option, arena);
 }
 
-const google::protobuf::FieldDescriptor* GetNormalizedFieldByNumber(
-    const google::protobuf::Descriptor* descriptor, const google::protobuf::Reflection* reflection,
-    int field_number) {
-  const google::protobuf::FieldDescriptor* field_desc =
-      descriptor->FindFieldByNumber(field_number);
-  if (field_desc == nullptr && reflection != nullptr) {
-    field_desc = reflection->FindKnownExtensionByNumber(field_number);
-  }
-  return field_desc;
-}
-
-// Map entries have two field tags
-// 1 - for key
-// 2 - for value
-constexpr int kKeyTag = 1;
-constexpr int kValueTag = 2;
-
-bool MatchesMapKeyType(const FieldDescriptor* key_desc,
-                       const cel::AttributeQualifier& key) {
-  switch (key_desc->cpp_type()) {
-    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
-      return key.kind() == cel::Kind::kBool;
-    case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
-      // fall through
-    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
-      return key.kind() == cel::Kind::kInt64;
-    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
-      // fall through
-    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
-      return key.kind() == cel::Kind::kUint64;
-    case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
-      return key.kind() == cel::Kind::kString;
-
-    default:
-      return false;
-  }
-}
-
-absl::StatusOr<absl::optional<MapValueConstRef>> LookupMapValue(
-    const google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
-    const google::protobuf::FieldDescriptor* field_desc,
-    const google::protobuf::FieldDescriptor* key_desc,
-    const cel::AttributeQualifier& key) {
-  if (!MatchesMapKeyType(key_desc, key)) {
-    return CreateInvalidMapKeyTypeError(key_desc->cpp_type_name());
-  }
-
-  google::protobuf::MapKey proto_key;
-  switch (key_desc->cpp_type()) {
-    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
-      proto_key.SetBoolValue(*key.GetBoolKey());
-      break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_INT32: {
-      int64_t key_value = *key.GetInt64Key();
-      if (key_value > std::numeric_limits<int32_t>::max() ||
-          key_value < std::numeric_limits<int32_t>::lowest()) {
-        return absl::OutOfRangeError("integer overflow");
-      }
-      proto_key.SetInt32Value(key_value);
-    } break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
-      proto_key.SetInt64Value(*key.GetInt64Key());
-      break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_STRING: {
-      proto_key.SetStringValue(std::string(*key.GetStringKey()));
-    } break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32: {
-      uint64_t key_value = *key.GetUint64Key();
-      if (key_value > std::numeric_limits<uint32_t>::max()) {
-        return absl::OutOfRangeError("unsigned integer overflow");
-      }
-      proto_key.SetUInt32Value(key_value);
-    } break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64: {
-      proto_key.SetUInt64Value(*key.GetUint64Key());
-    } break;
-    default:
-      return CreateInvalidMapKeyTypeError(key_desc->cpp_type_name());
-  }
-
-  // Look the value up
-  MapValueConstRef value_ref;
-  bool found = cel::extensions::protobuf_internal::LookupMapValue(
-      *reflection, *message, *field_desc, proto_key, &value_ref);
-  if (!found) {
-    return absl::nullopt;
-  }
-  return value_ref;
-}
-
 // State machine for incrementally applying qualifiers.
 //
 // Reusing the state machine to represent intermediate states (as opposed to
 // returning the intermediates) is more efficient for longer select chains while
 // still allowing decomposition of the qualify routine.
-class QualifyState {
+class LegacyQualifyState final
+    : public cel::extensions::protobuf_internal::ProtoQualifyState {
  public:
-  QualifyState(absl::Nonnull<const Message*> message,
-               absl::Nonnull<const Descriptor*> descriptor,
-               absl::Nonnull<const Reflection*> reflection)
-      : message_(message),
-        descriptor_(descriptor),
-        reflection_(reflection),
-        repeated_field_desc_(nullptr) {}
+  using ProtoQualifyState::ProtoQualifyState;
 
-  QualifyState(const QualifyState&) = delete;
-  QualifyState& operator=(const QualifyState&) = delete;
+  LegacyQualifyState(const LegacyQualifyState&) = delete;
+  LegacyQualifyState& operator=(const LegacyQualifyState&) = delete;
 
   absl::optional<CelValue>& result() { return result_; }
 
-  absl::Status ApplySelectQualifier(const cel::SelectQualifier& qualifier,
-
-                                    google::protobuf::Arena* arena) {
-    return absl::visit(
-        absl::Overload(
-            [&](const cel::AttributeQualifier& qualifier) -> absl::Status {
-              if (repeated_field_desc_ == nullptr) {
-                return absl::UnimplementedError(
-                    "dynamic field access on message not supported");
-              }
-              return ApplyAttributeQualifer(qualifier, arena);
-            },
-            [&](const cel::FieldSpecifier& field_specifier) -> absl::Status {
-              if (repeated_field_desc_ != nullptr) {
-                return absl::UnimplementedError(
-                    "strong field access on container not supported");
-              }
-              return ApplyFieldSpecifier(field_specifier, arena);
-            }),
-        qualifier);
-  }
-
-  absl::StatusOr<CelValue> ApplyLastQualifierHas(
-      const cel::SelectQualifier& qualifier, google::protobuf::Arena* arena) const {
-    const cel::FieldSpecifier* specifier =
-        absl::get_if<cel::FieldSpecifier>(&qualifier);
-    return absl::visit(
-        absl::Overload(
-            [&](const cel::AttributeQualifier& qualifier)
-                -> absl::StatusOr<CelValue> {
-              if (qualifier.kind() != cel::Kind::kString ||
-                  repeated_field_desc_ == nullptr ||
-                  !repeated_field_desc_->is_map()) {
-                return CreateErrorValue(arena,
-                                        CreateNoMatchingOverloadError("has"));
-              }
-              return MapHas(qualifier, arena);
-            },
-            [&](const cel::FieldSpecifier& field_specifier)
-                -> absl::StatusOr<CelValue> {
-              const auto* field_desc = GetNormalizedFieldByNumber(
-                  descriptor_, reflection_, specifier->number);
-              if (field_desc == nullptr) {
-                return CreateNoSuchFieldError(arena, specifier->name);
-              }
-              return CelValue::CreateBool(
-                  CelFieldIsPresent(message_, field_desc, reflection_));
-            }),
-        qualifier);
-  }
-
-  absl::StatusOr<CelValue> ApplyLastQualifierGet(
-      const cel::SelectQualifier& qualifier, google::protobuf::Arena* arena) const {
-    return absl::visit(
-        absl::Overload(
-            [&](const cel::AttributeQualifier& attr_qualifier)
-                -> absl::StatusOr<CelValue> {
-              if (repeated_field_desc_ == nullptr) {
-                return absl::UnimplementedError(
-                    "dynamic field access on message not supported");
-              }
-              if (repeated_field_desc_->is_map()) {
-                return ApplyLastQualifierGetMap(attr_qualifier, arena);
-              }
-              return ApplyLastQualifierGetList(attr_qualifier, arena);
-            },
-            [&](const cel::FieldSpecifier& specifier)
-                -> absl::StatusOr<CelValue> {
-              if (repeated_field_desc_ != nullptr) {
-                return absl::UnimplementedError(
-                    "strong field access on container not supported");
-              }
-              return ApplyLastQualifierMessageGet(specifier, arena);
-            }),
-        qualifier);
-  }
-
  private:
-  absl::Status ApplyFieldSpecifier(const cel::FieldSpecifier& field_specifier,
-                                   google::protobuf::Arena* arena) {
-    const FieldDescriptor* field_desc = GetNormalizedFieldByNumber(
-        descriptor_, reflection_, field_specifier.number);
-    if (field_desc == nullptr) {
-      result_ = CreateNoSuchFieldError(arena, field_specifier.name);
-      return absl::OkStatus();
-    }
+  void SetResultFromError(absl::Status status,
+                          cel::MemoryManagerRef memory_manager) override {
+    result_ = CreateErrorValue(memory_manager, status);
+  }
 
-    if (field_desc->is_repeated()) {
-      repeated_field_desc_ = field_desc;
-      return absl::OkStatus();
-    }
+  void SetResultFromBool(bool value) override {
+    result_ = CelValue::CreateBool(value);
+  }
 
-    if (field_desc->cpp_type() != FieldDescriptor::CPPTYPE_MESSAGE ||
-        IsUnsupportedQualifyType(*field_desc->message_type())) {
-      CEL_ASSIGN_OR_RETURN(
-          result_,
-          CreateCelValueFromField(message_, field_desc,
-                                  ProtoWrapperTypeOptions::kUnsetNull, arena));
-
-      return absl::OkStatus();
-    }
-
-    message_ = &reflection_->GetMessage(*message_, field_desc);
-    descriptor_ = message_->GetDescriptor();
-    reflection_ = message_->GetReflection();
+  absl::Status SetResultFromField(
+      const google::protobuf::Message* message, const google::protobuf::FieldDescriptor* field,
+      ProtoWrapperTypeOptions unboxing_option,
+      cel::MemoryManagerRef memory_manager) override {
+    CEL_ASSIGN_OR_RETURN(result_, CreateCelValueFromField(
+                                      message, field, unboxing_option,
+                                      ProtoMemoryManagerArena(memory_manager)));
     return absl::OkStatus();
   }
 
-  absl::StatusOr<int> CheckListIndex(
-      const cel::AttributeQualifier& qualifier) const {
-    if (qualifier.kind() != cel::Kind::kInt64) {
-      return CreateNoMatchingOverloadError(cel::builtin::kIndex);
-    }
-
-    int index = *qualifier.GetInt64Key();
-    int size = reflection_->FieldSize(*message_, repeated_field_desc_);
-    if (index < 0 || index >= size) {
-      return absl::InvalidArgumentError(
-          absl::StrCat("index out of bounds: index=", index, " size=", size));
-    }
-    return index;
-  }
-
-  absl::Status ApplyAttributeQualifierList(
-      const cel::AttributeQualifier& qualifier, google::protobuf::Arena* arena) {
-    ABSL_DCHECK_NE(repeated_field_desc_, nullptr);
-    ABSL_DCHECK(!repeated_field_desc_->is_map());
-    ABSL_DCHECK_EQ(repeated_field_desc_->cpp_type(),
-                   FieldDescriptor::CPPTYPE_MESSAGE);
-
-    auto index_or = CheckListIndex(qualifier);
-    if (!index_or.ok()) {
-      result_ = CreateErrorValue(arena, std::move(index_or).status());
-      return absl::OkStatus();
-    }
-
-    if (IsUnsupportedQualifyType(*repeated_field_desc_->message_type())) {
-      CEL_ASSIGN_OR_RETURN(result_,
-                           internal::CreateValueFromRepeatedField(
-                               message_, repeated_field_desc_, *index_or,
-                               &MessageCelValueFactory, arena));
-      return absl::OkStatus();
-    }
-
-    message_ = &reflection_->GetRepeatedMessage(*message_, repeated_field_desc_,
-                                                *index_or);
-    descriptor_ = message_->GetDescriptor();
-    reflection_ = message_->GetReflection();
-    repeated_field_desc_ = nullptr;
+  absl::Status SetResultFromRepeatedField(
+      const google::protobuf::Message* message, const google::protobuf::FieldDescriptor* field,
+      int index, cel::MemoryManagerRef memory_manager) override {
+    CEL_ASSIGN_OR_RETURN(result_,
+                         internal::CreateValueFromRepeatedField(
+                             message, field, index, &MessageCelValueFactory,
+                             ProtoMemoryManagerArena(memory_manager)));
     return absl::OkStatus();
   }
 
-  absl::StatusOr<MapValueConstRef> CheckMapIndex(
-      const cel::AttributeQualifier& qualifier) const {
-    const auto* key_desc =
-        repeated_field_desc_->message_type()->FindFieldByNumber(kKeyTag);
-
-    CEL_ASSIGN_OR_RETURN(
-        absl::optional<MapValueConstRef> value_ref,
-        LookupMapValue(message_, reflection_, repeated_field_desc_, key_desc,
-                       qualifier));
-
-    if (!value_ref.has_value()) {
-      return CreateNoSuchKeyError("");
-    }
-    return std::move(value_ref).value();
-  }
-
-  absl::Status ApplyAttributeQualifierMap(
-      const cel::AttributeQualifier& qualifier, google::protobuf::Arena* arena) {
-    ABSL_DCHECK_NE(repeated_field_desc_, nullptr);
-    ABSL_DCHECK(repeated_field_desc_->is_map());
-    ABSL_DCHECK_EQ(repeated_field_desc_->cpp_type(),
-                   FieldDescriptor::CPPTYPE_MESSAGE);
-
-    absl::StatusOr<MapValueConstRef> value_ref = CheckMapIndex(qualifier);
-    if (!value_ref.ok()) {
-      result_ = CreateErrorValue(arena, std::move(value_ref).status());
-      return absl::OkStatus();
-    }
-
-    const auto* value_desc =
-        repeated_field_desc_->message_type()->FindFieldByNumber(kValueTag);
-
-    if (value_desc->cpp_type() != FieldDescriptor::CPPTYPE_MESSAGE ||
-        IsUnsupportedQualifyType(*value_desc->message_type())) {
-      CEL_ASSIGN_OR_RETURN(result_, internal::CreateValueFromMapValue(
-                                        message_, value_desc, &(*value_ref),
-                                        &MessageCelValueFactory, arena));
-      return absl::OkStatus();
-    }
-
-    message_ = &(value_ref->GetMessageValue());
-    descriptor_ = message_->GetDescriptor();
-    reflection_ = message_->GetReflection();
-    repeated_field_desc_ = nullptr;
+  absl::Status SetResultFromMapField(
+      const google::protobuf::Message* message, const google::protobuf::FieldDescriptor* field,
+      const google::protobuf::MapValueConstRef& value,
+      cel::MemoryManagerRef memory_manager) override {
+    CEL_ASSIGN_OR_RETURN(result_,
+                         internal::CreateValueFromMapValue(
+                             message, field, &value, &MessageCelValueFactory,
+                             ProtoMemoryManagerArena(memory_manager)));
     return absl::OkStatus();
-  }
-
-  absl::Status ApplyAttributeQualifer(const cel::AttributeQualifier& qualifier,
-
-                                      google::protobuf::Arena* arena) {
-    ABSL_DCHECK_NE(repeated_field_desc_, nullptr);
-    if (repeated_field_desc_->cpp_type() != FieldDescriptor::CPPTYPE_MESSAGE) {
-      return absl::InternalError("Unexpected qualify intermediate type");
-    }
-    if (repeated_field_desc_->is_map()) {
-      return ApplyAttributeQualifierMap(qualifier, arena);
-    }  // else simple repeated
-    return ApplyAttributeQualifierList(qualifier, arena);
-  }
-
-  absl::StatusOr<CelValue> MapHas(const cel::AttributeQualifier& key,
-                                  google::protobuf::Arena* arena) const {
-    const auto* key_desc =
-        repeated_field_desc_->message_type()->FindFieldByNumber(kKeyTag);
-
-    absl::StatusOr<absl::optional<MapValueConstRef>> value_ref = LookupMapValue(
-        message_, reflection_, repeated_field_desc_, key_desc, key);
-
-    if (!value_ref.ok()) {
-      return CreateErrorValue(arena, std::move(value_ref).status());
-    }
-
-    return CelValue::CreateBool(value_ref->has_value());
-  }
-
-  absl::StatusOr<CelValue> ApplyLastQualifierMessageGet(
-      const cel::FieldSpecifier& specifier, google::protobuf::Arena* arena) const {
-    const auto* field_desc =
-        GetNormalizedFieldByNumber(descriptor_, reflection_, specifier.number);
-    if (field_desc == nullptr) {
-      return CreateNoSuchFieldError(arena, specifier.name);
-    }
-    return CreateCelValueFromField(message_, field_desc,
-                                   ProtoWrapperTypeOptions::kUnsetNull, arena);
-  }
-
-  absl::StatusOr<CelValue> ApplyLastQualifierGetList(
-      const cel::AttributeQualifier& qualifier, google::protobuf::Arena* arena) const {
-    ABSL_DCHECK(!repeated_field_desc_->is_map());
-
-    absl::StatusOr<int> index = CheckListIndex(qualifier);
-    if (!index.ok()) {
-      return CreateErrorValue(arena, std::move(index).status());
-    }
-
-    return internal::CreateValueFromRepeatedField(
-        message_, repeated_field_desc_, *index, &MessageCelValueFactory, arena);
-  }
-
-  absl::StatusOr<CelValue> ApplyLastQualifierGetMap(
-      const cel::AttributeQualifier& qualifier, google::protobuf::Arena* arena) const {
-    ABSL_DCHECK(repeated_field_desc_->is_map());
-
-    absl::StatusOr<MapValueConstRef> value_ref = CheckMapIndex(qualifier);
-
-    if (!value_ref.ok()) {
-      return CreateErrorValue(arena, std::move(value_ref).status());
-    }
-
-    const auto* value_desc =
-        repeated_field_desc_->message_type()->FindFieldByNumber(kValueTag);
-
-    return internal::CreateValueFromMapValue(
-        message_, value_desc, &(*value_ref), &MessageCelValueFactory, arena);
   }
 
   absl::optional<CelValue> result_;
-
-  absl::Nonnull<const Message*> message_;
-  absl::Nonnull<const Descriptor*> descriptor_;
-  absl::Nonnull<const Reflection*> reflection_;
-  absl::Nullable<const FieldDescriptor*> repeated_field_desc_;
 };
 
 absl::StatusOr<LegacyQualifyResult> QualifyImpl(
@@ -607,11 +252,13 @@ absl::StatusOr<LegacyQualifyResult> QualifyImpl(
     cel::MemoryManagerRef memory_manager) {
   google::protobuf::Arena* arena = ProtoMemoryManagerArena(memory_manager);
   ABSL_DCHECK(descriptor == message->GetDescriptor());
-  QualifyState qualify_state(message, descriptor, message->GetReflection());
+  LegacyQualifyState qualify_state(message, descriptor,
+                                   message->GetReflection());
 
   for (int i = 0; i < path.size() - 1; i++) {
     const auto& qualifier = path.at(i);
-    CEL_RETURN_IF_ERROR(qualify_state.ApplySelectQualifier(qualifier, arena));
+    CEL_RETURN_IF_ERROR(qualify_state.ApplySelectQualifier(
+        qualifier, ProtoMemoryManagerRef(arena)));
     if (qualify_state.result().has_value()) {
       LegacyQualifyResult result;
       result.value = std::move(qualify_state.result()).value();
@@ -625,12 +272,13 @@ absl::StatusOr<LegacyQualifyResult> QualifyImpl(
   result.qualifier_count = -1;
 
   if (presence_test) {
-    CEL_ASSIGN_OR_RETURN(result.value, qualify_state.ApplyLastQualifierHas(
-                                           last_qualifier, arena));
+    CEL_RETURN_IF_ERROR(qualify_state.ApplyLastQualifierHas(
+        last_qualifier, ProtoMemoryManagerRef(arena)));
   } else {
-    CEL_ASSIGN_OR_RETURN(result.value, qualify_state.ApplyLastQualifierGet(
-                                           last_qualifier, arena));
+    CEL_RETURN_IF_ERROR(qualify_state.ApplyLastQualifierGet(
+        last_qualifier, ProtoMemoryManagerRef(arena)));
   }
+  result.value = *qualify_state.result();
   return result;
 }
 
