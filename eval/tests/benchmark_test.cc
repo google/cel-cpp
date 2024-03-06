@@ -56,10 +56,11 @@ InterpreterOptions GetOptions(google::protobuf::Arena& arena) {
 
 // Benchmark test
 // Evaluates cel expression:
-// '1 + 1 + 1 .... +1'
+// '1 + 1 + 1 .... +1
 static void BM_Eval(benchmark::State& state) {
   google::protobuf::Arena arena;
   InterpreterOptions options = GetOptions(arena);
+  options.max_recursion_depth = -1;
 
   auto builder = CreateCelExpressionBuilder(options);
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));

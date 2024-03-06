@@ -5,21 +5,40 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "base/type_provider.h"
+#include "common/memory.h"
+#include "common/value.h"
+#include "eval/eval/attribute_trail.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/activation.h"
+#include "eval/public/cel_attribute.h"
 #include "internal/testing.h"
+#include "runtime/activation.h"
+#include "runtime/managed_value_factory.h"
 #include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::Cast;
+using ::cel::ErrorValue;
+using ::cel::InstanceOf;
+using ::cel::IntValue;
+using ::cel::ManagedValueFactory;
+using ::cel::MemoryManagerRef;
+using ::cel::RuntimeOptions;
 using ::cel::TypeProvider;
+using ::cel::UnknownValue;
+using ::cel::Value;
 using ::cel::ast_internal::Expr;
 using ::google::protobuf::Arena;
 using testing::Eq;
+using testing::HasSubstr;
+using testing::SizeIs;
+using cel::internal::StatusIs;
 
 TEST(IdentStepTest, TestIdentStep) {
   Expr expr;
@@ -195,6 +214,91 @@ TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
   result = status0.value();
 
   ASSERT_TRUE(result.IsUnknownSet());
+}
+
+TEST(DirectIdentStepTest, Basic) {
+  ManagedValueFactory value_factory(TypeProvider::Builtin(),
+                                    MemoryManagerRef::ReferenceCounting());
+  cel::Activation activation;
+  RuntimeOptions options;
+
+  activation.InsertOrAssignValue("var1", IntValue(42));
+
+  ExecutionFrameBase frame(activation, options, value_factory.get());
+  Value result;
+  AttributeTrail trail;
+
+  auto step = CreateDirectIdentStep("var1", -1);
+
+  ASSERT_OK(step->Evaluate(frame, result, trail));
+
+  ASSERT_TRUE(InstanceOf<IntValue>(result));
+  EXPECT_THAT(Cast<IntValue>(result).NativeValue(), Eq(42));
+}
+
+TEST(DirectIdentStepTest, UnknownAttribute) {
+  ManagedValueFactory value_factory(TypeProvider::Builtin(),
+                                    MemoryManagerRef::ReferenceCounting());
+  cel::Activation activation;
+  RuntimeOptions options;
+  options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
+
+  activation.InsertOrAssignValue("var1", IntValue(42));
+  activation.SetUnknownPatterns({CreateCelAttributePattern("var1", {})});
+
+  ExecutionFrameBase frame(activation, options, value_factory.get());
+  Value result;
+  AttributeTrail trail;
+
+  auto step = CreateDirectIdentStep("var1", -1);
+
+  ASSERT_OK(step->Evaluate(frame, result, trail));
+
+  ASSERT_TRUE(InstanceOf<UnknownValue>(result));
+  EXPECT_THAT(Cast<UnknownValue>(result).attribute_set(), SizeIs(1));
+}
+
+TEST(DirectIdentStepTest, MissingAttribute) {
+  ManagedValueFactory value_factory(TypeProvider::Builtin(),
+                                    MemoryManagerRef::ReferenceCounting());
+  cel::Activation activation;
+  RuntimeOptions options;
+  options.enable_missing_attribute_errors = true;
+
+  activation.InsertOrAssignValue("var1", IntValue(42));
+  activation.SetMissingPatterns({CreateCelAttributePattern("var1", {})});
+
+  ExecutionFrameBase frame(activation, options, value_factory.get());
+  Value result;
+  AttributeTrail trail;
+
+  auto step = CreateDirectIdentStep("var1", -1);
+
+  ASSERT_OK(step->Evaluate(frame, result, trail));
+
+  ASSERT_TRUE(InstanceOf<ErrorValue>(result));
+  EXPECT_THAT(Cast<ErrorValue>(result).NativeValue(),
+              StatusIs(absl::StatusCode::kInvalidArgument, HasSubstr("var1")));
+}
+
+TEST(DirectIdentStepTest, NotFound) {
+  ManagedValueFactory value_factory(TypeProvider::Builtin(),
+                                    MemoryManagerRef::ReferenceCounting());
+  cel::Activation activation;
+  RuntimeOptions options;
+
+  ExecutionFrameBase frame(activation, options, value_factory.get());
+  Value result;
+  AttributeTrail trail;
+
+  auto step = CreateDirectIdentStep("var1", -1);
+
+  ASSERT_OK(step->Evaluate(frame, result, trail));
+
+  ASSERT_TRUE(InstanceOf<ErrorValue>(result));
+  EXPECT_THAT(Cast<ErrorValue>(result).NativeValue(),
+              StatusIs(absl::StatusCode::kUnknown,
+                       HasSubstr("\"var1\" found in Activation")));
 }
 
 }  // namespace
