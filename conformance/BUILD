@@ -46,10 +46,6 @@ cc_binary(
         "server.cc",
     ],
     deps = [
-        "//base:data",
-        "//base:kind",
-        "//common:any",
-        "//common:memory",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",
@@ -57,18 +53,8 @@ cc_binary(
         "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//eval/public:transform_utility",
-        "//extensions/protobuf:enum_adapter",
-        "//extensions/protobuf:memory_manager",
-        "//extensions/protobuf:runtime_adapter",
-        "//internal:proto_time_encoding",
         "//internal:status_macros",
         "//parser",
-        "//runtime",
-        "//runtime:activation",
-        "//runtime:constant_folding",
-        "//runtime:managed_value_factory",
-        "//runtime:runtime_options",
-        "//runtime:standard_runtime_builder_factory",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/memory",
@@ -80,7 +66,6 @@ cc_binary(
         "@com_google_googleapis//google/api/expr/conformance/v1alpha1:conformance_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_googleapis//google/api/expr/v1alpha1:value_cc_proto",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
@@ -131,6 +116,7 @@ cc_binary(
     for args in [
         [],
         ["--opt"],
+        ["--recursive"],
     ]
 ]
 

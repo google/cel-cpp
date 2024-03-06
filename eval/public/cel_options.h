@@ -164,6 +164,11 @@ struct InterpreterOptions {
   // This is now always enabled. Setting this option has no effect. It will be
   // removed in a later update.
   bool enable_lazy_bind_initialization = true;
+
+  // Maximum recursion depth for evaluable programs.
+  //
+  // -1 means unbounded.
+  int max_recursion_depth = 0;
 };
 // LINT.ThenChange(//depot/google3/runtime/runtime_options.h)
 

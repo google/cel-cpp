@@ -18,6 +18,29 @@ namespace google::api::expr::runtime {
 // Neither moveable nor copyable.
 class AttributeUtility {
  public:
+  class Accumulator {
+   public:
+    explicit Accumulator(const AttributeUtility& parent) : parent_(parent) {}
+
+    Accumulator(const Accumulator&) = delete;
+    Accumulator& operator=(const Accumulator&) = delete;
+    Accumulator(Accumulator&&) = delete;
+    Accumulator& operator=(Accumulator&&) = delete;
+
+    void Add(const cel::UnknownValue& v);
+    void Add(const AttributeTrail& attr);
+
+    bool IsEmpty() const;
+
+    cel::UnknownValue Build() &&;
+
+   private:
+    friend class AttributeUtility;
+    const AttributeUtility& parent_;
+    cel::AttributeSet attribute_set_;
+    cel::FunctionResultSet function_result_set_;
+  };
+
   AttributeUtility(
       absl::Span<const cel::AttributePattern> unknown_patterns,
       absl::Span<const cel::AttributePattern> missing_attribute_patterns,
@@ -35,8 +58,14 @@ class AttributeUtility {
   // attribute.
   bool CheckForMissingAttribute(const AttributeTrail& trail) const;
 
-  // Checks whether particular corresponds to any patterns that define unknowns.
+  // Checks whether trail corresponds to any patterns that define unknowns.
   bool CheckForUnknown(const AttributeTrail& trail, bool use_partial) const;
+
+  // Checks whether trail corresponds to any patterns that identify
+  // unknowns. Only matches exactly (exact attribute match for self or parent).
+  bool CheckForUnknownExact(const AttributeTrail& trail) const {
+    return CheckForUnknown(trail, false);
+  }
 
   // Creates merged UnknownAttributeSet.
   // Scans over the args collection, determines if there matches to unknown
@@ -49,6 +78,10 @@ class AttributeUtility {
   // Returns the merged UnknownValue or nullopt if not found.
   absl::optional<cel::UnknownValue> MergeUnknowns(
       absl::Span<const cel::Value> args) const;
+
+  // Creates a merged UnknownValue from two unknown values.
+  cel::UnknownValue MergeUnknownValues(const cel::UnknownValue& left,
+                                       const cel::UnknownValue& right) const;
 
   // Creates merged UnknownValue.
   // Merges together UnknownValues found in the args
@@ -70,7 +103,17 @@ class AttributeUtility {
       const cel::FunctionDescriptor& fn_descriptor, int64_t expr_id,
       absl::Span<const cel::Value> args) const;
 
+  Accumulator CreateAccumulator() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return Accumulator(*this);
+  }
+
  private:
+  cel::ValueManager& value_manager() const { return value_factory_; }
+
+  // Workaround friend visibility.
+  void Add(Accumulator& a, const cel::UnknownValue& v) const;
+  void Add(Accumulator& a, const AttributeTrail& attr) const;
+
   absl::Span<const cel::AttributePattern> unknown_patterns_;
   absl::Span<const cel::AttributePattern> missing_attribute_patterns_;
   cel::ValueManager& value_factory_;

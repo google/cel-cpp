@@ -1,18 +1,33 @@
 #include "eval/eval/attribute_utility.h"
 
+#include <cstdint>
+#include <string>
 #include <utility>
 
+#include "absl/status/statusor.h"
+#include "absl/types/optional.h"
+#include "absl/types/span.h"
+#include "base/attribute.h"
 #include "base/attribute_set.h"
+#include "base/function_descriptor.h"
+#include "base/function_result.h"
+#include "base/function_result_set.h"
 #include "base/internal/unknown_set.h"
 #include "common/value.h"
+#include "eval/eval/attribute_trail.h"
 #include "eval/internal/errors.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
 using ::cel::AttributeSet;
 using ::cel::ErrorValue;
+using ::cel::FunctionResult;
+using ::cel::FunctionResultSet;
 using ::cel::UnknownValue;
 using ::cel::base_internal::UnknownSet;
+
+using Accumulator = AttributeUtility::Accumulator;
 
 bool AttributeUtility::CheckForMissingAttribute(
     const AttributeTrail& trail) const {
@@ -79,14 +94,29 @@ absl::optional<UnknownValue> AttributeUtility::MergeUnknowns(
       result_set->unknown_attributes(), result_set->unknown_function_results());
 }
 
+UnknownValue AttributeUtility::MergeUnknownValues(
+    const UnknownValue& left, const UnknownValue& right) const {
+  // Empty unknown value may be used as a sentinel in some tests so need to
+  // distinguish unset (nullopt) and empty(engaged empty value).
+  AttributeSet attributes;
+  FunctionResultSet function_results;
+  attributes.Add(left.attribute_set());
+  function_results.Add(left.function_result_set());
+  attributes.Add(right.attribute_set());
+  function_results.Add(right.function_result_set());
+
+  return value_factory_.CreateUnknownValue(std::move(attributes),
+                                           std::move(function_results));
+}
+
 // Creates merged UnknownAttributeSet.
 // Scans over the args collection, determines if there matches to unknown
 // patterns, merges attributes together with those from initial_set
 // (if initial_set is not null).
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
-cel::AttributeSet AttributeUtility::CheckForUnknowns(
+AttributeSet AttributeUtility::CheckForUnknowns(
     absl::Span<const AttributeTrail> args, bool use_partial) const {
-  cel::AttributeSet attribute_set;
+  AttributeSet attribute_set;
 
   for (const auto& trail : args) {
     if (CheckForUnknown(trail, use_partial)) {
@@ -148,7 +178,31 @@ UnknownValue AttributeUtility::CreateUnknownSet(
     const cel::FunctionDescriptor& fn_descriptor, int64_t expr_id,
     absl::Span<const cel::Value> args) const {
   return value_factory_.CreateUnknownValue(
-      cel::FunctionResultSet(cel::FunctionResult(fn_descriptor, expr_id)));
+      FunctionResultSet(FunctionResult(fn_descriptor, expr_id)));
+}
+
+void AttributeUtility::Add(Accumulator& a, const cel::UnknownValue& v) const {
+  a.attribute_set_.Add(v.attribute_set());
+  a.function_result_set_.Add(v.function_result_set());
+}
+
+void AttributeUtility::Add(Accumulator& a, const AttributeTrail& attr) const {
+  a.attribute_set_.Add(attr.attribute());
+}
+
+void Accumulator::Add(const cel::UnknownValue& value) {
+  parent_.Add(*this, value);
+}
+
+void Accumulator::Add(const AttributeTrail& attr) { parent_.Add(*this, attr); }
+
+bool Accumulator::IsEmpty() const {
+  return attribute_set_.empty() && function_result_set_.empty();
+}
+
+cel::UnknownValue Accumulator::Build() && {
+  return parent_.value_manager().CreateUnknownValue(
+      std::move(attribute_set_), std::move(function_result_set_));
 }
 
 }  // namespace google::api::expr::runtime
