@@ -72,9 +72,9 @@ class ParsedListValueInterface : public ListValueInterface {
   absl::Status SerializeTo(AnyToJsonConverter& converter,
                            absl::Cord& value) const override;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  virtual absl::StatusOr<ValueView> Equal(
+      ValueManager& value_manager, ValueView other,
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   bool IsZeroValue() const { return IsEmpty(); }
 
@@ -102,7 +102,7 @@ class ParsedListValueInterface : public ListValueInterface {
       ValueManager& value_manager, ValueView other,
       Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
- private:
+ protected:
   friend class ParsedListValueInterfaceIterator;
 
   virtual absl::StatusOr<ValueView> GetImpl(ValueManager& value_manager,

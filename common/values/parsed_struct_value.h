@@ -83,10 +83,10 @@ class ParsedStructValueInterface : public StructValueInterface {
       ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
       bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
- private:
+ protected:
   virtual absl::StatusOr<ValueView> EqualImpl(
       ValueManager& value_manager, ParsedStructValueView other,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
+      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 };
 
 class ParsedStructValue {
@@ -183,6 +183,12 @@ class ParsedStructValue {
   absl::StatusOr<std::pair<ValueView, int>> Qualify(
       ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
       bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  const interface_type& operator*() const { return *interface_; }
+
+  absl::Nonnull<const interface_type*> operator->() const {
+    return interface_.operator->();
+  }
 
  private:
   friend class ParsedStructValueView;
@@ -332,6 +338,12 @@ class ParsedStructValueView {
   absl::StatusOr<std::pair<ValueView, int>> Qualify(
       ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
       bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  const interface_type& operator*() const { return *interface_; }
+
+  absl::Nonnull<const interface_type*> operator->() const {
+    return interface_.operator->();
+  }
 
  private:
   friend class ParsedStructValue;

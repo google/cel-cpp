@@ -53,6 +53,11 @@ class ThreadCompatibleMemoryTest
     return absl::StrJoin(param.param, "_", absl::StreamFormatter());
   }
 
+ protected:
+  virtual MemoryManager NewThreadCompatiblePoolingMemoryManager() {
+    return cel::NewThreadCompatiblePoolingMemoryManager();
+  }
+
  private:
   absl::optional<MemoryManager> memory_manager_;
 };

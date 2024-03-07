@@ -123,7 +123,7 @@ class ParsedMapValueInterface : public MapValueInterface {
   virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const = 0;
 
- private:
+ protected:
   Type GetTypeImpl(TypeManager&) const override { return MapType(); }
 
   // Called by `Find` after performing various argument checks.

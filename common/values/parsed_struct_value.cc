@@ -39,6 +39,13 @@ absl::StatusOr<ValueView> ParsedStructValueInterface::Equal(
   return BoolValueView{false};
 }
 
+absl::StatusOr<ValueView> ParsedStructValueInterface::EqualImpl(
+    ValueManager& value_manager, ParsedStructValueView other,
+    Value& scratch) const {
+  return common_internal::StructValueEqual(value_manager, *this, other,
+                                           scratch);
+}
+
 absl::StatusOr<std::pair<ValueView, int>> ParsedStructValueInterface::Qualify(
     ValueManager&, absl::Span<const SelectQualifier>, bool, Value&) const {
   return absl::UnimplementedError("Qualify not supported.");
