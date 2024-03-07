@@ -124,7 +124,7 @@ class JsonArrayBuilder {
   JsonArrayBuilder& operator=(const JsonArrayBuilder&) = delete;
   JsonArrayBuilder& operator=(JsonArrayBuilder&&) = default;
 
-  bool empty() const { return impl_.get().empty(); }
+  bool empty() const;
 
   size_type size() const;
 
@@ -187,7 +187,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI JsonArray final {
   JsonArray& operator=(const JsonArray&) = default;
   JsonArray& operator=(JsonArray&&) = default;
 
-  bool empty() const { return impl_.get().empty(); }
+  bool empty() const;
 
   size_type size() const;
 
@@ -223,12 +223,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI JsonArray final {
 
   static internal::CopyOnWrite<Container> Empty();
 
-  explicit JsonArray(internal::CopyOnWrite<Container> impl)
-      : impl_(std::move(impl)) {
-    if (impl_.get().empty()) {
-      impl_ = Empty();
-    }
-  }
+  explicit JsonArray(internal::CopyOnWrite<Container> impl);
 
   internal::CopyOnWrite<Container> impl_;
 };

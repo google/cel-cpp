@@ -68,6 +68,17 @@ Json JsonBytes(const absl::Cord& value) {
   return JsonBytes(absl::string_view(static_cast<std::string>(value)));
 }
 
+bool JsonArrayBuilder::empty() const { return impl_.get().empty(); }
+
+bool JsonArray::empty() const { return impl_.get().empty(); }
+
+JsonArray::JsonArray(internal::CopyOnWrite<Container> impl)
+    : impl_(std::move(impl)) {
+  if (impl_.get().empty()) {
+    impl_ = Empty();
+  }
+}
+
 namespace {
 
 using internal::ProtoWireEncoder;
