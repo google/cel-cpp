@@ -193,13 +193,31 @@ cc_library(
 cc_library(
     name = "value_testing",
     testonly = True,
+    srcs = ["value_testing.cc"],
     hdrs = ["value_testing.h"],
     deps = [
         ":memory",
         ":memory_testing",
         ":type",
         ":value",
+        ":value_kind",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_test(
+    name = "value_testing_test",
+    srcs = ["value_testing_test.cc"],
+    deps = [
+        ":memory",
+        ":value",
+        ":value_testing",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/time",
     ],
 )
 
