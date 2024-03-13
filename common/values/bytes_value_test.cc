@@ -105,6 +105,26 @@ TEST_P(BytesValueTest, As) {
               Ne(absl::nullopt));
 }
 
+TEST_P(BytesValueTest, StringViewEquality) {
+  // NOLINTBEGIN(readability/check)
+  EXPECT_TRUE(BytesValue("foo") == "foo");
+  EXPECT_FALSE(BytesValue("foo") == "bar");
+
+  EXPECT_TRUE("foo" == BytesValue("foo"));
+  EXPECT_FALSE("bar" == BytesValue("foo"));
+  // NOLINTEND(readability/check)
+}
+
+TEST_P(BytesValueTest, StringViewInequality) {
+  // NOLINTBEGIN(readability/check)
+  EXPECT_FALSE(BytesValue("foo") != "foo");
+  EXPECT_TRUE(BytesValue("foo") != "bar");
+
+  EXPECT_FALSE("foo" != BytesValue("foo"));
+  EXPECT_TRUE("bar" != BytesValue("foo"));
+  // NOLINTEND(readability/check)
+}
+
 INSTANTIATE_TEST_SUITE_P(
     BytesValueTest, BytesValueTest,
     ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
@@ -145,6 +165,26 @@ TEST_P(BytesValueViewTest, ConvertToAny) {
 TEST_P(BytesValueViewTest, ConvertToJson) {
   EXPECT_THAT(BytesValueView("foo").ConvertToJson(value_manager()),
               IsOkAndHolds(Json(JsonBytes("foo"))));
+}
+
+TEST_P(BytesValueViewTest, StringViewEquality) {
+  // NOLINTBEGIN(readability/check)
+  EXPECT_TRUE(BytesValueView("foo") == "foo");
+  EXPECT_FALSE(BytesValueView("foo") == "bar");
+
+  EXPECT_TRUE("foo" == BytesValueView("foo"));
+  EXPECT_FALSE("bar" == BytesValueView("foo"));
+  // NOLINTEND(readability/check)
+}
+
+TEST_P(BytesValueViewTest, StringViewInequality) {
+  // NOLINTBEGIN(readability/check)
+  EXPECT_FALSE(BytesValueView("foo") != "foo");
+  EXPECT_TRUE(BytesValueView("foo") != "bar");
+
+  EXPECT_FALSE("foo" != BytesValueView("foo"));
+  EXPECT_TRUE("bar" != BytesValueView("foo"));
+  // NOLINTEND(readability/check)
 }
 
 TEST_P(BytesValueViewTest, NativeValue) {

@@ -175,6 +175,22 @@ inline std::ostream& operator<<(std::ostream& out, const BytesValue& value) {
   return out << value.DebugString();
 }
 
+inline bool operator==(const BytesValue& lhs, absl::string_view rhs) {
+  return lhs.Equals(rhs);
+}
+
+inline bool operator==(absl::string_view lhs, const BytesValue& rhs) {
+  return rhs == lhs;
+}
+
+inline bool operator!=(const BytesValue& lhs, absl::string_view rhs) {
+  return !lhs.Equals(rhs);
+}
+
+inline bool operator!=(absl::string_view lhs, const BytesValue& rhs) {
+  return rhs != lhs;
+}
+
 class BytesValueView final {
  public:
   using alternative_type = BytesValue;
@@ -293,6 +309,22 @@ class BytesValueView final {
 
 inline void swap(BytesValueView& lhs, BytesValueView& rhs) noexcept {
   lhs.swap(rhs);
+}
+
+inline bool operator==(BytesValueView lhs, absl::string_view rhs) {
+  return lhs.Equals(rhs);
+}
+
+inline bool operator==(absl::string_view lhs, BytesValueView rhs) {
+  return rhs == lhs;
+}
+
+inline bool operator!=(BytesValueView lhs, absl::string_view rhs) {
+  return !lhs.Equals(rhs);
+}
+
+inline bool operator!=(absl::string_view lhs, BytesValueView rhs) {
+  return rhs != lhs;
 }
 
 inline std::ostream& operator<<(std::ostream& out, BytesValueView value) {
