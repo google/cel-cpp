@@ -120,6 +120,63 @@ cc_library(
 )
 
 cc_library(
+    name = "message",
+    srcs = ["message.cc"],
+    hdrs = ["message.h"],
+    deps = [
+        ":any",
+        ":duration",
+        ":json",
+        ":map_reflection",
+        ":qualify",
+        ":struct",
+        ":timestamp",
+        ":wrappers",
+        "//base:attributes",
+        "//base/internal:message_wrapper",
+        "//common:any",
+        "//common:casting",
+        "//common:json",
+        "//common:memory",
+        "//common:native_type",
+        "//common:type",
+        "//common:value",
+        "//common:value_kind",
+        "//common/internal:reference_count",
+        "//extensions/protobuf:json",
+        "//extensions/protobuf:memory_manager",
+        "//internal:align",
+        "//internal:casts",
+        "//internal:new",
+        "//internal:status_macros",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/numeric:bits",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "message_test",
+    srcs = ["message_test.cc"],
+    deps = [
+        ":message",
+        "//internal:testing",
+        "@com_google_cel_spec//proto/test/v1/proto2:test_all_types_cc_proto",
+    ],
+)
+
+cc_library(
     name = "reflection",
     srcs = ["reflection.cc"],
     hdrs = ["reflection.h"],
