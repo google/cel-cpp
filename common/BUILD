@@ -411,6 +411,7 @@ cc_library(
         ":json",
         ":memory",
         ":native_type",
+        ":sized_input_view",
         ":type",
         ":type_kind",
         ":unknown",

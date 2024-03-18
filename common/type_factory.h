@@ -22,7 +22,9 @@
 
 namespace cel {
 
-class JsonValueManager;
+namespace common_internal {
+class PiecewiseValueManager;
+}
 
 // `TypeFactory` is the preferred way for constructing compound types such as
 // lists, maps, structs, and opaques. It caches types and avoids constructing
@@ -120,7 +122,7 @@ class TypeFactory {
   MapType GetJsonMapType() { return MapType(GetStringDynMapType()); }
 
  protected:
-  friend class JsonValueManager;
+  friend class common_internal::PiecewiseValueManager;
 
   virtual ListType CreateListTypeImpl(TypeView element) = 0;
 

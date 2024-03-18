@@ -32,7 +32,9 @@
 
 namespace cel {
 
-class JsonValueManager;
+namespace common_internal {
+class PiecewiseValueManager;
+}
 
 // `ValueFactory` is the preferred way for constructing values.
 class ValueFactory : public virtual TypeFactory {
@@ -186,7 +188,7 @@ class ValueFactory : public virtual TypeFactory {
   }
 
  protected:
-  friend class JsonValueManager;
+  friend class common_internal::PiecewiseValueManager;
 
   virtual ListValue CreateZeroListValueImpl(ListTypeView type) = 0;
 
