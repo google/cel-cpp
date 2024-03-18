@@ -256,7 +256,7 @@ CelValue CreateCelValue(const Any& any_value,
   WellKnownType type = GetWellKnownType(full_name);
   switch (type) {
     case kDoubleValue: {
-      DoubleValue* nested_message = Arena::CreateMessage<DoubleValue>(arena);
+      DoubleValue* nested_message = Arena::Create<DoubleValue>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
         // TODO(issues/25) What error code?
@@ -265,7 +265,7 @@ CelValue CreateCelValue(const Any& any_value,
       return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kFloatValue: {
-      FloatValue* nested_message = Arena::CreateMessage<FloatValue>(arena);
+      FloatValue* nested_message = Arena::Create<FloatValue>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
         // TODO(issues/25) What error code?
@@ -274,7 +274,7 @@ CelValue CreateCelValue(const Any& any_value,
       return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kInt32Value: {
-      Int32Value* nested_message = Arena::CreateMessage<Int32Value>(arena);
+      Int32Value* nested_message = Arena::Create<Int32Value>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
         // TODO(issues/25) What error code?
@@ -283,7 +283,7 @@ CelValue CreateCelValue(const Any& any_value,
       return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kInt64Value: {
-      Int64Value* nested_message = Arena::CreateMessage<Int64Value>(arena);
+      Int64Value* nested_message = Arena::Create<Int64Value>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
         // TODO(issues/25) What error code?
@@ -292,7 +292,7 @@ CelValue CreateCelValue(const Any& any_value,
       return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kUInt32Value: {
-      UInt32Value* nested_message = Arena::CreateMessage<UInt32Value>(arena);
+      UInt32Value* nested_message = Arena::Create<UInt32Value>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
         // TODO(issues/25) What error code?
@@ -301,7 +301,7 @@ CelValue CreateCelValue(const Any& any_value,
       return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kUInt64Value: {
-      UInt64Value* nested_message = Arena::CreateMessage<UInt64Value>(arena);
+      UInt64Value* nested_message = Arena::Create<UInt64Value>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
         // TODO(issues/25) What error code?
@@ -310,7 +310,7 @@ CelValue CreateCelValue(const Any& any_value,
       return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kBoolValue: {
-      BoolValue* nested_message = Arena::CreateMessage<BoolValue>(arena);
+      BoolValue* nested_message = Arena::Create<BoolValue>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
         // TODO(issues/25) What error code?
@@ -319,7 +319,7 @@ CelValue CreateCelValue(const Any& any_value,
       return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kTimestamp: {
-      Timestamp* nested_message = Arena::CreateMessage<Timestamp>(arena);
+      Timestamp* nested_message = Arena::Create<Timestamp>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
         // TODO(issues/25) What error code?
@@ -328,7 +328,7 @@ CelValue CreateCelValue(const Any& any_value,
       return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kDuration: {
-      Duration* nested_message = Arena::CreateMessage<Duration>(arena);
+      Duration* nested_message = Arena::Create<Duration>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
         // TODO(issues/25) What error code?
@@ -337,7 +337,7 @@ CelValue CreateCelValue(const Any& any_value,
       return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kStringValue: {
-      StringValue* nested_message = Arena::CreateMessage<StringValue>(arena);
+      StringValue* nested_message = Arena::Create<StringValue>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
         // TODO(issues/25) What error code?
@@ -346,7 +346,7 @@ CelValue CreateCelValue(const Any& any_value,
       return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kBytesValue: {
-      BytesValue* nested_message = Arena::CreateMessage<BytesValue>(arena);
+      BytesValue* nested_message = Arena::Create<BytesValue>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
         // TODO(issues/25) What error code?
@@ -355,7 +355,7 @@ CelValue CreateCelValue(const Any& any_value,
       return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kListValue: {
-      ListValue* nested_message = Arena::CreateMessage<ListValue>(arena);
+      ListValue* nested_message = Arena::Create<ListValue>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
         // TODO(issues/25) What error code?
@@ -364,7 +364,7 @@ CelValue CreateCelValue(const Any& any_value,
       return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kStruct: {
-      Struct* nested_message = Arena::CreateMessage<Struct>(arena);
+      Struct* nested_message = Arena::Create<Struct>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
         // TODO(issues/25) What error code?
@@ -373,7 +373,7 @@ CelValue CreateCelValue(const Any& any_value,
       return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kValue: {
-      Value* nested_message = Arena::CreateMessage<Value>(arena);
+      Value* nested_message = Arena::Create<Value>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
         // TODO(issues/25) What error code?
@@ -382,7 +382,7 @@ CelValue CreateCelValue(const Any& any_value,
       return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kAny: {
-      Any* nested_message = Arena::CreateMessage<Any>(arena);
+      Any* nested_message = Arena::Create<Any>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
         // TODO(issues/25) What error code?

@@ -352,7 +352,7 @@ class ValueFromMessageMaker {
         msg->GetReflection()->GetMessageFactory();
     const google::protobuf::DescriptorPool* pool = msg->GetDescriptor()->file()->pool();
     if (message == nullptr) {
-      auto message_copy = Arena::CreateMessage<MessageType>(arena);
+      auto message_copy = Arena::Create<MessageType>(arena);
       if (MessageType::descriptor() == msg->GetDescriptor()) {
         message_copy->CopyFrom(*msg);
         message = message_copy;
@@ -878,7 +878,7 @@ class MessageFromValueMaker {
     }
     // Otherwise, allocate an empty message type, and attempt to populate it
     // using the proper MessageFromValue overload.
-    auto* msg_buffer = Arena::CreateMessage<MessageType>(arena);
+    auto* msg_buffer = Arena::Create<MessageType>(arena);
     return MessageFromValue(value, msg_buffer, arena);
   }
 

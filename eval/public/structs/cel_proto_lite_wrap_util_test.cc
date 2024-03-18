@@ -167,7 +167,7 @@ class CelProtoWrapperTest : public ::testing::Test {
     EXPECT_THAT(*tested_message, EqualsProto(message));
 
     // Test the same as above, but with allocated message.
-    MessageType* created_message = Arena::CreateMessage<MessageType>(arena());
+    MessageType* created_message = Arena::Create<MessageType>(arena());
     result = CreateMessageFromValue(value, created_message, type_provider(),
                                     arena());
     EXPECT_EQ(created_message, *result);

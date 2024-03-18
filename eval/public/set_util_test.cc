@@ -50,8 +50,8 @@ std::string* ExampleStr2() {
 // ordering in |CelValueLessThan|. Length 13
 std::vector<CelValue> TypeExamples(Arena* arena) {
   Empty* empty = Arena::Create<Empty>(arena);
-  Struct* proto_map = Arena::CreateMessage<Struct>(arena);
-  ListValue* proto_list = Arena::CreateMessage<ListValue>(arena);
+  Struct* proto_map = Arena::Create<Struct>(arena);
+  ListValue* proto_list = Arena::Create<ListValue>(arena);
   UnknownSet* unknown_set = Arena::Create<UnknownSet>(arena);
   return {CelValue::CreateBool(false),
           CelValue::CreateInt64(0),

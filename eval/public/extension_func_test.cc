@@ -462,7 +462,7 @@ TEST_F(ExtensionTest, TestGetTimeOfDay) {
   absl::TimeZone time_zone;
   std::string time_zonestr = "America/Los_Angeles";
   google::type::TimeOfDay* tod_message =
-      Arena::CreateMessage<google::type::TimeOfDay>(&arena);
+      Arena::Create<google::type::TimeOfDay>(&arena);
 
   absl::LoadTimeZone(time_zonestr, &time_zone);
   absl::Time input_val = absl::FromCivil(date, time_zone);
@@ -488,7 +488,7 @@ TEST_F(ExtensionTest, TestGetTimeOfDayUTC) {
   absl::CivilSecond date(2015, 2, 3, 4, 5, 6);
   absl::Time input_time = absl::FromCivil(date, time_zone);
   google::type::TimeOfDay* tod_message =
-      Arena::CreateMessage<google::type::TimeOfDay>(&arena);
+      Arena::Create<google::type::TimeOfDay>(&arena);
 
   tod_message->set_seconds(date.second());
   tod_message->set_minutes(date.minute());
@@ -508,11 +508,11 @@ TEST_F(ExtensionTest, TestBetweenToD) {
   Arena arena;
   CelValue result;
   google::type::TimeOfDay* time_of_day =
-      Arena::CreateMessage<google::type::TimeOfDay>(&arena);
+      Arena::Create<google::type::TimeOfDay>(&arena);
   google::type::TimeOfDay* start =
-      Arena::CreateMessage<google::type::TimeOfDay>(&arena);
+      Arena::Create<google::type::TimeOfDay>(&arena);
   google::type::TimeOfDay* stop =
-      Arena::CreateMessage<google::type::TimeOfDay>(&arena);
+      Arena::Create<google::type::TimeOfDay>(&arena);
 
   start->set_hours(20);
   start->set_minutes(0);
@@ -550,7 +550,7 @@ TEST_F(ExtensionTest, TestBetweenTodStr) {
   std::string start = "18:20:30";
   std::string stop = "19:20:30";
   google::type::TimeOfDay* time_of_day =
-      Arena::CreateMessage<google::type::TimeOfDay>(&arena);
+      Arena::Create<google::type::TimeOfDay>(&arena);
 
   time_of_day->set_hours(19);
   time_of_day->set_minutes(0);

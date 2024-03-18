@@ -135,7 +135,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedBoolValue) {
   Arena arena;
   Value value;
 
-  TestMessage* msg = Arena::CreateMessage<TestMessage>(&arena);
+  TestMessage* msg = Arena::Create<TestMessage>(&arena);
   msg->add_bool_list(true);
   msg->add_bool_list(false);
   CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
@@ -154,7 +154,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedInt32Value) {
   Arena arena;
   Value value;
 
-  TestMessage* msg = Arena::CreateMessage<TestMessage>(&arena);
+  TestMessage* msg = Arena::Create<TestMessage>(&arena);
   msg->add_int32_list(2);
   msg->add_int32_list(3);
   CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
@@ -173,7 +173,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedInt64Value) {
   Arena arena;
   Value value;
 
-  TestMessage* msg = Arena::CreateMessage<TestMessage>(&arena);
+  TestMessage* msg = Arena::Create<TestMessage>(&arena);
   msg->add_int64_list(2);
   msg->add_int64_list(3);
   CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
@@ -192,7 +192,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedUint64Value) {
   Arena arena;
   Value value;
 
-  TestMessage* msg = Arena::CreateMessage<TestMessage>(&arena);
+  TestMessage* msg = Arena::Create<TestMessage>(&arena);
   msg->add_uint64_list(2);
   msg->add_uint64_list(3);
   CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
@@ -211,7 +211,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedDoubleValue) {
   Arena arena;
   Value value;
 
-  TestMessage* msg = Arena::CreateMessage<TestMessage>(&arena);
+  TestMessage* msg = Arena::Create<TestMessage>(&arena);
   msg->add_double_list(2);
   msg->add_double_list(3);
   CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
@@ -230,7 +230,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedStringValue) {
   Arena arena;
   Value value;
 
-  TestMessage* msg = Arena::CreateMessage<TestMessage>(&arena);
+  TestMessage* msg = Arena::Create<TestMessage>(&arena);
   msg->add_string_list("test1");
   msg->add_string_list("test2");
   CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
@@ -249,7 +249,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedBytesValue) {
   Arena arena;
   Value value;
 
-  TestMessage* msg = Arena::CreateMessage<TestMessage>(&arena);
+  TestMessage* msg = Arena::Create<TestMessage>(&arena);
   msg->add_bytes_list("test1");
   msg->add_bytes_list("test2");
   CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);

@@ -80,7 +80,7 @@ CelValue GetTimeOfDayTz(Arena* arena, absl::Time time_stamp,
   absl::CivilSecond date_civil_time =
       absl::ToCivilSecond(time_stamp, time_zone);
   google::type::TimeOfDay* tod_message =
-      Arena::CreateMessage<google::type::TimeOfDay>(arena);
+      Arena::Create<google::type::TimeOfDay>(arena);
 
   tod_message->set_seconds(date_civil_time.second());
   tod_message->set_minutes(date_civil_time.minute());
