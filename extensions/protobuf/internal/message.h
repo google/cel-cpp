@@ -132,6 +132,29 @@ absl::StatusOr<Value> ProtoMessageToValueImpl(
     absl::Nonnull<const google::protobuf::Message*> prototype,
     const absl::Cord& serialized);
 
+// Converts a value to a protocol buffer message.
+absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValueImpl(
+    ValueView value, absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> factory, google::protobuf::Arena* arena);
+inline absl::StatusOr<absl::Nonnull<google::protobuf::Message*>>
+ProtoMessageFromValueImpl(ValueView value, google::protobuf::Arena* arena) {
+  return ProtoMessageFromValueImpl(
+      value, google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), arena);
+}
+
+// Converts a value to a specific protocol buffer message.
+absl::Status ProtoMessageFromValueImpl(
+    ValueView value, absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> factory,
+    absl::Nonnull<google::protobuf::Message*> message);
+inline absl::Status ProtoMessageFromValueImpl(
+    ValueView value, absl::Nonnull<google::protobuf::Message*> message) {
+  return ProtoMessageFromValueImpl(
+      value, google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), message);
+}
+
 }  // namespace cel::extensions::protobuf_internal
 
 #endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_MESSAGE_H_

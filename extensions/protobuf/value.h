@@ -196,6 +196,54 @@ ProtoMessageToValue(ValueManager& value_manager, T&& value,
   return scratch;
 }
 
+// Extract a protobuf message from a CEL value.
+//
+// Handles unwrapping message types with special meanings in CEL (WKTs).
+//
+// T value must be a protobuf message class.
+template <typename T>
+std::enable_if_t<protobuf_internal::IsProtoMessage<T>, absl::Status>
+ProtoMessageFromValue(ValueView value, T& message,
+                      absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
+                      absl::Nonnull<google::protobuf::MessageFactory*> factory) {
+  return protobuf_internal::ProtoMessageFromValueImpl(value, pool, factory,
+                                                      &message);
+}
+
+// Extract a protobuf message from a CEL value.
+//
+// Handles unwrapping message types with special meanings in CEL (WKTs).
+//
+// T value must be a protobuf message class.
+template <typename T>
+std::enable_if_t<protobuf_internal::IsProtoMessage<T>, absl::Status>
+ProtoMessageFromValue(ValueView value, T& message) {
+  return protobuf_internal::ProtoMessageFromValueImpl(value, &message);
+}
+
+// Extract a protobuf message from a CEL value.
+//
+// Handles unwrapping message types with special meanings in CEL (WKTs).
+//
+// T value must be a protobuf message class.
+inline absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValue(
+    ValueView value, absl::Nullable<google::protobuf::Arena*> arena) {
+  return protobuf_internal::ProtoMessageFromValueImpl(value, arena);
+}
+
+// Extract a protobuf message from a CEL value.
+//
+// Handles unwrapping message types with special meanings in CEL (WKTs).
+//
+// T value must be a protobuf message class.
+inline absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValue(
+    ValueView value, absl::Nullable<google::protobuf::Arena*> arena,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> factory) {
+  return protobuf_internal::ProtoMessageFromValueImpl(value, pool, factory,
+                                                      arena);
+}
+
 }  // namespace cel::extensions
 
 #endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_VALUE_H_

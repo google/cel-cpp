@@ -38,7 +38,9 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "absl/types/variant.h"
 #include "base/attribute.h"
+#include "base/internal/message_wrapper.h"
 #include "common/any.h"
 #include "common/casting.h"
 #include "common/internal/reference_count.h"
@@ -49,6 +51,7 @@
 #include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_factory.h"
+#include "common/value_kind.h"
 #include "common/value_manager.h"
 #include "extensions/protobuf/internal/any.h"
 #include "extensions/protobuf/internal/duration.h"
@@ -58,6 +61,7 @@
 #include "extensions/protobuf/internal/struct.h"
 #include "extensions/protobuf/internal/timestamp.h"
 #include "extensions/protobuf/internal/wrappers.h"
+#include "extensions/protobuf/json.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/align.h"
 #include "internal/casts.h"
@@ -126,6 +130,23 @@ struct DefaultArenaDeleter {
 
 template <typename T>
 using ArenaUniquePtr = std::unique_ptr<T, DefaultArenaDeleter>;
+
+absl::StatusOr<absl::Nonnull<ArenaUniquePtr<google::protobuf::Message>>> NewProtoMessage(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> factory, absl::string_view name,
+    google::protobuf::Arena* arena) {
+  const auto* desc = pool->FindMessageTypeByName(name);
+  if (ABSL_PREDICT_FALSE(desc == nullptr)) {
+    return absl::NotFoundError(
+        absl::StrCat("descriptor missing: `", name, "`"));
+  }
+  const auto* proto = factory->GetPrototype(desc);
+  if (ABSL_PREDICT_FALSE(proto == nullptr)) {
+    return absl::NotFoundError(absl::StrCat("prototype missing: `", name, "`"));
+  }
+  return ArenaUniquePtr<google::protobuf::Message>(proto->New(arena),
+                                         DefaultArenaDeleter{arena});
+}
 
 absl::Status ProtoMapKeyTypeMismatch(google::protobuf::FieldDescriptor::CppType expected,
                                      google::protobuf::FieldDescriptor::CppType got) {
@@ -1190,6 +1211,15 @@ class ParsedProtoStructValueInterface;
 const ParsedProtoStructValueInterface* AsParsedProtoStructValue(
     ParsedStructValueView value);
 
+const ParsedProtoStructValueInterface* AsParsedProtoStructValue(
+    ValueView value) {
+  if (auto parsed_struct_value = As<ParsedStructValueView>(value);
+      parsed_struct_value) {
+    return AsParsedProtoStructValue(*parsed_struct_value);
+  }
+  return nullptr;
+}
+
 class ParsedProtoStructValueInterface
     : public ParsedStructValueInterface,
       public EnableSharedFromThis<ParsedProtoStructValueInterface> {
@@ -1613,6 +1643,53 @@ absl::StatusOr<absl::optional<Value>> WellKnownProtoMessageToValue(
                                       value_manager.type_provider(), message);
 }
 
+absl::Status ProtoMessageCopyUsingSerialization(
+    google::protobuf::MessageLite* to, const google::protobuf::MessageLite* from) {
+  ABSL_DCHECK_EQ(to->GetTypeName(), from->GetTypeName());
+  absl::Cord serialized;
+  if (!from->SerializePartialToCord(&serialized)) {
+    return absl::UnknownError(
+        absl::StrCat("failed to serialize `", from->GetTypeName(), "`"));
+  }
+  if (!to->ParsePartialFromCord(serialized)) {
+    return absl::UnknownError(
+        absl::StrCat("failed to parse `", to->GetTypeName(), "`"));
+  }
+  return absl::OkStatus();
+}
+
+absl::Status ProtoMessageCopy(
+    absl::Nonnull<google::protobuf::Message*> to_message,
+    absl::Nonnull<const google::protobuf::Descriptor*> to_descriptor,
+    absl::Nonnull<const google::protobuf::Message*> from_message) {
+  CEL_ASSIGN_OR_RETURN(const auto* from_descriptor,
+                       GetDescriptor(*from_message));
+  if (to_descriptor == from_descriptor) {
+    // Same.
+    to_message->CopyFrom(*from_message);
+    return absl::OkStatus();
+  }
+  if (to_descriptor->full_name() == from_descriptor->full_name()) {
+    // Same type, different descriptors.
+    return ProtoMessageCopyUsingSerialization(to_message, from_message);
+  }
+  return TypeConversionError(from_descriptor->full_name(),
+                             to_descriptor->full_name())
+      .NativeValue();
+}
+
+absl::Status ProtoMessageCopy(
+    absl::Nonnull<google::protobuf::Message*> to_message,
+    absl::Nonnull<const google::protobuf::Descriptor*> to_descriptor,
+    absl::Nonnull<const google::protobuf::MessageLite*> from_message) {
+  const auto& from_type_name = from_message->GetTypeName();
+  if (from_type_name == to_descriptor->full_name()) {
+    return ProtoMessageCopyUsingSerialization(to_message, from_message);
+  }
+  return TypeConversionError(from_type_name, to_descriptor->full_name())
+      .NativeValue();
+}
+
 }  // namespace
 
 absl::StatusOr<absl::Nonnull<const google::protobuf::Descriptor*>> GetDescriptor(
@@ -1784,6 +1861,283 @@ absl::StatusOr<Value> ProtoMessageToValueImpl(
               message, std::move(aliased))};
     }
   }
+}
+
+absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValueImpl(
+    ValueView value, absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> factory, google::protobuf::Arena* arena) {
+  switch (value.kind()) {
+    case ValueKind::kNull: {
+      CEL_ASSIGN_OR_RETURN(
+          auto message,
+          NewProtoMessage(pool, factory, "google.protobuf.Value", arena));
+      CEL_RETURN_IF_ERROR(DynamicValueProtoFromJson(kJsonNull, *message));
+      return message.release();
+    }
+    case ValueKind::kBool: {
+      CEL_ASSIGN_OR_RETURN(
+          auto message,
+          NewProtoMessage(pool, factory, "google.protobuf.BoolValue", arena));
+      CEL_RETURN_IF_ERROR(WrapDynamicBoolValueProto(
+          Cast<BoolValueView>(value).NativeValue(), *message));
+      return message.release();
+    }
+    case ValueKind::kInt: {
+      CEL_ASSIGN_OR_RETURN(
+          auto message,
+          NewProtoMessage(pool, factory, "google.protobuf.Int64Value", arena));
+      CEL_RETURN_IF_ERROR(WrapDynamicInt64ValueProto(
+          Cast<IntValueView>(value).NativeValue(), *message));
+      return message.release();
+    }
+    case ValueKind::kUint: {
+      CEL_ASSIGN_OR_RETURN(
+          auto message,
+          NewProtoMessage(pool, factory, "google.protobuf.UInt64Value", arena));
+      CEL_RETURN_IF_ERROR(WrapDynamicUInt64ValueProto(
+          Cast<UintValueView>(value).NativeValue(), *message));
+      return message.release();
+    }
+    case ValueKind::kDouble: {
+      CEL_ASSIGN_OR_RETURN(
+          auto message,
+          NewProtoMessage(pool, factory, "google.protobuf.DoubleValue", arena));
+      CEL_RETURN_IF_ERROR(WrapDynamicDoubleValueProto(
+          Cast<DoubleValueView>(value).NativeValue(), *message));
+      return message.release();
+    }
+    case ValueKind::kString: {
+      CEL_ASSIGN_OR_RETURN(
+          auto message,
+          NewProtoMessage(pool, factory, "google.protobuf.StringValue", arena));
+      CEL_RETURN_IF_ERROR(WrapDynamicStringValueProto(
+          Cast<StringValueView>(value).NativeCord(), *message));
+      return message.release();
+    }
+    case ValueKind::kBytes: {
+      CEL_ASSIGN_OR_RETURN(
+          auto message,
+          NewProtoMessage(pool, factory, "google.protobuf.BytesValue", arena));
+      CEL_RETURN_IF_ERROR(WrapDynamicBytesValueProto(
+          Cast<BytesValueView>(value).NativeCord(), *message));
+      return message.release();
+    }
+    case ValueKind::kStruct: {
+      CEL_ASSIGN_OR_RETURN(
+          auto message,
+          NewProtoMessage(pool, factory, value.GetTypeName(), arena));
+      ProtoAnyToJsonConverter converter(pool, factory);
+      CEL_ASSIGN_OR_RETURN(auto serialized, value.Serialize(converter));
+      if (!message->ParsePartialFromCord(serialized)) {
+        return absl::UnknownError(
+            absl::StrCat("failed to parse `", message->GetTypeName(), "`"));
+      }
+      return message.release();
+    }
+    case ValueKind::kDuration: {
+      CEL_ASSIGN_OR_RETURN(
+          auto message,
+          NewProtoMessage(pool, factory, "google.protobuf.Duration", arena));
+      CEL_RETURN_IF_ERROR(WrapDynamicDurationProto(
+          Cast<DurationValueView>(value).NativeValue(), *message));
+      return message.release();
+    }
+    case ValueKind::kTimestamp: {
+      CEL_ASSIGN_OR_RETURN(
+          auto message,
+          NewProtoMessage(pool, factory, "google.protobuf.Timestamp", arena));
+      CEL_RETURN_IF_ERROR(WrapDynamicTimestampProto(
+          Cast<TimestampValueView>(value).NativeValue(), *message));
+      return message.release();
+    }
+    case ValueKind::kList: {
+      CEL_ASSIGN_OR_RETURN(
+          auto message,
+          NewProtoMessage(pool, factory, "google.protobuf.ListValue", arena));
+      ProtoAnyToJsonConverter converter(pool, factory);
+      CEL_ASSIGN_OR_RETURN(
+          auto json, Cast<ListValueView>(value).ConvertToJsonArray(converter));
+      CEL_RETURN_IF_ERROR(DynamicListValueProtoFromJson(json, *message));
+      return message.release();
+    }
+    case ValueKind::kMap: {
+      CEL_ASSIGN_OR_RETURN(
+          auto message,
+          NewProtoMessage(pool, factory, "google.protobuf.Struct", arena));
+      ProtoAnyToJsonConverter converter(pool, factory);
+      CEL_ASSIGN_OR_RETURN(
+          auto json, Cast<MapValueView>(value).ConvertToJsonObject(converter));
+      CEL_RETURN_IF_ERROR(DynamicStructProtoFromJson(json, *message));
+      return message.release();
+    }
+    default:
+      break;
+  }
+  return TypeConversionError(value.GetTypeName(), "*message*").NativeValue();
+}
+
+absl::Status ProtoMessageFromValueImpl(
+    ValueView value, absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> factory,
+    absl::Nonnull<google::protobuf::Message*> message) {
+  CEL_ASSIGN_OR_RETURN(const auto* to_desc, GetDescriptor(*message));
+  switch (to_desc->well_known_type()) {
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_FLOATVALUE: {
+      if (auto double_value = As<DoubleValueView>(value); double_value) {
+        return WrapDynamicFloatValueProto(
+            static_cast<float>(double_value->NativeValue()), *message);
+      }
+      return TypeConversionError(value.GetTypeName(), to_desc->full_name())
+          .NativeValue();
+    }
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_DOUBLEVALUE: {
+      if (auto double_value = As<DoubleValueView>(value); double_value) {
+        return WrapDynamicDoubleValueProto(
+            static_cast<float>(double_value->NativeValue()), *message);
+      }
+      return TypeConversionError(value.GetTypeName(), to_desc->full_name())
+          .NativeValue();
+    }
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_INT32VALUE: {
+      if (auto int_value = As<IntValueView>(value); int_value) {
+        if (int_value->NativeValue() < std::numeric_limits<int32_t>::min() ||
+            int_value->NativeValue() > std::numeric_limits<int32_t>::max()) {
+          return absl::OutOfRangeError("int64 to int32_t overflow");
+        }
+        return WrapDynamicInt32ValueProto(
+            static_cast<int32_t>(int_value->NativeValue()), *message);
+      }
+      return TypeConversionError(value.GetTypeName(), to_desc->full_name())
+          .NativeValue();
+    }
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_INT64VALUE: {
+      if (auto int_value = As<IntValueView>(value); int_value) {
+        return WrapDynamicInt64ValueProto(int_value->NativeValue(), *message);
+      }
+      return TypeConversionError(value.GetTypeName(), to_desc->full_name())
+          .NativeValue();
+    }
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT32VALUE: {
+      if (auto uint_value = As<UintValueView>(value); uint_value) {
+        if (uint_value->NativeValue() > std::numeric_limits<uint32_t>::max()) {
+          return absl::OutOfRangeError("uint64 to uint32_t overflow");
+        }
+        return WrapDynamicUInt32ValueProto(
+            static_cast<uint32_t>(uint_value->NativeValue()), *message);
+      }
+      return TypeConversionError(value.GetTypeName(), to_desc->full_name())
+          .NativeValue();
+    }
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT64VALUE: {
+      if (auto uint_value = As<UintValueView>(value); uint_value) {
+        return WrapDynamicUInt64ValueProto(uint_value->NativeValue(), *message);
+      }
+      return TypeConversionError(value.GetTypeName(), to_desc->full_name())
+          .NativeValue();
+    }
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_STRINGVALUE: {
+      if (auto string_value = As<StringValueView>(value); string_value) {
+        return WrapDynamicStringValueProto(string_value->NativeCord(),
+                                           *message);
+      }
+      return TypeConversionError(value.GetTypeName(), to_desc->full_name())
+          .NativeValue();
+    }
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_BYTESVALUE: {
+      if (auto bytes_value = As<BytesValueView>(value); bytes_value) {
+        return WrapDynamicBytesValueProto(bytes_value->NativeCord(), *message);
+      }
+      return TypeConversionError(value.GetTypeName(), to_desc->full_name())
+          .NativeValue();
+    }
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_BOOLVALUE: {
+      if (auto bool_value = As<BoolValueView>(value); bool_value) {
+        return WrapDynamicBoolValueProto(bool_value->NativeValue(), *message);
+      }
+      return TypeConversionError(value.GetTypeName(), to_desc->full_name())
+          .NativeValue();
+    }
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_ANY: {
+      ProtoAnyToJsonConverter converter(pool, factory);
+      CEL_ASSIGN_OR_RETURN(auto any, value.ConvertToAny(converter));
+      return WrapDynamicAnyProto(any, *message);
+    }
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_DURATION: {
+      if (auto duration_value = As<DurationValueView>(value); duration_value) {
+        return WrapDynamicDurationProto(duration_value->NativeValue(),
+                                        *message);
+      }
+      return TypeConversionError(value.GetTypeName(), to_desc->full_name())
+          .NativeValue();
+    }
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_TIMESTAMP: {
+      if (auto timestamp_value = As<TimestampValueView>(value);
+          timestamp_value) {
+        return WrapDynamicTimestampProto(timestamp_value->NativeValue(),
+                                         *message);
+      }
+      return TypeConversionError(value.GetTypeName(), to_desc->full_name())
+          .NativeValue();
+    }
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE: {
+      ProtoAnyToJsonConverter converter(pool, factory);
+      CEL_ASSIGN_OR_RETURN(auto json, value.ConvertToJson(converter));
+      return DynamicValueProtoFromJson(json, *message);
+    }
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE: {
+      ProtoAnyToJsonConverter converter(pool, factory);
+      CEL_ASSIGN_OR_RETURN(auto json, value.ConvertToJson(converter));
+      if (absl::holds_alternative<JsonArray>(json)) {
+        return DynamicListValueProtoFromJson(absl::get<JsonArray>(json),
+                                             *message);
+      }
+      return TypeConversionError(value.GetTypeName(), to_desc->full_name())
+          .NativeValue();
+    }
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT: {
+      ProtoAnyToJsonConverter converter(pool, factory);
+      CEL_ASSIGN_OR_RETURN(auto json, value.ConvertToJson(converter));
+      if (absl::holds_alternative<JsonObject>(json)) {
+        return DynamicStructProtoFromJson(absl::get<JsonObject>(json),
+                                          *message);
+      }
+      return TypeConversionError(value.GetTypeName(), to_desc->full_name())
+          .NativeValue();
+    }
+    default:
+      break;
+  }
+
+  // Not a well known type.
+
+  // Deal with legacy values.
+  if (auto legacy_value = As<common_internal::LegacyStructValueView>(value);
+      legacy_value) {
+    if ((legacy_value->message_ptr() & base_internal::kMessageWrapperTagMask) ==
+        base_internal::kMessageWrapperTagMessageValue) {
+      // Full.
+      const auto* from_message = reinterpret_cast<const google::protobuf::Message*>(
+          legacy_value->message_ptr() & base_internal::kMessageWrapperPtrMask);
+      return ProtoMessageCopy(message, to_desc, from_message);
+    } else {
+      // Lite.
+      // Only thing we can do is check type names, which is gross because proto
+      // returns `std::string`.
+      const auto* from_message = reinterpret_cast<const google::protobuf::MessageLite*>(
+          legacy_value->message_ptr() & base_internal::kMessageWrapperPtrMask);
+      return ProtoMessageCopy(message, to_desc, from_message);
+    }
+  }
+
+  // Deal with modern values.
+  if (const auto* parsed_proto_struct_value = AsParsedProtoStructValue(value);
+      parsed_proto_struct_value) {
+    return ProtoMessageCopy(message, to_desc,
+                            &parsed_proto_struct_value->message());
+  }
+
+  return TypeConversionError(value.GetTypeName(), message->GetTypeName())
+      .NativeValue();
 }
 
 absl::StatusOr<Value> ProtoMessageToValueImpl(
