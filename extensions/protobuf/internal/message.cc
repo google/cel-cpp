@@ -113,6 +113,20 @@ namespace extensions::protobuf_internal {
 
 namespace {
 
+struct DefaultArenaDeleter {
+  template <typename T>
+  void operator()(T* message) const {
+    if (arena == nullptr) {
+      delete message;
+    }
+  }
+
+  google::protobuf::Arena* arena = nullptr;
+};
+
+template <typename T>
+using ArenaUniquePtr = std::unique_ptr<T, DefaultArenaDeleter>;
+
 absl::Status ProtoMapKeyTypeMismatch(google::protobuf::FieldDescriptor::CppType expected,
                                      google::protobuf::FieldDescriptor::CppType got) {
   if (ABSL_PREDICT_FALSE(got != expected)) {
@@ -1769,6 +1783,39 @@ absl::StatusOr<Value> ProtoMessageToValueImpl(
           memory_manager.MakeShared<AliasingParsedProtoStructValueInterface>(
               message, std::move(aliased))};
     }
+  }
+}
+
+absl::StatusOr<Value> ProtoMessageToValueImpl(
+    ValueFactory& value_factory, const TypeReflector& type_reflector,
+    absl::Nonnull<const google::protobuf::Message*> prototype,
+    const absl::Cord& serialized) {
+  auto memory_manager = value_factory.GetMemoryManager();
+  auto* arena = ProtoMemoryManagerArena(value_factory.GetMemoryManager());
+  auto message = ArenaUniquePtr<google::protobuf::Message>(prototype->New(arena),
+                                                 DefaultArenaDeleter{arena});
+  if (!message->ParsePartialFromCord(serialized)) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("failed to parse `", prototype->GetTypeName(), "`"));
+  }
+  {
+    CEL_ASSIGN_OR_RETURN(auto well_known,
+                         WellKnownProtoMessageToValue(
+                             value_factory, type_reflector, message.get()));
+    if (well_known) {
+      return std::move(well_known).value();
+    }
+  }
+  switch (memory_manager.memory_management()) {
+    case MemoryManagement::kPooling:
+      return ParsedStructValue{
+          memory_manager.MakeShared<PooledParsedProtoStructValueInterface>(
+              message.release())};
+    case MemoryManagement::kReferenceCounting:
+      return ParsedStructValue{
+          memory_manager
+              .MakeShared<ReffedDynamicParsedProtoStructValueInterface>(
+                  message.release())};
   }
 }
 

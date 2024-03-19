@@ -125,6 +125,13 @@ absl::StatusOr<Value> ProtoMessageToValueImpl(
     ValueManager& value_manager, Shared<const void> aliased,
     absl::Nonnull<const google::protobuf::Message*> message);
 
+// Adapts a serialized protocol buffer message to a value. `prototype` should be
+// the prototype message returned from the message factory.
+absl::StatusOr<Value> ProtoMessageToValueImpl(
+    ValueFactory& value_factory, const TypeReflector& type_reflector,
+    absl::Nonnull<const google::protobuf::Message*> prototype,
+    const absl::Cord& serialized);
+
 }  // namespace cel::extensions::protobuf_internal
 
 #endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_MESSAGE_H_
