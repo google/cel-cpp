@@ -32,6 +32,10 @@ class ProtoTypeIntrospector : public TypeIntrospector {
       absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool)
       : descriptor_pool_(descriptor_pool) {}
 
+  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() const {
+    return descriptor_pool_;
+  }
+
  protected:
   absl::StatusOr<absl::optional<TypeView>> FindTypeImpl(
       TypeFactory& type_factory, absl::string_view name,
@@ -41,10 +45,6 @@ class ProtoTypeIntrospector : public TypeIntrospector {
   FindStructTypeFieldByNameImpl(TypeFactory& type_factory,
                                 absl::string_view type, absl::string_view name,
                                 StructTypeField& scratch) const final;
-
-  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() const {
-    return descriptor_pool_;
-  }
 
  private:
   absl::Nonnull<const google::protobuf::DescriptorPool*> const descriptor_pool_;
