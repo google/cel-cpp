@@ -16,10 +16,12 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_MESSAGE_H_
 
 #include <cstddef>
+#include <memory>
 #include <type_traits>
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "common/memory.h"
 #include "common/value.h"
@@ -125,6 +127,13 @@ absl::StatusOr<Value> ProtoMessageToValueImpl(
     ValueManager& value_manager, Shared<const void> aliased,
     absl::Nonnull<const google::protobuf::Message*> message);
 
+// Adapts a protocol buffer message to a struct value, taking ownership of the
+// message. `message` must not be a well known type. If the `MemoryManager` used
+// by `value_factory` is backed by `google::protobuf::Arena`, `message` must have been
+// created on the arena.
+StructValue ProtoMessageAsStructValueImpl(
+    ValueFactory& value_factory, absl::Nonnull<google::protobuf::Message*> message);
+
 // Adapts a serialized protocol buffer message to a value. `prototype` should be
 // the prototype message returned from the message factory.
 absl::StatusOr<Value> ProtoMessageToValueImpl(
@@ -154,6 +163,40 @@ inline absl::Status ProtoMessageFromValueImpl(
       value, google::protobuf::DescriptorPool::generated_pool(),
       google::protobuf::MessageFactory::generated_factory(), message);
 }
+
+// Converts a value to a specific protocol buffer map key.
+using ProtoMapKeyFromValueConverter = absl::Status (*)(ValueView,
+                                                       google::protobuf::MapKey&);
+
+// Gets the converter for converting from values to protocol buffer map key.
+absl::StatusOr<ProtoMapKeyFromValueConverter> GetProtoMapKeyFromValueConverter(
+    google::protobuf::FieldDescriptor::CppType cpp_type);
+
+// Converts a value to a specific protocol buffer map value.
+using ProtoMapValueFromValueConverter =
+    absl::Status (*)(ValueView, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
+                     google::protobuf::MapValueRef&);
+
+// Gets the converter for converting from values to protocol buffer map value.
+absl::StatusOr<ProtoMapValueFromValueConverter>
+GetProtoMapValueFromValueConverter(
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field);
+
+struct DefaultArenaDeleter {
+  template <typename T>
+  void operator()(T* message) const {
+    if (arena == nullptr) {
+      delete message;
+    }
+  }
+
+  google::protobuf::Arena* arena = nullptr;
+};
+
+// Smart pointer for a protocol buffer message that may or mot not be allocated
+// on an arena.
+template <typename T>
+using ArenaUniquePtr = std::unique_ptr<T, DefaultArenaDeleter>;
 
 }  // namespace cel::extensions::protobuf_internal
 

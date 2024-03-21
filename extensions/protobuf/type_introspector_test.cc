@@ -34,8 +34,7 @@ class ProtoTypeIntrospectorTest
  private:
   Shared<TypeIntrospector> NewTypeIntrospector(
       MemoryManagerRef memory_manager) override {
-    return memory_manager.MakeShared<ProtoTypeIntrospector>(
-        google::protobuf::DescriptorPool::generated_pool());
+    return memory_manager.MakeShared<ProtoTypeIntrospector>();
   }
 };
 

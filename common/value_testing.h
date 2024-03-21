@@ -121,8 +121,7 @@ class ThreadCompatibleValueTest : public ThreadCompatibleMemoryTest<Ts...> {
   void SetUp() override {
     Base::SetUp();
     value_manager_ = NewThreadCompatibleValueManager(
-        this->memory_manager(),
-        NewThreadCompatibleTypeReflector(this->memory_manager()));
+        this->memory_manager(), NewTypeReflector(this->memory_manager()));
   }
 
   void TearDown() override {
@@ -139,6 +138,11 @@ class ThreadCompatibleValueTest : public ThreadCompatibleMemoryTest<Ts...> {
   ValueFactory& value_factory() const { return value_manager(); }
 
  private:
+  virtual Shared<TypeReflector> NewTypeReflector(
+      MemoryManagerRef memory_manager) {
+    return NewThreadCompatibleTypeReflector(memory_manager);
+  }
+
   absl::optional<Shared<ValueManager>> value_manager_;
 };
 

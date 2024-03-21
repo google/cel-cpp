@@ -183,16 +183,27 @@ cc_test(
 cc_library(
     name = "value",
     srcs = [
+        "type_reflector.cc",
         "value.cc",
     ],
     hdrs = [
+        "type_reflector.h",
         "value.h",
     ],
     deps = [
+        ":json",
+        ":memory_manager",
+        ":type",
+        "//common:any",
         "//common:casting",
+        "//common:json",
+        "//common:memory",
+        "//common:type",
         "//common:value",
+        "//extensions/protobuf/internal:any",
         "//extensions/protobuf/internal:duration",
         "//extensions/protobuf/internal:enum",
+        "//extensions/protobuf/internal:map_reflection",
         "//extensions/protobuf/internal:message",
         "//extensions/protobuf/internal:struct",
         "//extensions/protobuf/internal:timestamp",
@@ -201,16 +212,23 @@ cc_library(
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/functional:overload",
+        "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:variant",
         "@com_google_protobuf//:protobuf",
     ],
 )
 
 cc_test(
     name = "value_test",
-    srcs = ["value_test.cc"],
+    srcs = [
+        "type_reflector_test.cc",
+        "value_test.cc",
+    ],
     deps = [
         ":memory_manager",
         ":value",
@@ -218,6 +236,7 @@ cc_test(
         "//base/internal:message_wrapper",
         "//common:casting",
         "//common:memory",
+        "//common:type",
         "//common:value",
         "//common:value_kind",
         "//common:value_testing",
@@ -229,6 +248,7 @@ cc_test(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:optional",
         "@com_google_cel_spec//proto/test/v1/proto2:test_all_types_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],

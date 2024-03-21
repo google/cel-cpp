@@ -48,7 +48,7 @@ class ThreadCompatibleTypeTest : public ThreadCompatibleMemoryTest<Ts...> {
  private:
   virtual Shared<TypeIntrospector> NewTypeIntrospector(
       MemoryManagerRef memory_manager) {
-    return NewThreadCompatibleTypeIntrospector(this->memory_manager());
+    return NewThreadCompatibleTypeIntrospector(memory_manager);
   }
 
   absl::optional<Shared<TypeManager>> type_manager_;
