@@ -21,6 +21,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
 #include "common/json.h"
+#include "extensions/protobuf/internal/struct_lite.h"
 #include "internal/testing.h"
 #include "testutil/util.h"
 #include "google/protobuf/descriptor.h"

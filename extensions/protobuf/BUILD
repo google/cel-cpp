@@ -206,6 +206,7 @@ cc_library(
         "//extensions/protobuf/internal:map_reflection",
         "//extensions/protobuf/internal:message",
         "//extensions/protobuf/internal:struct",
+        "//extensions/protobuf/internal:struct_lite",
         "//extensions/protobuf/internal:timestamp",
         "//extensions/protobuf/internal:wrappers",
         "//internal:status_macros",

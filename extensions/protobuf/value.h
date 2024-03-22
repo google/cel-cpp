@@ -38,7 +38,7 @@
 #include "extensions/protobuf/internal/duration.h"
 #include "extensions/protobuf/internal/enum.h"
 #include "extensions/protobuf/internal/message.h"
-#include "extensions/protobuf/internal/struct.h"
+#include "extensions/protobuf/internal/struct_lite.h"
 #include "extensions/protobuf/internal/timestamp.h"
 #include "extensions/protobuf/internal/wrappers.h"
 #include "internal/status_macros.h"

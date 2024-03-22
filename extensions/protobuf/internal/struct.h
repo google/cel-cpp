@@ -15,7 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_STRUCT_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_STRUCT_H_
 
-#include "google/protobuf/struct.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "common/json.h"
@@ -25,37 +24,19 @@ namespace cel::extensions::protobuf_internal {
 
 absl::StatusOr<Json> DynamicValueProtoToJson(const google::protobuf::Message& message);
 
-absl::StatusOr<Json> GeneratedValueProtoToJson(
-    const google::protobuf::Value& message);
-
 absl::StatusOr<Json> DynamicListValueProtoToJson(
     const google::protobuf::Message& message);
 
-absl::StatusOr<Json> GeneratedListValueProtoToJson(
-    const google::protobuf::ListValue& message);
-
 absl::StatusOr<Json> DynamicStructProtoToJson(const google::protobuf::Message& message);
-
-absl::StatusOr<Json> GeneratedStructProtoToJson(
-    const google::protobuf::Struct& message);
 
 absl::Status DynamicValueProtoFromJson(const Json& json,
                                        google::protobuf::Message& message);
 
-absl::Status GeneratedValueProtoFromJson(const Json& json,
-                                         google::protobuf::Value& message);
-
 absl::Status DynamicListValueProtoFromJson(const JsonArray& json,
                                            google::protobuf::Message& message);
 
-absl::Status GeneratedListValueProtoFromJson(
-    const JsonArray& json, google::protobuf::ListValue& message);
-
 absl::Status DynamicStructProtoFromJson(const JsonObject& json,
                                         google::protobuf::Message& message);
-
-absl::Status GeneratedStructProtoFromJson(const JsonObject& json,
-                                          google::protobuf::Struct& message);
 
 }  // namespace cel::extensions::protobuf_internal
 

@@ -32,11 +32,13 @@
 #include "absl/types/variant.h"
 #include "common/any.h"
 #include "common/json.h"
+#include "common/value.h"
 #include "extensions/protobuf/internal/any.h"
 #include "extensions/protobuf/internal/duration.h"
 #include "extensions/protobuf/internal/field_mask.h"
 #include "extensions/protobuf/internal/map_reflection.h"
 #include "extensions/protobuf/internal/struct.h"
+#include "extensions/protobuf/internal/struct_lite.h"
 #include "extensions/protobuf/internal/timestamp.h"
 #include "extensions/protobuf/internal/wrappers.h"
 #include "internal/status_macros.h"
@@ -105,9 +107,9 @@ absl::StatusOr<JsonString> ProtoMapKeyToJsonString(const google::protobuf::MapKe
     case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
       return JsonString(key.GetStringValue());
     default:
-      return absl::InternalError(
-          absl::StrCat("unexpected protocol buffer map key type: ",
-                       google::protobuf::FieldDescriptor::CppTypeName(key.type())));
+      return TypeConversionError(
+                 google::protobuf::FieldDescriptor::CppTypeName(key.type()), "STRING")
+          .NativeValue();
   }
 }
 

@@ -254,10 +254,12 @@ cc_library(
         ":field_mask",
         ":map_reflection",
         ":struct",
+        ":struct_lite",
         ":timestamp",
         ":wrappers",
         "//common:any",
         "//common:json",
+        "//common:value",
         "//internal:status_macros",
         "//internal:time",
         "@com_google_absl//absl/base:core_headers",
@@ -289,11 +291,30 @@ cc_test(
 )
 
 cc_library(
+    name = "struct_lite",
+    srcs = ["struct_lite.cc"],
+    hdrs = ["struct_lite.h"],
+    deps = [
+        "//common:json",
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/functional:overload",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/types:variant",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "struct",
     srcs = ["struct.cc"],
     hdrs = ["struct.h"],
     deps = [
         ":map_reflection",
+        ":struct_lite",
         "//common:json",
         "//internal:status_macros",
         "@com_google_absl//absl/base:core_headers",
@@ -315,6 +336,7 @@ cc_test(
     srcs = ["struct_test.cc"],
     deps = [
         ":struct",
+        ":struct_lite",
         "//common:json",
         "//internal:testing",
         "//testutil:util",
