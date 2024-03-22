@@ -20,10 +20,25 @@ package(
 licenses(["notice"])
 
 cc_library(
+    name = "any_lite",
+    srcs = ["any_lite.cc"],
+    hdrs = ["any_lite.h"],
+    deps = [
+        "//common:any",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "any",
     srcs = ["any.cc"],
     hdrs = ["any.h"],
     deps = [
+        ":any_lite",
         "//common:any",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:absl_check",
@@ -41,6 +56,7 @@ cc_test(
     srcs = ["any_test.cc"],
     deps = [
         ":any",
+        ":any_lite",
         "//common:any",
         "//internal:testing",
         "@com_google_absl//absl/memory",
@@ -50,11 +66,24 @@ cc_test(
 )
 
 cc_library(
+    name = "duration_lite",
+    srcs = ["duration_lite.cc"],
+    hdrs = ["duration_lite.h"],
+    deps = [
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "duration",
     srcs = ["duration.cc"],
     hdrs = ["duration.h"],
     deps = [
-        "//internal:casts",
+        ":duration_lite",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -69,6 +98,7 @@ cc_test(
     srcs = ["duration_test.cc"],
     deps = [
         ":duration",
+        ":duration_lite",
         "//internal:testing",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/time",
@@ -83,10 +113,23 @@ cc_library(
 )
 
 cc_library(
+    name = "timestamp_lite",
+    srcs = ["timestamp_lite.cc"],
+    hdrs = ["timestamp_lite.h"],
+    deps = [
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "timestamp",
     srcs = ["timestamp.cc"],
     hdrs = ["timestamp.h"],
     deps = [
+        ":timestamp_lite",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status",
@@ -102,6 +145,7 @@ cc_test(
     srcs = ["timestamp_test.cc"],
     deps = [
         ":timestamp",
+        ":timestamp_lite",
         "//internal:testing",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/time",
@@ -189,14 +233,26 @@ cc_library(
 )
 
 cc_library(
+    name = "wrappers_lite",
+    srcs = ["wrappers_lite.cc"],
+    hdrs = ["wrappers_lite.h"],
+    deps = [
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "wrappers",
     srcs = ["wrappers.cc"],
     hdrs = ["wrappers.h"],
     deps = [
-        "//internal:casts",
+        ":wrappers_lite",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/log:absl_check",
-        "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -210,9 +266,22 @@ cc_test(
     srcs = ["wrappers_test.cc"],
     deps = [
         ":wrappers",
+        ":wrappers_lite",
         "//internal:testing",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "field_mask_lite",
+    srcs = ["field_mask_lite.cc"],
+    hdrs = ["field_mask_lite.h"],
+    deps = [
+        "//common:json",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -222,8 +291,8 @@ cc_library(
     srcs = ["field_mask.cc"],
     hdrs = ["field_mask.h"],
     deps = [
+        ":field_mask_lite",
         "//common:json",
-        "//internal:casts",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status",
@@ -238,6 +307,7 @@ cc_test(
     srcs = ["field_mask_test.cc"],
     deps = [
         ":field_mask",
+        ":field_mask_lite",
         "//internal:testing",
         "@com_google_absl//absl/memory",
         "@com_google_protobuf//:protobuf",
@@ -252,6 +322,7 @@ cc_library(
         ":any",
         ":duration",
         ":field_mask",
+        ":field_mask_lite",
         ":map_reflection",
         ":struct",
         ":struct_lite",

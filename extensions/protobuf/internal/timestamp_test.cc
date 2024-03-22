@@ -20,6 +20,7 @@
 #include "google/protobuf/descriptor.pb.h"
 #include "absl/memory/memory.h"
 #include "absl/time/time.h"
+#include "extensions/protobuf/internal/timestamp_lite.h"
 #include "internal/testing.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/descriptor_database.h"

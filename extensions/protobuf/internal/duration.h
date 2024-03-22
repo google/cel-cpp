@@ -18,9 +18,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_DURATION_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_DURATION_H_
 
-#include <cstdint>
-
-#include "google/protobuf/duration.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
@@ -31,21 +28,8 @@ namespace cel::extensions::protobuf_internal {
 absl::StatusOr<absl::Duration> UnwrapDynamicDurationProto(
     const google::protobuf::Message& message);
 
-inline absl::StatusOr<absl::Duration> UnwrapGeneratedDurationProto(
-    const google::protobuf::Duration& message) {
-  return absl::Seconds(message.seconds()) + absl::Nanoseconds(message.nanos());
-}
-
 absl::Status WrapDynamicDurationProto(absl::Duration value,
                                       google::protobuf::Message& message);
-
-inline absl::Status WrapGeneratedDurationProto(
-    absl::Duration value, google::protobuf::Duration& message) {
-  message.set_seconds(absl::IDivDuration(value, absl::Seconds(1), &value));
-  message.set_nanos(static_cast<int32_t>(
-      absl::IDivDuration(value, absl::Nanoseconds(1), &value)));
-  return absl::OkStatus();
-}
 
 }  // namespace cel::extensions::protobuf_internal
 

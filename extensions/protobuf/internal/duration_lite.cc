@@ -12,25 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Utilities for converting to and from the well known protocol buffer message
-// types in `google/protobuf/timestamp.proto`.
+#include "extensions/protobuf/internal/duration_lite.h"
 
-#ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TIMESTAMP_H_
-#define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TIMESTAMP_H_
+#include <cstdint>
 
+#include "google/protobuf/duration.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
-#include "google/protobuf/message.h"
 
 namespace cel::extensions::protobuf_internal {
 
-absl::StatusOr<absl::Time> UnwrapDynamicTimestampProto(
-    const google::protobuf::Message& message);
+absl::StatusOr<absl::Duration> UnwrapGeneratedDurationProto(
+    const google::protobuf::Duration& message) {
+  return absl::Seconds(message.seconds()) + absl::Nanoseconds(message.nanos());
+}
 
-absl::Status WrapDynamicTimestampProto(absl::Time value,
-                                       google::protobuf::Message& message);
+absl::Status WrapGeneratedDurationProto(absl::Duration value,
+                                        google::protobuf::Duration& message) {
+  message.set_seconds(absl::IDivDuration(value, absl::Seconds(1), &value));
+  message.set_nanos(static_cast<int32_t>(
+      absl::IDivDuration(value, absl::Nanoseconds(1), &value)));
+  return absl::OkStatus();
+}
 
 }  // namespace cel::extensions::protobuf_internal
-
-#endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TIMESTAMP_H_

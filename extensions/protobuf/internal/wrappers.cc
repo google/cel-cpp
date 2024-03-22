@@ -14,17 +14,18 @@
 
 #include "extensions/protobuf/internal/wrappers.h"
 
-#include <cmath>
-#include <limits>
+#include <cstdint>
 #include <string>
 
 #include "google/protobuf/wrappers.pb.h"
+#include "absl/base/optimization.h"
 #include "absl/functional/function_ref.h"
 #include "absl/log/absl_check.h"
-#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
-#include "internal/casts.h"
+#include "extensions/protobuf/internal/wrappers_lite.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -197,63 +198,6 @@ absl::StatusOr<uint64_t> UnwrapDynamicUInt64ValueProto(
       UnwrapGeneratedUInt64ValueProto, &google::protobuf::Reflection::GetUInt64);
 }
 
-absl::StatusOr<int64_t> UnwrapDynamicSignedIntegralValueProto(
-    const google::protobuf::Message& message) {
-  const auto* desc = message.GetDescriptor();
-  if (ABSL_PREDICT_FALSE(desc == nullptr)) {
-    return absl::InternalError(
-        absl::StrCat(message.GetTypeName(), " missing descriptor"));
-  }
-  const auto& full_name = desc->full_name();
-  if (full_name == "google.protobuf.Int32Value") {
-    return UnwrapDynamicInt32ValueProto(message);
-  }
-  if (full_name == "google.protobuf.Int64Value") {
-    return UnwrapDynamicInt64ValueProto(message);
-  }
-  auto status = absl::StrCat(full_name, " is not int-like");
-  ABSL_DLOG(FATAL) << status;
-  return absl::InvalidArgumentError(status);
-}
-
-absl::StatusOr<uint64_t> UnwrapDynamicUnsignedIntegralValueProto(
-    const google::protobuf::Message& message) {
-  const auto* desc = message.GetDescriptor();
-  if (ABSL_PREDICT_FALSE(desc == nullptr)) {
-    return absl::InternalError(
-        absl::StrCat(message.GetTypeName(), " missing descriptor"));
-  }
-  const auto& full_name = desc->full_name();
-  if (full_name == "google.protobuf.UInt32Value") {
-    return UnwrapDynamicUInt32ValueProto(message);
-  }
-  if (full_name == "google.protobuf.UInt64Value") {
-    return UnwrapDynamicUInt64ValueProto(message);
-  }
-  auto status = absl::StrCat(full_name, " is not uint-like");
-  ABSL_DLOG(FATAL) << status;
-  return absl::InvalidArgumentError(status);
-}
-
-absl::StatusOr<double> UnwrapDynamicFloatingPointValueProto(
-    const google::protobuf::Message& message) {
-  const auto* desc = message.GetDescriptor();
-  if (ABSL_PREDICT_FALSE(desc == nullptr)) {
-    return absl::InternalError(
-        absl::StrCat(message.GetTypeName(), " missing descriptor"));
-  }
-  const auto& full_name = desc->full_name();
-  if (full_name == "google.protobuf.FloatValue") {
-    return UnwrapDynamicFloatValueProto(message);
-  }
-  if (full_name == "google.protobuf.DoubleValue") {
-    return UnwrapDynamicDoubleValueProto(message);
-  }
-  auto status = absl::StrCat(full_name, " is not double-like");
-  ABSL_DLOG(FATAL) << status;
-  return absl::InvalidArgumentError(status);
-}
-
 absl::Status WrapDynamicBoolValueProto(bool value, google::protobuf::Message& message) {
   ABSL_DCHECK_EQ(message.GetTypeName(), "google.protobuf.BoolValue");
   return WrapValueProto<google::protobuf::BoolValue, bool>(
@@ -332,75 +276,6 @@ absl::Status WrapDynamicStringValueProto(const absl::Cord& value,
          const absl::Cord& value) -> void {
         reflection.SetString(message, field, static_cast<std::string>(value));
       });
-}
-
-absl::Status WrapDynamicSignedIntegralValueProto(int64_t value,
-                                                 google::protobuf::Message& message) {
-  const auto* desc = message.GetDescriptor();
-  if (ABSL_PREDICT_FALSE(desc == nullptr)) {
-    return absl::InternalError(
-        absl::StrCat(message.GetTypeName(), " missing descriptor"));
-  }
-  const auto& full_name = desc->full_name();
-  if (full_name == "google.protobuf.Int32Value") {
-    if (ABSL_PREDICT_FALSE(value < std::numeric_limits<int32_t>::min() ||
-                           value > std::numeric_limits<int32_t>::max())) {
-      return absl::OutOfRangeError("int64 out of int32_t range");
-    }
-    return WrapDynamicInt32ValueProto(static_cast<int32_t>(value), message);
-  }
-  if (full_name == "google.protobuf.Int64Value") {
-    return WrapDynamicInt64ValueProto(value, message);
-  }
-  auto status = absl::StrCat(full_name, " is not int-like");
-  ABSL_DLOG(FATAL) << status;
-  return absl::InvalidArgumentError(status);
-}
-
-absl::Status WrapDynamicUnsignedIntegralValueProto(uint64_t value,
-                                                   google::protobuf::Message& message) {
-  const auto* desc = message.GetDescriptor();
-  if (ABSL_PREDICT_FALSE(desc == nullptr)) {
-    return absl::InternalError(
-        absl::StrCat(message.GetTypeName(), " missing descriptor"));
-  }
-  const auto& full_name = desc->full_name();
-  if (full_name == "google.protobuf.UInt32Value") {
-    if (ABSL_PREDICT_FALSE(value > std::numeric_limits<uint32_t>::max())) {
-      return absl::OutOfRangeError("uint64 out of uint32_t range");
-    }
-    return WrapDynamicUInt32ValueProto(static_cast<uint32_t>(value), message);
-  }
-  if (full_name == "google.protobuf.UInt64Value") {
-    return WrapDynamicUInt64ValueProto(value, message);
-  }
-  auto status = absl::StrCat(full_name, " is not uint-like");
-  ABSL_DLOG(FATAL) << status;
-  return absl::InvalidArgumentError(status);
-}
-
-absl::Status WrapDynamicFloatingPointValueProto(double value,
-                                                google::protobuf::Message& message) {
-  const auto* desc = message.GetDescriptor();
-  if (ABSL_PREDICT_FALSE(desc == nullptr)) {
-    return absl::InternalError(
-        absl::StrCat(message.GetTypeName(), " missing descriptor"));
-  }
-  const auto& full_name = desc->full_name();
-  if (full_name == "google.protobuf.FloatValue") {
-    if (ABSL_PREDICT_FALSE(!std::isnan(value) &&
-                           static_cast<double>(static_cast<float>(value)) !=
-                               value)) {
-      return absl::OutOfRangeError("double out of float range");
-    }
-    return WrapDynamicFloatValueProto(static_cast<float>(value), message);
-  }
-  if (full_name == "google.protobuf.DoubleValue") {
-    return WrapDynamicDoubleValueProto(value, message);
-  }
-  auto status = absl::StrCat(full_name, " is not double-like");
-  ABSL_DLOG(FATAL) << status;
-  return absl::InvalidArgumentError(status);
 }
 
 }  // namespace cel::extensions::protobuf_internal

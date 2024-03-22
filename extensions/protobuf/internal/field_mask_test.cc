@@ -19,6 +19,7 @@
 #include "google/protobuf/field_mask.pb.h"
 #include "google/protobuf/descriptor.pb.h"
 #include "absl/memory/memory.h"
+#include "extensions/protobuf/internal/field_mask_lite.h"
 #include "internal/testing.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/descriptor_database.h"

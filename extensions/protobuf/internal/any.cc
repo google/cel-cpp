@@ -25,6 +25,8 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
+#include "extensions/protobuf/internal/any_lite.h"
+#include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
 namespace cel::extensions::protobuf_internal {
@@ -85,11 +87,6 @@ absl::StatusOr<Any> UnwrapDynamicAnyProto(const google::protobuf::Message& messa
                  reflect->GetCord(message, value_field));
 }
 
-absl::StatusOr<Any> UnwrapGeneratedAnyProto(
-    const google::protobuf::Any& message) {
-  return MakeAny(std::string(message.type_url()), absl::Cord(message.value()));
-}
-
 absl::Status WrapDynamicAnyProto(absl::string_view type_url,
                                  const absl::Cord& value,
                                  google::protobuf::Message& message) {
@@ -147,14 +144,6 @@ absl::Status WrapDynamicAnyProto(absl::string_view type_url,
   }
   reflect->SetString(&message, type_url_field, std::string(type_url));
   reflect->SetString(&message, value_field, value);
-  return absl::OkStatus();
-}
-
-absl::Status WrapGeneratedAnyProto(absl::string_view type_url,
-                                   const absl::Cord& value,
-                                   google::protobuf::Any& message) {
-  message.set_type_url(type_url);
-  message.set_value(static_cast<std::string>(value));
   return absl::OkStatus();
 }
 

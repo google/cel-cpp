@@ -21,6 +21,7 @@
 #include "google/protobuf/descriptor.pb.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
+#include "extensions/protobuf/internal/wrappers_lite.h"
 #include "internal/testing.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/descriptor_database.h"
@@ -162,12 +163,6 @@ TEST(DoubleWrapper, CustomFromProto) {
   EXPECT_THAT(UnwrapDynamicDoubleValueProto(*factory.GetPrototype(
                   pool.FindMessageTypeByName("google.protobuf.DoubleValue"))),
               IsOkAndHolds(Eq(0.0)));
-  EXPECT_THAT(UnwrapDynamicFloatingPointValueProto(*factory.GetPrototype(
-                  pool.FindMessageTypeByName("google.protobuf.FloatValue"))),
-              IsOkAndHolds(Eq(0.0f)));
-  EXPECT_THAT(UnwrapDynamicFloatingPointValueProto(*factory.GetPrototype(
-                  pool.FindMessageTypeByName("google.protobuf.DoubleValue"))),
-              IsOkAndHolds(Eq(0.0)));
 }
 
 TEST(DoubleWrapper, GeneratedToProto) {
@@ -208,14 +203,6 @@ TEST(DoubleWrapper, CustomToProto) {
     ASSERT_OK(WrapDynamicFloatValueProto(1.0f, *proto));
 
     EXPECT_EQ(reflection->GetFloat(*proto, value_field), 1.0f);
-
-    ASSERT_OK(WrapDynamicFloatingPointValueProto(1.0f, *proto));
-
-    EXPECT_EQ(reflection->GetFloat(*proto, value_field), 1.0f);
-
-    EXPECT_THAT(WrapDynamicFloatingPointValueProto(
-                    std::numeric_limits<double>::max(), *proto),
-                StatusIs(absl::StatusCode::kOutOfRange));
   }
   {
     std::unique_ptr<google::protobuf::Message> proto =
@@ -229,10 +216,6 @@ TEST(DoubleWrapper, CustomToProto) {
     ASSERT_NE(value_field, nullptr);
 
     ASSERT_OK(WrapDynamicDoubleValueProto(1.0, *proto));
-
-    EXPECT_EQ(reflection->GetDouble(*proto, value_field), 1.0);
-
-    ASSERT_OK(WrapDynamicFloatingPointValueProto(1.0, *proto));
 
     EXPECT_EQ(reflection->GetDouble(*proto, value_field), 1.0);
   }
@@ -259,13 +242,7 @@ TEST(IntWrapper, CustomFromProto) {
   EXPECT_THAT(UnwrapDynamicInt32ValueProto(*factory.GetPrototype(
                   pool.FindMessageTypeByName("google.protobuf.Int32Value"))),
               IsOkAndHolds(Eq(0)));
-  EXPECT_THAT(UnwrapDynamicSignedIntegralValueProto(*factory.GetPrototype(
-                  pool.FindMessageTypeByName("google.protobuf.Int32Value"))),
-              IsOkAndHolds(Eq(0)));
   EXPECT_THAT(UnwrapDynamicInt64ValueProto(*factory.GetPrototype(
-                  pool.FindMessageTypeByName("google.protobuf.Int64Value"))),
-              IsOkAndHolds(Eq(0)));
-  EXPECT_THAT(UnwrapDynamicSignedIntegralValueProto(*factory.GetPrototype(
                   pool.FindMessageTypeByName("google.protobuf.Int64Value"))),
               IsOkAndHolds(Eq(0)));
 }
@@ -308,14 +285,6 @@ TEST(IntWrapper, CustomToProto) {
     ASSERT_OK(WrapDynamicInt32ValueProto(1, *proto));
 
     EXPECT_EQ(reflection->GetInt32(*proto, value_field), 1);
-
-    ASSERT_OK(WrapDynamicSignedIntegralValueProto(1, *proto));
-
-    EXPECT_EQ(reflection->GetInt32(*proto, value_field), 1);
-
-    EXPECT_THAT(WrapDynamicSignedIntegralValueProto(
-                    std::numeric_limits<int64_t>::max(), *proto),
-                StatusIs(absl::StatusCode::kOutOfRange));
   }
   {
     std::unique_ptr<google::protobuf::Message> proto =
@@ -329,10 +298,6 @@ TEST(IntWrapper, CustomToProto) {
     ASSERT_NE(value_field, nullptr);
 
     ASSERT_OK(WrapDynamicInt64ValueProto(1, *proto));
-
-    EXPECT_EQ(reflection->GetInt64(*proto, value_field), 1);
-
-    ASSERT_OK(WrapDynamicSignedIntegralValueProto(1, *proto));
 
     EXPECT_EQ(reflection->GetInt64(*proto, value_field), 1);
   }
@@ -412,13 +377,7 @@ TEST(UintWrapper, CustomFromProto) {
   EXPECT_THAT(UnwrapDynamicUInt32ValueProto(*factory.GetPrototype(
                   pool.FindMessageTypeByName("google.protobuf.UInt32Value"))),
               IsOkAndHolds(Eq(0u)));
-  EXPECT_THAT(UnwrapDynamicUnsignedIntegralValueProto(*factory.GetPrototype(
-                  pool.FindMessageTypeByName("google.protobuf.UInt32Value"))),
-              IsOkAndHolds(Eq(0u)));
   EXPECT_THAT(UnwrapDynamicUInt64ValueProto(*factory.GetPrototype(
-                  pool.FindMessageTypeByName("google.protobuf.UInt64Value"))),
-              IsOkAndHolds(Eq(0u)));
-  EXPECT_THAT(UnwrapDynamicUnsignedIntegralValueProto(*factory.GetPrototype(
                   pool.FindMessageTypeByName("google.protobuf.UInt64Value"))),
               IsOkAndHolds(Eq(0u)));
 }
@@ -461,14 +420,6 @@ TEST(UintWrapper, CustomToProto) {
     ASSERT_OK(WrapDynamicUInt32ValueProto(1, *proto));
 
     EXPECT_EQ(reflection->GetUInt32(*proto, value_field), 1);
-
-    ASSERT_OK(WrapDynamicUnsignedIntegralValueProto(1, *proto));
-
-    EXPECT_EQ(reflection->GetUInt32(*proto, value_field), 1);
-
-    EXPECT_THAT(WrapDynamicUnsignedIntegralValueProto(
-                    std::numeric_limits<uint64_t>::max(), *proto),
-                StatusIs(absl::StatusCode::kOutOfRange));
   }
   {
     std::unique_ptr<google::protobuf::Message> proto =
@@ -482,10 +433,6 @@ TEST(UintWrapper, CustomToProto) {
     ASSERT_NE(value_field, nullptr);
 
     ASSERT_OK(WrapDynamicUInt64ValueProto(1, *proto));
-
-    EXPECT_EQ(reflection->GetUInt64(*proto, value_field), 1);
-
-    ASSERT_OK(WrapDynamicUnsignedIntegralValueProto(1, *proto));
 
     EXPECT_EQ(reflection->GetUInt64(*proto, value_field), 1);
   }

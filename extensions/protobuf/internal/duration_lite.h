@@ -13,24 +13,24 @@
 // limitations under the License.
 
 // Utilities for converting to and from the well known protocol buffer message
-// types in `google/protobuf/timestamp.proto`.
+// types in `google/protobuf/duration.proto`.
 
-#ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TIMESTAMP_H_
-#define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TIMESTAMP_H_
+#ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_DURATION_LITE_H_
+#define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_DURATION_LITE_H_
 
+#include "google/protobuf/duration.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
-#include "google/protobuf/message.h"
 
 namespace cel::extensions::protobuf_internal {
 
-absl::StatusOr<absl::Time> UnwrapDynamicTimestampProto(
-    const google::protobuf::Message& message);
+absl::StatusOr<absl::Duration> UnwrapGeneratedDurationProto(
+    const google::protobuf::Duration& message);
 
-absl::Status WrapDynamicTimestampProto(absl::Time value,
-                                       google::protobuf::Message& message);
+absl::Status WrapGeneratedDurationProto(absl::Duration value,
+                                        google::protobuf::Duration& message);
 
 }  // namespace cel::extensions::protobuf_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TIMESTAMP_H_
+#endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_DURATION_LITE_H_

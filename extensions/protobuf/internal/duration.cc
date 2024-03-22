@@ -14,12 +14,16 @@
 
 #include "extensions/protobuf/internal/duration.h"
 
+#include <cstdint>
+
 #include "google/protobuf/duration.pb.h"
+#include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
-#include "internal/casts.h"
+#include "extensions/protobuf/internal/duration_lite.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 

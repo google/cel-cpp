@@ -1,4 +1,4 @@
-// Copyright 2023 Google LLC
+// Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,25 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Utilities for converting to and from the well known protocol buffer message
-// types in `google/protobuf/timestamp.proto`.
+#include "extensions/protobuf/internal/any_lite.h"
 
-#ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TIMESTAMP_H_
-#define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TIMESTAMP_H_
+#include <string>
 
+#include "google/protobuf/any.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/time/time.h"
-#include "google/protobuf/message.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
+#include "common/any.h"
 
 namespace cel::extensions::protobuf_internal {
 
-absl::StatusOr<absl::Time> UnwrapDynamicTimestampProto(
-    const google::protobuf::Message& message);
+absl::StatusOr<Any> UnwrapGeneratedAnyProto(
+    const google::protobuf::Any& message) {
+  return MakeAny(std::string(message.type_url()), absl::Cord(message.value()));
+}
 
-absl::Status WrapDynamicTimestampProto(absl::Time value,
-                                       google::protobuf::Message& message);
+absl::Status WrapGeneratedAnyProto(absl::string_view type_url,
+                                   const absl::Cord& value,
+                                   google::protobuf::Any& message) {
+  message.set_type_url(type_url);
+  message.set_value(static_cast<std::string>(value));
+  return absl::OkStatus();
+}
 
 }  // namespace cel::extensions::protobuf_internal
-
-#endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TIMESTAMP_H_

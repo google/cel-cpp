@@ -23,6 +23,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
+#include "extensions/protobuf/internal/timestamp_lite.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 

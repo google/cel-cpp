@@ -21,6 +21,7 @@
 #include "absl/memory/memory.h"
 #include "absl/strings/cord.h"
 #include "common/any.h"
+#include "extensions/protobuf/internal/any_lite.h"
 #include "internal/testing.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/descriptor_database.h"
@@ -33,7 +34,7 @@ using testing::Eq;
 using cel::internal::IsOkAndHolds;
 
 TEST(Any, GeneratedFromProto) {
-  EXPECT_THAT(UnwrapDynamicAnyProto(google::protobuf::Any()),
+  EXPECT_THAT(UnwrapGeneratedAnyProto(google::protobuf::Any()),
               IsOkAndHolds(Eq(Any())));
 }
 
@@ -55,8 +56,8 @@ TEST(Any, CustomFromProto) {
 
 TEST(Any, GeneratedToProto) {
   google::protobuf::Any proto;
-  ASSERT_OK(WrapDynamicAnyProto("type.googleapis.com/foo.Bar",
-                                absl::Cord("blah"), proto));
+  ASSERT_OK(WrapGeneratedAnyProto("type.googleapis.com/foo.Bar",
+                                  absl::Cord("blah"), proto));
   EXPECT_EQ(proto.type_url(), "type.googleapis.com/foo.Bar");
   EXPECT_EQ(proto.value(), "blah");
 }

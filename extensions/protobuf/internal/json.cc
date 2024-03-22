@@ -19,7 +19,10 @@
 #include <utility>
 #include <vector>
 
+#include "google/protobuf/duration.pb.h"
 #include "google/protobuf/empty.pb.h"
+#include "google/protobuf/field_mask.pb.h"
+#include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/wrappers.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
@@ -36,6 +39,7 @@
 #include "extensions/protobuf/internal/any.h"
 #include "extensions/protobuf/internal/duration.h"
 #include "extensions/protobuf/internal/field_mask.h"
+#include "extensions/protobuf/internal/field_mask_lite.h"
 #include "extensions/protobuf/internal/map_reflection.h"
 #include "extensions/protobuf/internal/struct.h"
 #include "extensions/protobuf/internal/struct_lite.h"

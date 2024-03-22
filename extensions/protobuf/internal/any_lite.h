@@ -15,32 +15,33 @@
 // Utilities for converting to and from the well known protocol buffer message
 // types in `google/protobuf/any.proto`.
 
-#ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_ANY_H_
-#define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_ANY_H_
+#ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_ANY_LITE_H_
+#define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_ANY_LITE_H_
 
+#include "google/protobuf/any.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/any.h"
-#include "google/protobuf/message.h"
 
 namespace cel::extensions::protobuf_internal {
 
 // Converts `google.protobuf.Any` to `Any`. No validation is performed. The type
 // name of `message` must be `google.protobuf.Any`.
-absl::StatusOr<Any> UnwrapDynamicAnyProto(const google::protobuf::Message& message);
+absl::StatusOr<Any> UnwrapGeneratedAnyProto(
+    const google::protobuf::Any& message);
 
 // Converts `Any` to `google.protobuf.Any`. No validation is performed. The type
 // name of `message` must be `google.protobuf.Any`.
-absl::Status WrapDynamicAnyProto(absl::string_view type_url,
-                                 const absl::Cord& value,
-                                 google::protobuf::Message& message);
-inline absl::Status WrapDynamicAnyProto(const Any& any,
-                                        google::protobuf::Message& message) {
-  return WrapDynamicAnyProto(any.type_url(), any.value(), message);
+absl::Status WrapGeneratedAnyProto(absl::string_view type_url,
+                                   const absl::Cord& value,
+                                   google::protobuf::Any& message);
+inline absl::Status WrapGeneratedAnyProto(const Any& any,
+                                          google::protobuf::Any& message) {
+  return WrapGeneratedAnyProto(any.type_url(), any.value(), message);
 }
 
 }  // namespace cel::extensions::protobuf_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_ANY_H_
+#endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_ANY_LITE_H_

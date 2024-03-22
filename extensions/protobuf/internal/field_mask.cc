@@ -20,9 +20,12 @@
 #include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
-#include "internal/casts.h"
+#include "common/json.h"
+#include "extensions/protobuf/internal/field_mask_lite.h"
+#include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/reflection.h"
 
@@ -64,11 +67,6 @@ absl::StatusOr<JsonString> DynamicFieldMaskProtoToJsonString(
   }
   return JsonString(absl::StrJoin(
       reflection->GetRepeatedFieldRef<std::string>(message, paths_field), ","));
-}
-
-absl::StatusOr<JsonString> GeneratedFieldMaskProtoToJsonString(
-    const google::protobuf::FieldMask& message) {
-  return JsonString(absl::StrJoin(message.paths(), ","));
 }
 
 }  // namespace cel::extensions::protobuf_internal

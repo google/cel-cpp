@@ -15,22 +15,22 @@
 // Utilities for converting to and from the well known protocol buffer message
 // types in `google/protobuf/timestamp.proto`.
 
-#ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TIMESTAMP_H_
-#define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TIMESTAMP_H_
+#ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TIMESTAMP_LITE_H_
+#define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TIMESTAMP_LITE_H_
 
+#include "google/protobuf/timestamp.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
-#include "google/protobuf/message.h"
 
 namespace cel::extensions::protobuf_internal {
 
-absl::StatusOr<absl::Time> UnwrapDynamicTimestampProto(
-    const google::protobuf::Message& message);
+absl::StatusOr<absl::Time> UnwrapGeneratedTimestampProto(
+    const google::protobuf::Timestamp& message);
 
-absl::Status WrapDynamicTimestampProto(absl::Time value,
-                                       google::protobuf::Message& message);
+absl::Status WrapGeneratedTimestampProto(absl::Time value,
+                                         google::protobuf::Timestamp& message);
 
 }  // namespace cel::extensions::protobuf_internal
 
-#endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TIMESTAMP_H_
+#endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TIMESTAMP_LITE_H_
