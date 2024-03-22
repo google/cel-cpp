@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "google/protobuf/struct.pb.h"
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
@@ -58,6 +59,7 @@
 #include "eval/public/message_wrapper.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
+#include "extensions/protobuf/internal/struct.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/casts.h"
 #include "internal/status_macros.h"
@@ -154,18 +156,11 @@ absl::StatusOr<Json> CelValueToJson(google::protobuf::Arena* arena, CelValue val
 
 absl::StatusOr<JsonString> CelValueToJsonString(CelValue value) {
   switch (value.type()) {
-    case CelValue::Type::kBool:
-      return value.BoolOrDie() ? JsonString("true") : JsonString("false");
-    case CelValue::Type::kInt64:
-      return JsonString(absl::StrCat(value.Int64OrDie()));
-    case CelValue::Type::kUint64:
-      return JsonString(absl::StrCat(value.Uint64OrDie()));
     case CelValue::Type::kString:
       return JsonString(value.StringOrDie().value());
     default:
-      return absl::FailedPreconditionError(
-          absl::StrCat(CelValue::TypeName(value.type()),
-                       " is unserializable to JSON object member name"));
+      return TypeConversionError(KindToString(value.type()), "string")
+          .NativeValue();
   }
 }
 
@@ -545,7 +540,16 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY absl::Status
 cel_common_internal_LegacyListValue_SerializeTo(uintptr_t impl,
                                                 absl::Cord& serialized_value) {
-  return absl::UnimplementedError("SerializeTo is not implemented");
+  google::protobuf::ListValue message;
+  google::protobuf::Arena arena;
+  CEL_ASSIGN_OR_RETURN(auto array, CelListToJsonArray(&arena, AsCelList(impl)));
+  CEL_RETURN_IF_ERROR(
+      extensions::protobuf_internal::GeneratedListValueProtoFromJson(array,
+                                                                     message));
+  if (!message.SerializePartialToCord(&serialized_value)) {
+    return absl::UnknownError("failed to serialize google.protobuf.ListValue");
+  }
+  return absl::OkStatus();
 }
 
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
@@ -657,7 +661,16 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY absl::Status
 cel_common_internal_LegacyMapValue_SerializeTo(uintptr_t impl,
                                                absl::Cord& serialized_value) {
-  return absl::UnimplementedError("SerializeTo is not implemented");
+  google::protobuf::Struct message;
+  google::protobuf::Arena arena;
+  CEL_ASSIGN_OR_RETURN(auto object, CelMapToJsonObject(&arena, AsCelMap(impl)));
+  CEL_RETURN_IF_ERROR(
+      extensions::protobuf_internal::GeneratedStructProtoFromJson(object,
+                                                                  message));
+  if (!message.SerializePartialToCord(&serialized_value)) {
+    return absl::UnknownError("failed to serialize google.protobuf.Struct");
+  }
+  return absl::OkStatus();
 }
 
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY

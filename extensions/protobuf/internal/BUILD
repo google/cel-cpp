@@ -258,6 +258,7 @@ cc_library(
         ":wrappers",
         "//common:any",
         "//common:json",
+        "//common:value",
         "//internal:status_macros",
         "//internal:time",
         "@com_google_absl//absl/base:core_headers",

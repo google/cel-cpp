@@ -26,7 +26,7 @@
 
 namespace cel::extensions {
 
-class ProtoTypeIntrospector : public TypeIntrospector {
+class ProtoTypeIntrospector : public virtual TypeIntrospector {
  public:
   ProtoTypeIntrospector()
       : ProtoTypeIntrospector(google::protobuf::DescriptorPool::generated_pool()) {}

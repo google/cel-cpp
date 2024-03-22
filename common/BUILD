@@ -599,6 +599,7 @@ cc_library(
         "//eval/public/structs:legacy_type_adapter",
         "//eval/public/structs:legacy_type_info_apis",
         "//extensions/protobuf:memory_manager",
+        "//extensions/protobuf/internal:struct",
         "//internal:casts",
         "//internal:status_macros",
         "//internal:time",
