@@ -221,18 +221,6 @@ cc_test(
 )
 
 cc_library(
-    name = "reflection",
-    srcs = ["reflection.cc"],
-    hdrs = ["reflection.h"],
-    deps = [
-        "//common:value",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/base:nullability",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
     name = "wrappers_lite",
     srcs = ["wrappers_lite.cc"],
     hdrs = ["wrappers_lite.h"],
