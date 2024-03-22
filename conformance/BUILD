@@ -44,14 +44,12 @@ cc_binary(
     testonly = 1,
     srcs = [
         "server.cc",
-        "value_conversion.cc",
-        "value_conversion.h",
     ],
     deps = [
+        "//base:data",
+        "//base:kind",
         "//common:any",
         "//common:memory",
-        "//common:value",
-        "//common:value_kind",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",
@@ -62,7 +60,6 @@ cc_binary(
         "//extensions/protobuf:enum_adapter",
         "//extensions/protobuf:memory_manager",
         "//extensions/protobuf:runtime_adapter",
-        "//extensions/protobuf:value",
         "//internal:proto_time_encoding",
         "//internal:status_macros",
         "//parser",
@@ -134,15 +131,6 @@ cc_binary(
     for args in [
         [],
         ["--opt"],
-        [
-            "--modern",
-            "--arena",
-        ],
-        [
-            "--modern",
-            "--arena",
-            "--opt",
-        ],
     ]
 ]
 
@@ -171,13 +159,5 @@ cc_binary(
     )
     for args in [
         [],
-        [
-            "--modern",
-            "--arena",
-        ],
-        [
-            "--modern",
-            "--noarena",
-        ],
     ]
 ]
