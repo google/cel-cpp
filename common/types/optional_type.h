@@ -66,7 +66,7 @@ class OptionalType final : public OpaqueType {
 
   absl::Span<const Type> parameters() const {
     auto parameters = OpaqueType::parameters();
-    ABSL_DCHECK_EQ(parameters.size(), 1);
+    ABSL_DCHECK_EQ(static_cast<int>(parameters.size()), 1);
     return parameters;
   }
 
