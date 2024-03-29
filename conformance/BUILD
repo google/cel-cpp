@@ -29,6 +29,7 @@ ALL_TESTS = [
     "@com_google_cel_spec//tests/simple:testdata/logic.textproto",
     "@com_google_cel_spec//tests/simple:testdata/macros.textproto",
     "@com_google_cel_spec//tests/simple:testdata/namespace.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/optionals.textproto",
     "@com_google_cel_spec//tests/simple:testdata/parse.textproto",
     "@com_google_cel_spec//tests/simple:testdata/plumbing.textproto",
     "@com_google_cel_spec//tests/simple:testdata/proto2.textproto",
@@ -125,6 +126,9 @@ cc_binary(
             # TODO(issues/119): Strong typing support for enums, specified but not implemented.
             "--skip_test=enums/strong_proto2",
             "--skip_test=enums/strong_proto3",
+
+            # Skip optionals until implementation is submitted.
+            "--skip_test=optionals/optionals",
         ] + ["$(location " + test + ")" for test in ALL_TESTS],
         data = [
             ":server",
