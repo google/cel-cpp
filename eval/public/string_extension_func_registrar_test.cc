@@ -19,10 +19,13 @@
 #include <vector>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
+#include "absl/types/span.h"
 #include "eval/public/builtin_func_registrar.h"
+#include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "internal/testing.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 namespace {
@@ -30,7 +33,7 @@ using google::protobuf::Arena;
 
 class StringExtensionTest : public ::testing::Test {
  protected:
-  StringExtensionTest() {}
+  StringExtensionTest() = default;
   void SetUp() override {
     ASSERT_OK(RegisterBuiltinFunctions(&registry_));
     ASSERT_OK(RegisterStringExtensionFunctions(&registry_));
@@ -106,6 +109,18 @@ class StringExtensionTest : public ::testing::Test {
         CelValue::CreateList(
             Arena::Create<ContainerBackedListImpl>(arena, cel_list)),
         CelValue::CreateString(separator)};
+    absl::Span<CelValue> arg_span(&args[0], args.size());
+    auto status = func->Evaluate(arg_span, result, arena);
+    ASSERT_OK(status);
+  }
+
+  void PerformLowerAsciiTest(Arena* arena, std::string* value,
+                             CelValue* result) {
+    auto function =
+        registry_.FindOverloads("lowerAscii", true, {CelValue::Type::kString});
+    ASSERT_EQ(function.size(), 1);
+    auto func = function[0];
+    std::vector<CelValue> args = {CelValue::CreateString(value)};
     absl::Span<CelValue> arg_span(&args[0], args.size());
     auto status = func->Evaluate(arg_span, result, arena);
     ASSERT_OK(status);
@@ -317,6 +332,39 @@ TEST_F(StringExtensionTest, TestStringJoinWithSeparatorEmptyInput) {
 
   ASSERT_NO_FATAL_FAILURE(
       PerformJoinStringWithSeparatorTest(&arena, value, &separator, &result));
+  ASSERT_EQ(result.type(), CelValue::Type::kString);
+  EXPECT_EQ(result.StringOrDie().value(), expected);
+}
+
+TEST_F(StringExtensionTest, TestLowerAscii) {
+  Arena arena;
+  CelValue result;
+  std::string value = "ThisIs@Test!-5";
+  std::string expected = "thisis@test!-5";
+
+  ASSERT_NO_FATAL_FAILURE(PerformLowerAsciiTest(&arena, &value, &result));
+  ASSERT_EQ(result.type(), CelValue::Type::kString);
+  EXPECT_EQ(result.StringOrDie().value(), expected);
+}
+
+TEST_F(StringExtensionTest, TestLowerAsciiWithEmptyInput) {
+  Arena arena;
+  CelValue result;
+  std::string value = "";
+  std::string expected = "";
+
+  ASSERT_NO_FATAL_FAILURE(PerformLowerAsciiTest(&arena, &value, &result));
+  ASSERT_EQ(result.type(), CelValue::Type::kString);
+  EXPECT_EQ(result.StringOrDie().value(), expected);
+}
+
+TEST_F(StringExtensionTest, TestLowerAsciiWithNonAsciiCharacter) {
+  Arena arena;
+  CelValue result;
+  std::string value = "TacoCÆt";
+  std::string expected = "tacocÆt";
+
+  ASSERT_NO_FATAL_FAILURE(PerformLowerAsciiTest(&arena, &value, &result));
   ASSERT_EQ(result.type(), CelValue::Type::kString);
   EXPECT_EQ(result.StringOrDie().value(), expected);
 }

@@ -14,16 +14,23 @@
 
 #include "eval/public/string_extension_func_registrar.h"
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "absl/status/status.h"
+#include "absl/strings/ascii.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
+#include "absl/strings/string_view.h"
 #include "eval/public/cel_function_adapter.h"
+#include "eval/public/cel_function_registry.h"
+#include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
@@ -81,6 +88,13 @@ CelValue::StringHolder Join(Arena* arena, const CelValue& value) {
   return JoinWithSeparator(arena, value, kEmptySeparator);
 }
 
+CelValue::StringHolder LowerAscii(Arena* arena,
+                                  const CelValue::StringHolder value) {
+  auto result =
+      Arena::Create<std::string>(arena, absl::AsciiStrToLower(value.value()));
+  return CelValue::StringHolder(result);
+}
+
 absl::Status RegisterStringExtensionFunctions(
     CelFunctionRegistry* registry, const InterpreterOptions& options) {
   if (options.enable_string_concat) {
@@ -122,6 +136,13 @@ absl::Status RegisterStringExtensionFunctions(
                   CelValue::StringHolder delimiter, int64_t limit) -> CelValue {
                  return SplitWithLimit(arena, str, delimiter, limit);
                },
+               registry)));
+  CEL_RETURN_IF_ERROR(
+      (FunctionAdapter<CelValue::StringHolder, CelValue::StringHolder>::
+           CreateAndRegister(
+               "lowerAscii", true,
+               [](Arena* arena, CelValue::StringHolder str)
+                   -> CelValue::StringHolder { return LowerAscii(arena, str); },
                registry)));
   return absl::OkStatus();
 }

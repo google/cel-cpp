@@ -1268,10 +1268,13 @@ cc_library(
         ":cel_function",
         ":cel_function_adapter",
         ":cel_function_registry",
+        ":cel_options",
         ":cel_value",
         "//eval/public/containers:container_backed_list_impl",
         "//internal:status_macros",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -1280,11 +1283,14 @@ cc_test(
     srcs = ["string_extension_func_registrar_test.cc"],
     deps = [
         ":builtin_func_registrar",
+        ":cel_function_registry",
         ":cel_value",
         ":string_extension_func_registrar",
         "//eval/public/containers:container_backed_list_impl",
         "//internal:testing",
+        "@com_google_absl//absl/types:span",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
