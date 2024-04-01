@@ -136,7 +136,8 @@ class OptionalValue final : public OpaqueValue {
 template <>
 struct SubsumptionTraits<OptionalValue> final {
   static bool IsA(const OpaqueValue& value) {
-    return NativeTypeId::Of(value) == NativeTypeId::For<OpaqueValueInterface>();
+    return NativeTypeId::Of(value) ==
+           NativeTypeId::For<OptionalValueInterface>();
   }
 
   static const OptionalValue& DownCast(const OpaqueValue& value) {
@@ -215,7 +216,8 @@ inline OptionalValue::OptionalValue(OptionalValueView value)
 template <>
 struct SubsumptionTraits<OptionalValueView> final {
   static bool IsA(OpaqueValueView value) {
-    return NativeTypeId::Of(value) == NativeTypeId::For<OpaqueValueInterface>();
+    return NativeTypeId::Of(value) ==
+           NativeTypeId::For<OptionalValueInterface>();
   }
 
   static OptionalValueView DownCast(OpaqueValueView value) {

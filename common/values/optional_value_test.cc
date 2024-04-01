@@ -16,6 +16,7 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/memory.h"
 #include "common/type.h"
@@ -26,6 +27,8 @@
 namespace cel {
 namespace {
 
+using testing::An;
+using testing::Ne;
 using testing::TestParamInfo;
 using cel::internal::StatusIs;
 
@@ -105,6 +108,27 @@ TEST_P(OptionalValueTest, ConvertToAny) {
 TEST_P(OptionalValueTest, ConvertToJson) {
   EXPECT_THAT(OptionalValue().ConvertToJson(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(OptionalValueTest, InstanceOf) {
+  auto value = OptionalNone();
+  EXPECT_TRUE(InstanceOf<OptionalValue>(value));
+  EXPECT_TRUE(InstanceOf<OptionalValue>(OpaqueValue(value)));
+  EXPECT_TRUE(InstanceOf<OptionalValue>(Value(value)));
+}
+
+TEST_P(OptionalValueTest, Cast) {
+  auto value = OptionalNone();
+  EXPECT_THAT(Cast<OptionalValue>(value), An<OptionalValue>());
+  EXPECT_THAT(Cast<OptionalValue>(OpaqueValue(value)), An<OptionalValue>());
+  EXPECT_THAT(Cast<OptionalValue>(Value(value)), An<OptionalValue>());
+}
+
+TEST_P(OptionalValueTest, As) {
+  auto value = OptionalNone();
+  EXPECT_THAT(As<OptionalValue>(value), Ne(absl::nullopt));
+  EXPECT_THAT(As<OptionalValue>(OpaqueValue(value)), Ne(absl::nullopt));
+  EXPECT_THAT(As<OptionalValue>(Value(value)), Ne(absl::nullopt));
 }
 
 TEST_P(OptionalValueTest, HasValue) {
@@ -210,6 +234,29 @@ TEST_P(OptionalValueViewTest, ConvertToAny) {
 TEST_P(OptionalValueViewTest, ConvertToJson) {
   EXPECT_THAT(OptionalValueView().ConvertToJson(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(OptionalValueViewTest, InstanceOf) {
+  auto value = OptionalNone();
+  EXPECT_TRUE(InstanceOf<OptionalValueView>(value));
+  EXPECT_TRUE(InstanceOf<OptionalValueView>(OpaqueValueView(value)));
+  EXPECT_TRUE(InstanceOf<OptionalValueView>(ValueView(value)));
+}
+
+TEST_P(OptionalValueViewTest, Cast) {
+  auto value = OptionalNone();
+  EXPECT_THAT(Cast<OptionalValueView>(value), An<OptionalValueView>());
+  EXPECT_THAT(Cast<OptionalValueView>(OpaqueValueView(value)),
+              An<OptionalValueView>());
+  EXPECT_THAT(Cast<OptionalValueView>(ValueView(value)),
+              An<OptionalValueView>());
+}
+
+TEST_P(OptionalValueViewTest, As) {
+  auto value = OptionalNone();
+  EXPECT_THAT(As<OptionalValueView>(value), Ne(absl::nullopt));
+  EXPECT_THAT(As<OptionalValueView>(OpaqueValueView(value)), Ne(absl::nullopt));
+  EXPECT_THAT(As<OptionalValueView>(ValueView(value)), Ne(absl::nullopt));
 }
 
 TEST_P(OptionalValueViewTest, HasValue) {
