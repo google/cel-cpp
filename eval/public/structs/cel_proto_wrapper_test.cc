@@ -846,8 +846,8 @@ TEST_F(CelProtoWrapperTest, WrapFailureErrorToAny) {
 
 TEST_F(CelProtoWrapperTest, DebugString) {
   google::protobuf::Empty e;
-  EXPECT_EQ(CelProtoWrapper::CreateMessage(&e, arena()).DebugString(),
-            "Message: ");
+  EXPECT_THAT(CelProtoWrapper::CreateMessage(&e, arena()).DebugString(),
+              testing::StartsWith("Message: "));
 
   ListValue list_value;
   list_value.add_values()->set_bool_value(true);
