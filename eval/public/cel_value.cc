@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/base/attributes.h"
 #include "absl/base/no_destructor.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
@@ -108,7 +109,7 @@ struct DebugStringVisitor {
 
 }  // namespace
 
-const absl::string_view kPayloadUrlMissingAttributePath =
+ABSL_CONST_INIT const absl::string_view kPayloadUrlMissingAttributePath =
     cel::runtime_internal::kPayloadUrlMissingAttributePath;
 
 CelValue CelValue::CreateDuration(absl::Duration value) {

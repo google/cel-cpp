@@ -51,7 +51,7 @@ class CelExpressionFlatImpl : public CelExpression {
   CelExpressionFlatImpl(const CelExpressionFlatImpl&) = delete;
   CelExpressionFlatImpl& operator=(const CelExpressionFlatImpl&) = delete;
   CelExpressionFlatImpl(CelExpressionFlatImpl&&) = default;
-  CelExpressionFlatImpl& operator=(CelExpressionFlatImpl&&) = default;
+  CelExpressionFlatImpl& operator=(CelExpressionFlatImpl&&) = delete;
 
   // Implement CelExpression.
   std::unique_ptr<CelEvaluationState> InitializeState(

@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "absl/algorithm/container.h"
+#include "absl/base/attributes.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
@@ -529,16 +530,15 @@ class RewriterImpl : public AstRewriterBase {
 
 class OptimizedSelectStep : public ExpressionStepBase {
  public:
-  OptimizedSelectStep(int expr_id, std::vector<SelectQualifier> select_path,
-                      std::vector<AttributeQualifier> qualifiers,
-                      bool presence_test,
-                      bool enable_wrapper_type_null_unboxing,
-                      SelectOptimizationOptions options)
+  OptimizedSelectStep(
+      int expr_id, std::vector<SelectQualifier> select_path,
+      std::vector<AttributeQualifier> qualifiers, bool presence_test,
+      ABSL_ATTRIBUTE_UNUSED bool enable_wrapper_type_null_unboxing,
+      SelectOptimizationOptions options)
       : ExpressionStepBase(expr_id),
         select_path_(std::move(select_path)),
         qualifiers_(std::move(qualifiers)),
         presence_test_(presence_test),
-        enable_wrapper_type_null_unboxing_(enable_wrapper_type_null_unboxing),
         options_(options)
 
   {
@@ -560,7 +560,6 @@ class OptimizedSelectStep : public ExpressionStepBase {
   std::vector<SelectQualifier> select_path_;
   std::vector<AttributeQualifier> qualifiers_;
   bool presence_test_;
-  bool enable_wrapper_type_null_unboxing_;
   SelectOptimizationOptions options_;
 };
 

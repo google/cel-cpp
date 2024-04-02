@@ -77,6 +77,11 @@ inline constexpr size_t VarintSize(bool x ABSL_ATTRIBUTE_UNUSED) { return 1; }
 template <typename T>
 inline constexpr size_t kMaxVarintSize = VarintSize(static_cast<T>(~T{0}));
 
+// Instantiation of `kMaxVarintSize` for bool to prevent bitwise negation of a
+// bool warning.
+template <>
+inline constexpr size_t kMaxVarintSize<bool> = 1;
+
 // Enumeration of the protocol buffer wire tags, see
 // https://protobuf.dev/programming-guides/encoding/#structure.
 enum class ProtoWireType : uint32_t {
