@@ -42,6 +42,14 @@ absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateCondJumpStep(
     bool jump_condition, bool leave_on_stack, absl::optional<int> jump_offset,
     int64_t expr_id);
 
+// Factory method for OptionalHasValueJump step.
+// Requires that the top of the stack is an optional. If `optional.hasValue` is
+// true, performs a jump. If `or_value` is true and we are jumping,
+// `optional.value` is called and the result replaces the optional at the top of
+// the stack.
+absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateOptionalHasValueJumpStep(
+    bool or_value, int64_t expr_id);
+
 // Factory method for ErrorJump step.
 // This step performs a Jump when an Error is on the top of the stack.
 // Value is left on stack if it is a bool or an error.

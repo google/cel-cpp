@@ -119,6 +119,7 @@ cc_library(
             "//base:function",
             "//base:function_descriptor",
             "//base:kind",
+            "//common:kind",
             "@com_google_absl//absl/container:flat_hash_map",
             "@com_google_absl//absl/container:node_hash_map",
             "@com_google_absl//absl/status",
@@ -496,5 +497,45 @@ cc_test(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
+    ],
+)
+
+cc_library(
+    name = "optional_types",
+    srcs = ["optional_types.cc"],
+    hdrs = ["optional_types.h"],
+    deps = [
+        ":function_registry",
+        ":runtime_builder",
+        ":runtime_options",
+        "//base:function_adapter",
+        "//common:casting",
+        "//common:type",
+        "//common:value",
+        "//internal:casts",
+        "//internal:number",
+        "//internal:status_macros",
+        "//runtime/internal:errors",
+        "//runtime/internal:runtime_friend_access",
+        "//runtime/internal:runtime_impl",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_test(
+    name = "optional_types_test",
+    srcs = ["optional_types_test.cc"],
+    deps = [
+        ":optional_types",
+        ":runtime_builder",
+        ":runtime_options",
+        ":standard_runtime_builder_factory",
+        "//base:function_descriptor",
+        "//common:kind",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
     ],
 )

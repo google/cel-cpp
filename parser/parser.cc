@@ -1138,7 +1138,12 @@ class RecoveryLimitErrorStrategy : public DefaultErrorStrategy {
 absl::StatusOr<ParsedExpr> Parse(absl::string_view expression,
                                  absl::string_view description,
                                  const ParserOptions& options) {
-  return ParseWithMacros(expression, Macro::AllMacros(), description, options);
+  std::vector<Macro> macros = Macro::AllMacros();
+  if (options.enable_optional_syntax) {
+    macros.push_back(cel::OptMapMacro());
+    macros.push_back(cel::OptFlatMapMacro());
+  }
+  return ParseWithMacros(expression, macros, description, options);
 }
 
 absl::StatusOr<ParsedExpr> ParseWithMacros(absl::string_view expression,

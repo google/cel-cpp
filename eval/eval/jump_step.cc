@@ -7,8 +7,10 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
+#include "common/casting.h"
 #include "common/value.h"
 #include "eval/internal/errors.h"
+#include "internal/casts.h"
 
 namespace google::api::expr::runtime {
 
@@ -105,6 +107,35 @@ class BoolCheckJumpStep : public JumpStepBase {
   }
 };
 
+class OptionalHasValueJumpStep final : public JumpStepBase {
+ public:
+  OptionalHasValueJumpStep(int64_t expr_id, bool or_value)
+      : JumpStepBase({}, expr_id), or_value_(or_value) {}
+
+  absl::Status Evaluate(ExecutionFrame* frame) const override {
+    if (!frame->value_stack().HasEnough(1)) {
+      return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
+    }
+    const auto& value = frame->value_stack().Peek();
+    auto optional_value = cel::As<cel::OptionalValue>(value);
+    const bool should_jump =
+        optional_value.has_value() &&
+        cel::internal::down_cast<const cel::OptionalValueInterface*>(
+            cel::Cast<cel::OpaqueValue>(value).operator->())
+            ->HasValue();
+    if (should_jump) {
+      if (or_value_) {
+        frame->value_stack().PopAndPush(optional_value->Value());
+      }
+      return Jump(frame);
+    }
+    return absl::OkStatus();
+  }
+
+ private:
+  const bool or_value_;
+};
+
 }  // namespace
 
 // Factory method for Conditional Jump step.
@@ -129,6 +160,11 @@ absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateJumpStep(
 absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateBoolCheckJumpStep(
     absl::optional<int> jump_offset, int64_t expr_id) {
   return std::make_unique<BoolCheckJumpStep>(jump_offset, expr_id);
+}
+
+absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateOptionalHasValueJumpStep(
+    bool or_value, int64_t expr_id) {
+  return std::make_unique<OptionalHasValueJumpStep>(expr_id, or_value);
 }
 
 // TODO(issues/41) Make sure Unknowns are properly supported by ternary

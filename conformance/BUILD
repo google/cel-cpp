@@ -67,10 +67,13 @@ cc_binary(
         "//internal:proto_time_encoding",
         "//internal:status_macros",
         "//parser",
+        "//parser:options",
         "//runtime",
         "//runtime:activation",
         "//runtime:constant_folding",
         "//runtime:managed_value_factory",
+        "//runtime:optional_types",
+        "//runtime:reference_resolver",
         "//runtime:runtime_options",
         "//runtime:standard_runtime_builder_factory",
         "@com_google_absl//absl/flags:flag",
@@ -127,7 +130,7 @@ cc_binary(
             "--skip_test=enums/strong_proto2",
             "--skip_test=enums/strong_proto3",
 
-            # Skip optionals until implementation is submitted.
+            # Legacy value does not support optional_type.
             "--skip_test=optionals/optionals",
         ] + ["$(location " + test + ")" for test in ALL_TESTS],
         data = [
@@ -138,6 +141,52 @@ cc_binary(
     for args in [
         [],
         ["--opt"],
+    ]
+]
+
+[
+    sh_test(
+        name = "simple" + "".join([arg.replace("--", "_") for arg in args]),
+        srcs = ["@com_google_cel_spec//tests:conftest.sh"],
+        args = [
+            "$(location @com_google_cel_spec//tests/simple:simple_test)",
+            "--server=\"$(location :server) " + " ".join(args) + "\"",
+            "--skip_check",
+            "--pipe",
+            "--pipe_pings",
+
+            # Tests which require spec changes.
+            # TODO(issues/93): Deprecate Duration.getMilliseconds.
+            "--skip_test=timestamps/duration_converters/get_milliseconds",
+
+            # Broken test cases which should be supported.
+            # TODO(issues/112): Unbound functions result in empty eval response.
+            "--skip_test=basic/functions/unbound",
+            "--skip_test=basic/functions/unbound_is_runtime_error",
+
+            # TODO(issues/97): Parse-only qualified variable lookup "x.y" wtih binding "x.y" or "y" within container "x" fails
+            "--skip_test=fields/qualified_identifier_resolution/qualified_ident,map_field_select,ident_with_longest_prefix_check,qualified_identifier_resolution_unchecked",
+            "--skip_test=namespace/qualified/self_eval_qualified_lookup",
+            "--skip_test=namespace/namespace/self_eval_container_lookup,self_eval_container_lookup_unchecked",
+            # TODO(issues/117): Integer overflow on enum assignments should error.
+            "--skip_test=enums/legacy_proto2/select_big,select_neg",
+
+            # Skip until fixed.
+            "--skip_test=wrappers/field_mask/to_json",
+            "--skip_test=wrappers/empty/to_json",
+            "--skip_test=fields/qualified_identifier_resolution/map_value_repeat_key_heterogeneous",
+
+            # Future features for CEL 1.0
+            # TODO(issues/119): Strong typing support for enums, specified but not implemented.
+            "--skip_test=enums/strong_proto2",
+            "--skip_test=enums/strong_proto3",
+        ] + ["$(location " + test + ")" for test in ALL_TESTS],
+        data = [
+            ":server",
+            "@com_google_cel_spec//tests/simple:simple_test",
+        ] + ALL_TESTS,
+    )
+    for args in [
         [
             "--modern",
             "--arena",
@@ -147,6 +196,36 @@ cc_binary(
             "--arena",
             "--opt",
         ],
+    ]
+]
+
+[
+    sh_test(
+        name = "simple_dashboard" + "".join([arg.replace("--", "_") for arg in args]),
+        srcs = ["@com_google_cel_spec//tests:conftest-nofail.sh"],
+        args = [
+            "$(location @com_google_cel_spec//tests/simple:simple_test)",
+            "--server=\"$(location :server) " + " ".join(args) + "\"",
+            "--skip_check",
+            # TODO(issues/119): Strong typing support for enums, specified but not implemented.
+            "--skip_test=enums/strong_proto2",
+            "--skip_test=enums/strong_proto3",
+            # Legacy value does not support optional_type.
+            "--skip_test=optionals/optionals",
+            "--pipe",
+            "--pipe_pings",
+        ] + ["$(location " + test + ")" for test in ALL_TESTS],
+        data = [
+            ":server",
+            "@com_google_cel_spec//tests/simple:simple_test",
+        ] + ALL_TESTS,
+        visibility = [
+            "//:__subpackages__",
+            "//third_party/cel:__pkg__",
+        ],
+    )
+    for args in [
+        [],
     ]
 ]
 
@@ -174,7 +253,6 @@ cc_binary(
         ],
     )
     for args in [
-        [],
         [
             "--modern",
             "--arena",

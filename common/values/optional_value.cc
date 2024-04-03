@@ -15,6 +15,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "common/casting.h"
@@ -22,6 +23,7 @@
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value.h"
+#include "common/value_kind.h"
 
 namespace cel {
 
@@ -64,6 +66,8 @@ std::string OptionalValueInterface::DebugString() const {
 
 OptionalValue OptionalValue::Of(MemoryManagerRef memory_manager,
                                 cel::Value value) {
+  ABSL_DCHECK(value.kind() != ValueKind::kError &&
+              value.kind() != ValueKind::kUnknown);
   return OptionalValue(
       memory_manager.MakeShared<FullOptionalValue>(std::move(value)));
 }

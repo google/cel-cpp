@@ -37,6 +37,7 @@
 #include "common/value_interface.h"
 #include "common/value_kind.h"
 #include "common/values/opaque_value.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -68,6 +69,8 @@ class OptionalValueInterface : public OpaqueValueInterface {
 
   virtual ValueView Value(
       cel::Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
+
+  cel::Value Value() const;
 
  private:
   Type GetTypeImpl(TypeManager&) const override { return OptionalType(); }
@@ -116,6 +119,8 @@ class OptionalValue final : public OpaqueValue {
   bool HasValue() const { return (*this)->HasValue(); }
 
   ValueView Value(cel::Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  cel::Value Value() const;
 
   const interface_type& operator*() const {
     return Cast<OptionalValueInterface>(OpaqueValue::operator*());
@@ -193,6 +198,8 @@ class OptionalValueView final : public OpaqueValueView {
   bool HasValue() const { return (*this)->HasValue(); }
 
   ValueView Value(cel::Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+
+  cel::Value Value() const;
 
   const interface_type& operator*() const {
     return Cast<OptionalValueInterface>(OpaqueValueView::operator*());

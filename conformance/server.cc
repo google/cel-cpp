@@ -36,10 +36,13 @@
 #include "extensions/protobuf/runtime_adapter.h"
 #include "extensions/protobuf/type_reflector.h"
 #include "internal/status_macros.h"
+#include "parser/options.h"
 #include "parser/parser.h"
 #include "runtime/activation.h"
 #include "runtime/constant_folding.h"
 #include "runtime/managed_value_factory.h"
+#include "runtime/optional_types.h"
+#include "runtime/reference_resolver.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
@@ -105,18 +108,22 @@ google::api::expr::v1alpha1::Expr ExtractExpr(
 }
 
 void LegacyParse(const conformance::v1alpha1::ParseRequest& request,
-                 conformance::v1alpha1::ParseResponse& response) {
+                 conformance::v1alpha1::ParseResponse& response,
+                 bool enable_optional_syntax) {
   if (request.cel_source().empty()) {
     auto issue = response.add_issues();
     issue->set_message("No source code");
     issue->set_code(google::rpc::Code::INVALID_ARGUMENT);
     return;
   }
-  auto parse_status = parser::Parse(request.cel_source(), "");
+  cel::ParserOptions options;
+  options.enable_optional_syntax = enable_optional_syntax;
+  auto parse_status = parser::Parse(request.cel_source(), "", options);
   if (!parse_status.ok()) {
     auto issue = response.add_issues();
     *issue->mutable_message() = std::string(parse_status.status().message());
     issue->set_code(google::rpc::Code::INVALID_ARGUMENT);
+    return;
   }
   google::api::expr::v1alpha1::ParsedExpr out;
   (out).MergeFrom(parse_status.value());
@@ -170,7 +177,7 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
 
   void Parse(const conformance::v1alpha1::ParseRequest& request,
              conformance::v1alpha1::ParseResponse& response) override {
-    LegacyParse(request, response);
+    LegacyParse(request, response, /*enable_optional_syntax=*/false);
   }
 
   void Check(const conformance::v1alpha1::CheckRequest& request,
@@ -274,6 +281,8 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
       CEL_RETURN_IF_ERROR(cel::extensions::EnableConstantFolding(
           builder, constant_memory_manager_));
     }
+    CEL_RETURN_IF_ERROR(cel::EnableReferenceResolver(
+        builder, cel::ReferenceResolverEnabled::kAlways));
 
     auto& type_registry = builder.type_registry();
     // Use linked pbs in the
@@ -292,12 +301,14 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
         type_registry, google::api::expr::test::v1::proto3::TestAllTypes::
                            NestedEnum_descriptor()));
 
+    CEL_RETURN_IF_ERROR(cel::extensions::EnableOptionalTypes(builder));
+
     return std::move(builder).Build();
   }
 
   void Parse(const conformance::v1alpha1::ParseRequest& request,
              conformance::v1alpha1::ParseResponse& response) override {
-    LegacyParse(request, response);
+    LegacyParse(request, response, /*enable_optional_syntax=*/true);
   }
 
   void Check(const conformance::v1alpha1::CheckRequest& request,
@@ -318,14 +329,16 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
 
     auto runtime_status = Setup(request.container());
     if (!runtime_status.ok()) {
-      return absl::InternalError(runtime_status.status().ToString());
+      return absl::InternalError(runtime_status.status().ToString(
+          absl::StatusToStringMode::kWithEverything));
     }
     std::unique_ptr<const cel::Runtime> runtime =
         std::move(runtime_status).value();
 
     auto program_status = ProtobufRuntimeAdapter::CreateProgram(*runtime, expr);
     if (!program_status.ok()) {
-      return absl::InternalError(program_status.status().ToString());
+      return absl::InternalError(program_status.status().ToString(
+          absl::StatusToStringMode::kWithEverything));
     }
     std::unique_ptr<cel::TraceableProgram> program =
         std::move(program_status).value();
@@ -351,7 +364,8 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
       *response.mutable_result()
            ->mutable_error()
            ->add_errors()
-           ->mutable_message() = eval_status.status().ToString();
+           ->mutable_message() = eval_status.status().ToString(
+          absl::StatusToStringMode::kWithEverything);
       return absl::OkStatus();
     }
 
@@ -361,11 +375,13 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
       *response.mutable_result()
            ->mutable_error()
            ->add_errors()
-           ->mutable_message() = std::string(error.message());
+           ->mutable_message() = std::string(
+          error.ToString(absl::StatusToStringMode::kWithEverything));
     } else {
       auto export_status = ToConformanceValue(value_factory.get(), result);
       if (!export_status.ok()) {
-        return absl::InternalError(export_status.status().ToString());
+        return absl::InternalError(export_status.status().ToString(
+            absl::StatusToStringMode::kWithEverything));
       }
       auto* result_value = response.mutable_result()->mutable_value();
       (*result_value).MergeFrom(*export_status);

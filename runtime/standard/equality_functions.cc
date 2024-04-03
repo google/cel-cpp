@@ -20,7 +20,6 @@
 #include <type_traits>
 #include <utility>
 
-#include "absl/base/macros.h"
 #include "absl/functional/function_ref.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -31,7 +30,6 @@
 #include "base/function_adapter.h"
 #include "base/kind.h"
 #include "common/casting.h"
-#include "common/type.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "internal/number.h"
@@ -144,6 +142,20 @@ absl::StatusOr<absl::optional<bool>> ListEqual(ValueManager& factory,
     }
   }
   return true;
+}
+
+// Opaque types only support heterogeneous equality, and by extension that means
+// optionals. Heterogeneous equality being enabled is enforced by
+// `EnableOptionalTypes`.
+absl::StatusOr<absl::optional<bool>> OpaqueEqual(ValueManager& manager,
+                                                 const OpaqueValue& lhs,
+                                                 const OpaqueValue& rhs) {
+  Value result_scratch;
+  CEL_ASSIGN_OR_RETURN(auto result, lhs.Equal(manager, rhs, result_scratch));
+  if (auto bool_value = As<BoolValueView>(result); bool_value) {
+    return bool_value->NativeValue();
+  }
+  return TypeConversionError(result.GetTypeName(), "bool").NativeValue();
 }
 
 absl::optional<Number> NumberFromValue(const Value& value) {
@@ -447,8 +459,9 @@ absl::StatusOr<absl::optional<bool>> HomogenousValueEqual(ValueManager& factory,
     case ValueKind::kMap:
       return MapEqual<EqualsProvider>(factory, Cast<MapValue>(v1),
                                       Cast<MapValue>(v2));
+    case ValueKind::kOpaque:
+      return OpaqueEqual(factory, Cast<OpaqueValue>(v1), Cast<OpaqueValue>(v2));
     default:
-
       return absl::nullopt;
   }
 }

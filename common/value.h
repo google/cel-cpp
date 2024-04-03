@@ -1013,6 +1013,11 @@ inline absl::StatusOr<ValueView> OpaqueValueView::Equal(
   return interface_->Equal(value_manager, other, scratch);
 }
 
+inline cel::Value OptionalValueInterface::Value() const {
+  cel::Value scratch;
+  return cel::Value{Value(scratch)};
+}
+
 inline OptionalValue OptionalValue::None() {
   return OptionalValue(common_internal::GetEmptyDynOptionalValue());
 }
@@ -1021,6 +1026,8 @@ inline ValueView OptionalValue::Value(cel::Value& scratch) const {
   return (*this)->Value(scratch);
 }
 
+inline cel::Value OptionalValue::Value() const { return (*this)->Value(); }
+
 inline OptionalValueView OptionalValueView::None() {
   return common_internal::GetEmptyDynOptionalValue();
 }
@@ -1028,6 +1035,8 @@ inline OptionalValueView OptionalValueView::None() {
 inline ValueView OptionalValueView::Value(cel::Value& scratch) const {
   return (*this)->Value(scratch);
 }
+
+inline cel::Value OptionalValueView::Value() const { return (*this)->Value(); }
 
 inline absl::StatusOr<ValueView> ParsedMapValue::Get(
     ValueManager& value_manager, ValueView key, Value& scratch) const {

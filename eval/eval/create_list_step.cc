@@ -1,14 +1,15 @@
 #include "eval/eval/create_list_step.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <utility>
 
-#include "absl/base/nullability.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
-#include "common/type.h"
+#include "common/casting.h"
 #include "common/value.h"
 #include "eval/eval/expression_step_base.h"
 #include "internal/status_macros.h"
@@ -18,23 +19,25 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::cel::ListType;
 using ::cel::ListValueBuilderInterface;
 using ::cel::UnknownValue;
 using ::cel::runtime_internal::MutableListValue;
 
 class CreateListStep : public ExpressionStepBase {
  public:
-  CreateListStep(int64_t expr_id, int list_size, bool immutable)
+  CreateListStep(int64_t expr_id, int list_size, bool immutable,
+                 absl::flat_hash_set<int> optional_indices)
       : ExpressionStepBase(expr_id),
         list_size_(list_size),
-        immutable_(immutable) {}
+        immutable_(immutable),
+        optional_indices_(std::move(optional_indices)) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
   int list_size_;
   bool immutable_;
+  absl::flat_hash_set<int32_t> optional_indices_;
 };
 
 absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
@@ -77,8 +80,21 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
                            frame->value_manager().GetDynListType()));
 
   builder->Reserve(args.size());
-  for (auto& arg : args) {
-    CEL_RETURN_IF_ERROR(builder->Add(std::move(arg)));
+  for (size_t i = 0; i < args.size(); ++i) {
+    auto& arg = args[i];
+    if (optional_indices_.contains(static_cast<int32_t>(i))) {
+      if (auto optional_arg = cel::As<cel::OptionalValue>(arg); optional_arg) {
+        if (!optional_arg->HasValue()) {
+          continue;
+        }
+        CEL_RETURN_IF_ERROR(builder->Add(optional_arg->Value()));
+      } else {
+        return cel::TypeConversionError(arg.GetTypeName(), "optional_type")
+            .NativeValue();
+      }
+    } else {
+      CEL_RETURN_IF_ERROR(builder->Add(std::move(arg)));
+    }
   }
 
   if (immutable_) {
@@ -92,18 +108,29 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
   return absl::OkStatus();
 }
 
+absl::flat_hash_set<int32_t> MakeOptionalIndicesSet(
+    const cel::ast_internal::CreateList& create_list_expr) {
+  absl::flat_hash_set<int32_t> optional_indices;
+  for (const auto& optional_index : create_list_expr.optional_indices()) {
+    optional_indices.insert(optional_index);
+  }
+  return optional_indices;
+}
+
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateListStep(
     const cel::ast_internal::CreateList& create_list_expr, int64_t expr_id) {
   return std::make_unique<CreateListStep>(
-      expr_id, create_list_expr.elements().size(), /*immutable=*/true);
+      expr_id, create_list_expr.elements().size(), /*immutable=*/true,
+      MakeOptionalIndicesSet(create_list_expr));
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateMutableListStep(
     const cel::ast_internal::CreateList& create_list_expr, int64_t expr_id) {
   return std::make_unique<CreateListStep>(
-      expr_id, create_list_expr.elements().size(), /*immutable=*/false);
+      expr_id, create_list_expr.elements().size(), /*immutable=*/false,
+      MakeOptionalIndicesSet(create_list_expr));
 }
 
 }  // namespace google::api::expr::runtime

@@ -23,11 +23,12 @@
 #include <memory>
 #include <stack>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "absl/algorithm/container.h"
+#include "absl/base/attributes.h"
+#include "absl/base/optimization.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_map.h"
@@ -164,6 +165,14 @@ class CondVisitor {
   virtual void PostVisitArg(int arg_num,
                             const cel::ast_internal::Expr* expr) = 0;
   virtual void PostVisit(const cel::ast_internal::Expr* expr) = 0;
+  virtual void PostVisitTarget(const cel::ast_internal::Expr* expr) {}
+};
+
+enum class BinaryCond {
+  kAnd = 0,
+  kOr,
+  kOptionalOr,
+  kOptionalOrValue,
 };
 
 // Visitor managing the "&&" and "||" operatiions.
@@ -181,19 +190,18 @@ class CondVisitor {
 //   +-------------+------------------------+------------------------+
 class BinaryCondVisitor : public CondVisitor {
  public:
-  explicit BinaryCondVisitor(FlatExprVisitor* visitor, bool cond_value,
+  explicit BinaryCondVisitor(FlatExprVisitor* visitor, BinaryCond cond,
                              bool short_circuiting)
-      : visitor_(visitor),
-        cond_value_(cond_value),
-        short_circuiting_(short_circuiting) {}
+      : visitor_(visitor), cond_(cond), short_circuiting_(short_circuiting) {}
 
   void PreVisit(const cel::ast_internal::Expr* expr) override;
   void PostVisitArg(int arg_num, const cel::ast_internal::Expr* expr) override;
   void PostVisit(const cel::ast_internal::Expr* expr) override;
+  void PostVisitTarget(const cel::ast_internal::Expr* expr) override;
 
  private:
   FlatExprVisitor* visitor_;
-  const bool cond_value_;
+  const BinaryCond cond_;
   Jump jump_step_;
   bool short_circuiting_;
 };
@@ -336,7 +344,8 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       const absl::flat_hash_map<int64_t, cel::ast_internal::Reference>&
           reference_map,
       ValueManager& value_factory, IssueCollector& issue_collector,
-      ProgramBuilder& program_builder, PlannerContext& extension_context)
+      ProgramBuilder& program_builder, PlannerContext& extension_context,
+      bool enable_optional_types)
       : resolver_(resolver),
         value_factory_(value_factory),
         progress_status_(absl::OkStatus()),
@@ -346,7 +355,8 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
         program_optimizers_(std::move(program_optimizers)),
         issue_collector_(issue_collector),
         program_builder_(program_builder),
-        extension_context_(extension_context) {}
+        extension_context_(extension_context),
+        enable_optional_types_(enable_optional_types) {}
 
   void PreVisitExpr(const cel::ast_internal::Expr* expr,
                     const cel::ast_internal::SourcePosition*) override {
@@ -574,7 +584,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
 
     AddStep(CreateSelectStep(*select_expr, expr->id(),
                              options_.enable_empty_wrapper_null_unboxing,
-                             value_factory_));
+                             value_factory_, enable_optional_types_));
   }
 
   // Call node handler group.
@@ -591,16 +601,24 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     std::unique_ptr<CondVisitor> cond_visitor;
     if (call_expr->function() == cel::builtin::kAnd) {
       cond_visitor = std::make_unique<BinaryCondVisitor>(
-          this, /* cond_value= */ false, options_.short_circuiting);
+          this, BinaryCond::kAnd, options_.short_circuiting);
     } else if (call_expr->function() == cel::builtin::kOr) {
       cond_visitor = std::make_unique<BinaryCondVisitor>(
-          this, /* cond_value= */ true, options_.short_circuiting);
+          this, BinaryCond::kOr, options_.short_circuiting);
     } else if (call_expr->function() == cel::builtin::kTernary) {
       if (options_.short_circuiting) {
         cond_visitor = std::make_unique<TernaryCondVisitor>(this);
       } else {
         cond_visitor = std::make_unique<ExhaustiveTernaryCondVisitor>(this);
       }
+    } else if (enable_optional_types_ && call_expr->function() == "or" &&
+               call_expr->has_target() && call_expr->args().size() == 1) {
+      cond_visitor = std::make_unique<BinaryCondVisitor>(
+          this, BinaryCond::kOptionalOr, options_.short_circuiting);
+    } else if (enable_optional_types_ && call_expr->function() == "orValue" &&
+               call_expr->has_target() && call_expr->args().size() == 1) {
+      cond_visitor = std::make_unique<BinaryCondVisitor>(
+          this, BinaryCond::kOptionalOrValue, options_.short_circuiting);
     } else {
       return;
     }
@@ -628,15 +646,13 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
 
     // Special case for "_[_]".
     if (call_expr->function() == cel::builtin::kIndex) {
-      AddStep(CreateContainerAccessStep(*call_expr, expr->id()));
+      AddStep(CreateContainerAccessStep(*call_expr, expr->id(),
+                                        enable_optional_types_));
       return;
     }
 
     // Establish the search criteria for a given function.
     absl::string_view function = call_expr->function();
-    bool receiver_style = call_expr->has_target();
-    size_t num_args = call_expr->args().size() + (receiver_style ? 1 : 0);
-    auto arguments_matcher = ArgumentsMatcher(num_args);
 
     // Check to see if this is a special case of add that should really be
     // treated as a list append
@@ -662,34 +678,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       }
     }
 
-    // First, search for lazily defined function overloads.
-    // Lazy functions shadow eager functions with the same signature.
-    auto lazy_overloads = resolver_.FindLazyOverloads(
-        function, receiver_style, arguments_matcher, expr->id());
-    if (!lazy_overloads.empty()) {
-      AddStep(CreateFunctionStep(*call_expr, expr->id(),
-                                 std::move(lazy_overloads)));
-      return;
-    }
-
-    // Second, search for eagerly defined function overloads.
-    auto overloads = resolver_.FindOverloads(function, receiver_style,
-                                             arguments_matcher, expr->id());
-    if (overloads.empty()) {
-      // Create a warning that the overload could not be found. Depending on the
-      // builder_warnings configuration, this could result in termination of the
-      // CelExpression creation or an inspectable warning for use within runtime
-      // logging.
-      auto status = issue_collector_.AddIssue(RuntimeIssue::CreateWarning(
-          absl::InvalidArgumentError(
-              "No overloads provided for FunctionStep creation"),
-          RuntimeIssue::ErrorCode::kNoMatchingOverload));
-      if (!status.ok()) {
-        SetProgressStatusError(status);
-        return;
-      }
-    }
-    AddStep(CreateFunctionStep(*call_expr, expr->id(), std::move(overloads)));
+    AddStep(CreateResolvedFunctionStep(call_expr, expr, function));
   }
 
   void PreVisitComprehension(
@@ -863,7 +852,15 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
 
   // Nothing to do.
   void PostVisitTarget(const cel::ast_internal::Expr* expr,
-                       const cel::ast_internal::SourcePosition*) override {}
+                       const cel::ast_internal::SourcePosition*) override {
+    if (!progress_status_.ok()) {
+      return;
+    }
+    auto cond_visitor = FindCondVisitor(expr);
+    if (cond_visitor) {
+      cond_visitor->PostVisitTarget(expr);
+    }
+  }
 
   // CreateList node handler.
   // Invoked after child nodes are processed.
@@ -896,7 +893,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     }
 
     // If the message name is empty, this signals that a map should be created.
-    auto message_name = struct_expr->message_name();
+    const auto& message_name = struct_expr->message_name();
     if (message_name.empty()) {
       for (const auto& entry : struct_expr->entries()) {
         ValidateOrError(entry.has_map_key(), "Map entry missing key");
@@ -933,6 +930,50 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   // Only applies to branches that have not yet been visited (pre-order).
   void SuppressBranch(const cel::ast_internal::Expr* expr) {
     suppressed_branches_.insert(expr);
+  }
+
+  absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateResolvedFunctionStep(
+      const cel::ast_internal::Call* call_expr,
+      const cel::ast_internal::Expr* expr, absl::string_view function,
+      bool collect_issues = true) {
+    // Establish the search criteria for a given function.
+    bool receiver_style = call_expr->has_target();
+    size_t num_args = call_expr->args().size() + (receiver_style ? 1 : 0);
+    auto arguments_matcher = ArgumentsMatcher(num_args);
+
+    // First, search for lazily defined function overloads.
+    // Lazy functions shadow eager functions with the same signature.
+    auto lazy_overloads = resolver_.FindLazyOverloads(
+        function, call_expr->has_target(), arguments_matcher, expr->id());
+    if (!lazy_overloads.empty()) {
+      return CreateFunctionStep(*call_expr, expr->id(),
+                                std::move(lazy_overloads));
+    }
+
+    // Second, search for eagerly defined function overloads.
+    auto overloads = resolver_.FindOverloads(function, receiver_style,
+                                             arguments_matcher, expr->id());
+    if (overloads.empty()) {
+      // Create a warning that the overload could not be found. Depending on the
+      // builder_warnings configuration, this could result in termination of the
+      // CelExpression creation or an inspectable warning for use within runtime
+      // logging.
+      auto status = absl::InvalidArgumentError(
+          "No overloads provided for FunctionStep creation");
+      if (collect_issues) {
+        status = issue_collector_.AddIssue(RuntimeIssue::CreateWarning(
+            std::move(status), RuntimeIssue::ErrorCode::kNoMatchingOverload));
+      }
+      CEL_RETURN_IF_ERROR(status);
+    }
+    return CreateFunctionStep(*call_expr, expr->id(), std::move(overloads));
+  }
+
+  absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateChainedOptionalStep(
+      const cel::ast_internal::Call* call_expr,
+      const cel::ast_internal::Expr* expr) {
+    return CreateResolvedFunctionStep(call_expr, expr, call_expr->function(),
+                                      false);
   }
 
   void AddStep(absl::StatusOr<std::unique_ptr<ExpressionStep>> step) {
@@ -1067,23 +1108,76 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   ProgramBuilder& program_builder_;
   PlannerContext extension_context_;
   IndexManager index_manager_;
+
+  bool enable_optional_types_;
 };
 
 void BinaryCondVisitor::PreVisit(const cel::ast_internal::Expr* expr) {
-  visitor_->ValidateOrError(
-      !expr->call_expr().has_target() && expr->call_expr().args().size() == 2,
-      "Invalid argument count for a binary function call.");
+  switch (cond_) {
+    case BinaryCond::kAnd:
+      ABSL_FALLTHROUGH_INTENDED;
+    case BinaryCond::kOr:
+      visitor_->ValidateOrError(
+          !expr->call_expr().has_target() &&
+              expr->call_expr().args().size() == 2,
+          "Invalid argument count for a binary function call.");
+      break;
+    case BinaryCond::kOptionalOr:
+      ABSL_FALLTHROUGH_INTENDED;
+    case BinaryCond::kOptionalOrValue:
+      visitor_->ValidateOrError(expr->call_expr().has_target() &&
+                                    expr->call_expr().args().size() == 1,
+                                "Invalid argument count for or/OrValue call.");
+      break;
+  }
 }
 
 void BinaryCondVisitor::PostVisitArg(int arg_num,
                                      const cel::ast_internal::Expr* expr) {
-  if (short_circuiting_ && arg_num == 0) {
+  if (short_circuiting_ && arg_num == 0 &&
+      (cond_ == BinaryCond::kAnd || cond_ == BinaryCond::kOr)) {
     // If first branch evaluation result is enough to determine output,
     // jump over the second branch and provide result of the first argument as
     // final output.
     // Retain a pointer to the jump step so we can update the target after
     // planning the second argument.
-    auto jump_step = CreateCondJumpStep(cond_value_, true, {}, expr->id());
+    absl::StatusOr<std::unique_ptr<JumpStepBase>> jump_step;
+    switch (cond_) {
+      case BinaryCond::kAnd:
+        jump_step = CreateCondJumpStep(false, true, {}, expr->id());
+        break;
+      case BinaryCond::kOr:
+        jump_step = CreateCondJumpStep(true, true, {}, expr->id());
+        break;
+      default:
+        ABSL_UNREACHABLE();
+    }
+    if (jump_step.ok()) {
+      jump_step_ = Jump(visitor_->GetCurrentIndex(), jump_step->get());
+    }
+    visitor_->AddStep(std::move(jump_step));
+  }
+}
+
+void BinaryCondVisitor::PostVisitTarget(const cel::ast_internal::Expr* expr) {
+  if (short_circuiting_ && (cond_ == BinaryCond::kOptionalOr ||
+                            cond_ == BinaryCond::kOptionalOrValue)) {
+    // If first branch evaluation result is enough to determine output,
+    // jump over the second branch and provide result of the first argument as
+    // final output.
+    // Retain a pointer to the jump step so we can update the target after
+    // planning the second argument.
+    absl::StatusOr<std::unique_ptr<JumpStepBase>> jump_step;
+    switch (cond_) {
+      case BinaryCond::kOptionalOr:
+        jump_step = CreateOptionalHasValueJumpStep(false, expr->id());
+        break;
+      case BinaryCond::kOptionalOrValue:
+        jump_step = CreateOptionalHasValueJumpStep(true, expr->id());
+        break;
+      default:
+        ABSL_UNREACHABLE();
+    }
     if (jump_step.ok()) {
       jump_step_ = Jump(visitor_->GetCurrentIndex(), jump_step->get());
     }
@@ -1092,10 +1186,26 @@ void BinaryCondVisitor::PostVisitArg(int arg_num,
 }
 
 void BinaryCondVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
-  visitor_->AddStep((cond_value_) ? CreateOrStep(expr->id())
-                                  : CreateAndStep(expr->id()));
+  absl::StatusOr<std::unique_ptr<ExpressionStep>> step;
+  switch (cond_) {
+    case BinaryCond::kAnd:
+      step = CreateAndStep(expr->id());
+      break;
+    case BinaryCond::kOr:
+      step = CreateOrStep(expr->id());
+      break;
+    case BinaryCond::kOptionalOr:
+      step = visitor_->CreateChainedOptionalStep(&expr->call_expr(), expr);
+      break;
+    case BinaryCond::kOptionalOrValue:
+      step = visitor_->CreateChainedOptionalStep(&expr->call_expr(), expr);
+      break;
+    default:
+      ABSL_UNREACHABLE();
+  }
+  visitor_->AddStep(std::move(step));
   if (short_circuiting_) {
-    // If shortcircuiting is enabled, point the conditional jump past the
+    // If short-circuiting is enabled, point the conditional jump past the
     // boolean operator step.
     visitor_->SetProgressStatusError(
         jump_step_.set_target(visitor_->GetCurrentIndex()));
@@ -1317,7 +1427,6 @@ std::vector<ExecutionPathView> FlattenExpressionTable(
 
 absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
     std::unique_ptr<Ast> ast, std::vector<RuntimeIssue>* issues) const {
-
   // These objects are expected to remain scoped to one build call -- references
   // to them shouldn't be persisted in any part of the result expression.
   cel::common_internal::LegacyValueManager value_factory(
@@ -1358,7 +1467,8 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
 
   FlatExprVisitor visitor(resolver, options_, std::move(optimizers),
                           ast_impl.reference_map(), value_factory,
-                          issue_collector, program_builder, extension_context);
+                          issue_collector, program_builder, extension_context,
+                          enable_optional_types_);
 
   cel::ast_internal::TraversalOptions opts;
   opts.use_comprehension_callbacks = true;

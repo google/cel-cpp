@@ -79,9 +79,14 @@ class FlatExprBuilder {
 
   const cel::RuntimeOptions& options() const { return options_; }
 
+  // Called by `cel::extensions::EnableOptionalTypes` to indicate that special
+  // `optional_type` handling is needed.
+  void enable_optional_types() { enable_optional_types_ = true; }
+
  private:
   cel::RuntimeOptions options_;
   std::string container_;
+  bool enable_optional_types_ = false;
   // TODO(uncreated-issue/45): evaluate whether we should use a shared_ptr here to
   // allow built expressions to keep the registries alive.
   const cel::FunctionRegistry& function_registry_;
