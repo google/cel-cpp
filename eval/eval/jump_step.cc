@@ -118,13 +118,15 @@ class OptionalHasValueJumpStep final : public JumpStepBase {
     }
     const auto& value = frame->value_stack().Peek();
     auto optional_value = cel::As<cel::OptionalValue>(value);
+    // We jump if the receiver is `optional_type` which has a value or the
+    // receiver is an error. Unlike `_||_` we are not commutative. If we run
+    // into an error, we skip the `else` branch.
     const bool should_jump =
-        optional_value.has_value() &&
-        cel::internal::down_cast<const cel::OptionalValueInterface*>(
-            cel::Cast<cel::OpaqueValue>(value).operator->())
-            ->HasValue();
+        (optional_value.has_value() && optional_value->HasValue()) ||
+        (!optional_value.has_value() &&
+         cel::InstanceOf<cel::ErrorValue>(value));
     if (should_jump) {
-      if (or_value_) {
+      if (or_value_ && optional_value.has_value()) {
         frame->value_stack().PopAndPush(optional_value->Value());
       }
       return Jump(frame);
