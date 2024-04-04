@@ -54,6 +54,7 @@
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/container_access_step.h"
 #include "eval/eval/create_list_step.h"
+#include "eval/eval/create_map_step.h"
 #include "eval/eval/create_struct_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/function_step.h"

@@ -1,36 +1,53 @@
+// Copyright 2017 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "eval/eval/create_struct_step.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
+#include "base/ast_internal/expr.h"
 #include "base/type_provider.h"
-#include "common/type_manager.h"
-#include "common/value_manager.h"
 #include "common/values/legacy_value_manager.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_type_registry.h"
+#include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
-#include "eval/public/structs/proto_message_type_adapter.h"
 #include "eval/public/structs/protobuf_descriptor_type_provider.h"
+#include "eval/public/unknown_set.h"
 #include "eval/testutil/test_message.pb.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "internal/proto_matchers.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "runtime/runtime_options.h"
-#include "testutil/util.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 
@@ -39,6 +56,7 @@ namespace {
 using ::cel::TypeProvider;
 using ::cel::ast_internal::Expr;
 using ::cel::extensions::ProtoMemoryManagerRef;
+using ::cel::internal::test::EqualsProto;
 using ::google::protobuf::Arena;
 using ::google::protobuf::Message;
 using testing::Eq;
@@ -46,8 +64,6 @@ using testing::IsNull;
 using testing::Not;
 using testing::Pointwise;
 using cel::internal::StatusIs;
-using testutil::EqualsProto;
-
 // Helper method. Creates simple pipeline containing CreateStruct step that
 // builds message and runs it.
 absl::StatusOr<CelValue> RunExpression(absl::string_view field,
@@ -135,63 +151,6 @@ void RunExpressionAndGetMessage(absl::string_view field,
 
   ASSERT_EQ(msg->GetDescriptor(), TestMessage::descriptor());
   test_msg->MergeFrom(*msg);
-}
-
-// Helper method. Creates simple pipeline containing CreateStruct step that
-// builds Map and runs it.
-absl::StatusOr<CelValue> RunCreateMapExpression(
-    const std::vector<std::pair<CelValue, CelValue>>& values,
-    google::protobuf::Arena* arena, bool enable_unknowns) {
-  ExecutionPath path;
-  Activation activation;
-
-  Expr expr0;
-  Expr expr1;
-
-  std::vector<Expr> exprs;
-  exprs.reserve(values.size() * 2);
-  int index = 0;
-
-  auto& create_struct = expr1.mutable_struct_expr();
-  for (const auto& item : values) {
-    std::string key_name = absl::StrCat("key", index);
-    std::string value_name = absl::StrCat("value", index);
-
-    auto& key_expr = exprs.emplace_back();
-    auto& key_ident = key_expr.mutable_ident_expr();
-    key_ident.set_name(key_name);
-    CEL_ASSIGN_OR_RETURN(auto step_key,
-                         CreateIdentStep(key_ident, exprs.back().id()));
-
-    auto& value_expr = exprs.emplace_back();
-    auto& value_ident = value_expr.mutable_ident_expr();
-    value_ident.set_name(value_name);
-    CEL_ASSIGN_OR_RETURN(auto step_value,
-                         CreateIdentStep(value_ident, exprs.back().id()));
-
-    path.push_back(std::move(step_key));
-    path.push_back(std::move(step_value));
-
-    activation.InsertValue(key_name, item.first);
-    activation.InsertValue(value_name, item.second);
-
-    create_struct.mutable_entries().emplace_back();
-    index++;
-  }
-
-  CEL_ASSIGN_OR_RETURN(auto step1,
-                       CreateCreateStructStepForMap(create_struct, expr1.id()));
-  path.push_back(std::move(step1));
-
-  cel::RuntimeOptions options;
-  if (enable_unknowns) {
-    options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  }
-
-  CelExpressionFlatImpl cel_expr(
-      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
-                     TypeProvider::Builtin(), options));
-  return cel_expr.Evaluate(activation, arena);
 }
 
 class CreateCreateStructStepTest : public testing::TestWithParam<bool> {};
@@ -717,66 +676,6 @@ TEST_P(CreateCreateStructStepTest, TestSetUInt64MapField) {
   ASSERT_EQ(test_msg.uint64_int32_map().size(), 2);
   ASSERT_EQ(test_msg.uint64_int32_map().at(kKeys[0]), 1);
   ASSERT_EQ(test_msg.uint64_int32_map().at(kKeys[1]), 2);
-}
-
-// Test that Empty Map is created successfully.
-TEST_P(CreateCreateStructStepTest, TestCreateEmptyMap) {
-  Arena arena;
-  ASSERT_OK_AND_ASSIGN(CelValue result,
-                       RunCreateMapExpression({}, &arena, GetParam()));
-  ASSERT_TRUE(result.IsMap());
-
-  const CelMap* cel_map = result.MapOrDie();
-  ASSERT_EQ(cel_map->size(), 0);
-}
-
-// Test message creation if unknown argument is passed
-TEST(CreateCreateStructStepTest, TestMapCreateWithUnknown) {
-  Arena arena;
-  UnknownSet unknown_set;
-  std::vector<std::pair<CelValue, CelValue>> entries;
-
-  std::vector<std::string> kKeys = {"test2", "test1"};
-
-  entries.push_back(
-      {CelValue::CreateString(&kKeys[0]), CelValue::CreateInt64(2)});
-  entries.push_back({CelValue::CreateString(&kKeys[1]),
-                     CelValue::CreateUnknownSet(&unknown_set)});
-
-  ASSERT_OK_AND_ASSIGN(CelValue result,
-                       RunCreateMapExpression(entries, &arena, true));
-  ASSERT_TRUE(result.IsUnknownSet());
-}
-
-// Test that String Map is created successfully.
-TEST_P(CreateCreateStructStepTest, TestCreateStringMap) {
-  Arena arena;
-
-  std::vector<std::pair<CelValue, CelValue>> entries;
-
-  std::vector<std::string> kKeys = {"test2", "test1"};
-
-  entries.push_back(
-      {CelValue::CreateString(&kKeys[0]), CelValue::CreateInt64(2)});
-  entries.push_back(
-      {CelValue::CreateString(&kKeys[1]), CelValue::CreateInt64(1)});
-
-  ASSERT_OK_AND_ASSIGN(CelValue result,
-                       RunCreateMapExpression(entries, &arena, GetParam()));
-  ASSERT_TRUE(result.IsMap());
-
-  const CelMap* cel_map = result.MapOrDie();
-  ASSERT_EQ(cel_map->size(), 2);
-
-  auto lookup0 = cel_map->Get(&arena, CelValue::CreateString(&kKeys[0]));
-  ASSERT_TRUE(lookup0.has_value());
-  ASSERT_TRUE(lookup0->IsInt64()) << lookup0->DebugString();
-  EXPECT_EQ(lookup0->Int64OrDie(), 2);
-
-  auto lookup1 = cel_map->Get(&arena, CelValue::CreateString(&kKeys[1]));
-  ASSERT_TRUE(lookup1.has_value());
-  ASSERT_TRUE(lookup1->IsInt64());
-  EXPECT_EQ(lookup1->Int64OrDie(), 1);
 }
 
 INSTANTIATE_TEST_SUITE_P(CombinedCreateStructTest, CreateCreateStructStepTest,

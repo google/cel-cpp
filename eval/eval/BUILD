@@ -338,6 +338,31 @@ cc_library(
 )
 
 cc_library(
+    name = "create_map_step",
+    srcs = [
+        "create_map_step.cc",
+    ],
+    hdrs = [
+        "create_map_step.h",
+    ],
+    deps = [
+        ":evaluator_core",
+        ":expression_step_base",
+        "//base/ast_internal:expr",
+        "//common:casting",
+        "//common:memory",
+        "//common:type",
+        "//common:value",
+        "//internal:status_macros",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_library(
     name = "jump_step",
     srcs = [
         "jump_step.cc",
@@ -678,22 +703,51 @@ cc_test(
         ":evaluator_core",
         ":ident_step",
         "//base:data",
-        "//common:type",
+        "//base/ast_internal:expr",
         "//common:value",
         "//eval/public:activation",
         "//eval/public:cel_type_registry",
+        "//eval/public:cel_value",
+        "//eval/public:unknown_set",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
         "//eval/public/structs:cel_proto_wrapper",
-        "//eval/public/structs:proto_message_type_adapter",
         "//eval/public/structs:protobuf_descriptor_type_provider",
         "//eval/testutil:test_message_cc_proto",
         "//extensions/protobuf:memory_manager",
+        "//internal:proto_matchers",
         "//internal:status_macros",
         "//internal:testing",
         "//runtime:runtime_options",
-        "//testutil:util",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "create_map_step_test",
+    size = "small",
+    srcs = [
+        "create_map_step_test.cc",
+    ],
+    deps = [
+        ":cel_expression_flat_impl",
+        ":create_map_step",
+        ":evaluator_core",
+        ":ident_step",
+        "//base:data",
+        "//base/ast_internal:expr",
+        "//eval/public:activation",
+        "//eval/public:cel_value",
+        "//eval/public:unknown_set",
+        "//eval/testutil:test_message_cc_proto",
+        "//internal:status_macros",
+        "//internal:testing",
+        "//runtime:runtime_options",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
