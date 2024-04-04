@@ -1,6 +1,25 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "encoders",
+    srcs = ["encoders.cc"],
+    hdrs = ["encoders.h"],
+    deps = [
+        "//common:value",
+        "//eval/public:cel_function_registry",
+        "//eval/public:cel_options",
+        "//internal:status_macros",
+        "//runtime:function_adapter",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
     name = "proto_ext",
     srcs = ["proto_ext.cc"],
     hdrs = ["proto_ext.h"],

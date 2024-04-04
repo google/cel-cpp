@@ -31,6 +31,7 @@
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/transform_utility.h"
+#include "extensions/encoders.h"
 #include "extensions/protobuf/enum_adapter.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/runtime_adapter.h"
@@ -150,6 +151,7 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
     options.enable_timestamp_duration_overflow_errors = true;
     options.enable_heterogeneous_equality = true;
     options.enable_empty_wrapper_null_unboxing = true;
+    options.enable_qualified_identifier_rewrites = true;
 
     if (optimize) {
       std::cerr << "Enabling optimizations" << std::endl;
@@ -170,6 +172,8 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
                                 NestedEnum_descriptor());
     CEL_RETURN_IF_ERROR(
         RegisterBuiltinFunctions(builder->GetRegistry(), options));
+    CEL_RETURN_IF_ERROR(cel::extensions::RegisterEncodersFunctions(
+        builder->GetRegistry(), options));
 
     return absl::WrapUnique(
         new LegacyConformanceServiceImpl(std::move(builder)));
@@ -302,6 +306,8 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
                            NestedEnum_descriptor()));
 
     CEL_RETURN_IF_ERROR(cel::extensions::EnableOptionalTypes(builder));
+    CEL_RETURN_IF_ERROR(cel::extensions::RegisterEncodersFunctions(
+        builder.function_registry(), options));
 
     return std::move(builder).Build();
   }
