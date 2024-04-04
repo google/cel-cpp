@@ -115,27 +115,7 @@ absl::Status SlotStep::Evaluate(ExecutionFrame* frame) const {
         absl::StrCat("Comprehension variable accessed out of scope: ", name_));
   }
 
-  const auto& attribute_trail = slot->attribute;
-
-  if (frame->enable_missing_attribute_errors() &&
-      frame->attribute_utility().CheckForMissingAttribute(attribute_trail)) {
-    CEL_ASSIGN_OR_RETURN(std::string attribute,
-                         attribute_trail.attribute().AsString());
-    frame->value_stack().Push(frame->value_factory().CreateErrorValue(
-        CreateMissingAttributeError(std::move(attribute))));
-    return absl::OkStatus();
-  }
-
-  if (frame->enable_unknowns()) {
-    if (frame->attribute_utility().CheckForUnknown(attribute_trail, false)) {
-      auto unknown_set = frame->attribute_utility().CreateUnknownSet(
-          attribute_trail.attribute());
-      frame->value_stack().Push(std::move(unknown_set));
-      return absl::OkStatus();
-    }
-  }
-
-  frame->value_stack().Push(slot->value, attribute_trail);
+  frame->value_stack().Push(slot->value, slot->attribute);
   return absl::OkStatus();
 }
 

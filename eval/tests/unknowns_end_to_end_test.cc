@@ -4,18 +4,17 @@
 // the unknowns is particular to the runtime.
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
+#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/text_format.h"
-#include "absl/container/btree_map.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
-#include "eval/eval/evaluator_core.h"
+#include "base/function_result.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
@@ -24,12 +23,13 @@
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
-#include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/unknown_set.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "parser/parser.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/text_format.h"
 
 namespace google {
 namespace api {
@@ -38,6 +38,8 @@ namespace runtime {
 namespace {
 
 using google::api::expr::v1alpha1::Expr;
+using google::api::expr::v1alpha1::ParsedExpr;
+using ::google::api::expr::parser::Parse;
 using ::google::protobuf::Arena;
 using testing::ElementsAre;
 
@@ -974,6 +976,51 @@ constexpr char kFilterElementsComp[] = R"pb(
       ident_expr { name: "__result__" }
     }
   })pb";
+
+TEST(UnknownsIterAttrTest, IterAttributeTrailExact) {
+  InterpreterOptions options;
+  Activation activation;
+  Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, Parse("list_var.exists(x, x)"));
+
+  protobuf::Value element;
+  element.set_bool_value(false);
+  protobuf::ListValue list;
+  *list.add_values() = element;
+  *list.add_values() = element;
+  *list.add_values() = element;
+
+  (*list.mutable_values())[0].set_bool_value(true);
+
+  options.unknown_processing = UnknownProcessingOptions::kAttributeAndFunction;
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  activation.InsertValue("list_var",
+                         CelProtoWrapper::CreateMessage(&list, &arena));
+
+  // list_var[0]
+  std::vector<CelAttributePattern> unknown_attribute_patterns;
+  unknown_attribute_patterns.push_back(CelAttributePattern(
+      "list_var",
+      {CreateCelAttributeQualifierPattern(CelValue::CreateInt64(0))}));
+  activation.set_unknown_attribute_patterns(
+      std::move(unknown_attribute_patterns));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto plan, builder->CreateExpression(&expr.expr(), &expr.source_info()));
+  CelValue response = plan->Evaluate(activation, &arena).value();
+
+  ASSERT_TRUE(response.IsUnknownSet()) << CelValue::TypeName(response.type());
+  ASSERT_EQ(response.UnknownSetOrDie()->unknown_attributes().size(), 1);
+
+  ASSERT_EQ(response.UnknownSetOrDie()
+                ->unknown_attributes()
+                .begin()
+                ->qualifier_path()
+                .size(),
+            1);
+}
 
 TEST(UnknownsIterAttrTest, IterAttributeTrailFilterValues) {
   InterpreterOptions options;

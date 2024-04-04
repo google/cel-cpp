@@ -8,21 +8,26 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
 #include "base/attribute.h"
 #include "base/kind.h"
+#include "common/casting.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/comprehension_slots.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
-#include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/mutable_list_impl.h"
 
 namespace google::api::expr::runtime {
 namespace {
 
+using ::cel::Cast;
+using ::cel::InstanceOf;
+using ::cel::IntValue;
+using ::cel::ListValue;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;
@@ -181,10 +186,10 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(kStackSize)) {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
-  auto state = frame->value_stack().GetSpan(kStackSize);
+  absl::Span<const Value> state = frame->value_stack().GetSpan(kStackSize);
 
   // Get range from the stack.
-  auto& iter_range = state[POS_ITER_RANGE];
+  const cel::Value& iter_range = state[POS_ITER_RANGE];
   if (!iter_range->Is<cel::ListValue>()) {
     if (iter_range->Is<cel::ErrorValue>() ||
         iter_range->Is<cel::UnknownValue>()) {
@@ -196,46 +201,53 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
     }
     return frame->JumpTo(error_jump_offset_);
   }
-  auto iter_range_list = iter_range.As<cel::ListValue>();
+  ListValue iter_range_list = Cast<ListValue>(iter_range);
 
   // Get the current index off the stack.
   const auto& current_index_value = state[POS_CURRENT_INDEX];
-  if (!current_index_value->Is<cel::IntValue>()) {
+  if (!InstanceOf<IntValue>(current_index_value)) {
     return absl::InternalError(absl::StrCat(
         "ComprehensionNextStep: want int, got ",
         cel::KindToString(ValueKindToKind(current_index_value->kind()))));
   }
   CEL_RETURN_IF_ERROR(frame->IncrementIterations());
 
-  int64_t current_index = current_index_value.As<cel::IntValue>().NativeValue();
+  int64_t next_index = Cast<IntValue>(current_index_value).NativeValue() + 1;
 
-  AttributeTrail iter_range_attr;
-  AttributeTrail iter_trail;
-  if (frame->enable_unknowns()) {
-    auto attr = frame->value_stack().GetAttributeSpan(kStackSize);
-    iter_range_attr = attr[POS_ITER_RANGE];
-    iter_trail =
-        iter_range_attr.Step(cel::AttributeQualifier::OfInt(current_index + 1));
-  }
+  frame->comprehension_slots().Set(accu_slot_, state[POS_LOOP_STEP_ACCU]);
 
-  // Pop invalidates references to the stack on the following line so copy.
-  Value loop_step = std::move(state[POS_LOOP_STEP_ACCU]);
-  frame->value_stack().Pop(1);
-  frame->comprehension_slots().Set(accu_slot_, std::move(loop_step));
-
-  // Make sure the iter var is out of scope.
-  if (current_index >= static_cast<int64_t>(iter_range_list.Size()) - 1) {
+  if (next_index >= static_cast<int64_t>(iter_range_list.Size())) {
+    // Make sure the iter var is out of scope.
     frame->comprehension_slots().ClearSlot(iter_slot_);
+    // pop loop step
+    frame->value_stack().Pop(1);
+    // jump to result production step
     return frame->JumpTo(jump_offset_);
   }
 
-  current_index += 1;
+  AttributeTrail iter_trail;
+  if (frame->enable_unknowns()) {
+    iter_trail =
+        frame->value_stack().GetAttributeSpan(kStackSize)[POS_ITER_RANGE].Step(
+            cel::AttributeQualifier::OfInt(next_index));
+  }
 
-  CEL_ASSIGN_OR_RETURN(auto current_value,
-                       iter_range_list.Get(frame->value_factory(),
-                                           static_cast<size_t>(current_index)));
+  Value current_value;
+  if (frame->enable_unknowns() && frame->attribute_utility().CheckForUnknown(
+                                      iter_trail, /*use_partial=*/false)) {
+    current_value =
+        frame->attribute_utility().CreateUnknownSet(iter_trail.attribute());
+  } else {
+    CEL_ASSIGN_OR_RETURN(current_value,
+                         iter_range_list.Get(frame->value_factory(),
+                                             static_cast<size_t>(next_index)));
+  }
+
+  // pop loop step
+  // pop old current_index
+  // push new current_index
   frame->value_stack().PopAndPush(
-      frame->value_factory().CreateIntValue(current_index));
+      2, frame->value_factory().CreateIntValue(next_index));
   frame->comprehension_slots().Set(iter_slot_, std::move(current_value),
                                    std::move(iter_trail));
   return absl::OkStatus();

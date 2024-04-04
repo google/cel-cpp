@@ -419,14 +419,15 @@ cc_library(
         ":expression_step_base",
         "//base:attributes",
         "//base:kind",
+        "//common:casting",
         "//common:value",
         "//eval/internal:errors",
-        "//internal:casts",
         "//internal:status_macros",
         "//runtime/internal:mutable_list_impl",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
     ],
 )
 
