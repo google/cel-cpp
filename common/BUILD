@@ -139,6 +139,7 @@ cc_library(
         "//internal:align",
         "//internal:exceptions",
         "//internal:new",
+        "//internal:page_size",
         "@com_google_absl//absl/base:config",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:no_destructor",

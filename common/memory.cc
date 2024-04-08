@@ -24,28 +24,19 @@
 #include <new>  // IWYU pragma: keep
 #include <ostream>
 
-#include "absl/base/no_destructor.h"
-#include "common/native_type.h"
-#include "internal/align.h"
-#include "internal/new.h"
-
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#else
-#include <unistd.h>
-#endif
-
 #include "absl/base/attributes.h"
 #include "absl/base/config.h"  // IWYU pragma: keep
+#include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/log/die_if_null.h"
 #include "absl/numeric/bits.h"
+#include "common/native_type.h"
+#include "internal/align.h"
+#include "internal/new.h"
+#include "internal/page_size.h"
 
 #ifdef ABSL_HAVE_ADDRESS_SANITIZER
 #include <sanitizer/asan_interface.h>
@@ -59,24 +50,6 @@ namespace cel {
 namespace {
 
 static_assert(sizeof(char) == 1);
-
-size_t GetPageSize() {
-  static const size_t page_size = []() -> size_t {
-#ifdef _WIN32
-    SYSTEM_INFO system_info;
-    std::memset(&system_info, '\0', sizeof(system_info));
-    ::GetSystemInfo(&system_info);
-    return system_info.dwPageSize;
-#else
-#if defined(__wasm__) || defined(__asmjs__)
-    return static_cast<size_t>(::getpagesize());
-#else
-    return static_cast<size_t>(::sysconf(_SC_PAGESIZE));
-#endif
-#endif
-  }();
-  return page_size;
-}
 
 struct CleanupAction final {
   void* pointer;
@@ -128,7 +101,9 @@ constexpr bool IsSizeTooLarge(size_t size) {
   return size > static_cast<size_t>(std::numeric_limits<ptrdiff_t>::max());
 }
 
-bool IsAlignmentTooLarge(size_t alignment) { return alignment > GetPageSize(); }
+bool IsAlignmentTooLarge(size_t alignment) {
+  return alignment > internal::PageSize();
+}
 
 class ThreadCompatiblePoolingMemoryManager final : public PoolingMemoryManager {
  public:
