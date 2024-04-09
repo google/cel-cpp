@@ -306,7 +306,10 @@ class ProtoStructValueBuilder final : public StructValueBuilder {
   absl::Status SetFieldByName(absl::string_view name, Value value) override {
     const auto* field = descriptor_->FindFieldByName(name);
     if (field == nullptr) {
-      return NoSuchFieldError(name).NativeValue();
+      field = reflection_->FindKnownExtensionByName(name);
+      if (field == nullptr) {
+        return NoSuchFieldError(name).NativeValue();
+      }
     }
     return SetField(field, std::move(value));
   }

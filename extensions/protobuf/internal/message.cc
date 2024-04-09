@@ -1426,8 +1426,11 @@ class ParsedProtoStructValueInterface
     const auto* desc = message().GetDescriptor();
     const auto* field_desc = desc->FindFieldByName(name);
     if (ABSL_PREDICT_FALSE(field_desc == nullptr)) {
-      scratch = NoSuchFieldError(name);
-      return scratch;
+      field_desc = message().GetReflection()->FindKnownExtensionByName(name);
+      if (ABSL_PREDICT_FALSE(field_desc == nullptr)) {
+        scratch = NoSuchFieldError(name);
+        return scratch;
+      }
     }
     return GetField(value_manager, field_desc, scratch, unboxing_options);
   }
@@ -1452,7 +1455,10 @@ class ParsedProtoStructValueInterface
     const auto* desc = message().GetDescriptor();
     const auto* field_desc = desc->FindFieldByName(name);
     if (ABSL_PREDICT_FALSE(field_desc == nullptr)) {
-      return NoSuchFieldError(name).NativeValue();
+      field_desc = message().GetReflection()->FindKnownExtensionByName(name);
+      if (ABSL_PREDICT_FALSE(field_desc == nullptr)) {
+        return NoSuchFieldError(name).NativeValue();
+      }
     }
     return HasField(field_desc);
   }
