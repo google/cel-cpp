@@ -20,12 +20,10 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/call_once.h"
-#include "absl/base/macros.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/hash/hash.h"
-#include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -252,35 +250,38 @@ struct MapValueKeyLess<Value> {
 
 template <>
 struct MapValueKeyJson<BoolValue> {
-  absl::Cord operator()(BoolValue value) const {
-    return value.NativeValue() ? absl::Cord("true") : absl::Cord("false");
+  absl::StatusOr<absl::Cord> operator()(BoolValue value) const {
+    return TypeConversionError("map<bool, ?>", "google.protobuf.Struct")
+        .NativeValue();
   }
 };
 
 template <>
 struct MapValueKeyJson<IntValue> {
-  absl::Cord operator()(IntValue value) const {
-    return absl::Cord(absl::StrCat(value.NativeValue()));
+  absl::StatusOr<absl::Cord> operator()(IntValue value) const {
+    return TypeConversionError("map<int, ?>", "google.protobuf.Struct")
+        .NativeValue();
   }
 };
 
 template <>
 struct MapValueKeyJson<UintValue> {
-  absl::Cord operator()(UintValue value) const {
-    return absl::Cord(absl::StrCat(value.NativeValue()));
+  absl::StatusOr<absl::Cord> operator()(UintValue value) const {
+    return TypeConversionError("map<uint, ?>", "google.protobuf.Struct")
+        .NativeValue();
   }
 };
 
 template <>
 struct MapValueKeyJson<StringValue> {
-  absl::Cord operator()(const StringValue& value) const {
+  absl::StatusOr<absl::Cord> operator()(const StringValue& value) const {
     return value.NativeCord();
   }
 };
 
 template <>
 struct MapValueKeyJson<Value> {
-  absl::Cord operator()(const Value& value) const {
+  absl::StatusOr<absl::Cord> operator()(const Value& value) const {
     switch (value.kind()) {
       case ValueKind::kBool:
         return MapValueKeyJson<BoolValue>{}(Cast<BoolValue>(value));
@@ -291,8 +292,8 @@ struct MapValueKeyJson<Value> {
       case ValueKind::kString:
         return MapValueKeyJson<StringValue>{}(Cast<StringValue>(value));
       default:
-        ABSL_DLOG(FATAL) << "Invalid map key value: " << value;
-        return absl::Cord();
+        return absl::InternalError(
+            absl::StrCat("unexpected map key type: ", value.GetTypeName()));
     }
   }
 };
@@ -366,7 +367,7 @@ class TypedMapValue final : public ParsedMapValueInterface {
     JsonObjectBuilder builder;
     builder.reserve(Size());
     for (const auto& entry : entries_) {
-      absl::Cord json_key = MapValueKeyJson<K>{}(entry.first);
+      CEL_ASSIGN_OR_RETURN(auto json_key, MapValueKeyJson<K>{}(entry.first));
       CEL_ASSIGN_OR_RETURN(auto json_value,
                            entry.second.ConvertToJson(value_manager));
       if (!builder.insert(std::pair{std::move(json_key), std::move(json_value)})

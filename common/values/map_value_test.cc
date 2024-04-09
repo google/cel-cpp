@@ -63,6 +63,16 @@ class MapValueTest : public common_internal::ThreadCompatibleValueTest<> {
     return std::move(*builder).Build();
   }
 
+  template <typename... Args>
+  absl::StatusOr<MapValue> NewJsonMapValue(Args&&... args) {
+    CEL_ASSIGN_OR_RETURN(auto builder, value_manager().NewMapValueBuilder(
+                                           type_factory().GetJsonMapType()));
+    (static_cast<void>(builder->Put(std::forward<Args>(args).first,
+                                    std::forward<Args>(args).second)),
+     ...);
+    return std::move(*builder).Build();
+  }
+
   ListType GetIntListType() {
     return type_factory().CreateListType(IntTypeView());
   }
@@ -307,9 +317,9 @@ TEST_P(MapValueTest, ConvertToAny) {
 TEST_P(MapValueTest, ConvertToJson) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
-      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                           std::pair{IntValue(1), DoubleValue(4.0)},
-                           std::pair{IntValue(2), DoubleValue(5.0)}));
+      NewJsonMapValue(std::pair{StringValue("0"), DoubleValue(3.0)},
+                      std::pair{StringValue("1"), DoubleValue(4.0)},
+                      std::pair{StringValue("2"), DoubleValue(5.0)}));
   EXPECT_THAT(value.ConvertToJson(value_manager()),
               IsOkAndHolds(Json(MakeJsonObject({{JsonString("0"), 3.0},
                                                 {JsonString("1"), 4.0},
@@ -328,6 +338,16 @@ class MapValueViewTest : public common_internal::ThreadCompatibleValueTest<> {
   absl::StatusOr<MapValue> NewIntDoubleMapValue(Args&&... args) {
     CEL_ASSIGN_OR_RETURN(auto builder, value_manager().NewMapValueBuilder(
                                            GetIntDoubleMapType()));
+    (static_cast<void>(builder->Put(std::forward<Args>(args).first,
+                                    std::forward<Args>(args).second)),
+     ...);
+    return std::move(*builder).Build();
+  }
+
+  template <typename... Args>
+  absl::StatusOr<MapValue> NewJsonMapValue(Args&&... args) {
+    CEL_ASSIGN_OR_RETURN(auto builder, value_manager().NewMapValueBuilder(
+                                           type_factory().GetJsonMapType()));
     (static_cast<void>(builder->Put(std::forward<Args>(args).first,
                                     std::forward<Args>(args).second)),
      ...);
@@ -584,9 +604,9 @@ TEST_P(MapValueViewTest, ConvertToAny) {
 TEST_P(MapValueViewTest, ConvertToJson) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
-      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                           std::pair{IntValue(1), DoubleValue(4.0)},
-                           std::pair{IntValue(2), DoubleValue(5.0)}));
+      NewJsonMapValue(std::pair{StringValue("0"), DoubleValue(3.0)},
+                      std::pair{StringValue("1"), DoubleValue(4.0)},
+                      std::pair{StringValue("2"), DoubleValue(5.0)}));
   EXPECT_THAT(MapValueView(value).ConvertToJson(value_manager()),
               IsOkAndHolds(Json(MakeJsonObject({{JsonString("0"), 3.0},
                                                 {JsonString("1"), 4.0},

@@ -243,12 +243,8 @@ TEST_P(TypeReflectorTest, JsonKeyCoverage) {
   EXPECT_OK(builder->Put(UintValue(2), IntValue(3)));
   EXPECT_OK(builder->Put(StringValue("a"), IntValue(4)));
   auto value = std::move(*builder).Build();
-  EXPECT_THAT(
-      value.ConvertToJson(value_manager()),
-      IsOkAndHolds(Json(MakeJsonObject({{JsonString("true"), Json(1.0)},
-                                        {JsonString("1"), Json(2.0)},
-                                        {JsonString("2"), Json(3.0)},
-                                        {JsonString("a"), Json(4.0)}}))));
+  EXPECT_THAT(value.ConvertToJson(value_manager()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 TEST_P(TypeReflectorTest, NewValueBuilder_BoolValue) {
