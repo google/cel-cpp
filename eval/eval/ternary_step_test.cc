@@ -1,28 +1,58 @@
 #include "eval/eval/ternary_step.h"
 
+#include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
-#include "google/protobuf/descriptor.h"
+#include "absl/base/nullability.h"
+#include "absl/status/status.h"
+#include "base/ast_internal/expr.h"
+#include "base/attribute.h"
+#include "base/attribute_set.h"
 #include "base/type_provider.h"
+#include "common/casting.h"
+#include "common/value.h"
+#include "common/value_manager.h"
+#include "eval/eval/attribute_trail.h"
 #include "eval/eval/cel_expression_flat_impl.h"
+#include "eval/eval/const_value_step.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/activation.h"
+#include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/activation.h"
+#include "runtime/managed_value_factory.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::BoolValue;
+using ::cel::Cast;
+using ::cel::ErrorValue;
+using ::cel::InstanceOf;
+using ::cel::IntValue;
+using ::cel::RuntimeOptions;
 using ::cel::TypeProvider;
+using ::cel::UnknownValue;
+using ::cel::ValueManager;
 using ::cel::ast_internal::Expr;
+using ::cel::extensions::ProtoMemoryManagerRef;
 using ::google::protobuf::Arena;
+using testing::ElementsAre;
 using testing::Eq;
+using testing::HasSubstr;
+using testing::Truly;
+using cel::internal::StatusIs;
 
 class LogicStepTest : public testing::TestWithParam<bool> {
  public:
@@ -173,6 +203,174 @@ TEST_F(LogicStepTest, TestUnknownHandling) {
 }
 
 INSTANTIATE_TEST_SUITE_P(LogicStepTest, LogicStepTest, testing::Bool());
+
+class TernaryStepDirectTest : public testing::TestWithParam<bool> {
+ public:
+  TernaryStepDirectTest()
+      : value_factory_(TypeProvider::Builtin(),
+                       ProtoMemoryManagerRef(&arena_)) {}
+
+  bool Shortcircuiting() { return GetParam(); }
+
+  ValueManager& value_manager() { return value_factory_.get(); }
+
+ protected:
+  Arena arena_;
+  cel::ManagedValueFactory value_factory_;
+};
+
+TEST_P(TernaryStepDirectTest, ReturnLhs) {
+  cel::Activation activation;
+  RuntimeOptions opts;
+  ExecutionFrameBase frame(activation, opts, value_manager());
+
+  std::unique_ptr<DirectExpressionStep> step = CreateDirectTernaryStep(
+      CreateConstValueDirectStep(BoolValue(true), -1),
+      CreateConstValueDirectStep(IntValue(1), -1),
+      CreateConstValueDirectStep(IntValue(2), -1), -1, Shortcircuiting());
+
+  cel::Value result;
+  AttributeTrail attr_unused;
+
+  ASSERT_OK(step->Evaluate(frame, result, attr_unused));
+
+  ASSERT_TRUE(InstanceOf<IntValue>(result));
+  EXPECT_EQ(Cast<IntValue>(result).NativeValue(), 1);
+}
+
+TEST_P(TernaryStepDirectTest, ReturnRhs) {
+  cel::Activation activation;
+  RuntimeOptions opts;
+  ExecutionFrameBase frame(activation, opts, value_manager());
+
+  std::unique_ptr<DirectExpressionStep> step = CreateDirectTernaryStep(
+      CreateConstValueDirectStep(BoolValue(false), -1),
+      CreateConstValueDirectStep(IntValue(1), -1),
+      CreateConstValueDirectStep(IntValue(2), -1), -1, Shortcircuiting());
+
+  cel::Value result;
+  AttributeTrail attr_unused;
+
+  ASSERT_OK(step->Evaluate(frame, result, attr_unused));
+
+  ASSERT_TRUE(InstanceOf<IntValue>(result));
+  EXPECT_EQ(Cast<IntValue>(result).NativeValue(), 2);
+}
+
+TEST_P(TernaryStepDirectTest, ForwardError) {
+  cel::Activation activation;
+  RuntimeOptions opts;
+  ExecutionFrameBase frame(activation, opts, value_manager());
+
+  cel::Value error_value =
+      value_manager().CreateErrorValue(absl::InternalError("test error"));
+
+  std::unique_ptr<DirectExpressionStep> step = CreateDirectTernaryStep(
+      CreateConstValueDirectStep(error_value, -1),
+      CreateConstValueDirectStep(IntValue(1), -1),
+      CreateConstValueDirectStep(IntValue(2), -1), -1, Shortcircuiting());
+
+  cel::Value result;
+  AttributeTrail attr_unused;
+
+  ASSERT_OK(step->Evaluate(frame, result, attr_unused));
+
+  ASSERT_TRUE(InstanceOf<ErrorValue>(result));
+  EXPECT_THAT(Cast<ErrorValue>(result).NativeValue(),
+              StatusIs(absl::StatusCode::kInternal, "test error"));
+}
+
+TEST_P(TernaryStepDirectTest, ForwardUnknown) {
+  cel::Activation activation;
+  RuntimeOptions opts;
+  opts.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
+  ExecutionFrameBase frame(activation, opts, value_manager());
+
+  std::vector<cel::Attribute> attrs{{cel::Attribute("var")}};
+
+  cel::UnknownValue unknown_value =
+      value_manager().CreateUnknownValue(cel::AttributeSet(attrs));
+
+  std::unique_ptr<DirectExpressionStep> step = CreateDirectTernaryStep(
+      CreateConstValueDirectStep(unknown_value, -1),
+      CreateConstValueDirectStep(IntValue(2), -1),
+      CreateConstValueDirectStep(IntValue(3), -1), -1, Shortcircuiting());
+
+  cel::Value result;
+  AttributeTrail attr_unused;
+
+  ASSERT_OK(step->Evaluate(frame, result, attr_unused));
+  ASSERT_TRUE(InstanceOf<UnknownValue>(result));
+  EXPECT_THAT(Cast<UnknownValue>(result).NativeValue().unknown_attributes(),
+              ElementsAre(Truly([](const cel::Attribute& attr) {
+                return attr.variable_name() == "var";
+              })));
+}
+
+TEST_P(TernaryStepDirectTest, UnexpectedCondtionKind) {
+  cel::Activation activation;
+  RuntimeOptions opts;
+  ExecutionFrameBase frame(activation, opts, value_manager());
+
+  std::unique_ptr<DirectExpressionStep> step = CreateDirectTernaryStep(
+      CreateConstValueDirectStep(IntValue(-1), -1),
+      CreateConstValueDirectStep(IntValue(1), -1),
+      CreateConstValueDirectStep(IntValue(2), -1), -1, Shortcircuiting());
+
+  cel::Value result;
+  AttributeTrail attr_unused;
+
+  ASSERT_OK(step->Evaluate(frame, result, attr_unused));
+
+  ASSERT_TRUE(InstanceOf<ErrorValue>(result));
+  EXPECT_THAT(Cast<ErrorValue>(result).NativeValue(),
+              StatusIs(absl::StatusCode::kUnknown,
+                       HasSubstr("No matching overloads found")));
+}
+
+TEST_P(TernaryStepDirectTest, Shortcircuiting) {
+  class RecordCallStep : public DirectExpressionStep {
+   public:
+    explicit RecordCallStep(bool& was_called)
+        : DirectExpressionStep(-1), was_called_(&was_called) {}
+    absl::Status Evaluate(ExecutionFrameBase& frame, cel::Value& result,
+                          AttributeTrail& trail) const override {
+      *was_called_ = true;
+      result = IntValue(1);
+      return absl::OkStatus();
+    }
+
+   private:
+    absl::Nonnull<bool*> was_called_;
+  };
+
+  bool lhs_was_called = false;
+  bool rhs_was_called = false;
+
+  cel::Activation activation;
+  RuntimeOptions opts;
+  ExecutionFrameBase frame(activation, opts, value_manager());
+
+  std::unique_ptr<DirectExpressionStep> step = CreateDirectTernaryStep(
+      CreateConstValueDirectStep(BoolValue(false), -1),
+      std::make_unique<RecordCallStep>(lhs_was_called),
+      std::make_unique<RecordCallStep>(rhs_was_called), -1, Shortcircuiting());
+
+  cel::Value result;
+  AttributeTrail attr_unused;
+
+  ASSERT_OK(step->Evaluate(frame, result, attr_unused));
+
+  ASSERT_TRUE(InstanceOf<IntValue>(result));
+  EXPECT_THAT(Cast<IntValue>(result).NativeValue(), Eq(1));
+  bool expect_eager_eval = !Shortcircuiting();
+  EXPECT_EQ(lhs_was_called, expect_eager_eval);
+  EXPECT_TRUE(rhs_was_called);
+}
+
+INSTANTIATE_TEST_SUITE_P(TernaryStepDirectTest, TernaryStepDirectTest,
+                         testing::Bool());
+
 }  // namespace
 
 }  // namespace google::api::expr::runtime

@@ -80,7 +80,7 @@ TEST_F(LazyInitStepTest, CreateCheckInitStepDoesInit) {
 
   ExecutionFrame frame(expression_table, activation_, runtime_options_,
                        evaluator_state_);
-  ASSERT_OK_AND_ASSIGN(auto value, frame.Evaluate(EvaluationListener()));
+  ASSERT_OK_AND_ASSIGN(auto value, frame.Evaluate());
 
   EXPECT_TRUE(value->Is<IntValue>() &&
               value->As<IntValue>().NativeValue() == 42);
@@ -107,7 +107,7 @@ TEST_F(LazyInitStepTest, CreateCheckInitStepSkipInit) {
   ExecutionFrame frame(expression_table, activation_, runtime_options_,
                        evaluator_state_);
   frame.comprehension_slots().Set(0, value_factory().CreateIntValue(42));
-  ASSERT_OK_AND_ASSIGN(auto value, frame.Evaluate(EvaluationListener()));
+  ASSERT_OK_AND_ASSIGN(auto value, frame.Evaluate());
 
   EXPECT_TRUE(value->Is<IntValue>() &&
               value->As<IntValue>().NativeValue() == 42);
@@ -124,7 +124,7 @@ TEST_F(LazyInitStepTest, CreateAssignSlotStepBasic) {
   frame.value_stack().Push(value_factory().CreateIntValue(42));
 
   // This will error because no return value, step will still evaluate.
-  frame.Evaluate(EvaluationListener()).IgnoreError();
+  frame.Evaluate().IgnoreError();
 
   auto* slot = frame.comprehension_slots().Get(0);
   ASSERT_TRUE(slot != nullptr);
@@ -144,7 +144,7 @@ TEST_F(LazyInitStepTest, CreateAssignSlotAndPopStepBasic) {
   frame.value_stack().Push(value_factory().CreateIntValue(42));
 
   // This will error because no return value, step will still evaluate.
-  frame.Evaluate(EvaluationListener()).IgnoreError();
+  frame.Evaluate().IgnoreError();
 
   auto* slot = frame.comprehension_slots().Get(0);
   ASSERT_TRUE(slot != nullptr);
@@ -161,7 +161,7 @@ TEST_F(LazyInitStepTest, CreateAssignSlotStepStackUnderflow) {
   ExecutionFrame frame(path, activation_, runtime_options_, evaluator_state_);
   frame.comprehension_slots().ClearSlot(0);
 
-  EXPECT_THAT(frame.Evaluate(EvaluationListener()),
+  EXPECT_THAT(frame.Evaluate(),
               StatusIs(absl::StatusCode::kInternal,
                        HasSubstr("Stack underflow assigning lazy value")));
 }
@@ -175,7 +175,7 @@ TEST_F(LazyInitStepTest, CreateClearSlotStepBasic) {
   frame.comprehension_slots().Set(0, value_factory().CreateIntValue(42));
 
   // This will error because no return value, step will still evaluate.
-  frame.Evaluate(EvaluationListener()).IgnoreError();
+  frame.Evaluate().IgnoreError();
 
   auto* slot = frame.comprehension_slots().Get(0);
   ASSERT_TRUE(slot == nullptr);

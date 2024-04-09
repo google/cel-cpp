@@ -21,6 +21,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -135,10 +136,102 @@ class FlatExpressionEvaluatorState {
   cel::ValueManager* value_factory_;
 };
 
+// Context needed for evaluation. This is sufficient for supporting stackless
+// recursive evaluation, but larger expressions require a full execution frame.
+class ExecutionFrameBase {
+ public:
+  // Overload for test usages.
+  ExecutionFrameBase(const cel::ActivationInterface& activation,
+                     const cel::RuntimeOptions& options,
+                     cel::ValueManager& value_manager)
+      : activation_(&activation),
+        callback_(),
+        options_(&options),
+        value_manager_(&value_manager),
+        attribute_utility_(activation.GetUnknownAttributes(),
+                           activation.GetMissingAttributes(), value_manager),
+        slots_(&ComprehensionSlots::GetEmptyInstance()),
+        max_iterations_(options.comprehension_max_iterations),
+        iterations_(0) {}
+
+  ExecutionFrameBase(const cel::ActivationInterface& activation,
+                     EvaluationListener callback,
+                     const cel::RuntimeOptions& options,
+                     cel::ValueManager& value_manager,
+                     ComprehensionSlots& slots)
+      : activation_(&activation),
+        callback_(std::move(callback)),
+        options_(&options),
+        value_manager_(&value_manager),
+        attribute_utility_(activation.GetUnknownAttributes(),
+                           activation.GetMissingAttributes(), value_manager),
+        slots_(&slots),
+        max_iterations_(options.comprehension_max_iterations),
+        iterations_(0) {}
+
+  const cel::ActivationInterface& activation() const { return *activation_; }
+
+  EvaluationListener& callback() { return callback_; }
+
+  const cel::RuntimeOptions& options() const { return *options_; }
+
+  cel::ValueManager& value_manager() { return *value_manager_; }
+
+  const AttributeUtility& attribute_utility() const {
+    return attribute_utility_;
+  }
+
+  bool attribute_tracking_enabled() const {
+    return options_->unknown_processing !=
+               cel::UnknownProcessingOptions::kDisabled ||
+           options_->enable_missing_attribute_errors;
+  }
+
+  bool missing_attribute_errors_enabled() const {
+    return options_->enable_missing_attribute_errors;
+  }
+
+  bool unknown_processing_enabled() const {
+    return options_->unknown_processing !=
+           cel::UnknownProcessingOptions::kDisabled;
+  }
+
+  bool unknown_function_results_enabled() const {
+    return options_->unknown_processing ==
+           cel::UnknownProcessingOptions::kAttributeAndFunction;
+  }
+
+  ComprehensionSlots& comprehension_slots() { return *slots_; }
+
+  // Increment iterations and return an error if the iteration budget is
+  // exceeded
+  absl::Status IncrementIterations() {
+    if (max_iterations_ == 0) {
+      return absl::OkStatus();
+    }
+    iterations_++;
+    if (iterations_ >= max_iterations_) {
+      return absl::Status(absl::StatusCode::kInternal,
+                          "Iteration budget exceeded");
+    }
+    return absl::OkStatus();
+  }
+
+ protected:
+  absl::Nonnull<const cel::ActivationInterface*> activation_;
+  EvaluationListener callback_;
+  absl::Nonnull<const cel::RuntimeOptions*> options_;
+  absl::Nonnull<cel::ValueManager*> value_manager_;
+  AttributeUtility attribute_utility_;
+  absl::Nonnull<ComprehensionSlots*> slots_;
+  const int max_iterations_;
+  int iterations_;
+};
+
 // ExecutionFrame manages the context needed for expression evaluation.
 // The lifecycle of the object is bound to a FlateExpression::Evaluate*(...)
 // call.
-class ExecutionFrame {
+class ExecutionFrame : public ExecutionFrameBase {
  public:
   // flat is the flattened sequence of execution steps that will be evaluated.
   // activation provides bindings between parameter names and values.
@@ -147,33 +240,25 @@ class ExecutionFrame {
   ExecutionFrame(ExecutionPathView flat,
                  const cel::ActivationInterface& activation,
                  const cel::RuntimeOptions& options,
-                 FlatExpressionEvaluatorState& state)
-      : pc_(0UL),
+                 FlatExpressionEvaluatorState& state,
+                 EvaluationListener callback = EvaluationListener())
+      : ExecutionFrameBase(activation, std::move(callback), options,
+                           state.value_manager(), state.comprehension_slots()),
+        pc_(0UL),
         execution_path_(flat),
-        activation_(activation),
-        options_(options),
         state_(state),
-        attribute_utility_(activation_.GetUnknownAttributes(),
-                           activation_.GetMissingAttributes(),
-                           state_.value_factory()),
-        max_iterations_(options_.comprehension_max_iterations),
-        iterations_(0),
         subexpressions_() {}
 
   ExecutionFrame(absl::Span<const ExecutionPathView> subexpressions,
                  const cel::ActivationInterface& activation,
                  const cel::RuntimeOptions& options,
-                 FlatExpressionEvaluatorState& state)
-      : pc_(0UL),
+                 FlatExpressionEvaluatorState& state,
+                 EvaluationListener callback = EvaluationListener())
+      : ExecutionFrameBase(activation, std::move(callback), options,
+                           state.value_manager(), state.comprehension_slots()),
+        pc_(0UL),
         execution_path_(subexpressions[0]),
-        activation_(activation),
-        options_(options),
         state_(state),
-        attribute_utility_(activation_.GetUnknownAttributes(),
-                           activation_.GetMissingAttributes(),
-                           state_.value_factory()),
-        max_iterations_(options_.comprehension_max_iterations),
-        iterations_(0),
         subexpressions_(subexpressions) {
     ABSL_DCHECK(!subexpressions.empty());
   }
@@ -182,7 +267,9 @@ class ExecutionFrame {
   const ExpressionStep* Next();
 
   // Evaluate the execution frame to completion.
-  absl::StatusOr<cel::Value> Evaluate(EvaluationListener listener);
+  absl::StatusOr<cel::Value> Evaluate(EvaluationListener& listener);
+  // Evaluate the execution frame to completion.
+  absl::StatusOr<cel::Value> Evaluate() { return Evaluate(callback()); }
 
   // Intended for use in builtin shortcutting operations.
   //
@@ -222,36 +309,27 @@ class ExecutionFrame {
   }
 
   EvaluatorStack& value_stack() { return state_.value_stack(); }
-  ComprehensionSlots& comprehension_slots() {
-    return state_.comprehension_slots();
-  }
 
   bool enable_attribute_tracking() const {
-    return options_.unknown_processing !=
-               cel::UnknownProcessingOptions::kDisabled ||
-           options_.enable_missing_attribute_errors;
+    return attribute_tracking_enabled();
   }
 
-  bool enable_unknowns() const {
-    return options_.unknown_processing !=
-           cel::UnknownProcessingOptions::kDisabled;
-  }
+  bool enable_unknowns() const { return unknown_processing_enabled(); }
 
   bool enable_unknown_function_results() const {
-    return options_.unknown_processing ==
-           cel::UnknownProcessingOptions::kAttributeAndFunction;
+    return unknown_function_results_enabled();
   }
 
   bool enable_missing_attribute_errors() const {
-    return options_.enable_missing_attribute_errors;
+    return missing_attribute_errors_enabled();
   }
 
   bool enable_heterogeneous_numeric_lookups() const {
-    return options_.enable_heterogeneous_equality;
+    return options().enable_heterogeneous_equality;
   }
 
   bool enable_comprehension_list_append() const {
-    return options_.enable_comprehension_list_append;
+    return options().enable_comprehension_list_append;
   }
 
   cel::MemoryManagerRef memory_manager() { return state_.memory_manager(); }
@@ -262,29 +340,9 @@ class ExecutionFrame {
 
   cel::ValueManager& value_factory() { return state_.value_factory(); }
 
-  cel::ValueManager& value_manager() { return state_.value_factory(); }
-
-  const AttributeUtility& attribute_utility() const {
-    return attribute_utility_;
-  }
-
   // Returns reference to the modern API activation.
   const cel::ActivationInterface& modern_activation() const {
-    return activation_;
-  }
-
-  // Increment iterations and return an error if the iteration budget is
-  // exceeded
-  absl::Status IncrementIterations() {
-    if (max_iterations_ == 0) {
-      return absl::OkStatus();
-    }
-    iterations_++;
-    if (iterations_ >= max_iterations_) {
-      return absl::Status(absl::StatusCode::kInternal,
-                          "Iteration budget exceeded");
-    }
-    return absl::OkStatus();
+    return *activation_;
   }
 
  private:
@@ -296,12 +354,7 @@ class ExecutionFrame {
 
   size_t pc_;  // pc_ - Program Counter. Current position on execution path.
   ExecutionPathView execution_path_;
-  const cel::ActivationInterface& activation_;
-  const cel::RuntimeOptions& options_;  // owned by the FlatExpr instance
   FlatExpressionEvaluatorState& state_;
-  AttributeUtility attribute_utility_;
-  const int max_iterations_;
-  int iterations_;
   absl::Span<const ExecutionPathView> subexpressions_;
   std::vector<SubFrame> call_stack_;
 };
@@ -355,7 +408,18 @@ class FlatExpression {
       const cel::ActivationInterface& activation, EvaluationListener listener,
       FlatExpressionEvaluatorState& state) const;
 
+  cel::ManagedValueFactory MakeValueFactory(
+      cel::MemoryManagerRef memory_manager) const;
+
   const ExecutionPath& path() const { return path_; }
+
+  absl::Span<const ExecutionPathView> subexpressions() const {
+    return subexpressions_;
+  }
+
+  const cel::RuntimeOptions& options() const { return options_; }
+
+  size_t comprehension_slots_size() const { return comprehension_slots_size_; }
 
  private:
   ExecutionPath path_;

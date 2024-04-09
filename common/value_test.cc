@@ -44,13 +44,14 @@ TEST(Value, GetTypeName) {
   EXPECT_DEBUG_DEATH(static_cast<void>(moved_from_value.GetTypeName()), _);
 }
 
-TEST(Value, DebugStringDebugDeath) {
+TEST(Value, DebugStringUinitializedValue) {
   Value moved_from_value = BoolValue(true);
   Value value = std::move(moved_from_value);
   IS_INITIALIZED(moved_from_value);
   static_cast<void>(value);
   std::ostringstream out;
-  EXPECT_DEBUG_DEATH(static_cast<void>(out << moved_from_value), _);
+  out << moved_from_value;
+  EXPECT_EQ(out.str(), "default ctor Value");
 }
 
 TEST(Value, NativeValueIdDebugDeath) {

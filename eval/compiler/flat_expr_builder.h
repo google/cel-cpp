@@ -42,6 +42,7 @@ class FlatExprBuilder {
                   const CelTypeRegistry& type_registry,
                   const cel::RuntimeOptions& options)
       : options_(options),
+        container_(options.container),
         function_registry_(function_registry),
         type_registry_(type_registry.InternalGetModernRegistry()) {}
 
@@ -49,6 +50,7 @@ class FlatExprBuilder {
                   const cel::TypeRegistry& type_registry,
                   const cel::RuntimeOptions& options)
       : options_(options),
+        container_(options.container),
         function_registry_(function_registry),
         type_registry_(type_registry) {}
 

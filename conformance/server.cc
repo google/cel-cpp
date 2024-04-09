@@ -78,6 +78,9 @@ ABSL_FLAG(
 ABSL_FLAG(bool, arena, false,
           "Use arena memory manager (default: global heap ref-counted). Only "
           "affects the modern implementation");
+ABSL_FLAG(bool, recursive, false,
+          "Enable recursive plans. Depth limited to slightly more than the "
+          "default nesting limit.");
 
 namespace google::api::expr::runtime {
 
@@ -161,6 +164,10 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
       std::cerr << "Enabling optimizations" << std::endl;
       options.constant_folding = true;
       options.constant_arena = constant_arena;
+    }
+
+    if (absl::GetFlag(FLAGS_recursive)) {
+      options.max_recursion_depth = 48;
     }
 
     std::unique_ptr<CelExpressionBuilder> builder =
@@ -284,6 +291,9 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
     options.enable_timestamp_duration_overflow_errors = true;
     options.enable_heterogeneous_equality = true;
     options.enable_empty_wrapper_null_unboxing = true;
+    if (absl::GetFlag(FLAGS_recursive)) {
+      options.max_recursion_depth = 48;
+    }
 
     return absl::WrapUnique(
         new ModernConformanceServiceImpl(options, use_arena, optimize));

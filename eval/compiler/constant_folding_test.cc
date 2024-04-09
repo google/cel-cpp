@@ -371,8 +371,9 @@ TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
   program_builder.ExitSubexpression(&value);
 
   // create map
-  ASSERT_OK_AND_ASSIGN(
-      step, CreateCreateStructStepForMap(create_map.struct_expr(), 3));
+  ASSERT_OK_AND_ASSIGN(step,
+                       CreateCreateStructStepForMap(
+                           create_map.struct_expr().entries().size(), {}, 3));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&create_map);
 
@@ -428,8 +429,9 @@ TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
   program_builder.ExitSubexpression(&value);
 
   // create map
-  ASSERT_OK_AND_ASSIGN(
-      step, CreateCreateStructStepForMap(create_map.struct_expr(), 3));
+  ASSERT_OK_AND_ASSIGN(step,
+                       CreateCreateStructStepForMap(
+                           create_map.struct_expr().entries().size(), {}, 3));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&create_map);
 

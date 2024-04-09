@@ -18,9 +18,14 @@
 #include <memory>
 #include <utility>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/cel_expression.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "internal/casts.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
@@ -79,6 +84,76 @@ class CelExpressionFlatImpl : public CelExpression {
 
  private:
   FlatExpression flat_expression_;
+};
+
+// Implementation of the CelExpression that evaluates a recursive representation
+// of the AST.
+//
+// This class adapts FlatExpression to implement the CelExpression interface.
+//
+// Assumes that the flat expression is wrapping a simple recursive program.
+class CelExpressionRecursiveImpl : public CelExpression {
+ private:
+  class EvaluationState : public CelEvaluationState {
+   public:
+    explicit EvaluationState(google::protobuf::Arena* arena) : arena_(arena) {}
+    google::protobuf::Arena* arena() { return arena_; }
+
+   private:
+    google::protobuf::Arena* arena_;
+  };
+
+ public:
+  static absl::StatusOr<std::unique_ptr<CelExpressionRecursiveImpl>> Create(
+      FlatExpression flat_expression);
+
+  // Move-only
+  CelExpressionRecursiveImpl(const CelExpressionRecursiveImpl&) = delete;
+  CelExpressionRecursiveImpl& operator=(const CelExpressionRecursiveImpl&) =
+      delete;
+  CelExpressionRecursiveImpl(CelExpressionRecursiveImpl&&) = default;
+  CelExpressionRecursiveImpl& operator=(CelExpressionRecursiveImpl&&) = default;
+
+  // Implement CelExpression.
+  std::unique_ptr<CelEvaluationState> InitializeState(
+      google::protobuf::Arena* arena) const override {
+    return std::make_unique<EvaluationState>(arena);
+  }
+
+  absl::StatusOr<CelValue> Evaluate(const BaseActivation& activation,
+                                    google::protobuf::Arena* arena) const override;
+
+  absl::StatusOr<CelValue> Evaluate(const BaseActivation& activation,
+                                    CelEvaluationState* state) const override {
+    auto* state_impl = cel::internal::down_cast<EvaluationState*>(state);
+    return Evaluate(activation, state_impl->arena());
+  }
+
+  absl::StatusOr<CelValue> Trace(const BaseActivation& activation,
+                                 google::protobuf::Arena* arena,
+                                 CelEvaluationListener callback) const override;
+
+  absl::StatusOr<CelValue> Trace(
+      const BaseActivation& activation, CelEvaluationState* state,
+      CelEvaluationListener callback) const override {
+    auto* state_impl = cel::internal::down_cast<EvaluationState*>(state);
+    return Trace(activation, state_impl->arena(), callback);
+  }
+
+  // Exposed for inspection in tests.
+  const FlatExpression& flat_expression() const { return flat_expression_; }
+
+  const DirectExpressionStep* root() const { return root_; }
+
+ private:
+  explicit CelExpressionRecursiveImpl(FlatExpression flat_expression)
+      : flat_expression_(std::move(flat_expression)),
+        root_(cel::internal::down_cast<const WrappedDirectStep*>(
+                  flat_expression_.path()[0].get())
+                  ->wrapped()) {}
+
+  FlatExpression flat_expression_;
+  const DirectExpressionStep* root_;
 };
 
 }  // namespace google::api::expr::runtime

@@ -27,7 +27,9 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/ast.h"
+#include "common/native_type.h"
 #include "eval/eval/cel_expression_flat_impl.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/cel_expression.h"
 #include "extensions/protobuf/ast_converters.h"
@@ -93,6 +95,14 @@ CelExpressionBuilderFlatImpl::CreateExpressionImpl(
     for (const auto& issue : issues) {
       warnings->push_back(issue.ToStatus());
     }
+  }
+  if (flat_expr_builder_.options().max_recursion_depth != 0 &&
+      impl.path().size() > 0 &&
+      // mainline expression is exactly one recursive step.
+      impl.subexpressions().front().size() == 1 &&
+      impl.path().front()->GetNativeTypeId() ==
+          cel::NativeTypeId::For<WrappedDirectStep>()) {
+    return CelExpressionRecursiveImpl::Create(std::move(impl));
   }
 
   return std::make_unique<CelExpressionFlatImpl>(std::move(impl));

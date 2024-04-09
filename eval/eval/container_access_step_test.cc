@@ -8,11 +8,11 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "base/builtins.h"
 #include "base/type_provider.h"
 #include "eval/eval/cel_expression_flat_impl.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/activation.h"
@@ -25,8 +25,10 @@
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/testing/matchers.h"
+#include "eval/public/unknown_set.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
@@ -42,12 +44,12 @@ using testing::AllOf;
 using testing::HasSubstr;
 using cel::internal::StatusIs;
 
-using TestParamType = std::tuple<bool, bool>;
+using TestParamType = std::tuple<bool, bool, bool>;
 
-// Helper method. Looks up in registry and tests comparison operation.
 CelValue EvaluateAttributeHelper(
-    google::protobuf::Arena* arena, CelValue container, CelValue key, bool receiver_style,
-    bool enable_unknown, const std::vector<CelAttributePattern>& patterns) {
+    google::protobuf::Arena* arena, CelValue container, CelValue key,
+    bool use_recursive_impl, bool receiver_style, bool enable_unknown,
+    const std::vector<CelAttributePattern>& patterns) {
   ExecutionPath path;
 
   Expr expr;
@@ -64,10 +66,19 @@ CelValue EvaluateAttributeHelper(
   container_expr.mutable_ident_expr().set_name("container");
   key_expr.mutable_ident_expr().set_name("key");
 
-  path.push_back(
-      std::move(CreateIdentStep(container_expr.ident_expr(), 1).value()));
-  path.push_back(std::move(CreateIdentStep(key_expr.ident_expr(), 2).value()));
-  path.push_back(std::move(CreateContainerAccessStep(call, 3).value()));
+  if (use_recursive_impl) {
+    path.push_back(std::make_unique<WrappedDirectStep>(
+        CreateDirectContainerAccessStep(CreateDirectIdentStep("container", 1),
+                                        CreateDirectIdentStep("key", 2),
+                                        /*enable_optional_types=*/false, 3),
+        3));
+  } else {
+    path.push_back(
+        std::move(CreateIdentStep(container_expr.ident_expr(), 1).value()));
+    path.push_back(
+        std::move(CreateIdentStep(key_expr.ident_expr(), 2).value()));
+    path.push_back(std::move(CreateContainerAccessStep(call, 3).value()));
+  }
 
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
@@ -87,16 +98,17 @@ CelValue EvaluateAttributeHelper(
 
 class ContainerAccessStepTest : public ::testing::Test {
  protected:
-  ContainerAccessStepTest() {}
+  ContainerAccessStepTest() = default;
 
   void SetUp() override {}
 
   CelValue EvaluateAttribute(
       CelValue container, CelValue key, bool receiver_style,
-      bool enable_unknown,
+      bool enable_unknown, bool use_recursive_impl = false,
       const std::vector<CelAttributePattern>& patterns = {}) {
     return EvaluateAttributeHelper(&arena_, container, key, receiver_style,
-                                   enable_unknown, patterns);
+                                   enable_unknown, use_recursive_impl,
+                                   patterns);
   }
   google::protobuf::Arena arena_;
 };
@@ -104,7 +116,7 @@ class ContainerAccessStepTest : public ::testing::Test {
 class ContainerAccessStepUniformityTest
     : public ::testing::TestWithParam<TestParamType> {
  protected:
-  ContainerAccessStepUniformityTest() {}
+  ContainerAccessStepUniformityTest() = default;
 
   void SetUp() override {}
 
@@ -118,13 +130,19 @@ class ContainerAccessStepUniformityTest
     return std::get<1>(params);
   }
 
+  bool use_recursive_impl() {
+    TestParamType params = GetParam();
+    return std::get<2>(params);
+  }
+
   // Helper method. Looks up in registry and tests comparison operation.
   CelValue EvaluateAttribute(
       CelValue container, CelValue key, bool receiver_style,
-      bool enable_unknown,
+      bool enable_unknown, bool use_recursive_impl = false,
       const std::vector<CelAttributePattern>& patterns = {}) {
     return EvaluateAttributeHelper(&arena_, container, key, receiver_style,
-                                   enable_unknown, patterns);
+                                   enable_unknown, use_recursive_impl,
+                                   patterns);
   }
   google::protobuf::Arena arena_;
 };
@@ -278,8 +296,9 @@ TEST_F(ContainerAccessStepTest, TestListIndexAccessUnknown) {
       "container",
       {CreateCelAttributeQualifierPattern(CelValue::CreateInt64(1))})};
 
-  result = EvaluateAttribute(CelValue::CreateList(&cel_list),
-                             CelValue::CreateInt64(1), true, true, patterns);
+  result =
+      EvaluateAttribute(CelValue::CreateList(&cel_list),
+                        CelValue::CreateInt64(1), true, true, false, patterns);
 
   ASSERT_TRUE(result.IsUnknownSet());
 }
@@ -351,10 +370,11 @@ TEST_F(ContainerAccessStepTest, TestInvalidContainerType) {
                        HasSubstr("Invalid container type: 'int")));
 }
 
-INSTANTIATE_TEST_SUITE_P(CombinedContainerTest,
-                         ContainerAccessStepUniformityTest,
-                         testing::Combine(/*receiver_style*/ testing::Bool(),
-                                          /*unknown_enabled*/ testing::Bool()));
+INSTANTIATE_TEST_SUITE_P(
+    CombinedContainerTest, ContainerAccessStepUniformityTest,
+    testing::Combine(/*receiver_style*/ testing::Bool(),
+                     /*unknown_enabled*/ testing::Bool(),
+                     /*use_recursive_impl*/ testing::Bool()));
 
 class ContainerAccessHeterogeneousLookupsTest : public testing::Test {
  public:

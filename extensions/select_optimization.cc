@@ -38,6 +38,7 @@
 #include "base/ast_internal/expr.h"
 #include "base/attribute.h"
 #include "base/builtins.h"
+#include "common/casting.h"
 #include "common/kind.h"
 #include "common/memory.h"
 #include "common/type.h"
@@ -46,6 +47,7 @@
 #include "common/value_manager.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/attribute_trail.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/public/ast_rewrite_native.h"
@@ -66,7 +68,9 @@ using ::cel::ast_internal::ExprKind;
 using ::cel::ast_internal::Select;
 using ::cel::ast_internal::SourcePosition;
 using ::google::api::expr::runtime::AttributeTrail;
+using ::google::api::expr::runtime::DirectExpressionStep;
 using ::google::api::expr::runtime::ExecutionFrame;
+using ::google::api::expr::runtime::ExecutionFrameBase;
 using ::google::api::expr::runtime::ExpressionStepBase;
 using ::google::api::expr::runtime::PlannerContext;
 using ::google::api::expr::runtime::ProgramOptimizer;
@@ -528,15 +532,12 @@ class RewriterImpl : public AstRewriterBase {
   absl::Status progress_status_;
 };
 
-class OptimizedSelectStep : public ExpressionStepBase {
+class OptimizedSelectImpl {
  public:
-  OptimizedSelectStep(
-      int expr_id, std::vector<SelectQualifier> select_path,
-      std::vector<AttributeQualifier> qualifiers, bool presence_test,
-      ABSL_ATTRIBUTE_UNUSED bool enable_wrapper_type_null_unboxing,
-      SelectOptimizationOptions options)
-      : ExpressionStepBase(expr_id),
-        select_path_(std::move(select_path)),
+  OptimizedSelectImpl(std::vector<SelectQualifier> select_path,
+                      std::vector<AttributeQualifier> qualifiers,
+                      bool presence_test, SelectOptimizationOptions options)
+      : select_path_(std::move(select_path)),
         qualifiers_(std::move(qualifiers)),
         presence_test_(presence_test),
         options_(options)
@@ -545,17 +546,24 @@ class OptimizedSelectStep : public ExpressionStepBase {
     ABSL_DCHECK(!select_path_.empty());
   }
 
-  absl::Status Evaluate(ExecutionFrame* frame) const override;
+  // Move constructible.
+  OptimizedSelectImpl(const OptimizedSelectImpl&) = delete;
+  OptimizedSelectImpl& operator=(const OptimizedSelectImpl&) = delete;
+  OptimizedSelectImpl(OptimizedSelectImpl&&) = default;
+  OptimizedSelectImpl& operator=(OptimizedSelectImpl&&) = delete;
 
- private:
-  absl::StatusOr<Value> ApplySelect(ExecutionFrame* frame,
+  absl::StatusOr<Value> ApplySelect(ExecutionFrameBase& frame,
                                     const StructValue& struct_value) const;
 
-  // Get the effective attribute for the optimized select expression.
-  // Assumes the operand is the top of stack if the attribute wasn't known at
-  // plan time.
-  AttributeTrail GetAttributeTrail(ExecutionFrame* frame) const;
+  AttributeTrail GetAttributeTrail(const AttributeTrail& operand_trail) const;
 
+  absl::optional<Attribute> attribute() const { return attribute_; }
+
+  const std::vector<AttributeQualifier>& qualifiers() const {
+    return qualifiers_;
+  }
+
+ private:
   absl::optional<Attribute> attribute_;
   std::vector<SelectQualifier> select_path_;
   std::vector<AttributeQualifier> qualifiers_;
@@ -565,12 +573,13 @@ class OptimizedSelectStep : public ExpressionStepBase {
 
 // Check for unknowns or missing attributes.
 absl::StatusOr<absl::optional<Value>> CheckForMarkedAttributes(
-    ExecutionFrame* frame, const AttributeTrail& attribute_trail) {
+    ExecutionFrameBase& frame, const AttributeTrail& attribute_trail) {
   if (attribute_trail.empty()) {
     return absl::nullopt;
   }
 
-  if (frame->enable_unknowns()) {
+  if (frame.unknown_processing_enabled() &&
+      frame.attribute_utility().CheckForUnknownExact(attribute_trail)) {
     // Check if the inferred attribute is marked. Only matches if this attribute
     // or a parent is marked unknown (use_partial = false).
     // Partial matches (i.e. descendant of this attribute is marked) aren't
@@ -580,49 +589,30 @@ absl::StatusOr<absl::optional<Value>> CheckForMarkedAttributes(
     // TODO(uncreated-issue/51): this may return a more specific attribute than the
     // declared pattern. Follow up will truncate the returned attribute to match
     // the pattern.
-    if (frame->attribute_utility().CheckForUnknown(attribute_trail,
-                                                   /*use_partial=*/false)) {
-      return frame->attribute_utility().CreateUnknownSet(
-          attribute_trail.attribute());
-    }
+    return frame.attribute_utility().CreateUnknownSet(
+        attribute_trail.attribute());
   }
-  if (frame->enable_missing_attribute_errors()) {
-    if (frame->attribute_utility().CheckForMissingAttribute(attribute_trail)) {
-      return frame->attribute_utility().CreateMissingAttributeError(
-          attribute_trail.attribute());
-    }
+
+  if (frame.missing_attribute_errors_enabled() &&
+      frame.attribute_utility().CheckForMissingAttribute(attribute_trail)) {
+    return frame.attribute_utility().CreateMissingAttributeError(
+        attribute_trail.attribute());
   }
 
   return absl::nullopt;
 }
 
-AttributeTrail OptimizedSelectStep::GetAttributeTrail(
-    ExecutionFrame* frame) const {
-  const auto& attr = frame->value_stack().PeekAttribute();
-  if (attr.empty()) {
-    return AttributeTrail();
-  }
-  std::vector<AttributeQualifier> qualifiers =
-      std::vector<AttributeQualifier>(attr.attribute().qualifier_path().begin(),
-                                      attr.attribute().qualifier_path().end());
-  qualifiers.reserve(qualifiers_.size() + qualifiers.size());
-  absl::c_copy(qualifiers_, std::back_inserter(qualifiers));
-  AttributeTrail result(Attribute(std::string(attr.attribute().variable_name()),
-                                  std::move(qualifiers)));
-  return result;
-}
-
-absl::StatusOr<Value> OptimizedSelectStep::ApplySelect(
-    ExecutionFrame* frame, const StructValue& struct_value) const {
+absl::StatusOr<Value> OptimizedSelectImpl::ApplySelect(
+    ExecutionFrameBase& frame, const StructValue& struct_value) const {
   auto value_or = (options_.force_fallback_implementation)
                       ? absl::UnimplementedError("Forced fallback impl")
-                      : struct_value.Qualify(frame->value_factory(),
+                      : struct_value.Qualify(frame.value_manager(),
                                              select_path_, presence_test_);
 
   if (!value_or.ok()) {
     if (value_or.status().code() == absl::StatusCode::kUnimplemented) {
       return FallbackSelect(struct_value, select_path_, presence_test_,
-                            frame->value_factory());
+                            frame.value_manager());
     }
 
     return value_or.status();
@@ -635,10 +625,47 @@ absl::StatusOr<Value> OptimizedSelectStep::ApplySelect(
   return FallbackSelect(
       value_or->first,
       absl::MakeConstSpan(select_path_).subspan(value_or->second),
-      presence_test_, frame->value_factory());
+      presence_test_, frame.value_manager());
 }
 
-absl::Status OptimizedSelectStep::Evaluate(ExecutionFrame* frame) const {
+AttributeTrail OptimizedSelectImpl::GetAttributeTrail(
+    const AttributeTrail& operand_trail) const {
+  if (operand_trail.empty()) {
+    return AttributeTrail();
+  }
+  std::vector<AttributeQualifier> qualifiers = std::vector<AttributeQualifier>(
+      operand_trail.attribute().qualifier_path().begin(),
+      operand_trail.attribute().qualifier_path().end());
+  qualifiers.reserve(qualifiers_.size() + qualifiers.size());
+  absl::c_copy(qualifiers_, std::back_inserter(qualifiers));
+  return AttributeTrail(
+      Attribute(std::string(operand_trail.attribute().variable_name()),
+                std::move(qualifiers)));
+}
+
+class StackMachineImpl : public ExpressionStepBase {
+ public:
+  StackMachineImpl(int expr_id, OptimizedSelectImpl impl)
+      : ExpressionStepBase(expr_id), impl_(std::move(impl)) {}
+
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
+
+ private:
+  // Get the effective attribute for the optimized select expression.
+  // Assumes the operand is the top of stack if the attribute wasn't known at
+  // plan time.
+  AttributeTrail GetAttributeTrail(ExecutionFrame* frame) const;
+
+  OptimizedSelectImpl impl_;
+};
+
+AttributeTrail StackMachineImpl::GetAttributeTrail(
+    ExecutionFrame* frame) const {
+  const auto& attr = frame->value_stack().PeekAttribute();
+  return impl_.GetAttributeTrail(attr);
+}
+
+absl::Status StackMachineImpl::Evaluate(ExecutionFrame* frame) const {
   // Default empty.
   AttributeTrail attribute_trail;
   // TODO(uncreated-issue/51): add support for variable qualifiers and string literal
@@ -660,7 +687,7 @@ absl::Status OptimizedSelectStep::Evaluate(ExecutionFrame* frame) const {
     // TODO(uncreated-issue/51): add support variable qualifiers
     attribute_trail = GetAttributeTrail(frame);
     CEL_ASSIGN_OR_RETURN(absl::optional<Value> value,
-                         CheckForMarkedAttributes(frame, attribute_trail));
+                         CheckForMarkedAttributes(*frame, attribute_trail));
     if (value.has_value()) {
       frame->value_stack().Pop(kStackInputs);
       frame->value_stack().Push(std::move(value).value(),
@@ -669,18 +696,69 @@ absl::Status OptimizedSelectStep::Evaluate(ExecutionFrame* frame) const {
     }
   }
 
-
-
   if (!operand->Is<StructValue>()) {
     return absl::InvalidArgumentError(
         "Expected struct type for select optimization.");
   }
 
   CEL_ASSIGN_OR_RETURN(Value result,
-                       ApplySelect(frame, operand->As<StructValue>()));
+                       impl_.ApplySelect(*frame, operand->As<StructValue>()));
 
   frame->value_stack().Pop(kStackInputs);
   frame->value_stack().Push(std::move(result), std::move(attribute_trail));
+  return absl::OkStatus();
+}
+
+class RecursiveImpl : public DirectExpressionStep {
+ public:
+  RecursiveImpl(int64_t expr_id, std::unique_ptr<DirectExpressionStep> operand,
+                OptimizedSelectImpl impl)
+      : DirectExpressionStep(expr_id),
+        operand_(std::move(operand)),
+        impl_(std::move(impl)) {}
+
+  absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
+                        AttributeTrail& attribute) const override;
+
+ private:
+  // Get the effective attribute for the optimized select expression.
+  // Assumes the operand is the top of stack if the attribute wasn't known at
+  // plan time.
+  AttributeTrail GetAttributeTrail(const AttributeTrail& operand_trail) const;
+  std::unique_ptr<DirectExpressionStep> operand_;
+  OptimizedSelectImpl impl_;
+};
+
+AttributeTrail RecursiveImpl::GetAttributeTrail(
+    const AttributeTrail& operand_trail) const {
+  return impl_.GetAttributeTrail(operand_trail);
+}
+
+absl::Status RecursiveImpl::Evaluate(ExecutionFrameBase& frame, Value& result,
+                                     AttributeTrail& attribute) const {
+  CEL_RETURN_IF_ERROR(operand_->Evaluate(frame, result, attribute));
+
+  if (InstanceOf<ErrorValue>(result) || InstanceOf<UnknownValue>(result)) {
+    // Just forward.
+    return absl::OkStatus();
+  }
+
+  if (frame.attribute_tracking_enabled()) {
+    attribute = impl_.GetAttributeTrail(attribute);
+    CEL_ASSIGN_OR_RETURN(auto value,
+                         CheckForMarkedAttributes(frame, attribute));
+    if (value.has_value()) {
+      result = std::move(value).value();
+      return absl::OkStatus();
+    }
+  }
+
+  if (!InstanceOf<StructValue>(result)) {
+    return absl::InvalidArgumentError(
+        "Expected struct type for select optimization");
+  }
+  CEL_ASSIGN_OR_RETURN(result,
+                       impl_.ApplySelect(frame, Cast<StructValue>(result)));
   return absl::OkStatus();
 }
 
@@ -758,6 +836,28 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
 
   // TODO(uncreated-issue/51): If the first argument is a string literal, the custom
   // step needs to handle variable lookup.
+  auto* subexpression = context.program_builder().GetSubexpression(&node);
+  if (subexpression == nullptr || subexpression->IsFlattened()) {
+    // No information on the subprogram, can't optimize.
+    return absl::OkStatus();
+  }
+
+  OptimizedSelectImpl impl(std::move(instructions), std::move(qualifiers),
+                           presence_test, options_);
+
+  if (subexpression->IsRecursive()) {
+    auto program = subexpression->ExtractRecursiveProgram();
+    auto deps = program.step->ExtractDependencies();
+    if (!deps.has_value() || deps->empty()) {
+      return absl::InvalidArgumentError("Unexpected cel.@attribute call");
+    }
+    subexpression->set_recursive_program(
+        std::make_unique<RecursiveImpl>(node.id(), std::move(deps->at(0)),
+                                        std::move(impl)),
+        program.depth);
+    return absl::OkStatus();
+  }
+
   google::api::expr::runtime::ExecutionPath path;
 
   // else, we need to preserve the original plan for the first argument.
@@ -768,11 +868,8 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
   CEL_ASSIGN_OR_RETURN(auto operand_subplan, context.ExtractSubplan(operand));
   absl::c_move(operand_subplan, std::back_inserter(path));
 
-  bool enable_wrapper_type_null_unboxing =
-      context.options().enable_empty_wrapper_null_unboxing;
-  path.push_back(std::make_unique<OptimizedSelectStep>(
-      node.id(), std::move(instructions), std::move(qualifiers), presence_test,
-      enable_wrapper_type_null_unboxing, options_));
+  path.push_back(
+      std::make_unique<StackMachineImpl>(node.id(), std::move(impl)));
 
   return context.ReplaceSubplan(node, std::move(path));
 }
