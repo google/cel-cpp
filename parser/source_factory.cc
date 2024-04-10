@@ -28,6 +28,7 @@
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "common/operators.h"
+#include "common/source.h"
 
 namespace google::api::expr::parser {
 namespace {
@@ -51,6 +52,13 @@ const std::string& DefaultAccumulatorName() {
 SourceFactory::SourceFactory(absl::string_view expression)
     : next_id_(1), num_errors_(0) {
   CalcLineOffsets(expression);
+}
+
+SourceFactory::SourceFactory(const cel::Source& source)
+    : next_id_(1), num_errors_(0) {
+  // Unfortunately it appears `line_offsets_` uses code units instead of code
+  // points, so we cannot use `cel::Source::line_offsets`.
+  CalcLineOffsets(source.content().ToString());
 }
 
 int64_t SourceFactory::Id(const antlr4::Token* token) {

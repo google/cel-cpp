@@ -24,6 +24,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "antlr4-runtime.h"
+#include "common/source.h"
 #include "parser/internal/CelParser.h"
 
 namespace google::api::expr::parser {
@@ -82,6 +83,8 @@ class SourceFactory {
   };
 
   SourceFactory(absl::string_view expression);
+
+  explicit SourceFactory(const cel::Source& source);
 
   int64_t Id(const antlr4::Token* token);
   int64_t Id(antlr4::ParserRuleContext* ctx);

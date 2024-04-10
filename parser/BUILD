@@ -29,6 +29,7 @@ cc_library(
     ],
     deps = [
         ":macro",
+        ":macro_registry",
         ":options",
         ":source_factory",
         "//common:operators",
@@ -55,9 +56,6 @@ cc_library(
     hdrs = [
         "macro.h",
     ],
-    copts = [
-        "-fexceptions",
-    ],
     deps = [
         ":source_factory",
         "//common:operators",
@@ -68,6 +66,36 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "macro_registry",
+    srcs = [
+        "macro_registry.cc",
+    ],
+    hdrs = [
+        "macro_registry.h",
+    ],
+    deps = [
+        ":macro",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "macro_registry_test",
+    srcs = ["macro_registry_test.cc"],
+    deps = [
+        ":macro",
+        ":macro_registry",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:optional",
     ],
 )
 
@@ -84,6 +112,7 @@ cc_library(
     ],
     deps = [
         "//common:operators",
+        "//common:source",
         "//parser/internal:cel_cc_parser",
         "@antlr4_runtimes//:cpp",
         "@com_google_absl//absl/base:no_destructor",

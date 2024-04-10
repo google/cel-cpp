@@ -44,6 +44,7 @@
 #include "parser/internal/CelLexer.h"
 #include "parser/internal/CelParser.h"
 #include "parser/macro.h"
+#include "parser/macro_registry.h"
 #include "parser/options.h"
 #include "parser/source_factory.h"
 
@@ -234,9 +235,8 @@ Expr ExpressionBalancer::BalancedTree(int lo, int hi) {
 class ParserVisitor final : public CelBaseVisitor,
                             public antlr4::BaseErrorListener {
  public:
-  ParserVisitor(absl::string_view description, absl::string_view expression,
-                const int max_recursion_depth,
-                const std::vector<Macro>& macros = {},
+  ParserVisitor(const cel::Source& source, const int max_recursion_depth,
+                const cel::MacroRegistry& macro_registry,
                 const bool add_macro_calls = false,
                 bool enable_optional_syntax = false);
   ~ParserVisitor() override;
@@ -311,33 +311,27 @@ class ParserVisitor final : public CelBaseVisitor,
   antlr4::tree::ParseTree* UnnestContext(antlr4::tree::ParseTree* tree);
 
  private:
-  absl::string_view description_;
-  absl::string_view expression_;
+  const cel::Source& source_;
   std::shared_ptr<SourceFactory> sf_;
-  std::map<std::string, Macro> macros_;
+  const cel::MacroRegistry& macro_registry_;
   int recursion_depth_;
   const int max_recursion_depth_;
   const bool add_macro_calls_;
   const bool enable_optional_syntax_;
 };
 
-ParserVisitor::ParserVisitor(absl::string_view description,
-                             absl::string_view expression,
+ParserVisitor::ParserVisitor(const cel::Source& source,
                              const int max_recursion_depth,
-                             const std::vector<Macro>& macros,
+                             const cel::MacroRegistry& macro_registry,
                              const bool add_macro_calls,
                              bool enable_optional_syntax)
-    : description_(description),
-      expression_(expression),
-      sf_(std::make_shared<SourceFactory>(expression)),
+    : source_(source),
+      sf_(std::make_shared<SourceFactory>(source)),
+      macro_registry_(macro_registry),
       recursion_depth_(0),
       max_recursion_depth_(max_recursion_depth),
       add_macro_calls_(add_macro_calls),
-      enable_optional_syntax_(enable_optional_syntax) {
-  for (const auto& m : macros) {
-    macros_.emplace(m.key(), m);
-  }
-}
+      enable_optional_syntax_(enable_optional_syntax) {}
 
 ParserVisitor::~ParserVisitor() {}
 
@@ -937,7 +931,7 @@ void ParserVisitor::syntaxError(antlr4::Recognizer* recognizer,
 bool ParserVisitor::HasErrored() const { return !sf_->errors().empty(); }
 
 std::string ParserVisitor::ErrorMessage() const {
-  return sf_->ErrorMessage(description_, expression_);
+  return sf_->ErrorMessage(source_.description(), source_.content().ToString());
 }
 
 Expr ParserVisitor::GlobalCallOrMacro(int64_t expr_id,
@@ -968,19 +962,13 @@ bool ParserVisitor::ExpandMacro(int64_t expr_id, const std::string& function,
                                 const Expr& target,
                                 const std::vector<Expr>& args,
                                 Expr* macro_expr) {
-  std::string macro_key = absl::StrFormat("%s:%d:%s", function, args.size(),
-                                          target.id() != 0 ? "true" : "false");
-  auto m = macros_.find(macro_key);
-  if (m == macros_.end()) {
-    std::string var_arg_macro_key = absl::StrFormat(
-        "%s:*:%s", function, target.id() != 0 ? "true" : "false");
-    m = macros_.find(var_arg_macro_key);
-    if (m == macros_.end()) {
-      return false;
-    }
+  auto macro =
+      macro_registry_.FindMacro(function, args.size(), target.id() != 0);
+  if (!macro.has_value()) {
+    return false;
   }
 
-  Expr expr = m->second.Expand(sf_, expr_id, target, args);
+  Expr expr = macro->Expand(sf_, expr_id, target, args);
   if (expr.expr_kind_case() != Expr::EXPR_KIND_NOT_SET) {
     *macro_expr = std::move(expr);
     if (add_macro_calls_) {
@@ -1040,8 +1028,8 @@ class ExprRecursionListener : public ParseTreeListener {
       : max_recursion_depth_(max_recursion_depth), recursion_depth_(0) {}
   ~ExprRecursionListener() override {}
 
-  void visitTerminal(TerminalNode* node) override{};
-  void visitErrorNode(ErrorNode* error) override{};
+  void visitTerminal(TerminalNode* node) override {};
+  void visitErrorNode(ErrorNode* error) override {};
   void enterEveryRule(ParserRuleContext* ctx) override;
   void exitEveryRule(ParserRuleContext* ctx) override;
 
@@ -1158,10 +1146,18 @@ absl::StatusOr<ParsedExpr> ParseWithMacros(absl::string_view expression,
 absl::StatusOr<VerboseParsedExpr> EnrichedParse(
     absl::string_view expression, const std::vector<Macro>& macros,
     absl::string_view description, const ParserOptions& options) {
+  CEL_ASSIGN_OR_RETURN(auto source,
+                       cel::NewSource(expression, std::string(description)));
+  cel::MacroRegistry macro_registry;
+  CEL_RETURN_IF_ERROR(macro_registry.RegisterMacros(macros));
+  return EnrichedParse(*source, macro_registry, options);
+}
+
+absl::StatusOr<VerboseParsedExpr> EnrichedParse(
+    const cel::Source& source, const cel::MacroRegistry& registry,
+    const ParserOptions& options) {
   try {
-    CEL_ASSIGN_OR_RETURN(auto source,
-                         cel::NewSource(expression, std::string(description)));
-    CodePointStream input(source->content(), source->description());
+    CodePointStream input(source.content(), source.description());
     if (input.size() > options.expression_size_codepoint_limit) {
       return absl::InvalidArgumentError(absl::StrCat(
           "expression size exceeds codepoint limit.", " input size: ",
@@ -1171,8 +1167,8 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
     CommonTokenStream tokens(&lexer);
     CelParser parser(&tokens);
     ExprRecursionListener listener(options.max_recursion_depth);
-    ParserVisitor visitor(description, expression, options.max_recursion_depth,
-                          macros, options.add_macro_calls,
+    ParserVisitor visitor(source, options.max_recursion_depth, registry,
+                          options.add_macro_calls,
                           options.enable_optional_syntax);
 
     lexer.removeErrorListeners();
@@ -1217,6 +1213,14 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
     // We guarantee to never throw and always return a status.
     return absl::UnknownError("An unknown exception occurred");
   }
+}
+
+absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> Parse(
+    const cel::Source& source, const cel::MacroRegistry& registry,
+    const ParserOptions& options) {
+  CEL_ASSIGN_OR_RETURN(auto verbose_expr,
+                       EnrichedParse(source, registry, options));
+  return verbose_expr.parsed_expr();
 }
 
 }  // namespace google::api::expr::parser

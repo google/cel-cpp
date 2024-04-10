@@ -15,10 +15,15 @@
 #ifndef THIRD_PARTY_CEL_CPP_PARSER_PARSER_H_
 #define THIRD_PARTY_CEL_CPP_PARSER_PARSER_H_
 
+#include <utility>
+#include <vector>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/statusor.h"
-#include "absl/types/optional.h"
+#include "absl/strings/string_view.h"
+#include "common/source.h"
 #include "parser/macro.h"
+#include "parser/macro_registry.h"
 #include "parser/options.h"
 #include "parser/source_factory.h"
 
@@ -55,6 +60,14 @@ absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> Parse(
 absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> ParseWithMacros(
     absl::string_view expression, const std::vector<Macro>& macros,
     absl::string_view description = "<input>",
+    const ParserOptions& options = ParserOptions());
+
+absl::StatusOr<VerboseParsedExpr> EnrichedParse(
+    const cel::Source& source, const cel::MacroRegistry& registry,
+    const ParserOptions& options = ParserOptions());
+
+absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> Parse(
+    const cel::Source& source, const cel::MacroRegistry& registry,
     const ParserOptions& options = ParserOptions());
 
 }  // namespace google::api::expr::parser
