@@ -37,55 +37,32 @@ namespace {
 using google::api::expr::v1alpha1::Expr;
 using google::api::expr::common::CelOperator;
 
-absl::StatusOr<Macro> MakeMacro(absl::string_view name, size_t argument_count,
-                                MacroExpander expander,
-                                bool is_receiver_style) {
-  if (!internal::LexisIsIdentifier(name)) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Macro function name \"", name, "\" is not a valid identifier"));
-  }
-  if (!expander) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Macro expander for \"", name, "\" cannot be empty"));
-  }
-  return Macro(name, argument_count, std::move(expander), is_receiver_style);
-}
-
-absl::StatusOr<Macro> MakeMacro(absl::string_view name, MacroExpander expander,
-                                bool is_receiver_style) {
-  if (!internal::LexisIsIdentifier(name)) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Macro function name \"", name, "\" is not a valid identifier"));
-  }
-  if (!expander) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Macro expander for \"", name, "\" cannot be empty"));
-  }
-  return Macro(name, std::move(expander), is_receiver_style);
-}
-
 }  // namespace
 
 absl::StatusOr<Macro> Macro::Global(absl::string_view name,
                                     size_t argument_count,
                                     MacroExpander expander) {
-  return MakeMacro(name, argument_count, std::move(expander), false);
+  return Make(name, argument_count, std::move(expander),
+              /*receiver_style=*/false, /*var_arg_style=*/false);
 }
 
 absl::StatusOr<Macro> Macro::GlobalVarArg(absl::string_view name,
                                           MacroExpander expander) {
-  return MakeMacro(name, std::move(expander), false);
+  return Make(name, 0, std::move(expander), /*receiver_style=*/false,
+              /*var_arg_style=*/true);
 }
 
 absl::StatusOr<Macro> Macro::Receiver(absl::string_view name,
                                       size_t argument_count,
                                       MacroExpander expander) {
-  return MakeMacro(name, argument_count, std::move(expander), true);
+  return Make(name, argument_count, std::move(expander),
+              /*receiver_style=*/true, /*var_arg_style=*/false);
 }
 
 absl::StatusOr<Macro> Macro::ReceiverVarArg(absl::string_view name,
                                             MacroExpander expander) {
-  return MakeMacro(name, std::move(expander), true);
+  return Make(name, 0, std::move(expander), /*receiver_style=*/true,
+              /*var_arg_style=*/true);
 }
 
 std::vector<Macro> Macro::AllMacros() {
@@ -93,7 +70,33 @@ std::vector<Macro> Macro::AllMacros() {
           Map2Macro(), Map3Macro(), FilterMacro()};
 }
 
-Macro HasMacro() {
+std::string Macro::Key(absl::string_view name, size_t argument_count,
+                       bool receiver_style, bool var_arg_style) {
+  if (var_arg_style) {
+    return absl::StrCat(name, ":*:", receiver_style ? "true" : "false");
+  }
+  return absl::StrCat(name, ":", argument_count, ":",
+                      receiver_style ? "true" : "false");
+}
+
+absl::StatusOr<Macro> Macro::Make(absl::string_view name, size_t argument_count,
+                                  MacroExpander expander, bool receiver_style,
+                                  bool var_arg_style) {
+  if (!internal::LexisIsIdentifier(name)) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "macro function name `", name, "` is not a valid identifier"));
+  }
+  if (!expander) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("macro expander for `", name, "` cannot be empty"));
+  }
+  return Macro(std::make_shared<Rep>(
+      std::string(name),
+      Key(name, argument_count, receiver_style, var_arg_style), argument_count,
+      std::move(expander), receiver_style, var_arg_style));
+}
+
+const Macro& HasMacro() {
   // The macro "has(m.f)" which tests the presence of a field, avoiding the
   // need to specify the field as a string.
   static const absl::NoDestructor<Macro> macro(
@@ -112,7 +115,7 @@ Macro HasMacro() {
   return *macro;
 }
 
-Macro AllMacro() {
+const Macro& AllMacro() {
   // The macro "range.all(var, predicate)", which is true if for all
   // elements in range the predicate holds.
   static const absl::NoDestructor<Macro> macro(
@@ -126,7 +129,7 @@ Macro AllMacro() {
   return *macro;
 }
 
-Macro ExistsMacro() {
+const Macro& ExistsMacro() {
   // The macro "range.exists(var, predicate)", which is true if for at least
   // one element in range the predicate holds.
   static const absl::NoDestructor<Macro> macro(
@@ -140,7 +143,7 @@ Macro ExistsMacro() {
   return *macro;
 }
 
-Macro ExistsOneMacro() {
+const Macro& ExistsOneMacro() {
   // The macro "range.exists_one(var, predicate)", which is true if for
   // exactly one element in range the predicate holds.
   static const absl::NoDestructor<Macro> macro(
@@ -154,7 +157,7 @@ Macro ExistsOneMacro() {
   return *macro;
 }
 
-Macro Map2Macro() {
+const Macro& Map2Macro() {
   // The macro "range.map(var, function)", applies the function to the vars
   // in the range.
   static const absl::NoDestructor<Macro> macro(
@@ -167,7 +170,7 @@ Macro Map2Macro() {
   return *macro;
 }
 
-Macro Map3Macro() {
+const Macro& Map3Macro() {
   // The macro "range.map(var, predicate, function)", applies the function
   // to the vars in the range for which the predicate holds true. The other
   // variables are filtered out.
@@ -181,7 +184,7 @@ Macro Map3Macro() {
   return *macro;
 }
 
-Macro FilterMacro() {
+const Macro& FilterMacro() {
   // The macro "range.filter(var, predicate)", filters out the variables for
   // which the predicate is false.
   static const absl::NoDestructor<Macro> macro(
@@ -194,7 +197,7 @@ Macro FilterMacro() {
   return *macro;
 }
 
-Macro OptMapMacro() {
+const Macro& OptMapMacro() {
   static const absl::NoDestructor<Macro> macro(
       "optMap", 2,
       [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
@@ -232,7 +235,7 @@ Macro OptMapMacro() {
   return *macro;
 }
 
-Macro OptFlatMapMacro() {
+const Macro& OptFlatMapMacro() {
   static const absl::NoDestructor<Macro> macro(
       "optFlatMap", 2,
       [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
