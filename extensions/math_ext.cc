@@ -19,52 +19,52 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "common/casting.h"
+#include "common/value.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_number.h"
 #include "eval/public/cel_options.h"
-#include "eval/public/cel_value.h"
-#include "eval/public/portable_cel_function_adapter.h"
 #include "internal/status_macros.h"
-#include "google/protobuf/arena.h"
+#include "runtime/function_adapter.h"
+#include "runtime/function_registry.h"
+#include "runtime/runtime_options.h"
 
 namespace cel::extensions {
 
 namespace {
 
 using ::google::api::expr::runtime::CelFunctionRegistry;
-using ::google::api::expr::runtime::CelList;
 using ::google::api::expr::runtime::CelNumber;
-using ::google::api::expr::runtime::CelValue;
-using ::google::api::expr::runtime::CreateErrorValue;
-using ::google::api::expr::runtime::GetNumberFromCelValue;
 using ::google::api::expr::runtime::InterpreterOptions;
-using ::google::api::expr::runtime::PortableBinaryFunctionAdapter;
-using ::google::api::expr::runtime::PortableUnaryFunctionAdapter;
-using ::google::protobuf::Arena;
-
 
 static constexpr char kMathMin[] = "math.@min";
 static constexpr char kMathMax[] = "math.@max";
 
 struct ToValueVisitor {
-  CelValue operator()(uint64_t v) const { return CelValue::CreateUint64(v); }
-  CelValue operator()(int64_t v) const { return CelValue::CreateInt64(v); }
-  CelValue operator()(double v) const { return CelValue::CreateDouble(v); }
+  Value operator()(uint64_t v) const { return UintValue{v}; }
+  Value operator()(int64_t v) const { return IntValue{v}; }
+  Value operator()(double v) const { return DoubleValue{v}; }
 };
 
-CelValue NumberToValue(CelNumber number) {
-  return number.visit<CelValue>(ToValueVisitor{});
+Value NumberToValue(CelNumber number) {
+  return number.visit<Value>(ToValueVisitor{});
 }
 
-absl::StatusOr<CelNumber> ValueToNumber(const CelValue value,
+absl::StatusOr<CelNumber> ValueToNumber(ValueView value,
                                         absl::string_view function) {
-  absl::optional<CelNumber> current = GetNumberFromCelValue(value);
-  if (!current.has_value()) {
-    return absl::InvalidArgumentError(
-        absl::StrCat(function, " arguments must be numeric"));
+  if (auto int_value = As<IntValueView>(value); int_value) {
+    return CelNumber::FromInt64(int_value->NativeValue());
   }
-  return *current;
+  if (auto uint_value = As<UintValueView>(value); uint_value) {
+    return CelNumber::FromUint64(uint_value->NativeValue());
+  }
+  if (auto double_value = As<DoubleValueView>(value); double_value) {
+    return CelNumber::FromDouble(double_value->NativeValue());
+  }
+  return absl::InvalidArgumentError(
+      absl::StrCat(function, " arguments must be numeric"));
 }
 
 CelNumber MinNumber(CelNumber v1, CelNumber v2) {
@@ -74,39 +74,39 @@ CelNumber MinNumber(CelNumber v1, CelNumber v2) {
   return v1;
 }
 
-CelValue MinValue(CelNumber v1, CelNumber v2) {
+Value MinValue(CelNumber v1, CelNumber v2) {
   return NumberToValue(MinNumber(v1, v2));
 }
 
 template <typename T>
-CelValue Identity(Arena *arena, T v1) {
+Value Identity(ValueManager &, T v1) {
   return NumberToValue(CelNumber(v1));
 }
 
 template <typename T, typename U>
-CelValue Min(Arena *arena, T v1, U v2) {
+Value Min(ValueManager &, T v1, U v2) {
   return MinValue(CelNumber(v1), CelNumber(v2));
 }
 
-CelValue MinList(Arena *arena, const CelList *values) {
-  if (values->empty()) {
-    return CreateErrorValue(arena, "math.@min argument must not be empty",
-                            absl::StatusCode::kInvalidArgument);
+absl::StatusOr<Value> MinList(ValueManager &value_manager,
+                              const ListValue &values) {
+  CEL_ASSIGN_OR_RETURN(auto iterator, values.NewIterator(value_manager));
+  if (!iterator->HasNext()) {
+    return ErrorValue(
+        absl::InvalidArgumentError("math.@min argument must not be empty"));
   }
-  CelValue value = values->Get(arena, 0);
+  Value scratch;
+  CEL_ASSIGN_OR_RETURN(auto value, iterator->Next(value_manager, scratch));
   absl::StatusOr<CelNumber> current = ValueToNumber(value, kMathMin);
   if (!current.ok()) {
-    return CreateErrorValue(arena, current.status());
-  }
-  if (values->size() == 1) {
-    return value;
+    return ErrorValue{current.status()};
   }
   CelNumber min = *current;
-  for (int i = 1; i < values->size(); ++i) {
-    CelValue value = values->Get(arena, i);
+  while (iterator->HasNext()) {
+    CEL_ASSIGN_OR_RETURN(value, iterator->Next(value_manager, scratch));
     absl::StatusOr<CelNumber> other = ValueToNumber(value, kMathMin);
     if (!other.ok()) {
-      return CreateErrorValue(arena, other.status());
+      return ErrorValue{other.status()};
     }
     min = MinNumber(min, *other);
   }
@@ -120,122 +120,154 @@ CelNumber MaxNumber(CelNumber v1, CelNumber v2) {
   return v1;
 }
 
-CelValue MaxValue(CelNumber v1, CelNumber v2) {
+Value MaxValue(CelNumber v1, CelNumber v2) {
   return NumberToValue(MaxNumber(v1, v2));
 }
 
 template <typename T, typename U>
-CelValue Max(Arena *arena, T v1, U v2) {
+Value Max(ValueManager &, T v1, U v2) {
   return MaxValue(CelNumber(v1), CelNumber(v2));
 }
 
-CelValue MaxList(Arena *arena, const CelList *values) {
-  if (values->empty()) {
-    return CreateErrorValue(arena, "math.@max argument must not be empty",
-                            absl::StatusCode::kInvalidArgument);
+absl::StatusOr<Value> MaxList(ValueManager &value_manager,
+                              const ListValue &values) {
+  CEL_ASSIGN_OR_RETURN(auto iterator, values.NewIterator(value_manager));
+  if (!iterator->HasNext()) {
+    return ErrorValue(
+        absl::InvalidArgumentError("math.@max argument must not be empty"));
   }
-  CelValue value = values->Get(arena, 0);
+  Value scratch;
+  CEL_ASSIGN_OR_RETURN(auto value, iterator->Next(value_manager, scratch));
   absl::StatusOr<CelNumber> current = ValueToNumber(value, kMathMax);
   if (!current.ok()) {
-    return CreateErrorValue(arena, current.status());
+    return ErrorValue{current.status()};
   }
-  if (values->size() == 1) {
-    return value;
-  }
-  CelNumber max = *current;
-  for (int i = 1; i < values->size(); ++i) {
-    CelValue value = values->Get(arena, i);
+  CelNumber min = *current;
+  while (iterator->HasNext()) {
+    CEL_ASSIGN_OR_RETURN(value, iterator->Next(value_manager, scratch));
     absl::StatusOr<CelNumber> other = ValueToNumber(value, kMathMax);
     if (!other.ok()) {
-      return CreateErrorValue(arena, other.status());
+      return ErrorValue{other.status()};
     }
-    max = MaxNumber(max, *other);
+    min = MaxNumber(min, *other);
   }
-  return NumberToValue(max);
+  return NumberToValue(min);
 }
 
 template <typename T, typename U>
-absl::Status RegisterCrossNumericMin(CelFunctionRegistry *registry) {
-  CEL_RETURN_IF_ERROR(
-      registry->Register(PortableBinaryFunctionAdapter<CelValue, T, U>::Create(
-          kMathMin, /*receiver_style=*/false, &Min<T, U>)));
+absl::Status RegisterCrossNumericMin(FunctionRegistry &registry) {
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<Value, T, U>::CreateDescriptor(
+          kMathMin, /*receiver_style=*/false),
+      BinaryFunctionAdapter<Value, T, U>::WrapFunction(Min<T, U>)));
 
-  CEL_RETURN_IF_ERROR(
-      registry->Register(PortableBinaryFunctionAdapter<CelValue, U, T>::Create(
-          kMathMin, /*receiver_style=*/false, &Min<U, T>)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<Value, U, T>::CreateDescriptor(
+          kMathMin, /*receiver_style=*/false),
+      BinaryFunctionAdapter<Value, U, T>::WrapFunction(Min<U, T>)));
 
   return absl::OkStatus();
 }
 
 template <typename T, typename U>
-absl::Status RegisterCrossNumericMax(CelFunctionRegistry *registry) {
-  CEL_RETURN_IF_ERROR(
-      registry->Register(PortableBinaryFunctionAdapter<CelValue, T, U>::Create(
-          kMathMax, /*receiver_style=*/false, &Max<T, U>)));
+absl::Status RegisterCrossNumericMax(FunctionRegistry &registry) {
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<Value, T, U>::CreateDescriptor(
+          kMathMax, /*receiver_style=*/false),
+      BinaryFunctionAdapter<Value, T, U>::WrapFunction(Max<T, U>)));
 
-  CEL_RETURN_IF_ERROR(
-      registry->Register(PortableBinaryFunctionAdapter<CelValue, U, T>::Create(
-          kMathMax, /*receiver_style=*/false, &Max<U, T>)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<Value, U, T>::CreateDescriptor(
+          kMathMax, /*receiver_style=*/false),
+      BinaryFunctionAdapter<Value, U, T>::WrapFunction(Max<U, T>)));
 
   return absl::OkStatus();
 }
 
 }  // namespace
 
-absl::Status RegisterMathExtensionFunctions(CelFunctionRegistry *registry,
-                                            const InterpreterOptions &options) {
-  CEL_RETURN_IF_ERROR(registry->Register(
-      PortableUnaryFunctionAdapter<CelValue, int64_t>::Create(
-          kMathMin, /*receiver_style=*/false, &Identity<int64_t>)));
-  CEL_RETURN_IF_ERROR(
-      registry->Register(PortableUnaryFunctionAdapter<CelValue, double>::Create(
-          kMathMin, /*receiver_style=*/false, &Identity<double>)));
-  CEL_RETURN_IF_ERROR(registry->Register(
-      PortableUnaryFunctionAdapter<CelValue, uint64_t>::Create(
-          kMathMin, /*receiver_style=*/false, &Identity<uint64_t>)));
-  CEL_RETURN_IF_ERROR(registry->Register(
-      PortableBinaryFunctionAdapter<CelValue, int64_t, int64_t>::Create(
-          kMathMin, /*receiver_style=*/false, &Min<int64_t, int64_t>)));
-  CEL_RETURN_IF_ERROR(registry->Register(
-      PortableBinaryFunctionAdapter<CelValue, double, double>::Create(
-          kMathMin, /*receiver_style=*/false, &Min<double, double>)));
-  CEL_RETURN_IF_ERROR(registry->Register(
-      PortableBinaryFunctionAdapter<CelValue, uint64_t, uint64_t>::Create(
-          kMathMin, /*receiver_style=*/false, &Min<uint64_t, uint64_t>)));
+absl::Status RegisterMathExtensionFunctions(FunctionRegistry &registry,
+                                            const RuntimeOptions &options) {
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<Value, int64_t>::CreateDescriptor(
+          kMathMin, /*receiver_style=*/false),
+      UnaryFunctionAdapter<Value, int64_t>::WrapFunction(Identity<int64_t>)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<Value, double>::CreateDescriptor(
+          kMathMin, /*receiver_style=*/false),
+      UnaryFunctionAdapter<Value, double>::WrapFunction(Identity<double>)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<Value, uint64_t>::CreateDescriptor(
+          kMathMin, /*receiver_style=*/false),
+      UnaryFunctionAdapter<Value, uint64_t>::WrapFunction(Identity<uint64_t>)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<Value, int64_t, int64_t>::CreateDescriptor(
+          kMathMin, /*receiver_style=*/false),
+      BinaryFunctionAdapter<Value, int64_t, int64_t>::WrapFunction(
+          Min<int64_t, int64_t>)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<Value, double, double>::CreateDescriptor(
+          kMathMin, /*receiver_style=*/false),
+      BinaryFunctionAdapter<Value, double, double>::WrapFunction(
+          Min<double, double>)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<Value, uint64_t, uint64_t>::CreateDescriptor(
+          kMathMin, /*receiver_style=*/false),
+      BinaryFunctionAdapter<Value, uint64_t, uint64_t>::WrapFunction(
+          Min<uint64_t, uint64_t>)));
   CEL_RETURN_IF_ERROR((RegisterCrossNumericMin<int64_t, uint64_t>(registry)));
   CEL_RETURN_IF_ERROR((RegisterCrossNumericMin<int64_t, double>(registry)));
   CEL_RETURN_IF_ERROR((RegisterCrossNumericMin<double, uint64_t>(registry)));
-  CEL_RETURN_IF_ERROR(registry->Register(
-      PortableUnaryFunctionAdapter<CelValue, const CelList *>::Create(
-          kMathMin, false, MinList)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::CreateDescriptor(
+          kMathMin, false),
+      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::WrapFunction(
+          MinList)));
 
-  CEL_RETURN_IF_ERROR(registry->Register(
-      PortableUnaryFunctionAdapter<CelValue, int64_t>::Create(
-          kMathMax, /*receiver_style=*/false, &Identity<int64_t>)));
-  CEL_RETURN_IF_ERROR(
-      registry->Register(PortableUnaryFunctionAdapter<CelValue, double>::Create(
-          kMathMax, /*receiver_style=*/false, &Identity<double>)));
-  CEL_RETURN_IF_ERROR(registry->Register(
-      PortableUnaryFunctionAdapter<CelValue, uint64_t>::Create(
-          kMathMax, /*receiver_style=*/false, &Identity<uint64_t>)));
-  CEL_RETURN_IF_ERROR(registry->Register(
-      PortableBinaryFunctionAdapter<CelValue, int64_t, int64_t>::Create(
-          kMathMax, /*receiver_style=*/false, &Max<int64_t, int64_t>)));
-  CEL_RETURN_IF_ERROR(registry->Register(
-      PortableBinaryFunctionAdapter<CelValue, double, double>::Create(
-          kMathMax, /*receiver_style=*/false, &Max<double, double>)));
-  CEL_RETURN_IF_ERROR(registry->Register(
-      PortableBinaryFunctionAdapter<CelValue, uint64_t, uint64_t>::Create(
-          kMathMax, /*receiver_style=*/false, &Max<uint64_t, uint64_t>)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<Value, int64_t>::CreateDescriptor(
+          kMathMax, /*receiver_style=*/false),
+      UnaryFunctionAdapter<Value, int64_t>::WrapFunction(Identity<int64_t>)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<Value, double>::CreateDescriptor(
+          kMathMax, /*receiver_style=*/false),
+      UnaryFunctionAdapter<Value, double>::WrapFunction(Identity<double>)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<Value, uint64_t>::CreateDescriptor(
+          kMathMax, /*receiver_style=*/false),
+      UnaryFunctionAdapter<Value, uint64_t>::WrapFunction(Identity<uint64_t>)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<Value, int64_t, int64_t>::CreateDescriptor(
+          kMathMax, /*receiver_style=*/false),
+      BinaryFunctionAdapter<Value, int64_t, int64_t>::WrapFunction(
+          Max<int64_t, int64_t>)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<Value, double, double>::CreateDescriptor(
+          kMathMax, /*receiver_style=*/false),
+      BinaryFunctionAdapter<Value, double, double>::WrapFunction(
+          Max<double, double>)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<Value, uint64_t, uint64_t>::CreateDescriptor(
+          kMathMax, /*receiver_style=*/false),
+      BinaryFunctionAdapter<Value, uint64_t, uint64_t>::WrapFunction(
+          Max<uint64_t, uint64_t>)));
   CEL_RETURN_IF_ERROR((RegisterCrossNumericMax<int64_t, uint64_t>(registry)));
   CEL_RETURN_IF_ERROR((RegisterCrossNumericMax<int64_t, double>(registry)));
   CEL_RETURN_IF_ERROR((RegisterCrossNumericMax<double, uint64_t>(registry)));
-  CEL_RETURN_IF_ERROR(registry->Register(
-      PortableUnaryFunctionAdapter<CelValue, const CelList *>::Create(
-          kMathMax, false, MaxList)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::CreateDescriptor(
+          kMathMax, false),
+      UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::WrapFunction(
+          MaxList)));
 
   return absl::OkStatus();
 }
 
+absl::Status RegisterMathExtensionFunctions(CelFunctionRegistry *registry,
+                                            const InterpreterOptions &options) {
+  return RegisterMathExtensionFunctions(
+      registry->InternalGetRegistry(),
+      google::api::expr::runtime::ConvertToRuntimeOptions(options));
+}
 
 }  // namespace cel::extensions

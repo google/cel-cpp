@@ -18,11 +18,16 @@
 #include "absl/status/status.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
+#include "runtime/function_registry.h"
+#include "runtime/runtime_options.h"
 
 namespace cel::extensions {
 
 // Register extension functions for supporting mathematical operations above
 // and beyond the set defined in the CEL standard environment.
+absl::Status RegisterMathExtensionFunctions(FunctionRegistry& registry,
+                                            const RuntimeOptions& options);
+
 absl::Status RegisterMathExtensionFunctions(
     google::api::expr::runtime::CelFunctionRegistry* registry,
     const google::api::expr::runtime::InterpreterOptions& options);
