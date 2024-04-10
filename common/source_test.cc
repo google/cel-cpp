@@ -23,7 +23,30 @@ namespace {
 
 using testing::ElementsAre;
 using testing::Eq;
+using testing::Ne;
 using testing::Optional;
+
+TEST(SourceRange, Default) {
+  SourceRange range;
+  EXPECT_EQ(range.begin, -1);
+  EXPECT_EQ(range.end, -1);
+}
+
+TEST(SourceRange, Equality) {
+  EXPECT_THAT((SourceRange{}), (Eq(SourceRange{})));
+  EXPECT_THAT((SourceRange{0, 1}), (Ne(SourceRange{0, 0})));
+}
+
+TEST(SourceLocation, Default) {
+  SourceLocation location;
+  EXPECT_EQ(location.line, -1);
+  EXPECT_EQ(location.column, -1);
+}
+
+TEST(SourceLocation, Equality) {
+  EXPECT_THAT((SourceLocation{}), (Eq(SourceLocation{})));
+  EXPECT_THAT((SourceLocation{1, 1}), (Ne(SourceLocation{1, 0})));
+}
 
 TEST(StringSource, Description) {
   ASSERT_OK_AND_ASSIGN(

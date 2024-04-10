@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
@@ -42,14 +43,22 @@ using SourcePosition = int32_t;
 // SourceRange represents a range of positions, where `begin` is inclusive and
 // `end` is exclusive.
 struct SourceRange final {
-  SourcePosition begin;
-  SourcePosition end;
+  SourcePosition begin = -1;
+  SourcePosition end = -1;
 };
+
+inline bool operator==(const SourceRange& lhs, const SourceRange& rhs) {
+  return lhs.begin == rhs.begin && lhs.end == rhs.end;
+}
+
+inline bool operator!=(const SourceRange& lhs, const SourceRange& rhs) {
+  return !operator==(lhs, rhs);
+}
 
 // `SourceLocation` is a representation of a line and column in source text.
 struct SourceLocation final {
-  int32_t line;    // 1-based line number.
-  int32_t column;  // 0-based column number.
+  int32_t line = -1;    // 1-based line number.
+  int32_t column = -1;  // 0-based column number.
 };
 
 inline bool operator==(const SourceLocation& lhs, const SourceLocation& rhs) {
@@ -172,11 +181,11 @@ class Source {
 
 using SourcePtr = std::unique_ptr<Source>;
 
-absl::StatusOr<SourcePtr> NewSource(absl::string_view content,
-                                    std::string description = {});
+absl::StatusOr<absl::Nonnull<SourcePtr>> NewSource(
+    absl::string_view content, std::string description = "<input>");
 
-absl::StatusOr<SourcePtr> NewSource(const absl::Cord& content,
-                                    std::string description = {});
+absl::StatusOr<absl::Nonnull<SourcePtr>> NewSource(
+    const absl::Cord& content, std::string description = "<input>");
 
 }  // namespace cel
 

@@ -249,8 +249,8 @@ cc_library(
     deps = [
         "//internal:unicode",
         "//internal:utf8",
-        "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:inlined_vector",
         "@com_google_absl//absl/functional:overload",
         "@com_google_absl//absl/log:absl_check",

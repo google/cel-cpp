@@ -15,6 +15,8 @@
 #include "common/source.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <string>
@@ -22,14 +24,16 @@
 #include <utility>
 #include <vector>
 
-#include "absl/base/casts.h"
+#include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/container/inlined_vector.h"
 #include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "internal/unicode.h"
@@ -251,7 +255,7 @@ struct SourceTextTraits<absl::string_view> {
 
   static void AppendTo(std::vector<uint8_t>& out, absl::string_view text,
                        size_t n) {
-    const auto* in = absl::bit_cast<const uint8_t*>(text.data());
+    const auto* in = reinterpret_cast<const uint8_t*>(text.data());
     out.insert(out.end(), in, in + n);
   }
 
@@ -281,7 +285,7 @@ struct SourceTextTraits<absl::Cord> {
     while (n > 0) {
       auto str = absl::Cord::ChunkRemaining(it);
       size_t to_append = std::min(n, str.size());
-      const auto* in = absl::bit_cast<const uint8_t*>(str.data());
+      const auto* in = reinterpret_cast<const uint8_t*>(str.data());
       out.insert(out.end(), in, in + to_append);
       n -= to_append;
       absl::Cord::Advance(&it, to_append);
@@ -538,14 +542,14 @@ absl::optional<std::pair<int32_t, SourcePosition>> Source::FindLine(
   return std::make_pair(line, line_offsets[static_cast<size_t>(line) - 2]);
 }
 
-absl::StatusOr<SourcePtr> NewSource(absl::string_view content,
-                                    std::string description) {
+absl::StatusOr<absl::Nonnull<SourcePtr>> NewSource(absl::string_view content,
+                                                   std::string description) {
   return common_internal::NewSourceImpl(std::move(description), content,
                                         content.size());
 }
 
-absl::StatusOr<SourcePtr> NewSource(const absl::Cord& content,
-                                    std::string description) {
+absl::StatusOr<absl::Nonnull<SourcePtr>> NewSource(const absl::Cord& content,
+                                                   std::string description) {
   return common_internal::NewSourceImpl(std::move(description), content,
                                         content.size());
 }
