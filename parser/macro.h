@@ -25,6 +25,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 
 namespace google::api::expr::parser {
@@ -77,16 +78,18 @@ class Macro final {
   ABSL_DEPRECATED("Use static factory methods instead.")
   Macro(absl::string_view function, size_t arg_count, MacroExpander expander,
         bool receiver_style = false)
-      : Macro(std::make_shared<Rep>(
+      : rep_(std::make_shared<Rep>(
             std::string(function),
-            Key(function, arg_count, receiver_style, false), arg_count,
-            std::move(expander), receiver_style, false)) {}
+            absl::StrCat(function, ":", arg_count, ":",
+                         receiver_style ? "true" : "false"),
+            arg_count, std::move(expander), receiver_style, false)) {}
 
   ABSL_DEPRECATED("Use static factory methods instead.")
   Macro(absl::string_view function, MacroExpander expander,
         bool receiver_style = false)
-      : Macro(std::make_shared<Rep>(
-            std::string(function), Key(function, 0, receiver_style, true), 0,
+      : rep_(std::make_shared<Rep>(
+            std::string(function),
+            absl::StrCat(function, ":*:", receiver_style ? "true" : "false"), 0,
             std::move(expander), receiver_style, true)) {}
 
   // Function name to match.
@@ -117,9 +120,7 @@ class Macro final {
 
   // Expander returns the MacroExpander to apply when the macro key matches the
   // parsed call signature.
-  const MacroExpander& expander() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return rep_->expander;
-  }
+  const MacroExpander& expander() const { return rep_->expander; }
 
   google::api::expr::v1alpha1::Expr Expand(
       const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
@@ -131,7 +132,7 @@ class Macro final {
   static std::vector<Macro> AllMacros();
 
  private:
-  struct Rep final {
+  struct Rep {
     Rep(std::string function, std::string key, size_t arg_count,
         MacroExpander expander, bool receiver_style, bool var_arg_style)
         : function(std::move(function)),
@@ -149,45 +150,41 @@ class Macro final {
     bool var_arg_style;
   };
 
-  static std::string Key(absl::string_view name, size_t argument_count,
-                         bool receiver_style, bool var_arg_style);
-
-  static absl::StatusOr<Macro> Make(absl::string_view name,
-                                    size_t argument_count,
-                                    MacroExpander expander, bool receiver_style,
-                                    bool var_arg_style);
-
-  explicit Macro(std::shared_ptr<const Rep> rep) : rep_(std::move(rep)) {}
-
   std::shared_ptr<const Rep> rep_;
 };
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& HasMacro();
+Macro HasMacro();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& AllMacro();
+Macro AllMacro();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& ExistsMacro();
+Macro ExistsMacro();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& ExistsOneMacro();
+Macro ExistsOneMacro();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& Map2Macro();
+Macro Map2Macro();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& Map3Macro();
+Macro Map3Macro();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& FilterMacro();
+Macro FilterMacro();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& OptMapMacro();
+Macro OptMapMacro();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& OptFlatMapMacro();
+Macro OptFlatMapMacro();
 
 }  // namespace cel
 
-namespace google::api::expr::parser {
+namespace google {
+namespace api {
+namespace expr {
+namespace parser {
 
 using MacroExpander = cel::MacroExpander;
 
 using Macro = cel::Macro;
 
-}  // namespace google::api::expr::parser
+}  // namespace parser
+}  // namespace expr
+}  // namespace api
+}  // namespace google
 
 #endif  // THIRD_PARTY_CEL_CPP_PARSER_MACRO_H_
