@@ -162,23 +162,23 @@ class Macro final {
   std::shared_ptr<const Rep> rep_;
 };
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& HasMacro();
+const Macro& HasMacro();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& AllMacro();
+const Macro& AllMacro();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& ExistsMacro();
+const Macro& ExistsMacro();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& ExistsOneMacro();
+const Macro& ExistsOneMacro();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& Map2Macro();
+const Macro& Map2Macro();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& Map3Macro();
+const Macro& Map3Macro();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& FilterMacro();
+const Macro& FilterMacro();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& OptMapMacro();
+const Macro& OptMapMacro();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const Macro& OptFlatMapMacro();
+const Macro& OptFlatMapMacro();
 
 }  // namespace cel
 
