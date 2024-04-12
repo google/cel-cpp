@@ -17,8 +17,8 @@
 
 namespace cel_parser_internal {
 
-inline constexpr int kDefaultErrorRecoveryLimit = 30;
-inline constexpr int kDefaultMaxRecursionDepth = 50;
+inline constexpr int kDefaultErrorRecoveryLimit = 12;
+inline constexpr int kDefaultMaxRecursionDepth = 32;
 inline constexpr int kExpressionSizeCodepointLimit = 100'000;
 inline constexpr int kDefaultErrorRecoveryTokenLookaheadLimit = 512;
 inline constexpr bool kDefaultAddMacroCalls = false;

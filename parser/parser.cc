@@ -1043,7 +1043,7 @@ void ExprRecursionListener::enterEveryRule(ParserRuleContext* ctx) {
   // continue if this were treated as a syntax error and the problem would
   // continue to manifest.
   if (ctx->getRuleIndex() == CelParser::RuleExpr) {
-    if (recursion_depth_ >= max_recursion_depth_) {
+    if (recursion_depth_ > max_recursion_depth_) {
       throw ParseCancellationException(
           absl::StrFormat("Expression recursion limit exceeded. limit: %d",
                           max_recursion_depth_));
