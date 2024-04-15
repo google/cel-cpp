@@ -270,15 +270,12 @@ bool Value::IsZeroValue() const {
 }
 
 std::ostream& operator<<(std::ostream& out, const Value& value) {
-  value.AssertIsValid();
   return absl::visit(
       [&out](const auto& alternative) -> std::ostream& {
         if constexpr (std::is_same_v<
                           absl::remove_cvref_t<decltype(alternative)>,
                           absl::monostate>) {
-          // In optimized builds, we do nothing. In debug builds we cannot
-          // reach here.
-          return out;
+          return out << "default ctor Value";
         } else {
           return out << alternative;
         }
@@ -513,15 +510,12 @@ bool ValueView::IsZeroValue() const {
 }
 
 std::ostream& operator<<(std::ostream& out, ValueView value) {
-  value.AssertIsValid();
   return absl::visit(
       [&out](auto alternative) -> std::ostream& {
         if constexpr (std::is_same_v<
                           absl::remove_cvref_t<decltype(alternative)>,
                           absl::monostate>) {
-          // In optimized builds, we do nothing. In debug builds we cannot
-          // reach here.
-          return out;
+          return out << "default ctor ValueView";
         } else {
           return out << alternative;
         }

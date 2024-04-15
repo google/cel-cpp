@@ -7,6 +7,7 @@
 
 #include "absl/status/statusor.h"
 #include "common/value.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 
 namespace google::api::expr::runtime {
@@ -15,6 +16,9 @@ namespace google::api::expr::runtime {
 // shadowed by an identifier of the same name within the runtime-provided
 // Activation.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateShadowableValueStep(
+    std::string identifier, cel::Value value, int64_t expr_id);
+
+std::unique_ptr<DirectExpressionStep> CreateDirectShadowableValueStep(
     std::string identifier, cel::Value value, int64_t expr_id);
 
 }  // namespace google::api::expr::runtime

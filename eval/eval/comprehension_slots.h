@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "absl/base/macros.h"
+#include "absl/base/no_destructor.h"
 #include "absl/types/optional.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
@@ -39,6 +40,13 @@ class ComprehensionSlots {
     cel::Value value;
     AttributeTrail attribute;
   };
+
+  // Trivial instance if no slots are needed.
+  // Trivially thread safe since no effective state.
+  static ComprehensionSlots& GetEmptyInstance() {
+    static absl::NoDestructor<ComprehensionSlots> instance(0);
+    return *instance;
+  }
 
   explicit ComprehensionSlots(size_t size) : size_(size), slots_(size) {}
 
@@ -65,6 +73,11 @@ class ComprehensionSlots {
   void ClearSlot(size_t index) {
     ABSL_ASSERT(index >= 0 && index < slots_.size());
     slots_[index] = absl::nullopt;
+  }
+
+  void Set(size_t index) {
+    ABSL_ASSERT(index >= 0 && index < slots_.size());
+    slots_[index].emplace();
   }
 
   void Set(size_t index, cel::Value value) {

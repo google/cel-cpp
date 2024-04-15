@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,27 +11,24 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_REGEX_MATCH_STEP_H_
-#define THIRD_PARTY_CEL_CPP_EVAL_EVAL_REGEX_MATCH_STEP_H_
-
-#include <cstdint>
-#include <memory>
-
-#include "absl/status/statusor.h"
 #include "eval/eval/direct_expression_step.h"
+
+#include <utility>
+
+#include "absl/status/status.h"
+#include "common/value.h"
+#include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
-#include "re2/re2.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
-std::unique_ptr<DirectExpressionStep> CreateDirectRegexMatchStep(
-    int64_t expr_id, std::unique_ptr<DirectExpressionStep> subject,
-    std::shared_ptr<const RE2> re2);
-
-absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateRegexMatchStep(
-    std::shared_ptr<const RE2> re2, int64_t expr_id);
-
+absl::Status WrappedDirectStep::Evaluate(ExecutionFrame* frame) const {
+  cel::Value result;
+  AttributeTrail attribute_trail;
+  CEL_RETURN_IF_ERROR(impl_->Evaluate(*frame, result, attribute_trail));
+  frame->value_stack().Push(std::move(result), std::move(attribute_trail));
+  return absl::OkStatus();
 }
 
-#endif  // THIRD_PARTY_CEL_CPP_EVAL_EVAL_REGEX_MATCH_STEP_H_
+}  // namespace google::api::expr::runtime

@@ -66,6 +66,14 @@ cc_test(
 )
 
 cc_test(
+    name = "recursive_benchmark_test",
+    size = "small",
+    args = ["--enable_recursive_planning"],
+    tags = ["benchmark"],
+    deps = [":benchmark_testlib"],
+)
+
+cc_test(
     name = "allocation_benchmark_test",
     size = "small",
     srcs = [

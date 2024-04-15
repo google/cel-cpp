@@ -28,9 +28,7 @@
 
 namespace cel {
 
-void PrintTo(const Value& value, std::ostream* os) {
-  *os << value.DebugString() << "\n";
-}
+void PrintTo(const Value& value, std::ostream* os) { *os << value << "\n"; }
 
 namespace test {
 namespace {

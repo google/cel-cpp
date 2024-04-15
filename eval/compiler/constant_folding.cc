@@ -33,6 +33,7 @@
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/const_value_step.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "internal/status_macros.h"
 #include "runtime/activation.h"
@@ -55,7 +56,8 @@ using ::cel::builtin::kAnd;
 using ::cel::builtin::kOr;
 using ::cel::builtin::kTernary;
 using ::cel::runtime_internal::ConvertConstant;
-
+using ::google::api::expr::runtime::CreateConstValueDirectStep;
+using ::google::api::expr::runtime::CreateConstValueStep;
 using ::google::api::expr::runtime::EvaluationListener;
 using ::google::api::expr::runtime::ExecutionFrame;
 using ::google::api::expr::runtime::ExecutionPath;
@@ -197,7 +199,7 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
     // the current capacity.
     state_.value_stack().SetMaxSize(subplan.size());
 
-    auto result = frame.Evaluate(EvaluationListener());
+    auto result = frame.Evaluate();
     // If this would be a runtime error, then don't adjust the program plan, but
     // rather allow the error to occur at runtime to preserve the evaluation
     // contract with non-constant folding use cases.
@@ -211,9 +213,13 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
   }
 
   ExecutionPath new_plan;
-  CEL_ASSIGN_OR_RETURN(new_plan.emplace_back(),
-                       google::api::expr::runtime::CreateConstValueStep(
-                           std::move(value), node.id(), false));
+  if (context.options().max_recursion_depth != 0) {
+    return context.ReplaceSubplan(
+        node, CreateConstValueDirectStep(std::move(value), node.id()), 1);
+  }
+  CEL_ASSIGN_OR_RETURN(
+      new_plan.emplace_back(),
+      CreateConstValueStep(std::move(value), node.id(), false));
 
   return context.ReplaceSubplan(node, std::move(new_plan));
 }

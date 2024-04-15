@@ -8,9 +8,13 @@
 #include "base/ast_internal/expr.h"
 #include "common/value.h"
 #include "common/value_manager.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 
 namespace google::api::expr::runtime {
+
+std::unique_ptr<DirectExpressionStep> CreateConstValueDirectStep(
+    cel::Value value, int64_t expr_id = -1);
 
 // Factory method for Constant Value expression step.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(

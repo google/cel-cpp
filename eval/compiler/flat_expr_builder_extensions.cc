@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "eval/compiler/flat_expr_builder_extensions.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <iterator>
 #include <memory>
@@ -25,8 +26,10 @@
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "base/ast_internal/expr.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 
 namespace google::api::expr::runtime {
@@ -40,6 +43,8 @@ Subexpression::Subexpression(const cel::ast_internal::Expr* self,
 size_t Subexpression::ComputeSize() const {
   if (IsFlattened()) {
     return flattened_elements().size();
+  } else if (IsRecursive()) {
+    return 1;
   }
   std::vector<const Subexpression*> to_expand{this};
   size_t size = 0;
@@ -48,6 +53,9 @@ size_t Subexpression::ComputeSize() const {
     to_expand.pop_back();
     if (expr->IsFlattened()) {
       size += expr->flattened_elements().size();
+      continue;
+    } else if (expr->IsRecursive()) {
+      size += 1;
       continue;
     }
     for (const auto& elem : expr->elements()) {
@@ -60,6 +68,47 @@ size_t Subexpression::ComputeSize() const {
     }
   }
   return size;
+}
+
+absl::optional<int> Subexpression::RecursiveDependencyDepth() const {
+  auto* tree = absl::get_if<TreePlan>(&program_);
+  int depth = 0;
+  if (tree == nullptr) {
+    return absl::nullopt;
+  }
+  for (const auto& element : *tree) {
+    auto* subexpression =
+        absl::get_if<std::unique_ptr<Subexpression>>(&element);
+    if (subexpression == nullptr) {
+      return absl::nullopt;
+    }
+    if (!(*subexpression)->IsRecursive()) {
+      return absl::nullopt;
+    }
+    depth = std::max(depth, (*subexpression)->recursive_program().depth);
+  }
+  return depth;
+}
+
+std::vector<std::unique_ptr<DirectExpressionStep>>
+Subexpression::ExtractRecursiveDependencies() const {
+  auto* tree = absl::get_if<TreePlan>(&program_);
+  std::vector<std::unique_ptr<DirectExpressionStep>> dependencies;
+  if (tree == nullptr) {
+    return {};
+  }
+  for (const auto& element : *tree) {
+    auto* subexpression =
+        absl::get_if<std::unique_ptr<Subexpression>>(&element);
+    if (subexpression == nullptr) {
+      return {};
+    }
+    if (!(*subexpression)->IsRecursive()) {
+      return {};
+    }
+    dependencies.push_back((*subexpression)->ExtractRecursiveProgram().step);
+  }
+  return dependencies;
 }
 
 Subexpression::~Subexpression() {
@@ -97,6 +146,7 @@ std::unique_ptr<Subexpression> Subexpression::ExtractChild(
 
 int Subexpression::CalculateOffset(int base, int target) const {
   ABSL_DCHECK(!IsFlattened());
+  ABSL_DCHECK(!IsRecursive());
   ABSL_DCHECK_GE(base, 0);
   ABSL_DCHECK_GE(target, 0);
   ABSL_DCHECK_LE(base, elements().size());
@@ -146,10 +196,14 @@ void Subexpression::Flatten() {
     Record top = flatten_stack.back();
     flatten_stack.pop_back();
     size_t offset = top.offset;
-    auto& subexpr = top.subexpr;
+    auto* subexpr = top.subexpr;
     if (subexpr->IsFlattened()) {
       absl::c_move(subexpr->flattened_elements(), std::back_inserter(flat));
       continue;
+    } else if (subexpr->IsRecursive()) {
+      flat.push_back(std::make_unique<WrappedDirectStep>(
+          std::move(subexpr->ExtractRecursiveProgram().step),
+          subexpr->self_->id()));
     }
     size_t size = subexpr->elements().size();
     size_t i = offset;
@@ -160,9 +214,10 @@ void Subexpression::Flatten() {
         flatten_stack.push_back({subexpr, i + 1});
         flatten_stack.push_back({child->get(), 0});
         break;
-      } else {
-        flat.push_back(
-            absl::get<std::unique_ptr<ExpressionStep>>(std::move(element)));
+      } else if (auto* step =
+                     absl::get_if<std::unique_ptr<ExpressionStep>>(&element);
+                 step != nullptr) {
+        flat.push_back(std::move(*step));
       }
     }
     if (i >= size && subexpr != this) {
@@ -171,6 +226,13 @@ void Subexpression::Flatten() {
     }
   }
   program_ = std::move(flat);
+}
+
+Subexpression::RecursiveProgram Subexpression::ExtractRecursiveProgram() {
+  ABSL_DCHECK(IsRecursive());
+  auto result = std::move(absl::get<RecursiveProgram>(program_));
+  program_.emplace<std::vector<Subexpression::Element>>();
+  return result;
 }
 
 bool Subexpression::ExtractTo(
@@ -340,6 +402,19 @@ absl::Status PlannerContext::ReplaceSubplan(const cel::ast_internal::Expr& node,
 
   subexpression->flattened_elements() = std::move(path);
 
+  return absl::OkStatus();
+}
+
+absl::Status PlannerContext::ReplaceSubplan(
+    const cel::ast_internal::Expr& node,
+    std::unique_ptr<DirectExpressionStep> step, int depth) {
+  auto* subexpression = program_builder_.GetSubexpression(&node);
+  if (subexpression == nullptr) {
+    return absl::InternalError(
+        "attempted to update program step for untracked expr node");
+  }
+
+  subexpression->set_recursive_program(std::move(step), depth);
   return absl::OkStatus();
 }
 

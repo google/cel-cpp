@@ -167,6 +167,7 @@ cc_binary(
     for args in [
         [],
         ["--opt"],
+        ["--recursive"],
     ]
 ]
 
@@ -235,6 +236,11 @@ cc_binary(
             "--modern",
             "--arena",
             "--opt",
+        ],
+        [
+            "--modern",
+            "--arena",
+            "--recursive",
         ],
     ]
 ]

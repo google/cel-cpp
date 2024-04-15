@@ -1,13 +1,25 @@
 #include "eval/eval/create_list_step.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "base/ast_internal/expr.h"
+#include "base/attribute.h"
+#include "base/attribute_set.h"
+#include "base/type_provider.h"
+#include "common/casting.h"
+#include "common/memory.h"
+#include "common/value.h"
+#include "common/value_testing.h"
+#include "eval/eval/attribute_trail.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/const_value_step.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
 #include "eval/internal/interop.h"
@@ -17,17 +29,34 @@
 #include "eval/public/unknown_attribute_set.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/activation.h"
+#include "runtime/managed_value_factory.h"
 #include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::Attribute;
+using ::cel::AttributeQualifier;
+using ::cel::AttributeSet;
+using ::cel::Cast;
+using ::cel::ErrorValue;
+using ::cel::InstanceOf;
+using ::cel::IntValue;
+using ::cel::ListValue;
 using ::cel::TypeProvider;
+using ::cel::UnknownValue;
+using ::cel::Value;
 using ::cel::ast_internal::Expr;
+using ::cel::test::IntValueIs;
 using testing::Eq;
+using testing::HasSubstr;
 using testing::Not;
+using testing::UnorderedElementsAre;
 using cel::internal::IsOk;
+using cel::internal::IsOkAndHolds;
+using cel::internal::StatusIs;
 
 // Helper method. Creates simple pipeline containing Select step and runs it.
 absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
@@ -195,6 +224,9 @@ TEST_P(CreateListStepTest, CreateListHundred) {
   }
 }
 
+INSTANTIATE_TEST_SUITE_P(CombinedCreateListTest, CreateListStepTest,
+                         testing::Bool());
+
 TEST(CreateListStepTest, CreateListHundredAnd2Unknowns) {
   google::protobuf::Arena arena;
   std::vector<CelValue> values;
@@ -220,8 +252,252 @@ TEST(CreateListStepTest, CreateListHundredAnd2Unknowns) {
   EXPECT_THAT(result_set->unknown_attributes().size(), Eq(2));
 }
 
-INSTANTIATE_TEST_SUITE_P(CombinedCreateListTest, CreateListStepTest,
-                         testing::Bool());
+TEST(CreateDirectListStep, Basic) {
+  cel::ManagedValueFactory value_factory(
+      cel::TypeProvider::Builtin(), cel::MemoryManagerRef::ReferenceCounting());
+
+  cel::Activation activation;
+  cel::RuntimeOptions options;
+
+  ExecutionFrameBase frame(activation, options, value_factory.get());
+
+  std::vector<std::unique_ptr<DirectExpressionStep>> deps;
+  deps.push_back(CreateConstValueDirectStep(IntValue(1), -1));
+  deps.push_back(CreateConstValueDirectStep(IntValue(2), -1));
+  auto step = CreateDirectListStep(std::move(deps), {}, -1);
+
+  cel::Value result;
+  AttributeTrail attr;
+
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<ListValue>(result));
+  EXPECT_EQ(Cast<ListValue>(result).Size(), 2);
+}
+
+TEST(CreateDirectListStep, ForwardFirstError) {
+  cel::ManagedValueFactory value_factory(
+      cel::TypeProvider::Builtin(), cel::MemoryManagerRef::ReferenceCounting());
+
+  cel::Activation activation;
+  cel::RuntimeOptions options;
+
+  ExecutionFrameBase frame(activation, options, value_factory.get());
+
+  std::vector<std::unique_ptr<DirectExpressionStep>> deps;
+  deps.push_back(CreateConstValueDirectStep(
+      value_factory.get().CreateErrorValue(absl::InternalError("test1")), -1));
+  deps.push_back(CreateConstValueDirectStep(
+      value_factory.get().CreateErrorValue(absl::InternalError("test2")), -1));
+  auto step = CreateDirectListStep(std::move(deps), {}, -1);
+
+  cel::Value result;
+  AttributeTrail attr;
+
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<ErrorValue>(result));
+  EXPECT_THAT(Cast<ErrorValue>(result).NativeValue(),
+              StatusIs(absl::StatusCode::kInternal, "test1"));
+}
+
+std::vector<std::string> UnknownAttrNames(const UnknownValue& v) {
+  std::vector<std::string> names;
+  names.reserve(v.attribute_set().size());
+
+  for (const auto& attr : v.attribute_set()) {
+    EXPECT_OK(attr.AsString().status());
+    names.push_back(attr.AsString().value_or("<empty>"));
+  }
+  return names;
+}
+
+TEST(CreateDirectListStep, MergeUnknowns) {
+  cel::ManagedValueFactory value_factory(
+      cel::TypeProvider::Builtin(), cel::MemoryManagerRef::ReferenceCounting());
+
+  cel::Activation activation;
+  cel::RuntimeOptions options;
+  options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
+
+  ExecutionFrameBase frame(activation, options, value_factory.get());
+
+  AttributeSet attr_set1({Attribute("var1")});
+  AttributeSet attr_set2({Attribute("var2")});
+
+  std::vector<std::unique_ptr<DirectExpressionStep>> deps;
+  deps.push_back(CreateConstValueDirectStep(
+      value_factory.get().CreateUnknownValue(std::move(attr_set1)), -1));
+  deps.push_back(CreateConstValueDirectStep(
+      value_factory.get().CreateUnknownValue(std::move(attr_set2)), -1));
+  auto step = CreateDirectListStep(std::move(deps), {}, -1);
+
+  cel::Value result;
+  AttributeTrail attr;
+
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<UnknownValue>(result));
+  EXPECT_THAT(UnknownAttrNames(Cast<UnknownValue>(result)),
+              UnorderedElementsAre("var1", "var2"));
+}
+
+TEST(CreateDirectListStep, ErrorBeforeUnknown) {
+  cel::ManagedValueFactory value_factory(
+      cel::TypeProvider::Builtin(), cel::MemoryManagerRef::ReferenceCounting());
+
+  cel::Activation activation;
+  cel::RuntimeOptions options;
+
+  ExecutionFrameBase frame(activation, options, value_factory.get());
+
+  AttributeSet attr_set1({Attribute("var1")});
+
+  std::vector<std::unique_ptr<DirectExpressionStep>> deps;
+  deps.push_back(CreateConstValueDirectStep(
+      value_factory.get().CreateErrorValue(absl::InternalError("test1")), -1));
+  deps.push_back(CreateConstValueDirectStep(
+      value_factory.get().CreateErrorValue(absl::InternalError("test2")), -1));
+  auto step = CreateDirectListStep(std::move(deps), {}, -1);
+
+  cel::Value result;
+  AttributeTrail attr;
+
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<ErrorValue>(result));
+  EXPECT_THAT(Cast<ErrorValue>(result).NativeValue(),
+              StatusIs(absl::StatusCode::kInternal, "test1"));
+}
+
+class SetAttrDirectStep : public DirectExpressionStep {
+ public:
+  explicit SetAttrDirectStep(Attribute attr)
+      : DirectExpressionStep(-1), attr_(std::move(attr)) {}
+
+  absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
+                        AttributeTrail& attr) const override {
+    result = frame.value_manager().GetNullValue();
+    attr = AttributeTrail(attr_);
+    return absl::OkStatus();
+  }
+
+ private:
+  cel::Attribute attr_;
+};
+
+TEST(CreateDirectListStep, MissingAttribute) {
+  cel::ManagedValueFactory value_factory(
+      cel::TypeProvider::Builtin(), cel::MemoryManagerRef::ReferenceCounting());
+
+  cel::Activation activation;
+  cel::RuntimeOptions options;
+  options.enable_missing_attribute_errors = true;
+
+  activation.SetMissingPatterns({cel::AttributePattern(
+      "var1", {cel::AttributeQualifierPattern::OfString("field1")})});
+
+  ExecutionFrameBase frame(activation, options, value_factory.get());
+
+  std::vector<std::unique_ptr<DirectExpressionStep>> deps;
+  deps.push_back(
+      CreateConstValueDirectStep(value_factory.get().GetNullValue(), -1));
+  deps.push_back(std::make_unique<SetAttrDirectStep>(
+      Attribute("var1", {AttributeQualifier::OfString("field1")})));
+  auto step = CreateDirectListStep(std::move(deps), {}, -1);
+
+  cel::Value result;
+  AttributeTrail attr;
+
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<ErrorValue>(result));
+  EXPECT_THAT(
+      Cast<ErrorValue>(result).NativeValue(),
+      StatusIs(absl::StatusCode::kInvalidArgument, HasSubstr("var1.field1")));
+}
+
+TEST(CreateDirectListStep, OptionalPresentSet) {
+  cel::ManagedValueFactory value_factory(
+      cel::TypeProvider::Builtin(), cel::MemoryManagerRef::ReferenceCounting());
+
+  cel::Activation activation;
+  cel::RuntimeOptions options;
+
+  ExecutionFrameBase frame(activation, options, value_factory.get());
+
+  std::vector<std::unique_ptr<DirectExpressionStep>> deps;
+  deps.push_back(CreateConstValueDirectStep(IntValue(1), -1));
+  deps.push_back(CreateConstValueDirectStep(
+      cel::OptionalValue::Of(value_factory.get().GetMemoryManager(),
+                             IntValue(2)),
+      -1));
+  auto step = CreateDirectListStep(std::move(deps), {1}, -1);
+
+  cel::Value result;
+  AttributeTrail attr;
+
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<ListValue>(result));
+  auto list = Cast<ListValue>(result);
+  EXPECT_THAT(list.Size(), Eq(2));
+  EXPECT_THAT(list.Get(value_factory.get(), 0), IsOkAndHolds(IntValueIs(1)));
+  EXPECT_THAT(list.Get(value_factory.get(), 1), IsOkAndHolds(IntValueIs(2)));
+}
+
+TEST(CreateDirectListStep, OptionalAbsentNotSet) {
+  cel::ManagedValueFactory value_factory(
+      cel::TypeProvider::Builtin(), cel::MemoryManagerRef::ReferenceCounting());
+
+  cel::Activation activation;
+  cel::RuntimeOptions options;
+
+  ExecutionFrameBase frame(activation, options, value_factory.get());
+
+  std::vector<std::unique_ptr<DirectExpressionStep>> deps;
+  deps.push_back(CreateConstValueDirectStep(IntValue(1), -1));
+  deps.push_back(CreateConstValueDirectStep(cel::OptionalValue::None(), -1));
+  auto step = CreateDirectListStep(std::move(deps), {1}, -1);
+
+  cel::Value result;
+  AttributeTrail attr;
+
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<ListValue>(result));
+  auto list = Cast<ListValue>(result);
+  EXPECT_THAT(list.Size(), Eq(1));
+  EXPECT_THAT(list.Get(value_factory.get(), 0), IsOkAndHolds(IntValueIs(1)));
+}
+
+TEST(CreateDirectListStep, PartialUnknown) {
+  cel::ManagedValueFactory value_factory(
+      cel::TypeProvider::Builtin(), cel::MemoryManagerRef::ReferenceCounting());
+
+  cel::Activation activation;
+  cel::RuntimeOptions options;
+  options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
+  activation.SetUnknownPatterns({cel::AttributePattern(
+      "var1", {cel::AttributeQualifierPattern::OfString("field1")})});
+
+  ExecutionFrameBase frame(activation, options, value_factory.get());
+
+  std::vector<std::unique_ptr<DirectExpressionStep>> deps;
+  deps.push_back(
+      CreateConstValueDirectStep(value_factory.get().CreateIntValue(1), -1));
+  deps.push_back(std::make_unique<SetAttrDirectStep>(Attribute("var1", {})));
+  auto step = CreateDirectListStep(std::move(deps), {}, -1);
+
+  cel::Value result;
+  AttributeTrail attr;
+
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<UnknownValue>(result));
+  EXPECT_THAT(UnknownAttrNames(Cast<UnknownValue>(result)),
+              UnorderedElementsAre("var1"));
+}
 
 }  // namespace
 

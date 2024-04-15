@@ -164,6 +164,17 @@ struct InterpreterOptions {
   // This is now always enabled. Setting this option has no effect. It will be
   // removed in a later update.
   bool enable_lazy_bind_initialization = true;
+
+  // Maximum recursion depth for evaluable programs.
+  //
+  // -1 means unbounded.
+  int max_recursion_depth = -1;  // DO NOT SUBMIT
+
+  // Enable tracing support for recursively planned programs.
+  //
+  // Unlike the stack machine implementation, supporting tracing can affect
+  // performance whether or not tracing is requested for a given evaluation.
+  bool enable_recursive_tracing = true;
 };
 // LINT.ThenChange(//depot/google3/runtime/runtime_options.h)
 

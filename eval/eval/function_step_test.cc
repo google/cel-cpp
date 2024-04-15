@@ -1,6 +1,7 @@
 #include "eval/eval/function_step.h"
 
 #include <cmath>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
@@ -8,9 +9,12 @@
 
 #include "absl/strings/string_view.h"
 #include "base/ast_internal/expr.h"
+#include "base/builtins.h"
 #include "base/type_provider.h"
+#include "common/kind.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/const_value_step.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
 #include "eval/internal/interop.h"
@@ -24,9 +28,14 @@
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/testutil/test_message.pb.h"
-#include "internal/status_macros.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
+#include "runtime/function_overload_reference.h"
+#include "runtime/function_registry.h"
+#include "runtime/managed_value_factory.h"
 #include "runtime/runtime_options.h"
+#include "runtime/standard_functions.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
@@ -38,6 +47,7 @@ using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::Ident;
 using testing::Eq;
 using testing::Not;
+using testing::Truly;
 using cel::internal::IsOk;
 using cel::internal::StatusIs;
 
@@ -194,6 +204,17 @@ std::vector<CelValue::Type> ArgumentMatcher(int argument_count) {
 std::vector<CelValue::Type> ArgumentMatcher(const Call& call) {
   return ArgumentMatcher(call.has_target() ? call.args().size() + 1
                                            : call.args().size());
+}
+
+std::unique_ptr<CelExpressionFlatImpl> CreateExpressionImpl(
+    const cel::RuntimeOptions& options,
+    std::unique_ptr<DirectExpressionStep> expr) {
+  ExecutionPath path;
+  path.push_back(std::make_unique<WrappedDirectStep>(std::move(expr), -1));
+
+  return std::make_unique<CelExpressionFlatImpl>(
+      FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
+                     TypeProvider::Builtin(), options));
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> MakeTestFunctionStep(
@@ -960,6 +981,186 @@ TEST(FunctionStepStrictnessTest, IfFunctionNonStrictAndGivenUnknownInvokesIt) {
   google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
   ASSERT_THAT(value, test::IsCelInt64(Eq(0)));
+}
+
+class DirectFunctionStepTest : public testing::Test {
+ public:
+  DirectFunctionStepTest()
+      : value_factory_(TypeProvider::Builtin(),
+                       cel::extensions::ProtoMemoryManagerRef(&arena_)) {}
+
+  void SetUp() override {
+    ASSERT_OK(cel::RegisterStandardFunctions(registry_, options_));
+  }
+
+  std::vector<cel::FunctionOverloadReference> GetOverloads(
+      absl::string_view name, int64_t arguments_size) {
+    std::vector<cel::Kind> matcher;
+    matcher.resize(arguments_size, cel::Kind::kAny);
+    return registry_.FindStaticOverloads(name, false, matcher);
+  }
+
+  // Helper for shorthand constructing direct expr deps.
+  //
+  // Works around copies in init-list construction.
+  std::vector<std::unique_ptr<DirectExpressionStep>> MakeDeps(
+      std::unique_ptr<DirectExpressionStep> dep,
+      std::unique_ptr<DirectExpressionStep> dep2) {
+    std::vector<std::unique_ptr<DirectExpressionStep>> result;
+    result.reserve(2);
+    result.push_back(std::move(dep));
+    result.push_back(std::move(dep2));
+    return result;
+  };
+
+ protected:
+  cel::FunctionRegistry registry_;
+  cel::RuntimeOptions options_;
+  google::protobuf::Arena arena_;
+  cel::ManagedValueFactory value_factory_;
+};
+
+TEST_F(DirectFunctionStepTest, SimpleCall) {
+  value_factory_.get().CreateIntValue(1);
+
+  cel::ast_internal::Call call;
+  call.set_function(cel::builtin::kAdd);
+  call.mutable_args().emplace_back();
+  call.mutable_args().emplace_back();
+
+  std::vector<std::unique_ptr<DirectExpressionStep>> deps;
+  deps.push_back(
+      CreateConstValueDirectStep(value_factory_.get().CreateIntValue(1)));
+  deps.push_back(
+      CreateConstValueDirectStep(value_factory_.get().CreateIntValue(1)));
+
+  auto expr = CreateDirectFunctionStep(-1, call, std::move(deps),
+                                       GetOverloads(cel::builtin::kAdd, 2));
+
+  auto plan = CreateExpressionImpl(options_, std::move(expr));
+
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(auto value, plan->Evaluate(activation, &arena_));
+
+  EXPECT_THAT(value, test::IsCelInt64(2));
+}
+
+TEST_F(DirectFunctionStepTest, RecursiveCall) {
+  value_factory_.get().CreateIntValue(1);
+
+  cel::ast_internal::Call call;
+  call.set_function(cel::builtin::kAdd);
+  call.mutable_args().emplace_back();
+  call.mutable_args().emplace_back();
+
+  auto overloads = GetOverloads(cel::builtin::kAdd, 2);
+
+  auto MakeLeaf = [&]() {
+    return CreateDirectFunctionStep(
+        -1, call,
+        MakeDeps(
+            CreateConstValueDirectStep(value_factory_.get().CreateIntValue(1)),
+            CreateConstValueDirectStep(value_factory_.get().CreateIntValue(1))),
+        overloads);
+  };
+
+  auto expr = CreateDirectFunctionStep(
+      -1, call,
+      MakeDeps(CreateDirectFunctionStep(
+                   -1, call, MakeDeps(MakeLeaf(), MakeLeaf()), overloads),
+               CreateDirectFunctionStep(
+                   -1, call, MakeDeps(MakeLeaf(), MakeLeaf()), overloads)),
+      overloads);
+
+  auto plan = CreateExpressionImpl(options_, std::move(expr));
+
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(auto value, plan->Evaluate(activation, &arena_));
+
+  EXPECT_THAT(value, test::IsCelInt64(8));
+}
+
+TEST_F(DirectFunctionStepTest, ErrorHandlingCall) {
+  value_factory_.get().CreateIntValue(1);
+
+  cel::ast_internal::Call add_call;
+  add_call.set_function(cel::builtin::kAdd);
+  add_call.mutable_args().emplace_back();
+  add_call.mutable_args().emplace_back();
+
+  cel::ast_internal::Call div_call;
+  div_call.set_function(cel::builtin::kDivide);
+  div_call.mutable_args().emplace_back();
+  div_call.mutable_args().emplace_back();
+
+  auto add_overloads = GetOverloads(cel::builtin::kAdd, 2);
+  auto div_overloads = GetOverloads(cel::builtin::kDivide, 2);
+
+  auto error_expr = CreateDirectFunctionStep(
+      -1, div_call,
+      MakeDeps(
+          CreateConstValueDirectStep(value_factory_.get().CreateIntValue(1)),
+          CreateConstValueDirectStep(value_factory_.get().CreateIntValue(0))),
+      div_overloads);
+
+  auto expr = CreateDirectFunctionStep(
+      -1, add_call,
+      MakeDeps(
+          std::move(error_expr),
+          CreateConstValueDirectStep(value_factory_.get().CreateIntValue(1))),
+      add_overloads);
+
+  auto plan = CreateExpressionImpl(options_, std::move(expr));
+
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(auto value, plan->Evaluate(activation, &arena_));
+
+  EXPECT_THAT(value,
+              test::IsCelError(StatusIs(absl::StatusCode::kInvalidArgument,
+                                        testing::HasSubstr("divide by zero"))));
+}
+
+TEST_F(DirectFunctionStepTest, NoOverload) {
+  value_factory_.get().CreateIntValue(1);
+
+  cel::ast_internal::Call call;
+  call.set_function(cel::builtin::kAdd);
+  call.mutable_args().emplace_back();
+  call.mutable_args().emplace_back();
+
+  std::vector<std::unique_ptr<DirectExpressionStep>> deps;
+  deps.push_back(
+      CreateConstValueDirectStep(value_factory_.get().CreateIntValue(1)));
+  deps.push_back(CreateConstValueDirectStep(
+      value_factory_.get().CreateUncheckedStringValue("2")));
+
+  auto expr = CreateDirectFunctionStep(-1, call, std::move(deps),
+                                       GetOverloads(cel::builtin::kAdd, 2));
+
+  auto plan = CreateExpressionImpl(options_, std::move(expr));
+
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(auto value, plan->Evaluate(activation, &arena_));
+
+  EXPECT_THAT(value, Truly(CheckNoMatchingOverloadError));
+}
+
+TEST_F(DirectFunctionStepTest, NoOverload0Args) {
+  value_factory_.get().CreateIntValue(1);
+
+  cel::ast_internal::Call call;
+  call.set_function(cel::builtin::kAdd);
+
+  std::vector<std::unique_ptr<DirectExpressionStep>> deps;
+  auto expr = CreateDirectFunctionStep(-1, call, std::move(deps),
+                                       GetOverloads(cel::builtin::kAdd, 2));
+
+  auto plan = CreateExpressionImpl(options_, std::move(expr));
+
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(auto value, plan->Evaluate(activation, &arena_));
+
+  EXPECT_THAT(value, Truly(CheckNoMatchingOverloadError));
 }
 
 }  // namespace

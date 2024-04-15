@@ -14,6 +14,7 @@
 
 #include "eval/eval/create_map_step.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -24,6 +25,7 @@
 #include "base/ast_internal/expr.h"
 #include "base/type_provider.h"
 #include "eval/eval/cel_expression_flat_impl.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/activation.h"
@@ -43,17 +45,13 @@ using ::cel::TypeProvider;
 using ::cel::ast_internal::Expr;
 using ::google::protobuf::Arena;
 
-
-// Helper method. Creates simple pipeline containing CreateStruct step that
-// builds Map and runs it.
-absl::StatusOr<CelValue> RunCreateMapExpression(
+absl::StatusOr<ExecutionPath> CreateStackMachineProgram(
     const std::vector<std::pair<CelValue, CelValue>>& values,
-    google::protobuf::Arena* arena, bool enable_unknowns) {
+    Activation& activation) {
   ExecutionPath path;
-  Activation activation;
 
-  Expr expr0;
   Expr expr1;
+  Expr expr0;
 
   std::vector<Expr> exprs;
   exprs.reserve(values.size() * 2);
@@ -86,10 +84,52 @@ absl::StatusOr<CelValue> RunCreateMapExpression(
     index++;
   }
 
-  CEL_ASSIGN_OR_RETURN(auto step1,
-                       CreateCreateStructStepForMap(create_struct, expr1.id()));
+  CEL_ASSIGN_OR_RETURN(
+      auto step1, CreateCreateStructStepForMap(values.size(), {}, expr1.id()));
   path.push_back(std::move(step1));
+  return path;
+}
 
+absl::StatusOr<ExecutionPath> CreateRecursiveProgram(
+    const std::vector<std::pair<CelValue, CelValue>>& values,
+    Activation& activation) {
+  ExecutionPath path;
+
+  int index = 0;
+  std::vector<std::unique_ptr<DirectExpressionStep>> deps;
+  for (const auto& item : values) {
+    std::string key_name = absl::StrCat("key", index);
+    std::string value_name = absl::StrCat("value", index);
+
+    deps.push_back(CreateDirectIdentStep(key_name, -1));
+
+    deps.push_back(CreateDirectIdentStep(value_name, -1));
+
+    activation.InsertValue(key_name, item.first);
+    activation.InsertValue(value_name, item.second);
+
+    index++;
+  }
+  path.push_back(std::make_unique<WrappedDirectStep>(
+      CreateDirectCreateMapStep(std::move(deps), {}, -1), -1));
+
+  return path;
+}
+
+// Helper method. Creates simple pipeline containing CreateStruct step that
+// builds Map and runs it.
+// Equivalent to {key0: value0, ...}
+absl::StatusOr<CelValue> RunCreateMapExpression(
+    const std::vector<std::pair<CelValue, CelValue>>& values,
+    google::protobuf::Arena* arena, bool enable_unknowns, bool enable_recursive_program) {
+  Activation activation;
+
+  ExecutionPath path;
+  if (enable_recursive_program) {
+    CEL_ASSIGN_OR_RETURN(path, CreateRecursiveProgram(values, activation));
+  } else {
+    CEL_ASSIGN_OR_RETURN(path, CreateStackMachineProgram(values, activation));
+  }
   cel::RuntimeOptions options;
   if (enable_unknowns) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
@@ -101,13 +141,24 @@ absl::StatusOr<CelValue> RunCreateMapExpression(
   return cel_expr.Evaluate(activation, arena);
 }
 
-class CreateMapStepTest : public testing::TestWithParam<bool> {};
+class CreateMapStepTest
+    : public testing::TestWithParam<std::tuple<bool, bool>> {
+ public:
+  bool enable_unknowns() { return std::get<0>(GetParam()); }
+  bool enable_recursive_program() { return std::get<1>(GetParam()); }
+
+  absl::StatusOr<CelValue> RunMapExpression(
+      const std::vector<std::pair<CelValue, CelValue>>& values,
+      google::protobuf::Arena* arena) {
+    return RunCreateMapExpression(values, arena, enable_unknowns(),
+                                  enable_recursive_program());
+  }
+};
 
 // Test that Empty Map is created successfully.
 TEST_P(CreateMapStepTest, TestCreateEmptyMap) {
   Arena arena;
-  ASSERT_OK_AND_ASSIGN(CelValue result,
-                       RunCreateMapExpression({}, &arena, GetParam()));
+  ASSERT_OK_AND_ASSIGN(CelValue result, RunMapExpression({}, &arena));
   ASSERT_TRUE(result.IsMap());
 
   const CelMap* cel_map = result.MapOrDie();
@@ -128,7 +179,24 @@ TEST(CreateMapStepTest, TestMapCreateWithUnknown) {
                      CelValue::CreateUnknownSet(&unknown_set)});
 
   ASSERT_OK_AND_ASSIGN(CelValue result,
-                       RunCreateMapExpression(entries, &arena, true));
+                       RunCreateMapExpression(entries, &arena, true, false));
+  ASSERT_TRUE(result.IsUnknownSet());
+}
+
+TEST(CreateMapStepTest, TestMapCreateWithUnknownRecursiveProgram) {
+  Arena arena;
+  UnknownSet unknown_set;
+  std::vector<std::pair<CelValue, CelValue>> entries;
+
+  std::vector<std::string> kKeys = {"test2", "test1"};
+
+  entries.push_back(
+      {CelValue::CreateString(&kKeys[0]), CelValue::CreateInt64(2)});
+  entries.push_back({CelValue::CreateString(&kKeys[1]),
+                     CelValue::CreateUnknownSet(&unknown_set)});
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunCreateMapExpression(entries, &arena, true, true));
   ASSERT_TRUE(result.IsUnknownSet());
 }
 
@@ -145,8 +213,7 @@ TEST_P(CreateMapStepTest, TestCreateStringMap) {
   entries.push_back(
       {CelValue::CreateString(&kKeys[1]), CelValue::CreateInt64(1)});
 
-  ASSERT_OK_AND_ASSIGN(CelValue result,
-                       RunCreateMapExpression(entries, &arena, GetParam()));
+  ASSERT_OK_AND_ASSIGN(CelValue result, RunMapExpression(entries, &arena));
   ASSERT_TRUE(result.IsMap());
 
   const CelMap* cel_map = result.MapOrDie();
@@ -163,7 +230,8 @@ TEST_P(CreateMapStepTest, TestCreateStringMap) {
   EXPECT_EQ(lookup1->Int64OrDie(), 1);
 }
 
-INSTANTIATE_TEST_SUITE_P(CreateMapStep, CreateMapStepTest, testing::Bool());
+INSTANTIATE_TEST_SUITE_P(CreateMapStep, CreateMapStepTest,
+                         testing::Combine(testing::Bool(), testing::Bool()));
 
 }  // namespace
 

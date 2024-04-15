@@ -90,10 +90,11 @@ std::unique_ptr<CelFunction> CreateBindFunction() {
 }
 
 class BindingsExtTest
-    : public testing::TestWithParam<std::tuple<TestInfo, bool>> {
+    : public testing::TestWithParam<std::tuple<TestInfo, bool, bool>> {
  protected:
   const TestInfo& GetTestInfo() { return std::get<0>(GetParam()); }
   bool GetEnableConstantFolding() { return std::get<1>(GetParam()); }
+  bool GetEnableRecursivePlan() { return std::get<2>(GetParam()); }
 };
 
 TEST_P(BindingsExtTest, EndToEnd) {
@@ -121,6 +122,7 @@ TEST_P(BindingsExtTest, EndToEnd) {
   options.enable_empty_wrapper_null_unboxing = true;
   options.constant_folding = GetEnableConstantFolding();
   options.constant_arena = &arena;
+  options.max_recursion_depth = GetEnableRecursivePlan() ? -1 : 0;
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(options);
   ASSERT_OK(builder->GetRegistry()->Register(CreateBindFunction()));
@@ -169,7 +171,8 @@ INSTANTIATE_TEST_SUITE_P(
              // Error case where the variable name is not a simple identifier.
              {"cel.bind(bad.name, true, bad.name)",
               "variable name must be a simple identifier"}}),
-        /*constant_folding*/ testing::Bool()));
+        /*constant_folding*/ testing::Bool(),
+        /*recursive_plan*/ testing::Bool()));
 
 // Test bind expression with nested field selection.
 //
