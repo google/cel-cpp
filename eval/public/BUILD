@@ -1265,16 +1265,10 @@ cc_library(
     srcs = ["string_extension_func_registrar.cc"],
     hdrs = ["string_extension_func_registrar.h"],
     deps = [
-        ":cel_function",
-        ":cel_function_adapter",
         ":cel_function_registry",
         ":cel_options",
-        ":cel_value",
-        "//eval/public/containers:container_backed_list_impl",
-        "//internal:status_macros",
+        "//extensions:strings",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 

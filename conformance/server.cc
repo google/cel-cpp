@@ -38,6 +38,7 @@
 #include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "extensions/protobuf/type_reflector.h"
+#include "extensions/strings.h"
 #include "internal/status_macros.h"
 #include "parser/macro_registry.h"
 #include "parser/options.h"
@@ -173,6 +174,8 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
     CEL_RETURN_IF_ERROR(
         RegisterBuiltinFunctions(builder->GetRegistry(), options));
     CEL_RETURN_IF_ERROR(cel::extensions::RegisterEncodersFunctions(
+        builder->GetRegistry(), options));
+    CEL_RETURN_IF_ERROR(cel::extensions::RegisterStringsFunctions(
         builder->GetRegistry(), options));
 
     return absl::WrapUnique(
@@ -313,6 +316,8 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
 
     CEL_RETURN_IF_ERROR(cel::extensions::EnableOptionalTypes(builder));
     CEL_RETURN_IF_ERROR(cel::extensions::RegisterEncodersFunctions(
+        builder.function_registry(), options));
+    CEL_RETURN_IF_ERROR(cel::extensions::RegisterStringsFunctions(
         builder.function_registry(), options));
 
     return std::move(builder).Build();

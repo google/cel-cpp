@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRING_EXTENSION_FUNC_REGISTRAR_H_
-#define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRING_EXTENSION_FUNC_REGISTRAR_H_
+#ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_STRINGS_H_
+#define THIRD_PARTY_CEL_CPP_EXTENSIONS_STRINGS_H_
 
 #include "absl/status/status.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
+#include "runtime/function_registry.h"
+#include "runtime/runtime_options.h"
 
-namespace google::api::expr::runtime {
+namespace cel::extensions {
 
-// Register string related widely used extension functions.
-absl::Status RegisterStringExtensionFunctions(
-    CelFunctionRegistry* registry,
-    const InterpreterOptions& options = InterpreterOptions());
+// Register extension functions for strings.
+absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
+                                      const RuntimeOptions& options);
 
-}  // namespace google::api::expr::runtime
+absl::Status RegisterStringsFunctions(
+    google::api::expr::runtime::CelFunctionRegistry* registry,
+    const google::api::expr::runtime::InterpreterOptions& options);
 
-#endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRING_EXTENSION_FUNC_REGISTRAR_H_
+}  // namespace cel::extensions
+
+#endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_STRINGS_H_

@@ -37,6 +37,7 @@ ALL_TESTS = [
     "@com_google_cel_spec//tests/simple:testdata/proto2.textproto",
     "@com_google_cel_spec//tests/simple:testdata/proto3.textproto",
     "@com_google_cel_spec//tests/simple:testdata/string.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/string_ext.textproto",
     "@com_google_cel_spec//tests/simple:testdata/timestamps.textproto",
     "@com_google_cel_spec//tests/simple:testdata/unknowns.textproto",
     "@com_google_cel_spec//tests/simple:testdata/wrappers.textproto",
@@ -65,6 +66,7 @@ cc_binary(
         "//eval/public:transform_utility",
         "//extensions:bindings_ext",
         "//extensions:encoders",
+        "//extensions:strings",
         "//extensions/protobuf:enum_adapter",
         "//extensions/protobuf:memory_manager",
         "//extensions/protobuf:runtime_adapter",
@@ -139,6 +141,20 @@ cc_binary(
 
             # Legacy value does not support optional_type.
             "--skip_test=optionals/optionals",
+
+            # Not yet implemented.
+            "--skip_test=string_ext/char_at",
+            "--skip_test=string_ext/index_of",
+            "--skip_test=string_ext/last_index_of",
+            "--skip_test=string_ext/ascii_casing/upperascii",
+            "--skip_test=string_ext/ascii_casing/upperascii_unicode",
+            "--skip_test=string_ext/ascii_casing/upperascii_unicode_with_space",
+            "--skip_test=string_ext/replace",
+            "--skip_test=string_ext/substring",
+            "--skip_test=string_ext/trim",
+            "--skip_test=string_ext/quote",
+            "--skip_test=string_ext/value_errors",
+            "--skip_test=string_ext/type_errors",
         ] + ["$(location " + test + ")" for test in ALL_TESTS],
         data = [
             ":server",
@@ -187,6 +203,20 @@ cc_binary(
             # TODO(issues/119): Strong typing support for enums, specified but not implemented.
             "--skip_test=enums/strong_proto2",
             "--skip_test=enums/strong_proto3",
+
+            # Not yet implemented.
+            "--skip_test=string_ext/char_at",
+            "--skip_test=string_ext/index_of",
+            "--skip_test=string_ext/last_index_of",
+            "--skip_test=string_ext/ascii_casing/upperascii",
+            "--skip_test=string_ext/ascii_casing/upperascii_unicode",
+            "--skip_test=string_ext/ascii_casing/upperascii_unicode_with_space",
+            "--skip_test=string_ext/replace",
+            "--skip_test=string_ext/substring",
+            "--skip_test=string_ext/trim",
+            "--skip_test=string_ext/quote",
+            "--skip_test=string_ext/value_errors",
+            "--skip_test=string_ext/type_errors",
         ] + ["$(location " + test + ")" for test in ALL_TESTS],
         data = [
             ":server",

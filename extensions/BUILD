@@ -306,3 +306,48 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "strings",
+    srcs = ["strings.cc"],
+    hdrs = ["strings.h"],
+    deps = [
+        "//common:casting",
+        "//common:type",
+        "//common:value",
+        "//eval/public:cel_function_registry",
+        "//eval/public:cel_options",
+        "//internal:status_macros",
+        "//internal:utf8",
+        "//runtime:function_adapter",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "//runtime/internal:errors",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_test(
+    name = "strings_test",
+    srcs = ["strings_test.cc"],
+    deps = [
+        ":strings",
+        "//common:memory",
+        "//common:value",
+        "//extensions/protobuf:runtime_adapter",
+        "//internal:testing",
+        "//parser",
+        "//parser:options",
+        "//runtime",
+        "//runtime:activation",
+        "//runtime:runtime_builder",
+        "//runtime:runtime_options",
+        "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
