@@ -34,6 +34,8 @@
 #include "eval/public/transform_utility.h"
 #include "extensions/bindings_ext.h"
 #include "extensions/encoders.h"
+#include "extensions/math_ext.h"
+#include "extensions/math_ext_macros.h"
 #include "extensions/protobuf/enum_adapter.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/runtime_adapter.h"
@@ -124,6 +126,7 @@ absl::Status LegacyParse(const conformance::v1alpha1::ParseRequest& request,
   cel::MacroRegistry macros;
   CEL_RETURN_IF_ERROR(cel::RegisterStandardMacros(macros, options));
   CEL_RETURN_IF_ERROR(cel::extensions::RegisterBindingsMacros(macros, options));
+  CEL_RETURN_IF_ERROR(cel::extensions::RegisterMathMacros(macros, options));
   CEL_ASSIGN_OR_RETURN(auto source, cel::NewSource(request.cel_source(),
                                                    request.source_location()));
   CEL_ASSIGN_OR_RETURN(auto parsed_expr,
@@ -176,6 +179,8 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
     CEL_RETURN_IF_ERROR(cel::extensions::RegisterEncodersFunctions(
         builder->GetRegistry(), options));
     CEL_RETURN_IF_ERROR(cel::extensions::RegisterStringsFunctions(
+        builder->GetRegistry(), options));
+    CEL_RETURN_IF_ERROR(cel::extensions::RegisterMathExtensionFunctions(
         builder->GetRegistry(), options));
 
     return absl::WrapUnique(
@@ -318,6 +323,8 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
     CEL_RETURN_IF_ERROR(cel::extensions::RegisterEncodersFunctions(
         builder.function_registry(), options));
     CEL_RETURN_IF_ERROR(cel::extensions::RegisterStringsFunctions(
+        builder.function_registry(), options));
+    CEL_RETURN_IF_ERROR(cel::extensions::RegisterMathExtensionFunctions(
         builder.function_registry(), options));
 
     return std::move(builder).Build();
