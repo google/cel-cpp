@@ -17,13 +17,21 @@
 
 #include <vector>
 
+#include "absl/status/status.h"
 #include "parser/macro.h"
+#include "parser/macro_registry.h"
+#include "parser/options.h"
 
 namespace cel::extensions {
 
 // proto_macros returns the macros which are useful for working with protobuf
 // objects in CEL. Specifically, the proto.getExt() and proto.hasExt() macros.
-const std::vector<Macro> proto_macros();
+std::vector<Macro> proto_macros();
+
+inline absl::Status RegisterProtoMacros(MacroRegistry& registry,
+                                        const ParserOptions&) {
+  return registry.RegisterMacros(proto_macros());
+}
 
 }  // namespace cel::extensions
 

@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,27 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_BINDINGS_EXT_H_
-#define THIRD_PARTY_CEL_CPP_EXTENSIONS_BINDINGS_EXT_H_
-
-#include <vector>
+#ifndef THIRD_PARTY_CEL_CPP_PARSER_STANDARD_MACROS_H_
+#define THIRD_PARTY_CEL_CPP_PARSER_STANDARD_MACROS_H_
 
 #include "absl/status/status.h"
-#include "parser/macro.h"
 #include "parser/macro_registry.h"
 #include "parser/options.h"
 
-namespace cel::extensions {
+namespace cel {
 
-// bindings_macros() returns a macro for cel.bind() which can be used to support
-// local variable bindings within expressions.
-std::vector<Macro> bindings_macros();
+// Registers the standard macros defined by the Common Expression Language.
+// https://github.com/google/cel-spec/blob/master/doc/langdef.md#macros
+absl::Status RegisterStandardMacros(MacroRegistry& registry,
+                                    const ParserOptions& options);
 
-inline absl::Status RegisterBindingsMacros(MacroRegistry& registry,
-                                           const ParserOptions&) {
-  return registry.RegisterMacros(bindings_macros());
-}
+}  // namespace cel
 
-}  // namespace cel::extensions
-
-#endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_BINDINGS_EXT_H_
+#endif  // THIRD_PARTY_CEL_CPP_PARSER_STANDARD_MACROS_H_

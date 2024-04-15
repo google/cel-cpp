@@ -74,7 +74,7 @@ bool isExtensionCall(const Expr& target) {
 
 }  // namespace
 
-const std::vector<Macro> proto_macros() {
+std::vector<Macro> proto_macros() {
   absl::StatusOr<Macro> getExt = Macro::Receiver(
       kGetExt, 2,
       [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,

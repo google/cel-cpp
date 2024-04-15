@@ -128,6 +128,7 @@ class Macro final {
     return (expander())(sf, macro_id, target, args);
   }
 
+  ABSL_DEPRECATED("use MacroRegistry and RegisterStandardMacros")
   static std::vector<Macro> AllMacros();
 
  private:

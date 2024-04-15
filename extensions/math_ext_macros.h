@@ -17,13 +17,21 @@
 
 #include <vector>
 
+#include "absl/status/status.h"
 #include "parser/macro.h"
+#include "parser/macro_registry.h"
+#include "parser/options.h"
 
 namespace cel::extensions {
 
 // math_macros() returns the namespaced helper macros for math.least() and
 // math.greatest().
 std::vector<Macro> math_macros();
+
+inline absl::Status RegisterMathMacros(MacroRegistry& registry,
+                                       const ParserOptions&) {
+  return registry.RegisterMacros(math_macros());
+}
 
 }  // namespace cel::extensions
 

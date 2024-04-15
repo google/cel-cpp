@@ -153,3 +153,16 @@ cc_test(
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
+
+cc_library(
+    name = "standard_macros",
+    srcs = ["standard_macros.cc"],
+    hdrs = ["standard_macros.h"],
+    deps = [
+        ":macro",
+        ":macro_registry",
+        ":options",
+        "//internal:status_macros",
+        "@com_google_absl//absl/status",
+    ],
+)

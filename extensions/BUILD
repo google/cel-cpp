@@ -25,7 +25,10 @@ cc_library(
     hdrs = ["proto_ext.h"],
     deps = [
         "//parser:macro",
+        "//parser:macro_registry",
+        "//parser:options",
         "//parser:source_factory",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
@@ -59,7 +62,10 @@ cc_library(
     hdrs = ["math_ext_macros.h"],
     deps = [
         "//parser:macro",
+        "//parser:macro_registry",
+        "//parser:options",
         "//parser:source_factory",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
@@ -117,6 +123,8 @@ cc_library(
     hdrs = ["bindings_ext.h"],
     deps = [
         "//parser:macro",
+        "//parser:macro_registry",
+        "//parser:options",
         "//parser:source_factory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",

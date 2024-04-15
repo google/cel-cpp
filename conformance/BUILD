@@ -18,6 +18,7 @@ licenses(["notice"])
 
 ALL_TESTS = [
     "@com_google_cel_spec//tests/simple:testdata/basic.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/bindings_ext.textproto",
     "@com_google_cel_spec//tests/simple:testdata/comparisons.textproto",
     "@com_google_cel_spec//tests/simple:testdata/conversions.textproto",
     "@com_google_cel_spec//tests/simple:testdata/dynamic.textproto",
@@ -52,6 +53,7 @@ cc_binary(
     deps = [
         "//common:any",
         "//common:memory",
+        "//common:source",
         "//common:value",
         "//common:value_kind",
         "//eval/public:activation",
@@ -61,6 +63,7 @@ cc_binary(
         "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//eval/public:transform_utility",
+        "//extensions:bindings_ext",
         "//extensions:encoders",
         "//extensions/protobuf:enum_adapter",
         "//extensions/protobuf:memory_manager",
@@ -69,7 +72,9 @@ cc_binary(
         "//internal:proto_time_encoding",
         "//internal:status_macros",
         "//parser",
+        "//parser:macro_registry",
         "//parser:options",
+        "//parser:standard_macros",
         "//runtime",
         "//runtime:activation",
         "//runtime:constant_folding",

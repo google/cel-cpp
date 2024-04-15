@@ -22,6 +22,7 @@
 #include "absl/strings/escaping.h"
 #include "absl/strings/string_view.h"
 #include "common/memory.h"
+#include "common/source.h"
 #include "common/value.h"
 #include "conformance/value_conversion.h"
 #include "eval/public/activation.h"
@@ -31,14 +32,17 @@
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/transform_utility.h"
+#include "extensions/bindings_ext.h"
 #include "extensions/encoders.h"
 #include "extensions/protobuf/enum_adapter.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "extensions/protobuf/type_reflector.h"
 #include "internal/status_macros.h"
+#include "parser/macro_registry.h"
 #include "parser/options.h"
 #include "parser/parser.h"
+#include "parser/standard_macros.h"
 #include "runtime/activation.h"
 #include "runtime/constant_folding.h"
 #include "runtime/managed_value_factory.h"
@@ -108,27 +112,23 @@ google::api::expr::v1alpha1::Expr ExtractExpr(
   return out;
 }
 
-void LegacyParse(const conformance::v1alpha1::ParseRequest& request,
-                 conformance::v1alpha1::ParseResponse& response,
-                 bool enable_optional_syntax) {
+absl::Status LegacyParse(const conformance::v1alpha1::ParseRequest& request,
+                         conformance::v1alpha1::ParseResponse& response,
+                         bool enable_optional_syntax) {
   if (request.cel_source().empty()) {
-    auto issue = response.add_issues();
-    issue->set_message("No source code");
-    issue->set_code(google::rpc::Code::INVALID_ARGUMENT);
-    return;
+    return absl::InvalidArgumentError("no source code");
   }
   cel::ParserOptions options;
   options.enable_optional_syntax = enable_optional_syntax;
-  auto parse_status = parser::Parse(request.cel_source(), "", options);
-  if (!parse_status.ok()) {
-    auto issue = response.add_issues();
-    *issue->mutable_message() = std::string(parse_status.status().message());
-    issue->set_code(google::rpc::Code::INVALID_ARGUMENT);
-    return;
-  }
-  google::api::expr::v1alpha1::ParsedExpr out;
-  (out).MergeFrom(parse_status.value());
-  *response.mutable_parsed_expr() = out;
+  cel::MacroRegistry macros;
+  CEL_RETURN_IF_ERROR(cel::RegisterStandardMacros(macros, options));
+  CEL_RETURN_IF_ERROR(cel::extensions::RegisterBindingsMacros(macros, options));
+  CEL_ASSIGN_OR_RETURN(auto source, cel::NewSource(request.cel_source(),
+                                                   request.source_location()));
+  CEL_ASSIGN_OR_RETURN(auto parsed_expr,
+                       parser::Parse(*source, macros, options));
+  (*response.mutable_parsed_expr()).MergeFrom(parsed_expr);
+  return absl::OkStatus();
 }
 
 class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
@@ -181,7 +181,13 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
 
   void Parse(const conformance::v1alpha1::ParseRequest& request,
              conformance::v1alpha1::ParseResponse& response) override {
-    LegacyParse(request, response, /*enable_optional_syntax=*/false);
+    auto status =
+        LegacyParse(request, response, /*enable_optional_syntax=*/false);
+    if (!status.ok()) {
+      auto* issue = response.add_issues();
+      issue->set_code(ToGrpcCode(status.code()));
+      issue->set_message(status.message());
+    }
   }
 
   void Check(const conformance::v1alpha1::CheckRequest& request,
@@ -314,7 +320,13 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
 
   void Parse(const conformance::v1alpha1::ParseRequest& request,
              conformance::v1alpha1::ParseResponse& response) override {
-    LegacyParse(request, response, /*enable_optional_syntax=*/true);
+    auto status =
+        LegacyParse(request, response, /*enable_optional_syntax=*/true);
+    if (!status.ok()) {
+      auto* issue = response.add_issues();
+      issue->set_code(ToGrpcCode(status.code()));
+      issue->set_message(status.message());
+    }
   }
 
   void Check(const conformance::v1alpha1::CheckRequest& request,
