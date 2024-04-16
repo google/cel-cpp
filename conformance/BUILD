@@ -231,6 +231,13 @@ cc_binary(
     for args in [
         [
             "--modern",
+        ],
+        [
+            "--modern",
+            "--opt",
+        ],
+        [
+            "--modern",
             "--arena",
         ],
         [
