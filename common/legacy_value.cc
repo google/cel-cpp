@@ -58,6 +58,7 @@
 #include "eval/public/message_wrapper.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
+#include "extensions/protobuf/internal/legacy_value.h"
 #include "extensions/protobuf/internal/struct_lite.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/casts.h"
@@ -1236,7 +1237,7 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
                 arena, static_cast<std::string>(string)));
           }));
     }
-    case ValueKind::kStruct:
+    case ValueKind::kStruct: {
       if (auto legacy_struct_value =
               As<common_internal::LegacyStructValueView>(modern_value);
           legacy_struct_value.has_value()) {
@@ -1244,8 +1245,12 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
             AsMessageWrapper(legacy_struct_value->message_ptr(),
                              legacy_struct_value->legacy_type_info()));
       }
-      return absl::InvalidArgumentError(
-          "google::api::expr::runtime::CelValue only supports MessageWrapper");
+      CEL_ASSIGN_OR_RETURN(
+          auto message_wrapper,
+          extensions::protobuf_internal::MessageWrapperFromValue(modern_value,
+                                                                 arena));
+      return CelValue::CreateMessageWrapper(message_wrapper);
+    }
     case ValueKind::kDuration:
       return CelValue::CreateUncheckedDuration(
           Cast<DurationValueView>(modern_value).NativeValue());
@@ -1441,7 +1446,7 @@ absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
                 arena, static_cast<std::string>(string)));
           }));
     }
-    case ValueKind::kStruct:
+    case ValueKind::kStruct: {
       if (auto legacy_struct_value =
               As<common_internal::LegacyStructValue>(value);
           legacy_struct_value.has_value()) {
@@ -1449,8 +1454,11 @@ absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
             AsMessageWrapper(legacy_struct_value->message_ptr(),
                              legacy_struct_value->legacy_type_info()));
       }
-      return absl::InvalidArgumentError(
-          "google::api::expr::runtime::CelValue only supports MessageWrapper");
+      CEL_ASSIGN_OR_RETURN(
+          auto message_wrapper,
+          extensions::protobuf_internal::MessageWrapperFromValue(value, arena));
+      return CelValue::CreateMessageWrapper(message_wrapper);
+    }
     case ValueKind::kDuration:
       return CelValue::CreateUncheckedDuration(
           Cast<DurationValue>(value).NativeValue());
