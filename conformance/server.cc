@@ -36,6 +36,7 @@
 #include "extensions/encoders.h"
 #include "extensions/math_ext.h"
 #include "extensions/math_ext_macros.h"
+#include "extensions/proto_ext.h"
 #include "extensions/protobuf/enum_adapter.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/runtime_adapter.h"
@@ -55,6 +56,7 @@
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
 #include "proto/test/v1/proto2/test_all_types.pb.h"
+#include "proto/test/v1/proto2/test_all_types_extensions.pb.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
@@ -127,6 +129,7 @@ absl::Status LegacyParse(const conformance::v1alpha1::ParseRequest& request,
   CEL_RETURN_IF_ERROR(cel::RegisterStandardMacros(macros, options));
   CEL_RETURN_IF_ERROR(cel::extensions::RegisterBindingsMacros(macros, options));
   CEL_RETURN_IF_ERROR(cel::extensions::RegisterMathMacros(macros, options));
+  CEL_RETURN_IF_ERROR(cel::extensions::RegisterProtoMacros(macros, options));
   CEL_ASSIGN_OR_RETURN(auto source, cel::NewSource(request.cel_source(),
                                                    request.source_location()));
   CEL_ASSIGN_OR_RETURN(auto parsed_expr,
@@ -149,6 +152,28 @@ class LegacyConformanceServiceImpl : public ConformanceServiceInterface {
         google::api::expr::test::v1::proto3::NestedTestAllTypes>();
     google::protobuf::LinkMessageReflection<
         google::api::expr::test::v1::proto2::NestedTestAllTypes>();
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::int32_ext);
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::nested_ext);
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::test_all_types_ext);
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::nested_enum_ext);
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::repeated_test_all_types);
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::Proto2ExtensionScopedMessage::
+            int64_ext);
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::Proto2ExtensionScopedMessage::
+            message_scoped_nested_ext);
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::Proto2ExtensionScopedMessage::
+            nested_enum_ext);
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::Proto2ExtensionScopedMessage::
+            message_scoped_repeated_test_all_types);
 
     InterpreterOptions options;
     options.enable_qualified_type_identifiers = true;
@@ -278,6 +303,28 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
         google::api::expr::test::v1::proto3::NestedTestAllTypes>();
     google::protobuf::LinkMessageReflection<
         google::api::expr::test::v1::proto2::NestedTestAllTypes>();
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::int32_ext);
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::nested_ext);
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::test_all_types_ext);
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::nested_enum_ext);
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::repeated_test_all_types);
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::Proto2ExtensionScopedMessage::
+            int64_ext);
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::Proto2ExtensionScopedMessage::
+            message_scoped_nested_ext);
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::Proto2ExtensionScopedMessage::
+            nested_enum_ext);
+    google::protobuf::LinkExtensionReflection(
+        google::api::expr::test::v1::proto2::Proto2ExtensionScopedMessage::
+            message_scoped_repeated_test_all_types);
 
     RuntimeOptions options;
     options.enable_qualified_type_identifiers = true;
