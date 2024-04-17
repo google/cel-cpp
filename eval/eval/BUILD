@@ -37,12 +37,12 @@ cc_library(
         "//common:native_type",
         "//common:type",
         "//common:value",
-        "//internal:status_macros",
         "//runtime",
         "//runtime:activation_interface",
         "//runtime:managed_value_factory",
         "//runtime:runtime_options",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/status",
@@ -947,5 +947,20 @@ cc_test(
         "//runtime:runtime_options",
         "@com_google_absl//absl/status",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "direct_expression_step",
+    srcs = ["direct_expression_step.cc"],
+    hdrs = ["direct_expression_step.h"],
+    deps = [
+        ":attribute_trail",
+        ":evaluator_core",
+        "//common:native_type",
+        "//common:value",
+        "//internal:status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
     ],
 )
