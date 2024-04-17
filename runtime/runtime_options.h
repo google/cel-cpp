@@ -134,6 +134,19 @@ struct RuntimeOptions {
   // This is now always enabled. Setting this option has no effect. It will be
   // removed in a later update.
   bool enable_lazy_bind_initialization = true;
+
+  // Maximum recursion depth for evaluable programs.
+  //
+  // This is proportional to the maximum number of recursive Evaluate calls that
+  // a single expression program might require while evaluating. This is
+  // coarse -- the actual C++ stack requirements will vary depending on the
+  // expression.
+  //
+  // This does not account for re-entrant evaluation in a client's extension
+  // function.
+  //
+  // -1 means unbounded.
+  int max_recursion_depth = 0;
 };
 // LINT.ThenChange(//depot/google3/eval/public/cel_options.h)
 

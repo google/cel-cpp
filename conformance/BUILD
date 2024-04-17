@@ -169,6 +169,7 @@ cc_binary(
     for args in [
         [],
         ["--opt"],
+        ["--recursive"],
     ]
 ]
 

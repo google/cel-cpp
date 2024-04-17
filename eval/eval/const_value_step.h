@@ -14,10 +14,7 @@
 namespace google::api::expr::runtime {
 
 std::unique_ptr<DirectExpressionStep> CreateConstValueDirectStep(
-    cel::Value value);
-
-std::unique_ptr<DirectExpressionStep> CreateConstValueDirectStep(
-    cel::ast_internal::Constant value);
+    cel::Value value, int64_t expr_id = -1);
 
 // Factory method for Constant Value expression step.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(

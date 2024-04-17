@@ -364,7 +364,7 @@ class DirectFunctionStepImpl : public DirectExpressionStep {
       int64_t expr_id, const std::string& name,
       std::vector<std::unique_ptr<DirectExpressionStep>> arg_steps,
       std::vector<cel::FunctionOverloadReference> overloads)
-      : expr_id_(expr_id),
+      : DirectExpressionStep(expr_id),
         name_(name),
         arg_steps_(std::move(arg_steps)),
         overloads_(std::move(overloads)) {}
@@ -409,7 +409,6 @@ class DirectFunctionStepImpl : public DirectExpressionStep {
   }
 
  protected:
-  int64_t expr_id_;
   std::string name_;
   std::vector<std::unique_ptr<DirectExpressionStep>> arg_steps_;
   std::vector<cel::FunctionOverloadReference> overloads_;

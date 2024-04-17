@@ -22,6 +22,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_COMPILER_FLAT_EXPR_BUILDER_EXTENSIONS_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_FLAT_EXPR_BUILDER_EXTENSIONS_H_
 
+#include <algorithm>
 #include <cstddef>
 #include <memory>
 #include <utility>
@@ -33,12 +34,14 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "base/ast.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "common/value_manager.h"
 #include "eval/compiler/resolver.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "runtime/internal/issue_collector.h"
 #include "runtime/runtime_options.h"
@@ -76,7 +79,15 @@ class ProgramBuilder {
     using Element = absl::variant<std::unique_ptr<ExpressionStep>,
                                   std::unique_ptr<Subexpression>>;
 
+    using TreePlan = std::vector<Element>;
+    using FlattenedPlan = std::vector<std::unique_ptr<const ExpressionStep>>;
+
    public:
+    struct RecursiveProgram {
+      std::unique_ptr<DirectExpressionStep> step;
+      int depth;
+    };
+
     ~Subexpression();
 
     // Not copyable or movable.
@@ -86,17 +97,24 @@ class ProgramBuilder {
     Subexpression& operator=(Subexpression&&) = delete;
 
     // Add a program step at the current end of the subexpression.
-    void AddStep(std::unique_ptr<ExpressionStep> step) {
+    bool AddStep(std::unique_ptr<ExpressionStep> step) {
+      if (IsRecursive()) {
+        return false;
+      }
+
       if (IsFlattened()) {
         flattened_elements().push_back(std::move(step));
-      } else {
-        elements().push_back(std::move(step));
+        return true;
       }
+
+      elements().push_back({std::move(step)});
+      return true;
     }
 
     void AddSubexpression(std::unique_ptr<Subexpression> expr) {
       ABSL_DCHECK(!IsFlattened());
-      elements().push_back(std::move(expr));
+      ABSL_DCHECK(!IsRecursive());
+      elements().push_back({std::move(expr)});
     }
 
     // Accessor for elements (either simple steps or subexpressions).
@@ -104,12 +122,12 @@ class ProgramBuilder {
     // Value is undefined if in the expression has already been flattened.
     std::vector<Element>& elements() {
       ABSL_DCHECK(!IsFlattened());
-      return absl::get<std::vector<Element>>(program_);
+      return absl::get<TreePlan>(program_);
     }
 
     const std::vector<Element>& elements() const {
       ABSL_DCHECK(!IsFlattened());
-      return absl::get<std::vector<Element>>(program_);
+      return absl::get<TreePlan>(program_);
     }
 
     // Accessor for program steps.
@@ -117,15 +135,34 @@ class ProgramBuilder {
     // Value is undefined if in the expression has not yet been flattened.
     std::vector<std::unique_ptr<const ExpressionStep>>& flattened_elements() {
       ABSL_DCHECK(IsFlattened());
-      return absl::get<std::vector<std::unique_ptr<const ExpressionStep>>>(
-          program_);
+      return absl::get<FlattenedPlan>(program_);
     }
 
     const std::vector<std::unique_ptr<const ExpressionStep>>&
     flattened_elements() const {
       ABSL_DCHECK(IsFlattened());
-      return absl::get<std::vector<std::unique_ptr<const ExpressionStep>>>(
-          program_);
+      return absl::get<FlattenedPlan>(program_);
+    }
+
+    void set_recursive_program(std::unique_ptr<DirectExpressionStep> step,
+                               int depth) {
+      program_ = RecursiveProgram{std::move(step), depth};
+    }
+
+    const RecursiveProgram& recursive_program() const {
+      ABSL_DCHECK(IsRecursive());
+      return absl::get<RecursiveProgram>(program_);
+    }
+
+    absl::optional<int> RecursiveDependencyDepth() const;
+
+    std::vector<std::unique_ptr<DirectExpressionStep>>
+    ExtractRecursiveDependencies() const;
+
+    RecursiveProgram ExtractRecursiveProgram();
+
+    bool IsRecursive() const {
+      return absl::holds_alternative<RecursiveProgram>(program_);
     }
 
     // Compute the current number of program steps in this subexpression and
@@ -150,8 +187,7 @@ class ProgramBuilder {
     void Flatten();
 
     bool IsFlattened() const {
-      return absl::holds_alternative<
-          std::vector<std::unique_ptr<const ExpressionStep>>>(program_);
+      return absl::holds_alternative<FlattenedPlan>(program_);
     }
 
     // Extract a flattened subexpression into the given vector. Transferring
@@ -169,9 +205,7 @@ class ProgramBuilder {
     //
     // This adds complexity, but supports swapping to a flat representation as
     // needed.
-    absl::variant<std::vector<Element>,
-                  std::vector<std::unique_ptr<const ExpressionStep>>>
-        program_;
+    absl::variant<TreePlan, FlattenedPlan, RecursiveProgram> program_;
 
     const cel::ast_internal::Expr* self_;
     absl::Nullable<const cel::ast_internal::Expr*> parent_;

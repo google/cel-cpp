@@ -36,10 +36,19 @@ namespace google::api::expr::runtime {
 // used for arbitrarily nested expressions.
 class DirectExpressionStep {
  public:
+  DirectExpressionStep(int64_t expr_id) : expr_id_(expr_id) {}
+  DirectExpressionStep() : expr_id_(-1) {}
+
   virtual ~DirectExpressionStep() = default;
+
+  int64_t expr_id() const { return expr_id_; }
+  bool comes_from_ast() const { return expr_id_ >= 0; }
 
   virtual absl::Status Evaluate(ExecutionFrameBase& frame, cel::Value& result,
                                 AttributeTrail& attribute) const = 0;
+
+ protected:
+  int64_t expr_id_;
 };
 
 // Wrapper for direct steps to work with the stack machine impl.
@@ -53,6 +62,8 @@ class WrappedDirectStep : public ExpressionStep {
   cel::NativeTypeId GetNativeTypeId() const override {
     return cel::NativeTypeId::For<WrappedDirectStep>();
   }
+
+  const DirectExpressionStep* wrapped() const { return impl_.get(); }
 
  private:
   std::unique_ptr<DirectExpressionStep> impl_;

@@ -23,24 +23,10 @@ namespace {
 using ::cel::ast_internal::Constant;
 using ::cel::runtime_internal::ConvertConstant;
 
-class AstDirectImpl : public DirectExpressionStep {
- public:
-  explicit AstDirectImpl(const Constant& value) : value_(value) {}
-
-  absl::Status Evaluate(ExecutionFrameBase& frame, cel::Value& result,
-                        AttributeTrail&) const override {
-    CEL_ASSIGN_OR_RETURN(result,
-                         ConvertConstant(value_, frame.value_manager()));
-    return absl::OkStatus();
-  }
-
- private:
-  Constant value_;
-};
-
 class ValueDirectImpl : public DirectExpressionStep {
  public:
-  explicit ValueDirectImpl(cel::Value value) : value_(std::move(value)) {}
+  explicit ValueDirectImpl(cel::Value value, int64_t id)
+      : DirectExpressionStep(id), value_(std::move(value)) {}
 
   absl::Status Evaluate(ExecutionFrameBase& frame, cel::Value& result,
                         AttributeTrail&) const override {
@@ -55,13 +41,8 @@ class ValueDirectImpl : public DirectExpressionStep {
 }  // namespace
 
 std::unique_ptr<DirectExpressionStep> CreateConstValueDirectStep(
-    const Constant& value) {
-  return std::make_unique<AstDirectImpl>(value);
-}
-
-std::unique_ptr<DirectExpressionStep> CreateConstValueDirectStep(
-    cel::Value value) {
-  return std::make_unique<ValueDirectImpl>(std::move(value));
+    cel::Value value, int64_t id) {
+  return std::make_unique<ValueDirectImpl>(std::move(value), id);
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(

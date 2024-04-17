@@ -39,6 +39,7 @@
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/ast.h"
@@ -46,6 +47,7 @@
 #include "base/ast_internal/expr.h"
 #include "base/builtins.h"
 #include "common/memory.h"
+#include "common/value.h"
 #include "common/value_manager.h"
 #include "common/values/legacy_value_manager.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
@@ -56,6 +58,7 @@
 #include "eval/eval/create_list_step.h"
 #include "eval/eval/create_map_step.h"
 #include "eval/eval/create_struct_step.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/function_step.h"
 #include "eval/eval/ident_step.h"
@@ -69,6 +72,7 @@
 #include "eval/public/ast_visitor_native.h"
 #include "eval/public/source_position_native.h"
 #include "internal/status_macros.h"
+#include "runtime/internal/convert_constant.h"
 #include "runtime/internal/issue_collector.h"
 #include "runtime/runtime_issue.h"
 #include "runtime/runtime_options.h"
@@ -83,6 +87,7 @@ using ::cel::RuntimeIssue;
 using ::cel::ValueManager;
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::AstTraverse;
+using ::cel::runtime_internal::ConvertConstant;
 using ::cel::runtime_internal::IssueCollector;
 
 // Forward declare to resolve circular dependency for short_circuiting visitors.
@@ -420,7 +425,23 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       return;
     }
 
-    AddStep(CreateConstValueStep(*const_expr, expr->id(), value_factory_));
+    absl::StatusOr<cel::Value> converted_value =
+        ConvertConstant(*const_expr, value_factory_);
+
+    if (!converted_value.ok()) {
+      SetProgressStatusError(converted_value.status());
+      return;
+    }
+
+    if (options_.max_recursion_depth > 0 || options_.max_recursion_depth < 0) {
+      SetRecursiveStep(CreateConstValueDirectStep(
+                           std::move(converted_value).value(), expr->id()),
+                       1);
+      return;
+    }
+
+    AddStep(
+        CreateConstValueStep(std::move(converted_value).value(), expr->id()));
   }
 
   struct SlotLookupResult {
@@ -630,6 +651,23 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     }
   }
 
+  absl::optional<int> RecursionEligible() {
+    if (program_builder_.current() == nullptr) {
+      return absl::nullopt;
+    }
+    absl::optional<int> depth =
+        program_builder_.current()->RecursiveDependencyDepth();
+    if (!depth.has_value()) {
+      // one or more of the dependencies isn't eligible.
+      return depth;
+    }
+    if (options_.max_recursion_depth < 0 ||
+        *depth < options_.max_recursion_depth) {
+      return depth;
+    }
+    return absl::nullopt;
+  }
+
   // Invoked after all child nodes are processed.
   void PostVisitCall(const cel::ast_internal::Call* call_expr,
                      const cel::ast_internal::Expr* expr,
@@ -679,7 +717,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       }
     }
 
-    AddStep(CreateResolvedFunctionStep(call_expr, expr, function));
+    AddResolvedFunctionStep(call_expr, expr, function);
   }
 
   void PreVisitComprehension(
@@ -851,7 +889,6 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     }
   }
 
-  // Nothing to do.
   void PostVisitTarget(const cel::ast_internal::Expr* expr,
                        const cel::ast_internal::SourcePosition*) override {
     if (!progress_status_.ok()) {
@@ -933,10 +970,10 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     suppressed_branches_.insert(expr);
   }
 
-  absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateResolvedFunctionStep(
-      const cel::ast_internal::Call* call_expr,
-      const cel::ast_internal::Expr* expr, absl::string_view function,
-      bool collect_issues = true) {
+  void AddResolvedFunctionStep(const cel::ast_internal::Call* call_expr,
+                               const cel::ast_internal::Expr* expr,
+                               absl::string_view function,
+                               bool collect_issues = true) {
     // Establish the search criteria for a given function.
     bool receiver_style = call_expr->has_target();
     size_t num_args = call_expr->args().size() + (receiver_style ? 1 : 0);
@@ -947,8 +984,9 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     auto lazy_overloads = resolver_.FindLazyOverloads(
         function, call_expr->has_target(), arguments_matcher, expr->id());
     if (!lazy_overloads.empty()) {
-      return CreateFunctionStep(*call_expr, expr->id(),
-                                std::move(lazy_overloads));
+      AddStep(CreateFunctionStep(*call_expr, expr->id(),
+                                 std::move(lazy_overloads)));
+      return;
     }
 
     // Second, search for eagerly defined function overloads.
@@ -965,16 +1003,29 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
         status = issue_collector_.AddIssue(RuntimeIssue::CreateWarning(
             std::move(status), RuntimeIssue::ErrorCode::kNoMatchingOverload));
       }
-      CEL_RETURN_IF_ERROR(status);
+      if (!status.ok()) {
+        SetProgressStatusError(status);
+        return;
+      }
     }
-    return CreateFunctionStep(*call_expr, expr->id(), std::move(overloads));
+    auto recursion_depth = RecursionEligible();
+    if (recursion_depth.has_value()) {
+      // Nonnull while active -- nullptr indicates logic error elsewhere in the
+      // builder.
+      ABSL_DCHECK(program_builder_.current() != nullptr);
+      auto args = program_builder_.current()->ExtractRecursiveDependencies();
+      SetRecursiveStep(
+          CreateDirectFunctionStep(expr->id(), *call_expr, std::move(args),
+                                   std::move(overloads)),
+          *recursion_depth + 1);
+      return;
+    }
+    AddStep(CreateFunctionStep(*call_expr, expr->id(), std::move(overloads)));
   }
 
-  absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateChainedOptionalStep(
-      const cel::ast_internal::Call* call_expr,
-      const cel::ast_internal::Expr* expr) {
-    return CreateResolvedFunctionStep(call_expr, expr, call_expr->function(),
-                                      false);
+  void AddChainedOptionalStep(const cel::ast_internal::Call* call_expr,
+                              const cel::ast_internal::Expr* expr) {
+    AddResolvedFunctionStep(call_expr, expr, call_expr->function(), false);
   }
 
   void AddStep(absl::StatusOr<std::unique_ptr<ExpressionStep>> step) {
@@ -989,6 +1040,18 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     if (progress_status_.ok() && !PlanningSuppressed()) {
       program_builder_.AddStep(std::move(step));
     }
+  }
+
+  void SetRecursiveStep(std::unique_ptr<DirectExpressionStep> step, int depth) {
+    if (!progress_status_.ok() || PlanningSuppressed()) {
+      return;
+    }
+    if (program_builder_.current() == nullptr) {
+      SetProgressStatusError(absl::InternalError(
+          "CEL AST traversal out of order in flat_expr_builder."));
+      return;
+    }
+    program_builder_.current()->set_recursive_program(std::move(step), depth);
   }
 
   void SetProgressStatusError(const absl::Status& status) {
@@ -1187,24 +1250,22 @@ void BinaryCondVisitor::PostVisitTarget(const cel::ast_internal::Expr* expr) {
 }
 
 void BinaryCondVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
-  absl::StatusOr<std::unique_ptr<ExpressionStep>> step;
   switch (cond_) {
     case BinaryCond::kAnd:
-      step = CreateAndStep(expr->id());
+      visitor_->AddStep(CreateAndStep(expr->id()));
       break;
     case BinaryCond::kOr:
-      step = CreateOrStep(expr->id());
+      visitor_->AddStep(CreateOrStep(expr->id()));
       break;
     case BinaryCond::kOptionalOr:
-      step = visitor_->CreateChainedOptionalStep(&expr->call_expr(), expr);
+      visitor_->AddChainedOptionalStep(&expr->call_expr(), expr);
       break;
     case BinaryCond::kOptionalOrValue:
-      step = visitor_->CreateChainedOptionalStep(&expr->call_expr(), expr);
+      visitor_->AddChainedOptionalStep(&expr->call_expr(), expr);
       break;
     default:
       ABSL_UNREACHABLE();
   }
-  visitor_->AddStep(std::move(step));
   if (short_circuiting_) {
     // If short-circuiting is enabled, point the conditional jump past the
     // boolean operator step.

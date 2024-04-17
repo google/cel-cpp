@@ -23,6 +23,7 @@
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/status.h"
+#include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/testing/matchers.h"
@@ -42,6 +43,7 @@ using ::google::api::expr::parser::Parse;
 using testing::_;
 using testing::Contains;
 using testing::HasSubstr;
+using testing::NotNull;
 using cel::internal::StatusIs;
 
 TEST(CelExpressionBuilderFlatImplTest, Error) {
@@ -62,6 +64,26 @@ TEST(CelExpressionBuilderFlatImplTest, ParsedExpr) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
                        builder.CreateExpression(&parsed_expr.expr(),
                                                 &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
+  EXPECT_THAT(result, test::IsCelInt64(3));
+}
+
+TEST(CelExpressionBuilderFlatImplTest, ParsedExprRecursiveOptimizedImpl) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, Parse("1 + 2"));
+  cel::RuntimeOptions options;
+  options.max_recursion_depth = -1;
+  CelExpressionBuilderFlatImpl builder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  EXPECT_THAT(dynamic_cast<const CelExpressionRecursiveImpl*>(plan.get()),
+              NotNull());
 
   Activation activation;
   google::protobuf::Arena arena;

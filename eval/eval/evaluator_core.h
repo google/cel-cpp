@@ -377,7 +377,12 @@ class FlatExpression {
       const cel::ActivationInterface& activation, EvaluationListener listener,
       FlatExpressionEvaluatorState& state) const;
 
+  cel::ManagedValueFactory MakeValueFactory(
+      cel::MemoryManagerRef memory_manager) const;
+
   const ExecutionPath& path() const { return path_; }
+
+  const cel::RuntimeOptions& options() const { return options_; }
 
  private:
   ExecutionPath path_;

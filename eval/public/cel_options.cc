@@ -37,7 +37,8 @@ cel::RuntimeOptions ConvertToRuntimeOptions(const InterpreterOptions& options) {
                              options.enable_qualified_type_identifiers,
                              options.enable_heterogeneous_equality,
                              options.enable_empty_wrapper_null_unboxing,
-                             options.enable_lazy_bind_initialization};
+                             options.enable_lazy_bind_initialization,
+                             options.max_recursion_depth};
 }
 
 }  // namespace google::api::expr::runtime
