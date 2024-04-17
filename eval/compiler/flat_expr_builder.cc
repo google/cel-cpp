@@ -16,6 +16,7 @@
 
 #include "eval/compiler/flat_expr_builder.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
@@ -668,6 +669,52 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     return absl::nullopt;
   }
 
+  void MaybeMakeTernaryRecursive(const cel::ast_internal::Expr* expr) {
+    if (options_.max_recursion_depth == 0) {
+      return;
+    }
+    if (expr->call_expr().args().size() != 3) {
+      SetProgressStatusError(absl::InvalidArgumentError(
+          "unexpected number of args for builtin ternary"));
+    }
+
+    const cel::ast_internal::Expr* condition_expr =
+        &expr->call_expr().args()[0];
+    const cel::ast_internal::Expr* left_expr = &expr->call_expr().args()[1];
+    const cel::ast_internal::Expr* right_expr = &expr->call_expr().args()[2];
+
+    auto* condition_plan = program_builder_.GetSubexpression(condition_expr);
+    auto* left_plan = program_builder_.GetSubexpression(left_expr);
+    auto* right_plan = program_builder_.GetSubexpression(right_expr);
+
+    int max_depth = 0;
+    if (condition_plan == nullptr || !condition_plan->IsRecursive()) {
+      return;
+    }
+    max_depth = std::max(max_depth, condition_plan->recursive_program().depth);
+
+    if (left_plan == nullptr || !left_plan->IsRecursive()) {
+      return;
+    }
+    max_depth = std::max(max_depth, left_plan->recursive_program().depth);
+
+    if (right_plan == nullptr || !right_plan->IsRecursive()) {
+      return;
+    }
+    max_depth = std::max(max_depth, right_plan->recursive_program().depth);
+
+    if (max_depth >= options_.max_recursion_depth) {
+      return;
+    }
+
+    SetRecursiveStep(
+        CreateDirectTernaryStep(condition_plan->ExtractRecursiveProgram().step,
+                                left_plan->ExtractRecursiveProgram().step,
+                                right_plan->ExtractRecursiveProgram().step,
+                                expr->id(), options_.short_circuiting),
+        max_depth + 1);
+  }
+
   // Invoked after all child nodes are processed.
   void PostVisitCall(const cel::ast_internal::Call* call_expr,
                      const cel::ast_internal::Expr* expr,
@@ -680,6 +727,9 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     if (cond_visitor) {
       cond_visitor->PostVisit(expr);
       cond_visitor_stack_.pop();
+      if (call_expr->function() == cel::builtin::kTernary) {
+        MaybeMakeTernaryRecursive(expr);
+      }
       return;
     }
 
