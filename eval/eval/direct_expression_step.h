@@ -39,7 +39,7 @@ class DirectExpressionStep {
   virtual ~DirectExpressionStep() = default;
 
   virtual absl::Status Evaluate(ExecutionFrameBase& frame, cel::Value& result,
-                                AttributeTrail& attribute) = 0;
+                                AttributeTrail& attribute) const = 0;
 };
 
 // Wrapper for direct steps to work with the stack machine impl.
@@ -51,7 +51,7 @@ class WrappedDirectStep : public ExpressionStep {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
   cel::NativeTypeId GetNativeTypeId() const override {
-    return cel::NativeTypeId::For<DirectExpressionStep>();
+    return cel::NativeTypeId::For<WrappedDirectStep>();
   }
 
  private:

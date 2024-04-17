@@ -157,6 +157,22 @@ class ExecutionFrameBase {
     return attribute_utility_;
   }
 
+  bool attribute_tracking_enabled() const {
+    return options_->unknown_processing !=
+               cel::UnknownProcessingOptions::kDisabled ||
+           options_->enable_missing_attribute_errors;
+  }
+
+  bool unknown_processing_enabled() const {
+    return options_->unknown_processing !=
+           cel::UnknownProcessingOptions::kDisabled;
+  }
+
+  bool unknown_function_results_enabled() const {
+    return options_->unknown_processing ==
+           cel::UnknownProcessingOptions::kAttributeAndFunction;
+  }
+
  protected:
   absl::Nonnull<const cel::ActivationInterface*> activation_;
   absl::Nonnull<const cel::RuntimeOptions*> options_;
@@ -248,19 +264,13 @@ class ExecutionFrame : public ExecutionFrameBase {
   }
 
   bool enable_attribute_tracking() const {
-    return options().unknown_processing !=
-               cel::UnknownProcessingOptions::kDisabled ||
-           options().enable_missing_attribute_errors;
+    return attribute_tracking_enabled();
   }
 
-  bool enable_unknowns() const {
-    return options().unknown_processing !=
-           cel::UnknownProcessingOptions::kDisabled;
-  }
+  bool enable_unknowns() const { return unknown_processing_enabled(); }
 
   bool enable_unknown_function_results() const {
-    return options().unknown_processing ==
-           cel::UnknownProcessingOptions::kAttributeAndFunction;
+    return unknown_function_results_enabled();
   }
 
   bool enable_missing_attribute_errors() const {
