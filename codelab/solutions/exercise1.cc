@@ -77,7 +77,7 @@ absl::StatusOr<std::string> ParseAndEvaluate(absl::string_view cel_expr) {
   CEL_ASSIGN_OR_RETURN(parsed_expr, Parse(cel_expr));
 
   // The evaluator uses a proto Arena for incidental allocations during
-  // evalutation.
+  // evaluation.
   google::protobuf::Arena arena;
   // The activation provides variables and functions that are bound into the
   // expression environment. In this example, there's no context expected, so
