@@ -101,6 +101,10 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
               NotNull());
 
   Activation activation;
+  activation.InsertValue("int_1", CelValue::CreateInt64(1));
+  activation.InsertValue("string_abc", CelValue::CreateStringView("abc"));
+  activation.InsertValue("string_def", CelValue::CreateStringView("def"));
+
   google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
   EXPECT_THAT(result, test_case.matcher);
@@ -117,7 +121,11 @@ INSTANTIATE_TEST_SUITE_P(
         {"ternary", "(true || false) ? 2 + 2 : 3 + 3", test::IsCelInt64(4)},
         {"create_list", "3 in [1, 2, 3]", test::IsCelBool(true)},
         {"create_list_complex", "3 in [2 / 2, 4 / 2, 6 / 2]",
-         test::IsCelBool(true)}}),
+         test::IsCelBool(true)},
+        {"ident", "int_1 == 1", test::IsCelBool(true)},
+        {"ident_complex", "int_1 + 2 > 4 ? string_abc : string_def",
+         test::IsCelString("def")},
+    }),
 
     [](const testing::TestParamInfo<RecursiveTestCase>& info) -> std::string {
       return info.param.test_name;

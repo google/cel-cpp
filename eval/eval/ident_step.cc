@@ -9,8 +9,12 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "base/ast_internal/expr.h"
+#include "common/value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/comprehension_slots.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
@@ -23,7 +27,6 @@ namespace {
 using ::cel::Value;
 using ::cel::ValueView;
 using ::cel::runtime_internal::CreateError;
-using ::cel::runtime_internal::CreateMissingAttributeError;
 
 class IdentStep : public ExpressionStepBase {
  public:
@@ -38,58 +41,49 @@ class IdentStep : public ExpressionStepBase {
     AttributeTrail trail;
   };
 
-  absl::StatusOr<IdentResult> DoEvaluate(ExecutionFrame* frame,
-                                         Value& scratch) const;
-
   std::string name_;
 };
 
-absl::StatusOr<IdentStep::IdentResult> IdentStep::DoEvaluate(
-    ExecutionFrame* frame, Value& scratch) const {
-  IdentResult result;
-  // Populate trails if either MissingAttributeError or UnknownPattern
-  // is enabled.
-  if (frame->enable_missing_attribute_errors() || frame->enable_unknowns()) {
-    result.trail = AttributeTrail(name_);
-  }
-
-  if (frame->enable_missing_attribute_errors() && !name_.empty() &&
-      frame->attribute_utility().CheckForMissingAttribute(result.trail)) {
-    scratch = frame->value_factory().CreateErrorValue(
-        CreateMissingAttributeError(name_));
-    result.value = scratch;
-    return result;
-  }
-
-  if (frame->enable_unknowns()) {
-    if (frame->attribute_utility().CheckForUnknown(result.trail, false)) {
-      scratch =
-          frame->attribute_utility().CreateUnknownSet(result.trail.attribute());
-      result.value = scratch;
-      return result;
+absl::Status LookupIdent(const std::string& name, ExecutionFrameBase& frame,
+                         Value& result, AttributeTrail& attribute) {
+  if (frame.attribute_tracking_enabled()) {
+    attribute = AttributeTrail(name);
+    if (frame.missing_attribute_errors_enabled() &&
+        frame.attribute_utility().CheckForMissingAttribute(attribute)) {
+      CEL_ASSIGN_OR_RETURN(
+          result, frame.attribute_utility().CreateMissingAttributeError(
+                      attribute.attribute()));
+      return absl::OkStatus();
+    }
+    if (frame.unknown_processing_enabled() &&
+        frame.attribute_utility().CheckForUnknownExact(attribute)) {
+      result =
+          frame.attribute_utility().CreateUnknownSet(attribute.attribute());
+      return absl::OkStatus();
     }
   }
 
-  CEL_ASSIGN_OR_RETURN(auto value, frame->modern_activation().FindVariable(
-                                       frame->value_factory(), name_, scratch));
+  CEL_ASSIGN_OR_RETURN(auto value, frame.activation().FindVariable(
+                                       frame.value_manager(), name, result));
 
   if (value.has_value()) {
-    result.value = *value;
-    return result;
+    result = *value;
+    return absl::OkStatus();
   }
 
-  scratch = frame->value_factory().CreateErrorValue(CreateError(
-      absl::StrCat("No value with name \"", name_, "\" found in Activation")));
-  result.value = scratch;
+  result = frame.value_manager().CreateErrorValue(CreateError(
+      absl::StrCat("No value with name \"", name, "\" found in Activation")));
 
-  return result;
+  return absl::OkStatus();
 }
 
 absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(IdentResult result, DoEvaluate(frame, scratch));
+  Value value;
+  AttributeTrail attribute;
 
-  frame->value_stack().Push(Value{result.value}, std::move(result.trail));
+  CEL_RETURN_IF_ERROR(LookupIdent(name_, *frame, value, attribute));
+
+  frame->value_stack().Push(std::move(value), std::move(attribute));
 
   return absl::OkStatus();
 }
@@ -119,7 +113,29 @@ absl::Status SlotStep::Evaluate(ExecutionFrame* frame) const {
   return absl::OkStatus();
 }
 
+class DirectIdentStep : public DirectExpressionStep {
+ public:
+  DirectIdentStep(absl::string_view name, int64_t expr_id)
+      : DirectExpressionStep(expr_id), name_(name) {}
+
+  absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
+                        AttributeTrail& attribute) const override;
+
+ private:
+  std::string name_;
+};
+
+absl::Status DirectIdentStep::Evaluate(ExecutionFrameBase& frame, Value& result,
+                                       AttributeTrail& attribute) const {
+  return LookupIdent(name_, frame, result, attribute);
+}
+
 }  // namespace
+
+std::unique_ptr<DirectExpressionStep> CreateDirectIdentStep(
+    absl::string_view identifier, int64_t expr_id) {
+  return std::make_unique<DirectIdentStep>(identifier, expr_id);
+}
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
     const cel::ast_internal::Ident& ident_expr, int64_t expr_id) {

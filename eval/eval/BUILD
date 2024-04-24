@@ -233,9 +233,11 @@ cc_library(
     deps = [
         ":attribute_trail",
         ":comprehension_slots",
+        ":direct_expression_step",
         ":evaluator_core",
         ":expression_step_base",
         "//base/ast_internal:expr",
+        "//common:value",
         "//eval/internal:errors",
         "//internal:status_macros",
         "@com_google_absl//absl/status",
@@ -593,13 +595,20 @@ cc_test(
         "ident_step_test.cc",
     ],
     deps = [
+        ":attribute_trail",
         ":cel_expression_flat_impl",
         ":evaluator_core",
         ":ident_step",
         "//base:data",
+        "//common:memory",
+        "//common:value",
         "//eval/public:activation",
+        "//eval/public:cel_attribute",
         "//internal:testing",
+        "//runtime:activation",
+        "//runtime:managed_value_factory",
         "//runtime:runtime_options",
+        "@com_google_absl//absl/status",
     ],
 )
 

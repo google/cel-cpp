@@ -58,8 +58,14 @@ class AttributeUtility {
   // attribute.
   bool CheckForMissingAttribute(const AttributeTrail& trail) const;
 
-  // Checks whether particular corresponds to any patterns that define unknowns.
+  // Checks whether trail corresponds to any patterns that define unknowns.
   bool CheckForUnknown(const AttributeTrail& trail, bool use_partial) const;
+
+  // Checks whether trail corresponds to any patterns that identify
+  // unknowns. Only matches exactly (exact attribute match for self or parent).
+  bool CheckForUnknownExact(const AttributeTrail& trail) const {
+    return CheckForUnknown(trail, false);
+  }
 
   // Creates merged UnknownAttributeSet.
   // Scans over the args collection, determines if there matches to unknown
