@@ -1,15 +1,25 @@
 #include "eval/eval/logic_step.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/builtins.h"
+#include "common/casting.h"
 #include "common/value.h"
+#include "common/value_kind.h"
+#include "eval/eval/attribute_trail.h"
+#include "eval/eval/direct_expression_step.h"
+#include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
+#include "internal/status_macros.h"
+#include "runtime/internal/errors.h"
 
 namespace google::api::expr::runtime {
 
@@ -17,19 +27,173 @@ namespace {
 
 using ::cel::BoolValue;
 using ::cel::BoolValueView;
-
+using ::cel::Cast;
+using ::cel::ErrorValue;
+using ::cel::InstanceOf;
+using ::cel::UnknownValue;
 using ::cel::Value;
+using ::cel::ValueKind;
 using ::cel::ValueView;
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;
 
+enum class OpType { kAnd, kOr };
+
+// Shared logic for the fall through case (we didn't see the shortcircuit
+// value).
+absl::Status ReturnLogicResult(ExecutionFrameBase& frame, OpType op_type,
+                               Value& lhs_result, Value& rhs_result,
+                               AttributeTrail& attribute_trail,
+                               AttributeTrail& rhs_attr) {
+  ValueKind lhs_kind = lhs_result.kind();
+  ValueKind rhs_kind = rhs_result.kind();
+
+  if (frame.unknown_processing_enabled()) {
+    if (lhs_kind == ValueKind::kUnknown && rhs_kind == ValueKind::kUnknown) {
+      lhs_result = frame.attribute_utility().MergeUnknownValues(
+          Cast<UnknownValue>(lhs_result), Cast<UnknownValue>(rhs_result));
+      // Clear attribute trail so this doesn't get re-identified as a new
+      // unknown and reset the accumulated attributes.
+      attribute_trail = AttributeTrail();
+      return absl::OkStatus();
+    } else if (lhs_kind == ValueKind::kUnknown) {
+      return absl::OkStatus();
+    } else if (rhs_kind == ValueKind::kUnknown) {
+      lhs_result = std::move(rhs_result);
+      attribute_trail = std::move(rhs_attr);
+      return absl::OkStatus();
+    }
+  }
+
+  if (lhs_kind == ValueKind::kError) {
+    return absl::OkStatus();
+  } else if (rhs_kind == ValueKind::kError) {
+    lhs_result = std::move(rhs_result);
+    attribute_trail = std::move(rhs_attr);
+    return absl::OkStatus();
+  }
+
+  if (lhs_kind == ValueKind::kBool && rhs_kind == ValueKind::kBool) {
+    return absl::OkStatus();
+  }
+
+  // Otherwise, add a no overload error.
+  attribute_trail = AttributeTrail();
+  lhs_result =
+      frame.value_manager().CreateErrorValue(CreateNoMatchingOverloadError(
+          op_type == OpType::kOr ? cel::builtin::kOr : cel::builtin::kAnd));
+  return absl::OkStatus();
+}
+
+class ExhaustiveDirectLogicStep : public DirectExpressionStep {
+ public:
+  explicit ExhaustiveDirectLogicStep(std::unique_ptr<DirectExpressionStep> lhs,
+                                     std::unique_ptr<DirectExpressionStep> rhs,
+                                     OpType op_type, int64_t expr_id)
+      : DirectExpressionStep(expr_id),
+        lhs_(std::move(lhs)),
+        rhs_(std::move(rhs)),
+        op_type_(op_type) {}
+
+  absl::Status Evaluate(ExecutionFrameBase& frame, cel::Value& result,
+                        AttributeTrail& attribute_trail) const override;
+
+ private:
+  std::unique_ptr<DirectExpressionStep> lhs_;
+  std::unique_ptr<DirectExpressionStep> rhs_;
+  OpType op_type_;
+};
+
+absl::Status ExhaustiveDirectLogicStep::Evaluate(
+    ExecutionFrameBase& frame, cel::Value& result,
+    AttributeTrail& attribute_trail) const {
+  CEL_RETURN_IF_ERROR(lhs_->Evaluate(frame, result, attribute_trail));
+  ValueKind lhs_kind = result.kind();
+
+  Value rhs_result;
+  AttributeTrail rhs_attr;
+  CEL_RETURN_IF_ERROR(rhs_->Evaluate(frame, rhs_result, attribute_trail));
+
+  ValueKind rhs_kind = rhs_result.kind();
+  if (lhs_kind == ValueKind::kBool) {
+    bool lhs_bool = Cast<BoolValue>(result).NativeValue();
+    if ((op_type_ == OpType::kOr && lhs_bool) ||
+        (op_type_ == OpType::kAnd && !lhs_bool)) {
+      return absl::OkStatus();
+    }
+  }
+
+  if (rhs_kind == ValueKind::kBool) {
+    bool rhs_bool = Cast<BoolValue>(rhs_result).NativeValue();
+    if ((op_type_ == OpType::kOr && rhs_bool) ||
+        (op_type_ == OpType::kAnd && !rhs_bool)) {
+      result = std::move(rhs_result);
+      attribute_trail = std::move(rhs_attr);
+      return absl::OkStatus();
+    }
+  }
+
+  return ReturnLogicResult(frame, op_type_, result, rhs_result, attribute_trail,
+                           rhs_attr);
+}
+
+class DirectLogicStep : public DirectExpressionStep {
+ public:
+  explicit DirectLogicStep(std::unique_ptr<DirectExpressionStep> lhs,
+                           std::unique_ptr<DirectExpressionStep> rhs,
+                           OpType op_type, int64_t expr_id)
+      : DirectExpressionStep(expr_id),
+        lhs_(std::move(lhs)),
+        rhs_(std::move(rhs)),
+        op_type_(op_type) {}
+
+  absl::Status Evaluate(ExecutionFrameBase& frame, cel::Value& result,
+                        AttributeTrail& attribute_trail) const override;
+
+ private:
+  std::unique_ptr<DirectExpressionStep> lhs_;
+  std::unique_ptr<DirectExpressionStep> rhs_;
+  OpType op_type_;
+};
+
+absl::Status DirectLogicStep::Evaluate(ExecutionFrameBase& frame, Value& result,
+                                       AttributeTrail& attribute_trail) const {
+  CEL_RETURN_IF_ERROR(lhs_->Evaluate(frame, result, attribute_trail));
+  ValueKind lhs_kind = result.kind();
+  if (lhs_kind == ValueKind::kBool) {
+    bool lhs_bool = Cast<BoolValue>(result).NativeValue();
+    if ((op_type_ == OpType::kOr && lhs_bool) ||
+        (op_type_ == OpType::kAnd && !lhs_bool)) {
+      return absl::OkStatus();
+    }
+  }
+
+  Value rhs_result;
+  AttributeTrail rhs_attr;
+
+  CEL_RETURN_IF_ERROR(rhs_->Evaluate(frame, rhs_result, attribute_trail));
+
+  ValueKind rhs_kind = rhs_result.kind();
+
+  if (rhs_kind == ValueKind::kBool) {
+    bool rhs_bool = Cast<BoolValue>(rhs_result).NativeValue();
+    if ((op_type_ == OpType::kOr && rhs_bool) ||
+        (op_type_ == OpType::kAnd && !rhs_bool)) {
+      result = std::move(rhs_result);
+      attribute_trail = std::move(rhs_attr);
+      return absl::OkStatus();
+    }
+  }
+
+  return ReturnLogicResult(frame, op_type_, result, rhs_result, attribute_trail,
+                           rhs_attr);
+}
+
 class LogicalOpStep : public ExpressionStepBase {
  public:
-  enum class OpType { AND, OR };
-
   // Constructs FunctionStep that uses overloads specified.
   LogicalOpStep(OpType op_type, int64_t expr_id)
       : ExpressionStepBase(expr_id), op_type_(op_type) {
-    shortcircuit_ = (op_type_ == OpType::OR);
+    shortcircuit_ = (op_type_ == OpType::kOr);
   }
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
@@ -52,9 +216,9 @@ class LogicalOpStep : public ExpressionStepBase {
 
     if (has_bool_args[0] && has_bool_args[1]) {
       switch (op_type_) {
-        case OpType::AND:
+        case OpType::kAnd:
           return BoolValueView{bool_args[0] && bool_args[1]};
-        case OpType::OR:
+        case OpType::kOr:
           return BoolValueView{bool_args[0] || bool_args[1]};
       }
     }
@@ -82,7 +246,8 @@ class LogicalOpStep : public ExpressionStepBase {
     // Fallback.
     scratch =
         frame->value_factory().CreateErrorValue(CreateNoMatchingOverloadError(
-            (op_type_ == OpType::OR) ? cel::builtin::kOr : cel::builtin::kAnd));
+            (op_type_ == OpType::kOr) ? cel::builtin::kOr
+                                      : cel::builtin::kAnd));
     return scratch;
   }
 
@@ -105,16 +270,47 @@ absl::Status LogicalOpStep::Evaluate(ExecutionFrame* frame) const {
   return absl::OkStatus();
 }
 
+std::unique_ptr<DirectExpressionStep> CreateDirectLogicStep(
+    std::unique_ptr<DirectExpressionStep> lhs,
+    std::unique_ptr<DirectExpressionStep> rhs, int64_t expr_id, OpType op_type,
+    bool shortcircuiting) {
+  if (shortcircuiting) {
+    return std::make_unique<DirectLogicStep>(std::move(lhs), std::move(rhs),
+                                             op_type, expr_id);
+  } else {
+    return std::make_unique<ExhaustiveDirectLogicStep>(
+        std::move(lhs), std::move(rhs), op_type, expr_id);
+  }
+}
+
 }  // namespace
 
 // Factory method for "And" Execution step
+std::unique_ptr<DirectExpressionStep> CreateDirectAndStep(
+    std::unique_ptr<DirectExpressionStep> lhs,
+    std::unique_ptr<DirectExpressionStep> rhs, int64_t expr_id,
+    bool shortcircuiting) {
+  return CreateDirectLogicStep(std::move(lhs), std::move(rhs), expr_id,
+                               OpType::kAnd, shortcircuiting);
+}
+
+// Factory method for "Or" Execution step
+std::unique_ptr<DirectExpressionStep> CreateDirectOrStep(
+    std::unique_ptr<DirectExpressionStep> lhs,
+    std::unique_ptr<DirectExpressionStep> rhs, int64_t expr_id,
+    bool shortcircuiting) {
+  return CreateDirectLogicStep(std::move(lhs), std::move(rhs), expr_id,
+                               OpType::kOr, shortcircuiting);
+}
+
+// Factory method for "And" Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateAndStep(int64_t expr_id) {
-  return std::make_unique<LogicalOpStep>(LogicalOpStep::OpType::AND, expr_id);
+  return std::make_unique<LogicalOpStep>(OpType::kAnd, expr_id);
 }
 
 // Factory method for "Or" Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateOrStep(int64_t expr_id) {
-  return std::make_unique<LogicalOpStep>(LogicalOpStep::OpType::OR, expr_id);
+  return std::make_unique<LogicalOpStep>(OpType::kOr, expr_id);
 }
 
 }  // namespace google::api::expr::runtime

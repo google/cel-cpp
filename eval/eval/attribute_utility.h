@@ -50,6 +50,10 @@ class AttributeUtility {
   absl::optional<cel::UnknownValue> MergeUnknowns(
       absl::Span<const cel::Value> args) const;
 
+  // Creates a merged UnknownValue from two unknown values.
+  cel::UnknownValue MergeUnknownValues(const cel::UnknownValue& left,
+                                       const cel::UnknownValue& right) const;
+
   // Creates merged UnknownValue.
   // Merges together UnknownValues found in the args
   // along with attributes from attr that match the configured unknown patterns

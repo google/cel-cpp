@@ -257,6 +257,8 @@ cc_test(
         "//eval/eval:cel_expression_flat_impl",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_expression",
+        "//eval/public:cel_value",
         "//eval/public/testing:matchers",
         "//internal:testing",
         "//parser",
@@ -264,6 +266,7 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

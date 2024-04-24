@@ -703,7 +703,8 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     }
     max_depth = std::max(max_depth, right_plan->recursive_program().depth);
 
-    if (max_depth >= options_.max_recursion_depth) {
+    if (options_.max_recursion_depth >= 0 &&
+        max_depth >= options_.max_recursion_depth) {
       return;
     }
 
@@ -713,6 +714,52 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
                                 right_plan->ExtractRecursiveProgram().step,
                                 expr->id(), options_.short_circuiting),
         max_depth + 1);
+  }
+
+  void MaybeMakeShortcircuitRecursive(const cel::ast_internal::Expr* expr,
+                                      bool is_or) {
+    if (options_.max_recursion_depth == 0) {
+      return;
+    }
+    if (expr->call_expr().args().size() != 2) {
+      SetProgressStatusError(absl::InvalidArgumentError(
+          "unexpected number of args for builtin boolean operator &&/||"));
+    }
+    const cel::ast_internal::Expr* left_expr = &expr->call_expr().args()[0];
+    const cel::ast_internal::Expr* right_expr = &expr->call_expr().args()[1];
+
+    auto* left_plan = program_builder_.GetSubexpression(left_expr);
+    auto* right_plan = program_builder_.GetSubexpression(right_expr);
+
+    int max_depth = 0;
+    if (left_plan == nullptr || !left_plan->IsRecursive()) {
+      return;
+    }
+    max_depth = std::max(max_depth, left_plan->recursive_program().depth);
+
+    if (right_plan == nullptr || !right_plan->IsRecursive()) {
+      return;
+    }
+    max_depth = std::max(max_depth, right_plan->recursive_program().depth);
+
+    if (options_.max_recursion_depth >= 0 &&
+        max_depth >= options_.max_recursion_depth) {
+      return;
+    }
+
+    if (is_or) {
+      SetRecursiveStep(
+          CreateDirectOrStep(left_plan->ExtractRecursiveProgram().step,
+                             right_plan->ExtractRecursiveProgram().step,
+                             expr->id(), options_.short_circuiting),
+          max_depth + 1);
+    } else {
+      SetRecursiveStep(
+          CreateDirectAndStep(left_plan->ExtractRecursiveProgram().step,
+                              right_plan->ExtractRecursiveProgram().step,
+                              expr->id(), options_.short_circuiting),
+          max_depth + 1);
+    }
   }
 
   // Invoked after all child nodes are processed.
@@ -729,6 +776,10 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       cond_visitor_stack_.pop();
       if (call_expr->function() == cel::builtin::kTernary) {
         MaybeMakeTernaryRecursive(expr);
+      } else if (call_expr->function() == cel::builtin::kOr) {
+        MaybeMakeShortcircuitRecursive(expr, /* is_or= */ true);
+      } else if (call_expr->function() == cel::builtin::kAnd) {
+        MaybeMakeShortcircuitRecursive(expr, /* is_or= */ false);
       }
       return;
     }
