@@ -163,6 +163,10 @@ class ExecutionFrameBase {
            options_->enable_missing_attribute_errors;
   }
 
+  bool missing_attribute_errors_enabled() const {
+    return options_->enable_missing_attribute_errors;
+  }
+
   bool unknown_processing_enabled() const {
     return options_->unknown_processing !=
            cel::UnknownProcessingOptions::kDisabled;
@@ -274,7 +278,7 @@ class ExecutionFrame : public ExecutionFrameBase {
   }
 
   bool enable_missing_attribute_errors() const {
-    return options().enable_missing_attribute_errors;
+    return missing_attribute_errors_enabled();
   }
 
   bool enable_heterogeneous_numeric_lookups() const {

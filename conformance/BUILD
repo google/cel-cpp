@@ -246,6 +246,11 @@ cc_binary(
             "--arena",
             "--opt",
         ],
+        [
+            "--modern",
+            "--arena",
+            "--recursive",
+        ],
     ]
 ]
 

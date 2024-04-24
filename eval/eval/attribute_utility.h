@@ -18,6 +18,29 @@ namespace google::api::expr::runtime {
 // Neither moveable nor copyable.
 class AttributeUtility {
  public:
+  class Accumulator {
+   public:
+    explicit Accumulator(const AttributeUtility& parent) : parent_(parent) {}
+
+    Accumulator(const Accumulator&) = delete;
+    Accumulator& operator=(const Accumulator&) = delete;
+    Accumulator(Accumulator&&) = delete;
+    Accumulator& operator=(Accumulator&&) = delete;
+
+    void Add(const cel::UnknownValue& v);
+    void Add(const AttributeTrail& attr);
+
+    bool IsEmpty() const;
+
+    cel::UnknownValue Build() &&;
+
+   private:
+    friend class AttributeUtility;
+    const AttributeUtility& parent_;
+    cel::AttributeSet attribute_set_;
+    cel::FunctionResultSet function_result_set_;
+  };
+
   AttributeUtility(
       absl::Span<const cel::AttributePattern> unknown_patterns,
       absl::Span<const cel::AttributePattern> missing_attribute_patterns,
@@ -74,7 +97,17 @@ class AttributeUtility {
       const cel::FunctionDescriptor& fn_descriptor, int64_t expr_id,
       absl::Span<const cel::Value> args) const;
 
+  Accumulator CreateAccumulator() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return Accumulator(*this);
+  }
+
  private:
+  cel::ValueManager& value_manager() const { return value_factory_; }
+
+  // Workaround friend visibility.
+  void Add(Accumulator& a, const cel::UnknownValue& v) const;
+  void Add(Accumulator& a, const AttributeTrail& attr) const;
+
   absl::Span<const cel::AttributePattern> unknown_patterns_;
   absl::Span<const cel::AttributePattern> missing_attribute_patterns_;
   cel::ValueManager& value_factory_;

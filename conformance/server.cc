@@ -338,6 +338,9 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
     options.enable_timestamp_duration_overflow_errors = true;
     options.enable_heterogeneous_equality = true;
     options.enable_empty_wrapper_null_unboxing = true;
+    if (absl::GetFlag(FLAGS_recursive)) {
+      options.max_recursion_depth = 48;
+    }
 
     return absl::WrapUnique(
         new ModernConformanceServiceImpl(options, use_arena, optimize));

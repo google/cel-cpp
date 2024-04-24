@@ -27,6 +27,8 @@ using ::cel::FunctionResultSet;
 using ::cel::UnknownValue;
 using ::cel::base_internal::UnknownSet;
 
+using Accumulator = AttributeUtility::Accumulator;
+
 bool AttributeUtility::CheckForMissingAttribute(
     const AttributeTrail& trail) const {
   if (trail.empty()) {
@@ -177,6 +179,30 @@ UnknownValue AttributeUtility::CreateUnknownSet(
     absl::Span<const cel::Value> args) const {
   return value_factory_.CreateUnknownValue(
       FunctionResultSet(FunctionResult(fn_descriptor, expr_id)));
+}
+
+void AttributeUtility::Add(Accumulator& a, const cel::UnknownValue& v) const {
+  a.attribute_set_.Add(v.attribute_set());
+  a.function_result_set_.Add(v.function_result_set());
+}
+
+void AttributeUtility::Add(Accumulator& a, const AttributeTrail& attr) const {
+  a.attribute_set_.Add(attr.attribute());
+}
+
+void Accumulator::Add(const cel::UnknownValue& value) {
+  parent_.Add(*this, value);
+}
+
+void Accumulator::Add(const AttributeTrail& attr) { parent_.Add(*this, attr); }
+
+bool Accumulator::IsEmpty() const {
+  return attribute_set_.empty() && function_result_set_.empty();
+}
+
+cel::UnknownValue Accumulator::Build() && {
+  return parent_.value_manager().CreateUnknownValue(
+      std::move(attribute_set_), std::move(function_result_set_));
 }
 
 }  // namespace google::api::expr::runtime

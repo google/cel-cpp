@@ -114,7 +114,11 @@ INSTANTIATE_TEST_SUITE_P(
         {"nested_call", "1 + 1 + 1 + 1", test::IsCelInt64(4)},
         {"and", "true && false", test::IsCelBool(false)},
         {"or", "true || false", test::IsCelBool(true)},
-        {"ternary", "(true || false) ? 2 + 2 : 3 + 3", test::IsCelInt64(4)}}),
+        {"ternary", "(true || false) ? 2 + 2 : 3 + 3", test::IsCelInt64(4)},
+        {"create_list", "3 in [1, 2, 3]", test::IsCelBool(true)},
+        {"create_list_complex", "3 in [2 / 2, 4 / 2, 6 / 2]",
+         test::IsCelBool(true)}}),
+
     [](const testing::TestParamInfo<RecursiveTestCase>& info) -> std::string {
       return info.param.test_name;
     });

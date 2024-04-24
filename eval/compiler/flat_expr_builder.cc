@@ -343,6 +343,15 @@ class ComprehensionVisitor {
   size_t accu_slot_;
 };
 
+absl::flat_hash_set<int32_t> MakeOptionalIndicesSet(
+    const cel::ast_internal::CreateList& create_list_expr) {
+  absl::flat_hash_set<int32_t> optional_indices;
+  for (const auto& optional_index : create_list_expr.optional_indices()) {
+    optional_indices.insert(optional_index);
+  }
+  return optional_indices;
+}
+
 class FlatExprVisitor : public cel::ast_internal::AstVisitor {
  public:
   FlatExprVisitor(
@@ -667,6 +676,14 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       return depth;
     }
     return absl::nullopt;
+  }
+
+  std::vector<std::unique_ptr<DirectExpressionStep>>
+  ExtractRecursiveDependencies() {
+    // Must check recursion eligibility before calling.
+    ABSL_DCHECK(program_builder_.current() != nullptr);
+
+    return program_builder_.current()->ExtractRecursiveDependencies();
   }
 
   void MaybeMakeTernaryRecursive(const cel::ast_internal::Expr* expr) {
@@ -1017,6 +1034,19 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
         AddStep(CreateCreateMutableListStep(*list_expr, expr->id()));
         return;
       }
+    }
+    absl::optional<int> depth = RecursionEligible();
+    if (depth.has_value()) {
+      auto deps = ExtractRecursiveDependencies();
+      if (deps.size() != list_expr->elements().size()) {
+        SetProgressStatusError(absl::InternalError(
+            "Unexpected number of plan elements for CreateList expr"));
+        return;
+      }
+      auto step = CreateDirectListStep(
+          std::move(deps), MakeOptionalIndicesSet(*list_expr), expr->id());
+      SetRecursiveStep(std::move(step), *depth + 1);
+      return;
     }
     AddStep(CreateCreateListStep(*list_expr, expr->id()));
   }
