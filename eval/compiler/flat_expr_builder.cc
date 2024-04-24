@@ -85,6 +85,7 @@ namespace {
 using ::cel::Ast;
 
 using ::cel::RuntimeIssue;
+using ::cel::StringValue;
 using ::cel::ValueManager;
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::AstTraverse;
@@ -615,6 +616,26 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       if (expr == resolved_select_expr_) {
         resolved_select_expr_ = nullptr;
       }
+      return;
+    }
+
+    auto depth = RecursionEligible();
+    if (depth.has_value()) {
+      auto deps = ExtractRecursiveDependencies();
+      if (deps.size() != 1) {
+        SetProgressStatusError(absl::InternalError(
+            "unexpected number of dependencies for select operation."));
+        return;
+      }
+      StringValue field =
+          value_factory_.CreateUncheckedStringValue(select_expr->field());
+
+      SetRecursiveStep(
+          CreateDirectSelectStep(std::move(deps[0]), std::move(field),
+                                 select_expr->test_only(), expr->id(),
+                                 options_.enable_empty_wrapper_null_unboxing,
+                                 enable_optional_types_),
+          *depth + 1);
       return;
     }
 

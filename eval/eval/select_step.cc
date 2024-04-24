@@ -6,9 +6,9 @@
 #include <tuple>
 #include <utility>
 
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/kind.h"
@@ -16,6 +16,8 @@
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_manager.h"
+#include "eval/eval/attribute_trail.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
@@ -28,9 +30,12 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::BoolValueView;
+using ::cel::Cast;
 using ::cel::ErrorValue;
+using ::cel::InstanceOf;
 using ::cel::MapValue;
 using ::cel::NullValue;
+using ::cel::OptionalValue;
 using ::cel::ProtoWrapperTypeOptions;
 using ::cel::StringValue;
 using ::cel::StructValue;
@@ -38,7 +43,6 @@ using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::ValueKind;
 using ::cel::ValueView;
-using ::cel::runtime_internal::CreateMissingAttributeError;
 
 // Common error for cases where evaluation attempts to perform select operations
 // on an unsupported type.
@@ -51,27 +55,25 @@ absl::Status InvalidSelectTargetError() {
 }
 
 absl::optional<Value> CheckForMarkedAttributes(const AttributeTrail& trail,
-                                               ExecutionFrame* frame) {
-  if (frame->enable_unknowns() &&
-      frame->attribute_utility().CheckForUnknown(trail,
-                                                 /*use_partial=*/false)) {
-    return frame->attribute_utility().CreateUnknownSet(trail.attribute());
+                                               ExecutionFrameBase& frame) {
+  if (frame.unknown_processing_enabled() &&
+      frame.attribute_utility().CheckForUnknownExact(trail)) {
+    return frame.attribute_utility().CreateUnknownSet(trail.attribute());
   }
 
-  if (frame->enable_missing_attribute_errors() &&
-      frame->attribute_utility().CheckForMissingAttribute(trail)) {
-    auto attribute_string = trail.attribute().AsString();
-    if (attribute_string.ok()) {
-      return frame->value_factory().CreateErrorValue(
-          CreateMissingAttributeError(*attribute_string));
+  if (frame.missing_attribute_errors_enabled() &&
+      frame.attribute_utility().CheckForMissingAttribute(trail)) {
+    auto result = frame.attribute_utility().CreateMissingAttributeError(
+        trail.attribute());
+
+    if (result.ok()) {
+      return std::move(result).value();
     }
     // Invariant broken (an invalid CEL Attribute shouldn't match anything).
     // Log and return a CelError.
-    ABSL_LOG(ERROR)
-        << "Invalid attribute pattern matched select path: "
-        << attribute_string.status().ToString();  // NOLINT: OSS compatibility
-    return frame->value_factory().CreateErrorValue(
-        std::move(attribute_string).status());
+    ABSL_LOG(ERROR) << "Invalid attribute pattern matched select path: "
+                    << result.status().ToString();  // NOLINT: OSS compatibility
+    return frame.value_manager().CreateErrorValue(std::move(result).status());
   }
 
   return absl::nullopt;
@@ -92,7 +94,8 @@ ValueView TestOnlySelect(const MapValue& map, const StringValue& field_name,
                          cel::ValueManager& value_factory, Value& scratch) {
   // Field presence only supports string keys containing valid identifier
   // characters.
-  auto presence = map.Has(value_factory, field_name, scratch);
+  absl::StatusOr<ValueView> presence =
+      map.Has(value_factory, field_name, scratch);
 
   if (!presence.ok()) {
     scratch = value_factory.CreateErrorValue(std::move(presence).status());
@@ -101,8 +104,6 @@ ValueView TestOnlySelect(const MapValue& map, const StringValue& field_name,
 
   return *presence;
 }
-
-}  // namespace
 
 // SelectStep performs message field access specified by Expr::Select
 // message.
@@ -143,7 +144,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   const Value& arg = frame->value_stack().Peek();
   const AttributeTrail& trail = frame->value_stack().PeekAttribute();
 
-  if (arg->Is<UnknownValue>() || arg->Is<ErrorValue>()) {
+  if (InstanceOf<UnknownValue>(arg) || InstanceOf<ErrorValue>(arg)) {
     // Bubble up unknowns and errors.
     return absl::OkStatus();
   }
@@ -181,7 +182,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   }
 
   absl::optional<Value> marked_attribute_check =
-      CheckForMarkedAttributes(result_trail, frame);
+      CheckForMarkedAttributes(result_trail, *frame);
   if (marked_attribute_check.has_value()) {
     frame->value_stack().PopAndPush(std::move(marked_attribute_check).value(),
                                     std::move(result_trail));
@@ -289,6 +290,204 @@ absl::StatusOr<std::pair<ValueView, bool>> SelectStep::PerformSelect(
       // Control flow should have returned earlier.
       return InvalidSelectTargetError();
   }
+}
+
+class DirectSelectStep : public DirectExpressionStep {
+ public:
+  DirectSelectStep(int64_t expr_id,
+                   std::unique_ptr<DirectExpressionStep> operand,
+                   StringValue field, bool test_only,
+                   bool enable_wrapper_type_null_unboxing,
+                   bool enable_optional_types)
+      : DirectExpressionStep(expr_id),
+        operand_(std::move(operand)),
+        field_value_(std::move(field)),
+        field_(field_value_.ToString()),
+        test_only_(test_only),
+        unboxing_option_(enable_wrapper_type_null_unboxing
+                             ? ProtoWrapperTypeOptions::kUnsetNull
+                             : ProtoWrapperTypeOptions::kUnsetProtoDefault),
+        enable_optional_types_(enable_optional_types) {}
+
+  absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
+                        AttributeTrail& attribute) const override {
+    CEL_RETURN_IF_ERROR(operand_->Evaluate(frame, result, attribute));
+
+    if (InstanceOf<ErrorValue>(result) || InstanceOf<UnknownValue>(result)) {
+      // Just forward.
+      return absl::OkStatus();
+    }
+
+    if (frame.attribute_tracking_enabled()) {
+      attribute = attribute.Step(&field_);
+      absl::optional<Value> value = CheckForMarkedAttributes(attribute, frame);
+      if (value.has_value()) {
+        result = std::move(value).value();
+        return absl::OkStatus();
+      }
+    }
+
+    const cel::OptionalValueInterface* optional_arg = nullptr;
+
+    if (enable_optional_types_ &&
+        cel::NativeTypeId::Of(result) ==
+            cel::NativeTypeId::For<cel::OptionalValueInterface>()) {
+      optional_arg =
+          cel::internal::down_cast<const cel::OptionalValueInterface*>(
+              cel::Cast<cel::OpaqueValue>(result).operator->());
+    }
+
+    switch (result.kind()) {
+      case ValueKind::kStruct:
+      case ValueKind::kMap:
+        break;
+      case ValueKind::kNull:
+        result = frame.value_manager().CreateErrorValue(
+            cel::runtime_internal::CreateError("Message is NULL"));
+        return absl::OkStatus();
+      default:
+        if (optional_arg != nullptr) {
+          break;
+        }
+        result =
+            frame.value_manager().CreateErrorValue(InvalidSelectTargetError());
+        return absl::OkStatus();
+    }
+
+    Value scratch;
+    if (test_only_) {
+      if (optional_arg != nullptr) {
+        if (!optional_arg->HasValue()) {
+          result = cel::BoolValue{false};
+          return absl::OkStatus();
+        }
+        result = PerformTestOnlySelect(frame, optional_arg->Value(), scratch);
+        return absl::OkStatus();
+      }
+      result = PerformTestOnlySelect(frame, result, scratch);
+      return absl::OkStatus();
+    }
+
+    if (optional_arg != nullptr) {
+      if (!optional_arg->HasValue()) {
+        // result is still buffer for the container. just return.
+        return absl::OkStatus();
+      }
+      CEL_ASSIGN_OR_RETURN(
+          result, PerformOptionalSelect(frame, optional_arg->Value(), scratch));
+
+      return absl::OkStatus();
+    }
+
+    CEL_ASSIGN_OR_RETURN(result, PerformSelect(frame, result, scratch));
+    return absl::OkStatus();
+  }
+
+ private:
+  std::unique_ptr<DirectExpressionStep> operand_;
+
+  ValueView PerformTestOnlySelect(ExecutionFrameBase& frame, const Value& value,
+                                  Value& scratch) const;
+  absl::StatusOr<ValueView> PerformOptionalSelect(ExecutionFrameBase& frame,
+                                                  const Value& value,
+                                                  Value& scratch) const;
+  absl::StatusOr<ValueView> PerformSelect(ExecutionFrameBase& frame,
+                                          const Value& value,
+                                          Value& scratch) const;
+
+  // Field name in formats supported by each of the map and struct field access
+  // APIs.
+  //
+  // ToString or ValueManager::CreateString may force a copy so we do this at
+  // plan time.
+  StringValue field_value_;
+  std::string field_;
+
+  // whether this is a has() expression.
+  bool test_only_;
+  ProtoWrapperTypeOptions unboxing_option_;
+  bool enable_optional_types_;
+};
+
+ValueView DirectSelectStep::PerformTestOnlySelect(ExecutionFrameBase& frame,
+                                                  const cel::Value& value,
+                                                  Value& scratch) const {
+  switch (value.kind()) {
+    case ValueKind::kMap:
+      return TestOnlySelect(Cast<MapValue>(value), field_value_,
+                            frame.value_manager(), scratch);
+    case ValueKind::kMessage:
+      return TestOnlySelect(Cast<StructValue>(value), field_,
+                            frame.value_manager(), scratch);
+    default:
+      // Control flow should have returned earlier.
+      scratch =
+          frame.value_manager().CreateErrorValue(InvalidSelectTargetError());
+      return ValueView{scratch};
+  }
+}
+
+absl::StatusOr<ValueView> DirectSelectStep::PerformOptionalSelect(
+    ExecutionFrameBase& frame, const Value& value, Value& scratch) const {
+  switch (value.kind()) {
+    case ValueKind::kStruct: {
+      auto struct_value = Cast<StructValue>(value);
+      CEL_ASSIGN_OR_RETURN(auto ok, struct_value.HasFieldByName(field_));
+      if (!ok) {
+        scratch = OptionalValue::None();
+        return ValueView{scratch};
+      }
+      CEL_ASSIGN_OR_RETURN(auto result, struct_value.GetFieldByName(
+                                            frame.value_manager(), field_,
+                                            scratch, unboxing_option_));
+      scratch = OptionalValue::Of(frame.value_manager().GetMemoryManager(),
+                                  Value(result));
+      return ValueView{scratch};
+    }
+    case ValueKind::kMap: {
+      CEL_ASSIGN_OR_RETURN(auto lookup,
+                           Cast<MapValue>(value).Find(frame.value_manager(),
+                                                      field_value_, scratch));
+      if (!lookup.second) {
+        scratch = OptionalValue::None();
+        return ValueView{scratch};
+      }
+      scratch = OptionalValue::Of(frame.value_manager().GetMemoryManager(),
+                                  Value(lookup.first));
+      return ValueView{scratch};
+    }
+    default:
+      // Control flow should have returned earlier.
+      return InvalidSelectTargetError();
+  }
+}
+
+absl::StatusOr<ValueView> DirectSelectStep::PerformSelect(
+    ExecutionFrameBase& frame, const cel::Value& value, Value& scratch) const {
+  switch (value.kind()) {
+    case ValueKind::kStruct: {
+      return Cast<StructValue>(value).GetFieldByName(
+          frame.value_manager(), field_, scratch, unboxing_option_);
+    }
+    case ValueKind::kMap: {
+      return Cast<MapValue>(value).Get(frame.value_manager(), field_value_,
+                                       scratch);
+    }
+    default:
+      // Control flow should have returned earlier.
+      return InvalidSelectTargetError();
+  }
+}
+
+}  // namespace
+
+std::unique_ptr<DirectExpressionStep> CreateDirectSelectStep(
+    std::unique_ptr<DirectExpressionStep> operand, StringValue field,
+    bool test_only, int64_t expr_id, bool enable_wrapper_type_null_unboxing,
+    bool enable_optional_types) {
+  return std::make_unique<DirectSelectStep>(
+      expr_id, std::move(operand), std::move(field), test_only,
+      enable_wrapper_type_null_unboxing, enable_optional_types);
 }
 
 // Factory method for Select - based Execution step

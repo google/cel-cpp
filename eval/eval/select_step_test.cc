@@ -6,15 +6,22 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/wrappers.pb.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "base/ast_internal/expr.h"
+#include "base/attribute.h"
+#include "base/attribute_set.h"
 #include "base/type_provider.h"
-#include "common/type_factory.h"
-#include "common/type_manager.h"
+#include "common/legacy_value.h"
+#include "common/value.h"
 #include "common/value_manager.h"
+#include "common/value_testing.h"
 #include "common/values/legacy_value_manager.h"
+#include "eval/eval/attribute_trail.h"
 #include "eval/eval/cel_expression_flat_impl.h"
+#include "eval/eval/const_value_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/activation.h"
@@ -28,25 +35,45 @@
 #include "eval/testutil/test_extensions.pb.h"
 #include "eval/testutil/test_message.pb.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "extensions/protobuf/value.h"
+#include "internal/proto_matchers.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/activation.h"
+#include "runtime/managed_value_factory.h"
 #include "runtime/runtime_options.h"
-#include "testutil/util.h"
+#include "proto/test/v1/proto3/test_all_types.pb.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::Attribute;
+using ::cel::AttributeQualifier;
+using ::cel::AttributeSet;
+using ::cel::BoolValue;
+using ::cel::Cast;
+using ::cel::ErrorValue;
+using ::cel::InstanceOf;
+using ::cel::IntValue;
+using ::cel::ManagedValueFactory;
+using ::cel::OptionalValue;
+using ::cel::RuntimeOptions;
 using ::cel::TypeProvider;
+using ::cel::UnknownValue;
+using ::cel::Value;
 using ::cel::ast_internal::Expr;
 using ::cel::extensions::ProtoMemoryManagerRef;
+using ::cel::extensions::ProtoMessageToValue;
+using ::cel::internal::test::EqualsProto;
+using ::cel::test::IntValueIs;
+using ::google::api::expr::test::v1::proto3::TestAllTypes;
 using testing::_;
 using testing::Eq;
 using testing::HasSubstr;
 using testing::Return;
+using testing::UnorderedElementsAre;
 using cel::internal::StatusIs;
-
-using testutil::EqualsProto;
 
 struct RunExpressionOptions {
   bool enable_unknowns = false;
@@ -1023,6 +1050,523 @@ TEST_F(SelectStepTest, UnknownPatternResolvesToUnknown) {
 
 INSTANTIATE_TEST_SUITE_P(UnknownsEnabled, SelectStepConformanceTest,
                          testing::Bool());
+
+class DirectSelectStepTest : public testing::Test {
+ public:
+  DirectSelectStepTest()
+      : value_manager_(TypeProvider::Builtin(),
+                       ProtoMemoryManagerRef(&arena_)) {}
+
+  cel::Value TestWrapMessage(const google::protobuf::Message* message) {
+    CelValue value = CelProtoWrapper::CreateMessage(message, &arena_);
+    auto result = cel::interop_internal::FromLegacyValue(&arena_, value);
+    ABSL_DCHECK_OK(result.status());
+    return std::move(result).value();
+  }
+
+  std::vector<std::string> AttributeStrings(const UnknownValue& v) {
+    std::vector<std::string> result;
+    for (const Attribute& attr : v.attribute_set()) {
+      auto attr_str = attr.AsString();
+      ABSL_DCHECK_OK(attr_str.status());
+      result.push_back(std::move(attr_str).value());
+    }
+    return result;
+  }
+
+ protected:
+  google::protobuf::Arena arena_;
+  ManagedValueFactory value_manager_;
+};
+
+TEST_F(DirectSelectStepTest, SelectFromMap) {
+  cel::Activation activation;
+  RuntimeOptions options;
+
+  auto step = CreateDirectSelectStep(
+      CreateDirectIdentStep("map_val", -1),
+      value_manager_.get().CreateUncheckedStringValue("one"),
+      /*test_only=*/false, -1,
+      /*enable_wrapper_type_null_unboxing=*/true);
+
+  ASSERT_OK_AND_ASSIGN(auto map_builder,
+                       value_manager_.get().NewMapValueBuilder(
+                           value_manager_.get().GetDynDynMapType()));
+  ASSERT_OK(map_builder->Put(
+      value_manager_.get().CreateUncheckedStringValue("one"), IntValue(1)));
+  ASSERT_OK(map_builder->Put(
+      value_manager_.get().CreateUncheckedStringValue("two"), IntValue(2)));
+  activation.InsertOrAssignValue("map_val", std::move(*map_builder).Build());
+
+  ExecutionFrameBase frame(activation, options, value_manager_.get());
+
+  Value result;
+  AttributeTrail attr;
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<IntValue>(result));
+
+  EXPECT_EQ(Cast<IntValue>(result).NativeValue(), 1);
+}
+
+TEST_F(DirectSelectStepTest, HasMap) {
+  cel::Activation activation;
+  RuntimeOptions options;
+
+  auto step = CreateDirectSelectStep(
+      CreateDirectIdentStep("map_val", -1),
+      value_manager_.get().CreateUncheckedStringValue("two"),
+      /*test_only=*/true, -1,
+      /*enable_wrapper_type_null_unboxing=*/true);
+
+  ASSERT_OK_AND_ASSIGN(auto map_builder,
+                       value_manager_.get().NewMapValueBuilder(
+                           value_manager_.get().GetDynDynMapType()));
+  ASSERT_OK(map_builder->Put(
+      value_manager_.get().CreateUncheckedStringValue("one"), IntValue(1)));
+  ASSERT_OK(map_builder->Put(
+      value_manager_.get().CreateUncheckedStringValue("two"), IntValue(2)));
+  activation.InsertOrAssignValue("map_val", std::move(*map_builder).Build());
+
+  ExecutionFrameBase frame(activation, options, value_manager_.get());
+
+  Value result;
+  AttributeTrail attr;
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<BoolValue>(result));
+
+  EXPECT_TRUE(Cast<BoolValue>(result).NativeValue());
+}
+
+TEST_F(DirectSelectStepTest, SelectFromOptionalMap) {
+  cel::Activation activation;
+  RuntimeOptions options;
+
+  auto step = CreateDirectSelectStep(
+      CreateDirectIdentStep("map_val", -1),
+      value_manager_.get().CreateUncheckedStringValue("one"),
+      /*test_only=*/false, -1,
+      /*enable_wrapper_type_null_unboxing=*/true,
+      /*enable_optional_types=*/true);
+
+  ASSERT_OK_AND_ASSIGN(auto map_builder,
+                       value_manager_.get().NewMapValueBuilder(
+                           value_manager_.get().GetDynDynMapType()));
+  ASSERT_OK(map_builder->Put(
+      value_manager_.get().CreateUncheckedStringValue("one"), IntValue(1)));
+  ASSERT_OK(map_builder->Put(
+      value_manager_.get().CreateUncheckedStringValue("two"), IntValue(2)));
+  activation.InsertOrAssignValue(
+      "map_val", OptionalValue::Of(value_manager_.get().GetMemoryManager(),
+                                   std::move(*map_builder).Build()));
+
+  ExecutionFrameBase frame(activation, options, value_manager_.get());
+
+  Value result;
+  AttributeTrail attr;
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<OptionalValue>(result));
+  EXPECT_THAT(Cast<OptionalValue>(static_cast<const Value&>(result)).Value(),
+              IntValueIs(1));
+}
+
+TEST_F(DirectSelectStepTest, SelectFromOptionalMapAbsent) {
+  cel::Activation activation;
+  RuntimeOptions options;
+
+  auto step = CreateDirectSelectStep(
+      CreateDirectIdentStep("map_val", -1),
+      value_manager_.get().CreateUncheckedStringValue("three"),
+      /*test_only=*/false, -1,
+      /*enable_wrapper_type_null_unboxing=*/true,
+      /*enable_optional_types=*/true);
+
+  ASSERT_OK_AND_ASSIGN(auto map_builder,
+                       value_manager_.get().NewMapValueBuilder(
+                           value_manager_.get().GetDynDynMapType()));
+  ASSERT_OK(map_builder->Put(
+      value_manager_.get().CreateUncheckedStringValue("one"), IntValue(1)));
+  ASSERT_OK(map_builder->Put(
+      value_manager_.get().CreateUncheckedStringValue("two"), IntValue(2)));
+  activation.InsertOrAssignValue(
+      "map_val", OptionalValue::Of(value_manager_.get().GetMemoryManager(),
+                                   std::move(*map_builder).Build()));
+
+  ExecutionFrameBase frame(activation, options, value_manager_.get());
+
+  Value result;
+  AttributeTrail attr;
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<OptionalValue>(result));
+  EXPECT_FALSE(
+      Cast<OptionalValue>(static_cast<const Value&>(result)).HasValue());
+}
+
+TEST_F(DirectSelectStepTest, SelectFromOptionalStruct) {
+  cel::Activation activation;
+  RuntimeOptions options;
+
+  auto step = CreateDirectSelectStep(
+      CreateDirectIdentStep("struct_val", -1),
+      value_manager_.get().CreateUncheckedStringValue("single_int64"),
+      /*test_only=*/false, -1,
+      /*enable_wrapper_type_null_unboxing=*/true,
+      /*enable_optional_types=*/true);
+
+  TestAllTypes message;
+  message.set_single_int64(1);
+
+  ASSERT_OK_AND_ASSIGN(
+      Value struct_val,
+      ProtoMessageToValue(value_manager_.get(), std::move(message)));
+
+  activation.InsertOrAssignValue(
+      "struct_val",
+      OptionalValue::Of(value_manager_.get().GetMemoryManager(), struct_val));
+
+  ExecutionFrameBase frame(activation, options, value_manager_.get());
+
+  Value result;
+  AttributeTrail attr;
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<OptionalValue>(result));
+  EXPECT_THAT(Cast<OptionalValue>(static_cast<const Value&>(result)).Value(),
+              IntValueIs(1));
+}
+
+TEST_F(DirectSelectStepTest, SelectFromOptionalStructFieldNotSet) {
+  cel::Activation activation;
+  RuntimeOptions options;
+
+  auto step = CreateDirectSelectStep(
+      CreateDirectIdentStep("struct_val", -1),
+      value_manager_.get().CreateUncheckedStringValue("single_string"),
+      /*test_only=*/false, -1,
+      /*enable_wrapper_type_null_unboxing=*/true,
+      /*enable_optional_types=*/true);
+
+  TestAllTypes message;
+  message.set_single_int64(1);
+
+  ASSERT_OK_AND_ASSIGN(
+      Value struct_val,
+      ProtoMessageToValue(value_manager_.get(), std::move(message)));
+
+  activation.InsertOrAssignValue(
+      "struct_val",
+      OptionalValue::Of(value_manager_.get().GetMemoryManager(), struct_val));
+
+  ExecutionFrameBase frame(activation, options, value_manager_.get());
+
+  Value result;
+  AttributeTrail attr;
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<OptionalValue>(result));
+  EXPECT_FALSE(
+      Cast<OptionalValue>(static_cast<const Value&>(result)).HasValue());
+}
+
+TEST_F(DirectSelectStepTest, SelectFromEmptyOptional) {
+  cel::Activation activation;
+  RuntimeOptions options;
+
+  auto step = CreateDirectSelectStep(
+      CreateDirectIdentStep("map_val", -1),
+      value_manager_.get().CreateUncheckedStringValue("one"),
+      /*test_only=*/false, -1,
+      /*enable_wrapper_type_null_unboxing=*/true,
+      /*enable_optional_types=*/true);
+
+  activation.InsertOrAssignValue("map_val", OptionalValue::None());
+
+  ExecutionFrameBase frame(activation, options, value_manager_.get());
+
+  Value result;
+  AttributeTrail attr;
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<OptionalValue>(result));
+  EXPECT_FALSE(
+      cel::Cast<OptionalValue>(static_cast<const Value&>(result)).HasValue());
+}
+
+TEST_F(DirectSelectStepTest, HasOptional) {
+  cel::Activation activation;
+  RuntimeOptions options;
+
+  auto step = CreateDirectSelectStep(
+      CreateDirectIdentStep("map_val", -1),
+      value_manager_.get().CreateUncheckedStringValue("two"),
+      /*test_only=*/true, -1,
+      /*enable_wrapper_type_null_unboxing=*/true,
+      /*enable_optional_types=*/true);
+
+  ASSERT_OK_AND_ASSIGN(auto map_builder,
+                       value_manager_.get().NewMapValueBuilder(
+                           value_manager_.get().GetDynDynMapType()));
+  ASSERT_OK(map_builder->Put(
+      value_manager_.get().CreateUncheckedStringValue("one"), IntValue(1)));
+  ASSERT_OK(map_builder->Put(
+      value_manager_.get().CreateUncheckedStringValue("two"), IntValue(2)));
+  activation.InsertOrAssignValue(
+      "map_val", OptionalValue::Of(value_manager_.get().GetMemoryManager(),
+                                   std::move(*map_builder).Build()));
+
+  ExecutionFrameBase frame(activation, options, value_manager_.get());
+
+  Value result;
+  AttributeTrail attr;
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<BoolValue>(result));
+
+  EXPECT_TRUE(Cast<BoolValue>(result).NativeValue());
+}
+
+TEST_F(DirectSelectStepTest, HasEmptyOptional) {
+  cel::Activation activation;
+  RuntimeOptions options;
+
+  auto step = CreateDirectSelectStep(
+      CreateDirectIdentStep("map_val", -1),
+      value_manager_.get().CreateUncheckedStringValue("two"),
+      /*test_only=*/true, -1,
+      /*enable_wrapper_type_null_unboxing=*/true,
+      /*enable_optional_types=*/true);
+
+  activation.InsertOrAssignValue("map_val", OptionalValue::None());
+
+  ExecutionFrameBase frame(activation, options, value_manager_.get());
+
+  Value result;
+  AttributeTrail attr;
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<BoolValue>(result));
+
+  EXPECT_FALSE(Cast<BoolValue>(result).NativeValue());
+}
+
+TEST_F(DirectSelectStepTest, SelectFromStruct) {
+  cel::Activation activation;
+  RuntimeOptions options;
+
+  auto step = CreateDirectSelectStep(
+      CreateDirectIdentStep("test_all_types", -1),
+      value_manager_.get().CreateUncheckedStringValue("single_int64"),
+      /*test_only=*/false, -1,
+      /*enable_wrapper_type_null_unboxing=*/true);
+
+  TestAllTypes message;
+  message.set_single_int64(1);
+  activation.InsertOrAssignValue("test_all_types", TestWrapMessage(&message));
+
+  ExecutionFrameBase frame(activation, options, value_manager_.get());
+
+  Value result;
+  AttributeTrail attr;
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<IntValue>(result));
+
+  EXPECT_EQ(Cast<IntValue>(result).NativeValue(), 1);
+}
+
+TEST_F(DirectSelectStepTest, HasStruct) {
+  cel::Activation activation;
+  RuntimeOptions options;
+
+  auto step = CreateDirectSelectStep(
+      CreateDirectIdentStep("test_all_types", -1),
+      value_manager_.get().CreateUncheckedStringValue("single_string"),
+      /*test_only=*/true, -1,
+      /*enable_wrapper_type_null_unboxing=*/true);
+
+  TestAllTypes message;
+  message.set_single_int64(1);
+  activation.InsertOrAssignValue("test_all_types", TestWrapMessage(&message));
+
+  ExecutionFrameBase frame(activation, options, value_manager_.get());
+
+  Value result;
+  AttributeTrail attr;
+
+  // has(test_all_types.single_string)
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<BoolValue>(result));
+  EXPECT_FALSE(Cast<BoolValue>(result).NativeValue());
+}
+
+TEST_F(DirectSelectStepTest, SelectFromUnsupportedType) {
+  cel::Activation activation;
+  RuntimeOptions options;
+
+  auto step = CreateDirectSelectStep(
+      CreateDirectIdentStep("bool_val", -1),
+      value_manager_.get().CreateUncheckedStringValue("one"),
+      /*test_only=*/false, -1,
+      /*enable_wrapper_type_null_unboxing=*/true);
+
+  activation.InsertOrAssignValue("bool_val", BoolValue(false));
+
+  ExecutionFrameBase frame(activation, options, value_manager_.get());
+
+  Value result;
+  AttributeTrail attr;
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<ErrorValue>(result));
+
+  EXPECT_THAT(Cast<ErrorValue>(result).NativeValue(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Applying SELECT to non-message type")));
+}
+
+TEST_F(DirectSelectStepTest, AttributeUpdatedIfRequested) {
+  cel::Activation activation;
+  RuntimeOptions options;
+  options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
+
+  auto step = CreateDirectSelectStep(
+      CreateDirectIdentStep("test_all_types", -1),
+      value_manager_.get().CreateUncheckedStringValue("single_int64"),
+      /*test_only=*/false, -1,
+      /*enable_wrapper_type_null_unboxing=*/true);
+
+  TestAllTypes message;
+  message.set_single_int64(1);
+  activation.InsertOrAssignValue("test_all_types", TestWrapMessage(&message));
+
+  ExecutionFrameBase frame(activation, options, value_manager_.get());
+
+  Value result;
+  AttributeTrail attr;
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<IntValue>(result));
+  EXPECT_EQ(Cast<IntValue>(result).NativeValue(), 1);
+
+  ASSERT_OK_AND_ASSIGN(std::string attr_str, attr.attribute().AsString());
+  EXPECT_EQ(attr_str, "test_all_types.single_int64");
+}
+
+TEST_F(DirectSelectStepTest, MissingAttributesToErrors) {
+  cel::Activation activation;
+  RuntimeOptions options;
+  options.enable_missing_attribute_errors = true;
+
+  auto step = CreateDirectSelectStep(
+      CreateDirectIdentStep("test_all_types", -1),
+      value_manager_.get().CreateUncheckedStringValue("single_int64"),
+      /*test_only=*/false, -1,
+      /*enable_wrapper_type_null_unboxing=*/true);
+
+  TestAllTypes message;
+  message.set_single_int64(1);
+  activation.InsertOrAssignValue("test_all_types", TestWrapMessage(&message));
+  activation.SetMissingPatterns({cel::AttributePattern(
+      "test_all_types",
+      {cel::AttributeQualifierPattern::OfString("single_int64")})});
+
+  ExecutionFrameBase frame(activation, options, value_manager_.get());
+
+  Value result;
+  AttributeTrail attr;
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<ErrorValue>(result));
+  EXPECT_THAT(Cast<ErrorValue>(result).NativeValue(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("test_all_types.single_int64")));
+}
+
+TEST_F(DirectSelectStepTest, IdentifiesUnknowns) {
+  cel::Activation activation;
+  RuntimeOptions options;
+  options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
+
+  auto step = CreateDirectSelectStep(
+      CreateDirectIdentStep("test_all_types", -1),
+      value_manager_.get().CreateUncheckedStringValue("single_int64"),
+      /*test_only=*/false, -1,
+      /*enable_wrapper_type_null_unboxing=*/true);
+
+  TestAllTypes message;
+  message.set_single_int64(1);
+  activation.InsertOrAssignValue("test_all_types", TestWrapMessage(&message));
+  activation.SetUnknownPatterns({cel::AttributePattern(
+      "test_all_types",
+      {cel::AttributeQualifierPattern::OfString("single_int64")})});
+
+  ExecutionFrameBase frame(activation, options, value_manager_.get());
+
+  Value result;
+  AttributeTrail attr;
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<UnknownValue>(result));
+
+  EXPECT_THAT(AttributeStrings(Cast<UnknownValue>(result)),
+              UnorderedElementsAre("test_all_types.single_int64"));
+}
+
+TEST_F(DirectSelectStepTest, ForwardErrorValue) {
+  cel::Activation activation;
+  RuntimeOptions options;
+  options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
+
+  auto step = CreateDirectSelectStep(
+      CreateConstValueDirectStep(
+          value_manager_.get().CreateErrorValue(absl::InternalError("test1")),
+          -1),
+      value_manager_.get().CreateUncheckedStringValue("single_int64"),
+      /*test_only=*/false, -1,
+      /*enable_wrapper_type_null_unboxing=*/true);
+
+  ExecutionFrameBase frame(activation, options, value_manager_.get());
+
+  Value result;
+  AttributeTrail attr;
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<ErrorValue>(result));
+  EXPECT_THAT(Cast<ErrorValue>(result).NativeValue(),
+              StatusIs(absl::StatusCode::kInternal, HasSubstr("test1")));
+}
+
+TEST_F(DirectSelectStepTest, ForwardUnknownOperand) {
+  cel::Activation activation;
+  RuntimeOptions options;
+  options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
+
+  AttributeSet attr_set({Attribute("attr", {AttributeQualifier::OfInt(0)})});
+  auto step = CreateDirectSelectStep(
+      CreateConstValueDirectStep(
+          value_manager_.get().CreateUnknownValue(std::move(attr_set)), -1),
+      value_manager_.get().CreateUncheckedStringValue("single_int64"),
+      /*test_only=*/false, -1,
+      /*enable_wrapper_type_null_unboxing=*/true);
+
+  TestAllTypes message;
+  message.set_single_int64(1);
+  activation.InsertOrAssignValue("test_all_types", TestWrapMessage(&message));
+
+  ExecutionFrameBase frame(activation, options, value_manager_.get());
+
+  Value result;
+  AttributeTrail attr;
+  ASSERT_OK(step->Evaluate(frame, result, attr));
+
+  ASSERT_TRUE(InstanceOf<UnknownValue>(result));
+  EXPECT_THAT(AttributeStrings(Cast<UnknownValue>(result)),
+              UnorderedElementsAre("attr[0]"));
+}
 
 }  // namespace
 

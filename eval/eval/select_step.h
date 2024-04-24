@@ -5,12 +5,19 @@
 #include <memory>
 
 #include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
 #include "base/ast_internal/expr.h"
+#include "common/value.h"
 #include "common/value_manager.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 
 namespace google::api::expr::runtime {
+
+// Factory method for recursively evaluated select step.
+std::unique_ptr<DirectExpressionStep> CreateDirectSelectStep(
+    std::unique_ptr<DirectExpressionStep> operand, cel::StringValue field,
+    bool test_only, int64_t expr_id, bool enable_wrapper_type_null_unboxing,
+    bool enable_optional_types = false);
 
 // Factory method for Select - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
