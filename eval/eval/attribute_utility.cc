@@ -21,10 +21,13 @@
 namespace google::api::expr::runtime {
 
 using ::cel::AttributeSet;
+using ::cel::Cast;
 using ::cel::ErrorValue;
 using ::cel::FunctionResult;
 using ::cel::FunctionResultSet;
+using ::cel::InstanceOf;
 using ::cel::UnknownValue;
+using ::cel::Value;
 using ::cel::base_internal::UnknownSet;
 
 using Accumulator = AttributeUtility::Accumulator;
@@ -190,14 +193,22 @@ void AttributeUtility::Add(Accumulator& a, const AttributeTrail& attr) const {
   a.attribute_set_.Add(attr.attribute());
 }
 
-void Accumulator::Add(const cel::UnknownValue& value) {
+void Accumulator::Add(const UnknownValue& value) {
+  unknown_present_ = true;
   parent_.Add(*this, value);
 }
 
 void Accumulator::Add(const AttributeTrail& attr) { parent_.Add(*this, attr); }
 
+void Accumulator::MaybeAdd(const Value& v) {
+  if (InstanceOf<UnknownValue>(v)) {
+    Add(Cast<UnknownValue>(v));
+  }
+}
+
 bool Accumulator::IsEmpty() const {
-  return attribute_set_.empty() && function_result_set_.empty();
+  return !unknown_present_ && attribute_set_.empty() &&
+         function_result_set_.empty();
 }
 
 cel::UnknownValue Accumulator::Build() && {

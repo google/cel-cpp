@@ -10,18 +10,22 @@
 #include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "base/ast_internal/expr.h"
 #include "base/attribute.h"
 #include "base/kind.h"
 #include "common/casting.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
+#include "eval/eval/attribute_trail.h"
+#include "eval/eval/attribute_utility.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
 #include "internal/casts.h"
 #include "internal/number.h"
 #include "internal/status_macros.h"
+#include "runtime/internal/errors.h"
 
 namespace google::api::expr::runtime {
 
@@ -29,8 +33,10 @@ namespace {
 
 using ::cel::AttributeQualifier;
 using ::cel::BoolValue;
+using ::cel::Cast;
 using ::cel::DoubleValue;
-
+using ::cel::ErrorValue;
+using ::cel::InstanceOf;
 using ::cel::IntValue;
 using ::cel::ListValue;
 using ::cel::MapValue;
@@ -44,36 +50,6 @@ using ::cel::internal::Number;
 using ::cel::runtime_internal::CreateNoSuchKeyError;
 
 inline constexpr int kNumContainerAccessArguments = 2;
-
-// ContainerAccessStep performs message field access specified by Expr::Select
-// message.
-class ContainerAccessStep : public ExpressionStepBase {
- public:
-  ContainerAccessStep(int64_t expr_id, bool enable_optional_types)
-      : ExpressionStepBase(expr_id),
-        enable_optional_types_(enable_optional_types) {}
-
-  absl::Status Evaluate(ExecutionFrame* frame) const override;
-
- private:
-  struct LookupResult {
-    ValueView value;
-    AttributeTrail trail;
-  };
-
-  LookupResult PerformLookup(ExecutionFrame* frame, Value& scratch) const;
-  absl::StatusOr<ValueView> LookupInMap(const MapValue& cel_map,
-                                        const Value& key, ExecutionFrame* frame,
-                                        Value& scratch) const;
-  absl::StatusOr<ValueView> LookupInList(const ListValue& cel_list,
-                                         const Value& key,
-                                         ExecutionFrame* frame,
-                                         Value& scratch) const;
-  absl::StatusOr<ValueView> Lookup(const Value& container, const Value& key,
-                                   ExecutionFrame* frame, Value& scratch) const;
-
-  const bool enable_optional_types_;
-};
 
 absl::optional<Number> CelNumberFromValue(const Value& value) {
   switch (value->kind()) {
@@ -102,6 +78,112 @@ absl::Status CheckMapKeyType(const Value& key) {
   }
 }
 
+ValueView LookupInMap(const MapValue& cel_map, const Value& key,
+                      ExecutionFrameBase& frame, Value& scratch) {
+  if (frame.options().enable_heterogeneous_equality) {
+    // Double isn't a supported key type but may be convertible to an integer.
+    absl::optional<Number> number = CelNumberFromValue(key);
+    if (number.has_value()) {
+      // Consider uint as uint first then try coercion (prefer matching the
+      // original type of the key value).
+      if (key->Is<UintValue>()) {
+        auto lookup = cel_map.Find(frame.value_manager(), key, scratch);
+        if (!lookup.ok()) {
+          scratch = frame.value_manager().CreateErrorValue(
+              std::move(lookup).status());
+          return ValueView{scratch};
+        }
+        if (lookup->second) {
+          return lookup->first;
+        }
+      }
+      // double / int / uint -> int
+      if (number->LosslessConvertibleToInt()) {
+        auto lookup = cel_map.Find(
+            frame.value_manager(),
+            frame.value_manager().CreateIntValue(number->AsInt()), scratch);
+        if (!lookup.ok()) {
+          scratch = frame.value_manager().CreateErrorValue(
+              std::move(lookup).status());
+          return ValueView{scratch};
+        }
+        if (lookup->second) {
+          return lookup->first;
+        }
+      }
+      // double / int -> uint
+      if (number->LosslessConvertibleToUint()) {
+        auto lookup = cel_map.Find(
+            frame.value_manager(),
+            frame.value_manager().CreateUintValue(number->AsUint()), scratch);
+        if (!lookup.ok()) {
+          scratch = frame.value_manager().CreateErrorValue(
+              std::move(lookup).status());
+          return ValueView{scratch};
+        }
+        if (lookup->second) {
+          return lookup->first;
+        }
+      }
+      scratch = frame.value_manager().CreateErrorValue(
+          CreateNoSuchKeyError(key->DebugString()));
+      return ValueView{scratch};
+    }
+  }
+
+  absl::Status status = CheckMapKeyType(key);
+  if (!status.ok()) {
+    scratch = frame.value_manager().CreateErrorValue(std::move(status));
+    return ValueView{scratch};
+  }
+
+  absl::StatusOr<ValueView> lookup =
+      cel_map.Get(frame.value_manager(), key, scratch);
+  if (!lookup.ok()) {
+    scratch =
+        frame.value_manager().CreateErrorValue(std::move(lookup).status());
+    return ValueView{scratch};
+  }
+  return *lookup;
+}
+
+ValueView LookupInList(const ListValue& cel_list, const Value& key,
+                       ExecutionFrameBase& frame, Value& scratch) {
+  absl::optional<int64_t> maybe_idx;
+  if (frame.options().enable_heterogeneous_equality) {
+    auto number = CelNumberFromValue(key);
+    if (number.has_value() && number->LosslessConvertibleToInt()) {
+      maybe_idx = number->AsInt();
+    }
+  } else if (InstanceOf<IntValue>(key)) {
+    maybe_idx = key.As<IntValue>().NativeValue();
+  }
+
+  if (!maybe_idx.has_value()) {
+    scratch = frame.value_manager().CreateErrorValue(absl::UnknownError(
+        absl::StrCat("Index error: expected integer type, got ",
+                     cel::KindToString(ValueKindToKind(key->kind())))));
+    return ValueView{scratch};
+  }
+
+  int64_t idx = *maybe_idx;
+  if (idx < 0 || idx >= cel_list.Size()) {
+    scratch = frame.value_manager().CreateErrorValue(absl::UnknownError(
+        absl::StrCat("Index error: index=", idx, " size=", cel_list.Size())));
+    return ValueView{scratch};
+  }
+
+  absl::StatusOr<ValueView> lookup =
+      cel_list.Get(frame.value_manager(), idx, scratch);
+
+  if (!lookup.ok()) {
+    scratch =
+        frame.value_manager().CreateErrorValue(std::move(lookup).status());
+    return ValueView{scratch};
+  }
+  return *lookup;
+}
+
 AttributeQualifier AttributeQualifierFromValue(const Value& v) {
   switch (v->kind()) {
     case ValueKind::kString:
@@ -118,89 +200,28 @@ AttributeQualifier AttributeQualifierFromValue(const Value& v) {
   }
 }
 
-absl::StatusOr<ValueView> ContainerAccessStep::LookupInMap(
-    const MapValue& cel_map, const Value& key, ExecutionFrame* frame,
-    Value& scratch) const {
-  if (frame->enable_heterogeneous_numeric_lookups()) {
-    // Double isn't a supported key type but may be convertible to an integer.
-    absl::optional<Number> number = CelNumberFromValue(key);
-    if (number.has_value()) {
-      // Consider uint as uint first then try coercion (prefer matching the
-      // original type of the key value).
-      if (key->Is<UintValue>()) {
-        ValueView value;
-        bool ok;
-        CEL_ASSIGN_OR_RETURN(
-            std::tie(value, ok),
-            cel_map.Find(frame->value_factory(), key, scratch));
-        if (ok) {
-          return value;
-        }
-      }
-      // double / int / uint -> int
-      if (number->LosslessConvertibleToInt()) {
-        ValueView value;
-        bool ok;
-        CEL_ASSIGN_OR_RETURN(
-            std::tie(value, ok),
-            cel_map.Find(frame->value_factory(),
-                         frame->value_factory().CreateIntValue(number->AsInt()),
-                         scratch));
-        if (ok) {
-          return value;
-        }
-      }
-      // double / int -> uint
-      if (number->LosslessConvertibleToUint()) {
-        ValueView value;
-        bool ok;
-        CEL_ASSIGN_OR_RETURN(
-            std::tie(value, ok),
-            cel_map.Find(
-                frame->value_factory(),
-                frame->value_factory().CreateUintValue(number->AsUint()),
-                scratch));
-        if (ok) {
-          return value;
-        }
-      }
-      scratch = frame->value_factory().CreateErrorValue(
-          CreateNoSuchKeyError(key->DebugString()));
-      return scratch;
-    }
-  }
+// ContainerAccessStep performs message field access specified by Expr::Select
+// message.
+class ContainerAccessStep : public ExpressionStepBase {
+ public:
+  ContainerAccessStep(int64_t expr_id, bool enable_optional_types)
+      : ExpressionStepBase(expr_id),
+        enable_optional_types_(enable_optional_types) {}
 
-  CEL_RETURN_IF_ERROR(CheckMapKeyType(key));
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
 
-  return cel_map.Get(frame->value_factory(), key, scratch);
-}
+ private:
+  struct LookupResult {
+    ValueView value;
+    AttributeTrail trail;
+  };
 
-absl::StatusOr<ValueView> ContainerAccessStep::LookupInList(
-    const ListValue& cel_list, const Value& key, ExecutionFrame* frame,
-    Value& scratch) const {
-  absl::optional<int64_t> maybe_idx;
-  if (frame->enable_heterogeneous_numeric_lookups()) {
-    auto number = CelNumberFromValue(key);
-    if (number.has_value() && number->LosslessConvertibleToInt()) {
-      maybe_idx = number->AsInt();
-    }
-  } else if (key->Is<IntValue>()) {
-    maybe_idx = key.As<IntValue>().NativeValue();
-  }
+  LookupResult PerformLookup(ExecutionFrame* frame, Value& scratch) const;
+  absl::StatusOr<ValueView> Lookup(const Value& container, const Value& key,
+                                   ExecutionFrame* frame, Value& scratch) const;
 
-  if (maybe_idx.has_value()) {
-    int64_t idx = *maybe_idx;
-    if (idx < 0 || idx >= cel_list.Size()) {
-      return absl::UnknownError(
-          absl::StrCat("Index error: index=", idx, " size=", cel_list.Size()));
-    }
-    return cel_list.Get(frame->value_factory(), idx, scratch);
-  }
-
-  return absl::UnknownError(
-      absl::StrCat("Index error: expected integer type, got ",
-                   cel::KindToString(ValueKindToKind(key->kind()))));
-}
+  const bool enable_optional_types_;
+};
 
 absl::StatusOr<ValueView> ContainerAccessStep::Lookup(const Value& container,
                                                       const Value& key,
@@ -209,23 +230,10 @@ absl::StatusOr<ValueView> ContainerAccessStep::Lookup(const Value& container,
   // Select steps can be applied to either maps or messages
   switch (container->kind()) {
     case ValueKind::kMap: {
-      auto result = LookupInMap(container.As<MapValue>(), key, frame, scratch);
-      if (!result.ok()) {
-        scratch =
-            frame->value_factory().CreateErrorValue(std::move(result).status());
-        return ValueView{scratch};
-      }
-      return *result;
+      return LookupInMap(container.As<MapValue>(), key, *frame, scratch);
     }
     case ValueKind::kList: {
-      auto result =
-          LookupInList(container.As<ListValue>(), key, frame, scratch);
-      if (!result.ok()) {
-        scratch =
-            frame->value_factory().CreateErrorValue(std::move(result).status());
-        return ValueView{scratch};
-      }
-      return *result;
+      return LookupInList(container.As<ListValue>(), key, *frame, scratch);
     }
     default:
       scratch =
@@ -235,7 +243,6 @@ absl::StatusOr<ValueView> ContainerAccessStep::Lookup(const Value& container,
       return ValueView{scratch};
   }
 }
-
 ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
     ExecutionFrame* frame, Value& scratch) const {
   auto input_args = frame->value_stack().GetSpan(kNumContainerAccessArguments);
@@ -245,10 +252,13 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
   const Value& key = input_args[1];
 
   if (frame->enable_unknowns()) {
-    auto unknown_set = frame->attribute_utility().MergeUnknowns(input_args);
+    AttributeUtility::Accumulator unknowns =
+        frame->attribute_utility().CreateAccumulator();
+    unknowns.MaybeAdd(container);
+    unknowns.MaybeAdd(key);
 
-    if (unknown_set) {
-      scratch = std::move(unknown_set).value();
+    if (!unknowns.IsEmpty()) {
+      scratch = std::move(unknowns).Build();
       return {ValueView{scratch}, std::move(trail)};
     }
 
@@ -259,19 +269,18 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
     const auto& container_trail = input_attrs[0];
     trail = container_trail.Step(AttributeQualifierFromValue(key));
 
-    if (frame->attribute_utility().CheckForUnknown(trail,
-                                                   /*use_partial=*/false)) {
+    if (frame->attribute_utility().CheckForUnknownExact(trail)) {
       cel::Attribute attr = trail.attribute();
       scratch = frame->attribute_utility().CreateUnknownSet(attr);
       return {ValueView{scratch}, std::move(trail)};
     }
   }
 
-  if (container.Is<cel::ErrorValue>()) {
+  if (InstanceOf<ErrorValue>(container)) {
     scratch = container;
     return {ValueView{scratch}, std::move(trail)};
   }
-  if (key.Is<cel::ErrorValue>()) {
+  if (InstanceOf<ErrorValue>(key)) {
     scratch = key;
     return {ValueView{scratch}, std::move(trail)};
   }
@@ -300,7 +309,6 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
     scratch = cel::OptionalValue::Of(frame->memory_manager(), Value{*result});
     return {ValueView{scratch}, std::move(trail)};
   }
-
   auto result = Lookup(container, key, frame, scratch);
   if (!result.ok()) {
     scratch =

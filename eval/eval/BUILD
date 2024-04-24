@@ -187,6 +187,9 @@ cc_library(
         "container_access_step.h",
     ],
     deps = [
+        ":attribute_trail",
+        ":attribute_utility",
+        ":direct_expression_step",
         ":evaluator_core",
         ":expression_step_base",
         "//base:attributes",
@@ -200,6 +203,7 @@ cc_library(
         "//internal:casts",
         "//internal:number",
         "//internal:status_macros",
+        "//runtime/internal:errors",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",

@@ -1,7 +1,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_UNKNOWNS_UTILITY_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_UNKNOWNS_UTILITY_H_
 
+#include "absl/status/statusor.h"
 #include "absl/types/span.h"
+#include "base/attribute.h"
 #include "base/attribute_set.h"
 #include "base/function_descriptor.h"
 #include "base/function_result_set.h"
@@ -20,25 +22,35 @@ class AttributeUtility {
  public:
   class Accumulator {
    public:
-    explicit Accumulator(const AttributeUtility& parent) : parent_(parent) {}
-
     Accumulator(const Accumulator&) = delete;
     Accumulator& operator=(const Accumulator&) = delete;
     Accumulator(Accumulator&&) = delete;
     Accumulator& operator=(Accumulator&&) = delete;
 
+    // Add to the accumulated unknown attributes and functions.
     void Add(const cel::UnknownValue& v);
     void Add(const AttributeTrail& attr);
+
+    // Add to the accumulated set of unknowns if value is UnknownValue.
+    void MaybeAdd(const cel::Value& v);
 
     bool IsEmpty() const;
 
     cel::UnknownValue Build() &&;
 
    private:
+    explicit Accumulator(const AttributeUtility& parent)
+        : parent_(parent), unknown_present_(false) {}
+
     friend class AttributeUtility;
     const AttributeUtility& parent_;
+
     cel::AttributeSet attribute_set_;
     cel::FunctionResultSet function_result_set_;
+
+    // Some tests will use an empty unknown set as a sentinel.
+    // Preserve forwarding behavior.
+    bool unknown_present_;
   };
 
   AttributeUtility(
