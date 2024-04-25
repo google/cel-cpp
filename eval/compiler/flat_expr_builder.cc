@@ -353,6 +353,17 @@ absl::flat_hash_set<int32_t> MakeOptionalIndicesSet(
   return optional_indices;
 }
 
+absl::flat_hash_set<int32_t> MakeOptionalIndicesSet(
+    const cel::ast_internal::CreateStruct& create_struct_expr) {
+  absl::flat_hash_set<int32_t> optional_indices;
+  for (size_t i = 0; i < create_struct_expr.entries().size(); ++i) {
+    if (create_struct_expr.entries()[i].optional_entry()) {
+      optional_indices.insert(static_cast<int32_t>(i));
+    }
+  }
+  return optional_indices;
+}
+
 class FlatExprVisitor : public cel::ast_internal::AstVisitor {
  public:
   FlatExprVisitor(
@@ -1178,7 +1189,22 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
         ValidateOrError(entry.has_map_key(), "Map entry missing key");
         ValidateOrError(entry.has_value(), "Map entry missing value");
       }
-      AddStep(CreateCreateStructStepForMap(*struct_expr, expr->id()));
+      auto depth = RecursionEligible();
+      if (depth.has_value()) {
+        auto deps = ExtractRecursiveDependencies();
+        if (deps.size() != 2 * struct_expr->entries().size()) {
+          SetProgressStatusError(absl::InternalError(
+              "Unexpected number of plan elements for CreateStruct expr"));
+          return;
+        }
+        auto step = CreateDirectCreateMapStep(
+            std::move(deps), MakeOptionalIndicesSet(*struct_expr), expr->id());
+        SetRecursiveStep(std::move(step), *depth + 1);
+        return;
+      }
+      AddStep(CreateCreateStructStepForMap(struct_expr->entries().size(),
+                                           MakeOptionalIndicesSet(*struct_expr),
+                                           expr->id()));
       return;
     }
 

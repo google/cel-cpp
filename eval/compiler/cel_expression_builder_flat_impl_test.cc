@@ -182,8 +182,11 @@ INSTANTIATE_TEST_SUITE_P(
          test::IsCelBool(true)},
         {"compre_map", "8 in [1, 2, 3, 4].map(x, x * 2)",
          test::IsCelBool(true)},
-        {"map_compre_exists", "map_var.exists(key, key == 'b')",
+        {"map_var_compre_exists", "map_var.exists(key, key == 'b')",
          test::IsCelBool(true)},
+        {"map_compre_exists", "{'a': 1, 'b': 2}.exists(k, k == 'b')",
+         test::IsCelBool(true)},
+        {"create_map", "{'a': 42, 'b': 0, 'c': 0}.size()", test::IsCelInt64(3)},
     }),
 
     [](const testing::TestParamInfo<RecursiveTestCase>& info) -> std::string {
