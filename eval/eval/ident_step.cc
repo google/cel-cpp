@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -88,12 +89,29 @@ absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
   return absl::OkStatus();
 }
 
+absl::StatusOr<absl::Nonnull<const ComprehensionSlots::Slot*>> LookupSlot(
+    absl::string_view name, size_t slot_index, ExecutionFrameBase& frame) {
+  const ComprehensionSlots::Slot* slot =
+      frame.comprehension_slots().Get(slot_index);
+  if (slot == nullptr) {
+    return absl::InternalError(
+        absl::StrCat("Comprehension variable accessed out of scope: ", name));
+  }
+  return slot;
+}
+
 class SlotStep : public ExpressionStepBase {
  public:
   SlotStep(absl::string_view name, size_t slot_index, int64_t expr_id)
       : ExpressionStepBase(expr_id), name_(name), slot_index_(slot_index) {}
 
-  absl::Status Evaluate(ExecutionFrame* frame) const override;
+  absl::Status Evaluate(ExecutionFrame* frame) const override {
+    CEL_ASSIGN_OR_RETURN(const ComprehensionSlots::Slot* slot,
+                         LookupSlot(name_, slot_index_, *frame));
+
+    frame->value_stack().Push(slot->value, slot->attribute);
+    return absl::OkStatus();
+  }
 
  private:
   std::string name_;
@@ -101,40 +119,55 @@ class SlotStep : public ExpressionStepBase {
   size_t slot_index_;
 };
 
-absl::Status SlotStep::Evaluate(ExecutionFrame* frame) const {
-  const ComprehensionSlots::Slot* slot =
-      frame->comprehension_slots().Get(slot_index_);
-  if (slot == nullptr) {
-    return absl::InternalError(
-        absl::StrCat("Comprehension variable accessed out of scope: ", name_));
-  }
-
-  frame->value_stack().Push(slot->value, slot->attribute);
-  return absl::OkStatus();
-}
-
 class DirectIdentStep : public DirectExpressionStep {
  public:
   DirectIdentStep(absl::string_view name, int64_t expr_id)
       : DirectExpressionStep(expr_id), name_(name) {}
 
   absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
-                        AttributeTrail& attribute) const override;
+                        AttributeTrail& attribute) const override {
+    return LookupIdent(name_, frame, result, attribute);
+  }
 
  private:
   std::string name_;
 };
 
-absl::Status DirectIdentStep::Evaluate(ExecutionFrameBase& frame, Value& result,
-                                       AttributeTrail& attribute) const {
-  return LookupIdent(name_, frame, result, attribute);
-}
+class DirectSlotStep : public DirectExpressionStep {
+ public:
+  DirectSlotStep(std::string name, size_t slot_index, int64_t expr_id)
+      : DirectExpressionStep(expr_id),
+        name_(std::move(name)),
+        slot_index_(slot_index) {}
+
+  absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
+                        AttributeTrail& attribute) const override {
+    CEL_ASSIGN_OR_RETURN(const ComprehensionSlots::Slot* slot,
+                         LookupSlot(name_, slot_index_, frame));
+
+    if (frame.attribute_tracking_enabled()) {
+      attribute = slot->attribute;
+    }
+    result = slot->value;
+    return absl::OkStatus();
+  }
+
+ private:
+  std::string name_;
+  size_t slot_index_;
+};
 
 }  // namespace
 
 std::unique_ptr<DirectExpressionStep> CreateDirectIdentStep(
     absl::string_view identifier, int64_t expr_id) {
   return std::make_unique<DirectIdentStep>(identifier, expr_id);
+}
+
+std::unique_ptr<DirectExpressionStep> CreateDirectSlotIdentStep(
+    absl::string_view identifier, size_t slot_index, int64_t expr_id) {
+  return std::make_unique<DirectSlotStep>(std::string(identifier), slot_index,
+                                          expr_id);
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(

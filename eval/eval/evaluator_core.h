@@ -141,6 +141,7 @@ class FlatExpressionEvaluatorState {
 // ExecutionFrame instance for managing a heap-backed stack.
 class ExecutionFrameBase {
  public:
+  // Overload for test usages.
   ExecutionFrameBase(const cel::ActivationInterface& activation,
                      const cel::RuntimeOptions& options,
                      cel::ValueManager& value_manager)
@@ -148,7 +149,19 @@ class ExecutionFrameBase {
         options_(&options),
         value_manager_(&value_manager),
         attribute_utility_(activation.GetUnknownAttributes(),
-                           activation.GetMissingAttributes(), value_manager) {}
+                           activation.GetMissingAttributes(), value_manager),
+        slots_(&ComprehensionSlots::GetEmptyInstance()) {}
+
+  ExecutionFrameBase(const cel::ActivationInterface& activation,
+                     const cel::RuntimeOptions& options,
+                     cel::ValueManager& value_manager,
+                     ComprehensionSlots& slots)
+      : activation_(&activation),
+        options_(&options),
+        value_manager_(&value_manager),
+        attribute_utility_(activation.GetUnknownAttributes(),
+                           activation.GetMissingAttributes(), value_manager),
+        slots_(&slots) {}
 
   const cel::ActivationInterface& activation() const { return *activation_; }
   const cel::RuntimeOptions& options() const { return *options_; }
@@ -177,11 +190,14 @@ class ExecutionFrameBase {
            cel::UnknownProcessingOptions::kAttributeAndFunction;
   }
 
+  ComprehensionSlots& comprehension_slots() { return *slots_; }
+
  protected:
   absl::Nonnull<const cel::ActivationInterface*> activation_;
   absl::Nonnull<const cel::RuntimeOptions*> options_;
   absl::Nonnull<cel::ValueManager*> value_manager_;
   AttributeUtility attribute_utility_;
+  absl::Nonnull<ComprehensionSlots*> slots_;
 };
 
 // ExecutionFrame manages the context needed for expression evaluation.
@@ -197,7 +213,8 @@ class ExecutionFrame : public ExecutionFrameBase {
                  const cel::ActivationInterface& activation,
                  const cel::RuntimeOptions& options,
                  FlatExpressionEvaluatorState& state)
-      : ExecutionFrameBase(activation, options, state.value_manager()),
+      : ExecutionFrameBase(activation, options, state.value_manager(),
+                           state.comprehension_slots()),
         pc_(0UL),
         execution_path_(flat),
         state_(state),
@@ -209,7 +226,8 @@ class ExecutionFrame : public ExecutionFrameBase {
                  const cel::ActivationInterface& activation,
                  const cel::RuntimeOptions& options,
                  FlatExpressionEvaluatorState& state)
-      : ExecutionFrameBase(activation, options, state.value_manager()),
+      : ExecutionFrameBase(activation, options, state.value_manager(),
+                           state.comprehension_slots()),
         pc_(0UL),
         execution_path_(subexpressions[0]),
         state_(state),
@@ -263,9 +281,6 @@ class ExecutionFrame : public ExecutionFrameBase {
   }
 
   EvaluatorStack& value_stack() { return state_.value_stack(); }
-  ComprehensionSlots& comprehension_slots() {
-    return state_.comprehension_slots();
-  }
 
   bool enable_attribute_tracking() const {
     return attribute_tracking_enabled();
@@ -387,6 +402,8 @@ class FlatExpression {
   const ExecutionPath& path() const { return path_; }
 
   const cel::RuntimeOptions& options() const { return options_; }
+
+  size_t comprehension_slots_size() const { return comprehension_slots_size_; }
 
  private:
   ExecutionPath path_;

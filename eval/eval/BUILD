@@ -64,6 +64,7 @@ cc_library(
     ],
     deps = [
         ":attribute_trail",
+        ":comprehension_slots",
         ":direct_expression_step",
         ":evaluator_core",
         "//common:native_type",
@@ -94,6 +95,7 @@ cc_library(
         ":attribute_trail",
         "//common:value",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/types:optional",
     ],
 )
@@ -244,6 +246,7 @@ cc_library(
         "//common:value",
         "//eval/internal:errors",
         "//internal:status_macros",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",

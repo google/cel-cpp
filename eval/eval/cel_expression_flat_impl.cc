@@ -26,6 +26,7 @@
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "eval/eval/attribute_trail.h"
+#include "eval/eval/comprehension_slots.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/internal/adapter_activation_impl.h"
@@ -118,8 +119,9 @@ absl::StatusOr<CelValue> CelExpressionRecursiveImpl::Evaluate(
   cel::ManagedValueFactory factory = flat_expression_.MakeValueFactory(
       cel::extensions::ProtoMemoryManagerRef(arena));
 
-  ExecutionFrameBase execution_frame(modern_activation,
-                                     flat_expression_.options(), factory.get());
+  ComprehensionSlots slots(flat_expression_.comprehension_slots_size());
+  ExecutionFrameBase execution_frame(
+      modern_activation, flat_expression_.options(), factory.get(), slots);
 
   cel::Value result;
   AttributeTrail trail;

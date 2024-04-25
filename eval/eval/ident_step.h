@@ -15,6 +15,9 @@ namespace google::api::expr::runtime {
 std::unique_ptr<DirectExpressionStep> CreateDirectIdentStep(
     absl::string_view identifier, int64_t expr_id);
 
+std::unique_ptr<DirectExpressionStep> CreateDirectSlotIdentStep(
+    absl::string_view identifier, size_t slot_index, int64_t expr_id);
+
 // Factory method for Ident - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
     const cel::ast_internal::Ident& ident, int64_t expr_id);

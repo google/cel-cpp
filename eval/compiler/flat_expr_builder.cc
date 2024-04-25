@@ -548,7 +548,14 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       AddStep(CreateAssignSlotStep(slot.slot));
       return;
     } else if (slot.slot >= 0) {
-      AddStep(CreateIdentStepForSlot(*ident_expr, slot.slot, expr->id()));
+      if (options_.max_recursion_depth != 0) {
+        SetRecursiveStep(CreateDirectSlotIdentStep(ident_expr->name(),
+                                                   slot.slot, expr->id()),
+                         1);
+        return;
+      } else {
+        AddStep(CreateIdentStepForSlot(*ident_expr, slot.slot, expr->id()));
+      }
       return;
     }
     if (options_.max_recursion_depth != 0) {
