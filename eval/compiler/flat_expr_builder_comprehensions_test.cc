@@ -14,15 +14,11 @@
  * limitations under the License.
  */
 
-#include <utility>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/field_mask.pb.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/text_format.h"
 #include "absl/status/status.h"
-#include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/comprehension_vulnerability_check.h"
@@ -30,19 +26,17 @@
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
-#include "eval/public/cel_builtins.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/testing/matchers.h"
-#include "eval/public/unknown_attribute_set.h"
-#include "eval/public/unknown_set.h"
 #include "eval/testutil/test_message.pb.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/text_format.h"
 
 namespace google::api::expr::runtime {
 
@@ -53,9 +47,25 @@ using ::google::api::expr::v1alpha1::ParsedExpr;
 using testing::HasSubstr;
 using cel::internal::StatusIs;
 
-TEST(CelExpressionBuilderFlatImplComprehensionsTest, NestedComp) {
-  cel::RuntimeOptions options;
-  options.enable_comprehension_list_append = true;
+class CelExpressionBuilderFlatImplComprehensionsTest
+    : public testing::TestWithParam<bool> {
+ public:
+  CelExpressionBuilderFlatImplComprehensionsTest() = default;
+
+  bool enable_recursive_planning() { return GetParam(); }
+
+  cel::RuntimeOptions GetRuntimeOptions() {
+    cel::RuntimeOptions options;
+    if (enable_recursive_planning()) {
+      options.max_recursion_depth = -1;
+    }
+    options.enable_comprehension_list_append = true;
+    return options;
+  }
+};
+
+TEST_P(CelExpressionBuilderFlatImplComprehensionsTest, NestedComp) {
+  cel::RuntimeOptions options = GetRuntimeOptions();
   CelExpressionBuilderFlatImpl builder(options);
 
   ASSERT_OK_AND_ASSIGN(auto parsed_expr,
@@ -72,9 +82,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest, NestedComp) {
   EXPECT_THAT(*result.ListOrDie(), testing::SizeIs(2));
 }
 
-TEST(CelExpressionBuilderFlatImplComprehensionsTest, MapComp) {
-  cel::RuntimeOptions options;
-  options.enable_comprehension_list_append = true;
+TEST_P(CelExpressionBuilderFlatImplComprehensionsTest, MapComp) {
+  cel::RuntimeOptions options = GetRuntimeOptions();
   CelExpressionBuilderFlatImpl builder(options);
 
   ASSERT_OK_AND_ASSIGN(auto parsed_expr, parser::Parse("[1, 2].map(x, x * 2)"));
@@ -94,9 +103,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest, MapComp) {
               test::EqualsCelValue(CelValue::CreateInt64(4)));
 }
 
-TEST(CelExpressionBuilderFlatImplComprehensionsTest, ExistsOneTrue) {
-  cel::RuntimeOptions options;
-  options.enable_comprehension_list_append = true;
+TEST_P(CelExpressionBuilderFlatImplComprehensionsTest, ExistsOneTrue) {
+  cel::RuntimeOptions options = GetRuntimeOptions();
   CelExpressionBuilderFlatImpl builder(options);
 
   ASSERT_OK_AND_ASSIGN(auto parsed_expr,
@@ -112,9 +120,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest, ExistsOneTrue) {
   EXPECT_THAT(result, test::IsCelBool(true));
 }
 
-TEST(CelExpressionBuilderFlatImplComprehensionsTest, ExistsOneFalse) {
-  cel::RuntimeOptions options;
-  options.enable_comprehension_list_append = true;
+TEST_P(CelExpressionBuilderFlatImplComprehensionsTest, ExistsOneFalse) {
+  cel::RuntimeOptions options = GetRuntimeOptions();
   CelExpressionBuilderFlatImpl builder(options);
 
   ASSERT_OK_AND_ASSIGN(auto parsed_expr,
@@ -130,8 +137,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest, ExistsOneFalse) {
   EXPECT_THAT(result, test::IsCelBool(false));
 }
 
-TEST(CelExpressionBuilderFlatImplComprehensionsTest, ListCompWithUnknowns) {
-  cel::RuntimeOptions options;
+TEST_P(CelExpressionBuilderFlatImplComprehensionsTest, ListCompWithUnknowns) {
+  cel::RuntimeOptions options = GetRuntimeOptions();
   options.unknown_processing = UnknownProcessingOptions::kAttributeAndFunction;
   CelExpressionBuilderFlatImpl builder(options);
 
@@ -167,8 +174,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest, ListCompWithUnknowns) {
               testing::Eq(1));
 }
 
-TEST(CelExpressionBuilderFlatImplComprehensionsTest,
-     InvalidComprehensionWithRewrite) {
+TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
+       InvalidComprehensionWithRewrite) {
   CheckedExpr expr;
   // The rewrite step which occurs when an identifier gets a more qualified name
   // from the reference map has the potential to make invalid comprehensions
@@ -195,7 +202,7 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
           }
         })pb",
       &expr);
-  cel::RuntimeOptions options;
+  cel::RuntimeOptions options = GetRuntimeOptions();
   CelExpressionBuilderFlatImpl builder(options);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
@@ -204,8 +211,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
                                       HasSubstr("Invalid empty expression"))));
 }
 
-TEST(CelExpressionBuilderFlatImplComprehensionsTest,
-     ComprehensionWithConcatVulernability) {
+TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
+       ComprehensionWithConcatVulernability) {
   CheckedExpr expr;
   // The comprehension loop step performs an unsafe concatenation of the
   // accumulation variable with itself or one of its children.
@@ -248,7 +255,7 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
         })pb",
       &expr);
 
-  cel::RuntimeOptions options;
+  cel::RuntimeOptions options = GetRuntimeOptions();
   CelExpressionBuilderFlatImpl builder(options);
   builder.flat_expr_builder().AddProgramOptimizer(
       CreateComprehensionVulnerabilityCheck());
@@ -258,8 +265,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
                        HasSubstr("memory exhaustion vulnerability")));
 }
 
-TEST(CelExpressionBuilderFlatImplComprehensionsTest,
-     ComprehensionWithListVulernability) {
+TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
+       ComprehensionWithListVulernability) {
   CheckedExpr expr;
   // The comprehension
   google::protobuf::TextFormat::ParseFromString(
@@ -292,7 +299,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
       )pb",
       &expr);
 
-  CelExpressionBuilderFlatImpl builder;
+  cel::RuntimeOptions options = GetRuntimeOptions();
+  CelExpressionBuilderFlatImpl builder(options);
   builder.flat_expr_builder().AddProgramOptimizer(
       CreateComprehensionVulnerabilityCheck());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
@@ -301,8 +309,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
                        HasSubstr("memory exhaustion vulnerability")));
 }
 
-TEST(CelExpressionBuilderFlatImplComprehensionsTest,
-     ComprehensionWithStructVulernability) {
+TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
+       ComprehensionWithStructVulernability) {
   CheckedExpr expr;
   // The comprehension loop step builds a deeply nested struct which expands
   // exponentially.
@@ -348,7 +356,7 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
       )pb",
       &expr);
 
-  cel::RuntimeOptions options;
+  cel::RuntimeOptions options = GetRuntimeOptions();
   CelExpressionBuilderFlatImpl builder(options);
   builder.flat_expr_builder().AddProgramOptimizer(
       CreateComprehensionVulnerabilityCheck());
@@ -358,8 +366,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
                        HasSubstr("memory exhaustion vulnerability")));
 }
 
-TEST(CelExpressionBuilderFlatImplComprehensionsTest,
-     ComprehensionWithNestedComprehensionResultVulernability) {
+TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
+       ComprehensionWithNestedComprehensionResultVulernability) {
   CheckedExpr expr;
   // The nested comprehension performs an unsafe concatenation on the parent
   // accumulator variable within its 'result' expression.
@@ -416,7 +424,7 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
       )pb",
       &expr);
 
-  cel::RuntimeOptions options;
+  cel::RuntimeOptions options = GetRuntimeOptions();
   CelExpressionBuilderFlatImpl builder(options);
   builder.flat_expr_builder().AddProgramOptimizer(
       CreateComprehensionVulnerabilityCheck());
@@ -426,8 +434,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
                        HasSubstr("memory exhaustion vulnerability")));
 }
 
-TEST(CelExpressionBuilderFlatImplComprehensionsTest,
-     ComprehensionWithNestedComprehensionLoopStepVulernability) {
+TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
+       ComprehensionWithNestedComprehensionLoopStepVulernability) {
   CheckedExpr expr;
   // The nested comprehension performs an unsafe concatenation on the parent
   // accumulator variable within its 'loop_step'.
@@ -463,7 +471,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
       )pb",
       &expr);
 
-  CelExpressionBuilderFlatImpl builder;
+  cel::RuntimeOptions options = GetRuntimeOptions();
+  CelExpressionBuilderFlatImpl builder(options);
   builder.flat_expr_builder().AddProgramOptimizer(
       CreateComprehensionVulnerabilityCheck());
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
@@ -472,8 +481,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
                        HasSubstr("memory exhaustion vulnerability")));
 }
 
-TEST(CelExpressionBuilderFlatImplComprehensionsTest,
-     ComprehensionWithNestedComprehensionLoopStepVulernabilityResult) {
+TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
+       ComprehensionWithNestedComprehensionLoopStepVulernabilityResult) {
   CheckedExpr expr;
   // The nested comprehension performs an unsafe concatenation on the parent
   // accumulator.
@@ -513,6 +522,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
         }
       )pb",
       &expr);
+
+  cel::RuntimeOptions options = GetRuntimeOptions();
   CelExpressionBuilderFlatImpl builder;
   builder.flat_expr_builder().AddProgramOptimizer(
       CreateComprehensionVulnerabilityCheck());
@@ -522,8 +533,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
                        HasSubstr("memory exhaustion vulnerability")));
 }
 
-TEST(CelExpressionBuilderFlatImplComprehensionsTest,
-     ComprehensionWithNestedComprehensionLoopStepIterRangeVulnerability) {
+TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
+       ComprehensionWithNestedComprehensionLoopStepIterRangeVulnerability) {
   CheckedExpr expr;
   // The nested comprehension unsafely modifies the parent accumulator
   // (outer_accu) being used as a iterable range
@@ -558,6 +569,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
         }
       )pb",
       &expr);
+
+  cel::RuntimeOptions options = GetRuntimeOptions();
   CelExpressionBuilderFlatImpl builder;
   builder.flat_expr_builder().AddProgramOptimizer(
       CreateComprehensionVulnerabilityCheck());
@@ -567,7 +580,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest,
                        HasSubstr("memory exhaustion vulnerability")));
 }
 
-TEST(CelExpressionBuilderFlatImplComprehensionsTest, InvalidBindComprehension) {
+TEST_P(CelExpressionBuilderFlatImplComprehensionsTest,
+       InvalidBindComprehension) {
   ParsedExpr expr;
   // Trivial comprehensions (such as cel.bind), are optimized by skipping the
   // planning for the loop step, however the planner will still warn if the
@@ -598,7 +612,8 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest, InvalidBindComprehension) {
           }
         })pb",
       &expr));
-  cel::RuntimeOptions options;
+
+  cel::RuntimeOptions options = GetRuntimeOptions();
   CelExpressionBuilderFlatImpl builder(options);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
 
@@ -608,6 +623,13 @@ TEST(CelExpressionBuilderFlatImplComprehensionsTest, InvalidBindComprehension) {
           absl::StatusCode::kInvalidArgument,
           HasSubstr("Unexpected iter_var access in trivial comprehension")));
 }
+
+INSTANTIATE_TEST_SUITE_P(TestSuite,
+                         CelExpressionBuilderFlatImplComprehensionsTest,
+                         testing::Bool(),
+                         [](const testing::TestParamInfo<bool>& info) {
+                           return info.param ? "recursive" : "default";
+                         });
 
 }  // namespace
 

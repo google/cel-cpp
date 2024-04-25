@@ -84,10 +84,9 @@ class Value final {
       : variant_((other.AssertIsValid(), other.variant_)) {}
 
   Value& operator=(const Value& other) {
-    other.AssertIsValid();
-    ABSL_DCHECK(this != std::addressof(other))
-        << "Value should not be copied to itself";
-    variant_ = other.variant_;
+    if (this != std::addressof(other)) {
+      variant_ = other.variant_;
+    }
     return *this;
   }
 

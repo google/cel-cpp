@@ -75,6 +75,11 @@ class ComprehensionSlots {
     slots_[index] = absl::nullopt;
   }
 
+  void Set(size_t index) {
+    ABSL_ASSERT(index >= 0 && index < slots_.size());
+    slots_[index].emplace();
+  }
+
   void Set(size_t index, cel::Value value) {
     Set(index, std::move(value), AttributeTrail());
   }

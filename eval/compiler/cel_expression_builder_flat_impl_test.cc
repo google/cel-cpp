@@ -177,7 +177,14 @@ INSTANTIATE_TEST_SUITE_P(
         {"nested_select", "[map_var.a, map_var.b].size() == 2",
          test::IsCelBool(true)},
         {"map_index", "map_var['b']", test::IsCelInt64(2)},
-        {"list_index", "[1, 2, 3][1]", test::IsCelInt64(2)}}),
+        {"list_index", "[1, 2, 3][1]", test::IsCelInt64(2)},
+        {"compre_exists", "[1, 2, 3, 4].exists(x, x == 3)",
+         test::IsCelBool(true)},
+        {"compre_map", "8 in [1, 2, 3, 4].map(x, x * 2)",
+         test::IsCelBool(true)},
+        {"map_compre_exists", "map_var.exists(key, key == 'b')",
+         test::IsCelBool(true)},
+    }),
 
     [](const testing::TestParamInfo<RecursiveTestCase>& info) -> std::string {
       return info.param.test_name;

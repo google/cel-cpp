@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "absl/status/status.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 
@@ -44,6 +45,16 @@ class ComprehensionCondStep : public ExpressionStepBase {
   int error_jump_offset_;
   bool shortcircuiting_;
 };
+
+// Creates a step for executing a comprehension.
+std::unique_ptr<DirectExpressionStep> CreateDirectComprehensionStep(
+    size_t iter_slot, size_t accu_slot,
+    std::unique_ptr<DirectExpressionStep> range,
+    std::unique_ptr<DirectExpressionStep> accu_init,
+    std::unique_ptr<DirectExpressionStep> loop_step,
+    std::unique_ptr<DirectExpressionStep> condition_step,
+    std::unique_ptr<DirectExpressionStep> result_step, bool shortcircuiting,
+    int64_t expr_id);
 
 // Creates a cleanup step for the comprehension.
 // Removes the comprehension context then pushes the 'result' sub expression to

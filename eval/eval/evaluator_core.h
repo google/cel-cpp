@@ -150,7 +150,9 @@ class ExecutionFrameBase {
         value_manager_(&value_manager),
         attribute_utility_(activation.GetUnknownAttributes(),
                            activation.GetMissingAttributes(), value_manager),
-        slots_(&ComprehensionSlots::GetEmptyInstance()) {}
+        slots_(&ComprehensionSlots::GetEmptyInstance()),
+        max_iterations_(options.comprehension_max_iterations),
+        iterations_(0) {}
 
   ExecutionFrameBase(const cel::ActivationInterface& activation,
                      const cel::RuntimeOptions& options,
@@ -161,7 +163,9 @@ class ExecutionFrameBase {
         value_manager_(&value_manager),
         attribute_utility_(activation.GetUnknownAttributes(),
                            activation.GetMissingAttributes(), value_manager),
-        slots_(&slots) {}
+        slots_(&slots),
+        max_iterations_(options.comprehension_max_iterations),
+        iterations_(0) {}
 
   const cel::ActivationInterface& activation() const { return *activation_; }
   const cel::RuntimeOptions& options() const { return *options_; }
@@ -192,12 +196,28 @@ class ExecutionFrameBase {
 
   ComprehensionSlots& comprehension_slots() { return *slots_; }
 
+  // Increment iterations and return an error if the iteration budget is
+  // exceeded
+  absl::Status IncrementIterations() {
+    if (max_iterations_ == 0) {
+      return absl::OkStatus();
+    }
+    iterations_++;
+    if (iterations_ >= max_iterations_) {
+      return absl::Status(absl::StatusCode::kInternal,
+                          "Iteration budget exceeded");
+    }
+    return absl::OkStatus();
+  }
+
  protected:
   absl::Nonnull<const cel::ActivationInterface*> activation_;
   absl::Nonnull<const cel::RuntimeOptions*> options_;
   absl::Nonnull<cel::ValueManager*> value_manager_;
   AttributeUtility attribute_utility_;
   absl::Nonnull<ComprehensionSlots*> slots_;
+  const int max_iterations_;
+  int iterations_;
 };
 
 // ExecutionFrame manages the context needed for expression evaluation.
@@ -218,8 +238,6 @@ class ExecutionFrame : public ExecutionFrameBase {
         pc_(0UL),
         execution_path_(flat),
         state_(state),
-        max_iterations_(options.comprehension_max_iterations),
-        iterations_(0),
         subexpressions_() {}
 
   ExecutionFrame(absl::Span<const ExecutionPathView> subexpressions,
@@ -231,8 +249,6 @@ class ExecutionFrame : public ExecutionFrameBase {
         pc_(0UL),
         execution_path_(subexpressions[0]),
         state_(state),
-        max_iterations_(options_->comprehension_max_iterations),
-        iterations_(0),
         subexpressions_(subexpressions) {
     ABSL_DCHECK(!subexpressions.empty());
   }
@@ -317,20 +333,6 @@ class ExecutionFrame : public ExecutionFrameBase {
     return *activation_;
   }
 
-  // Increment iterations and return an error if the iteration budget is
-  // exceeded
-  absl::Status IncrementIterations() {
-    if (max_iterations_ == 0) {
-      return absl::OkStatus();
-    }
-    iterations_++;
-    if (iterations_ >= max_iterations_) {
-      return absl::Status(absl::StatusCode::kInternal,
-                          "Iteration budget exceeded");
-    }
-    return absl::OkStatus();
-  }
-
  private:
   struct SubFrame {
     size_t return_pc;
@@ -341,8 +343,6 @@ class ExecutionFrame : public ExecutionFrameBase {
   size_t pc_;  // pc_ - Program Counter. Current position on execution path.
   ExecutionPathView execution_path_;
   FlatExpressionEvaluatorState& state_;
-  const int max_iterations_;
-  int iterations_;
   absl::Span<const ExecutionPathView> subexpressions_;
   std::vector<SubFrame> call_stack_;
 };

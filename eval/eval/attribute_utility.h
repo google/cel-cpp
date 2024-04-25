@@ -79,6 +79,12 @@ class AttributeUtility {
     return CheckForUnknown(trail, false);
   }
 
+  // Checks whether trail corresponds to any patterns that define unknowns.
+  // Matches if a parent or any descendant (select or index of) the attribute.
+  bool CheckForUnknownPartial(const AttributeTrail& trail) const {
+    return CheckForUnknown(trail, true);
+  }
+
   // Creates merged UnknownAttributeSet.
   // Scans over the args collection, determines if there matches to unknown
   // patterns and returns the (possibly empty) collection.

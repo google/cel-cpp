@@ -1343,7 +1343,7 @@ TEST(FlatExprBuilderTest, ComprehensionBudget) {
   Expr expr;
   SourceInfo source_info;
   // [1, 2].all(x, x > 0)
-  google::protobuf::TextFormat::ParseFromString(R"(
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
     comprehension_expr {
       iter_var: "k"
       accu_var: "accu"
@@ -1369,12 +1369,12 @@ TEST(FlatExprBuilderTest, ComprehensionBudget) {
       }
       iter_range {
         list_expr {
-          { const_expr { int64_value: 1 } }
-          { const_expr { int64_value: 2 } }
+          elements { const_expr { int64_value: 1 } }
+          elements { const_expr { int64_value: 2 } }
         }
       }
     })",
-                                      &expr);
+                                                  &expr));
 
   cel::RuntimeOptions options;
   options.comprehension_max_iterations = 1;

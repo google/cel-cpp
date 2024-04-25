@@ -416,7 +416,7 @@ comprehension_expr: <
   iter_range: <
     id: 2
     ident_expr: <
-      name: "list"
+      name: "list_var"
     >
   >
   accu_init: <
@@ -471,7 +471,7 @@ void BM_Comprehension(benchmark::State& state) {
   }
 
   ContainerBackedListImpl cel_list(std::move(list));
-  activation.InsertValue("list", CelValue::CreateList(&cel_list));
+  activation.InsertValue("list_var", CelValue::CreateList(&cel_list));
 
   InterpreterOptions options = GetOptions(arena);
   options.comprehension_max_iterations = 10000000;
@@ -504,7 +504,7 @@ void BM_Comprehension_Trace(benchmark::State& state) {
   }
 
   ContainerBackedListImpl cel_list(std::move(list));
-  activation.InsertValue("list", CelValue::CreateList(&cel_list));
+  activation.InsertValue("list_var", CelValue::CreateList(&cel_list));
   InterpreterOptions options = GetOptions(arena);
   options.max_recursion_depth = 0;
   options.comprehension_max_iterations = 10000000;
@@ -765,7 +765,7 @@ comprehension_expr: <
   iter_range: <
     id: 2
     ident_expr: <
-      name: "list"
+      name: "list_var"
     >
   >
   accu_init: <
@@ -792,7 +792,7 @@ comprehension_expr: <
           iter_range: <
             id: 9
             ident_expr: <
-              name: "list"
+              name: "list_var"
             >
           >
           accu_init: <
@@ -863,7 +863,7 @@ void BM_NestedComprehension(benchmark::State& state) {
   }
 
   ContainerBackedListImpl cel_list(std::move(list));
-  activation.InsertValue("list", CelValue::CreateList(&cel_list));
+  activation.InsertValue("list_var", CelValue::CreateList(&cel_list));
   InterpreterOptions options = GetOptions(arena);
   options.comprehension_max_iterations = 10000000;
   auto builder = CreateCelExpressionBuilder(options);
@@ -896,7 +896,7 @@ void BM_NestedComprehension_Trace(benchmark::State& state) {
   }
 
   ContainerBackedListImpl cel_list(std::move(list));
-  activation.InsertValue("list", CelValue::CreateList(&cel_list));
+  activation.InsertValue("list_var", CelValue::CreateList(&cel_list));
   InterpreterOptions options = GetOptions(arena);
   options.comprehension_max_iterations = 10000000;
   options.enable_comprehension_list_append = true;
@@ -920,7 +920,7 @@ void BM_ListComprehension(benchmark::State& state) {
   google::protobuf::Arena arena;
   Activation activation;
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
-                       parser::Parse("list.map(x, x * 2)"));
+                       parser::Parse("list_var.map(x, x * 2)"));
 
   int len = state.range(0);
   std::vector<CelValue> list;
@@ -930,7 +930,7 @@ void BM_ListComprehension(benchmark::State& state) {
   }
 
   ContainerBackedListImpl cel_list(std::move(list));
-  activation.InsertValue("list", CelValue::CreateList(&cel_list));
+  activation.InsertValue("list_var", CelValue::CreateList(&cel_list));
   InterpreterOptions options = GetOptions(arena);
   options.comprehension_max_iterations = 10000000;
   options.enable_comprehension_list_append = true;
@@ -953,7 +953,7 @@ void BM_ListComprehension_Trace(benchmark::State& state) {
   google::protobuf::Arena arena;
   Activation activation;
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
-                       parser::Parse("list.map(x, x * 2)"));
+                       parser::Parse("list_var.map(x, x * 2)"));
 
   int len = state.range(0);
   std::vector<CelValue> list;
@@ -963,7 +963,7 @@ void BM_ListComprehension_Trace(benchmark::State& state) {
   }
 
   ContainerBackedListImpl cel_list(std::move(list));
-  activation.InsertValue("list", CelValue::CreateList(&cel_list));
+  activation.InsertValue("list_var", CelValue::CreateList(&cel_list));
   InterpreterOptions options = GetOptions(arena);
   options.comprehension_max_iterations = 10000000;
   options.enable_comprehension_list_append = true;
@@ -987,7 +987,7 @@ void BM_ListComprehension_Opt(benchmark::State& state) {
   google::protobuf::Arena arena;
   Activation activation;
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
-                       parser::Parse("list.map(x, x * 2)"));
+                       parser::Parse("list_var.map(x, x * 2)"));
 
   int len = state.range(0);
   std::vector<CelValue> list;
@@ -997,7 +997,7 @@ void BM_ListComprehension_Opt(benchmark::State& state) {
   }
 
   ContainerBackedListImpl cel_list(std::move(list));
-  activation.InsertValue("list", CelValue::CreateList(&cel_list));
+  activation.InsertValue("list_var", CelValue::CreateList(&cel_list));
   InterpreterOptions options;
   options.constant_arena = &arena;
   options.constant_folding = true;

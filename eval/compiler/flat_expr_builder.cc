@@ -552,7 +552,6 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
         SetRecursiveStep(CreateDirectSlotIdentStep(ident_expr->name(),
                                                    slot.slot, expr->id()),
                          1);
-        return;
       } else {
         AddStep(CreateIdentStepForSlot(*ident_expr, slot.slot, expr->id()));
       }
@@ -561,9 +560,9 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     if (options_.max_recursion_depth != 0) {
       SetRecursiveStep(CreateDirectIdentStep(ident_expr->name(), expr->id()),
                        1);
-      return;
+    } else {
+      AddStep(CreateIdentStep(*ident_expr, expr->id()));
     }
-    AddStep(CreateIdentStep(*ident_expr, expr->id()));
   }
 
   void PreVisitSelect(const cel::ast_internal::Select* select_expr,
@@ -809,6 +808,72 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
                               expr->id(), options_.short_circuiting),
           max_depth + 1);
     }
+  }
+
+  void MaybeMakeComprehensionRecursive(
+      const cel::ast_internal::Expr* expr,
+      const cel::ast_internal::Comprehension* comprehension, size_t iter_slot,
+      size_t accu_slot) {
+    if (options_.max_recursion_depth == 0) {
+      return;
+    }
+
+    auto* accu_plan =
+        program_builder_.GetSubexpression(&comprehension->accu_init());
+
+    if (accu_plan == nullptr || !accu_plan->IsRecursive()) {
+      return;
+    }
+
+    auto* range_plan =
+        program_builder_.GetSubexpression(&comprehension->iter_range());
+
+    if (range_plan == nullptr || !range_plan->IsRecursive()) {
+      return;
+    }
+
+    auto* loop_plan =
+        program_builder_.GetSubexpression(&comprehension->loop_step());
+
+    if (loop_plan == nullptr || !loop_plan->IsRecursive()) {
+      return;
+    }
+
+    auto* condition_plan =
+        program_builder_.GetSubexpression(&comprehension->loop_condition());
+
+    if (condition_plan == nullptr || !condition_plan->IsRecursive()) {
+      return;
+    }
+
+    auto* result_plan =
+        program_builder_.GetSubexpression(&comprehension->result());
+
+    if (result_plan == nullptr || !result_plan->IsRecursive()) {
+      return;
+    }
+
+    int max_depth = 0;
+    max_depth = std::max(max_depth, accu_plan->recursive_program().depth);
+    max_depth = std::max(max_depth, range_plan->recursive_program().depth);
+    max_depth = std::max(max_depth, loop_plan->recursive_program().depth);
+    max_depth = std::max(max_depth, condition_plan->recursive_program().depth);
+    max_depth = std::max(max_depth, result_plan->recursive_program().depth);
+
+    if (options_.max_recursion_depth > 0 &&
+        max_depth >= options_.max_recursion_depth) {
+      return;
+    }
+
+    auto step = CreateDirectComprehensionStep(
+        iter_slot, accu_slot, range_plan->ExtractRecursiveProgram().step,
+        accu_plan->ExtractRecursiveProgram().step,
+        loop_plan->ExtractRecursiveProgram().step,
+        condition_plan->ExtractRecursiveProgram().step,
+        result_plan->ExtractRecursiveProgram().step, options_.short_circuiting,
+        expr->id());
+
+    SetRecursiveStep(std::move(step), max_depth + 1);
   }
 
   // Invoked after all child nodes are processed.
@@ -1635,7 +1700,14 @@ void ComprehensionVisitor::PostVisitArgTrivial(
   }
 }
 
-void ComprehensionVisitor::PostVisit(const cel::ast_internal::Expr* expr) {}
+void ComprehensionVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
+  if (is_trivial_) {
+    // TODO(uncreated-issue/67): need to add mechanism for lazy eval for binds.
+    return;
+  }
+  visitor_->MaybeMakeComprehensionRecursive(expr, &expr->comprehension_expr(),
+                                            iter_slot_, accu_slot_);
+}
 
 // Flattens the expression table into the end of the mainline expression vector
 // and returns an index to the individual sub expressions.
