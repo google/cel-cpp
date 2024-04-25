@@ -17,6 +17,54 @@ package(default_visibility = ["//visibility:public"])
 licenses(["notice"])
 
 cc_library(
+    name = "ast",
+    srcs = ["ast.cc"],
+    hdrs = ["ast.h"],
+    deps = [
+        ":constant",
+        "@com_google_absl//absl/algorithm:container",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_test(
+    name = "ast_test",
+    srcs = ["ast_test.cc"],
+    deps = [
+        ":ast",
+        "//internal:testing",
+    ],
+)
+
+cc_library(
+    name = "constant",
+    srcs = ["constant.cc"],
+    hdrs = ["constant.h"],
+    deps = [
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_test(
+    name = "constant_test",
+    srcs = ["constant_test.cc"],
+    deps = [
+        ":constant",
+        "//internal:testing",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+cc_library(
     name = "operators",
     srcs = [
         "operators.cc",

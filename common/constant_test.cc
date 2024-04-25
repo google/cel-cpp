@@ -1,0 +1,217 @@
+// Copyright 2024 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "common/constant.h"
+
+#include "absl/time/time.h"
+#include "internal/testing.h"
+
+namespace cel {
+namespace {
+
+using testing::IsEmpty;
+using testing::IsFalse;
+using testing::IsTrue;
+
+TEST(Constant, NullValue) {
+  Constant const_expr;
+  EXPECT_THAT(const_expr.has_null_value(), IsFalse());
+  const_expr.set_null_value();
+  EXPECT_THAT(const_expr.has_null_value(), IsTrue());
+}
+
+TEST(Constant, BoolValue) {
+  Constant const_expr;
+  EXPECT_THAT(const_expr.has_bool_value(), IsFalse());
+  EXPECT_EQ(const_expr.bool_value(), false);
+  const_expr.set_bool_value(false);
+  EXPECT_THAT(const_expr.has_bool_value(), IsTrue());
+  EXPECT_EQ(const_expr.bool_value(), false);
+}
+
+TEST(Constant, IntValue) {
+  Constant const_expr;
+  EXPECT_THAT(const_expr.has_int_value(), IsFalse());
+  EXPECT_EQ(const_expr.int_value(), 0);
+  const_expr.set_int_value(0);
+  EXPECT_THAT(const_expr.has_int_value(), IsTrue());
+  EXPECT_EQ(const_expr.int_value(), 0);
+}
+
+TEST(Constant, UintValue) {
+  Constant const_expr;
+  EXPECT_THAT(const_expr.has_uint_value(), IsFalse());
+  EXPECT_EQ(const_expr.uint_value(), 0);
+  const_expr.set_uint_value(0);
+  EXPECT_THAT(const_expr.has_uint_value(), IsTrue());
+  EXPECT_EQ(const_expr.uint_value(), 0);
+}
+
+TEST(Constant, DoubleValue) {
+  Constant const_expr;
+  EXPECT_THAT(const_expr.has_double_value(), IsFalse());
+  EXPECT_EQ(const_expr.double_value(), 0);
+  const_expr.set_double_value(0);
+  EXPECT_THAT(const_expr.has_double_value(), IsTrue());
+  EXPECT_EQ(const_expr.double_value(), 0);
+}
+
+TEST(Constant, BytesValue) {
+  Constant const_expr;
+  EXPECT_THAT(const_expr.has_bytes_value(), IsFalse());
+  EXPECT_THAT(const_expr.bytes_value(), IsEmpty());
+  const_expr.set_bytes_value("foo");
+  EXPECT_THAT(const_expr.has_bytes_value(), IsTrue());
+  EXPECT_EQ(const_expr.bytes_value(), "foo");
+}
+
+TEST(Constant, StringValue) {
+  Constant const_expr;
+  EXPECT_THAT(const_expr.has_string_value(), IsFalse());
+  EXPECT_THAT(const_expr.string_value(), IsEmpty());
+  const_expr.set_string_value("foo");
+  EXPECT_THAT(const_expr.has_string_value(), IsTrue());
+  EXPECT_EQ(const_expr.string_value(), "foo");
+}
+
+TEST(Constant, DurationValue) {
+  Constant const_expr;
+  EXPECT_THAT(const_expr.has_duration_value(), IsFalse());
+  EXPECT_EQ(const_expr.duration_value(), absl::ZeroDuration());
+  const_expr.set_duration_value(absl::ZeroDuration());
+  EXPECT_THAT(const_expr.has_duration_value(), IsTrue());
+  EXPECT_EQ(const_expr.duration_value(), absl::ZeroDuration());
+}
+
+TEST(Constant, TimestampValue) {
+  Constant const_expr;
+  EXPECT_THAT(const_expr.has_timestamp_value(), IsFalse());
+  EXPECT_EQ(const_expr.timestamp_value(), absl::UnixEpoch());
+  const_expr.set_timestamp_value(absl::UnixEpoch());
+  EXPECT_THAT(const_expr.has_timestamp_value(), IsTrue());
+  EXPECT_EQ(const_expr.timestamp_value(), absl::UnixEpoch());
+}
+
+TEST(Constant, Equality) {
+  EXPECT_EQ(Constant{}, Constant{});
+
+  Constant lhs_const_expr;
+  Constant rhs_const_expr;
+
+  lhs_const_expr.set_null_value();
+  rhs_const_expr.set_null_value();
+  EXPECT_EQ(lhs_const_expr, rhs_const_expr);
+  EXPECT_EQ(rhs_const_expr, lhs_const_expr);
+  EXPECT_NE(lhs_const_expr, Constant{});
+  EXPECT_NE(Constant{}, rhs_const_expr);
+
+  lhs_const_expr.set_bool_value(false);
+  rhs_const_expr.set_null_value();
+  EXPECT_NE(lhs_const_expr, rhs_const_expr);
+  EXPECT_NE(rhs_const_expr, lhs_const_expr);
+  EXPECT_NE(lhs_const_expr, Constant{});
+  EXPECT_NE(Constant{}, rhs_const_expr);
+  rhs_const_expr.set_bool_value(false);
+  EXPECT_EQ(lhs_const_expr, rhs_const_expr);
+  EXPECT_EQ(rhs_const_expr, lhs_const_expr);
+  EXPECT_NE(lhs_const_expr, Constant{});
+  EXPECT_NE(Constant{}, rhs_const_expr);
+
+  lhs_const_expr.set_int_value(0);
+  rhs_const_expr.set_null_value();
+  EXPECT_NE(lhs_const_expr, rhs_const_expr);
+  EXPECT_NE(rhs_const_expr, lhs_const_expr);
+  EXPECT_NE(lhs_const_expr, Constant{});
+  EXPECT_NE(Constant{}, rhs_const_expr);
+  rhs_const_expr.set_int_value(0);
+  EXPECT_EQ(lhs_const_expr, rhs_const_expr);
+  EXPECT_EQ(rhs_const_expr, lhs_const_expr);
+  EXPECT_NE(lhs_const_expr, Constant{});
+  EXPECT_NE(Constant{}, rhs_const_expr);
+
+  lhs_const_expr.set_uint_value(0);
+  rhs_const_expr.set_null_value();
+  EXPECT_NE(lhs_const_expr, rhs_const_expr);
+  EXPECT_NE(rhs_const_expr, lhs_const_expr);
+  EXPECT_NE(lhs_const_expr, Constant{});
+  EXPECT_NE(Constant{}, rhs_const_expr);
+  rhs_const_expr.set_uint_value(0);
+  EXPECT_EQ(lhs_const_expr, rhs_const_expr);
+  EXPECT_EQ(rhs_const_expr, lhs_const_expr);
+  EXPECT_NE(lhs_const_expr, Constant{});
+  EXPECT_NE(Constant{}, rhs_const_expr);
+
+  lhs_const_expr.set_double_value(0);
+  rhs_const_expr.set_null_value();
+  EXPECT_NE(lhs_const_expr, rhs_const_expr);
+  EXPECT_NE(rhs_const_expr, lhs_const_expr);
+  EXPECT_NE(lhs_const_expr, Constant{});
+  EXPECT_NE(Constant{}, rhs_const_expr);
+  rhs_const_expr.set_double_value(0);
+  EXPECT_EQ(lhs_const_expr, rhs_const_expr);
+  EXPECT_EQ(rhs_const_expr, lhs_const_expr);
+  EXPECT_NE(lhs_const_expr, Constant{});
+  EXPECT_NE(Constant{}, rhs_const_expr);
+
+  lhs_const_expr.set_bytes_value("foo");
+  rhs_const_expr.set_null_value();
+  EXPECT_NE(lhs_const_expr, rhs_const_expr);
+  EXPECT_NE(rhs_const_expr, lhs_const_expr);
+  EXPECT_NE(lhs_const_expr, Constant{});
+  EXPECT_NE(Constant{}, rhs_const_expr);
+  rhs_const_expr.set_bytes_value("foo");
+  EXPECT_EQ(lhs_const_expr, rhs_const_expr);
+  EXPECT_EQ(rhs_const_expr, lhs_const_expr);
+  EXPECT_NE(lhs_const_expr, Constant{});
+  EXPECT_NE(Constant{}, rhs_const_expr);
+
+  lhs_const_expr.set_string_value("foo");
+  rhs_const_expr.set_null_value();
+  EXPECT_NE(lhs_const_expr, rhs_const_expr);
+  EXPECT_NE(rhs_const_expr, lhs_const_expr);
+  EXPECT_NE(lhs_const_expr, Constant{});
+  EXPECT_NE(Constant{}, rhs_const_expr);
+  rhs_const_expr.set_string_value("foo");
+  EXPECT_EQ(lhs_const_expr, rhs_const_expr);
+  EXPECT_EQ(rhs_const_expr, lhs_const_expr);
+  EXPECT_NE(lhs_const_expr, Constant{});
+  EXPECT_NE(Constant{}, rhs_const_expr);
+
+  lhs_const_expr.set_duration_value(absl::ZeroDuration());
+  rhs_const_expr.set_null_value();
+  EXPECT_NE(lhs_const_expr, rhs_const_expr);
+  EXPECT_NE(rhs_const_expr, lhs_const_expr);
+  EXPECT_NE(lhs_const_expr, Constant{});
+  EXPECT_NE(Constant{}, rhs_const_expr);
+  rhs_const_expr.set_duration_value(absl::ZeroDuration());
+  EXPECT_EQ(lhs_const_expr, rhs_const_expr);
+  EXPECT_EQ(rhs_const_expr, lhs_const_expr);
+  EXPECT_NE(lhs_const_expr, Constant{});
+  EXPECT_NE(Constant{}, rhs_const_expr);
+
+  lhs_const_expr.set_timestamp_value(absl::UnixEpoch());
+  rhs_const_expr.set_null_value();
+  EXPECT_NE(lhs_const_expr, rhs_const_expr);
+  EXPECT_NE(rhs_const_expr, lhs_const_expr);
+  EXPECT_NE(lhs_const_expr, Constant{});
+  EXPECT_NE(Constant{}, rhs_const_expr);
+  rhs_const_expr.set_timestamp_value(absl::UnixEpoch());
+  EXPECT_EQ(lhs_const_expr, rhs_const_expr);
+  EXPECT_EQ(rhs_const_expr, lhs_const_expr);
+  EXPECT_NE(lhs_const_expr, Constant{});
+  EXPECT_NE(Constant{}, rhs_const_expr);
+}
+
+}  // namespace
+}  // namespace cel
