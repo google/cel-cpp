@@ -19,6 +19,7 @@
 #include "common/value_kind.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/attribute_utility.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
@@ -75,6 +76,22 @@ absl::Status CheckMapKeyType(const Value& key) {
     default:
       return absl::InvalidArgumentError(absl::StrCat(
           "Invalid map key type: '", ValueKindToString(kind), "'"));
+  }
+}
+
+AttributeQualifier AttributeQualifierFromValue(const Value& v) {
+  switch (v->kind()) {
+    case ValueKind::kString:
+      return AttributeQualifier::OfString(v.As<StringValue>().ToString());
+    case ValueKind::kInt64:
+      return AttributeQualifier::OfInt(v.As<IntValue>().NativeValue());
+    case ValueKind::kUint64:
+      return AttributeQualifier::OfUint(v.As<UintValue>().NativeValue());
+    case ValueKind::kBool:
+      return AttributeQualifier::OfBool(v.As<BoolValue>().NativeValue());
+    default:
+      // Non-matching qualifier.
+      return AttributeQualifier();
   }
 }
 
@@ -184,20 +201,80 @@ ValueView LookupInList(const ListValue& cel_list, const Value& key,
   return *lookup;
 }
 
-AttributeQualifier AttributeQualifierFromValue(const Value& v) {
-  switch (v->kind()) {
-    case ValueKind::kString:
-      return AttributeQualifier::OfString(v.As<StringValue>().ToString());
-    case ValueKind::kInt64:
-      return AttributeQualifier::OfInt(v.As<IntValue>().NativeValue());
-    case ValueKind::kUint64:
-      return AttributeQualifier::OfUint(v.As<UintValue>().NativeValue());
-    case ValueKind::kBool:
-      return AttributeQualifier::OfBool(v.As<BoolValue>().NativeValue());
+ValueView LookupInContainer(const Value& container, const Value& key,
+                            ExecutionFrameBase& frame, Value& scratch) {
+  // Select steps can be applied to either maps or messages
+  switch (container.kind()) {
+    case ValueKind::kMap: {
+      return LookupInMap(Cast<MapValue>(container), key, frame, scratch);
+    }
+    case ValueKind::kList: {
+      return LookupInList(Cast<ListValue>(container), key, frame, scratch);
+    }
     default:
-      // Non-matching qualifier.
-      return AttributeQualifier();
+      scratch =
+          frame.value_manager().CreateErrorValue(absl::InvalidArgumentError(
+              absl::StrCat("Invalid container type: '",
+                           ValueKindToString(container->kind()), "'")));
+      return ValueView{scratch};
   }
+}
+
+ValueView PerformLookup(ExecutionFrameBase& frame, const Value& container,
+                        const Value& key, const AttributeTrail& container_trail,
+                        bool enable_optional_types, Value& scratch,
+                        AttributeTrail& trail) {
+  if (frame.unknown_processing_enabled()) {
+    AttributeUtility::Accumulator unknowns =
+        frame.attribute_utility().CreateAccumulator();
+    unknowns.MaybeAdd(container);
+    unknowns.MaybeAdd(key);
+
+    if (!unknowns.IsEmpty()) {
+      scratch = std::move(unknowns).Build();
+      return ValueView{scratch};
+    }
+
+    trail = container_trail.Step(AttributeQualifierFromValue(key));
+
+    if (frame.attribute_utility().CheckForUnknownExact(trail)) {
+      scratch = frame.attribute_utility().CreateUnknownSet(trail.attribute());
+      return ValueView{scratch};
+    }
+  }
+
+  if (InstanceOf<ErrorValue>(container)) {
+    scratch = container;
+    return ValueView{scratch};
+  }
+  if (InstanceOf<ErrorValue>(key)) {
+    scratch = key;
+    return ValueView{scratch};
+  }
+
+  if (enable_optional_types &&
+      cel::NativeTypeId::Of(container) ==
+          cel::NativeTypeId::For<cel::OptionalValueInterface>()) {
+    const auto& optional_value =
+        *cel::internal::down_cast<const cel::OptionalValueInterface*>(
+            cel::Cast<cel::OpaqueValue>(container).operator->());
+    if (!optional_value.HasValue()) {
+      scratch = cel::OptionalValue::None();
+      return ValueView{scratch};
+    }
+    auto result =
+        LookupInContainer(optional_value.Value(), key, frame, scratch);
+    if (auto error_value = cel::As<cel::ErrorValueView>(result);
+        error_value && cel::IsNoSuchKey(error_value->NativeValue())) {
+      scratch = cel::OptionalValue::None();
+      return ValueView{scratch};
+    }
+    scratch = cel::OptionalValue::Of(frame.value_manager().GetMemoryManager(),
+                                     Value{result});
+    return ValueView{scratch};
+  }
+
+  return LookupInContainer(container, key, frame, scratch);
 }
 
 // ContainerAccessStep performs message field access specified by Expr::Select
@@ -211,112 +288,8 @@ class ContainerAccessStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  struct LookupResult {
-    ValueView value;
-    AttributeTrail trail;
-  };
-
-  LookupResult PerformLookup(ExecutionFrame* frame, Value& scratch) const;
-  absl::StatusOr<ValueView> Lookup(const Value& container, const Value& key,
-                                   ExecutionFrame* frame, Value& scratch) const;
-
-  const bool enable_optional_types_;
+  bool enable_optional_types_;
 };
-
-absl::StatusOr<ValueView> ContainerAccessStep::Lookup(const Value& container,
-                                                      const Value& key,
-                                                      ExecutionFrame* frame,
-                                                      Value& scratch) const {
-  // Select steps can be applied to either maps or messages
-  switch (container->kind()) {
-    case ValueKind::kMap: {
-      return LookupInMap(container.As<MapValue>(), key, *frame, scratch);
-    }
-    case ValueKind::kList: {
-      return LookupInList(container.As<ListValue>(), key, *frame, scratch);
-    }
-    default:
-      scratch =
-          frame->value_factory().CreateErrorValue(absl::InvalidArgumentError(
-              absl::StrCat("Invalid container type: '",
-                           ValueKindToString(container->kind()), "'")));
-      return ValueView{scratch};
-  }
-}
-ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
-    ExecutionFrame* frame, Value& scratch) const {
-  auto input_args = frame->value_stack().GetSpan(kNumContainerAccessArguments);
-  AttributeTrail trail;
-
-  const Value& container = input_args[0];
-  const Value& key = input_args[1];
-
-  if (frame->enable_unknowns()) {
-    AttributeUtility::Accumulator unknowns =
-        frame->attribute_utility().CreateAccumulator();
-    unknowns.MaybeAdd(container);
-    unknowns.MaybeAdd(key);
-
-    if (!unknowns.IsEmpty()) {
-      scratch = std::move(unknowns).Build();
-      return {ValueView{scratch}, std::move(trail)};
-    }
-
-    // We guarantee that GetAttributeSpan can acquire this number of arguments
-    // by calling HasEnough() at the beginning of Execute() method.
-    absl::Span<const AttributeTrail> input_attrs =
-        frame->value_stack().GetAttributeSpan(kNumContainerAccessArguments);
-    const auto& container_trail = input_attrs[0];
-    trail = container_trail.Step(AttributeQualifierFromValue(key));
-
-    if (frame->attribute_utility().CheckForUnknownExact(trail)) {
-      cel::Attribute attr = trail.attribute();
-      scratch = frame->attribute_utility().CreateUnknownSet(attr);
-      return {ValueView{scratch}, std::move(trail)};
-    }
-  }
-
-  if (InstanceOf<ErrorValue>(container)) {
-    scratch = container;
-    return {ValueView{scratch}, std::move(trail)};
-  }
-  if (InstanceOf<ErrorValue>(key)) {
-    scratch = key;
-    return {ValueView{scratch}, std::move(trail)};
-  }
-
-  if (enable_optional_types_ &&
-      cel::NativeTypeId::Of(container) ==
-          cel::NativeTypeId::For<cel::OptionalValueInterface>()) {
-    const auto& optional_value =
-        *cel::internal::down_cast<const cel::OptionalValueInterface*>(
-            cel::Cast<cel::OpaqueValue>(container).operator->());
-    if (!optional_value.HasValue()) {
-      scratch = cel::OptionalValue::None();
-      return {ValueView{scratch}, std::move(trail)};
-    }
-    auto result = Lookup(optional_value.Value(), key, frame, scratch);
-    if (!result.ok()) {
-      scratch =
-          frame->value_factory().CreateErrorValue(std::move(result).status());
-      return {ValueView{scratch}, std::move(trail)};
-    }
-    if (auto error_value = cel::As<cel::ErrorValueView>(*result);
-        error_value && cel::IsNoSuchKey(error_value->NativeValue())) {
-      scratch = cel::OptionalValue::None();
-      return {ValueView{scratch}, std::move(trail)};
-    }
-    scratch = cel::OptionalValue::Of(frame->memory_manager(), Value{*result});
-    return {ValueView{scratch}, std::move(trail)};
-  }
-  auto result = Lookup(container, key, frame, scratch);
-  if (!result.ok()) {
-    scratch =
-        frame->value_factory().CreateErrorValue(std::move(result).status());
-    return {ValueView{scratch}, std::move(trail)};
-  }
-  return {*result, std::move(trail)};
-}
 
 absl::Status ContainerAccessStep::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(kNumContainerAccessArguments)) {
@@ -326,13 +299,67 @@ absl::Status ContainerAccessStep::Evaluate(ExecutionFrame* frame) const {
   }
 
   Value scratch;
-  auto result = PerformLookup(frame, scratch);
-  frame->value_stack().PopAndPush(kNumContainerAccessArguments,
-                                  Value{result.value}, std::move(result.trail));
+  AttributeTrail result_trail;
+  auto args = frame->value_stack().GetSpan(kNumContainerAccessArguments);
+  const AttributeTrail& container_trail =
+      frame->value_stack().GetAttributeSpan(kNumContainerAccessArguments)[0];
+
+  auto result = PerformLookup(*frame, args[0], args[1], container_trail,
+                              enable_optional_types_, scratch, result_trail);
+  frame->value_stack().PopAndPush(kNumContainerAccessArguments, Value{result},
+                                  std::move(result_trail));
 
   return absl::OkStatus();
 }
+
+class DirectContainerAccessStep : public DirectExpressionStep {
+ public:
+  DirectContainerAccessStep(
+      std::unique_ptr<DirectExpressionStep> container_step,
+      std::unique_ptr<DirectExpressionStep> key_step,
+      bool enable_optional_types, int64_t expr_id)
+      : DirectExpressionStep(expr_id),
+        container_step_(std::move(container_step)),
+        key_step_(std::move(key_step)),
+        enable_optional_types_(enable_optional_types) {}
+
+  absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
+                        AttributeTrail& trail) const override;
+
+ private:
+  std::unique_ptr<DirectExpressionStep> container_step_;
+  std::unique_ptr<DirectExpressionStep> key_step_;
+  bool enable_optional_types_;
+};
+
+absl::Status DirectContainerAccessStep::Evaluate(ExecutionFrameBase& frame,
+                                                 Value& result,
+                                                 AttributeTrail& trail) const {
+  Value container;
+  Value key;
+  AttributeTrail container_trail;
+  AttributeTrail key_trail;
+
+  CEL_RETURN_IF_ERROR(
+      container_step_->Evaluate(frame, container, container_trail));
+  CEL_RETURN_IF_ERROR(key_step_->Evaluate(frame, key, key_trail));
+
+  result = PerformLookup(frame, container, key, container_trail,
+                         enable_optional_types_, result, trail);
+
+  return absl::OkStatus();
+}
+
 }  // namespace
+
+std::unique_ptr<DirectExpressionStep> CreateDirectContainerAccessStep(
+    std::unique_ptr<DirectExpressionStep> container_step,
+    std::unique_ptr<DirectExpressionStep> key_step, bool enable_optional_types,
+    int64_t expr_id) {
+  return std::make_unique<DirectContainerAccessStep>(
+      std::move(container_step), std::move(key_step), enable_optional_types,
+      expr_id);
+}
 
 // Factory method for Select - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateContainerAccessStep(

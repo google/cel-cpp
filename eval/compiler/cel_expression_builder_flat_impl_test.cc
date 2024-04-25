@@ -52,6 +52,7 @@ using ::google::api::expr::test::v1::proto3::NestedTestAllTypes;
 using testing::_;
 using testing::Contains;
 using testing::HasSubstr;
+using testing::IsNull;
 using testing::NotNull;
 using cel::internal::StatusIs;
 
@@ -122,6 +123,40 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
   EXPECT_THAT(result, test_case.matcher);
 }
 
+TEST_P(RecursivePlanTest, Disabled) {
+  const RecursiveTestCase& test_case = GetParam();
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, Parse(test_case.expr));
+  cel::RuntimeOptions options;
+  google::protobuf::Arena arena;
+  // disabled.
+  options.max_recursion_depth = 0;
+  CelExpressionBuilderFlatImpl builder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  EXPECT_THAT(dynamic_cast<const CelExpressionRecursiveImpl*>(plan.get()),
+              IsNull());
+
+  Activation activation;
+  activation.InsertValue("int_1", CelValue::CreateInt64(1));
+  activation.InsertValue("string_abc", CelValue::CreateStringView("abc"));
+  activation.InsertValue("string_def", CelValue::CreateStringView("def"));
+  CelMapBuilder map;
+  ASSERT_OK(map.Add(CelValue::CreateStringView("a"), CelValue::CreateInt64(1)));
+  ASSERT_OK(map.Add(CelValue::CreateStringView("b"), CelValue::CreateInt64(2)));
+  activation.InsertValue("map_var", CelValue::CreateMap(&map));
+  NestedTestAllTypes msg;
+  msg.mutable_child()->mutable_payload()->set_single_int64(42);
+  activation.InsertValue("struct_var",
+                         CelProtoWrapper::CreateMessage(&msg, &arena));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
+  EXPECT_THAT(result, test_case.matcher);
+}
+
 INSTANTIATE_TEST_SUITE_P(
     RecursivePlanTest, RecursivePlanTest,
     testing::ValuesIn(std::vector<RecursiveTestCase>{
@@ -141,7 +176,8 @@ INSTANTIATE_TEST_SUITE_P(
          test::IsCelInt64(42)},
         {"nested_select", "[map_var.a, map_var.b].size() == 2",
          test::IsCelBool(true)},
-    }),
+        {"map_index", "map_var['b']", test::IsCelInt64(2)},
+        {"list_index", "[1, 2, 3][1]", test::IsCelInt64(2)}}),
 
     [](const testing::TestParamInfo<RecursiveTestCase>& info) -> std::string {
       return info.param.test_name;

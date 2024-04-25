@@ -552,6 +552,7 @@ cc_test(
     deps = [
         ":cel_expression_flat_impl",
         ":container_access_step",
+        ":direct_expression_step",
         ":evaluator_core",
         ":ident_step",
         "//base:builtins",
@@ -562,6 +563,7 @@ cc_test(
         "//eval/public:cel_expression",
         "//eval/public:cel_options",
         "//eval/public:cel_value",
+        "//eval/public:unknown_set",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
         "//eval/public/structs:cel_proto_wrapper",

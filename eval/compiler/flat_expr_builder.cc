@@ -828,6 +828,19 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
 
     // Special case for "_[_]".
     if (call_expr->function() == cel::builtin::kIndex) {
+      auto depth = RecursionEligible();
+      if (depth.has_value()) {
+        auto args = ExtractRecursiveDependencies();
+        if (args.size() != 2) {
+          SetProgressStatusError(absl::InvalidArgumentError(
+              "unexpected number of args for builtin index operator"));
+        }
+        SetRecursiveStep(CreateDirectContainerAccessStep(
+                             std::move(args[0]), std::move(args[1]),
+                             enable_optional_types_, expr->id()),
+                         *depth + 1);
+        return;
+      }
       AddStep(CreateContainerAccessStep(*call_expr, expr->id(),
                                         enable_optional_types_));
       return;
