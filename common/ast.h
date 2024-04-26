@@ -319,6 +319,8 @@ class CallExpr final {
 
   void set_args(absl::Span<Expr> args);
 
+  Expr& add_args() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
   ABSL_MUST_USE_RESULT std::vector<Expr> release_args();
 
   friend void swap(CallExpr& lhs, CallExpr& rhs) noexcept {
@@ -386,6 +388,8 @@ class ListExpr final {
 
   void set_elements(absl::Span<ListExprElement> elements);
 
+  ListExprElement& add_elements() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
   ABSL_MUST_USE_RESULT std::vector<ListExprElement> release_elements();
 
   friend void swap(ListExpr& lhs, ListExpr& rhs) noexcept {
@@ -452,6 +456,8 @@ class StructExpr final {
 
   void set_fields(absl::Span<StructExprField> fields);
 
+  StructExprField& add_fields() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
   ABSL_MUST_USE_RESULT std::vector<StructExprField> release_fields();
 
   friend void swap(StructExpr& lhs, StructExpr& rhs) noexcept {
@@ -509,6 +515,8 @@ class MapExpr final {
   void set_entries(std::vector<MapExprEntry> entries);
 
   void set_entries(absl::Span<MapExprEntry> entries);
+
+  MapExprEntry& add_entries() ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   ABSL_MUST_USE_RESULT std::vector<MapExprEntry> release_entries();
 
@@ -1036,6 +1044,10 @@ inline void CallExpr::set_args(absl::Span<Expr> args) {
   }
 }
 
+inline Expr& CallExpr::add_args() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return mutable_args().emplace_back();
+}
+
 inline std::vector<Expr> CallExpr::release_args() {
   std::vector<Expr> args;
   args.swap(args_);
@@ -1228,6 +1240,10 @@ inline void ListExpr::set_elements(absl::Span<ListExprElement> elements) {
   }
 }
 
+inline ListExprElement& ListExpr::add_elements() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return mutable_elements().emplace_back();
+}
+
 inline std::vector<ListExprElement> ListExpr::release_elements() {
   std::vector<ListExprElement> elements;
   elements.swap(elements_);
@@ -1340,6 +1356,10 @@ inline void StructExpr::set_fields(absl::Span<StructExprField> fields) {
   for (auto& field : fields) {
     fields_.push_back(std::move(field));
   }
+}
+
+inline StructExprField& StructExpr::add_fields() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return mutable_fields().emplace_back();
 }
 
 inline std::vector<StructExprField> StructExpr::release_fields() {
@@ -1461,6 +1481,10 @@ inline void MapExpr::set_entries(absl::Span<MapExprEntry> entries) {
   for (auto& entry : entries) {
     entries_.push_back(std::move(entry));
   }
+}
+
+inline MapExprEntry& MapExpr::add_entries() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return mutable_entries().emplace_back();
 }
 
 inline std::vector<MapExprEntry> MapExpr::release_entries() {

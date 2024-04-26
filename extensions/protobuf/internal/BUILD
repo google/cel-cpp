@@ -66,6 +66,39 @@ cc_test(
 )
 
 cc_library(
+    name = "ast",
+    srcs = ["ast.cc"],
+    hdrs = ["ast.h"],
+    deps = [
+        "//common:ast",
+        "//common:constant",
+        "//internal:proto_time_encoding",
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/functional:overload",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:variant",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "ast_test",
+    srcs = ["ast_test.cc"],
+    deps = [
+        ":ast",
+        "//common:ast",
+        "//internal:proto_matchers",
+        "//internal:testing",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "duration_lite",
     srcs = ["duration_lite.cc"],
     hdrs = ["duration_lite.h"],
