@@ -97,8 +97,10 @@ CelExpressionBuilderFlatImpl::CreateExpressionImpl(
     }
   }
   if (flat_expr_builder_.options().max_recursion_depth != 0 &&
-      impl.path().size() == 1 &&
-      impl.path().front()->GetNativeTypeId() ==
+      !impl.subexpressions().empty() &&
+      // mainline expression is exactly one recursive step.
+      impl.subexpressions().front().size() == 1 &&
+      impl.subexpressions().front().front()->GetNativeTypeId() ==
           cel::NativeTypeId::For<WrappedDirectStep>()) {
     return CelExpressionRecursiveImpl::Create(std::move(impl));
   }

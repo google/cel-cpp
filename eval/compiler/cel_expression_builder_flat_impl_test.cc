@@ -19,13 +19,17 @@
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 
 #include <cstdint>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/algorithm/container.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -35,7 +39,9 @@
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "eval/public/testing/matchers.h"
+#include "extensions/bindings_ext.h"
 #include "internal/testing.h"
+#include "parser/macro.h"
 #include "parser/parser.h"
 #include "runtime/runtime_options.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
@@ -51,7 +57,9 @@ using ::google::api::expr::v1alpha1::CheckedExpr;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::v1alpha1::SourceInfo;
+using ::google::api::expr::parser::Macro;
 using ::google::api::expr::parser::Parse;
+using ::google::api::expr::parser::ParseWithMacros;
 using ::google::api::expr::test::v1::proto3::NestedTestAllTypes;
 using ::google::api::expr::test::v1::proto3::TestAllTypes;
 using testing::_;
@@ -94,9 +102,19 @@ struct RecursiveTestCase {
 
 class RecursivePlanTest : public ::testing::TestWithParam<RecursiveTestCase> {};
 
+absl::StatusOr<ParsedExpr> ParseWithBind(absl::string_view cel) {
+  static const std::vector<Macro>* kMacros = []() {
+    auto* result = new std::vector<Macro>(Macro::AllMacros());
+    absl::c_copy(cel::extensions::bindings_macros(),
+                 std::back_inserter(*result));
+    return result;
+  }();
+  return ParseWithMacros(cel, *kMacros, "<input>");
+}
+
 TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
   const RecursiveTestCase& test_case = GetParam();
-  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, Parse(test_case.expr));
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseWithBind(test_case.expr));
   cel::RuntimeOptions options;
   options.container = "google.api.expr.test.v1.proto3";
   google::protobuf::Arena arena;
@@ -135,7 +153,7 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
 
 TEST_P(RecursivePlanTest, ParsedExprRecursiveTraceSupport) {
   const RecursiveTestCase& test_case = GetParam();
-  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, Parse(test_case.expr));
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseWithBind(test_case.expr));
   cel::RuntimeOptions options;
   options.container = "google.api.expr.test.v1.proto3";
   google::protobuf::Arena arena;
@@ -180,7 +198,7 @@ TEST_P(RecursivePlanTest, Disabled) {
   google::protobuf::LinkMessageReflection<TestAllTypes>();
 
   const RecursiveTestCase& test_case = GetParam();
-  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, Parse(test_case.expr));
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseWithBind(test_case.expr));
   cel::RuntimeOptions options;
   options.container = "google.api.expr.test.v1.proto3";
   google::protobuf::Arena arena;
@@ -251,7 +269,13 @@ INSTANTIATE_TEST_SUITE_P(
          "NestedTestAllTypes{payload: TestAllTypes{single_int64: "
          "-42}}.payload.single_int64",
          test::IsCelInt64(-42)},
-    }),
+        {"bind", R"(cel.bind(x, "1", x + x + x + x))",
+         test::IsCelString("1111")},
+        {"nested_bind", R"(cel.bind(x, 20, cel.bind(y, 30, x + y)))",
+         test::IsCelInt64(50)},
+        {"bind_with_comprehensions",
+         R"(cel.bind(x, [1, 2], cel.bind(y, x.map(z, z * 2), y.exists(z, z == 4))))",
+         test::IsCelBool(true)}}),
 
     [](const testing::TestParamInfo<RecursiveTestCase>& info) -> std::string {
       return info.param.test_name;

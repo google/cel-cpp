@@ -414,6 +414,10 @@ class FlatExpression {
 
   const ExecutionPath& path() const { return path_; }
 
+  absl::Span<const ExecutionPathView> subexpressions() const {
+    return subexpressions_;
+  }
+
   const cel::RuntimeOptions& options() const { return options_; }
 
   size_t comprehension_slots_size() const { return comprehension_slots_size_; }

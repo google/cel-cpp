@@ -1069,9 +1069,15 @@ cc_library(
     srcs = ["lazy_init_step.cc"],
     hdrs = ["lazy_init_step.h"],
     deps = [
+        ":attribute_trail",
+        ":direct_expression_step",
         ":evaluator_core",
         ":expression_step_base",
+        "//common:value",
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
+        "@com_google_googleapis//google/api/expr/v1alpha1:value_cc_proto",
     ],
 )
 

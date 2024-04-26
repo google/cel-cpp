@@ -576,9 +576,24 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     SlotLookupResult slot = LookupSlot(path);
 
     if (slot.subexpression >= 0) {
-      AddStep(
-          CreateCheckLazyInitStep(slot.slot, slot.subexpression, expr->id()));
-      AddStep(CreateAssignSlotStep(slot.slot));
+      auto* subexpression =
+          program_builder_.GetExtractedSubexpression(slot.subexpression);
+      if (subexpression == nullptr) {
+        SetProgressStatusError(
+            absl::InternalError("bad subexpression reference"));
+        return;
+      }
+      if (subexpression->IsRecursive()) {
+        const auto& program = subexpression->recursive_program();
+        SetRecursiveStep(
+            CreateDirectLazyInitStep(slot.slot, program.step.get(), expr->id()),
+            program.depth + 1);
+      } else {
+        // Off by one since mainline expression will be index 0.
+        AddStep(CreateCheckLazyInitStep(slot.slot, slot.subexpression + 1,
+                                        expr->id()));
+        AddStep(CreateAssignSlotStep(slot.slot));
+      }
       return;
     } else if (slot.slot >= 0) {
       if (options_.max_recursion_depth != 0) {
@@ -841,6 +856,33 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
                               expr->id(), options_.short_circuiting),
           max_depth + 1);
     }
+  }
+
+  void MaybeMakeBindRecursive(
+      const cel::ast_internal::Expr* expr,
+      const cel::ast_internal::Comprehension* comprehension, size_t accu_slot) {
+    if (options_.max_recursion_depth == 0) {
+      return;
+    }
+
+    auto* result_plan =
+        program_builder_.GetSubexpression(&comprehension->result());
+
+    if (result_plan == nullptr || !result_plan->IsRecursive()) {
+      return;
+    }
+
+    int result_depth = result_plan->recursive_program().depth;
+
+    if (options_.max_recursion_depth > 0 &&
+        result_depth >= options_.max_recursion_depth) {
+      return;
+    }
+
+    auto program = result_plan->ExtractRecursiveProgram();
+    SetRecursiveStep(
+        CreateDirectBindStep(accu_slot, std::move(program.step), expr->id()),
+        result_depth + 1);
   }
 
   void MaybeMakeComprehensionRecursive(
@@ -1443,8 +1485,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       return absl::InternalError("Failed to extract subexpression");
     }
 
-    // off by one since mainline expression is handled separately.
-    record.subexpression = index + 1;
+    record.subexpression = index;
 
     record.visitor->MarkAccuInitExtracted();
 
@@ -1806,7 +1847,8 @@ void ComprehensionVisitor::PostVisitArgTrivial(
 
 void ComprehensionVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
   if (is_trivial_) {
-    // TODO(uncreated-issue/67): need to add mechanism for lazy eval for binds.
+    visitor_->MaybeMakeBindRecursive(expr, &expr->comprehension_expr(),
+                                     accu_slot_);
     return;
   }
   visitor_->MaybeMakeComprehensionRecursive(expr, &expr->comprehension_expr(),

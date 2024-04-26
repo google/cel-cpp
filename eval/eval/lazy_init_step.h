@@ -41,9 +41,22 @@
 #include <cstdint>
 #include <memory>
 
+#include "absl/base/nullability.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 
 namespace google::api::expr::runtime {
+
+// Creates a step representing a Bind expression.
+std::unique_ptr<DirectExpressionStep> CreateDirectBindStep(
+    size_t slot_index, std::unique_ptr<DirectExpressionStep> expression,
+    int64_t expr_id);
+
+// Creates a direct step representing accessing a lazily evaluated alias from
+// a bind or block.
+std::unique_ptr<DirectExpressionStep> CreateDirectLazyInitStep(
+    size_t slot_index, absl::Nonnull<const DirectExpressionStep*> subexpression,
+    int64_t expr_id);
 
 // Creates a guard step that checks that an alias is initialized.
 // If it is, push to stack and jump to the step that depends on the value.

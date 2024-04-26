@@ -258,6 +258,17 @@ class ProgramBuilder {
   absl::Nullable<Subexpression*> GetSubexpression(
       const cel::ast_internal::Expr* expr);
 
+  // Return the extracted subexpression mapped to the given index.
+  //
+  // Returns nullptr if the mapping doesn't exist
+  absl::Nullable<Subexpression*> GetExtractedSubexpression(size_t index) {
+    if (index >= extracted_subexpressions_.size()) {
+      return nullptr;
+    }
+
+    return extracted_subexpressions_[index].get();
+  }
+
   // Return index to the extracted subexpression.
   //
   // Returns -1 if the subexpression is not found.

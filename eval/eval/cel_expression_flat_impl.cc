@@ -101,11 +101,11 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Evaluate(
 
 absl::StatusOr<std::unique_ptr<CelExpressionRecursiveImpl>>
 CelExpressionRecursiveImpl::Create(FlatExpression flat_expr) {
-  if (flat_expr.path().size() != 1 ||
+  if (flat_expr.path().empty() ||
       flat_expr.path().front()->GetNativeTypeId() !=
           cel::NativeTypeId::For<WrappedDirectStep>()) {
     return absl::InvalidArgumentError(absl::StrCat(
-        "Expected a single recursive program step", flat_expr.path().size()));
+        "Expected a recursive program step", flat_expr.path().size()));
   }
 
   auto* instance = new CelExpressionRecursiveImpl(std::move(flat_expr));
