@@ -252,6 +252,7 @@ cc_test(
     ],
     deps = [
         ":cel_expression_builder_flat_impl",
+        ":constant_folding",
         "//eval/eval:cel_expression_flat_impl",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
@@ -262,6 +263,7 @@ cc_test(
         "//eval/public/structs:protobuf_descriptor_type_provider",
         "//eval/public/testing:matchers",
         "//extensions:bindings_ext",
+        "//extensions/protobuf:memory_manager",
         "//internal:testing",
         "//parser",
         "//parser:macro",

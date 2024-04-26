@@ -30,6 +30,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "eval/compiler/constant_folding.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -40,6 +41,7 @@
 #include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "eval/public/testing/matchers.h"
 #include "extensions/bindings_ext.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
 #include "parser/macro.h"
 #include "parser/parser.h"
@@ -112,6 +114,45 @@ absl::StatusOr<ParsedExpr> ParseWithBind(absl::string_view cel) {
   return ParseWithMacros(cel, *kMacros, "<input>");
 }
 
+TEST_P(RecursivePlanTest, ParsedExprRecursiveImpl) {
+  const RecursiveTestCase& test_case = GetParam();
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseWithBind(test_case.expr));
+  cel::RuntimeOptions options;
+  options.container = "google.api.expr.test.v1.proto3";
+  google::protobuf::Arena arena;
+  // Unbounded.
+  options.max_recursion_depth = -1;
+  CelExpressionBuilderFlatImpl builder(options);
+  builder.GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  EXPECT_THAT(dynamic_cast<const CelExpressionRecursiveImpl*>(plan.get()),
+              NotNull());
+
+  Activation activation;
+  activation.InsertValue("int_1", CelValue::CreateInt64(1));
+  activation.InsertValue("string_abc", CelValue::CreateStringView("abc"));
+  activation.InsertValue("string_def", CelValue::CreateStringView("def"));
+  CelMapBuilder map;
+  ASSERT_OK(map.Add(CelValue::CreateStringView("a"), CelValue::CreateInt64(1)));
+  ASSERT_OK(map.Add(CelValue::CreateStringView("b"), CelValue::CreateInt64(2)));
+  activation.InsertValue("map_var", CelValue::CreateMap(&map));
+  NestedTestAllTypes msg;
+  msg.mutable_child()->mutable_payload()->set_single_int64(42);
+  activation.InsertValue("struct_var",
+                         CelProtoWrapper::CreateMessage(&msg, &arena));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
+  EXPECT_THAT(result, test_case.matcher);
+}
+
 TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
   const RecursiveTestCase& test_case = GetParam();
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, ParseWithBind(test_case.expr));
@@ -126,6 +167,10 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+
+  builder.flat_expr_builder().AddProgramOptimizer(
+      cel::runtime_internal::CreateConstantFoldingOptimizer(
+          cel::extensions::ProtoMemoryManagerRef(&arena)));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
                        builder.CreateExpression(&parsed_expr.expr(),

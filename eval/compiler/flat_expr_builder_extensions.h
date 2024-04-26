@@ -22,7 +22,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_COMPILER_FLAT_EXPR_BUILDER_EXTENSIONS_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_FLAT_EXPR_BUILDER_EXTENSIONS_H_
 
-#include <algorithm>
 #include <cstddef>
 #include <memory>
 #include <utility>
@@ -39,6 +38,7 @@
 #include "base/ast.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
+#include "common/value.h"
 #include "common/value_manager.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/direct_expression_step.h"
@@ -330,6 +330,14 @@ class PlannerContext {
   // expr->program mapping for any descendants.
   absl::Status ReplaceSubplan(const cel::ast_internal::Expr& node,
                               ExecutionPath path);
+
+  // Replace the subplan associated with node with a new recursive subplan.
+  //
+  // This operation clears any existing plan to which removes the
+  // expr->program mapping for any descendants.
+  absl::Status ReplaceSubplan(const cel::ast_internal::Expr& node,
+                              std::unique_ptr<DirectExpressionStep> step,
+                              int depth);
 
   // Extend the current subplan with the given expression step.
   absl::Status AddSubplanStep(const cel::ast_internal::Expr& node,

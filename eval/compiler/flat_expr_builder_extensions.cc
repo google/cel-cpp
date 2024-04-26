@@ -405,6 +405,19 @@ absl::Status PlannerContext::ReplaceSubplan(const cel::ast_internal::Expr& node,
   return absl::OkStatus();
 }
 
+absl::Status PlannerContext::ReplaceSubplan(
+    const cel::ast_internal::Expr& node,
+    std::unique_ptr<DirectExpressionStep> step, int depth) {
+  auto* subexpression = program_builder_.GetSubexpression(&node);
+  if (subexpression == nullptr) {
+    return absl::InternalError(
+        "attempted to update program step for untracked expr node");
+  }
+
+  subexpression->set_recursive_program(std::move(step), depth);
+  return absl::OkStatus();
+}
+
 absl::Status PlannerContext::AddSubplanStep(
     const cel::ast_internal::Expr& node, std::unique_ptr<ExpressionStep> step) {
   auto* subexpression = program_builder_.GetSubexpression(&node);

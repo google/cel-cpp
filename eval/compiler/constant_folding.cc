@@ -55,7 +55,8 @@ using ::cel::builtin::kAnd;
 using ::cel::builtin::kOr;
 using ::cel::builtin::kTernary;
 using ::cel::runtime_internal::ConvertConstant;
-
+using ::google::api::expr::runtime::CreateConstValueDirectStep;
+using ::google::api::expr::runtime::CreateConstValueStep;
 using ::google::api::expr::runtime::EvaluationListener;
 using ::google::api::expr::runtime::ExecutionFrame;
 using ::google::api::expr::runtime::ExecutionPath;
@@ -210,10 +211,22 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
     }
   }
 
+  // If recursive planning enabled (recursion limit unbounded or at least 1),
+  // use a recursive (direct) step for the folded constant.
+  //
+  // Constant folding is applied leaf to root based on the program plan so far,
+  // so the planner will have an opportunity to validate that the recursion
+  // limit is being followed when visiting parent nodes in the AST.
+  if (context.options().max_recursion_depth != 0) {
+    return context.ReplaceSubplan(
+        node, CreateConstValueDirectStep(std::move(value), node.id()), 1);
+  }
+
+  // Otherwise make a stack machine plan.
   ExecutionPath new_plan;
-  CEL_ASSIGN_OR_RETURN(new_plan.emplace_back(),
-                       google::api::expr::runtime::CreateConstValueStep(
-                           std::move(value), node.id(), false));
+  CEL_ASSIGN_OR_RETURN(
+      new_plan.emplace_back(),
+      CreateConstValueStep(std::move(value), node.id(), false));
 
   return context.ReplaceSubplan(node, std::move(new_plan));
 }
