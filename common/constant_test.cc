@@ -14,6 +14,11 @@
 
 #include "common/constant.h"
 
+#include <cmath>
+#include <string>
+
+#include "absl/strings/has_absl_stringify.h"
+#include "absl/strings/str_format.h"
 #include "absl/time/time.h"
 #include "internal/testing.h"
 
@@ -211,6 +216,45 @@ TEST(Constant, Equality) {
   EXPECT_EQ(rhs_const_expr, lhs_const_expr);
   EXPECT_NE(lhs_const_expr, Constant{});
   EXPECT_NE(Constant{}, rhs_const_expr);
+}
+
+std::string Stringify(const Constant& constant) {
+  return absl::StrFormat("%v", constant);
+}
+
+TEST(Constant, HasAbslStringify) {
+  EXPECT_TRUE(absl::HasAbslStringify<Constant>::value);
+}
+
+TEST(Constant, AbslStringify) {
+  Constant constant;
+  EXPECT_EQ(Stringify(constant), "<unspecified>");
+  constant.set_null_value();
+  EXPECT_EQ(Stringify(constant), "null");
+  constant.set_bool_value(true);
+  EXPECT_EQ(Stringify(constant), "true");
+  constant.set_int_value(1);
+  EXPECT_EQ(Stringify(constant), "1");
+  constant.set_uint_value(1);
+  EXPECT_EQ(Stringify(constant), "1u");
+  constant.set_double_value(1);
+  EXPECT_EQ(Stringify(constant), "1.0");
+  constant.set_double_value(1.1);
+  EXPECT_EQ(Stringify(constant), "1.1");
+  constant.set_double_value(NAN);
+  EXPECT_EQ(Stringify(constant), "nan");
+  constant.set_double_value(INFINITY);
+  EXPECT_EQ(Stringify(constant), "+infinity");
+  constant.set_double_value(-INFINITY);
+  EXPECT_EQ(Stringify(constant), "-infinity");
+  constant.set_bytes_value("foo");
+  EXPECT_EQ(Stringify(constant), "b\"foo\"");
+  constant.set_string_value("foo");
+  EXPECT_EQ(Stringify(constant), "\"foo\"");
+  constant.set_duration_value(absl::Seconds(1));
+  EXPECT_EQ(Stringify(constant), "duration(\"1s\")");
+  constant.set_timestamp_value(absl::UnixEpoch() + absl::Seconds(1));
+  EXPECT_EQ(Stringify(constant), "timestamp(\"1970-01-01T00:00:01Z\")");
 }
 
 }  // namespace

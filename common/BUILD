@@ -46,8 +46,11 @@ cc_library(
     srcs = ["constant.cc"],
     hdrs = ["constant.h"],
     deps = [
+        "//internal:strings",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/functional:overload",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:variant",
@@ -60,6 +63,8 @@ cc_test(
     deps = [
         ":constant",
         "//internal:testing",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/time",
     ],
 )

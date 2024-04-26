@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/functional/overload.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "absl/types/variant.h"
@@ -92,6 +93,38 @@ class StringConstant final : public std::string {
 using ConstantKind = absl::variant<absl::monostate, std::nullptr_t, bool,
                                    int64_t, uint64_t, double, BytesConstant,
                                    StringConstant, absl::Duration, absl::Time>;
+
+// Returns the `null` literal.
+std::string FormatNullConstant();
+inline std::string FormatNullConstant(std::nullptr_t) {
+  return FormatNullConstant();
+}
+
+// Formats `value` as a bool literal.
+std::string FormatBoolConstant(bool value);
+
+// Formats `value` as a int literal.
+std::string FormatIntConstant(int64_t value);
+
+// Formats `value` as a uint literal.
+std::string FormatUintConstant(uint64_t value);
+
+// Formats `value` as a double literal-like representation. Due to Common
+// Expression Language not having NaN or infinity literals, the result will not
+// always be syntactically valid.
+std::string FormatDoubleConstant(double value);
+
+// Formats `value` as a bytes literal.
+std::string FormatBytesConstant(absl::string_view value);
+
+// Formats `value` as a string literal.
+std::string FormatStringConstant(absl::string_view value);
+
+// Formats `value` as a duration constant.
+std::string FormatDurationConstant(absl::Duration value);
+
+// Formats `value` as a timestamp constant.
+std::string FormatTimestampConstant(absl::Time value);
 
 // Represents a primitive literal.
 //
@@ -294,6 +327,41 @@ inline bool operator==(const Constant& lhs, const Constant& rhs) {
 
 inline bool operator!=(const Constant& lhs, const Constant& rhs) {
   return lhs.kind() != rhs.kind();
+}
+
+template <typename Sink>
+void AbslStringify(Sink& sink, const Constant& constant) {
+  absl::visit(
+      absl::Overload(
+          [&sink](absl::monostate) -> void { sink.Append("<unspecified>"); },
+          [&sink](std::nullptr_t value) -> void {
+            sink.Append(FormatNullConstant(value));
+          },
+          [&sink](bool value) -> void {
+            sink.Append(FormatBoolConstant(value));
+          },
+          [&sink](int64_t value) -> void {
+            sink.Append(FormatIntConstant(value));
+          },
+          [&sink](uint64_t value) -> void {
+            sink.Append(FormatUintConstant(value));
+          },
+          [&sink](double value) -> void {
+            sink.Append(FormatDoubleConstant(value));
+          },
+          [&sink](const BytesConstant& value) -> void {
+            sink.Append(FormatBytesConstant(value));
+          },
+          [&sink](const StringConstant& value) -> void {
+            sink.Append(FormatStringConstant(value));
+          },
+          [&sink](absl::Duration value) -> void {
+            sink.Append(FormatDurationConstant(value));
+          },
+          [&sink](absl::Time value) -> void {
+            sink.Append(FormatTimestampConstant(value));
+          }),
+      constant.kind());
 }
 
 }  // namespace cel
