@@ -113,21 +113,28 @@ CelExpressionRecursiveImpl::Create(FlatExpression flat_expr) {
   return absl::WrapUnique(instance);
 }
 
-absl::StatusOr<CelValue> CelExpressionRecursiveImpl::Evaluate(
-    const BaseActivation& activation, google::protobuf::Arena* arena) const {
+absl::StatusOr<CelValue> CelExpressionRecursiveImpl::Trace(
+    const BaseActivation& activation, google::protobuf::Arena* arena,
+    CelEvaluationListener callback) const {
   cel::interop_internal::AdapterActivationImpl modern_activation(activation);
   cel::ManagedValueFactory factory = flat_expression_.MakeValueFactory(
       cel::extensions::ProtoMemoryManagerRef(arena));
 
   ComprehensionSlots slots(flat_expression_.comprehension_slots_size());
-  ExecutionFrameBase execution_frame(
-      modern_activation, flat_expression_.options(), factory.get(), slots);
+  ExecutionFrameBase execution_frame(modern_activation, AdaptListener(callback),
+                                     flat_expression_.options(), factory.get(),
+                                     slots);
 
   cel::Value result;
   AttributeTrail trail;
   CEL_RETURN_IF_ERROR(root_->Evaluate(execution_frame, result, trail));
 
   return cel::interop_internal::ModernValueToLegacyValueOrDie(arena, result);
+}
+
+absl::StatusOr<CelValue> CelExpressionRecursiveImpl::Evaluate(
+    const BaseActivation& activation, google::protobuf::Arena* arena) const {
+  return Trace(activation, arena, /*callback=*/nullptr);
 }
 
 }  // namespace google::api::expr::runtime

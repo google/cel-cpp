@@ -120,7 +120,7 @@ class EvaluationStatus final {
 }  // namespace
 
 absl::StatusOr<cel::Value> ExecutionFrame::Evaluate(
-    EvaluationListener listener) {
+    EvaluationListener& listener) {
   const size_t initial_stack_size = value_stack().size();
 
   if (!listener) {
@@ -184,9 +184,10 @@ absl::StatusOr<cel::Value> FlatExpression::EvaluateWithCallback(
     FlatExpressionEvaluatorState& state) const {
   state.Reset();
 
-  ExecutionFrame frame(subexpressions_, activation, options_, state);
+  ExecutionFrame frame(subexpressions_, activation, options_, state,
+                       std::move(listener));
 
-  return frame.Evaluate(std::move(listener));
+  return frame.Evaluate(frame.callback());
 }
 
 cel::ManagedValueFactory FlatExpression::MakeValueFactory(

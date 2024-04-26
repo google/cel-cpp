@@ -147,6 +147,12 @@ struct RuntimeOptions {
   //
   // -1 means unbounded.
   int max_recursion_depth = 0;
+
+  // Enable tracing support for recursively planned programs.
+  //
+  // Unlike the stack machine implementation, supporting tracing can affect
+  // performance whether or not tracing is requested for a given evaluation.
+  bool enable_recursive_tracing = false;
 };
 // LINT.ThenChange(//depot/google3/eval/public/cel_options.h)
 

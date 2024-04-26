@@ -110,8 +110,7 @@ absl::Status EmptyCallback(int64_t expr_id, const CelValue& value,
 static void BM_Eval_Trace(benchmark::State& state) {
   google::protobuf::Arena arena;
   InterpreterOptions options = GetOptions(arena);
-  // recursive plan doesn't support tracing.
-  options.max_recursion_depth = 0;
+  options.enable_recursive_tracing = true;
 
   auto builder = CreateCelExpressionBuilder(options);
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
@@ -196,7 +195,7 @@ BENCHMARK(BM_EvalString)->Range(1, 10000);
 static void BM_EvalString_Trace(benchmark::State& state) {
   google::protobuf::Arena arena;
   InterpreterOptions options = GetOptions(arena);
-  options.max_recursion_depth = 0;
+  options.enable_recursive_tracing = true;
 
   auto builder = CreateCelExpressionBuilder(options);
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
@@ -506,7 +505,8 @@ void BM_Comprehension_Trace(benchmark::State& state) {
   ContainerBackedListImpl cel_list(std::move(list));
   activation.InsertValue("list_var", CelValue::CreateList(&cel_list));
   InterpreterOptions options = GetOptions(arena);
-  options.max_recursion_depth = 0;
+  options.enable_recursive_tracing = true;
+
   options.comprehension_max_iterations = 10000000;
   auto builder = CreateCelExpressionBuilder(options);
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
@@ -900,7 +900,8 @@ void BM_NestedComprehension_Trace(benchmark::State& state) {
   InterpreterOptions options = GetOptions(arena);
   options.comprehension_max_iterations = 10000000;
   options.enable_comprehension_list_append = true;
-  options.max_recursion_depth = 0;
+  options.enable_recursive_tracing = true;
+
   auto builder = CreateCelExpressionBuilder(options);
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
@@ -967,7 +968,8 @@ void BM_ListComprehension_Trace(benchmark::State& state) {
   InterpreterOptions options = GetOptions(arena);
   options.comprehension_max_iterations = 10000000;
   options.enable_comprehension_list_append = true;
-  options.max_recursion_depth = 0;
+  options.enable_recursive_tracing = true;
+
   auto builder = CreateCelExpressionBuilder(options);
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
   ASSERT_OK_AND_ASSIGN(

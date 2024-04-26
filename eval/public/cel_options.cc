@@ -38,7 +38,8 @@ cel::RuntimeOptions ConvertToRuntimeOptions(const InterpreterOptions& options) {
                              options.enable_heterogeneous_equality,
                              options.enable_empty_wrapper_null_unboxing,
                              options.enable_lazy_bind_initialization,
-                             options.max_recursion_depth};
+                             options.max_recursion_depth,
+                             options.enable_recursive_tracing};
 }
 
 }  // namespace google::api::expr::runtime

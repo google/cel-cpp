@@ -129,18 +129,15 @@ class CelExpressionRecursiveImpl : public CelExpression {
     return Evaluate(activation, state_impl->arena());
   }
 
-  absl::StatusOr<CelValue> Trace(
-      const BaseActivation& activation, google::protobuf::Arena* arena,
-      CelEvaluationListener callback) const override {
-    return absl::UnimplementedError(
-        "Trace not supported for recursive programs");
-  }
+  absl::StatusOr<CelValue> Trace(const BaseActivation& activation,
+                                 google::protobuf::Arena* arena,
+                                 CelEvaluationListener callback) const override;
 
   absl::StatusOr<CelValue> Trace(
       const BaseActivation& activation, CelEvaluationState* state,
       CelEvaluationListener callback) const override {
-    return absl::UnimplementedError(
-        "Trace not supported for recursive programs");
+    auto* state_impl = cel::internal::down_cast<EvaluationState*>(state);
+    return Trace(activation, state_impl->arena(), callback);
   }
 
   // Exposed for inspection in tests.

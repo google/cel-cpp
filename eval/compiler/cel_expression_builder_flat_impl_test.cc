@@ -18,6 +18,7 @@
 // flat_expr_builder_test.cc for additional tests.
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -129,6 +130,49 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
                          CelProtoWrapper::CreateMessage(&msg, &arena));
 
   ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
+  EXPECT_THAT(result, test_case.matcher);
+}
+
+TEST_P(RecursivePlanTest, ParsedExprRecursiveTraceSupport) {
+  const RecursiveTestCase& test_case = GetParam();
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, Parse(test_case.expr));
+  cel::RuntimeOptions options;
+  options.container = "google.api.expr.test.v1.proto3";
+  google::protobuf::Arena arena;
+  auto cb = [](int64_t id, const CelValue& value, google::protobuf::Arena* arena) {
+    return absl::OkStatus();
+  };
+  // Unbounded.
+  options.max_recursion_depth = -1;
+  options.enable_recursive_tracing = true;
+  CelExpressionBuilderFlatImpl builder(options);
+  builder.GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  EXPECT_THAT(dynamic_cast<const CelExpressionRecursiveImpl*>(plan.get()),
+              NotNull());
+
+  Activation activation;
+  activation.InsertValue("int_1", CelValue::CreateInt64(1));
+  activation.InsertValue("string_abc", CelValue::CreateStringView("abc"));
+  activation.InsertValue("string_def", CelValue::CreateStringView("def"));
+  CelMapBuilder map;
+  ASSERT_OK(map.Add(CelValue::CreateStringView("a"), CelValue::CreateInt64(1)));
+  ASSERT_OK(map.Add(CelValue::CreateStringView("b"), CelValue::CreateInt64(2)));
+  activation.InsertValue("map_var", CelValue::CreateMap(&map));
+  NestedTestAllTypes msg;
+  msg.mutable_child()->mutable_payload()->set_single_int64(42);
+  activation.InsertValue("struct_var",
+                         CelProtoWrapper::CreateMessage(&msg, &arena));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result, plan->Trace(activation, &arena, cb));
   EXPECT_THAT(result, test_case.matcher);
 }
 

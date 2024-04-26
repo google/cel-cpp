@@ -54,6 +54,7 @@
 #include "common/values/legacy_value_manager.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
+#include "eval/eval/attribute_trail.h"
 #include "eval/eval/comprehension_step.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/container_access_step.h"
@@ -87,6 +88,7 @@ using ::cel::Ast;
 
 using ::cel::RuntimeIssue;
 using ::cel::StringValue;
+using ::cel::Value;
 using ::cel::ValueManager;
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::AstTraverse;
@@ -120,6 +122,25 @@ class IndexManager {
  private:
   size_t next_free_slot_;
   size_t max_slot_count_;
+};
+
+class TraceDecorator : public DirectExpressionStep {
+ public:
+  explicit TraceDecorator(std::unique_ptr<DirectExpressionStep> expression)
+      : DirectExpressionStep(-1), expression_(std::move(expression)) {}
+
+  absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
+                        AttributeTrail& trail) const override {
+    CEL_RETURN_IF_ERROR(expression_->Evaluate(frame, result, trail));
+    if (!frame.callback()) {
+      return absl::OkStatus();
+    }
+    return frame.callback()(expression_->expr_id(), result,
+                            frame.value_manager());
+  }
+
+ private:
+  std::unique_ptr<DirectExpressionStep> expression_;
 };
 
 // Helper for computing jump offsets.
@@ -1335,6 +1356,10 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       SetProgressStatusError(absl::InternalError(
           "CEL AST traversal out of order in flat_expr_builder."));
       return;
+    }
+    if (options_.enable_recursive_tracing) {
+      auto tmp = std::make_unique<TraceDecorator>(std::move(step));
+      step = std::move(tmp);
     }
     program_builder_.current()->set_recursive_program(std::move(step), depth);
   }

@@ -146,6 +146,7 @@ class ExecutionFrameBase {
                      const cel::RuntimeOptions& options,
                      cel::ValueManager& value_manager)
       : activation_(&activation),
+        callback_(),
         options_(&options),
         value_manager_(&value_manager),
         attribute_utility_(activation.GetUnknownAttributes(),
@@ -155,10 +156,12 @@ class ExecutionFrameBase {
         iterations_(0) {}
 
   ExecutionFrameBase(const cel::ActivationInterface& activation,
+                     EvaluationListener callback,
                      const cel::RuntimeOptions& options,
                      cel::ValueManager& value_manager,
                      ComprehensionSlots& slots)
       : activation_(&activation),
+        callback_(std::move(callback)),
         options_(&options),
         value_manager_(&value_manager),
         attribute_utility_(activation.GetUnknownAttributes(),
@@ -168,8 +171,13 @@ class ExecutionFrameBase {
         iterations_(0) {}
 
   const cel::ActivationInterface& activation() const { return *activation_; }
+
+  EvaluationListener& callback() { return callback_; }
+
   const cel::RuntimeOptions& options() const { return *options_; }
+
   cel::ValueManager& value_manager() { return *value_manager_; }
+
   const AttributeUtility& attribute_utility() const {
     return attribute_utility_;
   }
@@ -212,6 +220,7 @@ class ExecutionFrameBase {
 
  protected:
   absl::Nonnull<const cel::ActivationInterface*> activation_;
+  EvaluationListener callback_;
   absl::Nonnull<const cel::RuntimeOptions*> options_;
   absl::Nonnull<cel::ValueManager*> value_manager_;
   AttributeUtility attribute_utility_;
@@ -232,9 +241,10 @@ class ExecutionFrame : public ExecutionFrameBase {
   ExecutionFrame(ExecutionPathView flat,
                  const cel::ActivationInterface& activation,
                  const cel::RuntimeOptions& options,
-                 FlatExpressionEvaluatorState& state)
-      : ExecutionFrameBase(activation, options, state.value_manager(),
-                           state.comprehension_slots()),
+                 FlatExpressionEvaluatorState& state,
+                 EvaluationListener callback = EvaluationListener())
+      : ExecutionFrameBase(activation, std::move(callback), options,
+                           state.value_manager(), state.comprehension_slots()),
         pc_(0UL),
         execution_path_(flat),
         state_(state),
@@ -243,9 +253,10 @@ class ExecutionFrame : public ExecutionFrameBase {
   ExecutionFrame(absl::Span<const ExecutionPathView> subexpressions,
                  const cel::ActivationInterface& activation,
                  const cel::RuntimeOptions& options,
-                 FlatExpressionEvaluatorState& state)
-      : ExecutionFrameBase(activation, options, state.value_manager(),
-                           state.comprehension_slots()),
+                 FlatExpressionEvaluatorState& state,
+                 EvaluationListener callback = EvaluationListener())
+      : ExecutionFrameBase(activation, std::move(callback), options,
+                           state.value_manager(), state.comprehension_slots()),
         pc_(0UL),
         execution_path_(subexpressions[0]),
         state_(state),
@@ -257,7 +268,9 @@ class ExecutionFrame : public ExecutionFrameBase {
   const ExpressionStep* Next();
 
   // Evaluate the execution frame to completion.
-  absl::StatusOr<cel::Value> Evaluate(EvaluationListener listener);
+  absl::StatusOr<cel::Value> Evaluate(EvaluationListener& listener);
+  // Evaluate the execution frame to completion.
+  absl::StatusOr<cel::Value> Evaluate() { return Evaluate(callback()); }
 
   // Intended for use in builtin shortcutting operations.
   //

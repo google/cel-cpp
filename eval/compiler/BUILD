@@ -91,6 +91,7 @@ cc_library(
         "//common:memory",
         "//common:type",
         "//common:value",
+        "//eval/eval:attribute_trail",
         "//eval/eval:comprehension_step",
         "//eval/eval:const_value_step",
         "//eval/eval:container_access_step",

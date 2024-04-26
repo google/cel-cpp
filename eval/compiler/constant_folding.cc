@@ -197,7 +197,7 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
     // the current capacity.
     state_.value_stack().SetMaxSize(subplan.size());
 
-    auto result = frame.Evaluate(EvaluationListener());
+    auto result = frame.Evaluate();
     // If this would be a runtime error, then don't adjust the program plan, but
     // rather allow the error to occur at runtime to preserve the evaluation
     // contract with non-constant folding use cases.
