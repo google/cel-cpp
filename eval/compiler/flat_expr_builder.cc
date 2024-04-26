@@ -1350,6 +1350,15 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     auto lazy_overloads = resolver_.FindLazyOverloads(
         function, call_expr->has_target(), arguments_matcher, expr->id());
     if (!lazy_overloads.empty()) {
+      auto depth = RecursionEligible();
+      if (depth.has_value()) {
+        auto args = program_builder_.current()->ExtractRecursiveDependencies();
+        SetRecursiveStep(CreateDirectLazyFunctionStep(
+                             expr->id(), *call_expr, std::move(args),
+                             std::move(lazy_overloads)),
+                         *depth + 1);
+        return;
+      }
       AddStep(CreateFunctionStep(*call_expr, expr->id(),
                                  std::move(lazy_overloads)));
       return;

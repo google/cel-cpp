@@ -22,6 +22,14 @@ std::unique_ptr<DirectExpressionStep> CreateDirectFunctionStep(
     std::vector<std::unique_ptr<DirectExpressionStep>> deps,
     std::vector<cel::FunctionOverloadReference> overloads);
 
+// Factory method for Call-based execution step where the function has been
+// statically resolved from a set of lazy functions configured in the
+// CelFunctionRegistry.
+std::unique_ptr<DirectExpressionStep> CreateDirectLazyFunctionStep(
+    int64_t expr_id, const cel::ast_internal::Call& call,
+    std::vector<std::unique_ptr<DirectExpressionStep>> deps,
+    std::vector<cel::FunctionRegistry::LazyOverload> providers);
+
 // Factory method for Call-based execution step where the function will be
 // resolved at runtime (lazily) from an input Activation.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(

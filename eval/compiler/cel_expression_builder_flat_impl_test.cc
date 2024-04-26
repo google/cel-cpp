@@ -35,13 +35,16 @@
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expression.h"
+#include "eval/public/cel_function.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/portable_cel_function_adapter.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "eval/public/testing/matchers.h"
 #include "extensions/bindings_ext.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/macro.h"
 #include "parser/parser.h"
@@ -102,7 +105,48 @@ struct RecursiveTestCase {
   test::CelValueMatcher matcher;
 };
 
-class RecursivePlanTest : public ::testing::TestWithParam<RecursiveTestCase> {};
+class RecursivePlanTest : public ::testing::TestWithParam<RecursiveTestCase> {
+ protected:
+  absl::Status SetupBuilder(CelExpressionBuilderFlatImpl& builder) {
+    builder.GetTypeRegistry()->RegisterTypeProvider(
+        std::make_unique<ProtobufDescriptorProvider>(
+            google::protobuf::DescriptorPool::generated_pool(),
+            google::protobuf::MessageFactory::generated_factory()));
+    builder.GetTypeRegistry()->RegisterEnum("TestEnum",
+                                            {{"FOO", 1}, {"BAR", 2}});
+
+    CEL_RETURN_IF_ERROR(RegisterBuiltinFunctions(builder.GetRegistry()));
+    return builder.GetRegistry()->RegisterLazyFunction(CelFunctionDescriptor(
+        "LazilyBoundMult", false,
+        {CelValue::Type::kInt64, CelValue::Type::kInt64}));
+  }
+
+  absl::Status SetupActivation(Activation& activation, google::protobuf::Arena* arena) {
+    activation.InsertValue("int_1", CelValue::CreateInt64(1));
+    activation.InsertValue("string_abc", CelValue::CreateStringView("abc"));
+    activation.InsertValue("string_def", CelValue::CreateStringView("def"));
+    auto* map = google::protobuf::Arena::Create<CelMapBuilder>(arena);
+    CEL_RETURN_IF_ERROR(
+        map->Add(CelValue::CreateStringView("a"), CelValue::CreateInt64(1)));
+    CEL_RETURN_IF_ERROR(
+        map->Add(CelValue::CreateStringView("b"), CelValue::CreateInt64(2)));
+    activation.InsertValue("map_var", CelValue::CreateMap(map));
+    auto* msg = google::protobuf::Arena::Create<NestedTestAllTypes>(arena);
+    msg->mutable_child()->mutable_payload()->set_single_int64(42);
+    activation.InsertValue("struct_var",
+                           CelProtoWrapper::CreateMessage(msg, arena));
+    activation.InsertValue("TestEnum.BAR", CelValue::CreateInt64(-1));
+
+    CEL_RETURN_IF_ERROR(activation.InsertFunction(
+        PortableBinaryFunctionAdapter<int64_t, int64_t, int64_t>::Create(
+            "LazilyBoundMult", false,
+            [](google::protobuf::Arena*, int64_t lhs, int64_t rhs) -> int64_t {
+              return lhs * rhs;
+            })));
+
+    return absl::OkStatus();
+  }
+};
 
 absl::StatusOr<ParsedExpr> ParseWithBind(absl::string_view cel) {
   static const std::vector<Macro>* kMacros = []() {
@@ -123,12 +167,8 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveImpl) {
   // Unbounded.
   options.max_recursion_depth = -1;
   CelExpressionBuilderFlatImpl builder(options);
-  builder.GetTypeRegistry()->RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(
-          google::protobuf::DescriptorPool::generated_pool(),
-          google::protobuf::MessageFactory::generated_factory()));
-  builder.GetTypeRegistry()->RegisterEnum("TestEnum", {{"FOO", 1}, {"BAR", 2}});
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+
+  ASSERT_OK(SetupBuilder(builder));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
                        builder.CreateExpression(&parsed_expr.expr(),
@@ -138,18 +178,8 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveImpl) {
               NotNull());
 
   Activation activation;
-  activation.InsertValue("int_1", CelValue::CreateInt64(1));
-  activation.InsertValue("string_abc", CelValue::CreateStringView("abc"));
-  activation.InsertValue("string_def", CelValue::CreateStringView("def"));
-  CelMapBuilder map;
-  ASSERT_OK(map.Add(CelValue::CreateStringView("a"), CelValue::CreateInt64(1)));
-  ASSERT_OK(map.Add(CelValue::CreateStringView("b"), CelValue::CreateInt64(2)));
-  activation.InsertValue("map_var", CelValue::CreateMap(&map));
-  NestedTestAllTypes msg;
-  msg.mutable_child()->mutable_payload()->set_single_int64(42);
-  activation.InsertValue("struct_var",
-                         CelProtoWrapper::CreateMessage(&msg, &arena));
-  activation.InsertValue("TestEnum.BAR", CelValue::CreateInt64(-1));
+
+  ASSERT_OK(SetupActivation(activation, &arena));
 
   ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
   EXPECT_THAT(result, test_case.matcher);
@@ -165,12 +195,8 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
   options.max_recursion_depth = -1;
   options.enable_comprehension_list_append = true;
   CelExpressionBuilderFlatImpl builder(options);
-  builder.GetTypeRegistry()->RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(
-          google::protobuf::DescriptorPool::generated_pool(),
-          google::protobuf::MessageFactory::generated_factory()));
-  builder.GetTypeRegistry()->RegisterEnum("TestEnum", {{"FOO", 1}, {"BAR", 2}});
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+
+  ASSERT_OK(SetupBuilder(builder));
 
   builder.flat_expr_builder().AddProgramOptimizer(
       cel::runtime_internal::CreateConstantFoldingOptimizer(
@@ -184,18 +210,8 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
               NotNull());
 
   Activation activation;
-  activation.InsertValue("int_1", CelValue::CreateInt64(1));
-  activation.InsertValue("string_abc", CelValue::CreateStringView("abc"));
-  activation.InsertValue("string_def", CelValue::CreateStringView("def"));
-  CelMapBuilder map;
-  ASSERT_OK(map.Add(CelValue::CreateStringView("a"), CelValue::CreateInt64(1)));
-  ASSERT_OK(map.Add(CelValue::CreateStringView("b"), CelValue::CreateInt64(2)));
-  activation.InsertValue("map_var", CelValue::CreateMap(&map));
-  NestedTestAllTypes msg;
-  msg.mutable_child()->mutable_payload()->set_single_int64(42);
-  activation.InsertValue("struct_var",
-                         CelProtoWrapper::CreateMessage(&msg, &arena));
-  activation.InsertValue("TestEnum.BAR", CelValue::CreateInt64(-1));
+
+  ASSERT_OK(SetupActivation(activation, &arena));
 
   ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
   EXPECT_THAT(result, test_case.matcher);
@@ -214,12 +230,8 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveTraceSupport) {
   options.max_recursion_depth = -1;
   options.enable_recursive_tracing = true;
   CelExpressionBuilderFlatImpl builder(options);
-  builder.GetTypeRegistry()->RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(
-          google::protobuf::DescriptorPool::generated_pool(),
-          google::protobuf::MessageFactory::generated_factory()));
-  builder.GetTypeRegistry()->RegisterEnum("TestEnum", {{"FOO", 1}, {"BAR", 2}});
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+
+  ASSERT_OK(SetupBuilder(builder));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
                        builder.CreateExpression(&parsed_expr.expr(),
@@ -229,18 +241,8 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveTraceSupport) {
               NotNull());
 
   Activation activation;
-  activation.InsertValue("int_1", CelValue::CreateInt64(1));
-  activation.InsertValue("string_abc", CelValue::CreateStringView("abc"));
-  activation.InsertValue("string_def", CelValue::CreateStringView("def"));
-  CelMapBuilder map;
-  ASSERT_OK(map.Add(CelValue::CreateStringView("a"), CelValue::CreateInt64(1)));
-  ASSERT_OK(map.Add(CelValue::CreateStringView("b"), CelValue::CreateInt64(2)));
-  activation.InsertValue("map_var", CelValue::CreateMap(&map));
-  NestedTestAllTypes msg;
-  msg.mutable_child()->mutable_payload()->set_single_int64(42);
-  activation.InsertValue("struct_var",
-                         CelProtoWrapper::CreateMessage(&msg, &arena));
-  activation.InsertValue("TestEnum.BAR", CelValue::CreateInt64(-1));
+
+  ASSERT_OK(SetupActivation(activation, &arena));
 
   ASSERT_OK_AND_ASSIGN(CelValue result, plan->Trace(activation, &arena, cb));
   EXPECT_THAT(result, test_case.matcher);
@@ -257,12 +259,8 @@ TEST_P(RecursivePlanTest, Disabled) {
   // disabled.
   options.max_recursion_depth = 0;
   CelExpressionBuilderFlatImpl builder(options);
-  builder.GetTypeRegistry()->RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(
-          google::protobuf::DescriptorPool::generated_pool(),
-          google::protobuf::MessageFactory::generated_factory()));
-  builder.GetTypeRegistry()->RegisterEnum("TestEnum", {{"FOO", 1}, {"BAR", 2}});
-  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+
+  ASSERT_OK(SetupBuilder(builder));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
                        builder.CreateExpression(&parsed_expr.expr(),
@@ -272,18 +270,8 @@ TEST_P(RecursivePlanTest, Disabled) {
               IsNull());
 
   Activation activation;
-  activation.InsertValue("int_1", CelValue::CreateInt64(1));
-  activation.InsertValue("string_abc", CelValue::CreateStringView("abc"));
-  activation.InsertValue("string_def", CelValue::CreateStringView("def"));
-  CelMapBuilder map;
-  ASSERT_OK(map.Add(CelValue::CreateStringView("a"), CelValue::CreateInt64(1)));
-  ASSERT_OK(map.Add(CelValue::CreateStringView("b"), CelValue::CreateInt64(2)));
-  activation.InsertValue("map_var", CelValue::CreateMap(&map));
-  NestedTestAllTypes msg;
-  msg.mutable_child()->mutable_payload()->set_single_int64(42);
-  activation.InsertValue("struct_var",
-                         CelProtoWrapper::CreateMessage(&msg, &arena));
-  activation.InsertValue("TestEnum.BAR", CelValue::CreateInt64(-1));
+
+  ASSERT_OK(SetupActivation(activation, &arena));
 
   ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
   EXPECT_THAT(result, test_case.matcher);
@@ -333,7 +321,10 @@ INSTANTIATE_TEST_SUITE_P(
         {"shadowable_value_default", R"(TestEnum.FOO == 1)",
          test::IsCelBool(true)},
         {"shadowable_value_shadowed", R"(TestEnum.BAR == -1)",
+         test::IsCelBool(true)},
+        {"lazily_resolved_function", "LazilyBoundMult(123, 2) == 246",
          test::IsCelBool(true)}}),
+
     [](const testing::TestParamInfo<RecursiveTestCase>& info) -> std::string {
       return info.param.test_name;
     });
