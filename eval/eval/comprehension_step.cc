@@ -255,9 +255,23 @@ absl::Status ComprehensionDirectStep::Evaluate(ExecutionFrameBase& frame,
 
         return true;
       }));
+
   frame.comprehension_slots().ClearSlot(iter_slot_);
-  if (!should_skip_result) {
-    CEL_RETURN_IF_ERROR(result_step_->Evaluate(frame, result, trail));
+  // Error state is already set to the return value, just clean up.
+  if (should_skip_result) {
+    frame.comprehension_slots().ClearSlot(accu_slot_);
+    return absl::OkStatus();
+  }
+
+  CEL_RETURN_IF_ERROR(result_step_->Evaluate(frame, result, trail));
+  if (frame.options().enable_comprehension_list_append &&
+      MutableListValue::Is(result)) {
+    // We assume the list builder is 'owned' by the evaluator stack so
+    // destructive operation is safe here.
+    //
+    // Convert the buildable list to an actual cel::ListValue.
+    MutableListValue& list_value = MutableListValue::Cast(result);
+    CEL_ASSIGN_OR_RETURN(result, std::move(list_value).Build());
   }
   frame.comprehension_slots().ClearSlot(accu_slot_);
   return absl::OkStatus();

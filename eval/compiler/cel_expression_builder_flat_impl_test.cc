@@ -161,6 +161,7 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
   google::protobuf::Arena arena;
   // Unbounded.
   options.max_recursion_depth = -1;
+  options.enable_comprehension_list_append = true;
   CelExpressionBuilderFlatImpl builder(options);
   builder.GetTypeRegistry()->RegisterTypeProvider(
       std::make_unique<ProtobufDescriptorProvider>(

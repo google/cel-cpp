@@ -1216,7 +1216,11 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
           comprehension_stack_.back();
       if (comprehension.is_optimizable_list_append &&
           &(comprehension.comprehension->accu_init()) == expr) {
-        AddStep(CreateCreateMutableListStep(*list_expr, expr->id()));
+        if (options_.max_recursion_depth != 0) {
+          SetRecursiveStep(CreateDirectMutableListStep(expr->id()), 1);
+          return;
+        }
+        AddStep(CreateMutableListStep(expr->id()));
         return;
       }
     }

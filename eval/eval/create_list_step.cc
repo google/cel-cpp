@@ -35,18 +35,16 @@ using ::cel::runtime_internal::MutableListValue;
 
 class CreateListStep : public ExpressionStepBase {
  public:
-  CreateListStep(int64_t expr_id, int list_size, bool immutable,
+  CreateListStep(int64_t expr_id, int list_size,
                  absl::flat_hash_set<int> optional_indices)
       : ExpressionStepBase(expr_id),
         list_size_(list_size),
-        immutable_(immutable),
         optional_indices_(std::move(optional_indices)) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
   int list_size_;
-  bool immutable_;
   absl::flat_hash_set<int32_t> optional_indices_;
 };
 
@@ -107,14 +105,7 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
     }
   }
 
-  if (immutable_) {
-    result = std::move(*builder).Build();
-  } else {
-    result = cel::OpaqueValue{
-        frame->value_manager().GetMemoryManager().MakeShared<MutableListValue>(
-            std::move(builder))};
-  }
-  frame->value_stack().PopAndPush(list_size_, std::move(result));
+  frame->value_stack().PopAndPush(list_size_, std::move(*builder).Build());
   return absl::OkStatus();
 }
 
@@ -206,9 +197,48 @@ class CreateListDirectStep : public DirectExpressionStep {
   absl::flat_hash_set<int32_t> optional_indices_;
 };
 
+class MutableListStep : public ExpressionStepBase {
+ public:
+  explicit MutableListStep(int64_t expr_id) : ExpressionStepBase(expr_id) {}
+
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
+};
+
+absl::Status MutableListStep::Evaluate(ExecutionFrame* frame) const {
+  CEL_ASSIGN_OR_RETURN(auto builder,
+                       frame->value_manager().NewListValueBuilder(
+                           frame->value_manager().GetDynListType()));
+
+  frame->value_stack().Push(cel::OpaqueValue{
+      frame->value_manager().GetMemoryManager().MakeShared<MutableListValue>(
+          std::move(builder))});
+  return absl::OkStatus();
+}
+
+class DirectMutableListStep : public DirectExpressionStep {
+ public:
+  explicit DirectMutableListStep(int64_t expr_id)
+      : DirectExpressionStep(expr_id) {}
+
+  absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
+                        AttributeTrail& attribute) const override;
+};
+
+absl::Status DirectMutableListStep::Evaluate(
+    ExecutionFrameBase& frame, Value& result,
+    AttributeTrail& attribute_trail) const {
+  CEL_ASSIGN_OR_RETURN(auto builder,
+                       frame.value_manager().NewListValueBuilder(
+                           frame.value_manager().GetDynListType()));
+
+  result = cel::OpaqueValue{
+      frame.value_manager().GetMemoryManager().MakeShared<MutableListValue>(
+          std::move(builder))};
+  return absl::OkStatus();
+}
+
 }  // namespace
 
-// TODO(uncreated-issue/67): optional support.
 std::unique_ptr<DirectExpressionStep> CreateDirectListStep(
     std::vector<std::unique_ptr<DirectExpressionStep>> deps,
     absl::flat_hash_set<int32_t> optional_indices, int64_t expr_id) {
@@ -219,15 +249,17 @@ std::unique_ptr<DirectExpressionStep> CreateDirectListStep(
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateListStep(
     const cel::ast_internal::CreateList& create_list_expr, int64_t expr_id) {
   return std::make_unique<CreateListStep>(
-      expr_id, create_list_expr.elements().size(), /*immutable=*/true,
+      expr_id, create_list_expr.elements().size(),
       MakeOptionalIndicesSet(create_list_expr));
 }
 
-absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateMutableListStep(
-    const cel::ast_internal::CreateList& create_list_expr, int64_t expr_id) {
-  return std::make_unique<CreateListStep>(
-      expr_id, create_list_expr.elements().size(), /*immutable=*/false,
-      MakeOptionalIndicesSet(create_list_expr));
+std::unique_ptr<ExpressionStep> CreateMutableListStep(int64_t expr_id) {
+  return std::make_unique<MutableListStep>(expr_id);
+}
+
+std::unique_ptr<DirectExpressionStep> CreateDirectMutableListStep(
+    int64_t expr_id) {
+  return std::make_unique<DirectMutableListStep>(expr_id);
 }
 
 }  // namespace google::api::expr::runtime
