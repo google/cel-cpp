@@ -533,7 +533,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
-    const std::string& path = ident_expr->name();
+    std::string path = ident_expr->name();
     if (!ValidateOrError(
             !path.empty(),
             "Invalid expression: identifier 'name' must not be empty")) {
@@ -542,6 +542,9 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
 
     // Attempt to resolve a select expression as a namespaced identifier for an
     // enum or type constant value.
+    absl::optional<cel::Value> const_value;
+    int64_t select_root_id = -1;
+
     while (!namespace_stack_.empty()) {
       const auto& select_node = namespace_stack_.front();
       // Generate path in format "<ident>.<field 0>.<field 1>...".
@@ -552,23 +555,34 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       // qualified path present in the expression. Whether the identifier
       // can be resolved to a type instance depends on whether the option to
       // 'enable_qualified_type_identifiers' is set to true.
-      auto const_value =
-          resolver_.FindConstant(qualified_path, select_expr->id());
+      const_value = resolver_.FindConstant(qualified_path, select_expr->id());
       if (const_value) {
-        AddStep(CreateShadowableValueStep(
-            qualified_path, std::move(*const_value), select_expr->id()));
         resolved_select_expr_ = select_expr;
+        select_root_id = select_expr->id();
+        path = qualified_path;
         namespace_stack_.clear();
-        return;
+        break;
       }
       namespace_stack_.pop_front();
     }
 
-    // Attempt to resolve a simple identifier as an enum or type constant value.
-    auto const_value = resolver_.FindConstant(path, expr->id());
+    if (!const_value) {
+      // Attempt to resolve a simple identifier as an enum or type constant
+      // value.
+      const_value = resolver_.FindConstant(path, expr->id());
+      select_root_id = expr->id();
+    }
+
     if (const_value) {
-      AddStep(
-          CreateShadowableValueStep(path, std::move(*const_value), expr->id()));
+      if (options_.max_recursion_depth != 0) {
+        SetRecursiveStep(CreateDirectShadowableValueStep(
+                             std::move(path), std::move(const_value).value(),
+                             select_root_id),
+                         1);
+        return;
+      }
+      AddStep(CreateShadowableValueStep(
+          std::move(path), std::move(const_value).value(), select_root_id));
       return;
     }
 

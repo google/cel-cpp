@@ -1008,10 +1008,14 @@ cc_library(
     srcs = ["shadowable_value_step.cc"],
     hdrs = ["shadowable_value_step.h"],
     deps = [
+        ":attribute_trail",
+        ":direct_expression_step",
         ":evaluator_core",
         ":expression_step_base",
         "//common:value",
         "//internal:status_macros",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
     ],
 )

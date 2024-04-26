@@ -127,6 +127,7 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveImpl) {
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
+  builder.GetTypeRegistry()->RegisterEnum("TestEnum", {{"FOO", 1}, {"BAR", 2}});
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
@@ -148,6 +149,7 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveImpl) {
   msg.mutable_child()->mutable_payload()->set_single_int64(42);
   activation.InsertValue("struct_var",
                          CelProtoWrapper::CreateMessage(&msg, &arena));
+  activation.InsertValue("TestEnum.BAR", CelValue::CreateInt64(-1));
 
   ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
   EXPECT_THAT(result, test_case.matcher);
@@ -167,6 +169,7 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
+  builder.GetTypeRegistry()->RegisterEnum("TestEnum", {{"FOO", 1}, {"BAR", 2}});
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
 
   builder.flat_expr_builder().AddProgramOptimizer(
@@ -192,6 +195,7 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
   msg.mutable_child()->mutable_payload()->set_single_int64(42);
   activation.InsertValue("struct_var",
                          CelProtoWrapper::CreateMessage(&msg, &arena));
+  activation.InsertValue("TestEnum.BAR", CelValue::CreateInt64(-1));
 
   ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
   EXPECT_THAT(result, test_case.matcher);
@@ -214,6 +218,7 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveTraceSupport) {
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
+  builder.GetTypeRegistry()->RegisterEnum("TestEnum", {{"FOO", 1}, {"BAR", 2}});
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
@@ -235,6 +240,7 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveTraceSupport) {
   msg.mutable_child()->mutable_payload()->set_single_int64(42);
   activation.InsertValue("struct_var",
                          CelProtoWrapper::CreateMessage(&msg, &arena));
+  activation.InsertValue("TestEnum.BAR", CelValue::CreateInt64(-1));
 
   ASSERT_OK_AND_ASSIGN(CelValue result, plan->Trace(activation, &arena, cb));
   EXPECT_THAT(result, test_case.matcher);
@@ -255,6 +261,7 @@ TEST_P(RecursivePlanTest, Disabled) {
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
+  builder.GetTypeRegistry()->RegisterEnum("TestEnum", {{"FOO", 1}, {"BAR", 2}});
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
@@ -276,6 +283,7 @@ TEST_P(RecursivePlanTest, Disabled) {
   msg.mutable_child()->mutable_payload()->set_single_int64(42);
   activation.InsertValue("struct_var",
                          CelProtoWrapper::CreateMessage(&msg, &arena));
+  activation.InsertValue("TestEnum.BAR", CelValue::CreateInt64(-1));
 
   ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
   EXPECT_THAT(result, test_case.matcher);
@@ -321,8 +329,11 @@ INSTANTIATE_TEST_SUITE_P(
          test::IsCelInt64(50)},
         {"bind_with_comprehensions",
          R"(cel.bind(x, [1, 2], cel.bind(y, x.map(z, z * 2), y.exists(z, z == 4))))",
+         test::IsCelBool(true)},
+        {"shadowable_value_default", R"(TestEnum.FOO == 1)",
+         test::IsCelBool(true)},
+        {"shadowable_value_shadowed", R"(TestEnum.BAR == -1)",
          test::IsCelBool(true)}}),
-
     [](const testing::TestParamInfo<RecursiveTestCase>& info) -> std::string {
       return info.param.test_name;
     });

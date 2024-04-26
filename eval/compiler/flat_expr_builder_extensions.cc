@@ -34,7 +34,36 @@
 
 namespace google::api::expr::runtime {
 
+namespace {
+
 using Subexpression = google::api::expr::runtime::ProgramBuilder::Subexpression;
+
+// Remap a recursive program to its parent if the parent is a transparent
+// wrapper.
+void MaybeReassignChildRecursiveProgram(Subexpression* parent) {
+  if (parent->IsFlattened() || parent->IsRecursive()) {
+    return;
+  }
+  if (parent->elements().size() != 1) {
+    return;
+  }
+  auto* child_alternative =
+      absl::get_if<std::unique_ptr<Subexpression>>(&parent->elements()[0]);
+  if (child_alternative == nullptr) {
+    return;
+  }
+
+  auto& child_subexpression = *child_alternative;
+  if (!child_subexpression->IsRecursive()) {
+    return;
+  }
+
+  auto child_program = child_subexpression->ExtractRecursiveProgram();
+  parent->set_recursive_program(std::move(child_program.step),
+                                child_program.depth);
+}
+
+}  // namespace
 
 Subexpression::Subexpression(const cel::ast_internal::Expr* self,
                              ProgramBuilder* owner)
@@ -301,6 +330,8 @@ absl::Nullable<Subexpression*> ProgramBuilder::ExitSubexpression(
     const cel::ast_internal::Expr* expr) {
   ABSL_DCHECK(expr == current_->self_);
   ABSL_DCHECK(GetSubexpression(expr) == current_);
+
+  MaybeReassignChildRecursiveProgram(current_);
 
   Subexpression* result = GetSubexpression(current_->parent_);
   ABSL_DCHECK(result != nullptr || current_ == root_.get());
