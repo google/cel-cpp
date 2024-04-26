@@ -353,12 +353,13 @@ cc_library(
         "create_struct_step.h",
     ],
     deps = [
+        ":attribute_trail",
+        ":direct_expression_step",
         ":evaluator_core",
         ":expression_step_base",
         "//base/ast_internal:expr",
         "//common:casting",
         "//common:memory",
-        "//common:type",
         "//common:value",
         "//internal:status_macros",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -820,6 +821,7 @@ cc_test(
     deps = [
         ":cel_expression_flat_impl",
         ":create_struct_step",
+        ":direct_expression_step",
         ":evaluator_core",
         ":ident_step",
         "//base:data",

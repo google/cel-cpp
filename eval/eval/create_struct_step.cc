@@ -14,7 +14,6 @@
 
 #include "eval/eval/create_struct_step.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -31,6 +30,8 @@
 #include "common/memory.h"
 #include "common/value.h"
 #include "common/value_manager.h"
+#include "eval/eval/attribute_trail.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "internal/status_macros.h"
@@ -39,20 +40,12 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::Cast;
+using ::cel::ErrorValue;
+using ::cel::InstanceOf;
 using ::cel::StructValueBuilderInterface;
 using ::cel::UnknownValue;
 using ::cel::Value;
-
-absl::flat_hash_set<int32_t> MakeOptionalIndicesSet(
-    const cel::ast_internal::CreateStruct& create_struct_expr) {
-  absl::flat_hash_set<int32_t> optional_indices;
-  for (size_t i = 0; i < create_struct_expr.entries().size(); ++i) {
-    if (create_struct_expr.entries()[i].optional_entry()) {
-      optional_indices.insert(static_cast<int32_t>(i));
-    }
-  }
-  return optional_indices;
-}
 
 // `CreateStruct` implementation for message/struct.
 class CreateStructStepForStruct final : public ExpressionStepBase {
@@ -136,26 +129,122 @@ absl::Status CreateStructStepForStruct::Evaluate(ExecutionFrame* frame) const {
 
   return absl::OkStatus();
 }
+
+class DirectCreateStructStep : public DirectExpressionStep {
+ public:
+  DirectCreateStructStep(
+      int64_t expr_id, std::string name, std::vector<std::string> field_keys,
+      std::vector<std::unique_ptr<DirectExpressionStep>> deps,
+      absl::flat_hash_set<int32_t> optional_indices)
+      : DirectExpressionStep(expr_id),
+        name_(std::move(name)),
+        field_keys_(std::move(field_keys)),
+        deps_(std::move(deps)),
+        optional_indices_(std::move(optional_indices)) {}
+
+  absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
+                        AttributeTrail& trail) const override;
+
+ private:
+  std::string name_;
+  std::vector<std::string> field_keys_;
+  std::vector<std::unique_ptr<DirectExpressionStep>> deps_;
+  absl::flat_hash_set<int32_t> optional_indices_;
+};
+
+absl::Status DirectCreateStructStep::Evaluate(ExecutionFrameBase& frame,
+                                              Value& result,
+                                              AttributeTrail& trail) const {
+  Value field_value;
+  AttributeTrail field_attr;
+  auto unknowns = frame.attribute_utility().CreateAccumulator();
+
+  auto builder_or_status = frame.value_manager().NewValueBuilder(name_);
+  if (!builder_or_status.ok()) {
+    result = frame.value_manager().CreateErrorValue(builder_or_status.status());
+    return absl::OkStatus();
+  }
+  if (!builder_or_status->has_value()) {
+    result = frame.value_manager().CreateErrorValue(
+        absl::NotFoundError(absl::StrCat("Unable to find builder: ", name_)));
+    return absl::OkStatus();
+  }
+  auto& builder = **builder_or_status;
+
+  for (int i = 0; i < field_keys_.size(); i++) {
+    CEL_RETURN_IF_ERROR(deps_[i]->Evaluate(frame, field_value, field_attr));
+
+    // TODO(uncreated-issue/67): if the value is an error, we should be able to return
+    // early, however some client tests depend on the error message the struct
+    // impl returns in the stack machine version.
+    if (InstanceOf<ErrorValue>(field_value)) {
+      result = std::move(field_value);
+      return absl::OkStatus();
+    }
+
+    if (frame.unknown_processing_enabled()) {
+      if (InstanceOf<UnknownValue>(field_value)) {
+        unknowns.Add(Cast<UnknownValue>(field_value));
+      } else if (frame.attribute_utility().CheckForUnknownPartial(field_attr)) {
+        unknowns.Add(field_attr);
+      }
+    }
+
+    if (!unknowns.IsEmpty()) {
+      continue;
+    }
+
+    if (optional_indices_.contains(static_cast<int32_t>(i))) {
+      if (auto optional_arg = cel::As<cel::OptionalValue>(
+              static_cast<const Value&>(field_value));
+          optional_arg) {
+        if (!optional_arg->HasValue()) {
+          continue;
+        }
+        auto status =
+            builder->SetFieldByName(field_keys_[i], optional_arg->Value());
+        if (!status.ok()) {
+          result = frame.value_manager().CreateErrorValue(std::move(status));
+          return absl::OkStatus();
+        }
+      }
+      continue;
+    }
+
+    auto status =
+        builder->SetFieldByName(field_keys_[i], std::move(field_value));
+    if (!status.ok()) {
+      result = frame.value_manager().CreateErrorValue(std::move(status));
+      return absl::OkStatus();
+    }
+  }
+
+  if (!unknowns.IsEmpty()) {
+    result = std::move(unknowns).Build();
+    return absl::OkStatus();
+  }
+
+  result = std::move(*builder).Build();
+  return absl::OkStatus();
+}
+
 }  // namespace
 
-absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStepForStruct(
-    const cel::ast_internal::CreateStruct& create_struct_expr, std::string name,
-    int64_t expr_id, cel::TypeManager& type_manager) {
-  // We resolved to a struct type. Use it.
-  std::vector<std::string> entries;
-  entries.reserve(create_struct_expr.entries().size());
-  for (const auto& entry : create_struct_expr.entries()) {
-    CEL_ASSIGN_OR_RETURN(auto field, type_manager.FindStructTypeFieldByName(
-                                         name, entry.field_key()));
-    if (!field.has_value()) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Invalid message creation: field '", entry.field_key(),
-          "' not found in '", create_struct_expr.message_name(), "'"));
-    }
-    entries.push_back(entry.field_key());
-  }
+std::unique_ptr<DirectExpressionStep> CreateDirectCreateStructStep(
+    std::string resolved_name, std::vector<std::string> field_keys,
+    std::vector<std::unique_ptr<DirectExpressionStep>> deps,
+    absl::flat_hash_set<int32_t> optional_indices, int64_t expr_id) {
+  return std::make_unique<DirectCreateStructStep>(
+      expr_id, std::move(resolved_name), std::move(field_keys), std::move(deps),
+      std::move(optional_indices));
+}
+
+std::unique_ptr<ExpressionStep> CreateCreateStructStep(
+    std::string name, std::vector<std::string> field_keys,
+    absl::flat_hash_set<int32_t> optional_indices, int64_t expr_id) {
+  // MakeOptionalIndicesSet(create_struct_expr)
   return std::make_unique<CreateStructStepForStruct>(
-      expr_id, std::move(name), std::move(entries),
-      MakeOptionalIndicesSet(create_struct_expr));
+      expr_id, std::move(name), std::move(field_keys),
+      std::move(optional_indices));
 }
 }  // namespace google::api::expr::runtime

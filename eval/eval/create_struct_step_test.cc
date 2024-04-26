@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -29,6 +30,7 @@
 #include "base/type_provider.h"
 #include "common/values/legacy_value_manager.h"
 #include "eval/eval/cel_expression_flat_impl.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/activation.h"
@@ -63,14 +65,52 @@ using testing::Eq;
 using testing::IsNull;
 using testing::Not;
 using testing::Pointwise;
-using cel::internal::StatusIs;
+
+absl::StatusOr<ExecutionPath> MakeStackMachinePath(absl::string_view field) {
+  ExecutionPath path;
+  Expr expr0;
+
+  auto& ident = expr0.mutable_ident_expr();
+  ident.set_name("message");
+  CEL_ASSIGN_OR_RETURN(auto step0, CreateIdentStep(ident, expr0.id()));
+
+  auto step1 = CreateCreateStructStep("google.api.expr.runtime.TestMessage",
+                                      {std::string(field)},
+                                      /*optional_indices=*/{},
+
+                                      /*id=*/-1);
+
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+
+  return path;
+}
+
+absl::StatusOr<ExecutionPath> MakeRecursivePath(absl::string_view field) {
+  ExecutionPath path;
+
+  std::vector<std::unique_ptr<DirectExpressionStep>> deps;
+  deps.push_back(CreateDirectIdentStep("message", -1));
+
+  auto step1 =
+      CreateDirectCreateStructStep("google.api.expr.runtime.TestMessage",
+                                   {std::string(field)}, std::move(deps),
+                                   /*optional_indices=*/{},
+
+                                   /*id=*/-1);
+
+  path.push_back(std::make_unique<WrappedDirectStep>(std::move(step1), -1));
+
+  return path;
+}
+
 // Helper method. Creates simple pipeline containing CreateStruct step that
 // builds message and runs it.
 absl::StatusOr<CelValue> RunExpression(absl::string_view field,
                                        const CelValue& value,
                                        google::protobuf::Arena* arena,
-                                       bool enable_unknowns) {
-  ExecutionPath path;
+                                       bool enable_unknowns,
+                                       bool enable_recursive_planning) {
   CelTypeRegistry type_registry;
   type_registry.RegisterTypeProvider(
       std::make_unique<ProtobufDescriptorProvider>(
@@ -80,37 +120,26 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
   cel::common_internal::LegacyValueManager type_manager(
       memory_manager, type_registry.GetTypeProvider());
 
-  Expr expr0;
-  Expr expr1;
-
-  auto& ident = expr0.mutable_ident_expr();
-  ident.set_name("message");
-  CEL_ASSIGN_OR_RETURN(auto step0, CreateIdentStep(ident, expr0.id()));
-
-  auto& create_struct = expr1.mutable_struct_expr();
-  create_struct.set_message_name("google.api.expr.runtime.TestMessage");
-
-  auto& entry = create_struct.mutable_entries().emplace_back();
-  entry.set_field_key(std::string(field));
-
-  CEL_ASSIGN_OR_RETURN(auto maybe_type,
-                       type_manager.FindType(create_struct.message_name()));
+  CEL_ASSIGN_OR_RETURN(
+      auto maybe_type,
+      type_manager.FindType("google.api.expr.runtime.TestMessage"));
   if (!maybe_type.has_value()) {
     return absl::Status(absl::StatusCode::kFailedPrecondition,
                         "missing proto message type");
   }
-  CEL_ASSIGN_OR_RETURN(auto step1,
-                       CreateCreateStructStepForStruct(
-                           create_struct, "google.api.expr.runtime.TestMessage",
-                           expr1.id(), type_manager));
-
-  path.push_back(std::move(step0));
-  path.push_back(std::move(step1));
 
   cel::RuntimeOptions options;
   if (enable_unknowns) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
+  ExecutionPath path;
+
+  if (enable_recursive_planning) {
+    CEL_ASSIGN_OR_RETURN(path, MakeRecursivePath(field));
+  } else {
+    CEL_ASSIGN_OR_RETURN(path, MakeStackMachinePath(field));
+  }
+
   CelExpressionFlatImpl cel_expr(
       FlatExpression(std::move(path), /*comprehension_slot_count=*/0,
                      type_registry.GetTypeProvider(), options));
@@ -122,9 +151,11 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
 
 void RunExpressionAndGetMessage(absl::string_view field, const CelValue& value,
                                 google::protobuf::Arena* arena, TestMessage* test_msg,
-                                bool enable_unknowns) {
+                                bool enable_unknowns,
+                                bool enable_recursive_planning) {
   ASSERT_OK_AND_ASSIGN(auto result,
-                       RunExpression(field, value, arena, enable_unknowns));
+                       RunExpression(field, value, arena, enable_unknowns,
+                                     enable_recursive_planning));
   ASSERT_TRUE(result.IsMessage()) << result.DebugString();
 
   const Message* msg = result.MessageOrDie();
@@ -137,13 +168,15 @@ void RunExpressionAndGetMessage(absl::string_view field, const CelValue& value,
 void RunExpressionAndGetMessage(absl::string_view field,
                                 std::vector<CelValue> values,
                                 google::protobuf::Arena* arena, TestMessage* test_msg,
-                                bool enable_unknowns) {
+                                bool enable_unknowns,
+                                bool enable_recursive_planning) {
   ContainerBackedListImpl cel_list(std::move(values));
 
   CelValue value = CelValue::CreateList(&cel_list);
 
   ASSERT_OK_AND_ASSIGN(auto result,
-                       RunExpression(field, value, arena, enable_unknowns));
+                       RunExpression(field, value, arena, enable_unknowns,
+                                     enable_recursive_planning));
   ASSERT_TRUE(result.IsMessage()) << result.DebugString();
 
   const Message* msg = result.MessageOrDie();
@@ -153,7 +186,12 @@ void RunExpressionAndGetMessage(absl::string_view field,
   test_msg->MergeFrom(*msg);
 }
 
-class CreateCreateStructStepTest : public testing::TestWithParam<bool> {};
+class CreateCreateStructStepTest
+    : public testing::TestWithParam<std::tuple<bool, bool>> {
+ public:
+  bool enable_unknowns() { return std::get<0>(GetParam()); }
+  bool enable_recursive_planning() { return std::get<1>(GetParam()); }
+};
 
 TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   ExecutionPath path;
@@ -166,24 +204,34 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   auto memory_manager = ProtoMemoryManagerRef(&arena);
   cel::common_internal::LegacyValueManager type_manager(
       memory_manager, type_registry.GetTypeProvider());
-  Expr expr1;
 
-  auto& create_struct = expr1.mutable_struct_expr();
-  create_struct.set_message_name("google.api.expr.runtime.TestMessage");
-  auto adapter = type_registry.FindTypeAdapter(create_struct.message_name());
+  auto adapter =
+      type_registry.FindTypeAdapter("google.api.expr.runtime.TestMessage");
   ASSERT_TRUE(adapter.has_value() && adapter->mutation_apis() != nullptr);
 
-  ASSERT_OK_AND_ASSIGN(auto maybe_type,
-                       type_manager.FindType(create_struct.message_name()));
+  ASSERT_OK_AND_ASSIGN(
+      auto maybe_type,
+      type_manager.FindType("google.api.expr.runtime.TestMessage"));
   ASSERT_TRUE(maybe_type.has_value());
-  ASSERT_OK_AND_ASSIGN(auto step,
-                       CreateCreateStructStepForStruct(
-                           create_struct, "google.api.expr.runtime.TestMessage",
-                           expr1.id(), type_manager));
-  path.push_back(std::move(step));
+  if (enable_recursive_planning()) {
+    auto step =
+        CreateDirectCreateStructStep("google.api.expr.runtime.TestMessage",
+                                     /*fields=*/{},
+                                     /*deps=*/{},
+                                     /*optional_indices=*/{},
+                                     /*id=*/-1);
+    path.push_back(
+        std::make_unique<WrappedDirectStep>(std::move(step), /*id=*/-1));
+  } else {
+    auto step = CreateCreateStructStep("google.api.expr.runtime.TestMessage",
+                                       /*fields=*/{},
+                                       /*optional_indices=*/{},
+                                       /*id=*/-1);
+    path.push_back(std::move(step));
+  }
 
   cel::RuntimeOptions options;
-  if (GetParam()) {
+  if (enable_unknowns(), enable_recursive_planning()) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
   CelExpressionFlatImpl cel_expr(
@@ -199,49 +247,30 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   ASSERT_EQ(msg->GetDescriptor(), TestMessage::descriptor());
 }
 
-TEST_P(CreateCreateStructStepTest, TestMessageCreationBadField) {
-  ExecutionPath path;
-  CelTypeRegistry type_registry;
-  type_registry.RegisterTypeProvider(
-      std::make_unique<ProtobufDescriptorProvider>(
-          google::protobuf::DescriptorPool::generated_pool(),
-          google::protobuf::MessageFactory::generated_factory()));
-  google::protobuf::Arena arena;
-  auto memory_manager = ProtoMemoryManagerRef(&arena);
-  cel::common_internal::LegacyValueManager type_manager(
-      memory_manager, type_registry.GetTypeProvider());
-  Expr expr1;
-
-  auto& create_struct = expr1.mutable_struct_expr();
-  create_struct.set_message_name("google.api.expr.runtime.TestMessage");
-  auto& entry = create_struct.mutable_entries().emplace_back();
-  entry.set_field_key("bad_field");
-  auto& value = entry.mutable_value();
-  value.mutable_const_expr().set_bool_value(true);
-  auto adapter = type_registry.FindTypeAdapter(create_struct.message_name());
-  ASSERT_TRUE(adapter.has_value() && adapter->mutation_apis() != nullptr);
-
-  ASSERT_OK_AND_ASSIGN(auto maybe_type,
-                       type_manager.FindType(create_struct.message_name()));
-  ASSERT_TRUE(maybe_type.has_value());
-  EXPECT_THAT(CreateCreateStructStepForStruct(
-                  create_struct, "google.api.expr.runtime.TestMessage",
-                  expr1.id(), type_manager)
-                  .status(),
-              StatusIs(absl::StatusCode::kInvalidArgument,
-                       testing::HasSubstr("'bad_field'")));
-}
-
 // Test message creation if unknown argument is passed
 TEST(CreateCreateStructStepTest, TestMessageCreateWithUnknown) {
   Arena arena;
   TestMessage test_msg;
   UnknownSet unknown_set;
 
-  auto eval_status = RunExpression(
-      "bool_value", CelValue::CreateUnknownSet(&unknown_set), &arena, true);
+  auto eval_status =
+      RunExpression("bool_value", CelValue::CreateUnknownSet(&unknown_set),
+                    &arena, true, /*enable_recursive_planning=*/false);
   ASSERT_OK(eval_status);
   ASSERT_TRUE(eval_status->IsUnknownSet());
+}
+
+// Test message creation if unknown argument is passed
+TEST(CreateCreateStructStepTest, TestMessageCreateWithUnknownRecursive) {
+  Arena arena;
+  TestMessage test_msg;
+  UnknownSet unknown_set;
+
+  auto eval_status =
+      RunExpression("bool_value", CelValue::CreateUnknownSet(&unknown_set),
+                    &arena, true, /*enable_recursive_planning=*/true);
+  ASSERT_OK(eval_status);
+  ASSERT_TRUE(eval_status->IsUnknownSet()) << eval_status->DebugString();
 }
 
 // Test that fields of type bool are set correctly
@@ -250,7 +279,8 @@ TEST_P(CreateCreateStructStepTest, TestSetBoolField) {
   TestMessage test_msg;
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "bool_value", CelValue::CreateBool(true), &arena, &test_msg, GetParam()));
+      "bool_value", CelValue::CreateBool(true), &arena, &test_msg,
+      enable_unknowns(), enable_recursive_planning()));
   ASSERT_EQ(test_msg.bool_value(), true);
 }
 
@@ -260,7 +290,8 @@ TEST_P(CreateCreateStructStepTest, TestSetInt32Field) {
   TestMessage test_msg;
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "int32_value", CelValue::CreateInt64(1), &arena, &test_msg, GetParam()));
+      "int32_value", CelValue::CreateInt64(1), &arena, &test_msg,
+      enable_unknowns(), enable_recursive_planning()));
 
   ASSERT_EQ(test_msg.int32_value(), 1);
 }
@@ -270,9 +301,9 @@ TEST_P(CreateCreateStructStepTest, TestSetUInt32Field) {
   Arena arena;
   TestMessage test_msg;
 
-  ASSERT_NO_FATAL_FAILURE(
-      RunExpressionAndGetMessage("uint32_value", CelValue::CreateUint64(1),
-                                 &arena, &test_msg, GetParam()));
+  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
+      "uint32_value", CelValue::CreateUint64(1), &arena, &test_msg,
+      enable_unknowns(), enable_recursive_planning()));
 
   ASSERT_EQ(test_msg.uint32_value(), 1);
 }
@@ -283,7 +314,8 @@ TEST_P(CreateCreateStructStepTest, TestSetInt64Field) {
   TestMessage test_msg;
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "int64_value", CelValue::CreateInt64(1), &arena, &test_msg, GetParam()));
+      "int64_value", CelValue::CreateInt64(1), &arena, &test_msg,
+      enable_unknowns(), enable_recursive_planning()));
 
   EXPECT_EQ(test_msg.int64_value(), 1);
 }
@@ -293,9 +325,9 @@ TEST_P(CreateCreateStructStepTest, TestSetUInt64Field) {
   Arena arena;
   TestMessage test_msg;
 
-  ASSERT_NO_FATAL_FAILURE(
-      RunExpressionAndGetMessage("uint64_value", CelValue::CreateUint64(1),
-                                 &arena, &test_msg, GetParam()));
+  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
+      "uint64_value", CelValue::CreateUint64(1), &arena, &test_msg,
+      enable_unknowns(), enable_recursive_planning()));
 
   EXPECT_EQ(test_msg.uint64_value(), 1);
 }
@@ -305,9 +337,9 @@ TEST_P(CreateCreateStructStepTest, TestSetFloatField) {
   Arena arena;
   TestMessage test_msg;
 
-  ASSERT_NO_FATAL_FAILURE(
-      RunExpressionAndGetMessage("float_value", CelValue::CreateDouble(2.0),
-                                 &arena, &test_msg, GetParam()));
+  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
+      "float_value", CelValue::CreateDouble(2.0), &arena, &test_msg,
+      enable_unknowns(), enable_recursive_planning()));
 
   EXPECT_DOUBLE_EQ(test_msg.float_value(), 2.0);
 }
@@ -317,9 +349,9 @@ TEST_P(CreateCreateStructStepTest, TestSetDoubleField) {
   Arena arena;
   TestMessage test_msg;
 
-  ASSERT_NO_FATAL_FAILURE(
-      RunExpressionAndGetMessage("double_value", CelValue::CreateDouble(2.0),
-                                 &arena, &test_msg, GetParam()));
+  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
+      "double_value", CelValue::CreateDouble(2.0), &arena, &test_msg,
+      enable_unknowns(), enable_recursive_planning()));
   EXPECT_DOUBLE_EQ(test_msg.double_value(), 2.0);
 }
 
@@ -332,7 +364,7 @@ TEST_P(CreateCreateStructStepTest, TestSetStringField) {
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "string_value", CelValue::CreateString(&kTestStr), &arena, &test_msg,
-      GetParam()));
+      enable_unknowns(), enable_recursive_planning()));
   EXPECT_EQ(test_msg.string_value(), kTestStr);
 }
 
@@ -346,7 +378,7 @@ TEST_P(CreateCreateStructStepTest, TestSetBytesField) {
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "bytes_value", CelValue::CreateBytes(&kTestStr), &arena, &test_msg,
-      GetParam()));
+      enable_unknowns(), enable_recursive_planning()));
   EXPECT_EQ(test_msg.bytes_value(), kTestStr);
 }
 
@@ -361,7 +393,7 @@ TEST_P(CreateCreateStructStepTest, TestSetDurationField) {
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "duration_value", CelProtoWrapper::CreateDuration(&test_duration), &arena,
-      &test_msg, GetParam()));
+      &test_msg, enable_unknowns(), enable_recursive_planning()));
   EXPECT_THAT(test_msg.duration_value(), EqualsProto(test_duration));
 }
 
@@ -376,7 +408,7 @@ TEST_P(CreateCreateStructStepTest, TestSetTimestampField) {
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "timestamp_value", CelProtoWrapper::CreateTimestamp(&test_timestamp),
-      &arena, &test_msg, GetParam()));
+      &arena, &test_msg, enable_unknowns(), enable_recursive_planning()));
   EXPECT_THAT(test_msg.timestamp_value(), EqualsProto(test_timestamp));
 }
 
@@ -393,7 +425,7 @@ TEST_P(CreateCreateStructStepTest, TestSetMessageField) {
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "message_value", CelProtoWrapper::CreateMessage(&orig_msg, &arena),
-      &arena, &test_msg, GetParam()));
+      &arena, &test_msg, enable_unknowns(), enable_recursive_planning()));
   EXPECT_THAT(test_msg.message_value(), EqualsProto(orig_msg));
 }
 
@@ -413,7 +445,7 @@ TEST_P(CreateCreateStructStepTest, TestSetAnyField) {
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "any_value", CelProtoWrapper::CreateMessage(&orig_embedded_msg, &arena),
-      &arena, &test_msg, GetParam()));
+      &arena, &test_msg, enable_unknowns(), enable_recursive_planning()));
   EXPECT_THAT(test_msg, EqualsProto(orig_msg));
 
   TestMessage test_embedded_msg;
@@ -428,7 +460,7 @@ TEST_P(CreateCreateStructStepTest, TestSetEnumField) {
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "enum_value", CelValue::CreateInt64(TestMessage::TEST_ENUM_2), &arena,
-      &test_msg, GetParam()));
+      &test_msg, enable_unknowns(), enable_recursive_planning()));
   EXPECT_EQ(test_msg.enum_value(), TestMessage::TEST_ENUM_2);
 }
 
@@ -444,7 +476,8 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedBoolField) {
   }
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "bool_list", values, &arena, &test_msg, GetParam()));
+      "bool_list", values, &arena, &test_msg, enable_unknowns(),
+      enable_recursive_planning()));
   ASSERT_THAT(test_msg.bool_list(), Pointwise(Eq(), kValues));
 }
 
@@ -460,7 +493,8 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedInt32Field) {
   }
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "int32_list", values, &arena, &test_msg, GetParam()));
+      "int32_list", values, &arena, &test_msg, enable_unknowns(),
+      enable_recursive_planning()));
   ASSERT_THAT(test_msg.int32_list(), Pointwise(Eq(), kValues));
 }
 
@@ -476,7 +510,8 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedUInt32Field) {
   }
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "uint32_list", values, &arena, &test_msg, GetParam()));
+      "uint32_list", values, &arena, &test_msg, enable_unknowns(),
+      enable_recursive_planning()));
   ASSERT_THAT(test_msg.uint32_list(), Pointwise(Eq(), kValues));
 }
 
@@ -492,7 +527,8 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedInt64Field) {
   }
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "int64_list", values, &arena, &test_msg, GetParam()));
+      "int64_list", values, &arena, &test_msg, enable_unknowns(),
+      enable_recursive_planning()));
   ASSERT_THAT(test_msg.int64_list(), Pointwise(Eq(), kValues));
 }
 
@@ -508,7 +544,8 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedUInt64Field) {
   }
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "uint64_list", values, &arena, &test_msg, GetParam()));
+      "uint64_list", values, &arena, &test_msg, enable_unknowns(),
+      enable_recursive_planning()));
   ASSERT_THAT(test_msg.uint64_list(), Pointwise(Eq(), kValues));
 }
 
@@ -524,7 +561,8 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedFloatField) {
   }
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "float_list", values, &arena, &test_msg, GetParam()));
+      "float_list", values, &arena, &test_msg, enable_unknowns(),
+      enable_recursive_planning()));
   ASSERT_THAT(test_msg.float_list(), Pointwise(Eq(), kValues));
 }
 
@@ -540,7 +578,8 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedDoubleField) {
   }
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "double_list", values, &arena, &test_msg, GetParam()));
+      "double_list", values, &arena, &test_msg, enable_unknowns(),
+      enable_recursive_planning()));
   ASSERT_THAT(test_msg.double_list(), Pointwise(Eq(), kValues));
 }
 
@@ -556,7 +595,8 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedStringField) {
   }
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "string_list", values, &arena, &test_msg, GetParam()));
+      "string_list", values, &arena, &test_msg, enable_unknowns(),
+      enable_recursive_planning()));
   ASSERT_THAT(test_msg.string_list(), Pointwise(Eq(), kValues));
 }
 
@@ -572,7 +612,8 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedBytesField) {
   }
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "bytes_list", values, &arena, &test_msg, GetParam()));
+      "bytes_list", values, &arena, &test_msg, enable_unknowns(),
+      enable_recursive_planning()));
   ASSERT_THAT(test_msg.bytes_list(), Pointwise(Eq(), kValues));
 }
 
@@ -591,7 +632,8 @@ TEST_P(CreateCreateStructStepTest, TestSetRepeatedMessageField) {
   }
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "message_list", values, &arena, &test_msg, GetParam()));
+      "message_list", values, &arena, &test_msg, enable_unknowns(),
+      enable_recursive_planning()));
   ASSERT_THAT(test_msg.message_list()[0], EqualsProto(kValues[0]));
   ASSERT_THAT(test_msg.message_list()[1], EqualsProto(kValues[1]));
 }
@@ -617,7 +659,7 @@ TEST_P(CreateCreateStructStepTest, TestSetStringMapField) {
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "string_int32_map", CelValue::CreateMap(cel_map.get()), &arena, &test_msg,
-      GetParam()));
+      enable_unknowns(), enable_recursive_planning()));
 
   ASSERT_EQ(test_msg.string_int32_map().size(), 2);
   ASSERT_EQ(test_msg.string_int32_map().at(kKeys[0]), 2);
@@ -644,7 +686,7 @@ TEST_P(CreateCreateStructStepTest, TestSetInt64MapField) {
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "int64_int32_map", CelValue::CreateMap(cel_map.get()), &arena, &test_msg,
-      GetParam()));
+      enable_unknowns(), enable_recursive_planning()));
 
   ASSERT_EQ(test_msg.int64_int32_map().size(), 2);
   ASSERT_EQ(test_msg.int64_int32_map().at(kKeys[0]), 1);
@@ -671,7 +713,7 @@ TEST_P(CreateCreateStructStepTest, TestSetUInt64MapField) {
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "uint64_int32_map", CelValue::CreateMap(cel_map.get()), &arena, &test_msg,
-      GetParam()));
+      enable_unknowns(), enable_recursive_planning()));
 
   ASSERT_EQ(test_msg.uint64_int32_map().size(), 2);
   ASSERT_EQ(test_msg.uint64_int32_map().at(kKeys[0]), 1);
@@ -679,7 +721,7 @@ TEST_P(CreateCreateStructStepTest, TestSetUInt64MapField) {
 }
 
 INSTANTIATE_TEST_SUITE_P(CombinedCreateStructTest, CreateCreateStructStepTest,
-                         testing::Bool());
+                         testing::Combine(testing::Bool(), testing::Bool()));
 
 }  // namespace
 

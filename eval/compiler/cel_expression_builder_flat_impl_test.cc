@@ -32,12 +32,15 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "eval/public/testing/matchers.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
 #include "runtime/runtime_options.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 
@@ -49,6 +52,7 @@ using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::v1alpha1::SourceInfo;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::test::v1::proto3::NestedTestAllTypes;
+using ::google::api::expr::test::v1::proto3::TestAllTypes;
 using testing::_;
 using testing::Contains;
 using testing::HasSubstr;
@@ -93,10 +97,15 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
   const RecursiveTestCase& test_case = GetParam();
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, Parse(test_case.expr));
   cel::RuntimeOptions options;
+  options.container = "google.api.expr.test.v1.proto3";
   google::protobuf::Arena arena;
   // Unbounded.
   options.max_recursion_depth = -1;
   CelExpressionBuilderFlatImpl builder(options);
+  builder.GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
@@ -124,13 +133,20 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
 }
 
 TEST_P(RecursivePlanTest, Disabled) {
+  google::protobuf::LinkMessageReflection<TestAllTypes>();
+
   const RecursiveTestCase& test_case = GetParam();
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, Parse(test_case.expr));
   cel::RuntimeOptions options;
+  options.container = "google.api.expr.test.v1.proto3";
   google::protobuf::Arena arena;
   // disabled.
   options.max_recursion_depth = 0;
   CelExpressionBuilderFlatImpl builder(options);
+  builder.GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
@@ -187,6 +203,10 @@ INSTANTIATE_TEST_SUITE_P(
         {"map_compre_exists", "{'a': 1, 'b': 2}.exists(k, k == 'b')",
          test::IsCelBool(true)},
         {"create_map", "{'a': 42, 'b': 0, 'c': 0}.size()", test::IsCelInt64(3)},
+        {"create_struct",
+         "NestedTestAllTypes{payload: TestAllTypes{single_int64: "
+         "-42}}.payload.single_int64",
+         test::IsCelInt64(-42)},
     }),
 
     [](const testing::TestParamInfo<RecursiveTestCase>& info) -> std::string {

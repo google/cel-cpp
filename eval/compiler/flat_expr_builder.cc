@@ -48,6 +48,7 @@
 #include "base/ast_internal/expr.h"
 #include "base/builtins.h"
 #include "common/memory.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "common/values/legacy_value_manager.h"
@@ -1211,18 +1212,35 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     // If the message name is not empty, then the message name must be resolved
     // within the container, and if a descriptor is found, then a proto message
     // creation step will be created.
-    auto status_or_maybe_type = resolver_.FindType(message_name, expr->id());
-    if (!status_or_maybe_type.ok()) {
-      SetProgressStatusError(status_or_maybe_type.status());
+    auto status_or_resolved_fields =
+        ResolveCreateStructFields(*struct_expr, expr->id());
+    if (!status_or_resolved_fields.ok()) {
+      SetProgressStatusError(status_or_resolved_fields.status());
       return;
     }
-    if (ValidateOrError(status_or_maybe_type->has_value(),
-                        "Invalid struct creation: missing type info for '",
-                        message_name, "'")) {
-      AddStep(CreateCreateStructStepForStruct(
-          *struct_expr, std::move((*status_or_maybe_type)->first), expr->id(),
-          value_factory()));
+    std::string resolved_name =
+        std::move(status_or_resolved_fields.value().first);
+    std::vector<std::string> fields =
+        std::move(status_or_resolved_fields.value().second);
+
+    auto depth = RecursionEligible();
+    if (depth.has_value()) {
+      auto deps = ExtractRecursiveDependencies();
+      if (deps.size() != struct_expr->entries().size()) {
+        SetProgressStatusError(absl::InternalError(
+            "Unexpected number of plan elements for CreateStruct expr"));
+        return;
+      }
+      auto step = CreateDirectCreateStructStep(
+          std::move(resolved_name), std::move(fields), std::move(deps),
+          MakeOptionalIndicesSet(*struct_expr), expr->id());
+      SetRecursiveStep(std::move(step), *depth + 1);
+      return;
     }
+
+    AddStep(CreateCreateStructStep(std::move(resolved_name), std::move(fields),
+                                   MakeOptionalIndicesSet(*struct_expr),
+                                   expr->id()));
   }
 
   absl::Status progress_status() const { return progress_status_; }
@@ -1406,6 +1424,41 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     record.visitor->MarkAccuInitExtracted();
 
     return absl::OkStatus();
+  }
+
+  // Resolve the name of the message type being created and the names of set
+  // fields.
+  absl::StatusOr<std::pair<std::string, std::vector<std::string>>>
+  ResolveCreateStructFields(
+      const cel::ast_internal::CreateStruct& create_struct_expr,
+      int64_t expr_id) {
+    absl::string_view ast_name = create_struct_expr.message_name();
+
+    absl::optional<std::pair<std::string, cel::Type>> type;
+    CEL_ASSIGN_OR_RETURN(type, resolver_.FindType(ast_name, expr_id));
+
+    if (!type.has_value()) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Invalid struct creation: missing type info for '", ast_name, "'"));
+    }
+
+    std::string resolved_name = std::move(type).value().first;
+
+    std::vector<std::string> fields;
+    fields.reserve(create_struct_expr.entries().size());
+    for (const auto& entry : create_struct_expr.entries()) {
+      CEL_ASSIGN_OR_RETURN(auto field,
+                           value_factory().FindStructTypeFieldByName(
+                               resolved_name, entry.field_key()));
+      if (!field.has_value()) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("Invalid message creation: field '", entry.field_key(),
+                         "' not found in '", resolved_name, "'"));
+      }
+      fields.push_back(entry.field_key());
+    }
+
+    return std::make_pair(std::move(resolved_name), std::move(fields));
   }
 
   const Resolver& resolver_;
