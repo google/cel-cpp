@@ -20,6 +20,15 @@ licenses(["notice"])
 
 exports_files(["LICENSE"])
 
+package_group(
+    name = "internal_eval_visibility",
+    packages = [
+        "//eval/...",
+        "//extensions",
+        "//runtime/internal",
+    ],
+)
+
 cc_library(
     name = "evaluator_core",
     srcs = [
