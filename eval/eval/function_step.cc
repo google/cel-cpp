@@ -451,6 +451,21 @@ class DirectFunctionStepImpl : public DirectExpressionStep {
     return absl::OkStatus();
   }
 
+  absl::optional<std::vector<const DirectExpressionStep*>> GetDependencies()
+      const override {
+    std::vector<const DirectExpressionStep*> dependencies;
+    dependencies.reserve(arg_steps_.size());
+    for (const auto& arg_step : arg_steps_) {
+      dependencies.push_back(arg_step.get());
+    }
+    return dependencies;
+  }
+
+  absl::optional<std::vector<std::unique_ptr<DirectExpressionStep>>>
+  ExtractDependencies() override {
+    return std::move(arg_steps_);
+  }
+
  private:
   friend Resolver;
   std::string name_;

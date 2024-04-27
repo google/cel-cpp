@@ -219,11 +219,17 @@ cc_library(
     srcs = ["regex_match_step.cc"],
     hdrs = ["regex_match_step.h"],
     deps = [
+        ":attribute_trail",
+        ":direct_expression_step",
         ":evaluator_core",
         ":expression_step_base",
+        "//common:casting",
         "//common:value",
+        "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:string_view",
         "@com_googlesource_code_re2//:re2",
     ],
 )
@@ -1045,8 +1051,13 @@ cc_library(
     srcs = ["compiler_constant_step.cc"],
     hdrs = ["compiler_constant_step.h"],
     deps = [
+        ":attribute_trail",
+        ":direct_expression_step",
+        ":evaluator_core",
         ":expression_step_base",
         "//common:native_type",
+        "//common:value",
+        "@com_google_absl//absl/status",
     ],
 )
 
@@ -1116,5 +1127,21 @@ cc_library(
         "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_library(
+    name = "trace_step",
+    hdrs = ["trace_step.h"],
+    deps = [
+        ":attribute_trail",
+        ":direct_expression_step",
+        ":evaluator_core",
+        "//common:native_type",
+        "//common:value",
+        "//internal:status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:optional",
     ],
 )

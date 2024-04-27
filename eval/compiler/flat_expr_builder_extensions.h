@@ -38,11 +38,14 @@
 #include "base/ast.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
+#include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
+#include "eval/eval/trace_step.h"
+#include "internal/casts.h"
 #include "runtime/internal/issue_collector.h"
 #include "runtime/runtime_options.h"
 
@@ -290,6 +293,31 @@ class ProgramBuilder {
   std::shared_ptr<SubprogramMap> subprogram_map_;
 };
 
+// Attempt to downcast a specific type of recursive step.
+template <typename Subclass>
+const Subclass* TryDowncastDirectStep(const DirectExpressionStep* step) {
+  if (step == nullptr) {
+    return nullptr;
+  }
+
+  auto type_id = step->GetNativeTypeId();
+  if (type_id == cel::NativeTypeId::For<TraceStep>()) {
+    const auto* trace_step = cel::internal::down_cast<const TraceStep*>(step);
+    auto deps = trace_step->GetDependencies();
+    if (!deps.has_value() || deps->size() != 1) {
+      return nullptr;
+    }
+    step = deps->at(0);
+    type_id = step->GetNativeTypeId();
+  }
+
+  if (type_id == cel::NativeTypeId::For<Subclass>()) {
+    return cel::internal::down_cast<const Subclass*>(step);
+  }
+
+  return nullptr;
+}
+
 // Class representing FlatExpr internals exposed to extensions.
 class PlannerContext {
  public:
@@ -303,6 +331,8 @@ class PlannerContext {
         options_(options),
         issue_collector_(issue_collector),
         program_builder_(program_builder) {}
+
+  ProgramBuilder& program_builder() { return program_builder_; }
 
   // Returns true if the subplan is inspectable.
   //

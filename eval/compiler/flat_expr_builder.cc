@@ -71,6 +71,7 @@
 #include "eval/eval/select_step.h"
 #include "eval/eval/shadowable_value_step.h"
 #include "eval/eval/ternary_step.h"
+#include "eval/eval/trace_step.h"
 #include "eval/public/ast_traverse_native.h"
 #include "eval/public/ast_visitor_native.h"
 #include "eval/public/source_position_native.h"
@@ -122,25 +123,6 @@ class IndexManager {
  private:
   size_t next_free_slot_;
   size_t max_slot_count_;
-};
-
-class TraceDecorator : public DirectExpressionStep {
- public:
-  explicit TraceDecorator(std::unique_ptr<DirectExpressionStep> expression)
-      : DirectExpressionStep(-1), expression_(std::move(expression)) {}
-
-  absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
-                        AttributeTrail& trail) const override {
-    CEL_RETURN_IF_ERROR(expression_->Evaluate(frame, result, trail));
-    if (!frame.callback()) {
-      return absl::OkStatus();
-    }
-    return frame.callback()(expression_->expr_id(), result,
-                            frame.value_manager());
-  }
-
- private:
-  std::unique_ptr<DirectExpressionStep> expression_;
 };
 
 // Helper for computing jump offsets.
@@ -450,6 +432,14 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
         SetProgressStatusError(status);
         return;
       }
+    }
+
+    auto* subexpression = program_builder_.current();
+    if (subexpression != nullptr && options_.enable_recursive_tracing &&
+        subexpression->IsRecursive()) {
+      auto program = subexpression->ExtractRecursiveProgram();
+      subexpression->set_recursive_program(
+          std::make_unique<TraceStep>(std::move(program.step)), program.depth);
     }
 
     program_builder_.ExitSubexpression(expr);
@@ -1425,10 +1415,6 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
       SetProgressStatusError(absl::InternalError(
           "CEL AST traversal out of order in flat_expr_builder."));
       return;
-    }
-    if (options_.enable_recursive_tracing) {
-      auto tmp = std::make_unique<TraceDecorator>(std::move(step));
-      step = std::move(tmp);
     }
     program_builder_.current()->set_recursive_program(std::move(step), depth);
   }

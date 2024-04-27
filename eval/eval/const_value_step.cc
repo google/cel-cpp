@@ -4,12 +4,10 @@
 #include <memory>
 #include <utility>
 
-#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/ast_internal/expr.h"
 #include "common/value.h"
 #include "common/value_manager.h"
-#include "eval/eval/attribute_trail.h"
 #include "eval/eval/compiler_constant_step.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
@@ -23,26 +21,11 @@ namespace {
 using ::cel::ast_internal::Constant;
 using ::cel::runtime_internal::ConvertConstant;
 
-class ValueDirectImpl : public DirectExpressionStep {
- public:
-  explicit ValueDirectImpl(cel::Value value, int64_t id)
-      : DirectExpressionStep(id), value_(std::move(value)) {}
-
-  absl::Status Evaluate(ExecutionFrameBase& frame, cel::Value& result,
-                        AttributeTrail&) const override {
-    result = value_;
-    return absl::OkStatus();
-  }
-
- private:
-  cel::Value value_;
-};
-
 }  // namespace
 
 std::unique_ptr<DirectExpressionStep> CreateConstValueDirectStep(
     cel::Value value, int64_t id) {
-  return std::make_unique<ValueDirectImpl>(std::move(value), id);
+  return std::make_unique<DirectCompilerConstantStep>(std::move(value), id);
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(

@@ -14,26 +14,29 @@
 
 #include "eval/compiler/regex_precompilation_optimization.h"
 
+#include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/status/status.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "common/memory.h"
-#include "common/type_factory.h"
-#include "common/type_manager.h"
-#include "common/value_manager.h"
 #include "common/values/legacy_value_manager.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
-#include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
+#include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
+#include "eval/public/cel_expression.h"
 #include "eval/public/cel_options.h"
+#include "eval/public/cel_value.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
 #include "runtime/internal/issue_collector.h"
@@ -47,10 +50,11 @@ using ::cel::RuntimeIssue;
 using ::cel::ast_internal::CheckedExpr;
 using ::cel::runtime_internal::IssueCollector;
 using ::google::api::expr::parser::Parse;
+using testing::ElementsAre;
 
 namespace exprpb = google::api::expr::v1alpha1;
 
-class RegexPrecompilationExtensionTest : public testing::Test {
+class RegexPrecompilationExtensionTest : public testing::TestWithParam<bool> {
  public:
   RegexPrecompilationExtensionTest()
       : type_registry_(*builder_.GetTypeRegistry()),
@@ -61,6 +65,10 @@ class RegexPrecompilationExtensionTest : public testing::Test {
                   type_registry_.InternalGetModernRegistry(), value_factory_,
                   type_registry_.resolveable_enums()),
         issue_collector_(RuntimeIssue::Severity::kError) {
+    if (EnableRecursivePlanning()) {
+      options_.max_recursion_depth = -1;
+      options_.enable_recursive_tracing = true;
+    }
     options_.enable_regex = true;
     options_.regex_max_program_size = 100;
     options_.enable_regex_precompilation = true;
@@ -71,7 +79,18 @@ class RegexPrecompilationExtensionTest : public testing::Test {
     ASSERT_OK(RegisterBuiltinFunctions(&function_registry_, options_));
   }
 
+  bool EnableRecursivePlanning() { return GetParam(); }
+
  protected:
+  CelEvaluationListener RecordStringValues() {
+    return [this](int64_t, const CelValue& value, google::protobuf::Arena*) {
+      if (value.IsString()) {
+        string_values_.push_back(std::string(value.StringOrDie().value()));
+      }
+      return absl::OkStatus();
+    };
+  }
+
   CelExpressionBuilderFlatImpl builder_;
   CelTypeRegistry& type_registry_;
   CelFunctionRegistry& function_registry_;
@@ -80,9 +99,10 @@ class RegexPrecompilationExtensionTest : public testing::Test {
   cel::common_internal::LegacyValueManager value_factory_;
   Resolver resolver_;
   IssueCollector issue_collector_;
+  std::vector<std::string> string_values_;
 };
 
-TEST_F(RegexPrecompilationExtensionTest, SmokeTest) {
+TEST_P(RegexPrecompilationExtensionTest, SmokeTest) {
   ProgramOptimizerFactory factory =
       CreateRegexPrecompilationExtension(options_.regex_max_program_size);
   ExecutionPath path;
@@ -96,20 +116,7 @@ TEST_F(RegexPrecompilationExtensionTest, SmokeTest) {
                        factory(context, ast_impl));
 }
 
-MATCHER_P(ExpressionPlanSizeIs, size, "") {
-  // This is brittle, but the most direct way to test that the plan
-  // was optimized.
-  const std::unique_ptr<CelExpression>& plan = arg;
-
-  const CelExpressionFlatImpl* impl =
-      dynamic_cast<CelExpressionFlatImpl*>(plan.get());
-
-  if (impl == nullptr) return false;
-  *result_listener << "got size " << impl->flat_expression().path().size();
-  return impl->flat_expression().path().size() == size;
-}
-
-TEST_F(RegexPrecompilationExtensionTest, OptimizeableExpression) {
+TEST_P(RegexPrecompilationExtensionTest, OptimizeableExpression) {
   builder_.flat_expr_builder().AddProgramOptimizer(
       CreateRegexPrecompilationExtension(options_.regex_max_program_size));
 
@@ -125,10 +132,15 @@ TEST_F(RegexPrecompilationExtensionTest, OptimizeableExpression) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
                        builder_.CreateExpression(&expr));
 
-  EXPECT_THAT(plan, ExpressionPlanSizeIs(2));
+  Activation activation;
+  google::protobuf::Arena arena;
+  activation.InsertValue("input", CelValue::CreateStringView("input123"));
+
+  ASSERT_OK(plan->Trace(activation, &arena, RecordStringValues()));
+  EXPECT_THAT(string_values_, ElementsAre("input123"));
 }
 
-TEST_F(RegexPrecompilationExtensionTest, OptimizeParsedExpr) {
+TEST_P(RegexPrecompilationExtensionTest, OptimizeParsedExpr) {
   builder_.flat_expr_builder().AddProgramOptimizer(
       CreateRegexPrecompilationExtension(options_.regex_max_program_size));
 
@@ -139,10 +151,15 @@ TEST_F(RegexPrecompilationExtensionTest, OptimizeParsedExpr) {
       std::unique_ptr<CelExpression> plan,
       builder_.CreateExpression(&expr.expr(), &expr.source_info()));
 
-  EXPECT_THAT(plan, ExpressionPlanSizeIs(2));
+  Activation activation;
+  google::protobuf::Arena arena;
+  activation.InsertValue("input", CelValue::CreateStringView("input123"));
+
+  ASSERT_OK(plan->Trace(activation, &arena, RecordStringValues()));
+  EXPECT_THAT(string_values_, ElementsAre("input123"));
 }
 
-TEST_F(RegexPrecompilationExtensionTest, DoesNotOptimizeNonConstRegex) {
+TEST_P(RegexPrecompilationExtensionTest, DoesNotOptimizeNonConstRegex) {
   builder_.flat_expr_builder().AddProgramOptimizer(
       CreateRegexPrecompilationExtension(options_.regex_max_program_size));
 
@@ -158,10 +175,16 @@ TEST_F(RegexPrecompilationExtensionTest, DoesNotOptimizeNonConstRegex) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
                        builder_.CreateExpression(&expr));
 
-  EXPECT_THAT(plan, ExpressionPlanSizeIs(3));
+  Activation activation;
+  google::protobuf::Arena arena;
+  activation.InsertValue("input", CelValue::CreateStringView("input123"));
+  activation.InsertValue("input_re", CelValue::CreateStringView("input_re"));
+
+  ASSERT_OK(plan->Trace(activation, &arena, RecordStringValues()));
+  EXPECT_THAT(string_values_, ElementsAre("input123", "input_re"));
 }
 
-TEST_F(RegexPrecompilationExtensionTest, DoesNotOptimizeCompoundExpr) {
+TEST_P(RegexPrecompilationExtensionTest, DoesNotOptimizeCompoundExpr) {
   builder_.flat_expr_builder().AddProgramOptimizer(
       CreateRegexPrecompilationExtension(options_.regex_max_program_size));
 
@@ -177,7 +200,12 @@ TEST_F(RegexPrecompilationExtensionTest, DoesNotOptimizeCompoundExpr) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
                        builder_.CreateExpression(&expr));
 
-  EXPECT_THAT(plan, ExpressionPlanSizeIs(5)) << expr.DebugString();
+  Activation activation;
+  google::protobuf::Arena arena;
+  activation.InsertValue("input", CelValue::CreateStringView("input123"));
+
+  ASSERT_OK(plan->Trace(activation, &arena, RecordStringValues()));
+  EXPECT_THAT(string_values_, ElementsAre("input123", "abc", "def", "abcdef"));
 }
 
 class RegexConstFoldInteropTest : public RegexPrecompilationExtensionTest {
@@ -192,7 +220,7 @@ class RegexConstFoldInteropTest : public RegexPrecompilationExtensionTest {
   google::protobuf::Arena arena_;
 };
 
-TEST_F(RegexConstFoldInteropTest, StringConstantOptimizeable) {
+TEST_P(RegexConstFoldInteropTest, StringConstantOptimizeable) {
   builder_.flat_expr_builder().AddProgramOptimizer(
       CreateRegexPrecompilationExtension(options_.regex_max_program_size));
 
@@ -207,11 +235,15 @@ TEST_F(RegexConstFoldInteropTest, StringConstantOptimizeable) {
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
                        builder_.CreateExpression(&expr));
+  Activation activation;
+  google::protobuf::Arena arena;
+  activation.InsertValue("input", CelValue::CreateStringView("input123"));
 
-  EXPECT_THAT(plan, ExpressionPlanSizeIs(2)) << expr.DebugString();
+  ASSERT_OK(plan->Trace(activation, &arena, RecordStringValues()));
+  EXPECT_THAT(string_values_, ElementsAre("input123"));
 }
 
-TEST_F(RegexConstFoldInteropTest, WrongTypeNotOptimized) {
+TEST_P(RegexConstFoldInteropTest, WrongTypeNotOptimized) {
   builder_.flat_expr_builder().AddProgramOptimizer(
       CreateRegexPrecompilationExtension(options_.regex_max_program_size));
 
@@ -227,8 +259,22 @@ TEST_F(RegexConstFoldInteropTest, WrongTypeNotOptimized) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
                        builder_.CreateExpression(&expr));
 
-  EXPECT_THAT(plan, ExpressionPlanSizeIs(3)) << expr.DebugString();
+  Activation activation;
+  google::protobuf::Arena arena;
+  activation.InsertValue("input", CelValue::CreateStringView("input123"));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       plan->Trace(activation, &arena, RecordStringValues()));
+  EXPECT_THAT(string_values_, ElementsAre("input123"));
+  EXPECT_TRUE(result.IsError());
+  EXPECT_TRUE(CheckNoMatchingOverloadError(result));
 }
+
+INSTANTIATE_TEST_SUITE_P(RegexPrecompilationExtensionTest,
+                         RegexPrecompilationExtensionTest, testing::Bool());
+
+INSTANTIATE_TEST_SUITE_P(RegexConstFoldInteropTest, RegexConstFoldInteropTest,
+                         testing::Bool());
 
 }  // namespace
 }  // namespace google::api::expr::runtime

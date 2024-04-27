@@ -14,12 +14,40 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_COMPILER_CONSTANT_STEP_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_COMPILER_CONSTANT_STEP_H_
 
+#include <cstdint>
 #include <utility>
 
+#include "absl/status/status.h"
 #include "common/native_type.h"
+#include "common/value.h"
+#include "eval/eval/attribute_trail.h"
+#include "eval/eval/direct_expression_step.h"
+#include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 
 namespace google::api::expr::runtime {
+
+// DirectExpressionStep implementation that simply assigns a constant value.
+//
+// Overrides NativeTypeId() allow the FlatExprBuilder and extensions to
+// inspect the underlying value.
+class DirectCompilerConstantStep : public DirectExpressionStep {
+ public:
+  DirectCompilerConstantStep(cel::Value value, int64_t expr_id)
+      : DirectExpressionStep(expr_id), value_(std::move(value)) {}
+
+  absl::Status Evaluate(ExecutionFrameBase& frame, cel::Value& result,
+                        AttributeTrail& attribute) const override;
+
+  cel::NativeTypeId GetNativeTypeId() const override {
+    return cel::NativeTypeId::For<DirectCompilerConstantStep>();
+  }
+
+  const cel::Value& value() const { return value_; }
+
+ private:
+  cel::Value value_;
+};
 
 // ExpressionStep implementation that simply pushes a constant value on the
 // stack.

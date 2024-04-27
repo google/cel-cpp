@@ -19,7 +19,9 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
@@ -31,20 +33,26 @@
 #include "common/value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/compiler_constant_step.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/regex_match_step.h"
 #include "internal/casts.h"
 #include "internal/status_macros.h"
+#include "re2/re2.h"
 
 namespace google::api::expr::runtime {
 namespace {
 
-using cel::NativeTypeId;
-using cel::ast_internal::AstImpl;
-using cel::ast_internal::Call;
-using cel::ast_internal::Expr;
-using cel::ast_internal::Reference;
-using cel::internal::down_cast;
+using ::cel::Cast;
+using ::cel::InstanceOf;
+using ::cel::NativeTypeId;
+using ::cel::StringValue;
+using ::cel::Value;
+using ::cel::ast_internal::AstImpl;
+using ::cel::ast_internal::Call;
+using ::cel::ast_internal::Expr;
+using ::cel::ast_internal::Reference;
+using ::cel::internal::down_cast;
 
 using ReferenceMap = absl::flat_hash_map<int64_t, Reference>;
 
@@ -131,52 +139,126 @@ class RegexPrecompilationOptimization : public ProgramOptimizer {
       return absl::OkStatus();
     }
 
+    ProgramBuilder::Subexpression* subexpression =
+        context.program_builder().GetSubexpression(&node);
+
     const Call& call_expr = node.call_expr();
     const Expr& pattern_expr = call_expr.args().back();
 
+    // Try to check if the regex is valid, whether or not we can actually update
+    // the plan.
     absl::optional<std::string> pattern =
-        GetConstantString(context, pattern_expr);
+        GetConstantString(context, subexpression, node, pattern_expr);
     if (!pattern.has_value()) {
       return absl::OkStatus();
     }
 
-    CEL_ASSIGN_OR_RETURN(auto program, regex_program_builder_.BuildRegexProgram(
-                                           std::move(pattern).value()));
+    CEL_ASSIGN_OR_RETURN(
+        std::shared_ptr<const RE2> regex_program,
+        regex_program_builder_.BuildRegexProgram(std::move(pattern).value()));
+
+    if (subexpression == nullptr || subexpression->IsFlattened()) {
+      // Already modified, can't update further.
+      return absl::OkStatus();
+    }
 
     const Expr& subject_expr =
         call_expr.has_target() ? call_expr.target() : call_expr.args().front();
 
-    if (context.GetSubplan(subject_expr).empty()) {
+    return RewritePlan(context, subexpression, node, subject_expr,
+                       std::move(regex_program));
+  }
+
+ private:
+  absl::optional<std::string> GetConstantString(
+      PlannerContext& context,
+      absl::Nullable<ProgramBuilder::Subexpression*> subexpression,
+      const cel::ast_internal::Expr& call_expr,
+      const cel::ast_internal::Expr& re_expr) const {
+    if (re_expr.has_const_expr() && re_expr.const_expr().has_string_value()) {
+      return re_expr.const_expr().string_value();
+    }
+
+    if (subexpression == nullptr || subexpression->IsFlattened()) {
+      // Already modified, can't recover the input pattern.
+      return absl::nullopt;
+    }
+    absl::optional<Value> constant;
+    if (subexpression->IsRecursive()) {
+      const auto& program = subexpression->recursive_program();
+      auto deps = program.step->GetDependencies();
+      if (deps.has_value() && deps->size() == 2) {
+        const auto* re_plan =
+            TryDowncastDirectStep<DirectCompilerConstantStep>(deps->at(1));
+        if (re_plan != nullptr) {
+          constant = re_plan->value();
+        }
+      }
+    } else {
+      // otherwise stack-machine program.
+      ExecutionPathView re_plan = context.GetSubplan(re_expr);
+      if (re_plan.size() == 1 &&
+          re_plan[0]->GetNativeTypeId() ==
+              NativeTypeId::For<CompilerConstantStep>()) {
+        constant =
+            down_cast<const CompilerConstantStep*>(re_plan[0].get())->value();
+      }
+    }
+
+    if (constant.has_value() && InstanceOf<StringValue>(*constant)) {
+      return Cast<StringValue>(*constant).ToString();
+    }
+
+    return absl::nullopt;
+  }
+
+  absl::Status RewritePlan(
+      PlannerContext& context,
+      absl::Nonnull<ProgramBuilder::Subexpression*> subexpression,
+      const Expr& call, const Expr& subject,
+      std::shared_ptr<const RE2> regex_program) {
+    if (subexpression->IsRecursive()) {
+      return RewriteRecursivePlan(subexpression, call, subject,
+                                  std::move(regex_program));
+    }
+    return RewriteStackMachinePlan(context, call, subject,
+                                   std::move(regex_program));
+  }
+
+  absl::Status RewriteRecursivePlan(
+      absl::Nonnull<ProgramBuilder::Subexpression*> subexpression,
+      const Expr& call, const Expr& subject,
+      std::shared_ptr<const RE2> regex_program) {
+    auto program = subexpression->ExtractRecursiveProgram();
+    auto deps = program.step->ExtractDependencies();
+    if (!deps.has_value() || deps->size() != 2) {
+      // Possibly already const-folded, put the plan back.
+      subexpression->set_recursive_program(std::move(program.step),
+                                           program.depth);
+      return absl::OkStatus();
+    }
+    subexpression->set_recursive_program(
+        CreateDirectRegexMatchStep(call.id(), std::move(deps->at(0)),
+                                   std::move(regex_program)),
+        program.depth);
+    return absl::OkStatus();
+  }
+
+  absl::Status RewriteStackMachinePlan(
+      PlannerContext& context, const Expr& call, const Expr& subject,
+      std::shared_ptr<const RE2> regex_program) {
+    if (context.GetSubplan(subject).empty()) {
       // This subexpression was already optimized, nothing to do.
       return absl::OkStatus();
     }
 
     CEL_ASSIGN_OR_RETURN(ExecutionPath new_plan,
-                         context.ExtractSubplan(subject_expr));
-    CEL_ASSIGN_OR_RETURN(new_plan.emplace_back(),
-                         CreateRegexMatchStep(std::move(program), node.id()));
+                         context.ExtractSubplan(subject));
+    CEL_ASSIGN_OR_RETURN(
+        new_plan.emplace_back(),
+        CreateRegexMatchStep(std::move(regex_program), call.id()));
 
-    return context.ReplaceSubplan(node, std::move(new_plan));
-  }
-
- private:
-  absl::optional<std::string> GetConstantString(
-      PlannerContext& context, const cel::ast_internal::Expr& expr) const {
-    if (expr.has_const_expr() && expr.const_expr().has_string_value()) {
-      return expr.const_expr().string_value();
-    }
-
-    ExecutionPathView re_plan = context.GetSubplan(expr);
-    if (re_plan.size() == 1 && re_plan[0]->GetNativeTypeId() ==
-                                   NativeTypeId::For<CompilerConstantStep>()) {
-      const auto& constant =
-          down_cast<const CompilerConstantStep&>(*re_plan[0]);
-      if (constant.value()->Is<cel::StringValue>()) {
-        return constant.value()->As<cel::StringValue>().ToString();
-      }
-    }
-
-    return absl::nullopt;
+    return context.ReplaceSubplan(call, std::move(new_plan));
   }
 
   const ReferenceMap& reference_map_;

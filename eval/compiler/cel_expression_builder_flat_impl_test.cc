@@ -31,6 +31,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "eval/compiler/constant_folding.h"
+#include "eval/compiler/regex_precompilation_optimization.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -201,6 +202,8 @@ TEST_P(RecursivePlanTest, ParsedExprRecursiveOptimizedImpl) {
   builder.flat_expr_builder().AddProgramOptimizer(
       cel::runtime_internal::CreateConstantFoldingOptimizer(
           cel::extensions::ProtoMemoryManagerRef(&arena)));
+  builder.flat_expr_builder().AddProgramOptimizer(
+      CreateRegexPrecompilationExtension(options.regex_max_program_size));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> plan,
                        builder.CreateExpression(&parsed_expr.expr(),
@@ -323,7 +326,13 @@ INSTANTIATE_TEST_SUITE_P(
         {"shadowable_value_shadowed", R"(TestEnum.BAR == -1)",
          test::IsCelBool(true)},
         {"lazily_resolved_function", "LazilyBoundMult(123, 2) == 246",
-         test::IsCelBool(true)}}),
+         test::IsCelBool(true)},
+        {"re_matches", "matches(string_abc, '[ad][be][cf]')",
+         test::IsCelBool(true)},
+        {"re_matches_receiver",
+         "(string_abc + string_def).matches(r'(123)?' + r'abc' + r'def')",
+         test::IsCelBool(true)},
+    }),
 
     [](const testing::TestParamInfo<RecursiveTestCase>& info) -> std::string {
       return info.param.test_name;

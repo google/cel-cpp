@@ -17,8 +17,10 @@
 #include <cstdint>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "absl/status/status.h"
+#include "absl/types/optional.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
@@ -28,7 +30,7 @@ namespace google::api::expr::runtime {
 
 // Represents a directly evaluated CEL expression.
 //
-// Subexpressions return values on the C++ program stack and call their
+// Subexpressions assign to values on the C++ program stack and call their
 // dependencies directly.
 //
 // This reduces the setup overhead for evaluation and minimizes value churn
@@ -36,7 +38,7 @@ namespace google::api::expr::runtime {
 // used for arbitrarily nested expressions.
 class DirectExpressionStep {
  public:
-  DirectExpressionStep(int64_t expr_id) : expr_id_(expr_id) {}
+  explicit DirectExpressionStep(int64_t expr_id) : expr_id_(expr_id) {}
   DirectExpressionStep() : expr_id_(-1) {}
 
   virtual ~DirectExpressionStep() = default;
@@ -47,6 +49,29 @@ class DirectExpressionStep {
   virtual absl::Status Evaluate(ExecutionFrameBase& frame, cel::Value& result,
                                 AttributeTrail& attribute) const = 0;
 
+  // Return a type id for this node.
+  //
+  // Users must not make any assumptions about the type if the default value is
+  // returned.
+  virtual cel::NativeTypeId GetNativeTypeId() const {
+    return cel::NativeTypeId();
+  }
+
+  // Implementations optionally support inspecting the program tree.
+  virtual absl::optional<std::vector<const DirectExpressionStep*>>
+  GetDependencies() const {
+    return absl::nullopt;
+  }
+
+  // Implementations optionally support extracting the program tree.
+  //
+  // Extract prevents the callee from functioning, and is only intended for use
+  // when replacing a given expression step.
+  virtual absl::optional<std::vector<std::unique_ptr<DirectExpressionStep>>>
+  ExtractDependencies() {
+    return absl::nullopt;
+  };
+
  protected:
   int64_t expr_id_;
 };
@@ -55,7 +80,7 @@ class DirectExpressionStep {
 class WrappedDirectStep : public ExpressionStep {
  public:
   WrappedDirectStep(std::unique_ptr<DirectExpressionStep> impl, int64_t expr_id)
-      : ExpressionStep(expr_id), impl_(std::move(impl)) {}
+      : ExpressionStep(expr_id, false), impl_(std::move(impl)) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
