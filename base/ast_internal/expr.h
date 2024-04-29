@@ -17,6 +17,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_AST_INTERNAL_EXPR_H_
 #define THIRD_PARTY_CEL_CPP_BASE_AST_INTERNAL_EXPR_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -24,226 +25,21 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
+#include "common/ast.h"
+#include "common/constant.h"
 
 namespace cel::ast_internal {
 
-enum class NullValue { kNullValue = 0 };
-
-// A holder class to differentiate between CEL string and CEL bytes constants.
-struct Bytes {
-  std::string bytes;
-
-  bool operator==(const Bytes& other) const { return bytes == other.bytes; }
-};
-
-// Represents a primitive literal.
-//
-// This is similar as the primitives supported in the well-known type
-// `google.protobuf.Value`, but richer so it can represent CEL's full range of
-// primitives.
-//
-// Lists and structs are not included as constants as these aggregate types may
-// contain [Expr][] elements which require evaluation and are thus not constant.
-//
-// Examples of constants include: `"hello"`, `b'bytes'`, `1u`, `4.2`, `-2`,
-// `true`, `null`.
-//
-// (--
-// TODO(uncreated-issue/9): Extend or replace the constant with a canonical Value
-// message that can hold any constant object representation supplied or
-// produced at evaluation time.
-// --)
-using ConstantKind =
-    absl::variant<NullValue, bool, int64_t, uint64_t, double, std::string,
-                  Bytes, absl::Duration, absl::Time>;
-
-class Constant {
- public:
-  constexpr Constant() = default;
-
-  explicit Constant(ConstantKind constant_kind)
-      : constant_kind_(std::move(constant_kind)) {}
-
-  void set_constant_kind(ConstantKind constant_kind) {
-    constant_kind_ = std::move(constant_kind);
-  }
-
-  const ConstantKind& constant_kind() const { return constant_kind_; }
-
-  ConstantKind& mutable_constant_kind() { return constant_kind_; }
-
-  bool has_null_value() const {
-    return absl::holds_alternative<NullValue>(constant_kind_);
-  }
-
-  NullValue null_value() const {
-    auto* value = absl::get_if<NullValue>(&constant_kind_);
-    if (value != nullptr) {
-      return *value;
-    }
-    return NullValue::kNullValue;
-  }
-
-  void set_null_value(NullValue null_value) { constant_kind_ = null_value; }
-
-  bool has_bool_value() const {
-    return absl::holds_alternative<bool>(constant_kind_);
-  }
-
-  bool bool_value() const {
-    auto* value = absl::get_if<bool>(&constant_kind_);
-    if (value != nullptr) {
-      return *value;
-    }
-    return false;
-  }
-
-  void set_bool_value(bool bool_value) { constant_kind_ = bool_value; }
-
-  bool has_int64_value() const {
-    return absl::holds_alternative<int64_t>(constant_kind_);
-  }
-
-  int64_t int64_value() const {
-    auto* value = absl::get_if<int64_t>(&constant_kind_);
-    if (value != nullptr) {
-      return *value;
-    }
-    return 0;
-  }
-
-  void set_int64_value(int64_t int64_value) { constant_kind_ = int64_value; }
-
-  bool has_uint64_value() const {
-    return absl::holds_alternative<uint64_t>(constant_kind_);
-  }
-
-  uint64_t uint64_value() const {
-    auto* value = absl::get_if<uint64_t>(&constant_kind_);
-    if (value != nullptr) {
-      return *value;
-    }
-    return 0;
-  }
-
-  void set_uint64_value(uint64_t uint64_value) {
-    constant_kind_ = uint64_value;
-  }
-
-  bool has_double_value() const {
-    return absl::holds_alternative<double>(constant_kind_);
-  }
-
-  double double_value() const {
-    auto* value = absl::get_if<double>(&constant_kind_);
-    if (value != nullptr) {
-      return *value;
-    }
-    return 0;
-  }
-
-  void set_double_value(double double_value) { constant_kind_ = double_value; }
-
-  bool has_string_value() const {
-    return absl::holds_alternative<std::string>(constant_kind_);
-  }
-
-  const std::string& string_value() const {
-    auto* value = absl::get_if<std::string>(&constant_kind_);
-    if (value != nullptr) {
-      return *value;
-    }
-    static std::string* default_string_value_ = new std::string("");
-    return *default_string_value_;
-  }
-
-  void set_string_value(std::string string_value) {
-    constant_kind_ = string_value;
-  }
-
-  bool has_bytes_value() const {
-    return absl::holds_alternative<Bytes>(constant_kind_);
-  }
-
-  const std::string& bytes_value() const {
-    auto* value = absl::get_if<Bytes>(&constant_kind_);
-    if (value != nullptr) {
-      return value->bytes;
-    }
-    static std::string* default_string_value_ = new std::string("");
-    return *default_string_value_;
-  }
-
-  void set_bytes_value(std::string bytes_value) {
-    constant_kind_ = Bytes{std::move(bytes_value)};
-  }
-
-  bool has_duration_value() const {
-    return absl::holds_alternative<absl::Duration>(constant_kind_);
-  }
-
-  void set_duration_value(absl::Duration duration_value) {
-    constant_kind_ = std::move(duration_value);
-  }
-
-  const absl::Duration& duration_value() const {
-    auto* value = absl::get_if<absl::Duration>(&constant_kind_);
-    if (value != nullptr) {
-      return *value;
-    }
-    static absl::Duration default_duration_;
-    return default_duration_;
-  }
-
-  bool has_time_value() const {
-    return absl::holds_alternative<absl::Time>(constant_kind_);
-  }
-
-  const absl::Time& time_value() const {
-    auto* value = absl::get_if<absl::Time>(&constant_kind_);
-    if (value != nullptr) {
-      return *value;
-    }
-    static absl::Time default_time_;
-    return default_time_;
-  }
-
-  void set_time_value(absl::Time time_value) {
-    constant_kind_ = std::move(time_value);
-  }
-
-  bool operator==(const Constant& other) const {
-    return constant_kind_ == other.constant_kind_;
-  }
-
- private:
-  ConstantKind constant_kind_;
-};
+// Temporary aliases that will be deleted in future.
+using NullValue = std::nullptr_t;
+using Bytes = cel::BytesConstant;
+using Constant = cel::Constant;
+using ConstantKind = cel::ConstantKind;
+using Ident = cel::IdentExpr;
 
 class Expr;
-
-// An identifier expression. e.g. `request`.
-class Ident {
- public:
-  Ident() = default;
-  explicit Ident(std::string name) : name_(std::move(name)) {}
-
-  void set_name(std::string name) { name_ = std::move(name); }
-
-  const std::string& name() const { return name_; }
-
-  bool operator==(const Ident& other) const { return name_ == other.name_; }
-
- private:
-  // Required. Holds a single, unqualified identifier, possibly preceded by a
-  // '.'.
-  //
-  // Qualified names are represented by the [Expr.Select][] expression.
-  std::string name_;
-};
 
 // A field selection expression. e.g. `request.auth`.
 class Select {
@@ -1529,7 +1325,7 @@ class Type {
     if (value != nullptr) {
       return *value;
     }
-    return NullValue::kNullValue;
+    return nullptr;
   }
 
   PrimitiveType primitive() const {

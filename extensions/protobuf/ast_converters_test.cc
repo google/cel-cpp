@@ -269,6 +269,17 @@ TEST(AstConvertersTest, ComplexityLimit) {
 
 TEST(AstConvertersTest, ConstantToNative) {
   google::api::expr::v1alpha1::Expr expr;
+  expr.mutable_const_expr();
+
+  auto native_expr = ConvertProtoExprToNative(expr);
+
+  ASSERT_TRUE(native_expr->has_const_expr());
+  auto& native_constant = native_expr->const_expr();
+  ASSERT_FALSE(native_constant.has_value());
+}
+
+TEST(AstConvertersTest, ConstantNullValueToNative) {
+  google::api::expr::v1alpha1::Expr expr;
   auto* constant = expr.mutable_const_expr();
   constant->set_null_value(google::protobuf::NULL_VALUE);
 
@@ -277,7 +288,7 @@ TEST(AstConvertersTest, ConstantToNative) {
   ASSERT_TRUE(native_expr->has_const_expr());
   auto& native_constant = native_expr->const_expr();
   ASSERT_TRUE(native_constant.has_null_value());
-  EXPECT_EQ(native_constant.null_value(), NullValue::kNullValue);
+  EXPECT_EQ(native_constant.null_value(), nullptr);
 }
 
 TEST(AstConvertersTest, ConstantBoolTrueToNative) {
@@ -374,15 +385,6 @@ TEST(AstConvertersTest, ConstantTimestampToNative) {
   ASSERT_TRUE(native_constant->has_time_value());
   EXPECT_EQ(native_constant->time_value(),
             absl::FromUnixSeconds(123) + absl::Nanoseconds(456));
-}
-
-TEST(AstConvertersTest, ConstantError) {
-  auto native_constant = ConvertConstant(google::api::expr::v1alpha1::Constant());
-
-  EXPECT_EQ(native_constant.status().code(),
-            absl::StatusCode::kInvalidArgument);
-  EXPECT_THAT(native_constant.status().message(),
-              ::testing::HasSubstr("Unsupported constant type"));
 }
 
 TEST(AstConvertersTest, ExprUnset) {
@@ -692,7 +694,7 @@ TEST(AstConvertersTest, NullTypeToNative) {
   auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_null());
-  EXPECT_EQ(native_type->null(), NullValue::kNullValue);
+  EXPECT_EQ(native_type->null(), nullptr);
 }
 
 TEST(AstConvertersTest, PrimitiveTypeWrapperToNative) {

@@ -106,6 +106,12 @@ class IdentExpr final {
   IdentExpr(IdentExpr&&) = default;
   IdentExpr& operator=(IdentExpr&&) = default;
 
+  explicit IdentExpr(std::string name) { set_name(std::move(name)); }
+
+  explicit IdentExpr(absl::string_view name) { set_name(name); }
+
+  explicit IdentExpr(const char* name) { set_name(name); }
+
   IdentExpr(const IdentExpr&) = delete;
   IdentExpr& operator=(const IdentExpr&) = delete;
 

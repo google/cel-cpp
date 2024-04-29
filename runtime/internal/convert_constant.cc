@@ -17,10 +17,12 @@
 #include <cstdint>
 #include <string>
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
 #include "absl/types/variant.h"
 #include "base/ast_internal/expr.h"
+#include "common/constant.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "eval/internal/errors.h"
@@ -32,6 +34,9 @@ using ::cel::ast_internal::Constant;
 struct ConvertVisitor {
   cel::ValueManager& value_factory;
 
+  absl::StatusOr<cel::Value> operator()(absl::monostate) {
+    return absl::InvalidArgumentError("unspecified constant");
+  }
   absl::StatusOr<cel::Value> operator()(
       const cel::ast_internal::NullValue& value) {
     return value_factory.GetNullValue();
@@ -48,11 +53,11 @@ struct ConvertVisitor {
   absl::StatusOr<cel::Value> operator()(double value) {
     return value_factory.CreateDoubleValue(value);
   }
-  absl::StatusOr<cel::Value> operator()(const std::string& value) {
+  absl::StatusOr<cel::Value> operator()(const cel::StringConstant& value) {
     return value_factory.CreateUncheckedStringValue(value);
   }
-  absl::StatusOr<cel::Value> operator()(const cel::ast_internal::Bytes& value) {
-    return value_factory.CreateBytesValue(value.bytes);
+  absl::StatusOr<cel::Value> operator()(const cel::BytesConstant& value) {
+    return value_factory.CreateBytesValue(value);
   }
   absl::StatusOr<cel::Value> operator()(const absl::Duration duration) {
     if (duration >= kDurationHigh || duration <= kDurationLow) {

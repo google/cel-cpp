@@ -50,7 +50,9 @@ void CopyNode(const Expr& src, std::stack<CopyRecord>& records, Expr& dest) {
           [&](const Constant& constant) {
             dest.mutable_expr_kind() = constant;
           },
-          [&](const Ident& ident) { dest.mutable_expr_kind() = ident; },
+          [&](const Ident& ident) {
+            dest.mutable_ident_expr().set_name(ident.name());
+          },
           [&](const Select& select) {
             auto& dest_select = dest.mutable_select_expr();
             dest_select.set_field(select.field());

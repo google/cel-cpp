@@ -15,90 +15,24 @@
 #include "base/ast_internal/expr.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
-#include "absl/time/time.h"
+#include "absl/types/variant.h"
+#include "common/ast.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace ast_internal {
 namespace {
+
 TEST(AstTest, ExprConstructionConstant) {
-  Expr expr(1, Constant(true));
-  ASSERT_TRUE(absl::holds_alternative<Constant>(expr.expr_kind()));
-  const auto& constant = absl::get<Constant>(expr.expr_kind());
-  ASSERT_TRUE(constant.has_bool_value());
-  ASSERT_TRUE(constant.bool_value());
-}
-
-TEST(AstTest, ConstantNullValueSetterGetterTest) {
-  Constant constant;
-  constant.set_null_value(NullValue::kNullValue);
-  EXPECT_EQ(constant.null_value(), NullValue::kNullValue);
-}
-
-TEST(AstTest, ConstantBoolValueSetterGetterTest) {
   Constant constant;
   constant.set_bool_value(true);
-  EXPECT_TRUE(constant.bool_value());
-  constant.set_bool_value(false);
-  EXPECT_FALSE(constant.bool_value());
-}
-
-TEST(AstTest, ConstantInt64ValueSetterGetterTest) {
-  Constant constant;
-  constant.set_int64_value(-1234);
-  EXPECT_EQ(constant.int64_value(), -1234);
-}
-
-TEST(AstTest, ConstantUint64ValueSetterGetterTest) {
-  Constant constant;
-  constant.set_uint64_value(1234);
-  EXPECT_EQ(constant.uint64_value(), 1234);
-}
-
-TEST(AstTest, ConstantDoubleValueSetterGetterTest) {
-  Constant constant;
-  constant.set_double_value(12.34);
-  EXPECT_EQ(constant.double_value(), 12.34);
-}
-
-TEST(AstTest, ConstantStringValueSetterGetterTest) {
-  Constant constant;
-  constant.set_string_value("test");
-  EXPECT_EQ(constant.string_value(), "test");
-}
-
-TEST(AstTest, ConstantBytesValueSetterGetterTest) {
-  Constant constant;
-  constant.set_string_value("test");
-  EXPECT_EQ(constant.string_value(), "test");
-}
-
-TEST(AstTest, ConstantDurationValueSetterGetterTest) {
-  Constant constant;
-  constant.set_duration_value(absl::Seconds(10));
-  EXPECT_EQ(constant.duration_value(), absl::Seconds(10));
-}
-
-TEST(AstTest, ConstantTimeValueSetterGetterTest) {
-  Constant constant;
-  auto time = absl::UnixEpoch() + absl::Seconds(10);
-  constant.set_time_value(time);
-  EXPECT_EQ(constant.time_value(), time);
-}
-
-TEST(AstTest, ConstantDefaults) {
-  Constant constant;
-  EXPECT_EQ(constant.null_value(), NullValue::kNullValue);
-  EXPECT_EQ(constant.bool_value(), false);
-  EXPECT_EQ(constant.int64_value(), 0);
-  EXPECT_EQ(constant.uint64_value(), 0);
-  EXPECT_EQ(constant.double_value(), 0);
-  EXPECT_TRUE(constant.string_value().empty());
-  EXPECT_TRUE(constant.bytes_value().empty());
-  EXPECT_EQ(constant.duration_value(), absl::Duration());
-  EXPECT_EQ(constant.time_value(), absl::UnixEpoch());
+  Expr expr(1, std::move(constant));
+  ASSERT_TRUE(absl::holds_alternative<Constant>(expr.expr_kind()));
+  ASSERT_TRUE(absl::get<Constant>(expr.expr_kind()).has_bool_value());
+  ASSERT_TRUE(absl::get<Constant>(expr.expr_kind()).bool_value());
 }
 
 TEST(AstTest, ExprConstructionIdent) {
@@ -398,7 +332,7 @@ TEST(AstTest, ExprMoveTest) {
 TEST(AstTest, ExprDefaults) {
   Expr expr;
   EXPECT_EQ(expr.const_expr(), Constant());
-  EXPECT_EQ(expr.ident_expr(), Ident());
+  EXPECT_EQ(expr.ident_expr(), Ident(""));
   EXPECT_EQ(expr.select_expr(), Select());
   EXPECT_EQ(expr.call_expr(), Call());
   EXPECT_EQ(expr.list_expr(), CreateList());
@@ -502,7 +436,7 @@ TEST(AstTest, FunctionTypeDefaults) {
 }
 
 TEST(AstTest, TypeDefaults) {
-  EXPECT_EQ(Type().null(), NullValue::kNullValue);
+  EXPECT_EQ(Type().null(), nullptr);
   EXPECT_EQ(Type().primitive(), PrimitiveType::kPrimitiveTypeUnspecified);
   EXPECT_EQ(Type().wrapper(), PrimitiveType::kPrimitiveTypeUnspecified);
   EXPECT_EQ(Type().well_known(), WellKnownType::kWellKnownTypeUnspecified);
@@ -524,7 +458,7 @@ TEST(AstTest, TypeComparatorTest) {
 
 TEST(AstTest, ExprMutableConstruction) {
   Expr expr;
-  expr.mutable_const_expr().set_constant_kind(true);
+  expr.mutable_const_expr().set_bool_value(true);
   ASSERT_TRUE(expr.has_const_expr());
   EXPECT_TRUE(expr.const_expr().bool_value());
   expr.mutable_ident_expr().set_name("expr");

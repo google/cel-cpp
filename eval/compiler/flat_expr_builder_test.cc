@@ -191,7 +191,7 @@ TEST(FlatExprBuilderTest, ConstValueUnset) {
 
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Unsupported constant type")));
+                       HasSubstr("unspecified constant")));
 }
 
 TEST(FlatExprBuilderTest, MapKeyValueUnset) {

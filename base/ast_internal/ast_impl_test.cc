@@ -38,14 +38,14 @@ TEST(AstImpl, ParsedExprCtor) {
   eq_lhs.mutable_call_expr().set_function("_+_");
   eq_lhs.set_id(3);
   auto& sum_lhs = eq_lhs.mutable_call_expr().mutable_args().emplace_back();
-  sum_lhs.mutable_const_expr().set_int64_value(2);
+  sum_lhs.mutable_const_expr().set_int_value(2);
   sum_lhs.set_id(1);
   auto& sum_rhs = eq_lhs.mutable_call_expr().mutable_args().emplace_back();
-  sum_rhs.mutable_const_expr().set_int64_value(1);
+  sum_rhs.mutable_const_expr().set_int_value(1);
   sum_rhs.set_id(2);
 
   auto& eq_rhs = call.mutable_args().emplace_back();
-  eq_rhs.mutable_const_expr().set_int64_value(3);
+  eq_rhs.mutable_const_expr().set_int_value(3);
   eq_rhs.set_id(4);
   parsed_expr.mutable_source_info().mutable_positions()[5] = 6;
 
@@ -75,13 +75,13 @@ TEST(AstImpl, RawExprCtor) {
   eq_lhs.mutable_call_expr().set_function("_+_");
   eq_lhs.set_id(3);
   auto& sum_lhs = eq_lhs.mutable_call_expr().mutable_args().emplace_back();
-  sum_lhs.mutable_const_expr().set_int64_value(2);
+  sum_lhs.mutable_const_expr().set_int_value(2);
   sum_lhs.set_id(1);
   auto& sum_rhs = eq_lhs.mutable_call_expr().mutable_args().emplace_back();
-  sum_rhs.mutable_const_expr().set_int64_value(1);
+  sum_rhs.mutable_const_expr().set_int_value(1);
   sum_rhs.set_id(2);
   auto& eq_rhs = call.mutable_args().emplace_back();
-  eq_rhs.mutable_const_expr().set_int64_value(3);
+  eq_rhs.mutable_const_expr().set_int_value(3);
   eq_rhs.set_id(4);
 
   SourceInfo source_info;
@@ -145,7 +145,7 @@ TEST(AstImpl, CheckedExprDeepCopy) {
   expr.mutable_reference_map()[1] = std::move(ref);
   expr.mutable_type_map()[1] = Type(PrimitiveType::kInt64);
 
-  rhs.mutable_const_expr().set_int64_value(2);
+  rhs.mutable_const_expr().set_int_value(2);
   rhs.set_id(2);
   expr.mutable_type_map()[2] = Type(PrimitiveType::kInt64);
   expr.mutable_source_info().set_syntax_version("1.0");

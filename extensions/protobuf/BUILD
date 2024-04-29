@@ -71,6 +71,7 @@ cc_library(
         "//base:ast",
         "//base/ast_internal:ast_impl",
         "//base/ast_internal:expr",
+        "//common:constant",
         "//internal:proto_time_encoding",
         "//internal:status_macros",
         "@com_google_absl//absl/base:nullability",

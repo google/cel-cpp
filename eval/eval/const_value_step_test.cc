@@ -116,7 +116,7 @@ TEST_F(ConstValueStepTest, TestEvaluationConstBool) {
 TEST_F(ConstValueStepTest, TestEvaluationConstNull) {
   Expr expr;
   auto& const_expr = expr.mutable_const_expr();
-  const_expr.set_null_value(NullValue::kNullValue);
+  const_expr.set_null_value(nullptr);
 
   auto status =
       RunConstantExpression(&expr, const_expr, &arena_, value_factory_);

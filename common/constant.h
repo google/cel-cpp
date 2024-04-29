@@ -145,16 +145,32 @@ class Constant final {
   Constant& operator=(const Constant&) = default;
   Constant& operator=(Constant&&) = default;
 
+  explicit Constant(ConstantKind kind) : kind_(std::move(kind)) {}
+
   ABSL_MUST_USE_RESULT const ConstantKind& kind() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return kind_;
+  }
+
+  ABSL_DEPRECATED("Use kind()")
+  ABSL_MUST_USE_RESULT const ConstantKind& constant_kind() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return kind();
+  }
+
+  ABSL_MUST_USE_RESULT bool has_value() const {
+    return !absl::holds_alternative<absl::monostate>(kind());
   }
 
   ABSL_MUST_USE_RESULT bool has_null_value() const {
     return absl::holds_alternative<std::nullptr_t>(kind());
   }
 
+  ABSL_MUST_USE_RESULT std::nullptr_t null_value() const { return nullptr; }
+
   void set_null_value() { mutable_kind().emplace<std::nullptr_t>(); }
+
+  void set_null_value(std::nullptr_t) { set_null_value(); }
 
   ABSL_MUST_USE_RESULT bool has_bool_value() const {
     return absl::holds_alternative<bool>(kind());
@@ -185,6 +201,26 @@ class Constant final {
   ABSL_MUST_USE_RESULT uint64_t uint_value() const {
     return get_value<uint64_t>();
   }
+
+  ABSL_DEPRECATED("Use has_int_value")
+  ABSL_MUST_USE_RESULT bool has_int64_value() const { return has_int_value(); }
+
+  ABSL_DEPRECATED("Use set_int_value()")
+  void set_int64_value(int64_t value) { set_int_value(value); }
+
+  ABSL_DEPRECATED("Use int_value()")
+  ABSL_MUST_USE_RESULT int64_t int64_value() const { return int_value(); }
+
+  ABSL_DEPRECATED("Use has_uint_value()")
+  ABSL_MUST_USE_RESULT bool has_uint64_value() const {
+    return has_uint_value();
+  }
+
+  ABSL_DEPRECATED("Use set_uint_value()")
+  void set_uint64_value(uint64_t value) { set_uint_value(value); }
+
+  ABSL_DEPRECATED("Use uint_value()")
+  ABSL_MUST_USE_RESULT uint64_t uint64_value() const { return uint_value(); }
 
   ABSL_MUST_USE_RESULT bool has_double_value() const {
     return absl::holds_alternative<double>(kind());
@@ -298,6 +334,19 @@ class Constant final {
   ABSL_DEPRECATED("timestamp is no longer considered a builtin type")
   ABSL_MUST_USE_RESULT absl::Time timestamp_value() const {
     return get_value<absl::Time>();
+  }
+
+  ABSL_DEPRECATED("Use has_timestamp_value()")
+  ABSL_MUST_USE_RESULT bool has_time_value() const {
+    return has_timestamp_value();
+  }
+
+  ABSL_DEPRECATED("Use set_timestamp_value()")
+  void set_time_value(absl::Time value) { set_timestamp_value(value); }
+
+  ABSL_DEPRECATED("Use timestamp_value()")
+  ABSL_MUST_USE_RESULT absl::Time time_value() const {
+    return timestamp_value();
   }
 
  private:

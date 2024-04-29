@@ -36,6 +36,7 @@
 #include "base/ast.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
+#include "common/constant.h"
 #include "internal/proto_time_encoding.h"
 #include "internal/status_macros.h"
 
@@ -292,8 +293,10 @@ absl::StatusOr<Expr> ToNativeExprImpl(const ExprPb& proto_expr) {
 absl::StatusOr<Constant> ConvertConstant(
     const google::api::expr::v1alpha1::Constant& constant) {
   switch (constant.constant_kind_case()) {
+    case google::api::expr::v1alpha1::Constant::CONSTANT_KIND_NOT_SET:
+      return Constant();
     case google::api::expr::v1alpha1::Constant::kNullValue:
-      return Constant(NullValue::kNullValue);
+      return Constant(nullptr);
     case google::api::expr::v1alpha1::Constant::kBoolValue:
       return Constant(constant.bool_value());
     case google::api::expr::v1alpha1::Constant::kInt64Value:
@@ -303,9 +306,9 @@ absl::StatusOr<Constant> ConvertConstant(
     case google::api::expr::v1alpha1::Constant::kDoubleValue:
       return Constant(constant.double_value());
     case google::api::expr::v1alpha1::Constant::kStringValue:
-      return Constant(constant.string_value());
+      return Constant(StringConstant{constant.string_value()});
     case google::api::expr::v1alpha1::Constant::kBytesValue:
-      return Constant(Bytes{constant.bytes_value()});
+      return Constant(BytesConstant{constant.bytes_value()});
     case google::api::expr::v1alpha1::Constant::kDurationValue:
       return Constant(absl::Seconds(constant.duration_value().seconds()) +
                       absl::Nanoseconds(constant.duration_value().nanos()));
@@ -487,7 +490,7 @@ absl::StatusOr<Type> ConvertProtoTypeToNative(
     case google::api::expr::v1alpha1::Type::kDyn:
       return Type(DynamicType());
     case google::api::expr::v1alpha1::Type::kNull:
-      return Type(NullValue::kNullValue);
+      return Type(nullptr);
     case google::api::expr::v1alpha1::Type::kPrimitive: {
       auto native_primitive = ToNative(type.primitive());
       if (!native_primitive.ok()) {
@@ -653,6 +656,10 @@ struct ToProtoStackEntry {
 absl::Status ConstantToProto(const ast_internal::Constant& source,
                              google::api::expr::v1alpha1::Constant& dest) {
   return absl::visit(absl::Overload(
+                         [&](absl::monostate) -> absl::Status {
+                           dest.clear_constant_kind();
+                           return absl::OkStatus();
+                         },
                          [&](NullValue) -> absl::Status {
                            dest.set_null_value(google::protobuf::NULL_VALUE);
                            return absl::OkStatus();
@@ -673,12 +680,12 @@ absl::Status ConstantToProto(const ast_internal::Constant& source,
                            dest.set_double_value(value);
                            return absl::OkStatus();
                          },
-                         [&](const std::string& value) {
+                         [&](const StringConstant& value) {
                            dest.set_string_value(value);
                            return absl::OkStatus();
                          },
-                         [&](const Bytes& value) {
-                           dest.set_bytes_value(value.bytes);
+                         [&](const BytesConstant& value) {
+                           dest.set_bytes_value(value);
                            return absl::OkStatus();
                          },
                          [&](absl::Time time) {

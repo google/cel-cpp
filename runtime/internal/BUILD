@@ -95,8 +95,10 @@ cc_library(
     hdrs = ["convert_constant.h"],
     deps = [
         "//base/ast_internal:expr",
+        "//common:constant",
         "//common:value",
         "//eval/internal:errors",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:variant",
