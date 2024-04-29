@@ -92,6 +92,17 @@ MATCHER_P(MatchesNodeStats, expected, "") {
          actual.error_count == expected.error_count;
 }
 
+MATCHER(NodeStatsIsBool, "") {
+  const BranchCoverage::NodeCoverageStats& actual = arg;
+
+  *result_listener << "\n";
+  *result_listener << "Expected: " << FormatNodeStats({true, 0, 0, 0, 0});
+  *result_listener << "\n";
+  *result_listener << "Got: " << FormatNodeStats(actual);
+
+  return actual.is_boolean == true;
+}
+
 TEST(BranchCoverage, DefaultsForUntrackedId) {
   auto coverage = CreateBranchCoverage(TestExpression());
 
@@ -204,13 +215,8 @@ TEST(BranchCoverage, IncrementsCounters) {
   ASSERT_NE(ternary, nullptr);
   auto ternary_node_stats = coverage->StatsForNode(ternary->expr()->id());
   // Ternary gets optimized to conditional jumps, so it isn't instrumented
-  // directly.
-  EXPECT_THAT(ternary_node_stats,
-              MatchesNodeStats(Stats{/*is_boolean=*/true,
-                                     /*evaluation_count=*/0,
-                                     /*boolean_true_count=*/0,
-                                     /*boolean_false_count=*/0,
-                                     /*error_count=*/0}));
+  // directly in stack machine impl.
+  EXPECT_THAT(ternary_node_stats, NodeStatsIsBool());
 
   const auto* false_node = ternary->children().at(2);
   auto false_node_stats = coverage->StatsForNode(false_node->expr()->id());
@@ -328,13 +334,9 @@ TEST(BranchCoverage, AccumulatesAcrossRuns) {
 
   ASSERT_NE(ternary, nullptr);
   auto ternary_node_stats = coverage->StatsForNode(ternary->expr()->id());
-  // Ternary gets optimized into conditional jumps.
-  EXPECT_THAT(ternary_node_stats,
-              MatchesNodeStats(Stats{/*is_boolean=*/true,
-                                     /*evaluation_count=*/0,
-                                     /*boolean_true_count=*/0,
-                                     /*boolean_false_count=*/0,
-                                     /*error_count=*/0}));
+
+  // Ternary gets optimized into conditional jumps for stack machine plan.
+  EXPECT_THAT(ternary_node_stats, NodeStatsIsBool());
 
   const auto* false_node = ternary->children().at(2);
   auto false_node_stats = coverage->StatsForNode(false_node->expr()->id());
