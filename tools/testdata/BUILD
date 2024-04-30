@@ -31,7 +31,10 @@ flatbuffer_library_public(
 
 filegroup(
     name = "coverage_testdata",
-    srcs = ["coverage_example.textproto"],
+    srcs = [
+        "coverage_example.textproto",
+        "exists_macro.textproto",
+    ],
 )
 
 cc_library(
