@@ -519,29 +519,6 @@ TEST(AstTest, TypeCopyable) {
   EXPECT_EQ(type2, type);
 }
 
-TEST(AstTest, DeepCopyIsDeep) {
-  Expr expr;
-  auto& call = expr.mutable_call_expr();
-  call.set_function("_[_]");
-  auto& arg1 = call.mutable_args().emplace_back();
-  arg1.mutable_ident_expr().set_name("x");
-  auto& arg2 = call.mutable_args().emplace_back();
-  arg2.mutable_const_expr().set_string_value("x");
-
-  Expr expr2(expr.DeepCopy());
-
-  EXPECT_EQ(expr2, expr);
-
-  expr2.mutable_call_expr().mutable_args()[0].mutable_ident_expr().set_name(
-      "y");
-  expr2.mutable_call_expr()
-      .mutable_args()[1]
-      .mutable_const_expr()
-      .set_string_value("y");
-
-  EXPECT_NE(expr2, expr);
-}
-
 TEST(AstTest, TypeMoveable) {
   Type type = Type(PrimitiveType::kBool);
   Type type2 = type;
@@ -627,23 +604,6 @@ TEST(AstTest, ExtensionEquality) {
   EXPECT_EQ(extension1,
             Extension("constant_folding",
                       std::make_unique<Extension::Version>(0, 0), {}));
-}
-
-TEST(AstTest, ExtensionsCopyable) {
-  SourceInfo source_info;
-
-  source_info.mutable_extensions().push_back(Extension(
-      "extension", std::make_unique<Extension::Version>(1, 2),
-      {Extension::Component::kTypeChecker, Extension::Component::kRuntime}));
-
-  SourceInfo source_info_copy = source_info.DeepCopy();
-
-  EXPECT_EQ(source_info_copy, source_info);
-
-  EXPECT_EQ(source_info_copy.extensions()[0],
-            Extension("extension", std::make_unique<Extension::Version>(1, 2),
-                      {Extension::Component::kTypeChecker,
-                       Extension::Component::kRuntime}));
 }
 
 }  // namespace

@@ -678,8 +678,6 @@ class Expr {
 
   bool operator!=(const Expr& other) const { return !operator==(other); }
 
-  Expr DeepCopy() const;
-
  private:
   // Required. An id assigned to this node by the parser which is unique in a
   // given expression tree. This is used to associate type information and other
@@ -876,8 +874,6 @@ class SourceInfo {
   const std::vector<Extension>& extensions() const { return extensions_; }
 
   std::vector<Extension>& mutable_extensions() { return extensions_; }
-
-  SourceInfo DeepCopy() const;
 
  private:
   // The syntax version of the source, e.g. `cel1`.

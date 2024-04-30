@@ -103,8 +103,6 @@ class AstImpl : public Ast {
 
   absl::string_view expr_version() const { return expr_version_; }
 
-  AstImpl DeepCopy() const;
-
  private:
   Expr root_expr_;
   SourceInfo source_info_;

@@ -142,18 +142,6 @@ TypeKind CopyImpl(const TypeKind& other) {
 
 }  // namespace
 
-Expr Expr::DeepCopy() const {
-  Expr copy;
-  std::stack<CopyRecord> records;
-  records.push(CopyRecord{this, &copy});
-  while (!records.empty()) {
-    CopyRecord next = records.top();
-    records.pop();
-    CopyNode(*next.src, records, *next.dest);
-  }
-  return copy;
-}
-
 const Extension::Version& Extension::Version::DefaultInstance() {
   static absl::NoDestructor<Version> instance;
   return *instance;
@@ -174,20 +162,6 @@ Extension& Extension::operator=(const Extension& other) {
   affected_components_ = other.affected_components_;
   version_ = std::make_unique<Version>(*other.version_);
   return *this;
-}
-
-SourceInfo SourceInfo::DeepCopy() const {
-  SourceInfo copy;
-  copy.location_ = location_;
-  copy.syntax_version_ = syntax_version_;
-  copy.line_offsets_ = line_offsets_;
-  copy.positions_ = positions_;
-  copy.macro_calls_.reserve(macro_calls_.size());
-  for (auto it = macro_calls_.begin(); it != macro_calls_.end(); ++it) {
-    copy.macro_calls_.insert_or_assign(it->first, it->second.DeepCopy());
-  }
-  copy.extensions_ = extensions_;
-  return copy;
 }
 
 const Expr& Select::operand() const {

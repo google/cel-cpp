@@ -1235,14 +1235,11 @@ TEST_P(ConversionRoundTripTest, ParsedExprCopyable) {
                        CreateAstFromParsedExpr(parsed_expr));
 
   const auto& impl = ast_internal::AstImpl::CastFromPublicAst(*ast);
-  ast_internal::AstImpl copy_of_impl = impl.DeepCopy();
 
-  EXPECT_EQ(copy_of_impl.root_expr(), impl.root_expr());
-
-  EXPECT_THAT(CreateCheckedExprFromAst(copy_of_impl),
+  EXPECT_THAT(CreateCheckedExprFromAst(impl),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("AST is not type-checked")));
-  EXPECT_THAT(CreateParsedExprFromAst(copy_of_impl),
+  EXPECT_THAT(CreateParsedExprFromAst(impl),
               IsOkAndHolds(EqualsProto(parsed_expr)));
 }
 
@@ -1262,14 +1259,8 @@ TEST_P(ConversionRoundTripTest, CheckedExprCopyable) {
                        CreateAstFromCheckedExpr(checked_expr));
 
   const auto& impl = ast_internal::AstImpl::CastFromPublicAst(*ast);
-  ast_internal::AstImpl copy_of_impl = impl.DeepCopy();
 
-  EXPECT_EQ(copy_of_impl.root_expr(), impl.root_expr());
-  EXPECT_EQ(copy_of_impl.type_map(), impl.type_map());
-  EXPECT_EQ(copy_of_impl.reference_map(), impl.reference_map());
-  EXPECT_EQ(copy_of_impl.source_info(), impl.source_info());
-
-  EXPECT_THAT(CreateCheckedExprFromAst(copy_of_impl),
+  EXPECT_THAT(CreateCheckedExprFromAst(impl),
               IsOkAndHolds(EqualsProto(checked_expr)));
 }
 
@@ -1317,15 +1308,11 @@ TEST(ExtensionConversionRoundTripTest, RoundTrip) {
                        CreateAstFromParsedExpr(parsed_expr));
 
   const auto& impl = ast_internal::AstImpl::CastFromPublicAst(*ast);
-  ast_internal::AstImpl copy_of_impl = impl.DeepCopy();
 
-  EXPECT_EQ(copy_of_impl.root_expr(), impl.root_expr());
-  EXPECT_EQ(copy_of_impl.source_info(), impl.source_info());
-
-  EXPECT_THAT(CreateCheckedExprFromAst(copy_of_impl),
+  EXPECT_THAT(CreateCheckedExprFromAst(impl),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("AST is not type-checked")));
-  EXPECT_THAT(CreateParsedExprFromAst(copy_of_impl),
+  EXPECT_THAT(CreateParsedExprFromAst(impl),
               IsOkAndHolds(EqualsProto(parsed_expr)));
 }
 
