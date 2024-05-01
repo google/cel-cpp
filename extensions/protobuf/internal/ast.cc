@@ -27,11 +27,10 @@
 #include "absl/functional/overload.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "absl/time/time.h"
 #include "absl/types/variant.h"
 #include "common/ast.h"
 #include "common/constant.h"
-#include "internal/proto_time_encoding.h"
+#include "extensions/protobuf/internal/constant.h"
 #include "internal/status_macros.h"
 
 namespace cel::extensions::protobuf_internal {
@@ -39,7 +38,7 @@ namespace cel::extensions::protobuf_internal {
 namespace {
 
 using ExprProto = google::api::expr::v1alpha1::Expr;
-using ConstExprProto = google::api::expr::v1alpha1::Constant;
+using ConstantProto = google::api::expr::v1alpha1::Constant;
 using StructExprProto = google::api::expr::v1alpha1::Expr::CreateStruct;
 
 class ExprToProtoState final {
@@ -103,48 +102,8 @@ class ExprToProtoState final {
   absl::Status ConstExprToProto(const Expr& expr, const Constant& const_expr,
                                 absl::Nonnull<ExprProto*> proto) {
     proto->Clear();
-    auto* const_proto = proto->mutable_const_expr();
     proto->set_id(expr.id());
-    return absl::visit(
-        absl::Overload(
-            [](absl::monostate) -> absl::Status { return absl::OkStatus(); },
-            [const_proto](std::nullptr_t) -> absl::Status {
-              const_proto->set_null_value(google::protobuf::NULL_VALUE);
-              return absl::OkStatus();
-            },
-            [const_proto](bool value) -> absl::Status {
-              const_proto->set_bool_value(value);
-              return absl::OkStatus();
-            },
-            [const_proto](int64_t value) -> absl::Status {
-              const_proto->set_int64_value(value);
-              return absl::OkStatus();
-            },
-            [const_proto](uint64_t value) -> absl::Status {
-              const_proto->set_uint64_value(value);
-              return absl::OkStatus();
-            },
-            [const_proto](double value) -> absl::Status {
-              const_proto->set_double_value(value);
-              return absl::OkStatus();
-            },
-            [const_proto](const BytesConstant& value) -> absl::Status {
-              const_proto->set_bytes_value(value);
-              return absl::OkStatus();
-            },
-            [const_proto](const StringConstant& value) -> absl::Status {
-              const_proto->set_string_value(value);
-              return absl::OkStatus();
-            },
-            [const_proto](absl::Duration value) -> absl::Status {
-              return internal::EncodeDuration(
-                  value, const_proto->mutable_duration_value());
-            },
-            [const_proto](absl::Time value) -> absl::Status {
-              return internal::EncodeTime(
-                  value, const_proto->mutable_timestamp_value());
-            }),
-        const_expr.kind());
+    return ConstantToProto(const_expr, proto->mutable_const_expr());
   }
 
   absl::Status IdentExprToProto(const Expr& expr, const IdentExpr& ident_expr,
@@ -357,49 +316,11 @@ class ExprFromProtoState final {
   }
 
   absl::Status ConstExprFromProto(const ExprProto& proto,
-                                  const ConstExprProto& const_proto,
+                                  const ConstantProto& const_proto,
                                   Expr& expr) {
     expr.Clear();
     expr.set_id(proto.id());
-    auto& const_expr = expr.mutable_const_expr();
-    switch (const_proto.constant_kind_case()) {
-      case ConstExprProto::CONSTANT_KIND_NOT_SET:
-        break;
-      case ConstExprProto::kNullValue:
-        const_expr.set_null_value();
-        break;
-      case ConstExprProto::kBoolValue:
-        const_expr.set_bool_value(const_proto.bool_value());
-        break;
-      case ConstExprProto::kInt64Value:
-        const_expr.set_int_value(const_proto.int64_value());
-        break;
-      case ConstExprProto::kUint64Value:
-        const_expr.set_uint_value(const_proto.uint64_value());
-        break;
-      case ConstExprProto::kDoubleValue:
-        const_expr.set_double_value(const_proto.double_value());
-        break;
-      case ConstExprProto::kStringValue:
-        const_expr.set_string_value(const_proto.string_value());
-        break;
-      case ConstExprProto::kBytesValue:
-        const_expr.set_bytes_value(const_proto.bytes_value());
-        break;
-      case ConstExprProto::kDurationValue:
-        const_expr.set_duration_value(
-            internal::DecodeDuration(const_proto.duration_value()));
-        break;
-      case ConstExprProto::kTimestampValue:
-        const_expr.set_timestamp_value(
-            internal::DecodeTime(const_proto.timestamp_value()));
-        break;
-      default:
-        return absl::InvalidArgumentError(
-            absl::StrCat("unexpected ConstantKindCase: ",
-                         static_cast<int>(const_proto.constant_kind_case())));
-    }
-    return absl::OkStatus();
+    return ConstantFromProto(const_proto, expr.mutable_const_expr());
   }
 
   absl::Status IdentExprFromProto(const ExprProto& proto,
