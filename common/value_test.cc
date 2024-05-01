@@ -15,7 +15,6 @@
 #include "common/value.h"
 
 #include <sstream>
-#include <utility>
 
 #include "common/native_type.h"
 #include "internal/testing.h"
@@ -25,76 +24,56 @@ namespace {
 
 using testing::_;
 
-template <typename T>
-void IS_INITIALIZED(T&) {}
-
 TEST(Value, KindDebugDeath) {
-  Value moved_from_value = BoolValue(true);
-  Value value = std::move(moved_from_value);
-  IS_INITIALIZED(moved_from_value);
+  Value value;
   static_cast<void>(value);
-  EXPECT_DEBUG_DEATH(static_cast<void>(moved_from_value.kind()), _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(value.kind()), _);
 }
 
 TEST(Value, GetTypeName) {
-  Value moved_from_value = BoolValue(true);
-  Value value = std::move(moved_from_value);
-  IS_INITIALIZED(moved_from_value);
+  Value value;
   static_cast<void>(value);
-  EXPECT_DEBUG_DEATH(static_cast<void>(moved_from_value.GetTypeName()), _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(value.GetTypeName()), _);
 }
 
 TEST(Value, DebugStringUinitializedValue) {
-  Value moved_from_value = BoolValue(true);
-  Value value = std::move(moved_from_value);
-  IS_INITIALIZED(moved_from_value);
+  Value value;
   static_cast<void>(value);
   std::ostringstream out;
-  out << moved_from_value;
+  out << value;
   EXPECT_EQ(out.str(), "default ctor Value");
 }
 
 TEST(Value, NativeValueIdDebugDeath) {
-  Value moved_from_value = BoolValue(true);
-  Value value = std::move(moved_from_value);
-  IS_INITIALIZED(moved_from_value);
+  Value value;
   static_cast<void>(value);
-  EXPECT_DEBUG_DEATH(static_cast<void>(NativeTypeId::Of(moved_from_value)), _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(NativeTypeId::Of(value)), _);
 }
 
 TEST(ValueView, KindDebugDeath) {
-  Value moved_from_value = BoolValue(true);
-  Value value = std::move(moved_from_value);
-  IS_INITIALIZED(moved_from_value);
+  ValueView value;
   static_cast<void>(value);
-  EXPECT_DEBUG_DEATH(static_cast<void>(ValueView(moved_from_value).kind()), _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(value.kind()), _);
 }
 
-TEST(ValueView, GetTypeName) {
-  Value moved_from_value = BoolValue(true);
-  Value value = std::move(moved_from_value);
-  IS_INITIALIZED(moved_from_value);
+TEST(ValueView, GetTypeNameDeath) {
+  ValueView value;
   static_cast<void>(value);
-  EXPECT_DEBUG_DEATH(
-      static_cast<void>(ValueView(moved_from_value).GetTypeName()), _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(value.GetTypeName()), _);
 }
 
 TEST(ValueView, DebugStringDebugDeath) {
-  Value moved_from_value = BoolValue(true);
-  Value value = std::move(moved_from_value);
-  IS_INITIALIZED(moved_from_value);
+  ValueView value;
   static_cast<void>(value);
   std::ostringstream out;
-  EXPECT_DEBUG_DEATH(static_cast<void>(out << ValueView(moved_from_value)), _);
+  out << value;
+  EXPECT_EQ(out.str(), "default ctor ValueView");
 }
 
 TEST(ValueView, NativeValueIdDebugDeath) {
-  Value moved_from_value = BoolValue(true);
-  Value value = std::move(moved_from_value);
-  IS_INITIALIZED(moved_from_value);
+  ValueView value;
   static_cast<void>(value);
-  EXPECT_DEBUG_DEATH(
-      static_cast<void>(NativeTypeId::Of(ValueView(moved_from_value))), _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(NativeTypeId::Of(value)), _);
 }
 
 }  // namespace

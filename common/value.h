@@ -79,30 +79,10 @@ class Value final {
   using view_alternative_type = ValueView;
 
   Value() = default;
-
-  Value(const Value& other)
-      : variant_((other.AssertIsValid(), other.variant_)) {}
-
-  Value& operator=(const Value& other) {
-    if (this != std::addressof(other)) {
-      variant_ = other.variant_;
-    }
-    return *this;
-  }
-
-  Value(Value&& other) noexcept
-      : variant_((other.AssertIsValid(), std::move(other.variant_))) {
-    other.variant_.emplace<absl::monostate>();
-  }
-
-  Value& operator=(Value&& other) noexcept {
-    other.AssertIsValid();
-    ABSL_DCHECK(this != std::addressof(other))
-        << "Value should not be moved to itself";
-    variant_ = std::move(other.variant_);
-    other.variant_.emplace<absl::monostate>();
-    return *this;
-  }
+  Value(const Value&) = default;
+  Value& operator=(const Value&) = default;
+  Value(Value&& other) = default;
+  Value& operator=(Value&&) = default;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   Value(const ListValue& value)
@@ -246,8 +226,6 @@ class Value final {
   bool IsZeroValue() const;
 
   void swap(Value& other) noexcept {
-    AssertIsValid();
-    other.AssertIsValid();
     variant_.swap(other.variant_);
   }
 
@@ -283,9 +261,16 @@ class Value final {
     return cel::Cast<T>(std::move(*this));
   }
 
+  ABSL_DEPRECATED("Just use operator.()")
   Value* operator->() { return this; }
 
+  ABSL_DEPRECATED("Just use operator.()")
   const Value* operator->() const { return this; }
+
+  // When `Value` is default constructed, it is in a valid but undefined state.
+  // Any attempt to use it invokes undefined behavior. This mention can be used
+  // to test whether this value is valid.
+  explicit operator bool() const noexcept { return IsValid(); }
 
  private:
   friend class ValueView;
@@ -294,7 +279,7 @@ class Value final {
 
   common_internal::ValueViewVariant ToViewVariant() const;
 
-  constexpr bool IsValid() const {
+  constexpr bool IsValid() const noexcept {
     return !absl::holds_alternative<absl::monostate>(variant_);
   }
 
@@ -734,8 +719,6 @@ class ValueView final {
   bool IsZeroValue() const;
 
   void swap(ValueView& other) noexcept {
-    AssertIsValid();
-    other.AssertIsValid();
     variant_.swap(other.variant_);
   }
 
