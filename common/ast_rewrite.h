@@ -1,10 +1,10 @@
-// Copyright 2021 Google LLC
+// Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      https://www.apache.org/licenses/LICENSE-2.0
+//     https://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_REWRITE_H_
-#define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_REWRITE_H_
+#ifndef THIRD_PARTY_CEL_CPP_COMMON_AST_REWRITE_H_
+#define THIRD_PARTY_CEL_CPP_COMMON_AST_REWRITE_H_
 
 #include "absl/types/span.h"
-#include "eval/public/ast_visitor_native.h"
+#include "common/ast.h"
+#include "common/ast_visitor.h"
+#include "common/constant.h"
 
-namespace cel::ast_internal {
+namespace cel {
 
 // Traversal options for AstRewrite.
 struct RewriteTraversalOptions {
@@ -39,67 +41,56 @@ class AstRewriter : public AstVisitor {
   // Rewrite a sub expression before visiting.
   // Occurs before visiting Expr. If expr is modified, it the new value will be
   // visited.
-  virtual bool PreVisitRewrite(Expr* expr, const SourcePosition* position) = 0;
+  virtual bool PreVisitRewrite(Expr* expr) = 0;
 
   // Rewrite a sub expression after visiting.
   // Occurs after visiting expr and it's children. If expr is modified, the old
   // sub expression is visited.
-  virtual bool PostVisitRewrite(Expr* expr, const SourcePosition* position) = 0;
+  virtual bool PostVisitRewrite(Expr* expr) = 0;
 
   // Notify the visitor of updates to the traversal stack.
   virtual void TraversalStackUpdate(absl::Span<const Expr*> path) = 0;
 };
 
 // Trivial implementation for AST rewriters.
-// Virtual methods are overriden with no-op callbacks.
+// Virtual methods are overridden with no-op callbacks.
 class AstRewriterBase : public AstRewriter {
  public:
   ~AstRewriterBase() override {}
 
-  void PreVisitExpr(const Expr*, const SourcePosition*) override {}
+  void PreVisitExpr(const Expr*) override {}
 
-  void PostVisitExpr(const Expr*, const SourcePosition*) override {}
+  void PostVisitExpr(const Expr*) override {}
 
-  void PostVisitConst(const Constant*, const Expr*,
-                      const SourcePosition*) override {}
+  void PostVisitConst(const Constant*, const Expr*) override {}
 
-  void PostVisitIdent(const Ident*, const Expr*,
-                      const SourcePosition*) override {}
+  void PostVisitIdent(const IdentExpr*, const Expr*) override {}
 
-  void PreVisitSelect(const Select*, const Expr*,
-                      const SourcePosition*) override {}
+  void PreVisitSelect(const SelectExpr*, const Expr*) override {}
 
-  void PostVisitSelect(const Select*, const Expr*,
-                       const SourcePosition*) override {}
+  void PostVisitSelect(const SelectExpr*, const Expr*) override {}
 
-  void PreVisitCall(const Call*, const Expr*, const SourcePosition*) override {}
+  void PreVisitCall(const CallExpr*, const Expr*) override {}
 
-  void PostVisitCall(const Call*, const Expr*, const SourcePosition*) override {
-  }
+  void PostVisitCall(const CallExpr*, const Expr*) override {}
 
-  void PreVisitComprehension(const Comprehension*, const Expr*,
-                             const SourcePosition*) override {}
+  void PreVisitComprehension(const ComprehensionExpr*, const Expr*) override {}
 
-  void PostVisitComprehension(const Comprehension*, const Expr*,
-                              const SourcePosition*) override {}
+  void PostVisitComprehension(const ComprehensionExpr*, const Expr*) override {}
 
-  void PostVisitArg(int, const Expr*, const SourcePosition*) override {}
+  void PostVisitArg(int, const Expr*) override {}
 
-  void PostVisitTarget(const Expr*, const SourcePosition*) override {}
+  void PostVisitTarget(const Expr*) override {}
 
-  void PostVisitCreateList(const CreateList*, const Expr*,
-                           const SourcePosition*) override {}
+  void PostVisitList(const ListExpr*, const Expr*) override {}
 
-  void PostVisitCreateStruct(const CreateStruct*, const Expr*,
-                             const SourcePosition*) override {}
+  void PostVisitStruct(const StructExpr*, const Expr*) override {}
 
-  bool PreVisitRewrite(Expr* expr, const SourcePosition* position) override {
-    return false;
-  }
+  void PostVisitMap(const MapExpr*, const Expr*) override {}
 
-  bool PostVisitRewrite(Expr* expr, const SourcePosition* position) override {
-    return false;
-  }
+  bool PreVisitRewrite(Expr* expr) override { return false; }
+
+  bool PostVisitRewrite(Expr* expr) override { return false; }
 
   void TraversalStackUpdate(absl::Span<const Expr*> path) override {}
 };
@@ -144,12 +135,9 @@ class AstRewriterBase : public AstRewriter {
 // ..PostVisitCall(fn)
 // PostVisitExpr
 
-bool AstRewrite(Expr* expr, const SourceInfo* source_info,
-                AstRewriter* visitor);
+bool AstRewrite(Expr* expr, AstRewriter* visitor,
+                RewriteTraversalOptions options = RewriteTraversalOptions());
 
-bool AstRewrite(Expr* expr, const SourceInfo* source_info, AstRewriter* visitor,
-                RewriteTraversalOptions options);
+}  // namespace cel
 
-}  // namespace cel::ast_internal
-
-#endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_REWRITE_H_
+#endif  // THIRD_PARTY_CEL_CPP_COMMON_AST_REWRITE_H_

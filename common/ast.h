@@ -1277,7 +1277,7 @@ class StructExprField final {
 
   void set_id(ExprId id) { id_ = id; }
 
-  ABSL_MUST_USE_RESULT absl::string_view name() const
+  ABSL_MUST_USE_RESULT const std::string& name() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return name_;
   }

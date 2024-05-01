@@ -201,21 +201,15 @@ TEST(FlatExprBuilderTest, MapKeyValueUnset) {
 
   // Don't set either the key or the value for the map creation step.
   auto* entry = expr.mutable_struct_expr()->add_entries();
-  EXPECT_THAT(
-      builder.CreateExpression(&expr, &source_info).status(),
-      StatusIs(
-          absl::StatusCode::kInvalidArgument,
-          HasSubstr("Illegal type provided for "
-                    "google::api::expr::v1alpha1::Expr::CreateStruct::Entry::key_kind")));
+  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Map entry missing key")));
 
   // Set the entry key, but not the value.
   entry->mutable_map_key()->mutable_const_expr()->set_bool_value(true);
-  EXPECT_THAT(
-      builder.CreateExpression(&expr, &source_info).status(),
-      StatusIs(
-          absl::StatusCode::kInvalidArgument,
-          HasSubstr(
-              "google::api::expr::v1alpha1::Expr::CreateStruct::Entry missing value")));
+  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Map entry missing value")));
 }
 
 TEST(FlatExprBuilderTest, MessageFieldValueUnset) {
@@ -231,21 +225,15 @@ TEST(FlatExprBuilderTest, MessageFieldValueUnset) {
   auto* create_message = expr.mutable_struct_expr();
   create_message->set_message_name("google.protobuf.Value");
   auto* entry = create_message->add_entries();
-  EXPECT_THAT(
-      builder.CreateExpression(&expr, &source_info).status(),
-      StatusIs(
-          absl::StatusCode::kInvalidArgument,
-          HasSubstr("Illegal type provided for "
-                    "google::api::expr::v1alpha1::Expr::CreateStruct::Entry::key_kind")));
+  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Struct field missing name")));
 
   // Set the entry field, but not the value.
   entry->set_field_key("bool_value");
-  EXPECT_THAT(
-      builder.CreateExpression(&expr, &source_info).status(),
-      StatusIs(
-          absl::StatusCode::kInvalidArgument,
-          HasSubstr(
-              "google::api::expr::v1alpha1::Expr::CreateStruct::Entry missing value")));
+  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Struct field missing value")));
 }
 
 TEST(FlatExprBuilderTest, BinaryCallTooManyArguments) {

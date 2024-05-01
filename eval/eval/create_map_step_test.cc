@@ -81,7 +81,7 @@ absl::StatusOr<ExecutionPath> CreateStackMachineProgram(
     activation.InsertValue(key_name, item.first);
     activation.InsertValue(value_name, item.second);
 
-    create_struct.mutable_entries().emplace_back();
+    create_struct.mutable_fields().emplace_back();
     index++;
   }
 

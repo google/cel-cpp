@@ -294,8 +294,8 @@ TEST_F(UpdatedConstantFoldingTest, CreatesList) {
   AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
   const Expr& create_list = ast_impl.root_expr();
-  const Expr& elem_one = create_list.list_expr().elements()[0];
-  const Expr& elem_two = create_list.list_expr().elements()[1];
+  const Expr& elem_one = create_list.list_expr().elements()[0].expr();
+  const Expr& elem_two = create_list.list_expr().elements()[1].expr();
 
   ProgramBuilder program_builder;
   program_builder.EnterSubexpression(&create_list);
@@ -350,8 +350,8 @@ TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
   AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
   const Expr& create_map = ast_impl.root_expr();
-  const Expr& key = create_map.struct_expr().entries()[0].map_key();
-  const Expr& value = create_map.struct_expr().entries()[0].value();
+  const Expr& key = create_map.map_expr().entries()[0].key();
+  const Expr& value = create_map.map_expr().entries()[0].value();
 
   ProgramBuilder program_builder;
   program_builder.EnterSubexpression(&create_map);
@@ -371,9 +371,9 @@ TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
   program_builder.ExitSubexpression(&value);
 
   // create map
-  ASSERT_OK_AND_ASSIGN(step,
-                       CreateCreateStructStepForMap(
-                           create_map.struct_expr().entries().size(), {}, 3));
+  ASSERT_OK_AND_ASSIGN(
+      step, CreateCreateStructStepForMap(create_map.map_expr().entries().size(),
+                                         {}, 3));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&create_map);
 
@@ -407,8 +407,8 @@ TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
   AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
   const Expr& create_map = ast_impl.root_expr();
-  const Expr& key = create_map.struct_expr().entries()[0].map_key();
-  const Expr& value = create_map.struct_expr().entries()[0].value();
+  const Expr& key = create_map.map_expr().entries()[0].key();
+  const Expr& value = create_map.map_expr().entries()[0].value();
 
   ProgramBuilder program_builder;
   program_builder.EnterSubexpression(&create_map);
@@ -429,9 +429,9 @@ TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
   program_builder.ExitSubexpression(&value);
 
   // create map
-  ASSERT_OK_AND_ASSIGN(step,
-                       CreateCreateStructStepForMap(
-                           create_map.struct_expr().entries().size(), {}, 3));
+  ASSERT_OK_AND_ASSIGN(
+      step, CreateCreateStructStepForMap(create_map.map_expr().entries().size(),
+                                         {}, 3));
   program_builder.AddStep(std::move(step));
   program_builder.ExitSubexpression(&create_map);
 

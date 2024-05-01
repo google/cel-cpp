@@ -23,7 +23,6 @@
 #include <vector>
 
 #include "absl/algorithm/container.h"
-#include "absl/base/attributes.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
@@ -38,11 +37,10 @@
 #include "base/ast_internal/expr.h"
 #include "base/attribute.h"
 #include "base/builtins.h"
+#include "common/ast_rewrite.h"
 #include "common/casting.h"
 #include "common/kind.h"
-#include "common/memory.h"
 #include "common/type.h"
-#include "common/type_factory.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
@@ -50,23 +48,19 @@
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
-#include "eval/public/ast_rewrite_native.h"
-#include "eval/public/source_position_native.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/errors.h"
-#include "runtime/runtime_options.h"
 
 namespace cel::extensions {
 namespace {
 
+using ::cel::AstRewriterBase;
 using ::cel::ast_internal::AstImpl;
-using ::cel::ast_internal::AstRewriterBase;
 using ::cel::ast_internal::Call;
 using ::cel::ast_internal::ConstantKind;
 using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::ExprKind;
 using ::cel::ast_internal::Select;
-using ::cel::ast_internal::SourcePosition;
 using ::google::api::expr::runtime::AttributeTrail;
 using ::google::api::expr::runtime::DirectExpressionStep;
 using ::google::api::expr::runtime::ExecutionFrame;
@@ -109,35 +103,33 @@ Expr MakeSelectPathExpr(
         Expr field_number;
         field_number.mutable_const_expr().set_int64_value(instruction.number);
         Expr field_name;
-        field_name.mutable_const_expr().set_string_value(
-            std::string(instruction.name));
+        field_name.mutable_const_expr().set_string_value(instruction.name);
         auto& field_specifier =
             ast_instruction.mutable_list_expr().mutable_elements();
-        field_specifier.push_back(std::move(field_number));
-        field_specifier.push_back(std::move(field_name));
+        field_specifier.emplace_back().set_expr(std::move(field_number));
+        field_specifier.emplace_back().set_expr(std::move(field_name));
 
-        ast_list.push_back(std::move(ast_instruction));
+        ast_list.emplace_back().set_expr(std::move(ast_instruction));
       },
       [&](absl::string_view instruction) {
         Expr const_expr;
-        const_expr.mutable_const_expr().set_string_value(
-            std::string(instruction));
-        ast_list.push_back(std::move(const_expr));
+        const_expr.mutable_const_expr().set_string_value(instruction);
+        ast_list.emplace_back().set_expr(std::move(const_expr));
       },
       [&](int64_t instruction) {
         Expr const_expr;
         const_expr.mutable_const_expr().set_int64_value(instruction);
-        ast_list.push_back(std::move(const_expr));
+        ast_list.emplace_back().set_expr(std::move(const_expr));
       },
       [&](uint64_t instruction) {
         Expr const_expr;
         const_expr.mutable_const_expr().set_uint64_value(instruction);
-        ast_list.push_back(std::move(const_expr));
+        ast_list.emplace_back().set_expr(std::move(const_expr));
       },
       [&](bool instruction) {
         Expr const_expr;
         const_expr.mutable_const_expr().set_bool_value(instruction);
-        ast_list.push_back(std::move(const_expr));
+        ast_list.emplace_back().set_expr(std::move(const_expr));
       });
 
   for (const auto& instruction : select_instructions) {
@@ -167,8 +159,8 @@ absl::StatusOr<SelectQualifier> SelectQualifierFromList(
     return absl::InvalidArgumentError("Invalid cel.attribute select list");
   }
 
-  const Expr& field_number = list.elements()[0];
-  const Expr& field_name = list.elements()[1];
+  const Expr& field_number = list.elements()[0].expr();
+  const Expr& field_name = list.elements()[1].expr();
 
   if (!field_number.has_const_expr() ||
       !field_number.const_expr().has_int64_value()) {
@@ -346,14 +338,20 @@ absl::StatusOr<std::vector<SelectQualifier>> SelectInstructionsFromCall(
   const auto& ast_path = call.args()[1].list_expr().elements();
   instructions.reserve(ast_path.size());
 
-  for (const Expr& element : ast_path) {
+  for (const ListExprElement& element : ast_path) {
     // Optimized field select.
-    if (element.has_list_expr()) {
-      CEL_ASSIGN_OR_RETURN(instructions.emplace_back(),
-                           SelectQualifierFromList(element.list_expr()));
-    } else if (element.has_const_expr()) {
-      CEL_ASSIGN_OR_RETURN(instructions.emplace_back(),
-                           SelectQualifierFromConstant(element.const_expr()));
+    if (element.has_expr()) {
+      const auto& element_expr = element.expr();
+      if (element_expr.has_list_expr()) {
+        CEL_ASSIGN_OR_RETURN(instructions.emplace_back(),
+                             SelectQualifierFromList(element_expr.list_expr()));
+      } else if (element_expr.has_const_expr()) {
+        CEL_ASSIGN_OR_RETURN(
+            instructions.emplace_back(),
+            SelectQualifierFromConstant(element_expr.const_expr()));
+      } else {
+        return absl::InvalidArgumentError("Invalid cel.attribute call");
+      }
     } else {
       return absl::InvalidArgumentError("Invalid cel.attribute call");
     }
@@ -369,12 +367,9 @@ class RewriterImpl : public AstRewriterBase {
   RewriterImpl(const AstImpl& ast, PlannerContext& planner_context)
       : ast_(ast), planner_context_(planner_context) {}
 
-  void PreVisitExpr(const Expr* expr, const SourcePosition* position) override {
-    path_.push_back(expr);
-  }
+  void PreVisitExpr(const Expr* expr) override { path_.push_back(expr); }
 
-  void PreVisitSelect(const Select* select, const Expr* expr,
-                      const SourcePosition*) override {
+  void PreVisitSelect(const Select* select, const Expr* expr) override {
     const Expr& operand = select->operand();
     const std::string& field_name = select->field();
     // Select optimization can generalize to lists and maps, but for now only
@@ -400,8 +395,7 @@ class RewriterImpl : public AstRewriterBase {
     // simplify program plan.
   }
 
-  void PreVisitCall(const Call* call, const Expr* expr,
-                    const SourcePosition*) override {
+  void PreVisitCall(const Call* call, const Expr* expr) override {
     if (call->args().size() != 2 ||
         call->function() != ::cel::builtin::kIndex) {
       return;
@@ -420,7 +414,7 @@ class RewriterImpl : public AstRewriterBase {
     // TODO(uncreated-issue/54): support variable indexes
   }
 
-  bool PostVisitRewrite(Expr* expr, const SourcePosition* position) override {
+  bool PostVisitRewrite(Expr* expr) override {
     if (!progress_status_.ok()) {
       return false;
     }
@@ -879,7 +873,7 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
 absl::Status SelectOptimizationAstUpdater::UpdateAst(PlannerContext& context,
                                                      AstImpl& ast) const {
   RewriterImpl rewriter(ast, context);
-  ast_internal::AstRewrite(&ast.root_expr(), &ast.source_info(), &rewriter);
+  AstRewrite(&ast.root_expr(), &rewriter);
   return rewriter.GetProgressStatus();
 }
 

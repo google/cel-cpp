@@ -128,10 +128,7 @@ cc_library(
     hdrs = [
         "cel_value_producer.h",
     ],
-    deps = [
-        ":cel_value",
-        "@com_google_absl//absl/strings",
-    ],
+    deps = [":cel_value"],
 )
 
 cc_library(
@@ -218,7 +215,6 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -228,15 +224,10 @@ cc_library(
         "cel_function_adapter.h",
     ],
     deps = [
-        ":cel_function",
         ":cel_function_adapter_impl",
-        ":cel_function_registry",
         ":cel_value",
         "//eval/public/structs:cel_proto_wrapper",
-        "//internal:status_macros",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -246,17 +237,7 @@ cc_library(
     hdrs = [
         "portable_cel_function_adapter.h",
     ],
-    deps = [
-        ":cel_function",
-        ":cel_function_adapter_impl",
-        ":cel_function_registry",
-        ":cel_value",
-        "//internal:status_macros",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_protobuf//:protobuf",
-    ],
+    deps = [":cel_function_adapter_impl"],
 )
 
 cc_test(
@@ -539,15 +520,6 @@ cc_library(
 )
 
 cc_library(
-    name = "source_position_native",
-    srcs = ["source_position_native.cc"],
-    hdrs = ["source_position_native.h"],
-    deps = [
-        "//base/ast_internal:expr",
-    ],
-)
-
-cc_library(
     name = "ast_visitor",
     hdrs = [
         "ast_visitor.h",
@@ -570,27 +542,6 @@ cc_library(
 )
 
 cc_library(
-    name = "ast_visitor_native",
-    hdrs = [
-        "ast_visitor_native.h",
-    ],
-    deps = [
-        ":source_position_native",
-        "//base/ast_internal:expr",
-    ],
-)
-
-cc_library(
-    name = "ast_visitor_native_base",
-    hdrs = [
-        "ast_visitor_native_base.h",
-    ],
-    deps = [
-        ":ast_visitor_native",
-    ],
-)
-
-cc_library(
     name = "ast_traverse",
     srcs = [
         "ast_traverse.cc",
@@ -604,23 +555,6 @@ cc_library(
         "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/types:variant",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-    ],
-)
-
-cc_library(
-    name = "ast_traverse_native",
-    srcs = [
-        "ast_traverse_native.cc",
-    ],
-    hdrs = [
-        "ast_traverse_native.h",
-    ],
-    deps = [
-        ":ast_visitor_native",
-        ":source_position_native",
-        "//base/ast_internal:expr",
-        "@com_google_absl//absl/log:absl_log",
-        "@com_google_absl//absl/types:variant",
     ],
 )
 
@@ -782,18 +716,6 @@ cc_test(
     ],
 )
 
-cc_test(
-    name = "ast_traverse_native_test",
-    srcs = [
-        "ast_traverse_native_test.cc",
-    ],
-    deps = [
-        ":ast_traverse_native",
-        ":ast_visitor_native",
-        "//internal:testing",
-    ],
-)
-
 cc_library(
     name = "ast_rewrite",
     srcs = [
@@ -821,44 +743,10 @@ cc_test(
         ":ast_rewrite",
         ":ast_visitor",
         ":source_position",
-        "//internal:status_macros",
         "//internal:testing",
         "//parser",
         "//testutil:util",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-    ],
-)
-
-cc_library(
-    name = "ast_rewrite_native",
-    srcs = [
-        "ast_rewrite_native.cc",
-    ],
-    hdrs = [
-        "ast_rewrite_native.h",
-    ],
-    deps = [
-        ":ast_visitor_native",
-        ":source_position_native",
-        "@com_google_absl//absl/log:absl_log",
-        "@com_google_absl//absl/types:span",
-        "@com_google_absl//absl/types:variant",
-    ],
-)
-
-cc_test(
-    name = "ast_rewrite_native_test",
-    srcs = [
-        "ast_rewrite_native_test.cc",
-    ],
-    deps = [
-        ":ast_rewrite_native",
-        ":ast_visitor_native",
-        ":source_position_native",
-        "//extensions/protobuf:ast_converters",
-        "//internal:testing",
-        "//parser",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -1031,18 +919,6 @@ cc_test(
         ":source_position",
         "//internal:testing",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-    ],
-)
-
-cc_test(
-    name = "source_position_native_test",
-    size = "small",
-    srcs = [
-        "source_position_native_test.cc",
-    ],
-    deps = [
-        ":source_position_native",
-        "//internal:testing",
     ],
 )
 

@@ -12,22 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "eval/public/ast_rewrite_native.h"
+#include "common/ast_rewrite.h"
 
 #include <string>
 #include <vector>
 
+#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/text_format.h"
-#include "eval/public/ast_visitor_native.h"
-#include "eval/public/source_position_native.h"
+#include "base/ast_internal/expr.h"
+#include "common/ast_visitor.h"
 #include "extensions/protobuf/ast_converters.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
 
-namespace cel::ast_internal {
+namespace cel {
 
 namespace {
 
+using ast_internal::ParsedExpr;
 using ::cel::extensions::internal::ConvertProtoExprToNative;
 using ::cel::extensions::internal::ConvertProtoParsedExprToNative;
 using testing::_;
@@ -37,138 +39,111 @@ using testing::InSequence;
 class MockAstRewriter : public AstRewriter {
  public:
   // Expr handler.
-  MOCK_METHOD(void, PreVisitExpr,
-              (const Expr* expr, const SourcePosition* position), (override));
+  MOCK_METHOD(void, PreVisitExpr, (const Expr* expr), (override));
 
   // Expr handler.
-  MOCK_METHOD(void, PostVisitExpr,
-              (const Expr* expr, const SourcePosition* position), (override));
+  MOCK_METHOD(void, PostVisitExpr, (const Expr* expr), (override));
 
   MOCK_METHOD(void, PostVisitConst,
-              (const Constant* const_expr, const Expr* expr,
-               const SourcePosition* position),
-              (override));
+              (const Constant* const_expr, const Expr* expr), (override));
 
   // Ident node handler.
   MOCK_METHOD(void, PostVisitIdent,
-              (const Ident* ident_expr, const Expr* expr,
-               const SourcePosition* position),
-              (override));
+              (const IdentExpr* ident_expr, const Expr* expr), (override));
 
   // Select node handler group
   MOCK_METHOD(void, PreVisitSelect,
-              (const Select* select_expr, const Expr* expr,
-               const SourcePosition* position),
-              (override));
+              (const SelectExpr* select_expr, const Expr* expr), (override));
 
   MOCK_METHOD(void, PostVisitSelect,
-              (const Select* select_expr, const Expr* expr,
-               const SourcePosition* position),
-              (override));
+              (const SelectExpr* select_expr, const Expr* expr), (override));
 
   // Call node handler group
-  MOCK_METHOD(void, PreVisitCall,
-              (const Call* call_expr, const Expr* expr,
-               const SourcePosition* position),
+  MOCK_METHOD(void, PreVisitCall, (const CallExpr* call_expr, const Expr* expr),
               (override));
   MOCK_METHOD(void, PostVisitCall,
-              (const Call* call_expr, const Expr* expr,
-               const SourcePosition* position),
-              (override));
+              (const CallExpr* call_expr, const Expr* expr), (override));
 
   // Comprehension node handler group
   MOCK_METHOD(void, PreVisitComprehension,
-              (const Comprehension* comprehension_expr, const Expr* expr,
-               const SourcePosition* position),
+              (const ComprehensionExpr* comprehension_expr, const Expr* expr),
               (override));
   MOCK_METHOD(void, PostVisitComprehension,
-              (const Comprehension* comprehension_expr, const Expr* expr,
-               const SourcePosition* position),
+              (const ComprehensionExpr* comprehension_expr, const Expr* expr),
               (override));
 
   // Comprehension node handler group
   MOCK_METHOD(void, PreVisitComprehensionSubexpression,
-              (const Expr* expr, const Comprehension* comprehension_expr,
-               ComprehensionArg comprehension_arg,
-               const SourcePosition* position),
+              (const Expr* expr, const ComprehensionExpr* comprehension_expr,
+               ComprehensionArg comprehension_arg),
               (override));
   MOCK_METHOD(void, PostVisitComprehensionSubexpression,
-              (const Expr* expr, const Comprehension* comprehension_expr,
-               ComprehensionArg comprehension_arg,
-               const SourcePosition* position),
+              (const Expr* expr, const ComprehensionExpr* comprehension_expr,
+               ComprehensionArg comprehension_arg),
               (override));
 
   // We provide finer granularity for Call and Comprehension node callbacks
   // to allow special handling for short-circuiting.
-  MOCK_METHOD(void, PostVisitTarget,
-              (const Expr* expr, const SourcePosition* position), (override));
-  MOCK_METHOD(void, PostVisitArg,
-              (int arg_num, const Expr* expr, const SourcePosition* position),
+  MOCK_METHOD(void, PostVisitTarget, (const Expr* expr), (override));
+  MOCK_METHOD(void, PostVisitArg, (int arg_num, const Expr* expr), (override));
+
+  // List node handler group
+  MOCK_METHOD(void, PostVisitList,
+              (const ListExpr* list_expr, const Expr* expr), (override));
+
+  // Struct node handler group
+  MOCK_METHOD(void, PostVisitStruct,
+              (const StructExpr* struct_expr, const Expr* expr), (override));
+
+  // Map node handler group
+  MOCK_METHOD(void, PostVisitMap, (const MapExpr* map_expr, const Expr* expr),
               (override));
 
-  // CreateList node handler group
-  MOCK_METHOD(void, PostVisitCreateList,
-              (const CreateList* list_expr, const Expr* expr,
-               const SourcePosition* position),
-              (override));
+  MOCK_METHOD(bool, PreVisitRewrite, (Expr * expr), (override));
 
-  // CreateStruct node handler group
-  MOCK_METHOD(void, PostVisitCreateStruct,
-              (const CreateStruct* struct_expr, const Expr* expr,
-               const SourcePosition* position),
-              (override));
-
-  MOCK_METHOD(bool, PreVisitRewrite,
-              (Expr * expr, const SourcePosition* position), (override));
-
-  MOCK_METHOD(bool, PostVisitRewrite,
-              (Expr * expr, const SourcePosition* position), (override));
+  MOCK_METHOD(bool, PostVisitRewrite, (Expr * expr), (override));
 
   MOCK_METHOD(void, TraversalStackUpdate, (absl::Span<const Expr*> path),
               (override));
 };
 
 TEST(AstCrawlerTest, CheckCrawlConstant) {
-  SourceInfo source_info;
   MockAstRewriter handler;
 
   Expr expr;
   auto& const_expr = expr.mutable_const_expr();
 
-  EXPECT_CALL(handler, PostVisitConst(&const_expr, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitConst(&const_expr, &expr)).Times(1);
 
-  AstRewrite(&expr, &source_info, &handler);
+  AstRewrite(&expr, &handler);
 }
 
 TEST(AstCrawlerTest, CheckCrawlIdent) {
-  SourceInfo source_info;
   MockAstRewriter handler;
 
   Expr expr;
   auto& ident_expr = expr.mutable_ident_expr();
 
-  EXPECT_CALL(handler, PostVisitIdent(&ident_expr, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitIdent(&ident_expr, &expr)).Times(1);
 
-  AstRewrite(&expr, &source_info, &handler);
+  AstRewrite(&expr, &handler);
 }
 
 // Test handling of Select node when operand is not set.
 TEST(AstCrawlerTest, CheckCrawlSelectNotCrashingPostVisitAbsentOperand) {
-  SourceInfo source_info;
   MockAstRewriter handler;
 
   Expr expr;
   auto& select_expr = expr.mutable_select_expr();
 
   // Lowest level entry will be called first
-  EXPECT_CALL(handler, PostVisitSelect(&select_expr, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitSelect(&select_expr, &expr)).Times(1);
 
-  AstRewrite(&expr, &source_info, &handler);
+  AstRewrite(&expr, &handler);
 }
 
 // Test handling of Select node
 TEST(AstCrawlerTest, CheckCrawlSelect) {
-  SourceInfo source_info;
   MockAstRewriter handler;
 
   Expr expr;
@@ -179,15 +154,14 @@ TEST(AstCrawlerTest, CheckCrawlSelect) {
   testing::InSequence seq;
 
   // Lowest level entry will be called first
-  EXPECT_CALL(handler, PostVisitIdent(&ident_expr, &operand, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitSelect(&select_expr, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitIdent(&ident_expr, &operand)).Times(1);
+  EXPECT_CALL(handler, PostVisitSelect(&select_expr, &expr)).Times(1);
 
-  AstRewrite(&expr, &source_info, &handler);
+  AstRewrite(&expr, &handler);
 }
 
 // Test handling of Call node without receiver
 TEST(AstCrawlerTest, CheckCrawlCallNoReceiver) {
-  SourceInfo source_info;
   MockAstRewriter handler;
 
   // <call>(<const>, <ident>)
@@ -202,29 +176,28 @@ TEST(AstCrawlerTest, CheckCrawlCallNoReceiver) {
   testing::InSequence seq;
 
   // Lowest level entry will be called first
-  EXPECT_CALL(handler, PreVisitCall(&call_expr, &expr, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitTarget(_, _)).Times(0);
+  EXPECT_CALL(handler, PreVisitCall(&call_expr, &expr)).Times(1);
+  EXPECT_CALL(handler, PostVisitTarget(_)).Times(0);
 
   // Arg0
-  EXPECT_CALL(handler, PostVisitConst(&const_expr, &arg0, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitExpr(&arg0, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitArg(0, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitConst(&const_expr, &arg0)).Times(1);
+  EXPECT_CALL(handler, PostVisitExpr(&arg0)).Times(1);
+  EXPECT_CALL(handler, PostVisitArg(0, &expr)).Times(1);
 
   // Arg1
-  EXPECT_CALL(handler, PostVisitIdent(&ident_expr, &arg1, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitExpr(&arg1, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitArg(1, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitIdent(&ident_expr, &arg1)).Times(1);
+  EXPECT_CALL(handler, PostVisitExpr(&arg1)).Times(1);
+  EXPECT_CALL(handler, PostVisitArg(1, &expr)).Times(1);
 
   // Back to call
-  EXPECT_CALL(handler, PostVisitCall(&call_expr, &expr, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitExpr(&expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitCall(&call_expr, &expr)).Times(1);
+  EXPECT_CALL(handler, PostVisitExpr(&expr)).Times(1);
 
-  AstRewrite(&expr, &source_info, &handler);
+  AstRewrite(&expr, &handler);
 }
 
 // Test handling of Call node with receiver
 TEST(AstCrawlerTest, CheckCrawlCallReceiver) {
-  SourceInfo source_info;
   MockAstRewriter handler;
 
   // <ident>.<call>(<const>, <ident>)
@@ -241,33 +214,32 @@ TEST(AstCrawlerTest, CheckCrawlCallReceiver) {
   testing::InSequence seq;
 
   // Lowest level entry will be called first
-  EXPECT_CALL(handler, PreVisitCall(&call_expr, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PreVisitCall(&call_expr, &expr)).Times(1);
 
   // Target
-  EXPECT_CALL(handler, PostVisitIdent(&target_ident, &target, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitExpr(&target, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitTarget(&expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitIdent(&target_ident, &target)).Times(1);
+  EXPECT_CALL(handler, PostVisitExpr(&target)).Times(1);
+  EXPECT_CALL(handler, PostVisitTarget(&expr)).Times(1);
 
   // Arg0
-  EXPECT_CALL(handler, PostVisitConst(&const_expr, &arg0, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitExpr(&arg0, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitArg(0, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitConst(&const_expr, &arg0)).Times(1);
+  EXPECT_CALL(handler, PostVisitExpr(&arg0)).Times(1);
+  EXPECT_CALL(handler, PostVisitArg(0, &expr)).Times(1);
 
   // Arg1
-  EXPECT_CALL(handler, PostVisitIdent(&ident_expr, &arg1, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitExpr(&arg1, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitArg(1, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitIdent(&ident_expr, &arg1)).Times(1);
+  EXPECT_CALL(handler, PostVisitExpr(&arg1)).Times(1);
+  EXPECT_CALL(handler, PostVisitArg(1, &expr)).Times(1);
 
   // Back to call
-  EXPECT_CALL(handler, PostVisitCall(&call_expr, &expr, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitExpr(&expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitCall(&call_expr, &expr)).Times(1);
+  EXPECT_CALL(handler, PostVisitExpr(&expr)).Times(1);
 
-  AstRewrite(&expr, &source_info, &handler);
+  AstRewrite(&expr, &handler);
 }
 
 // Test handling of Comprehension node
 TEST(AstCrawlerTest, CheckCrawlComprehension) {
-  SourceInfo source_info;
   MockAstRewriter handler;
 
   Expr expr;
@@ -286,66 +258,62 @@ TEST(AstCrawlerTest, CheckCrawlComprehension) {
   testing::InSequence seq;
 
   // Lowest level entry will be called first
-  EXPECT_CALL(handler, PreVisitComprehension(&c, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PreVisitComprehension(&c, &expr)).Times(1);
 
-  EXPECT_CALL(handler, PreVisitComprehensionSubexpression(&iter_range, &c,
-                                                          ITER_RANGE, _))
+  EXPECT_CALL(handler,
+              PreVisitComprehensionSubexpression(&iter_range, &c, ITER_RANGE))
       .Times(1);
-  EXPECT_CALL(handler, PostVisitConst(&iter_range_expr, &iter_range, _))
-      .Times(1);
-  EXPECT_CALL(handler, PostVisitComprehensionSubexpression(&iter_range, &c,
-                                                           ITER_RANGE, _))
+  EXPECT_CALL(handler, PostVisitConst(&iter_range_expr, &iter_range)).Times(1);
+  EXPECT_CALL(handler,
+              PostVisitComprehensionSubexpression(&iter_range, &c, ITER_RANGE))
       .Times(1);
 
   // ACCU_INIT
   EXPECT_CALL(handler,
-              PreVisitComprehensionSubexpression(&accu_init, &c, ACCU_INIT, _))
+              PreVisitComprehensionSubexpression(&accu_init, &c, ACCU_INIT))
       .Times(1);
-  EXPECT_CALL(handler, PostVisitIdent(&accu_init_expr, &accu_init, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitIdent(&accu_init_expr, &accu_init)).Times(1);
   EXPECT_CALL(handler,
-              PostVisitComprehensionSubexpression(&accu_init, &c, ACCU_INIT, _))
+              PostVisitComprehensionSubexpression(&accu_init, &c, ACCU_INIT))
       .Times(1);
 
   // LOOP CONDITION
   EXPECT_CALL(handler, PreVisitComprehensionSubexpression(&loop_condition, &c,
-                                                          LOOP_CONDITION, _))
+                                                          LOOP_CONDITION))
       .Times(1);
-  EXPECT_CALL(handler, PostVisitConst(&loop_condition_expr, &loop_condition, _))
+  EXPECT_CALL(handler, PostVisitConst(&loop_condition_expr, &loop_condition))
       .Times(1);
   EXPECT_CALL(handler, PostVisitComprehensionSubexpression(&loop_condition, &c,
-                                                           LOOP_CONDITION, _))
+                                                           LOOP_CONDITION))
       .Times(1);
 
   // LOOP STEP
   EXPECT_CALL(handler,
-              PreVisitComprehensionSubexpression(&loop_step, &c, LOOP_STEP, _))
+              PreVisitComprehensionSubexpression(&loop_step, &c, LOOP_STEP))
       .Times(1);
-  EXPECT_CALL(handler, PostVisitIdent(&loop_step_expr, &loop_step, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitIdent(&loop_step_expr, &loop_step)).Times(1);
   EXPECT_CALL(handler,
-              PostVisitComprehensionSubexpression(&loop_step, &c, LOOP_STEP, _))
+              PostVisitComprehensionSubexpression(&loop_step, &c, LOOP_STEP))
       .Times(1);
 
   // RESULT
-  EXPECT_CALL(handler,
-              PreVisitComprehensionSubexpression(&result, &c, RESULT, _))
+  EXPECT_CALL(handler, PreVisitComprehensionSubexpression(&result, &c, RESULT))
       .Times(1);
 
-  EXPECT_CALL(handler, PostVisitConst(&result_expr, &result, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitConst(&result_expr, &result)).Times(1);
 
-  EXPECT_CALL(handler,
-              PostVisitComprehensionSubexpression(&result, &c, RESULT, _))
+  EXPECT_CALL(handler, PostVisitComprehensionSubexpression(&result, &c, RESULT))
       .Times(1);
 
-  EXPECT_CALL(handler, PostVisitComprehension(&c, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitComprehension(&c, &expr)).Times(1);
 
   RewriteTraversalOptions opts;
   opts.use_comprehension_callbacks = true;
-  AstRewrite(&expr, &source_info, &handler, opts);
+  AstRewrite(&expr, &handler, opts);
 }
 
 // Test handling of Comprehension node
 TEST(AstCrawlerTest, CheckCrawlComprehensionLegacyCallbacks) {
-  SourceInfo source_info;
   MockAstRewriter handler;
 
   Expr expr;
@@ -364,98 +332,111 @@ TEST(AstCrawlerTest, CheckCrawlComprehensionLegacyCallbacks) {
   testing::InSequence seq;
 
   // Lowest level entry will be called first
-  EXPECT_CALL(handler, PreVisitComprehension(&c, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PreVisitComprehension(&c, &expr)).Times(1);
 
-  EXPECT_CALL(handler, PostVisitConst(&iter_range_expr, &iter_range, _))
-      .Times(1);
-  EXPECT_CALL(handler, PostVisitArg(ITER_RANGE, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitConst(&iter_range_expr, &iter_range)).Times(1);
+  EXPECT_CALL(handler, PostVisitArg(ITER_RANGE, &expr)).Times(1);
 
   // ACCU_INIT
-  EXPECT_CALL(handler, PostVisitIdent(&accu_init_expr, &accu_init, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitArg(ACCU_INIT, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitIdent(&accu_init_expr, &accu_init)).Times(1);
+  EXPECT_CALL(handler, PostVisitArg(ACCU_INIT, &expr)).Times(1);
 
   // LOOP CONDITION
-  EXPECT_CALL(handler, PostVisitConst(&loop_condition_expr, &loop_condition, _))
+  EXPECT_CALL(handler, PostVisitConst(&loop_condition_expr, &loop_condition))
       .Times(1);
-  EXPECT_CALL(handler, PostVisitArg(LOOP_CONDITION, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitArg(LOOP_CONDITION, &expr)).Times(1);
 
   // LOOP STEP
-  EXPECT_CALL(handler, PostVisitIdent(&loop_step_expr, &loop_step, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitArg(LOOP_STEP, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitIdent(&loop_step_expr, &loop_step)).Times(1);
+  EXPECT_CALL(handler, PostVisitArg(LOOP_STEP, &expr)).Times(1);
 
   // RESULT
-  EXPECT_CALL(handler, PostVisitConst(&result_expr, &result, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitArg(RESULT, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitConst(&result_expr, &result)).Times(1);
+  EXPECT_CALL(handler, PostVisitArg(RESULT, &expr)).Times(1);
 
-  EXPECT_CALL(handler, PostVisitComprehension(&c, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitComprehension(&c, &expr)).Times(1);
 
-  AstRewrite(&expr, &source_info, &handler);
+  AstRewrite(&expr, &handler);
 }
 
-// Test handling of CreateList node.
-TEST(AstCrawlerTest, CheckCreateList) {
-  SourceInfo source_info;
+// Test handling of List node.
+TEST(AstCrawlerTest, CheckList) {
   MockAstRewriter handler;
 
   Expr expr;
   auto& list_expr = expr.mutable_list_expr();
   list_expr.mutable_elements().reserve(2);
-  auto& arg0 = list_expr.mutable_elements().emplace_back();
+  auto& arg0 = list_expr.mutable_elements().emplace_back().mutable_expr();
   auto& const_expr = arg0.mutable_const_expr();
-  auto& arg1 = list_expr.mutable_elements().emplace_back();
+  auto& arg1 = list_expr.mutable_elements().emplace_back().mutable_expr();
   auto& ident_expr = arg1.mutable_ident_expr();
 
   testing::InSequence seq;
 
-  EXPECT_CALL(handler, PostVisitConst(&const_expr, &arg0, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitIdent(&ident_expr, &arg1, _)).Times(1);
-  EXPECT_CALL(handler, PostVisitCreateList(&list_expr, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitConst(&const_expr, &arg0)).Times(1);
+  EXPECT_CALL(handler, PostVisitIdent(&ident_expr, &arg1)).Times(1);
+  EXPECT_CALL(handler, PostVisitList(&list_expr, &expr)).Times(1);
 
-  AstRewrite(&expr, &source_info, &handler);
+  AstRewrite(&expr, &handler);
 }
 
-// Test handling of CreateStruct node.
-TEST(AstCrawlerTest, CheckCreateStruct) {
-  SourceInfo source_info;
+// Test handling of Struct node.
+TEST(AstCrawlerTest, CheckStruct) {
   MockAstRewriter handler;
 
   Expr expr;
   auto& struct_expr = expr.mutable_struct_expr();
-  auto& entry0 = struct_expr.mutable_entries().emplace_back();
+  auto& entry0 = struct_expr.mutable_fields().emplace_back();
 
-  auto& key = entry0.mutable_map_key().mutable_const_expr();
   auto& value = entry0.mutable_value().mutable_ident_expr();
 
   testing::InSequence seq;
 
-  EXPECT_CALL(handler, PostVisitConst(&key, &entry0.map_key(), _)).Times(1);
-  EXPECT_CALL(handler, PostVisitIdent(&value, &entry0.value(), _)).Times(1);
-  EXPECT_CALL(handler, PostVisitCreateStruct(&struct_expr, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitIdent(&value, &entry0.value())).Times(1);
+  EXPECT_CALL(handler, PostVisitStruct(&struct_expr, &expr)).Times(1);
 
-  AstRewrite(&expr, &source_info, &handler);
+  AstRewrite(&expr, &handler);
+}
+
+// Test handling of Map node.
+TEST(AstCrawlerTest, CheckMap) {
+  MockAstRewriter handler;
+
+  Expr expr;
+  auto& map_expr = expr.mutable_map_expr();
+  auto& entry0 = map_expr.mutable_entries().emplace_back();
+
+  auto& key = entry0.mutable_key().mutable_const_expr();
+  auto& value = entry0.mutable_value().mutable_ident_expr();
+
+  testing::InSequence seq;
+
+  EXPECT_CALL(handler, PostVisitConst(&key, &entry0.key())).Times(1);
+  EXPECT_CALL(handler, PostVisitIdent(&value, &entry0.value())).Times(1);
+  EXPECT_CALL(handler, PostVisitMap(&map_expr, &expr)).Times(1);
+
+  AstRewrite(&expr, &handler);
 }
 
 // Test generic Expr handlers.
 TEST(AstCrawlerTest, CheckExprHandlers) {
-  SourceInfo source_info;
   MockAstRewriter handler;
 
   Expr expr;
-  auto& struct_expr = expr.mutable_struct_expr();
-  auto& entry0 = struct_expr.mutable_entries().emplace_back();
+  auto& map_expr = expr.mutable_map_expr();
+  auto& entry0 = map_expr.mutable_entries().emplace_back();
 
-  entry0.mutable_map_key().mutable_const_expr();
+  entry0.mutable_key().mutable_const_expr();
   entry0.mutable_value().mutable_ident_expr();
 
-  EXPECT_CALL(handler, PreVisitExpr(_, _)).Times(3);
-  EXPECT_CALL(handler, PostVisitExpr(_, _)).Times(3);
+  EXPECT_CALL(handler, PreVisitExpr(_)).Times(3);
+  EXPECT_CALL(handler, PostVisitExpr(_)).Times(3);
 
-  AstRewrite(&expr, &source_info, &handler);
+  AstRewrite(&expr, &handler);
 }
 
 // Test generic Expr handlers.
 TEST(AstCrawlerTest, CheckExprRewriteHandlers) {
-  SourceInfo source_info;
   MockAstRewriter handler;
 
   Expr select_expr;
@@ -469,36 +450,36 @@ TEST(AstCrawlerTest, CheckExprRewriteHandlers) {
     InSequence sequence;
     EXPECT_CALL(handler,
                 TraversalStackUpdate(testing::ElementsAre(&select_expr)));
-    EXPECT_CALL(handler, PreVisitRewrite(&select_expr, _));
+    EXPECT_CALL(handler, PreVisitRewrite(&select_expr));
 
     EXPECT_CALL(handler, TraversalStackUpdate(testing::ElementsAre(
                              &select_expr, &inner_select_expr)));
-    EXPECT_CALL(handler, PreVisitRewrite(&inner_select_expr, _));
+    EXPECT_CALL(handler, PreVisitRewrite(&inner_select_expr));
 
     EXPECT_CALL(handler, TraversalStackUpdate(testing::ElementsAre(
                              &select_expr, &inner_select_expr, &ident)));
-    EXPECT_CALL(handler, PreVisitRewrite(&ident, _));
+    EXPECT_CALL(handler, PreVisitRewrite(&ident));
 
-    EXPECT_CALL(handler, PostVisitRewrite(&ident, _));
+    EXPECT_CALL(handler, PostVisitRewrite(&ident));
     EXPECT_CALL(handler, TraversalStackUpdate(testing::ElementsAre(
                              &select_expr, &inner_select_expr)));
 
-    EXPECT_CALL(handler, PostVisitRewrite(&inner_select_expr, _));
+    EXPECT_CALL(handler, PostVisitRewrite(&inner_select_expr));
     EXPECT_CALL(handler,
                 TraversalStackUpdate(testing::ElementsAre(&select_expr)));
 
-    EXPECT_CALL(handler, PostVisitRewrite(&select_expr, _));
+    EXPECT_CALL(handler, PostVisitRewrite(&select_expr));
     EXPECT_CALL(handler, TraversalStackUpdate(testing::IsEmpty()));
   }
 
-  EXPECT_FALSE(AstRewrite(&select_expr, &source_info, &handler));
+  EXPECT_FALSE(AstRewrite(&select_expr, &handler));
 }
 
 // Simple rewrite that replaces a select path with a dot-qualified identifier.
 class RewriterExample : public AstRewriterBase {
  public:
   RewriterExample() {}
-  bool PostVisitRewrite(Expr* expr, const SourcePosition* info) override {
+  bool PostVisitRewrite(Expr* expr) override {
     if (target_.has_value() && expr->id() == *target_) {
       expr->mutable_ident_expr().set_name("com.google.Identifier");
       return true;
@@ -506,8 +487,7 @@ class RewriterExample : public AstRewriterBase {
     return false;
   }
 
-  void PostVisitIdent(const Ident* ident, const Expr* expr,
-                      const SourcePosition* pos) override {
+  void PostVisitIdent(const IdentExpr* ident, const Expr* expr) override {
     if (path_.size() >= 3) {
       if (ident->name() == "com") {
         const Expr* p1 = path_.at(path_.size() - 2);
@@ -537,8 +517,7 @@ TEST(AstRewrite, SelectRewriteExample) {
       ConvertProtoParsedExprToNative(
           google::api::expr::parser::Parse("com.google.Identifier").value()));
   RewriterExample example;
-  ASSERT_TRUE(
-      AstRewrite(&parsed.mutable_expr(), &parsed.source_info(), &example));
+  ASSERT_TRUE(AstRewrite(&parsed.mutable_expr(), &example));
 
   google::api::expr::v1alpha1::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(
@@ -555,7 +534,7 @@ TEST(AstRewrite, SelectRewriteExample) {
 class PreRewriterExample : public AstRewriterBase {
  public:
   PreRewriterExample() {}
-  bool PreVisitRewrite(Expr* expr, const SourcePosition* info) override {
+  bool PreVisitRewrite(Expr* expr) override {
     if (expr->ident_expr().name() == "x") {
       expr->mutable_ident_expr().set_name("y");
       return true;
@@ -563,7 +542,7 @@ class PreRewriterExample : public AstRewriterBase {
     return false;
   }
 
-  bool PostVisitRewrite(Expr* expr, const SourcePosition* info) override {
+  bool PostVisitRewrite(Expr* expr) override {
     if (expr->ident_expr().name() == "y") {
       expr->mutable_ident_expr().set_name("z");
       return true;
@@ -571,8 +550,7 @@ class PreRewriterExample : public AstRewriterBase {
     return false;
   }
 
-  void PostVisitIdent(const Ident* ident, const Expr* expr,
-                      const SourcePosition* pos) override {
+  void PostVisitIdent(const IdentExpr* ident, const Expr* expr) override {
     visited_idents_.push_back(ident->name());
   }
 
@@ -589,8 +567,7 @@ TEST(AstRewrite, PreAndPostVisitExpample) {
                        ConvertProtoParsedExprToNative(
                            google::api::expr::parser::Parse("x").value()));
   PreRewriterExample visitor;
-  ASSERT_TRUE(
-      AstRewrite(&parsed.mutable_expr(), &parsed.source_info(), &visitor));
+  ASSERT_TRUE(AstRewrite(&parsed.mutable_expr(), &visitor));
 
   google::api::expr::v1alpha1::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(
@@ -605,4 +582,4 @@ TEST(AstRewrite, PreAndPostVisitExpample) {
 
 }  // namespace
 
-}  // namespace cel::ast_internal
+}  // namespace cel

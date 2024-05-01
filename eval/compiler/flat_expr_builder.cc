@@ -47,6 +47,9 @@
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "base/builtins.h"
+#include "common/ast.h"
+#include "common/ast_traverse.h"
+#include "common/ast_visitor.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -54,7 +57,6 @@
 #include "common/values/legacy_value_manager.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
-#include "eval/eval/attribute_trail.h"
 #include "eval/eval/comprehension_step.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/container_access_step.h"
@@ -72,9 +74,6 @@
 #include "eval/eval/shadowable_value_step.h"
 #include "eval/eval/ternary_step.h"
 #include "eval/eval/trace_step.h"
-#include "eval/public/ast_traverse_native.h"
-#include "eval/public/ast_visitor_native.h"
-#include "eval/public/source_position_native.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/convert_constant.h"
 #include "runtime/internal/issue_collector.h"
@@ -87,12 +86,12 @@ namespace {
 
 using ::cel::Ast;
 
+using ::cel::AstTraverse;
 using ::cel::RuntimeIssue;
 using ::cel::StringValue;
 using ::cel::Value;
 using ::cel::ValueManager;
 using ::cel::ast_internal::AstImpl;
-using ::cel::ast_internal::AstTraverse;
 using ::cel::runtime_internal::ConvertConstant;
 using ::cel::runtime_internal::IssueCollector;
 
@@ -315,7 +314,7 @@ class ComprehensionVisitor {
         accu_slot_(accu_slot) {}
 
   void PreVisit(const cel::ast_internal::Expr* expr);
-  absl::Status PostVisitArg(cel::ast_internal::ComprehensionArg arg_num,
+  absl::Status PostVisitArg(cel::ComprehensionArg arg_num,
                             const cel::ast_internal::Expr* comprehension_expr) {
     if (is_trivial_) {
       PostVisitArgTrivial(arg_num, comprehension_expr);
@@ -329,11 +328,11 @@ class ComprehensionVisitor {
   void MarkAccuInitExtracted() { accu_init_extracted_ = true; }
 
  private:
-  void PostVisitArgTrivial(cel::ast_internal::ComprehensionArg arg_num,
+  void PostVisitArgTrivial(cel::ComprehensionArg arg_num,
                            const cel::ast_internal::Expr* comprehension_expr);
 
   absl::Status PostVisitArgDefault(
-      cel::ast_internal::ComprehensionArg arg_num,
+      cel::ComprehensionArg arg_num,
       const cel::ast_internal::Expr* comprehension_expr);
 
   FlatExprVisitor* visitor_;
@@ -351,8 +350,10 @@ class ComprehensionVisitor {
 absl::flat_hash_set<int32_t> MakeOptionalIndicesSet(
     const cel::ast_internal::CreateList& create_list_expr) {
   absl::flat_hash_set<int32_t> optional_indices;
-  for (const auto& optional_index : create_list_expr.optional_indices()) {
-    optional_indices.insert(optional_index);
+  for (size_t i = 0; i < create_list_expr.elements().size(); ++i) {
+    if (create_list_expr.elements()[i].optional()) {
+      optional_indices.insert(static_cast<int32_t>(i));
+    }
   }
   return optional_indices;
 }
@@ -360,15 +361,26 @@ absl::flat_hash_set<int32_t> MakeOptionalIndicesSet(
 absl::flat_hash_set<int32_t> MakeOptionalIndicesSet(
     const cel::ast_internal::CreateStruct& create_struct_expr) {
   absl::flat_hash_set<int32_t> optional_indices;
-  for (size_t i = 0; i < create_struct_expr.entries().size(); ++i) {
-    if (create_struct_expr.entries()[i].optional_entry()) {
+  for (size_t i = 0; i < create_struct_expr.fields().size(); ++i) {
+    if (create_struct_expr.fields()[i].optional()) {
       optional_indices.insert(static_cast<int32_t>(i));
     }
   }
   return optional_indices;
 }
 
-class FlatExprVisitor : public cel::ast_internal::AstVisitor {
+absl::flat_hash_set<int32_t> MakeOptionalIndicesSet(
+    const cel::MapExpr& map_expr) {
+  absl::flat_hash_set<int32_t> optional_indices;
+  for (size_t i = 0; i < map_expr.entries().size(); ++i) {
+    if (map_expr.entries()[i].optional()) {
+      optional_indices.insert(static_cast<int32_t>(i));
+    }
+  }
+  return optional_indices;
+}
+
+class FlatExprVisitor : public cel::AstVisitor {
  public:
   FlatExprVisitor(
       const Resolver& resolver, const cel::RuntimeOptions& options,
@@ -390,10 +402,9 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
         extension_context_(extension_context),
         enable_optional_types_(enable_optional_types) {}
 
-  void PreVisitExpr(const cel::ast_internal::Expr* expr,
-                    const cel::ast_internal::SourcePosition*) override {
+  void PreVisitExpr(const cel::ast_internal::Expr* expr) override {
     ValidateOrError(
-        !absl::holds_alternative<absl::monostate>(expr->expr_kind()),
+        !absl::holds_alternative<cel::UnspecifiedExpr>(expr->kind()),
         "Invalid empty expression");
     if (!progress_status_.ok()) {
       return;
@@ -416,8 +427,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     }
   }
 
-  void PostVisitExpr(const cel::ast_internal::Expr* expr,
-                     const cel::ast_internal::SourcePosition*) override {
+  void PostVisitExpr(const cel::ast_internal::Expr* expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -453,8 +463,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   }
 
   void PostVisitConst(const cel::ast_internal::Constant* const_expr,
-                      const cel::ast_internal::Expr* expr,
-                      const cel::ast_internal::SourcePosition*) override {
+                      const cel::ast_internal::Expr* expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -518,8 +527,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   // Ident node handler.
   // Invoked after child nodes are processed.
   void PostVisitIdent(const cel::ast_internal::Ident* ident_expr,
-                      const cel::ast_internal::Expr* expr,
-                      const cel::ast_internal::SourcePosition*) override {
+                      const cel::ast_internal::Expr* expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -618,8 +626,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   }
 
   void PreVisitSelect(const cel::ast_internal::Select* select_expr,
-                      const cel::ast_internal::Expr* expr,
-                      const cel::ast_internal::SourcePosition*) override {
+                      const cel::ast_internal::Expr* expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -660,8 +667,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   // Select node handler.
   // Invoked after child nodes are processed.
   void PostVisitSelect(const cel::ast_internal::Select* select_expr,
-                       const cel::ast_internal::Expr* expr,
-                       const cel::ast_internal::SourcePosition*) override {
+                       const cel::ast_internal::Expr* expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -707,8 +713,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   // handling for short-circuiting
   // PreVisitCall is invoked before child nodes are processed.
   void PreVisitCall(const cel::ast_internal::Call* call_expr,
-                    const cel::ast_internal::Expr* expr,
-                    const cel::ast_internal::SourcePosition*) override {
+                    const cel::ast_internal::Expr* expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -957,8 +962,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
 
   // Invoked after all child nodes are processed.
   void PostVisitCall(const cel::ast_internal::Call* call_expr,
-                     const cel::ast_internal::Expr* expr,
-                     const cel::ast_internal::SourcePosition*) override {
+                     const cel::ast_internal::Expr* expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1029,8 +1033,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
 
   void PreVisitComprehension(
       const cel::ast_internal::Comprehension* comprehension,
-      const cel::ast_internal::Expr* expr,
-      const cel::ast_internal::SourcePosition*) override {
+      const cel::ast_internal::Expr* expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1098,8 +1101,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   // Invoked after all child nodes are processed.
   void PostVisitComprehension(
       const cel::ast_internal::Comprehension* comprehension_expr,
-      const cel::ast_internal::Expr* expr,
-      const cel::ast_internal::SourcePosition*) override {
+      const cel::ast_internal::Expr* expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1119,8 +1121,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   void PreVisitComprehensionSubexpression(
       const cel::ast_internal::Expr* subexpr,
       const cel::ast_internal::Comprehension* compr,
-      cel::ast_internal::ComprehensionArg comprehension_arg,
-      const cel::ast_internal::SourcePosition*) override {
+      cel::ComprehensionArg comprehension_arg) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1133,31 +1134,31 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     ComprehensionStackRecord& record = comprehension_stack_.back();
 
     switch (comprehension_arg) {
-      case cel::ast_internal::ITER_RANGE: {
+      case cel::ITER_RANGE: {
         record.in_accu_init = false;
         record.iter_var_in_scope = false;
         record.accu_var_in_scope = false;
         break;
       }
-      case cel::ast_internal::ACCU_INIT: {
+      case cel::ACCU_INIT: {
         record.in_accu_init = true;
         record.iter_var_in_scope = false;
         record.accu_var_in_scope = false;
         break;
       }
-      case cel::ast_internal::LOOP_CONDITION: {
+      case cel::LOOP_CONDITION: {
         record.in_accu_init = false;
         record.iter_var_in_scope = true;
         record.accu_var_in_scope = true;
         break;
       }
-      case cel::ast_internal::LOOP_STEP: {
+      case cel::LOOP_STEP: {
         record.in_accu_init = false;
         record.iter_var_in_scope = true;
         record.accu_var_in_scope = true;
         break;
       }
-      case cel::ast_internal::RESULT: {
+      case cel::RESULT: {
         record.in_accu_init = false;
         record.iter_var_in_scope = false;
         record.accu_var_in_scope = true;
@@ -1169,8 +1170,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   void PostVisitComprehensionSubexpression(
       const cel::ast_internal::Expr* subexpr,
       const cel::ast_internal::Comprehension* compr,
-      cel::ast_internal::ComprehensionArg comprehension_arg,
-      const cel::ast_internal::SourcePosition*) override {
+      cel::ComprehensionArg comprehension_arg) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1185,8 +1185,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   }
 
   // Invoked after each argument node processed.
-  void PostVisitArg(int arg_num, const cel::ast_internal::Expr* expr,
-                    const cel::ast_internal::SourcePosition*) override {
+  void PostVisitArg(int arg_num, const cel::ast_internal::Expr* expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1196,8 +1195,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     }
   }
 
-  void PostVisitTarget(const cel::ast_internal::Expr* expr,
-                       const cel::ast_internal::SourcePosition*) override {
+  void PostVisitTarget(const cel::ast_internal::Expr* expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1209,9 +1207,8 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
 
   // CreateList node handler.
   // Invoked after child nodes are processed.
-  void PostVisitCreateList(const cel::ast_internal::CreateList* list_expr,
-                           const cel::ast_internal::Expr* expr,
-                           const cel::ast_internal::SourcePosition*) override {
+  void PostVisitList(const cel::ast_internal::CreateList* list_expr,
+                     const cel::ast_internal::Expr* expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1246,43 +1243,12 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
 
   // CreateStruct node handler.
   // Invoked after child nodes are processed.
-  void PostVisitCreateStruct(
-      const cel::ast_internal::CreateStruct* struct_expr,
-      const cel::ast_internal::Expr* expr,
-      const cel::ast_internal::SourcePosition*) override {
+  void PostVisitStruct(const cel::ast_internal::CreateStruct* struct_expr,
+                       const cel::ast_internal::Expr* expr) override {
     if (!progress_status_.ok()) {
       return;
     }
 
-    // If the message name is empty, this signals that a map should be created.
-    const auto& message_name = struct_expr->message_name();
-    if (message_name.empty()) {
-      for (const auto& entry : struct_expr->entries()) {
-        ValidateOrError(entry.has_map_key(), "Map entry missing key");
-        ValidateOrError(entry.has_value(), "Map entry missing value");
-      }
-      auto depth = RecursionEligible();
-      if (depth.has_value()) {
-        auto deps = ExtractRecursiveDependencies();
-        if (deps.size() != 2 * struct_expr->entries().size()) {
-          SetProgressStatusError(absl::InternalError(
-              "Unexpected number of plan elements for CreateStruct expr"));
-          return;
-        }
-        auto step = CreateDirectCreateMapStep(
-            std::move(deps), MakeOptionalIndicesSet(*struct_expr), expr->id());
-        SetRecursiveStep(std::move(step), *depth + 1);
-        return;
-      }
-      AddStep(CreateCreateStructStepForMap(struct_expr->entries().size(),
-                                           MakeOptionalIndicesSet(*struct_expr),
-                                           expr->id()));
-      return;
-    }
-
-    // If the message name is not empty, then the message name must be resolved
-    // within the container, and if a descriptor is found, then a proto message
-    // creation step will be created.
     auto status_or_resolved_fields =
         ResolveCreateStructFields(*struct_expr, expr->id());
     if (!status_or_resolved_fields.ok()) {
@@ -1297,7 +1263,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     auto depth = RecursionEligible();
     if (depth.has_value()) {
       auto deps = ExtractRecursiveDependencies();
-      if (deps.size() != struct_expr->entries().size()) {
+      if (deps.size() != struct_expr->fields().size()) {
         SetProgressStatusError(absl::InternalError(
             "Unexpected number of plan elements for CreateStruct expr"));
         return;
@@ -1312,6 +1278,30 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     AddStep(CreateCreateStructStep(std::move(resolved_name), std::move(fields),
                                    MakeOptionalIndicesSet(*struct_expr),
                                    expr->id()));
+  }
+
+  void PostVisitMap(const cel::MapExpr* map_expr,
+                    const cel::Expr* expr) override {
+    for (const auto& entry : map_expr->entries()) {
+      ValidateOrError(entry.has_key(), "Map entry missing key");
+      ValidateOrError(entry.has_value(), "Map entry missing value");
+    }
+    auto depth = RecursionEligible();
+    if (depth.has_value()) {
+      auto deps = ExtractRecursiveDependencies();
+      if (deps.size() != 2 * map_expr->entries().size()) {
+        SetProgressStatusError(absl::InternalError(
+            "Unexpected number of plan elements for CreateStruct expr"));
+        return;
+      }
+      auto step = CreateDirectCreateMapStep(
+          std::move(deps), MakeOptionalIndicesSet(*map_expr), expr->id());
+      SetRecursiveStep(std::move(step), *depth + 1);
+      return;
+    }
+    AddStep(CreateCreateStructStepForMap(map_expr->entries().size(),
+                                         MakeOptionalIndicesSet(*map_expr),
+                                         expr->id()));
   }
 
   absl::Status progress_status() const { return progress_status_; }
@@ -1511,7 +1501,7 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
   ResolveCreateStructFields(
       const cel::ast_internal::CreateStruct& create_struct_expr,
       int64_t expr_id) {
-    absl::string_view ast_name = create_struct_expr.message_name();
+    absl::string_view ast_name = create_struct_expr.name();
 
     absl::optional<std::pair<std::string, cel::Type>> type;
     CEL_ASSIGN_OR_RETURN(type, resolver_.FindType(ast_name, expr_id));
@@ -1524,17 +1514,23 @@ class FlatExprVisitor : public cel::ast_internal::AstVisitor {
     std::string resolved_name = std::move(type).value().first;
 
     std::vector<std::string> fields;
-    fields.reserve(create_struct_expr.entries().size());
-    for (const auto& entry : create_struct_expr.entries()) {
-      CEL_ASSIGN_OR_RETURN(auto field,
-                           value_factory().FindStructTypeFieldByName(
-                               resolved_name, entry.field_key()));
+    fields.reserve(create_struct_expr.fields().size());
+    for (const auto& entry : create_struct_expr.fields()) {
+      if (entry.name().empty()) {
+        return absl::InvalidArgumentError("Struct field missing name");
+      }
+      if (!entry.has_value()) {
+        return absl::InvalidArgumentError("Struct field missing value");
+      }
+      CEL_ASSIGN_OR_RETURN(
+          auto field, value_factory().FindStructTypeFieldByName(resolved_name,
+                                                                entry.name()));
       if (!field.has_value()) {
         return absl::InvalidArgumentError(
-            absl::StrCat("Invalid message creation: field '", entry.field_key(),
+            absl::StrCat("Invalid message creation: field '", entry.name(),
                          "' not found in '", resolved_name, "'"));
       }
-      fields.push_back(entry.field_key());
+      fields.push_back(entry.name());
     }
 
     return std::make_pair(std::move(resolved_name), std::move(fields));
@@ -1771,30 +1767,29 @@ void ComprehensionVisitor::PreVisit(const cel::ast_internal::Expr* expr) {
 }
 
 absl::Status ComprehensionVisitor::PostVisitArgDefault(
-    cel::ast_internal::ComprehensionArg arg_num,
-    const cel::ast_internal::Expr* expr) {
+    cel::ComprehensionArg arg_num, const cel::ast_internal::Expr* expr) {
   switch (arg_num) {
-    case cel::ast_internal::ITER_RANGE: {
+    case cel::ITER_RANGE: {
       // post process iter_range to list its keys if it's a map
       // and initialize the loop index.
       visitor_->AddStep(CreateComprehensionInitStep(expr->id()));
       break;
     }
-    case cel::ast_internal::ACCU_INIT: {
+    case cel::ACCU_INIT: {
       next_step_pos_ = visitor_->GetCurrentIndex();
       next_step_ =
           new ComprehensionNextStep(iter_slot_, accu_slot_, expr->id());
       visitor_->AddStep(std::unique_ptr<ExpressionStep>(next_step_));
       break;
     }
-    case cel::ast_internal::LOOP_CONDITION: {
+    case cel::LOOP_CONDITION: {
       cond_step_pos_ = visitor_->GetCurrentIndex();
       cond_step_ = new ComprehensionCondStep(iter_slot_, accu_slot_,
                                              short_circuiting_, expr->id());
       visitor_->AddStep(std::unique_ptr<ExpressionStep>(cond_step_));
       break;
     }
-    case cel::ast_internal::LOOP_STEP: {
+    case cel::LOOP_STEP: {
       auto jump_to_next = CreateJumpStep({}, expr->id());
       Jump jump_helper(visitor_->GetCurrentIndex(), jump_to_next->get());
       visitor_->AddStep(std::move(jump_to_next));
@@ -1814,7 +1809,7 @@ absl::Status ComprehensionVisitor::PostVisitArgDefault(
       next_step_->set_jump_offset(jump_from_next);
       break;
     }
-    case cel::ast_internal::RESULT: {
+    case cel::RESULT: {
       visitor_->AddStep(CreateComprehensionFinishStep(accu_slot_, expr->id()));
 
       CEL_ASSIGN_OR_RETURN(
@@ -1833,25 +1828,24 @@ absl::Status ComprehensionVisitor::PostVisitArgDefault(
 }
 
 void ComprehensionVisitor::PostVisitArgTrivial(
-    cel::ast_internal::ComprehensionArg arg_num,
-    const cel::ast_internal::Expr* expr) {
+    cel::ComprehensionArg arg_num, const cel::ast_internal::Expr* expr) {
   switch (arg_num) {
-    case cel::ast_internal::ITER_RANGE: {
+    case cel::ITER_RANGE: {
       break;
     }
-    case cel::ast_internal::ACCU_INIT: {
+    case cel::ACCU_INIT: {
       if (!accu_init_extracted_) {
         visitor_->AddStep(CreateAssignSlotAndPopStep(accu_slot_));
       }
       break;
     }
-    case cel::ast_internal::LOOP_CONDITION: {
+    case cel::LOOP_CONDITION: {
       break;
     }
-    case cel::ast_internal::LOOP_STEP: {
+    case cel::LOOP_STEP: {
       break;
     }
-    case cel::ast_internal::RESULT: {
+    case cel::RESULT: {
       visitor_->AddStep(CreateClearSlotStep(accu_slot_, expr->id()));
       break;
     }
@@ -1939,9 +1933,9 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
                           issue_collector, program_builder, extension_context,
                           enable_optional_types_);
 
-  cel::ast_internal::TraversalOptions opts;
+  cel::TraversalOptions opts;
   opts.use_comprehension_callbacks = true;
-  AstTraverse(&ast_impl.root_expr(), &ast_impl.source_info(), &visitor, opts);
+  AstTraverse(&ast_impl.root_expr(), &visitor, opts);
 
   if (!visitor.progress_status().ok()) {
     return visitor.progress_status();

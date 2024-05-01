@@ -12,25 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "eval/public/ast_rewrite_native.h"
+#include "common/ast_rewrite.h"
 
 #include <stack>
 #include <vector>
 
 #include "absl/log/absl_log.h"
+#include "absl/types/span.h"
 #include "absl/types/variant.h"
-#include "eval/public/ast_visitor_native.h"
-#include "eval/public/source_position_native.h"
+#include "common/ast.h"
+#include "common/ast_visitor.h"
+#include "common/constant.h"
 
-namespace cel::ast_internal {
+namespace cel {
 
 namespace {
 
 struct ArgRecord {
   // Not null.
   Expr* expr;
-  // Not null.
-  const SourceInfo* source_info;
 
   // For records that are direct arguments to call, we need to call
   // the CallArg visitor immediately after the argument is evaluated.
@@ -41,10 +41,8 @@ struct ArgRecord {
 struct ComprehensionRecord {
   // Not null.
   Expr* expr;
-  // Not null.
-  const SourceInfo* source_info;
 
-  const Comprehension* comprehension;
+  const ComprehensionExpr* comprehension;
   const Expr* comprehension_expr;
   ComprehensionArg comprehension_arg;
   bool use_comprehension_callbacks;
@@ -53,8 +51,6 @@ struct ComprehensionRecord {
 struct ExprRecord {
   // Not null.
   Expr* expr;
-  // Not null.
-  const SourceInfo* source_info;
 };
 
 using StackRecordKind =
@@ -62,23 +58,20 @@ using StackRecordKind =
 
 struct StackRecord {
  public:
-  ABSL_ATTRIBUTE_UNUSED static constexpr int kNotCallArg = -1;
   static constexpr int kTarget = -2;
 
-  StackRecord(Expr* e, const SourceInfo* info) {
+  explicit StackRecord(Expr* e) {
     ExprRecord record;
     record.expr = e;
-    record.source_info = info;
     record_variant = record;
   }
 
-  StackRecord(Expr* e, const SourceInfo* info, Comprehension* comprehension,
+  StackRecord(Expr* e, ComprehensionExpr* comprehension,
               Expr* comprehension_expr, ComprehensionArg comprehension_arg,
               bool use_comprehension_callbacks) {
     if (use_comprehension_callbacks) {
       ComprehensionRecord record;
       record.expr = e;
-      record.source_info = info;
       record.comprehension = comprehension;
       record.comprehension_expr = comprehension_expr;
       record.comprehension_arg = comprehension_arg;
@@ -88,26 +81,20 @@ struct StackRecord {
     }
     ArgRecord record;
     record.expr = e;
-    record.source_info = info;
     record.calling_expr = comprehension_expr;
     record.call_arg = comprehension_arg;
     record_variant = record;
   }
 
-  StackRecord(Expr* e, const SourceInfo* info, const Expr* call, int argnum) {
+  StackRecord(Expr* e, const Expr* call, int argnum) {
     ArgRecord record;
     record.expr = e;
-    record.source_info = info;
     record.calling_expr = call;
     record.call_arg = argnum;
     record_variant = record;
   }
 
   Expr* expr() const { return absl::get<ExprRecord>(record_variant).expr; }
-
-  const SourceInfo* source_info() const {
-    return absl::get<ExprRecord>(record_variant).source_info;
-  }
 
   bool IsExprRecord() const {
     return absl::holds_alternative<ExprRecord>(record_variant);
@@ -119,38 +106,39 @@ struct StackRecord {
 
 struct PreVisitor {
   void operator()(const ExprRecord& record) {
-    SourcePosition position(record.expr->id(), record.source_info);
     struct {
       AstVisitor* visitor;
       const Expr* expr;
-      SourcePosition* position;
       void operator()(const Constant&) {
         // No pre-visit action.
       }
-      void operator()(const Ident&) {
+      void operator()(const IdentExpr&) {
         // No pre-visit action.
       }
-      void operator()(const Select& select) {
-        visitor->PreVisitSelect(&select, expr, position);
+      void operator()(const SelectExpr& select) {
+        visitor->PreVisitSelect(&select, expr);
       }
-      void operator()(const Call& call) {
-        visitor->PreVisitCall(&call, expr, position);
+      void operator()(const CallExpr& call) {
+        visitor->PreVisitCall(&call, expr);
       }
-      void operator()(const CreateList&) {
+      void operator()(const ListExpr&) {
         // No pre-visit action.
       }
-      void operator()(const CreateStruct&) {
+      void operator()(const StructExpr&) {
         // No pre-visit action.
       }
-      void operator()(const Comprehension& comprehension) {
-        visitor->PreVisitComprehension(&comprehension, expr, position);
-      }
-      void operator()(absl::monostate) {
+      void operator()(const MapExpr&) {
         // No pre-visit action.
       }
-    } handler{visitor, record.expr, &position};
-    visitor->PreVisitExpr(record.expr, &position);
-    absl::visit(handler, record.expr->expr_kind());
+      void operator()(const ComprehensionExpr& comprehension) {
+        visitor->PreVisitComprehension(&comprehension, expr);
+      }
+      void operator()(const UnspecifiedExpr&) {
+        // No pre-visit action.
+      }
+    } handler{visitor, record.expr};
+    visitor->PreVisitExpr(record.expr);
+    absl::visit(handler, record.expr->kind());
   }
 
   // Do nothing for Arg variant.
@@ -158,9 +146,8 @@ struct PreVisitor {
 
   void operator()(const ComprehensionRecord& record) {
     Expr* expr = record.expr;
-    const SourcePosition position(expr->id(), record.source_info);
-    visitor->PreVisitComprehensionSubexpression(
-        expr, record.comprehension, record.comprehension_arg, &position);
+    visitor->PreVisitComprehensionSubexpression(expr, record.comprehension,
+                                                record.comprehension_arg);
   }
 
   AstVisitor* visitor;
@@ -172,56 +159,54 @@ void PreVisit(const StackRecord& record, AstVisitor* visitor) {
 
 struct PostVisitor {
   void operator()(const ExprRecord& record) {
-    const SourcePosition position(record.expr->id(), record.source_info);
     struct {
       AstVisitor* visitor;
       const Expr* expr;
-      const SourcePosition* position;
       void operator()(const Constant& constant) {
-        visitor->PostVisitConst(&constant, expr, position);
+        visitor->PostVisitConst(&constant, expr);
       }
-      void operator()(const Ident& ident) {
-        visitor->PostVisitIdent(&ident, expr, position);
+      void operator()(const IdentExpr& ident) {
+        visitor->PostVisitIdent(&ident, expr);
       }
-      void operator()(const Select& select) {
-        visitor->PostVisitSelect(&select, expr, position);
+      void operator()(const SelectExpr& select) {
+        visitor->PostVisitSelect(&select, expr);
       }
-      void operator()(const Call& call) {
-        visitor->PostVisitCall(&call, expr, position);
+      void operator()(const CallExpr& call) {
+        visitor->PostVisitCall(&call, expr);
       }
-      void operator()(const CreateList& create_list) {
-        visitor->PostVisitCreateList(&create_list, expr, position);
+      void operator()(const ListExpr& create_list) {
+        visitor->PostVisitList(&create_list, expr);
       }
-      void operator()(const CreateStruct& create_struct) {
-        visitor->PostVisitCreateStruct(&create_struct, expr, position);
+      void operator()(const StructExpr& create_struct) {
+        visitor->PostVisitStruct(&create_struct, expr);
       }
-      void operator()(const Comprehension& comprehension) {
-        visitor->PostVisitComprehension(&comprehension, expr, position);
+      void operator()(const MapExpr& map_expr) {
+        visitor->PostVisitMap(&map_expr, expr);
       }
-      void operator()(absl::monostate) {
+      void operator()(const ComprehensionExpr& comprehension) {
+        visitor->PostVisitComprehension(&comprehension, expr);
+      }
+      void operator()(const UnspecifiedExpr&) {
         ABSL_LOG(ERROR) << "Unsupported Expr kind";
       }
-    } handler{visitor, record.expr, &position};
-    absl::visit(handler, record.expr->expr_kind());
+    } handler{visitor, record.expr};
+    absl::visit(handler, record.expr->kind());
 
-    visitor->PostVisitExpr(record.expr, &position);
+    visitor->PostVisitExpr(record.expr);
   }
 
   void operator()(const ArgRecord& record) {
-    Expr* expr = record.expr;
-    const SourcePosition position(expr->id(), record.source_info);
     if (record.call_arg == StackRecord::kTarget) {
-      visitor->PostVisitTarget(record.calling_expr, &position);
+      visitor->PostVisitTarget(record.calling_expr);
     } else {
-      visitor->PostVisitArg(record.call_arg, record.calling_expr, &position);
+      visitor->PostVisitArg(record.call_arg, record.calling_expr);
     }
   }
 
   void operator()(const ComprehensionRecord& record) {
     Expr* expr = record.expr;
-    const SourcePosition position(expr->id(), record.source_info);
-    visitor->PostVisitComprehensionSubexpression(
-        expr, record.comprehension, record.comprehension_arg, &position);
+    visitor->PostVisitComprehensionSubexpression(expr, record.comprehension,
+                                                 record.comprehension_arg);
   }
 
   AstVisitor* visitor;
@@ -231,68 +216,76 @@ void PostVisit(const StackRecord& record, AstVisitor* visitor) {
   absl::visit(PostVisitor{visitor}, record.record_variant);
 }
 
-void PushSelectDeps(Select* select_expr, const SourceInfo* source_info,
-                    std::stack<StackRecord>* stack) {
+void PushSelectDeps(SelectExpr* select_expr, std::stack<StackRecord>* stack) {
   if (select_expr->has_operand()) {
-    stack->push(StackRecord(&select_expr->mutable_operand(), source_info));
+    stack->push(StackRecord(&select_expr->mutable_operand()));
   }
 }
 
-void PushCallDeps(Call* call_expr, Expr* expr, const SourceInfo* source_info,
+void PushCallDeps(CallExpr* call_expr, Expr* expr,
                   std::stack<StackRecord>* stack) {
   const int arg_size = call_expr->args().size();
   // Our contract is that we visit arguments in order.  To do that, we need
   // to push them onto the stack in reverse order.
   for (int i = arg_size - 1; i >= 0; --i) {
-    stack->push(
-        StackRecord(&call_expr->mutable_args()[i], source_info, expr, i));
+    stack->push(StackRecord(&call_expr->mutable_args()[i], expr, i));
   }
   // Are we receiver-style?
   if (call_expr->has_target()) {
-    stack->push(StackRecord(&call_expr->mutable_target(), source_info, expr,
-                            StackRecord::kTarget));
+    stack->push(
+        StackRecord(&call_expr->mutable_target(), expr, StackRecord::kTarget));
   }
 }
 
-void PushListDeps(CreateList* list_expr, const SourceInfo* source_info,
-                  std::stack<StackRecord>* stack) {
+void PushListDeps(ListExpr* list_expr, std::stack<StackRecord>* stack) {
   auto& elements = list_expr->mutable_elements();
   for (auto it = elements.rbegin(); it != elements.rend(); ++it) {
     auto& element = *it;
-    stack->push(StackRecord(&element, source_info));
+    stack->push(StackRecord(&element.mutable_expr()));
   }
 }
 
-void PushStructDeps(CreateStruct* struct_expr, const SourceInfo* source_info,
-                    std::stack<StackRecord>* stack) {
+void PushStructDeps(StructExpr* struct_expr, std::stack<StackRecord>* stack) {
+  auto& entries = struct_expr->mutable_fields();
+  for (auto it = entries.rbegin(); it != entries.rend(); ++it) {
+    auto& entry = *it;
+    // The contract is to visit key, then value.  So put them on the stack
+    // in the opposite order.
+    if (entry.has_value()) {
+      stack->push(StackRecord(&entry.mutable_value()));
+    }
+  }
+}
+
+void PushMapDeps(MapExpr* struct_expr, std::stack<StackRecord>* stack) {
   auto& entries = struct_expr->mutable_entries();
   for (auto it = entries.rbegin(); it != entries.rend(); ++it) {
     auto& entry = *it;
     // The contract is to visit key, then value.  So put them on the stack
     // in the opposite order.
     if (entry.has_value()) {
-      stack->push(StackRecord(&entry.mutable_value(), source_info));
+      stack->push(StackRecord(&entry.mutable_value()));
     }
-
-    if (entry.has_map_key()) {
-      stack->push(StackRecord(&entry.mutable_map_key(), source_info));
+    // The contract is to visit key, then value.  So put them on the stack
+    // in the opposite order.
+    if (entry.has_key()) {
+      stack->push(StackRecord(&entry.mutable_key()));
     }
   }
 }
 
-void PushComprehensionDeps(Comprehension* c, Expr* expr,
-                           const SourceInfo* source_info,
+void PushComprehensionDeps(ComprehensionExpr* c, Expr* expr,
                            std::stack<StackRecord>* stack,
                            bool use_comprehension_callbacks) {
-  StackRecord iter_range(&c->mutable_iter_range(), source_info, c, expr,
-                         ITER_RANGE, use_comprehension_callbacks);
-  StackRecord accu_init(&c->mutable_accu_init(), source_info, c, expr,
-                        ACCU_INIT, use_comprehension_callbacks);
-  StackRecord loop_condition(&c->mutable_loop_condition(), source_info, c, expr,
+  StackRecord iter_range(&c->mutable_iter_range(), c, expr, ITER_RANGE,
+                         use_comprehension_callbacks);
+  StackRecord accu_init(&c->mutable_accu_init(), c, expr, ACCU_INIT,
+                        use_comprehension_callbacks);
+  StackRecord loop_condition(&c->mutable_loop_condition(), c, expr,
                              LOOP_CONDITION, use_comprehension_callbacks);
-  StackRecord loop_step(&c->mutable_loop_step(), source_info, c, expr,
-                        LOOP_STEP, use_comprehension_callbacks);
-  StackRecord result(&c->mutable_result(), source_info, c, expr, RESULT,
+  StackRecord loop_step(&c->mutable_loop_step(), c, expr, LOOP_STEP,
+                        use_comprehension_callbacks);
+  StackRecord result(&c->mutable_result(), c, expr, RESULT,
                      use_comprehension_callbacks);
   // Push them in reverse order.
   stack->push(result);
@@ -309,39 +302,38 @@ struct PushDepsVisitor {
       const RewriteTraversalOptions& options;
       const ExprRecord& record;
       void operator()(const Constant&) {}
-      void operator()(const Ident&) {}
-      void operator()(const Select&) {
-        PushSelectDeps(&record.expr->mutable_select_expr(), record.source_info,
-                       &stack);
+      void operator()(const IdentExpr&) {}
+      void operator()(const SelectExpr&) {
+        PushSelectDeps(&record.expr->mutable_select_expr(), &stack);
       }
-      void operator()(const Call&) {
-        PushCallDeps(&record.expr->mutable_call_expr(), record.expr,
-                     record.source_info, &stack);
+      void operator()(const CallExpr&) {
+        PushCallDeps(&record.expr->mutable_call_expr(), record.expr, &stack);
       }
-      void operator()(const CreateList&) {
-        PushListDeps(&record.expr->mutable_list_expr(), record.source_info,
-                     &stack);
+      void operator()(const ListExpr&) {
+        PushListDeps(&record.expr->mutable_list_expr(), &stack);
       }
-      void operator()(const CreateStruct&) {
-        PushStructDeps(&record.expr->mutable_struct_expr(), record.source_info,
-                       &stack);
+      void operator()(const StructExpr&) {
+        PushStructDeps(&record.expr->mutable_struct_expr(), &stack);
       }
-      void operator()(const Comprehension&) {
+      void operator()(const MapExpr&) {
+        PushMapDeps(&record.expr->mutable_map_expr(), &stack);
+      }
+      void operator()(const ComprehensionExpr&) {
         PushComprehensionDeps(&record.expr->mutable_comprehension_expr(),
-                              record.expr, record.source_info, &stack,
+                              record.expr, &stack,
                               options.use_comprehension_callbacks);
       }
-      void operator()(absl::monostate) {}
+      void operator()(const UnspecifiedExpr&) {}
     } handler{stack, options, record};
-    absl::visit(handler, record.expr->expr_kind());
+    absl::visit(handler, record.expr->kind());
   }
 
   void operator()(const ArgRecord& record) {
-    stack.push(StackRecord(record.expr, record.source_info));
+    stack.push(StackRecord(record.expr));
   }
 
   void operator()(const ComprehensionRecord& record) {
-    stack.push(StackRecord(record.expr, record.source_info));
+    stack.push(StackRecord(record.expr));
   }
 
   std::stack<StackRecord>& stack;
@@ -355,17 +347,12 @@ void PushDependencies(const StackRecord& record, std::stack<StackRecord>& stack,
 
 }  // namespace
 
-bool AstRewrite(Expr* expr, const SourceInfo* source_info,
-                AstRewriter* visitor) {
-  return AstRewrite(expr, source_info, visitor, RewriteTraversalOptions{});
-}
-
-bool AstRewrite(Expr* expr, const SourceInfo* source_info, AstRewriter* visitor,
+bool AstRewrite(Expr* expr, AstRewriter* visitor,
                 RewriteTraversalOptions options) {
   std::stack<StackRecord> stack;
   std::vector<const Expr*> traversal_path;
 
-  stack.push(StackRecord(expr, source_info));
+  stack.push(StackRecord(expr));
   bool rewritten = false;
 
   while (!stack.empty()) {
@@ -375,8 +362,7 @@ bool AstRewrite(Expr* expr, const SourceInfo* source_info, AstRewriter* visitor,
         traversal_path.push_back(record.expr());
         visitor->TraversalStackUpdate(absl::MakeSpan(traversal_path));
 
-        SourcePosition pos(record.expr()->id(), record.source_info());
-        if (visitor->PreVisitRewrite(record.expr(), &pos)) {
+        if (visitor->PreVisitRewrite(record.expr())) {
           rewritten = true;
         }
       }
@@ -386,8 +372,7 @@ bool AstRewrite(Expr* expr, const SourceInfo* source_info, AstRewriter* visitor,
     } else {
       PostVisit(record, visitor);
       if (record.IsExprRecord()) {
-        SourcePosition pos(record.expr()->id(), record.source_info());
-        if (visitor->PostVisitRewrite(record.expr(), &pos)) {
+        if (visitor->PostVisitRewrite(record.expr())) {
           rewritten = true;
         }
 
@@ -401,4 +386,4 @@ bool AstRewrite(Expr* expr, const SourceInfo* source_info, AstRewriter* visitor,
   return rewritten;
 }
 
-}  // namespace cel::ast_internal
+}  // namespace cel

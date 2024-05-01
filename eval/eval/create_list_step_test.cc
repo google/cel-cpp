@@ -67,7 +67,7 @@ absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
 
   auto& create_list = dummy_expr.mutable_list_expr();
   for (auto value : values) {
-    auto& expr0 = create_list.mutable_elements().emplace_back();
+    auto& expr0 = create_list.mutable_elements().emplace_back().mutable_expr();
     expr0.mutable_const_expr().set_int64_value(value);
     CEL_ASSIGN_OR_RETURN(
         auto const_step,
@@ -105,7 +105,7 @@ absl::StatusOr<CelValue> RunExpressionWithCelValues(
   int ind = 0;
   for (auto value : values) {
     std::string var_name = absl::StrCat("name_", ind++);
-    auto& expr0 = create_list.mutable_elements().emplace_back();
+    auto& expr0 = create_list.mutable_elements().emplace_back().mutable_expr();
     expr0.set_id(ind);
     expr0.mutable_ident_expr().set_name(var_name);
 
@@ -140,7 +140,7 @@ TEST(CreateListStepTest, TestCreateListStackUnderflow) {
   Expr dummy_expr;
 
   auto& create_list = dummy_expr.mutable_list_expr();
-  auto& expr0 = create_list.mutable_elements().emplace_back();
+  auto& expr0 = create_list.mutable_elements().emplace_back().mutable_expr();
   expr0.mutable_const_expr().set_int64_value(1);
 
   ASSERT_OK_AND_ASSIGN(auto step0,

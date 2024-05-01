@@ -16,7 +16,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <stack>
 #include <string>
 #include <utility>
 #include <vector>
@@ -37,10 +36,9 @@
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "common/constant.h"
+#include "extensions/protobuf/internal/ast.h"
 #include "internal/proto_time_encoding.h"
 #include "internal/status_macros.h"
-
-constexpr int kMaxIterations = 1'000'000;
 
 namespace cel::extensions {
 namespace internal {
@@ -79,215 +77,6 @@ using ParsedExprPb = google::api::expr::v1alpha1::ParsedExpr;
 using CheckedExprPb = google::api::expr::v1alpha1::CheckedExpr;
 using ExtensionPb = google::api::expr::v1alpha1::SourceInfo::Extension;
 
-struct ConversionStackEntry {
-  absl::Nonnull<Expr*> expr;
-
-  absl::Nonnull<const ExprPb*> proto_expr;
-};
-
-Ident ConvertIdent(const ExprPb::Ident& ident) { return Ident(ident.name()); }
-
-absl::StatusOr<Select> ConvertSelect(const ExprPb::Select& select,
-                                     std::stack<ConversionStackEntry>& stack) {
-  Select value(std::make_unique<Expr>(), select.field(), select.test_only());
-  stack.push({&value.mutable_operand(), &select.operand()});
-  return value;
-}
-
-absl::StatusOr<Call> ConvertCall(const ExprPb::Call& call,
-                                 std::stack<ConversionStackEntry>& stack) {
-  Call ret_val;
-  ret_val.set_function(call.function());
-  ret_val.set_args(std::vector<Expr>(call.args_size()));
-  for (int i = 0; i < ret_val.args().size(); i++) {
-    stack.push({&ret_val.mutable_args()[i], &call.args(i)});
-  }
-  if (call.has_target()) {
-    stack.push({&ret_val.mutable_target(), &call.target()});
-  }
-  return ret_val;
-}
-
-absl::StatusOr<CreateList> ConvertCreateList(
-    const ExprPb::CreateList& create_list,
-    std::stack<ConversionStackEntry>& stack) {
-  CreateList ret_val;
-  ret_val.set_elements(std::vector<Expr>(create_list.elements_size()));
-  ret_val.set_optional_indices(
-      std::vector<int32_t>(create_list.optional_indices().begin(),
-                           create_list.optional_indices().end()));
-
-  for (int i = 0; i < ret_val.elements().size(); i++) {
-    stack.push({&ret_val.mutable_elements()[i], &create_list.elements(i)});
-  }
-  return ret_val;
-}
-
-absl::StatusOr<CreateStruct::Entry::KeyKind> ConvertCreateStructEntryKey(
-    const ExprPb::CreateStruct::Entry& entry,
-    std::stack<ConversionStackEntry>& stack) {
-  switch (entry.key_kind_case()) {
-    case google::api::expr::v1alpha1::Expr_CreateStruct_Entry::kFieldKey:
-      return entry.field_key();
-    case google::api::expr::v1alpha1::Expr_CreateStruct_Entry::kMapKey: {
-      auto native_map_key = std::make_unique<Expr>();
-      stack.push({native_map_key.get(), &entry.map_key()});
-      return native_map_key;
-    }
-    default:
-      return absl::InvalidArgumentError(
-          "Illegal type provided for "
-          "google::api::expr::v1alpha1::Expr::CreateStruct::Entry::key_kind.");
-  }
-}
-
-absl::StatusOr<CreateStruct::Entry> ConvertCreateStructEntry(
-    const ExprPb::CreateStruct::Entry& entry,
-    std::stack<ConversionStackEntry>& stack) {
-  CEL_ASSIGN_OR_RETURN(auto native_key,
-                       ConvertCreateStructEntryKey(entry, stack));
-
-  if (!entry.has_value()) {
-    return absl::InvalidArgumentError(
-        "google::api::expr::v1alpha1::Expr::CreateStruct::Entry missing value");
-  }
-  CreateStruct::Entry result(entry.id(), std::move(native_key),
-                             std::make_unique<Expr>(), entry.optional_entry());
-  stack.push({&result.mutable_value(), &entry.value()});
-
-  return result;
-}
-
-absl::StatusOr<CreateStruct> ConvertCreateStruct(
-    const ExprPb::CreateStruct& create_struct,
-    std::stack<ConversionStackEntry>& stack) {
-  std::vector<CreateStruct::Entry> entries;
-  entries.reserve(create_struct.entries_size());
-  for (const auto& entry : create_struct.entries()) {
-    CEL_ASSIGN_OR_RETURN(auto native_entry,
-                         ConvertCreateStructEntry(entry, stack));
-    entries.push_back(std::move(native_entry));
-  }
-  return CreateStruct(create_struct.message_name(), std::move(entries));
-}
-
-absl::StatusOr<Comprehension> ConvertComprehension(
-    const google::api::expr::v1alpha1::Expr::Comprehension& comprehension,
-    std::stack<ConversionStackEntry>& stack) {
-  Comprehension ret_val;
-  // accu_var
-  if (comprehension.accu_var().empty()) {
-    return absl::InvalidArgumentError(
-        "Invalid comprehension: 'accu_var' must not be empty");
-  }
-  ret_val.set_accu_var(comprehension.accu_var());
-  // iter_var
-  if (comprehension.iter_var().empty()) {
-    return absl::InvalidArgumentError(
-        "Invalid comprehension: 'iter_var' must not be empty");
-  }
-  ret_val.set_iter_var(comprehension.iter_var());
-
-  // accu_init
-  if (!comprehension.has_accu_init()) {
-    return absl::InvalidArgumentError(
-        "Invalid comprehension: 'accu_init' must be set");
-  }
-  stack.push({&ret_val.mutable_accu_init(), &comprehension.accu_init()});
-
-  // iter_range optional
-  if (comprehension.has_iter_range()) {
-    stack.push({&ret_val.mutable_iter_range(), &comprehension.iter_range()});
-  }
-
-  // loop_condition
-  if (!comprehension.has_loop_condition()) {
-    return absl::InvalidArgumentError(
-        "Invalid comprehension: 'loop_condition' must be set");
-  }
-  stack.push(
-      {&ret_val.mutable_loop_condition(), &comprehension.loop_condition()});
-
-  // loop_step
-  if (!comprehension.has_loop_step()) {
-    return absl::InvalidArgumentError(
-        "Invalid comprehension: 'loop_step' must be set");
-  }
-  stack.push({&ret_val.mutable_loop_step(), &comprehension.loop_step()});
-
-  // result
-  if (!comprehension.has_result()) {
-    return absl::InvalidArgumentError(
-        "Invalid comprehension: 'result' must be set");
-  }
-  stack.push({&ret_val.mutable_result(), &comprehension.result()});
-
-  return ret_val;
-}
-
-absl::StatusOr<Expr> ConvertExpr(const ExprPb& expr,
-                                 std::stack<ConversionStackEntry>& stack) {
-  switch (expr.expr_kind_case()) {
-    case google::api::expr::v1alpha1::Expr::kConstExpr: {
-      CEL_ASSIGN_OR_RETURN(auto native_const,
-                           ConvertConstant(expr.const_expr()));
-      return Expr(expr.id(), std::move(native_const));
-    }
-    case google::api::expr::v1alpha1::Expr::kIdentExpr:
-      return Expr(expr.id(), ConvertIdent(expr.ident_expr()));
-    case google::api::expr::v1alpha1::Expr::kSelectExpr: {
-      CEL_ASSIGN_OR_RETURN(auto native_select,
-                           ConvertSelect(expr.select_expr(), stack));
-      return Expr(expr.id(), std::move(native_select));
-    }
-    case google::api::expr::v1alpha1::Expr::kCallExpr: {
-      CEL_ASSIGN_OR_RETURN(auto native_call,
-                           ConvertCall(expr.call_expr(), stack));
-
-      return Expr(expr.id(), std::move(native_call));
-    }
-    case google::api::expr::v1alpha1::Expr::kListExpr: {
-      CEL_ASSIGN_OR_RETURN(auto native_list,
-                           ConvertCreateList(expr.list_expr(), stack));
-
-      return Expr(expr.id(), std::move(native_list));
-    }
-    case google::api::expr::v1alpha1::Expr::kStructExpr: {
-      CEL_ASSIGN_OR_RETURN(auto native_struct,
-                           ConvertCreateStruct(expr.struct_expr(), stack));
-      return Expr(expr.id(), std::move(native_struct));
-    }
-    case google::api::expr::v1alpha1::Expr::kComprehensionExpr: {
-      CEL_ASSIGN_OR_RETURN(
-          auto native_comprehension,
-          ConvertComprehension(expr.comprehension_expr(), stack));
-      return Expr(expr.id(), std::move(native_comprehension));
-    }
-    default:
-      // kind unset
-      return Expr(expr.id(), absl::monostate());
-  }
-}
-
-absl::StatusOr<Expr> ToNativeExprImpl(const ExprPb& proto_expr) {
-  std::stack<ConversionStackEntry> conversion_stack;
-  int iterations = 0;
-  Expr root;
-  conversion_stack.push({&root, &proto_expr});
-  while (!conversion_stack.empty()) {
-    ConversionStackEntry entry = conversion_stack.top();
-    conversion_stack.pop();
-    CEL_ASSIGN_OR_RETURN(*entry.expr,
-                         ConvertExpr(*entry.proto_expr, conversion_stack));
-    ++iterations;
-    if (iterations > kMaxIterations) {
-      return absl::InternalError(
-          "max iterations exceeded in proto to native ast conversion.");
-    }
-  }
-  return root;
-}
-
 }  // namespace
 
 absl::StatusOr<Constant> ConvertConstant(
@@ -323,7 +112,9 @@ absl::StatusOr<Constant> ConvertConstant(
 
 absl::StatusOr<Expr> ConvertProtoExprToNative(
     const google::api::expr::v1alpha1::Expr& expr) {
-  return ToNativeExprImpl(expr);
+  Expr native_expr;
+  CEL_RETURN_IF_ERROR(protobuf_internal::ExprFromProto(expr, native_expr));
+  return native_expr;
 }
 
 absl::StatusOr<SourceInfo> ConvertProtoSourceInfoToNative(
@@ -699,118 +490,9 @@ absl::Status ConstantToProto(const ast_internal::Constant& source,
                      source.constant_kind());
 }
 
-struct ExprKindToProtoVisitor {
-  absl::Status operator()(absl::monostate) { return absl::OkStatus(); }
-
-  absl::Status operator()(const Ident& ident) {
-    result->mutable_ident_expr()->set_name(ident.name());
-    return absl::OkStatus();
-  }
-
-  absl::Status operator()(const Constant& constant) {
-    return ConstantToProto(constant, *result->mutable_const_expr());
-  }
-
-  absl::Status operator()(const Select& select) {
-    result->mutable_select_expr()->set_field(select.field());
-    result->mutable_select_expr()->set_test_only(select.test_only());
-    stack->push(
-        {&select.operand(), result->mutable_select_expr()->mutable_operand()});
-    return absl::OkStatus();
-  }
-
-  absl::Status operator()(const Call& call) {
-    result->mutable_call_expr()->set_function(call.function());
-    if (call.has_target()) {
-      stack->push(
-          {&call.target(), result->mutable_call_expr()->mutable_target()});
-    }
-    result->mutable_call_expr()->mutable_args()->Reserve(call.args().size());
-    for (int i = 0; i < call.args().size(); ++i) {
-      stack->push({&call.args()[i], result->mutable_call_expr()->add_args()});
-    }
-    return absl::OkStatus();
-  }
-
-  absl::Status operator()(const CreateList& create_list) {
-    result->mutable_list_expr()->mutable_elements()->Reserve(
-        create_list.elements().size());
-    for (int i = 0; i < create_list.elements().size(); ++i) {
-      stack->push({&create_list.elements()[i],
-                   result->mutable_list_expr()->add_elements()});
-    }
-    result->mutable_list_expr()->mutable_optional_indices()->Reserve(
-        create_list.optional_indices().size());
-    for (int32_t index : create_list.optional_indices()) {
-      result->mutable_list_expr()->add_optional_indices(index);
-    }
-    return absl::OkStatus();
-  }
-
-  absl::Status operator()(const Comprehension& comprehension) {
-    auto* comprehension_pb = result->mutable_comprehension_expr();
-    comprehension_pb->set_iter_var(comprehension.iter_var());
-    comprehension_pb->set_accu_var(comprehension.accu_var());
-    stack->push(
-        {&comprehension.iter_range(), comprehension_pb->mutable_iter_range()});
-    stack->push(
-        {&comprehension.accu_init(), comprehension_pb->mutable_accu_init()});
-    stack->push(
-        {&comprehension.loop_step(), comprehension_pb->mutable_loop_step()});
-    stack->push({&comprehension.loop_condition(),
-                 comprehension_pb->mutable_loop_condition()});
-    stack->push({&comprehension.result(), comprehension_pb->mutable_result()});
-    return absl::OkStatus();
-  }
-
-  absl::Status operator()(const CreateStruct& create_struct) {
-    auto* create_struct_pb = result->mutable_struct_expr();
-    create_struct_pb->set_message_name(create_struct.message_name());
-    create_struct_pb->mutable_entries()->Reserve(
-        create_struct.entries().size());
-    for (const CreateStruct::Entry& entry : create_struct.entries()) {
-      auto* entry_pb = create_struct_pb->add_entries();
-      entry_pb->set_id(entry.id());
-      if (entry.has_map_key()) {
-        stack->push({&entry.map_key(), entry_pb->mutable_map_key()});
-      } else {
-        entry_pb->set_field_key(entry.field_key());
-      }
-      stack->push({&entry.value(), entry_pb->mutable_value()});
-      entry_pb->set_optional_entry(entry.optional_entry());
-    }
-    return absl::OkStatus();
-  }
-
-  ExprPb* result;
-  std::stack<ToProtoStackEntry>* stack;
-};
-
-absl::Status ExprToProtoImpl(const Expr& expr,
-                             std::stack<ToProtoStackEntry>& stack,
-                             ExprPb* out) {
-  out->set_id(expr.id());
-  CEL_RETURN_IF_ERROR(
-      absl::visit(ExprKindToProtoVisitor{out, &stack}, expr.expr_kind()));
-  return absl::OkStatus();
-}
-
 absl::StatusOr<ExprPb> ExprToProto(const Expr& expr) {
-  std::stack<ToProtoStackEntry> conversion_stack;
-  int iterations = 0;
   ExprPb proto_expr;
-  conversion_stack.push({&expr, &proto_expr});
-  while (!conversion_stack.empty()) {
-    ToProtoStackEntry entry = conversion_stack.top();
-    conversion_stack.pop();
-    CEL_RETURN_IF_ERROR(
-        ExprToProtoImpl(*entry.source, conversion_stack, entry.dest));
-    ++iterations;
-    if (iterations > kMaxIterations) {
-      return absl::InternalError(
-          "max iterations exceeded in native to proto ast conversion.");
-    }
-  }
+  CEL_RETURN_IF_ERROR(protobuf_internal::ExprToProto(expr, &proto_expr));
   return proto_expr;
 }
 

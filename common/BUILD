@@ -42,6 +42,79 @@ cc_test(
 )
 
 cc_library(
+    name = "ast_rewrite",
+    srcs = ["ast_rewrite.cc"],
+    hdrs = ["ast_rewrite.h"],
+    deps = [
+        ":ast",
+        ":ast_visitor",
+        ":constant",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_test(
+    name = "ast_rewrite_test",
+    srcs = ["ast_rewrite_test.cc"],
+    deps = [
+        ":ast_rewrite",
+        ":ast_visitor",
+        "//base/ast_internal:expr",
+        "//extensions/protobuf:ast_converters",
+        "//internal:testing",
+        "//parser",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "ast_traverse",
+    srcs = ["ast_traverse.cc"],
+    hdrs = ["ast_traverse.h"],
+    deps = [
+        ":ast",
+        ":ast_visitor",
+        ":constant",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_test(
+    name = "ast_traverse_test",
+    srcs = ["ast_traverse_test.cc"],
+    deps = [
+        ":ast",
+        ":ast_traverse",
+        ":ast_visitor",
+        ":constant",
+        "//internal:testing",
+    ],
+)
+
+cc_library(
+    name = "ast_visitor",
+    hdrs = ["ast_visitor.h"],
+    deps = [
+        ":ast",
+        ":constant",
+    ],
+)
+
+cc_library(
+    name = "ast_visitor_base",
+    hdrs = ["ast_visitor_base.h"],
+    deps = [
+        ":ast",
+        ":ast_visitor",
+        ":constant",
+    ],
+)
+
+cc_library(
     name = "constant",
     srcs = ["constant.cc"],
     hdrs = ["constant.h"],

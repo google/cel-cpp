@@ -112,8 +112,10 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
 absl::flat_hash_set<int32_t> MakeOptionalIndicesSet(
     const cel::ast_internal::CreateList& create_list_expr) {
   absl::flat_hash_set<int32_t> optional_indices;
-  for (const auto& optional_index : create_list_expr.optional_indices()) {
-    optional_indices.insert(optional_index);
+  for (size_t i = 0; i < create_list_expr.elements().size(); ++i) {
+    if (create_list_expr.elements()[i].optional()) {
+      optional_indices.insert(static_cast<int32_t>(i));
+    }
   }
   return optional_indices;
 }

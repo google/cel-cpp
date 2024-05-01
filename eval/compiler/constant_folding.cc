@@ -111,12 +111,14 @@ absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
       return IsConst::kNonConst;
     }
     IsConst operator()(const CreateStruct& create_struct) {
+      return IsConst::kNonConst;
+    }
+    IsConst operator()(const cel::MapExpr& map_expr) {
       // Not yet supported but should be possible in the future.
       // Empty maps are rare and not currently supported as they may eventually
       // have similar issues to empty list when used within comprehensions or
       // macros.
-      if (create_struct.entries().empty() ||
-          !create_struct.message_name().empty()) {
+      if (map_expr.entries().empty()) {
         return IsConst::kNonConst;
       }
       return IsConst::kConditional;
@@ -132,7 +134,9 @@ absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
 
     IsConst operator()(const Select&) { return IsConst::kConditional; }
 
-    IsConst operator()(absl::monostate) { return IsConst::kNonConst; }
+    IsConst operator()(const cel::UnspecifiedExpr&) {
+      return IsConst::kNonConst;
+    }
 
     IsConst operator()(const Call& call) {
       // Short Circuiting operators not yet supported.
@@ -158,7 +162,7 @@ absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
   };
 
   IsConst is_const =
-      absl::visit(IsConstVisitor{context.resolver()}, node.expr_kind());
+      absl::visit(IsConstVisitor{context.resolver()}, node.kind());
   is_const_.push_back(is_const);
 
   return absl::OkStatus();

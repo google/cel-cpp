@@ -15,7 +15,6 @@
 #include "base/ast_internal/expr.h"
 
 #include <memory>
-#include <stack>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
@@ -26,106 +25,9 @@ namespace cel::ast_internal {
 
 namespace {
 
-const Expr& default_expr() {
-  static absl::NoDestructor<Expr> expr;
-  return *expr;
-}
-
 const Type& default_type() {
   static absl::NoDestructor<Type> type;
   return *type;
-}
-
-struct CopyRecord {
-  const Expr* src;
-  Expr* dest;
-};
-
-void CopyNode(const Expr& src, std::stack<CopyRecord>& records, Expr& dest) {
-  dest.set_id(src.id());
-
-  const auto& src_kind = src.expr_kind();
-  absl::visit(
-      absl::Overload(
-          [&](const Constant& constant) {
-            dest.mutable_expr_kind() = constant;
-          },
-          [&](const Ident& ident) {
-            dest.mutable_ident_expr().set_name(ident.name());
-          },
-          [&](const Select& select) {
-            auto& dest_select = dest.mutable_select_expr();
-            dest_select.set_field(select.field());
-            dest_select.set_test_only(select.test_only());
-            records.push({&select.operand(), &dest_select.mutable_operand()});
-          },
-          [&](const Call& call) {
-            auto& dest_call = dest.mutable_call_expr();
-            dest_call.set_function(call.function());
-            if (call.has_target()) {
-              records.push({&call.target(), &dest_call.mutable_target()});
-            }
-            // pointer stability is guaranteed since the vector itself won't
-            // change anywhere else in the copy routine.
-            dest_call.mutable_args() = std::vector<Expr>(call.args().size());
-            for (int i = 0; i < call.args().size(); ++i) {
-              records.push({&call.args()[i], &dest_call.mutable_args()[i]});
-            }
-          },
-          [&](const CreateList& create_list) {
-            auto& dest_create_list = dest.mutable_list_expr();
-            dest_create_list.optional_indices() =
-                create_list.optional_indices();
-
-            // pointer stability is guaranteed since the vector itself won't
-            // change anywhere else in the copy routine.
-            dest_create_list.mutable_elements() =
-                std::vector<Expr>(create_list.elements().size());
-            for (int i = 0; i < create_list.elements().size(); ++i) {
-              records.push({&create_list.elements()[i],
-                            &dest_create_list.mutable_elements()[i]});
-            }
-          },
-          [&](const Comprehension& comprehension) {
-            auto& dest_comprehension = dest.mutable_comprehension_expr();
-            dest_comprehension.set_iter_var(comprehension.iter_var());
-            dest_comprehension.set_accu_var(comprehension.accu_var());
-            records.push({&comprehension.iter_range(),
-                          &dest_comprehension.mutable_iter_range()});
-            records.push({&comprehension.accu_init(),
-                          &dest_comprehension.mutable_accu_init()});
-            records.push({&comprehension.loop_condition(),
-                          &dest_comprehension.mutable_loop_condition()});
-            records.push({&comprehension.loop_step(),
-                          &dest_comprehension.mutable_loop_step()});
-            records.push({&comprehension.result(),
-                          &dest_comprehension.mutable_result()});
-          },
-          [&](const CreateStruct& struct_expr) {
-            auto& dest_struct_expr = dest.mutable_struct_expr();
-            dest_struct_expr.set_message_name(struct_expr.message_name());
-
-            dest_struct_expr.mutable_entries() =
-                std::vector<CreateStruct::Entry>(struct_expr.entries().size());
-            for (int i = 0; i < struct_expr.entries().size(); ++i) {
-              auto& dest_entry = dest_struct_expr.mutable_entries()[i];
-              const auto& entry = struct_expr.entries()[i];
-
-              dest_entry.set_id(entry.id());
-              dest_entry.set_optional_entry(entry.optional_entry());
-              records.push({&entry.value(), &dest_entry.mutable_value()});
-
-              if (entry.has_field_key()) {
-                dest_entry.set_field_key(entry.field_key());
-              } else {
-                records.push({&entry.map_key(), &dest_entry.mutable_map_key()});
-              }
-            }
-          },
-          [&](absl::monostate) {
-            // unset expr kind, nothing todo.
-          }),
-      src_kind);
 }
 
 TypeKind CopyImpl(const TypeKind& other) {
@@ -162,98 +64,6 @@ Extension& Extension::operator=(const Extension& other) {
   affected_components_ = other.affected_components_;
   version_ = std::make_unique<Version>(*other.version_);
   return *this;
-}
-
-const Expr& Select::operand() const {
-  if (operand_ != nullptr) {
-    return *operand_;
-  }
-  return default_expr();
-}
-
-bool Select::operator==(const Select& other) const {
-  return operand() == other.operand() && field_ == other.field_ &&
-         test_only_ == other.test_only_;
-}
-
-const Expr& Call::target() const {
-  if (target_ != nullptr) {
-    return *target_;
-  }
-  return default_expr();
-}
-
-bool Call::operator==(const Call& other) const {
-  return target() == other.target() && function_ == other.function_ &&
-         args_ == other.args_;
-}
-
-const Expr& CreateStruct::Entry::map_key() const {
-  auto* value = absl::get_if<std::unique_ptr<Expr>>(&key_kind_);
-  if (value != nullptr) {
-    if (*value != nullptr) return **value;
-  }
-  return default_expr();
-}
-
-const Expr& CreateStruct::Entry::value() const {
-  if (value_ != nullptr) {
-    return *value_;
-  }
-  return default_expr();
-}
-
-bool CreateStruct::Entry::operator==(const Entry& other) const {
-  bool has_same_key = false;
-  if (has_field_key() && other.has_field_key()) {
-    has_same_key = field_key() == other.field_key();
-  } else if (has_map_key() && other.has_map_key()) {
-    has_same_key = map_key() == other.map_key();
-  }
-  return id_ == other.id_ && has_same_key && value() == other.value() &&
-         optional_entry_ == other.optional_entry();
-}
-
-const Expr& Comprehension::iter_range() const {
-  if (iter_range_ != nullptr) {
-    return *iter_range_;
-  }
-  return default_expr();
-}
-
-const Expr& Comprehension::accu_init() const {
-  if (accu_init_ != nullptr) {
-    return *accu_init_;
-  }
-  return default_expr();
-}
-
-const Expr& Comprehension::loop_condition() const {
-  if (loop_condition_ != nullptr) {
-    return *loop_condition_;
-  }
-  return default_expr();
-}
-
-const Expr& Comprehension::loop_step() const {
-  if (loop_step_ != nullptr) {
-    return *loop_step_;
-  }
-  return default_expr();
-}
-
-const Expr& Comprehension::result() const {
-  if (result_ != nullptr) {
-    return *result_;
-  }
-  return default_expr();
-}
-
-bool Comprehension::operator==(const Comprehension& other) const {
-  return iter_var_ == other.iter_var_ && iter_range() == other.iter_range() &&
-         accu_var_ == other.accu_var_ && accu_init() == other.accu_init() &&
-         loop_condition() == other.loop_condition() &&
-         loop_step() == other.loop_step() && result() == other.result();
 }
 
 const Type& ListType::elem_type() const {
