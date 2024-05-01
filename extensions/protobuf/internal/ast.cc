@@ -22,6 +22,7 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/functional/overload.h"
 #include "absl/status/status.h"
@@ -39,6 +40,7 @@ namespace {
 
 using ExprProto = google::api::expr::v1alpha1::Expr;
 using ConstExprProto = google::api::expr::v1alpha1::Constant;
+using StructExprProto = google::api::expr::v1alpha1::Expr::CreateStruct;
 
 class ExprToProtoState final {
  private:
@@ -463,7 +465,7 @@ class ExprFromProtoState final {
   }
 
   absl::Status StructExprFromProto(const ExprProto& proto,
-                                   const ExprProto::CreateStruct& struct_proto,
+                                   const StructExprProto& struct_proto,
                                    Expr& expr) {
     expr.Clear();
     expr.set_id(proto.id());
@@ -472,6 +474,17 @@ class ExprFromProtoState final {
     struct_expr.mutable_fields().reserve(
         static_cast<size_t>(struct_proto.entries().size()));
     for (const auto& field_proto : struct_proto.entries()) {
+      switch (field_proto.key_kind_case()) {
+        case StructExprProto::Entry::KEY_KIND_NOT_SET:
+          ABSL_FALLTHROUGH_INTENDED;
+        case StructExprProto::Entry::kFieldKey:
+          break;
+        case StructExprProto::Entry::kMapKey:
+          return absl::InvalidArgumentError("encountered map entry in struct");
+        default:
+          return absl::InvalidArgumentError(absl::StrCat(
+              "unexpected struct field kind: ", field_proto.key_kind_case()));
+      }
       auto& field_expr = struct_expr.add_fields();
       field_expr.set_id(field_proto.id());
       field_expr.set_name(field_proto.field_key());
@@ -492,6 +505,17 @@ class ExprFromProtoState final {
     map_expr.mutable_entries().reserve(
         static_cast<size_t>(map_proto.entries().size()));
     for (const auto& entry_proto : map_proto.entries()) {
+      switch (entry_proto.key_kind_case()) {
+        case StructExprProto::Entry::KEY_KIND_NOT_SET:
+          ABSL_FALLTHROUGH_INTENDED;
+        case StructExprProto::Entry::kMapKey:
+          break;
+        case StructExprProto::Entry::kFieldKey:
+          return absl::InvalidArgumentError("encountered struct field in map");
+        default:
+          return absl::InvalidArgumentError(absl::StrCat(
+              "unexpected map entry kind: ", entry_proto.key_kind_case()));
+      }
       auto& entry_expr = map_expr.add_entries();
       entry_expr.set_id(entry_proto.id());
       if (entry_proto.has_map_key()) {

@@ -17,6 +17,7 @@
 #include <string>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/status/status.h"
 #include "common/ast.h"
 #include "internal/proto_matchers.h"
 #include "internal/testing.h"
@@ -27,6 +28,7 @@ namespace {
 
 using ::cel::internal::test::EqualsProto;
 using cel::internal::IsOk;
+using cel::internal::StatusIs;
 
 using ExprProto = google::api::expr::v1alpha1::Expr;
 
@@ -219,6 +221,54 @@ INSTANTIATE_TEST_SUITE_P(
            }
          )pb"},
     }));
+
+TEST(ExprFromProto, StructFieldInMap) {
+  ExprProto original_proto;
+  ASSERT_TRUE(
+      google::protobuf::TextFormat::ParseFromString(R"pb(
+                                            id: 1
+                                            struct_expr: {
+                                              entries: {
+                                                id: 2
+                                                field_key: "foo"
+                                                value: {
+                                                  id: 3
+                                                  ident_expr: { name: "bar" }
+                                                }
+                                              }
+                                            }
+                                          )pb",
+                                          &original_proto));
+  Expr expr;
+  ASSERT_THAT(ExprFromProto(original_proto, expr),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(ExprFromProto, MapEntryInStruct) {
+  ExprProto original_proto;
+  ASSERT_TRUE(
+      google::protobuf::TextFormat::ParseFromString(R"pb(
+                                            id: 1
+                                            struct_expr: {
+                                              message_name: "some.Message"
+                                              entries: {
+                                                id: 2
+                                                map_key: {
+                                                  id: 3
+                                                  ident_expr: { name: "foo" }
+                                                }
+                                                value: {
+                                                  id: 4
+                                                  ident_expr: { name: "bar" }
+                                                }
+                                              }
+                                            }
+                                          )pb",
+                                          &original_proto));
+  Expr expr;
+  ASSERT_THAT(ExprFromProto(original_proto, expr),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
 
 }  // namespace
 }  // namespace cel::extensions::protobuf_internal
