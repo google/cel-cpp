@@ -78,30 +78,10 @@ class Type final {
   using view_alternative_type = TypeView;
 
   Type() = default;
-
-  Type(const Type& other) : variant_((other.AssertIsValid(), other.variant_)) {}
-
-  Type& operator=(const Type& other) {
-    other.AssertIsValid();
-    ABSL_DCHECK(this != std::addressof(other))
-        << "Type should not be copied to itself";
-    variant_ = other.variant_;
-    return *this;
-  }
-
-  Type(Type&& other) noexcept
-      : variant_((other.AssertIsValid(), std::move(other.variant_))) {
-    other.variant_.emplace<absl::monostate>();
-  }
-
-  Type& operator=(Type&& other) noexcept {
-    other.AssertIsValid();
-    ABSL_DCHECK(this != std::addressof(other))
-        << "Type should not be moved to itself";
-    variant_ = std::move(other.variant_);
-    other.variant_.emplace<absl::monostate>();
-    return *this;
-  }
+  Type(const Type&) = default;
+  Type(Type&&) = default;
+  Type& operator=(const Type&) = default;
+  Type& operator=(Type&&) = default;
 
   explicit Type(TypeView other);
 
@@ -195,8 +175,6 @@ class Type final {
   }
 
   void swap(Type& other) noexcept {
-    AssertIsValid();
-    other.AssertIsValid();
     variant_.swap(other.variant_);
   }
 

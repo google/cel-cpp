@@ -15,7 +15,6 @@
 #include "common/type.h"
 
 #include <sstream>
-#include <utility>
 
 #include "absl/hash/hash.h"
 #include "absl/hash/hash_testing.h"
@@ -28,57 +27,40 @@ namespace {
 
 using testing::_;
 
-template <typename T>
-void IS_INITIALIZED(T&) {}
-
 TEST(Type, KindDebugDeath) {
-  Type moved_from_type = AnyType();
-  Type type = std::move(moved_from_type);
-  IS_INITIALIZED(moved_from_type);
+  Type type;
   static_cast<void>(type);
-  EXPECT_DEBUG_DEATH(static_cast<void>(moved_from_type.kind()), _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(type.kind()), _);
 }
 
 TEST(Type, NameDebugDeath) {
-  Type moved_from_type = AnyType();
-  Type type = std::move(moved_from_type);
-  IS_INITIALIZED(moved_from_type);
+  Type type;
   static_cast<void>(type);
-  EXPECT_DEBUG_DEATH(static_cast<void>(moved_from_type.name()), _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(type.name()), _);
 }
 
 TEST(Type, DebugStringDebugDeath) {
-  Type moved_from_type = AnyType();
-  Type type = std::move(moved_from_type);
-  IS_INITIALIZED(moved_from_type);
-  static_cast<void>(type);
+  Type type;
   std::ostringstream out;
-  EXPECT_DEBUG_DEATH(static_cast<void>(out << moved_from_type), _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(out << type), _);
 }
 
 TEST(Type, HashDebugDeath) {
-  Type moved_from_type = AnyType();
-  Type type = std::move(moved_from_type);
-  IS_INITIALIZED(moved_from_type);
+  Type type;
   static_cast<void>(type);
-  EXPECT_DEBUG_DEATH(static_cast<void>(absl::HashOf(moved_from_type)), _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(absl::HashOf(type)), _);
 }
 
 TEST(Type, EqualDebugDeath) {
-  Type moved_from_type = AnyType();
-  Type type = std::move(moved_from_type);
-  IS_INITIALIZED(moved_from_type);
+  Type type;
   static_cast<void>(type);
-  EXPECT_DEBUG_DEATH(static_cast<void>(type == moved_from_type), _);
-  EXPECT_DEBUG_DEATH(static_cast<void>(moved_from_type == type), _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(type == type), _);
 }
 
 TEST(Type, NativeTypeIdDebugDeath) {
-  Type moved_from_type = AnyType();
-  Type type = std::move(moved_from_type);
-  IS_INITIALIZED(moved_from_type);
+  Type type;
   static_cast<void>(type);
-  EXPECT_DEBUG_DEATH(static_cast<void>(NativeTypeId::Of(moved_from_type)), _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(NativeTypeId::Of(type)), _);
 }
 
 TEST(Type, VerifyTypeImplementsAbslHashCorrectly) {
@@ -111,56 +93,39 @@ TEST(Type, VerifyTypeImplementsAbslHashCorrectly) {
 }
 
 TEST(TypeView, KindDebugDeath) {
-  Type moved_from_type = AnyType();
-  Type type = std::move(moved_from_type);
-  IS_INITIALIZED(moved_from_type);
+  TypeView type;
   static_cast<void>(type);
-  EXPECT_DEBUG_DEATH(static_cast<void>(TypeView(moved_from_type).kind()), _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(type.kind()), _);
 }
 
 TEST(TypeView, NameDebugDeath) {
-  Type moved_from_type = AnyType();
-  Type type = std::move(moved_from_type);
-  IS_INITIALIZED(moved_from_type);
+  TypeView type;
   static_cast<void>(type);
-  EXPECT_DEBUG_DEATH(static_cast<void>(TypeView(moved_from_type).name()), _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(type.name()), _);
 }
 
 TEST(TypeView, DebugStringDebugDeath) {
-  Type moved_from_type = AnyType();
-  Type type = std::move(moved_from_type);
-  IS_INITIALIZED(moved_from_type);
+  TypeView type;
   static_cast<void>(type);
   std::ostringstream out;
-  EXPECT_DEBUG_DEATH(static_cast<void>(out << TypeView(moved_from_type)), _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(out << type), _);
 }
 
 TEST(TypeView, HashDebugDeath) {
-  Type moved_from_type = AnyType();
-  Type type = std::move(moved_from_type);
-  IS_INITIALIZED(moved_from_type);
+  TypeView type;
   static_cast<void>(type);
-  EXPECT_DEBUG_DEATH(static_cast<void>(absl::HashOf(TypeView(moved_from_type))),
-                     _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(absl::HashOf(type)), _);
 }
 
 TEST(TypeView, EqualDebugDeath) {
-  Type moved_from_type = AnyType();
-  Type type = std::move(moved_from_type);
-  IS_INITIALIZED(moved_from_type);
-  EXPECT_DEBUG_DEATH(
-      static_cast<void>(TypeView(type) == TypeView(moved_from_type)), _);
-  EXPECT_DEBUG_DEATH(
-      static_cast<void>(TypeView(moved_from_type) == TypeView(type)), _);
+  TypeView type;
+  EXPECT_DEBUG_DEATH(static_cast<void>(TypeView(type) == type), _);
+  EXPECT_DEBUG_DEATH(static_cast<void>(type == TypeView(type)), _);
 }
 
 TEST(TypeView, NativeTypeIdDebugDeath) {
-  Type moved_from_type = AnyType();
-  Type type = std::move(moved_from_type);
-  IS_INITIALIZED(moved_from_type);
-  static_cast<void>(type);
-  EXPECT_DEBUG_DEATH(
-      static_cast<void>(NativeTypeId::Of(TypeView(moved_from_type))), _);
+  TypeView type;
+  EXPECT_DEBUG_DEATH(static_cast<void>(NativeTypeId::Of(type)), _);
 }
 
 TEST(TypeView, VerifyTypeImplementsAbslHashCorrectly) {
