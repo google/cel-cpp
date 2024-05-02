@@ -15,38 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_AST_H_
 #define THIRD_PARTY_CEL_CPP_BASE_AST_H_
 
-namespace cel {
-
-namespace ast_internal {
-// Forward declare supported implementations.
-class AstImpl;
-}  // namespace ast_internal
-
-// Runtime representation of a CEL expression's Abstract Syntax Tree.
-//
-// This class provides public APIs for CEL users and allows for clients to
-// manage lifecycle.
-//
-// Implementations are intentionally opaque to prevent dependencies on the
-// details of the runtime representation. To create an new instance, see the
-// factories in the extensions package (e.g.
-// extensions/protobuf/ast_converters.h).
-class Ast {
- public:
-  virtual ~Ast() = default;
-
-  // Whether the AST includes type check information.
-  // If false, the runtime assumes all types are dyn, and that qualified names
-  // have not been resolved.
-  virtual bool IsChecked() const = 0;
-
- private:
-  // This interface should only be implemented by friend-visibility allowed
-  // subclasses.
-  Ast() = default;
-  friend class ast_internal::AstImpl;
-};
-
-}  // namespace cel
+#include "common/ast.h"  // IWYU pragma: export
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_AST_H_

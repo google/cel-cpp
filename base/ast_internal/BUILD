@@ -54,6 +54,7 @@ cc_library(
     deps = [
         "//common:ast",
         "//common:constant",
+        "//common:expr",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/functional:overload",

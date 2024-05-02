@@ -29,6 +29,7 @@
 #include "absl/types/variant.h"
 #include "common/ast.h"
 #include "common/constant.h"
+#include "common/expr.h"
 
 namespace cel::ast_internal {
 

@@ -18,8 +18,16 @@ licenses(["notice"])
 
 cc_library(
     name = "ast",
-    srcs = ["ast.cc"],
     hdrs = ["ast.h"],
+    deps = [
+        ":expr",
+    ],
+)
+
+cc_library(
+    name = "expr",
+    srcs = ["expr.cc"],
+    hdrs = ["expr.h"],
     deps = [
         ":constant",
         "@com_google_absl//absl/algorithm:container",
@@ -33,10 +41,10 @@ cc_library(
 )
 
 cc_test(
-    name = "ast_test",
-    srcs = ["ast_test.cc"],
+    name = "expr_test",
+    srcs = ["expr_test.cc"],
     deps = [
-        ":ast",
+        ":expr",
         "//internal:testing",
     ],
 )

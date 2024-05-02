@@ -143,6 +143,7 @@ cc_library(
 cc_library(
     name = "ast",
     hdrs = ["ast.h"],
+    deps = ["//common:ast"],
 )
 
 cc_library(

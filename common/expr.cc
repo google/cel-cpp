@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "common/ast.h"
+#include "common/expr.h"
 
 #include "absl/base/no_destructor.h"
 
