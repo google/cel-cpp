@@ -38,6 +38,7 @@ class DoubleWrapperType;
 class DurationType;
 class DynType;
 class ErrorType;
+class FunctionType;
 class IntType;
 class IntWrapperType;
 class ListType;
@@ -48,6 +49,7 @@ class StringType;
 class StringWrapperType;
 class StructType;
 class TimestampType;
+class TypeParamType;
 class TypeType;
 class UintType;
 class UintWrapperType;
@@ -64,6 +66,7 @@ class DoubleWrapperTypeView;
 class DurationTypeView;
 class DynTypeView;
 class ErrorTypeView;
+class FunctionTypeView;
 class IntTypeView;
 class IntWrapperTypeView;
 class ListTypeView;
@@ -75,6 +78,7 @@ class StringTypeView;
 class StringWrapperTypeView;
 class StructTypeView;
 class TimestampTypeView;
+class TypeParamTypeView;
 class TypeTypeView;
 class UintTypeView;
 class UintWrapperTypeView;
@@ -105,11 +109,12 @@ struct IsTypeAlternative
           std::is_same<BytesWrapperType, T>, std::is_same<DoubleType, T>,
           std::is_same<DoubleWrapperType, T>, std::is_same<DurationType, T>,
           std::is_same<DynType, T>, std::is_same<ErrorType, T>,
-          std::is_same<IntType, T>, std::is_same<IntWrapperType, T>,
-          std::is_same<ListType, T>, std::is_same<MapType, T>,
-          std::is_same<NullType, T>, std::is_base_of<OpaqueType, T>,
-          std::is_same<StringType, T>, std::is_same<StringWrapperType, T>,
-          std::is_base_of<StructType, T>, std::is_same<TimestampType, T>,
+          std::is_same<FunctionType, T>, std::is_same<IntType, T>,
+          std::is_same<IntWrapperType, T>, std::is_same<ListType, T>,
+          std::is_same<MapType, T>, std::is_same<NullType, T>,
+          std::is_base_of<OpaqueType, T>, std::is_same<StringType, T>,
+          std::is_same<StringWrapperType, T>, std::is_base_of<StructType, T>,
+          std::is_same<TimestampType, T>, std::is_same<TypeParamType, T>,
           std::is_same<TypeType, T>, std::is_same<UintType, T>,
           std::is_same<UintWrapperType, T>, std::is_same<UnknownType, T>>> {};
 
@@ -119,10 +124,11 @@ inline constexpr bool IsTypeAlternativeV = IsTypeAlternative<T>::value;
 using TypeVariant =
     absl::variant<absl::monostate, AnyType, BoolType, BoolWrapperType,
                   BytesType, BytesWrapperType, DoubleType, DoubleWrapperType,
-                  DurationType, DynType, ErrorType, IntType, IntWrapperType,
-                  ListType, MapType, NullType, OpaqueType, StringType,
-                  StringWrapperType, StructType, TimestampType, TypeType,
-                  UintType, UintWrapperType, UnknownType>;
+                  DurationType, DynType, ErrorType, FunctionType, IntType,
+                  IntWrapperType, ListType, MapType, NullType, OpaqueType,
+                  StringType, StringWrapperType, StructType, TimestampType,
+                  TypeParamType, TypeType, UintType, UintWrapperType,
+                  UnknownType>;
 
 template <typename T>
 struct IsTypeViewAlternative
@@ -133,13 +139,15 @@ struct IsTypeViewAlternative
           std::is_same<DoubleTypeView, T>,
           std::is_same<DoubleWrapperTypeView, T>,
           std::is_same<DurationTypeView, T>, std::is_same<DynTypeView, T>,
-          std::is_same<ErrorTypeView, T>, std::is_same<IntTypeView, T>,
-          std::is_same<IntWrapperTypeView, T>, std::is_same<ListTypeView, T>,
-          std::is_same<MapTypeView, T>, std::is_same<NullTypeView, T>,
-          std::is_base_of<OpaqueTypeView, T>, std::is_same<StringTypeView, T>,
+          std::is_same<ErrorTypeView, T>, std::is_same<FunctionTypeView, T>,
+          std::is_same<IntTypeView, T>, std::is_same<IntWrapperTypeView, T>,
+          std::is_same<ListTypeView, T>, std::is_same<MapTypeView, T>,
+          std::is_same<NullTypeView, T>, std::is_base_of<OpaqueTypeView, T>,
+          std::is_same<StringTypeView, T>,
           std::is_same<StringWrapperTypeView, T>,
           std::is_base_of<StructTypeView, T>,
-          std::is_same<TimestampTypeView, T>, std::is_same<TypeTypeView, T>,
+          std::is_same<TimestampTypeView, T>,
+          std::is_same<TypeParamTypeView, T>, std::is_same<TypeTypeView, T>,
           std::is_same<UintTypeView, T>, std::is_same<UintWrapperTypeView, T>,
           std::is_same<UnknownTypeView, T>>> {};
 
@@ -149,10 +157,11 @@ inline constexpr bool IsTypeViewAlternativeV = IsTypeViewAlternative<T>::value;
 using TypeViewVariant = absl::variant<
     absl::monostate, AnyTypeView, BoolTypeView, BoolWrapperTypeView,
     BytesTypeView, BytesWrapperTypeView, DoubleTypeView, DoubleWrapperTypeView,
-    DurationTypeView, DynTypeView, ErrorTypeView, IntTypeView,
+    DurationTypeView, DynTypeView, ErrorTypeView, FunctionTypeView, IntTypeView,
     IntWrapperTypeView, ListTypeView, MapTypeView, NullTypeView, OpaqueTypeView,
     StringTypeView, StringWrapperTypeView, StructTypeView, TimestampTypeView,
-    TypeTypeView, UintTypeView, UintWrapperTypeView, UnknownTypeView>;
+    TypeParamTypeView, TypeTypeView, UintTypeView, UintWrapperTypeView,
+    UnknownTypeView>;
 
 // Get the base type alternative for the given alternative or interface. The
 // base type alternative is the type stored in the `TypeVariant`.

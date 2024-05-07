@@ -76,6 +76,7 @@ TEST(Type, VerifyTypeImplementsAbslHashCorrectly) {
        Type(DurationType()),
        Type(DynType()),
        Type(ErrorType()),
+       Type(FunctionType(memory_manager, DynType(), {DynType()})),
        Type(IntType()),
        Type(IntWrapperType()),
        Type(ListType(memory_manager, DynType())),
@@ -86,6 +87,7 @@ TEST(Type, VerifyTypeImplementsAbslHashCorrectly) {
        Type(StringWrapperType()),
        Type(StructType(memory_manager, "test.Struct")),
        Type(TimestampType()),
+       Type(TypeParamType(memory_manager, "T")),
        Type(TypeType()),
        Type(UintType()),
        Type(UintWrapperType()),
@@ -130,10 +132,12 @@ TEST(TypeView, NativeTypeIdDebugDeath) {
 
 TEST(TypeView, VerifyTypeImplementsAbslHashCorrectly) {
   MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
+  auto function_type = FunctionType(memory_manager, DynType(), {DynType()});
   auto list_type = ListType(memory_manager, DynType());
   auto map_type = MapType(memory_manager, DynType(), DynType());
   auto optional_type = OptionalType(memory_manager, DynType());
   auto struct_type = StructType(memory_manager, "test.Struct");
+  auto type_param_type = TypeParamType(memory_manager, "T");
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly(
       {TypeView(AnyTypeView()),
        TypeView(BoolTypeView()),
@@ -145,6 +149,7 @@ TEST(TypeView, VerifyTypeImplementsAbslHashCorrectly) {
        TypeView(DurationTypeView()),
        TypeView(DynTypeView()),
        TypeView(ErrorTypeView()),
+       TypeView(FunctionTypeView(function_type)),
        TypeView(IntTypeView()),
        TypeView(IntWrapperTypeView()),
        TypeView(ListTypeView(list_type)),
@@ -154,6 +159,7 @@ TEST(TypeView, VerifyTypeImplementsAbslHashCorrectly) {
        TypeView(StringTypeView()),
        TypeView(StringWrapperTypeView()),
        TypeView(StructTypeView(struct_type)),
+       TypeView(TypeParamTypeView(type_param_type)),
        TypeView(TimestampTypeView()),
        TypeView(TypeTypeView()),
        TypeView(UintTypeView()),
@@ -163,10 +169,12 @@ TEST(TypeView, VerifyTypeImplementsAbslHashCorrectly) {
 
 TEST(Type, HashIsTransparent) {
   MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
+  auto function_type = FunctionType(memory_manager, DynType(), {DynType()});
   auto list_type = ListType(memory_manager, DynType());
   auto map_type = MapType(memory_manager, DynType(), DynType());
   auto optional_type = OptionalType(memory_manager, DynType());
   auto struct_type = StructType(memory_manager, "test.Struct");
+  auto type_param_type = TypeParamType(memory_manager, "T");
   EXPECT_EQ(absl::HashOf(Type(AnyType())),
             absl::HashOf(TypeView(AnyTypeView())));
   EXPECT_EQ(absl::HashOf(Type(BoolType())),
@@ -187,6 +195,8 @@ TEST(Type, HashIsTransparent) {
             absl::HashOf(TypeView(DynTypeView())));
   EXPECT_EQ(absl::HashOf(Type(ErrorType())),
             absl::HashOf(TypeView(ErrorTypeView())));
+  EXPECT_EQ(absl::HashOf(Type(FunctionType(function_type))),
+            absl::HashOf(TypeView(FunctionTypeView(function_type))));
   EXPECT_EQ(absl::HashOf(Type(IntType())),
             absl::HashOf(TypeView(IntTypeView())));
   EXPECT_EQ(absl::HashOf(Type(IntWrapperType())),
@@ -207,6 +217,8 @@ TEST(Type, HashIsTransparent) {
             absl::HashOf(TypeView(StructTypeView(struct_type))));
   EXPECT_EQ(absl::HashOf(Type(TimestampType())),
             absl::HashOf(TypeView(TimestampTypeView())));
+  EXPECT_EQ(absl::HashOf(Type(TypeParamType(type_param_type))),
+            absl::HashOf(TypeView(TypeParamTypeView(type_param_type))));
   EXPECT_EQ(absl::HashOf(Type(TypeType())),
             absl::HashOf(TypeView(TypeTypeView())));
   EXPECT_EQ(absl::HashOf(Type(UintType())),

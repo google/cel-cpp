@@ -46,7 +46,8 @@
 #include "common/types/duration_type.h"  // IWYU pragma: export
 #include "common/types/dyn_type.h"    // IWYU pragma: export
 #include "common/types/error_type.h"  // IWYU pragma: export
-#include "common/types/int_type.h"    // IWYU pragma: export
+#include "common/types/function_type.h"  // IWYU pragma: export
+#include "common/types/int_type.h"  // IWYU pragma: export
 #include "common/types/int_wrapper_type.h"  // IWYU pragma: export
 #include "common/types/list_type.h"  // IWYU pragma: export
 #include "common/types/map_type.h"   // IWYU pragma: export
@@ -57,6 +58,7 @@
 #include "common/types/string_wrapper_type.h"  // IWYU pragma: export
 #include "common/types/struct_type.h"  // IWYU pragma: export
 #include "common/types/timestamp_type.h"  // IWYU pragma: export
+#include "common/types/type_param_type.h"  // IWYU pragma: export
 #include "common/types/type_type.h"  // IWYU pragma: export
 #include "common/types/types.h"
 #include "common/types/uint_type.h"  // IWYU pragma: export
@@ -174,9 +176,7 @@ class Type final {
         variant_);
   }
 
-  void swap(Type& other) noexcept {
-    variant_.swap(other.variant_);
-  }
+  void swap(Type& other) noexcept { variant_.swap(other.variant_); }
 
   template <typename H>
   friend H AbslHashValue(H state, const Type& type) {
@@ -761,6 +761,20 @@ struct StructTypeData final {
   const std::string name;
 };
 
+struct TypeParamTypeData final {
+  explicit TypeParamTypeData(std::string name) : name(std::move(name)) {}
+
+  const std::string name;
+};
+
+struct FunctionTypeData final {
+  explicit FunctionTypeData(Type result, absl::FixedArray<Type, 1> args)
+      : result(std::move(result)), args(std::move(args)) {}
+
+  const Type result;
+  const absl::FixedArray<Type, 1> args;
+};
+
 }  // namespace common_internal
 
 template <>
@@ -775,6 +789,16 @@ struct NativeTypeTraits<common_internal::MapTypeData> final {
   static bool SkipDestructor(const common_internal::MapTypeData& data) {
     return NativeType::SkipDestructor(data.key) &&
            NativeType::SkipDestructor(data.value);
+  }
+};
+
+template <>
+struct NativeTypeTraits<common_internal::FunctionTypeData> final {
+  static bool SkipDestructor(const common_internal::FunctionTypeData& data) {
+    return NativeType::SkipDestructor(data.result) &&
+           absl::c_all_of(data.args, [](const Type& type) -> bool {
+             return NativeType::SkipDestructor(type);
+           });
   }
 };
 
@@ -868,6 +892,21 @@ inline StructTypeView::StructTypeView(const StructType& type) noexcept
 
 inline absl::string_view StructTypeView::name() const { return data_->name; }
 
+inline TypeParamType::TypeParamType(TypeParamTypeView other)
+    : data_(other.data_) {}
+
+inline TypeParamType::TypeParamType(MemoryManagerRef memory_manager,
+                                    absl::string_view name)
+    : data_(memory_manager.MakeShared<common_internal::TypeParamTypeData>(
+          std::string(name))) {}
+
+inline absl::string_view TypeParamType::name() const { return data_->name; }
+
+inline TypeParamTypeView::TypeParamTypeView(const TypeParamType& type) noexcept
+    : data_(type.data_) {}
+
+inline absl::string_view TypeParamTypeView::name() const { return data_->name; }
+
 inline OpaqueType::OpaqueType(OpaqueTypeView other) : data_(other.data_) {}
 
 inline absl::string_view OpaqueType::name() const { return data_->name; }
@@ -952,6 +991,50 @@ inline bool operator==(OptionalTypeView lhs, OptionalTypeView rhs) {
 template <typename H>
 inline H AbslHashValue(H state, OptionalTypeView type) {
   return H::combine(std::move(state), type.parameter());
+}
+
+inline FunctionType::FunctionType(FunctionTypeView other)
+    : data_(other.data_) {}
+
+inline const Type& FunctionType::result() const { return data_->result; }
+
+inline absl::Span<const Type> FunctionType::args() const { return data_->args; }
+
+inline bool operator==(const FunctionType& lhs, const FunctionType& rhs) {
+  return lhs.result() == rhs.result() && absl::c_equal(lhs.args(), rhs.args());
+}
+
+template <typename H>
+inline H AbslHashValue(H state, const FunctionType& type) {
+  state = H::combine(std::move(state), type.result());
+  auto args = type.args();
+  for (const auto& arg : args) {
+    state = H::combine(std::move(state), arg);
+  }
+  return std::move(state);
+}
+
+inline FunctionTypeView::FunctionTypeView(const FunctionType& type) noexcept
+    : data_(type.data_) {}
+
+inline const Type& FunctionTypeView::result() const { return data_->result; }
+
+inline absl::Span<const Type> FunctionTypeView::args() const {
+  return data_->args;
+}
+
+inline bool operator==(FunctionTypeView lhs, FunctionTypeView rhs) {
+  return lhs.result() == rhs.result() && absl::c_equal(lhs.args(), rhs.args());
+}
+
+template <typename H>
+inline H AbslHashValue(H state, FunctionTypeView type) {
+  state = H::combine(std::move(state), type.result());
+  auto args = type.args();
+  for (const auto& arg : args) {
+    state = H::combine(std::move(state), arg);
+  }
+  return std::move(state);
 }
 
 }  // namespace cel

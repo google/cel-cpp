@@ -54,6 +54,9 @@ enum class TypeKind : std::underlying_type_t<Kind> {
   kStringWrapper = static_cast<int>(Kind::kStringWrapper),
   kBytesWrapper = static_cast<int>(Kind::kBytesWrapper),
 
+  kTypeParam = static_cast<int>(Kind::kTypeParam),
+  kFunction = static_cast<int>(Kind::kFunction),
+
   // Legacy aliases, deprecated do not use.
   kNullType = kNull,
   kInt64 = kInt,

@@ -28,6 +28,10 @@ absl::string_view KindToString(Kind kind) {
       return "any";
     case Kind::kType:
       return "type";
+    case Kind::kTypeParam:
+      return "type_param";
+    case Kind::kFunction:
+      return "function";
     case Kind::kBool:
       return "bool";
     case Kind::kInt:

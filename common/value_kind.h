@@ -67,7 +67,8 @@ constexpr bool KindIsValueKind(Kind kind) {
   return kind != Kind::kBoolWrapper && kind != Kind::kIntWrapper &&
          kind != Kind::kUintWrapper && kind != Kind::kDoubleWrapper &&
          kind != Kind::kStringWrapper && kind != Kind::kBytesWrapper &&
-         kind != Kind::kDyn && kind != Kind::kAny;
+         kind != Kind::kDyn && kind != Kind::kAny && kind != Kind::kTypeParam &&
+         kind != Kind::kFunction;
 }
 
 constexpr bool operator==(Kind lhs, ValueKind rhs) {

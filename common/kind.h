@@ -50,6 +50,9 @@ enum class Kind /* : uint8_t */ {
   kStringWrapper,
   kBytesWrapper,
 
+  kTypeParam,
+  kFunction,
+
   // Legacy aliases, deprecated do not use.
   kNullType = kNull,
   kInt64 = kInt,
