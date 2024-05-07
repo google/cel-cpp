@@ -174,6 +174,57 @@ TEST(ErrorValueIs, NonMatchMessage) {
 
 using ValueMatcherTest = common_internal::ThreadCompatibleValueTest<>;
 
+TEST_P(ValueMatcherTest, OptionalValueIsMatch) {
+  EXPECT_THAT(
+      OptionalValue::Of(value_manager().GetMemoryManager(), IntValue(42)),
+      OptionalValueIs(IntValueIs(42)));
+}
+
+TEST_P(ValueMatcherTest, OptionalValueIsHeldValueDifferent) {
+  EXPECT_NONFATAL_FAILURE(
+      [&]() {
+        EXPECT_THAT(OptionalValue::Of(value_manager().GetMemoryManager(),
+                                      IntValue(-42)),
+                    OptionalValueIs(IntValueIs(42)));
+      }(),
+      "is OptionalValue that is engaged with value whose kind is int and is "
+      "equal to 42");
+}
+
+TEST_P(ValueMatcherTest, OptionalValueIsNotEngaged) {
+  EXPECT_NONFATAL_FAILURE(
+      [&]() {
+        EXPECT_THAT(OptionalValue::None(), OptionalValueIs(IntValueIs(42)));
+      }(),
+      "is not engaged");
+}
+
+TEST_P(ValueMatcherTest, OptionalValueIsNotAnOptional) {
+  EXPECT_NONFATAL_FAILURE(
+      [&]() { EXPECT_THAT(IntValue(42), OptionalValueIs(IntValueIs(42))); }(),
+      "wanted OptionalValue, got int");
+}
+
+TEST_P(ValueMatcherTest, OptionalValueIsEmptyMatch) {
+  EXPECT_THAT(OptionalValue::None(), OptionalValueIsEmpty());
+}
+
+TEST_P(ValueMatcherTest, OptionalValueIsEmptyNotEmpty) {
+  EXPECT_NONFATAL_FAILURE(
+      [&]() {
+        EXPECT_THAT(
+            OptionalValue::Of(value_manager().GetMemoryManager(), IntValue(42)),
+            OptionalValueIsEmpty());
+      }(),
+      "is not empty");
+}
+
+TEST_P(ValueMatcherTest, OptionalValueIsEmptyNotOptional) {
+  EXPECT_NONFATAL_FAILURE(
+      [&]() { EXPECT_THAT(IntValue(42), OptionalValueIsEmpty()); }(),
+      "wanted OptionalValue, got int");
+}
+
 TEST_P(ValueMatcherTest, ListMatcherBasic) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewListValueBuilder(
                                          value_manager().GetDynListType()));

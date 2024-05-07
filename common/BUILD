@@ -331,6 +331,7 @@ cc_library(
     srcs = ["value_testing.cc"],
     hdrs = ["value_testing.h"],
     deps = [
+        ":casting",
         ":memory",
         ":memory_testing",
         ":type",

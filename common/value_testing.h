@@ -86,6 +86,12 @@ ValueMatcher ListValueIs(testing::Matcher<ListValue> m);
 // Returns a matcher for CEL struct values.
 ValueMatcher StructValueIs(testing::Matcher<StructValue> m);
 
+// Returns a matcher for CEL struct values.
+ValueMatcher OptionalValueIsEmpty();
+
+// Returns a matcher for CEL struct values.
+ValueMatcher OptionalValueIs(ValueMatcher m);
+
 // Returns a Matcher that tests the value of a CEL struct's field.
 // ValueManager* mgr must remain valid for the lifetime of the matcher.
 MATCHER_P3(StructValueFieldIs, mgr, name, m, "") {

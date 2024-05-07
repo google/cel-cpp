@@ -22,6 +22,7 @@
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/time/time.h"
+#include "common/casting.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "internal/testing.h"
@@ -139,6 +140,47 @@ class AbstractTypeMatcherImpl : public testing::MatcherInterface<const Value&> {
   MatcherType matcher_;
 };
 
+class OptionalValueMatcherImpl
+    : public testing::MatcherInterface<const Value&> {
+ public:
+  explicit OptionalValueMatcherImpl(ValueMatcher matcher)
+      : matcher_(std::move(matcher)) {}
+
+  bool MatchAndExplain(const Value& v,
+                       testing::MatchResultListener* listener) const override {
+    if (!InstanceOf<OptionalValue>(v)) {
+      *listener << "wanted OptionalValue, got " << ValueKindToString(v.kind());
+      return false;
+    }
+    const auto& optional_value = Cast<OptionalValue>(v);
+    if (!optional_value->HasValue()) {
+      *listener << "OptionalValue is not engaged";
+      return false;
+    }
+    return matcher_.MatchAndExplain(optional_value->Value(), listener);
+  }
+
+  void DescribeTo(std::ostream* os) const override {
+    *os << "is OptionalValue that is engaged with value whose ";
+    matcher_.DescribeTo(os);
+  }
+
+ private:
+  ValueMatcher matcher_;
+};
+
+MATCHER(OptionalValueIsEmptyImpl, "is empty OptionalValue") {
+  const Value& v = arg;
+  if (!InstanceOf<OptionalValue>(v)) {
+    *result_listener << "wanted OptionalValue, got "
+                     << ValueKindToString(v.kind());
+    return false;
+  }
+  const auto& optional_value = Cast<OptionalValue>(v);
+  *result_listener << (optional_value.HasValue() ? "is not empty" : "is empty");
+  return !optional_value->HasValue();
+}
+
 }  // namespace
 
 ValueMatcher BoolValueIs(Matcher<bool> m) {
@@ -194,6 +236,12 @@ ValueMatcher ListValueIs(Matcher<ListValue> m) {
 ValueMatcher StructValueIs(Matcher<StructValue> m) {
   return ValueMatcher(new AbstractTypeMatcherImpl<StructValue>(std::move(m)));
 }
+
+ValueMatcher OptionalValueIs(ValueMatcher m) {
+  return ValueMatcher(new OptionalValueMatcherImpl(std::move(m)));
+}
+
+ValueMatcher OptionalValueIsEmpty() { return OptionalValueIsEmptyImpl(); }
 
 }  // namespace test
 
