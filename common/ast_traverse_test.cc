@@ -63,11 +63,11 @@ class MockAstVisitor : public AstVisitor {
 
   // Comprehension node handler group
   MOCK_METHOD(void, PreVisitComprehensionSubexpression,
-              (const Expr* expr, const ComprehensionExpr* comprehension_expr,
+              (const ComprehensionExpr* comprehension_expr,
                ComprehensionArg comprehension_arg),
               (override));
   MOCK_METHOD(void, PostVisitComprehensionSubexpression,
-              (const Expr* expr, const ComprehensionExpr* comprehension_expr,
+              (const ComprehensionExpr* comprehension_expr,
                ComprehensionArg comprehension_arg),
               (override));
 
@@ -242,49 +242,40 @@ TEST(AstCrawlerTest, CheckCrawlComprehension) {
   // Lowest level entry will be called first
   EXPECT_CALL(handler, PreVisitComprehension(&c, &expr)).Times(1);
 
-  EXPECT_CALL(handler,
-              PreVisitComprehensionSubexpression(&iter_range, &c, ITER_RANGE))
+  EXPECT_CALL(handler, PreVisitComprehensionSubexpression(&c, ITER_RANGE))
       .Times(1);
   EXPECT_CALL(handler, PostVisitConst(&iter_range_expr, &iter_range)).Times(1);
-  EXPECT_CALL(handler,
-              PostVisitComprehensionSubexpression(&iter_range, &c, ITER_RANGE))
+  EXPECT_CALL(handler, PostVisitComprehensionSubexpression(&c, ITER_RANGE))
       .Times(1);
 
   // ACCU_INIT
-  EXPECT_CALL(handler,
-              PreVisitComprehensionSubexpression(&accu_init, &c, ACCU_INIT))
+  EXPECT_CALL(handler, PreVisitComprehensionSubexpression(&c, ACCU_INIT))
       .Times(1);
   EXPECT_CALL(handler, PostVisitIdent(&accu_init_expr, &accu_init)).Times(1);
-  EXPECT_CALL(handler,
-              PostVisitComprehensionSubexpression(&accu_init, &c, ACCU_INIT))
+  EXPECT_CALL(handler, PostVisitComprehensionSubexpression(&c, ACCU_INIT))
       .Times(1);
 
   // LOOP CONDITION
-  EXPECT_CALL(handler, PreVisitComprehensionSubexpression(&loop_condition, &c,
-                                                          LOOP_CONDITION))
+  EXPECT_CALL(handler, PreVisitComprehensionSubexpression(&c, LOOP_CONDITION))
       .Times(1);
   EXPECT_CALL(handler, PostVisitConst(&loop_condition_expr, &loop_condition))
       .Times(1);
-  EXPECT_CALL(handler, PostVisitComprehensionSubexpression(&loop_condition, &c,
-                                                           LOOP_CONDITION))
+  EXPECT_CALL(handler, PostVisitComprehensionSubexpression(&c, LOOP_CONDITION))
       .Times(1);
 
   // LOOP STEP
-  EXPECT_CALL(handler,
-              PreVisitComprehensionSubexpression(&loop_step, &c, LOOP_STEP))
+  EXPECT_CALL(handler, PreVisitComprehensionSubexpression(&c, LOOP_STEP))
       .Times(1);
   EXPECT_CALL(handler, PostVisitIdent(&loop_step_expr, &loop_step)).Times(1);
-  EXPECT_CALL(handler,
-              PostVisitComprehensionSubexpression(&loop_step, &c, LOOP_STEP))
+  EXPECT_CALL(handler, PostVisitComprehensionSubexpression(&c, LOOP_STEP))
       .Times(1);
 
   // RESULT
-  EXPECT_CALL(handler, PreVisitComprehensionSubexpression(&result, &c, RESULT))
-      .Times(1);
+  EXPECT_CALL(handler, PreVisitComprehensionSubexpression(&c, RESULT)).Times(1);
 
   EXPECT_CALL(handler, PostVisitConst(&result_expr, &result)).Times(1);
 
-  EXPECT_CALL(handler, PostVisitComprehensionSubexpression(&result, &c, RESULT))
+  EXPECT_CALL(handler, PostVisitComprehensionSubexpression(&c, RESULT))
       .Times(1);
 
   EXPECT_CALL(handler, PostVisitComprehension(&c, &expr)).Times(1);

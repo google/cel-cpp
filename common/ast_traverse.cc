@@ -115,8 +115,7 @@ struct PreVisitor {
   void operator()(const ArgRecord&) {}
 
   void operator()(const ComprehensionRecord& record) {
-    const Expr* expr = record.expr;
-    visitor->PreVisitComprehensionSubexpression(expr, record.comprehension,
+    visitor->PreVisitComprehensionSubexpression(record.comprehension,
                                                 record.comprehension_arg);
   }
 
@@ -175,8 +174,7 @@ struct PostVisitor {
   }
 
   void operator()(const ComprehensionRecord& record) {
-    const Expr* expr = record.expr;
-    visitor->PostVisitComprehensionSubexpression(expr, record.comprehension,
+    visitor->PostVisitComprehensionSubexpression(record.comprehension,
                                                  record.comprehension_arg);
   }
 

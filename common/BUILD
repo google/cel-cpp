@@ -107,8 +107,8 @@ cc_library(
     name = "ast_visitor",
     hdrs = ["ast_visitor.h"],
     deps = [
-        ":ast",
         ":constant",
+        ":expr",
     ],
 )
 

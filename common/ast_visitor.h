@@ -15,8 +15,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_AST_VISITOR_NATIVE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_AST_VISITOR_NATIVE_H_
 
-#include "common/ast.h"
 #include "common/constant.h"
+#include "common/expr.h"
 
 namespace cel {
 
@@ -82,13 +82,11 @@ class AstVisitor {
 
   // Invoked before comprehension child node is processed.
   virtual void PreVisitComprehensionSubexpression(
-      const Expr* subexpr, const ComprehensionExpr* compr,
-      ComprehensionArg comprehension_arg) {}
+      const ComprehensionExpr* compr, ComprehensionArg comprehension_arg) {}
 
   // Invoked after comprehension child node is processed.
   virtual void PostVisitComprehensionSubexpression(
-      const Expr* subexpr, const ComprehensionExpr* compr,
-      ComprehensionArg comprehension_arg) {}
+      const ComprehensionExpr* compr, ComprehensionArg comprehension_arg) {}
 
   // Invoked after all child nodes are processed.
   virtual void PostVisitComprehension(const ComprehensionExpr*,

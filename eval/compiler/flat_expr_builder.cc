@@ -1119,7 +1119,6 @@ class FlatExprVisitor : public cel::AstVisitor {
   }
 
   void PreVisitComprehensionSubexpression(
-      const cel::ast_internal::Expr* subexpr,
       const cel::ast_internal::Comprehension* compr,
       cel::ComprehensionArg comprehension_arg) override {
     if (!progress_status_.ok()) {
@@ -1168,7 +1167,6 @@ class FlatExprVisitor : public cel::AstVisitor {
   }
 
   void PostVisitComprehensionSubexpression(
-      const cel::ast_internal::Expr* subexpr,
       const cel::ast_internal::Comprehension* compr,
       cel::ComprehensionArg comprehension_arg) override {
     if (!progress_status_.ok()) {
