@@ -1,3 +1,17 @@
+// Copyright 2017 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "eval/eval/jump_step.h"
 
 #include <cstdint>
@@ -7,17 +21,15 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
-#include "common/casting.h"
 #include "common/value.h"
 #include "eval/internal/errors.h"
-#include "internal/casts.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
+
 using ::cel::BoolValue;
 using ::cel::ErrorValue;
-
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;
@@ -107,38 +119,6 @@ class BoolCheckJumpStep : public JumpStepBase {
   }
 };
 
-class OptionalHasValueJumpStep final : public JumpStepBase {
- public:
-  OptionalHasValueJumpStep(int64_t expr_id, bool or_value)
-      : JumpStepBase({}, expr_id), or_value_(or_value) {}
-
-  absl::Status Evaluate(ExecutionFrame* frame) const override {
-    if (!frame->value_stack().HasEnough(1)) {
-      return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
-    }
-    const auto& value = frame->value_stack().Peek();
-    auto optional_value = cel::As<cel::OptionalValue>(value);
-    // We jump if the receiver is `optional_type` which has a value or the
-    // receiver is an error/unknown. Unlike `_||_` we are not commutative. If
-    // we run into an error/unknown, we skip the `else` branch.
-    const bool should_jump =
-        (optional_value.has_value() && optional_value->HasValue()) ||
-        (!optional_value.has_value() &&
-         (cel::InstanceOf<cel::ErrorValue>(value) ||
-          cel::InstanceOf<cel::UnknownValue>(value)));
-    if (should_jump) {
-      if (or_value_ && optional_value.has_value()) {
-        frame->value_stack().PopAndPush(optional_value->Value());
-      }
-      return Jump(frame);
-    }
-    return absl::OkStatus();
-  }
-
- private:
-  const bool or_value_;
-};
-
 }  // namespace
 
 // Factory method for Conditional Jump step.
@@ -164,13 +144,5 @@ absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateBoolCheckJumpStep(
     absl::optional<int> jump_offset, int64_t expr_id) {
   return std::make_unique<BoolCheckJumpStep>(jump_offset, expr_id);
 }
-
-absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateOptionalHasValueJumpStep(
-    bool or_value, int64_t expr_id) {
-  return std::make_unique<OptionalHasValueJumpStep>(expr_id, or_value);
-}
-
-// TODO(issues/41) Make sure Unknowns are properly supported by ternary
-// operation.
 
 }  // namespace google::api::expr::runtime

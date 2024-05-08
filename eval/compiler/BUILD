@@ -110,6 +110,7 @@ cc_library(
         "//eval/eval:jump_step",
         "//eval/eval:lazy_init_step",
         "//eval/eval:logic_step",
+        "//eval/eval:optional_or_step",
         "//eval/eval:select_step",
         "//eval/eval:shadowable_value_step",
         "//eval/eval:ternary_step",

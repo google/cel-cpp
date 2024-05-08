@@ -423,10 +423,8 @@ cc_library(
     deps = [
         ":evaluator_core",
         ":expression_step_base",
-        "//common:casting",
         "//common:value",
         "//eval/internal:errors",
-        "//internal:casts",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:optional",
@@ -1151,6 +1149,21 @@ cc_library(
         "//common:value",
         "//internal:status_macros",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_library(
+    name = "optional_or_step",
+    srcs = ["optional_or_step.cc"],
+    hdrs = ["optional_or_step.h"],
+    deps = [
+        ":evaluator_core",
+        ":jump_step",
+        "//common:casting",
+        "//common:value",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:optional",
     ],
 )

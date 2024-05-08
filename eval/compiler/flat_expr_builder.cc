@@ -70,6 +70,7 @@
 #include "eval/eval/jump_step.h"
 #include "eval/eval/lazy_init_step.h"
 #include "eval/eval/logic_step.h"
+#include "eval/eval/optional_or_step.h"
 #include "eval/eval/select_step.h"
 #include "eval/eval/shadowable_value_step.h"
 #include "eval/eval/ternary_step.h"
