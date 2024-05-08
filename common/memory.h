@@ -220,7 +220,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Shared final {
 
   explicit operator bool() const { return !IsEmpty(); }
 
-  friend void swap(Shared& lhs, Shared& rhs) noexcept {
+  friend constexpr void swap(Shared& lhs, Shared& rhs) noexcept {
     using std::swap;
     swap(lhs.value_, rhs.value_);
     swap(lhs.refcount_, rhs.refcount_);
@@ -369,7 +369,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedView final {
 
   explicit operator bool() const { return !IsEmpty(); }
 
-  friend void swap(SharedView& lhs, SharedView& rhs) noexcept {
+  friend constexpr void swap(SharedView& lhs, SharedView& rhs) noexcept {
     using std::swap;
     swap(lhs.value_, rhs.value_);
     swap(lhs.refcount_, rhs.refcount_);

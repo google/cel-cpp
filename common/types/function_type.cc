@@ -14,7 +14,6 @@
 
 #include <cstddef>
 #include <string>
-#include <utility>
 
 #include "absl/container/fixed_array.h"
 #include "absl/log/absl_check.h"
@@ -42,14 +41,15 @@ std::string FunctionDebugString(const Type& result,
                       result.DebugString());
 }
 
-absl::FixedArray<Type, 1> SizedInputViewToFixedArray(
-    const SizedInputView<TypeView>& args) {
-  absl::FixedArray<Type, 1> fixed_args(args.size());
+absl::FixedArray<Type, 3> SizedInputViewToFixedArray(
+    TypeView result, const SizedInputView<TypeView>& args) {
+  absl::FixedArray<Type, 3> fixed_args(1 + args.size());
   size_t index = 0;
+  fixed_args[index++] = Type(result);
   for (const auto& arg : args) {
     fixed_args[index++] = Type(arg);
   }
-  ABSL_DCHECK_EQ(index, args.size());
+  ABSL_DCHECK_EQ(index, 1 + args.size());
   return fixed_args;
 }
 
@@ -58,7 +58,7 @@ absl::FixedArray<Type, 1> SizedInputViewToFixedArray(
 FunctionType::FunctionType(MemoryManagerRef memory_manager, TypeView result,
                            const SizedInputView<TypeView>& args)
     : data_(memory_manager.MakeShared<common_internal::FunctionTypeData>(
-          Type(result), SizedInputViewToFixedArray(std::move(args)))) {}
+          SizedInputViewToFixedArray(result, args))) {}
 
 std::string FunctionType::DebugString() const {
   return FunctionDebugString(result(), args());

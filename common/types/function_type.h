@@ -62,11 +62,13 @@ class FunctionType final {
 
   absl::string_view name() const { return "function"; }
 
+  absl::Span<const Type> parameters() const;
+
+  std::string DebugString() const;
+
   const Type& result() const;
 
   absl::Span<const Type> args() const;
-
-  std::string DebugString() const;
 
   void swap(FunctionType& other) noexcept {
     using std::swap;
@@ -133,11 +135,13 @@ class FunctionTypeView final {
 
   absl::string_view name() const { return "function"; }
 
+  std::string DebugString() const;
+
+  absl::Span<const Type> parameters() const;
+
   const Type& result() const;
 
   absl::Span<const Type> args() const;
-
-  std::string DebugString() const;
 
   void swap(FunctionTypeView& other) noexcept {
     using std::swap;

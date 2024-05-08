@@ -24,6 +24,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type_kind.h"
@@ -63,6 +64,8 @@ class MapType final {
   constexpr absl::string_view name() const { return kName; }
 
   std::string DebugString() const;
+
+  absl::Span<const Type> parameters() const;
 
   void swap(MapType& other) noexcept {
     using std::swap;
@@ -133,6 +136,8 @@ class MapTypeView final {
   constexpr absl::string_view name() const { return kName; }
 
   std::string DebugString() const;
+
+  absl::Span<const Type> parameters() const;
 
   void swap(MapTypeView& other) noexcept {
     using std::swap;

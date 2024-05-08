@@ -24,12 +24,14 @@
 
 #include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type_kind.h"
 
 namespace cel {
 
+class Type;
 class TypeParamType;
 class TypeParamTypeView;
 
@@ -56,6 +58,8 @@ class TypeParamType final {
   constexpr TypeKind kind() const { return kKind; }
 
   absl::string_view name() const;
+
+  absl::Span<const Type> parameters() const { return {}; }
 
   std::string DebugString() const { return std::string(name()); }
 
@@ -127,6 +131,8 @@ class TypeParamTypeView final {
   constexpr TypeKind kind() const { return kKind; }
 
   absl::string_view name() const;
+
+  absl::Span<const Type> parameters() const { return {}; }
 
   std::string DebugString() const { return std::string(name()); }
 

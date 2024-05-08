@@ -24,12 +24,19 @@
 
 #include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
+#include "common/memory.h"
 #include "common/type_kind.h"
 
 namespace cel {
 
+class Type;
 class TypeType;
 class TypeTypeView;
+
+namespace common_internal {
+struct TypeTypeData;
+}  // namespace common_internal
 
 // `TypeType` is a special type which represents the type of a type.
 class TypeType final {
@@ -39,7 +46,9 @@ class TypeType final {
   static constexpr TypeKind kKind = TypeKind::kType;
   static constexpr absl::string_view kName = "type";
 
-  explicit TypeType(TypeTypeView);
+  explicit TypeType(TypeTypeView type);
+
+  TypeType(MemoryManagerRef memory_manager, Type parameter);
 
   TypeType() = default;
   TypeType(const TypeType&) = default;
@@ -51,18 +60,27 @@ class TypeType final {
 
   constexpr absl::string_view name() const { return kName; }
 
+  absl::Span<const Type> parameters() const;
+
   std::string DebugString() const { return std::string(name()); }
 
-  constexpr void swap(TypeType&) noexcept {}
+  constexpr void swap(TypeType& other) noexcept {
+    using std::swap;
+    swap(data_, other.data_);
+  }
+
+  Shared<const common_internal::TypeTypeData> data_;
 };
 
 inline constexpr void swap(TypeType& lhs, TypeType& rhs) noexcept {
   lhs.swap(rhs);
 }
 
-inline constexpr bool operator==(TypeType, TypeType) { return true; }
+inline constexpr bool operator==(const TypeType&, const TypeType&) {
+  return true;
+}
 
-inline constexpr bool operator!=(TypeType lhs, TypeType rhs) {
+inline constexpr bool operator!=(const TypeType& lhs, const TypeType& rhs) {
   return !operator==(lhs, rhs);
 }
 
@@ -85,12 +103,13 @@ class TypeTypeView final {
   static constexpr absl::string_view kName = TypeType::kName;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  TypeTypeView(const TypeType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                   ABSL_ATTRIBUTE_UNUSED) noexcept {}
+  TypeTypeView(const TypeType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
+      : data_(type.data_) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   TypeTypeView& operator=(const TypeType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
                               ABSL_ATTRIBUTE_UNUSED) {
+    data_ = type.data_;
     return *this;
   }
 
@@ -106,9 +125,16 @@ class TypeTypeView final {
 
   constexpr absl::string_view name() const { return kName; }
 
+  absl::Span<const Type> parameters() const;
+
   std::string DebugString() const { return std::string(name()); }
 
-  constexpr void swap(TypeTypeView&) noexcept {}
+  constexpr void swap(TypeTypeView& other) noexcept {
+    using std::swap;
+    swap(data_, other.data_);
+  }
+
+  SharedView<const common_internal::TypeTypeData> data_;
 };
 
 inline constexpr void swap(TypeTypeView& lhs, TypeTypeView& rhs) noexcept {
@@ -132,7 +158,7 @@ inline std::ostream& operator<<(std::ostream& out, TypeTypeView type) {
   return out << type.DebugString();
 }
 
-inline TypeType::TypeType(TypeTypeView) {}
+inline TypeType::TypeType(TypeTypeView type) : data_(type.data_) {}
 
 }  // namespace cel
 

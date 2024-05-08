@@ -32,6 +32,7 @@ class Expr;
 class Constant;
 class BytesConstant;
 class StringConstant;
+class VariableDecl;
 
 class BytesConstant final : public std::string {
  public:
@@ -351,6 +352,7 @@ class Constant final {
 
  private:
   friend class Expr;
+  friend class VariableDecl;
 
   static const Constant& default_instance();
 

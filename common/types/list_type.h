@@ -24,6 +24,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type_kind.h"
@@ -63,6 +64,8 @@ class ListType final {
   constexpr absl::string_view name() const { return kName; }
 
   std::string DebugString() const;
+
+  absl::Span<const Type> parameters() const;
 
   void swap(ListType& other) noexcept {
     using std::swap;
@@ -131,6 +134,8 @@ class ListTypeView final {
   constexpr absl::string_view name() const { return kName; }
 
   std::string DebugString() const;
+
+  absl::Span<const Type> parameters() const;
 
   void swap(ListTypeView& other) noexcept {
     using std::swap;

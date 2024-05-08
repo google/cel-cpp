@@ -50,6 +50,42 @@ cc_test(
 )
 
 cc_library(
+    name = "decl",
+    srcs = ["decl.cc"],
+    hdrs = ["decl.h"],
+    deps = [
+        ":casting",
+        ":constant",
+        ":type",
+        ":type_kind",
+        "//internal:status_macros",
+        "@com_google_absl//absl/algorithm:container",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_test(
+    name = "decl_test",
+    srcs = ["decl_test.cc"],
+    deps = [
+        ":constant",
+        ":decl",
+        ":memory",
+        ":type",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+cc_library(
     name = "ast_rewrite",
     srcs = ["ast_rewrite.cc"],
     hdrs = ["ast_rewrite.h"],

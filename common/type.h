@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_H_
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <ostream>
@@ -171,6 +172,23 @@ class Type final {
             return std::string();
           } else {
             return alternative.DebugString();
+          }
+        },
+        variant_);
+  }
+
+  absl::Span<const Type> parameters() const {
+    AssertIsValid();
+    return absl::visit(
+        [](const auto& alternative) -> absl::Span<const Type> {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return an empty string. In debug
+            // builds we cannot reach here.
+            return {};
+          } else {
+            return alternative.parameters();
           }
         },
         variant_);
@@ -543,6 +561,23 @@ class TypeView final {
         variant_);
   }
 
+  absl::Span<const Type> parameters() const {
+    AssertIsValid();
+    return absl::visit(
+        [](auto alternative) -> absl::Span<const Type> {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return an empty string. In debug
+            // builds we cannot reach here.
+            return {};
+          } else {
+            return alternative.parameters();
+          }
+        },
+        variant_);
+  }
+
   void swap(TypeView& other) noexcept {
     AssertIsValid();
     other.AssertIsValid();
@@ -740,10 +775,9 @@ struct ListTypeData final {
 
 struct MapTypeData final {
   explicit MapTypeData(Type key, Type value) noexcept
-      : key(std::move(key)), value(std::move(value)) {}
+      : key_and_value{std::move(key), std::move(value)} {}
 
-  const Type key;
-  const Type value;
+  std::array<Type, 2> key_and_value;
 };
 
 struct OpaqueTypeData final {
@@ -768,11 +802,16 @@ struct TypeParamTypeData final {
 };
 
 struct FunctionTypeData final {
-  explicit FunctionTypeData(Type result, absl::FixedArray<Type, 1> args)
-      : result(std::move(result)), args(std::move(args)) {}
+  explicit FunctionTypeData(absl::FixedArray<Type, 3> result_and_args)
+      : result_and_args(std::move(result_and_args)) {}
 
-  const Type result;
-  const absl::FixedArray<Type, 1> args;
+  const absl::FixedArray<Type, 3> result_and_args;
+};
+
+struct TypeTypeData final {
+  explicit TypeTypeData(Type type) : type(std::move(type)) {}
+
+  const Type type;
 };
 
 }  // namespace common_internal
@@ -787,18 +826,17 @@ struct NativeTypeTraits<common_internal::ListTypeData> final {
 template <>
 struct NativeTypeTraits<common_internal::MapTypeData> final {
   static bool SkipDestructor(const common_internal::MapTypeData& data) {
-    return NativeType::SkipDestructor(data.key) &&
-           NativeType::SkipDestructor(data.value);
+    return NativeType::SkipDestructor(data.key_and_value[0]) &&
+           NativeType::SkipDestructor(data.key_and_value[1]);
   }
 };
 
 template <>
 struct NativeTypeTraits<common_internal::FunctionTypeData> final {
   static bool SkipDestructor(const common_internal::FunctionTypeData& data) {
-    return NativeType::SkipDestructor(data.result) &&
-           absl::c_all_of(data.args, [](const Type& type) -> bool {
-             return NativeType::SkipDestructor(type);
-           });
+    return absl::c_all_of(data.result_and_args, [](const Type& type) -> bool {
+      return NativeType::SkipDestructor(type);
+    });
   }
 };
 
@@ -809,6 +847,10 @@ inline ListType::ListType(ListTypeView other) : data_(other.data_) {}
 inline ListType::ListType(MemoryManagerRef memory_manager, Type element)
     : data_(memory_manager.MakeShared<common_internal::ListTypeData>(
           std::move(element))) {}
+
+inline absl::Span<const Type> ListType::parameters() const {
+  return absl::MakeConstSpan(&data_->element, 1);
+}
 
 inline TypeView ListType::element() const { return data_->element; }
 
@@ -826,6 +868,10 @@ inline ListTypeView::ListTypeView()
 
 inline ListTypeView::ListTypeView(const ListType& type) noexcept
     : data_(type.data_) {}
+
+inline absl::Span<const Type> ListTypeView::parameters() const {
+  return absl::MakeConstSpan(&data_->element, 1);
+}
 
 inline TypeView ListTypeView::element() const { return data_->element; }
 
@@ -846,9 +892,13 @@ inline MapType::MapType(MemoryManagerRef memory_manager, Type key, Type value)
     : data_(memory_manager.MakeShared<common_internal::MapTypeData>(
           std::move(key), std::move(value))) {}
 
-inline TypeView MapType::key() const { return data_->key; }
+inline absl::Span<const Type> MapType::parameters() const {
+  return absl::MakeConstSpan(data_->key_and_value);
+}
 
-inline TypeView MapType::value() const { return data_->value; }
+inline TypeView MapType::key() const { return data_->key_and_value[0]; }
+
+inline TypeView MapType::value() const { return data_->key_and_value[1]; }
 
 inline bool operator==(const MapType& lhs, const MapType& rhs) {
   return &lhs == &rhs || (lhs.key() == rhs.key() && lhs.value() == rhs.value());
@@ -865,9 +915,13 @@ inline MapTypeView::MapTypeView()
 inline MapTypeView::MapTypeView(const MapType& type) noexcept
     : data_(type.data_) {}
 
-inline TypeView MapTypeView::key() const { return data_->key; }
+inline absl::Span<const Type> MapTypeView::parameters() const {
+  return absl::MakeConstSpan(data_->key_and_value);
+}
 
-inline TypeView MapTypeView::value() const { return data_->value; }
+inline TypeView MapTypeView::key() const { return data_->key_and_value[0]; }
+
+inline TypeView MapTypeView::value() const { return data_->key_and_value[1]; }
 
 inline bool operator==(MapTypeView lhs, MapTypeView rhs) {
   return lhs.key() == rhs.key() && lhs.value() == rhs.value();
@@ -996,9 +1050,17 @@ inline H AbslHashValue(H state, OptionalTypeView type) {
 inline FunctionType::FunctionType(FunctionTypeView other)
     : data_(other.data_) {}
 
-inline const Type& FunctionType::result() const { return data_->result; }
+inline absl::Span<const Type> FunctionType::parameters() const {
+  return absl::MakeConstSpan(data_->result_and_args);
+}
 
-inline absl::Span<const Type> FunctionType::args() const { return data_->args; }
+inline const Type& FunctionType::result() const {
+  return data_->result_and_args[0];
+}
+
+inline absl::Span<const Type> FunctionType::args() const {
+  return absl::MakeConstSpan(data_->result_and_args).subspan(1);
+}
 
 inline bool operator==(const FunctionType& lhs, const FunctionType& rhs) {
   return lhs.result() == rhs.result() && absl::c_equal(lhs.args(), rhs.args());
@@ -1017,10 +1079,16 @@ inline H AbslHashValue(H state, const FunctionType& type) {
 inline FunctionTypeView::FunctionTypeView(const FunctionType& type) noexcept
     : data_(type.data_) {}
 
-inline const Type& FunctionTypeView::result() const { return data_->result; }
+inline absl::Span<const Type> FunctionTypeView::parameters() const {
+  return absl::MakeConstSpan(data_->result_and_args);
+}
+
+inline const Type& FunctionTypeView::result() const {
+  return data_->result_and_args[0];
+}
 
 inline absl::Span<const Type> FunctionTypeView::args() const {
-  return data_->args;
+  return absl::MakeConstSpan(data_->result_and_args).subspan(1);
 }
 
 inline bool operator==(FunctionTypeView lhs, FunctionTypeView rhs) {
@@ -1035,6 +1103,24 @@ inline H AbslHashValue(H state, FunctionTypeView type) {
     state = H::combine(std::move(state), arg);
   }
   return std::move(state);
+}
+
+inline TypeType::TypeType(MemoryManagerRef memory_manager, Type parameter)
+    : data_(memory_manager.MakeShared<common_internal::TypeTypeData>(
+          std::move(parameter))) {}
+
+inline absl::Span<const Type> TypeType::parameters() const {
+  if (data_) {
+    return absl::MakeConstSpan(&data_->type, 1);
+  }
+  return {};
+}
+
+inline absl::Span<const Type> TypeTypeView::parameters() const {
+  if (data_) {
+    return absl::MakeConstSpan(&data_->type, 1);
+  }
+  return {};
 }
 
 }  // namespace cel

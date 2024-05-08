@@ -24,10 +24,12 @@
 
 #include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "common/type_kind.h"
 
 namespace cel {
 
+class Type;
 class UintWrapperType;
 class UintWrapperTypeView;
 
@@ -53,6 +55,8 @@ class UintWrapperType final {
   constexpr TypeKind kind() const { return kKind; }
 
   constexpr absl::string_view name() const { return kName; }
+
+  absl::Span<const Type> parameters() const { return {}; }
 
   std::string DebugString() const { return std::string(name()); }
 
@@ -113,6 +117,8 @@ class UintWrapperTypeView final {
   constexpr TypeKind kind() const { return kKind; }
 
   constexpr absl::string_view name() const { return kName; }
+
+  absl::Span<const Type> parameters() const { return {}; }
 
   std::string DebugString() const { return std::string(name()); }
 
