@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <ostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -29,6 +30,7 @@
 #include "common/kind.h"
 #include "common/memory.h"
 #include "common/value.h"
+#include "common/value_testing.h"
 #include "common/values/legacy_value_manager.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/runtime_adapter.h"
@@ -36,6 +38,7 @@
 #include "parser/options.h"
 #include "parser/parser.h"
 #include "runtime/activation.h"
+#include "runtime/internal/runtime_impl.h"
 #include "runtime/reference_resolver.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_builder.h"
@@ -48,6 +51,10 @@ namespace {
 
 using ::cel::extensions::ProtobufRuntimeAdapter;
 using ::cel::extensions::ProtoMemoryManagerRef;
+using ::cel::test::BoolValueIs;
+using ::cel::test::IntValueIs;
+using ::cel::test::OptionalValueIs;
+using ::cel::test::OptionalValueIsEmpty;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::parser::ParserOptions;
@@ -153,21 +160,32 @@ TEST(EnableOptionalTypes, Functions) {
 struct EvaluateResultTestCase {
   std::string name;
   std::string expression;
-  bool expected_result;
+  test::ValueMatcher value_matcher;
 };
 
 class OptionalTypesTest
-    : public ::testing::TestWithParam<EvaluateResultTestCase> {};
+    : public common_internal::ThreadCompatibleValueTest<EvaluateResultTestCase,
+                                                        bool> {
+ public:
+  const EvaluateResultTestCase& GetTestCase() {
+    return std::get<1>(GetParam());
+  }
 
-std::string TestCaseName(
-    const testing::TestParamInfo<EvaluateResultTestCase>& info) {
-  return info.param.name;
+  bool EnableShortCircuiting() { return std::get<2>(GetParam()); }
+};
+
+std::ostream& operator<<(std::ostream& os,
+                         const EvaluateResultTestCase& test_case) {
+  return os << test_case.name;
 }
 
-TEST_P(OptionalTypesTest, DefaultsRefCounted) {
-  RuntimeOptions opts{.enable_qualified_type_identifiers = true};
-  const EvaluateResultTestCase& test_case = GetParam();
-  MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
+TEST_P(OptionalTypesTest, RecursivePlan) {
+  RuntimeOptions opts;
+  opts.enable_qualified_type_identifiers = true;
+  opts.max_recursion_depth = -1;
+  opts.short_circuiting = EnableShortCircuiting();
+
+  const EvaluateResultTestCase& test_case = GetTestCase();
 
   ASSERT_OK_AND_ASSIGN(auto builder, CreateStandardRuntimeBuilder(opts));
 
@@ -184,24 +202,24 @@ TEST_P(OptionalTypesTest, DefaultsRefCounted) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
                        ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
 
+  EXPECT_TRUE(runtime_internal::TestOnly_IsRecursiveImpl(program.get()));
+
   cel::common_internal::LegacyValueManager value_factory(
-      memory_manager, runtime->GetTypeProvider());
+      memory_manager(), runtime->GetTypeProvider());
 
   Activation activation;
 
   ASSERT_OK_AND_ASSIGN(Value result,
                        program->Evaluate(activation, value_factory));
 
-  ASSERT_TRUE(result->Is<BoolValue>()) << result->DebugString();
-  EXPECT_EQ(result->As<BoolValue>().NativeValue(), test_case.expected_result)
-      << test_case.expression;
+  EXPECT_THAT(result, test_case.value_matcher) << test_case.expression;
 }
 
-TEST_P(OptionalTypesTest, DefaultsArena) {
-  RuntimeOptions opts{.enable_qualified_type_identifiers = true};
-  const EvaluateResultTestCase& test_case = GetParam();
-  google::protobuf::Arena arena;
-  auto memory_manager = ProtoMemoryManagerRef(&arena);
+TEST_P(OptionalTypesTest, Defaults) {
+  RuntimeOptions opts;
+  opts.enable_qualified_type_identifiers = true;
+  opts.short_circuiting = EnableShortCircuiting();
+  const EvaluateResultTestCase& test_case = GetTestCase();
 
   ASSERT_OK_AND_ASSIGN(auto builder, CreateStandardRuntimeBuilder(opts));
 
@@ -218,7 +236,7 @@ TEST_P(OptionalTypesTest, DefaultsArena) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
                        ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
 
-  common_internal::LegacyValueManager value_factory(memory_manager,
+  common_internal::LegacyValueManager value_factory(this->memory_manager(),
                                                     runtime->GetTypeProvider());
 
   Activation activation;
@@ -226,20 +244,32 @@ TEST_P(OptionalTypesTest, DefaultsArena) {
   ASSERT_OK_AND_ASSIGN(Value result,
                        program->Evaluate(activation, value_factory));
 
-  ASSERT_TRUE(result->Is<BoolValue>()) << result->DebugString();
-  EXPECT_EQ(result->As<BoolValue>().NativeValue(), test_case.expected_result)
-      << test_case.expression;
+  EXPECT_THAT(result, test_case.value_matcher) << test_case.expression;
 }
 
 INSTANTIATE_TEST_SUITE_P(
     Basic, OptionalTypesTest,
-    testing::ValuesIn(std::vector<EvaluateResultTestCase>{
-        {"optional_none_hasValue", "optional.none().hasValue()", false},
-        {"optional_of_hasValue", "optional.of(0).hasValue()", true},
-        {"optional_ofNonZeroValue_hasValue",
-         "optional.ofNonZeroValue(0).hasValue()", false},
-    }),
-    TestCaseName);
+    testing::Combine(
+        testing::Values(MemoryManagement::kPooling,
+                        MemoryManagement::kReferenceCounting),
+        testing::ValuesIn(std::vector<EvaluateResultTestCase>{
+            {"optional_none_hasValue", "optional.none().hasValue()",
+             BoolValueIs(false)},
+            {"optional_of_hasValue", "optional.of(0).hasValue()",
+             BoolValueIs(true)},
+            {"optional_ofNonZeroValue_hasValue",
+             "optional.ofNonZeroValue(0).hasValue()", BoolValueIs(false)},
+            {"optional_or_absent",
+             "optional.ofNonZeroValue(0).or(optional.ofNonZeroValue(0))",
+             OptionalValueIsEmpty()},
+            {"optional_or_present", "optional.of(1).or(optional.none())",
+             OptionalValueIs(IntValueIs(1))},
+            {"optional_orValue_absent", "optional.ofNonZeroValue(0).orValue(1)",
+             IntValueIs(1)},
+            {"optional_orValue_present", "optional.of(1).orValue(2)",
+             IntValueIs(1)}}),
+        /*enable_short_circuiting*/ testing::Bool()),
+    OptionalTypesTest::ToString);
 
 class UnreachableFunction final : public cel::Function {
  public:

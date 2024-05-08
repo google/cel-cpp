@@ -19,6 +19,7 @@
 #include <memory>
 
 #include "absl/status/statusor.h"
+#include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/jump_step.h"
 
@@ -38,6 +39,13 @@ absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateOptionalHasValueJumpStep(
 // optional.orValue.
 std::unique_ptr<ExpressionStep> CreateOptionalOrStep(bool is_or_value,
                                                      int64_t expr_id);
+
+// Creates a step implementing the short-circuiting optional.or or
+// optional.orValue step.
+std::unique_ptr<DirectExpressionStep> CreateDirectOptionalOrStep(
+    int64_t expr_id, std::unique_ptr<DirectExpressionStep> optional,
+    std::unique_ptr<DirectExpressionStep> alternative, bool is_or_value,
+    bool short_circuiting);
 
 }  // namespace google::api::expr::runtime
 

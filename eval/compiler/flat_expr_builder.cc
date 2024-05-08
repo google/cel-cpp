@@ -86,7 +86,6 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::Ast;
-
 using ::cel::AstTraverse;
 using ::cel::RuntimeIssue;
 using ::cel::StringValue;
@@ -95,6 +94,9 @@ using ::cel::ValueManager;
 using ::cel::ast_internal::AstImpl;
 using ::cel::runtime_internal::ConvertConstant;
 using ::cel::runtime_internal::IssueCollector;
+
+constexpr absl::string_view kOptionalOrFn = "or";
+constexpr absl::string_view kOptionalOrValueFn = "orValue";
 
 // Forward declare to resolve circular dependency for short_circuiting visitors.
 class FlatExprVisitor;
@@ -732,11 +734,13 @@ class FlatExprVisitor : public cel::AstVisitor {
       } else {
         cond_visitor = std::make_unique<ExhaustiveTernaryCondVisitor>(this);
       }
-    } else if (enable_optional_types_ && call_expr->function() == "or" &&
+    } else if (enable_optional_types_ &&
+               call_expr->function() == kOptionalOrFn &&
                call_expr->has_target() && call_expr->args().size() == 1) {
       cond_visitor = std::make_unique<BinaryCondVisitor>(
           this, BinaryCond::kOptionalOr, options_.short_circuiting);
-    } else if (enable_optional_types_ && call_expr->function() == "orValue" &&
+    } else if (enable_optional_types_ &&
+               call_expr->function() == kOptionalOrValueFn &&
                call_expr->has_target() && call_expr->args().size() == 1) {
       cond_visitor = std::make_unique<BinaryCondVisitor>(
           this, BinaryCond::kOptionalOrValue, options_.short_circuiting);
@@ -868,6 +872,45 @@ class FlatExprVisitor : public cel::AstVisitor {
     }
   }
 
+  void MaybeMakeOptionalShortcircuitRecursive(
+      const cel::ast_internal::Expr* expr, bool is_or_value) {
+    if (options_.max_recursion_depth == 0) {
+      return;
+    }
+    if (!expr->call_expr().has_target() ||
+        expr->call_expr().args().size() != 1) {
+      SetProgressStatusError(absl::InvalidArgumentError(
+          "unexpected number of args for optional.or{Value}"));
+    }
+    const cel::ast_internal::Expr* left_expr = &expr->call_expr().target();
+    const cel::ast_internal::Expr* right_expr = &expr->call_expr().args()[0];
+
+    auto* left_plan = program_builder_.GetSubexpression(left_expr);
+    auto* right_plan = program_builder_.GetSubexpression(right_expr);
+
+    int max_depth = 0;
+    if (left_plan == nullptr || !left_plan->IsRecursive()) {
+      return;
+    }
+    max_depth = std::max(max_depth, left_plan->recursive_program().depth);
+
+    if (right_plan == nullptr || !right_plan->IsRecursive()) {
+      return;
+    }
+    max_depth = std::max(max_depth, right_plan->recursive_program().depth);
+
+    if (options_.max_recursion_depth >= 0 &&
+        max_depth >= options_.max_recursion_depth) {
+      return;
+    }
+
+    SetRecursiveStep(CreateDirectOptionalOrStep(
+                         expr->id(), left_plan->ExtractRecursiveProgram().step,
+                         right_plan->ExtractRecursiveProgram().step,
+                         is_or_value, options_.short_circuiting),
+                     max_depth + 1);
+  }
+
   void MaybeMakeBindRecursive(
       const cel::ast_internal::Expr* expr,
       const cel::ast_internal::Comprehension* comprehension, size_t accu_slot) {
@@ -978,6 +1021,13 @@ class FlatExprVisitor : public cel::AstVisitor {
         MaybeMakeShortcircuitRecursive(expr, /* is_or= */ true);
       } else if (call_expr->function() == cel::builtin::kAnd) {
         MaybeMakeShortcircuitRecursive(expr, /* is_or= */ false);
+      } else if (enable_optional_types_) {
+        if (call_expr->function() == kOptionalOrFn) {
+          MaybeMakeOptionalShortcircuitRecursive(expr,
+                                                 /* is_or_value= */ false);
+        } else if (call_expr->function() == kOptionalOrValueFn) {
+          MaybeMakeOptionalShortcircuitRecursive(expr, /* is_or_value= */ true);
+        }
       }
       return;
     }
@@ -1317,8 +1367,7 @@ class FlatExprVisitor : public cel::AstVisitor {
 
   void AddResolvedFunctionStep(const cel::ast_internal::Call* call_expr,
                                const cel::ast_internal::Expr* expr,
-                               absl::string_view function,
-                               bool collect_issues = true) {
+                               absl::string_view function) {
     // Establish the search criteria for a given function.
     bool receiver_style = call_expr->has_target();
     size_t num_args = call_expr->args().size() + (receiver_style ? 1 : 0);
@@ -1351,12 +1400,10 @@ class FlatExprVisitor : public cel::AstVisitor {
       // builder_warnings configuration, this could result in termination of the
       // CelExpression creation or an inspectable warning for use within runtime
       // logging.
-      auto status = absl::InvalidArgumentError(
-          "No overloads provided for FunctionStep creation");
-      if (collect_issues) {
-        status = issue_collector_.AddIssue(RuntimeIssue::CreateWarning(
-            std::move(status), RuntimeIssue::ErrorCode::kNoMatchingOverload));
-      }
+      auto status = issue_collector_.AddIssue(RuntimeIssue::CreateWarning(
+          absl::InvalidArgumentError(
+              "No overloads provided for FunctionStep creation"),
+          RuntimeIssue::ErrorCode::kNoMatchingOverload));
       if (!status.ok()) {
         SetProgressStatusError(status);
         return;
@@ -1375,11 +1422,6 @@ class FlatExprVisitor : public cel::AstVisitor {
       return;
     }
     AddStep(CreateFunctionStep(*call_expr, expr->id(), std::move(overloads)));
-  }
-
-  void AddChainedOptionalStep(const cel::ast_internal::Call* call_expr,
-                              const cel::ast_internal::Expr* expr) {
-    AddResolvedFunctionStep(call_expr, expr, call_expr->function(), false);
   }
 
   void AddStep(absl::StatusOr<std::unique_ptr<ExpressionStep>> step) {
