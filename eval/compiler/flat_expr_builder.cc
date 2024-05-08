@@ -1585,7 +1585,7 @@ void BinaryCondVisitor::PreVisit(const cel::ast_internal::Expr* expr) {
     case BinaryCond::kOptionalOrValue:
       visitor_->ValidateOrError(expr->call_expr().has_target() &&
                                     expr->call_expr().args().size() == 1,
-                                "Invalid argument count for or/OrValue call.");
+                                "Invalid argument count for or/orValue call.");
       break;
   }
 }
@@ -1652,10 +1652,11 @@ void BinaryCondVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
       visitor_->AddStep(CreateOrStep(expr->id()));
       break;
     case BinaryCond::kOptionalOr:
-      visitor_->AddChainedOptionalStep(&expr->call_expr(), expr);
+      visitor_->AddStep(
+          CreateOptionalOrStep(/*is_or_value=*/false, expr->id()));
       break;
     case BinaryCond::kOptionalOrValue:
-      visitor_->AddChainedOptionalStep(&expr->call_expr(), expr);
+      visitor_->AddStep(CreateOptionalOrStep(/*is_or_value=*/true, expr->id()));
       break;
     default:
       ABSL_UNREACHABLE();

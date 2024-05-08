@@ -130,14 +130,6 @@ TEST(EnableOptionalTypes, Functions) {
               ElementsAre(MatchesOptionalReceiver1("value")));
 
   EXPECT_THAT(builder.function_registry().FindStaticOverloads(
-                  "or", true, {Kind::kOpaque, Kind::kOpaque}),
-              ElementsAre(MatchesOptionalReceiver2("or", Kind::kOpaque)));
-
-  EXPECT_THAT(builder.function_registry().FindStaticOverloads(
-                  "orValue", true, {Kind::kOpaque, Kind::kAny}),
-              ElementsAre(MatchesOptionalReceiver2("orValue", Kind::kAny)));
-
-  EXPECT_THAT(builder.function_registry().FindStaticOverloads(
                   "_?._", false, {Kind::kStruct, Kind::kString}),
               ElementsAre(MatchesOptionalSelect(Kind::kStruct, Kind::kString)));
   EXPECT_THAT(builder.function_registry().FindStaticOverloads(

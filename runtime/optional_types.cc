@@ -76,32 +76,6 @@ absl::StatusOr<Value> OptionalHasValue(ValueManager& value_manager,
       runtime_internal::CreateNoMatchingOverloadError("hasValue")};
 }
 
-// Called when short-circuiting is disabled or when `lhs` is `optional.none()`.
-absl::StatusOr<Value> OptionalOr(ValueManager&, const OpaqueValue& lhs,
-                                 const OpaqueValue& rhs) {
-  if (auto lhs_optional_value = As<OptionalValue>(lhs); lhs_optional_value) {
-    if (InstanceOf<OptionalValue>(rhs)) {
-      if (lhs_optional_value->HasValue()) {
-        return lhs;
-      }
-      return rhs;
-    }
-  }
-  return ErrorValue{runtime_internal::CreateNoMatchingOverloadError("or")};
-}
-
-// Called when short-circuiting is disabled or when `lhs` is `optional.none()`.
-absl::StatusOr<Value> OptionalOrValue(ValueManager&, const OpaqueValue& lhs,
-                                      const Value& rhs) {
-  if (auto lhs_optional_value = As<OptionalValue>(lhs); lhs_optional_value) {
-    if (lhs_optional_value->HasValue()) {
-      return lhs_optional_value->Value();
-    }
-    return rhs;
-  }
-  return ErrorValue{runtime_internal::CreateNoMatchingOverloadError("orValue")};
-}
-
 absl::StatusOr<Value> SelectOptionalFieldStruct(ValueManager& value_manager,
                                                 const StructValue& struct_value,
                                                 const StringValue& key) {
@@ -271,16 +245,6 @@ absl::Status RegisterOptionalTypeFunctions(FunctionRegistry& registry,
                            OpaqueValue>::CreateDescriptor("hasValue", true),
       UnaryFunctionAdapter<absl::StatusOr<Value>, OpaqueValue>::WrapFunction(
           &OptionalHasValue)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<absl::StatusOr<Value>, OpaqueValue,
-                            OpaqueValue>::CreateDescriptor("or", true),
-      BinaryFunctionAdapter<absl::StatusOr<Value>, OpaqueValue,
-                            OpaqueValue>::WrapFunction(&OptionalOr)));
-  CEL_RETURN_IF_ERROR(registry.Register(
-      BinaryFunctionAdapter<absl::StatusOr<Value>, OpaqueValue,
-                            Value>::CreateDescriptor("orValue", true),
-      BinaryFunctionAdapter<absl::StatusOr<Value>, OpaqueValue,
-                            Value>::WrapFunction(&OptionalOrValue)));
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<absl::StatusOr<Value>, StructValue,
                             StringValue>::CreateDescriptor("_?._", false),

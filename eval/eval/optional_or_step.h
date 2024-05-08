@@ -19,6 +19,7 @@
 #include <memory>
 
 #include "absl/status/statusor.h"
+#include "eval/eval/evaluator_core.h"
 #include "eval/eval/jump_step.h"
 
 namespace google::api::expr::runtime {
@@ -32,6 +33,11 @@ namespace google::api::expr::runtime {
 // the stack.
 absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateOptionalHasValueJumpStep(
     bool or_value, int64_t expr_id);
+
+// Factory method for OptionalOr step, used to implement optional.or and
+// optional.orValue.
+std::unique_ptr<ExpressionStep> CreateOptionalOrStep(bool is_or_value,
+                                                     int64_t expr_id);
 
 }  // namespace google::api::expr::runtime
 

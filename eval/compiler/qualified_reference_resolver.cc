@@ -47,13 +47,18 @@ using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::Reference;
 using ::cel::runtime_internal::IssueCollector;
 
+// Optional types are opt-in but require special handling in the evaluator.
+constexpr absl::string_view kOptionalOr = "or";
+constexpr absl::string_view kOptionalOrValue = "orValue";
+
 // Determines if function is implemented with custom evaluation step instead of
 // registered.
 bool IsSpecialFunction(absl::string_view function_name) {
   return function_name == cel::builtin::kAnd ||
          function_name == cel::builtin::kOr ||
          function_name == cel::builtin::kIndex ||
-         function_name == cel::builtin::kTernary;
+         function_name == cel::builtin::kTernary ||
+         function_name == kOptionalOr || function_name == kOptionalOrValue;
 }
 
 bool OverloadExists(const Resolver& resolver, absl::string_view name,
@@ -159,6 +164,7 @@ class ReferenceResolver : public cel::AstRewriterBase {
   // for parsed expressions. We should refactor to consolidate the code.
   bool MaybeUpdateCallNode(Expr* out, const Reference* reference) {
     auto& call_expr = out->mutable_call_expr();
+    const std::string& function = call_expr.function();
     if (reference != nullptr && reference->overload_id().empty()) {
       UpdateStatus(issues_.AddIssue(
           RuntimeIssue::CreateWarning(absl::InvalidArgumentError(
@@ -171,7 +177,7 @@ class ReferenceResolver : public cel::AstRewriterBase {
       auto maybe_namespace = ToNamespace(call_expr.target());
       if (maybe_namespace.has_value()) {
         std::string resolved_name =
-            absl::StrCat(*maybe_namespace, ".", call_expr.function());
+            absl::StrCat(*maybe_namespace, ".", function);
         auto resolved_function =
             BestOverloadMatch(resolver_, resolved_name, arg_num);
         if (resolved_function.has_value()) {
@@ -184,28 +190,25 @@ class ReferenceResolver : public cel::AstRewriterBase {
       // Not a receiver style function call. Check to see if it is a namespaced
       // function using a shorthand inside the expression container.
       auto maybe_resolved_function =
-          BestOverloadMatch(resolver_, call_expr.function(), arg_num);
+          BestOverloadMatch(resolver_, function, arg_num);
       if (!maybe_resolved_function.has_value()) {
         UpdateStatus(issues_.AddIssue(RuntimeIssue::CreateWarning(
-            absl::InvalidArgumentError(
-                absl::StrCat("No overload found in reference resolve step for ",
-                             call_expr.function())),
+            absl::InvalidArgumentError(absl::StrCat(
+                "No overload found in reference resolve step for ", function)),
             RuntimeIssue::ErrorCode::kNoMatchingOverload)));
-      } else if (maybe_resolved_function.value() != call_expr.function()) {
+      } else if (maybe_resolved_function.value() != function) {
         call_expr.set_function(maybe_resolved_function.value());
         return true;
       }
     }
     // For parity, if we didn't rewrite the receiver call style function,
     // check that an overload is provided in the builder.
-    if (call_expr.has_target() &&
-        !OverloadExists(resolver_, call_expr.function(),
-                        ArgumentsMatcher(arg_num + 1),
+    if (call_expr.has_target() && !IsSpecialFunction(function) &&
+        !OverloadExists(resolver_, function, ArgumentsMatcher(arg_num + 1),
                         /* receiver_style= */ true)) {
       UpdateStatus(issues_.AddIssue(RuntimeIssue::CreateWarning(
-          absl::InvalidArgumentError(
-              absl::StrCat("No overload found in reference resolve step for ",
-                           call_expr.function())),
+          absl::InvalidArgumentError(absl::StrCat(
+              "No overload found in reference resolve step for ", function)),
           RuntimeIssue::ErrorCode::kNoMatchingOverload)));
     }
     return false;
