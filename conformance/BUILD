@@ -45,15 +45,33 @@ ALL_TESTS = [
     "@com_google_cel_spec//tests/simple:testdata/wrappers.textproto",
 ]
 
+cc_library(
+    name = "value_conversion",
+    srcs = ["value_conversion.cc"],
+    hdrs = ["value_conversion.h"],
+    deps = [
+        "//common:any",
+        "//common:value",
+        "//common:value_kind",
+        "//extensions/protobuf:value",
+        "//internal:proto_time_encoding",
+        "//internal:status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_googleapis//google/api/expr/v1alpha1:value_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
 cc_binary(
     name = "server",
     testonly = 1,
     srcs = [
         "server.cc",
-        "value_conversion.cc",
-        "value_conversion.h",
     ],
     deps = [
+        ":value_conversion",
         "//common:any",
         "//common:memory",
         "//common:source",
