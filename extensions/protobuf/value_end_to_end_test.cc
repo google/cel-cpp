@@ -84,15 +84,6 @@ class ProtobufValueEndToEndTest
 };
 
 TEST_P(ProtobufValueEndToEndTest, Runner) {
-  auto tc_name =
-      ::testing::UnitTest::GetInstance()->current_test_info()->name();
-
-  if (memory_management() == MemoryManagement::kReferenceCounting &&
-      absl::StrContains(tc_name, "map_") &&
-      absl::StrContains(tc_name, "compre")) {
-    GTEST_SKIP()
-        << "  TODO(uncreated-issue/66): key view use after free for comprehension";
-  }
   TestAllTypes message;
 
   ASSERT_TRUE(

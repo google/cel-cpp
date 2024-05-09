@@ -1236,7 +1236,8 @@ class ParsedProtoMapValueInterface
       CEL_RETURN_IF_ERROR(builder->Add(Value{key}));
       ++begin;
     }
-    return std::move(*builder).Build();
+    scratch = std::move(*builder).Build();
+    return ListValueView{scratch};
   }
 
   absl::Status ForEach(ValueManager& value_manager,
