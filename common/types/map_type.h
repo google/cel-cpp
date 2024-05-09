@@ -61,20 +61,22 @@ class MapType final {
 
   constexpr TypeKind kind() const { return kKind; }
 
-  constexpr absl::string_view name() const { return kName; }
+  constexpr absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return kName;
+  }
 
   std::string DebugString() const;
 
-  absl::Span<const Type> parameters() const;
+  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   void swap(MapType& other) noexcept {
     using std::swap;
     swap(data_, other.data_);
   }
 
-  TypeView key() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Type& key() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  TypeView value() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Type& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   friend class MapTypeView;
@@ -144,9 +146,9 @@ class MapTypeView final {
     swap(data_, other.data_);
   }
 
-  TypeView key() const;
+  const Type& key() const;
 
-  TypeView value() const;
+  const Type& value() const;
 
  private:
   friend class MapType;

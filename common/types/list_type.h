@@ -61,18 +61,20 @@ class ListType final {
 
   constexpr TypeKind kind() const { return kKind; }
 
-  constexpr absl::string_view name() const { return kName; }
+  constexpr absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return kName;
+  }
 
   std::string DebugString() const;
 
-  absl::Span<const Type> parameters() const;
+  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   void swap(ListType& other) noexcept {
     using std::swap;
     swap(data_, other.data_);
   }
 
-  TypeView element() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Type& element() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   friend class ListTypeView;
@@ -142,7 +144,7 @@ class ListTypeView final {
     swap(data_, other.data_);
   }
 
-  TypeView element() const;
+  const Type& element() const;
 
  private:
   friend class ListType;

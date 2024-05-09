@@ -58,19 +58,19 @@ class OptionalType final : public OpaqueType {
 
   OptionalType(MemoryManagerRef memory_manager, TypeView parameter);
 
-  absl::string_view name() const {
+  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     auto name = OpaqueType::name();
     ABSL_DCHECK_EQ(name, kName);
     return name;
   }
 
-  absl::Span<const Type> parameters() const {
+  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     auto parameters = OpaqueType::parameters();
     ABSL_DCHECK_EQ(static_cast<int>(parameters.size()), 1);
     return parameters;
   }
 
-  TypeView parameter() const;
+  const Type& parameter() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   // Used by SubsumptionTraits to downcast OpaqueType rvalue references.
@@ -151,7 +151,7 @@ class OptionalTypeView final : public OpaqueTypeView {
     return parameters;
   }
 
-  TypeView parameter() const;
+  const Type& parameter() const;
 
  private:
   friend struct SubsumptionTraits<OptionalTypeView>;

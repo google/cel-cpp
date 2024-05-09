@@ -89,14 +89,14 @@ TEST_P(MapValueTest, Default) {
   EXPECT_TRUE(map_value.IsEmpty());
   EXPECT_EQ(map_value.Size(), 0);
   EXPECT_EQ(map_value.DebugString(), "{}");
-  EXPECT_EQ(map_value.GetType(type_manager()).key(), DynTypeView());
-  EXPECT_EQ(map_value.GetType(type_manager()).value(), DynTypeView());
+  EXPECT_EQ(map_value.GetType(type_manager()).key(), DynType());
+  EXPECT_EQ(map_value.GetType(type_manager()).value(), DynType());
   ASSERT_OK_AND_ASSIGN(auto list_value,
                        map_value.ListKeys(value_manager(), map_keys_scratch));
   EXPECT_TRUE(list_value.IsEmpty());
   EXPECT_EQ(list_value.Size(), 0);
   EXPECT_EQ(list_value.DebugString(), "[]");
-  EXPECT_EQ(list_value.GetType(type_manager()).element(), DynTypeView());
+  EXPECT_EQ(list_value.GetType(type_manager()).element(), DynType());
   ASSERT_OK_AND_ASSIGN(auto iterator, map_value.NewIterator(value_manager()));
   EXPECT_FALSE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(value_manager(), scratch),
@@ -370,14 +370,14 @@ TEST_P(MapValueViewTest, Default) {
   EXPECT_TRUE(map_value.IsEmpty());
   EXPECT_EQ(map_value.Size(), 0);
   EXPECT_EQ(map_value.DebugString(), "{}");
-  EXPECT_EQ(map_value.GetType(type_manager()).key(), DynTypeView());
-  EXPECT_EQ(map_value.GetType(type_manager()).value(), DynTypeView());
+  EXPECT_EQ(map_value.GetType(type_manager()).key(), DynType());
+  EXPECT_EQ(map_value.GetType(type_manager()).value(), DynType());
   ASSERT_OK_AND_ASSIGN(auto list_value,
                        map_value.ListKeys(value_manager(), map_keys_scratch));
   EXPECT_TRUE(list_value.IsEmpty());
   EXPECT_EQ(list_value.Size(), 0);
   EXPECT_EQ(list_value.DebugString(), "[]");
-  EXPECT_EQ(list_value.GetType(type_manager()).element(), DynTypeView());
+  EXPECT_EQ(list_value.GetType(type_manager()).element(), DynType());
   ASSERT_OK_AND_ASSIGN(auto iterator, map_value.NewIterator(value_manager()));
   EXPECT_FALSE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(value_manager(), scratch),

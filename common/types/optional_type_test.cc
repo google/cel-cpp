@@ -101,8 +101,7 @@ TEST_P(OptionalTypeTest, DebugString) {
 }
 
 TEST_P(OptionalTypeTest, Parameter) {
-  EXPECT_EQ(OptionalType(memory_manager(), BoolType()).parameter(),
-            BoolTypeView());
+  EXPECT_EQ(OptionalType(memory_manager(), BoolType()).parameter(), BoolType());
 }
 
 TEST_P(OptionalTypeTest, Hash) {
@@ -230,7 +229,7 @@ TEST_P(OptionalTypeViewTest, DebugString) {
 
 TEST_P(OptionalTypeViewTest, Parameter) {
   auto type = OptionalType(memory_manager(), BoolType());
-  EXPECT_EQ(OptionalTypeView(type).parameter(), BoolTypeView());
+  EXPECT_EQ(OptionalTypeView(type).parameter(), BoolType());
 }
 
 TEST_P(OptionalTypeViewTest, Hash) {

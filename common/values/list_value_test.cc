@@ -60,7 +60,7 @@ TEST_P(ListValueTest, Default) {
   EXPECT_TRUE(value.IsEmpty());
   EXPECT_EQ(value.Size(), 0);
   EXPECT_EQ(value.DebugString(), "[]");
-  EXPECT_EQ(value.GetType(type_manager()).element(), DynTypeView());
+  EXPECT_EQ(value.GetType(type_manager()).element(), DynType());
 }
 
 TEST_P(ListValueTest, Kind) {
@@ -209,7 +209,7 @@ TEST_P(ListValueViewTest, Default) {
   EXPECT_TRUE(value.IsEmpty());
   EXPECT_EQ(value.Size(), 0);
   EXPECT_EQ(value.DebugString(), "[]");
-  EXPECT_EQ(value.GetType(type_manager()).element(), DynTypeView());
+  EXPECT_EQ(value.GetType(type_manager()).element(), DynType());
 }
 
 TEST_P(ListValueViewTest, Kind) {

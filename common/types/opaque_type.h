@@ -64,7 +64,7 @@ class OpaqueType {
 
   constexpr TypeKind kind() const { return kKind; }
 
-  absl::string_view name() const;
+  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   std::string DebugString() const;
 
@@ -73,7 +73,7 @@ class OpaqueType {
     swap(data_, other.data_);
   }
 
-  absl::Span<const Type> parameters() const;
+  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   friend class OpaqueTypeView;

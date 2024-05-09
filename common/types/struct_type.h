@@ -59,9 +59,11 @@ class StructType final {
 
   constexpr TypeKind kind() const { return kKind; }
 
-  absl::string_view name() const;
+  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::Span<const Type> parameters() const { return {}; }
+  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return {};
+  }
 
   std::string DebugString() const { return std::string(name()); }
 

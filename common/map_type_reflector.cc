@@ -384,7 +384,7 @@ class TypedMapValue final : public ParsedMapValueInterface {
     CEL_ASSIGN_OR_RETURN(
         auto keys,
         value_manager.NewListValueBuilder(
-            value_manager.CreateListType(Cast<key_view_type>(type_.key()))));
+            value_manager.CreateListType(Cast<key_type>(type_.key()))));
     keys->Reserve(Size());
     for (const auto& entry : entries_) {
       CEL_RETURN_IF_ERROR(keys->Add(entry.first));

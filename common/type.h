@@ -18,7 +18,6 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
-#include <memory>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -143,7 +142,7 @@ class Type final {
         variant_);
   }
 
-  absl::string_view name() const {
+  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     AssertIsValid();
     return absl::visit(
         [](const auto& alternative) -> absl::string_view {
@@ -177,7 +176,7 @@ class Type final {
         variant_);
   }
 
-  absl::Span<const Type> parameters() const {
+  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     AssertIsValid();
     return absl::visit(
         [](const auto& alternative) -> absl::Span<const Type> {
@@ -848,11 +847,14 @@ inline ListType::ListType(MemoryManagerRef memory_manager, Type element)
     : data_(memory_manager.MakeShared<common_internal::ListTypeData>(
           std::move(element))) {}
 
-inline absl::Span<const Type> ListType::parameters() const {
+inline absl::Span<const Type> ListType::parameters() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
   return absl::MakeConstSpan(&data_->element, 1);
 }
 
-inline TypeView ListType::element() const { return data_->element; }
+inline const Type& ListType::element() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return data_->element;
+}
 
 inline bool operator==(const ListType& lhs, const ListType& rhs) {
   return &lhs == &rhs || lhs.element() == rhs.element();
@@ -873,7 +875,7 @@ inline absl::Span<const Type> ListTypeView::parameters() const {
   return absl::MakeConstSpan(&data_->element, 1);
 }
 
-inline TypeView ListTypeView::element() const { return data_->element; }
+inline const Type& ListTypeView::element() const { return data_->element; }
 
 inline bool operator==(ListTypeView lhs, ListTypeView rhs) {
   return lhs.element() == rhs.element();
@@ -892,13 +894,18 @@ inline MapType::MapType(MemoryManagerRef memory_manager, Type key, Type value)
     : data_(memory_manager.MakeShared<common_internal::MapTypeData>(
           std::move(key), std::move(value))) {}
 
-inline absl::Span<const Type> MapType::parameters() const {
+inline absl::Span<const Type> MapType::parameters() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
   return absl::MakeConstSpan(data_->key_and_value);
 }
 
-inline TypeView MapType::key() const { return data_->key_and_value[0]; }
+inline const Type& MapType::key() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return data_->key_and_value[0];
+}
 
-inline TypeView MapType::value() const { return data_->key_and_value[1]; }
+inline const Type& MapType::value() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return data_->key_and_value[1];
+}
 
 inline bool operator==(const MapType& lhs, const MapType& rhs) {
   return &lhs == &rhs || (lhs.key() == rhs.key() && lhs.value() == rhs.value());
@@ -919,9 +926,11 @@ inline absl::Span<const Type> MapTypeView::parameters() const {
   return absl::MakeConstSpan(data_->key_and_value);
 }
 
-inline TypeView MapTypeView::key() const { return data_->key_and_value[0]; }
+inline const Type& MapTypeView::key() const { return data_->key_and_value[0]; }
 
-inline TypeView MapTypeView::value() const { return data_->key_and_value[1]; }
+inline const Type& MapTypeView::value() const {
+  return data_->key_and_value[1];
+}
 
 inline bool operator==(MapTypeView lhs, MapTypeView rhs) {
   return lhs.key() == rhs.key() && lhs.value() == rhs.value();
@@ -939,7 +948,10 @@ inline StructType::StructType(MemoryManagerRef memory_manager,
     : data_(memory_manager.MakeShared<common_internal::StructTypeData>(
           std::string(name))) {}
 
-inline absl::string_view StructType::name() const { return data_->name; }
+inline absl::string_view StructType::name() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return data_->name;
+}
 
 inline StructTypeView::StructTypeView(const StructType& type) noexcept
     : data_(type.data_) {}
@@ -954,7 +966,10 @@ inline TypeParamType::TypeParamType(MemoryManagerRef memory_manager,
     : data_(memory_manager.MakeShared<common_internal::TypeParamTypeData>(
           std::string(name))) {}
 
-inline absl::string_view TypeParamType::name() const { return data_->name; }
+inline absl::string_view TypeParamType::name() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return data_->name;
+}
 
 inline TypeParamTypeView::TypeParamTypeView(const TypeParamType& type) noexcept
     : data_(type.data_) {}
@@ -963,9 +978,13 @@ inline absl::string_view TypeParamTypeView::name() const { return data_->name; }
 
 inline OpaqueType::OpaqueType(OpaqueTypeView other) : data_(other.data_) {}
 
-inline absl::string_view OpaqueType::name() const { return data_->name; }
+inline absl::string_view OpaqueType::name() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return data_->name;
+}
 
-inline absl::Span<const Type> OpaqueType::parameters() const {
+inline absl::Span<const Type> OpaqueType::parameters() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
   return data_->parameters;
 }
 
@@ -1017,7 +1036,10 @@ inline OptionalType::OptionalType(MemoryManagerRef memory_manager,
                                   TypeView parameter)
     : OpaqueType(memory_manager, kName, {parameter}) {}
 
-inline TypeView OptionalType::parameter() const { return parameters().front(); }
+inline const Type& OptionalType::parameter() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return parameters().front();
+}
 
 inline bool operator==(const OptionalType& lhs, const OptionalType& rhs) {
   return lhs.parameter() == rhs.parameter();
@@ -1034,7 +1056,7 @@ inline OptionalTypeView::OptionalTypeView()
 inline OptionalTypeView::OptionalTypeView(const OptionalType& type) noexcept
     : OpaqueTypeView(type) {}
 
-inline TypeView OptionalTypeView::parameter() const {
+inline const Type& OptionalTypeView::parameter() const {
   return parameters().front();
 }
 
@@ -1050,15 +1072,17 @@ inline H AbslHashValue(H state, OptionalTypeView type) {
 inline FunctionType::FunctionType(FunctionTypeView other)
     : data_(other.data_) {}
 
-inline absl::Span<const Type> FunctionType::parameters() const {
+inline absl::Span<const Type> FunctionType::parameters() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
   return absl::MakeConstSpan(data_->result_and_args);
 }
 
-inline const Type& FunctionType::result() const {
+inline const Type& FunctionType::result() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
   return data_->result_and_args[0];
 }
 
-inline absl::Span<const Type> FunctionType::args() const {
+inline absl::Span<const Type> FunctionType::args() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
   return absl::MakeConstSpan(data_->result_and_args).subspan(1);
 }
 
@@ -1109,7 +1133,8 @@ inline TypeType::TypeType(MemoryManagerRef memory_manager, Type parameter)
     : data_(memory_manager.MakeShared<common_internal::TypeTypeData>(
           std::move(parameter))) {}
 
-inline absl::Span<const Type> TypeType::parameters() const {
+inline absl::Span<const Type> TypeType::parameters() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
   if (data_) {
     return absl::MakeConstSpan(&data_->type, 1);
   }

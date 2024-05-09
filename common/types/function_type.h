@@ -60,15 +60,17 @@ class FunctionType final {
 
   constexpr TypeKind kind() const { return kKind; }
 
-  absl::string_view name() const { return "function"; }
+  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return "function";
+  }
 
-  absl::Span<const Type> parameters() const;
+  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   std::string DebugString() const;
 
-  const Type& result() const;
+  const Type& result() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::Span<const Type> args() const;
+  absl::Span<const Type> args() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   void swap(FunctionType& other) noexcept {
     using std::swap;
