@@ -84,25 +84,8 @@ class Macro final {
 
   Macro(const Macro&) = default;
   Macro(Macro&&) = default;
-
   Macro& operator=(const Macro&) = default;
   Macro& operator=(Macro&&) = default;
-
-  // Create a Macro for a global function with the specified number of arguments
-  ABSL_DEPRECATED("Use static factory methods instead.")
-  Macro(absl::string_view function, size_t arg_count, MacroExpander expander,
-        bool receiver_style = false)
-      : Macro(std::make_shared<Rep>(
-            std::string(function),
-            Key(function, arg_count, receiver_style, false), arg_count,
-            std::move(expander), receiver_style, false)) {}
-
-  ABSL_DEPRECATED("Use static factory methods instead.")
-  Macro(absl::string_view function, MacroExpander expander,
-        bool receiver_style = false)
-      : Macro(std::make_shared<Rep>(
-            std::string(function), Key(function, 0, receiver_style, true), 0,
-            std::move(expander), receiver_style, true)) {}
 
   // Function name to match.
   absl::string_view function() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
@@ -136,7 +119,7 @@ class Macro final {
     return rep_->expander;
   }
 
-  absl::optional<Expr> Expand(
+  ABSL_MUST_USE_RESULT absl::optional<Expr> Expand(
       MacroExprFactory& factory,
       absl::optional<std::reference_wrapper<Expr>> target,
       absl::Span<Expr> arguments) const {
@@ -183,22 +166,54 @@ class Macro final {
   std::shared_ptr<const Rep> rep_;
 };
 
+// The macro "has(m.f)" which tests the presence of a field, avoiding the
+// need to specify the field as a string.
 const Macro& HasMacro();
 
+// The macro "range.all(var, predicate)", which is true if for all
+// elements in range the predicate holds.
 const Macro& AllMacro();
 
+// The macro "range.exists(var, predicate)", which is true if for at least
+// one element in range the predicate holds.
 const Macro& ExistsMacro();
 
+// The macro "range.exists_one(var, predicate)", which is true if for
+// exactly one element in range the predicate holds.
 const Macro& ExistsOneMacro();
 
+// The macro "range.map(var, function)", applies the function to the vars
+// in the range.
 const Macro& Map2Macro();
 
+// The macro "range.map(var, predicate, function)", applies the function
+// to the vars in the range for which the predicate holds true. The other
+// variables are filtered out.
 const Macro& Map3Macro();
 
+// The macro "range.filter(var, predicate)", filters out the variables for
+// which the predicate is false.
 const Macro& FilterMacro();
 
+// `OptMapMacro`
+//
+// Apply a transformation to the optional's underlying value if it is not empty
+// and return an optional typed result based on the transformation. The
+// transformation expression type must return a type T which is wrapped into
+// an optional.
+//
+//  msg.?elements.optMap(e, e.size()).orValue(0)
 const Macro& OptMapMacro();
 
+// `OptFlatMapMacro`
+//
+// Apply a transformation to the optional's underlying value if it is not empty
+// and return the result. The transform expression must return an optional(T)
+// rather than type T. This can be useful when dealing with zero values and
+// conditionally generating an empty or non-empty result in ways which cannot
+// be expressed with `optMap`.
+//
+//  msg.?elements.optFlatMap(e, e[?0]) // return the first element if present.
 const Macro& OptFlatMapMacro();
 
 }  // namespace cel
