@@ -23,7 +23,6 @@
 #include "common/types/legacy_type_manager.h"
 #include "common/value.h"
 #include "common/value_manager.h"
-#include "common/values/legacy_type_reflector.h"
 
 namespace cel::common_internal {
 

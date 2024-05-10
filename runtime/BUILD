@@ -181,8 +181,7 @@ cc_library(
     deps = [
         ":activation_interface",
         ":runtime_issue",
-        "//base:ast",
-        "//base:data",
+        "//common:ast",
         "//common:native_type",
         "//common:value",
         "@com_google_absl//absl/functional:any_invocable",
@@ -204,13 +203,20 @@ cc_library(
 )
 
 cc_library(
+    name = "runtime_value_manager",
+    hdrs = ["runtime_value_manager.h"],
+    deps = [
+        "//common:memory",
+        "//common:value",
+        "@com_google_absl//absl/base:core_headers",
+    ],
+)
+
+cc_library(
     name = "managed_value_factory",
     hdrs = ["managed_value_factory.h"],
     deps = [
-        "//base:data",
-        "//common:memory",
-        "//common:type",
-        "//common:value",
+        ":runtime_value_manager",
     ],
 )
 
@@ -252,6 +258,7 @@ cc_test(
         ":standard_runtime_builder_factory",
         "//common:memory",
         "//common:source",
+        "//common:type",
         "//common:value",
         "//common:value_testing",
         "//extensions:bindings_ext",

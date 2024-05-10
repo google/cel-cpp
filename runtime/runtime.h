@@ -25,9 +25,9 @@
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "base/ast.h"
-#include "base/type_provider.h"
+#include "common/ast.h"
 #include "common/native_type.h"
+#include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "runtime/activation_interface.h"
@@ -75,7 +75,9 @@ class Program {
   virtual absl::StatusOr<Value> Evaluate(const ActivationInterface& activation,
                                          ValueManager& value_factory) const = 0;
 
-  virtual const TypeProvider& GetTypeProvider() const = 0;
+  // Returns the type provider associated with this program.
+  virtual const TypeReflector& GetTypeProvider() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 };
 
 // Representation for a traceable CEL expression.
@@ -142,7 +144,10 @@ class Runtime {
   CreateTraceableProgram(std::unique_ptr<cel::Ast> ast,
                          const CreateProgramOptions& options) const = 0;
 
-  virtual const TypeProvider& GetTypeProvider() const = 0;
+  // Returns the type provider associated with this runtime, used for
+  // inspecting and creating extended types.
+  virtual const TypeReflector& GetTypeProvider() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
  private:
   friend class runtime_internal::RuntimeFriendAccess;
