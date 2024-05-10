@@ -38,7 +38,7 @@ enum ComprehensionArg {
 // order from first to last.  For structs, keys are visited before values.
 class AstVisitor {
  public:
-  virtual ~AstVisitor() {}
+  virtual ~AstVisitor() = default;
 
   // Expr node handler method. Called for all Expr nodes.
   // Is invoked before child Expr nodes being processed.
@@ -50,65 +50,67 @@ class AstVisitor {
 
   // Const node handler.
   // Invoked after child nodes are processed.
-  virtual void PostVisitConst(const Constant*, const Expr*) = 0;
+  virtual void PostVisitConst(const Expr*, const Constant*) = 0;
 
   // Ident node handler.
   // Invoked after child nodes are processed.
-  virtual void PostVisitIdent(const IdentExpr*, const Expr*) = 0;
+  virtual void PostVisitIdent(const Expr*, const IdentExpr*) = 0;
 
   // Select node handler
   // Invoked before child nodes are processed.
-  virtual void PreVisitSelect(const SelectExpr*, const Expr*) = 0;
+  virtual void PreVisitSelect(const Expr*, const SelectExpr*) = 0;
 
   // Select node handler
   // Invoked after child nodes are processed.
-  virtual void PostVisitSelect(const SelectExpr*, const Expr*) = 0;
+  virtual void PostVisitSelect(const Expr*, const SelectExpr*) = 0;
 
   // Call node handler group
   // We provide finer granularity for Call node callbacks to allow special
   // handling for short-circuiting
   // PreVisitCall is invoked before child nodes are processed.
-  virtual void PreVisitCall(const CallExpr*, const Expr*) = 0;
+  virtual void PreVisitCall(const Expr*, const CallExpr*) = 0;
 
   // Invoked after all child nodes are processed.
-  virtual void PostVisitCall(const CallExpr*, const Expr*) = 0;
+  virtual void PostVisitCall(const Expr*, const CallExpr*) = 0;
 
   // Invoked after target node is processed.
   // Expr is the call expression.
   virtual void PostVisitTarget(const Expr*) = 0;
 
   // Invoked before all child nodes are processed.
-  virtual void PreVisitComprehension(const ComprehensionExpr*, const Expr*) = 0;
+  virtual void PreVisitComprehension(const Expr*, const ComprehensionExpr*) = 0;
 
   // Invoked before comprehension child node is processed.
   virtual void PreVisitComprehensionSubexpression(
-      const ComprehensionExpr* compr, ComprehensionArg comprehension_arg) {}
+      const Expr*, const ComprehensionExpr* compr,
+      ComprehensionArg comprehension_arg) {}
 
   // Invoked after comprehension child node is processed.
   virtual void PostVisitComprehensionSubexpression(
-      const ComprehensionExpr* compr, ComprehensionArg comprehension_arg) {}
+      const Expr*, const ComprehensionExpr* compr,
+      ComprehensionArg comprehension_arg) {}
 
   // Invoked after all child nodes are processed.
-  virtual void PostVisitComprehension(const ComprehensionExpr*,
-                                      const Expr*) = 0;
+  virtual void PostVisitComprehension(const Expr*,
+                                      const ComprehensionExpr*) = 0;
 
   // Invoked after each argument node processed.
   // For Call arg_num is the index of the argument.
   // For Comprehension arg_num is specified by ComprehensionArg.
   // Expr is the call expression.
-  virtual void PostVisitArg(int arg_num, const Expr*) = 0;
+  virtual void PostVisitArg(const Expr*, int arg_num) = 0;
 
   // List node handler
   // Invoked after child nodes are processed.
-  virtual void PostVisitList(const ListExpr*, const Expr*) = 0;
+  virtual void PostVisitList(const Expr*, const ListExpr*) = 0;
 
   // Struct node handler
   // Invoked after child nodes are processed.
-  virtual void PostVisitStruct(const StructExpr*, const Expr*) = 0;
+  virtual void PostVisitStruct(const Expr*, const StructExpr*) = 0;
 
   // Map node handler
   // Invoked after child nodes are processed.
-  virtual void PostVisitMap(const MapExpr*, const Expr*) = 0;
+  virtual void PostVisitMap(const Expr*, const MapExpr*) = 0;
 };
 
 }  // namespace cel

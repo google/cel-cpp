@@ -20,9 +20,9 @@
 #include "absl/log/absl_log.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
-#include "common/ast.h"
 #include "common/ast_visitor.h"
 #include "common/constant.h"
+#include "common/expr.h"
 
 namespace cel {
 
@@ -116,10 +116,10 @@ struct PreVisitor {
         // No pre-visit action.
       }
       void operator()(const SelectExpr& select) {
-        visitor->PreVisitSelect(&select, expr);
+        visitor->PreVisitSelect(expr, &select);
       }
       void operator()(const CallExpr& call) {
-        visitor->PreVisitCall(&call, expr);
+        visitor->PreVisitCall(expr, &call);
       }
       void operator()(const ListExpr&) {
         // No pre-visit action.
@@ -131,7 +131,7 @@ struct PreVisitor {
         // No pre-visit action.
       }
       void operator()(const ComprehensionExpr& comprehension) {
-        visitor->PreVisitComprehension(&comprehension, expr);
+        visitor->PreVisitComprehension(expr, &comprehension);
       }
       void operator()(const UnspecifiedExpr&) {
         // No pre-visit action.
@@ -145,7 +145,8 @@ struct PreVisitor {
   void operator()(const ArgRecord&) {}
 
   void operator()(const ComprehensionRecord& record) {
-    visitor->PreVisitComprehensionSubexpression(record.comprehension,
+    visitor->PreVisitComprehensionSubexpression(record.comprehension_expr,
+                                                record.comprehension,
                                                 record.comprehension_arg);
   }
 
@@ -162,28 +163,28 @@ struct PostVisitor {
       AstVisitor* visitor;
       const Expr* expr;
       void operator()(const Constant& constant) {
-        visitor->PostVisitConst(&constant, expr);
+        visitor->PostVisitConst(expr, &constant);
       }
       void operator()(const IdentExpr& ident) {
-        visitor->PostVisitIdent(&ident, expr);
+        visitor->PostVisitIdent(expr, &ident);
       }
       void operator()(const SelectExpr& select) {
-        visitor->PostVisitSelect(&select, expr);
+        visitor->PostVisitSelect(expr, &select);
       }
       void operator()(const CallExpr& call) {
-        visitor->PostVisitCall(&call, expr);
+        visitor->PostVisitCall(expr, &call);
       }
       void operator()(const ListExpr& create_list) {
-        visitor->PostVisitList(&create_list, expr);
+        visitor->PostVisitList(expr, &create_list);
       }
       void operator()(const StructExpr& create_struct) {
-        visitor->PostVisitStruct(&create_struct, expr);
+        visitor->PostVisitStruct(expr, &create_struct);
       }
       void operator()(const MapExpr& map_expr) {
-        visitor->PostVisitMap(&map_expr, expr);
+        visitor->PostVisitMap(expr, &map_expr);
       }
       void operator()(const ComprehensionExpr& comprehension) {
-        visitor->PostVisitComprehension(&comprehension, expr);
+        visitor->PostVisitComprehension(expr, &comprehension);
       }
       void operator()(const UnspecifiedExpr&) {
         ABSL_LOG(ERROR) << "Unsupported Expr kind";
@@ -198,12 +199,13 @@ struct PostVisitor {
     if (record.call_arg == StackRecord::kTarget) {
       visitor->PostVisitTarget(record.calling_expr);
     } else {
-      visitor->PostVisitArg(record.call_arg, record.calling_expr);
+      visitor->PostVisitArg(record.calling_expr, record.call_arg);
     }
   }
 
   void operator()(const ComprehensionRecord& record) {
-    visitor->PostVisitComprehensionSubexpression(record.comprehension,
+    visitor->PostVisitComprehensionSubexpression(record.comprehension_expr,
+                                                 record.comprehension,
                                                  record.comprehension_arg);
   }
 

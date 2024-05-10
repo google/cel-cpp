@@ -90,9 +90,9 @@ cc_library(
     srcs = ["ast_rewrite.cc"],
     hdrs = ["ast_rewrite.h"],
     deps = [
-        ":ast",
         ":ast_visitor",
         ":constant",
+        ":expr",
         "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
@@ -105,6 +105,7 @@ cc_test(
     deps = [
         ":ast_rewrite",
         ":ast_visitor",
+        ":expr",
         "//base/ast_internal:expr",
         "//extensions/protobuf:ast_converters",
         "//internal:testing",
@@ -122,6 +123,7 @@ cc_library(
         ":ast",
         ":ast_visitor",
         ":constant",
+        ":expr",
         "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/types:variant",
     ],
@@ -131,10 +133,10 @@ cc_test(
     name = "ast_traverse_test",
     srcs = ["ast_traverse_test.cc"],
     deps = [
-        ":ast",
         ":ast_traverse",
         ":ast_visitor",
         ":constant",
+        ":expr",
         "//internal:testing",
     ],
 )
@@ -152,9 +154,9 @@ cc_library(
     name = "ast_visitor_base",
     hdrs = ["ast_visitor_base.h"],
     deps = [
-        ":ast",
         ":ast_visitor",
         ":constant",
+        ":expr",
     ],
 )
 

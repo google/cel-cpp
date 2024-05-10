@@ -369,7 +369,7 @@ class RewriterImpl : public AstRewriterBase {
 
   void PreVisitExpr(const Expr* expr) override { path_.push_back(expr); }
 
-  void PreVisitSelect(const Select* select, const Expr* expr) override {
+  void PreVisitSelect(const Expr* expr, const Select* select) override {
     const Expr& operand = select->operand();
     const std::string& field_name = select->field();
     // Select optimization can generalize to lists and maps, but for now only
@@ -395,7 +395,7 @@ class RewriterImpl : public AstRewriterBase {
     // simplify program plan.
   }
 
-  void PreVisitCall(const Call* call, const Expr* expr) override {
+  void PreVisitCall(const Expr* expr, const Call* call) override {
     if (call->args().size() != 2 ||
         call->function() != ::cel::builtin::kIndex) {
       return;

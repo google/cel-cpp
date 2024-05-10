@@ -465,8 +465,8 @@ class FlatExprVisitor : public cel::AstVisitor {
     }
   }
 
-  void PostVisitConst(const cel::ast_internal::Constant* const_expr,
-                      const cel::ast_internal::Expr* expr) override {
+  void PostVisitConst(const cel::ast_internal::Expr* expr,
+                      const cel::ast_internal::Constant* const_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -529,8 +529,8 @@ class FlatExprVisitor : public cel::AstVisitor {
 
   // Ident node handler.
   // Invoked after child nodes are processed.
-  void PostVisitIdent(const cel::ast_internal::Ident* ident_expr,
-                      const cel::ast_internal::Expr* expr) override {
+  void PostVisitIdent(const cel::ast_internal::Expr* expr,
+                      const cel::ast_internal::Ident* ident_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -628,8 +628,8 @@ class FlatExprVisitor : public cel::AstVisitor {
     }
   }
 
-  void PreVisitSelect(const cel::ast_internal::Select* select_expr,
-                      const cel::ast_internal::Expr* expr) override {
+  void PreVisitSelect(const cel::ast_internal::Expr* expr,
+                      const cel::ast_internal::Select* select_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -669,8 +669,8 @@ class FlatExprVisitor : public cel::AstVisitor {
 
   // Select node handler.
   // Invoked after child nodes are processed.
-  void PostVisitSelect(const cel::ast_internal::Select* select_expr,
-                       const cel::ast_internal::Expr* expr) override {
+  void PostVisitSelect(const cel::ast_internal::Expr* expr,
+                       const cel::ast_internal::Select* select_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -715,8 +715,8 @@ class FlatExprVisitor : public cel::AstVisitor {
   // We provide finer granularity for Call node callbacks to allow special
   // handling for short-circuiting
   // PreVisitCall is invoked before child nodes are processed.
-  void PreVisitCall(const cel::ast_internal::Call* call_expr,
-                    const cel::ast_internal::Expr* expr) override {
+  void PreVisitCall(const cel::ast_internal::Expr* expr,
+                    const cel::ast_internal::Call* call_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1005,8 +1005,8 @@ class FlatExprVisitor : public cel::AstVisitor {
   }
 
   // Invoked after all child nodes are processed.
-  void PostVisitCall(const cel::ast_internal::Call* call_expr,
-                     const cel::ast_internal::Expr* expr) override {
+  void PostVisitCall(const cel::ast_internal::Expr* expr,
+                     const cel::ast_internal::Call* call_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1083,8 +1083,8 @@ class FlatExprVisitor : public cel::AstVisitor {
   }
 
   void PreVisitComprehension(
-      const cel::ast_internal::Comprehension* comprehension,
-      const cel::ast_internal::Expr* expr) override {
+      const cel::ast_internal::Expr* expr,
+      const cel::ast_internal::Comprehension* comprehension) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1151,8 +1151,8 @@ class FlatExprVisitor : public cel::AstVisitor {
 
   // Invoked after all child nodes are processed.
   void PostVisitComprehension(
-      const cel::ast_internal::Comprehension* comprehension_expr,
-      const cel::ast_internal::Expr* expr) override {
+      const cel::ast_internal::Expr* expr,
+      const cel::ast_internal::Comprehension* comprehension_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1170,6 +1170,7 @@ class FlatExprVisitor : public cel::AstVisitor {
   }
 
   void PreVisitComprehensionSubexpression(
+      const cel::ast_internal::Expr* expr,
       const cel::ast_internal::Comprehension* compr,
       cel::ComprehensionArg comprehension_arg) override {
     if (!progress_status_.ok()) {
@@ -1218,6 +1219,7 @@ class FlatExprVisitor : public cel::AstVisitor {
   }
 
   void PostVisitComprehensionSubexpression(
+      const cel::ast_internal::Expr* expr,
       const cel::ast_internal::Comprehension* compr,
       cel::ComprehensionArg comprehension_arg) override {
     if (!progress_status_.ok()) {
@@ -1234,7 +1236,7 @@ class FlatExprVisitor : public cel::AstVisitor {
   }
 
   // Invoked after each argument node processed.
-  void PostVisitArg(int arg_num, const cel::ast_internal::Expr* expr) override {
+  void PostVisitArg(const cel::ast_internal::Expr* expr, int arg_num) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1256,8 +1258,8 @@ class FlatExprVisitor : public cel::AstVisitor {
 
   // CreateList node handler.
   // Invoked after child nodes are processed.
-  void PostVisitList(const cel::ast_internal::CreateList* list_expr,
-                     const cel::ast_internal::Expr* expr) override {
+  void PostVisitList(const cel::ast_internal::Expr* expr,
+                     const cel::ast_internal::CreateList* list_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1292,8 +1294,9 @@ class FlatExprVisitor : public cel::AstVisitor {
 
   // CreateStruct node handler.
   // Invoked after child nodes are processed.
-  void PostVisitStruct(const cel::ast_internal::CreateStruct* struct_expr,
-                       const cel::ast_internal::Expr* expr) override {
+  void PostVisitStruct(
+      const cel::ast_internal::Expr* expr,
+      const cel::ast_internal::CreateStruct* struct_expr) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -1329,8 +1332,8 @@ class FlatExprVisitor : public cel::AstVisitor {
                                    expr->id()));
   }
 
-  void PostVisitMap(const cel::MapExpr* map_expr,
-                    const cel::Expr* expr) override {
+  void PostVisitMap(const cel::ast_internal::Expr* expr,
+                    const cel::MapExpr* map_expr) override {
     for (const auto& entry : map_expr->entries()) {
       ValidateOrError(entry.has_key(), "Map entry missing key");
       ValidateOrError(entry.has_value(), "Map entry missing value");

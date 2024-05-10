@@ -16,9 +16,9 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_AST_REWRITE_H_
 
 #include "absl/types/span.h"
-#include "common/ast.h"
 #include "common/ast_visitor.h"
 #include "common/constant.h"
+#include "common/expr.h"
 
 namespace cel {
 
@@ -62,31 +62,31 @@ class AstRewriterBase : public AstRewriter {
 
   void PostVisitExpr(const Expr*) override {}
 
-  void PostVisitConst(const Constant*, const Expr*) override {}
+  void PostVisitConst(const Expr*, const Constant*) override {}
 
-  void PostVisitIdent(const IdentExpr*, const Expr*) override {}
+  void PostVisitIdent(const Expr*, const IdentExpr*) override {}
 
-  void PreVisitSelect(const SelectExpr*, const Expr*) override {}
+  void PreVisitSelect(const Expr*, const SelectExpr*) override {}
 
-  void PostVisitSelect(const SelectExpr*, const Expr*) override {}
+  void PostVisitSelect(const Expr*, const SelectExpr*) override {}
 
-  void PreVisitCall(const CallExpr*, const Expr*) override {}
+  void PreVisitCall(const Expr*, const CallExpr*) override {}
 
-  void PostVisitCall(const CallExpr*, const Expr*) override {}
+  void PostVisitCall(const Expr*, const CallExpr*) override {}
 
-  void PreVisitComprehension(const ComprehensionExpr*, const Expr*) override {}
+  void PreVisitComprehension(const Expr*, const ComprehensionExpr*) override {}
 
-  void PostVisitComprehension(const ComprehensionExpr*, const Expr*) override {}
+  void PostVisitComprehension(const Expr*, const ComprehensionExpr*) override {}
 
-  void PostVisitArg(int, const Expr*) override {}
+  void PostVisitArg(const Expr*, int) override {}
 
   void PostVisitTarget(const Expr*) override {}
 
-  void PostVisitList(const ListExpr*, const Expr*) override {}
+  void PostVisitList(const Expr*, const ListExpr*) override {}
 
-  void PostVisitStruct(const StructExpr*, const Expr*) override {}
+  void PostVisitStruct(const Expr*, const StructExpr*) override {}
 
-  void PostVisitMap(const MapExpr*, const Expr*) override {}
+  void PostVisitMap(const Expr*, const MapExpr*) override {}
 
   bool PreVisitRewrite(Expr* expr) override { return false; }
 
