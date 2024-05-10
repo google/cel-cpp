@@ -15,8 +15,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_AST_TRAVERSE_NATIVE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_AST_TRAVERSE_NATIVE_H_
 
-#include "common/ast.h"
 #include "common/ast_visitor.h"
+#include "common/expr.h"
 
 namespace cel {
 
@@ -55,7 +55,7 @@ struct TraversalOptions {
 // ....PostVisitArg(fn, 1)
 // ..PostVisitCall(fn)
 // PostVisitExpr
-void AstTraverse(const Expr* expr, AstVisitor* visitor,
+void AstTraverse(const Expr& expr, AstVisitor& visitor,
                  TraversalOptions options = TraversalOptions());
 
 }  // namespace cel

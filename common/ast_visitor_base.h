@@ -34,51 +34,51 @@ class AstVisitorBase : public AstVisitor {
 
   // Const node handler.
   // Invoked after child nodes are processed.
-  void PostVisitConst(const Expr*, const Constant*) override {}
+  void PostVisitConst(const Expr&, const Constant&) override {}
 
   // Ident node handler.
   // Invoked after child nodes are processed.
-  void PostVisitIdent(const Expr*, const IdentExpr*) override {}
+  void PostVisitIdent(const Expr&, const IdentExpr&) override {}
 
   // Select node handler
   // Invoked after child nodes are processed.
-  void PostVisitSelect(const Expr*, const SelectExpr*) override {}
+  void PostVisitSelect(const Expr&, const SelectExpr&) override {}
 
   // Call node handler group
   // We provide finer granularity for Call node callbacks to allow special
   // handling for short-circuiting
   // PreVisitCall is invoked before child nodes are processed.
-  void PreVisitCall(const Expr*, const CallExpr*) override {}
+  void PreVisitCall(const Expr&, const CallExpr&) override {}
 
   // Invoked after all child nodes are processed.
-  void PostVisitCall(const Expr*, const CallExpr*) override {}
+  void PostVisitCall(const Expr&, const CallExpr&) override {}
 
   // Invoked before all child nodes are processed.
-  void PreVisitComprehension(const Expr*, const ComprehensionExpr*) override {}
+  void PreVisitComprehension(const Expr&, const ComprehensionExpr&) override {}
 
   // Invoked after all child nodes are processed.
-  void PostVisitComprehension(const Expr*, const ComprehensionExpr*) override {}
+  void PostVisitComprehension(const Expr&, const ComprehensionExpr&) override {}
 
   // Invoked after each argument node processed.
   // For Call arg_num is the index of the argument.
   // For Comprehension arg_num is specified by ComprehensionArg.
   // Expr is the call expression.
-  void PostVisitArg(const Expr*, int) override {}
+  void PostVisitArg(const Expr&, int) override {}
 
   // Invoked after target node processed.
-  void PostVisitTarget(const Expr*) override {}
+  void PostVisitTarget(const Expr&) override {}
 
   // List node handler
   // Invoked after child nodes are processed.
-  void PostVisitList(const Expr*, const ListExpr*) override {}
+  void PostVisitList(const Expr&, const ListExpr&) override {}
 
   // Struct node handler
   // Invoked after child nodes are processed.
-  void PostVisitStruct(const Expr*, const StructExpr*) override {}
+  void PostVisitStruct(const Expr&, const StructExpr&) override {}
 
   // Map node handler
   // Invoked after child nodes are processed.
-  void PostVisitMap(const Expr*, const MapExpr*) override {}
+  void PostVisitMap(const Expr&, const MapExpr&) override {}
 };
 
 }  // namespace cel

@@ -116,10 +116,10 @@ struct PreVisitor {
         // No pre-visit action.
       }
       void operator()(const SelectExpr& select) {
-        visitor->PreVisitSelect(expr, &select);
+        visitor->PreVisitSelect(*expr, select);
       }
       void operator()(const CallExpr& call) {
-        visitor->PreVisitCall(expr, &call);
+        visitor->PreVisitCall(*expr, call);
       }
       void operator()(const ListExpr&) {
         // No pre-visit action.
@@ -131,13 +131,13 @@ struct PreVisitor {
         // No pre-visit action.
       }
       void operator()(const ComprehensionExpr& comprehension) {
-        visitor->PreVisitComprehension(expr, &comprehension);
+        visitor->PreVisitComprehension(*expr, comprehension);
       }
       void operator()(const UnspecifiedExpr&) {
         // No pre-visit action.
       }
     } handler{visitor, record.expr};
-    visitor->PreVisitExpr(record.expr);
+    visitor->PreVisitExpr(*record.expr);
     absl::visit(handler, record.expr->kind());
   }
 
@@ -145,8 +145,8 @@ struct PreVisitor {
   void operator()(const ArgRecord&) {}
 
   void operator()(const ComprehensionRecord& record) {
-    visitor->PreVisitComprehensionSubexpression(record.comprehension_expr,
-                                                record.comprehension,
+    visitor->PreVisitComprehensionSubexpression(*record.comprehension_expr,
+                                                *record.comprehension,
                                                 record.comprehension_arg);
   }
 
@@ -163,28 +163,28 @@ struct PostVisitor {
       AstVisitor* visitor;
       const Expr* expr;
       void operator()(const Constant& constant) {
-        visitor->PostVisitConst(expr, &constant);
+        visitor->PostVisitConst(*expr, constant);
       }
       void operator()(const IdentExpr& ident) {
-        visitor->PostVisitIdent(expr, &ident);
+        visitor->PostVisitIdent(*expr, ident);
       }
       void operator()(const SelectExpr& select) {
-        visitor->PostVisitSelect(expr, &select);
+        visitor->PostVisitSelect(*expr, select);
       }
       void operator()(const CallExpr& call) {
-        visitor->PostVisitCall(expr, &call);
+        visitor->PostVisitCall(*expr, call);
       }
       void operator()(const ListExpr& create_list) {
-        visitor->PostVisitList(expr, &create_list);
+        visitor->PostVisitList(*expr, create_list);
       }
       void operator()(const StructExpr& create_struct) {
-        visitor->PostVisitStruct(expr, &create_struct);
+        visitor->PostVisitStruct(*expr, create_struct);
       }
       void operator()(const MapExpr& map_expr) {
-        visitor->PostVisitMap(expr, &map_expr);
+        visitor->PostVisitMap(*expr, map_expr);
       }
       void operator()(const ComprehensionExpr& comprehension) {
-        visitor->PostVisitComprehension(expr, &comprehension);
+        visitor->PostVisitComprehension(*expr, comprehension);
       }
       void operator()(const UnspecifiedExpr&) {
         ABSL_LOG(ERROR) << "Unsupported Expr kind";
@@ -192,20 +192,20 @@ struct PostVisitor {
     } handler{visitor, record.expr};
     absl::visit(handler, record.expr->kind());
 
-    visitor->PostVisitExpr(record.expr);
+    visitor->PostVisitExpr(*record.expr);
   }
 
   void operator()(const ArgRecord& record) {
     if (record.call_arg == StackRecord::kTarget) {
-      visitor->PostVisitTarget(record.calling_expr);
+      visitor->PostVisitTarget(*record.calling_expr);
     } else {
-      visitor->PostVisitArg(record.calling_expr, record.call_arg);
+      visitor->PostVisitArg(*record.calling_expr, record.call_arg);
     }
   }
 
   void operator()(const ComprehensionRecord& record) {
-    visitor->PostVisitComprehensionSubexpression(record.comprehension_expr,
-                                                 record.comprehension,
+    visitor->PostVisitComprehensionSubexpression(*record.comprehension_expr,
+                                                 *record.comprehension,
                                                  record.comprehension_arg);
   }
 
@@ -347,12 +347,12 @@ void PushDependencies(const StackRecord& record, std::stack<StackRecord>& stack,
 
 }  // namespace
 
-bool AstRewrite(Expr* expr, AstRewriter* visitor,
+bool AstRewrite(Expr& expr, AstRewriter& visitor,
                 RewriteTraversalOptions options) {
   std::stack<StackRecord> stack;
   std::vector<const Expr*> traversal_path;
 
-  stack.push(StackRecord(expr));
+  stack.push(StackRecord(&expr));
   bool rewritten = false;
 
   while (!stack.empty()) {
@@ -360,24 +360,24 @@ bool AstRewrite(Expr* expr, AstRewriter* visitor,
     if (!record.visited) {
       if (record.IsExprRecord()) {
         traversal_path.push_back(record.expr());
-        visitor->TraversalStackUpdate(absl::MakeSpan(traversal_path));
+        visitor.TraversalStackUpdate(absl::MakeSpan(traversal_path));
 
-        if (visitor->PreVisitRewrite(record.expr())) {
+        if (visitor.PreVisitRewrite(*record.expr())) {
           rewritten = true;
         }
       }
-      PreVisit(record, visitor);
+      PreVisit(record, &visitor);
       PushDependencies(record, stack, options);
       record.visited = true;
     } else {
-      PostVisit(record, visitor);
+      PostVisit(record, &visitor);
       if (record.IsExprRecord()) {
-        if (visitor->PostVisitRewrite(record.expr())) {
+        if (visitor.PostVisitRewrite(*record.expr())) {
           rewritten = true;
         }
 
         traversal_path.pop_back();
-        visitor->TraversalStackUpdate(absl::MakeSpan(traversal_path));
+        visitor.TraversalStackUpdate(absl::MakeSpan(traversal_path));
       }
       stack.pop();
     }

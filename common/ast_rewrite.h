@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_AST_REWRITE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_AST_REWRITE_H_
 
+#include "absl/base/nullability.h"
 #include "absl/types/span.h"
 #include "common/ast_visitor.h"
 #include "common/constant.h"
@@ -41,15 +42,16 @@ class AstRewriter : public AstVisitor {
   // Rewrite a sub expression before visiting.
   // Occurs before visiting Expr. If expr is modified, it the new value will be
   // visited.
-  virtual bool PreVisitRewrite(Expr* expr) = 0;
+  virtual bool PreVisitRewrite(Expr& expr) = 0;
 
   // Rewrite a sub expression after visiting.
   // Occurs after visiting expr and it's children. If expr is modified, the old
   // sub expression is visited.
-  virtual bool PostVisitRewrite(Expr* expr) = 0;
+  virtual bool PostVisitRewrite(Expr& expr) = 0;
 
   // Notify the visitor of updates to the traversal stack.
-  virtual void TraversalStackUpdate(absl::Span<const Expr*> path) = 0;
+  virtual void TraversalStackUpdate(
+      absl::Span<absl::Nonnull<const Expr*>> path) = 0;
 };
 
 // Trivial implementation for AST rewriters.
@@ -58,41 +60,42 @@ class AstRewriterBase : public AstRewriter {
  public:
   ~AstRewriterBase() override {}
 
-  void PreVisitExpr(const Expr*) override {}
+  void PreVisitExpr(const Expr&) override {}
 
-  void PostVisitExpr(const Expr*) override {}
+  void PostVisitExpr(const Expr&) override {}
 
-  void PostVisitConst(const Expr*, const Constant*) override {}
+  void PostVisitConst(const Expr&, const Constant&) override {}
 
-  void PostVisitIdent(const Expr*, const IdentExpr*) override {}
+  void PostVisitIdent(const Expr&, const IdentExpr&) override {}
 
-  void PreVisitSelect(const Expr*, const SelectExpr*) override {}
+  void PreVisitSelect(const Expr&, const SelectExpr&) override {}
 
-  void PostVisitSelect(const Expr*, const SelectExpr*) override {}
+  void PostVisitSelect(const Expr&, const SelectExpr&) override {}
 
-  void PreVisitCall(const Expr*, const CallExpr*) override {}
+  void PreVisitCall(const Expr&, const CallExpr&) override {}
 
-  void PostVisitCall(const Expr*, const CallExpr*) override {}
+  void PostVisitCall(const Expr&, const CallExpr&) override {}
 
-  void PreVisitComprehension(const Expr*, const ComprehensionExpr*) override {}
+  void PreVisitComprehension(const Expr&, const ComprehensionExpr&) override {}
 
-  void PostVisitComprehension(const Expr*, const ComprehensionExpr*) override {}
+  void PostVisitComprehension(const Expr&, const ComprehensionExpr&) override {}
 
-  void PostVisitArg(const Expr*, int) override {}
+  void PostVisitArg(const Expr&, int) override {}
 
-  void PostVisitTarget(const Expr*) override {}
+  void PostVisitTarget(const Expr&) override {}
 
-  void PostVisitList(const Expr*, const ListExpr*) override {}
+  void PostVisitList(const Expr&, const ListExpr&) override {}
 
-  void PostVisitStruct(const Expr*, const StructExpr*) override {}
+  void PostVisitStruct(const Expr&, const StructExpr&) override {}
 
-  void PostVisitMap(const Expr*, const MapExpr*) override {}
+  void PostVisitMap(const Expr&, const MapExpr&) override {}
 
-  bool PreVisitRewrite(Expr* expr) override { return false; }
+  bool PreVisitRewrite(Expr& expr) override { return false; }
 
-  bool PostVisitRewrite(Expr* expr) override { return false; }
+  bool PostVisitRewrite(Expr& expr) override { return false; }
 
-  void TraversalStackUpdate(absl::Span<const Expr*> path) override {}
+  void TraversalStackUpdate(
+      absl::Span<absl::Nonnull<const Expr*>> path) override {}
 };
 
 // Traverses the AST representation in an expr proto. Returns true if any
@@ -135,7 +138,7 @@ class AstRewriterBase : public AstRewriter {
 // ..PostVisitCall(fn)
 // PostVisitExpr
 
-bool AstRewrite(Expr* expr, AstRewriter* visitor,
+bool AstRewrite(Expr& expr, AstRewriter& visitor,
                 RewriteTraversalOptions options = RewriteTraversalOptions());
 
 }  // namespace cel

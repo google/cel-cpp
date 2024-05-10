@@ -116,14 +116,14 @@ class ReferenceResolver : public cel::AstRewriterBase {
   // TODO(issues/95): If possible, it would be nice to write a general utility
   // for running the preprocess steps when traversing the AST instead of having
   // one pass per transform.
-  bool PreVisitRewrite(Expr* expr) override {
-    const Reference* reference = GetReferenceForId(expr->id());
+  bool PreVisitRewrite(Expr& expr) override {
+    const Reference* reference = GetReferenceForId(expr.id());
 
     // Fold compile time constant (e.g. enum values)
     if (reference != nullptr && reference->has_value()) {
       if (reference->value().has_int64_value()) {
         // Replace enum idents with const reference value.
-        expr->mutable_const_expr().set_int64_value(
+        expr.mutable_const_expr().set_int64_value(
             reference->value().int64_value());
         return true;
       } else {
@@ -133,10 +133,10 @@ class ReferenceResolver : public cel::AstRewriterBase {
     }
 
     if (reference != nullptr) {
-      if (expr->has_ident_expr()) {
-        return MaybeUpdateIdentNode(expr, *reference);
-      } else if (expr->has_select_expr()) {
-        return MaybeUpdateSelectNode(expr, *reference);
+      if (expr.has_ident_expr()) {
+        return MaybeUpdateIdentNode(&expr, *reference);
+      } else if (expr.has_select_expr()) {
+        return MaybeUpdateSelectNode(&expr, *reference);
       } else {
         // Call nodes are updated on post visit so they will see any select
         // path rewrites.
@@ -146,10 +146,10 @@ class ReferenceResolver : public cel::AstRewriterBase {
     return false;
   }
 
-  bool PostVisitRewrite(Expr* expr) override {
-    const Reference* reference = GetReferenceForId(expr->id());
-    if (expr->has_call_expr()) {
-      return MaybeUpdateCallNode(expr, reference);
+  bool PostVisitRewrite(Expr& expr) override {
+    const Reference* reference = GetReferenceForId(expr.id());
+    if (expr.has_call_expr()) {
+      return MaybeUpdateCallNode(&expr, reference);
     }
     return false;
   }
@@ -327,7 +327,7 @@ absl::StatusOr<bool> ResolveReferences(const Resolver& resolver,
 
   // Rewriting interface doesn't support failing mid traverse propagate first
   // error encountered if fail fast enabled.
-  bool was_rewritten = cel::AstRewrite(&ast.root_expr(), &ref_resolver);
+  bool was_rewritten = cel::AstRewrite(ast.root_expr(), ref_resolver);
   if (!ref_resolver.GetProgressStatus().ok()) {
     return ref_resolver.GetProgressStatus();
   }

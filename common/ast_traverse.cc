@@ -99,13 +99,13 @@ struct StackRecord {
 struct PreVisitor {
   void operator()(const ExprRecord& record) {
     const Expr* expr = record.expr;
-    visitor->PreVisitExpr(expr);
+    visitor->PreVisitExpr(*expr);
     if (expr->has_select_expr()) {
-      visitor->PreVisitSelect(expr, &expr->select_expr());
+      visitor->PreVisitSelect(*expr, expr->select_expr());
     } else if (expr->has_call_expr()) {
-      visitor->PreVisitCall(expr, &expr->call_expr());
+      visitor->PreVisitCall(*expr, expr->call_expr());
     } else if (expr->has_comprehension_expr()) {
-      visitor->PreVisitComprehension(expr, &expr->comprehension_expr());
+      visitor->PreVisitComprehension(*expr, expr->comprehension_expr());
     } else {
       // No pre-visit action.
     }
@@ -115,8 +115,8 @@ struct PreVisitor {
   void operator()(const ArgRecord&) {}
 
   void operator()(const ComprehensionRecord& record) {
-    visitor->PreVisitComprehensionSubexpression(record.comprehension_expr,
-                                                record.comprehension,
+    visitor->PreVisitComprehensionSubexpression(*record.comprehension_expr,
+                                                *record.comprehension,
                                                 record.comprehension_arg);
   }
 
@@ -134,28 +134,28 @@ struct PostVisitor {
       AstVisitor* visitor;
       const Expr* expr;
       void operator()(const Constant& constant) {
-        visitor->PostVisitConst(expr, &expr->const_expr());
+        visitor->PostVisitConst(*expr, expr->const_expr());
       }
       void operator()(const IdentExpr& ident) {
-        visitor->PostVisitIdent(expr, &expr->ident_expr());
+        visitor->PostVisitIdent(*expr, expr->ident_expr());
       }
       void operator()(const SelectExpr& select) {
-        visitor->PostVisitSelect(expr, &expr->select_expr());
+        visitor->PostVisitSelect(*expr, expr->select_expr());
       }
       void operator()(const CallExpr& call) {
-        visitor->PostVisitCall(expr, &expr->call_expr());
+        visitor->PostVisitCall(*expr, expr->call_expr());
       }
       void operator()(const ListExpr& create_list) {
-        visitor->PostVisitList(expr, &expr->list_expr());
+        visitor->PostVisitList(*expr, expr->list_expr());
       }
       void operator()(const StructExpr& create_struct) {
-        visitor->PostVisitStruct(expr, &expr->struct_expr());
+        visitor->PostVisitStruct(*expr, expr->struct_expr());
       }
       void operator()(const MapExpr& map_expr) {
-        visitor->PostVisitMap(expr, &expr->map_expr());
+        visitor->PostVisitMap(*expr, expr->map_expr());
       }
       void operator()(const ComprehensionExpr& comprehension) {
-        visitor->PostVisitComprehension(expr, &expr->comprehension_expr());
+        visitor->PostVisitComprehension(*expr, expr->comprehension_expr());
       }
       void operator()(const UnspecifiedExpr&) {
         ABSL_LOG(ERROR) << "Unsupported Expr kind";
@@ -163,20 +163,20 @@ struct PostVisitor {
     } handler{visitor, record.expr};
     absl::visit(handler, record.expr->kind());
 
-    visitor->PostVisitExpr(expr);
+    visitor->PostVisitExpr(*expr);
   }
 
   void operator()(const ArgRecord& record) {
     if (record.call_arg == StackRecord::kTarget) {
-      visitor->PostVisitTarget(record.calling_expr);
+      visitor->PostVisitTarget(*record.calling_expr);
     } else {
-      visitor->PostVisitArg(record.calling_expr, record.call_arg);
+      visitor->PostVisitArg(*record.calling_expr, record.call_arg);
     }
   }
 
   void operator()(const ComprehensionRecord& record) {
-    visitor->PostVisitComprehensionSubexpression(record.comprehension_expr,
-                                                 record.comprehension,
+    visitor->PostVisitComprehensionSubexpression(*record.comprehension_expr,
+                                                 *record.comprehension,
                                                  record.comprehension_arg);
   }
 
@@ -318,19 +318,19 @@ void PushDependencies(const StackRecord& record, std::stack<StackRecord>& stack,
 
 }  // namespace
 
-void AstTraverse(const Expr* expr, AstVisitor* visitor,
+void AstTraverse(const Expr& expr, AstVisitor& visitor,
                  TraversalOptions options) {
   std::stack<StackRecord> stack;
-  stack.push(StackRecord(expr));
+  stack.push(StackRecord(&expr));
 
   while (!stack.empty()) {
     StackRecord& record = stack.top();
     if (!record.visited) {
-      PreVisit(record, visitor);
+      PreVisit(record, &visitor);
       PushDependencies(record, stack, options);
       record.visited = true;
     } else {
-      PostVisit(record, visitor);
+      PostVisit(record, &visitor);
       stack.pop();
     }
   }

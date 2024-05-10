@@ -367,11 +367,11 @@ class RewriterImpl : public AstRewriterBase {
   RewriterImpl(const AstImpl& ast, PlannerContext& planner_context)
       : ast_(ast), planner_context_(planner_context) {}
 
-  void PreVisitExpr(const Expr* expr) override { path_.push_back(expr); }
+  void PreVisitExpr(const Expr& expr) override { path_.push_back(&expr); }
 
-  void PreVisitSelect(const Expr* expr, const Select* select) override {
-    const Expr& operand = select->operand();
-    const std::string& field_name = select->field();
+  void PreVisitSelect(const Expr& expr, const Select& select) override {
+    const Expr& operand = select.operand();
+    const std::string& field_name = select.field();
     // Select optimization can generalize to lists and maps, but for now only
     // support message traversal.
     const ast_internal::Type& checker_type = ast_.GetType(operand.id());
@@ -385,23 +385,22 @@ class RewriterImpl : public AstRewriterBase {
       absl::optional<SelectInstruction> field_or =
           GetSelectInstruction(runtime_type, planner_context_, field_name);
       if (field_or.has_value()) {
-        candidates_[expr] = std::move(field_or).value();
+        candidates_[&expr] = std::move(field_or).value();
       }
     } else if (checker_type.has_map_type()) {
-      candidates_[expr] = QualifierInstruction(field_name);
+      candidates_[&expr] = QualifierInstruction(field_name);
     }
     // else
     // TODO(uncreated-issue/54): add support for either dyn or any. Excluded to
     // simplify program plan.
   }
 
-  void PreVisitCall(const Expr* expr, const Call* call) override {
-    if (call->args().size() != 2 ||
-        call->function() != ::cel::builtin::kIndex) {
+  void PreVisitCall(const Expr& expr, const Call& call) override {
+    if (call.args().size() != 2 || call.function() != ::cel::builtin::kIndex) {
       return;
     }
 
-    const auto& qualifier_expr = call->args()[1];
+    const auto& qualifier_expr = call.args()[1];
     if (qualifier_expr.has_const_expr()) {
       auto qualifier_or =
           SelectInstructionFromConstant(qualifier_expr.const_expr());
@@ -409,17 +408,17 @@ class RewriterImpl : public AstRewriterBase {
         SetProgressStatus(qualifier_or.status());
         return;
       }
-      candidates_[expr] = std::move(qualifier_or).value();
+      candidates_[&expr] = std::move(qualifier_or).value();
     }
     // TODO(uncreated-issue/54): support variable indexes
   }
 
-  bool PostVisitRewrite(Expr* expr) override {
+  bool PostVisitRewrite(Expr& expr) override {
     if (!progress_status_.ok()) {
       return false;
     }
     path_.pop_back();
-    auto candidate_iter = candidates_.find(expr);
+    auto candidate_iter = candidates_.find(&expr);
     if (candidate_iter == candidates_.end()) {
       return false;
     }
@@ -427,7 +426,7 @@ class RewriterImpl : public AstRewriterBase {
     // On post visit, filter candidates that aren't rooted on a message or a
     // select chain.
     const QualifierInstruction& candidate = candidate_iter->second;
-    if (!HasOptimizeableRoot(expr, candidate)) {
+    if (!HasOptimizeableRoot(&expr, candidate)) {
       candidates_.erase(candidate_iter);
       return false;
     }
@@ -437,14 +436,14 @@ class RewriterImpl : public AstRewriterBase {
       return false;
     }
 
-    SelectPath path = GetSelectPath(expr);
+    SelectPath path = GetSelectPath(&expr);
 
     // generate the new cel.attribute call.
     absl::string_view fn = path.test_only ? kFieldsHas : kCelAttribute;
 
     Expr operand(std::move(*path.operand));
     Expr call;
-    call.set_id(expr->id());
+    call.set_id(expr.id());
     call.mutable_call_expr().set_function(std::string(fn));
     call.mutable_call_expr().mutable_args().reserve(2);
 
@@ -453,7 +452,7 @@ class RewriterImpl : public AstRewriterBase {
         MakeSelectPathExpr(path.select_instructions));
 
     // TODO(uncreated-issue/54): support for optionals.
-    *expr = std::move(call);
+    expr = std::move(call);
 
     return true;
   }
@@ -873,7 +872,7 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
 absl::Status SelectOptimizationAstUpdater::UpdateAst(PlannerContext& context,
                                                      AstImpl& ast) const {
   RewriterImpl rewriter(ast, context);
-  AstRewrite(&ast.root_expr(), &rewriter);
+  AstRewrite(ast.root_expr(), rewriter);
   return rewriter.GetProgressStatus();
 }
 
