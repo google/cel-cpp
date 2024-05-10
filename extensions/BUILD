@@ -24,14 +24,18 @@ cc_library(
     srcs = ["proto_ext.cc"],
     hdrs = ["proto_ext.h"],
     deps = [
+        "//common:ast",
         "//parser:macro",
+        "//parser:macro_expr_factory",
         "//parser:macro_registry",
         "//parser:options",
-        "//parser:source_factory",
+        "@com_google_absl//absl/functional:overload",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
     ],
 )
 
@@ -61,16 +65,20 @@ cc_library(
     srcs = ["math_ext_macros.cc"],
     hdrs = ["math_ext_macros.h"],
     deps = [
+        "//common:ast",
+        "//common:constant",
         "//parser:macro",
+        "//parser:macro_expr_factory",
         "//parser:macro_registry",
         "//parser:options",
-        "//parser:source_factory",
+        "@com_google_absl//absl/functional:overload",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:optional",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
     ],
 )
 
@@ -122,14 +130,15 @@ cc_library(
     srcs = ["bindings_ext.cc"],
     hdrs = ["bindings_ext.h"],
     deps = [
+        "//common:ast",
         "//parser:macro",
+        "//parser:macro_expr_factory",
         "//parser:macro_registry",
         "//parser:options",
-        "//parser:source_factory",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:optional",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_absl//absl/types:span",
     ],
 )
 

@@ -427,7 +427,7 @@ std::vector<TestInfo> test_cases = {
      "ERROR: <input>:1:2: Syntax error: mismatched input '<EOF>' expecting "
      "{'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, "
      "NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}\n | ?\n | .^\n"
-     "ERROR: <input>:4294967295:0: <<nil>> parsetree\n | \n | ^"},
+     "ERROR: <input>:4294967295:0: <<nil>> parsetree"},
     {"t{>C}", "",
      "ERROR: <input>:1:3: Syntax error: extraneous input '>' expecting {'}', "
      "',', '\\u003F', IDENTIFIER}\n | t{>C}\n | ..^\nERROR: <input>:1:5: "
@@ -436,7 +436,7 @@ std::vector<TestInfo> test_cases = {
 
     // Macro tests
     {"has(m.f)", "m^#2:Expr.Ident#.f~test-only~^#4:Expr.Select#", "",
-     "m^#2[1,4]#.f~test-only~^#4[1,3]#", "[1,3,3]^#[2,4,4]^#[3,5,5]^#[4,3,3]",
+     "m^#2[1,4]#.f~test-only~^#4[1,3]#", "[2,4,4]^#[3,5,5]^#[4,3,3]",
      "has(\n"
      "  m^#2:Expr.Ident#.f^#3:Expr.Select#\n"
      ")^#4:has"},
@@ -451,26 +451,26 @@ std::vector<TestInfo> test_cases = {
      "  // Init\n"
      "  0^#5:int64#,\n"
      "  // LoopCondition\n"
-     "  true^#7:bool#,\n"
+     "  true^#6:bool#,\n"
      "  // LoopStep\n"
      "  _?_:_(\n"
      "    f^#4:Expr.Ident#,\n"
      "    _+_(\n"
-     "      __result__^#8:Expr.Ident#,\n"
-     "      1^#6:int64#\n"
+     "      __result__^#7:Expr.Ident#,\n"
+     "      1^#8:int64#\n"
      "    )^#9:Expr.Call#,\n"
      "    __result__^#10:Expr.Ident#\n"
      "  )^#11:Expr.Call#,\n"
      "  // Result\n"
      "  _==_(\n"
      "    __result__^#12:Expr.Ident#,\n"
-     "    1^#6:int64#\n"
-     "  )^#13:Expr.Call#)^#14:Expr.Comprehension#",
+     "    1^#13:int64#\n"
+     "  )^#14:Expr.Call#)^#15:Expr.Comprehension#",
      "", "", "",
      "m^#1:Expr.Ident#.exists_one(\n"
      "  v^#3:Expr.Ident#,\n"
      "  f^#4:Expr.Ident#\n"
-     ")^#14:exists_one"},
+     ")^#15:exists_one"},
     {"m.map(v, f)",
      "__comprehension__(\n"
      "  // Variable\n"
@@ -622,7 +622,7 @@ std::vector<TestInfo> test_cases = {
      "  0^#6:int64#\n"
      ")^#5:Expr.Call#"},
     {"1.all(2, 3)", "",
-     "ERROR: <input>:1:7: argument must be a simple name\n"
+     "ERROR: <input>:1:7: all() variable name must be a simple identifier\n"
      " | 1.all(2, 3)\n"
      " | ......^"},
     {"x[\"a\"].single_int32 == 23",
@@ -784,10 +784,10 @@ std::vector<TestInfo> test_cases = {
      " | ......^\n"
      "ERROR: <input>:2:10: Syntax error: token recognition error at: '😁'\n"
      " |    && in.😁\n"
-     " | .........^\n"
+     " | .........＾\n"
      "ERROR: <input>:2:11: Syntax error: no viable alternative at input '.'\n"
      " |    && in.😁\n"
-     " | ..........^"},
+     " | .........．^"},
     {"as", "",
      "ERROR: <input>:1:1: reserved identifier: as\n"
      " | as\n"
@@ -872,7 +872,7 @@ std::vector<TestInfo> test_cases = {
      "ERROR: <input>:1:15: reserved identifier: var\n"
      " | [1, 2, 3].map(var, var * var)\n"
      " | ..............^\n"
-     "ERROR: <input>:1:15: argument is not an identifier\n"
+     "ERROR: <input>:1:15: map() variable name must be a simple identifier\n"
      " | [1, 2, 3].map(var, var * var)\n"
      " | ..............^\n"
      "ERROR: <input>:1:20: reserved identifier: var\n"
@@ -1197,20 +1197,20 @@ std::vector<TestInfo> test_cases = {
      "?field:value^#3:Expr.Ident#^#2:Expr.CreateStruct.Entry#\n}^#1:Expr."
      "CreateStruct#"},
     {"m.optMap(v, f)",
-     "_?_:_(\n  m^#1:Expr.Ident#.hasValue()^#5:Expr.Call#,\n  optional.of(\n   "
+     "_?_:_(\n  m^#1:Expr.Ident#.hasValue()^#6:Expr.Call#,\n  optional.of(\n   "
      " __comprehension__(\n      // Variable\n      #unused,\n      // "
-     "Target\n      []^#6:Expr.CreateList#,\n      // Accumulator\n      v,\n  "
-     "    // Init\n      m^#1:Expr.Ident#.value()^#7:Expr.Call#,\n      // "
-     "LoopCondition\n      false^#8:bool#,\n      // LoopStep\n      "
-     "v^#9:Expr.Ident#,\n      // Result\n      "
+     "Target\n      []^#7:Expr.CreateList#,\n      // Accumulator\n      v,\n  "
+     "    // Init\n      m^#5:Expr.Ident#.value()^#8:Expr.Call#,\n      // "
+     "LoopCondition\n      false^#9:bool#,\n      // LoopStep\n      "
+     "v^#3:Expr.Ident#,\n      // Result\n      "
      "f^#4:Expr.Ident#)^#10:Expr.Comprehension#\n  )^#11:Expr.Call#,\n  "
      "optional.none()^#12:Expr.Call#\n)^#13:Expr.Call#"},
     {"m.optFlatMap(v, f)",
-     "_?_:_(\n  m^#1:Expr.Ident#.hasValue()^#5:Expr.Call#,\n  "
+     "_?_:_(\n  m^#1:Expr.Ident#.hasValue()^#6:Expr.Call#,\n  "
      "__comprehension__(\n    // Variable\n    #unused,\n    // Target\n    "
-     "[]^#6:Expr.CreateList#,\n    // Accumulator\n    v,\n    // Init\n    "
-     "m^#1:Expr.Ident#.value()^#7:Expr.Call#,\n    // LoopCondition\n    "
-     "false^#8:bool#,\n    // LoopStep\n    v^#9:Expr.Ident#,\n    // Result\n "
+     "[]^#7:Expr.CreateList#,\n    // Accumulator\n    v,\n    // Init\n    "
+     "m^#5:Expr.Ident#.value()^#8:Expr.Call#,\n    // LoopCondition\n    "
+     "false^#9:bool#,\n    // LoopStep\n    v^#3:Expr.Ident#,\n    // Result\n "
      "   f^#4:Expr.Ident#)^#10:Expr.Comprehension#,\n  "
      "optional.none()^#11:Expr.Call#\n)^#12:Expr.Call#"}};
 
@@ -1393,14 +1393,15 @@ TEST_P(ExpressionTest, Parse) {
     KindAndIdAdorner kind_and_id_adorner;
     testutil::ExprPrinter w(kind_and_id_adorner);
     std::string adorned_string = w.print(result->parsed_expr().expr());
-    EXPECT_EQ(test_info.P, adorned_string);
+    EXPECT_EQ(test_info.P, adorned_string) << result->parsed_expr();
   }
 
   if (!test_info.L.empty()) {
     LocationAdorner location_adorner(result->parsed_expr().source_info());
     testutil::ExprPrinter w(location_adorner);
     std::string adorned_string = w.print(result->parsed_expr().expr());
-    EXPECT_EQ(test_info.L, adorned_string);
+    EXPECT_EQ(test_info.L, adorned_string) << result->parsed_expr();
+    ;
   }
 
   if (!test_info.R.empty()) {
@@ -1410,7 +1411,9 @@ TEST_P(ExpressionTest, Parse) {
 
   if (!test_info.M.empty()) {
     EXPECT_EQ(test_info.M, ConvertMacroCallsToString(
-                               result.value().parsed_expr().source_info()));
+                               result.value().parsed_expr().source_info()))
+        << result->parsed_expr();
+    ;
   }
 }
 
@@ -1494,8 +1497,7 @@ TEST(ExpressionTest, RecursionDepthIgnoresParentheses) {
 
 std::string TestName(const testing::TestParamInfo<TestInfo>& test_info) {
   std::string name = absl::StrCat(test_info.index, "-", test_info.param.I);
-  absl::c_replace_if(
-      name, [](char c) { return !absl::ascii_isalnum(c); }, '_');
+  absl::c_replace_if(name, [](char c) { return !absl::ascii_isalnum(c); }, '_');
   return name;
   return name;
 }

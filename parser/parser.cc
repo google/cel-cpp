@@ -16,15 +16,27 @@
 
 #include <algorithm>
 #include <any>
+#include <array>
+#include <cstddef>
 #include <cstdint>
+#include <exception>
+#include <functional>
+#include <iterator>
+#include <limits>
+#include <map>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
+#include "absl/container/btree_map.h"
+#include "absl/container/flat_hash_map.h"
+#include "absl/functional/overload.h"
+#include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
@@ -35,18 +47,386 @@
 #include "absl/strings/str_replace.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
+#include "absl/types/variant.h"
 #include "antlr4-runtime.h"
+#include "common/ast.h"
+#include "common/constant.h"
+#include "common/expr_factory.h"
 #include "common/operators.h"
 #include "common/source.h"
+#include "extensions/protobuf/internal/ast.h"
+#include "internal/lexis.h"
 #include "internal/status_macros.h"
 #include "internal/strings.h"
+#include "internal/utf8.h"
 #include "parser/internal/CelBaseVisitor.h"
 #include "parser/internal/CelLexer.h"
 #include "parser/internal/CelParser.h"
 #include "parser/macro.h"
+#include "parser/macro_expr_factory.h"
 #include "parser/macro_registry.h"
 #include "parser/options.h"
 #include "parser/source_factory.h"
+
+namespace google::api::expr::parser {
+namespace {
+class ParserVisitor;
+}
+}  // namespace google::api::expr::parser
+
+namespace cel {
+
+namespace {
+
+std::any ExprPtrToAny(std::unique_ptr<Expr>&& expr) {
+  return std::make_any<Expr*>(expr.release());
+}
+
+std::any ExprToAny(Expr&& expr) {
+  return ExprPtrToAny(std::make_unique<Expr>(std::move(expr)));
+}
+
+std::unique_ptr<Expr> ExprPtrFromAny(std::any&& any) {
+  return absl::WrapUnique(std::any_cast<Expr*>(std::move(any)));
+}
+
+Expr ExprFromAny(std::any&& any) {
+  auto expr = ExprPtrFromAny(std::move(any));
+  return std::move(*expr);
+}
+
+struct ParserError {
+  std::string message;
+  SourceRange range;
+};
+
+inline constexpr char32_t kDot = '.';
+inline constexpr char32_t kHat = '^';
+
+inline constexpr char32_t kWideDot = 0xff0e;
+inline constexpr char32_t kWideHat = 0xff3e;
+
+std::string DisplayParserError(const cel::Source& source,
+                               const ParserError& error) {
+  auto location =
+      source.GetLocation(error.range.begin).value_or(SourceLocation{});
+  std::string s = absl::StrFormat("ERROR: %s:%zu:%zu: %s", source.description(),
+                                  location.line,
+                                  // add one to the 0-based column
+                                  location.column + 1, error.message);
+  if (auto snippet = source.Snippet(location.line); snippet) {
+    *snippet = absl::StrReplaceAll(*snippet, {{"\t", " "}});
+    absl::string_view snippet_view(*snippet);
+    std::string src_line;
+    src_line.append("\n | ");
+    src_line.append(*snippet);
+    std::string ind_line;
+    ind_line.append("\n | ");
+    for (int32_t i = 0; i < location.column && !snippet_view.empty(); ++i) {
+      size_t count;
+      std::tie(std::ignore, count) = internal::Utf8Decode(snippet_view);
+      snippet_view.remove_prefix(count);
+      if (count > 1) {
+        internal::Utf8Encode(ind_line, kWideDot);
+      } else {
+        internal::Utf8Encode(ind_line, kDot);
+      }
+    }
+    size_t count = 0;
+    if (!snippet_view.empty()) {
+      std::tie(std::ignore, count) = internal::Utf8Decode(snippet_view);
+    }
+    if (count > 1) {
+      internal::Utf8Encode(ind_line, kWideHat);
+    } else {
+      internal::Utf8Encode(ind_line, kHat);
+    }
+    s.append(src_line);
+    s.append(ind_line);
+  }
+  return s;
+}
+
+int32_t PositiveOrMax(int32_t value) {
+  return value >= 0 ? value : std::numeric_limits<int32_t>::max();
+}
+
+SourceRange SourceRangeFromToken(const antlr4::Token* token) {
+  SourceRange range;
+  if (token != nullptr) {
+    if (auto start = token->getStartIndex(); start != INVALID_INDEX) {
+      range.begin = static_cast<int32_t>(start);
+    }
+    if (auto end = token->getStopIndex(); end != INVALID_INDEX) {
+      range.end = static_cast<int32_t>(end + 1);
+    }
+  }
+  return range;
+}
+
+SourceRange SourceRangeFromParserRuleContext(
+    const antlr4::ParserRuleContext* context) {
+  SourceRange range;
+  if (context != nullptr) {
+    if (auto start = context->getStart() != nullptr
+                         ? context->getStart()->getStartIndex()
+                         : INVALID_INDEX;
+        start != INVALID_INDEX) {
+      range.begin = static_cast<int32_t>(start);
+    }
+    if (auto end = context->getStop() != nullptr
+                       ? context->getStop()->getStopIndex()
+                       : INVALID_INDEX;
+        end != INVALID_INDEX) {
+      range.end = static_cast<int32_t>(end + 1);
+    }
+  }
+  return range;
+}
+
+}  // namespace
+
+class ParserMacroExprFactory final : public MacroExprFactory {
+ public:
+  explicit ParserMacroExprFactory(const cel::Source& source)
+      : MacroExprFactory(), source_(source) {}
+
+  void BeginMacro(SourceRange macro_position) {
+    macro_position_ = macro_position;
+  }
+
+  void EndMacro() { macro_position_ = SourceRange{}; }
+
+  Expr ReportError(absl::string_view message) override {
+    return ReportError(macro_position_, message);
+  }
+
+  Expr ReportError(int64_t expr_id, absl::string_view message) {
+    return ReportError(GetSourceRange(expr_id), message);
+  }
+
+  Expr ReportError(SourceRange range, absl::string_view message) {
+    ++error_count_;
+    if (errors_.size() <= 100) {
+      errors_.push_back(ParserError{std::string(message), range});
+    }
+    return NewUnspecified(NextId(range));
+  }
+
+  Expr ReportErrorAt(const Expr& expr, absl::string_view message) override {
+    return ReportError(GetSourceRange(expr.id()), message);
+  }
+
+  SourceRange GetSourceRange(int64_t id) const {
+    if (auto it = positions_.find(id); it != positions_.end()) {
+      return it->second;
+    }
+    return SourceRange{};
+  }
+
+  int64_t NextId(const SourceRange& range) {
+    auto id = expr_id_++;
+    if (range.begin != -1 || range.end != -1) {
+      positions_.insert(std::pair{id, range});
+    }
+    return id;
+  }
+
+  bool HasErrors() const { return error_count_ != 0; }
+
+  std::string ErrorMessage() {
+    // Errors are collected as they are encountered, not by their location
+    // within the source. To have a more stable error message as implementation
+    // details change, we sort the collected errors by their source location
+    // first.
+    std::stable_sort(
+        errors_.begin(), errors_.end(),
+        [](const ParserError& lhs, const ParserError& rhs) -> bool {
+          auto lhs_begin = PositiveOrMax(lhs.range.begin);
+          auto lhs_end = PositiveOrMax(lhs.range.end);
+          auto rhs_begin = PositiveOrMax(rhs.range.begin);
+          auto rhs_end = PositiveOrMax(rhs.range.end);
+          return lhs_begin < rhs_begin ||
+                 (lhs_begin == rhs_begin && lhs_end < rhs_end);
+        });
+    // Build the summary error message using the sorted errors.
+    bool errors_truncated = error_count_ > 100;
+    std::vector<std::string> messages;
+    messages.reserve(
+        errors_.size() +
+        errors_truncated);  // Reserve space for the transform and an
+                            // additional element when truncation occurs.
+    std::transform(errors_.begin(), errors_.end(), std::back_inserter(messages),
+                   [this](const ParserError& error) {
+                     return cel::DisplayParserError(source_, error);
+                   });
+    if (errors_truncated) {
+      messages.emplace_back(
+          absl::StrCat(error_count_ - 100, " more errors were truncated."));
+    }
+    return absl::StrJoin(messages, "\n");
+  }
+
+  void AddMacroCall(int64_t macro_id, absl::string_view function,
+                    absl::optional<Expr> target, std::vector<Expr> arguments) {
+    macro_calls_.insert(
+        {macro_id, target.has_value()
+                       ? NewMemberCall(0, function, std::move(*target),
+                                       std::move(arguments))
+                       : NewCall(0, function, std::move(arguments))});
+  }
+
+  Expr BuildMacroCallArg(const Expr& expr) {
+    if (auto it = macro_calls_.find(expr.id()); it != macro_calls_.end()) {
+      return NewUnspecified(expr.id());
+    }
+    return absl::visit(
+        absl::Overload(
+            [this, &expr](const UnspecifiedExpr&) -> Expr {
+              return NewUnspecified(expr.id());
+            },
+            [this, &expr](const Constant& const_expr) -> Expr {
+              return NewConst(expr.id(), const_expr);
+            },
+            [this, &expr](const IdentExpr& ident_expr) -> Expr {
+              return NewIdent(expr.id(), ident_expr.name());
+            },
+            [this, &expr](const SelectExpr& select_expr) -> Expr {
+              return select_expr.test_only()
+                         ? NewPresenceTest(
+                               expr.id(),
+                               BuildMacroCallArg(select_expr.operand()),
+                               select_expr.field())
+                         : NewSelect(expr.id(),
+                                     BuildMacroCallArg(select_expr.operand()),
+                                     select_expr.field());
+            },
+            [this, &expr](const CallExpr& call_expr) -> Expr {
+              std::vector<Expr> macro_arguments;
+              macro_arguments.reserve(call_expr.args().size());
+              for (const auto& argument : call_expr.args()) {
+                macro_arguments.push_back(BuildMacroCallArg(argument));
+              }
+              absl::optional<Expr> macro_target;
+              if (call_expr.has_target()) {
+                macro_target = BuildMacroCallArg(call_expr.target());
+              }
+              return macro_target.has_value()
+                         ? NewMemberCall(expr.id(), call_expr.function(),
+                                         std::move(*macro_target),
+                                         std::move(macro_arguments))
+                         : NewCall(expr.id(), call_expr.function(),
+                                   std::move(macro_arguments));
+            },
+            [this, &expr](const ListExpr& list_expr) -> Expr {
+              std::vector<ListExprElement> macro_elements;
+              macro_elements.reserve(list_expr.elements().size());
+              for (const auto& element : list_expr.elements()) {
+                auto& cloned_element = macro_elements.emplace_back();
+                if (element.has_expr()) {
+                  cloned_element.set_expr(BuildMacroCallArg(element.expr()));
+                }
+                cloned_element.set_optional(element.optional());
+              }
+              return NewList(expr.id(), std::move(macro_elements));
+            },
+            [this, &expr](const StructExpr& struct_expr) -> Expr {
+              std::vector<StructExprField> macro_fields;
+              macro_fields.reserve(struct_expr.fields().size());
+              for (const auto& field : struct_expr.fields()) {
+                auto& macro_field = macro_fields.emplace_back();
+                macro_field.set_id(field.id());
+                macro_field.set_name(field.name());
+                macro_field.set_value(BuildMacroCallArg(field.value()));
+                macro_field.set_optional(field.optional());
+              }
+              return NewStruct(expr.id(), struct_expr.name(),
+                               std::move(macro_fields));
+            },
+            [this, &expr](const MapExpr& map_expr) -> Expr {
+              std::vector<MapExprEntry> macro_entries;
+              macro_entries.reserve(map_expr.entries().size());
+              for (const auto& entry : map_expr.entries()) {
+                auto& macro_entry = macro_entries.emplace_back();
+                macro_entry.set_id(entry.id());
+                macro_entry.set_key(BuildMacroCallArg(entry.key()));
+                macro_entry.set_value(BuildMacroCallArg(entry.value()));
+                macro_entry.set_optional(entry.optional());
+              }
+              return NewMap(expr.id(), std::move(macro_entries));
+            },
+            [this, &expr](const ComprehensionExpr& comprehension_expr) -> Expr {
+              return NewComprehension(
+                  expr.id(), comprehension_expr.iter_var(),
+                  BuildMacroCallArg(comprehension_expr.iter_range()),
+                  comprehension_expr.accu_var(),
+                  BuildMacroCallArg(comprehension_expr.accu_init()),
+                  BuildMacroCallArg(comprehension_expr.loop_condition()),
+                  BuildMacroCallArg(comprehension_expr.loop_step()),
+                  BuildMacroCallArg(comprehension_expr.result()));
+            }),
+        expr.kind());
+  }
+
+  using ExprFactory::NewBoolConst;
+  using ExprFactory::NewBytesConst;
+  using ExprFactory::NewCall;
+  using ExprFactory::NewComprehension;
+  using ExprFactory::NewConst;
+  using ExprFactory::NewDoubleConst;
+  using ExprFactory::NewIdent;
+  using ExprFactory::NewIntConst;
+  using ExprFactory::NewList;
+  using ExprFactory::NewListElement;
+  using ExprFactory::NewMap;
+  using ExprFactory::NewMapEntry;
+  using ExprFactory::NewMemberCall;
+  using ExprFactory::NewNullConst;
+  using ExprFactory::NewPresenceTest;
+  using ExprFactory::NewSelect;
+  using ExprFactory::NewStringConst;
+  using ExprFactory::NewStruct;
+  using ExprFactory::NewStructField;
+  using ExprFactory::NewUintConst;
+  using ExprFactory::NewUnspecified;
+
+  const absl::btree_map<int64_t, SourceRange>& positions() const {
+    return positions_;
+  }
+
+  const absl::flat_hash_map<int64_t, Expr>& macro_calls() const {
+    return macro_calls_;
+  }
+
+  void EraseId(ExprId id) {
+    positions_.erase(id);
+    if (expr_id_ == id + 1) {
+      --expr_id_;
+    }
+  }
+
+ protected:
+  int64_t NextId() override { return NextId(macro_position_); }
+
+  int64_t CopyId(int64_t id) override {
+    if (id == 0) {
+      return 0;
+    }
+    return NextId(GetSourceRange(id));
+  }
+
+ private:
+  int64_t expr_id_ = 1;
+  absl::btree_map<int64_t, SourceRange> positions_;
+  absl::flat_hash_map<int64_t, Expr> macro_calls_;
+  std::vector<ParserError> errors_;
+  size_t error_count_ = 0;
+  const Source& source_;
+  SourceRange macro_position_;
+};
+
+}  // namespace cel
 
 namespace google::api::expr::parser {
 
@@ -63,12 +443,22 @@ using ::antlr4::misc::IntervalSet;
 using ::antlr4::tree::ErrorNode;
 using ::antlr4::tree::ParseTreeListener;
 using ::antlr4::tree::TerminalNode;
+using ::cel::Expr;
+using ::cel::ExprFromAny;
+using ::cel::ExprKind;
+using ::cel::ExprToAny;
+using ::cel::IdentExpr;
+using ::cel::ListExprElement;
+using ::cel::MapExprEntry;
+using ::cel::SelectExpr;
+using ::cel::SourceRangeFromParserRuleContext;
+using ::cel::SourceRangeFromToken;
+using ::cel::StructExprField;
 using ::cel_parser_internal::CelBaseVisitor;
 using ::cel_parser_internal::CelLexer;
 using ::cel_parser_internal::CelParser;
 using common::CelOperator;
 using common::ReverseLookupOperator;
-using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 
 class CodePointStream final : public CharStream {
@@ -170,7 +560,7 @@ class ScopedIncrement final {
 // Based on code from //third_party/cel/go/parser/helper.go
 class ExpressionBalancer final {
  public:
-  ExpressionBalancer(std::shared_ptr<SourceFactory> sf, std::string function,
+  ExpressionBalancer(cel::ParserMacroExprFactory& factory, std::string function,
                      Expr expr);
 
   // addTerm adds an operation identifier and term to the set of terms to be
@@ -187,18 +577,17 @@ class ExpressionBalancer final {
   Expr BalancedTree(int lo, int hi);
 
  private:
-  std::shared_ptr<SourceFactory> sf_;
+  cel::ParserMacroExprFactory& factory_;
   std::string function_;
   std::vector<Expr> terms_;
   std::vector<int64_t> ops_;
 };
 
-ExpressionBalancer::ExpressionBalancer(std::shared_ptr<SourceFactory> sf,
+ExpressionBalancer::ExpressionBalancer(cel::ParserMacroExprFactory& factory,
                                        std::string function, Expr expr)
-    : sf_(std::move(sf)),
-      function_(std::move(function)),
-      terms_{std::move(expr)},
-      ops_{} {}
+    : factory_(factory), function_(std::move(function)) {
+  terms_.push_back(std::move(expr));
+}
 
 void ExpressionBalancer::AddTerm(int64_t op, Expr term) {
   terms_.push_back(std::move(term));
@@ -207,7 +596,7 @@ void ExpressionBalancer::AddTerm(int64_t op, Expr term) {
 
 Expr ExpressionBalancer::Balance() {
   if (terms_.size() == 1) {
-    return terms_[0];
+    return std::move(terms_[0]);
   }
   return BalancedTree(0, ops_.size() - 1);
 }
@@ -215,95 +604,110 @@ Expr ExpressionBalancer::Balance() {
 Expr ExpressionBalancer::BalancedTree(int lo, int hi) {
   int mid = (lo + hi + 1) / 2;
 
-  Expr left;
+  std::vector<Expr> arguments;
+  arguments.reserve(2);
+
   if (mid == lo) {
-    left = terms_[mid];
+    arguments.push_back(std::move(terms_[mid]));
   } else {
-    left = BalancedTree(lo, mid - 1);
+    arguments.push_back(BalancedTree(lo, mid - 1));
   }
 
-  Expr right;
   if (mid == hi) {
-    right = terms_[mid + 1];
+    arguments.push_back(std::move(terms_[mid + 1]));
   } else {
-    right = BalancedTree(mid + 1, hi);
+    arguments.push_back(BalancedTree(mid + 1, hi));
   }
-  return sf_->NewGlobalCall(ops_[mid], function_,
-                            {std::move(left), std::move(right)});
+  return factory_.NewCall(ops_[mid], function_, std::move(arguments));
 }
 
 class ParserVisitor final : public CelBaseVisitor,
                             public antlr4::BaseErrorListener {
  public:
-  ParserVisitor(const cel::Source& source, const int max_recursion_depth,
+  ParserVisitor(const cel::Source& source, int max_recursion_depth,
                 const cel::MacroRegistry& macro_registry,
-                const bool add_macro_calls = false,
+                bool add_macro_calls = false,
                 bool enable_optional_syntax = false);
   ~ParserVisitor() override;
 
-  antlrcpp::Any visit(antlr4::tree::ParseTree* tree) override;
+  std::any visit(antlr4::tree::ParseTree* tree) override;
 
-  antlrcpp::Any visitStart(CelParser::StartContext* ctx) override;
-  antlrcpp::Any visitExpr(CelParser::ExprContext* ctx) override;
-  antlrcpp::Any visitConditionalOr(
-      CelParser::ConditionalOrContext* ctx) override;
-  antlrcpp::Any visitConditionalAnd(
-      CelParser::ConditionalAndContext* ctx) override;
-  antlrcpp::Any visitRelation(CelParser::RelationContext* ctx) override;
-  antlrcpp::Any visitCalc(CelParser::CalcContext* ctx) override;
-  antlrcpp::Any visitUnary(CelParser::UnaryContext* ctx);
-  antlrcpp::Any visitLogicalNot(CelParser::LogicalNotContext* ctx) override;
-  antlrcpp::Any visitNegate(CelParser::NegateContext* ctx) override;
-  antlrcpp::Any visitSelect(CelParser::SelectContext* ctx) override;
-  antlrcpp::Any visitMemberCall(CelParser::MemberCallContext* ctx) override;
-  antlrcpp::Any visitIndex(CelParser::IndexContext* ctx) override;
-  antlrcpp::Any visitCreateMessage(
-      CelParser::CreateMessageContext* ctx) override;
-  antlrcpp::Any visitFieldInitializerList(
+  std::any visitStart(CelParser::StartContext* ctx) override;
+  std::any visitExpr(CelParser::ExprContext* ctx) override;
+  std::any visitConditionalOr(CelParser::ConditionalOrContext* ctx) override;
+  std::any visitConditionalAnd(CelParser::ConditionalAndContext* ctx) override;
+  std::any visitRelation(CelParser::RelationContext* ctx) override;
+  std::any visitCalc(CelParser::CalcContext* ctx) override;
+  std::any visitUnary(CelParser::UnaryContext* ctx);
+  std::any visitLogicalNot(CelParser::LogicalNotContext* ctx) override;
+  std::any visitNegate(CelParser::NegateContext* ctx) override;
+  std::any visitSelect(CelParser::SelectContext* ctx) override;
+  std::any visitMemberCall(CelParser::MemberCallContext* ctx) override;
+  std::any visitIndex(CelParser::IndexContext* ctx) override;
+  std::any visitCreateMessage(CelParser::CreateMessageContext* ctx) override;
+  std::any visitFieldInitializerList(
       CelParser::FieldInitializerListContext* ctx) override;
-  antlrcpp::Any visitIdentOrGlobalCall(
+  std::vector<StructExprField> visitFields(
+      CelParser::FieldInitializerListContext* ctx);
+  std::any visitIdentOrGlobalCall(
       CelParser::IdentOrGlobalCallContext* ctx) override;
-  antlrcpp::Any visitNested(CelParser::NestedContext* ctx) override;
-  antlrcpp::Any visitCreateList(CelParser::CreateListContext* ctx) override;
-  std::pair<std::vector<google::api::expr::v1alpha1::Expr>, std::vector<int64_t>>
-  visitList(CelParser::ListInitContext* ctx);
-  std::vector<google::api::expr::v1alpha1::Expr> visitList(
-      CelParser::ExprListContext* ctx);
-  antlrcpp::Any visitCreateStruct(CelParser::CreateStructContext* ctx) override;
-  antlrcpp::Any visitConstantLiteral(
+  std::any visitNested(CelParser::NestedContext* ctx) override;
+  std::any visitCreateList(CelParser::CreateListContext* ctx) override;
+  std::vector<ListExprElement> visitList(CelParser::ListInitContext* ctx);
+  std::vector<Expr> visitList(CelParser::ExprListContext* ctx);
+  std::any visitCreateStruct(CelParser::CreateStructContext* ctx) override;
+  std::any visitConstantLiteral(
       CelParser::ConstantLiteralContext* ctx) override;
-  antlrcpp::Any visitPrimaryExpr(CelParser::PrimaryExprContext* ctx) override;
-  antlrcpp::Any visitMemberExpr(CelParser::MemberExprContext* ctx) override;
+  std::any visitPrimaryExpr(CelParser::PrimaryExprContext* ctx) override;
+  std::any visitMemberExpr(CelParser::MemberExprContext* ctx) override;
 
-  antlrcpp::Any visitMapInitializerList(
+  std::any visitMapInitializerList(
       CelParser::MapInitializerListContext* ctx) override;
-  antlrcpp::Any visitInt(CelParser::IntContext* ctx) override;
-  antlrcpp::Any visitUint(CelParser::UintContext* ctx) override;
-  antlrcpp::Any visitDouble(CelParser::DoubleContext* ctx) override;
-  antlrcpp::Any visitString(CelParser::StringContext* ctx) override;
-  antlrcpp::Any visitBytes(CelParser::BytesContext* ctx) override;
-  antlrcpp::Any visitBoolTrue(CelParser::BoolTrueContext* ctx) override;
-  antlrcpp::Any visitBoolFalse(CelParser::BoolFalseContext* ctx) override;
-  antlrcpp::Any visitNull(CelParser::NullContext* ctx) override;
-  google::api::expr::v1alpha1::SourceInfo source_info() const;
+  std::vector<MapExprEntry> visitEntries(
+      CelParser::MapInitializerListContext* ctx);
+  std::any visitInt(CelParser::IntContext* ctx) override;
+  std::any visitUint(CelParser::UintContext* ctx) override;
+  std::any visitDouble(CelParser::DoubleContext* ctx) override;
+  std::any visitString(CelParser::StringContext* ctx) override;
+  std::any visitBytes(CelParser::BytesContext* ctx) override;
+  std::any visitBoolTrue(CelParser::BoolTrueContext* ctx) override;
+  std::any visitBoolFalse(CelParser::BoolFalseContext* ctx) override;
+  std::any visitNull(CelParser::NullContext* ctx) override;
+  absl::Status GetSourceInfo(google::api::expr::v1alpha1::SourceInfo* source_info) const;
   EnrichedSourceInfo enriched_source_info() const;
   void syntaxError(antlr4::Recognizer* recognizer,
                    antlr4::Token* offending_symbol, size_t line, size_t col,
                    const std::string& msg, std::exception_ptr e) override;
   bool HasErrored() const;
 
-  std::string ErrorMessage() const;
+  std::string ErrorMessage();
 
  private:
-  Expr GlobalCallOrMacro(int64_t expr_id, const std::string& function,
-                         const std::vector<Expr>& args);
-  Expr ReceiverCallOrMacro(int64_t expr_id, const std::string& function,
-                           const Expr& target, const std::vector<Expr>& args);
-  bool ExpandMacro(int64_t expr_id, const std::string& function,
-                   const Expr& target, const std::vector<Expr>& args,
-                   Expr* macro_expr);
+  template <typename... Args>
+  Expr GlobalCallOrMacro(int64_t expr_id, absl::string_view function,
+                         Args&&... args) {
+    std::vector<Expr> arguments;
+    arguments.reserve(sizeof...(Args));
+    (arguments.push_back(std::forward<Args>(args)), ...);
+    return GlobalCallOrMacroImpl(expr_id, function, std::move(arguments));
+  }
+
+  template <typename... Args>
+  Expr ReceiverCallOrMacro(int64_t expr_id, absl::string_view function,
+                           Expr target, Args&&... args) {
+    std::vector<Expr> arguments;
+    arguments.reserve(sizeof...(Args));
+    (arguments.push_back(std::forward<Args>(args)), ...);
+    return ReceiverCallOrMacroImpl(expr_id, function, std::move(target),
+                                   std::move(arguments));
+  }
+
+  Expr GlobalCallOrMacroImpl(int64_t expr_id, absl::string_view function,
+                             std::vector<Expr> args);
+  Expr ReceiverCallOrMacroImpl(int64_t expr_id, absl::string_view function,
+                               Expr target, std::vector<Expr> args);
   std::string ExtractQualifiedName(antlr4::ParserRuleContext* ctx,
-                                   const Expr* e);
+                                   const Expr& e);
   // Attempt to unnest parse context.
   //
   // Walk the parse tree to the first complex term to reduce recursive depth in
@@ -312,7 +716,7 @@ class ParserVisitor final : public CelBaseVisitor,
 
  private:
   const cel::Source& source_;
-  std::shared_ptr<SourceFactory> sf_;
+  cel::ParserMacroExprFactory factory_;
   const cel::MacroRegistry& macro_registry_;
   int recursion_depth_;
   const int max_recursion_depth_;
@@ -326,7 +730,7 @@ ParserVisitor::ParserVisitor(const cel::Source& source,
                              const bool add_macro_calls,
                              bool enable_optional_syntax)
     : source_(source),
-      sf_(std::make_shared<SourceFactory>(source)),
+      factory_(source_),
       macro_registry_(macro_registry),
       recursion_depth_(0),
       max_recursion_depth_(max_recursion_depth),
@@ -341,13 +745,12 @@ T* tree_as(antlr4::tree::ParseTree* tree) {
   return dynamic_cast<T*>(tree);
 }
 
-antlrcpp::Any ParserVisitor::visit(antlr4::tree::ParseTree* tree) {
+std::any ParserVisitor::visit(antlr4::tree::ParseTree* tree) {
   ScopedIncrement inc(recursion_depth_);
   if (recursion_depth_ > max_recursion_depth_) {
-    return sf_->ReportError(
-        SourceFactory::NoLocation(),
+    return ExprToAny(factory_.ReportError(
         absl::StrFormat("Exceeded max recursion depth of %d when parsing.",
-                        max_recursion_depth_));
+                        max_recursion_depth_)));
   }
   tree = UnnestContext(tree);
   if (auto* ctx = tree_as<CelParser::StartContext>(tree)) {
@@ -389,14 +792,15 @@ antlrcpp::Any ParserVisitor::visit(antlr4::tree::ParseTree* tree) {
   }
 
   if (tree) {
-    return sf_->ReportError(tree_as<antlr4::ParserRuleContext>(tree),
-                            "unknown parsetree type");
+    return ExprToAny(
+        factory_.ReportError(SourceRangeFromParserRuleContext(
+                                 tree_as<antlr4::ParserRuleContext>(tree)),
+                             "unknown parsetree type"));
   }
-  return sf_->ReportError(SourceFactory::NoLocation(), "<<nil>> parsetree");
+  return ExprToAny(factory_.ReportError("<<nil>> parsetree"));
 }
 
-antlrcpp::Any ParserVisitor::visitPrimaryExpr(
-    CelParser::PrimaryExprContext* pctx) {
+std::any ParserVisitor::visitPrimaryExpr(CelParser::PrimaryExprContext* pctx) {
   CelParser::PrimaryContext* primary = pctx->primary();
   if (auto* ctx = tree_as<CelParser::NestedContext>(primary)) {
     return visitNested(ctx);
@@ -412,17 +816,17 @@ antlrcpp::Any ParserVisitor::visitPrimaryExpr(
   } else if (auto* ctx = tree_as<CelParser::ConstantLiteralContext>(primary)) {
     return visitConstantLiteral(ctx);
   }
-  if (!sf_->errors().empty()) {
+  if (factory_.HasErrors()) {
     // ANTLR creates PrimaryContext rather than a derived class during certain
     // error conditions. This is odd, but we ignore it as we already have errors
     // that occurred.
-    return sf_->NewExpr(sf_->Id(SourceFactory::NoLocation()));
+    return ExprToAny(factory_.NewUnspecified(factory_.NextId({})));
   }
-  return sf_->ReportError(pctx, "invalid primary expression");
+  return ExprToAny(factory_.ReportError(SourceRangeFromParserRuleContext(pctx),
+                                        "invalid primary expression"));
 }
 
-antlrcpp::Any ParserVisitor::visitMemberExpr(
-    CelParser::MemberExprContext* mctx) {
+std::any ParserVisitor::visitMemberExpr(CelParser::MemberExprContext* mctx) {
   CelParser::MemberContext* member = mctx->member();
   if (auto* ctx = tree_as<CelParser::PrimaryExprContext>(member)) {
     return visitPrimaryExpr(ctx);
@@ -433,10 +837,11 @@ antlrcpp::Any ParserVisitor::visitMemberExpr(
   } else if (auto* ctx = tree_as<CelParser::IndexContext>(member)) {
     return visitIndex(ctx);
   }
-  return sf_->ReportError(mctx, "unsupported simple expression");
+  return ExprToAny(factory_.ReportError(SourceRangeFromParserRuleContext(mctx),
+                                        "unsupported simple expression"));
 }
 
-antlrcpp::Any ParserVisitor::visitStart(CelParser::StartContext* ctx) {
+std::any ParserVisitor::visitStart(CelParser::StartContext* ctx) {
   return visit(ctx->expr());
 }
 
@@ -501,58 +906,65 @@ antlr4::tree::ParseTree* ParserVisitor::UnnestContext(
   return tree;
 }
 
-antlrcpp::Any ParserVisitor::visitExpr(CelParser::ExprContext* ctx) {
-  auto result = std::any_cast<Expr>(visit(ctx->e));
+std::any ParserVisitor::visitExpr(CelParser::ExprContext* ctx) {
+  auto result = ExprFromAny(visit(ctx->e));
   if (!ctx->op) {
-    return result;
+    return ExprToAny(std::move(result));
   }
-  int64_t op_id = sf_->Id(ctx->op);
-  Expr if_true = std::any_cast<Expr>(visit(ctx->e1));
-  Expr if_false = std::any_cast<Expr>(visit(ctx->e2));
+  std::vector<Expr> arguments;
+  arguments.reserve(3);
+  arguments.push_back(std::move(result));
+  int64_t op_id = factory_.NextId(SourceRangeFromToken(ctx->op));
+  arguments.push_back(ExprFromAny(visit(ctx->e1)));
+  arguments.push_back(ExprFromAny(visit(ctx->e2)));
 
-  return GlobalCallOrMacro(op_id, CelOperator::CONDITIONAL,
-                           {result, if_true, if_false});
+  return ExprToAny(
+      factory_.NewCall(op_id, CelOperator::CONDITIONAL, std::move(arguments)));
 }
 
-antlrcpp::Any ParserVisitor::visitConditionalOr(
+std::any ParserVisitor::visitConditionalOr(
     CelParser::ConditionalOrContext* ctx) {
-  auto result = std::any_cast<Expr>(visit(ctx->e));
+  auto result = ExprFromAny(visit(ctx->e));
   if (ctx->ops.empty()) {
-    return result;
+    return ExprToAny(std::move(result));
   }
-  ExpressionBalancer b(sf_, CelOperator::LOGICAL_OR, result);
+  ExpressionBalancer b(factory_, CelOperator::LOGICAL_OR, std::move(result));
   for (size_t i = 0; i < ctx->ops.size(); ++i) {
     auto op = ctx->ops[i];
     if (i >= ctx->e1.size()) {
-      return sf_->ReportError(ctx, "unexpected character, wanted '||'");
+      return ExprToAny(
+          factory_.ReportError(SourceRangeFromParserRuleContext(ctx),
+                               "unexpected character, wanted '||'"));
     }
-    auto next = std::any_cast<Expr>(visit(ctx->e1[i]));
-    int64_t op_id = sf_->Id(op);
-    b.AddTerm(op_id, next);
+    auto next = ExprFromAny(visit(ctx->e1[i]));
+    int64_t op_id = factory_.NextId(SourceRangeFromToken(op));
+    b.AddTerm(op_id, std::move(next));
   }
-  return b.Balance();
+  return ExprToAny(b.Balance());
 }
 
-antlrcpp::Any ParserVisitor::visitConditionalAnd(
+std::any ParserVisitor::visitConditionalAnd(
     CelParser::ConditionalAndContext* ctx) {
-  auto result = std::any_cast<Expr>(visit(ctx->e));
+  auto result = ExprFromAny(visit(ctx->e));
   if (ctx->ops.empty()) {
-    return result;
+    return ExprToAny(std::move(result));
   }
-  ExpressionBalancer b(sf_, CelOperator::LOGICAL_AND, result);
+  ExpressionBalancer b(factory_, CelOperator::LOGICAL_AND, std::move(result));
   for (size_t i = 0; i < ctx->ops.size(); ++i) {
     auto op = ctx->ops[i];
     if (i >= ctx->e1.size()) {
-      return sf_->ReportError(ctx, "unexpected character, wanted '&&'");
+      return ExprToAny(
+          factory_.ReportError(SourceRangeFromParserRuleContext(ctx),
+                               "unexpected character, wanted '&&'"));
     }
-    auto next = std::any_cast<Expr>(visit(ctx->e1[i]));
-    int64_t op_id = sf_->Id(op);
-    b.AddTerm(op_id, next);
+    auto next = ExprFromAny(visit(ctx->e1[i]));
+    int64_t op_id = factory_.NextId(SourceRangeFromToken(op));
+    b.AddTerm(op_id, std::move(next));
   }
-  return b.Balance();
+  return ExprToAny(b.Balance());
 }
 
-antlrcpp::Any ParserVisitor::visitRelation(CelParser::RelationContext* ctx) {
+std::any ParserVisitor::visitRelation(CelParser::RelationContext* ctx) {
   if (ctx->calc()) {
     return visit(ctx->calc());
   }
@@ -562,15 +974,17 @@ antlrcpp::Any ParserVisitor::visitRelation(CelParser::RelationContext* ctx) {
   }
   auto op = ReverseLookupOperator(op_text);
   if (op) {
-    auto lhs = std::any_cast<Expr>(visit(ctx->relation(0)));
-    int64_t op_id = sf_->Id(ctx->op);
-    auto rhs = std::any_cast<Expr>(visit(ctx->relation(1)));
-    return GlobalCallOrMacro(op_id, *op, {lhs, rhs});
+    auto lhs = ExprFromAny(visit(ctx->relation(0)));
+    int64_t op_id = factory_.NextId(SourceRangeFromToken(ctx->op));
+    auto rhs = ExprFromAny(visit(ctx->relation(1)));
+    return ExprToAny(
+        GlobalCallOrMacro(op_id, *op, std::move(lhs), std::move(rhs)));
   }
-  return sf_->ReportError(ctx, "operator not found");
+  return ExprToAny(factory_.ReportError(SourceRangeFromParserRuleContext(ctx),
+                                        "operator not found"));
 }
 
-antlrcpp::Any ParserVisitor::visitCalc(CelParser::CalcContext* ctx) {
+std::any ParserVisitor::visitCalc(CelParser::CalcContext* ctx) {
   if (ctx->unary()) {
     return visit(ctx->unary());
   }
@@ -580,79 +994,95 @@ antlrcpp::Any ParserVisitor::visitCalc(CelParser::CalcContext* ctx) {
   }
   auto op = ReverseLookupOperator(op_text);
   if (op) {
-    auto lhs = std::any_cast<Expr>(visit(ctx->calc(0)));
-    int64_t op_id = sf_->Id(ctx->op);
-    auto rhs = std::any_cast<Expr>(visit(ctx->calc(1)));
-    return GlobalCallOrMacro(op_id, *op, {lhs, rhs});
+    auto lhs = ExprFromAny(visit(ctx->calc(0)));
+    int64_t op_id = factory_.NextId(SourceRangeFromToken(ctx->op));
+    auto rhs = ExprFromAny(visit(ctx->calc(1)));
+    return ExprToAny(
+        GlobalCallOrMacro(op_id, *op, std::move(lhs), std::move(rhs)));
   }
-  return sf_->ReportError(ctx, "operator not found");
+  return ExprToAny(factory_.ReportError(SourceRangeFromParserRuleContext(ctx),
+                                        "operator not found"));
 }
 
-antlrcpp::Any ParserVisitor::visitUnary(CelParser::UnaryContext* ctx) {
-  return sf_->NewLiteralString(ctx, "<<error>>");
+std::any ParserVisitor::visitUnary(CelParser::UnaryContext* ctx) {
+  return ExprToAny(factory_.NewStringConst(
+      factory_.NextId(SourceRangeFromParserRuleContext(ctx)), "<<error>>"));
 }
 
-antlrcpp::Any ParserVisitor::visitLogicalNot(
-    CelParser::LogicalNotContext* ctx) {
+std::any ParserVisitor::visitLogicalNot(CelParser::LogicalNotContext* ctx) {
   if (ctx->ops.size() % 2 == 0) {
     return visit(ctx->member());
   }
-  int64_t op_id = sf_->Id(ctx->ops[0]);
-  auto target = std::any_cast<Expr>(visit(ctx->member()));
-  return GlobalCallOrMacro(op_id, CelOperator::LOGICAL_NOT, {target});
+  int64_t op_id = factory_.NextId(SourceRangeFromToken(ctx->ops[0]));
+  auto target = ExprFromAny(visit(ctx->member()));
+  return ExprToAny(
+      GlobalCallOrMacro(op_id, CelOperator::LOGICAL_NOT, std::move(target)));
 }
 
-antlrcpp::Any ParserVisitor::visitNegate(CelParser::NegateContext* ctx) {
+std::any ParserVisitor::visitNegate(CelParser::NegateContext* ctx) {
   if (ctx->ops.size() % 2 == 0) {
     return visit(ctx->member());
   }
-  int64_t op_id = sf_->Id(ctx->ops[0]);
-  auto target = std::any_cast<Expr>(visit(ctx->member()));
-  return GlobalCallOrMacro(op_id, CelOperator::NEGATE, {target});
+  int64_t op_id = factory_.NextId(SourceRangeFromToken(ctx->ops[0]));
+  auto target = ExprFromAny(visit(ctx->member()));
+  return ExprToAny(
+      GlobalCallOrMacro(op_id, CelOperator::NEGATE, std::move(target)));
 }
 
-antlrcpp::Any ParserVisitor::visitSelect(CelParser::SelectContext* ctx) {
-  auto operand = std::any_cast<Expr>(visit(ctx->member()));
+std::any ParserVisitor::visitSelect(CelParser::SelectContext* ctx) {
+  auto operand = ExprFromAny(visit(ctx->member()));
   // Handle the error case where no valid identifier is specified.
   if (!ctx->id || !ctx->op) {
-    return sf_->NewExpr(ctx);
+    return ExprToAny(factory_.NewUnspecified(
+        factory_.NextId(SourceRangeFromParserRuleContext(ctx))));
   }
   auto id = ctx->id->getText();
   if (ctx->opt != nullptr) {
     if (!enable_optional_syntax_) {
-      return sf_->ReportError(ctx, "unsupported syntax '.?'");
+      return ExprToAny(factory_.ReportError(
+          SourceRangeFromParserRuleContext(ctx), "unsupported syntax '.?'"));
     }
-    return sf_->NewGlobalCall(sf_->Id(ctx->op), "_?._",
-                              {operand, sf_->NewLiteralString(ctx, id)});
+    auto op_id = factory_.NextId(SourceRangeFromToken(ctx->op));
+    std::vector<Expr> arguments;
+    arguments.reserve(2);
+    arguments.push_back(std::move(operand));
+    arguments.push_back(factory_.NewStringConst(
+        factory_.NextId(SourceRangeFromParserRuleContext(ctx)), std::move(id)));
+    return ExprToAny(factory_.NewCall(op_id, "_?._", std::move(arguments)));
   }
-  return sf_->NewSelect(ctx, operand, id);
+  return ExprToAny(
+      factory_.NewSelect(factory_.NextId(SourceRangeFromToken(ctx->op)),
+                         std::move(operand), std::move(id)));
 }
 
-antlrcpp::Any ParserVisitor::visitMemberCall(
-    CelParser::MemberCallContext* ctx) {
-  auto operand = std::any_cast<Expr>(visit(ctx->member()));
+std::any ParserVisitor::visitMemberCall(CelParser::MemberCallContext* ctx) {
+  auto operand = ExprFromAny(visit(ctx->member()));
   // Handle the error case where no valid identifier is specified.
   if (!ctx->id) {
-    return sf_->NewExpr(ctx);
+    return ExprToAny(factory_.NewUnspecified(
+        factory_.NextId(SourceRangeFromParserRuleContext(ctx))));
   }
   auto id = ctx->id->getText();
-  int64_t op_id = sf_->Id(ctx->open);
-  return ReceiverCallOrMacro(op_id, id, operand, visitList(ctx->args));
+  int64_t op_id = factory_.NextId(SourceRangeFromToken(ctx->open));
+  auto args = visitList(ctx->args);
+  return ExprToAny(
+      ReceiverCallOrMacroImpl(op_id, id, std::move(operand), std::move(args)));
 }
 
-antlrcpp::Any ParserVisitor::visitIndex(CelParser::IndexContext* ctx) {
-  auto target = std::any_cast<Expr>(visit(ctx->member()));
-  int64_t op_id = sf_->Id(ctx->op);
-  auto index = std::any_cast<Expr>(visit(ctx->index));
+std::any ParserVisitor::visitIndex(CelParser::IndexContext* ctx) {
+  auto target = ExprFromAny(visit(ctx->member()));
+  int64_t op_id = factory_.NextId(SourceRangeFromToken(ctx->op));
+  auto index = ExprFromAny(visit(ctx->index));
   if (!enable_optional_syntax_ && ctx->opt != nullptr) {
-    return sf_->ReportError(ctx, "unsupported syntax '.?'");
+    return ExprToAny(factory_.ReportError(SourceRangeFromParserRuleContext(ctx),
+                                          "unsupported syntax '.?'"));
   }
-  return GlobalCallOrMacro(op_id,
-                           ctx->opt != nullptr ? "_[?_]" : CelOperator::INDEX,
-                           {target, index});
+  return ExprToAny(GlobalCallOrMacro(
+      op_id, ctx->opt != nullptr ? "_[?_]" : CelOperator::INDEX,
+      std::move(target), std::move(index)));
 }
 
-antlrcpp::Any ParserVisitor::visitCreateMessage(
+std::any ParserVisitor::visitCreateMessage(
     CelParser::CreateMessageContext* ctx) {
   std::vector<std::string> parts;
   parts.reserve(ctx->ids.size());
@@ -666,20 +1096,29 @@ antlrcpp::Any ParserVisitor::visitCreateMessage(
   } else {
     name = absl::StrJoin(parts, ".");
   }
-  int64_t obj_id = sf_->Id(ctx->op);
-  auto entries = std::any_cast<std::vector<Expr::CreateStruct::Entry>>(
-      visitFieldInitializerList(ctx->entries));
-  return sf_->NewObject(obj_id, name, entries);
+  int64_t obj_id = factory_.NextId(SourceRangeFromToken(ctx->op));
+  std::vector<StructExprField> fields;
+  if (ctx->entries) {
+    fields = visitFields(ctx->entries);
+  }
+  return ExprToAny(
+      factory_.NewStruct(obj_id, std::move(name), std::move(fields)));
 }
 
-antlrcpp::Any ParserVisitor::visitFieldInitializerList(
+std::any ParserVisitor::visitFieldInitializerList(
     CelParser::FieldInitializerListContext* ctx) {
-  std::vector<Expr::CreateStruct::Entry> res;
+  return ExprToAny(factory_.ReportError(SourceRangeFromParserRuleContext(ctx),
+                                        "<<unreachable>>"));
+}
+
+std::vector<StructExprField> ParserVisitor::visitFields(
+    CelParser::FieldInitializerListContext* ctx) {
+  std::vector<StructExprField> res;
   if (!ctx || ctx->fields.empty()) {
     return res;
   }
 
-  res.resize(ctx->fields.size());
+  res.reserve(ctx->fields.size());
   for (size_t i = 0; i < ctx->fields.size(); ++i) {
     if (i >= ctx->cols.size() || i >= ctx->values.size()) {
       // This is the result of a syntax error detected elsewhere.
@@ -691,74 +1130,75 @@ antlrcpp::Any ParserVisitor::visitFieldInitializerList(
       // This is the result of a syntax error detected elsewhere.
       return res;
     }
-    int64_t init_id = sf_->Id(ctx->cols[i]);
-    Expr value;
+    int64_t init_id = factory_.NextId(SourceRangeFromToken(ctx->cols[i]));
     if (!enable_optional_syntax_ && f->opt) {
-      sf_->ReportError(ctx, "unsupported syntax '?'");
+      factory_.ReportError(SourceRangeFromParserRuleContext(ctx),
+                           "unsupported syntax '?'");
       continue;
     }
-    value = std::any_cast<Expr>(visit(ctx->values[i]));
-    auto field = sf_->NewObjectField(init_id, f->id->getText(), value,
-                                     f->opt != nullptr);
-    res[i] = field;
+    auto value = ExprFromAny(visit(ctx->values[i]));
+    res.push_back(factory_.NewStructField(init_id, f->id->getText(),
+                                          std::move(value), f->opt != nullptr));
   }
 
   return res;
 }
 
-antlrcpp::Any ParserVisitor::visitIdentOrGlobalCall(
+std::any ParserVisitor::visitIdentOrGlobalCall(
     CelParser::IdentOrGlobalCallContext* ctx) {
   std::string ident_name;
   if (ctx->leadingDot) {
     ident_name = ".";
   }
   if (!ctx->id) {
-    return sf_->NewExpr(ctx);
+    return ExprToAny(factory_.NewUnspecified(
+        factory_.NextId(SourceRangeFromParserRuleContext(ctx))));
   }
-  if (sf_->IsReserved(ctx->id->getText())) {
-    return sf_->ReportError(
-        ctx, absl::StrFormat("reserved identifier: %s", ctx->id->getText()));
+  if (cel::internal::LexisIsReserved(ctx->id->getText())) {
+    return ExprToAny(factory_.ReportError(
+        SourceRangeFromParserRuleContext(ctx),
+        absl::StrFormat("reserved identifier: %s", ctx->id->getText())));
   }
   // check if ID is in reserved identifiers
   ident_name += ctx->id->getText();
   if (ctx->op) {
-    int64_t op_id = sf_->Id(ctx->op);
-    return GlobalCallOrMacro(op_id, ident_name, visitList(ctx->args));
+    int64_t op_id = factory_.NextId(SourceRangeFromToken(ctx->op));
+    auto args = visitList(ctx->args);
+    return ExprToAny(
+        GlobalCallOrMacroImpl(op_id, std::move(ident_name), std::move(args)));
   }
-  return sf_->NewIdent(ctx->id, ident_name);
+  return ExprToAny(factory_.NewIdent(
+      factory_.NextId(SourceRangeFromToken(ctx->id)), std::move(ident_name)));
 }
 
-antlrcpp::Any ParserVisitor::visitNested(CelParser::NestedContext* ctx) {
+std::any ParserVisitor::visitNested(CelParser::NestedContext* ctx) {
   return visit(ctx->e);
 }
 
-antlrcpp::Any ParserVisitor::visitCreateList(
-    CelParser::CreateListContext* ctx) {
-  int64_t list_id = sf_->Id(ctx->op);
-  std::vector<Expr> elems;
-  std::vector<int64_t> opts;
-  std::tie(elems, opts) = visitList(ctx->elems);
-  return sf_->NewList(list_id, elems, opts);
+std::any ParserVisitor::visitCreateList(CelParser::CreateListContext* ctx) {
+  int64_t list_id = factory_.NextId(SourceRangeFromToken(ctx->op));
+  auto elems = visitList(ctx->elems);
+  return ExprToAny(factory_.NewList(list_id, std::move(elems)));
 }
 
-std::pair<std::vector<Expr>, std::vector<int64_t>> ParserVisitor::visitList(
+std::vector<ListExprElement> ParserVisitor::visitList(
     CelParser::ListInitContext* ctx) {
-  std::pair<std::vector<Expr>, std::vector<int64_t>> rv;
+  std::vector<ListExprElement> rv;
   if (!ctx) return rv;
-  rv.first.resize(ctx->elems.size());
+  rv.reserve(ctx->elems.size());
   for (size_t i = 0; i < ctx->elems.size(); ++i) {
     auto* expr_ctx = ctx->elems[i];
     if (expr_ctx == nullptr) {
       return rv;
     }
     if (!enable_optional_syntax_ && expr_ctx->opt != nullptr) {
-      sf_->ReportError(ctx, "unsupported syntax '?'");
+      factory_.ReportError(SourceRangeFromParserRuleContext(ctx),
+                           "unsupported syntax '?'");
+      rv.push_back(factory_.NewListElement(factory_.NewUnspecified(0), false));
       continue;
     }
-    rv.first[i] = std::any_cast<Expr>(visitExpr(expr_ctx->e));
-    if (expr_ctx->opt) {
-      rv.second.push_back(static_cast<int64_t>(i));
-    }
+    rv.push_back(factory_.NewListElement(ExprFromAny(visitExpr(expr_ctx->e)),
+                                         expr_ctx->opt != nullptr));
   }
   return rv;
 }
@@ -768,23 +1208,21 @@ std::vector<Expr> ParserVisitor::visitList(CelParser::ExprListContext* ctx) {
   if (!ctx) return rv;
   std::transform(ctx->e.begin(), ctx->e.end(), std::back_inserter(rv),
                  [this](CelParser::ExprContext* expr_ctx) {
-                   return std::any_cast<Expr>(visitExpr(expr_ctx));
+                   return ExprFromAny(visitExpr(expr_ctx));
                  });
   return rv;
 }
 
-antlrcpp::Any ParserVisitor::visitCreateStruct(
-    CelParser::CreateStructContext* ctx) {
-  int64_t struct_id = sf_->Id(ctx->op);
-  std::vector<Expr::CreateStruct::Entry> entries;
+std::any ParserVisitor::visitCreateStruct(CelParser::CreateStructContext* ctx) {
+  int64_t struct_id = factory_.NextId(SourceRangeFromToken(ctx->op));
+  std::vector<MapExprEntry> entries;
   if (ctx->entries) {
-    entries = std::any_cast<std::vector<Expr::CreateStruct::Entry>>(
-        visitMapInitializerList(ctx->entries));
+    entries = visitEntries(ctx->entries);
   }
-  return sf_->NewMap(struct_id, entries);
+  return ExprToAny(factory_.NewMap(struct_id, std::move(entries)));
 }
 
-antlrcpp::Any ParserVisitor::visitConstantLiteral(
+std::any ParserVisitor::visitConstantLiteral(
     CelParser::ConstantLiteralContext* clctx) {
   CelParser::LiteralContext* literal = clctx->literal();
   if (auto* ctx = tree_as<CelParser::IntContext>(literal)) {
@@ -804,32 +1242,42 @@ antlrcpp::Any ParserVisitor::visitConstantLiteral(
   } else if (auto* ctx = tree_as<CelParser::NullContext>(literal)) {
     return visitNull(ctx);
   }
-  return sf_->ReportError(clctx, "invalid constant literal expression");
+  return ExprToAny(factory_.ReportError(SourceRangeFromParserRuleContext(clctx),
+                                        "invalid constant literal expression"));
 }
 
-antlrcpp::Any ParserVisitor::visitMapInitializerList(
+std::any ParserVisitor::visitMapInitializerList(
     CelParser::MapInitializerListContext* ctx) {
-  std::vector<Expr::CreateStruct::Entry> res;
+  return ExprToAny(factory_.ReportError(SourceRangeFromParserRuleContext(ctx),
+                                        "<<unreachable>>"));
+}
+
+std::vector<MapExprEntry> ParserVisitor::visitEntries(
+    CelParser::MapInitializerListContext* ctx) {
+  std::vector<MapExprEntry> res;
   if (!ctx || ctx->keys.empty()) {
     return res;
   }
 
-  res.resize(ctx->cols.size());
+  res.reserve(ctx->cols.size());
   for (size_t i = 0; i < ctx->cols.size(); ++i) {
-    int64_t col_id = sf_->Id(ctx->cols[i]);
-    Expr key;
+    auto id = factory_.NextId(SourceRangeFromToken(ctx->cols[i]));
     if (!enable_optional_syntax_ && ctx->keys[i]->opt) {
-      sf_->ReportError(ctx, "unsupported syntax '?'");
+      factory_.ReportError(SourceRangeFromParserRuleContext(ctx),
+                           "unsupported syntax '?'");
+      res.push_back(factory_.NewMapEntry(0, factory_.NewUnspecified(0),
+                                         factory_.NewUnspecified(0), false));
       continue;
     }
-    key = std::any_cast<Expr>(visit(ctx->keys[i]->e));
-    auto value = std::any_cast<Expr>(visit(ctx->values[i]));
-    res[i] = sf_->NewMapEntry(col_id, key, value, ctx->keys[i]->opt != nullptr);
+    auto key = ExprFromAny(visit(ctx->keys[i]->e));
+    auto value = ExprFromAny(visit(ctx->values[i]));
+    res.push_back(factory_.NewMapEntry(id, std::move(key), std::move(value),
+                                       ctx->keys[i]->opt != nullptr));
   }
   return res;
 }
 
-antlrcpp::Any ParserVisitor::visitInt(CelParser::IntContext* ctx) {
+std::any ParserVisitor::visitInt(CelParser::IntContext* ctx) {
   std::string value;
   if (ctx->sign) {
     value = ctx->sign->getText();
@@ -838,19 +1286,23 @@ antlrcpp::Any ParserVisitor::visitInt(CelParser::IntContext* ctx) {
   int64_t int_value;
   if (absl::StartsWith(ctx->tok->getText(), "0x")) {
     if (absl::SimpleHexAtoi(value, &int_value)) {
-      return sf_->NewLiteralInt(ctx, int_value);
+      return ExprToAny(factory_.NewIntConst(
+          factory_.NextId(SourceRangeFromParserRuleContext(ctx)), int_value));
     } else {
-      return sf_->ReportError(ctx, "invalid hex int literal");
+      return ExprToAny(factory_.ReportError(
+          SourceRangeFromParserRuleContext(ctx), "invalid hex int literal"));
     }
   }
   if (absl::SimpleAtoi(value, &int_value)) {
-    return sf_->NewLiteralInt(ctx, int_value);
+    return ExprToAny(factory_.NewIntConst(
+        factory_.NextId(SourceRangeFromParserRuleContext(ctx)), int_value));
   } else {
-    return sf_->ReportError(ctx, "invalid int literal");
+    return ExprToAny(factory_.ReportError(SourceRangeFromParserRuleContext(ctx),
+                                          "invalid int literal"));
   }
 }
 
-antlrcpp::Any ParserVisitor::visitUint(CelParser::UintContext* ctx) {
+std::any ParserVisitor::visitUint(CelParser::UintContext* ctx) {
   std::string value = ctx->tok->getText();
   // trim the 'u' designator included in the uint literal.
   if (!value.empty()) {
@@ -859,19 +1311,23 @@ antlrcpp::Any ParserVisitor::visitUint(CelParser::UintContext* ctx) {
   uint64_t uint_value;
   if (absl::StartsWith(ctx->tok->getText(), "0x")) {
     if (absl::SimpleHexAtoi(value, &uint_value)) {
-      return sf_->NewLiteralUint(ctx, uint_value);
+      return ExprToAny(factory_.NewUintConst(
+          factory_.NextId(SourceRangeFromParserRuleContext(ctx)), uint_value));
     } else {
-      return sf_->ReportError(ctx, "invalid hex uint literal");
+      return ExprToAny(factory_.ReportError(
+          SourceRangeFromParserRuleContext(ctx), "invalid hex uint literal"));
     }
   }
   if (absl::SimpleAtoi(value, &uint_value)) {
-    return sf_->NewLiteralUint(ctx, uint_value);
+    return ExprToAny(factory_.NewUintConst(
+        factory_.NextId(SourceRangeFromParserRuleContext(ctx)), uint_value));
   } else {
-    return sf_->ReportError(ctx, "invalid uint literal");
+    return ExprToAny(factory_.ReportError(SourceRangeFromParserRuleContext(ctx),
+                                          "invalid uint literal"));
   }
 }
 
-antlrcpp::Any ParserVisitor::visitDouble(CelParser::DoubleContext* ctx) {
+std::any ParserVisitor::visitDouble(CelParser::DoubleContext* ctx) {
   std::string value;
   if (ctx->sign) {
     value = ctx->sign->getText();
@@ -879,131 +1335,178 @@ antlrcpp::Any ParserVisitor::visitDouble(CelParser::DoubleContext* ctx) {
   value += ctx->tok->getText();
   double double_value;
   if (absl::SimpleAtod(value, &double_value)) {
-    return sf_->NewLiteralDouble(ctx, double_value);
+    return ExprToAny(factory_.NewDoubleConst(
+        factory_.NextId(SourceRangeFromParserRuleContext(ctx)), double_value));
   } else {
-    return sf_->ReportError(ctx, "invalid double literal");
+    return ExprToAny(factory_.ReportError(SourceRangeFromParserRuleContext(ctx),
+                                          "invalid double literal"));
   }
 }
 
-antlrcpp::Any ParserVisitor::visitString(CelParser::StringContext* ctx) {
+std::any ParserVisitor::visitString(CelParser::StringContext* ctx) {
   auto status_or_value = cel::internal::ParseStringLiteral(ctx->tok->getText());
   if (!status_or_value.ok()) {
-    return sf_->ReportError(ctx, status_or_value.status().message());
+    return ExprToAny(factory_.ReportError(SourceRangeFromParserRuleContext(ctx),
+                                          status_or_value.status().message()));
   }
-  return sf_->NewLiteralString(ctx, status_or_value.value());
+  return ExprToAny(factory_.NewStringConst(
+      factory_.NextId(SourceRangeFromParserRuleContext(ctx)),
+      std::move(status_or_value).value()));
 }
 
-antlrcpp::Any ParserVisitor::visitBytes(CelParser::BytesContext* ctx) {
+std::any ParserVisitor::visitBytes(CelParser::BytesContext* ctx) {
   auto status_or_value = cel::internal::ParseBytesLiteral(ctx->tok->getText());
   if (!status_or_value.ok()) {
-    return sf_->ReportError(ctx, status_or_value.status().message());
+    return ExprToAny(factory_.ReportError(SourceRangeFromParserRuleContext(ctx),
+                                          status_or_value.status().message()));
   }
-  return sf_->NewLiteralBytes(ctx, status_or_value.value());
+  return ExprToAny(factory_.NewBytesConst(
+      factory_.NextId(SourceRangeFromParserRuleContext(ctx)),
+      std::move(status_or_value).value()));
 }
 
-antlrcpp::Any ParserVisitor::visitBoolTrue(CelParser::BoolTrueContext* ctx) {
-  return sf_->NewLiteralBool(ctx, true);
+std::any ParserVisitor::visitBoolTrue(CelParser::BoolTrueContext* ctx) {
+  return ExprToAny(factory_.NewBoolConst(
+      factory_.NextId(SourceRangeFromParserRuleContext(ctx)), true));
 }
 
-antlrcpp::Any ParserVisitor::visitBoolFalse(CelParser::BoolFalseContext* ctx) {
-  return sf_->NewLiteralBool(ctx, false);
+std::any ParserVisitor::visitBoolFalse(CelParser::BoolFalseContext* ctx) {
+  return ExprToAny(factory_.NewBoolConst(
+      factory_.NextId(SourceRangeFromParserRuleContext(ctx)), false));
 }
 
-antlrcpp::Any ParserVisitor::visitNull(CelParser::NullContext* ctx) {
-  return sf_->NewLiteralNull(ctx);
+std::any ParserVisitor::visitNull(CelParser::NullContext* ctx) {
+  return ExprToAny(factory_.NewNullConst(
+      factory_.NextId(SourceRangeFromParserRuleContext(ctx))));
 }
 
-google::api::expr::v1alpha1::SourceInfo ParserVisitor::source_info() const {
-  return sf_->source_info();
+absl::Status ParserVisitor::GetSourceInfo(
+    google::api::expr::v1alpha1::SourceInfo* source_info) const {
+  source_info->set_location(source_.description());
+  for (const auto& positions : factory_.positions()) {
+    source_info->mutable_positions()->insert(
+        std::pair{positions.first, positions.second.begin});
+  }
+  source_info->mutable_line_offsets()->Reserve(source_.line_offsets().size());
+  for (const auto& line_offset : source_.line_offsets()) {
+    source_info->mutable_line_offsets()->Add(line_offset);
+  }
+  for (const auto& macro_call : factory_.macro_calls()) {
+    google::api::expr::v1alpha1::Expr macro_call_proto;
+    CEL_RETURN_IF_ERROR(cel::extensions::protobuf_internal::ExprToProto(
+        macro_call.second, &macro_call_proto));
+    source_info->mutable_macro_calls()->insert(
+        std::pair{macro_call.first, std::move(macro_call_proto)});
+  }
+  return absl::OkStatus();
 }
 
 EnrichedSourceInfo ParserVisitor::enriched_source_info() const {
-  return sf_->enriched_source_info();
+  std::map<int64_t, std::pair<int32_t, int32_t>> offsets;
+  for (const auto& positions : factory_.positions()) {
+    offsets.insert(
+        std::pair{positions.first,
+                  std::pair{positions.second.begin, positions.second.end - 1}});
+  }
+  return EnrichedSourceInfo(std::move(offsets));
 }
 
 void ParserVisitor::syntaxError(antlr4::Recognizer* recognizer,
                                 antlr4::Token* offending_symbol, size_t line,
                                 size_t col, const std::string& msg,
                                 std::exception_ptr e) {
-  sf_->ReportError(line, col, "Syntax error: " + msg);
-}
-
-bool ParserVisitor::HasErrored() const { return !sf_->errors().empty(); }
-
-std::string ParserVisitor::ErrorMessage() const {
-  return sf_->ErrorMessage(source_.description(), source_.content().ToString());
-}
-
-Expr ParserVisitor::GlobalCallOrMacro(int64_t expr_id,
-                                      const std::string& function,
-                                      const std::vector<Expr>& args) {
-  Expr macro_expr;
-  if (ExpandMacro(expr_id, function, Expr::default_instance(), args,
-                  &macro_expr)) {
-    return macro_expr;
+  cel::SourceRange range;
+  if (auto position = source_.GetPosition(cel::SourceLocation{
+          static_cast<int32_t>(line), static_cast<int32_t>(col)});
+      position) {
+    range.begin = *position;
   }
-
-  return sf_->NewGlobalCall(expr_id, function, args);
+  factory_.ReportError(range, absl::StrCat("Syntax error: ", msg));
 }
 
-Expr ParserVisitor::ReceiverCallOrMacro(int64_t expr_id,
-                                        const std::string& function,
-                                        const Expr& target,
-                                        const std::vector<Expr>& args) {
-  Expr macro_expr;
-  if (ExpandMacro(expr_id, function, target, args, &macro_expr)) {
-    return macro_expr;
-  }
+bool ParserVisitor::HasErrored() const { return factory_.HasErrors(); }
 
-  return sf_->NewReceiverCall(expr_id, function, target, args);
-}
+std::string ParserVisitor::ErrorMessage() { return factory_.ErrorMessage(); }
 
-bool ParserVisitor::ExpandMacro(int64_t expr_id, const std::string& function,
-                                const Expr& target,
-                                const std::vector<Expr>& args,
-                                Expr* macro_expr) {
-  auto macro =
-      macro_registry_.FindMacro(function, args.size(), target.id() != 0);
-  if (!macro.has_value()) {
-    return false;
-  }
-
-  Expr expr = macro->Expand(sf_, expr_id, target, args);
-  if (expr.expr_kind_case() != Expr::EXPR_KIND_NOT_SET) {
-    *macro_expr = std::move(expr);
+Expr ParserVisitor::GlobalCallOrMacroImpl(int64_t expr_id,
+                                          absl::string_view function,
+                                          std::vector<Expr> args) {
+  if (auto macro = macro_registry_.FindMacro(function, args.size(), false);
+      macro) {
+    std::vector<Expr> macro_args;
     if (add_macro_calls_) {
-      // If the macro is nested, the full expression id is used as an argument
-      // id in the tree. Using this ID instead of expr_id allows argument id
-      // lookups in macro_calls when building the map and iterating
-      // the AST.
-      sf_->AddMacroCall(macro_expr->id(), target, args, function);
+      macro_args.reserve(args.size());
+      for (const auto& arg : args) {
+        macro_args.push_back(factory_.BuildMacroCallArg(arg));
+      }
     }
-    return true;
+    factory_.BeginMacro(factory_.GetSourceRange(expr_id));
+    auto expr = macro->Expand(factory_, absl::nullopt, absl::MakeSpan(args));
+    factory_.EndMacro();
+    if (expr) {
+      if (add_macro_calls_) {
+        factory_.AddMacroCall(expr->id(), function, absl::nullopt,
+                              std::move(macro_args));
+      }
+      // We did not end up using `expr_id`. Delete metadata.
+      factory_.EraseId(expr_id);
+      return std::move(*expr);
+    }
   }
-  return false;
+
+  return factory_.NewCall(expr_id, function, std::move(args));
+}
+
+Expr ParserVisitor::ReceiverCallOrMacroImpl(int64_t expr_id,
+                                            absl::string_view function,
+                                            Expr target,
+                                            std::vector<Expr> args) {
+  if (auto macro = macro_registry_.FindMacro(function, args.size(), true);
+      macro) {
+    Expr macro_target;
+    std::vector<Expr> macro_args;
+    if (add_macro_calls_) {
+      macro_args.reserve(args.size());
+      macro_target = factory_.BuildMacroCallArg(target);
+      for (const auto& arg : args) {
+        macro_args.push_back(factory_.BuildMacroCallArg(arg));
+      }
+    }
+    factory_.BeginMacro(factory_.GetSourceRange(expr_id));
+    auto expr = macro->Expand(factory_, std::ref(target), absl::MakeSpan(args));
+    factory_.EndMacro();
+    if (expr) {
+      if (add_macro_calls_) {
+        factory_.AddMacroCall(expr->id(), function, std::move(macro_target),
+                              std::move(macro_args));
+      }
+      // We did not end up using `expr_id`. Delete metadata.
+      factory_.EraseId(expr_id);
+      return std::move(*expr);
+    }
+  }
+  return factory_.NewMemberCall(expr_id, function, std::move(target),
+                                std::move(args));
 }
 
 std::string ParserVisitor::ExtractQualifiedName(antlr4::ParserRuleContext* ctx,
-                                                const Expr* e) {
-  if (!e) {
+                                                const Expr& e) {
+  if (e == Expr{}) {
     return "";
   }
 
-  switch (e->expr_kind_case()) {
-    case Expr::kIdentExpr:
-      return e->ident_expr().name();
-    case Expr::kSelectExpr: {
-      auto& s = e->select_expr();
-      std::string prefix = ExtractQualifiedName(ctx, &s.operand());
-      if (!prefix.empty()) {
-        return prefix + "." + s.field();
-      }
-    } break;
-    default:
-      break;
+  if (const auto* ident_expr = absl::get_if<IdentExpr>(&e.kind()); ident_expr) {
+    return ident_expr->name();
   }
-  sf_->ReportError(sf_->GetSourceLocation(e->id()),
-                   "expected a qualified name");
+  if (const auto* select_expr = absl::get_if<SelectExpr>(&e.kind());
+      select_expr) {
+    std::string prefix = ExtractQualifiedName(ctx, select_expr->operand());
+    if (!prefix.empty()) {
+      return absl::StrCat(prefix, ".", select_expr->field());
+    }
+  }
+  factory_.ReportError(factory_.GetSourceRange(e.id()),
+                       "expected a qualified name");
   return "";
 }
 
@@ -1021,7 +1524,7 @@ static constexpr absl::string_view kSingleQuote = "'";
 // ExprRecursionListener extends the standard ANTLR CelParser to ensure that
 // recursive entries into the 'expr' rule are limited to a configurable depth so
 // as to prevent stack overflows.
-class ExprRecursionListener : public ParseTreeListener {
+class ExprRecursionListener final : public ParseTreeListener {
  public:
   explicit ExprRecursionListener(
       const int max_recursion_depth = kDefaultMaxRecursionDepth)
@@ -1058,7 +1561,7 @@ void ExprRecursionListener::exitEveryRule(ParserRuleContext* ctx) {
   }
 }
 
-class RecoveryLimitErrorStrategy : public DefaultErrorStrategy {
+class RecoveryLimitErrorStrategy final : public DefaultErrorStrategy {
  public:
   explicit RecoveryLimitErrorStrategy(
       int recovery_limit = kDefaultErrorRecoveryLimit,
@@ -1185,7 +1688,7 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
 
     Expr expr;
     try {
-      expr = std::any_cast<Expr>(visitor.visit(parser.start()));
+      expr = ExprFromAny(visitor.visit(parser.start()));
     } catch (const ParseCancellationException& e) {
       if (visitor.HasErrored()) {
         return absl::InvalidArgumentError(visitor.ErrorMessage());
@@ -1199,9 +1702,11 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
 
     // root is deleted as part of the parser context
     ParsedExpr parsed_expr;
-    *(parsed_expr.mutable_expr()) = std::move(expr);
+    CEL_RETURN_IF_ERROR(cel::extensions::protobuf_internal::ExprToProto(
+        expr, parsed_expr.mutable_expr()));
+    CEL_RETURN_IF_ERROR(
+        visitor.GetSourceInfo(parsed_expr.mutable_source_info()));
     auto enriched_source_info = visitor.enriched_source_info();
-    *(parsed_expr.mutable_source_info()) = visitor.source_info();
     return VerboseParsedExpr(std::move(parsed_expr),
                              std::move(enriched_source_info));
   } catch (const std::exception& e) {

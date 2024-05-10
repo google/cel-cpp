@@ -14,62 +14,66 @@
 
 #include "extensions/proto_ext.h"
 
-#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/functional/overload.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
+#include "absl/types/variant.h"
+#include "common/ast.h"
 #include "parser/macro.h"
-#include "parser/source_factory.h"
+#include "parser/macro_expr_factory.h"
 
 namespace cel::extensions {
 
 namespace {
-using google::api::expr::v1alpha1::Expr;
-using google::api::expr::parser::SourceFactory;
 
 static constexpr char kProtoNamespace[] = "proto";
 static constexpr char kGetExt[] = "getExt";
 static constexpr char kHasExt[] = "hasExt";
 
-absl::optional<std::string> validateExtensionIdentifier(const Expr& expr) {
-  switch (expr.expr_kind_case()) {
-    case Expr::kSelectExpr: {
-      if (expr.select_expr().test_only()) {
-        return absl::nullopt;
-      }
-      auto op_name = validateExtensionIdentifier(expr.select_expr().operand());
-      if (!op_name.has_value()) {
-        return absl::nullopt;
-      }
-      return absl::optional<std::string>(
-          absl::StrCat(*op_name, ".", expr.select_expr().field()));
-    }
-    case Expr::kIdentExpr:
-      return absl::optional<std::string>(expr.ident_expr().name());
-    default:
-      return absl::nullopt;
-  }
+absl::optional<std::string> ValidateExtensionIdentifier(const Expr& expr) {
+  return absl::visit(
+      absl::Overload(
+          [](const SelectExpr& select_expr) -> absl::optional<std::string> {
+            if (select_expr.test_only()) {
+              return absl::nullopt;
+            }
+            auto op_name = ValidateExtensionIdentifier(select_expr.operand());
+            if (!op_name.has_value()) {
+              return absl::nullopt;
+            }
+            return absl::StrCat(*op_name, ".", select_expr.field());
+          },
+          [](const IdentExpr& ident_expr) -> absl::optional<std::string> {
+            return ident_expr.name();
+          },
+          [](const auto&) -> absl::optional<std::string> {
+            return absl::nullopt;
+          }),
+      expr.kind());
 }
 
-absl::optional<std::string> getExtensionFieldName(const Expr& expr) {
-  switch (expr.expr_kind_case()) {
-    case Expr::kSelectExpr:
-      return validateExtensionIdentifier(expr);
-    default:
-      return absl::nullopt;
+absl::optional<std::string> GetExtensionFieldName(const Expr& expr) {
+  if (const auto* select_expr =
+          expr.has_select_expr() ? &expr.select_expr() : nullptr;
+      select_expr) {
+    return ValidateExtensionIdentifier(expr);
   }
+  return absl::nullopt;
 }
 
-bool isExtensionCall(const Expr& target) {
-  switch (target.expr_kind_case()) {
-    case Expr::kIdentExpr:
-      return target.ident_expr().name() == kProtoNamespace;
-    default:
-      return false;
+bool IsExtensionCall(const Expr& target) {
+  if (const auto* ident_expr =
+          target.has_ident_expr() ? &target.ident_expr() : nullptr;
+      ident_expr) {
+    return ident_expr->name() == kProtoNamespace;
   }
+  return false;
 }
 
 }  // namespace
@@ -77,29 +81,31 @@ bool isExtensionCall(const Expr& target) {
 std::vector<Macro> proto_macros() {
   absl::StatusOr<Macro> getExt = Macro::Receiver(
       kGetExt, 2,
-      [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
-         const Expr& target, const std::vector<Expr>& args) {
-        if (!isExtensionCall(target)) {
-          return Expr();
+      [](MacroExprFactory& factory, Expr& target,
+         absl::Span<Expr> arguments) -> absl::optional<Expr> {
+        if (!IsExtensionCall(target)) {
+          return absl::nullopt;
         }
-        auto extFieldName = getExtensionFieldName(args[1]);
+        auto extFieldName = GetExtensionFieldName(arguments[1]);
         if (!extFieldName.has_value()) {
-          return sf->ReportError(args[1].id(), "invalid extension field");
+          return factory.ReportErrorAt(arguments[1], "invalid extension field");
         }
-        return sf->NewSelectForMacro(macro_id, args[0], *extFieldName);
+        return factory.NewSelect(std::move(arguments[0]),
+                                 std::move(*extFieldName));
       });
   absl::StatusOr<Macro> hasExt = Macro::Receiver(
       kHasExt, 2,
-      [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
-         const Expr& target, const std::vector<Expr>& args) {
-        if (!isExtensionCall(target)) {
-          return Expr();
+      [](MacroExprFactory& factory, Expr& target,
+         absl::Span<Expr> arguments) -> absl::optional<Expr> {
+        if (!IsExtensionCall(target)) {
+          return absl::nullopt;
         }
-        auto extFieldName = getExtensionFieldName(args[1]);
+        auto extFieldName = GetExtensionFieldName(arguments[1]);
         if (!extFieldName.has_value()) {
-          return sf->ReportError(args[1].id(), "invalid extension field");
+          return factory.ReportErrorAt(arguments[1], "invalid extension field");
         }
-        return sf->NewPresenceTestForMacro(macro_id, args[0], *extFieldName);
+        return factory.NewPresenceTest(std::move(arguments[0]),
+                                       std::move(*extFieldName));
       });
   return {*hasExt, *getExt};
 }

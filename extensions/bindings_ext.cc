@@ -14,34 +14,26 @@
 
 #include "extensions/bindings_ext.h"
 
-#include <memory>
-#include <string>
+#include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
+#include "absl/status/statusor.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
+#include "common/ast.h"
 #include "parser/macro.h"
-#include "parser/source_factory.h"
+#include "parser/macro_expr_factory.h"
 
 namespace cel::extensions {
 
 namespace {
-using google::api::expr::v1alpha1::Expr;
-using google::api::expr::parser::SourceFactory;
 
 static constexpr char kCelNamespace[] = "cel";
 static constexpr char kBind[] = "bind";
 static constexpr char kUnusedIterVar[] = "#unused";
 
-bool isTargetNamespace(const Expr& target) {
-  switch (target.expr_kind_case()) {
-    case Expr::kIdentExpr:
-      return target.ident_expr().name() == kCelNamespace;
-    default:
-      return false;
-  }
+bool IsTargetNamespace(const Expr& target) {
+  return target.has_ident_expr() && target.ident_expr().name() == kCelNamespace;
 }
 
 }  // namespace
@@ -49,27 +41,20 @@ bool isTargetNamespace(const Expr& target) {
 std::vector<Macro> bindings_macros() {
   absl::StatusOr<Macro> cel_bind = Macro::Receiver(
       kBind, 3,
-      [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
-         const Expr& target, const std::vector<Expr>& args) {
-        if (!isTargetNamespace(target)) {
-          return Expr();
+      [](MacroExprFactory& factory, Expr& target,
+         absl::Span<Expr> args) -> absl::optional<Expr> {
+        if (!IsTargetNamespace(target)) {
+          return absl::nullopt;
         }
-        const Expr& var_ident = args[0];
-        if (!var_ident.has_ident_expr()) {
-          return sf->ReportError(
-              var_ident.id(),
-              "cel.bind() variable name must be a simple identifier");
+        if (!args[0].has_ident_expr()) {
+          return factory.ReportErrorAt(
+              args[0], "cel.bind() variable name must be a simple identifier");
         }
-        const std::string& var_name = var_ident.ident_expr().name();
-        const Expr& var_init = args[1];
-        const Expr& result_expr = args[2];
-        return sf->NewComprehension(
-            macro_id, kUnusedIterVar,
-            sf->NewList(sf->NextMacroId(macro_id), std::vector<Expr>()),
-            var_name, var_init,
-            sf->NewLiteralBoolForMacro(sf->NextMacroId(macro_id), false),
-            sf->NewIdentForMacro(sf->NextMacroId(macro_id), var_name),
-            result_expr);
+        auto var_name = args[0].ident_expr().name();
+        return factory.NewComprehension(kUnusedIterVar, factory.NewList(),
+                                        std::move(var_name), std::move(args[1]),
+                                        factory.NewBoolConst(false),
+                                        std::move(args[0]), std::move(args[2]));
       });
   return {*cel_bind};
 }

@@ -187,6 +187,17 @@ cc_test(
 )
 
 cc_library(
+    name = "expr_factory",
+    hdrs = ["expr_factory.h"],
+    deps = [
+        ":constant",
+        ":expr",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "operators",
     srcs = [
         "operators.cc",

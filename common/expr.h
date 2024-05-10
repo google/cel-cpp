@@ -46,6 +46,8 @@ class MapExprEntry;
 class MapExpr;
 class ComprehensionExpr;
 
+inline constexpr absl::string_view kAccumulatorVariableName = "__result__";
+
 bool operator==(const Expr& lhs, const Expr& rhs);
 
 inline bool operator!=(const Expr& lhs, const Expr& rhs) {

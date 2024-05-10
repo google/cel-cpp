@@ -14,17 +14,20 @@
 
 #include "extensions/math_ext_macros.h"
 
-#include <cstdint>
-#include <memory>
+#include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/functional/overload.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
+#include "absl/types/variant.h"
+#include "common/ast.h"
+#include "common/constant.h"
 #include "parser/macro.h"
-#include "parser/source_factory.h"
+#include "parser/macro_expr_factory.h"
 
 namespace cel::extensions {
 
@@ -37,150 +40,148 @@ static constexpr absl::string_view kGreatest = "greatest";
 static constexpr char kMathMin[] = "math.@min";
 static constexpr char kMathMax[] = "math.@max";
 
-using ::google::api::expr::v1alpha1::Expr;
-using ::google::api::expr::parser::SourceFactory;
-
-bool isTargetNamespace(const Expr &target) {
-  switch (target.expr_kind_case()) {
-    case Expr::kIdentExpr:
-      return target.ident_expr().name() == kMathNamespace;
-    default:
-      return false;
-  }
+bool IsTargetNamespace(const Expr &target) {
+  return target.has_ident_expr() &&
+         target.ident_expr().name() == kMathNamespace;
 }
 
-bool isValidArgType(const Expr &arg) {
-  switch (arg.expr_kind_case()) {
-    case google::api::expr::v1alpha1::Expr::kConstExpr:
-      if (arg.const_expr().has_double_value() ||
-          arg.const_expr().has_int64_value() ||
-          arg.const_expr().has_uint64_value()) {
-        return true;
-      }
-      return false;
-    case google::api::expr::v1alpha1::Expr::kListExpr:
-    case google::api::expr::v1alpha1::Expr::kStructExpr:  // fall through
-      return false;
-    default:
-      return true;
-  }
+bool IsValidArgType(const Expr &arg) {
+  return absl::visit(
+      absl::Overload([](const UnspecifiedExpr &) -> bool { return false; },
+                     [](const Constant &const_expr) -> bool {
+                       return const_expr.has_double_value() ||
+                              const_expr.has_int_value() ||
+                              const_expr.has_uint_value();
+                     },
+                     [](const ListExpr &) -> bool { return false; },
+                     [](const StructExpr &) -> bool { return false; },
+                     [](const MapExpr &) -> bool { return false; },
+                     // This is intended for call and select expressions.
+                     [](const auto &) -> bool { return true; }),
+      arg.kind());
 }
 
-absl::optional<Expr> checkInvalidArgs(const std::shared_ptr<SourceFactory> &sf,
-                                      const absl::string_view macro,
-                                      const std::vector<Expr> &args) {
-  for (const auto &arg : args) {
-    if (!isValidArgType(arg)) {
-      return absl::optional<Expr>(sf->ReportError(
-          arg.id(),
-          absl::StrCat(macro, " simple literal arguments must be numeric")));
+absl::optional<Expr> CheckInvalidArgs(MacroExprFactory &factory,
+                                      absl::string_view macro,
+                                      absl::Span<const Expr> arguments) {
+  for (const auto &argument : arguments) {
+    if (!IsValidArgType(argument)) {
+      return factory.ReportErrorAt(
+          argument,
+          absl::StrCat(macro, " simple literal arguments must be numeric"));
     }
   }
 
   return absl::nullopt;
 }
 
-bool isListLiteralWithValidArgs(const Expr &arg) {
-  switch (arg.expr_kind_case()) {
-    case google::api::expr::v1alpha1::Expr::kListExpr: {
-      const auto &list_expr = arg.list_expr();
-      if (list_expr.elements().empty()) {
-        return false;
-      }
-
-      for (const auto &elem : list_expr.elements()) {
-        if (!isValidArgType(elem)) {
-          return false;
-        }
-      }
-      return true;
-    }
-    default: {
+bool IsListLiteralWithValidArgs(const Expr &arg) {
+  if (const auto *list_expr = arg.has_list_expr() ? &arg.list_expr() : nullptr;
+      list_expr) {
+    if (list_expr->elements().empty()) {
       return false;
     }
+    for (const auto &element : list_expr->elements()) {
+      if (!IsValidArgType(element.expr())) {
+        return false;
+      }
+    }
+    return true;
   }
+  return false;
 }
 
 }  // namespace
 
 std::vector<Macro> math_macros() {
   absl::StatusOr<Macro> least = Macro::ReceiverVarArg(
-      kLeast, [](const std::shared_ptr<SourceFactory> &sf, int64_t macro_id,
-                 const Expr &target, const std::vector<Expr> &args) {
-        if (!isTargetNamespace(target)) {
-          return Expr();
+      kLeast,
+      [](MacroExprFactory &factory, Expr &target,
+         absl::Span<Expr> arguments) -> absl::optional<Expr> {
+        if (!IsTargetNamespace(target)) {
+          return absl::nullopt;
         }
 
-        switch (args.size()) {
+        switch (arguments.size()) {
           case 0:
-            return sf->ReportError(
-                target.id(), "math.least() requires at least one argument.");
+            return factory.ReportErrorAt(
+                target, "math.least() requires at least one argument.");
           case 1: {
-            if (!isListLiteralWithValidArgs(args[0]) &&
-                !isValidArgType(args[0])) {
-              return sf->ReportError(
-                  args[0].id(), "math.least() invalid single argument value.");
+            if (!IsListLiteralWithValidArgs(arguments[0]) &&
+                !IsValidArgType(arguments[0])) {
+              return factory.ReportErrorAt(
+                  arguments[0], "math.least() invalid single argument value.");
             }
 
-            return sf->NewGlobalCallForMacro(target.id(), kMathMin, args);
+            return factory.NewCall(kMathMin, arguments);
           }
           case 2: {
-            auto error = checkInvalidArgs(sf, "math.least()", args);
-            if (error.has_value()) {
-              return *error;
+            if (auto error =
+                    CheckInvalidArgs(factory, "math.least()", arguments);
+                error) {
+              return std::move(*error);
             }
-
-            return sf->NewGlobalCallForMacro(target.id(), kMathMin, args);
+            return factory.NewCall(kMathMin, arguments);
           }
           default:
-            auto error = checkInvalidArgs(sf, "math.least()", args);
-            if (error.has_value()) {
-              return *error;
+            if (auto error =
+                    CheckInvalidArgs(factory, "math.least()", arguments);
+                error) {
+              return std::move(*error);
             }
-
-            return sf->NewGlobalCallForMacro(
-                target.id(), kMathMin,
-                {sf->NewList(sf->NextMacroId(macro_id), args)});
+            std::vector<ListExprElement> elements;
+            elements.reserve(arguments.size());
+            for (auto &argument : arguments) {
+              elements.push_back(factory.NewListElement(std::move(argument)));
+            }
+            return factory.NewCall(kMathMin,
+                                   factory.NewList(std::move(elements)));
         }
       });
   absl::StatusOr<Macro> greatest = Macro::ReceiverVarArg(
-      kGreatest, [](const std::shared_ptr<SourceFactory> &sf, int64_t macro_id,
-                    const Expr &target, const std::vector<Expr> &args) {
-        if (!isTargetNamespace(target)) {
-          return Expr();
+      kGreatest,
+      [](MacroExprFactory &factory, Expr &target,
+         absl::Span<Expr> arguments) -> absl::optional<Expr> {
+        if (!IsTargetNamespace(target)) {
+          return absl::nullopt;
         }
 
-        switch (args.size()) {
+        switch (arguments.size()) {
           case 0: {
-            return sf->ReportError(
-                target.id(), "math.greatest() requires at least one argument.");
+            return factory.ReportErrorAt(
+                target, "math.greatest() requires at least one argument.");
           }
           case 1: {
-            if (!isListLiteralWithValidArgs(args[0]) &&
-                !isValidArgType(args[0])) {
-              return sf->ReportError(
-                  args[0].id(),
+            if (!IsListLiteralWithValidArgs(arguments[0]) &&
+                !IsValidArgType(arguments[0])) {
+              return factory.ReportErrorAt(
+                  arguments[0],
                   "math.greatest() invalid single argument value.");
             }
 
-            return sf->NewGlobalCallForMacro(target.id(), kMathMax, args);
+            return factory.NewCall(kMathMax, arguments);
           }
           case 2: {
-            auto error = checkInvalidArgs(sf, "math.greatest()", args);
-            if (error.has_value()) {
-              return *error;
+            if (auto error =
+                    CheckInvalidArgs(factory, "math.greatest()", arguments);
+                error) {
+              return std::move(*error);
             }
-            return sf->NewGlobalCallForMacro(target.id(), kMathMax, args);
+            return factory.NewCall(kMathMax, arguments);
           }
           default: {
-            auto error = checkInvalidArgs(sf, "math.greatest()", args);
-            if (error.has_value()) {
-              return *error;
+            if (auto error =
+                    CheckInvalidArgs(factory, "math.greatest()", arguments);
+                error) {
+              return std::move(*error);
             }
-
-            return sf->NewGlobalCallForMacro(
-                target.id(), kMathMax,
-                {sf->NewList(sf->NextMacroId(macro_id), args)});
+            std::vector<ListExprElement> elements;
+            elements.reserve(arguments.size());
+            for (auto &argument : arguments) {
+              elements.push_back(factory.NewListElement(std::move(argument)));
+            }
+            return factory.NewCall(kMathMax,
+                                   factory.NewList(std::move(elements)));
           }
         }
       });

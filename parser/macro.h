@@ -16,35 +16,50 @@
 #define THIRD_PARTY_CEL_CPP_PARSER_MACRO_H_
 
 #include <cstddef>
-#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/base/attributes.h"
+#include "absl/functional/any_invocable.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-
-namespace google::api::expr::parser {
-class SourceFactory;
-}
+#include "absl/types/optional.h"
+#include "absl/types/span.h"
+#include "common/expr.h"
+#include "parser/macro_expr_factory.h"
 
 namespace cel {
 
-using SourceFactory = google::api::expr::parser::SourceFactory;
-
-// MacroExpander converts the target and args of a function call that matches a
+// MacroExpander converts the arguments of a function call that matches a
 // Macro.
 //
-// Note: when the Macros.IsReceiverStyle() is true, the target argument will
-// be Expr::default_instance().
-using MacroExpander = std::function<google::api::expr::v1alpha1::Expr(
-    const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
-    const google::api::expr::v1alpha1::Expr&,
-    // This should be absl::Span instead of std::vector.
-    const std::vector<google::api::expr::v1alpha1::Expr>&)>;
+// If this is a receiver-style macro, the second argument (optional expr) will
+// be engaged. In the case of a global call, it will be `absl::nullopt`.
+//
+// Should return the replacement subexpression if replacement should occur,
+// otherwise absl::nullopt. If `absl::nullopt` is returned, none of the
+// arguments including the target must have been modified. Doing so is undefined
+// behavior. Otherwise the expander is free to mutate the arguments and either
+// include or exclude them from the result.
+//
+// We use `std::reference_wrapper<Expr>` to be consistent with the fact that we
+// do not use raw pointers elsewhere with `Expr` and friends. Ideally we would
+// just use `absl::optional<Expr&>`, but that is not currently allowed and our
+// `optional_ref<T>` is internal.
+using MacroExpander = absl::AnyInvocable<absl::optional<Expr>(
+    MacroExprFactory&, absl::optional<std::reference_wrapper<Expr>>,
+    absl::Span<Expr>) const>;
+
+// `GlobalMacroExpander` is a `MacroExpander` for global macros.
+using GlobalMacroExpander = absl::AnyInvocable<absl::optional<Expr>(
+    MacroExprFactory&, absl::Span<Expr>) const>;
+
+// `ReceiverMacroExpander` is a `MacroExpander` for receiver-style macros.
+using ReceiverMacroExpander = absl::AnyInvocable<absl::optional<Expr>(
+    MacroExprFactory&, Expr&, absl::Span<Expr>) const>;
 
 // Macro interface for describing the function signature to match and the
 // MacroExpander to apply.
@@ -55,17 +70,17 @@ class Macro final {
  public:
   static absl::StatusOr<Macro> Global(absl::string_view name,
                                       size_t argument_count,
-                                      MacroExpander expander);
+                                      GlobalMacroExpander expander);
 
   static absl::StatusOr<Macro> GlobalVarArg(absl::string_view name,
-                                            MacroExpander expander);
+                                            GlobalMacroExpander expander);
 
   static absl::StatusOr<Macro> Receiver(absl::string_view name,
                                         size_t argument_count,
-                                        MacroExpander expander);
+                                        ReceiverMacroExpander expander);
 
   static absl::StatusOr<Macro> ReceiverVarArg(absl::string_view name,
-                                              MacroExpander expander);
+                                              ReceiverMacroExpander expander);
 
   Macro(const Macro&) = default;
   Macro(Macro&&) = default;
@@ -121,11 +136,16 @@ class Macro final {
     return rep_->expander;
   }
 
-  google::api::expr::v1alpha1::Expr Expand(
-      const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
-      const google::api::expr::v1alpha1::Expr& target,
-      const std::vector<google::api::expr::v1alpha1::Expr>& args) const {
-    return (expander())(sf, macro_id, target, args);
+  absl::optional<Expr> Expand(
+      MacroExprFactory& factory,
+      absl::optional<std::reference_wrapper<Expr>> target,
+      absl::Span<Expr> arguments) const {
+    return (expander())(factory, target, arguments);
+  }
+
+  friend void swap(Macro& lhs, Macro& rhs) noexcept {
+    using std::swap;
+    swap(lhs.rep_, rhs.rep_);
   }
 
   ABSL_DEPRECATED("use MacroRegistry and RegisterStandardMacros")
