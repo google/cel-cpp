@@ -86,6 +86,30 @@ cc_test(
 )
 
 cc_library(
+    name = "reference",
+    srcs = ["reference.cc"],
+    hdrs = ["reference.h"],
+    deps = [
+        ":constant",
+        "@com_google_absl//absl/algorithm:container",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_test(
+    name = "reference_test",
+    srcs = ["reference_test.cc"],
+    deps = [
+        ":constant",
+        ":reference",
+        "//internal:testing",
+    ],
+)
+
+cc_library(
     name = "ast_rewrite",
     srcs = ["ast_rewrite.cc"],
     hdrs = ["ast_rewrite.h"],
