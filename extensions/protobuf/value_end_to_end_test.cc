@@ -748,7 +748,10 @@ INSTANTIATE_TEST_SUITE_P(
                                    HasSubstr("uint64 to uint32_t overflow")))}})),
     ProtobufValueEndToEndTest::ToString);
 
-MATCHER_P(CelSizeIs, size, "") { return arg.Size() == size; }
+MATCHER_P(CelSizeIs, size, "") {
+  auto s = arg.Size();
+  return s.ok() && *s == size;
+}
 
 INSTANTIATE_TEST_SUITE_P(
     JsonWrappers, ProtobufValueEndToEndTest,

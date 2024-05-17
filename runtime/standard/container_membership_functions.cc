@@ -99,7 +99,7 @@ bool ValueEquals(ValueView value, const BytesValue& other) {
 template <typename T>
 absl::StatusOr<bool> In(ValueManager& value_factory, T value,
                         const ListValue& list) {
-  size_t size = list.Size();
+  CEL_ASSIGN_OR_RETURN(auto size, list.Size());
   Value element_scratch;
   for (int i = 0; i < size; i++) {
     CEL_ASSIGN_OR_RETURN(ValueView element,

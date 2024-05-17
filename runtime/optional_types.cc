@@ -182,7 +182,8 @@ absl::StatusOr<Value> MapOptIndexOptionalValue(ValueManager& value_manager,
 absl::StatusOr<Value> ListOptIndexOptionalInt(ValueManager& value_manager,
                                               const ListValue& list,
                                               int64_t key) {
-  if (key < 0 || static_cast<size_t>(key) >= list.Size()) {
+  CEL_ASSIGN_OR_RETURN(auto list_size, list.Size());
+  if (key < 0 || static_cast<size_t>(key) >= list_size) {
     return OptionalValue::None();
   }
   CEL_ASSIGN_OR_RETURN(auto element,

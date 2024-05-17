@@ -164,9 +164,9 @@ class MapValue final {
 
   void swap(MapValue& other) noexcept { variant_.swap(other.variant_); }
 
-  bool IsEmpty() const;
+  absl::StatusOr<bool> IsEmpty() const;
 
-  size_t Size() const;
+  absl::StatusOr<size_t> Size() const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
@@ -432,9 +432,9 @@ class MapValueView final {
 
   void swap(MapValueView& other) noexcept { variant_.swap(other.variant_); }
 
-  bool IsEmpty() const;
+  absl::StatusOr<bool> IsEmpty() const;
 
-  size_t Size() const;
+  absl::StatusOr<size_t> Size() const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.

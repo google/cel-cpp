@@ -203,6 +203,7 @@ cc_library(
         "//runtime:runtime_options",
         "//runtime/internal:mutable_list_impl",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
     ],
 )
 

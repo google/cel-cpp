@@ -44,8 +44,8 @@ using TypeReflectorTest = common_internal::ThreadCompatibleValueTest<>;
     EXPECT_TRUE(list_value_builder->IsEmpty());                           \
     EXPECT_EQ(list_value_builder->Size(), 0);                             \
     auto list_value = std::move(*list_value_builder).Build();             \
-    EXPECT_TRUE(list_value.IsEmpty());                                    \
-    EXPECT_EQ(list_value.Size(), 0);                                      \
+    EXPECT_THAT(list_value.IsEmpty(), IsOkAndHolds(true));                \
+    EXPECT_THAT(list_value.Size(), IsOkAndHolds(0));                      \
     EXPECT_EQ(list_value.DebugString(), "[]");                            \
     EXPECT_EQ(list_value.GetType(type_manager()), list_type);             \
   }
@@ -81,8 +81,8 @@ TEST_P(TypeReflectorTest, NewListValueBuilder_ErrorType) {
     EXPECT_TRUE(map_value_builder->IsEmpty());                              \
     EXPECT_EQ(map_value_builder->Size(), 0);                                \
     auto map_value = std::move(*map_value_builder).Build();                 \
-    EXPECT_TRUE(map_value.IsEmpty());                                       \
-    EXPECT_EQ(map_value.Size(), 0);                                         \
+    EXPECT_THAT(map_value.IsEmpty(), IsOkAndHolds(true));                   \
+    EXPECT_THAT(map_value.Size(), IsOkAndHolds(0));                         \
     EXPECT_EQ(map_value.DebugString(), "{}");                               \
     EXPECT_EQ(map_value.GetType(type_manager()), map_type);                 \
   }

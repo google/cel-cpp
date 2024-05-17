@@ -130,13 +130,13 @@ bool MapValue::IsZeroValue() const {
       variant_);
 }
 
-bool MapValue::IsEmpty() const {
+absl::StatusOr<bool> MapValue::IsEmpty() const {
   return absl::visit(
       [](const auto& alternative) -> bool { return alternative.IsEmpty(); },
       variant_);
 }
 
-size_t MapValue::Size() const {
+absl::StatusOr<size_t> MapValue::Size() const {
   return absl::visit(
       [](const auto& alternative) -> size_t { return alternative.Size(); },
       variant_);
@@ -244,12 +244,12 @@ bool MapValueView::IsZeroValue() const {
       variant_);
 }
 
-bool MapValueView::IsEmpty() const {
+absl::StatusOr<bool> MapValueView::IsEmpty() const {
   return absl::visit(
       [](auto alternative) -> bool { return alternative.IsEmpty(); }, variant_);
 }
 
-size_t MapValueView::Size() const {
+absl::StatusOr<size_t> MapValueView::Size() const {
   return absl::visit(
       [](auto alternative) -> size_t { return alternative.Size(); }, variant_);
 }
@@ -273,8 +273,8 @@ absl::StatusOr<ValueView> MapValueEqual(ValueManager& value_manager,
   if (Is(lhs, rhs)) {
     return BoolValueView{true};
   }
-  const auto lhs_size = lhs.Size();
-  const auto rhs_size = rhs.Size();
+  CEL_ASSIGN_OR_RETURN(auto lhs_size, lhs.Size());
+  CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
   if (lhs_size != rhs_size) {
     return BoolValueView{false};
   }
@@ -309,8 +309,8 @@ absl::StatusOr<ValueView> MapValueEqual(ValueManager& value_manager,
 absl::StatusOr<ValueView> MapValueEqual(ValueManager& value_manager,
                                         const ParsedMapValueInterface& lhs,
                                         MapValueView rhs, Value& scratch) {
-  const auto lhs_size = lhs.Size();
-  const auto rhs_size = rhs.Size();
+  auto lhs_size = lhs.Size();
+  CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
   if (lhs_size != rhs_size) {
     return BoolValueView{false};
   }

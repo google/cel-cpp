@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "base/builtins.h"
 #include "base/function_adapter.h"
 #include "common/value.h"
@@ -31,11 +32,11 @@ namespace {
 
 using cel::runtime_internal::MutableListValue;
 
-int64_t MapSizeImpl(ValueManager&, const MapValue& value) {
+absl::StatusOr<int64_t> MapSizeImpl(ValueManager&, const MapValue& value) {
   return value.Size();
 }
 
-int64_t ListSizeImpl(ValueManager&, const ListValue& value) {
+absl::StatusOr<int64_t> ListSizeImpl(ValueManager&, const ListValue& value) {
   return value.Size();
 }
 
@@ -43,11 +44,11 @@ int64_t ListSizeImpl(ValueManager&, const ListValue& value) {
 absl::StatusOr<ListValue> ConcatList(ValueManager& factory,
                                      const ListValue& value1,
                                      const ListValue& value2) {
-  int size1 = value1.Size();
+  CEL_ASSIGN_OR_RETURN(auto size1, value1.Size());
   if (size1 == 0) {
     return value2;
   }
-  int size2 = value2.Size();
+  CEL_ASSIGN_OR_RETURN(auto size2, value2.Size());
   if (size2 == 0) {
     return value1;
   }
@@ -87,7 +88,8 @@ absl::StatusOr<OpaqueValue> AppendList(ValueManager& factory,
         "Unexpected call to runtime list append.");
   }
   MutableListValue& mutable_list = MutableListValue::Cast(value1);
-  for (int i = 0; i < value2.Size(); i++) {
+  CEL_ASSIGN_OR_RETURN(auto size2, value2.Size());
+  for (int i = 0; i < size2; i++) {
     CEL_ASSIGN_OR_RETURN(Value elem, value2.Get(factory, i));
     CEL_RETURN_IF_ERROR(mutable_list.Append(std::move(elem)));
   }
@@ -101,16 +103,16 @@ absl::Status RegisterContainerFunctions(FunctionRegistry& registry,
   // Support both the global and receiver style size() for lists and maps.
   for (bool receiver_style : {true, false}) {
     CEL_RETURN_IF_ERROR(registry.Register(
-        cel::UnaryFunctionAdapter<int64_t, const ListValue&>::CreateDescriptor(
-            cel::builtin::kSize, receiver_style),
-        UnaryFunctionAdapter<int64_t, const ListValue&>::WrapFunction(
-            ListSizeImpl)));
+        cel::UnaryFunctionAdapter<absl::StatusOr<int64_t>, const ListValue&>::
+            CreateDescriptor(cel::builtin::kSize, receiver_style),
+        UnaryFunctionAdapter<absl::StatusOr<int64_t>,
+                             const ListValue&>::WrapFunction(ListSizeImpl)));
 
     CEL_RETURN_IF_ERROR(registry.Register(
-        UnaryFunctionAdapter<int64_t, const MapValue&>::CreateDescriptor(
-            cel::builtin::kSize, receiver_style),
-        UnaryFunctionAdapter<int64_t, const MapValue&>::WrapFunction(
-            MapSizeImpl)));
+        UnaryFunctionAdapter<absl::StatusOr<int64_t>, const MapValue&>::
+            CreateDescriptor(cel::builtin::kSize, receiver_style),
+        UnaryFunctionAdapter<absl::StatusOr<int64_t>,
+                             const MapValue&>::WrapFunction(MapSizeImpl)));
   }
 
   if (options.enable_list_concat) {

@@ -512,7 +512,7 @@ TEST_P(ProtoValueWrapTest, ProtoInt64MapListKeys) {
   ASSERT_OK_AND_ASSIGN(ListValue key_set,
                        Cast<MapValue>(map_value).ListKeys(value_manager()));
 
-  EXPECT_THAT(key_set.Size(), Eq(1));
+  EXPECT_THAT(key_set.Size(), IsOkAndHolds(1));
 
   ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(value_manager(), 0));
 
@@ -537,7 +537,7 @@ TEST_P(ProtoValueWrapTest, ProtoInt32MapListKeys) {
   ASSERT_OK_AND_ASSIGN(ListValue key_set,
                        Cast<MapValue>(map_value).ListKeys(value_manager()));
 
-  EXPECT_THAT(key_set.Size(), Eq(1));
+  EXPECT_THAT(key_set.Size(), IsOkAndHolds(1));
 
   ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(value_manager(), 0));
 
@@ -562,7 +562,7 @@ TEST_P(ProtoValueWrapTest, ProtoBoolMapListKeys) {
   ASSERT_OK_AND_ASSIGN(ListValue key_set,
                        Cast<MapValue>(map_value).ListKeys(value_manager()));
 
-  EXPECT_THAT(key_set.Size(), Eq(1));
+  EXPECT_THAT(key_set.Size(), IsOkAndHolds(1));
 
   ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(value_manager(), 0));
 
@@ -588,7 +588,7 @@ TEST_P(ProtoValueWrapTest, ProtoUint32MapListKeys) {
   ASSERT_OK_AND_ASSIGN(ListValue key_set,
                        Cast<MapValue>(map_value).ListKeys(value_manager()));
 
-  EXPECT_THAT(key_set.Size(), Eq(1));
+  EXPECT_THAT(key_set.Size(), IsOkAndHolds(1));
 
   ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(value_manager(), 0));
 
@@ -614,7 +614,7 @@ TEST_P(ProtoValueWrapTest, ProtoUint64MapListKeys) {
   ASSERT_OK_AND_ASSIGN(ListValue key_set,
                        Cast<MapValue>(map_value).ListKeys(value_manager()));
 
-  EXPECT_THAT(key_set.Size(), Eq(1));
+  EXPECT_THAT(key_set.Size(), IsOkAndHolds(1));
 
   ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(value_manager(), 0));
 
@@ -640,7 +640,7 @@ TEST_P(ProtoValueWrapTest, ProtoStringMapListKeys) {
   ASSERT_OK_AND_ASSIGN(ListValue key_set,
                        Cast<MapValue>(map_value).ListKeys(value_manager()));
 
-  EXPECT_THAT(key_set.Size(), Eq(1));
+  EXPECT_THAT(key_set.Size(), IsOkAndHolds(1));
 
   ASSERT_OK_AND_ASSIGN(Value key0, key_set.Get(value_manager(), 0));
 

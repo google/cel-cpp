@@ -233,9 +233,10 @@ TEST_P(ValueMatcherTest, ListMatcherBasic) {
 
   Value list_value = std::move(*builder).Build();
 
-  EXPECT_THAT(
-      list_value,
-      ListValueIs(Truly([](const ListValue& v) { return v.Size() == 1; })));
+  EXPECT_THAT(list_value, ListValueIs(Truly([](const ListValue& v) {
+                auto size = v.Size();
+                return size.ok() && *size == 1;
+              })));
 }
 
 TEST_P(ValueMatcherTest, MapMatcherBasic) {
@@ -246,9 +247,10 @@ TEST_P(ValueMatcherTest, MapMatcherBasic) {
 
   Value map_value = std::move(*builder).Build();
 
-  EXPECT_THAT(
-      map_value,
-      MapValueIs(Truly([](const MapValue& v) { return v.Size() == 1; })));
+  EXPECT_THAT(map_value, MapValueIs(Truly([](const MapValue& v) {
+                auto size = v.Size();
+                return size.ok() && *size == 1;
+              })));
 }
 
 // TODO(uncreated-issue/66): struct coverage in follow-up.

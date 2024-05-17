@@ -184,9 +184,14 @@ ValueView LookupInList(const ListValue& cel_list, const Value& key,
   }
 
   int64_t idx = *maybe_idx;
-  if (idx < 0 || idx >= cel_list.Size()) {
+  auto size = cel_list.Size();
+  if (!size.ok()) {
+    scratch = frame.value_manager().CreateErrorValue(size.status());
+    return ValueView{scratch};
+  }
+  if (idx < 0 || idx >= *size) {
     scratch = frame.value_manager().CreateErrorValue(absl::UnknownError(
-        absl::StrCat("Index error: index=", idx, " size=", cel_list.Size())));
+        absl::StrCat("Index error: index=", idx, " size=", *size)));
     return ValueView{scratch};
   }
 

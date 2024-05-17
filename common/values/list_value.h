@@ -163,9 +163,9 @@ class ListValue final {
 
   void swap(ListValue& other) noexcept { variant_.swap(other.variant_); }
 
-  bool IsEmpty() const;
+  absl::StatusOr<bool> IsEmpty() const;
 
-  size_t Size() const;
+  absl::StatusOr<size_t> Size() const;
 
   // See ListValueInterface::Get for documentation.
   absl::StatusOr<ValueView> Get(ValueManager& value_manager, size_t index,
@@ -415,9 +415,9 @@ class ListValueView final {
 
   void swap(ListValueView& other) noexcept { variant_.swap(other.variant_); }
 
-  bool IsEmpty() const;
+  absl::StatusOr<bool> IsEmpty() const;
 
-  size_t Size() const;
+  absl::StatusOr<size_t> Size() const;
 
   // See ListValueInterface::Get for documentation.
   absl::StatusOr<ValueView> Get(ValueManager& value_manager, size_t index,

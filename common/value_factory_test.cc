@@ -41,6 +41,7 @@ using common_internal::ProcessLocalTypeCache;
 using testing::TestParamInfo;
 using testing::TestWithParam;
 using testing::UnorderedElementsAreArray;
+using cel::internal::IsOkAndHolds;
 
 enum class ThreadSafety {
   kCompatible,
@@ -180,8 +181,8 @@ TEST_P(ValueFactoryTest, JsonValueArray) {
   EXPECT_EQ(TypeView(value.GetType(type_manager())),
             type_factory().GetDynListType());
   auto list_value = Cast<ListValue>(value);
-  EXPECT_FALSE(list_value.IsEmpty());
-  EXPECT_EQ(list_value.Size(), 6);
+  EXPECT_THAT(list_value.IsEmpty(), IsOkAndHolds(false));
+  EXPECT_THAT(list_value.Size(), IsOkAndHolds(6));
   EXPECT_EQ(list_value.DebugString(),
             "[null, true, 1.0, \"foo\", [null, true, 1.0, \"foo\"], {\"a\": "
             "null, \"b\": true, \"c\": 1.0, \"d\": \"foo\"}]");
@@ -197,8 +198,8 @@ TEST_P(ValueFactoryTest, JsonValueObject) {
   EXPECT_EQ(TypeView(value.GetType(type_manager())),
             type_factory().GetStringDynMapType());
   auto map_value = Cast<MapValue>(value);
-  EXPECT_FALSE(map_value.IsEmpty());
-  EXPECT_EQ(map_value.Size(), 6);
+  EXPECT_THAT(map_value.IsEmpty(), IsOkAndHolds(false));
+  EXPECT_THAT(map_value.Size(), IsOkAndHolds(6));
   EXPECT_EQ(map_value.DebugString(),
             "{\"a\": null, \"b\": true, \"c\": 1.0, \"d\": \"foo\", \"e\": "
             "[null, true, 1.0, \"foo\"], \"f\": {\"a\": null, \"b\": true, "
@@ -207,7 +208,7 @@ TEST_P(ValueFactoryTest, JsonValueObject) {
   ListValue keys;
   ASSERT_OK_AND_ASSIGN(auto keys_view,
                        map_value.ListKeys(value_manager(), keys));
-  EXPECT_EQ(keys_view.Size(), 6);
+  EXPECT_THAT(keys_view.Size(), IsOkAndHolds(6));
 
   ASSERT_OK_AND_ASSIGN(auto keys_iterator,
                        map_value.NewIterator(value_manager()));
@@ -266,8 +267,8 @@ TEST_P(ValueFactoryTest, ListValue) {
                           type_factory().CreateListType(struct_type2))));
 
   auto zero_list_value = value_factory().GetZeroDynListValue();
-  EXPECT_TRUE(zero_list_value.IsEmpty());
-  EXPECT_EQ(zero_list_value.Size(), 0);
+  EXPECT_THAT(zero_list_value.IsEmpty(), IsOkAndHolds(true));
+  EXPECT_THAT(zero_list_value.Size(), IsOkAndHolds(0));
   EXPECT_EQ(zero_list_value.GetType(type_manager()),
             ProcessLocalTypeCache::Get()->GetDynListType());
 }
@@ -295,13 +296,13 @@ TEST_P(ValueFactoryTest, MapValue) {
                                                                struct_type2))));
 
   auto zero_map_value = value_factory().GetZeroDynDynMapValue();
-  EXPECT_TRUE(zero_map_value.IsEmpty());
-  EXPECT_EQ(zero_map_value.Size(), 0);
+  EXPECT_THAT(zero_map_value.IsEmpty(), IsOkAndHolds(true));
+  EXPECT_THAT(zero_map_value.Size(), IsOkAndHolds(0));
   EXPECT_EQ(zero_map_value.GetType(type_manager()),
             ProcessLocalTypeCache::Get()->GetDynDynMapType());
   zero_map_value = value_factory().GetZeroStringDynMapValue();
-  EXPECT_TRUE(zero_map_value.IsEmpty());
-  EXPECT_EQ(zero_map_value.Size(), 0);
+  EXPECT_THAT(zero_map_value.IsEmpty(), IsOkAndHolds(true));
+  EXPECT_THAT(zero_map_value.Size(), IsOkAndHolds(0));
   EXPECT_EQ(zero_map_value.GetType(type_manager()),
             ProcessLocalTypeCache::Get()->GetStringDynMapType());
 }

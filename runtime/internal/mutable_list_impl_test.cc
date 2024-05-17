@@ -27,6 +27,8 @@
 namespace cel::runtime_internal {
 namespace {
 
+using cel::internal::IsOkAndHolds;
+
 TEST(MutableListImplValue, Creation) {
   common_internal::LegacyValueManager value_factory(
       MemoryManagerRef::ReferenceCounting(), TypeProvider::Builtin());
@@ -67,7 +69,7 @@ TEST(MutableListImplValue, ListBuilding) {
 
   ASSERT_OK_AND_ASSIGN(ListValue list_value, std::move(mutable_ref).Build());
 
-  EXPECT_EQ(list_value.Size(), 1);
+  EXPECT_THAT(list_value.Size(), IsOkAndHolds(1));
 
   cel::Value scratch;
 

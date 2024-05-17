@@ -57,8 +57,8 @@ class ListValueTest : public common_internal::ThreadCompatibleValueTest<> {
 
 TEST_P(ListValueTest, Default) {
   ListValue value;
-  EXPECT_TRUE(value.IsEmpty());
-  EXPECT_EQ(value.Size(), 0);
+  EXPECT_THAT(value.IsEmpty(), IsOkAndHolds(true));
+  EXPECT_THAT(value.Size(), IsOkAndHolds(0));
   EXPECT_EQ(value.DebugString(), "[]");
   EXPECT_EQ(value.GetType(type_manager()).element(), DynType());
 }
@@ -95,13 +95,13 @@ TEST_P(ListValueTest, DebugString) {
 TEST_P(ListValueTest, IsEmpty) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
-  EXPECT_FALSE(value.IsEmpty());
+  EXPECT_THAT(value.IsEmpty(), IsOkAndHolds(false));
 }
 
 TEST_P(ListValueTest, Size) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
-  EXPECT_EQ(value.Size(), 3);
+  EXPECT_THAT(value.Size(), IsOkAndHolds(3));
 }
 
 TEST_P(ListValueTest, Get) {
@@ -206,8 +206,8 @@ class ListValueViewTest : public common_internal::ThreadCompatibleValueTest<> {
 
 TEST_P(ListValueViewTest, Default) {
   ListValueView value;
-  EXPECT_TRUE(value.IsEmpty());
-  EXPECT_EQ(value.Size(), 0);
+  EXPECT_THAT(value.IsEmpty(), IsOkAndHolds(true));
+  EXPECT_THAT(value.Size(), IsOkAndHolds(0));
   EXPECT_EQ(value.DebugString(), "[]");
   EXPECT_EQ(value.GetType(type_manager()).element(), DynType());
 }
@@ -245,13 +245,13 @@ TEST_P(ListValueViewTest, DebugString) {
 TEST_P(ListValueViewTest, IsEmpty) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
-  EXPECT_FALSE(ListValueView(value).IsEmpty());
+  EXPECT_THAT(ListValueView(value).IsEmpty(), IsOkAndHolds(false));
 }
 
 TEST_P(ListValueViewTest, Size) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
-  EXPECT_EQ(ListValueView(value).Size(), 3);
+  EXPECT_THAT(ListValueView(value).Size(), IsOkAndHolds(3));
 }
 
 TEST_P(ListValueViewTest, Get) {

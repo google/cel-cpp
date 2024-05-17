@@ -1267,10 +1267,10 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
       // We have a non-legacy `ListValueView`. We are going to have to
       // materialize it in its entirety to `CelList`.
       auto list_value = Cast<ListValueView>(modern_value);
-      if (list_value.IsEmpty()) {
+      CEL_ASSIGN_OR_RETURN(auto list_value_size, list_value.Size());
+      if (list_value_size == 0) {
         return CelValue::CreateList();
       }
-      auto list_value_size = list_value.Size();
       auto* elements = static_cast<CelValue*>(arena->AllocateAligned(
           sizeof(CelValue) * list_value_size, alignof(CelValue)));
       common_internal::LegacyTypeReflector value_provider;
@@ -1299,10 +1299,10 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
       // We have a non-legacy `MapValueView`. We are going to have to
       // materialize it in its entirety to `CelMap`.
       auto map_value = Cast<MapValueView>(modern_value);
-      if (map_value.IsEmpty()) {
+      CEL_ASSIGN_OR_RETURN(auto map_value_size, map_value.Size());
+      if (map_value_size == 0) {
         return CelValue::CreateMap();
       }
-      auto map_value_size = map_value.Size();
       auto* entries = static_cast<CelMapImpl::Entry*>(
           arena->AllocateAligned(sizeof(CelMapImpl::Entry) * map_value_size,
                                  alignof(CelMapImpl::Entry)));
@@ -1474,10 +1474,10 @@ absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
       // We have a non-legacy `ListValueView`. We are going to have to
       // materialize it in its entirety to `CelList`.
       auto list_value = Cast<ListValue>(value);
-      if (list_value.IsEmpty()) {
+      CEL_ASSIGN_OR_RETURN(auto list_value_size, list_value.Size());
+      if (list_value_size == 0) {
         return CelValue::CreateList();
       }
-      auto list_value_size = list_value.Size();
       auto* elements = static_cast<CelValue*>(arena->AllocateAligned(
           sizeof(CelValue) * list_value_size, alignof(CelValue)));
       common_internal::LegacyTypeReflector value_provider;
@@ -1505,10 +1505,10 @@ absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
       // We have a non-legacy `MapValueView`. We are going to have to
       // materialize it in its entirety to `CelMap`.
       auto map_value = Cast<MapValue>(value);
-      if (map_value.IsEmpty()) {
+      CEL_ASSIGN_OR_RETURN(auto map_value_size, map_value.Size());
+      if (map_value_size == 0) {
         return CelValue::CreateMap();
       }
-      auto map_value_size = map_value.Size();
       auto* entries = static_cast<CelMapImpl::Entry*>(
           arena->AllocateAligned(sizeof(CelMapImpl::Entry) * map_value_size,
                                  alignof(CelMapImpl::Entry)));

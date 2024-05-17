@@ -272,7 +272,7 @@ TEST(CreateDirectListStep, Basic) {
   ASSERT_OK(step->Evaluate(frame, result, attr));
 
   ASSERT_TRUE(InstanceOf<ListValue>(result));
-  EXPECT_EQ(Cast<ListValue>(result).Size(), 2);
+  EXPECT_THAT(Cast<ListValue>(result).Size(), IsOkAndHolds(2));
 }
 
 TEST(CreateDirectListStep, ForwardFirstError) {
@@ -441,7 +441,7 @@ TEST(CreateDirectListStep, OptionalPresentSet) {
 
   ASSERT_TRUE(InstanceOf<ListValue>(result));
   auto list = Cast<ListValue>(result);
-  EXPECT_THAT(list.Size(), Eq(2));
+  EXPECT_THAT(list.Size(), IsOkAndHolds(2));
   EXPECT_THAT(list.Get(value_factory.get(), 0), IsOkAndHolds(IntValueIs(1)));
   EXPECT_THAT(list.Get(value_factory.get(), 1), IsOkAndHolds(IntValueIs(2)));
 }
@@ -467,7 +467,7 @@ TEST(CreateDirectListStep, OptionalAbsentNotSet) {
 
   ASSERT_TRUE(InstanceOf<ListValue>(result));
   auto list = Cast<ListValue>(result);
-  EXPECT_THAT(list.Size(), Eq(1));
+  EXPECT_THAT(list.Size(), IsOkAndHolds(1));
   EXPECT_THAT(list.Get(value_factory.get(), 0), IsOkAndHolds(IntValueIs(1)));
 }
 

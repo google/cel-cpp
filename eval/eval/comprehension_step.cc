@@ -367,7 +367,9 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
 
   frame->comprehension_slots().Set(accu_slot_, state[POS_LOOP_STEP_ACCU]);
 
-  if (next_index >= static_cast<int64_t>(iter_range_list.Size())) {
+  CEL_ASSIGN_OR_RETURN(auto iter_range_list_size, iter_range_list.Size());
+
+  if (next_index >= static_cast<int64_t>(iter_range_list_size)) {
     // Make sure the iter var is out of scope.
     frame->comprehension_slots().ClearSlot(iter_slot_);
     // pop loop step

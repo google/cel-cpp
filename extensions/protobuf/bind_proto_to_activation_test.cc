@@ -128,7 +128,11 @@ MATCHER_P(IsListValueOfSize, size, "") {
   const Value& v = arg;
 
   auto value = As<ListValue>(v);
-  return value && value->Size() == size;
+  if (!value) {
+    return false;
+  }
+  auto s = value->Size();
+  return s.ok() && *s == size;
 }
 
 TEST_P(BindProtoToActivationTest, BindProtoToActivationRepeated) {
@@ -186,7 +190,11 @@ MATCHER_P(IsMapValueOfSize, size, "") {
   const Value& v = arg;
 
   auto value = As<MapValue>(v);
-  return value && value->Size() == size;
+  if (!value) {
+    return false;
+  }
+  auto s = value->Size();
+  return s.ok() && *s == size;
 }
 
 TEST_P(BindProtoToActivationTest, BindProtoToActivationMap) {

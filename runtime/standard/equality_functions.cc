@@ -128,11 +128,13 @@ absl::StatusOr<absl::optional<bool>> ListEqual(ValueManager& factory,
   if (&lhs == &rhs) {
     return true;
   }
-  if (lhs.Size() != rhs.Size()) {
+  CEL_ASSIGN_OR_RETURN(auto lhs_size, lhs.Size());
+  CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
+  if (lhs_size != rhs_size) {
     return false;
   }
 
-  for (int i = 0; i < lhs.Size(); ++i) {
+  for (int i = 0; i < lhs_size; ++i) {
     CEL_ASSIGN_OR_RETURN(auto lhs_i, lhs.Get(factory, i));
     CEL_ASSIGN_OR_RETURN(auto rhs_i, rhs.Get(factory, i));
     CEL_ASSIGN_OR_RETURN(absl::optional<bool> eq,
