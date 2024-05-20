@@ -42,17 +42,70 @@ class DurationValue;
 class DurationValueView;
 class TypeManager;
 
+namespace common_internal {
+
+struct DurationValueBase {
+  static constexpr ValueKind kKind = ValueKind::kDuration;
+
+  constexpr explicit DurationValueBase(absl::Duration value) noexcept
+      : value(value) {}
+
+  DurationValueBase() = default;
+  DurationValueBase(const DurationValueBase&) = default;
+  DurationValueBase(DurationValueBase&&) = default;
+  DurationValueBase& operator=(const DurationValueBase&) = default;
+  DurationValueBase& operator=(DurationValueBase&&) = default;
+
+  constexpr ValueKind kind() const { return kKind; }
+
+  DurationType GetType(TypeManager&) const { return DurationType(); }
+
+  absl::string_view GetTypeName() const { return DurationType::kName; }
+
+  std::string DebugString() const;
+
+  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
+
+  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
+
+  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
+
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Any> ConvertToAny(
+      AnyToJsonConverter&,
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
+
+  bool IsZeroValue() const { return NativeValue() == absl::ZeroDuration(); }
+
+  constexpr absl::Duration NativeValue() const { return value; }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  constexpr operator absl::Duration() const noexcept { return value; }
+
+  absl::Duration value = absl::ZeroDuration();
+};
+
+}  // namespace common_internal
+
 // `DurationValue` represents values of the primitive `duration` type.
-class DurationValue final {
+class DurationValue final : private common_internal::DurationValueBase {
+ private:
+  using Base = DurationValueBase;
+
  public:
   using view_alternative_type = DurationValueView;
 
-  static constexpr ValueKind kKind = ValueKind::kDuration;
-
-  constexpr explicit DurationValue(absl::Duration value) noexcept
-      : value_(value) {}
-
-  constexpr explicit DurationValue(DurationValueView value) noexcept;
+  using Base::kKind;
 
   DurationValue() = default;
   DurationValue(const DurationValue&) = default;
@@ -60,75 +113,53 @@ class DurationValue final {
   DurationValue& operator=(const DurationValue&) = default;
   DurationValue& operator=(DurationValue&&) = default;
 
-  constexpr ValueKind kind() const { return kKind; }
+  constexpr explicit DurationValue(absl::Duration value) noexcept
+      : Base(value) {}
 
-  DurationType GetType(TypeManager&) const { return DurationType(); }
+  constexpr explicit DurationValue(DurationValueView other) noexcept;
 
-  absl::string_view GetTypeName() const { return DurationType::kName; }
+  using Base::kind;
 
-  std::string DebugString() const;
+  using Base::GetType;
 
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
+  using Base::GetTypeName;
 
-  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
+  using Base::DebugString;
 
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
+  using Base::GetSerializedSize;
 
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+  using Base::SerializeTo;
 
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter&,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+  using Base::Serialize;
 
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
+  using Base::GetTypeUrl;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
+  using Base::ConvertToAny;
 
-  bool IsZeroValue() const { return NativeValue() == absl::ZeroDuration(); }
+  using Base::ConvertToJson;
 
-  constexpr absl::Duration NativeValue() const { return value_; }
+  using Base::Equal;
 
-  void swap(DurationValue& other) noexcept {
+  using Base::IsZeroValue;
+
+  using Base::NativeValue;
+
+  using Base::operator absl::Duration;
+
+  friend void swap(DurationValue& lhs, DurationValue& rhs) noexcept {
     using std::swap;
-    swap(value_, other.value_);
+    swap(lhs.value, rhs.value);
   }
 
  private:
   friend class DurationValueView;
-
-  absl::Duration value_ = absl::ZeroDuration();
 };
 
-inline void swap(DurationValue& lhs, DurationValue& rhs) noexcept {
-  lhs.swap(rhs);
+inline bool operator==(DurationValue lhs, DurationValue rhs) {
+  return static_cast<absl::Duration>(lhs) == static_cast<absl::Duration>(rhs);
 }
 
-constexpr bool operator==(DurationValue lhs, DurationValue rhs) {
-  return lhs.NativeValue() == rhs.NativeValue();
-}
-
-constexpr bool operator==(DurationValue lhs, absl::Duration rhs) {
-  return lhs.NativeValue() == rhs;
-}
-
-constexpr bool operator==(absl::Duration lhs, DurationValue rhs) {
-  return lhs == rhs.NativeValue();
-}
-
-constexpr bool operator!=(DurationValue lhs, DurationValue rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(DurationValue lhs, absl::Duration rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(absl::Duration lhs, DurationValue rhs) {
+inline bool operator!=(DurationValue lhs, DurationValue rhs) {
   return !operator==(lhs, rhs);
 }
 
@@ -136,18 +167,14 @@ inline std::ostream& operator<<(std::ostream& out, DurationValue value) {
   return out << value.DebugString();
 }
 
-class DurationValueView final {
+class DurationValueView final : private common_internal::DurationValueBase {
+ private:
+  using Base = DurationValueBase;
+
  public:
   using alternative_type = DurationValue;
 
-  static constexpr ValueKind kKind = DurationValue::kKind;
-
-  constexpr explicit DurationValueView(absl::Duration value) noexcept
-      : value_(value) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr DurationValueView(DurationValue value) noexcept
-      : DurationValueView(value.value_) {}
+  using Base::kKind;
 
   DurationValueView() = default;
   DurationValueView(const DurationValueView&) = default;
@@ -155,93 +182,55 @@ class DurationValueView final {
   DurationValueView& operator=(const DurationValueView&) = default;
   DurationValueView& operator=(DurationValueView&&) = default;
 
-  constexpr ValueKind kind() const { return kKind; }
+  constexpr explicit DurationValueView(absl::Duration value) noexcept
+      : Base(value) {}
 
-  DurationType GetType(TypeManager&) const { return DurationType(); }
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  constexpr DurationValueView(DurationValue other) noexcept
+      : DurationValueView(static_cast<absl::Duration>(other)) {}
 
-  absl::string_view GetTypeName() const { return DurationType::kName; }
+  using Base::kind;
 
-  std::string DebugString() const;
+  using Base::GetType;
 
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
+  using Base::GetTypeName;
 
-  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
+  using Base::DebugString;
 
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
+  using Base::GetSerializedSize;
 
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+  using Base::SerializeTo;
 
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter&,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+  using Base::Serialize;
 
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
+  using Base::GetTypeUrl;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
+  using Base::ConvertToAny;
 
-  bool IsZeroValue() const { return NativeValue() == absl::ZeroDuration(); }
+  using Base::ConvertToJson;
 
-  constexpr absl::Duration NativeValue() const { return value_; }
+  using Base::Equal;
 
-  void swap(DurationValueView& other) noexcept {
+  using Base::IsZeroValue;
+
+  using Base::NativeValue;
+
+  using Base::operator absl::Duration;
+
+  friend void swap(DurationValueView& lhs, DurationValueView& rhs) noexcept {
     using std::swap;
-    swap(value_, other.value_);
+    swap(lhs.value, rhs.value);
   }
 
  private:
   friend class DurationValue;
-
-  // We pass around by value, as its cheaper than passing around a pointer due
-  // to the performance degradation from pointer chasing.
-  absl::Duration value_ = absl::ZeroDuration();
 };
 
-inline void swap(DurationValueView& lhs, DurationValueView& rhs) noexcept {
-  lhs.swap(rhs);
+inline bool operator==(DurationValueView lhs, DurationValueView rhs) {
+  return static_cast<absl::Duration>(lhs) == static_cast<absl::Duration>(rhs);
 }
 
-constexpr bool operator==(DurationValueView lhs, DurationValueView rhs) {
-  return lhs.NativeValue() == rhs.NativeValue();
-}
-
-constexpr bool operator==(DurationValueView lhs, absl::Duration rhs) {
-  return lhs.NativeValue() == rhs;
-}
-
-constexpr bool operator==(absl::Duration lhs, DurationValueView rhs) {
-  return lhs == rhs.NativeValue();
-}
-
-constexpr bool operator==(DurationValueView lhs, DurationValue rhs) {
-  return lhs.NativeValue() == rhs.NativeValue();
-}
-
-constexpr bool operator==(DurationValue lhs, DurationValueView rhs) {
-  return lhs.NativeValue() == rhs.NativeValue();
-}
-
-constexpr bool operator!=(DurationValueView lhs, DurationValueView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(DurationValueView lhs, absl::Duration rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(absl::Duration lhs, DurationValueView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(DurationValueView lhs, DurationValue rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(DurationValue lhs, DurationValueView rhs) {
+inline bool operator!=(DurationValueView lhs, DurationValueView rhs) {
   return !operator==(lhs, rhs);
 }
 
@@ -249,8 +238,8 @@ inline std::ostream& operator<<(std::ostream& out, DurationValueView value) {
   return out << value.DebugString();
 }
 
-inline constexpr DurationValue::DurationValue(DurationValueView value) noexcept
-    : DurationValue(value.value_) {}
+inline constexpr DurationValue::DurationValue(DurationValueView other) noexcept
+    : DurationValue(static_cast<absl::Duration>(other)) {}
 
 }  // namespace cel
 

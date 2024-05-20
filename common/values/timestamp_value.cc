@@ -29,7 +29,7 @@
 #include "internal/status_macros.h"
 #include "internal/time.h"
 
-namespace cel {
+namespace cel::common_internal {
 
 namespace {
 
@@ -39,95 +39,47 @@ std::string TimestampDebugString(absl::Time value) {
 
 }  // namespace
 
-std::string TimestampValue::DebugString() const {
+std::string TimestampValueBase::DebugString() const {
   return TimestampDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> TimestampValue::GetSerializedSize(
+absl::StatusOr<size_t> TimestampValueBase::GetSerializedSize(
     AnyToJsonConverter&) const {
   return internal::SerializedTimestampSize(NativeValue());
 }
 
-absl::Status TimestampValue::SerializeTo(AnyToJsonConverter&,
-                                         absl::Cord& value) const {
-  return internal::SerializeTimestamp(NativeValue(), value);
-}
-
-absl::StatusOr<absl::Cord> TimestampValue::Serialize(
-    AnyToJsonConverter& value_manager) const {
-  absl::Cord value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
-  return value;
-}
-
-absl::StatusOr<std::string> TimestampValue::GetTypeUrl(
-    absl::string_view prefix) const {
-  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Timestamp");
-}
-
-absl::StatusOr<Any> TimestampValue::ConvertToAny(
-    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
-  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
-  return MakeAny(std::move(type_url), std::move(value));
-}
-
-absl::StatusOr<Json> TimestampValue::ConvertToJson(AnyToJsonConverter&) const {
-  CEL_ASSIGN_OR_RETURN(auto json,
-                       internal::EncodeTimestampToJson(NativeValue()));
-  return JsonString(std::move(json));
-}
-
-absl::StatusOr<ValueView> TimestampValue::Equal(ValueManager&, ValueView other,
-                                                Value&) const {
-  if (auto other_value = As<TimestampValueView>(other);
-      other_value.has_value()) {
-    return BoolValueView{NativeValue() == other_value->NativeValue()};
-  }
-  return BoolValueView{false};
-}
-
-std::string TimestampValueView::DebugString() const {
-  return TimestampDebugString(NativeValue());
-}
-
-absl::StatusOr<size_t> TimestampValueView::GetSerializedSize(
-    AnyToJsonConverter&) const {
-  return internal::SerializedTimestampSize(NativeValue());
-}
-
-absl::Status TimestampValueView::SerializeTo(AnyToJsonConverter&,
+absl::Status TimestampValueBase::SerializeTo(AnyToJsonConverter&,
                                              absl::Cord& value) const {
   return internal::SerializeTimestamp(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> TimestampValueView::Serialize(
+absl::StatusOr<absl::Cord> TimestampValueBase::Serialize(
     AnyToJsonConverter& value_manager) const {
   absl::Cord value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
 }
 
-absl::StatusOr<std::string> TimestampValueView::GetTypeUrl(
+absl::StatusOr<std::string> TimestampValueBase::GetTypeUrl(
     absl::string_view prefix) const {
   return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Timestamp");
 }
 
-absl::StatusOr<Any> TimestampValueView::ConvertToAny(
+absl::StatusOr<Any> TimestampValueBase::ConvertToAny(
     AnyToJsonConverter& value_manager, absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> TimestampValueView::ConvertToJson(
+absl::StatusOr<Json> TimestampValueBase::ConvertToJson(
     AnyToJsonConverter&) const {
   CEL_ASSIGN_OR_RETURN(auto json,
                        internal::EncodeTimestampToJson(NativeValue()));
   return JsonString(std::move(json));
 }
 
-absl::StatusOr<ValueView> TimestampValueView::Equal(ValueManager&,
+absl::StatusOr<ValueView> TimestampValueBase::Equal(ValueManager&,
                                                     ValueView other,
                                                     Value&) const {
   if (auto other_value = As<TimestampValueView>(other);
@@ -137,4 +89,11 @@ absl::StatusOr<ValueView> TimestampValueView::Equal(ValueManager&,
   return BoolValueView{false};
 }
 
-}  // namespace cel
+absl::StatusOr<Value> TimestampValueBase::Equal(ValueManager& value_manager,
+                                                ValueView other) const {
+  Value scratch;
+  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
+  return Value{result};
+}
+
+}  // namespace cel::common_internal

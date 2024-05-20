@@ -29,7 +29,7 @@
 #include "internal/status_macros.h"
 #include "internal/time.h"
 
-namespace cel {
+namespace cel::common_internal {
 
 namespace {
 
@@ -39,95 +39,47 @@ std::string DurationDebugString(absl::Duration value) {
 
 }  // namespace
 
-std::string DurationValue::DebugString() const {
+std::string DurationValueBase::DebugString() const {
   return DurationDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> DurationValue::GetSerializedSize(
+absl::StatusOr<size_t> DurationValueBase::GetSerializedSize(
     AnyToJsonConverter&) const {
   return internal::SerializedDurationSize(NativeValue());
 }
 
-absl::Status DurationValue::SerializeTo(AnyToJsonConverter&,
-                                        absl::Cord& value) const {
-  return internal::SerializeDuration(NativeValue(), value);
-}
-
-absl::StatusOr<absl::Cord> DurationValue::Serialize(
-    AnyToJsonConverter& value_manager) const {
-  absl::Cord value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
-  return value;
-}
-
-absl::StatusOr<std::string> DurationValue::GetTypeUrl(
-    absl::string_view prefix) const {
-  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Duration");
-}
-
-absl::StatusOr<Any> DurationValue::ConvertToAny(
-    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
-  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
-  return MakeAny(std::move(type_url), std::move(value));
-}
-
-absl::StatusOr<Json> DurationValue::ConvertToJson(AnyToJsonConverter&) const {
-  CEL_ASSIGN_OR_RETURN(auto json,
-                       internal::EncodeDurationToJson(NativeValue()));
-  return JsonString(std::move(json));
-}
-
-absl::StatusOr<ValueView> DurationValue::Equal(ValueManager&, ValueView other,
-                                               Value&) const {
-  if (auto other_value = As<DurationValueView>(other);
-      other_value.has_value()) {
-    return BoolValueView{NativeValue() == other_value->NativeValue()};
-  }
-  return BoolValueView{false};
-}
-
-std::string DurationValueView::DebugString() const {
-  return DurationDebugString(NativeValue());
-}
-
-absl::StatusOr<size_t> DurationValueView::GetSerializedSize(
-    AnyToJsonConverter&) const {
-  return internal::SerializedDurationSize(NativeValue());
-}
-
-absl::Status DurationValueView::SerializeTo(AnyToJsonConverter&,
+absl::Status DurationValueBase::SerializeTo(AnyToJsonConverter&,
                                             absl::Cord& value) const {
   return internal::SerializeDuration(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> DurationValueView::Serialize(
+absl::StatusOr<absl::Cord> DurationValueBase::Serialize(
     AnyToJsonConverter& value_manager) const {
   absl::Cord value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
 }
 
-absl::StatusOr<std::string> DurationValueView::GetTypeUrl(
+absl::StatusOr<std::string> DurationValueBase::GetTypeUrl(
     absl::string_view prefix) const {
   return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Duration");
 }
 
-absl::StatusOr<Any> DurationValueView::ConvertToAny(
+absl::StatusOr<Any> DurationValueBase::ConvertToAny(
     AnyToJsonConverter& value_manager, absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> DurationValueView::ConvertToJson(
+absl::StatusOr<Json> DurationValueBase::ConvertToJson(
     AnyToJsonConverter&) const {
   CEL_ASSIGN_OR_RETURN(auto json,
                        internal::EncodeDurationToJson(NativeValue()));
   return JsonString(std::move(json));
 }
 
-absl::StatusOr<ValueView> DurationValueView::Equal(ValueManager&,
+absl::StatusOr<ValueView> DurationValueBase::Equal(ValueManager&,
                                                    ValueView other,
                                                    Value&) const {
   if (auto other_value = As<DurationValueView>(other);
@@ -137,4 +89,11 @@ absl::StatusOr<ValueView> DurationValueView::Equal(ValueManager&,
   return BoolValueView{false};
 }
 
-}  // namespace cel
+absl::StatusOr<Value> DurationValueBase::Equal(ValueManager& value_manager,
+                                               ValueView other) const {
+  Value scratch;
+  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
+  return Value{result};
+}
+
+}  // namespace cel::common_internal
