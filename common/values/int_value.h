@@ -42,22 +42,18 @@ class IntValue;
 class IntValueView;
 class TypeManager;
 
-// `IntValue` represents values of the primitive `int` type.
-class IntValue final {
- public:
-  using view_alternative_type = IntValueView;
+namespace common_internal {
 
+struct IntValueBase {
   static constexpr ValueKind kKind = ValueKind::kInt;
 
-  constexpr explicit IntValue(int64_t value) noexcept : value_(value) {}
+  constexpr explicit IntValueBase(int64_t value) noexcept : value(value) {}
 
-  constexpr explicit IntValue(IntValueView value) noexcept;
-
-  IntValue() = default;
-  IntValue(const IntValue&) = default;
-  IntValue(IntValue&&) = default;
-  IntValue& operator=(const IntValue&) = default;
-  IntValue& operator=(IntValue&&) = default;
+  IntValueBase() = default;
+  IntValueBase(const IntValueBase&) = default;
+  IntValueBase(IntValueBase&&) = default;
+  IntValueBase& operator=(const IntValueBase&) = default;
+  IntValueBase& operator=(IntValueBase&&) = default;
 
   constexpr ValueKind kind() const { return kKind; }
 
@@ -98,20 +94,72 @@ class IntValue final {
 
   bool IsZeroValue() const { return NativeValue() == 0; }
 
-  constexpr int64_t NativeValue() const { return value_; }
+  constexpr int64_t NativeValue() const { return value; }
 
-  void swap(IntValue& other) noexcept {
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  constexpr operator int64_t() const noexcept { return value; }
+
+  int64_t value = 0;
+};
+
+}  // namespace common_internal
+
+// `IntValue` represents values of the primitive `int` type.
+class IntValue final : private common_internal::IntValueBase {
+ private:
+  using Base = IntValueBase;
+
+ public:
+  using view_alternative_type = IntValueView;
+
+  using Base::kKind;
+
+  IntValue() = default;
+  IntValue(const IntValue&) = default;
+  IntValue(IntValue&&) = default;
+  IntValue& operator=(const IntValue&) = default;
+  IntValue& operator=(IntValue&&) = default;
+
+  constexpr explicit IntValue(int64_t value) noexcept : Base(value) {}
+
+  constexpr explicit IntValue(IntValueView other) noexcept;
+
+  using Base::kind;
+
+  using Base::GetType;
+
+  using Base::GetTypeName;
+
+  using Base::DebugString;
+
+  using Base::GetSerializedSize;
+
+  using Base::SerializeTo;
+
+  using Base::Serialize;
+
+  using Base::GetTypeUrl;
+
+  using Base::ConvertToAny;
+
+  using Base::ConvertToJson;
+
+  using Base::Equal;
+
+  using Base::IsZeroValue;
+
+  using Base::NativeValue;
+
+  using Base::operator int64_t;
+
+  friend void swap(IntValue& lhs, IntValue& rhs) noexcept {
     using std::swap;
-    swap(value_, other.value_);
+    swap(lhs.value, rhs.value);
   }
 
  private:
   friend class IntValueView;
-
-  int64_t value_ = 0;
 };
-
-inline void swap(IntValue& lhs, IntValue& rhs) noexcept { lhs.swap(rhs); }
 
 template <typename H>
 H AbslHashValue(H state, IntValue value) {
@@ -122,53 +170,22 @@ constexpr bool operator==(IntValue lhs, IntValue rhs) {
   return lhs.NativeValue() == rhs.NativeValue();
 }
 
-constexpr bool operator==(IntValue lhs, int64_t rhs) {
-  return lhs.NativeValue() == rhs;
-}
-
-constexpr bool operator==(int64_t lhs, IntValue rhs) {
-  return lhs == rhs.NativeValue();
-}
-
 constexpr bool operator!=(IntValue lhs, IntValue rhs) {
   return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(IntValue lhs, int64_t rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(int64_t lhs, IntValue rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator<(IntValue lhs, IntValue rhs) {
-  return lhs.NativeValue() < rhs.NativeValue();
-}
-
-constexpr bool operator<(IntValue lhs, int64_t rhs) {
-  return lhs.NativeValue() < rhs;
-}
-
-constexpr bool operator<(int64_t lhs, IntValue rhs) {
-  return lhs < rhs.NativeValue();
 }
 
 inline std::ostream& operator<<(std::ostream& out, IntValue value) {
   return out << value.DebugString();
 }
 
-class IntValueView final {
+class IntValueView final : private common_internal::IntValueBase {
+ private:
+  using Base = IntValueBase;
+
  public:
   using alternative_type = IntValue;
 
-  static constexpr ValueKind kKind = IntValue::kKind;
-
-  constexpr explicit IntValueView(int64_t value) noexcept : value_(value) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr IntValueView(IntValue value) noexcept
-      : IntValueView(value.value_) {}
+  using Base::kKind;
 
   IntValueView() = default;
   IntValueView(const IntValueView&) = default;
@@ -176,63 +193,48 @@ class IntValueView final {
   IntValueView& operator=(const IntValueView&) = default;
   IntValueView& operator=(IntValueView&&) = default;
 
-  constexpr ValueKind kind() const { return kKind; }
+  constexpr explicit IntValueView(int64_t value) noexcept : Base(value) {}
 
-  IntType GetType(TypeManager&) const { return IntType(); }
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  constexpr IntValueView(IntValue other) noexcept
+      : IntValueView(static_cast<int64_t>(other)) {}
 
-  absl::string_view GetTypeName() const { return IntType::kName; }
+  using Base::kind;
 
-  std::string DebugString() const;
+  using Base::GetType;
 
-  // `GetSerializedSize` determines the serialized byte size that would result
-  // from serialization, without performing the serialization. This always
-  // succeeds and only returns `absl::StatusOr` to meet concept requirements.
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
+  using Base::GetTypeName;
 
-  // `SerializeTo` serializes this value and appends it to `value`.
-  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
+  using Base::DebugString;
 
-  // `Serialize` serializes this value and returns it as `absl::Cord`.
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
+  using Base::GetSerializedSize;
 
-  // 'GetTypeUrl' returns the type URL that can be used as the type URL for
-  // `Any`.
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+  using Base::SerializeTo;
 
-  // 'ConvertToAny' converts this value to `Any`.
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter&,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+  using Base::Serialize;
 
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
+  using Base::GetTypeUrl;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
+  using Base::ConvertToAny;
 
-  bool IsZeroValue() const { return NativeValue() == 0; }
+  using Base::ConvertToJson;
 
-  constexpr int64_t NativeValue() const { return value_; }
+  using Base::Equal;
 
-  void swap(IntValueView& other) noexcept {
+  using Base::IsZeroValue;
+
+  using Base::NativeValue;
+
+  using Base::operator int64_t;
+
+  friend void swap(IntValueView& lhs, IntValueView& rhs) noexcept {
     using std::swap;
-    swap(value_, other.value_);
+    swap(lhs.value, rhs.value);
   }
 
  private:
   friend class IntValue;
-
-  // We pass around by value, as its cheaper than passing around a pointer due
-  // to the performance degradation from pointer chasing.
-  int64_t value_ = 0;
 };
-
-inline void swap(IntValueView& lhs, IntValueView& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 template <typename H>
 H AbslHashValue(H state, IntValueView value) {
@@ -243,68 +245,16 @@ constexpr bool operator==(IntValueView lhs, IntValueView rhs) {
   return lhs.NativeValue() == rhs.NativeValue();
 }
 
-constexpr bool operator==(IntValueView lhs, int64_t rhs) {
-  return lhs.NativeValue() == rhs;
-}
-
-constexpr bool operator==(int64_t lhs, IntValueView rhs) {
-  return lhs == rhs.NativeValue();
-}
-
-constexpr bool operator==(IntValueView lhs, IntValue rhs) {
-  return lhs.NativeValue() == rhs.NativeValue();
-}
-
-constexpr bool operator==(IntValue lhs, IntValueView rhs) {
-  return lhs.NativeValue() == rhs.NativeValue();
-}
-
 constexpr bool operator!=(IntValueView lhs, IntValueView rhs) {
   return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(IntValueView lhs, int64_t rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(int64_t lhs, IntValueView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(IntValueView lhs, IntValue rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(IntValue lhs, IntValueView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator<(IntValueView lhs, IntValueView rhs) {
-  return lhs.NativeValue() < rhs.NativeValue();
-}
-
-constexpr bool operator<(IntValueView lhs, int64_t rhs) {
-  return lhs.NativeValue() < rhs;
-}
-
-constexpr bool operator<(int64_t lhs, IntValueView rhs) {
-  return lhs < rhs.NativeValue();
-}
-
-constexpr bool operator<(IntValueView lhs, IntValue rhs) {
-  return lhs.NativeValue() < rhs.NativeValue();
-}
-
-constexpr bool operator<(IntValue lhs, IntValueView rhs) {
-  return lhs.NativeValue() < rhs.NativeValue();
 }
 
 inline std::ostream& operator<<(std::ostream& out, IntValueView value) {
   return out << value.DebugString();
 }
 
-inline constexpr IntValue::IntValue(IntValueView value) noexcept
-    : IntValue(value.value_) {}
+inline constexpr IntValue::IntValue(IntValueView other) noexcept
+    : IntValue(static_cast<int64_t>(other)) {}
 
 }  // namespace cel
 

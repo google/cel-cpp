@@ -27,7 +27,7 @@
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
 
-namespace cel {
+namespace cel::common_internal {
 
 namespace {
 
@@ -35,88 +35,44 @@ std::string BoolDebugString(bool value) { return value ? "true" : "false"; }
 
 }  // namespace
 
-std::string BoolValue::DebugString() const {
+std::string BoolValueBase::DebugString() const {
   return BoolDebugString(NativeValue());
 }
 
-absl::StatusOr<Json> BoolValue::ConvertToJson(AnyToJsonConverter&) const {
+absl::StatusOr<Json> BoolValueBase::ConvertToJson(AnyToJsonConverter&) const {
   return NativeValue();
 }
 
-std::string BoolValueView::DebugString() const {
-  return BoolDebugString(NativeValue());
-}
-
-absl::StatusOr<size_t> BoolValue::GetSerializedSize(AnyToJsonConverter&) const {
-  return internal::SerializedBoolValueSize(NativeValue());
-}
-
-absl::Status BoolValue::SerializeTo(AnyToJsonConverter&,
-                                    absl::Cord& value) const {
-  return internal::SerializeBoolValue(NativeValue(), value);
-}
-
-absl::StatusOr<absl::Cord> BoolValue::Serialize(
-    AnyToJsonConverter& value_manager) const {
-  absl::Cord value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
-  return value;
-}
-
-absl::StatusOr<std::string> BoolValue::GetTypeUrl(
-    absl::string_view prefix) const {
-  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.BoolValue");
-}
-
-absl::StatusOr<Any> BoolValue::ConvertToAny(AnyToJsonConverter& value_manager,
-                                            absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
-  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
-  return MakeAny(std::move(type_url), std::move(value));
-}
-
-absl::StatusOr<ValueView> BoolValue::Equal(ValueManager&, ValueView other,
-                                           Value&) const {
-  if (auto other_value = As<BoolValueView>(other); other_value.has_value()) {
-    return BoolValueView{NativeValue() == other_value->NativeValue()};
-  }
-  return BoolValueView{false};
-}
-
-absl::StatusOr<size_t> BoolValueView::GetSerializedSize(
+absl::StatusOr<size_t> BoolValueBase::GetSerializedSize(
     AnyToJsonConverter&) const {
   return internal::SerializedBoolValueSize(NativeValue());
 }
 
-absl::Status BoolValueView::SerializeTo(AnyToJsonConverter&,
+absl::Status BoolValueBase::SerializeTo(AnyToJsonConverter&,
                                         absl::Cord& value) const {
   return internal::SerializeBoolValue(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> BoolValueView::Serialize(
+absl::StatusOr<absl::Cord> BoolValueBase::Serialize(
     AnyToJsonConverter& value_manager) const {
   absl::Cord value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
 }
 
-absl::StatusOr<std::string> BoolValueView::GetTypeUrl(
+absl::StatusOr<std::string> BoolValueBase::GetTypeUrl(
     absl::string_view prefix) const {
   return MakeTypeUrlWithPrefix(prefix, "google.protobuf.BoolValue");
 }
 
-absl::StatusOr<Any> BoolValueView::ConvertToAny(
+absl::StatusOr<Any> BoolValueBase::ConvertToAny(
     AnyToJsonConverter& value_manager, absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> BoolValueView::ConvertToJson(AnyToJsonConverter&) const {
-  return NativeValue();
-}
-
-absl::StatusOr<ValueView> BoolValueView::Equal(ValueManager&, ValueView other,
+absl::StatusOr<ValueView> BoolValueBase::Equal(ValueManager&, ValueView other,
                                                Value&) const {
   if (auto other_value = As<BoolValueView>(other); other_value.has_value()) {
     return BoolValueView{NativeValue() == other_value->NativeValue()};
@@ -124,4 +80,11 @@ absl::StatusOr<ValueView> BoolValueView::Equal(ValueManager&, ValueView other,
   return BoolValueView{false};
 }
 
-}  // namespace cel
+absl::StatusOr<Value> BoolValueBase::Equal(ValueManager& value_manager,
+                                           ValueView other) const {
+  Value scratch;
+  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
+  return Value{result};
+}
+
+}  // namespace cel::common_internal
