@@ -540,20 +540,6 @@ common_internal::ValueVariant ValueView::ToVariant() const {
       variant_);
 }
 
-absl::StatusOr<Value> BoolValue::Equal(ValueManager& value_manager,
-                                       ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
-absl::StatusOr<Value> BoolValueView::Equal(ValueManager& value_manager,
-                                           ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
 absl::StatusOr<Value> BytesValue::Equal(ValueManager& value_manager,
                                         ValueView other) const {
   Value scratch;
@@ -568,34 +554,6 @@ absl::StatusOr<Value> BytesValueView::Equal(ValueManager& value_manager,
   return Value{result};
 }
 
-absl::StatusOr<Value> DoubleValue::Equal(ValueManager& value_manager,
-                                         ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
-absl::StatusOr<Value> DoubleValueView::Equal(ValueManager& value_manager,
-                                             ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
-absl::StatusOr<Value> DurationValue::Equal(ValueManager& value_manager,
-                                           ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
-absl::StatusOr<Value> DurationValueView::Equal(ValueManager& value_manager,
-                                               ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
 absl::StatusOr<Value> ErrorValue::Equal(ValueManager& value_manager,
                                         ValueView other) const {
   Value scratch;
@@ -605,20 +563,6 @@ absl::StatusOr<Value> ErrorValue::Equal(ValueManager& value_manager,
 
 absl::StatusOr<Value> ErrorValueView::Equal(ValueManager& value_manager,
                                             ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
-absl::StatusOr<Value> IntValue::Equal(ValueManager& value_manager,
-                                      ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
-absl::StatusOr<Value> IntValueView::Equal(ValueManager& value_manager,
-                                          ValueView other) const {
   Value scratch;
   CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
   return Value{result};
