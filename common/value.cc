@@ -540,20 +540,6 @@ common_internal::ValueVariant ValueView::ToVariant() const {
       variant_);
 }
 
-absl::StatusOr<Value> BoolValue::Equal(ValueManager& value_manager,
-                                       ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
-absl::StatusOr<Value> BoolValueView::Equal(ValueManager& value_manager,
-                                           ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
 absl::StatusOr<Value> BytesValue::Equal(ValueManager& value_manager,
                                         ValueView other) const {
   Value scratch;
