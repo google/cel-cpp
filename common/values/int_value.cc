@@ -30,7 +30,7 @@
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
 
-namespace cel {
+namespace cel::common_internal {
 
 namespace {
 
@@ -38,98 +38,44 @@ std::string IntDebugString(int64_t value) { return absl::StrCat(value); }
 
 }  // namespace
 
-std::string IntValue::DebugString() const {
+std::string IntValueBase::DebugString() const {
   return IntDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> IntValue::GetSerializedSize(AnyToJsonConverter&) const {
-  return internal::SerializedInt64ValueSize(NativeValue());
-}
-
-absl::Status IntValue::SerializeTo(AnyToJsonConverter&,
-                                   absl::Cord& value) const {
-  return internal::SerializeInt64Value(NativeValue(), value);
-}
-
-absl::StatusOr<absl::Cord> IntValue::Serialize(
-    AnyToJsonConverter& value_manager) const {
-  absl::Cord value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
-  return value;
-}
-
-absl::StatusOr<std::string> IntValue::GetTypeUrl(
-    absl::string_view prefix) const {
-  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Int64Value");
-}
-
-absl::StatusOr<Any> IntValue::ConvertToAny(AnyToJsonConverter& value_manager,
-                                           absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
-  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
-  return MakeAny(std::move(type_url), std::move(value));
-}
-
-absl::StatusOr<Json> IntValue::ConvertToJson(AnyToJsonConverter&) const {
-  return JsonInt(NativeValue());
-}
-
-absl::StatusOr<ValueView> IntValue::Equal(ValueManager&, ValueView other,
-                                          Value&) const {
-  if (auto other_value = As<IntValueView>(other); other_value.has_value()) {
-    return BoolValueView{NativeValue() == other_value->NativeValue()};
-  }
-  if (auto other_value = As<DoubleValueView>(other); other_value.has_value()) {
-    return BoolValueView{
-        internal::Number::FromInt64(NativeValue()) ==
-        internal::Number::FromDouble(other_value->NativeValue())};
-  }
-  if (auto other_value = As<UintValueView>(other); other_value.has_value()) {
-    return BoolValueView{
-        internal::Number::FromInt64(NativeValue()) ==
-        internal::Number::FromUint64(other_value->NativeValue())};
-  }
-  return BoolValueView{false};
-}
-
-std::string IntValueView::DebugString() const {
-  return IntDebugString(NativeValue());
-}
-
-absl::StatusOr<size_t> IntValueView::GetSerializedSize(
+absl::StatusOr<size_t> IntValueBase::GetSerializedSize(
     AnyToJsonConverter&) const {
   return internal::SerializedInt64ValueSize(NativeValue());
 }
 
-absl::Status IntValueView::SerializeTo(AnyToJsonConverter&,
+absl::Status IntValueBase::SerializeTo(AnyToJsonConverter&,
                                        absl::Cord& value) const {
   return internal::SerializeInt64Value(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> IntValueView::Serialize(
+absl::StatusOr<absl::Cord> IntValueBase::Serialize(
     AnyToJsonConverter& value_manager) const {
   absl::Cord value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
 }
 
-absl::StatusOr<std::string> IntValueView::GetTypeUrl(
+absl::StatusOr<std::string> IntValueBase::GetTypeUrl(
     absl::string_view prefix) const {
   return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Int64Value");
 }
 
-absl::StatusOr<Any> IntValueView::ConvertToAny(
+absl::StatusOr<Any> IntValueBase::ConvertToAny(
     AnyToJsonConverter& value_manager, absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> IntValueView::ConvertToJson(AnyToJsonConverter&) const {
+absl::StatusOr<Json> IntValueBase::ConvertToJson(AnyToJsonConverter&) const {
   return JsonInt(NativeValue());
 }
 
-absl::StatusOr<ValueView> IntValueView::Equal(ValueManager&, ValueView other,
+absl::StatusOr<ValueView> IntValueBase::Equal(ValueManager&, ValueView other,
                                               Value&) const {
   if (auto other_value = As<IntValueView>(other); other_value.has_value()) {
     return BoolValueView{NativeValue() == other_value->NativeValue()};
@@ -147,4 +93,11 @@ absl::StatusOr<ValueView> IntValueView::Equal(ValueManager&, ValueView other,
   return BoolValueView{false};
 }
 
-}  // namespace cel
+absl::StatusOr<Value> IntValueBase::Equal(ValueManager& value_manager,
+                                          ValueView other) const {
+  Value scratch;
+  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
+  return Value{result};
+}
+
+}  // namespace cel::common_internal

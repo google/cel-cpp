@@ -568,20 +568,6 @@ absl::StatusOr<Value> ErrorValueView::Equal(ValueManager& value_manager,
   return Value{result};
 }
 
-absl::StatusOr<Value> IntValue::Equal(ValueManager& value_manager,
-                                      ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
-absl::StatusOr<Value> IntValueView::Equal(ValueManager& value_manager,
-                                          ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
 absl::StatusOr<Value> ListValue::Equal(ValueManager& value_manager,
                                        ValueView other) const {
   Value scratch;
@@ -605,20 +591,6 @@ absl::StatusOr<Value> MapValue::Equal(ValueManager& value_manager,
 
 absl::StatusOr<Value> MapValueView::Equal(ValueManager& value_manager,
                                           ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
-absl::StatusOr<Value> NullValue::Equal(ValueManager& value_manager,
-                                       ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
-absl::StatusOr<Value> NullValueView::Equal(ValueManager& value_manager,
-                                           ValueView other) const {
   Value scratch;
   CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
   return Value{result};
@@ -666,20 +638,6 @@ absl::StatusOr<Value> StructValueView::Equal(ValueManager& value_manager,
   return Value{result};
 }
 
-absl::StatusOr<Value> TimestampValue::Equal(ValueManager& value_manager,
-                                            ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
-absl::StatusOr<Value> TimestampValueView::Equal(ValueManager& value_manager,
-                                                ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
 absl::StatusOr<Value> TypeValue::Equal(ValueManager& value_manager,
                                        ValueView other) const {
   Value scratch;
@@ -688,20 +646,6 @@ absl::StatusOr<Value> TypeValue::Equal(ValueManager& value_manager,
 }
 
 absl::StatusOr<Value> TypeValueView::Equal(ValueManager& value_manager,
-                                           ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
-absl::StatusOr<Value> UintValue::Equal(ValueManager& value_manager,
-                                       ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
-absl::StatusOr<Value> UintValueView::Equal(ValueManager& value_manager,
                                            ValueView other) const {
   Value scratch;
   CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));

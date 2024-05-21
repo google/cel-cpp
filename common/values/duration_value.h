@@ -223,7 +223,7 @@ class DurationValueView final : private common_internal::DurationValueBase {
   }
 
  private:
-  friend class BoolValue;
+  friend class DurationValue;
 };
 
 inline bool operator==(DurationValueView lhs, DurationValueView rhs) {

@@ -22,7 +22,6 @@
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/native_type.h"
-#include "common/type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
 #include "internal/testing.h"

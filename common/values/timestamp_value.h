@@ -42,17 +42,70 @@ class TimestampValue;
 class TimestampValueView;
 class TypeManager;
 
+namespace common_internal {
+
+struct TimestampValueBase {
+  static constexpr ValueKind kKind = ValueKind::kTimestamp;
+
+  constexpr explicit TimestampValueBase(absl::Time value) noexcept
+      : value(value) {}
+
+  TimestampValueBase() = default;
+  TimestampValueBase(const TimestampValueBase&) = default;
+  TimestampValueBase(TimestampValueBase&&) = default;
+  TimestampValueBase& operator=(const TimestampValueBase&) = default;
+  TimestampValueBase& operator=(TimestampValueBase&&) = default;
+
+  constexpr ValueKind kind() const { return kKind; }
+
+  TimestampType GetType(TypeManager&) const { return TimestampType(); }
+
+  absl::string_view GetTypeName() const { return TimestampType::kName; }
+
+  std::string DebugString() const;
+
+  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
+
+  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
+
+  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
+
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Any> ConvertToAny(
+      AnyToJsonConverter&,
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
+
+  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
+                                  Value& scratch
+                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
+
+  bool IsZeroValue() const { return NativeValue() == absl::UnixEpoch(); }
+
+  constexpr absl::Time NativeValue() const { return value; }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  constexpr operator absl::Time() const noexcept { return value; }
+
+  absl::Time value = absl::UnixEpoch();
+};
+
+}  // namespace common_internal
+
 // `TimestampValue` represents values of the primitive `timestamp` type.
-class TimestampValue final {
+class TimestampValue final : private common_internal::TimestampValueBase {
+ private:
+  using Base = TimestampValueBase;
+
  public:
   using view_alternative_type = TimestampValueView;
 
-  static constexpr ValueKind kKind = ValueKind::kTimestamp;
-
-  constexpr explicit TimestampValue(absl::Time value) noexcept
-      : value_(value) {}
-
-  constexpr explicit TimestampValue(TimestampValueView value) noexcept;
+  using Base::kKind;
 
   TimestampValue() = default;
   TimestampValue(const TimestampValue&) = default;
@@ -60,75 +113,52 @@ class TimestampValue final {
   TimestampValue& operator=(const TimestampValue&) = default;
   TimestampValue& operator=(TimestampValue&&) = default;
 
-  constexpr ValueKind kind() const { return kKind; }
+  constexpr explicit TimestampValue(absl::Time value) noexcept : Base(value) {}
 
-  TimestampType GetType(TypeManager&) const { return TimestampType(); }
+  constexpr explicit TimestampValue(TimestampValueView other) noexcept;
 
-  absl::string_view GetTypeName() const { return TimestampType::kName; }
+  using Base::kind;
 
-  std::string DebugString() const;
+  using Base::GetType;
 
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
+  using Base::GetTypeName;
 
-  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
+  using Base::DebugString;
 
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
+  using Base::GetSerializedSize;
 
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+  using Base::SerializeTo;
 
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter&,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+  using Base::Serialize;
 
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
+  using Base::GetTypeUrl;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
+  using Base::ConvertToAny;
 
-  bool IsZeroValue() const { return NativeValue() == absl::UnixEpoch(); }
+  using Base::ConvertToJson;
 
-  constexpr absl::Time NativeValue() const { return value_; }
+  using Base::Equal;
 
-  void swap(TimestampValue& other) noexcept {
+  using Base::IsZeroValue;
+
+  using Base::NativeValue;
+
+  using Base::operator absl::Time;
+
+  friend void swap(TimestampValue& lhs, TimestampValue& rhs) noexcept {
     using std::swap;
-    swap(value_, other.value_);
+    swap(lhs.value, rhs.value);
   }
 
  private:
-  friend class TimestampValueView;
-
-  absl::Time value_ = absl::UnixEpoch();
+  friend class DurationValueView;
 };
-
-inline void swap(TimestampValue& lhs, TimestampValue& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 constexpr bool operator==(TimestampValue lhs, TimestampValue rhs) {
   return lhs.NativeValue() == rhs.NativeValue();
 }
 
-constexpr bool operator==(TimestampValue lhs, absl::Time rhs) {
-  return lhs.NativeValue() == rhs;
-}
-
-constexpr bool operator==(absl::Time lhs, TimestampValue rhs) {
-  return lhs == rhs.NativeValue();
-}
-
 constexpr bool operator!=(TimestampValue lhs, TimestampValue rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(TimestampValue lhs, absl::Time rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(absl::Time lhs, TimestampValue rhs) {
   return !operator==(lhs, rhs);
 }
 
@@ -136,18 +166,14 @@ inline std::ostream& operator<<(std::ostream& out, TimestampValue value) {
   return out << value.DebugString();
 }
 
-class TimestampValueView final {
+class TimestampValueView final : private common_internal::TimestampValueBase {
+ private:
+  using Base = TimestampValueBase;
+
  public:
   using alternative_type = TimestampValue;
 
-  static constexpr ValueKind kKind = TimestampValue::kKind;
-
-  constexpr explicit TimestampValueView(absl::Time value) noexcept
-      : value_(value) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr TimestampValueView(TimestampValue value) noexcept
-      : TimestampValueView(value.value_) {}
+  using Base::kKind;
 
   TimestampValueView() = default;
   TimestampValueView(const TimestampValueView&) = default;
@@ -155,93 +181,55 @@ class TimestampValueView final {
   TimestampValueView& operator=(const TimestampValueView&) = default;
   TimestampValueView& operator=(TimestampValueView&&) = default;
 
-  constexpr ValueKind kind() const { return kKind; }
+  constexpr explicit TimestampValueView(absl::Time value) noexcept
+      : Base(value) {}
 
-  TimestampType GetType(TypeManager&) const { return TimestampType(); }
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  constexpr TimestampValueView(TimestampValue other) noexcept
+      : TimestampValueView(static_cast<absl::Time>(other)) {}
 
-  absl::string_view GetTypeName() const { return TimestampType::kName; }
+  using Base::kind;
 
-  std::string DebugString() const;
+  using Base::GetType;
 
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
+  using Base::GetTypeName;
 
-  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
+  using Base::DebugString;
 
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
+  using Base::GetSerializedSize;
 
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+  using Base::SerializeTo;
 
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter&,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+  using Base::Serialize;
 
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
+  using Base::GetTypeUrl;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
+  using Base::ConvertToAny;
 
-  bool IsZeroValue() const { return NativeValue() == absl::UnixEpoch(); }
+  using Base::ConvertToJson;
 
-  constexpr absl::Time NativeValue() const { return value_; }
+  using Base::Equal;
 
-  void swap(TimestampValueView& other) noexcept {
+  using Base::IsZeroValue;
+
+  using Base::NativeValue;
+
+  using Base::operator absl::Time;
+
+  friend void swap(TimestampValueView& lhs, TimestampValueView& rhs) noexcept {
     using std::swap;
-    swap(value_, other.value_);
+    swap(lhs.value, rhs.value);
   }
 
  private:
-  friend class TimestampValue;
-
-  // We pass around by value, as its cheaper than passing around a pointer due
-  // to the performance degradation from pointer chasing.
-  absl::Time value_ = absl::UnixEpoch();
+  friend class DurationValue;
 };
-
-inline void swap(TimestampValueView& lhs, TimestampValueView& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 constexpr bool operator==(TimestampValueView lhs, TimestampValueView rhs) {
   return lhs.NativeValue() == rhs.NativeValue();
 }
 
-constexpr bool operator==(TimestampValueView lhs, absl::Time rhs) {
-  return lhs.NativeValue() == rhs;
-}
-
-constexpr bool operator==(absl::Time lhs, TimestampValueView rhs) {
-  return lhs == rhs.NativeValue();
-}
-
-constexpr bool operator==(TimestampValueView lhs, TimestampValue rhs) {
-  return lhs.NativeValue() == rhs.NativeValue();
-}
-
-constexpr bool operator==(TimestampValue lhs, TimestampValueView rhs) {
-  return lhs.NativeValue() == rhs.NativeValue();
-}
-
 constexpr bool operator!=(TimestampValueView lhs, TimestampValueView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(TimestampValueView lhs, absl::Time rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(absl::Time lhs, TimestampValueView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(TimestampValueView lhs, TimestampValue rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(TimestampValue lhs, TimestampValueView rhs) {
   return !operator==(lhs, rhs);
 }
 
@@ -250,8 +238,8 @@ inline std::ostream& operator<<(std::ostream& out, TimestampValueView value) {
 }
 
 inline constexpr TimestampValue::TimestampValue(
-    TimestampValueView value) noexcept
-    : TimestampValue(value.value_) {}
+    TimestampValueView other) noexcept
+    : TimestampValue(static_cast<absl::Time>(other)) {}
 
 }  // namespace cel
 
