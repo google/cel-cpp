@@ -41,22 +41,18 @@ class DoubleValue;
 class DoubleValueView;
 class TypeManager;
 
-// `DoubleValue` represents values of the primitive `double` type.
-class DoubleValue final {
- public:
-  using view_alternative_type = DoubleValueView;
+namespace common_internal {
 
+struct DoubleValueBase {
   static constexpr ValueKind kKind = ValueKind::kDouble;
 
-  constexpr explicit DoubleValue(double value) noexcept : value_(value) {}
+  constexpr explicit DoubleValueBase(double value) noexcept : value(value) {}
 
-  constexpr explicit DoubleValue(DoubleValueView value) noexcept;
-
-  DoubleValue() = default;
-  DoubleValue(const DoubleValue&) = default;
-  DoubleValue(DoubleValue&&) = default;
-  DoubleValue& operator=(const DoubleValue&) = default;
-  DoubleValue& operator=(DoubleValue&&) = default;
+  DoubleValueBase() = default;
+  DoubleValueBase(const DoubleValueBase&) = default;
+  DoubleValueBase(DoubleValueBase&&) = default;
+  DoubleValueBase& operator=(const DoubleValueBase&) = default;
+  DoubleValueBase& operator=(DoubleValueBase&&) = default;
 
   constexpr ValueKind kind() const { return kKind; }
 
@@ -97,60 +93,85 @@ class DoubleValue final {
 
   bool IsZeroValue() const { return NativeValue() == 0.0; }
 
-  constexpr double NativeValue() const { return value_; }
+  constexpr double NativeValue() const { return value; }
 
-  void swap(DoubleValue& other) noexcept {
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  constexpr operator double() const noexcept { return value; }
+
+  double value = 0.0;
+};
+
+}  // namespace common_internal
+
+// `DoubleValue` represents values of the primitive `double` type.
+class DoubleValue final : private common_internal::DoubleValueBase {
+ private:
+  using Base = DoubleValueBase;
+
+ public:
+  using view_alternative_type = DoubleValueView;
+
+  using Base::kKind;
+
+  DoubleValue() = default;
+  DoubleValue(const DoubleValue&) = default;
+  DoubleValue(DoubleValue&&) = default;
+  DoubleValue& operator=(const DoubleValue&) = default;
+  DoubleValue& operator=(DoubleValue&&) = default;
+
+  constexpr explicit DoubleValue(double value) noexcept : Base(value) {}
+
+  constexpr explicit DoubleValue(DoubleValueView other) noexcept;
+
+  using Base::kind;
+
+  using Base::GetType;
+
+  using Base::GetTypeName;
+
+  using Base::DebugString;
+
+  using Base::GetSerializedSize;
+
+  using Base::SerializeTo;
+
+  using Base::Serialize;
+
+  using Base::GetTypeUrl;
+
+  using Base::ConvertToAny;
+
+  using Base::ConvertToJson;
+
+  using Base::Equal;
+
+  using Base::IsZeroValue;
+
+  using Base::NativeValue;
+
+  using Base::operator double;
+
+  friend void swap(DoubleValue& lhs, DoubleValue& rhs) noexcept {
     using std::swap;
-    swap(value_, other.value_);
+    swap(lhs.value, rhs.value);
   }
 
  private:
   friend class DoubleValueView;
-
-  double value_ = 0.0;
 };
-
-inline void swap(DoubleValue& lhs, DoubleValue& rhs) noexcept { lhs.swap(rhs); }
-
-constexpr bool operator==(DoubleValue lhs, DoubleValue rhs) {
-  return lhs.NativeValue() == rhs.NativeValue();
-}
-
-constexpr bool operator==(DoubleValue lhs, double rhs) {
-  return lhs.NativeValue() == rhs;
-}
-
-constexpr bool operator==(double lhs, DoubleValue rhs) {
-  return lhs == rhs.NativeValue();
-}
-
-constexpr bool operator!=(DoubleValue lhs, DoubleValue rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(DoubleValue lhs, double rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(double lhs, DoubleValue rhs) {
-  return !operator==(lhs, rhs);
-}
 
 inline std::ostream& operator<<(std::ostream& out, DoubleValue value) {
   return out << value.DebugString();
 }
 
-class DoubleValueView final {
+class DoubleValueView final : private common_internal::DoubleValueBase {
+ private:
+  using Base = DoubleValueBase;
+
  public:
   using alternative_type = DoubleValue;
 
-  static constexpr ValueKind kKind = DoubleValue::kKind;
-
-  constexpr explicit DoubleValueView(double value) noexcept : value_(value) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr DoubleValueView(DoubleValue value) noexcept
-      : DoubleValueView(value.value_) {}
+  using Base::kKind;
 
   DoubleValueView() = default;
   DoubleValueView(const DoubleValueView&) = default;
@@ -158,110 +179,55 @@ class DoubleValueView final {
   DoubleValueView& operator=(const DoubleValueView&) = default;
   DoubleValueView& operator=(DoubleValueView&&) = default;
 
-  constexpr ValueKind kind() const { return kKind; }
+  constexpr explicit DoubleValueView(double value) noexcept : Base(value) {}
 
-  DoubleType GetType(TypeManager&) const { return DoubleType(); }
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  constexpr DoubleValueView(DoubleValue other) noexcept
+      : DoubleValueView(static_cast<double>(other)) {}
 
-  absl::string_view GetTypeName() const { return DoubleType::kName; }
+  using Base::kind;
 
-  std::string DebugString() const;
+  using Base::GetType;
 
-  // `GetSerializedSize` determines the serialized byte size that would result
-  // from serialization, without performing the serialization. This always
-  // succeeds and only returns `absl::StatusOr` to meet concept requirements.
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
+  using Base::GetTypeName;
 
-  // `SerializeTo` serializes this value and appends it to `value`.
-  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
+  using Base::DebugString;
 
-  // `Serialize` serializes this value and returns it as `absl::Cord`.
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
+  using Base::GetSerializedSize;
 
-  // 'GetTypeUrl' returns the type URL that can be used as the type URL for
-  // `Any`.
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+  using Base::SerializeTo;
 
-  // 'ConvertToAny' converts this value to `Any`.
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter&,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+  using Base::Serialize;
 
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
+  using Base::GetTypeUrl;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
+  using Base::ConvertToAny;
 
-  bool IsZeroValue() const { return NativeValue() == 0.0; }
+  using Base::ConvertToJson;
 
-  constexpr double NativeValue() const { return value_; }
+  using Base::Equal;
 
-  void swap(DoubleValueView& other) noexcept {
+  using Base::IsZeroValue;
+
+  using Base::NativeValue;
+
+  using Base::operator double;
+
+  friend void swap(DoubleValueView& lhs, DoubleValueView& rhs) noexcept {
     using std::swap;
-    swap(value_, other.value_);
+    swap(lhs.value, rhs.value);
   }
 
  private:
-  friend class DoubleValue;
-
-  // We pass around by value, as its cheaper than passing around a pointer due
-  // to the performance degradation from pointer chasing.
-  double value_ = 0.0;
+  friend class BoolValue;
 };
-
-inline void swap(DoubleValueView& lhs, DoubleValueView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-constexpr bool operator==(DoubleValueView lhs, DoubleValueView rhs) {
-  return lhs.NativeValue() == rhs.NativeValue();
-}
-
-constexpr bool operator==(DoubleValueView lhs, double rhs) {
-  return lhs.NativeValue() == rhs;
-}
-
-constexpr bool operator==(double lhs, DoubleValueView rhs) {
-  return lhs == rhs.NativeValue();
-}
-
-constexpr bool operator==(DoubleValueView lhs, DoubleValue rhs) {
-  return lhs.NativeValue() == rhs.NativeValue();
-}
-
-constexpr bool operator==(DoubleValue lhs, DoubleValueView rhs) {
-  return lhs.NativeValue() == rhs.NativeValue();
-}
-
-constexpr bool operator!=(DoubleValueView lhs, DoubleValueView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(DoubleValueView lhs, double rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(double lhs, DoubleValueView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(DoubleValueView lhs, DoubleValue rhs) {
-  return !operator==(lhs, rhs);
-}
-
-constexpr bool operator!=(DoubleValue lhs, DoubleValueView rhs) {
-  return !operator==(lhs, rhs);
-}
 
 inline std::ostream& operator<<(std::ostream& out, DoubleValueView value) {
   return out << value.DebugString();
 }
 
-inline constexpr DoubleValue::DoubleValue(DoubleValueView value) noexcept
-    : DoubleValue(value.value_) {}
+inline constexpr DoubleValue::DoubleValue(DoubleValueView other) noexcept
+    : DoubleValue(static_cast<double>(other)) {}
 
 }  // namespace cel
 

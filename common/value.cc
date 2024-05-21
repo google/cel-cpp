@@ -554,20 +554,6 @@ absl::StatusOr<Value> BytesValueView::Equal(ValueManager& value_manager,
   return Value{result};
 }
 
-absl::StatusOr<Value> DoubleValue::Equal(ValueManager& value_manager,
-                                         ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
-absl::StatusOr<Value> DoubleValueView::Equal(ValueManager& value_manager,
-                                             ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
-}
-
 absl::StatusOr<Value> DurationValue::Equal(ValueManager& value_manager,
                                            ValueView other) const {
   Value scratch;
