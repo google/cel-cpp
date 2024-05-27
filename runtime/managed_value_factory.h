@@ -15,34 +15,14 @@
 #ifndef THIRD_PARTY_CEL_CPP_RUNTIME_MANAGED_VALUE_FACTORY_H_
 #define THIRD_PARTY_CEL_CPP_RUNTIME_MANAGED_VALUE_FACTORY_H_
 
-#include "base/type_provider.h"
-#include "common/memory.h"
-#include "common/type_factory.h"
-#include "common/type_manager.h"
-#include "common/value_manager.h"
-#include "common/values/legacy_value_manager.h"
+#include "runtime/runtime_value_manager.h"  // IWYU pragma: export
 
 namespace cel {
 
-// A convenience class for managing objects associated with a ValueManager.
-class ManagedValueFactory {
- public:
-  // type_provider and memory_manager must outlive the ManagedValueFactory.
-  ManagedValueFactory(const TypeProvider& type_provider,
-                      MemoryManagerRef memory_manager)
-      : value_manager_(memory_manager, type_provider) {}
-
-  // Move-only
-  ManagedValueFactory(const ManagedValueFactory& other) = delete;
-  ManagedValueFactory& operator=(const ManagedValueFactory& other) = delete;
-  ManagedValueFactory(ManagedValueFactory&& other) = delete;
-  ManagedValueFactory& operator=(ManagedValueFactory&& other) = delete;
-
-  ValueManager& get() { return value_manager_; }
-
- private:
-  common_internal::LegacyValueManager value_manager_;
-};
+// A convenience class for managing objects associated with a value manager.
+//
+// Must not outlive the runtime or program that provides the TypeReflector.
+using ManagedValueFactory = RuntimeValueManager;
 
 }  // namespace cel
 
