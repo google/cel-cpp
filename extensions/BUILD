@@ -320,6 +320,7 @@ cc_library(
     hdrs = ["strings.h"],
     deps = [
         "//common:casting",
+        "//common:memory",
         "//common:type",
         "//common:value",
         "//eval/public:cel_function_registry",
@@ -344,8 +345,10 @@ cc_test(
     deps = [
         ":strings",
         "//common:memory",
+        "//common:type",
         "//common:value",
         "//extensions/protobuf:runtime_adapter",
+        "//internal:status_macros",
         "//internal:testing",
         "//parser",
         "//parser:options",
@@ -354,7 +357,9 @@ cc_test(
         "//runtime:runtime_builder",
         "//runtime:runtime_options",
         "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:string_view",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
