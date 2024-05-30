@@ -474,3 +474,21 @@ cc_test(
         "@com_google_absl//absl/numeric:bits",
     ],
 )
+
+cc_library(
+    name = "to_address",
+    hdrs = ["to_address.h"],
+    deps = [
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/meta:type_traits",
+    ],
+)
+
+cc_test(
+    name = "to_address_test",
+    srcs = ["to_address_test.cc"],
+    deps = [
+        ":testing",
+        ":to_address",
+    ],
+)
