@@ -27,6 +27,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/casting.h"
+#include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "common/value_manager.h"
@@ -218,6 +219,29 @@ absl::StatusOr<Value> LowerAscii(ValueManager& value_manager,
   return value_manager.CreateUncheckedStringValue(std::move(content));
 }
 
+absl::StatusOr<ListValue> LowerAscii2(ValueManager& value_manager,
+                                      const ListValue& value) {
+  CEL_ASSIGN_OR_RETURN(Unique<ListValueBuilder> builder,
+                       value_manager.NewListValueBuilder(
+                           value_manager.CreateListType(StringTypeView())));
+  Value element_scratch;
+  CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_manager));
+
+  while (iterator->HasNext()) {
+    CEL_ASSIGN_OR_RETURN(auto element,
+                         iterator->Next(value_manager, element_scratch));
+
+    // We assume the original string was well-formed.
+    auto string_element = As<StringValueView>(element);
+    std::string content = string_element->NativeString();
+    absl::AsciiStrToLower(&content);
+
+    CEL_RETURN_IF_ERROR(builder->Add(
+        value_manager.CreateUncheckedStringValue(std::move(content))));
+  }
+  return std::move(*builder).Build();
+}
+
 }  // namespace
 
 absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
@@ -248,6 +272,11 @@ absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
           CreateDescriptor("lowerAscii", /*receiver_style=*/true),
       UnaryFunctionAdapter<absl::StatusOr<Value>, StringValue>::WrapFunction(
           LowerAscii)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<absl::StatusOr<ListValue>, ListValue>::
+          CreateDescriptor("lowerAscii", /*receiver_style=*/true),
+      UnaryFunctionAdapter<absl::StatusOr<ListValue>, ListValue>::WrapFunction(
+          LowerAscii2)));
   return absl::OkStatus();
 }
 

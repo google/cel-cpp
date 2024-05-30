@@ -18,11 +18,14 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "common/memory.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "common/values/legacy_value_manager.h"
 #include "extensions/protobuf/runtime_adapter.h"
+#include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/options.h"
 #include "parser/parser.h"
@@ -61,6 +64,47 @@ TEST(Strings, SplitWithEmptyDelimiterCord) {
   Activation activation;
   activation.InsertOrAssignValue("foo",
                                  StringValue{absl::Cord("hello world!")});
+
+  ASSERT_OK_AND_ASSIGN(Value result,
+                       program->Evaluate(activation, value_factory));
+  ASSERT_TRUE(result.Is<BoolValue>());
+  EXPECT_TRUE(result.As<BoolValue>().NativeValue());
+}
+
+absl::StatusOr<Value> GenerateOutputList(
+    common_internal::LegacyValueManager& value_factory) {
+  CEL_ASSIGN_OR_RETURN(auto output_list_builder,
+                       value_factory.NewListValueBuilder(
+                           value_factory.CreateListType(StringTypeView())));
+  CEL_RETURN_IF_ERROR(output_list_builder->Add(StringValue("ThisIsTest")));
+  CEL_RETURN_IF_ERROR(output_list_builder->Add(StringValue("TacoCÆt")));
+  CEL_RETURN_IF_ERROR(output_list_builder->Add(StringValue("")));
+
+  return std::move(*output_list_builder).Build();
+}
+
+TEST(Strings, TestLowerAsciiForListOfStrings) {
+  MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
+  const auto options = RuntimeOptions{};
+  ASSERT_OK_AND_ASSIGN(auto builder, CreateStandardRuntimeBuilder(options));
+  EXPECT_OK(RegisterStringsFunctions(builder.function_registry(), options));
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(
+      ParsedExpr expr,
+      Parse("foo.lowerAscii() == ['thisistest', 'tacocÆt', '']", "<input>",
+            ParserOptions{}));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+
+  common_internal::LegacyValueManager value_factory(memory_manager,
+                                                    runtime->GetTypeProvider());
+
+  Activation activation;
+  activation.InsertOrAssignValue("foo",
+                                 GenerateOutputList(value_factory).value());
 
   ASSERT_OK_AND_ASSIGN(Value result,
                        program->Evaluate(activation, value_factory));
