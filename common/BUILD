@@ -357,6 +357,7 @@ cc_library(
         "@com_google_absl//absl/log:die_if_null",
         "@com_google_absl//absl/meta:type_traits",
         "@com_google_absl//absl/numeric:bits",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -372,6 +373,7 @@ cc_test(
         "@com_google_absl//absl/debugging:leak_check",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

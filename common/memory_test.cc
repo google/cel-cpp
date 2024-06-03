@@ -32,6 +32,7 @@
 #include "common/casting.h"
 #include "common/native_type.h"
 #include "internal/testing.h"
+#include "google/protobuf/arena.h"
 
 #ifdef ABSL_HAVE_EXCEPTIONS
 #include <stdexcept>
@@ -889,6 +890,59 @@ TEST(MemoryManagerRefCasting, Pooling) {
 }
 
 // NOLINTEND(bugprone-use-after-move)
+
+TEST(NewDeleteAllocator, Bytes) {
+  auto allocator = NewDeleteAllocator();
+  void* p = allocator.allocate_bytes(17, 8);
+  EXPECT_THAT(p, NotNull());
+  allocator.deallocate_bytes(p, 17, 8);
+}
+
+TEST(ArenaAllocator, Bytes) {
+  google::protobuf::Arena arena;
+  auto allocator = ArenaAllocator(&arena);
+  void* p = allocator.allocate_bytes(17, 8);
+  EXPECT_THAT(p, NotNull());
+  allocator.deallocate_bytes(p, 17, 8);
+}
+
+struct TrivialObject {
+  char data[17];
+};
+
+TEST(NewDeleteAllocator, Object) {
+  auto allocator = NewDeleteAllocator();
+  auto* p = allocator.new_object<TrivialObject>();
+  EXPECT_THAT(p, NotNull());
+  allocator.delete_object(p);
+}
+
+TEST(ArenaAllocator, Object) {
+  google::protobuf::Arena arena;
+  auto allocator = ArenaAllocator(&arena);
+  auto* p = allocator.new_object<TrivialObject>();
+  EXPECT_THAT(p, NotNull());
+  allocator.delete_object(p);
+}
+
+TEST(NewDeleteAllocator, T) {
+  auto allocator = NewDeleteAllocatorFor<TrivialObject>();
+  auto* p = allocator.allocate(1);
+  EXPECT_THAT(p, NotNull());
+  allocator.construct(p);
+  allocator.destroy(p);
+  allocator.deallocate(p, 1);
+}
+
+TEST(ArenaAllocator, T) {
+  google::protobuf::Arena arena;
+  auto allocator = ArenaAllocatorFor<TrivialObject>(&arena);
+  auto* p = allocator.allocate(1);
+  EXPECT_THAT(p, NotNull());
+  allocator.construct(p);
+  allocator.destroy(p);
+  allocator.deallocate(p, 1);
+}
 
 }  // namespace
 }  // namespace cel
