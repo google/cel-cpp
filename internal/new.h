@@ -21,31 +21,38 @@
 
 namespace cel::internal {
 
-inline std::pair<void*, size_t> SizeReturningNew(size_t size) {
-  return std::pair{::operator new(size), size};
-}
-
-inline std::pair<void*, size_t> SizeReturningNew(size_t size,
-                                                 std::align_val_t alignment) {
-  return std::pair{::operator new(size, alignment), size};
-}
-
-inline void SizedDelete(void* ptr, size_t size) noexcept {
-#if defined(__cpp_sized_deallocation) && __cpp_sized_deallocation >= 201309L
-  ::operator delete(ptr, size);
+inline constexpr size_t kDefaultNewAlignment =
+#ifdef __STDCPP_DEFAULT_NEW_ALIGNMENT__
+    __STDCPP_DEFAULT_NEW_ALIGNMENT__
 #else
-  ::operator delete(ptr);
+    alignof(std::max_align_t)
 #endif
-}
+    ;  // NOLINT(whitespace/semicolon)
 
-inline void SizedDelete(void* ptr, size_t size,
-                        std::align_val_t alignment) noexcept {
-#if defined(__cpp_sized_deallocation) && __cpp_sized_deallocation >= 201309L
-  ::operator delete(ptr, size, alignment);
-#else
-  ::operator delete(ptr, alignment);
-#endif
-}
+void* New(size_t size);
+
+// Allocates memory which has a size of at least `size` and a minimum alignment
+// of `alignment`. To deallocate, the caller must use `AlignedDelete` or
+// `SizedAlignedDelete`.
+void* AlignedNew(size_t size, std::align_val_t alignment);
+
+std::pair<void*, size_t> SizeReturningNew(size_t size);
+
+// Allocates memory which has a size of at least `size` and a minimum alignment
+// of `alignment`, returns a pointer to the allocated memory and the actual
+// usable allocation size. To deallocate, the caller must use `AlignedDelete` or
+// `SizedAlignedDelete`.
+std::pair<void*, size_t> SizeReturningAlignedNew(size_t size,
+                                                 std::align_val_t alignment);
+
+void Delete(void* ptr) noexcept;
+
+void SizedDelete(void* ptr, size_t size) noexcept;
+
+void AlignedDelete(void* ptr, std::align_val_t alignment) noexcept;
+
+void SizedAlignedDelete(void* ptr, size_t size,
+                        std::align_val_t alignment) noexcept;
 
 }  // namespace cel::internal
 

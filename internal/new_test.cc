@@ -16,6 +16,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <new>
 #include <tuple>
 
 #include "internal/testing.h"
@@ -26,7 +27,22 @@ namespace {
 using testing::Ge;
 using testing::NotNull;
 
-TEST(Sized, Normal) {
+TEST(New, Basic) {
+  void* p = New(sizeof(uint64_t));
+  EXPECT_THAT(p, NotNull());
+  Delete(p);
+}
+
+TEST(AlignedNew, Basic) {
+  void* p =
+      AlignedNew(alignof(std::max_align_t) * 2,
+                 static_cast<std::align_val_t>(alignof(std::max_align_t) * 2));
+  EXPECT_THAT(p, NotNull());
+  AlignedDelete(p,
+                static_cast<std::align_val_t>(alignof(std::max_align_t) * 2));
+}
+
+TEST(SizeReturningNew, Basic) {
   void* p;
   size_t n;
   std::tie(p, n) = SizeReturningNew(sizeof(uint64_t));
@@ -35,16 +51,16 @@ TEST(Sized, Normal) {
   SizedDelete(p, n);
 }
 
-TEST(Sized, Overaligned) {
+TEST(SizeReturningAlignedNew, Basic) {
   void* p;
   size_t n;
-  std::tie(p, n) = SizeReturningNew(
+  std::tie(p, n) = SizeReturningAlignedNew(
       alignof(std::max_align_t) * 2,
       static_cast<std::align_val_t>(alignof(std::max_align_t) * 2));
   EXPECT_THAT(p, NotNull());
   EXPECT_THAT(n, Ge(alignof(std::max_align_t) * 2));
-  SizedDelete(p, n,
-              static_cast<std::align_val_t>(alignof(std::max_align_t) * 2));
+  SizedAlignedDelete(
+      p, n, static_cast<std::align_val_t>(alignof(std::max_align_t) * 2));
 }
 
 }  // namespace

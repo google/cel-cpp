@@ -27,8 +27,8 @@
 namespace cel::internal {
 
 template <typename T>
-std::enable_if_t<std::conjunction_v<std::is_integral<T>, std::is_unsigned<T>>,
-                 T>
+constexpr std::enable_if_t<
+    std::conjunction_v<std::is_integral<T>, std::is_unsigned<T>>, T>
 AlignmentMask(T alignment) {
   ABSL_ASSERT(absl::has_single_bit(alignment));
   return alignment - T{1};
@@ -73,8 +73,8 @@ std::enable_if_t<std::is_pointer_v<T>, T> AlignUp(T x, size_t alignment) {
 }
 
 template <typename T>
-std::enable_if_t<std::conjunction_v<std::is_integral<T>, std::is_unsigned<T>>,
-                 bool>
+constexpr std::enable_if_t<
+    std::conjunction_v<std::is_integral<T>, std::is_unsigned<T>>, bool>
 IsAligned(T x, size_t alignment) {
   ABSL_ASSERT(absl::has_single_bit(alignment));
 #if ABSL_HAVE_BUILTIN(__builtin_is_aligned)

@@ -38,7 +38,15 @@ cc_test(
 
 cc_library(
     name = "new",
+    srcs = ["new.cc"],
     hdrs = ["new.h"],
+    deps = [
+        ":align",
+        "@com_google_absl//absl/base:config",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/numeric:bits",
+    ],
 )
 
 cc_test(
