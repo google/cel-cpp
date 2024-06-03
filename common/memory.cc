@@ -310,8 +310,7 @@ std::ostream& operator<<(std::ostream& out,
   }
 }
 
-absl::Nonnull<void*> ReferenceCountingMemoryManager::Allocate(
-    size_t size, size_t alignment) {
+void* ReferenceCountingMemoryManager::Allocate(size_t size, size_t alignment) {
   ABSL_DCHECK(absl::has_single_bit(alignment))
       << "alignment must be a power of 2: " << alignment;
   if (size == 0) {
