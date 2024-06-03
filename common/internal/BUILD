@@ -101,3 +101,9 @@ cc_test(
         "@com_google_absl//absl/strings:string_view",
     ],
 )
+
+cc_library(
+    name = "metadata",
+    hdrs = ["metadata.h"],
+    deps = ["@com_google_protobuf//:protobuf"],
+)
