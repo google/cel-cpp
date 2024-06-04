@@ -185,5 +185,43 @@ TEST(CordSource, SnippetMulti) {
   EXPECT_THAT(source->Snippet(6), Eq(absl::nullopt));
 }
 
+TEST(Source, DisplayErrorLocationBasic) {
+  ASSERT_OK_AND_ASSIGN(auto source, NewSource("'Hello' +\n  'world'"));
+
+  SourceLocation location{/*line=*/2, /*column=*/3};
+
+  EXPECT_EQ(source->DisplayErrorLocation(location),
+            "\n |   'world'"
+            "\n | ...^");
+}
+
+TEST(Source, DisplayErrorLocationOutOfRange) {
+  ASSERT_OK_AND_ASSIGN(auto source, NewSource("'Hello world!'"));
+
+  SourceLocation location{/*line=*/3, /*column=*/3};
+
+  EXPECT_EQ(source->DisplayErrorLocation(location), "");
+}
+
+TEST(Source, DisplayErrorLocationTabsShortened) {
+  ASSERT_OK_AND_ASSIGN(auto source, NewSource("'Hello' +\n\t\t'world!'"));
+
+  SourceLocation location{/*line=*/2, /*column=*/4};
+
+  EXPECT_EQ(source->DisplayErrorLocation(location),
+            "\n |   'world!'"
+            "\n | ....^");
+}
+
+TEST(Source, DisplayErrorLocationFullWidth) {
+  ASSERT_OK_AND_ASSIGN(auto source, NewSource("'Ｈｅｌｌｏ'"));
+
+  SourceLocation location{/*line=*/1, /*column=*/2};
+
+  EXPECT_EQ(source->DisplayErrorLocation(location),
+            "\n | 'Ｈｅｌｌｏ'"
+            "\n | .．＾");
+}
+
 }  // namespace
 }  // namespace cel

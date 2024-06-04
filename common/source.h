@@ -143,6 +143,14 @@ class Source {
 
   absl::optional<std::string> Snippet(int32_t line) const;
 
+  // Formats an annotated snippet highlighting an error at location, e.g.
+  //
+  // "\n | $SOURCE_SNIPPET" +
+  // "\n | .......^"
+  //
+  // Returns an empty string if location is not a valid location in this source.
+  std::string DisplayErrorLocation(SourceLocation location) const;
+
   // Returns a view of the underlying expression text, if present.
   virtual ContentView content() const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 

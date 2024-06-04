@@ -101,51 +101,15 @@ struct ParserError {
   SourceRange range;
 };
 
-inline constexpr char32_t kDot = '.';
-inline constexpr char32_t kHat = '^';
-
-inline constexpr char32_t kWideDot = 0xff0e;
-inline constexpr char32_t kWideHat = 0xff3e;
-
 std::string DisplayParserError(const cel::Source& source,
                                const ParserError& error) {
   auto location =
       source.GetLocation(error.range.begin).value_or(SourceLocation{});
-  std::string s = absl::StrFormat("ERROR: %s:%zu:%zu: %s", source.description(),
-                                  location.line,
-                                  // add one to the 0-based column
-                                  location.column + 1, error.message);
-  if (auto snippet = source.Snippet(location.line); snippet) {
-    *snippet = absl::StrReplaceAll(*snippet, {{"\t", " "}});
-    absl::string_view snippet_view(*snippet);
-    std::string src_line;
-    src_line.append("\n | ");
-    src_line.append(*snippet);
-    std::string ind_line;
-    ind_line.append("\n | ");
-    for (int32_t i = 0; i < location.column && !snippet_view.empty(); ++i) {
-      size_t count;
-      std::tie(std::ignore, count) = internal::Utf8Decode(snippet_view);
-      snippet_view.remove_prefix(count);
-      if (count > 1) {
-        internal::Utf8Encode(ind_line, kWideDot);
-      } else {
-        internal::Utf8Encode(ind_line, kDot);
-      }
-    }
-    size_t count = 0;
-    if (!snippet_view.empty()) {
-      std::tie(std::ignore, count) = internal::Utf8Decode(snippet_view);
-    }
-    if (count > 1) {
-      internal::Utf8Encode(ind_line, kWideHat);
-    } else {
-      internal::Utf8Encode(ind_line, kHat);
-    }
-    s.append(src_line);
-    s.append(ind_line);
-  }
-  return s;
+  return absl::StrCat(absl::StrFormat("ERROR: %s:%zu:%zu: %s",
+                                      source.description(), location.line,
+                                      // add one to the 0-based column
+                                      location.column + 1, error.message),
+                      source.DisplayErrorLocation(location));
 }
 
 int32_t PositiveOrMax(int32_t value) {

@@ -32,6 +32,8 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/str_replace.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
@@ -507,6 +509,47 @@ absl::optional<std::string> Source::Snippet(int32_t line) const {
     return content.ToString(*start, *end - 1);
   }
   return content.ToString(*start);
+}
+
+std::string Source::DisplayErrorLocation(SourceLocation location) const {
+  constexpr char32_t kDot = '.';
+  constexpr char32_t kHat = '^';
+
+  constexpr char32_t kWideDot = 0xff0e;
+  constexpr char32_t kWideHat = 0xff3e;
+  absl::optional<std::string> snippet = Snippet(location.line);
+  if (!snippet || snippet->empty()) {
+    return "";
+  }
+
+  *snippet = absl::StrReplaceAll(*snippet, {{"\t", " "}});
+  absl::string_view snippet_view(*snippet);
+  std::string result;
+  absl::StrAppend(&result, "\n | ", *snippet);
+  absl::StrAppend(&result, "\n | ");
+
+  std::string index_line;
+  for (int32_t i = 0; i < location.column && !snippet_view.empty(); ++i) {
+    size_t count;
+    std::tie(std::ignore, count) = internal::Utf8Decode(snippet_view);
+    snippet_view.remove_prefix(count);
+    if (count > 1) {
+      internal::Utf8Encode(index_line, kWideDot);
+    } else {
+      internal::Utf8Encode(index_line, kDot);
+    }
+  }
+  size_t count = 0;
+  if (!snippet_view.empty()) {
+    std::tie(std::ignore, count) = internal::Utf8Decode(snippet_view);
+  }
+  if (count > 1) {
+    internal::Utf8Encode(index_line, kWideHat);
+  } else {
+    internal::Utf8Encode(index_line, kHat);
+  }
+  absl::StrAppend(&result, index_line);
+  return result;
 }
 
 absl::optional<SourcePosition> Source::FindLinePosition(int32_t line) const {
