@@ -16,25 +16,29 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_MEMORY_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
-#include <new>
 #include <ostream>
 #include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/config.h"  // IWYU pragma: keep
+#include "absl/base/macros.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/die_if_null.h"
 #include "absl/meta/type_traits.h"
 #include "absl/numeric/bits.h"
+#include "common/allocator.h"
 #include "common/casting.h"
+#include "common/data.h"
+#include "common/internal/metadata.h"
 #include "common/internal/reference_count.h"
 #include "common/native_type.h"
+#include "common/reference_count.h"
 #include "internal/exceptions.h"
-#include "internal/new.h"
 #include "google/protobuf/arena.h"
 
 namespace cel {
@@ -52,15 +56,9 @@ enum class MemoryManagement {
 
 std::ostream& operator<<(std::ostream& out, MemoryManagement memory_management);
 
-template <typename T>
-using IsArenaConstructible = google::protobuf::Arena::is_arena_constructable<T>;
-template <typename T>
-using IsArenaDestructorSkippable =
-    absl::conjunction<IsArenaConstructible<T>,
-                      google::protobuf::Arena::is_destructor_skippable<T>>;
-
-template <typename T = void>
-class Allocator;
+class Data;
+class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owner;
+class Borrower;
 template <typename T>
 class ABSL_ATTRIBUTE_TRIVIAL_ABI Shared;
 template <typename T>
@@ -101,181 +99,248 @@ Shared<To> StaticCast(Shared<From>&& from);
 template <typename To, typename From>
 SharedView<To> StaticCast(SharedView<From> from);
 
-// `Allocator<>` is a type-erased vocabulary type capable of performing
-// allocation/deallocation and construction/destruction using memory owned by
-// `google::protobuf::Arena` or `operator new`.
-template <>
-class Allocator<void> {
+// `Owner` represents a reference to some co-owned data, of which this owner is
+// one of the co-owners. When using reference counting, `Owner` performs
+// increment/decrement where appropriate similar to `std::shared_ptr`.
+// `Borrower` is similar to `Owner`, except that it is always trivially
+// copyable/destructible. In that sense, `Borrower` is similar to
+// `std::reference_wrapper<const Owner>`.
+class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owner final {
+ private:
+  static constexpr uintptr_t kNone = common_internal::kMetadataOwnerNone;
+  static constexpr uintptr_t kReferenceCountBit =
+      common_internal::kMetadataOwnerReferenceCountBit;
+  static constexpr uintptr_t kArenaBit =
+      common_internal::kMetadataOwnerArenaBit;
+  static constexpr uintptr_t kBits = common_internal::kMetadataOwnerBits;
+  static constexpr uintptr_t kPointerMask =
+      common_internal::kMetadataOwnerPointerMask;
+
  public:
-  using size_type = size_t;
-  using difference_type = ptrdiff_t;
-  using propagate_on_container_copy_assignment = std::true_type;
-  using propagate_on_container_move_assignment = std::true_type;
-  using propagate_on_container_swap = std::true_type;
+  static Owner None() noexcept { return Owner(); }
 
-  Allocator() = delete;
-
-  Allocator(const Allocator&) = default;
-  Allocator& operator=(const Allocator&) = delete;
-
-  Allocator(std::nullptr_t) = delete;
-
-  template <typename U, typename = std::enable_if_t<!std::is_void_v<U>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr Allocator(const Allocator<U>& other) noexcept
-      : arena_(other.arena()) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr Allocator(absl::Nullable<google::protobuf::Arena*> arena) noexcept
-      : arena_(arena) {}
-
-  absl::Nullable<google::protobuf::Arena*> arena() const noexcept { return arena_; }
-
-  // Allocates at least `nbytes` bytes with a minimum alignment of `alignment`
-  // from the underlying memory resource. When the underlying memory resource is
-  // `operator new`, `deallocate_bytes` must be called at some point, otherwise
-  // calling `deallocate_bytes` is optional. The caller must not pass an object
-  // constructed in the return memory to `delete_object`, doing so is undefined
-  // behavior.
-  ABSL_MUST_USE_RESULT void* allocate_bytes(
-      size_t nbytes, size_t alignment = alignof(std::max_align_t)) {
-    ABSL_DCHECK(absl::has_single_bit(alignment));
-    if (nbytes == 0) {
-      return nullptr;
-    }
-    if (auto* arena = this->arena(); arena != nullptr) {
-      return arena->AllocateAligned(nbytes, alignment);
-    }
-    return internal::AlignedNew(nbytes,
-                                static_cast<std::align_val_t>(alignment));
+  static Owner Allocator(Allocator<> allocator) noexcept {
+    auto* arena = allocator.arena();
+    return arena != nullptr ? Arena(arena) : None();
   }
 
-  // Deallocates memory previously returned by `allocate_bytes`.
-  void deallocate_bytes(void* p, size_t nbytes,
-                        size_t alignment = alignof(std::max_align_t)) noexcept {
-    ABSL_DCHECK((p == nullptr && nbytes == 0) || (p != nullptr && nbytes != 0));
-    ABSL_DCHECK(absl::has_single_bit(alignment));
-    if (arena() == nullptr) {
-      internal::SizedAlignedDelete(p, nbytes,
-                                   static_cast<std::align_val_t>(alignment));
-    }
+  static Owner Arena(absl::Nonnull<google::protobuf::Arena*> arena
+                         ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
+    ABSL_DCHECK(arena != nullptr);
+    return Owner(reinterpret_cast<uintptr_t>(arena) | kArenaBit);
   }
 
-  // Allocates memory suitable for an object of type `T` and constructs the
-  // object by forwarding the provided arguments. If the underlying memory
-  // resource is `operator new` is false, `delete_object` must eventually be
-  // called.
-  template <typename T, typename... Args>
-  ABSL_MUST_USE_RESULT T* new_object(Args&&... args) {
-    T* object = google::protobuf::Arena::Create<std::remove_const_t<T>>(
-        arena(), std::forward<Args>(args)...);
-    if constexpr (IsArenaConstructible<T>::value) {
-      ABSL_DCHECK_EQ(object->GetArena(), arena());
-    }
-    return object;
+  static Owner Arena(std::nullptr_t) = delete;
+
+  static Owner ReferenceCount(
+      absl::Nonnull<const ReferenceCount*> reference_count
+          ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
+    ABSL_DCHECK(reference_count != nullptr);
+    common_internal::StrongRef(*reference_count);
+    return Owner(reinterpret_cast<uintptr_t>(reference_count) |
+                 kReferenceCountBit);
   }
 
-  // Destructs the object of type `T` located at address `p` and deallocates the
-  // memory, `p` must have been previously returned by `new_object`.
-  template <typename T>
-  void delete_object(T* p) noexcept {
-    ABSL_DCHECK(p != nullptr);
-    if constexpr (IsArenaConstructible<T>::value) {
-      ABSL_DCHECK_EQ(p->GetArena(), arena());
+  static Owner ReferenceCount(std::nullptr_t) = delete;
+
+  Owner() = default;
+
+  Owner(const Owner& other) noexcept : Owner(CopyFrom(other.ptr_)) {}
+
+  Owner(Owner&& other) noexcept : Owner(MoveFrom(other.ptr_)) {}
+
+  explicit Owner(Borrower borrower) noexcept;
+
+  ~Owner() { Destroy(ptr_); }
+
+  Owner& operator=(const Owner& other) noexcept {
+    if (ptr_ != other.ptr_) {
+      Destroy(ptr_);
+      ptr_ = CopyFrom(other.ptr_);
     }
-    if (arena() == nullptr) {
-      delete p;
-    }
+    return *this;
   }
 
-  void delete_object(std::nullptr_t) = delete;
+  Owner& operator=(Owner&& other) noexcept {
+    if (ABSL_PREDICT_TRUE(this != &other)) {
+      Destroy(ptr_);
+      ptr_ = MoveFrom(other.ptr_);
+    }
+    return *this;
+  }
+
+  explicit operator bool() const noexcept { return !IsNone(ptr_); }
+
+  absl::Nullable<google::protobuf::Arena*> arena() const noexcept {
+    return (ptr_ & Owner::kBits) == Owner::kArenaBit
+               ? reinterpret_cast<google::protobuf::Arena*>(ptr_ & Owner::kPointerMask)
+               : nullptr;
+  }
+
+  // Tests whether two owners have ownership over the same data, that is they
+  // are co-owners.
+  friend bool operator==(const Owner& lhs, const Owner& rhs) noexcept {
+    // A reference count and arena can never occupy the same memory address, so
+    // we can compare for equality without masking off the bits.
+    return lhs.ptr_ == rhs.ptr_;
+  }
 
  private:
-  template <typename U>
-  friend class Allocator;
+  friend class Borrower;
 
-  absl::Nullable<google::protobuf::Arena*> arena_;
-};
+  constexpr explicit Owner(uintptr_t ptr) noexcept : ptr_(ptr) {}
 
-// `Allocator<T>` is an extension of `Allocator<>` which adheres to the named
-// C++ requirements for `Allocator`, allowing it to be used in places which
-// accept custom STL allocators.
-template <typename T>
-class Allocator : public Allocator<void> {
- public:
-  static_assert(!std::is_const_v<T>, "T must not be const qualified");
-  static_assert(!std::is_volatile_v<T>, "T must not be volatile qualified");
-  static_assert(std::is_object_v<T>, "T must be an object type");
+  static constexpr bool IsNone(uintptr_t ptr) noexcept { return ptr == kNone; }
 
-  using value_type = T;
-  using pointer = value_type*;
-  using const_pointer = const value_type*;
-  using reference = value_type&;
-  using const_reference = const value_type&;
-
-  using Allocator<void>::Allocator;
-
-  pointer allocate(size_type n, const void* /*hint*/ = nullptr) {
-    return arena() != nullptr
-               ? static_cast<pointer>(
-                     arena()->AllocateAligned(n * sizeof(T), alignof(T)))
-               : static_cast<pointer>(internal::AlignedNew(
-                     n * sizeof(T), static_cast<std::align_val_t>(alignof(T))));
+  static constexpr bool IsArena(uintptr_t ptr) noexcept {
+    return (ptr & kArenaBit) != kNone;
   }
 
-  void deallocate(pointer p, size_type n) noexcept {
-    if (arena() == nullptr) {
-      internal::SizedAlignedDelete(p, n * sizeof(T),
-                                   static_cast<std::align_val_t>(alignof(T)));
+  static constexpr bool IsReferenceCount(uintptr_t ptr) noexcept {
+    return (ptr & kReferenceCountBit) != kNone;
+  }
+
+  ABSL_ATTRIBUTE_RETURNS_NONNULL
+  static absl::Nonnull<google::protobuf::Arena*> AsArena(uintptr_t ptr) noexcept {
+    ABSL_ASSERT(IsArena(ptr));
+    return reinterpret_cast<google::protobuf::Arena*>(ptr & kPointerMask);
+  }
+
+  ABSL_ATTRIBUTE_RETURNS_NONNULL
+  static absl::Nonnull<const common_internal::ReferenceCount*> AsReferenceCount(
+      uintptr_t ptr) noexcept {
+    ABSL_ASSERT(IsReferenceCount(ptr));
+    return reinterpret_cast<const common_internal::ReferenceCount*>(
+        ptr & kPointerMask);
+  }
+
+  static uintptr_t CopyFrom(uintptr_t other) noexcept { return Own(other); }
+
+  static uintptr_t MoveFrom(uintptr_t& other) noexcept {
+    return std::exchange(other, kNone);
+  }
+
+  static void Destroy(uintptr_t ptr) noexcept { Unown(ptr); }
+
+  static uintptr_t Own(uintptr_t ptr) noexcept {
+    if (IsReferenceCount(ptr)) {
+      const auto* refcount = Owner::AsReferenceCount(ptr);
+      ABSL_ASSUME(refcount != nullptr);
+      common_internal::StrongRef(refcount);
+    }
+    return ptr;
+  }
+
+  static void Unown(uintptr_t ptr) noexcept {
+    if (IsReferenceCount(ptr)) {
+      const auto* reference_count = AsReferenceCount(ptr);
+      ABSL_ASSUME(reference_count != nullptr);
+      common_internal::StrongUnref(reference_count);
     }
   }
 
-  template <typename U, typename... Args>
-  void construct(U* p, Args&&... args) {
-    static_assert(std::is_same_v<T*, U*>);
-    static_assert(!IsArenaConstructible<T>::value);
-    ::new (static_cast<void*>(p)) T(std::forward<Args>(args)...);
-  }
-
-  template <typename U>
-  void destroy(U* p) noexcept {
-    static_assert(std::is_same_v<T*, U*>);
-    static_assert(!IsArenaConstructible<T>::value);
-    p->~T();
-  }
+  uintptr_t ptr_ = kNone;
 };
 
-template <typename T, typename U>
-inline bool operator==(Allocator<T> lhs, Allocator<U> rhs) noexcept {
-  return lhs.arena() == rhs.arena();
-}
-
-template <typename T, typename U>
-inline bool operator!=(Allocator<T> lhs, Allocator<U> rhs) noexcept {
+inline bool operator!=(const Owner& lhs, const Owner& rhs) noexcept {
   return !operator==(lhs, rhs);
 }
 
-inline Allocator<> NewDeleteAllocator() noexcept {
-  return Allocator<>(static_cast<google::protobuf::Arena*>(nullptr));
+// `Borrower` represents a reference to some borrowed data, where the data has
+// at least one owner. When using reference counting, `Borrower` does not
+// participate in incrementing/decrementing the reference count. Thus `Borrower`
+// will not keep the underlying data alive.
+class Borrower final {
+ public:
+  static Borrower None() noexcept { return Borrower(); }
+
+  static Borrower Allocator(Allocator<> allocator) noexcept {
+    auto* arena = allocator.arena();
+    return arena != nullptr ? Arena(arena) : None();
+  }
+
+  static Borrower Arena(absl::Nonnull<google::protobuf::Arena*> arena
+                            ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
+    ABSL_DCHECK(arena != nullptr);
+    return Borrower(reinterpret_cast<uintptr_t>(arena) | Owner::kArenaBit);
+  }
+
+  static Borrower Arena(std::nullptr_t) = delete;
+
+  static Borrower ReferenceCount(
+      absl::Nonnull<const ReferenceCount*> reference_count
+          ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
+    ABSL_DCHECK(reference_count != nullptr);
+    return Borrower(reinterpret_cast<uintptr_t>(reference_count) |
+                    Owner::kReferenceCountBit);
+  }
+
+  static Borrower ReferenceCount(std::nullptr_t) = delete;
+
+  Borrower() = default;
+  Borrower(const Borrower&) = default;
+  Borrower(Borrower&&) = default;
+  Borrower& operator=(const Borrower&) = default;
+  Borrower& operator=(Borrower&&) = default;
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Borrower(const Owner& owner ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
+      : ptr_(owner.ptr_) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Borrower& operator=(
+      const Owner& owner ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
+    ptr_ = owner.ptr_;
+    return *this;
+  }
+
+  Borrower& operator=(Owner&&) = delete;
+
+  explicit operator bool() const noexcept { return !Owner::IsNone(ptr_); }
+
+  absl::Nullable<google::protobuf::Arena*> arena() const noexcept {
+    return (ptr_ & Owner::kBits) == Owner::kArenaBit
+               ? reinterpret_cast<google::protobuf::Arena*>(ptr_ & Owner::kPointerMask)
+               : nullptr;
+  }
+
+  // Tests whether two borrowers are borrowing the same data.
+  friend bool operator==(Borrower lhs, Borrower rhs) noexcept {
+    // A reference count and arena can never occupy the same memory address, so
+    // we can compare for equality without masking off the bits.
+    return lhs.ptr_ == rhs.ptr_;
+  }
+
+ private:
+  friend class Owner;
+
+  constexpr explicit Borrower(uintptr_t ptr) noexcept : ptr_(ptr) {}
+
+  uintptr_t ptr_ = Owner::kNone;
+};
+
+inline bool operator!=(Borrower lhs, Borrower rhs) noexcept {
+  return !operator==(lhs, rhs);
 }
 
-template <typename T>
-inline Allocator<T> NewDeleteAllocatorFor() noexcept {
-  static_assert(!std::is_void_v<T>);
-  return Allocator<T>(static_cast<google::protobuf::Arena*>(nullptr));
+inline bool operator==(Borrower lhs, const Owner& rhs) noexcept {
+  return operator==(lhs, Borrower(rhs));
 }
 
-inline Allocator<> ArenaAllocator(
-    absl::Nonnull<google::protobuf::Arena*> arena) noexcept {
-  return Allocator<>(arena);
+inline bool operator==(const Owner& lhs, Borrower rhs) noexcept {
+  return operator==(Borrower(lhs), rhs);
 }
 
-template <typename T>
-inline Allocator<T> ArenaAllocatorFor(
-    absl::Nonnull<google::protobuf::Arena*> arena) noexcept {
-  static_assert(!std::is_void_v<T>);
-  return Allocator<T>(arena);
+inline bool operator!=(Borrower lhs, const Owner& rhs) noexcept {
+  return !operator==(lhs, rhs);
 }
+
+inline bool operator!=(const Owner& lhs, Borrower rhs) noexcept {
+  return !operator==(lhs, rhs);
+}
+
+inline Owner::Owner(Borrower borrower) noexcept
+    : ptr_(Owner::Own(borrower.ptr_)) {}
 
 // `Shared` points to an object allocated in memory which is managed by a
 // `MemoryManager`. The pointed to object is valid so long as the managing

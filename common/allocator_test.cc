@@ -1,0 +1,84 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This header contains primitives for reference counting, roughly equivalent to
+// the primitives used to implement `std::shared_ptr`. These primitives should
+// not be used directly in most cases, instead `cel::ManagedMemory` should be
+// used instead.
+
+#include "common/allocator.h"
+
+#include "internal/testing.h"
+#include "google/protobuf/arena.h"
+
+namespace cel {
+namespace {
+
+using testing::NotNull;
+
+TEST(NewDeleteAllocator, Bytes) {
+  auto allocator = NewDeleteAllocator();
+  void* p = allocator.allocate_bytes(17, 8);
+  EXPECT_THAT(p, NotNull());
+  allocator.deallocate_bytes(p, 17, 8);
+}
+
+TEST(ArenaAllocator, Bytes) {
+  google::protobuf::Arena arena;
+  auto allocator = ArenaAllocator(&arena);
+  void* p = allocator.allocate_bytes(17, 8);
+  EXPECT_THAT(p, NotNull());
+  allocator.deallocate_bytes(p, 17, 8);
+}
+
+struct TrivialObject {
+  char data[17];
+};
+
+TEST(NewDeleteAllocator, Object) {
+  auto allocator = NewDeleteAllocator();
+  auto* p = allocator.new_object<TrivialObject>();
+  EXPECT_THAT(p, NotNull());
+  allocator.delete_object(p);
+}
+
+TEST(ArenaAllocator, Object) {
+  google::protobuf::Arena arena;
+  auto allocator = ArenaAllocator(&arena);
+  auto* p = allocator.new_object<TrivialObject>();
+  EXPECT_THAT(p, NotNull());
+  allocator.delete_object(p);
+}
+
+TEST(NewDeleteAllocator, T) {
+  auto allocator = NewDeleteAllocatorFor<TrivialObject>();
+  auto* p = allocator.allocate(1);
+  EXPECT_THAT(p, NotNull());
+  allocator.construct(p);
+  allocator.destroy(p);
+  allocator.deallocate(p, 1);
+}
+
+TEST(ArenaAllocator, T) {
+  google::protobuf::Arena arena;
+  auto allocator = ArenaAllocatorFor<TrivialObject>(&arena);
+  auto* p = allocator.allocate(1);
+  EXPECT_THAT(p, NotNull());
+  allocator.construct(p);
+  allocator.destroy(p);
+  allocator.deallocate(p, 1);
+}
+
+}  // namespace
+}  // namespace cel

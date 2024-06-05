@@ -341,8 +341,12 @@ cc_library(
     srcs = ["memory.cc"],
     hdrs = ["memory.h"],
     deps = [
+        ":allocator",
         ":casting",
+        ":data",
         ":native_type",
+        ":reference_count",
+        "//common/internal:metadata",
         "//common/internal:reference_count",
         "//internal:align",
         "//internal:exceptions",
@@ -365,9 +369,11 @@ cc_test(
     name = "memory_test",
     srcs = ["memory_test.cc"],
     deps = [
+        ":allocator",
         ":casting",
         ":memory",
         ":native_type",
+        "//common/internal:reference_count",
         "//internal:testing",
         "@com_google_absl//absl/base:config",
         "@com_google_absl//absl/debugging:leak_check",
@@ -834,4 +840,66 @@ cc_library(
         "@com_google_protobuf//:protobuf",
     ],
     alwayslink = True,
+)
+
+cc_library(
+    name = "arena",
+    hdrs = ["arena.h"],
+    deps = [
+        "@com_google_absl//absl/meta:type_traits",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "reference_count",
+    hdrs = ["reference_count.h"],
+    deps = ["//common/internal:reference_count"],
+)
+
+cc_library(
+    name = "allocator",
+    hdrs = ["allocator.h"],
+    deps = [
+        ":arena",
+        "//internal:new",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/numeric:bits",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "allocator_test",
+    srcs = ["allocator_test.cc"],
+    deps = [
+        ":allocator",
+        "//internal:testing",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "data",
+    hdrs = ["data.h"],
+    deps = [
+        "//common/internal:metadata",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "data_test",
+    srcs = ["data_test.cc"],
+    deps = [
+        ":data",
+        "//common/internal:reference_count",
+        "//internal:testing",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_protobuf//:protobuf",
+    ],
 )

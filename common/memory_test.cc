@@ -29,7 +29,9 @@
 #include "absl/debugging/leak_check.h"
 #include "absl/log/absl_check.h"
 #include "absl/types/optional.h"
+#include "common/allocator.h"
 #include "common/casting.h"
+#include "common/internal/reference_count.h"
 #include "common/native_type.h"
 #include "internal/testing.h"
 #include "google/protobuf/arena.h"
@@ -891,57 +893,121 @@ TEST(MemoryManagerRefCasting, Pooling) {
 
 // NOLINTEND(bugprone-use-after-move)
 
-TEST(NewDeleteAllocator, Bytes) {
-  auto allocator = NewDeleteAllocator();
-  void* p = allocator.allocate_bytes(17, 8);
-  EXPECT_THAT(p, NotNull());
-  allocator.deallocate_bytes(p, 17, 8);
+TEST(Owner, None) {
+  EXPECT_THAT(Owner::None(), IsFalse());
+  EXPECT_THAT(Owner::None().arena(), IsNull());
 }
 
-TEST(ArenaAllocator, Bytes) {
+TEST(Owner, Allocator) {
   google::protobuf::Arena arena;
-  auto allocator = ArenaAllocator(&arena);
-  void* p = allocator.allocate_bytes(17, 8);
-  EXPECT_THAT(p, NotNull());
-  allocator.deallocate_bytes(p, 17, 8);
+  EXPECT_THAT(Owner::Allocator(NewDeleteAllocator()), IsFalse());
+  EXPECT_THAT(Owner::Allocator(ArenaAllocator(&arena)), IsTrue());
 }
 
-struct TrivialObject {
-  char data[17];
-};
-
-TEST(NewDeleteAllocator, Object) {
-  auto allocator = NewDeleteAllocator();
-  auto* p = allocator.new_object<TrivialObject>();
-  EXPECT_THAT(p, NotNull());
-  allocator.delete_object(p);
-}
-
-TEST(ArenaAllocator, Object) {
+TEST(Owner, Arena) {
   google::protobuf::Arena arena;
-  auto allocator = ArenaAllocator(&arena);
-  auto* p = allocator.new_object<TrivialObject>();
-  EXPECT_THAT(p, NotNull());
-  allocator.delete_object(p);
+  EXPECT_THAT(Owner::Arena(&arena), IsTrue());
+  EXPECT_EQ(Owner::Arena(&arena).arena(), &arena);
 }
 
-TEST(NewDeleteAllocator, T) {
-  auto allocator = NewDeleteAllocatorFor<TrivialObject>();
-  auto* p = allocator.allocate(1);
-  EXPECT_THAT(p, NotNull());
-  allocator.construct(p);
-  allocator.destroy(p);
-  allocator.deallocate(p, 1);
+TEST(Owner, ReferenceCount) {
+  auto* refcount = new common_internal::ReferenceCounted();
+  EXPECT_THAT(Owner::ReferenceCount(refcount), IsTrue());
+  EXPECT_THAT(Owner::ReferenceCount(refcount).arena(), IsNull());
+  common_internal::StrongUnref(refcount);
 }
 
-TEST(ArenaAllocator, T) {
+TEST(Owner, Equality) {
+  google::protobuf::Arena arena1;
+  google::protobuf::Arena arena2;
+  EXPECT_EQ(Owner::None(), Owner::None());
+  EXPECT_EQ(Owner::Allocator(NewDeleteAllocator()), Owner::None());
+  EXPECT_EQ(Owner::Arena(&arena1), Owner::Arena(&arena1));
+  EXPECT_NE(Owner::Arena(&arena1), Owner::None());
+  EXPECT_NE(Owner::None(), Owner::Arena(&arena1));
+  EXPECT_NE(Owner::Arena(&arena1), Owner::Arena(&arena2));
+  EXPECT_EQ(Owner::Allocator(ArenaAllocator(&arena1)), Owner::Arena(&arena1));
+}
+
+TEST(Borrower, None) {
+  EXPECT_THAT(Borrower::None(), IsFalse());
+  EXPECT_THAT(Borrower::None().arena(), IsNull());
+}
+
+TEST(Borrower, Allocator) {
   google::protobuf::Arena arena;
-  auto allocator = ArenaAllocatorFor<TrivialObject>(&arena);
-  auto* p = allocator.allocate(1);
-  EXPECT_THAT(p, NotNull());
-  allocator.construct(p);
-  allocator.destroy(p);
-  allocator.deallocate(p, 1);
+  EXPECT_THAT(Borrower::Allocator(NewDeleteAllocator()), IsFalse());
+  EXPECT_THAT(Borrower::Allocator(ArenaAllocator(&arena)), IsTrue());
+}
+
+TEST(Borrower, Arena) {
+  google::protobuf::Arena arena;
+  EXPECT_THAT(Borrower::Arena(&arena), IsTrue());
+  EXPECT_EQ(Borrower::Arena(&arena).arena(), &arena);
+}
+
+TEST(Borrower, ReferenceCount) {
+  auto* refcount = new common_internal::ReferenceCounted();
+  EXPECT_THAT(Borrower::ReferenceCount(refcount), IsTrue());
+  EXPECT_THAT(Borrower::ReferenceCount(refcount).arena(), IsNull());
+  common_internal::StrongUnref(refcount);
+}
+
+TEST(Borrower, Equality) {
+  google::protobuf::Arena arena1;
+  google::protobuf::Arena arena2;
+  EXPECT_EQ(Borrower::None(), Borrower::None());
+  EXPECT_EQ(Borrower::Allocator(NewDeleteAllocator()), Borrower::None());
+  EXPECT_EQ(Borrower::Arena(&arena1), Borrower::Arena(&arena1));
+  EXPECT_NE(Borrower::Arena(&arena1), Borrower::None());
+  EXPECT_NE(Borrower::None(), Borrower::Arena(&arena1));
+  EXPECT_NE(Borrower::Arena(&arena1), Borrower::Arena(&arena2));
+  EXPECT_EQ(Borrower::Allocator(ArenaAllocator(&arena1)),
+            Borrower::Arena(&arena1));
+}
+
+TEST(OwnerBorrower, CopyConstruct) {
+  auto* refcount = new common_internal::ReferenceCounted();
+  Owner owner1 = Owner::ReferenceCount(refcount);
+  common_internal::StrongUnref(refcount);
+  Owner owner2(owner1);
+  Borrower borrower(owner1);
+  EXPECT_EQ(owner1, owner2);
+  EXPECT_EQ(owner1, borrower);
+  EXPECT_EQ(borrower, owner1);
+}
+
+TEST(OwnerBorrower, MoveConstruct) {
+  auto* refcount = new common_internal::ReferenceCounted();
+  Owner owner1 = Owner::ReferenceCount(refcount);
+  common_internal::StrongUnref(refcount);
+  Owner owner2(std::move(owner1));
+  Borrower borrower(owner2);
+  EXPECT_EQ(owner2, borrower);
+  EXPECT_EQ(borrower, owner2);
+}
+
+TEST(OwnerBorrower, CopyAssign) {
+  auto* refcount = new common_internal::ReferenceCounted();
+  Owner owner1 = Owner::ReferenceCount(refcount);
+  common_internal::StrongUnref(refcount);
+  Owner owner2;
+  owner2 = owner1;
+  Borrower borrower(owner1);
+  EXPECT_EQ(owner1, owner2);
+  EXPECT_EQ(owner1, borrower);
+  EXPECT_EQ(borrower, owner1);
+}
+
+TEST(OwnerBorrower, MoveAssign) {
+  auto* refcount = new common_internal::ReferenceCounted();
+  Owner owner1 = Owner::ReferenceCount(refcount);
+  common_internal::StrongUnref(refcount);
+  Owner owner2;
+  owner2 = std::move(owner1);
+  Borrower borrower(owner2);
+  EXPECT_EQ(owner2, borrower);
+  EXPECT_EQ(borrower, owner2);
 }
 
 }  // namespace
