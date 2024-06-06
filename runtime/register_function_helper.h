@@ -39,6 +39,8 @@ namespace cel {
 template <typename AdapterT>
 class RegisterHelper {
  public:
+  // Generic registration for an adapted function. Prefer using one of the more
+  // specific Register* functions.
   template <typename FunctionT>
   static absl::Status Register(absl::string_view name, bool receiver_style,
                                FunctionT&& fn, FunctionRegistry& registry,

@@ -221,6 +221,8 @@ struct ApplyHelper<0, Args...> {
 //
 //
 //    // Alternative shorthand
+//    // See RegisterHelper (template base class) for details.
+//    // runtime/register_function_helper.h
 //    auto status = BinaryFunctionAdapter<double, double, double>::
 //        RegisterGlobalOverload(
 //            "sq_diff",
