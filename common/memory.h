@@ -76,6 +76,7 @@ struct PoolingMemoryManagerVirtualTable;
 class PoolingMemoryManagerVirtualDispatcher;
 
 namespace common_internal {
+absl::Nullable<const ReferenceCount*> OwnerRelease(Owner& owner) noexcept;
 template <typename T>
 T* GetPointer(const Shared<T>& shared);
 template <typename T>
@@ -187,6 +188,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owner final {
 
  private:
   friend class Borrower;
+  friend absl::Nullable<const common_internal::ReferenceCount*>
+  common_internal::OwnerRelease(Owner& owner) noexcept;
 
   constexpr explicit Owner(uintptr_t ptr) noexcept : ptr_(ptr) {}
 
@@ -245,6 +248,19 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owner final {
 inline bool operator!=(const Owner& lhs, const Owner& rhs) noexcept {
   return !operator==(lhs, rhs);
 }
+
+namespace common_internal {
+
+inline absl::Nullable<const ReferenceCount*> OwnerRelease(
+    Owner& owner) noexcept {
+  uintptr_t ptr = std::exchange(owner.ptr_, uintptr_t{0});
+  if (Owner::IsReferenceCount(ptr)) {
+    return Owner::AsReferenceCount(ptr);
+  }
+  return nullptr;
+}
+
+}  // namespace common_internal
 
 // `Borrower` represents a reference to some borrowed data, where the data has
 // at least one owner. When using reference counting, `Borrower` does not
