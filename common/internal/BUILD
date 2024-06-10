@@ -114,3 +114,45 @@ cc_library(
     hdrs = ["metadata.h"],
     deps = ["@com_google_protobuf//:protobuf"],
 )
+
+cc_library(
+    name = "byte_string",
+    srcs = ["byte_string.cc"],
+    hdrs = ["byte_string.h"],
+    deps = [
+        ":metadata",
+        ":reference_count",
+        "//common:allocator",
+        "//common:memory",
+        "//internal:new",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/functional:overload",
+        "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "byte_string_test",
+    srcs = ["byte_string_test.cc"],
+    deps = [
+        ":byte_string",
+        ":reference_count",
+        "//common:allocator",
+        "//common:memory",
+        "//internal:testing",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:cord_test_helpers",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
