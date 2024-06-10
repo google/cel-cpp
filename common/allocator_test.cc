@@ -46,19 +46,49 @@ struct TrivialObject {
   char data[17];
 };
 
-TEST(NewDeleteAllocator, Object) {
+TEST(NewDeleteAllocator, NewDeleteObject) {
   auto allocator = NewDeleteAllocator();
   auto* p = allocator.new_object<TrivialObject>();
   EXPECT_THAT(p, NotNull());
   allocator.delete_object(p);
 }
 
-TEST(ArenaAllocator, Object) {
+TEST(ArenaAllocator, NewDeleteObject) {
   google::protobuf::Arena arena;
   auto allocator = ArenaAllocator(&arena);
   auto* p = allocator.new_object<TrivialObject>();
   EXPECT_THAT(p, NotNull());
   allocator.delete_object(p);
+}
+
+TEST(NewDeleteAllocator, Object) {
+  auto allocator = NewDeleteAllocator();
+  auto* p = allocator.allocate_object<TrivialObject>();
+  EXPECT_THAT(p, NotNull());
+  allocator.deallocate_object(p);
+}
+
+TEST(ArenaAllocator, Object) {
+  google::protobuf::Arena arena;
+  auto allocator = ArenaAllocator(&arena);
+  auto* p = allocator.allocate_object<TrivialObject>();
+  EXPECT_THAT(p, NotNull());
+  allocator.deallocate_object(p);
+}
+
+TEST(NewDeleteAllocator, ObjectArray) {
+  auto allocator = NewDeleteAllocator();
+  auto* p = allocator.allocate_object<TrivialObject>(2);
+  EXPECT_THAT(p, NotNull());
+  allocator.deallocate_object(p, 2);
+}
+
+TEST(ArenaAllocator, ObjectArray) {
+  google::protobuf::Arena arena;
+  auto allocator = ArenaAllocator(&arena);
+  auto* p = allocator.allocate_object<TrivialObject>(2);
+  EXPECT_THAT(p, NotNull());
+  allocator.deallocate_object(p, 2);
 }
 
 TEST(NewDeleteAllocator, T) {

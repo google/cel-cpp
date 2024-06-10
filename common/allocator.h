@@ -69,7 +69,7 @@ class Allocator<void> {
   // constructed in the return memory to `delete_object`, doing so is undefined
   // behavior.
   ABSL_MUST_USE_RESULT void* allocate_bytes(
-      size_t nbytes, size_t alignment = alignof(std::max_align_t)) {
+      size_type nbytes, size_type alignment = alignof(std::max_align_t)) {
     ABSL_DCHECK(absl::has_single_bit(alignment));
     if (nbytes == 0) {
       return nullptr;
@@ -82,14 +82,25 @@ class Allocator<void> {
   }
 
   // Deallocates memory previously returned by `allocate_bytes`.
-  void deallocate_bytes(void* p, size_t nbytes,
-                        size_t alignment = alignof(std::max_align_t)) noexcept {
+  void deallocate_bytes(
+      void* p, size_type nbytes,
+      size_type alignment = alignof(std::max_align_t)) noexcept {
     ABSL_DCHECK((p == nullptr && nbytes == 0) || (p != nullptr && nbytes != 0));
     ABSL_DCHECK(absl::has_single_bit(alignment));
     if (arena() == nullptr) {
       internal::SizedAlignedDelete(p, nbytes,
                                    static_cast<std::align_val_t>(alignment));
     }
+  }
+
+  template <typename T>
+  ABSL_MUST_USE_RESULT T* allocate_object(size_type n = 1) {
+    return static_cast<T*>(allocate_bytes(sizeof(T) * n, alignof(T)));
+  }
+
+  template <typename T>
+  void deallocate_object(T* p, size_type n = 1) {
+    deallocate_bytes(p, sizeof(T) * n, alignof(T));
   }
 
   // Allocates memory suitable for an object of type `T` and constructs the
