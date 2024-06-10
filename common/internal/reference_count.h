@@ -22,6 +22,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <new>
 #include <type_traits>
 #include <utility>
 
@@ -29,6 +30,10 @@
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
+#include "common/arena.h"
+#include "common/data.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/message_lite.h"
 
 namespace cel::common_internal {
 
@@ -79,44 +84,44 @@ inline absl::Nullable<ReferenceCount*> GetReferenceCountForThat(
   return static_cast<ReferenceCount*>(that.refcount);
 }
 
-void StrongRef(const ReferenceCount& refcount);
+void StrongRef(const ReferenceCount& refcount) noexcept;
 
-void StrongRef(absl::Nullable<const ReferenceCount*> refcount);
+void StrongRef(absl::Nullable<const ReferenceCount*> refcount) noexcept;
 
-void StrongUnref(const ReferenceCount& refcount);
+void StrongUnref(const ReferenceCount& refcount) noexcept;
 
-void StrongUnref(absl::Nullable<const ReferenceCount*> refcount);
-
-ABSL_MUST_USE_RESULT
-bool StrengthenRef(const ReferenceCount& refcount);
+void StrongUnref(absl::Nullable<const ReferenceCount*> refcount) noexcept;
 
 ABSL_MUST_USE_RESULT
-bool StrengthenRef(absl::Nullable<const ReferenceCount*> refcount);
-
-void WeakRef(const ReferenceCount& refcount);
-
-void WeakRef(absl::Nullable<const ReferenceCount*> refcount);
-
-void WeakUnref(const ReferenceCount& refcount);
-
-void WeakUnref(absl::Nullable<const ReferenceCount*> refcount);
+bool StrengthenRef(const ReferenceCount& refcount) noexcept;
 
 ABSL_MUST_USE_RESULT
-bool IsUniqueRef(const ReferenceCount& refcount);
+bool StrengthenRef(absl::Nullable<const ReferenceCount*> refcount) noexcept;
+
+void WeakRef(const ReferenceCount& refcount) noexcept;
+
+void WeakRef(absl::Nullable<const ReferenceCount*> refcount) noexcept;
+
+void WeakUnref(const ReferenceCount& refcount) noexcept;
+
+void WeakUnref(absl::Nullable<const ReferenceCount*> refcount) noexcept;
 
 ABSL_MUST_USE_RESULT
-bool IsUniqueRef(absl::Nullable<const ReferenceCount*> refcount);
+bool IsUniqueRef(const ReferenceCount& refcount) noexcept;
 
 ABSL_MUST_USE_RESULT
-bool IsExpiredRef(const ReferenceCount& refcount);
+bool IsUniqueRef(absl::Nullable<const ReferenceCount*> refcount) noexcept;
 
 ABSL_MUST_USE_RESULT
-bool IsExpiredRef(absl::Nullable<const ReferenceCount*> refcount);
+bool IsExpiredRef(const ReferenceCount& refcount) noexcept;
+
+ABSL_MUST_USE_RESULT
+bool IsExpiredRef(absl::Nullable<const ReferenceCount*> refcount) noexcept;
 
 // `ReferenceCount` is similar to the control block used by `std::shared_ptr`.
 // It is not meant to be interacted with directly in most cases, instead
 // `cel::Shared` should be used.
-class ReferenceCount {
+class alignas(8) ReferenceCount {
  public:
   ReferenceCount() = default;
 
@@ -128,13 +133,13 @@ class ReferenceCount {
   virtual ~ReferenceCount() = default;
 
  private:
-  friend void StrongRef(const ReferenceCount& refcount);
-  friend void StrongUnref(const ReferenceCount& refcount);
-  friend bool StrengthenRef(const ReferenceCount& refcount);
-  friend void WeakRef(const ReferenceCount& refcount);
-  friend void WeakUnref(const ReferenceCount& refcount);
-  friend bool IsUniqueRef(const ReferenceCount& refcount);
-  friend bool IsExpiredRef(const ReferenceCount& refcount);
+  friend void StrongRef(const ReferenceCount& refcount) noexcept;
+  friend void StrongUnref(const ReferenceCount& refcount) noexcept;
+  friend bool StrengthenRef(const ReferenceCount& refcount) noexcept;
+  friend void WeakRef(const ReferenceCount& refcount) noexcept;
+  friend void WeakUnref(const ReferenceCount& refcount) noexcept;
+  friend bool IsUniqueRef(const ReferenceCount& refcount) noexcept;
+  friend bool IsExpiredRef(const ReferenceCount& refcount) noexcept;
 
   virtual void Finalize() noexcept = 0;
 
@@ -144,6 +149,11 @@ class ReferenceCount {
   mutable std::atomic<int32_t> weak_refcount_ = 1;
 };
 
+// ReferenceCount and its derivations must be at least as aligned as
+// google::protobuf::Arena. This is a requirement for the pointer tagging defined in
+// common/internal/metadata.h.
+static_assert(alignof(ReferenceCount) >= alignof(google::protobuf::Arena));
+
 // `ReferenceCounted` is a base class for classes which should be reference
 // counted. It provides default implementations for `Finalize()` and `Delete()`.
 class ReferenceCounted : public ReferenceCount {
@@ -152,6 +162,91 @@ class ReferenceCounted : public ReferenceCount {
 
   void Delete() noexcept override { delete this; }
 };
+
+// `EmplacedReferenceCount` adapts `T` to make it reference countable, by
+// storing `T` inside the reference count. This only works when `T` has not yet
+// been allocated.
+template <typename T>
+class EmplacedReferenceCount final : public ReferenceCounted {
+ public:
+  static_assert(std::is_destructible_v<T>, "T must be destructible");
+  static_assert(!std::is_reference_v<T>, "T must not be a reference");
+  static_assert(!std::is_volatile_v<T>, "T must not be volatile qualified");
+  static_assert(!std::is_const_v<T>, "T must not be const qualified");
+
+  template <typename... Args>
+  explicit EmplacedReferenceCount(T*& value, Args&&... args) noexcept(
+      std::is_nothrow_constructible_v<T, Args...>) {
+    value =
+        ::new (static_cast<void*>(&value_[0])) T(std::forward<Args>(args)...);
+  }
+
+ private:
+  void Finalize() noexcept override {
+    std::launder(reinterpret_cast<T*>(&value_[0]))->~T();
+  }
+
+  // We store the instance of `T` in a char buffer and use placement new and
+  // direct calls to the destructor. The reason for this is `Finalize()` is
+  // called when the strong reference count hits 0. This allows us to destroy
+  // our instance of `T` once we are no longer strongly reachable and deallocate
+  // the memory once we are no longer weakly reachable.
+  alignas(T) char value_[sizeof(T)];
+};
+
+// `DeletingReferenceCount` adapts `T` to make it reference countable, by taking
+// ownership of `T` and deleting it. This only works when `T` has already been
+// allocated and is to expensive to move or copy.
+template <typename T>
+class DeletingReferenceCount final : public ReferenceCounted {
+ public:
+  explicit DeletingReferenceCount(absl::Nonnull<const T*> to_delete) noexcept
+      : to_delete_(to_delete) {}
+
+ private:
+  void Finalize() noexcept override {
+    delete std::exchange(to_delete_, nullptr);
+  }
+
+  const T* to_delete_;
+};
+
+extern template class DeletingReferenceCount<google::protobuf::MessageLite>;
+extern template class DeletingReferenceCount<Data>;
+
+template <typename T>
+absl::Nonnull<const ReferenceCount*> MakeDeletingReferenceCount(
+    absl::Nonnull<const T*> to_delete) {
+  if constexpr (IsArenaConstructible<T>::value) {
+    ABSL_DCHECK_EQ(to_delete->GetArena(), nullptr);
+  }
+  if constexpr (std::is_base_of_v<google::protobuf::MessageLite, T>) {
+    return new DeletingReferenceCount<google::protobuf::MessageLite>(to_delete);
+  } else if constexpr (std::is_base_of_v<Data, T>) {
+    auto* refcount = new DeletingReferenceCount<Data>(to_delete);
+    common_internal::SetDataReferenceCount(to_delete, refcount);
+    return refcount;
+  } else {
+    return new DeletingReferenceCount<T>(to_delete);
+  }
+}
+
+template <typename T, typename... Args>
+std::pair<absl::Nonnull<T*>, absl::Nonnull<const ReferenceCount*>>
+MakeEmplacedReferenceCount(Args&&... args) {
+  using U = std::remove_const_t<T>;
+  U* pointer;
+  auto* const refcount =
+      new EmplacedReferenceCount<U>(pointer, std::forward<Args>(args)...);
+  if constexpr (IsArenaConstructible<U>::value) {
+    ABSL_DCHECK_EQ(pointer->GetArena(), nullptr);
+  }
+  if constexpr (std::is_base_of_v<Data, T>) {
+    common_internal::SetDataReferenceCount(pointer, refcount);
+  }
+  return std::pair{static_cast<absl::Nonnull<T*>>(pointer),
+                   static_cast<absl::Nonnull<const ReferenceCount*>>(refcount)};
+}
 
 template <typename T>
 class InlinedReferenceCount final : public ReferenceCounted {
@@ -195,38 +290,42 @@ std::pair<absl::Nonnull<T*>, absl::Nonnull<ReferenceCount*>> MakeReferenceCount(
                         static_cast<ReferenceCount*>(refcount));
 }
 
-inline void StrongRef(const ReferenceCount& refcount) {
+inline void StrongRef(const ReferenceCount& refcount) noexcept {
   const auto count =
       refcount.strong_refcount_.fetch_add(1, std::memory_order_relaxed);
   ABSL_DCHECK_GT(count, 0);
 }
 
-inline void StrongRef(absl::Nullable<const ReferenceCount*> refcount) {
+inline void StrongRef(absl::Nullable<const ReferenceCount*> refcount) noexcept {
   if (refcount != nullptr) {
     StrongRef(*refcount);
   }
 }
 
-inline void StrongUnref(const ReferenceCount& refcount) {
+inline void StrongUnref(const ReferenceCount& refcount) noexcept {
   const auto count =
       refcount.strong_refcount_.fetch_sub(1, std::memory_order_acq_rel);
   ABSL_DCHECK_GT(count, 0);
+  ABSL_ASSUME(count > 0);
   if (ABSL_PREDICT_FALSE(count == 1)) {
     const_cast<ReferenceCount&>(refcount).Finalize();
     WeakUnref(refcount);
   }
 }
 
-inline void StrongUnref(absl::Nullable<const ReferenceCount*> refcount) {
+inline void StrongUnref(
+    absl::Nullable<const ReferenceCount*> refcount) noexcept {
   if (refcount != nullptr) {
     StrongUnref(*refcount);
   }
 }
 
-inline bool StrengthenRef(const ReferenceCount& refcount) {
+ABSL_MUST_USE_RESULT
+inline bool StrengthenRef(const ReferenceCount& refcount) noexcept {
   auto count = refcount.strong_refcount_.load(std::memory_order_relaxed);
   while (true) {
     ABSL_DCHECK_GE(count, 0);
+    ABSL_ASSUME(count >= 0);
     if (count == 0) {
       return false;
     }
@@ -238,54 +337,65 @@ inline bool StrengthenRef(const ReferenceCount& refcount) {
   }
 }
 
-inline bool StrengthenRef(absl::Nullable<const ReferenceCount*> refcount) {
+ABSL_MUST_USE_RESULT
+inline bool StrengthenRef(
+    absl::Nullable<const ReferenceCount*> refcount) noexcept {
   return refcount != nullptr ? StrengthenRef(*refcount) : false;
 }
 
-inline void WeakRef(const ReferenceCount& refcount) {
+inline void WeakRef(const ReferenceCount& refcount) noexcept {
   const auto count =
       refcount.weak_refcount_.fetch_add(1, std::memory_order_relaxed);
   ABSL_DCHECK_GT(count, 0);
 }
 
-inline void WeakRef(absl::Nullable<const ReferenceCount*> refcount) {
+inline void WeakRef(absl::Nullable<const ReferenceCount*> refcount) noexcept {
   if (refcount != nullptr) {
     WeakRef(*refcount);
   }
 }
 
-inline void WeakUnref(const ReferenceCount& refcount) {
+inline void WeakUnref(const ReferenceCount& refcount) noexcept {
   const auto count =
       refcount.weak_refcount_.fetch_sub(1, std::memory_order_acq_rel);
   ABSL_DCHECK_GT(count, 0);
+  ABSL_ASSUME(count > 0);
   if (ABSL_PREDICT_FALSE(count == 1)) {
     const_cast<ReferenceCount&>(refcount).Delete();
   }
 }
 
-inline void WeakUnref(absl::Nullable<const ReferenceCount*> refcount) {
+inline void WeakUnref(absl::Nullable<const ReferenceCount*> refcount) noexcept {
   if (refcount != nullptr) {
     WeakUnref(*refcount);
   }
 }
 
-inline bool IsUniqueRef(const ReferenceCount& refcount) {
+ABSL_MUST_USE_RESULT
+inline bool IsUniqueRef(const ReferenceCount& refcount) noexcept {
   const auto count = refcount.strong_refcount_.load(std::memory_order_acquire);
   ABSL_DCHECK_GT(count, 0);
+  ABSL_ASSUME(count > 0);
   return count == 1;
 }
 
-inline bool IsUniqueRef(absl::Nullable<const ReferenceCount*> refcount) {
+ABSL_MUST_USE_RESULT
+inline bool IsUniqueRef(
+    absl::Nullable<const ReferenceCount*> refcount) noexcept {
   return refcount != nullptr ? IsUniqueRef(*refcount) : false;
 }
 
-inline bool IsExpiredRef(const ReferenceCount& refcount) {
+ABSL_MUST_USE_RESULT
+inline bool IsExpiredRef(const ReferenceCount& refcount) noexcept {
   const auto count = refcount.strong_refcount_.load(std::memory_order_acquire);
   ABSL_DCHECK_GE(count, 0);
+  ABSL_ASSUME(count >= 0);
   return count == 0;
 }
 
-inline bool IsExpiredRef(absl::Nullable<const ReferenceCount*> refcount) {
+ABSL_MUST_USE_RESULT
+inline bool IsExpiredRef(
+    absl::Nullable<const ReferenceCount*> refcount) noexcept {
   return refcount != nullptr ? IsExpiredRef(*refcount) : false;
 }
 

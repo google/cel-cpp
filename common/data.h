@@ -31,7 +31,7 @@ namespace common_internal {
 class ReferenceCount;
 
 void SetDataReferenceCount(
-    absl::Nonnull<Data*> data,
+    absl::Nonnull<const Data*> data,
     absl::Nonnull<const ReferenceCount*> refcount) noexcept;
 
 absl::Nullable<const ReferenceCount*> GetDataReferenceCount(
@@ -79,19 +79,19 @@ class Data {
       common_internal::kMetadataOwnerPointerMask;
 
   friend void common_internal::SetDataReferenceCount(
-      absl::Nonnull<Data*> data,
+      absl::Nonnull<const Data*> data,
       absl::Nonnull<const common_internal::ReferenceCount*> refcount) noexcept;
   friend absl::Nullable<const common_internal::ReferenceCount*>
   common_internal::GetDataReferenceCount(
       absl::Nonnull<const Data*> data) noexcept;
 
-  uintptr_t owner_ = kOwnerNone;
+  mutable uintptr_t owner_ = kOwnerNone;
 };
 
 namespace common_internal {
 
 inline void SetDataReferenceCount(
-    absl::Nonnull<Data*> data,
+    absl::Nonnull<const Data*> data,
     absl::Nonnull<const ReferenceCount*> refcount) noexcept {
   ABSL_DCHECK_EQ(data->owner_, Data::kOwnerNone);
   data->owner_ =
