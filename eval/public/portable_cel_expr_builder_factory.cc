@@ -46,6 +46,8 @@ namespace {
 using ::cel::MemoryManagerRef;
 using ::cel::ast_internal::AstImpl;
 using ::cel::extensions::CreateSelectOptimizationProgramOptimizer;
+using ::cel::extensions::kCelAttribute;
+using ::cel::extensions::kCelHasField;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::extensions::SelectOptimizationAstUpdater;
 using ::cel::runtime_internal::CreateConstantFoldingOptimizer;
@@ -108,17 +110,18 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
     // Add overloads for select optimization signature.
     // These are never bound, only used to prevent the builder from failing on
     // the overloads check.
-    absl::Status status = builder->GetRegistry()->RegisterLazyFunction(
-        CelFunctionDescriptor(cel::extensions::kCelAttribute, false,
-                              {cel::Kind::kAny, cel::Kind::kList}));
+    absl::Status status =
+        builder->GetRegistry()->RegisterLazyFunction(CelFunctionDescriptor(
+            kCelAttribute, false, {cel::Kind::kAny, cel::Kind::kList}));
     if (!status.ok()) {
-      ABSL_LOG(ERROR) << "Failed to register @cel.attribute: " << status;
+      ABSL_LOG(ERROR) << "Failed to register " << kCelAttribute << ": "
+                      << status;
     }
-    status = builder->GetRegistry()->RegisterLazyFunction(
-        CelFunctionDescriptor(cel::extensions::kFieldsHas, false,
-                              {cel::Kind::kAny, cel::Kind::kList}));
+    status = builder->GetRegistry()->RegisterLazyFunction(CelFunctionDescriptor(
+        kCelHasField, false, {cel::Kind::kAny, cel::Kind::kList}));
     if (!status.ok()) {
-      ABSL_LOG(ERROR) << "Failed to register @cel.hasField: " << status;
+      ABSL_LOG(ERROR) << "Failed to register " << kCelHasField << ": "
+                      << status;
     }
     // Add runtime implementation.
     flat_expr_builder.AddProgramOptimizer(

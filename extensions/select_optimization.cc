@@ -40,6 +40,7 @@
 #include "base/function_descriptor.h"
 #include "common/ast_rewrite.h"
 #include "common/casting.h"
+#include "common/expr.h"
 #include "common/kind.h"
 #include "common/native_type.h"
 #include "common/type.h"
@@ -97,7 +98,7 @@ struct SelectPath {
 };
 
 // Generates the AST representation of the qualification path for the optimized
-// select branch. I.e., the list-typed second argument of the @cel.attribute
+// select branch. I.e., the list-typed second argument of the cel.@attribute
 // call.
 Expr MakeSelectPathExpr(
     const std::vector<QualifierInstruction>& select_instructions) {
@@ -446,7 +447,7 @@ class RewriterImpl : public AstRewriterBase {
     SelectPath path = GetSelectPath(&expr);
 
     // generate the new cel.attribute call.
-    absl::string_view fn = path.test_only ? kFieldsHas : kCelAttribute;
+    absl::string_view fn = path.test_only ? kCelHasField : kCelAttribute;
 
     Expr operand(std::move(*path.operand));
     Expr call;
@@ -786,7 +787,7 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
   }
 
   absl::string_view fn = node.call_expr().function();
-  if (fn != kFieldsHas && fn != kCelAttribute) {
+  if (fn != kCelHasField && fn != kCelAttribute) {
     return absl::OkStatus();
   }
 
@@ -808,7 +809,7 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
 
   bool presence_test = false;
 
-  if (fn == kFieldsHas) {
+  if (fn == kCelHasField) {
     presence_test = true;
   }
 
@@ -918,12 +919,10 @@ absl::Status EnableSelectOptimization(
   // These are never bound, only used to prevent the builder from failing on
   // the overloads check.
   CEL_RETURN_IF_ERROR(builder.function_registry().RegisterLazyFunction(
-      FunctionDescriptor(cel::extensions::kCelAttribute, false,
-                         {cel::Kind::kAny, cel::Kind::kList})));
+      FunctionDescriptor(kCelAttribute, false, {Kind::kAny, Kind::kList})));
 
   CEL_RETURN_IF_ERROR(builder.function_registry().RegisterLazyFunction(
-      FunctionDescriptor(cel::extensions::kFieldsHas, false,
-                         {cel::Kind::kAny, cel::Kind::kList})));
+      FunctionDescriptor(kCelHasField, false, {Kind::kAny, Kind::kList})));
   // Add runtime implementation.
   flat_expr_builder->AddProgramOptimizer(
       CreateSelectOptimizationProgramOptimizer(options));

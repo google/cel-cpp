@@ -22,8 +22,8 @@
 
 namespace cel::extensions {
 
-constexpr char kCelAttribute[] = "@cel.attribute";
-constexpr char kFieldsHas[] = "@cel.hasField";
+constexpr char kCelAttribute[] = "cel.@attribute";
+constexpr char kCelHasField[] = "cel.@hasField";
 
 // Configuration options for the select optimization.
 struct SelectOptimizationOptions {

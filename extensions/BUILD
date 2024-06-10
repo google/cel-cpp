@@ -226,6 +226,7 @@ cc_library(
         "//base/ast_internal:expr",
         "//common:ast_rewrite",
         "//common:casting",
+        "//common:expr",
         "//common:kind",
         "//common:native_type",
         "//common:type",
