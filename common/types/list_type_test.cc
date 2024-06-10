@@ -19,6 +19,7 @@
 #include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/memory.h"
+#include "common/memory_testing.h"
 #include "common/native_type.h"
 #include "common/type.h"
 #include "internal/testing.h"
@@ -41,37 +42,7 @@ TEST(ListTypeView, Default) {
   EXPECT_EQ(list_type.element(), DynType());
 }
 
-class ListTypeTest : public TestWithParam<MemoryManagement> {
- public:
-  void SetUp() override {
-    switch (memory_management()) {
-      case MemoryManagement::kPooling:
-        memory_manager_ =
-            MemoryManager::Pooling(NewThreadCompatiblePoolingMemoryManager());
-        break;
-      case MemoryManagement::kReferenceCounting:
-        memory_manager_ = MemoryManager::ReferenceCounting();
-        break;
-    }
-  }
-
-  void TearDown() override { Finish(); }
-
-  void Finish() { memory_manager_.reset(); }
-
-  MemoryManagerRef memory_manager() { return *memory_manager_; }
-
-  MemoryManagement memory_management() const { return GetParam(); }
-
-  static std::string ToString(TestParamInfo<MemoryManagement> param) {
-    std::ostringstream out;
-    out << param.param;
-    return out.str();
-  }
-
- private:
-  absl::optional<MemoryManager> memory_manager_;
-};
+class ListTypeTest : public common_internal::ThreadCompatibleMemoryTest<> {};
 
 TEST_P(ListTypeTest, Kind) {
   EXPECT_EQ(ListType(memory_manager(), BoolType()).kind(), ListType::kKind);
@@ -147,36 +118,7 @@ INSTANTIATE_TEST_SUITE_P(
                       MemoryManagement::kReferenceCounting),
     ListTypeTest::ToString);
 
-class ListTypeViewTest : public TestWithParam<MemoryManagement> {
- public:
-  void SetUp() override {
-    switch (memory_management()) {
-      case MemoryManagement::kPooling:
-        memory_manager_ =
-            MemoryManager::Pooling(NewThreadCompatiblePoolingMemoryManager());
-        break;
-      case MemoryManagement::kReferenceCounting:
-        memory_manager_ = MemoryManager::ReferenceCounting();
-        break;
-    }
-  }
-
-  void TearDown() override { Finish(); }
-
-  void Finish() { memory_manager_.reset(); }
-
-  MemoryManagerRef memory_manager() { return *memory_manager_; }
-
-  MemoryManagement memory_management() const { return GetParam(); }
-
-  static std::string ToString(TestParamInfo<MemoryManagement> param) {
-    std::ostringstream out;
-    out << param.param;
-    return out.str();
-  }
-
- private:
-  absl::optional<MemoryManager> memory_manager_;
+class ListTypeViewTest : public common_internal::ThreadCompatibleMemoryTest<> {
 };
 
 TEST_P(ListTypeViewTest, Kind) {

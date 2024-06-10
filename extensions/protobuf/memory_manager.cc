@@ -14,113 +14,22 @@
 
 #include "extensions/protobuf/memory_manager.h"
 
-#include <cstddef>
-#include <memory>
-
 #include "absl/base/nullability.h"
-#include "common/casting.h"
 #include "common/memory.h"
-#include "common/native_type.h"
 #include "google/protobuf/arena.h"
 
 namespace cel {
 
 namespace extensions {
 
-namespace {
-
-absl::Nonnull<void*> ProtoPoolingMemoryManagerAllocate(void* arena, size_t size,
-                                                       size_t align) {
-  return static_cast<google::protobuf::Arena*>(arena)->AllocateAligned(size, align);
-}
-
-bool ProtoPoolingMemoryManagerDeallocate(absl::Nonnull<void*>,
-                                         absl::Nonnull<void*>, size_t,
-                                         size_t) noexcept {
-  return false;
-}
-
-void ProtoPoolingMemoryManagerOwnCustomDestructor(
-    absl::Nonnull<void*> arena, void* object,
-    absl::Nonnull<void (*)(void*)> destruct) {
-  static_cast<google::protobuf::Arena*>(arena)->OwnCustomDestructor(object, destruct);
-}
-
-class ProtoPoolingMemoryManager final : public PoolingMemoryManager {
- public:
-  ProtoPoolingMemoryManager() = default;
-
-  absl::Nonnull<google::protobuf::Arena*> arena() { return &arena_; }
-
- private:
-  absl::Nonnull<void*> AllocateImpl(size_t size, size_t align) override {
-    return ProtoPoolingMemoryManagerAllocate(arena(), size, align);
-  }
-
-  void OwnCustomDestructorImpl(
-      void* object, absl::Nonnull<void (*)(void*)> destruct) override {
-    ProtoPoolingMemoryManagerOwnCustomDestructor(arena(), object, destruct);
-  }
-
-  NativeTypeId GetNativeTypeId() const noexcept override {
-    return NativeTypeId::For<ProtoPoolingMemoryManager>();
-  }
-
-  google::protobuf::Arena arena_;
-};
-
-const PoolingMemoryManagerVirtualTable& ProtoMemoryManagerVirtualTable() {
-  static const PoolingMemoryManagerVirtualTable vtable{
-      NativeTypeId::For<google::protobuf::Arena>(), &ProtoPoolingMemoryManagerAllocate,
-      &ProtoPoolingMemoryManagerDeallocate,
-      &ProtoPoolingMemoryManagerOwnCustomDestructor};
-  return vtable;
-}
-
-}  // namespace
-
-}  // namespace extensions
-
-template <>
-struct SubsumptionTraits<extensions::ProtoPoolingMemoryManager> final {
-  static bool IsA(const PoolingMemoryManager& memory_manager) {
-    return NativeTypeId::Of(memory_manager) ==
-           NativeTypeId::For<extensions::ProtoPoolingMemoryManager>();
-  }
-};
-
-namespace extensions {
-
-MemoryManagerRef ProtoMemoryManagerRef(google::protobuf::Arena* arena) {
-  return arena != nullptr ? MemoryManagerRef::Pooling(
-                                ProtoMemoryManagerVirtualTable(), *arena)
+MemoryManagerRef ProtoMemoryManager(google::protobuf::Arena* arena) {
+  return arena != nullptr ? MemoryManagerRef::Pooling(arena)
                           : MemoryManagerRef::ReferenceCounting();
 }
 
-MemoryManager ProtoMemoryManager() {
-  // We use an inverted hierarchy. So we allow implicit conversion of
-  // `std::unique_ptr<PoolingMemoryManager>` to `MemoryManager`.
-  return std::make_unique<ProtoPoolingMemoryManager>();
-}
-
 absl::Nullable<google::protobuf::Arena*> ProtoMemoryManagerArena(
-    MemoryManager& memory_manager) {
-  return ProtoMemoryManagerArena(MemoryManagerRef(memory_manager));
-}
-
-absl::Nullable<google::protobuf::Arena*> ProtoMemoryManagerArena(
-    MemoryManagerRef memory_manager) {
-  if (InstanceOf<extensions::ProtoPoolingMemoryManager>(memory_manager)) {
-    return Cast<extensions::ProtoPoolingMemoryManager>(memory_manager).arena();
-  }
-  if (auto virtual_dispatcher =
-          As<PoolingMemoryManagerVirtualDispatcher>(memory_manager);
-      virtual_dispatcher &&
-      virtual_dispatcher->vtable() ==
-          std::addressof(ProtoMemoryManagerVirtualTable())) {
-    return static_cast<google::protobuf::Arena*>(virtual_dispatcher->callee());
-  }
-  return nullptr;
+    MemoryManager memory_manager) {
+  return memory_manager.arena();
 }
 
 }  // namespace extensions

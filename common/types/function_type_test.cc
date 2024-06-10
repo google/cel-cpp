@@ -19,6 +19,7 @@
 #include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/memory.h"
+#include "common/memory_testing.h"
 #include "common/native_type.h"
 #include "common/type.h"
 #include "internal/testing.h"
@@ -31,36 +32,7 @@ using testing::Ne;
 using testing::TestParamInfo;
 using testing::TestWithParam;
 
-class FunctionTypeTest : public TestWithParam<MemoryManagement> {
- public:
-  void SetUp() override {
-    switch (memory_management()) {
-      case MemoryManagement::kPooling:
-        memory_manager_ =
-            MemoryManager::Pooling(NewThreadCompatiblePoolingMemoryManager());
-        break;
-      case MemoryManagement::kReferenceCounting:
-        memory_manager_ = MemoryManager::ReferenceCounting();
-        break;
-    }
-  }
-
-  void TearDown() override { Finish(); }
-
-  void Finish() { memory_manager_.reset(); }
-
-  MemoryManagerRef memory_manager() { return *memory_manager_; }
-
-  MemoryManagement memory_management() const { return GetParam(); }
-
-  static std::string ToString(TestParamInfo<MemoryManagement> param) {
-    std::ostringstream out;
-    out << param.param;
-    return out.str();
-  }
-
- private:
-  absl::optional<MemoryManager> memory_manager_;
+class FunctionTypeTest : public common_internal::ThreadCompatibleMemoryTest<> {
 };
 
 TEST_P(FunctionTypeTest, Kind) {
@@ -149,37 +121,8 @@ INSTANTIATE_TEST_SUITE_P(
                       MemoryManagement::kReferenceCounting),
     FunctionTypeTest::ToString);
 
-class FunctionTypeViewTest : public TestWithParam<MemoryManagement> {
- public:
-  void SetUp() override {
-    switch (memory_management()) {
-      case MemoryManagement::kPooling:
-        memory_manager_ =
-            MemoryManager::Pooling(NewThreadCompatiblePoolingMemoryManager());
-        break;
-      case MemoryManagement::kReferenceCounting:
-        memory_manager_ = MemoryManager::ReferenceCounting();
-        break;
-    }
-  }
-
-  void TearDown() override { Finish(); }
-
-  void Finish() { memory_manager_.reset(); }
-
-  MemoryManagerRef memory_manager() { return *memory_manager_; }
-
-  MemoryManagement memory_management() const { return GetParam(); }
-
-  static std::string ToString(TestParamInfo<MemoryManagement> param) {
-    std::ostringstream out;
-    out << param.param;
-    return out.str();
-  }
-
- private:
-  absl::optional<MemoryManager> memory_manager_;
-};
+class FunctionTypeViewTest
+    : public common_internal::ThreadCompatibleMemoryTest<> {};
 
 TEST_P(FunctionTypeViewTest, Kind) {
   auto type = FunctionType(memory_manager(), DynType{}, {BytesType()});

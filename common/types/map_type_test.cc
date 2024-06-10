@@ -19,6 +19,7 @@
 #include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/memory.h"
+#include "common/memory_testing.h"
 #include "common/native_type.h"
 #include "common/type.h"
 #include "internal/testing.h"
@@ -43,37 +44,7 @@ TEST(MapTypeView, Default) {
   EXPECT_EQ(map_type.value(), DynType());
 }
 
-class MapTypeTest : public TestWithParam<MemoryManagement> {
- public:
-  void SetUp() override {
-    switch (memory_management()) {
-      case MemoryManagement::kPooling:
-        memory_manager_ =
-            MemoryManager::Pooling(NewThreadCompatiblePoolingMemoryManager());
-        break;
-      case MemoryManagement::kReferenceCounting:
-        memory_manager_ = MemoryManager::ReferenceCounting();
-        break;
-    }
-  }
-
-  void TearDown() override { Finish(); }
-
-  void Finish() { memory_manager_.reset(); }
-
-  MemoryManagerRef memory_manager() { return *memory_manager_; }
-
-  MemoryManagement memory_management() const { return GetParam(); }
-
-  static std::string ToString(TestParamInfo<MemoryManagement> param) {
-    std::ostringstream out;
-    out << param.param;
-    return out.str();
-  }
-
- private:
-  absl::optional<MemoryManager> memory_manager_;
-};
+class MapTypeTest : public common_internal::ThreadCompatibleMemoryTest<> {};
 
 TEST_P(MapTypeTest, Kind) {
   EXPECT_EQ(MapType(memory_manager(), StringType(), BytesType()).kind(),
@@ -157,37 +128,7 @@ INSTANTIATE_TEST_SUITE_P(
                       MemoryManagement::kReferenceCounting),
     MapTypeTest::ToString);
 
-class MapTypeViewTest : public TestWithParam<MemoryManagement> {
- public:
-  void SetUp() override {
-    switch (memory_management()) {
-      case MemoryManagement::kPooling:
-        memory_manager_ =
-            MemoryManager::Pooling(NewThreadCompatiblePoolingMemoryManager());
-        break;
-      case MemoryManagement::kReferenceCounting:
-        memory_manager_ = MemoryManager::ReferenceCounting();
-        break;
-    }
-  }
-
-  void TearDown() override { Finish(); }
-
-  void Finish() { memory_manager_.reset(); }
-
-  MemoryManagerRef memory_manager() { return *memory_manager_; }
-
-  MemoryManagement memory_management() const { return GetParam(); }
-
-  static std::string ToString(TestParamInfo<MemoryManagement> param) {
-    std::ostringstream out;
-    out << param.param;
-    return out.str();
-  }
-
- private:
-  absl::optional<MemoryManager> memory_manager_;
-};
+class MapTypeViewTest : public common_internal::ThreadCompatibleMemoryTest<> {};
 
 TEST_P(MapTypeViewTest, Kind) {
   auto type = MapType(memory_manager(), StringType(), BytesType());

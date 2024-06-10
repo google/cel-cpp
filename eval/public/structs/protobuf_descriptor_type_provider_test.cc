@@ -22,6 +22,7 @@
 #include "eval/public/testing/matchers.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 namespace {
@@ -32,7 +33,8 @@ TEST(ProtobufDescriptorProvider, Basic) {
   ProtobufDescriptorProvider provider(
       google::protobuf::DescriptorPool::generated_pool(),
       google::protobuf::MessageFactory::generated_factory());
-  auto manager = ProtoMemoryManager();
+  google::protobuf::Arena arena;
+  auto manager = ProtoMemoryManager(&arena);
   auto type_adapter = provider.ProvideLegacyType("google.protobuf.Int64Value");
   absl::optional<const LegacyTypeInfoApis*> type_info =
       provider.ProvideLegacyTypeInfo("google.protobuf.Int64Value");

@@ -26,12 +26,14 @@ using testing::IsNull;
 using testing::NotNull;
 
 TEST(ProtoMemoryManager, MemoryManagement) {
-  auto memory_manager = ProtoMemoryManager();
+  google::protobuf::Arena arena;
+  auto memory_manager = ProtoMemoryManager(&arena);
   EXPECT_EQ(memory_manager.memory_management(), MemoryManagement::kPooling);
 }
 
 TEST(ProtoMemoryManager, Arena) {
-  auto memory_manager = ProtoMemoryManager();
+  google::protobuf::Arena arena;
+  auto memory_manager = ProtoMemoryManager(&arena);
   EXPECT_THAT(ProtoMemoryManagerArena(memory_manager), NotNull());
 }
 

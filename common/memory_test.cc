@@ -66,18 +66,14 @@ TEST(MemoryManagement, ostream) {
   }
 }
 
-TEST(ReferenceCountingMemoryManager, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(MemoryManager::ReferenceCounting()),
-            NativeTypeId::For<ReferenceCountingMemoryManager>());
-}
-
 struct TrivialSmallObject {
   uintptr_t ptr;
   char padding[32 - sizeof(uintptr_t)];
 };
 
 TEST(RegionalMemoryManager, TrivialSmallSizes) {
-  MemoryManager memory_manager(NewThreadCompatiblePoolingMemoryManager());
+  google::protobuf::Arena arena;
+  MemoryManager memory_manager = MemoryManager::Pooling(&arena);
   for (size_t i = 0; i < 1024; ++i) {
     static_cast<void>(memory_manager.MakeUnique<TrivialSmallObject>());
   }
@@ -89,7 +85,8 @@ struct TrivialMediumObject {
 };
 
 TEST(RegionalMemoryManager, TrivialMediumSizes) {
-  MemoryManager memory_manager(NewThreadCompatiblePoolingMemoryManager());
+  google::protobuf::Arena arena;
+  MemoryManager memory_manager = MemoryManager::Pooling(&arena);
   for (size_t i = 0; i < 1024; ++i) {
     static_cast<void>(memory_manager.MakeUnique<TrivialMediumObject>());
   }
@@ -101,14 +98,16 @@ struct TrivialLargeObject {
 };
 
 TEST(RegionalMemoryManager, TrivialLargeSizes) {
-  MemoryManager memory_manager(NewThreadCompatiblePoolingMemoryManager());
+  google::protobuf::Arena arena;
+  MemoryManager memory_manager = MemoryManager::Pooling(&arena);
   for (size_t i = 0; i < 1024; ++i) {
     static_cast<void>(memory_manager.MakeUnique<TrivialLargeObject>());
   }
 }
 
 TEST(RegionalMemoryManager, TrivialMixedSizes) {
-  MemoryManager memory_manager(NewThreadCompatiblePoolingMemoryManager());
+  google::protobuf::Arena arena;
+  MemoryManager memory_manager = MemoryManager::Pooling(&arena);
   for (size_t i = 0; i < 1024; ++i) {
     switch (i % 3) {
       case 0:
@@ -130,7 +129,8 @@ struct TrivialHugeObject {
 };
 
 TEST(RegionalMemoryManager, TrivialHugeSizes) {
-  MemoryManager memory_manager(NewThreadCompatiblePoolingMemoryManager());
+  google::protobuf::Arena arena;
+  MemoryManager memory_manager = MemoryManager::Pooling(&arena);
   for (size_t i = 0; i < 1024; ++i) {
     static_cast<void>(memory_manager.MakeUnique<TrivialHugeObject>());
   }
@@ -158,7 +158,8 @@ namespace {
 TEST(RegionalMemoryManager, SkippableDestructor) {
   bool deleted = false;
   {
-    MemoryManager memory_manager(NewThreadCompatiblePoolingMemoryManager());
+    google::protobuf::Arena arena;
+    MemoryManager memory_manager = MemoryManager::Pooling(&arena);
     auto shared = memory_manager.MakeShared<SkippableDestructor>(deleted);
     static_cast<void>(shared);
   }
@@ -167,23 +168,23 @@ TEST(RegionalMemoryManager, SkippableDestructor) {
 
 class MemoryManagerTest : public TestWithParam<MemoryManagement> {
  public:
-  void SetUp() override {
-    switch (memory_management()) {
-      case MemoryManagement::kPooling:
-        memory_manager_ =
-            MemoryManager::Pooling(NewThreadCompatiblePoolingMemoryManager());
-        break;
-      case MemoryManagement::kReferenceCounting:
-        memory_manager_ = MemoryManager::ReferenceCounting();
-        break;
-    }
-  }
+  void SetUp() override {}
 
   void TearDown() override { Finish(); }
 
-  void Finish() { memory_manager_.reset(); }
+  void Finish() { arena_.reset(); }
 
-  MemoryManagerRef memory_manager() { return *memory_manager_; }
+  MemoryManagerRef memory_manager() {
+    switch (memory_management()) {
+      case MemoryManagement::kReferenceCounting:
+        return MemoryManager::ReferenceCounting();
+      case MemoryManagement::kPooling:
+        if (!arena_) {
+          arena_.emplace();
+        }
+        return MemoryManager::Pooling(&*arena_);
+    }
+  }
 
   MemoryManagement memory_management() const { return GetParam(); }
 
@@ -194,7 +195,7 @@ class MemoryManagerTest : public TestWithParam<MemoryManagement> {
   }
 
  private:
-  absl::optional<MemoryManager> memory_manager_;
+  absl::optional<google::protobuf::Arena> arena_;
 };
 
 TEST_P(MemoryManagerTest, AllocateAndDeallocateZeroSize) {
@@ -212,7 +213,9 @@ TEST_P(MemoryManagerTest, AllocateAndDeallocate) {
   constexpr size_t kAlignment = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
   void* ptr = memory_manager().Allocate(kSize, kAlignment);
   ASSERT_THAT(ptr, NotNull());
-  EXPECT_THAT(memory_manager().Deallocate(ptr, kSize, kAlignment), IsTrue());
+  if (memory_management() == MemoryManagement::kReferenceCounting) {
+    EXPECT_THAT(memory_manager().Deallocate(ptr, kSize, kAlignment), IsTrue());
+  }
 }
 
 TEST_P(MemoryManagerTest, AllocateAndDeallocateOveraligned) {
@@ -220,7 +223,9 @@ TEST_P(MemoryManagerTest, AllocateAndDeallocateOveraligned) {
   constexpr size_t kAlignment = __STDCPP_DEFAULT_NEW_ALIGNMENT__ * 4;
   void* ptr = memory_manager().Allocate(kSize, kAlignment);
   ASSERT_THAT(ptr, NotNull());
-  EXPECT_THAT(memory_manager().Deallocate(ptr, kSize, kAlignment), IsTrue());
+  if (memory_management() == MemoryManagement::kReferenceCounting) {
+    EXPECT_THAT(memory_manager().Deallocate(ptr, kSize, kAlignment), IsTrue());
+  }
 }
 
 class Object {
@@ -861,35 +866,6 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(MemoryManagement::kPooling,
                       MemoryManagement::kReferenceCounting),
     MemoryManagerTest::ToString);
-
-TEST(MemoryManagerCasting, ReferenceCounting) {
-  EXPECT_TRUE(InstanceOf<ReferenceCountingMemoryManager>(
-      MemoryManager::ReferenceCounting()));
-  EXPECT_FALSE(InstanceOf<ReferenceCountingMemoryManager>(
-      MemoryManager(NewThreadCompatiblePoolingMemoryManager())));
-}
-
-TEST(MemoryManagerCasting, Pooling) {
-  EXPECT_FALSE(
-      InstanceOf<PoolingMemoryManager>(MemoryManager::ReferenceCounting()));
-  EXPECT_TRUE(InstanceOf<PoolingMemoryManager>(
-      MemoryManager(NewThreadCompatiblePoolingMemoryManager())));
-}
-
-TEST(MemoryManagerRefCasting, ReferenceCounting) {
-  EXPECT_TRUE(InstanceOf<ReferenceCountingMemoryManager>(
-      MemoryManagerRef::ReferenceCounting()));
-  auto pooling = MemoryManager(NewThreadCompatiblePoolingMemoryManager());
-  EXPECT_FALSE(
-      InstanceOf<ReferenceCountingMemoryManager>(MemoryManagerRef(pooling)));
-}
-
-TEST(MemoryManagerRefCasting, Pooling) {
-  EXPECT_FALSE(
-      InstanceOf<PoolingMemoryManager>(MemoryManagerRef::ReferenceCounting()));
-  auto pooling = MemoryManager(NewThreadCompatiblePoolingMemoryManager());
-  EXPECT_TRUE(InstanceOf<PoolingMemoryManager>(MemoryManagerRef(pooling)));
-}
 
 // NOLINTEND(bugprone-use-after-move)
 

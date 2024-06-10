@@ -17,7 +17,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <ostream>
 #include <type_traits>
 #include <utility>
@@ -28,11 +27,8 @@
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
-#include "absl/log/die_if_null.h"
-#include "absl/meta/type_traits.h"
 #include "absl/numeric/bits.h"
 #include "common/allocator.h"
-#include "common/casting.h"
 #include "common/data.h"
 #include "common/internal/metadata.h"
 #include "common/internal/reference_count.h"
@@ -68,12 +64,9 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Unique;
 template <typename T>
 struct EnableSharedFromThis;
 
-class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManager;
-class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManagerRef;
+class MemoryManager;
 class ReferenceCountingMemoryManager;
 class PoolingMemoryManager;
-struct PoolingMemoryManagerVirtualTable;
-class PoolingMemoryManagerVirtualDispatcher;
 
 namespace common_internal {
 absl::Nullable<const ReferenceCount*> OwnerRelease(Owner& owner) noexcept;
@@ -835,25 +828,31 @@ class ReferenceCountingMemoryManager final {
   explicit ReferenceCountingMemoryManager() = default;
 
   friend class MemoryManager;
-  friend class MemoryManagerRef;
 };
 
 // `PoolingMemoryManager` is a `MemoryManager` which employs automatic
 // memory management through memory pooling.
-class PoolingMemoryManager {
+class PoolingMemoryManager final {
  public:
-  virtual ~PoolingMemoryManager() = default;
+  PoolingMemoryManager(const PoolingMemoryManager&) = delete;
+  PoolingMemoryManager(PoolingMemoryManager&&) = delete;
+  PoolingMemoryManager& operator=(const PoolingMemoryManager&) = delete;
+  PoolingMemoryManager& operator=(PoolingMemoryManager&&) = delete;
 
+ private:
   template <typename T, typename... Args>
-  ABSL_MUST_USE_RESULT Shared<T> MakeShared(Args&&... args) {
+  ABSL_MUST_USE_RESULT static Shared<T> MakeShared(google::protobuf::Arena* arena,
+                                                   Args&&... args) {
     using U = std::remove_const_t<T>;
     U* ptr = nullptr;
-    void* addr = Allocate(sizeof(U), alignof(U));
+    void* addr = Allocate(arena, sizeof(U), alignof(U));
     CEL_INTERNAL_TRY {
       ptr = ::new (addr) U(std::forward<Args>(args)...);
       if constexpr (!std::is_trivially_destructible_v<U>) {
         if (!NativeType::SkipDestructor(*ptr)) {
-          CEL_INTERNAL_TRY { OwnCustomDestructor(ptr, &DefaultDestructor<U>); }
+          CEL_INTERNAL_TRY {
+            OwnCustomDestructor(arena, ptr, &DefaultDestructor<U>);
+          }
           CEL_INTERNAL_CATCH_ANY {
             ptr->~U();
             CEL_INTERNAL_RETHROW;
@@ -866,7 +865,7 @@ class PoolingMemoryManager {
       }
     }
     CEL_INTERNAL_CATCH_ANY {
-      Deallocate(addr, sizeof(U), alignof(U));
+      Deallocate(arena, addr, sizeof(U), alignof(U));
       CEL_INTERNAL_RETHROW;
     }
     return common_internal::MakeShared(common_internal::kAdoptRef,
@@ -874,13 +873,14 @@ class PoolingMemoryManager {
   }
 
   template <typename T, typename... Args>
-  ABSL_MUST_USE_RESULT Unique<T> MakeUnique(Args&&... args) {
+  ABSL_MUST_USE_RESULT static Unique<T> MakeUnique(google::protobuf::Arena* arena,
+                                                   Args&&... args) {
     using U = std::remove_const_t<T>;
     U* ptr = nullptr;
-    void* addr = Allocate(sizeof(U), alignof(U));
+    void* addr = Allocate(arena, sizeof(U), alignof(U));
     CEL_INTERNAL_TRY { ptr = ::new (addr) U(std::forward<Args>(args)...); }
     CEL_INTERNAL_CATCH_ANY {
-      Deallocate(addr, sizeof(U), alignof(U));
+      Deallocate(arena, addr, sizeof(U), alignof(U));
       CEL_INTERNAL_RETHROW;
     }
     return Unique<T>(static_cast<T*>(ptr), MemoryManagement::kPooling);
@@ -890,13 +890,14 @@ class PoolingMemoryManager {
   // If `memory_management()` returns `MemoryManagement::kReferenceCounting`,
   // this allocation *must* be explicitly deallocated at some point via
   // `Deallocate`. Otherwise deallocation is optional.
-  ABSL_MUST_USE_RESULT void* Allocate(size_t size, size_t alignment) {
+  ABSL_MUST_USE_RESULT static void* Allocate(
+      absl::Nonnull<google::protobuf::Arena*> arena, size_t size, size_t alignment) {
     ABSL_DCHECK(absl::has_single_bit(alignment))
         << "alignment must be a power of 2";
     if (size == 0) {
       return nullptr;
     }
-    return AllocateImpl(size, alignment);
+    return arena->AllocateAligned(size, alignment);
   }
 
   // Attempts to deallocate memory previously allocated via `Allocate`, `size`
@@ -904,31 +905,23 @@ class PoolingMemoryManager {
   // Returns `true` if the deallocation was successful and additional calls to
   // `Allocate` may re-use the memory, `false` otherwise. Returns `false` if
   // given `nullptr`.
-  bool Deallocate(void* ptr, size_t size, size_t alignment) noexcept {
+  static bool Deallocate(absl::Nonnull<google::protobuf::Arena*>, void*, size_t,
+                         size_t alignment) noexcept {
     ABSL_DCHECK(absl::has_single_bit(alignment))
         << "alignment must be a power of 2";
-    if (ptr == nullptr) {
-      ABSL_DCHECK_EQ(size, size_t(0));
-      return false;
-    }
-    ABSL_DCHECK_GT(size, size_t(0));
-    return DeallocateImpl(ptr, size, alignment);
+    return false;
   }
 
   // Registers a custom destructor to be run upon destruction of the memory
   // management implementation. Return value is always `true`, indicating that
   // the destructor may be called at some point in the future.
-  bool OwnCustomDestructor(void* object,
-                           absl::Nonnull<void (*)(void*)> destruct) {
+  static bool OwnCustomDestructor(absl::Nonnull<google::protobuf::Arena*> arena,
+                                  void* object,
+                                  absl::Nonnull<void (*)(void*)> destruct) {
     ABSL_DCHECK(destruct != nullptr);
-    OwnCustomDestructorImpl(object, destruct);
+    arena->OwnCustomDestructor(object, destruct);
     return true;
   }
-
- private:
-  friend class MemoryManager;
-  friend class MemoryManagerRef;
-  friend struct NativeTypeTraits<PoolingMemoryManager>;
 
   template <typename T>
   static void DefaultDestructor(void* ptr) {
@@ -936,120 +929,9 @@ class PoolingMemoryManager {
     static_cast<T*>(ptr)->~T();
   }
 
-  // These are virtual private, ensuring only `MemoryManager` calls these.
+  explicit PoolingMemoryManager() = default;
 
-  virtual absl::Nonnull<void*> AllocateImpl(size_t size, size_t align) = 0;
-
-  virtual bool DeallocateImpl(absl::Nonnull<void*>, size_t, size_t) noexcept {
-    return false;
-  }
-
-  // Registers a destructor to be run upon destruction of the memory management
-  // implementation.
-  virtual void OwnCustomDestructorImpl(
-      absl::Nonnull<void*> object, absl::Nonnull<void (*)(void*)> destruct) = 0;
-
-  virtual NativeTypeId GetNativeTypeId() const noexcept = 0;
-};
-
-template <>
-struct NativeTypeTraits<PoolingMemoryManager> final {
-  static NativeTypeId Id(const PoolingMemoryManager& memory_manager) {
-    return memory_manager.GetNativeTypeId();
-  }
-};
-
-template <typename T>
-struct NativeTypeTraits<
-    T, std::enable_if_t<std::conjunction_v<
-           std::is_base_of<PoolingMemoryManager, T>,
-           std::negation<std::is_same<T, PoolingMemoryManager>>>>>
-    final {
-  static NativeTypeId Id(const PoolingMemoryManager& memory_manager) {
-    return NativeTypeTraits<PoolingMemoryManager>::Id(memory_manager);
-  }
-};
-
-template <typename To, typename From>
-struct CastTraits<To, From,
-                  EnableIfSubsumptionCastable<To, From, PoolingMemoryManager>>
-    : SubsumptionCastTraits<To, From> {};
-
-// Creates a new `PoolingMemoryManager` which is thread-compatible.
-absl::Nonnull<std::unique_ptr<PoolingMemoryManager>>
-NewThreadCompatiblePoolingMemoryManager();
-
-// `PoolingMemoryManagerVirtualTable` describes an implementation of
-// `PoolingMemoryManager` without inheriting from it. This allows adapting
-// other implementations to the `PoolingMemoryManager` interface without having
-// to directly inherit from it, thus avoiding an unnecessary heap allocation.
-struct PoolingMemoryManagerVirtualTable final {
-  using AllocatePtr = absl::Nonnull<void*> (*)(absl::Nonnull<void*>, size_t,
-                                               size_t);
-  using DeallocatePtr = bool (*)(absl::Nonnull<void*>, absl::Nonnull<void*>,
-                                 size_t, size_t) noexcept;
-  using OwnCustomDestructorPtr = void (*)(absl::Nonnull<void*>,
-                                          absl::Nonnull<void*>,
-                                          absl::Nonnull<void (*)(void*)>);
-
-  // NOLINTBEGIN(google3-readability-class-member-naming)
-  const cel::NativeTypeId NativeTypeId;
-  const AllocatePtr Allocate;
-  const DeallocatePtr Deallocate;
-  const OwnCustomDestructorPtr OwnCustomDestructor;
-  // NOLINTEND(google3-readability-class-member-naming)
-};
-
-// `PoolingMemoryManagerVirtualDispatcher` adapts
-// `PoolingMemoryManagerVirtualTable` and the instance it describes to
-// implement `PoolingMemoryManager`. It should only be used by
-// `MemoryManagerRef`.
-class PoolingMemoryManagerVirtualDispatcher final
-    : public PoolingMemoryManager {
- public:
-  absl::Nonnull<const PoolingMemoryManagerVirtualTable*> vtable() const {
-    return vtable_;
-  }
-
-  absl::Nonnull<void*> callee() const { return callee_; }
-
- private:
-  friend class MemoryManagerRef;
-  friend struct CompositionTraits<MemoryManagerRef>;
-
-  explicit PoolingMemoryManagerVirtualDispatcher(
-      absl::Nonnull<const PoolingMemoryManagerVirtualTable*> vtable,
-      absl::Nonnull<void*> callee)
-      : vtable_(ABSL_DIE_IF_NULL(vtable)),   // Crash OK
-        callee_(ABSL_DIE_IF_NULL(callee)) {  // Crash OK
-    ABSL_DCHECK(vtable_->NativeTypeId != NativeTypeId());
-    ABSL_DCHECK(vtable_->Allocate != nullptr);
-    ABSL_DCHECK(vtable_->Deallocate != nullptr);
-    ABSL_DCHECK(vtable_->OwnCustomDestructor != nullptr);
-  }
-
-  absl::Nonnull<void*> AllocateImpl(size_t size, size_t align) override {
-    return vtable()->Allocate(callee(), size, align);
-  }
-
-  bool DeallocateImpl(absl::Nonnull<void*> pointer, size_t size,
-                      size_t align) noexcept override {
-    return vtable()->Deallocate(callee(), pointer, size, align);
-  }
-
-  // Registers a destructor to be run upon destruction of the memory management
-  // implementation.
-  void OwnCustomDestructorImpl(
-      void* object, absl::Nonnull<void (*)(void*)> destruct) override {
-    vtable()->OwnCustomDestructor(callee(), object, destruct);
-  }
-
-  NativeTypeId GetNativeTypeId() const noexcept override {
-    return vtable()->NativeTypeId;
-  }
-
-  absl::Nonnull<const PoolingMemoryManagerVirtualTable*> vtable_;
-  absl::Nonnull<void*> callee_;
+  friend class MemoryManager;
 };
 
 // `MemoryManager` is an abstraction for supporting automatic memory management.
@@ -1070,74 +952,53 @@ class PoolingMemoryManagerVirtualDispatcher final
 //
 // `Shared`: The object is valid until destruction of the underlying memory
 // resources.
-class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManager final {
- private:
-  ABSL_ATTRIBUTE_PURE_FUNCTION
-  static absl::Nonnull<PoolingMemoryManager*> UnreachablePooling() noexcept;
-
+class MemoryManager final {
  public:
+  // Returns a `MemoryManager` which utilizes an arena but never frees its
+  // memory. It is effectively a memory leak and should only be used for limited
+  // use cases, such as initializing singletons which live for the life of the
+  // program.
+  static MemoryManager Unmanaged();
+
+  // Returns a `MemoryManager` which utilizes reference counting.
   ABSL_MUST_USE_RESULT static MemoryManager ReferenceCounting() {
-    MemoryManager memory_manager(nullptr);
-    ABSL_ASSUME(memory_manager.pointer_ == nullptr);
-    return memory_manager;
+    return MemoryManager(nullptr);
   }
 
+  // Returns a `MemoryManager` which utilizes an arena.
   ABSL_MUST_USE_RESULT static MemoryManager Pooling(
-      absl::Nonnull<std::unique_ptr<PoolingMemoryManager>> pooling) {
-    return MemoryManager(std::move(pooling));
+      absl::Nonnull<google::protobuf::Arena*> arena) {
+    return MemoryManager(arena);
   }
 
   MemoryManager() = delete;
-  MemoryManager(const MemoryManager&) = delete;
-  MemoryManager& operator=(const MemoryManager&) = delete;
-
-  template <typename T, typename = std::enable_if_t<
-                            std::is_base_of_v<PoolingMemoryManager, T>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  MemoryManager(absl::Nonnull<std::unique_ptr<T>> pooling)
-      : pointer_(ABSL_DIE_IF_NULL(pooling).release()) {  // Crash OK
-    ABSL_ASSUME(pointer_ != nullptr);
-  }
-
-  MemoryManager(MemoryManager&& other) noexcept : pointer_(other.pointer_) {
-    if (other.pointer_ != nullptr) {
-      other.pointer_ = UnreachablePooling();
-    }
-  }
-
-  ~MemoryManager() { Delete(); }
-
-  MemoryManager& operator=(MemoryManager&& other) noexcept {
-    Delete();
-    pointer_ = other.pointer_;
-    if (other.pointer_ != nullptr) {
-      other.pointer_ = UnreachablePooling();
-    }
-    return *this;
-  }
+  MemoryManager(const MemoryManager&) = default;
+  MemoryManager& operator=(const MemoryManager&) = default;
 
   MemoryManagement memory_management() const noexcept {
-    return pointer_ == nullptr ? MemoryManagement::kReferenceCounting
-                               : MemoryManagement::kPooling;
+    return arena_ == nullptr ? MemoryManagement::kReferenceCounting
+                             : MemoryManagement::kPooling;
   }
 
   template <typename T, typename... Args>
   ABSL_MUST_USE_RESULT Shared<T> MakeShared(Args&&... args) {
-    if (pointer_ == nullptr) {
+    if (arena_ == nullptr) {
       return ReferenceCountingMemoryManager::MakeShared<T>(
           std::forward<Args>(args)...);
     } else {
-      return pointer_->MakeShared<T>(std::forward<Args>(args)...);
+      return PoolingMemoryManager::MakeShared<T>(arena_,
+                                                 std::forward<Args>(args)...);
     }
   }
 
   template <typename T, typename... Args>
   ABSL_MUST_USE_RESULT Unique<T> MakeUnique(Args&&... args) {
-    if (pointer_ == nullptr) {
+    if (arena_ == nullptr) {
       return ReferenceCountingMemoryManager::MakeUnique<T>(
           std::forward<Args>(args)...);
     } else {
-      return pointer_->MakeUnique<T>(std::forward<Args>(args)...);
+      return PoolingMemoryManager::MakeUnique<T>(arena_,
+                                                 std::forward<Args>(args)...);
     }
   }
 
@@ -1146,10 +1007,10 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManager final {
   // this allocation *must* be explicitly deallocated at some point via
   // `Deallocate`. Otherwise deallocation is optional.
   ABSL_MUST_USE_RESULT void* Allocate(size_t size, size_t alignment) {
-    if (pointer_ == nullptr) {
+    if (arena_ == nullptr) {
       return ReferenceCountingMemoryManager::Allocate(size, alignment);
     } else {
-      return pointer_->Allocate(size, alignment);
+      return PoolingMemoryManager::Allocate(arena_, size, alignment);
     }
   }
 
@@ -1159,10 +1020,10 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManager final {
   // `Allocate` may re-use the memory, `false` otherwise. Returns `false` if
   // given `nullptr`.
   bool Deallocate(void* ptr, size_t size, size_t alignment) noexcept {
-    if (pointer_ == nullptr) {
+    if (arena_ == nullptr) {
       return ReferenceCountingMemoryManager::Deallocate(ptr, size, alignment);
     } else {
-      return pointer_->Deallocate(ptr, size, alignment);
+      return PoolingMemoryManager::Deallocate(arena_, ptr, size, alignment);
     }
   }
 
@@ -1174,368 +1035,36 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManager final {
   bool OwnCustomDestructor(void* object,
                            absl::Nonnull<void (*)(void*)> destruct) {
     ABSL_DCHECK(destruct != nullptr);
-    if (pointer_ == nullptr) {
+    if (arena_ == nullptr) {
       return false;
     } else {
-      return static_cast<PoolingMemoryManager*>(pointer_)->OwnCustomDestructor(
-          object, destruct);
+      return PoolingMemoryManager::OwnCustomDestructor(arena_, object,
+                                                       destruct);
     }
   }
 
+  absl::Nullable<google::protobuf::Arena*> arena() const noexcept { return arena_; }
+
   friend void swap(MemoryManager& lhs, MemoryManager& rhs) noexcept {
     using std::swap;
-    swap(lhs.pointer_, rhs.pointer_);
+    swap(lhs.arena_, rhs.arena_);
   }
 
  private:
   friend class PoolingMemoryManager;
-  friend class MemoryManagerRef;
-  friend struct NativeTypeTraits<MemoryManager>;
-  friend struct CompositionTraits<MemoryManager>;
 
-  explicit MemoryManager(PoolingMemoryManager* pointer) : pointer_(pointer) {}
+  explicit MemoryManager(std::nullptr_t) : arena_(nullptr) {}
 
-  void Delete() {
-    if (pointer_ != nullptr && pointer_ != UnreachablePooling()) {
-      std::default_delete<PoolingMemoryManager>{}(pointer_);
-    }
-  }
+  explicit MemoryManager(absl::Nonnull<google::protobuf::Arena*> arena) : arena_(arena) {}
 
   // If `nullptr`, we are using reference counting. Otherwise we are using
   // Pooling. We use `UnreachablePooling()` as a sentinel to detect use after
   // move otherwise the moved-from `MemoryManager` would be in a valid state and
   // utilize reference counting.
-  PoolingMemoryManager* pointer_;
+  absl::Nullable<google::protobuf::Arena*> arena_;
 };
 
-template <>
-struct NativeTypeTraits<MemoryManager> final {
-  static NativeTypeId Id(const MemoryManager& memory_manager) {
-    return memory_manager.pointer_ == nullptr
-               ? NativeTypeId::For<ReferenceCountingMemoryManager>()
-               : NativeTypeId::Of(*memory_manager.pointer_);
-  }
-};
-
-template <>
-struct CompositionTraits<MemoryManager> final {
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<ReferenceCountingMemoryManager, U>,
-                          bool>
-  HasA(const MemoryManager& memory_manager) {
-    return memory_manager.memory_management() ==
-           MemoryManagement::kReferenceCounting;
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<PoolingMemoryManager, U>, bool> HasA(
-      const MemoryManager& memory_manager) {
-    return memory_manager.memory_management() == MemoryManagement::kPooling;
-  }
-
-  template <typename U>
-  static std::enable_if_t<
-      std::conjunction_v<std::is_base_of<PoolingMemoryManager, U>,
-                         std::negation<std::is_same<PoolingMemoryManager, U>>>,
-      bool>
-  HasA(const MemoryManager& memory_manager) {
-    return memory_manager.memory_management() == MemoryManagement::kPooling &&
-           SubsumptionTraits<U>::IsA(*static_cast<const PoolingMemoryManager*>(
-               memory_manager.pointer_));
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<PoolingMemoryManager, U>, const U&>
-  Get(const MemoryManager& memory_manager) {
-    ABSL_DCHECK(HasA<U>(memory_manager));
-    return *static_cast<const PoolingMemoryManager*>(memory_manager.pointer_);
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<PoolingMemoryManager, U>, U&> Get(
-      MemoryManager& memory_manager) {
-    ABSL_DCHECK(HasA<U>(memory_manager));
-    return *static_cast<PoolingMemoryManager*>(memory_manager.pointer_);
-  }
-
-  template <typename U>
-  static std::enable_if_t<
-      std::conjunction_v<std::is_base_of<PoolingMemoryManager, U>,
-                         std::negation<std::is_same<PoolingMemoryManager, U>>>,
-      const U&>
-  Get(const MemoryManager& memory_manager) {
-    ABSL_DCHECK(HasA<U>(memory_manager));
-    return Cast<U>(
-        *static_cast<const PoolingMemoryManager*>(memory_manager.pointer_));
-  }
-
-  template <typename U>
-  static std::enable_if_t<
-      std::conjunction_v<std::is_base_of<PoolingMemoryManager, U>,
-                         std::negation<std::is_same<PoolingMemoryManager, U>>>,
-      U&>
-  Get(MemoryManager& memory_manager) {
-    ABSL_DCHECK(HasA<U>(memory_manager));
-    return Cast<U>(
-        *static_cast<PoolingMemoryManager*>(memory_manager.pointer_));
-  }
-};
-
-template <typename To, typename From>
-struct CastTraits<
-    To, From,
-    std::enable_if_t<std::is_same_v<MemoryManager, absl::remove_cvref_t<From>>>>
-    : CompositionCastTraits<To, From> {};
-
-// `MemoryManagerRef` is similar to `MemoryManager` except it is more flexible.
-// In most cases you should accept and pass around `MemoryManagerRef` instead of
-// `MemoryManager`.
-class ABSL_ATTRIBUTE_TRIVIAL_ABI MemoryManagerRef final {
- public:
-  ABSL_MUST_USE_RESULT static MemoryManagerRef ReferenceCounting() {
-    MemoryManagerRef memory_manager(nullptr, nullptr);
-    ABSL_ASSUME(memory_manager.vpointer_ == nullptr &&
-                memory_manager.pointer_ == nullptr);
-    return memory_manager;
-  }
-
-  template <typename T>
-  ABSL_MUST_USE_RESULT static MemoryManagerRef Pooling(
-      const PoolingMemoryManagerVirtualTable& vtable
-          ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      T& self ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    MemoryManagerRef memory_manager(
-        const_cast<PoolingMemoryManagerVirtualTable*>(std::addressof(vtable)),
-        std::addressof(self));
-    ABSL_ASSUME(memory_manager.vpointer_ != nullptr &&
-                memory_manager.pointer_ != nullptr);
-    return memory_manager;
-  }
-
-  // Returns a `MemoryManagerRef` to a `PoolingMemoryManager` which never
-  // deallocates memory and is never destroyed.
-  //
-  // IMPORTANT: This should only be used for cases where something is
-  // initialized and never destructed (e.g. singletons). It should never be used
-  // for anything else.
-  ABSL_MUST_USE_RESULT static MemoryManagerRef Unmanaged();
-
-  MemoryManagerRef() = delete;
-  MemoryManagerRef(const MemoryManagerRef&) = default;
-  MemoryManagerRef(MemoryManagerRef&&) = default;
-
-  MemoryManagerRef& operator=(const MemoryManagerRef&) = default;
-  MemoryManagerRef& operator=(MemoryManagerRef&&) = default;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  MemoryManagerRef(MemoryManager& memory_manager ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : vpointer_(memory_manager.pointer_), pointer_(nullptr) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  MemoryManagerRef(PoolingMemoryManager& pooling ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : vpointer_(std::addressof(pooling)), pointer_(nullptr) {}
-
-  MemoryManagement memory_management() const noexcept {
-    return vpointer_ == nullptr ? MemoryManagement::kReferenceCounting
-                                : MemoryManagement::kPooling;
-  }
-
-  template <typename T, typename... Args>
-  ABSL_MUST_USE_RESULT Shared<T> MakeShared(Args&&... args) {
-    if (vpointer_ == nullptr) {
-      return ReferenceCountingMemoryManager::MakeShared<T>(
-          std::forward<Args>(args)...);
-    } else if (pointer_ == nullptr) {
-      return static_cast<PoolingMemoryManager*>(vpointer_)->MakeShared<T>(
-          std::forward<Args>(args)...);
-    } else {
-      return PoolingMemoryManagerVirtualDispatcher(
-                 static_cast<const PoolingMemoryManagerVirtualTable*>(
-                     vpointer_),
-                 pointer_)
-          .MakeShared<T>(std::forward<Args>(args)...);
-    }
-  }
-
-  template <typename T, typename... Args>
-  ABSL_MUST_USE_RESULT Unique<T> MakeUnique(Args&&... args) {
-    if (vpointer_ == nullptr) {
-      return ReferenceCountingMemoryManager::MakeUnique<T>(
-          std::forward<Args>(args)...);
-    } else if (pointer_ == nullptr) {
-      return static_cast<PoolingMemoryManager*>(vpointer_)->MakeUnique<T>(
-          std::forward<Args>(args)...);
-    } else {
-      return PoolingMemoryManagerVirtualDispatcher(
-                 static_cast<const PoolingMemoryManagerVirtualTable*>(
-                     vpointer_),
-                 pointer_)
-          .MakeUnique<T>(std::forward<Args>(args)...);
-    }
-  }
-
-  // Allocates memory directly from the allocator used by this memory manager.
-  // If `memory_management()` returns `MemoryManagement::kReferenceCounting`,
-  // this allocation *must* be explicitly deallocated at some point via
-  // `Deallocate`. Otherwise deallocation is optional.
-  ABSL_MUST_USE_RESULT void* Allocate(size_t size, size_t alignment) {
-    if (vpointer_ == nullptr) {
-      return ReferenceCountingMemoryManager::Allocate(size, alignment);
-    } else if (pointer_ == nullptr) {
-      return static_cast<PoolingMemoryManager*>(vpointer_)->Allocate(size,
-                                                                     alignment);
-    } else {
-      return PoolingMemoryManagerVirtualDispatcher(
-                 static_cast<const PoolingMemoryManagerVirtualTable*>(
-                     vpointer_),
-                 pointer_)
-          .Allocate(size, alignment);
-    }
-  }
-
-  // Attempts to deallocate memory previously allocated via `Allocate`, `size`
-  // and `alignment` must match the values from the previous call to `Allocate`.
-  // Returns `true` if the deallocation was successful and additional calls to
-  // `Allocate` may re-use the memory, `false` otherwise. Returns `false` if
-  // given `nullptr`.
-  bool Deallocate(void* ptr, size_t size, size_t alignment) noexcept {
-    if (vpointer_ == nullptr) {
-      return ReferenceCountingMemoryManager::Deallocate(ptr, size, alignment);
-    } else if (pointer_ == nullptr) {
-      return static_cast<PoolingMemoryManager*>(vpointer_)->Deallocate(
-          ptr, size, alignment);
-    } else {
-      return PoolingMemoryManagerVirtualDispatcher(
-                 static_cast<const PoolingMemoryManagerVirtualTable*>(
-                     vpointer_),
-                 pointer_)
-          .Deallocate(ptr, size, alignment);
-    }
-  }
-
-  // Registers a custom destructor to be run upon destruction of the memory
-  // management implementation. A return of `true` indicates the destructor may
-  // be called at some point in the future, `false` if will definitely not be
-  // called. All pooling memory managers return `true` while the reference
-  // counting memory manager returns `false`.
-  bool OwnCustomDestructor(void* object,
-                           absl::Nonnull<void (*)(void*)> destruct) {
-    ABSL_DCHECK(destruct != nullptr);
-    if (vpointer_ == nullptr) {
-      return false;
-    } else if (pointer_ == nullptr) {
-      return static_cast<PoolingMemoryManager*>(vpointer_)->OwnCustomDestructor(
-          object, destruct);
-    } else {
-      return PoolingMemoryManagerVirtualDispatcher(
-                 static_cast<const PoolingMemoryManagerVirtualTable*>(
-                     vpointer_),
-                 pointer_)
-          .OwnCustomDestructor(object, destruct);
-    }
-  }
-
-  friend void swap(MemoryManagerRef& lhs, MemoryManagerRef& rhs) noexcept {
-    using std::swap;
-    swap(lhs.vpointer_, rhs.vpointer_);
-    swap(lhs.pointer_, rhs.pointer_);
-  }
-
- private:
-  friend class PoolingMemoryManager;
-  friend class PoolingMemoryManagerVirtualDispatcher;
-  friend struct NativeTypeTraits<MemoryManagerRef>;
-  friend struct CompositionTraits<MemoryManagerRef>;
-
-  explicit MemoryManagerRef(void* vpointer, void* pointer)
-      : vpointer_(vpointer), pointer_(pointer) {}
-
-  void* vpointer_;
-  void* pointer_;
-};
-
-template <>
-struct NativeTypeTraits<MemoryManagerRef> final {
-  static NativeTypeId Id(MemoryManagerRef memory_manager) {
-    return memory_manager.vpointer_ == nullptr
-               ? NativeTypeId::For<ReferenceCountingMemoryManager>()
-           : memory_manager.pointer_ == nullptr
-               ? NativeTypeId::Of(*static_cast<PoolingMemoryManager*>(
-                     memory_manager.vpointer_))
-               : static_cast<const PoolingMemoryManagerVirtualTable*>(
-                     memory_manager.vpointer_)
-                     ->NativeTypeId;
-  }
-};
-
-template <>
-struct CompositionTraits<MemoryManagerRef> final {
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<ReferenceCountingMemoryManager, U>,
-                          bool>
-  HasA(MemoryManagerRef memory_manager) {
-    return memory_manager.memory_management() ==
-           MemoryManagement::kReferenceCounting;
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<PoolingMemoryManager, U>, bool> HasA(
-      MemoryManagerRef memory_manager) {
-    return memory_manager.memory_management() == MemoryManagement::kPooling;
-  }
-
-  template <typename U>
-  static std::enable_if_t<
-      std::is_same_v<PoolingMemoryManagerVirtualDispatcher, U>, bool>
-  HasA(MemoryManagerRef memory_manager) {
-    return memory_manager.vpointer_ != nullptr &&
-           memory_manager.pointer_ != nullptr;
-  }
-
-  template <typename U>
-  static std::enable_if_t<
-      std::conjunction_v<std::is_base_of<PoolingMemoryManager, U>,
-                         std::negation<std::is_same<PoolingMemoryManager, U>>,
-                         std::negation<std::is_same<
-                             PoolingMemoryManagerVirtualDispatcher, U>>>,
-      bool>
-  HasA(MemoryManagerRef memory_manager) {
-    return memory_manager.vpointer_ != nullptr &&
-           memory_manager.pointer_ == nullptr &&
-           SubsumptionTraits<U>::IsA(*static_cast<const PoolingMemoryManager*>(
-               memory_manager.vpointer_));
-  }
-
-  template <typename U>
-  static std::enable_if_t<
-      std::is_same_v<PoolingMemoryManagerVirtualDispatcher, U>,
-      PoolingMemoryManagerVirtualDispatcher>
-  Get(MemoryManagerRef memory_manager) {
-    ABSL_DCHECK(HasA<U>(memory_manager));
-    return PoolingMemoryManagerVirtualDispatcher(
-        static_cast<const PoolingMemoryManagerVirtualTable*>(
-            memory_manager.vpointer_),
-        memory_manager.pointer_);
-  }
-
-  template <typename U>
-  static std::enable_if_t<
-      std::conjunction_v<std::is_base_of<PoolingMemoryManager, U>,
-                         std::negation<std::is_same<
-                             PoolingMemoryManagerVirtualDispatcher, U>>>,
-      U&>
-  Get(MemoryManagerRef memory_manager) {
-    ABSL_DCHECK(HasA<U>(memory_manager));
-    return Cast<U>(
-        *static_cast<PoolingMemoryManager*>(memory_manager.vpointer_));
-  }
-};
-
-template <typename To, typename From>
-struct CastTraits<To, From,
-                  std::enable_if_t<std::is_same_v<MemoryManagerRef,
-                                                  absl::remove_cvref_t<From>>>>
-    : CompositionCastTraits<To, From> {};
+using MemoryManagerRef = MemoryManager;
 
 namespace common_internal {
 

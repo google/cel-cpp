@@ -21,6 +21,7 @@
 
 #include "absl/types/optional.h"
 #include "common/memory.h"
+#include "common/memory_testing.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
 #include "common/type_manager.h"
@@ -52,18 +53,10 @@ std::ostream& operator<<(std::ostream& out, ThreadSafety thread_safety) {
 }
 
 class TypeFactoryTest
-    : public TestWithParam<std::tuple<MemoryManagement, ThreadSafety>> {
+    : public common_internal::ThreadCompatibleMemoryTest<ThreadSafety> {
  public:
   void SetUp() override {
-    switch (memory_management()) {
-      case MemoryManagement::kPooling:
-        memory_manager_ =
-            MemoryManager::Pooling(NewThreadCompatiblePoolingMemoryManager());
-        break;
-      case MemoryManagement::kReferenceCounting:
-        memory_manager_ = MemoryManager::ReferenceCounting();
-        break;
-    }
+    ThreadCompatibleMemoryTest::SetUp();
     switch (thread_safety()) {
       case ThreadSafety::kCompatible:
         type_manager_ = NewThreadCompatibleTypeManager(
@@ -81,12 +74,8 @@ class TypeFactoryTest
 
   void Finish() {
     type_manager_.reset();
-    memory_manager_.reset();
+    ThreadCompatibleMemoryTest::Finish();
   }
-
-  MemoryManagerRef memory_manager() { return *memory_manager_; }
-
-  MemoryManagement memory_management() const { return std::get<0>(GetParam()); }
 
   TypeFactory& type_factory() const { return **type_manager_; }
 
@@ -100,7 +89,6 @@ class TypeFactoryTest
   }
 
  private:
-  absl::optional<MemoryManager> memory_manager_;
   absl::optional<Shared<TypeManager>> type_manager_;
 };
 

@@ -30,30 +30,22 @@ namespace cel::extensions {
 //
 // IMPORTANT: Passing `nullptr` here will result in getting
 // `MemoryManagerRef::ReferenceCounting()`.
-MemoryManagerRef ProtoMemoryManagerRef(
-    google::protobuf::Arena* arena ABSL_ATTRIBUTE_LIFETIME_BOUND);
-
-// Returns a `PoolingMemoryManager` implementation which uses `google::protobuf::Arena`.
-MemoryManager ProtoMemoryManager();
-
-// Gets the underlying `google::protobuf::Arena`. If `MemoryManager` was not created using
-// either `ProtoMemoryManagerRef` or `ProtoMemoryManager`, this returns
-// `nullptr`.
-absl::Nullable<google::protobuf::Arena*> ProtoMemoryManagerArena(
-    MemoryManager& memory_manager ABSL_ATTRIBUTE_LIFETIME_BOUND);
+MemoryManager ProtoMemoryManager(google::protobuf::Arena* arena);
+inline MemoryManager ProtoMemoryManagerRef(google::protobuf::Arena* arena) {
+  return ProtoMemoryManager(arena);
+}
 
 // Gets the underlying `google::protobuf::Arena`. If `MemoryManager` was not created using
 // either `ProtoMemoryManagerRef` or `ProtoMemoryManager`, this returns
 // `nullptr`.
 absl::Nullable<google::protobuf::Arena*> ProtoMemoryManagerArena(
-    MemoryManagerRef memory_manager);
-
+    MemoryManager memory_manager);
 // Allocate and construct `T` using the `ProtoMemoryManager` provided as
 // `memory_manager`. `memory_manager` must be `ProtoMemoryManager` or behavior
 // is undefined. Unlike `MemoryManager::New`, this method supports arena-enabled
 // messages.
 template <typename T, typename... Args>
-ABSL_MUST_USE_RESULT T* NewInProtoArena(MemoryManagerRef memory_manager,
+ABSL_MUST_USE_RESULT T* NewInProtoArena(MemoryManager memory_manager,
                                         Args&&... args) {
   return google::protobuf::Arena::Create<T>(ProtoMemoryManagerArena(memory_manager),
                                   std::forward<Args>(args)...);

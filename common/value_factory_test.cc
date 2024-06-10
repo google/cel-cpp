@@ -26,6 +26,7 @@
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
+#include "common/memory_testing.h"
 #include "common/type.h"
 #include "common/type_factory.h"
 #include "common/type_reflector.h"
@@ -58,18 +59,9 @@ std::ostream& operator<<(std::ostream& out, ThreadSafety thread_safety) {
 }
 
 class ValueFactoryTest
-    : public TestWithParam<std::tuple<MemoryManagement, ThreadSafety>> {
+    : public common_internal::ThreadCompatibleMemoryTest<ThreadSafety> {
  public:
   void SetUp() override {
-    switch (memory_management()) {
-      case MemoryManagement::kPooling:
-        memory_manager_ =
-            MemoryManager::Pooling(NewThreadCompatiblePoolingMemoryManager());
-        break;
-      case MemoryManagement::kReferenceCounting:
-        memory_manager_ = MemoryManager::ReferenceCounting();
-        break;
-    }
     switch (thread_safety()) {
       case ThreadSafety::kCompatible:
         value_manager_ = NewThreadCompatibleValueManager(
@@ -87,12 +79,8 @@ class ValueFactoryTest
 
   void Finish() {
     value_manager_.reset();
-    memory_manager_.reset();
+    ThreadCompatibleMemoryTest::Finish();
   }
-
-  MemoryManagerRef memory_manager() { return *memory_manager_; }
-
-  MemoryManagement memory_management() const { return std::get<0>(GetParam()); }
 
   TypeFactory& type_factory() const { return value_manager(); }
 
@@ -112,7 +100,6 @@ class ValueFactoryTest
   }
 
  private:
-  absl::optional<MemoryManager> memory_manager_;
   absl::optional<Shared<ValueManager>> value_manager_;
 };
 

@@ -43,6 +43,7 @@
 #include "internal/proto_matchers.h"
 #include "internal/testing.h"
 #include "proto/test/v1/proto2/test_all_types.pb.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/text_format.h"
 
 namespace cel::extensions {
@@ -87,8 +88,11 @@ T ParseTextOrDie(absl::string_view text) {
 class ProtoValueTest : public common_internal::ThreadCompatibleValueTest<> {
  protected:
   MemoryManager NewThreadCompatiblePoolingMemoryManager() override {
-    return ProtoMemoryManager();
+    return ProtoMemoryManager(&arena_);
   }
+
+ private:
+  google::protobuf::Arena arena_;
 };
 
 class ProtoValueWrapTest : public ProtoValueTest {};
