@@ -37,19 +37,26 @@
 #include "base/ast_internal/expr.h"
 #include "base/attribute.h"
 #include "base/builtins.h"
+#include "base/function_descriptor.h"
 #include "common/ast_rewrite.h"
 #include "common/casting.h"
 #include "common/kind.h"
+#include "common/native_type.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "common/value_manager.h"
+#include "eval/compiler/flat_expr_builder.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
+#include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/errors.h"
+#include "runtime/internal/runtime_friend_access.h"
+#include "runtime/internal/runtime_impl.h"
+#include "runtime/runtime_builder.h"
 
 namespace cel::extensions {
 namespace {
@@ -867,6 +874,19 @@ absl::Status SelectOptimizer::OnPostVisit(PlannerContext& context,
   return context.ReplaceSubplan(node, std::move(path));
 }
 
+google::api::expr::runtime::FlatExprBuilder* GetFlatExprBuilder(
+    RuntimeBuilder& builder) {
+  auto& runtime =
+      runtime_internal::RuntimeFriendAccess::GetMutableRuntime(builder);
+  if (runtime_internal::RuntimeFriendAccess::RuntimeTypeId(runtime) ==
+      NativeTypeId::For<runtime_internal::RuntimeImpl>()) {
+    auto& runtime_impl =
+        cel::internal::down_cast<runtime_internal::RuntimeImpl&>(runtime);
+    return &runtime_impl.expr_builder();
+  }
+  return nullptr;
+}
+
 }  // namespace
 
 absl::Status SelectOptimizationAstUpdater::UpdateAst(PlannerContext& context,
@@ -882,6 +902,32 @@ CreateSelectOptimizationProgramOptimizer(
   return [=](PlannerContext& context, const cel::ast_internal::AstImpl& ast) {
     return std::make_unique<SelectOptimizer>(options);
   };
+}
+
+absl::Status EnableSelectOptimization(
+    cel::RuntimeBuilder& builder, const SelectOptimizationOptions& options) {
+  auto* flat_expr_builder = GetFlatExprBuilder(builder);
+  if (flat_expr_builder == nullptr) {
+    return absl::InvalidArgumentError(
+        "SelectOptimization requires default runtime implementation");
+  }
+
+  flat_expr_builder->AddAstTransform(
+      std::make_unique<SelectOptimizationAstUpdater>());
+  // Add overloads for select optimization signature.
+  // These are never bound, only used to prevent the builder from failing on
+  // the overloads check.
+  CEL_RETURN_IF_ERROR(builder.function_registry().RegisterLazyFunction(
+      FunctionDescriptor(cel::extensions::kCelAttribute, false,
+                         {cel::Kind::kAny, cel::Kind::kList})));
+
+  CEL_RETURN_IF_ERROR(builder.function_registry().RegisterLazyFunction(
+      FunctionDescriptor(cel::extensions::kFieldsHas, false,
+                         {cel::Kind::kAny, cel::Kind::kList})));
+  // Add runtime implementation.
+  flat_expr_builder->AddProgramOptimizer(
+      CreateSelectOptimizationProgramOptimizer(options));
+  return absl::OkStatus();
 }
 
 }  // namespace cel::extensions

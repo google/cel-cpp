@@ -18,6 +18,7 @@
 #include "absl/status/status.h"
 #include "base/ast_internal/ast_impl.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
+#include "runtime/runtime_builder.h"
 
 namespace cel::extensions {
 
@@ -35,6 +36,35 @@ struct SelectOptimizationOptions {
   // to more closely match behavior of unoptimized expressions.
   bool force_fallback_implementation = false;
 };
+
+// Enable select optimization on the given RuntimeBuilder, replacing long
+// select chains with a single operation.
+//
+// This assumes that the type information at check time agrees with the
+// configured types at runtime.
+//
+// Important: The select optimization follows spec behavior for traversals.
+//  - `enable_empty_wrapper_null_unboxing` is ignored and optimized traversals
+//    always operates as though it is `true`.
+//  - `enable_heterogeneous_equality` is ignored and optimized traversals
+//    always operate as though it is `true`.
+//
+// This should only be called *once* on a given runtime builder.
+//
+// Assumes the default runtime implementation, an error with code
+// InvalidArgument is returned if it is not.
+//
+// Note: implementation in progress -- please consult the CEL team before
+// enabling in an existing environment.
+absl::Status EnableSelectOptimization(
+    cel::RuntimeBuilder& builder,
+    const SelectOptimizationOptions& options = {});
+
+// ===============================================================
+// Implementation details -- CEL users should not depend on these.
+// Exposed here for enabling on Legacy APIs. They expose internal details
+// which are not guaranteed to be stable.
+// ===============================================================
 
 // Scans ast for optimizable select branches.
 //
