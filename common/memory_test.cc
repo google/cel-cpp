@@ -30,7 +30,6 @@
 #include "absl/log/absl_check.h"
 #include "absl/types/optional.h"
 #include "common/allocator.h"
-#include "common/casting.h"
 #include "common/internal/reference_count.h"
 #include "common/native_type.h"
 #include "internal/testing.h"
@@ -984,6 +983,13 @@ TEST(OwnerBorrower, MoveAssign) {
   Borrower borrower(owner2);
   EXPECT_EQ(owner2, borrower);
   EXPECT_EQ(borrower, owner2);
+}
+
+TEST(Unique, ToAddress) {
+  Unique<bool> unique;
+  EXPECT_EQ(cel::to_address(unique), nullptr);
+  unique = AllocateUnique<bool>(NewDeleteAllocator());
+  EXPECT_EQ(cel::to_address(unique), unique.operator->());
 }
 
 }  // namespace

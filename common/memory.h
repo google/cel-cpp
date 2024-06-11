@@ -17,6 +17,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <ostream>
 #include <type_traits>
 #include <utility>
@@ -35,9 +36,14 @@
 #include "common/native_type.h"
 #include "common/reference_count.h"
 #include "internal/exceptions.h"
+#include "internal/to_address.h"
 #include "google/protobuf/arena.h"
 
 namespace cel {
+
+// Obtain the address of the underlying element from a raw pointer or "fancy"
+// pointer.
+using internal::to_address;
 
 // MemoryManagement is an enumeration of supported memory management forms
 // underlying `cel::MemoryManager`.
@@ -496,6 +502,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
   friend Unique<U> AllocateUnique(Allocator<> allocator, Args&&... args);
   friend class ReferenceCountingMemoryManager;
   friend class PoolingMemoryManager;
+  friend struct std::pointer_traits<Unique<T>>;
 
   constexpr Unique(T* ptr, google::protobuf::Arena* arena) noexcept
       : ptr_(ptr), arena_(arena) {}
@@ -550,6 +557,26 @@ template <typename T>
 Unique<T> WrapUnique(T* object) {
   return Unique<T>(object);
 }
+
+}  // namespace cel
+
+namespace std {
+
+template <typename T>
+struct pointer_traits<cel::Unique<T>> {
+  using pointer = cel::Unique<T>;
+  using element_type = typename cel::Unique<T>::element_type;
+  using difference_type = ptrdiff_t;
+
+  template <typename U>
+  using rebind = cel::Unique<U>;
+
+  static element_type* to_address(const pointer& p) noexcept { return p.ptr_; }
+};
+
+}  // namespace std
+
+namespace cel {
 
 // `Shared` points to an object allocated in memory which is managed by a
 // `MemoryManager`. The pointed to object is valid so long as the managing

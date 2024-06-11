@@ -349,6 +349,7 @@ cc_library(
         "//common/internal:metadata",
         "//common/internal:reference_count",
         "//internal:exceptions",
+        "//internal:to_address",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/base:nullability",
