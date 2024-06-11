@@ -40,6 +40,7 @@
 #include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_factory.h"
+#include "common/value_kind.h"
 #include "common/values/piecewise_value_manager.h"
 #include "extensions/protobuf/internal/any.h"
 #include "extensions/protobuf/internal/duration.h"
@@ -703,6 +704,9 @@ class ProtoStructValueBuilder final : public StructValueBuilder {
           }
           default:
             break;
+        }
+        if (value.kind() == ValueKind::kNull) {
+          return absl::OkStatus();
         }
         return protobuf_internal::ProtoMessageFromValueImpl(
             value, reflection_->MutableMessage(

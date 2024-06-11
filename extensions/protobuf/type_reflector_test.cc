@@ -67,6 +67,16 @@ TEST_P(ProtoTypeReflectorTest, NewStructValueBuilder_SetFieldByNumber) {
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
+TEST_P(ProtoTypeReflectorTest, NewStructValueBuilder_SetNullField) {
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      value_manager().NewStructValueBuilder(value_manager().CreateStructType(
+          TestAllTypes::descriptor()->full_name())));
+  ASSERT_TRUE(builder.has_value());
+  EXPECT_THAT((*builder)->SetFieldByName("standalone_message", NullValue()),
+              StatusIs(absl::StatusCode::kOk));
+}
+
 TEST_P(ProtoTypeReflectorTest, NewStructValueBuilder_TypeConversionError) {
   ASSERT_OK_AND_ASSIGN(
       auto builder,
