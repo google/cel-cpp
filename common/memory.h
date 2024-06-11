@@ -22,13 +22,13 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
-#include "absl/base/config.h"  // IWYU pragma: keep
 #include "absl/base/macros.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/numeric/bits.h"
 #include "common/allocator.h"
+#include "common/arena.h"
 #include "common/data.h"
 #include "common/internal/metadata.h"
 #include "common/internal/reference_count.h"
@@ -60,7 +60,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI Shared;
 template <typename T>
 class ABSL_ATTRIBUTE_TRIVIAL_ABI SharedView;
 template <typename T>
-class ABSL_ATTRIBUTE_TRIVIAL_ABI Unique;
+class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique;
 template <typename T>
 struct EnableSharedFromThis;
 
@@ -350,6 +350,206 @@ inline bool operator!=(const Owner& lhs, Borrower rhs) noexcept {
 
 inline Owner::Owner(Borrower borrower) noexcept
     : ptr_(Owner::Own(borrower.ptr_)) {}
+
+template <typename T, typename... Args>
+Unique<T> AllocateUnique(Allocator<> allocator, Args&&... args);
+
+template <typename T>
+Unique<T> WrapUnique(T* object);
+
+// `Unique<T>` points to an object which was allocated using `Allocator<>` or
+// `Allocator<T>`. It has ownership over the object, and will perform any
+// destruction and deallocation required. `Unique` must not outlive the
+// underlying arena, if any. Unlike `Owned` and `Borrowed`, `Unique` supports
+// arena incompatible objects. It is very similar to `std::unique_ptr` when
+// using a custom deleter.
+//
+// IMPLEMENTATION NOTES:
+// When utilizing arenas, we optionally perform a risky optimization via
+// `AllocateUnique`. We do not use `Arena::Create`, instead we directly allocate
+// the bytes and construct it in place ourselves. This avoids registering the
+// destructor when required. Instead we register the destructor ourselves, if
+// required, during `Unique::release`. This allows us to avoid deferring
+// destruction of the object until the arena is destroyed, avoiding the cost
+// involved in doing so.
+template <typename T>
+class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
+ public:
+  using element_type = T;
+
+  static_assert(!std::is_array_v<T>, "T must not be an array");
+  static_assert(!std::is_reference_v<T>, "T must not be a reference");
+  static_assert(!std::is_volatile_v<T>, "T must not be volatile qualified");
+
+  Unique() = default;
+  Unique(const Unique&) = delete;
+  Unique& operator=(const Unique&) = delete;
+
+  explicit Unique(T* ptr) noexcept : Unique(ptr, nullptr) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Unique(std::nullptr_t) noexcept : Unique() {}
+
+  Unique(Unique&& other) noexcept : Unique(other.ptr_, other.arena_) {
+    other.ptr_ = nullptr;
+  }
+
+  template <
+      typename U,
+      typename = std::enable_if_t<std::conjunction_v<
+          std::negation<std::is_same<U, T>>, std::is_convertible<U*, T*>>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Unique(Unique<U>&& other) noexcept : Unique(other.ptr_, other.arena_) {
+    other.ptr_ = nullptr;
+  }
+
+  ~Unique() { Delete(); }
+
+  Unique& operator=(Unique&& other) noexcept {
+    if (ABSL_PREDICT_TRUE(this != &other)) {
+      Delete();
+      ptr_ = other.ptr_;
+      arena_ = other.arena_;
+      other.ptr_ = nullptr;
+    }
+    return *this;
+  }
+
+  template <
+      typename U,
+      typename = std::enable_if_t<std::conjunction_v<
+          std::negation<std::is_same<U, T>>, std::is_convertible<U*, T*>>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Unique& operator=(U* other) noexcept {
+    reset(other);
+    return *this;
+  }
+
+  template <
+      typename U,
+      typename = std::enable_if_t<std::conjunction_v<
+          std::negation<std::is_same<U, T>>, std::is_convertible<U*, T*>>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Unique& operator=(Unique<U>&& other) noexcept {
+    Delete();
+    ptr_ = other.ptr_;
+    arena_ = other.arena_;
+    other.ptr_ = nullptr;
+    return *this;
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Unique& operator=(std::nullptr_t) noexcept {
+    reset();
+    return *this;
+  }
+
+  T& operator*() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    ABSL_DCHECK(static_cast<bool>(*this));
+    return *get();
+  }
+
+  absl::Nonnull<T*> operator->() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    ABSL_DCHECK(static_cast<bool>(*this));
+    return get();
+  }
+
+  // Relinquishes ownership of `T*`, returning it. If `T` was allocated and
+  // constructed using an arena, no further action is required. If `T` was
+  // allocated and constructed without an arena, the caller must eventually call
+  // `delete`.
+  ABSL_MUST_USE_RESULT T* release() noexcept {
+    if constexpr (!IsArenaDestructorSkippable<T>::value) {
+      if (static_cast<bool>(*this) && arena_ != nullptr) {
+        // We never registered the destructor, call it if necessary.
+        arena_->OwnDestructor(ptr_);
+      }
+    }
+    return std::exchange(ptr_, nullptr);
+  }
+
+  void reset() noexcept { reset(nullptr); }
+
+  void reset(T* ptr) noexcept {
+    Delete();
+    ptr_ = ptr;
+    arena_ = nullptr;
+  }
+
+  void reset(std::nullptr_t) noexcept {
+    Delete();
+    ptr_ = nullptr;
+  }
+
+  explicit operator bool() const noexcept { return get() != nullptr; }
+
+  friend void swap(Unique& lhs, Unique& rhs) noexcept {
+    using std::swap;
+    swap(lhs.ptr_, rhs.ptr_);
+    swap(lhs.arena_, rhs.arena_);
+  }
+
+ private:
+  template <typename U>
+  friend class Unique;
+  template <typename U, typename... Args>
+  friend Unique<U> AllocateUnique(Allocator<> allocator, Args&&... args);
+  friend class ReferenceCountingMemoryManager;
+  friend class PoolingMemoryManager;
+
+  constexpr Unique(T* ptr, google::protobuf::Arena* arena) noexcept
+      : ptr_(ptr), arena_(arena) {}
+
+  T* get() const noexcept { return ptr_; }
+
+  void Delete() const noexcept {
+    if (static_cast<bool>(*this)) {
+      if (arena_ != nullptr) {
+        // We never registered the destructor, call it if necessary.
+        if constexpr (!IsArenaDestructorSkippable<T>::value) {
+          ptr_->~T();
+        }
+      } else {
+        google::protobuf::Arena::Destroy(ptr_);
+      }
+    }
+  }
+
+  T* ptr_ = nullptr;
+  // Nonnull when `ptr` was allocated on the arena and its destructor is not
+  // skippable. In that case we must register the destructor upon release.
+  google::protobuf::Arena* arena_ = nullptr;
+};
+
+template <typename T>
+Unique(T*) -> Unique<T>;
+
+template <typename T, typename... Args>
+Unique<T> AllocateUnique(Allocator<> allocator, Args&&... args) {
+  T* object;
+  auto* arena = allocator.arena();
+  if constexpr (IsArenaConstructible<T>::value) {
+    object = google::protobuf::Arena::Create<T>(arena, std::forward<Args>(args)...);
+    // For arena-compatible proto types, let the Arena::Create handle
+    // registering the destructor call.
+    // Otherwise, Unique<T> retains a pointer to the owning arena so it may
+    // conditionally register T::~T depending on usage.
+    arena = nullptr;
+  } else {
+    void* p = allocator.allocate_bytes(sizeof(T), alignof(T));
+    CEL_INTERNAL_TRY { object = ::new (p) T(std::forward<Args>(args)...); }
+    CEL_INTERNAL_CATCH_ANY {
+      allocator.deallocate_bytes(p, sizeof(T), alignof(T));
+      CEL_INTERNAL_RETHROW;
+    }
+  }
+  return Unique<T>(object, arena);
+}
+
+template <typename T>
+Unique<T> WrapUnique(T* object) {
+  return Unique<T>(object);
+}
 
 // `Shared` points to an object allocated in memory which is managed by a
 // `MemoryManager`. The pointed to object is valid so long as the managing
@@ -691,105 +891,6 @@ struct EnableSharedFromThis
   }
 };
 
-// `Unique` points to an object allocated in memory managed by a
-// `MemoryManager`. The pointed to object is valid so long as the managing
-// `MemoryManager` is alive and `Unique` is alive.
-template <typename T>
-class ABSL_ATTRIBUTE_TRIVIAL_ABI Unique final {
- public:
-  static_assert(!std::is_array_v<T>);
-
-  Unique() = default;
-  Unique(const Unique&) = delete;
-  Unique& operator=(const Unique&) = delete;
-
-  Unique(Unique&& other) noexcept
-      : ptr_(other.ptr_), memory_management_(other.memory_management_) {
-    other.ptr_ = nullptr;
-  }
-
-  template <typename U,
-            typename = std::enable_if_t<std::conjunction_v<
-                std::negation<std::is_same<U, T>>, std::is_convertible<U*, T*>,
-                std::is_polymorphic<std::remove_const_t<U>>,
-                std::is_polymorphic<std::remove_const_t<T>>,
-                std::is_base_of<std::remove_const_t<T>, std::remove_const_t<U>>,
-                std::has_virtual_destructor<std::remove_const_t<T>>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Unique(Unique<U>&& other) noexcept
-      : ptr_(other.ptr_), memory_management_(other.memory_management_) {
-    other.ptr_ = nullptr;
-  }
-
-  ~Unique() { Delete(); }
-
-  Unique& operator=(Unique&& other) noexcept {
-    Delete();
-    ptr_ = other.ptr_;
-    memory_management_ = other.memory_management_;
-    other.ptr_ = nullptr;
-    return *this;
-  }
-
-  template <typename U, typename = std::enable_if_t<std::conjunction_v<
-                            std::negation<std::is_same<U, T>>,
-                            std::is_same<U, std::remove_const_t<T>>,
-                            std::negation<std::is_const<U>>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Unique& operator=(Unique<U>&& other) noexcept {
-    Delete();
-    ptr_ = other.ptr_;
-    memory_management_ = other.memory_management_;
-    other.ptr_ = nullptr;
-    return *this;
-  }
-
-  T& operator*() const noexcept {
-    ABSL_DCHECK(!IsEmpty());
-    return *ptr_;
-  }
-
-  absl::Nonnull<T*> operator->() const noexcept {
-    ABSL_DCHECK(!IsEmpty());
-    return ptr_;
-  }
-
-  explicit operator bool() const { return !IsEmpty(); }
-
-  friend void swap(Unique& lhs, Unique& rhs) noexcept {
-    using std::swap;
-    swap(lhs.ptr_, rhs.ptr_);
-    swap(lhs.memory_management_, rhs.memory_management_);
-  }
-
- private:
-  friend class ReferenceCountingMemoryManager;
-  friend class PoolingMemoryManager;
-  template <typename U>
-  friend class Unique;
-
-  Unique(T* ptr, MemoryManagement memory_management) noexcept
-      : ptr_(ptr), memory_management_(memory_management) {}
-
-  void Delete() noexcept {
-    if (ptr_ != nullptr) {
-      switch (memory_management_) {
-        case MemoryManagement::kPooling:
-          ptr_->~T();
-          break;
-        case MemoryManagement::kReferenceCounting:
-          delete ptr_;
-          break;
-      }
-    }
-  }
-
-  bool IsEmpty() const noexcept { return ptr_ == nullptr; }
-
-  T* ptr_ = nullptr;
-  MemoryManagement memory_management_ = MemoryManagement::kPooling;
-};
-
 // `ReferenceCountingMemoryManager` is a `MemoryManager` which employs automatic
 // memory management through reference counting.
 class ReferenceCountingMemoryManager final {
@@ -818,7 +919,7 @@ class ReferenceCountingMemoryManager final {
   static ABSL_MUST_USE_RESULT Unique<T> MakeUnique(Args&&... args) {
     using U = std::remove_const_t<T>;
     return Unique<T>(static_cast<T*>(new U(std::forward<Args>(args)...)),
-                     MemoryManagement::kReferenceCounting);
+                     nullptr);
   }
 
   static void* Allocate(size_t size, size_t alignment);
@@ -883,7 +984,7 @@ class PoolingMemoryManager final {
       Deallocate(arena, addr, sizeof(U), alignof(U));
       CEL_INTERNAL_RETHROW;
     }
-    return Unique<T>(static_cast<T*>(ptr), MemoryManagement::kPooling);
+    return Unique<T>(static_cast<T*>(ptr), arena);
   }
 
   // Allocates memory directly from the allocator used by this memory manager.
