@@ -119,7 +119,6 @@ cc_library(
             "//base:function",
             "//base:function_descriptor",
             "//base:kind",
-            "//common:kind",
             "@com_google_absl//absl/container:flat_hash_map",
             "@com_google_absl//absl/container:node_hash_map",
             "@com_google_absl//absl/status",
@@ -160,18 +159,10 @@ cc_library(
     hdrs = ["type_registry.h"],
     deps = [
         "//base:data",
-        "//common:memory",
-        "//common:native_type",
-        "//internal:status_macros",
         "//runtime/internal:composed_type_provider",
-        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:optional",
-        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -235,7 +226,6 @@ cc_library(
         ":runtime_options",
         ":standard_functions",
         "//internal:status_macros",
-        "//runtime/internal:runtime_impl",
         "@com_google_absl//absl/status:statusor",
     ],
 )
