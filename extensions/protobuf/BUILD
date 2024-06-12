@@ -200,6 +200,7 @@ cc_library(
         "//common:memory",
         "//common:type",
         "//common:value",
+        "//common:value_kind",
         "//extensions/protobuf/internal:any",
         "//extensions/protobuf/internal:duration",
         "//extensions/protobuf/internal:duration_lite",
