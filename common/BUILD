@@ -145,7 +145,6 @@ cc_library(
     srcs = ["ast_traverse.cc"],
     hdrs = ["ast_traverse.h"],
     deps = [
-        ":ast",
         ":ast_visitor",
         ":constant",
         ":expr",

@@ -293,10 +293,8 @@ cc_library(
         "//extensions/protobuf/internal:message",
         "//internal:status_macros",
         "//runtime:activation",
-        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],
 )
