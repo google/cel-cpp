@@ -123,12 +123,11 @@ CelValue BetweenToD(Arena* arena, const google::protobuf::Message* time_of_day,
                     const google::protobuf::Message* start, const google::protobuf::Message* stop) {
   bool is_between;
   const google::type::TimeOfDay* time_of_day_tod =
-      google::protobuf::DynamicCastToGenerated<const google::type::TimeOfDay>(
-          time_of_day);
+      google::protobuf::DynamicCastMessage<const google::type::TimeOfDay>(time_of_day);
   const google::type::TimeOfDay* start_tod =
-      google::protobuf::DynamicCastToGenerated<const google::type::TimeOfDay>(start);
+      google::protobuf::DynamicCastMessage<const google::type::TimeOfDay>(start);
   const google::type::TimeOfDay* stop_tod =
-      google::protobuf::DynamicCastToGenerated<const google::type::TimeOfDay>(stop);
+      google::protobuf::DynamicCastMessage<const google::type::TimeOfDay>(stop);
 
   if ((time_of_day_tod == nullptr) || (start_tod == nullptr) ||
       (stop_tod == nullptr)) {
