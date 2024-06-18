@@ -74,6 +74,48 @@ cc_test(
 )
 
 cc_test(
+    name = "modern_benchmark_test",
+    srcs = [
+        "modern_benchmark_test.cc",
+    ],
+    tags = ["benchmark"],
+    deps = [
+        ":request_context_cc_proto",
+        "//common:casting",
+        "//common:json",
+        "//common:legacy_value",
+        "//common:native_type",
+        "//common:value",
+        "//extensions/protobuf:memory_manager",
+        "//extensions/protobuf:runtime_adapter",
+        "//extensions/protobuf:value",
+        "//internal:benchmark",
+        "//internal:testing",
+        "//parser",
+        "//runtime",
+        "//runtime:activation",
+        "//runtime:constant_folding",
+        "//runtime:managed_value_factory",
+        "//runtime:runtime_options",
+        "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/container:node_hash_set",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
     name = "allocation_benchmark_test",
     size = "small",
     srcs = [
