@@ -310,8 +310,7 @@ class CelValue {
   const google::protobuf::Message* MessageOrDie() const {
     MessageWrapper wrapped = MessageWrapperOrDie();
     ABSL_ASSERT(wrapped.HasFullProto());
-    return cel::internal::down_cast<const google::protobuf::Message*>(
-        wrapped.message_ptr());
+    return static_cast<const google::protobuf::Message*>(wrapped.message_ptr());
   }
 
   MessageWrapper MessageWrapperOrDie() const {
@@ -466,8 +465,7 @@ class CelValue {
         return false;
       }
 
-      *value = cel::internal::down_cast<const google::protobuf::Message*>(
-          held_value.message_ptr());
+      *value = static_cast<const google::protobuf::Message*>(held_value.message_ptr());
       return true;
     }
 

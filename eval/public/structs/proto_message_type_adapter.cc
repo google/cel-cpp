@@ -75,7 +75,7 @@ inline absl::StatusOr<const google::protobuf::Message*> UnwrapMessage(
     return absl::InternalError(
         absl::StrCat(op, " called on non-message type."));
   }
-  return cel::internal::down_cast<const google::protobuf::Message*>(value.message_ptr());
+  return static_cast<const google::protobuf::Message*>(value.message_ptr());
 }
 
 inline absl::StatusOr<google::protobuf::Message*> UnwrapMessage(
@@ -84,7 +84,7 @@ inline absl::StatusOr<google::protobuf::Message*> UnwrapMessage(
     return absl::InternalError(
         absl::StrCat(op, " called on non-message type."));
   }
-  return cel::internal::down_cast<google::protobuf::Message*>(value.message_ptr());
+  return static_cast<google::protobuf::Message*>(value.message_ptr());
 }
 
 bool ProtoEquals(const google::protobuf::Message& m1, const google::protobuf::Message& m2) {
@@ -287,8 +287,9 @@ std::vector<absl::string_view> ListFieldsImpl(
   if (instance.message_ptr() == nullptr) {
     return std::vector<absl::string_view>();
   }
+  ABSL_ASSERT(instance.HasFullProto());
   const auto* message =
-      cel::internal::down_cast<const google::protobuf::Message*>(instance.message_ptr());
+      static_cast<const google::protobuf::Message*>(instance.message_ptr());
   const auto* reflect = message->GetReflection();
   std::vector<const google::protobuf::FieldDescriptor*> fields;
   reflect->ListFields(*message, &fields);
@@ -356,8 +357,8 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
         wrapped_message.message_ptr() == nullptr) {
       return UnsupportedTypeName();
     }
-    auto* message = cel::internal::down_cast<const google::protobuf::Message*>(
-        wrapped_message.message_ptr());
+    auto* message =
+        static_cast<const google::protobuf::Message*>(wrapped_message.message_ptr());
     return message->GetDescriptor()->full_name();
   }
 
@@ -367,8 +368,8 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
         wrapped_message.message_ptr() == nullptr) {
       return UnsupportedTypeName();
     }
-    auto* message = cel::internal::down_cast<const google::protobuf::Message*>(
-        wrapped_message.message_ptr());
+    auto* message =
+        static_cast<const google::protobuf::Message*>(wrapped_message.message_ptr());
     return message->ShortDebugString();
   }
 
@@ -391,8 +392,7 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
           "MessageLite is not supported, descriptor is required");
     }
     return ProtoMessageTypeAdapter(
-               cel::internal::down_cast<const google::protobuf::Message*>(
-                   instance.message_ptr())
+               static_cast<const google::protobuf::Message*>(instance.message_ptr())
                    ->GetDescriptor(),
                nullptr)
         .AdaptFromWellKnownType(memory_manager, instance);
@@ -407,8 +407,7 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
           "MessageLite is not supported, descriptor is required");
     }
     return ProtoMessageTypeAdapter(
-               cel::internal::down_cast<const google::protobuf::Message*>(
-                   instance.message_ptr())
+               static_cast<const google::protobuf::Message*>(instance.message_ptr())
                    ->GetDescriptor(),
                nullptr)
         .SetField(field_name, value, memory_manager, instance);
@@ -448,8 +447,8 @@ std::string ProtoMessageTypeAdapter::DebugString(
       wrapped_message.message_ptr() == nullptr) {
     return UnsupportedTypeName();
   }
-  auto* message = cel::internal::down_cast<const google::protobuf::Message*>(
-      wrapped_message.message_ptr());
+  auto* message =
+      static_cast<const google::protobuf::Message*>(wrapped_message.message_ptr());
   return message->ShortDebugString();
 }
 

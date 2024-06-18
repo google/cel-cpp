@@ -96,8 +96,7 @@ struct MessageVisitAdapter {
 
   T operator()(const MessageWrapper& wrapper) {
     ABSL_ASSERT(wrapper.HasFullProto());
-    return op(cel::internal::down_cast<const google::protobuf::Message*>(
-        wrapper.message_ptr()));
+    return op(static_cast<const google::protobuf::Message*>(wrapper.message_ptr()));
   }
 
   Op op;

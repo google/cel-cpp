@@ -500,8 +500,8 @@ class FieldSetter {
           }
           if (CelValue::MessageWrapper wrapper;
               value.GetValue(&wrapper) && wrapper.HasFullProto()) {
-            wrapped_value = cel::internal::down_cast<const google::protobuf::Message*>(
-                wrapper.message_ptr());
+            wrapped_value =
+                static_cast<const google::protobuf::Message*>(wrapper.message_ptr());
           } else {
             return false;
           }
