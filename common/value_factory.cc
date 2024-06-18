@@ -53,23 +53,18 @@ namespace {
 
 using common_internal::ProcessLocalValueCache;
 
-ValueView JsonToValue(const Json& json, ValueFactory& value_factory,
-                      Value& scratch) {
-  return absl::visit(
+void JsonToValue(const Json& json, ValueFactory& value_factory, Value& result) {
+  absl::visit(
       absl::Overload(
-          [](JsonNull) -> ValueView { return NullValueView(); },
-          [](JsonBool value) -> ValueView { return BoolValueView(value); },
-          [](JsonNumber value) -> ValueView { return DoubleValueView(value); },
-          [](const JsonString& value) -> ValueView {
-            return StringValueView(value);
+          [&result](JsonNull) { result = NullValue(); },
+          [&result](JsonBool value) { result = BoolValue(value); },
+          [&result](JsonNumber value) { result = DoubleValue(value); },
+          [&result](const JsonString& value) { result = StringValue(value); },
+          [&value_factory, &result](const JsonArray& value) {
+            result = value_factory.CreateListValueFromJsonArray(value);
           },
-          [&value_factory, &scratch](const JsonArray& value) -> ValueView {
-            scratch = value_factory.CreateListValueFromJsonArray(value);
-            return scratch;
-          },
-          [&value_factory, &scratch](const JsonObject& value) -> ValueView {
-            scratch = value_factory.CreateMapValueFromJsonObject(value);
-            return scratch;
+          [&value_factory, &result](const JsonObject& value) {
+            result = value_factory.CreateMapValueFromJsonObject(value);
           }),
       json);
 }
@@ -164,9 +159,10 @@ class JsonListValue final : public ParsedListValueInterface {
     return ListType(type_manager.GetDynListType());
   }
 
-  absl::StatusOr<ValueView> GetImpl(ValueManager& value_manager, size_t index,
-                                    Value& scratch) const override {
-    return JsonToValue(array_[index], value_manager, scratch);
+  absl::Status GetImpl(ValueManager& value_manager, size_t index,
+                       Value& result) const override {
+    JsonToValue(array_[index], value_manager, result);
+    return absl::OkStatus();
   }
 
   NativeTypeId GetNativeTypeId() const noexcept override {
@@ -184,7 +180,7 @@ class JsonMapValueKeyIterator final : public ValueIterator {
 
   bool HasNext() override { return begin_ != end_; }
 
-  absl::StatusOr<ValueView> Next(ValueManager&, Value&) override {
+  absl::Status Next(ValueManager&, Value& result) override {
     if (ABSL_PREDICT_FALSE(begin_ == end_)) {
       return absl::FailedPreconditionError(
           "ValueIterator::Next() called when "
@@ -192,7 +188,8 @@ class JsonMapValueKeyIterator final : public ValueIterator {
     }
     const auto& key = begin_->first;
     ++begin_;
-    return StringValueView(key);
+    result = StringValue(key);
+    return absl::OkStatus();
   }
 
  private:
@@ -215,17 +212,17 @@ class JsonMapValue final : public ParsedMapValueInterface {
   size_t Size() const override { return object_.size(); }
 
   // Returns a new list value whose elements are the keys of this map.
-  absl::StatusOr<ListValueView> ListKeys(ValueManager& value_manager,
-                                         ListValue& scratch) const override {
+  absl::Status ListKeys(ValueManager& value_manager,
+                        ListValue& result) const override {
     JsonArrayBuilder keys;
     keys.reserve(object_.size());
     for (const auto& entry : object_) {
       keys.push_back(entry.first);
     }
-    scratch = ParsedListValue(
+    result = ParsedListValue(
         value_manager.GetMemoryManager().MakeShared<JsonListValue>(
             std::move(keys).Build()));
-    return scratch;
+    return absl::OkStatus();
   }
 
   // By default, implementations do not guarantee any iteration order. Unless
@@ -242,23 +239,22 @@ class JsonMapValue final : public ParsedMapValueInterface {
 
  private:
   // Called by `Find` after performing various argument checks.
-  absl::StatusOr<absl::optional<ValueView>> FindImpl(
-      ValueManager& value_manager, ValueView key,
-      Value& scratch) const override {
+  absl::StatusOr<bool> FindImpl(ValueManager& value_manager, ValueView key,
+                                Value& result) const override {
     return Cast<StringValueView>(key).NativeValue(absl::Overload(
-        [this, &value_manager,
-         &scratch](absl::string_view value) -> absl::optional<ValueView> {
+        [this, &value_manager, &result](absl::string_view value) -> bool {
           if (auto entry = object_.find(value); entry != object_.end()) {
-            return JsonToValue(entry->second, value_manager, scratch);
+            JsonToValue(entry->second, value_manager, result);
+            return true;
           }
-          return absl::nullopt;
+          return false;
         },
-        [this, &value_manager,
-         &scratch](const absl::Cord& value) -> absl::optional<ValueView> {
+        [this, &value_manager, &result](const absl::Cord& value) -> bool {
           if (auto entry = object_.find(value); entry != object_.end()) {
-            return JsonToValue(entry->second, value_manager, scratch);
+            JsonToValue(entry->second, value_manager, result);
+            return true;
           }
-          return absl::nullopt;
+          return false;
         }));
   }
 

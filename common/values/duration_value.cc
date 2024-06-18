@@ -79,21 +79,22 @@ absl::StatusOr<Json> DurationValueBase::ConvertToJson(
   return JsonString(std::move(json));
 }
 
-absl::StatusOr<ValueView> DurationValueBase::Equal(ValueManager&,
-                                                   ValueView other,
-                                                   Value&) const {
+absl::Status DurationValueBase::Equal(ValueManager&, ValueView other,
+                                      Value& result) const {
   if (auto other_value = As<DurationValueView>(other);
       other_value.has_value()) {
-    return BoolValueView{NativeValue() == other_value->NativeValue()};
+    result = BoolValueView{NativeValue() == other_value->NativeValue()};
+    return absl::OkStatus();
   }
-  return BoolValueView{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
 absl::StatusOr<Value> DurationValueBase::Equal(ValueManager& value_manager,
                                                ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
+  Value result;
+  CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
+  return result;
 }
 
 }  // namespace cel::common_internal

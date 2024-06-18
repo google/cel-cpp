@@ -15,6 +15,7 @@
 #include <cstddef>
 
 #include "absl/log/absl_check.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "common/casting.h"
 #include "common/type.h"
@@ -253,69 +254,67 @@ common_internal::ListValueVariant ListValueView::ToVariant() const {
 
 namespace common_internal {
 
-absl::StatusOr<ValueView> ListValueEqual(ValueManager& value_manager,
-                                         ListValueView lhs, ListValueView rhs,
-                                         Value& scratch) {
+absl::Status ListValueEqual(ValueManager& value_manager, ListValueView lhs,
+                            ListValueView rhs, Value& result) {
   if (Is(lhs, rhs)) {
-    return BoolValueView{true};
+    result = BoolValueView{true};
+    return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto lhs_size, lhs.Size());
   CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
   if (lhs_size != rhs_size) {
-    return BoolValueView{false};
+    result = BoolValueView{false};
+    return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator(value_manager));
   CEL_ASSIGN_OR_RETURN(auto rhs_iterator, rhs.NewIterator(value_manager));
-  Value lhs_scratch;
-  Value rhs_scratch;
+  Value lhs_element;
+  Value rhs_element;
   for (size_t index = 0; index < lhs_size; ++index) {
     ABSL_CHECK(lhs_iterator->HasNext());  // Crash OK
     ABSL_CHECK(rhs_iterator->HasNext());  // Crash OK
-    CEL_ASSIGN_OR_RETURN(auto lhs_element,
-                         lhs_iterator->Next(value_manager, lhs_scratch));
-    CEL_ASSIGN_OR_RETURN(auto rhs_element,
-                         rhs_iterator->Next(value_manager, lhs_scratch));
-    CEL_ASSIGN_OR_RETURN(
-        auto result, lhs_element.Equal(value_manager, rhs_element, scratch));
-    if (auto bool_value = As<BoolValueView>(result);
+    CEL_RETURN_IF_ERROR(lhs_iterator->Next(value_manager, lhs_element));
+    CEL_RETURN_IF_ERROR(rhs_iterator->Next(value_manager, rhs_element));
+    CEL_RETURN_IF_ERROR(lhs_element.Equal(value_manager, rhs_element, result));
+    if (auto bool_value = As<BoolValue>(result);
         bool_value.has_value() && !bool_value->NativeValue()) {
-      return result;
+      return absl::OkStatus();
     }
   }
   ABSL_DCHECK(!lhs_iterator->HasNext());
   ABSL_DCHECK(!rhs_iterator->HasNext());
-  return BoolValueView{true};
+  result = BoolValueView{true};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ListValueEqual(ValueManager& value_manager,
-                                         const ParsedListValueInterface& lhs,
-                                         ListValueView rhs, Value& scratch) {
+absl::Status ListValueEqual(ValueManager& value_manager,
+                            const ParsedListValueInterface& lhs,
+                            ListValueView rhs, Value& result) {
   auto lhs_size = lhs.Size();
   CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
   if (lhs_size != rhs_size) {
-    return BoolValueView{false};
+    result = BoolValueView{false};
+    return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator(value_manager));
   CEL_ASSIGN_OR_RETURN(auto rhs_iterator, rhs.NewIterator(value_manager));
-  Value lhs_scratch;
-  Value rhs_scratch;
+  Value lhs_element;
+  Value rhs_element;
   for (size_t index = 0; index < lhs_size; ++index) {
     ABSL_CHECK(lhs_iterator->HasNext());  // Crash OK
     ABSL_CHECK(rhs_iterator->HasNext());  // Crash OK
-    CEL_ASSIGN_OR_RETURN(auto lhs_element,
-                         lhs_iterator->Next(value_manager, lhs_scratch));
-    CEL_ASSIGN_OR_RETURN(auto rhs_element,
-                         rhs_iterator->Next(value_manager, lhs_scratch));
-    CEL_ASSIGN_OR_RETURN(
-        auto result, lhs_element.Equal(value_manager, rhs_element, scratch));
-    if (auto bool_value = As<BoolValueView>(result);
+    CEL_RETURN_IF_ERROR(lhs_iterator->Next(value_manager, lhs_element));
+    CEL_RETURN_IF_ERROR(rhs_iterator->Next(value_manager, rhs_element));
+    CEL_RETURN_IF_ERROR(lhs_element.Equal(value_manager, rhs_element, result));
+    if (auto bool_value = As<BoolValue>(result);
         bool_value.has_value() && !bool_value->NativeValue()) {
-      return result;
+      return absl::OkStatus();
     }
   }
   ABSL_DCHECK(!lhs_iterator->HasNext());
   ABSL_DCHECK(!rhs_iterator->HasNext());
-  return BoolValueView{true};
+  result = BoolValueView{true};
+  return absl::OkStatus();
 }
 
 }  // namespace common_internal

@@ -28,6 +28,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "common/casting.h"
@@ -63,12 +64,10 @@ class OptionalValueInterface : public OpaqueValueInterface {
 
   virtual bool HasValue() const = 0;
 
-  absl::StatusOr<ValueView> Equal(
-      ValueManager& value_manager, ValueView other,
-      cel::Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const override;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     cel::Value& result) const override;
 
-  virtual ValueView Value(
-      cel::Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
+  virtual void Value(cel::Value& scratch) const = 0;
 
   cel::Value Value() const;
 
@@ -118,7 +117,7 @@ class OptionalValue final : public OpaqueValue {
 
   bool HasValue() const { return (*this)->HasValue(); }
 
-  ValueView Value(cel::Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  void Value(cel::Value& result) const;
 
   cel::Value Value() const;
 
@@ -197,7 +196,7 @@ class OptionalValueView final : public OpaqueValueView {
 
   bool HasValue() const { return (*this)->HasValue(); }
 
-  ValueView Value(cel::Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  void Value(cel::Value& result) const;
 
   cel::Value Value() const;
 

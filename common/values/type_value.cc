@@ -59,12 +59,14 @@ absl::StatusOr<Json> TypeValue::ConvertToJson(AnyToJsonConverter&) const {
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
-absl::StatusOr<ValueView> TypeValue::Equal(ValueManager&, ValueView other,
-                                           Value&) const {
+absl::Status TypeValue::Equal(ValueManager&, ValueView other,
+                              Value& result) const {
   if (auto other_value = As<TypeValueView>(other); other_value.has_value()) {
-    return BoolValueView{NativeValue() == other_value->NativeValue()};
+    result = BoolValueView{NativeValue() == other_value->NativeValue()};
+    return absl::OkStatus();
   }
-  return BoolValueView{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
 absl::StatusOr<size_t> TypeValueView::GetSerializedSize(
@@ -100,12 +102,14 @@ absl::StatusOr<Json> TypeValueView::ConvertToJson(AnyToJsonConverter&) const {
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
-absl::StatusOr<ValueView> TypeValueView::Equal(ValueManager&, ValueView other,
-                                               Value&) const {
+absl::Status TypeValueView::Equal(ValueManager&, ValueView other,
+                                  Value& result) const {
   if (auto other_value = As<TypeValueView>(other); other_value.has_value()) {
-    return BoolValueView{NativeValue() == other_value->NativeValue()};
+    result = BoolValueView{NativeValue() == other_value->NativeValue()};
+    return absl::OkStatus();
   }
-  return BoolValueView{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
 }  // namespace cel

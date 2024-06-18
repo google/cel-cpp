@@ -100,10 +100,9 @@ template <typename T>
 absl::StatusOr<bool> In(ValueManager& value_factory, T value,
                         const ListValue& list) {
   CEL_ASSIGN_OR_RETURN(auto size, list.Size());
-  Value element_scratch;
+  Value element;
   for (int i = 0; i < size; i++) {
-    CEL_ASSIGN_OR_RETURN(ValueView element,
-                         list.Get(value_factory, i, element_scratch));
+    CEL_RETURN_IF_ERROR(list.Get(value_factory, i, element));
     if (ValueEquals<T>(element, value)) {
       return true;
     }

@@ -111,9 +111,9 @@ absl::StatusOr<Json> ErrorValue::ConvertToJson(AnyToJsonConverter&) const {
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
-absl::StatusOr<ValueView> ErrorValue::Equal(ValueManager&, ValueView,
-                                            Value&) const {
-  return BoolValueView{false};
+absl::Status ErrorValue::Equal(ValueManager&, ValueView, Value& result) const {
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
 std::string ErrorValueView::DebugString() const {
@@ -155,9 +155,10 @@ absl::StatusOr<Json> ErrorValueView::ConvertToJson(AnyToJsonConverter&) const {
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
-absl::StatusOr<ValueView> ErrorValueView::Equal(ValueManager&, ValueView,
-                                                Value&) const {
-  return BoolValueView{false};
+absl::Status ErrorValueView::Equal(ValueManager&, ValueView,
+                                   Value& result) const {
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
 }  // namespace cel

@@ -154,9 +154,8 @@ class StructValue final {
 
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
                               ValueView other) const;
 
@@ -168,21 +167,19 @@ class StructValue final {
     variant_.swap(other.variant_);
   }
 
-  absl::StatusOr<ValueView> GetFieldByName(
-      ValueManager& value_manager, absl::string_view name,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      ProtoWrapperTypeOptions unboxing_options =
-          ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::Status GetFieldByName(ValueManager& value_manager,
+                              absl::string_view name, Value& result,
+                              ProtoWrapperTypeOptions unboxing_options =
+                                  ProtoWrapperTypeOptions::kUnsetNull) const;
   absl::StatusOr<Value> GetFieldByName(
       ValueManager& value_manager, absl::string_view name,
       ProtoWrapperTypeOptions unboxing_options =
           ProtoWrapperTypeOptions::kUnsetNull) const;
 
-  absl::StatusOr<ValueView> GetFieldByNumber(
-      ValueManager& value_manager, int64_t number,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      ProtoWrapperTypeOptions unboxing_options =
-          ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::Status GetFieldByNumber(ValueManager& value_manager, int64_t number,
+                                Value& result,
+                                ProtoWrapperTypeOptions unboxing_options =
+                                    ProtoWrapperTypeOptions::kUnsetNull) const;
   absl::StatusOr<Value> GetFieldByNumber(
       ValueManager& value_manager, int64_t number,
       ProtoWrapperTypeOptions unboxing_options =
@@ -197,9 +194,9 @@ class StructValue final {
   absl::Status ForEachField(ValueManager& value_manager,
                             ForEachFieldCallback callback) const;
 
-  absl::StatusOr<std::pair<ValueView, int>> Qualify(
-      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
-      bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<int> Qualify(ValueManager& value_manager,
+                              absl::Span<const SelectQualifier> qualifiers,
+                              bool presence_test, Value& result) const;
   absl::StatusOr<std::pair<Value, int>> Qualify(
       ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
       bool presence_test) const;
@@ -484,9 +481,8 @@ class StructValueView final {
 
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
                               ValueView other) const;
 
@@ -498,21 +494,19 @@ class StructValueView final {
     variant_.swap(other.variant_);
   }
 
-  absl::StatusOr<ValueView> GetFieldByName(
-      ValueManager& value_manager, absl::string_view name,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      ProtoWrapperTypeOptions unboxing_options =
-          ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::Status GetFieldByName(ValueManager& value_manager,
+                              absl::string_view name, Value& result,
+                              ProtoWrapperTypeOptions unboxing_options =
+                                  ProtoWrapperTypeOptions::kUnsetNull) const;
   absl::StatusOr<Value> GetFieldByName(
       ValueManager& value_manager, absl::string_view name,
       ProtoWrapperTypeOptions unboxing_options =
           ProtoWrapperTypeOptions::kUnsetNull) const;
 
-  absl::StatusOr<ValueView> GetFieldByNumber(
-      ValueManager& value_manager, int64_t number,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      ProtoWrapperTypeOptions unboxing_options =
-          ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::Status GetFieldByNumber(ValueManager& value_manager, int64_t number,
+                                Value& result,
+                                ProtoWrapperTypeOptions unboxing_options =
+                                    ProtoWrapperTypeOptions::kUnsetNull) const;
   absl::StatusOr<Value> GetFieldByNumber(
       ValueManager& value_manager, int64_t number,
       ProtoWrapperTypeOptions unboxing_options =
@@ -527,9 +521,9 @@ class StructValueView final {
   absl::Status ForEachField(ValueManager& value_manager,
                             ForEachFieldCallback callback) const;
 
-  absl::StatusOr<std::pair<ValueView, int>> Qualify(
-      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
-      bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<int> Qualify(ValueManager& value_manager,
+                              absl::Span<const SelectQualifier> qualifiers,
+                              bool presence_test, Value& result) const;
   absl::StatusOr<std::pair<Value, int>> Qualify(
       ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
       bool presence_test) const;

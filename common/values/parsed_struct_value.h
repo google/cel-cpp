@@ -56,20 +56,17 @@ class ParsedStructValueInterface : public StructValueInterface {
   using alternative_type = ParsedStructValue;
   using view_alternative_type = ParsedStructValueView;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
 
   virtual bool IsZeroValue() const = 0;
 
-  virtual absl::StatusOr<ValueView> GetFieldByName(
-      ValueManager& value_manager, absl::string_view name,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
+  virtual absl::Status GetFieldByName(
+      ValueManager& value_manager, absl::string_view name, Value& result,
       ProtoWrapperTypeOptions unboxing_options) const = 0;
 
-  virtual absl::StatusOr<ValueView> GetFieldByNumber(
-      ValueManager& value_manager, int64_t number,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
+  virtual absl::Status GetFieldByNumber(
+      ValueManager& value_manager, int64_t number, Value& result,
       ProtoWrapperTypeOptions unboxing_options) const = 0;
 
   virtual absl::StatusOr<bool> HasFieldByName(absl::string_view name) const = 0;
@@ -79,14 +76,14 @@ class ParsedStructValueInterface : public StructValueInterface {
   virtual absl::Status ForEachField(ValueManager& value_manager,
                                     ForEachFieldCallback callback) const = 0;
 
-  virtual absl::StatusOr<std::pair<ValueView, int>> Qualify(
+  virtual absl::StatusOr<int> Qualify(
       ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
-      bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+      bool presence_test, Value& result) const;
 
  protected:
-  virtual absl::StatusOr<ValueView> EqualImpl(
-      ValueManager& value_manager, ParsedStructValueView other,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  virtual absl::Status EqualImpl(ValueManager& value_manager,
+                                 ParsedStructValueView other,
+                                 Value& result) const;
 };
 
 class ParsedStructValue {
@@ -146,9 +143,8 @@ class ParsedStructValue {
     return interface_->ConvertToJson(converter);
   }
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
 
   bool IsZeroValue() const { return interface_->IsZeroValue(); }
 
@@ -157,15 +153,13 @@ class ParsedStructValue {
     swap(interface_, other.interface_);
   }
 
-  absl::StatusOr<ValueView> GetFieldByName(
-      ValueManager& value_manager, absl::string_view name,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      ProtoWrapperTypeOptions unboxing_options) const;
+  absl::Status GetFieldByName(ValueManager& value_manager,
+                              absl::string_view name, Value& result,
+                              ProtoWrapperTypeOptions unboxing_options) const;
 
-  absl::StatusOr<ValueView> GetFieldByNumber(
-      ValueManager& value_manager, int64_t number,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      ProtoWrapperTypeOptions unboxing_options) const;
+  absl::Status GetFieldByNumber(ValueManager& value_manager, int64_t number,
+                                Value& result,
+                                ProtoWrapperTypeOptions unboxing_options) const;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const {
     return interface_->HasFieldByName(name);
@@ -180,9 +174,9 @@ class ParsedStructValue {
   absl::Status ForEachField(ValueManager& value_manager,
                             ForEachFieldCallback callback) const;
 
-  absl::StatusOr<std::pair<ValueView, int>> Qualify(
-      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
-      bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<int> Qualify(ValueManager& value_manager,
+                              absl::Span<const SelectQualifier> qualifiers,
+                              bool presence_test, Value& result) const;
 
   const interface_type& operator*() const { return *interface_; }
 
@@ -301,9 +295,8 @@ class ParsedStructValueView {
     return interface_->ConvertToJson(converter);
   }
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
 
   bool IsZeroValue() const { return interface_->IsZeroValue(); }
 
@@ -312,15 +305,13 @@ class ParsedStructValueView {
     swap(interface_, other.interface_);
   }
 
-  absl::StatusOr<ValueView> GetFieldByName(
-      ValueManager& value_manager, absl::string_view name,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      ProtoWrapperTypeOptions unboxing_options) const;
+  absl::Status GetFieldByName(ValueManager& value_manager,
+                              absl::string_view name, Value& result,
+                              ProtoWrapperTypeOptions unboxing_options) const;
 
-  absl::StatusOr<ValueView> GetFieldByNumber(
-      ValueManager& value_manager, int64_t number,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      ProtoWrapperTypeOptions unboxing_options) const;
+  absl::Status GetFieldByNumber(ValueManager& value_manager, int64_t number,
+                                Value& result,
+                                ProtoWrapperTypeOptions unboxing_options) const;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const {
     return interface_->HasFieldByName(name);
@@ -335,9 +326,9 @@ class ParsedStructValueView {
   absl::Status ForEachField(ValueManager& value_manager,
                             ForEachFieldCallback callback) const;
 
-  absl::StatusOr<std::pair<ValueView, int>> Qualify(
-      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
-      bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<int> Qualify(ValueManager& value_manager,
+                              absl::Span<const SelectQualifier> qualifiers,
+                              bool presence_test, Value& result) const;
 
   const interface_type& operator*() const { return *interface_; }
 

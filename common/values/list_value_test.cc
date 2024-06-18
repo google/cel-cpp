@@ -105,19 +105,18 @@ TEST_P(ListValueTest, Size) {
 }
 
 TEST_P(ListValueTest, Get) {
-  Value scratch;
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
-  ASSERT_OK_AND_ASSIGN(auto element, value.Get(value_manager(), 0, scratch));
-  ASSERT_TRUE(InstanceOf<IntValueView>(element));
-  ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 0);
-  ASSERT_OK_AND_ASSIGN(element, value.Get(value_manager(), 1, scratch));
-  ASSERT_TRUE(InstanceOf<IntValueView>(element));
-  ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 1);
-  ASSERT_OK_AND_ASSIGN(element, value.Get(value_manager(), 2, scratch));
-  ASSERT_TRUE(InstanceOf<IntValueView>(element));
-  ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 2);
-  EXPECT_THAT(value.Get(value_manager(), 3, scratch),
+  ASSERT_OK_AND_ASSIGN(auto element, value.Get(value_manager(), 0));
+  ASSERT_TRUE(InstanceOf<IntValue>(element));
+  ASSERT_EQ(Cast<IntValue>(element).NativeValue(), 0);
+  ASSERT_OK_AND_ASSIGN(element, value.Get(value_manager(), 1));
+  ASSERT_TRUE(InstanceOf<IntValue>(element));
+  ASSERT_EQ(Cast<IntValue>(element).NativeValue(), 1);
+  ASSERT_OK_AND_ASSIGN(element, value.Get(value_manager(), 2));
+  ASSERT_TRUE(InstanceOf<IntValue>(element));
+  ASSERT_EQ(Cast<IntValue>(element).NativeValue(), 2);
+  EXPECT_THAT(value.Get(value_manager(), 3),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -146,19 +145,17 @@ TEST_P(ListValueTest, Contains) {
 }
 
 TEST_P(ListValueTest, NewIterator) {
-  Value scratch;
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   ASSERT_OK_AND_ASSIGN(auto iterator, value.NewIterator(value_manager()));
   std::vector<int64_t> elements;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(auto element,
-                         iterator->Next(value_manager(), scratch));
-    ASSERT_TRUE(InstanceOf<IntValueView>(element));
-    elements.push_back(Cast<IntValueView>(element).NativeValue());
+    ASSERT_OK_AND_ASSIGN(auto element, iterator->Next(value_manager()));
+    ASSERT_TRUE(InstanceOf<IntValue>(element));
+    elements.push_back(Cast<IntValue>(element).NativeValue());
   }
   EXPECT_EQ(iterator->HasNext(), false);
-  EXPECT_THAT(iterator->Next(value_manager(), scratch),
+  EXPECT_THAT(iterator->Next(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(elements, ElementsAreArray({0, 1, 2}));
 }
@@ -255,22 +252,19 @@ TEST_P(ListValueViewTest, Size) {
 }
 
 TEST_P(ListValueViewTest, Get) {
-  Value scratch;
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   ASSERT_OK_AND_ASSIGN(auto element,
-                       ListValueView(value).Get(value_manager(), 0, scratch));
-  ASSERT_TRUE(InstanceOf<IntValueView>(element));
-  ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 0);
-  ASSERT_OK_AND_ASSIGN(element,
-                       ListValueView(value).Get(value_manager(), 1, scratch));
-  ASSERT_TRUE(InstanceOf<IntValueView>(element));
-  ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 1);
-  ASSERT_OK_AND_ASSIGN(element,
-                       ListValueView(value).Get(value_manager(), 2, scratch));
-  ASSERT_TRUE(InstanceOf<IntValueView>(element));
-  ASSERT_EQ(Cast<IntValueView>(element).NativeValue(), 2);
-  EXPECT_THAT(ListValueView(value).Get(value_manager(), 3, scratch),
+                       ListValueView(value).Get(value_manager(), 0));
+  ASSERT_TRUE(InstanceOf<IntValue>(element));
+  ASSERT_EQ(Cast<IntValue>(element).NativeValue(), 0);
+  ASSERT_OK_AND_ASSIGN(element, ListValueView(value).Get(value_manager(), 1));
+  ASSERT_TRUE(InstanceOf<IntValue>(element));
+  ASSERT_EQ(Cast<IntValue>(element).NativeValue(), 1);
+  ASSERT_OK_AND_ASSIGN(element, ListValueView(value).Get(value_manager(), 2));
+  ASSERT_TRUE(InstanceOf<IntValue>(element));
+  ASSERT_EQ(Cast<IntValue>(element).NativeValue(), 2);
+  EXPECT_THAT(ListValueView(value).Get(value_manager(), 3),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -300,20 +294,18 @@ TEST_P(ListValueViewTest, Contains) {
 }
 
 TEST_P(ListValueViewTest, NewIterator) {
-  Value scratch;
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   ASSERT_OK_AND_ASSIGN(auto iterator,
                        ListValueView(value).NewIterator(value_manager()));
   std::vector<int64_t> elements;
   while (iterator->HasNext()) {
-    ASSERT_OK_AND_ASSIGN(auto element,
-                         iterator->Next(value_manager(), scratch));
-    ASSERT_TRUE(InstanceOf<IntValueView>(element));
-    elements.push_back(Cast<IntValueView>(element).NativeValue());
+    ASSERT_OK_AND_ASSIGN(auto element, iterator->Next(value_manager()));
+    ASSERT_TRUE(InstanceOf<IntValue>(element));
+    elements.push_back(Cast<IntValue>(element).NativeValue());
   }
   EXPECT_EQ(iterator->HasNext(), false);
-  EXPECT_THAT(iterator->Next(value_manager(), scratch),
+  EXPECT_THAT(iterator->Next(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   EXPECT_THAT(elements, ElementsAreArray({0, 1, 2}));
 }

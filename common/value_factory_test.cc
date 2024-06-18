@@ -173,10 +173,8 @@ TEST_P(ValueFactoryTest, JsonValueArray) {
   EXPECT_EQ(list_value.DebugString(),
             "[null, true, 1.0, \"foo\", [null, true, 1.0, \"foo\"], {\"a\": "
             "null, \"b\": true, \"c\": 1.0, \"d\": \"foo\"}]");
-  Value element;
-  ASSERT_OK_AND_ASSIGN(auto element_view,
-                       list_value.Get(value_manager(), 0, element));
-  EXPECT_TRUE(InstanceOf<NullValueView>(element_view));
+  ASSERT_OK_AND_ASSIGN(auto element, list_value.Get(value_manager(), 0));
+  EXPECT_TRUE(InstanceOf<NullValue>(element));
 }
 
 TEST_P(ValueFactoryTest, JsonValueObject) {
@@ -191,44 +189,35 @@ TEST_P(ValueFactoryTest, JsonValueObject) {
             "{\"a\": null, \"b\": true, \"c\": 1.0, \"d\": \"foo\", \"e\": "
             "[null, true, 1.0, \"foo\"], \"f\": {\"a\": null, \"b\": true, "
             "\"c\": 1.0, \"d\": \"foo\"}}");
-
-  ListValue keys;
-  ASSERT_OK_AND_ASSIGN(auto keys_view,
-                       map_value.ListKeys(value_manager(), keys));
-  EXPECT_THAT(keys_view.Size(), IsOkAndHolds(6));
+  ASSERT_OK_AND_ASSIGN(auto keys, map_value.ListKeys(value_manager()));
+  EXPECT_THAT(keys.Size(), IsOkAndHolds(6));
 
   ASSERT_OK_AND_ASSIGN(auto keys_iterator,
                        map_value.NewIterator(value_manager()));
   std::vector<StringValue> string_keys;
   while (keys_iterator->HasNext()) {
-    Value key;
-    ASSERT_OK_AND_ASSIGN(auto key_view,
-                         keys_iterator->Next(value_manager(), key));
-    string_keys.push_back(StringValue(Cast<StringValueView>(key_view)));
+    ASSERT_OK_AND_ASSIGN(auto key, keys_iterator->Next(value_manager()));
+    string_keys.push_back(StringValue(Cast<StringValue>(key)));
   }
   EXPECT_THAT(string_keys, UnorderedElementsAreArray(
                                {StringValueView("a"), StringValueView("b"),
                                 StringValueView("c"), StringValueView("d"),
                                 StringValueView("e"), StringValueView("f")}));
-  Value has;
+  ASSERT_OK_AND_ASSIGN(auto has,
+                       map_value.Has(value_manager(), StringValueView("a")));
+  ASSERT_TRUE(InstanceOf<BoolValue>(has));
+  EXPECT_TRUE(Cast<BoolValue>(has).NativeValue());
   ASSERT_OK_AND_ASSIGN(
-      auto has_view, map_value.Has(value_manager(), StringValueView("a"), has));
-  ASSERT_TRUE(InstanceOf<BoolValueView>(has_view));
-  EXPECT_TRUE(Cast<BoolValueView>(has_view).NativeValue());
-  ASSERT_OK_AND_ASSIGN(
-      has_view,
-      map_value.Has(value_manager(), StringValueView(absl::Cord("a")), has));
-  ASSERT_TRUE(InstanceOf<BoolValueView>(has_view));
-  EXPECT_TRUE(Cast<BoolValueView>(has_view).NativeValue());
+      has, map_value.Has(value_manager(), StringValueView(absl::Cord("a"))));
+  ASSERT_TRUE(InstanceOf<BoolValue>(has));
+  EXPECT_TRUE(Cast<BoolValue>(has).NativeValue());
 
-  Value get;
+  ASSERT_OK_AND_ASSIGN(auto get,
+                       map_value.Get(value_manager(), StringValueView("a")));
+  ASSERT_TRUE(InstanceOf<NullValue>(get));
   ASSERT_OK_AND_ASSIGN(
-      auto get_view, map_value.Get(value_manager(), StringValueView("a"), get));
-  ASSERT_TRUE(InstanceOf<NullValueView>(get_view));
-  ASSERT_OK_AND_ASSIGN(
-      get_view,
-      map_value.Get(value_manager(), StringValueView(absl::Cord("a")), get));
-  ASSERT_TRUE(InstanceOf<NullValueView>(get_view));
+      get, map_value.Get(value_manager(), StringValueView(absl::Cord("a"))));
+  ASSERT_TRUE(InstanceOf<NullValue>(get));
 }
 
 TEST_P(ValueFactoryTest, ListValue) {

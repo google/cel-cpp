@@ -153,9 +153,8 @@ class ListValue final {
   absl::StatusOr<JsonArray> ConvertToJsonArray(
       AnyToJsonConverter& converter) const;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
                               ValueView other) const;
 
@@ -168,9 +167,8 @@ class ListValue final {
   absl::StatusOr<size_t> Size() const;
 
   // See ListValueInterface::Get for documentation.
-  absl::StatusOr<ValueView> Get(ValueManager& value_manager, size_t index,
-                                Value& scratch
-                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Get(ValueManager& value_manager, size_t index,
+                   Value& result) const;
   absl::StatusOr<Value> Get(ValueManager& value_manager, size_t index) const;
 
   using ForEachCallback = typename ListValueInterface::ForEachCallback;
@@ -187,9 +185,8 @@ class ListValue final {
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
 
-  absl::StatusOr<ValueView> Contains(
-      ValueManager& value_manager, ValueView other,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Contains(ValueManager& value_manager, ValueView other,
+                        Value& result) const;
   absl::StatusOr<Value> Contains(ValueManager& value_manager,
                                  ValueView other) const;
 
@@ -405,9 +402,8 @@ class ListValueView final {
   absl::StatusOr<JsonArray> ConvertToJsonArray(
       AnyToJsonConverter& converter) const;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
                               ValueView other) const;
 
@@ -420,9 +416,8 @@ class ListValueView final {
   absl::StatusOr<size_t> Size() const;
 
   // See ListValueInterface::Get for documentation.
-  absl::StatusOr<ValueView> Get(ValueManager& value_manager, size_t index,
-                                Value& scratch
-                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Get(ValueManager& value_manager, size_t index,
+                   Value& result) const;
   absl::StatusOr<Value> Get(ValueManager& value_manager, size_t index) const;
 
   using ForEachCallback = typename ListValueInterface::ForEachCallback;
@@ -439,9 +434,8 @@ class ListValueView final {
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
 
-  absl::StatusOr<ValueView> Contains(
-      ValueManager& value_manager, ValueView other,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Contains(ValueManager& value_manager, ValueView other,
+                        Value& result) const;
   absl::StatusOr<Value> Contains(ValueManager& value_manager,
                                  ValueView other) const;
 

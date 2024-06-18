@@ -74,9 +74,8 @@ class OpaqueValueInterface : public ValueInterface {
     return Cast<OpaqueType>(GetTypeImpl(type_manager));
   }
 
-  virtual absl::StatusOr<ValueView> Equal(
-      ValueManager& value_manager, ValueView other,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
+  virtual absl::Status Equal(ValueManager& value_manager, ValueView other,
+                             Value& result) const = 0;
 };
 
 template <>
@@ -150,9 +149,8 @@ class OpaqueValue {
     return interface_->ConvertToJson(converter);
   }
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
                               ValueView other) const;
 
@@ -302,9 +300,8 @@ class OpaqueValueView {
     return interface_->ConvertToJson(converter);
   }
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
                               ValueView other) const;
 

@@ -72,19 +72,21 @@ absl::StatusOr<Any> BoolValueBase::ConvertToAny(
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<ValueView> BoolValueBase::Equal(ValueManager&, ValueView other,
-                                               Value&) const {
+absl::Status BoolValueBase::Equal(ValueManager&, ValueView other,
+                                  Value& result) const {
   if (auto other_value = As<BoolValueView>(other); other_value.has_value()) {
-    return BoolValueView{NativeValue() == other_value->NativeValue()};
+    result = BoolValueView{NativeValue() == other_value->NativeValue()};
+    return absl::OkStatus();
   }
-  return BoolValueView{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
 absl::StatusOr<Value> BoolValueBase::Equal(ValueManager& value_manager,
                                            ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
+  Value result;
+  CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
+  return result;
 }
 
 }  // namespace cel::common_internal

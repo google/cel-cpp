@@ -71,13 +71,11 @@ TEST(MutableListImplValue, ListBuilding) {
 
   EXPECT_THAT(list_value.Size(), IsOkAndHolds(1));
 
-  cel::Value scratch;
+  ASSERT_OK_AND_ASSIGN(auto element, list_value.Get(value_factory, 0));
 
-  ASSERT_OK_AND_ASSIGN(auto element, list_value.Get(value_factory, 0, scratch));
+  ASSERT_TRUE(InstanceOf<IntValue>(element));
 
-  ASSERT_TRUE(InstanceOf<IntValueView>(element));
-
-  EXPECT_EQ(Cast<IntValueView>(element).NativeValue(), 1);
+  EXPECT_EQ(Cast<IntValue>(element).NativeValue(), 1);
 }
 
 }  // namespace

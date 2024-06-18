@@ -42,6 +42,7 @@ cc_library(
         "//common:type",
         "//common:value",
         "//internal:casts",
+        "@com_google_absl//absl/status",
     ],
 )
 

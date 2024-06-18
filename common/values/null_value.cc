@@ -58,16 +58,17 @@ absl::StatusOr<Any> NullValueBase::ConvertToAny(
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<ValueView> NullValueBase::Equal(ValueManager&, ValueView other,
-                                               Value&) const {
-  return BoolValueView{InstanceOf<NullValueView>(other)};
+absl::Status NullValueBase::Equal(ValueManager&, ValueView other,
+                                  Value& result) const {
+  result = BoolValueView{InstanceOf<NullValueView>(other)};
+  return absl::OkStatus();
 }
 
 absl::StatusOr<Value> NullValueBase::Equal(ValueManager& value_manager,
                                            ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
+  Value result;
+  CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
+  return result;
 }
 
 }  // namespace cel::common_internal

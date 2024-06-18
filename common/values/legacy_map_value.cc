@@ -49,17 +49,14 @@ using LegacyMapValue_ConvertToJsonObject =
     absl::StatusOr<JsonObject> (*)(uintptr_t);
 using LegacyMapValue_IsEmpty = bool (*)(uintptr_t);
 using LegacyMapValue_Size = size_t (*)(uintptr_t);
-using LegacyMapValue_Get = absl::StatusOr<ValueView> (*)(uintptr_t,
-                                                         ValueManager&,
-                                                         ValueView, Value&);
-using LegacyMapValue_Find = absl::StatusOr<std::pair<ValueView, bool>> (*)(
-    uintptr_t, ValueManager&, ValueView, Value&);
-using LegacyMapValue_Has = absl::StatusOr<ValueView> (*)(uintptr_t,
-                                                         ValueManager&,
-                                                         ValueView, Value&);
-using LegacyMapValue_ListKeys = absl::StatusOr<ListValueView> (*)(uintptr_t,
-                                                                  ValueManager&,
-                                                                  ListValue&);
+using LegacyMapValue_Get = absl::Status (*)(uintptr_t, ValueManager&, ValueView,
+                                            Value&);
+using LegacyMapValue_Find = absl::StatusOr<bool> (*)(uintptr_t, ValueManager&,
+                                                     ValueView, Value&);
+using LegacyMapValue_Has = absl::Status (*)(uintptr_t, ValueManager&, ValueView,
+                                            Value&);
+using LegacyMapValue_ListKeys = absl::Status (*)(uintptr_t, ValueManager&,
+                                                 ListValue&);
 using LegacyMapValue_ForEach =
     absl::Status (*)(uintptr_t, ValueManager&, LegacyMapValue::ForEachCallback);
 using LegacyMapValue_NewIterator =
@@ -100,22 +97,22 @@ extern "C" ABSL_ATTRIBUTE_WEAK bool cel_common_internal_LegacyMapValue_IsEmpty(
     uintptr_t impl);
 extern "C" ABSL_ATTRIBUTE_WEAK size_t
 cel_common_internal_LegacyMapValue_Size(uintptr_t impl);
-extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<std::pair<ValueView, bool>>
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool>
 cel_common_internal_LegacyMapValue_Find(uintptr_t impl,
                                         ValueManager& value_manager,
-                                        ValueView key, Value& scratch);
-extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<ValueView>
+                                        ValueView key, Value& result);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
 cel_common_internal_LegacyMapValue_Get(uintptr_t impl,
                                        ValueManager& value_manager,
-                                       ValueView key, Value& scratch);
-extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<ValueView>
+                                       ValueView key, Value& result);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
 cel_common_internal_LegacyMapValue_Has(uintptr_t impl,
                                        ValueManager& value_manager,
-                                       ValueView key, Value& scratch);
-extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<ListValueView>
+                                       ValueView key, Value& result);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
 cel_common_internal_LegacyMapValue_ListKeys(uintptr_t impl,
                                             ValueManager& value_manager,
-                                            ListValue& scratch);
+                                            ListValue& result);
 extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
 cel_common_internal_LegacyMapValue_ForEach(uintptr_t impl,
                                            ValueManager& value_manager,
@@ -248,30 +245,28 @@ size_t LegacyMapValue::Size() const {
   return (*legacy_map_value_vtable.size)(impl_);
 }
 
-absl::StatusOr<ValueView> LegacyMapValue::Get(ValueManager& value_manager,
-                                              ValueView key,
-                                              Value& scratch) const {
+absl::Status LegacyMapValue::Get(ValueManager& value_manager, ValueView key,
+                                 Value& result) const {
   InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.get)(impl_, value_manager, key, scratch);
+  return (*legacy_map_value_vtable.get)(impl_, value_manager, key, result);
 }
 
-absl::StatusOr<std::pair<ValueView, bool>> LegacyMapValue::Find(
-    ValueManager& value_manager, ValueView key, Value& scratch) const {
+absl::StatusOr<bool> LegacyMapValue::Find(ValueManager& value_manager,
+                                          ValueView key, Value& result) const {
   InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.find)(impl_, value_manager, key, scratch);
+  return (*legacy_map_value_vtable.find)(impl_, value_manager, key, result);
 }
 
-absl::StatusOr<ValueView> LegacyMapValue::Has(ValueManager& value_manager,
-                                              ValueView key,
-                                              Value& scratch) const {
+absl::Status LegacyMapValue::Has(ValueManager& value_manager, ValueView key,
+                                 Value& result) const {
   InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.has)(impl_, value_manager, key, scratch);
+  return (*legacy_map_value_vtable.has)(impl_, value_manager, key, result);
 }
 
-absl::StatusOr<ListValueView> LegacyMapValue::ListKeys(
-    ValueManager& value_manager, ListValue& scratch) const {
+absl::Status LegacyMapValue::ListKeys(ValueManager& value_manager,
+                                      ListValue& result) const {
   InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.list_keys)(impl_, value_manager, scratch);
+  return (*legacy_map_value_vtable.list_keys)(impl_, value_manager, result);
 }
 
 absl::Status LegacyMapValue::ForEach(ValueManager& value_manager,
@@ -286,13 +281,13 @@ absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyMapValue::NewIterator(
   return (*legacy_map_value_vtable.new_iterator)(impl_, value_manager);
 }
 
-absl::StatusOr<ValueView> LegacyMapValue::Equal(ValueManager& value_manager,
-                                                ValueView other,
-                                                Value& scratch) const {
+absl::Status LegacyMapValue::Equal(ValueManager& value_manager, ValueView other,
+                                   Value& result) const {
   if (auto map_value = As<MapValueView>(other); map_value.has_value()) {
-    return MapValueEqual(value_manager, *this, *map_value, scratch);
+    return MapValueEqual(value_manager, *this, *map_value, result);
   }
-  return BoolValueView{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
 MapType LegacyMapValueView::GetType(TypeManager& type_manager) const {
@@ -353,30 +348,29 @@ size_t LegacyMapValueView::Size() const {
   return (*legacy_map_value_vtable.size)(impl_);
 }
 
-absl::StatusOr<ValueView> LegacyMapValueView::Get(ValueManager& value_manager,
-                                                  ValueView key,
-                                                  Value& scratch) const {
+absl::Status LegacyMapValueView::Get(ValueManager& value_manager, ValueView key,
+                                     Value& result) const {
   InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.get)(impl_, value_manager, key, scratch);
+  return (*legacy_map_value_vtable.get)(impl_, value_manager, key, result);
 }
 
-absl::StatusOr<std::pair<ValueView, bool>> LegacyMapValueView::Find(
-    ValueManager& value_manager, ValueView key, Value& scratch) const {
+absl::StatusOr<bool> LegacyMapValueView::Find(ValueManager& value_manager,
+                                              ValueView key,
+                                              Value& result) const {
   InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.find)(impl_, value_manager, key, scratch);
+  return (*legacy_map_value_vtable.find)(impl_, value_manager, key, result);
 }
 
-absl::StatusOr<ValueView> LegacyMapValueView::Has(ValueManager& value_manager,
-                                                  ValueView key,
-                                                  Value& scratch) const {
+absl::Status LegacyMapValueView::Has(ValueManager& value_manager, ValueView key,
+                                     Value& result) const {
   InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.has)(impl_, value_manager, key, scratch);
+  return (*legacy_map_value_vtable.has)(impl_, value_manager, key, result);
 }
 
-absl::StatusOr<ListValueView> LegacyMapValueView::ListKeys(
-    ValueManager& value_manager, ListValue& scratch) const {
+absl::Status LegacyMapValueView::ListKeys(ValueManager& value_manager,
+                                          ListValue& result) const {
   InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.list_keys)(impl_, value_manager, scratch);
+  return (*legacy_map_value_vtable.list_keys)(impl_, value_manager, result);
 }
 
 absl::Status LegacyMapValueView::ForEach(ValueManager& value_manager,
@@ -391,13 +385,13 @@ absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyMapValueView::NewIterator(
   return (*legacy_map_value_vtable.new_iterator)(impl_, value_manager);
 }
 
-absl::StatusOr<ValueView> LegacyMapValueView::Equal(ValueManager& value_manager,
-                                                    ValueView other,
-                                                    Value& scratch) const {
+absl::Status LegacyMapValueView::Equal(ValueManager& value_manager,
+                                       ValueView other, Value& result) const {
   if (auto map_value = As<MapValueView>(other); map_value.has_value()) {
-    return MapValueEqual(value_manager, *this, *map_value, scratch);
+    return MapValueEqual(value_manager, *this, *map_value, result);
   }
-  return BoolValueView{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
 }  // namespace cel::common_internal

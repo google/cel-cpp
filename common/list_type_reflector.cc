@@ -90,29 +90,27 @@ class TypedListValue final : public ParsedListValueInterface {
     return absl::OkStatus();
   }
 
-  absl::StatusOr<ValueView> Contains(
-      ValueManager& value_manager, ValueView other,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const override {
-    ValueView outcome = BoolValueView{false};
+  absl::Status Contains(ValueManager& value_manager, ValueView other,
+                        Value& result) const override {
     for (size_t i = 0; i < elements_.size(); ++i) {
-      CEL_ASSIGN_OR_RETURN(auto result,
-                           elements_[i].Equal(value_manager, other, scratch));
-      if (auto bool_result = As<BoolValueView>(result);
+      CEL_RETURN_IF_ERROR(elements_[i].Equal(value_manager, other, result));
+      if (auto bool_result = As<BoolValue>(result);
           bool_result.has_value() && bool_result->NativeValue()) {
-        outcome = *bool_result;
-        break;
+        return absl::OkStatus();
       }
     }
-    return outcome;
+    result = BoolValue(false);
+    return absl::OkStatus();
   }
 
  protected:
   Type GetTypeImpl(TypeManager&) const override { return type_; }
 
  private:
-  absl::StatusOr<ValueView> GetImpl(ValueManager&, size_t index,
-                                    Value&) const override {
-    return elements_[index];
+  absl::Status GetImpl(ValueManager&, size_t index,
+                       Value& result) const override {
+    result = elements_[index];
+    return absl::OkStatus();
   }
 
   NativeTypeId GetNativeTypeId() const noexcept override {

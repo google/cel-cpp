@@ -57,11 +57,10 @@ absl::StatusOr<Value> Join2(ValueManager& value_manager, const ListValue& value,
                             const StringValue& separator) {
   std::string result;
   CEL_ASSIGN_OR_RETURN(auto iterator, value.NewIterator(value_manager));
-  Value element_scratch;
+  Value element;
   if (iterator->HasNext()) {
-    CEL_ASSIGN_OR_RETURN(auto element,
-                         iterator->Next(value_manager, element_scratch));
-    if (auto string_element = As<StringValueView>(element); string_element) {
+    CEL_RETURN_IF_ERROR(iterator->Next(value_manager, element));
+    if (auto string_element = As<StringValue>(element); string_element) {
       string_element->NativeValue(AppendToStringVisitor{result});
     } else {
       return ErrorValue{
@@ -72,9 +71,8 @@ absl::StatusOr<Value> Join2(ValueManager& value_manager, const ListValue& value,
   absl::string_view separator_view = separator.NativeString(separator_scratch);
   while (iterator->HasNext()) {
     result.append(separator_view);
-    CEL_ASSIGN_OR_RETURN(auto element,
-                         iterator->Next(value_manager, element_scratch));
-    if (auto string_element = As<StringValueView>(element); string_element) {
+    CEL_RETURN_IF_ERROR(iterator->Next(value_manager, element));
+    if (auto string_element = As<StringValue>(element); string_element) {
       string_element->NativeValue(AppendToStringVisitor{result});
     } else {
       return ErrorValue{

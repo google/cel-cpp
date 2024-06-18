@@ -140,9 +140,11 @@ class CelListIterator final : public ValueIterator {
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::StatusOr<ValueView> Next(ValueManager&, Value& scratch) override {
+  absl::Status Next(ValueManager&, Value& result) override {
     auto cel_value = cel_list_->Get(arena_, index_++);
-    return ModernValue(arena_, cel_value, scratch);
+    Value scratch;
+    CEL_ASSIGN_OR_RETURN(result, ModernValue(arena_, cel_value, scratch));
+    return absl::OkStatus();
   }
 
  private:
@@ -569,20 +571,23 @@ cel_common_internal_LegacyListValue_Size(uintptr_t impl) {
   return static_cast<size_t>(AsCelList(impl)->size());
 }
 
-extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
-    absl::StatusOr<ValueView>
-    cel_common_internal_LegacyListValue_Get(uintptr_t impl,
-                                            ValueManager& value_manager,
-                                            size_t index, Value& scratch) {
+extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY absl::Status
+cel_common_internal_LegacyListValue_Get(uintptr_t impl,
+                                        ValueManager& value_manager,
+                                        size_t index, Value& result) {
   auto* arena =
       extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager());
   if (ABSL_PREDICT_FALSE(index < 0 || index >= AsCelList(impl)->size())) {
-    scratch = value_manager.CreateErrorValue(
+    result = value_manager.CreateErrorValue(
         absl::InvalidArgumentError("index out of bounds"));
-    return scratch;
+    return absl::OkStatus();
   }
-  return ModernValue(
-      arena, AsCelList(impl)->Get(arena, static_cast<int>(index)), scratch);
+  Value scratch;
+  CEL_ASSIGN_OR_RETURN(
+      result,
+      ModernValue(arena, AsCelList(impl)->Get(arena, static_cast<int>(index)),
+                  scratch));
+  return absl::OkStatus();
 }
 
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY absl::Status
@@ -614,12 +619,10 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
       AsCelList(impl));
 }
 
-extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
-    absl::StatusOr<ValueView>
-    cel_common_internal_LegacyListValue_Contains(uintptr_t impl,
-                                                 ValueManager& value_manager,
-                                                 ValueView other,
-                                                 Value& scratch) {
+extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY absl::Status
+cel_common_internal_LegacyListValue_Contains(uintptr_t impl,
+                                             ValueManager& value_manager,
+                                             ValueView other, Value& result) {
   auto* arena =
       extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager());
   CEL_ASSIGN_OR_RETURN(auto legacy_other, LegacyValue(arena, other));
@@ -631,10 +634,12 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
     // Heterogenous equality behavior is to just return false if equality
     // undefined.
     if (equal.has_value() && *equal) {
-      return BoolValueView{true};
+      result = BoolValueView{true};
+      return absl::OkStatus();
     }
   }
-  return BoolValueView{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY MapType
@@ -691,16 +696,16 @@ cel_common_internal_LegacyMapValue_Size(uintptr_t impl) {
 }
 
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
-    absl::StatusOr<std::pair<ValueView, bool>>
+    absl::StatusOr<bool>
     cel_common_internal_LegacyMapValue_Find(uintptr_t impl,
                                             ValueManager& value_manager,
-                                            ValueView key, Value& scratch) {
+                                            ValueView key, Value& result) {
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kUnknown:
-      scratch = Value{key};
-      return std::pair{scratch, false};
+      result = Value{key};
+      return false;
     case ValueKind::kBool:
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kInt:
@@ -717,23 +722,24 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
   CEL_ASSIGN_OR_RETURN(auto cel_key, LegacyValue(arena, key));
   auto cel_value = AsCelMap(impl)->Get(arena, cel_key);
   if (!cel_value.has_value()) {
-    return std::pair{NullValue{}, false};
+    result = NullValue{};
+    return false;
   }
-  CEL_ASSIGN_OR_RETURN(auto value, ModernValue(arena, *cel_value, scratch));
-  return std::pair{value, true};
+  Value scratch;
+  CEL_ASSIGN_OR_RETURN(result, ModernValue(arena, *cel_value, scratch));
+  return true;
 }
 
-extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
-    absl::StatusOr<ValueView>
-    cel_common_internal_LegacyMapValue_Get(uintptr_t impl,
-                                           ValueManager& value_manager,
-                                           ValueView key, Value& scratch) {
+extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY absl::Status
+cel_common_internal_LegacyMapValue_Get(uintptr_t impl,
+                                       ValueManager& value_manager,
+                                       ValueView key, Value& result) {
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kUnknown:
-      scratch = Value{key};
-      return scratch;
+      result = Value{key};
+      return absl::OkStatus();
     case ValueKind::kBool:
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kInt:
@@ -750,23 +756,24 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
   CEL_ASSIGN_OR_RETURN(auto cel_key, LegacyValue(arena, key));
   auto cel_value = AsCelMap(impl)->Get(arena, cel_key);
   if (!cel_value.has_value()) {
-    scratch = NoSuchKeyError(key.DebugString());
-    return scratch;
+    result = NoSuchKeyError(key.DebugString());
+    return absl::OkStatus();
   }
-  return ModernValue(arena, *cel_value, scratch);
+  Value scratch;
+  CEL_ASSIGN_OR_RETURN(result, ModernValue(arena, *cel_value, scratch));
+  return absl::OkStatus();
 }
 
-extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
-    absl::StatusOr<ValueView>
-    cel_common_internal_LegacyMapValue_Has(uintptr_t impl,
-                                           ValueManager& value_manager,
-                                           ValueView key, Value& scratch) {
+extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY absl::Status
+cel_common_internal_LegacyMapValue_Has(uintptr_t impl,
+                                       ValueManager& value_manager,
+                                       ValueView key, Value& result) {
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kUnknown:
-      scratch = Value{key};
-      return scratch;
+      result = Value{key};
+      return absl::OkStatus();
     case ValueKind::kBool:
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kInt:
@@ -782,19 +789,20 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
       extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager());
   CEL_ASSIGN_OR_RETURN(auto cel_key, LegacyValue(arena, key));
   CEL_ASSIGN_OR_RETURN(auto has, AsCelMap(impl)->Has(cel_key));
-  return BoolValueView{has};
+  result = BoolValueView{has};
+  return absl::OkStatus();
 }
 
-extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
-    absl::StatusOr<ListValueView>
-    cel_common_internal_LegacyMapValue_ListKeys(uintptr_t impl,
-                                                ValueManager& value_manager,
-                                                ListValue& scratch) {
+extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY absl::Status
+cel_common_internal_LegacyMapValue_ListKeys(uintptr_t impl,
+                                            ValueManager& value_manager,
+                                            ListValue& result) {
   auto* arena =
       extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager());
   CEL_ASSIGN_OR_RETURN(auto keys, AsCelMap(impl)->ListKeys(arena));
-  return ListValueView{
-      common_internal::LegacyListValueView{reinterpret_cast<uintptr_t>(keys)}};
+  result = ListValue{
+      common_internal::LegacyListValue{reinterpret_cast<uintptr_t>(keys)}};
+  return absl::OkStatus();
 }
 
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY absl::Status
@@ -889,33 +897,34 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
                                     AsMessageWrapper(message_ptr, type_info));
 }
 
-extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
-    absl::StatusOr<ValueView>
-    cel_common_internal_LegacyStructValue_GetFieldByName(
-        uintptr_t message_ptr, uintptr_t type_info, ValueManager& value_manager,
-        absl::string_view name, Value& scratch,
-        ProtoWrapperTypeOptions unboxing_options) {
+extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY absl::Status
+cel_common_internal_LegacyStructValue_GetFieldByName(
+    uintptr_t message_ptr, uintptr_t type_info, ValueManager& value_manager,
+    absl::string_view name, Value& result,
+    ProtoWrapperTypeOptions unboxing_options) {
   auto message_wrapper = AsMessageWrapper(message_ptr, type_info);
   const auto* access_apis =
       message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
   if (ABSL_PREDICT_FALSE(access_apis == nullptr)) {
-    scratch = NoSuchFieldError(name);
-    return scratch;
+    result = NoSuchFieldError(name);
+    return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(
       auto cel_value,
       access_apis->GetField(name, message_wrapper, unboxing_options,
                             value_manager.GetMemoryManager()));
-  return ModernValue(
-      extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager()),
-      cel_value, scratch);
+  Value scratch;
+  CEL_ASSIGN_OR_RETURN(result,
+                       ModernValue(extensions::ProtoMemoryManagerArena(
+                                       value_manager.GetMemoryManager()),
+                                   cel_value, scratch));
+  return absl::OkStatus();
 }
 
-extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
-    absl::StatusOr<ValueView>
-    cel_common_internal_LegacyStructValue_GetFieldByNumber(
-        uintptr_t, uintptr_t, ValueManager&, int64_t, Value&,
-        ProtoWrapperTypeOptions) {
+extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY absl::Status
+cel_common_internal_LegacyStructValue_GetFieldByNumber(
+    uintptr_t, uintptr_t, ValueManager&, int64_t, Value&,
+    ProtoWrapperTypeOptions) {
   return absl::UnimplementedError(
       "access to fields by numbers is not available for legacy structs");
 }
@@ -941,13 +950,11 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
       "access to fields by numbers is not available for legacy structs");
 }
 
-extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
-    absl::StatusOr<ValueView>
-    cel_common_internal_LegacyStructValue_Equal(uintptr_t message_ptr,
-                                                uintptr_t type_info,
-                                                ValueManager& value_manager,
-                                                ValueView other,
-                                                Value& scratch) {
+extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY absl::Status
+cel_common_internal_LegacyStructValue_Equal(uintptr_t message_ptr,
+                                            uintptr_t type_info,
+                                            ValueManager& value_manager,
+                                            ValueView other, Value& result) {
   if (auto legacy_struct_value =
           As<common_internal::LegacyStructValueView>(other);
       legacy_struct_value.has_value()) {
@@ -963,17 +970,19 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
     auto other_message_wrapper =
         AsMessageWrapper(legacy_struct_value->message_ptr(),
                          legacy_struct_value->legacy_type_info());
-    return BoolValueView{
+    result = BoolValueView{
         access_apis->IsEqualTo(message_wrapper, other_message_wrapper)};
+    return absl::OkStatus();
   }
   if (auto struct_value = As<StructValueView>(other);
       struct_value.has_value()) {
     return common_internal::StructValueEqual(
         value_manager,
         common_internal::LegacyStructValueView(message_ptr, type_info),
-        *struct_value, scratch);
+        *struct_value, result);
   }
-  return BoolValueView{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY bool
@@ -1022,11 +1031,11 @@ cel_common_internal_LegacyStructValue_ForEachField(
 }
 
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
-    absl::StatusOr<std::pair<ValueView, int>>
+    absl::StatusOr<int>
     cel_common_internal_LegacyStructValue_Qualify(
         uintptr_t message_ptr, uintptr_t type_info, ValueManager& value_manager,
         absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-        Value& scratch) {
+        Value& result) {
   if (ABSL_PREDICT_FALSE(qualifiers.empty())) {
     return absl::InvalidArgumentError("invalid select qualifier path.");
   }
@@ -1043,18 +1052,19 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
               return field.GetStringKey().value_or("<invalid field>");
             }),
         qualifiers.front());
-    scratch = NoSuchFieldError(field_name);
-    return std::pair{scratch, -1};
+    result = NoSuchFieldError(field_name);
+    return -1;
   }
   CEL_ASSIGN_OR_RETURN(
       auto legacy_result,
       access_apis->Qualify(qualifiers, message_wrapper, presence_test,
                            value_manager.GetMemoryManager()));
-  CEL_ASSIGN_OR_RETURN(auto result,
+  Value scratch;
+  CEL_ASSIGN_OR_RETURN(result,
                        ModernValue(extensions::ProtoMemoryManagerArena(
                                        value_manager.GetMemoryManager()),
                                    legacy_result.value, scratch));
-  return std::pair{result, legacy_result.qualifier_count};
+  return legacy_result.qualifier_count;
 }
 
 namespace {}  // namespace

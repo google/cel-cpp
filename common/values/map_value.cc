@@ -267,79 +267,77 @@ common_internal::MapValueVariant MapValueView::ToVariant() const {
 
 namespace common_internal {
 
-absl::StatusOr<ValueView> MapValueEqual(ValueManager& value_manager,
-                                        MapValueView lhs, MapValueView rhs,
-                                        Value& scratch) {
+absl::Status MapValueEqual(ValueManager& value_manager, MapValueView lhs,
+                           MapValueView rhs, Value& result) {
   if (Is(lhs, rhs)) {
-    return BoolValueView{true};
+    result = BoolValueView{true};
+    return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto lhs_size, lhs.Size());
   CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
   if (lhs_size != rhs_size) {
-    return BoolValueView{false};
+    result = BoolValueView{false};
+    return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator(value_manager));
-  Value lhs_key_scratch;
-  Value rhs_value_scratch;
-  ValueView rhs_value;
-  Value lhs_value_scratch;
+  Value lhs_key;
+  Value lhs_value;
+  Value rhs_value;
   for (size_t index = 0; index < lhs_size; ++index) {
     ABSL_CHECK(lhs_iterator->HasNext());  // Crash OK
-    CEL_ASSIGN_OR_RETURN(auto lhs_key,
-                         lhs_iterator->Next(value_manager, lhs_key_scratch));
+    CEL_RETURN_IF_ERROR(lhs_iterator->Next(value_manager, lhs_key));
     bool rhs_value_found;
-    CEL_ASSIGN_OR_RETURN(std::tie(rhs_value, rhs_value_found),
-                         rhs.Find(value_manager, lhs_key, rhs_value_scratch));
+    CEL_ASSIGN_OR_RETURN(rhs_value_found,
+                         rhs.Find(value_manager, lhs_key, rhs_value));
     if (!rhs_value_found) {
-      return BoolValueView{false};
+      result = BoolValueView{false};
+      return absl::OkStatus();
     }
-    CEL_ASSIGN_OR_RETURN(auto lhs_value,
-                         lhs.Get(value_manager, lhs_key, lhs_value_scratch));
-    CEL_ASSIGN_OR_RETURN(auto result,
-                         lhs_value.Equal(value_manager, rhs_value, scratch));
-    if (auto bool_value = As<BoolValueView>(result);
+    CEL_RETURN_IF_ERROR(lhs.Get(value_manager, lhs_key, lhs_value));
+    CEL_RETURN_IF_ERROR(lhs_value.Equal(value_manager, rhs_value, result));
+    if (auto bool_value = As<BoolValue>(result);
         bool_value.has_value() && !bool_value->NativeValue()) {
-      return result;
+      return absl::OkStatus();
     }
   }
   ABSL_DCHECK(!lhs_iterator->HasNext());
-  return BoolValueView{true};
+  result = BoolValueView{true};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> MapValueEqual(ValueManager& value_manager,
-                                        const ParsedMapValueInterface& lhs,
-                                        MapValueView rhs, Value& scratch) {
+absl::Status MapValueEqual(ValueManager& value_manager,
+                           const ParsedMapValueInterface& lhs, MapValueView rhs,
+                           Value& result) {
   auto lhs_size = lhs.Size();
   CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
   if (lhs_size != rhs_size) {
-    return BoolValueView{false};
+    result = BoolValueView{false};
+    return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator(value_manager));
-  Value lhs_key_scratch;
-  Value rhs_value_scratch;
-  ValueView rhs_value;
-  Value lhs_value_scratch;
+  Value lhs_key;
+  Value lhs_value;
+  Value rhs_value;
   for (size_t index = 0; index < lhs_size; ++index) {
     ABSL_CHECK(lhs_iterator->HasNext());  // Crash OK
-    CEL_ASSIGN_OR_RETURN(auto lhs_key,
-                         lhs_iterator->Next(value_manager, lhs_key_scratch));
+    CEL_RETURN_IF_ERROR(lhs_iterator->Next(value_manager, lhs_key));
     bool rhs_value_found;
-    CEL_ASSIGN_OR_RETURN(std::tie(rhs_value, rhs_value_found),
-                         rhs.Find(value_manager, lhs_key, rhs_value_scratch));
+    CEL_ASSIGN_OR_RETURN(rhs_value_found,
+                         rhs.Find(value_manager, lhs_key, rhs_value));
     if (!rhs_value_found) {
-      return BoolValueView{false};
+      result = BoolValueView{false};
+      return absl::OkStatus();
     }
-    CEL_ASSIGN_OR_RETURN(auto lhs_value,
-                         lhs.Get(value_manager, lhs_key, lhs_value_scratch));
-    CEL_ASSIGN_OR_RETURN(auto result,
-                         lhs_value.Equal(value_manager, rhs_value, scratch));
-    if (auto bool_value = As<BoolValueView>(result);
+    CEL_RETURN_IF_ERROR(lhs.Get(value_manager, lhs_key, lhs_value));
+    CEL_RETURN_IF_ERROR(lhs_value.Equal(value_manager, rhs_value, result));
+    if (auto bool_value = As<BoolValue>(result);
         bool_value.has_value() && !bool_value->NativeValue()) {
-      return result;
+      return absl::OkStatus();
     }
   }
   ABSL_DCHECK(!lhs_iterator->HasNext());
-  return BoolValueView{true};
+  result = BoolValueView{true};
+  return absl::OkStatus();
 }
 
 }  // namespace common_internal

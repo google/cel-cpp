@@ -54,26 +54,27 @@ using LegacyStructValue_GetTypeName = absl::string_view (*)(uintptr_t,
                                                             uintptr_t);
 using LegacyStructValue_ConvertToJsonObject =
     absl::StatusOr<JsonObject> (*)(uintptr_t, uintptr_t);
-using LegacyStructValue_GetFieldByName = absl::StatusOr<ValueView> (*)(
-    uintptr_t, uintptr_t, ValueManager&, absl::string_view, Value&,
-    ProtoWrapperTypeOptions);
+using LegacyStructValue_GetFieldByName =
+    absl::Status (*)(uintptr_t, uintptr_t, ValueManager&, absl::string_view,
+                     Value&, ProtoWrapperTypeOptions);
 using LegacyStructValue_GetFieldByNumber =
-    absl::StatusOr<ValueView> (*)(uintptr_t, uintptr_t, ValueManager&, int64_t,
-                                  Value&, ProtoWrapperTypeOptions);
+    absl::Status (*)(uintptr_t, uintptr_t, ValueManager&, int64_t, Value&,
+                     ProtoWrapperTypeOptions);
 using LegacyStructValue_HasFieldByName =
     absl::StatusOr<bool> (*)(uintptr_t, uintptr_t, absl::string_view);
 using LegacyStructValue_HasFieldByNumber = absl::StatusOr<bool> (*)(uintptr_t,
                                                                     uintptr_t,
                                                                     int64_t);
-using LegacyStructValue_Equal = absl::StatusOr<ValueView> (*)(
-    uintptr_t, uintptr_t, ValueManager&, ValueView, Value&);
+using LegacyStructValue_Equal = absl::Status (*)(uintptr_t, uintptr_t,
+                                                 ValueManager&, ValueView,
+                                                 Value&);
 using LegacyStructValue_IsZeroValue = bool (*)(uintptr_t, uintptr_t);
 using LegacyStructValue_ForEachField =
     absl::Status (*)(uintptr_t, uintptr_t, ValueManager&,
                      LegacyStructValue::ForEachFieldCallback);
-using LegacyStructValue_Qualify = absl::StatusOr<std::pair<ValueView, int>> (*)(
-    uintptr_t, uintptr_t, ValueManager&, absl::Span<const SelectQualifier>,
-    bool, Value&);
+using LegacyStructValue_Qualify =
+    absl::StatusOr<int> (*)(uintptr_t, uintptr_t, ValueManager&,
+                            absl::Span<const SelectQualifier>, bool, Value&);
 
 ABSL_CONST_INIT struct {
   absl::once_flag init_once;
@@ -113,12 +114,12 @@ cel_common_internal_LegacyStructValue_GetTypeName(uintptr_t message_ptr,
 extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<JsonObject>
 cel_common_internal_LegacyStructValue_ConvertToJsonObject(uintptr_t message_ptr,
                                                           uintptr_t type_info);
-extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<ValueView>
+extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
 cel_common_internal_LegacyStructValue_GetFieldByName(
     uintptr_t message_ptr, uintptr_t type_info, ValueManager& value_manager,
-    absl::string_view name, Value& scratch,
+    absl::string_view name, Value& result,
     ProtoWrapperTypeOptions unboxing_options);
-extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<ValueView>
+extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
 cel_common_internal_LegacyStructValue_GetFieldByNumber(uintptr_t, uintptr_t,
                                                        ValueManager&, int64_t,
                                                        Value&,
@@ -128,13 +129,13 @@ cel_common_internal_LegacyStructValue_HasFieldByName(uintptr_t message_ptr,
                                                      uintptr_t type_info,
                                                      absl::string_view name);
 extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool>
-    cel_common_internal_LegacyStructValue_HasFieldByNumber(uintptr_t, uintptr_t,
-                                                           int64_t);
-extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<ValueView>
+cel_common_internal_LegacyStructValue_HasFieldByNumber(uintptr_t, uintptr_t,
+                                                       int64_t);
+extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
 cel_common_internal_LegacyStructValue_Equal(uintptr_t message_ptr,
                                             uintptr_t type_info,
                                             ValueManager& value_manager,
-                                            ValueView other, Value& scratch);
+                                            ValueView other, Value& result);
 extern "C" ABSL_ATTRIBUTE_WEAK bool
 cel_common_internal_LegacyStructValue_IsZeroValue(uintptr_t message_ptr,
                                                   uintptr_t type_info);
@@ -142,11 +143,11 @@ extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
 cel_common_internal_LegacyStructValue_ForEachField(
     uintptr_t message_ptr, uintptr_t type_info, ValueManager& value_manager,
     StructValue::ForEachFieldCallback callback);
-extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<std::pair<ValueView, int>>
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<int>
 cel_common_internal_LegacyStructValue_Qualify(
     uintptr_t message_ptr, uintptr_t type_info, ValueManager& value_manager,
     absl::Span<const SelectQualifier> qualifiers, bool presence_test,
-    Value& scratch);
+    Value& result);
 #endif
 
 void InitializeLegacyStructValue() {
@@ -287,12 +288,11 @@ absl::StatusOr<Json> LegacyStructValue::ConvertToJson(
                                                               type_info_);
 }
 
-absl::StatusOr<ValueView> LegacyStructValue::Equal(ValueManager& value_manager,
-                                                   ValueView other,
-                                                   Value& scratch) const {
+absl::Status LegacyStructValue::Equal(ValueManager& value_manager,
+                                      ValueView other, Value& result) const {
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.equal)(message_ptr_, type_info_,
-                                             value_manager, other, scratch);
+                                             value_manager, other, result);
 }
 
 bool LegacyStructValue::IsZeroValue() const {
@@ -300,20 +300,20 @@ bool LegacyStructValue::IsZeroValue() const {
   return (*legacy_struct_value_vtable.is_zero_value)(message_ptr_, type_info_);
 }
 
-absl::StatusOr<ValueView> LegacyStructValue::GetFieldByName(
-    ValueManager& value_manager, absl::string_view name, Value& scratch,
+absl::Status LegacyStructValue::GetFieldByName(
+    ValueManager& value_manager, absl::string_view name, Value& result,
     ProtoWrapperTypeOptions unboxing_options) const {
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.get_field_by_name)(
-      message_ptr_, type_info_, value_manager, name, scratch, unboxing_options);
+      message_ptr_, type_info_, value_manager, name, result, unboxing_options);
 }
 
-absl::StatusOr<ValueView> LegacyStructValue::GetFieldByNumber(
-    ValueManager& value_manager, int64_t number, Value& scratch,
+absl::Status LegacyStructValue::GetFieldByNumber(
+    ValueManager& value_manager, int64_t number, Value& result,
     ProtoWrapperTypeOptions unboxing_options) const {
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.get_field_by_number)(
-      message_ptr_, type_info_, value_manager, number, scratch,
+      message_ptr_, type_info_, value_manager, number, result,
       unboxing_options);
 }
 
@@ -337,13 +337,13 @@ absl::Status LegacyStructValue::ForEachField(
                                                       value_manager, callback);
 }
 
-absl::StatusOr<std::pair<ValueView, int>> LegacyStructValue::Qualify(
+absl::StatusOr<int> LegacyStructValue::Qualify(
     ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
-    bool presence_test, Value& scratch) const {
+    bool presence_test, Value& result) const {
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.qualify)(message_ptr_, type_info_,
                                                value_manager, qualifiers,
-                                               presence_test, scratch);
+                                               presence_test, result);
 }
 
 StructType LegacyStructValueView::GetType(TypeManager& type_manager) const {
@@ -405,11 +405,12 @@ absl::StatusOr<Json> LegacyStructValueView::ConvertToJson(
                                                               type_info_);
 }
 
-absl::StatusOr<ValueView> LegacyStructValueView::Equal(
-    ValueManager& value_manager, ValueView other, Value& scratch) const {
+absl::Status LegacyStructValueView::Equal(ValueManager& value_manager,
+                                          ValueView other,
+                                          Value& result) const {
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.equal)(message_ptr_, type_info_,
-                                             value_manager, other, scratch);
+                                             value_manager, other, result);
 }
 
 bool LegacyStructValueView::IsZeroValue() const {
@@ -417,20 +418,20 @@ bool LegacyStructValueView::IsZeroValue() const {
   return (*legacy_struct_value_vtable.is_zero_value)(message_ptr_, type_info_);
 }
 
-absl::StatusOr<ValueView> LegacyStructValueView::GetFieldByName(
-    ValueManager& value_manager, absl::string_view name, Value& scratch,
+absl::Status LegacyStructValueView::GetFieldByName(
+    ValueManager& value_manager, absl::string_view name, Value& result,
     ProtoWrapperTypeOptions unboxing_options) const {
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.get_field_by_name)(
-      message_ptr_, type_info_, value_manager, name, scratch, unboxing_options);
+      message_ptr_, type_info_, value_manager, name, result, unboxing_options);
 }
 
-absl::StatusOr<ValueView> LegacyStructValueView::GetFieldByNumber(
-    ValueManager& value_manager, int64_t number, Value& scratch,
+absl::Status LegacyStructValueView::GetFieldByNumber(
+    ValueManager& value_manager, int64_t number, Value& result,
     ProtoWrapperTypeOptions unboxing_options) const {
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.get_field_by_number)(
-      message_ptr_, type_info_, value_manager, number, scratch,
+      message_ptr_, type_info_, value_manager, number, result,
       unboxing_options);
 }
 
@@ -455,13 +456,13 @@ absl::Status LegacyStructValueView::ForEachField(
                                                       value_manager, callback);
 }
 
-absl::StatusOr<std::pair<ValueView, int>> LegacyStructValueView::Qualify(
+absl::StatusOr<int> LegacyStructValueView::Qualify(
     ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
-    bool presence_test, Value& scratch) const {
+    bool presence_test, Value& result) const {
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.qualify)(message_ptr_, type_info_,
                                                value_manager, qualifiers,
-                                               presence_test, scratch);
+                                               presence_test, result);
 }
 
 }  // namespace cel::common_internal

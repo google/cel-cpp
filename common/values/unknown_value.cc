@@ -60,9 +60,10 @@ absl::StatusOr<Json> UnknownValue::ConvertToJson(AnyToJsonConverter&) const {
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
-absl::StatusOr<ValueView> UnknownValue::Equal(ValueManager&, ValueView,
-                                              Value&) const {
-  return BoolValueView{false};
+absl::Status UnknownValue::Equal(ValueManager&, ValueView,
+                                 Value& result) const {
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
 const Unknown& UnknownValueView::Empty() {
@@ -106,9 +107,10 @@ absl::StatusOr<Json> UnknownValueView::ConvertToJson(
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
-absl::StatusOr<ValueView> UnknownValueView::Equal(ValueManager&, ValueView,
-                                                  Value&) const {
-  return BoolValueView{false};
+absl::Status UnknownValueView::Equal(ValueManager&, ValueView,
+                                     Value& result) const {
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
 }  // namespace cel

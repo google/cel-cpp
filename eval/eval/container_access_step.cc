@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <tuple>
 #include <utility>
 
 #include "absl/status/status.h"
@@ -108,10 +107,10 @@ ValueView LookupInMap(const MapValue& cel_map, const Value& key,
         if (!lookup.ok()) {
           scratch = frame.value_manager().CreateErrorValue(
               std::move(lookup).status());
-          return ValueView{scratch};
+          return scratch;
         }
-        if (lookup->second) {
-          return lookup->first;
+        if (*lookup) {
+          return scratch;
         }
       }
       // double / int / uint -> int
@@ -122,10 +121,10 @@ ValueView LookupInMap(const MapValue& cel_map, const Value& key,
         if (!lookup.ok()) {
           scratch = frame.value_manager().CreateErrorValue(
               std::move(lookup).status());
-          return ValueView{scratch};
+          return scratch;
         }
-        if (lookup->second) {
-          return lookup->first;
+        if (*lookup) {
+          return scratch;
         }
       }
       // double / int -> uint
@@ -136,15 +135,15 @@ ValueView LookupInMap(const MapValue& cel_map, const Value& key,
         if (!lookup.ok()) {
           scratch = frame.value_manager().CreateErrorValue(
               std::move(lookup).status());
-          return ValueView{scratch};
+          return scratch;
         }
-        if (lookup->second) {
-          return lookup->first;
+        if (*lookup) {
+          return scratch;
         }
       }
       scratch = frame.value_manager().CreateErrorValue(
           CreateNoSuchKeyError(key->DebugString()));
-      return ValueView{scratch};
+      return scratch;
     }
   }
 
@@ -154,14 +153,12 @@ ValueView LookupInMap(const MapValue& cel_map, const Value& key,
     return ValueView{scratch};
   }
 
-  absl::StatusOr<ValueView> lookup =
-      cel_map.Get(frame.value_manager(), key, scratch);
+  absl::Status lookup = cel_map.Get(frame.value_manager(), key, scratch);
   if (!lookup.ok()) {
-    scratch =
-        frame.value_manager().CreateErrorValue(std::move(lookup).status());
-    return ValueView{scratch};
+    scratch = frame.value_manager().CreateErrorValue(std::move(lookup));
+    return scratch;
   }
-  return *lookup;
+  return scratch;
 }
 
 ValueView LookupInList(const ListValue& cel_list, const Value& key,
@@ -195,15 +192,13 @@ ValueView LookupInList(const ListValue& cel_list, const Value& key,
     return ValueView{scratch};
   }
 
-  absl::StatusOr<ValueView> lookup =
-      cel_list.Get(frame.value_manager(), idx, scratch);
+  absl::Status lookup = cel_list.Get(frame.value_manager(), idx, scratch);
 
   if (!lookup.ok()) {
-    scratch =
-        frame.value_manager().CreateErrorValue(std::move(lookup).status());
+    scratch = frame.value_manager().CreateErrorValue(std::move(lookup));
     return ValueView{scratch};
   }
-  return *lookup;
+  return scratch;
 }
 
 ValueView LookupInContainer(const Value& container, const Value& key,

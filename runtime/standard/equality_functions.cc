@@ -152,9 +152,9 @@ absl::StatusOr<absl::optional<bool>> ListEqual(ValueManager& factory,
 absl::StatusOr<absl::optional<bool>> OpaqueEqual(ValueManager& manager,
                                                  const OpaqueValue& lhs,
                                                  const OpaqueValue& rhs) {
-  Value result_scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, lhs.Equal(manager, rhs, result_scratch));
-  if (auto bool_value = As<BoolValueView>(result); bool_value) {
+  Value result;
+  CEL_RETURN_IF_ERROR(lhs.Equal(manager, rhs, result));
+  if (auto bool_value = As<BoolValue>(result); bool_value) {
     return bool_value->NativeValue();
   }
   return TypeConversionError(result.GetTypeName(), "bool").NativeValue();

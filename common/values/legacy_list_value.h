@@ -104,13 +104,11 @@ class LegacyListValue final {
   absl::StatusOr<JsonArray> ConvertToJsonArray(
       AnyToJsonConverter& value_manager) const;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
 
-  absl::StatusOr<ValueView> Contains(
-      ValueManager& value_manager, ValueView other,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Contains(ValueManager& value_manager, ValueView other,
+                        Value& result) const;
 
   bool IsZeroValue() const { return IsEmpty(); }
 
@@ -119,9 +117,8 @@ class LegacyListValue final {
   size_t Size() const;
 
   // See LegacyListValueInterface::Get for documentation.
-  absl::StatusOr<ValueView> Get(ValueManager& value_manager, size_t index,
-                                Value& scratch
-                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Get(ValueManager& value_manager, size_t index,
+                   Value& result) const;
 
   using ForEachCallback = typename ListValueInterface::ForEachCallback;
 
@@ -224,9 +221,8 @@ class LegacyListValueView final {
   absl::StatusOr<JsonArray> ConvertToJsonArray(
       AnyToJsonConverter& value_manager) const;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
 
   bool IsZeroValue() const { return IsEmpty(); }
 
@@ -235,9 +231,8 @@ class LegacyListValueView final {
   size_t Size() const;
 
   // See LegacyListValueInterface::Get for documentation.
-  absl::StatusOr<ValueView> Get(ValueManager& value_manager, size_t index,
-                                Value& scratch
-                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Get(ValueManager& value_manager, size_t index,
+                   Value& result) const;
 
   using ForEachCallback = typename ListValueInterface::ForEachCallback;
 
@@ -253,9 +248,8 @@ class LegacyListValueView final {
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
 
-  absl::StatusOr<ValueView> Contains(
-      ValueManager& value_manager, ValueView other,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Contains(ValueManager& value_manager, ValueView other,
+                        Value& result) const;
 
   void swap(LegacyListValueView& other) noexcept {
     using std::swap;

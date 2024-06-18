@@ -24,29 +24,30 @@
 
 namespace cel {
 
-absl::StatusOr<ValueView> ParsedStructValueInterface::Equal(
-    ValueManager& value_manager, ValueView other, Value& scratch) const {
+absl::Status ParsedStructValueInterface::Equal(ValueManager& value_manager,
+                                               ValueView other,
+                                               Value& result) const {
   if (auto parsed_struct_value = As<ParsedStructValueView>(other);
       parsed_struct_value.has_value() &&
       NativeTypeId::Of(*this) == NativeTypeId::Of(*parsed_struct_value)) {
-    return EqualImpl(value_manager, *parsed_struct_value, scratch);
+    return EqualImpl(value_manager, *parsed_struct_value, result);
   }
   if (auto struct_value = As<StructValueView>(other);
       struct_value.has_value()) {
     return common_internal::StructValueEqual(value_manager, *this,
-                                             *struct_value, scratch);
+                                             *struct_value, result);
   }
-  return BoolValueView{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ParsedStructValueInterface::EqualImpl(
-    ValueManager& value_manager, ParsedStructValueView other,
-    Value& scratch) const {
-  return common_internal::StructValueEqual(value_manager, *this, other,
-                                           scratch);
+absl::Status ParsedStructValueInterface::EqualImpl(ValueManager& value_manager,
+                                                   ParsedStructValueView other,
+                                                   Value& result) const {
+  return common_internal::StructValueEqual(value_manager, *this, other, result);
 }
 
-absl::StatusOr<std::pair<ValueView, int>> ParsedStructValueInterface::Qualify(
+absl::StatusOr<int> ParsedStructValueInterface::Qualify(
     ValueManager&, absl::Span<const SelectQualifier>, bool, Value&) const {
   return absl::UnimplementedError("Qualify not supported.");
 }

@@ -107,8 +107,7 @@ class EmptyListValue final : public ParsedListValueInterface {
 
   Type GetTypeImpl(TypeManager&) const override { return type_; }
 
-  absl::StatusOr<ValueView> GetImpl(ValueManager&, size_t,
-                                    Value&) const override {
+  absl::Status GetImpl(ValueManager&, size_t, Value&) const override {
     // Not reachable, `Get` performs index checking.
     ABSL_UNREACHABLE();
   }
@@ -120,7 +119,7 @@ class EmptyMapValueKeyIterator final : public ValueIterator {
  public:
   bool HasNext() override { return false; }
 
-  absl::StatusOr<ValueView> Next(ValueManager&, Value&) override {
+  absl::Status Next(ValueManager&, Value&) override {
     return absl::FailedPreconditionError(
         "ValueIterator::Next() called when "
         "ValueIterator::HasNext() returns false");
@@ -137,8 +136,7 @@ class EmptyMapValue final : public ParsedMapValueInterface {
 
   size_t Size() const override { return 0; }
 
-  absl::StatusOr<ListValueView> ListKeys(ValueManager&,
-                                         ListValue&) const override {
+  absl::Status ListKeys(ValueManager&, ListValue& result) const override {
     auto list_type = ProcessLocalTypeCache::Get()->FindListType(type_.key());
     if (!list_type.has_value()) {
       return absl::InternalError(
@@ -151,7 +149,8 @@ class EmptyMapValue final : public ParsedMapValueInterface {
           "expected cached empty list value to be present in process local "
           "cache");
     }
-    return *list_value;
+    result = ListValue(*list_value);
+    return absl::OkStatus();
   }
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
@@ -173,9 +172,9 @@ class EmptyMapValue final : public ParsedMapValueInterface {
 
   Type GetTypeImpl(TypeManager&) const override { return type_; }
 
-  absl::StatusOr<absl::optional<ValueView>> FindImpl(ValueManager&, ValueView,
-                                                     Value&) const override {
-    return absl::nullopt;
+  absl::StatusOr<bool> FindImpl(ValueManager&, ValueView,
+                                Value&) const override {
+    return false;
   }
 
   absl::StatusOr<bool> HasImpl(ValueManager&, ValueView) const override {
@@ -191,10 +190,9 @@ class EmptyOptionalValue final : public OptionalValueInterface {
 
   bool HasValue() const override { return false; }
 
-  ValueView Value(cel::Value& scratch) const override {
-    scratch = ErrorValue(
+  void Value(cel::Value& result) const override {
+    result = ErrorValue(
         absl::FailedPreconditionError("optional.none() dereference"));
-    return scratch;
   }
 
   OptionalTypeView GetType() const { return type_; }

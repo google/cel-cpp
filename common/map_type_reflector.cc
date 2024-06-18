@@ -307,15 +307,16 @@ class TypedMapValueKeyIterator final : public ValueIterator {
 
   bool HasNext() override { return begin_ != end_; }
 
-  absl::StatusOr<ValueView> Next(ValueManager&, Value&) override {
+  absl::Status Next(ValueManager&, Value& result) override {
     if (ABSL_PREDICT_FALSE(begin_ == end_)) {
       return absl::FailedPreconditionError(
           "ValueIterator::Next() called when "
           "ValueIterator::HasNext() returns false");
     }
-    auto key = ValueView(begin_->first);
+    auto key = Value(begin_->first);
     ++begin_;
-    return key;
+    result = std::move(key);
+    return absl::OkStatus();
   }
 
  private:
@@ -379,8 +380,8 @@ class TypedMapValue final : public ParsedMapValueInterface {
     return std::move(builder).Build();
   }
 
-  absl::StatusOr<ListValueView> ListKeys(ValueManager& value_manager,
-                                         ListValue& scratch) const override {
+  absl::Status ListKeys(ValueManager& value_manager,
+                        ListValue& result) const override {
     CEL_ASSIGN_OR_RETURN(
         auto keys,
         value_manager.NewListValueBuilder(
@@ -389,8 +390,8 @@ class TypedMapValue final : public ParsedMapValueInterface {
     for (const auto& entry : entries_) {
       CEL_RETURN_IF_ERROR(keys->Add(entry.first));
     }
-    scratch = std::move(*keys).Build();
-    return scratch;
+    result = std::move(*keys).Build();
+    return absl::OkStatus();
   }
 
   absl::Status ForEach(ValueManager& value_manager,
@@ -413,15 +414,15 @@ class TypedMapValue final : public ParsedMapValueInterface {
   Type GetTypeImpl(TypeManager&) const override { return type_; }
 
  private:
-  absl::StatusOr<absl::optional<ValueView>> FindImpl(ValueManager&,
-                                                     ValueView key,
-                                                     Value&) const override {
+  absl::StatusOr<bool> FindImpl(ValueManager&, ValueView key,
+                                Value& result) const override {
     if (auto entry =
             entries_.find(Cast<typename K::view_alternative_type>(key));
         entry != entries_.end()) {
-      return ValueView{entry->second};
+      result = entry->second;
+      return true;
     }
-    return absl::nullopt;
+    return false;
   }
 
   absl::StatusOr<bool> HasImpl(ValueManager&, ValueView key) const override {

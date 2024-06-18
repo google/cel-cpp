@@ -139,16 +139,15 @@ TEST_P(OptionalValueTest, HasValue) {
 }
 
 TEST_P(OptionalValueTest, Value) {
-  Value scratch;
   auto value = OptionalNone();
-  auto element = value.Value(scratch);
-  ASSERT_TRUE(InstanceOf<ErrorValueView>(element));
-  EXPECT_THAT(Cast<ErrorValueView>(element).NativeValue(),
+  auto element = value.Value();
+  ASSERT_TRUE(InstanceOf<ErrorValue>(element));
+  EXPECT_THAT(Cast<ErrorValue>(element).NativeValue(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   value = OptionalOf(IntValue());
-  element = value.Value(scratch);
-  ASSERT_TRUE(InstanceOf<IntValueView>(element));
-  EXPECT_EQ(Cast<IntValueView>(element), IntValue());
+  element = value.Value();
+  ASSERT_TRUE(InstanceOf<IntValue>(element));
+  EXPECT_EQ(Cast<IntValue>(element), IntValue());
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -267,16 +266,15 @@ TEST_P(OptionalValueViewTest, HasValue) {
 }
 
 TEST_P(OptionalValueViewTest, Value) {
-  Value scratch;
   auto value_view = OptionalNone();
-  auto element = value_view.Value(scratch);
-  ASSERT_TRUE(InstanceOf<ErrorValueView>(element));
-  EXPECT_THAT(Cast<ErrorValueView>(element).NativeValue(),
+  auto element = value_view.Value();
+  ASSERT_TRUE(InstanceOf<ErrorValue>(element));
+  EXPECT_THAT(Cast<ErrorValue>(element).NativeValue(),
               StatusIs(absl::StatusCode::kFailedPrecondition));
   auto value = OptionalOf(IntValue());
-  element = OptionalValueView(value).Value(scratch);
-  ASSERT_TRUE(InstanceOf<IntValueView>(element));
-  EXPECT_EQ(Cast<IntValueView>(element), IntValue());
+  element = OptionalValueView(value).Value();
+  ASSERT_TRUE(InstanceOf<IntValue>(element));
+  EXPECT_EQ(Cast<IntValue>(element), IntValue());
 }
 
 INSTANTIATE_TEST_SUITE_P(

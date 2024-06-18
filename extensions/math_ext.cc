@@ -95,15 +95,15 @@ absl::StatusOr<Value> MinList(ValueManager &value_manager,
     return ErrorValue(
         absl::InvalidArgumentError("math.@min argument must not be empty"));
   }
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto value, iterator->Next(value_manager, scratch));
+  Value value;
+  CEL_RETURN_IF_ERROR(iterator->Next(value_manager, value));
   absl::StatusOr<CelNumber> current = ValueToNumber(value, kMathMin);
   if (!current.ok()) {
     return ErrorValue{current.status()};
   }
   CelNumber min = *current;
   while (iterator->HasNext()) {
-    CEL_ASSIGN_OR_RETURN(value, iterator->Next(value_manager, scratch));
+    CEL_RETURN_IF_ERROR(iterator->Next(value_manager, value));
     absl::StatusOr<CelNumber> other = ValueToNumber(value, kMathMin);
     if (!other.ok()) {
       return ErrorValue{other.status()};
@@ -136,15 +136,15 @@ absl::StatusOr<Value> MaxList(ValueManager &value_manager,
     return ErrorValue(
         absl::InvalidArgumentError("math.@max argument must not be empty"));
   }
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto value, iterator->Next(value_manager, scratch));
+  Value value;
+  CEL_RETURN_IF_ERROR(iterator->Next(value_manager, value));
   absl::StatusOr<CelNumber> current = ValueToNumber(value, kMathMax);
   if (!current.ok()) {
     return ErrorValue{current.status()};
   }
   CelNumber min = *current;
   while (iterator->HasNext()) {
-    CEL_ASSIGN_OR_RETURN(value, iterator->Next(value_manager, scratch));
+    CEL_RETURN_IF_ERROR(iterator->Next(value_manager, value));
     absl::StatusOr<CelNumber> other = ValueToNumber(value, kMathMax);
     if (!other.ok()) {
       return ErrorValue{other.status()};

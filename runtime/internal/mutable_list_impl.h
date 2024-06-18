@@ -19,6 +19,7 @@
 
 #include <string>
 
+#include "absl/status/status.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -58,9 +59,10 @@ class MutableListValue final : public cel::OpaqueValueInterface {
     return kMutableListTypeName;
   }
 
-  absl::StatusOr<ValueView> Equal(ValueManager&, ValueView,
-                                  cel::Value& scratch) const override {
-    return BoolValueView{false};
+  absl::Status Equal(ValueManager&, ValueView,
+                     cel::Value& result) const override {
+    result = BoolValueView{false};
+    return absl::OkStatus();
   }
 
   // Add an element to this list.

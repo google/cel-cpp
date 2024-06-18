@@ -72,9 +72,8 @@ class ParsedListValueInterface : public ListValueInterface {
   absl::Status SerializeTo(AnyToJsonConverter& converter,
                            absl::Cord& value) const override;
 
-  virtual absl::StatusOr<ValueView> Equal(
-      ValueManager& value_manager, ValueView other,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  virtual absl::Status Equal(ValueManager& value_manager, ValueView other,
+                             Value& result) const;
 
   bool IsZeroValue() const { return IsEmpty(); }
 
@@ -85,9 +84,8 @@ class ParsedListValueInterface : public ListValueInterface {
   // Returns a view of the element at index `index`. If the underlying
   // implementation cannot directly return a view of a value, the value will be
   // stored in `scratch`, and the returned view will be that of `scratch`.
-  absl::StatusOr<ValueView> Get(ValueManager& value_manager, size_t index,
-                                Value& scratch
-                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Get(ValueManager& value_manager, size_t index,
+                   Value& result) const;
 
   virtual absl::Status ForEach(ValueManager& value_manager,
                                ForEachCallback callback) const;
@@ -98,16 +96,14 @@ class ParsedListValueInterface : public ListValueInterface {
   virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
 
-  virtual absl::StatusOr<ValueView> Contains(
-      ValueManager& value_manager, ValueView other,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  virtual absl::Status Contains(ValueManager& value_manager, ValueView other,
+                                Value& result) const;
 
  protected:
   friend class ParsedListValueInterfaceIterator;
 
-  virtual absl::StatusOr<ValueView> GetImpl(ValueManager& value_manager,
-                                            size_t index,
-                                            Value& scratch) const = 0;
+  virtual absl::Status GetImpl(ValueManager& value_manager, size_t index,
+                               Value& result) const = 0;
 };
 
 class ParsedListValue {
@@ -180,9 +176,8 @@ class ParsedListValue {
     return interface_->ConvertToJsonArray(converter);
   }
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
 
   bool IsZeroValue() const { return interface_->IsZeroValue(); }
 
@@ -191,9 +186,8 @@ class ParsedListValue {
   size_t Size() const { return interface_->Size(); }
 
   // See ListValueInterface::Get for documentation.
-  absl::StatusOr<ValueView> Get(ValueManager& value_manager, size_t index,
-                                Value& scratch
-                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Get(ValueManager& value_manager, size_t index,
+                   Value& result) const;
 
   using ForEachCallback = typename ListValueInterface::ForEachCallback;
 
@@ -209,9 +203,8 @@ class ParsedListValue {
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
 
-  absl::StatusOr<ValueView> Contains(
-      ValueManager& value_manager, ValueView other,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Contains(ValueManager& value_manager, ValueView other,
+                        Value& result) const;
 
   void swap(ParsedListValue& other) noexcept {
     using std::swap;
@@ -370,9 +363,8 @@ class ParsedListValueView {
     return interface_->ConvertToJsonArray(converter);
   }
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
 
   bool IsZeroValue() const { return interface_->IsZeroValue(); }
 
@@ -381,9 +373,8 @@ class ParsedListValueView {
   size_t Size() const { return interface_->Size(); }
 
   // See ListValueInterface::Get for documentation.
-  absl::StatusOr<ValueView> Get(ValueManager& value_manager, size_t index,
-                                Value& scratch
-                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Get(ValueManager& value_manager, size_t index,
+                   Value& result) const;
 
   using ForEachCallback = typename ListValueInterface::ForEachCallback;
 
@@ -399,9 +390,8 @@ class ParsedListValueView {
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
 
-  absl::StatusOr<ValueView> Contains(
-      ValueManager& value_manager, ValueView other,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Contains(ValueManager& value_manager, ValueView other,
+                        Value& result) const;
 
   void swap(ParsedListValueView& other) noexcept {
     using std::swap;

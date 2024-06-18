@@ -104,9 +104,8 @@ class LegacyMapValue final {
   absl::StatusOr<JsonObject> ConvertToJsonObject(
       AnyToJsonConverter& value_manager) const;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
 
   bool IsZeroValue() const { return IsEmpty(); }
 
@@ -116,21 +115,16 @@ class LegacyMapValue final {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::StatusOr<ValueView> Get(ValueManager& value_manager, ValueView key,
-                                Value& scratch
-                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Get(ValueManager& value_manager, ValueView key,
+                   Value& result) const;
 
-  absl::StatusOr<std::pair<ValueView, bool>> Find(
-      ValueManager& value_manager, ValueView key,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<bool> Find(ValueManager& value_manager, ValueView key,
+                            Value& result ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
-  absl::StatusOr<ValueView> Has(ValueManager& value_manager, ValueView key,
-                                Value& scratch
-                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Has(ValueManager& value_manager, ValueView key,
+                   Value& result ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
-  absl::StatusOr<ListValueView> ListKeys(
-      ValueManager& value_manager,
-      ListValue& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status ListKeys(ValueManager& value_manager, ListValue& result) const;
 
   using ForEachCallback = typename MapValueInterface::ForEachCallback;
 
@@ -226,9 +220,8 @@ class LegacyMapValueView final {
   absl::StatusOr<JsonObject> ConvertToJsonObject(
       AnyToJsonConverter& value_manager) const;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
 
   bool IsZeroValue() const { return IsEmpty(); }
 
@@ -238,21 +231,16 @@ class LegacyMapValueView final {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::StatusOr<ValueView> Get(ValueManager& value_manager, ValueView key,
-                                Value& scratch
-                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Get(ValueManager& value_manager, ValueView key,
+                   Value& result) const;
 
-  absl::StatusOr<std::pair<ValueView, bool>> Find(
-      ValueManager& value_manager, ValueView key,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<bool> Find(ValueManager& value_manager, ValueView key,
+                            Value& result) const;
 
-  absl::StatusOr<ValueView> Has(ValueManager& value_manager, ValueView key,
-                                Value& scratch
-                                    ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Has(ValueManager& value_manager, ValueView key,
+                   Value& result) const;
 
-  absl::StatusOr<ListValueView> ListKeys(
-      ValueManager& value_manager,
-      ListValue& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status ListKeys(ValueManager& value_manager, ListValue& result) const;
 
   using ForEachCallback = typename MapValueInterface::ForEachCallback;
 

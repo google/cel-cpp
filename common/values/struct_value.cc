@@ -16,6 +16,7 @@
 #include <string>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "common/casting.h"
@@ -434,12 +435,11 @@ common_internal::StructValueVariant StructValueView::ToVariant() const {
 
 namespace common_internal {
 
-absl::StatusOr<ValueView> StructValueEqual(ValueManager& value_manager,
-                                           StructValueView lhs,
-                                           StructValueView rhs,
-                                           Value& scratch) {
+absl::Status StructValueEqual(ValueManager& value_manager, StructValueView lhs,
+                              StructValueView rhs, Value& result) {
   if (lhs.GetTypeName() != rhs.GetTypeName()) {
-    return BoolValueView{false};
+    result = BoolValueView{false};
+    return absl::OkStatus();
   }
   absl::flat_hash_map<std::string, Value> lhs_fields;
   CEL_RETURN_IF_ERROR(lhs.ForEachField(
@@ -453,17 +453,16 @@ absl::StatusOr<ValueView> StructValueEqual(ValueManager& value_manager,
   size_t rhs_fields_count = 0;
   CEL_RETURN_IF_ERROR(rhs.ForEachField(
       value_manager,
-      [&value_manager, &scratch, &lhs_fields, &equal, &rhs_fields_count](
+      [&value_manager, &result, &lhs_fields, &equal, &rhs_fields_count](
           absl::string_view name, ValueView rhs_value) -> absl::StatusOr<bool> {
         auto lhs_field = lhs_fields.find(name);
         if (lhs_field == lhs_fields.end()) {
           equal = false;
           return false;
         }
-        CEL_ASSIGN_OR_RETURN(
-            auto result,
-            lhs_field->second.Equal(value_manager, rhs_value, scratch));
-        if (auto bool_value = As<BoolValueView>(result);
+        CEL_RETURN_IF_ERROR(
+            lhs_field->second.Equal(value_manager, rhs_value, result));
+        if (auto bool_value = As<BoolValue>(result);
             bool_value.has_value() && !bool_value->NativeValue()) {
           equal = false;
           return false;
@@ -472,16 +471,19 @@ absl::StatusOr<ValueView> StructValueEqual(ValueManager& value_manager,
         return true;
       }));
   if (!equal || rhs_fields_count != lhs_fields.size()) {
-    return BoolValueView{false};
+    result = BoolValueView{false};
+    return absl::OkStatus();
   }
-  return BoolValueView{true};
+  result = BoolValueView{true};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> StructValueEqual(
-    ValueManager& value_manager, const ParsedStructValueInterface& lhs,
-    StructValueView rhs, Value& scratch) {
+absl::Status StructValueEqual(ValueManager& value_manager,
+                              const ParsedStructValueInterface& lhs,
+                              StructValueView rhs, Value& result) {
   if (lhs.GetTypeName() != rhs.GetTypeName()) {
-    return BoolValueView{false};
+    result = BoolValueView{false};
+    return absl::OkStatus();
   }
   absl::flat_hash_map<std::string, Value> lhs_fields;
   CEL_RETURN_IF_ERROR(lhs.ForEachField(
@@ -495,17 +497,16 @@ absl::StatusOr<ValueView> StructValueEqual(
   size_t rhs_fields_count = 0;
   CEL_RETURN_IF_ERROR(rhs.ForEachField(
       value_manager,
-      [&value_manager, &scratch, &lhs_fields, &equal, &rhs_fields_count](
+      [&value_manager, &result, &lhs_fields, &equal, &rhs_fields_count](
           absl::string_view name, ValueView rhs_value) -> absl::StatusOr<bool> {
         auto lhs_field = lhs_fields.find(name);
         if (lhs_field == lhs_fields.end()) {
           equal = false;
           return false;
         }
-        CEL_ASSIGN_OR_RETURN(
-            auto result,
-            lhs_field->second.Equal(value_manager, rhs_value, scratch));
-        if (auto bool_value = As<BoolValueView>(result);
+        CEL_RETURN_IF_ERROR(
+            lhs_field->second.Equal(value_manager, rhs_value, result));
+        if (auto bool_value = As<BoolValue>(result);
             bool_value.has_value() && !bool_value->NativeValue()) {
           equal = false;
           return false;
@@ -514,9 +515,11 @@ absl::StatusOr<ValueView> StructValueEqual(
         return true;
       }));
   if (!equal || rhs_fields_count != lhs_fields.size()) {
-    return BoolValueView{false};
+    result = BoolValueView{false};
+    return absl::OkStatus();
   }
-  return BoolValueView{true};
+  result = BoolValueView{true};
+  return absl::OkStatus();
 }
 
 }  // namespace common_internal

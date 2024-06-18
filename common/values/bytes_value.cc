@@ -89,17 +89,19 @@ absl::StatusOr<Json> BytesValue::ConvertToJson(AnyToJsonConverter&) const {
       [](const auto& value) -> Json { return JsonBytes(value); });
 }
 
-absl::StatusOr<ValueView> BytesValue::Equal(ValueManager&, ValueView other,
-                                            Value&) const {
+absl::Status BytesValue::Equal(ValueManager&, ValueView other,
+                               Value& result) const {
   if (auto other_value = As<BytesValueView>(other); other_value.has_value()) {
-    return NativeValue([other_value](const auto& value) -> BoolValueView {
+    result = NativeValue([other_value](const auto& value) -> BoolValue {
       return other_value->NativeValue(
-          [&value](const auto& other_value) -> BoolValueView {
-            return BoolValueView{value == other_value};
+          [&value](const auto& other_value) -> BoolValue {
+            return BoolValue{value == other_value};
           });
     });
+    return absl::OkStatus();
   }
-  return BoolValueView{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
 size_t BytesValue::Size() const {
@@ -208,17 +210,19 @@ absl::StatusOr<Json> BytesValueView::ConvertToJson(AnyToJsonConverter&) const {
       [](const auto& value) -> Json { return JsonBytes(value); });
 }
 
-absl::StatusOr<ValueView> BytesValueView::Equal(ValueManager&, ValueView other,
-                                                Value&) const {
+absl::Status BytesValueView::Equal(ValueManager&, ValueView other,
+                                   Value& result) const {
   if (auto other_value = As<BytesValueView>(other); other_value.has_value()) {
-    return NativeValue([other_value](const auto& value) -> BoolValueView {
+    result = NativeValue([other_value](const auto& value) -> BoolValue {
       return other_value->NativeValue(
-          [&value](const auto& other_value) -> BoolValueView {
-            return BoolValueView{value == other_value};
+          [&value](const auto& other_value) -> BoolValue {
+            return BoolValue{value == other_value};
           });
     });
+    return absl::OkStatus();
   }
-  return BoolValueView{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
 size_t BytesValueView::Size() const {

@@ -59,32 +59,31 @@ absl::Status ParsedMapValueInterface::SerializeTo(
   return internal::SerializeStruct(json, value);
 }
 
-absl::StatusOr<ValueView> ParsedMapValueInterface::Get(
-    ValueManager& value_manager, ValueView key, Value& scratch) const {
-  ValueView value;
-  bool ok;
-  CEL_ASSIGN_OR_RETURN(std::tie(value, ok), Find(value_manager, key, scratch));
+absl::Status ParsedMapValueInterface::Get(ValueManager& value_manager,
+                                          ValueView key, Value& result) const {
+  CEL_ASSIGN_OR_RETURN(bool ok, Find(value_manager, key, result));
   if (ABSL_PREDICT_FALSE(!ok)) {
-    switch (value.kind()) {
+    switch (result.kind()) {
       case ValueKind::kError:
         ABSL_FALLTHROUGH_INTENDED;
       case ValueKind::kUnknown:
-        return value;
+        break;
       default:
         return NoSuchKeyError(key);
     }
   }
-  return value;
+  return absl::OkStatus();
 }
 
-absl::StatusOr<std::pair<ValueView, bool>> ParsedMapValueInterface::Find(
-    ValueManager& value_manager, ValueView key, Value& scratch) const {
+absl::StatusOr<bool> ParsedMapValueInterface::Find(ValueManager& value_manager,
+                                                   ValueView key,
+                                                   Value& result) const {
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kUnknown:
-      scratch = Value(key);
-      return std::pair{scratch, false};
+      result = Value(key);
+      return false;
     case ValueKind::kBool:
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kInt:
@@ -96,21 +95,22 @@ absl::StatusOr<std::pair<ValueView, bool>> ParsedMapValueInterface::Find(
     default:
       return InvalidMapKeyTypeError(key.kind());
   }
-  CEL_ASSIGN_OR_RETURN(auto value, FindImpl(value_manager, key, scratch));
-  if (value.has_value()) {
-    return std::pair{*value, true};
+  CEL_ASSIGN_OR_RETURN(auto ok, FindImpl(value_manager, key, result));
+  if (ok) {
+    return true;
   }
-  return std::pair{NullValueView{}, false};
+  result = NullValue{};
+  return false;
 }
 
-absl::StatusOr<ValueView> ParsedMapValueInterface::Has(
-    ValueManager& value_manager, ValueView key, Value& scratch) const {
+absl::Status ParsedMapValueInterface::Has(ValueManager& value_manager,
+                                          ValueView key, Value& result) const {
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kUnknown:
-      scratch = Value{key};
-      return scratch;
+      result = Value{key};
+      return absl::OkStatus();
     case ValueKind::kBool:
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kInt:
@@ -123,17 +123,18 @@ absl::StatusOr<ValueView> ParsedMapValueInterface::Has(
       return InvalidMapKeyTypeError(key.kind());
   }
   CEL_ASSIGN_OR_RETURN(auto has, HasImpl(value_manager, key));
-  return BoolValueView(has);
+  result = BoolValue(has);
+  return absl::OkStatus();
 }
 
 absl::Status ParsedMapValueInterface::ForEach(ValueManager& value_manager,
                                               ForEachCallback callback) const {
   CEL_ASSIGN_OR_RETURN(auto iterator, NewIterator(value_manager));
   while (iterator->HasNext()) {
-    Value key_scratch;
-    Value value_scratch;
-    CEL_ASSIGN_OR_RETURN(auto key, iterator->Next(value_manager, key_scratch));
-    CEL_ASSIGN_OR_RETURN(auto value, Get(value_manager, key, value_scratch));
+    Value key;
+    Value value;
+    CEL_RETURN_IF_ERROR(iterator->Next(value_manager, key));
+    CEL_RETURN_IF_ERROR(Get(value_manager, key, value));
     CEL_ASSIGN_OR_RETURN(auto ok, callback(key, value));
     if (!ok) {
       break;
@@ -142,12 +143,14 @@ absl::Status ParsedMapValueInterface::ForEach(ValueManager& value_manager,
   return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ParsedMapValueInterface::Equal(
-    ValueManager& value_manager, ValueView other, Value& scratch) const {
+absl::Status ParsedMapValueInterface::Equal(ValueManager& value_manager,
+                                            ValueView other,
+                                            Value& result) const {
   if (auto list_value = As<MapValueView>(other); list_value.has_value()) {
-    return MapValueEqual(value_manager, *this, *list_value, scratch);
+    return MapValueEqual(value_manager, *this, *list_value, result);
   }
-  return BoolValueView{false};
+  result = BoolValue{false};
+  return absl::OkStatus();
 }
 
 }  // namespace cel

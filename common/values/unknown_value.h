@@ -95,9 +95,8 @@ class UnknownValue final {
   // not convertible to JSON.
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
                               ValueView other) const;
 
@@ -219,9 +218,8 @@ class UnknownValueView final {
   // not convertible to JSON.
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
                               ValueView other) const;
 

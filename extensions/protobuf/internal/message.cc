@@ -1022,14 +1022,14 @@ class ParsedProtoListElementIterator final : public ValueIterator {
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::StatusOr<ValueView> Next(ValueManager& value_manager,
-                                 Value& scratch) override {
-    CEL_ASSIGN_OR_RETURN(auto element,
-                         field_to_value_accessor_(
-                             aliasing_, &message_, GetReflectionOrDie(message_),
-                             field_, index_, value_manager, scratch));
+  absl::Status Next(ValueManager& value_manager, Value& result) override {
+    Value scratch;
+    CEL_ASSIGN_OR_RETURN(
+        result, field_to_value_accessor_(aliasing_, &message_,
+                                         GetReflectionOrDie(message_), field_,
+                                         index_, value_manager, scratch));
     ++index_;
-    return element;
+    return absl::OkStatus();
   }
 
  private:
@@ -1126,11 +1126,14 @@ class ParsedProtoListValueInterface
   }
 
  private:
-  absl::StatusOr<ValueView> GetImpl(ValueManager& value_manager, size_t index,
-                                    Value& scratch) const final {
-    return field_to_value_accessor_(
-        shared_from_this(), &message_, GetReflectionOrDie(message_), field_,
-        static_cast<int>(index), value_manager, scratch);
+  absl::Status GetImpl(ValueManager& value_manager, size_t index,
+                       Value& result) const final {
+    Value scratch;
+    CEL_ASSIGN_OR_RETURN(
+        result, field_to_value_accessor_(
+                    shared_from_this(), &message_, GetReflectionOrDie(message_),
+                    field_, static_cast<int>(index), value_manager, scratch));
+    return absl::OkStatus();
   }
 
   NativeTypeId GetNativeTypeId() const final {
@@ -1153,12 +1156,12 @@ class ParsedProtoMapKeyIterator final : public ValueIterator {
 
   bool HasNext() override { return begin_ != end_; }
 
-  absl::StatusOr<ValueView> Next(ValueManager& value_manager,
-                                 Value& scratch) override {
+  absl::Status Next(ValueManager& value_manager, Value& result) override {
+    Value scratch;
     CEL_ASSIGN_OR_RETURN(
-        auto key, map_key_to_value_(begin_.GetKey(), value_manager, scratch));
+        result, map_key_to_value_(begin_.GetKey(), value_manager, scratch));
     ++begin_;
-    return key;
+    return absl::OkStatus();
   }
 
  private:
@@ -1221,8 +1224,8 @@ class ParsedProtoMapValueInterface
         *GetReflectionOrDie(message_), message_, *field_));
   }
 
-  absl::StatusOr<ListValueView> ListKeys(ValueManager& value_manager,
-                                         ListValue& scratch) const final {
+  absl::Status ListKeys(ValueManager& value_manager,
+                        ListValue& result) const final {
     CEL_ASSIGN_OR_RETURN(auto builder,
                          value_manager.NewListValueBuilder(ListTypeView{}));
     builder->Reserve(Size());
@@ -1233,11 +1236,11 @@ class ParsedProtoMapValueInterface
       CEL_ASSIGN_OR_RETURN(
           auto key,
           map_key_to_value_(begin.GetKey(), value_manager, key_scratch));
-      CEL_RETURN_IF_ERROR(builder->Add(Value{key}));
+      CEL_RETURN_IF_ERROR(builder->Add(Value(key)));
       ++begin;
     }
-    scratch = std::move(*builder).Build();
-    return ListValueView{scratch};
+    result = std::move(*builder).Build();
+    return absl::OkStatus();
   }
 
   absl::Status ForEach(ValueManager& value_manager,
@@ -1270,20 +1273,21 @@ class ParsedProtoMapValueInterface
   }
 
  private:
-  absl::StatusOr<absl::optional<ValueView>> FindImpl(
-      ValueManager& value_manager, ValueView key, Value& scratch) const final {
+  absl::StatusOr<bool> FindImpl(ValueManager& value_manager, ValueView key,
+                                Value& result) const final {
     google::protobuf::MapKey map_key;
     CEL_RETURN_IF_ERROR(map_key_from_value_(key, map_key));
     google::protobuf::MapValueConstRef map_value;
     if (!LookupMapValue(*GetReflectionOrDie(message_), message_, *field_,
                         map_key, &map_value)) {
-      return absl::nullopt;
+      return false;
     }
+    Value scratch;
     CEL_ASSIGN_OR_RETURN(
-        auto value, map_value_to_value_(shared_from_this(),
-                                        field_->message_type()->map_value(),
-                                        map_value, value_manager, scratch));
-    return value;
+        result, map_value_to_value_(shared_from_this(),
+                                    field_->message_type()->map_value(),
+                                    map_value, value_manager, scratch));
+    return true;
   }
 
   absl::StatusOr<bool> HasImpl(ValueManager& value_manager,
@@ -1421,35 +1425,35 @@ class ParsedProtoStructValueInterface
 
   bool IsZeroValue() const final { return message().ByteSizeLong() == 0; }
 
-  absl::StatusOr<ValueView> GetFieldByName(
-      ValueManager& value_manager, absl::string_view name, Value& scratch,
+  absl::Status GetFieldByName(
+      ValueManager& value_manager, absl::string_view name, Value& result,
       ProtoWrapperTypeOptions unboxing_options) const final {
     const auto* desc = message().GetDescriptor();
     const auto* field_desc = desc->FindFieldByName(name);
     if (ABSL_PREDICT_FALSE(field_desc == nullptr)) {
       field_desc = message().GetReflection()->FindKnownExtensionByName(name);
       if (ABSL_PREDICT_FALSE(field_desc == nullptr)) {
-        scratch = NoSuchFieldError(name);
-        return scratch;
+        result = NoSuchFieldError(name);
+        return absl::OkStatus();
       }
     }
-    return GetField(value_manager, field_desc, scratch, unboxing_options);
+    return GetField(value_manager, field_desc, result, unboxing_options);
   }
 
-  absl::StatusOr<ValueView> GetFieldByNumber(
-      ValueManager& value_manager, int64_t number, Value& scratch,
+  absl::Status GetFieldByNumber(
+      ValueManager& value_manager, int64_t number, Value& result,
       ProtoWrapperTypeOptions unboxing_options) const final {
     if (!IsValidFieldNumber(number)) {
-      scratch = NoSuchFieldError(absl::StrCat(number));
-      return scratch;
+      result = NoSuchFieldError(absl::StrCat(number));
+      return absl::OkStatus();
     }
     const auto* desc = message().GetDescriptor();
     const auto* field_desc = desc->FindFieldByNumber(static_cast<int>(number));
     if (ABSL_PREDICT_FALSE(field_desc == nullptr)) {
-      scratch = NoSuchFieldError(absl::StrCat(number));
-      return scratch;
+      result = NoSuchFieldError(absl::StrCat(number));
+      return absl::OkStatus();
     }
-    return GetField(value_manager, field_desc, scratch, unboxing_options);
+    return GetField(value_manager, field_desc, result, unboxing_options);
   }
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const final {
@@ -1496,9 +1500,9 @@ class ParsedProtoStructValueInterface
     return absl::OkStatus();
   }
 
-  absl::StatusOr<std::pair<ValueView, int>> Qualify(
-      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
-      bool presence_test, Value& scratch) const final {
+  absl::StatusOr<int> Qualify(ValueManager& value_manager,
+                              absl::Span<const SelectQualifier> qualifiers,
+                              bool presence_test, Value& result) const final {
     if (ABSL_PREDICT_FALSE(qualifiers.empty())) {
       return absl::InvalidArgumentError("invalid select qualifier path.");
     }
@@ -1511,9 +1515,8 @@ class ParsedProtoStructValueInterface
       CEL_RETURN_IF_ERROR(
           qualify_state.ApplySelectQualifier(qualifier, memory_manager));
       if (qualify_state.result().has_value()) {
-        scratch = std::move(qualify_state.result()).value();
-        return std::pair{ValueView{scratch},
-                         scratch.Is<ErrorValue>() ? -1 : i + 1};
+        result = std::move(qualify_state.result()).value();
+        return result.Is<ErrorValue>() ? -1 : i + 1;
       }
     }
     const auto& last_qualifier = qualifiers.back();
@@ -1524,8 +1527,8 @@ class ParsedProtoStructValueInterface
       CEL_RETURN_IF_ERROR(
           qualify_state.ApplyLastQualifierGet(last_qualifier, memory_manager));
     }
-    scratch = std::move(qualify_state.result()).value();
-    return std::pair{ValueView{scratch}, -1};
+    result = std::move(qualify_state.result()).value();
+    return -1;
   }
 
   virtual const google::protobuf::Message& message() const = 0;
@@ -1536,19 +1539,20 @@ class ParsedProtoStructValueInterface
   }
 
  private:
-  absl::StatusOr<ValueView> EqualImpl(ValueManager& value_manager,
-                                      ParsedStructValueView other,
-                                      Value& scratch) const final {
+  absl::Status EqualImpl(ValueManager& value_manager,
+                         ParsedStructValueView other,
+                         Value& result) const final {
     if (const auto* parsed_proto_struct_value = AsParsedProtoStructValue(other);
         parsed_proto_struct_value) {
       const auto& lhs_message = message();
       const auto& rhs_message = parsed_proto_struct_value->message();
       if (lhs_message.GetDescriptor() == rhs_message.GetDescriptor()) {
-        return BoolValueView{
+        result = BoolValue{
             google::protobuf::util::MessageDifferencer::Equals(lhs_message, rhs_message)};
+        return absl::OkStatus();
       }
     }
-    return ParsedStructValueInterface::EqualImpl(value_manager, other, scratch);
+    return ParsedStructValueInterface::EqualImpl(value_manager, other, result);
   }
 
   NativeTypeId GetNativeTypeId() const final {
@@ -1564,13 +1568,16 @@ class ParsedProtoStructValueInterface
     return reflect->HasField(message(), field_desc);
   }
 
-  absl::StatusOr<ValueView> GetField(
+  absl::Status GetField(
       ValueManager& value_manager,
-      absl::Nonnull<const google::protobuf::FieldDescriptor*> field_desc, Value& scratch,
+      absl::Nonnull<const google::protobuf::FieldDescriptor*> field_desc, Value& result,
       ProtoWrapperTypeOptions unboxing_options) const {
-    return ProtoFieldToValue(shared_from_this(), &message(),
-                             message().GetReflection(), field_desc,
-                             value_manager, scratch, unboxing_options);
+    Value scratch;
+    CEL_ASSIGN_OR_RETURN(
+        result, ProtoFieldToValue(shared_from_this(), &message(),
+                                  message().GetReflection(), field_desc,
+                                  value_manager, scratch, unboxing_options));
+    return absl::OkStatus();
   }
 };
 

@@ -91,17 +91,19 @@ absl::StatusOr<Json> StringValue::ConvertToJson(AnyToJsonConverter&) const {
   return NativeCord();
 }
 
-absl::StatusOr<ValueView> StringValue::Equal(ValueManager&, ValueView other,
-                                             Value&) const {
+absl::Status StringValue::Equal(ValueManager&, ValueView other,
+                                Value& result) const {
   if (auto other_value = As<StringValueView>(other); other_value.has_value()) {
-    return NativeValue([other_value](const auto& value) -> BoolValueView {
+    result = NativeValue([other_value](const auto& value) -> BoolValue {
       return other_value->NativeValue(
-          [&value](const auto& other_value) -> BoolValueView {
-            return BoolValueView{value == other_value};
+          [&value](const auto& other_value) -> BoolValue {
+            return BoolValue{value == other_value};
           });
     });
+    return absl::OkStatus();
   }
-  return BoolValueView{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
 size_t StringValue::Size() const {
@@ -210,17 +212,19 @@ absl::StatusOr<Json> StringValueView::ConvertToJson(AnyToJsonConverter&) const {
   return NativeCord();
 }
 
-absl::StatusOr<ValueView> StringValueView::Equal(ValueManager&, ValueView other,
-                                                 Value&) const {
+absl::Status StringValueView::Equal(ValueManager&, ValueView other,
+                                    Value& result) const {
   if (auto other_value = As<StringValueView>(other); other_value.has_value()) {
-    return NativeValue([other_value](const auto& value) -> BoolValueView {
+    result = NativeValue([other_value](const auto& value) -> BoolValue {
       return other_value->NativeValue(
-          [&value](const auto& other_value) -> BoolValueView {
-            return BoolValueView{value == other_value};
+          [&value](const auto& other_value) -> BoolValue {
+            return BoolValue{value == other_value};
           });
     });
+    return absl::OkStatus();
   }
-  return BoolValueView{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
 size_t StringValueView::Size() const {

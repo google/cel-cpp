@@ -49,18 +49,15 @@ using LegacyListValue_ConvertToJsonArray =
     absl::StatusOr<JsonArray> (*)(uintptr_t);
 using LegacyListValue_IsEmpty = bool (*)(uintptr_t);
 using LegacyListValue_Size = size_t (*)(uintptr_t);
-using LegacyListValue_Get = absl::StatusOr<ValueView> (*)(uintptr_t,
-                                                          ValueManager&, size_t,
-                                                          Value&);
+using LegacyListValue_Get = absl::Status (*)(uintptr_t, ValueManager&, size_t,
+                                             Value&);
 using LegacyListValue_ForEach = absl::Status (*)(
     uintptr_t, ValueManager&, LegacyListValue::ForEachWithIndexCallback);
 using LegacyListValue_NewIterator =
     absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> (*)(uintptr_t,
                                                         ValueManager&);
-using LegacyListValue_Contains = absl::StatusOr<ValueView> (*)(uintptr_t,
-                                                               ValueManager&,
-                                                               ValueView,
-                                                               Value&);
+using LegacyListValue_Contains = absl::Status (*)(uintptr_t, ValueManager&,
+                                                  ValueView, Value&);
 
 ABSL_CONST_INIT struct {
   absl::once_flag init_once;
@@ -94,7 +91,7 @@ extern "C" ABSL_ATTRIBUTE_WEAK bool cel_common_internal_LegacyListValue_IsEmpty(
     uintptr_t impl);
 extern "C" ABSL_ATTRIBUTE_WEAK size_t
 cel_common_internal_LegacyListValue_Size(uintptr_t impl);
-extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<ValueView>
+extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
 cel_common_internal_LegacyListValue_Get(uintptr_t impl,
                                         ValueManager& value_manager,
                                         size_t index, Value& scratch);
@@ -105,7 +102,7 @@ cel_common_internal_LegacyListValue_ForEach(
 extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
 cel_common_internal_LegacyListValue_NewIterator(uintptr_t impl,
                                                 ValueManager& value_manager);
-extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<ValueView>
+extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
 cel_common_internal_LegacyListValue_Contains(uintptr_t impl,
                                              ValueManager& value_manager,
                                              ValueView other, Value& scratch);
@@ -233,11 +230,10 @@ size_t LegacyListValue::Size() const {
 }
 
 // See LegacyListValueInterface::Get for documentation.
-absl::StatusOr<ValueView> LegacyListValue::Get(ValueManager& value_manager,
-                                               size_t index,
-                                               Value& scratch) const {
+absl::Status LegacyListValue::Get(ValueManager& value_manager, size_t index,
+                                  Value& result) const {
   InitializeLegacyListValue();
-  return (*legacy_list_value_vtable.get)(impl_, value_manager, index, scratch);
+  return (*legacy_list_value_vtable.get)(impl_, value_manager, index, result);
 }
 
 absl::Status LegacyListValue::ForEach(ValueManager& value_manager,
@@ -260,21 +256,20 @@ absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyListValue::NewIterator(
   return (*legacy_list_value_vtable.new_iterator)(impl_, value_manager);
 }
 
-absl::StatusOr<ValueView> LegacyListValue::Equal(ValueManager& value_manager,
-                                                 ValueView other,
-                                                 Value& scratch) const {
+absl::Status LegacyListValue::Equal(ValueManager& value_manager,
+                                    ValueView other, Value& result) const {
   if (auto list_value = As<ListValueView>(other); list_value.has_value()) {
-    return ListValueEqual(value_manager, *this, *list_value, scratch);
+    return ListValueEqual(value_manager, *this, *list_value, result);
   }
-  return BoolValueView{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> LegacyListValue::Contains(
-    ValueManager& value_manager, ValueView other,
-    Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const {
+absl::Status LegacyListValue::Contains(ValueManager& value_manager,
+                                       ValueView other, Value& result) const {
   InitializeLegacyListValue();
   return (*legacy_list_value_vtable.contains)(impl_, value_manager, other,
-                                              scratch);
+                                              result);
 }
 
 ListType LegacyListValueView::GetType(TypeManager& type_manager) const {
@@ -340,11 +335,10 @@ size_t LegacyListValueView::Size() const {
 }
 
 // See LegacyListValueInterface::Get for documentation.
-absl::StatusOr<ValueView> LegacyListValueView::Get(ValueManager& value_manager,
-                                                   size_t index,
-                                                   Value& scratch) const {
+absl::Status LegacyListValueView::Get(ValueManager& value_manager, size_t index,
+                                      Value& result) const {
   InitializeLegacyListValue();
-  return (*legacy_list_value_vtable.get)(impl_, value_manager, index, scratch);
+  return (*legacy_list_value_vtable.get)(impl_, value_manager, index, result);
 }
 
 absl::Status LegacyListValueView::ForEach(ValueManager& value_manager,
@@ -367,20 +361,21 @@ LegacyListValueView::NewIterator(ValueManager& value_manager) const {
   return (*legacy_list_value_vtable.new_iterator)(impl_, value_manager);
 }
 
-absl::StatusOr<ValueView> LegacyListValueView::Equal(
-    ValueManager& value_manager, ValueView other, Value& scratch) const {
+absl::Status LegacyListValueView::Equal(ValueManager& value_manager,
+                                        ValueView other, Value& result) const {
   if (auto list_value = As<ListValueView>(other); list_value.has_value()) {
-    return ListValueEqual(value_manager, *this, *list_value, scratch);
+    return ListValueEqual(value_manager, *this, *list_value, result);
   }
-  return BoolValueView{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> LegacyListValueView::Contains(
-    ValueManager& value_manager, ValueView other,
-    Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const {
+absl::Status LegacyListValueView::Contains(ValueManager& value_manager,
+                                           ValueView other,
+                                           Value& result) const {
   InitializeLegacyListValue();
   return (*legacy_list_value_vtable.contains)(impl_, value_manager, other,
-                                              scratch);
+                                              result);
 }
 
 }  // namespace cel::common_internal

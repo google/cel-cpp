@@ -92,9 +92,8 @@ class LegacyStructValue final {
 
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
 
   bool IsZeroValue() const;
 
@@ -104,17 +103,15 @@ class LegacyStructValue final {
     swap(type_info_, other.type_info_);
   }
 
-  absl::StatusOr<ValueView> GetFieldByName(
-      ValueManager& value_manager, absl::string_view name,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      ProtoWrapperTypeOptions unboxing_options =
-          ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::Status GetFieldByName(ValueManager& value_manager,
+                              absl::string_view name, Value& result,
+                              ProtoWrapperTypeOptions unboxing_options =
+                                  ProtoWrapperTypeOptions::kUnsetNull) const;
 
-  absl::StatusOr<ValueView> GetFieldByNumber(
-      ValueManager& value_manager, int64_t number,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      ProtoWrapperTypeOptions unboxing_options =
-          ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::Status GetFieldByNumber(ValueManager& value_manager, int64_t number,
+                                Value& result,
+                                ProtoWrapperTypeOptions unboxing_options =
+                                    ProtoWrapperTypeOptions::kUnsetNull) const;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
 
@@ -125,9 +122,9 @@ class LegacyStructValue final {
   absl::Status ForEachField(ValueManager& value_manager,
                             ForEachFieldCallback callback) const;
 
-  absl::StatusOr<std::pair<ValueView, int>> Qualify(
-      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
-      bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<int> Qualify(ValueManager& value_manager,
+                              absl::Span<const SelectQualifier> qualifiers,
+                              bool presence_test, Value& result) const;
 
   uintptr_t message_ptr() const { return message_ptr_; }
 
@@ -206,9 +203,8 @@ class LegacyStructValueView final {
 
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
 
   bool IsZeroValue() const;
 
@@ -218,17 +214,15 @@ class LegacyStructValueView final {
     swap(type_info_, other.type_info_);
   }
 
-  absl::StatusOr<ValueView> GetFieldByName(
-      ValueManager& value_manager, absl::string_view name,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      ProtoWrapperTypeOptions unboxing_options =
-          ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::Status GetFieldByName(ValueManager& value_manager,
+                              absl::string_view name, Value& result,
+                              ProtoWrapperTypeOptions unboxing_options =
+                                  ProtoWrapperTypeOptions::kUnsetNull) const;
 
-  absl::StatusOr<ValueView> GetFieldByNumber(
-      ValueManager& value_manager, int64_t number,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      ProtoWrapperTypeOptions unboxing_options =
-          ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::Status GetFieldByNumber(ValueManager& value_manager, int64_t number,
+                                Value& result,
+                                ProtoWrapperTypeOptions unboxing_options =
+                                    ProtoWrapperTypeOptions::kUnsetNull) const;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
 
@@ -239,9 +233,9 @@ class LegacyStructValueView final {
   absl::Status ForEachField(ValueManager& value_manager,
                             ForEachFieldCallback callback) const;
 
-  absl::StatusOr<std::pair<ValueView, int>> Qualify(
-      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
-      bool presence_test, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::StatusOr<int> Qualify(ValueManager& value_manager,
+                              absl::Span<const SelectQualifier> qualifiers,
+                              bool presence_test, Value& result) const;
 
   uintptr_t message_ptr() const { return message_ptr_; }
 

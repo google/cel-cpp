@@ -471,8 +471,9 @@ TEST_P(ProtoValueWrapTest, ProtoMessageQualify) {
   ASSERT_OK_AND_ASSIGN(auto qualify_value,
                        struct_value.Qualify(value_manager(), qualifiers,
                                             /*presence_test=*/false, scratch));
+  static_cast<void>(qualify_value);
 
-  EXPECT_THAT(Value(qualify_value.first), IntValueIs(42));
+  EXPECT_THAT(scratch, IntValueIs(42));
 }
 
 TEST_P(ProtoValueWrapTest, ProtoMessageQualifyHas) {
@@ -494,8 +495,9 @@ TEST_P(ProtoValueWrapTest, ProtoMessageQualifyHas) {
   ASSERT_OK_AND_ASSIGN(auto qualify_value,
                        struct_value.Qualify(value_manager(), qualifiers,
                                             /*presence_test=*/true, scratch));
+  static_cast<void>(qualify_value);
 
-  EXPECT_THAT(Value(qualify_value.first), BoolValueIs(true));
+  EXPECT_THAT(scratch, BoolValueIs(true));
 }
 
 TEST_P(ProtoValueWrapTest, ProtoInt64MapListKeys) {

@@ -106,9 +106,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final {
 
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
                               ValueView other) const;
 
@@ -213,9 +212,8 @@ class ErrorValueView final {
 
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const;
 
-  absl::StatusOr<ValueView> Equal(ValueManager& value_manager, ValueView other,
-                                  Value& scratch
-                                      ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
                               ValueView other) const;
 

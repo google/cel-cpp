@@ -39,13 +39,13 @@ class ParsedListValueInterfaceIterator final : public ValueIterator {
 
   bool HasNext() override { return index_ < size_; }
 
-  absl::StatusOr<ValueView> Next(ValueManager&, Value& scratch) override {
+  absl::Status Next(ValueManager&, Value& result) override {
     if (ABSL_PREDICT_FALSE(index_ >= size_)) {
       return absl::FailedPreconditionError(
           "ValueIterator::Next() called when "
           "ValueIterator::HasNext() returns false");
     }
-    return interface_.GetImpl(value_manager_, index_++, scratch);
+    return interface_.GetImpl(value_manager_, index_++, result);
   }
 
  private:
@@ -67,12 +67,12 @@ absl::Status ParsedListValueInterface::SerializeTo(
   return internal::SerializeListValue(json, value);
 }
 
-absl::StatusOr<ValueView> ParsedListValueInterface::Get(
-    ValueManager& value_manager, size_t index, Value& scratch) const {
+absl::Status ParsedListValueInterface::Get(ValueManager& value_manager,
+                                           size_t index, Value& result) const {
   if (ABSL_PREDICT_FALSE(index >= Size())) {
     return absl::InvalidArgumentError("index out of bounds");
   }
-  return GetImpl(value_manager, index, scratch);
+  return GetImpl(value_manager, index, result);
 }
 
 absl::Status ParsedListValueInterface::ForEach(ValueManager& value_manager,
@@ -87,8 +87,8 @@ absl::Status ParsedListValueInterface::ForEach(
     ValueManager& value_manager, ForEachWithIndexCallback callback) const {
   const size_t size = Size();
   for (size_t index = 0; index < size; ++index) {
-    Value scratch;
-    CEL_ASSIGN_OR_RETURN(auto element, GetImpl(value_manager, index, scratch));
+    Value element;
+    CEL_RETURN_IF_ERROR(GetImpl(value_manager, index, element));
     CEL_ASSIGN_OR_RETURN(auto ok, callback(index, element));
     if (!ok) {
       break;
@@ -103,31 +103,35 @@ ParsedListValueInterface::NewIterator(ValueManager& value_manager) const {
                                                             value_manager);
 }
 
-absl::StatusOr<ValueView> ParsedListValueInterface::Equal(
-    ValueManager& value_manager, ValueView other, Value& scratch) const {
+absl::Status ParsedListValueInterface::Equal(ValueManager& value_manager,
+                                             ValueView other,
+                                             Value& result) const {
   if (auto list_value = As<ListValueView>(other); list_value.has_value()) {
-    return ListValueEqual(value_manager, *this, *list_value, scratch);
+    return ListValueEqual(value_manager, *this, *list_value, result);
   }
-  return BoolValueView{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ParsedListValueInterface::Contains(
-    ValueManager& value_manager, ValueView other, Value& scratch) const {
-  ValueView outcome = BoolValueView{false};
+absl::Status ParsedListValueInterface::Contains(ValueManager& value_manager,
+                                                ValueView other,
+                                                Value& result) const {
+  Value outcome = BoolValue(false);
+  Value equal;
   CEL_RETURN_IF_ERROR(
       ForEach(value_manager,
-              [&value_manager, other, &scratch,
-               &outcome](ValueView element) -> absl::StatusOr<bool> {
-                CEL_ASSIGN_OR_RETURN(
-                    auto result, element.Equal(value_manager, other, scratch));
-                if (auto bool_result = As<BoolValueView>(result);
+              [&value_manager, other, &outcome,
+               &equal](ValueView element) -> absl::StatusOr<bool> {
+                CEL_RETURN_IF_ERROR(element.Equal(value_manager, other, equal));
+                if (auto bool_result = As<BoolValue>(equal);
                     bool_result.has_value() && bool_result->NativeValue()) {
-                  outcome = *bool_result;
+                  outcome = BoolValue(true);
                   return false;
                 }
                 return true;
               }));
-  return outcome;
+  result = outcome;
+  return absl::OkStatus();
 }
 
 }  // namespace cel

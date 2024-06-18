@@ -101,29 +101,33 @@ absl::StatusOr<Json> DoubleValueBase::ConvertToJson(AnyToJsonConverter&) const {
   return NativeValue();
 }
 
-absl::StatusOr<ValueView> DoubleValueBase::Equal(ValueManager&, ValueView other,
-                                                 Value&) const {
+absl::Status DoubleValueBase::Equal(ValueManager&, ValueView other,
+                                    Value& result) const {
   if (auto other_value = As<DoubleValueView>(other); other_value.has_value()) {
-    return BoolValueView{NativeValue() == other_value->NativeValue()};
+    result = BoolValueView{NativeValue() == other_value->NativeValue()};
+    return absl::OkStatus();
   }
   if (auto other_value = As<IntValueView>(other); other_value.has_value()) {
-    return BoolValueView{
-        internal::Number::FromDouble(NativeValue()) ==
-        internal::Number::FromInt64(other_value->NativeValue())};
+    result =
+        BoolValueView{internal::Number::FromDouble(NativeValue()) ==
+                      internal::Number::FromInt64(other_value->NativeValue())};
+    return absl::OkStatus();
   }
   if (auto other_value = As<UintValueView>(other); other_value.has_value()) {
-    return BoolValueView{
-        internal::Number::FromDouble(NativeValue()) ==
-        internal::Number::FromUint64(other_value->NativeValue())};
+    result =
+        BoolValueView{internal::Number::FromDouble(NativeValue()) ==
+                      internal::Number::FromUint64(other_value->NativeValue())};
+    return absl::OkStatus();
   }
-  return BoolValueView{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
 }
 
 absl::StatusOr<Value> DoubleValueBase::Equal(ValueManager& value_manager,
                                              ValueView other) const {
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto result, Equal(value_manager, other, scratch));
-  return Value{result};
+  Value result;
+  CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
+  return result;
 }
 
 }  // namespace cel::common_internal

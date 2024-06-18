@@ -21,7 +21,7 @@
 #include <type_traits>
 
 #include "absl/base/attributes.h"
-#include "absl/status/statusor.h"
+#include "absl/status/status.h"
 #include "absl/types/variant.h"
 
 namespace cel {
@@ -510,29 +510,26 @@ ABSL_ATTRIBUTE_PURE_FUNCTION ParsedMapValueView GetEmptyDynDynMapValue();
 
 ABSL_ATTRIBUTE_PURE_FUNCTION OptionalValueView GetEmptyDynOptionalValue();
 
-absl::StatusOr<ValueView> ListValueEqual(ValueManager& value_manager,
-                                         ListValueView lhs, ListValueView rhs,
-                                         Value& scratch);
+absl::Status ListValueEqual(ValueManager& value_manager, ListValueView lhs,
+                            ListValueView rhs, Value& result);
 
-absl::StatusOr<ValueView> ListValueEqual(ValueManager& value_manager,
-                                         const ParsedListValueInterface& lhs,
-                                         ListValueView rhs, Value& scratch);
+absl::Status ListValueEqual(ValueManager& value_manager,
+                            const ParsedListValueInterface& lhs,
+                            ListValueView rhs, Value& result);
 
-absl::StatusOr<ValueView> MapValueEqual(ValueManager& value_manager,
-                                        MapValueView lhs, MapValueView rhs,
-                                        Value& scratch);
+absl::Status MapValueEqual(ValueManager& value_manager, MapValueView lhs,
+                           MapValueView rhs, Value& result);
 
-absl::StatusOr<ValueView> MapValueEqual(ValueManager& value_manager,
-                                        const ParsedMapValueInterface& lhs,
-                                        MapValueView rhs, Value& scratch);
+absl::Status MapValueEqual(ValueManager& value_manager,
+                           const ParsedMapValueInterface& lhs, MapValueView rhs,
+                           Value& result);
 
-absl::StatusOr<ValueView> StructValueEqual(ValueManager& value_manager,
-                                           StructValueView lhs,
-                                           StructValueView rhs, Value& scratch);
+absl::Status StructValueEqual(ValueManager& value_manager, StructValueView lhs,
+                              StructValueView rhs, Value& result);
 
-absl::StatusOr<ValueView> StructValueEqual(
-    ValueManager& value_manager, const ParsedStructValueInterface& lhs,
-    StructValueView rhs, Value& scratch);
+absl::Status StructValueEqual(ValueManager& value_manager,
+                              const ParsedStructValueInterface& lhs,
+                              StructValueView rhs, Value& result);
 
 const SharedByteString& AsSharedByteString(const BytesValue& value);
 SharedByteStringView AsSharedByteStringView(BytesValueView value);
