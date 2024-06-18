@@ -84,6 +84,7 @@ cc_test(
         "//common:casting",
         "//common:json",
         "//common:legacy_value",
+        "//common:memory",
         "//common:native_type",
         "//common:value",
         "//extensions/protobuf:memory_manager",
