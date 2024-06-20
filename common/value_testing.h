@@ -18,8 +18,11 @@
 #include <cstdint>
 #include <ostream>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "common/memory.h"
@@ -110,6 +113,86 @@ MATCHER_P2(StructValueFieldHas, name, m, "") {
   return ExplainMatchResult(wrapped_m,
                             cel::StructValueView(arg).HasFieldByName(name),
                             result_listener);
+}
+
+class ListValueElementsMatcher {
+ public:
+  using is_gtest_matcher = void;
+
+  explicit ListValueElementsMatcher(cel::ValueManager* mgr,
+                                    testing::Matcher<std::vector<Value>>&& m)
+      : mgr_(*mgr), m_(std::move(m)) {}
+
+  bool MatchAndExplain(const ListValue& arg,
+                       testing::MatchResultListener* result_listener) const {
+    std::vector<Value> elements;
+    absl::Status s =
+        arg.ForEach(mgr_, [&](ValueView v) -> absl::StatusOr<bool> {
+          elements.push_back(Value(v));
+          return true;
+        });
+    if (!s.ok()) {
+      *result_listener << "cannot convert to list of values: " << s;
+      return false;
+    }
+    return m_.MatchAndExplain(elements, result_listener);
+  }
+
+  void DescribeTo(std::ostream* os) const { *os << m_; }
+  void DescribeNegationTo(std::ostream* os) const { *os << m_; }
+
+ private:
+  ValueManager& mgr_;
+  testing::Matcher<std::vector<Value>> m_;
+};
+
+// Returns a matcher that tests the elements of a CEL list value on a given
+// matcher as if they were a vector of cel::Value.
+// ValueManager* mgr must remain valid for the lifetime of the matcher.
+inline ListValueElementsMatcher ListValueElements(
+    ValueManager* mgr, testing::Matcher<std::vector<Value>>&& m) {
+  return ListValueElementsMatcher(mgr, std::move(m));
+}
+
+class MapValueElementsMatcher {
+ public:
+  using is_gtest_matcher = void;
+
+  explicit MapValueElementsMatcher(
+      cel::ValueManager* mgr,
+      testing::Matcher<std::vector<std::pair<Value, Value>>>&& m)
+      : mgr_(*mgr), m_(std::move(m)) {}
+
+  bool MatchAndExplain(const MapValue& arg,
+                       testing::MatchResultListener* result_listener) const {
+    std::vector<std::pair<Value, Value>> elements;
+    absl::Status s = arg.ForEach(
+        mgr_, [&](ValueView key, ValueView value) -> absl::StatusOr<bool> {
+          elements.push_back({Value(key), Value(value)});
+          return true;
+        });
+    if (!s.ok()) {
+      *result_listener << "cannot convert to list of values: " << s;
+      return false;
+    }
+    return m_.MatchAndExplain(elements, result_listener);
+  }
+
+  void DescribeTo(std::ostream* os) const { *os << m_; }
+  void DescribeNegationTo(std::ostream* os) const { *os << m_; }
+
+ private:
+  ValueManager& mgr_;
+  testing::Matcher<std::vector<std::pair<Value, Value>>> m_;
+};
+
+// Returns a matcher that tests the elements of a CEL list value on a given
+// matcher as if they were a vector of cel::Value.
+// ValueManager* mgr must remain valid for the lifetime of the matcher.
+inline MapValueElementsMatcher MapValueElements(
+    ValueManager* mgr,
+    testing::Matcher<std::vector<std::pair<Value, Value>>>&& m) {
+  return MapValueElementsMatcher(mgr, std::move(m));
 }
 
 }  // namespace test
