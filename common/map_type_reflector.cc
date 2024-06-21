@@ -999,4 +999,27 @@ absl::StatusOr<Unique<MapValueBuilder>> TypeReflector::NewMapValueBuilder(
   }
 }
 
+namespace common_internal {
+
+absl::StatusOr<Unique<MapValueBuilder>> LegacyTypeReflector::NewMapValueBuilder(
+    ValueFactory& value_factory, MapTypeView type) const {
+  InitializeLegacyTypeReflector();
+  auto memory_manager = value_factory.GetMemoryManager();
+  if (memory_manager.memory_management() == MemoryManagement::kPooling &&
+      legacy_type_reflector_vtable.new_map_value_builder != nullptr) {
+    auto status_or_builder =
+        (*legacy_type_reflector_vtable.new_map_value_builder)(value_factory,
+                                                              type);
+    if (status_or_builder.ok()) {
+      return std::move(status_or_builder).value();
+    }
+    if (!absl::IsUnimplemented(status_or_builder.status())) {
+      return status_or_builder;
+    }
+  }
+  return TypeReflector::NewMapValueBuilder(value_factory, type);
+}
+
+}  // namespace common_internal
+
 }  // namespace cel

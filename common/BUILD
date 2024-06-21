@@ -838,6 +838,22 @@ cc_library(
     alwayslink = True,
 )
 
+# Due to how dynamic linking works for legacy types, we need this to be separate from the standard
+# value tests, which assume the fallback behavior if dynamic loading for legacy types isn't
+# available.
+cc_test(
+    name = "legacy_type_reflector_test",
+    srcs = ["legacy_type_reflector_test.cc"],
+    deps = [
+        ":legacy_value",
+        ":memory",
+        ":value",
+        ":value_testing",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+    ],
+)
+
 cc_library(
     name = "arena",
     hdrs = ["arena.h"],

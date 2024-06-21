@@ -24,6 +24,8 @@
 #include "common/type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
+#include "common/values/legacy_value_manager.h"
+#include "common/values/list_value.h"
 #include "internal/testing.h"
 
 namespace cel {

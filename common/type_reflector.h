@@ -33,16 +33,26 @@ namespace cel {
 // runtime. It handles type reflection.
 class TypeReflector : public virtual TypeIntrospector {
  public:
-  static TypeReflector& Builtin();
+  // Legacy type reflector, will prefer builders for legacy value.
+  static TypeReflector& LegacyBuiltin();
+  // Will prefer builders for modern values.
+  static TypeReflector& ModernBuiltin();
+
+  static TypeReflector& Builtin() {
+    // TODO(uncreated-issue/69): Check if it's safe to default to modern.
+    // Legacy will prefer legacy container builders for faster interop with
+    // client extensions.
+    return LegacyBuiltin();
+  }
 
   // `NewListValueBuilder` returns a new `ListValueBuilderInterface` for the
   // corresponding `ListType` `type`.
-  absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(
+  virtual absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(
       ValueFactory& value_factory, ListTypeView type) const;
 
   // `NewMapValueBuilder` returns a new `MapValueBuilderInterface` for the
   // corresponding `MapType` `type`.
-  absl::StatusOr<Unique<MapValueBuilder>> NewMapValueBuilder(
+  virtual absl::StatusOr<Unique<MapValueBuilder>> NewMapValueBuilder(
       ValueFactory& value_factory, MapTypeView type) const;
 
   // `NewStructValueBuilder` returns a new `StructValueBuilder` for the
@@ -88,6 +98,20 @@ Shared<TypeReflector> NewThreadCompatibleTypeReflector(
 
 Shared<TypeReflector> NewThreadSafeTypeReflector(
     MemoryManagerRef memory_manager);
+
+namespace common_internal {
+
+// Implementation backing LegacyBuiltin().
+class LegacyTypeReflector : public TypeReflector {
+ public:
+  absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(
+      ValueFactory& value_factory, ListTypeView type) const override;
+
+  absl::StatusOr<Unique<MapValueBuilder>> NewMapValueBuilder(
+      ValueFactory& value_factory, MapTypeView type) const override;
+};
+
+}  // namespace common_internal
 
 }  // namespace cel
 

@@ -25,9 +25,13 @@ cc_library(
     hdrs = ["composed_type_provider.h"],
     deps = [
         "//base:data",
+        "//common:memory",
         "//common:type",
+        "//common:value",
         "//internal:status_macros",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:optional",
     ],
 )

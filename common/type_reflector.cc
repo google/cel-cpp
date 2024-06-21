@@ -967,7 +967,12 @@ absl::StatusOr<absl::optional<ValueView>> TypeReflector::FindValue(
   return absl::nullopt;
 }
 
-TypeReflector& TypeReflector::Builtin() {
+TypeReflector& TypeReflector::LegacyBuiltin() {
+  static absl::NoDestructor<common_internal::LegacyTypeReflector> instance;
+  return *instance;
+}
+
+TypeReflector& TypeReflector::ModernBuiltin() {
   static absl::NoDestructor<TypeReflector> instance;
   return *instance;
 }

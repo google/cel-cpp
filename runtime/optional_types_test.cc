@@ -181,6 +181,7 @@ std::ostream& operator<<(std::ostream& os,
 
 TEST_P(OptionalTypesTest, RecursivePlan) {
   RuntimeOptions opts;
+  opts.use_legacy_container_builders = false;
   opts.enable_qualified_type_identifiers = true;
   opts.max_recursion_depth = -1;
   opts.short_circuiting = EnableShortCircuiting();
@@ -217,6 +218,7 @@ TEST_P(OptionalTypesTest, RecursivePlan) {
 
 TEST_P(OptionalTypesTest, Defaults) {
   RuntimeOptions opts;
+  opts.use_legacy_container_builders = false;
   opts.enable_qualified_type_identifiers = true;
   opts.short_circuiting = EnableShortCircuiting();
   const EvaluateResultTestCase& test_case = GetTestCase();
@@ -267,6 +269,8 @@ INSTANTIATE_TEST_SUITE_P(
             {"optional_orValue_absent", "optional.ofNonZeroValue(0).orValue(1)",
              IntValueIs(1)},
             {"optional_orValue_present", "optional.of(1).orValue(2)",
+             IntValueIs(1)},
+            {"list_of_optional", "[optional.of(1)][0].orValue(1)",
              IntValueIs(1)}}),
         /*enable_short_circuiting*/ testing::Bool()),
     OptionalTypesTest::ToString);

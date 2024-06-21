@@ -153,6 +153,15 @@ struct RuntimeOptions {
   // Unlike the stack machine implementation, supporting tracing can affect
   // performance whether or not tracing is requested for a given evaluation.
   bool enable_recursive_tracing = false;
+
+  // Use legacy containers for lists and maps when possible.
+  //
+  // For interoperating with legacy APIs, it can be more efficient to maintain
+  // the list/map representation as CelValues. Requires using an Arena,
+  // otherwise modern implementations are used.
+  //
+  // Default is false for the modern option type.
+  bool use_legacy_container_builders = false;
 };
 // LINT.ThenChange(//depot/google3/eval/public/cel_options.h)
 

@@ -110,6 +110,16 @@ google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
 TypeValue CreateTypeValueFromView(google::protobuf::Arena* arena,
                                   absl::string_view input);
 
+// Test only function for verifying that legacy list builders are used.
+// This is important for performance in some cases, but not exposed in public
+// APIs.
+bool TestOnly_IsLegacyListBuilder(const ListValueBuilder& builder);
+
+// Test only function for verifying that legacy map builders are used.
+// This is important for performance in some cases, but not exposed in public
+// APIs.
+bool TestOnly_IsLegacyMapBuilder(const MapValueBuilder& builder);
+
 }  // namespace cel::interop_internal
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_LEGACY_VALUE_H_

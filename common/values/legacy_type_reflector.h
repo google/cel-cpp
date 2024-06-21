@@ -17,17 +17,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_TYPE_REFLECTOR_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_TYPE_REFLECTOR_H_
 
-#include "common/type_reflector.h"
-#include "common/types/legacy_type_introspector.h"
-
-namespace cel::common_internal {
-
-class LegacyTypeReflector : public LegacyTypeIntrospector,
-                            public TypeReflector {
- public:
-  LegacyTypeReflector() : LegacyTypeIntrospector() {}
-};
-
-}  // namespace cel::common_internal
+#include "common/type_reflector.h"  // IWYU pragma: export
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_TYPE_REFLECTOR_H_

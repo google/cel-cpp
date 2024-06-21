@@ -243,20 +243,7 @@ void InitializeLegacyTypeReflector() {
 
 absl::StatusOr<Unique<ListValueBuilder>> TypeReflector::NewListValueBuilder(
     ValueFactory& value_factory, ListTypeView type) const {
-  InitializeLegacyTypeReflector();
   auto memory_manager = value_factory.GetMemoryManager();
-  if (memory_manager.memory_management() == MemoryManagement::kPooling &&
-      legacy_type_reflector_vtable.new_list_value_builder != nullptr) {
-    auto status_or_builder =
-        (*legacy_type_reflector_vtable.new_list_value_builder)(value_factory,
-                                                               type);
-    if (status_or_builder.ok()) {
-      return std::move(status_or_builder).value();
-    }
-    if (!absl::IsUnimplemented(status_or_builder.status())) {
-      return status_or_builder;
-    }
-  }
   switch (type.element().kind()) {
     case TypeKind::kBool:
       return memory_manager.MakeUnique<ListValueBuilderImpl<BoolValue>>(
@@ -308,5 +295,28 @@ absl::StatusOr<Unique<ListValueBuilder>> TypeReflector::NewListValueBuilder(
           "invalid list element type: ", type.element().DebugString()));
   }
 }
+
+namespace common_internal {
+
+absl::StatusOr<Unique<ListValueBuilder>>
+LegacyTypeReflector::NewListValueBuilder(ValueFactory& value_factory,
+                                         ListTypeView type) const {
+  InitializeLegacyTypeReflector();
+  auto memory_manager = value_factory.GetMemoryManager();
+  if (memory_manager.memory_management() == MemoryManagement::kPooling &&
+      legacy_type_reflector_vtable.new_list_value_builder != nullptr) {
+    auto status_or_builder =
+        (*legacy_type_reflector_vtable.new_list_value_builder)(value_factory,
+                                                               type);
+    if (status_or_builder.ok()) {
+      return std::move(status_or_builder).value();
+    }
+    if (!absl::IsUnimplemented(status_or_builder.status())) {
+      return status_or_builder;
+    }
+  }
+  return TypeReflector::NewListValueBuilder(value_factory, type);
+}
+}  // namespace common_internal
 
 }  // namespace cel

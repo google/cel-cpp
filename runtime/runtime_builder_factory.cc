@@ -35,6 +35,9 @@ RuntimeBuilder CreateRuntimeBuilder(const RuntimeOptions& options) {
   auto& type_registry = mutable_runtime->type_registry();
   auto& function_registry = mutable_runtime->function_registry();
 
+  type_registry.set_use_legacy_container_builders(
+      options.use_legacy_container_builders);
+
   return RuntimeBuilder(type_registry, function_registry,
                         std::move(mutable_runtime));
 }

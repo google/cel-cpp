@@ -141,6 +141,11 @@ class CelListIterator final : public ValueIterator {
   bool HasNext() override { return index_ < size_; }
 
   absl::Status Next(ValueManager&, Value& result) override {
+    if (!HasNext()) {
+      return absl::FailedPreconditionError(
+          "ValueIterator::Next() called when ValueIterator::HasNext() returns "
+          "false");
+    }
     auto cel_value = cel_list_->Get(arena_, index_++);
     Value scratch;
     CEL_ASSIGN_OR_RETURN(result, ModernValue(arena_, cel_value, scratch));
@@ -1628,6 +1633,14 @@ TypeValue CreateTypeValueFromView(google::protobuf::Arena* arena,
   // This is bad, but technically OK since we are using an arena.
   return TypeValue{
       StructType{extensions::ProtoMemoryManagerRef(arena), type_name}};
+}
+
+bool TestOnly_IsLegacyListBuilder(const ListValueBuilder& builder) {
+  return dynamic_cast<const CelListValueBuilder*>(&builder) != nullptr;
+}
+
+bool TestOnly_IsLegacyMapBuilder(const MapValueBuilder& builder) {
+  return dynamic_cast<const CelMapValueBuilder*>(&builder) != nullptr;
 }
 
 }  // namespace interop_internal

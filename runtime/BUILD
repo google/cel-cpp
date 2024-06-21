@@ -212,6 +212,7 @@ cc_library(
     deps = [
         ":runtime_builder",
         ":runtime_options",
+        "//common:value",
         "//runtime/internal:runtime_impl",
     ],
 )

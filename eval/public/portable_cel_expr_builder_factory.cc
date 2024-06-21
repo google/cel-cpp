@@ -25,6 +25,7 @@
 #include "base/ast_internal/ast_impl.h"
 #include "base/kind.h"
 #include "common/memory.h"
+#include "common/values/legacy_type_reflector.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/comprehension_vulnerability_check.h"
 #include "eval/compiler/constant_folding.h"
@@ -76,6 +77,10 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
   cel::RuntimeOptions runtime_options = ConvertToRuntimeOptions(options);
   auto builder =
       std::make_unique<CelExpressionBuilderFlatImpl>(runtime_options);
+
+  builder->GetTypeRegistry()
+      ->InternalGetModernRegistry()
+      .set_use_legacy_container_builders(options.use_legacy_container_builders);
 
   builder->GetTypeRegistry()->RegisterTypeProvider(std::move(type_provider));
 

@@ -18,7 +18,16 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "base/type_provider.h"
+#include "common/memory.h"
+#include "common/type.h"
+#include "common/type_reflector.h"
+#include "common/value.h"
+#include "common/value_factory.h"
 
 namespace cel::runtime_internal {
 
@@ -30,12 +39,26 @@ namespace cel::runtime_internal {
 //
 // The builtin type provider is implicitly consulted first in a type manager,
 // so it is not represented here.
-class ComposedTypeProvider : public TypeProvider {
+class ComposedTypeProvider : public TypeReflector {
  public:
   // Register an additional type provider.
-  void AddTypeProvider(std::unique_ptr<TypeProvider> provider) {
+  void AddTypeProvider(std::unique_ptr<TypeReflector> provider) {
     providers_.push_back(std::move(provider));
   }
+
+  void set_use_legacy_container_builders(bool use_legacy_container_builders) {
+    use_legacy_container_builders_ = use_legacy_container_builders;
+  }
+
+  // `NewListValueBuilder` returns a new `ListValueBuilderInterface` for the
+  // corresponding `ListType` `type`.
+  absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(
+      ValueFactory& value_factory, ListTypeView type) const override;
+
+  // `NewMapValueBuilder` returns a new `MapValueBuilderInterface` for the
+  // corresponding `MapType` `type`.
+  absl::StatusOr<Unique<MapValueBuilder>> NewMapValueBuilder(
+      ValueFactory& value_factory, MapTypeView type) const override;
 
   absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
   NewStructValueBuilder(ValueFactory& value_factory,
@@ -59,9 +82,9 @@ class ComposedTypeProvider : public TypeProvider {
                                 absl::string_view type, absl::string_view name,
                                 StructTypeField& scratch) const override;
 
-  // Implements TypeProvider
  private:
-  std::vector<std::unique_ptr<TypeProvider>> providers_;
+  std::vector<std::unique_ptr<TypeReflector>> providers_;
+  bool use_legacy_container_builders_ = true;
 };
 
 }  // namespace cel::runtime_internal
