@@ -41,7 +41,7 @@ absl::StatusOr<Any> UnwrapDynamicAnyProto(const google::protobuf::Message& messa
   if (desc == google::protobuf::Any::descriptor()) {
     // Fast path.
     return UnwrapGeneratedAnyProto(
-        google::protobuf::DownCastToGenerated<google::protobuf::Any>(message));
+        google::protobuf::DownCastMessage<google::protobuf::Any>(message));
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
@@ -100,7 +100,7 @@ absl::Status WrapDynamicAnyProto(absl::string_view type_url,
     // Fast path.
     return WrapGeneratedAnyProto(
         type_url, value,
-        google::protobuf::DownCastToGenerated<google::protobuf::Any>(message));
+        google::protobuf::DownCastMessage<google::protobuf::Any>(message));
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {

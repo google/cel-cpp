@@ -40,7 +40,7 @@ absl::StatusOr<absl::Time> UnwrapDynamicTimestampProto(
   if (desc == google::protobuf::Timestamp::descriptor()) {
     // Fast path.
     return UnwrapGeneratedTimestampProto(
-        google::protobuf::DownCastToGenerated<google::protobuf::Timestamp>(message));
+        google::protobuf::DownCastMessage<google::protobuf::Timestamp>(message));
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
@@ -97,8 +97,7 @@ absl::Status WrapDynamicTimestampProto(absl::Time value,
   }
   if (ABSL_PREDICT_TRUE(desc == google::protobuf::Timestamp::descriptor())) {
     return WrapGeneratedTimestampProto(
-        value,
-        google::protobuf::DownCastToGenerated<google::protobuf::Timestamp>(message));
+        value, google::protobuf::DownCastMessage<google::protobuf::Timestamp>(message));
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {

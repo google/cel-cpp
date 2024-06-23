@@ -41,7 +41,7 @@ absl::StatusOr<JsonString> DynamicFieldMaskProtoToJsonString(
   }
   if (ABSL_PREDICT_TRUE(desc == google::protobuf::FieldMask::descriptor())) {
     return GeneratedFieldMaskProtoToJsonString(
-        google::protobuf::DownCastToGenerated<google::protobuf::FieldMask>(message));
+        google::protobuf::DownCastMessage<google::protobuf::FieldMask>(message));
   }
   const auto* reflection = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflection == nullptr)) {
