@@ -792,7 +792,10 @@ cc_library(
     # use the dynamic linker to find the symbols at runtime. This only works if they are exported as
     # dynamic symbols. When static linking, our symbols are not exported as dynamic by default. We
     # workaround this by explicitly passing our symbols to the linker for exporting.
-    linkopts = ["-Wl,--export-dynamic-symbol=%s" % dynamic_symbol for dynamic_symbol in _DYNAMIC_SYMBOLS],
+    linkopts = select({
+        "//conditions:default": ["-Wl,--export-dynamic-symbol=%s" % dynamic_symbol for dynamic_symbol in _DYNAMIC_SYMBOLS],
+        "//tools/cc_target_os:emscripten": [],
+    }),
     deps = [
         ":casting",
         ":json",
