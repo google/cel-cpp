@@ -27,7 +27,9 @@ namespace cel::test {
 namespace {
 
 using testing::_;
+using testing::ElementsAre;
 using testing::Truly;
+using testing::UnorderedElementsAre;
 using cel::internal::StatusIs;
 
 TEST(BoolValueIs, Match) { EXPECT_THAT(BoolValue(true), BoolValueIs(true)); }
@@ -239,6 +241,20 @@ TEST_P(ValueMatcherTest, ListMatcherBasic) {
               })));
 }
 
+TEST_P(ValueMatcherTest, ListMatcherMatchesElements) {
+  ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewListValueBuilder(
+                                         value_manager().GetDynListType()));
+  ASSERT_OK(builder->Add(IntValue(42)));
+  ASSERT_OK(builder->Add(IntValue(1337)));
+  ASSERT_OK(builder->Add(IntValue(42)));
+  ASSERT_OK(builder->Add(IntValue(100)));
+  EXPECT_THAT(
+      std::move(*builder).Build(),
+      ListValueIs(ListValueElements(
+          &value_manager(), ElementsAre(IntValueIs(42), IntValueIs(1337),
+                                        IntValueIs(42), IntValueIs(100)))));
+}
+
 TEST_P(ValueMatcherTest, MapMatcherBasic) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewMapValueBuilder(
                                          value_manager().GetDynDynMapType()));
@@ -251,6 +267,20 @@ TEST_P(ValueMatcherTest, MapMatcherBasic) {
                 auto size = v.Size();
                 return size.ok() && *size == 1;
               })));
+}
+
+TEST_P(ValueMatcherTest, MapMatcherMatchesElements) {
+  ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewMapValueBuilder(
+                                         value_manager().GetDynDynMapType()));
+
+  ASSERT_OK(builder->Put(IntValue(42), StringValue("answer")));
+  ASSERT_OK(builder->Put(IntValue(1337), StringValue("leet")));
+  EXPECT_THAT(std::move(*builder).Build(),
+              MapValueIs(MapValueElements(
+                  &value_manager(),
+                  UnorderedElementsAre(
+                      Pair(IntValueIs(42), StringValueIs("answer")),
+                      Pair(IntValueIs(1337), StringValueIs("leet"))))));
 }
 
 // TODO(uncreated-issue/66): struct coverage in follow-up.
