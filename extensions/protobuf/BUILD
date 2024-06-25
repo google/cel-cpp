@@ -318,3 +318,33 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "value_testing",
+    testonly = True,
+    hdrs = ["value_testing.h"],
+    deps = [
+        ":value",
+        "//common:value",
+        "//extensions/protobuf/internal:message",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+cc_test(
+    name = "value_testing_test",
+    srcs = ["value_testing_test.cc"],
+    deps = [
+        ":memory_manager",
+        ":value",
+        ":value_testing",
+        "//common:memory",
+        "//common:value",
+        "//common:value_testing",
+        "//internal:proto_matchers",
+        "//internal:testing",
+        "@com_google_cel_spec//proto/test/v1/proto2:test_all_types_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
