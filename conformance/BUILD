@@ -64,19 +64,16 @@ cc_library(
     ],
 )
 
-cc_binary(
-    name = "server",
-    testonly = 1,
-    srcs = [
-        "server.cc",
-    ],
+cc_library(
+    name = "service",
+    testonly = True,
+    srcs = ["service.cc"],
+    hdrs = ["service.h"],
     deps = [
         ":value_conversion",
-        "//common:any",
         "//common:memory",
         "//common:source",
         "//common:value",
-        "//common:value_kind",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",
@@ -94,7 +91,6 @@ cc_binary(
         "//extensions/protobuf:memory_manager",
         "//extensions/protobuf:runtime_adapter",
         "//extensions/protobuf:value",
-        "//internal:proto_time_encoding",
         "//internal:status_macros",
         "//parser",
         "//parser:macro_registry",
@@ -108,8 +104,6 @@ cc_binary(
         "//runtime:reference_resolver",
         "//runtime:runtime_options",
         "//runtime:standard_runtime_builder_factory",
-        "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -119,8 +113,27 @@ cc_binary(
         "@com_google_googleapis//google/api/expr/conformance/v1alpha1:conformance_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_googleapis//google/api/expr/v1alpha1:value_cc_proto",
         "@com_google_googleapis//google/rpc:code_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_binary(
+    name = "server",
+    testonly = True,
+    srcs = ["server.cc"],
+    deps = [
+        ":service",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_googleapis//google/api/expr/conformance/v1alpha1:conformance_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_googleapis//google/rpc:code_cc_proto",
+        "@com_google_googleapis//google/rpc:status_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
