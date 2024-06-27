@@ -326,6 +326,25 @@ cc_library(
 )
 
 cc_library(
+    name = "testing_no_main",
+    testonly = True,
+    srcs = [
+        "testing.cc",
+    ],
+    hdrs = [
+        "testing.h",
+    ],
+    deps = [
+        ":status_builder",
+        ":status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+cc_library(
     name = "time",
     srcs = ["time.cc"],
     hdrs = ["time.h"],

@@ -9,7 +9,7 @@ steps:
   - '--test_output=errors'
   - '--distdir=/bazel-distdir'
   - '--show_timestamps'
-  - '--test_tag_filters=-benchmark'
+  - '--test_tag_filters=-benchmark,-notap'
   - '--jobs=HOST_CPUS*.5'
   - '--local_ram_resources=HOST_RAM*.4'
   id: gcc-9
@@ -27,7 +27,7 @@ steps:
   - '--test_output=errors'
   - '--distdir=/bazel-distdir'
   - '--show_timestamps'
-  - '--test_tag_filters=-benchmark'
+  - '--test_tag_filters=-benchmark,-notap'
   - '--jobs=HOST_CPUS*.5'
   - '--local_ram_resources=HOST_RAM*.4'
   id: clang-11

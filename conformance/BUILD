@@ -12,38 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//conformance:run.bzl", "gen_conformance_tests")
+
 package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
-
-ALL_TESTS = [
-    "@com_google_cel_spec//tests/simple:testdata/basic.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/bindings_ext.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/comparisons.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/conversions.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/dynamic.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/encoders_ext.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/enums.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/fields.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/fp_math.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/integer_math.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/lists.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/logic.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/macros.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/math_ext.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/namespace.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/optionals.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/parse.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/plumbing.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/proto2.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/proto2_ext.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/proto3.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/string.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/string_ext.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/timestamps.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/unknowns.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/wrappers.textproto",
-]
 
 cc_library(
     name = "value_conversion",
@@ -118,264 +91,211 @@ cc_library(
     ],
 )
 
-cc_binary(
-    name = "server",
+cc_library(
+    name = "run",
     testonly = True,
-    srcs = ["server.cc"],
+    srcs = ["run.cc"],
     deps = [
         ":service",
+        "//internal:testing_no_main",
         "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
+        "@com_google_cel_spec//proto/test/v1:simple_cc_proto",
         "@com_google_googleapis//google/api/expr/conformance/v1alpha1:conformance_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googleapis//google/rpc:code_cc_proto",
-        "@com_google_googleapis//google/rpc:status_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
+    alwayslink = True,
 )
 
-[
-    sh_test(
-        name = "simple" + "".join([arg.replace("--", "_") for arg in args]),
-        srcs = ["@com_google_cel_spec//tests:conftest.sh"],
-        args = [
-            "$(location @com_google_cel_spec//tests/simple:simple_test)",
-            "--server=\"$(location :server) " + " ".join(args) + "\"",
-            "--skip_check",
-            "--pipe",
-            "--pipe_pings",
-
-            # Tests which require spec changes.
-            # TODO(issues/93): Deprecate Duration.getMilliseconds.
-            "--skip_test=timestamps/duration_converters/get_milliseconds",
-
-            # Broken test cases which should be supported.
-            # TODO(issues/112): Unbound functions result in empty eval response.
-            "--skip_test=basic/functions/unbound",
-            "--skip_test=basic/functions/unbound_is_runtime_error",
-
-            # TODO(issues/97): Parse-only qualified variable lookup "x.y" wtih binding "x.y" or "y" within container "x" fails
-            "--skip_test=fields/qualified_identifier_resolution/qualified_ident,map_field_select,ident_with_longest_prefix_check,qualified_identifier_resolution_unchecked",
-            "--skip_test=namespace/qualified/self_eval_qualified_lookup",
-            "--skip_test=namespace/namespace/self_eval_container_lookup,self_eval_container_lookup_unchecked",
-            # TODO(issues/117): Integer overflow on enum assignments should error.
-            "--skip_test=enums/legacy_proto2/select_big,select_neg",
-
-            # Skip until fixed.
-            "--skip_test=wrappers/field_mask/to_json",
-            "--skip_test=wrappers/empty/to_json",
-            "--skip_test=fields/qualified_identifier_resolution/map_value_repeat_key_heterogeneous",
-
-            # Future features for CEL 1.0
-            # TODO(issues/119): Strong typing support for enums, specified but not implemented.
-            "--skip_test=enums/strong_proto2",
-            "--skip_test=enums/strong_proto3",
-
-            # Legacy value does not support optional_type.
-            "--skip_test=optionals/optionals",
-
-            # Not yet implemented.
-            "--skip_test=math_ext/ceil",
-            "--skip_test=math_ext/floor",
-            "--skip_test=math_ext/round",
-            "--skip_test=math_ext/trunc",
-            "--skip_test=math_ext/abs",
-            "--skip_test=math_ext/sign",
-            "--skip_test=math_ext/isNaN",
-            "--skip_test=math_ext/isInf",
-            "--skip_test=math_ext/isFinite",
-            "--skip_test=math_ext/bit_and",
-            "--skip_test=math_ext/bit_or",
-            "--skip_test=math_ext/bit_xor",
-            "--skip_test=math_ext/bit_not",
-            "--skip_test=math_ext/bit_shift_left",
-            "--skip_test=math_ext/bit_shift_right",
-            "--skip_test=string_ext/char_at",
-            "--skip_test=string_ext/index_of",
-            "--skip_test=string_ext/last_index_of",
-            "--skip_test=string_ext/ascii_casing/upperascii",
-            "--skip_test=string_ext/ascii_casing/upperascii_unicode",
-            "--skip_test=string_ext/ascii_casing/upperascii_unicode_with_space",
-            "--skip_test=string_ext/replace",
-            "--skip_test=string_ext/substring",
-            "--skip_test=string_ext/trim",
-            "--skip_test=string_ext/quote",
-            "--skip_test=string_ext/value_errors",
-            "--skip_test=string_ext/type_errors",
-        ] + ["$(location " + test + ")" for test in ALL_TESTS],
-        data = [
-            ":server",
-            "@com_google_cel_spec//tests/simple:simple_test",
-        ] + ALL_TESTS,
-    )
-    for args in [
-        [],
-        ["--opt"],
-        ["--recursive"],
-    ]
+_ALL_TESTS = [
+    "@com_google_cel_spec//tests/simple:testdata/basic.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/bindings_ext.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/comparisons.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/conversions.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/dynamic.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/encoders_ext.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/enums.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/fields.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/fp_math.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/integer_math.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/lists.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/logic.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/macros.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/math_ext.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/namespace.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/optionals.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/parse.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/plumbing.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/proto2.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/proto2_ext.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/proto3.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/string.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/string_ext.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/timestamps.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/unknowns.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/wrappers.textproto",
 ]
 
-[
-    sh_test(
-        name = "simple" + "".join([arg.replace("--", "_") for arg in args]),
-        srcs = ["@com_google_cel_spec//tests:conftest.sh"],
-        args = [
-            "$(location @com_google_cel_spec//tests/simple:simple_test)",
-            "--server=\"$(location :server) " + " ".join(args) + "\"",
-            "--skip_check",
-            "--pipe",
-            "--pipe_pings",
+_TESTS_TO_SKIP_MODERN = [
+    # Tests which require spec changes.
+    # TODO(issues/93): Deprecate Duration.getMilliseconds.
+    "timestamps/duration_converters/get_milliseconds",
 
-            # Tests which require spec changes.
-            # TODO(issues/93): Deprecate Duration.getMilliseconds.
-            "--skip_test=timestamps/duration_converters/get_milliseconds",
+    # Broken test cases which should be supported.
+    # TODO(issues/112): Unbound functions result in empty eval response.
+    "basic/functions/unbound",
+    "basic/functions/unbound_is_runtime_error",
 
-            # Broken test cases which should be supported.
-            # TODO(issues/112): Unbound functions result in empty eval response.
-            "--skip_test=basic/functions/unbound",
-            "--skip_test=basic/functions/unbound_is_runtime_error",
+    # TODO(issues/97): Parse-only qualified variable lookup "x.y" wtih binding "x.y" or "y" within container "x" fails
+    "fields/qualified_identifier_resolution/qualified_ident,map_field_select,ident_with_longest_prefix_check,qualified_identifier_resolution_unchecked",
+    "namespace/qualified/self_eval_qualified_lookup",
+    "namespace/namespace/self_eval_container_lookup,self_eval_container_lookup_unchecked",
+    # TODO(issues/117): Integer overflow on enum assignments should error.
+    "enums/legacy_proto2/select_big,select_neg",
 
-            # TODO(issues/97): Parse-only qualified variable lookup "x.y" wtih binding "x.y" or "y" within container "x" fails
-            "--skip_test=fields/qualified_identifier_resolution/qualified_ident,map_field_select,ident_with_longest_prefix_check,qualified_identifier_resolution_unchecked",
-            "--skip_test=namespace/qualified/self_eval_qualified_lookup",
-            "--skip_test=namespace/namespace/self_eval_container_lookup,self_eval_container_lookup_unchecked",
-            # TODO(issues/117): Integer overflow on enum assignments should error.
-            "--skip_test=enums/legacy_proto2/select_big,select_neg",
+    # Skip until fixed.
+    "wrappers/field_mask/to_json",
+    "wrappers/empty/to_json",
+    "fields/qualified_identifier_resolution/map_value_repeat_key_heterogeneous",
 
-            # Skip until fixed.
-            "--skip_test=wrappers/field_mask/to_json",
-            "--skip_test=wrappers/empty/to_json",
-            "--skip_test=fields/qualified_identifier_resolution/map_value_repeat_key_heterogeneous",
+    # Future features for CEL 1.0
+    # TODO(issues/119): Strong typing support for enums, specified but not implemented.
+    "enums/strong_proto2",
+    "enums/strong_proto3",
 
-            # Future features for CEL 1.0
-            # TODO(issues/119): Strong typing support for enums, specified but not implemented.
-            "--skip_test=enums/strong_proto2",
-            "--skip_test=enums/strong_proto3",
-
-            # Not yet implemented.
-            "--skip_test=math_ext/ceil",
-            "--skip_test=math_ext/floor",
-            "--skip_test=math_ext/round",
-            "--skip_test=math_ext/trunc",
-            "--skip_test=math_ext/abs",
-            "--skip_test=math_ext/sign",
-            "--skip_test=math_ext/isNaN",
-            "--skip_test=math_ext/isInf",
-            "--skip_test=math_ext/isFinite",
-            "--skip_test=math_ext/bit_and",
-            "--skip_test=math_ext/bit_or",
-            "--skip_test=math_ext/bit_xor",
-            "--skip_test=math_ext/bit_not",
-            "--skip_test=math_ext/bit_shift_left",
-            "--skip_test=math_ext/bit_shift_right",
-            "--skip_test=string_ext/char_at",
-            "--skip_test=string_ext/index_of",
-            "--skip_test=string_ext/last_index_of",
-            "--skip_test=string_ext/ascii_casing/upperascii",
-            "--skip_test=string_ext/ascii_casing/upperascii_unicode",
-            "--skip_test=string_ext/ascii_casing/upperascii_unicode_with_space",
-            "--skip_test=string_ext/replace",
-            "--skip_test=string_ext/substring",
-            "--skip_test=string_ext/trim",
-            "--skip_test=string_ext/quote",
-            "--skip_test=string_ext/value_errors",
-            "--skip_test=string_ext/type_errors",
-        ] + ["$(location " + test + ")" for test in ALL_TESTS],
-        data = [
-            ":server",
-            "@com_google_cel_spec//tests/simple:simple_test",
-        ] + ALL_TESTS,
-    )
-    for args in [
-        [
-            "--modern",
-        ],
-        [
-            "--modern",
-            "--opt",
-        ],
-        [
-            "--modern",
-            "--arena",
-        ],
-        [
-            "--modern",
-            "--arena",
-            "--opt",
-        ],
-        [
-            "--modern",
-            "--arena",
-            "--recursive",
-        ],
-    ]
+    # Not yet implemented.
+    "math_ext/ceil",
+    "math_ext/floor",
+    "math_ext/round",
+    "math_ext/trunc",
+    "math_ext/abs",
+    "math_ext/sign",
+    "math_ext/isNaN",
+    "math_ext/isInf",
+    "math_ext/isFinite",
+    "math_ext/bit_and",
+    "math_ext/bit_or",
+    "math_ext/bit_xor",
+    "math_ext/bit_not",
+    "math_ext/bit_shift_left",
+    "math_ext/bit_shift_right",
+    "string_ext/char_at",
+    "string_ext/index_of",
+    "string_ext/last_index_of",
+    "string_ext/ascii_casing/upperascii",
+    "string_ext/ascii_casing/upperascii_unicode",
+    "string_ext/ascii_casing/upperascii_unicode_with_space",
+    "string_ext/replace",
+    "string_ext/substring",
+    "string_ext/trim",
+    "string_ext/quote",
+    "string_ext/value_errors",
+    "string_ext/type_errors",
 ]
 
-[
-    sh_test(
-        name = "simple_dashboard" + "".join([arg.replace("--", "_") for arg in args]),
-        srcs = ["@com_google_cel_spec//tests:conftest-nofail.sh"],
-        args = [
-            "$(location @com_google_cel_spec//tests/simple:simple_test)",
-            "--server=\"$(location :server) " + " ".join(args) + "\"",
-            "--skip_check",
-            # TODO(issues/119): Strong typing support for enums, specified but not implemented.
-            "--skip_test=enums/strong_proto2",
-            "--skip_test=enums/strong_proto3",
-            # Legacy value does not support optional_type.
-            "--skip_test=optionals/optionals",
-            "--pipe",
-            "--pipe_pings",
-        ] + ["$(location " + test + ")" for test in ALL_TESTS],
-        data = [
-            ":server",
-            "@com_google_cel_spec//tests/simple:simple_test",
-        ] + ALL_TESTS,
-        visibility = [
-            "//:__subpackages__",
-            "//third_party/cel:__pkg__",
-        ],
-    )
-    for args in [
-        [],
-    ]
+_TESTS_TO_SKIP_MODERN_DASHBOARD = [
+    # Future features for CEL 1.0
+    # TODO(issues/119): Strong typing support for enums, specified but not implemented.
+    "enums/strong_proto2",
+    "enums/strong_proto3",
 ]
 
-[
-    sh_test(
-        name = "simple_dashboard" + "".join([arg.replace("--", "_") for arg in args]),
-        srcs = ["@com_google_cel_spec//tests:conftest-nofail.sh"],
-        args = [
-            "$(location @com_google_cel_spec//tests/simple:simple_test)",
-            "--server=\"$(location :server) " + " ".join(args) + "\"",
-            "--skip_check",
-            # TODO(issues/119): Strong typing support for enums, specified but not implemented.
-            "--skip_test=enums/strong_proto2",
-            "--skip_test=enums/strong_proto3",
-            "--pipe",
-            "--pipe_pings",
-        ] + ["$(location " + test + ")" for test in ALL_TESTS],
-        data = [
-            ":server",
-            "@com_google_cel_spec//tests/simple:simple_test",
-        ] + ALL_TESTS,
-        visibility = [
-            "//:__subpackages__",
-            "//third_party/cel:__pkg__",
-        ],
-    )
-    for args in [
-        [
-            "--modern",
-            "--arena",
-        ],
-        [
-            "--modern",
-            "--noarena",
-        ],
-    ]
+_TESTS_TO_SKIP_LEGACY = [
+    # Tests which require spec changes.
+    # TODO(issues/93): Deprecate Duration.getMilliseconds.
+    "timestamps/duration_converters/get_milliseconds",
+
+    # Broken test cases which should be supported.
+    # TODO(issues/112): Unbound functions result in empty eval response.
+    "basic/functions/unbound",
+    "basic/functions/unbound_is_runtime_error",
+
+    # TODO(issues/97): Parse-only qualified variable lookup "x.y" wtih binding "x.y" or "y" within container "x" fails
+    "fields/qualified_identifier_resolution/qualified_ident,map_field_select,ident_with_longest_prefix_check,qualified_identifier_resolution_unchecked",
+    "namespace/qualified/self_eval_qualified_lookup",
+    "namespace/namespace/self_eval_container_lookup,self_eval_container_lookup_unchecked",
+    # TODO(issues/117): Integer overflow on enum assignments should error.
+    "enums/legacy_proto2/select_big,select_neg",
+
+    # Skip until fixed.
+    "wrappers/field_mask/to_json",
+    "wrappers/empty/to_json",
+    "fields/qualified_identifier_resolution/map_value_repeat_key_heterogeneous",
+
+    # Future features for CEL 1.0
+    # TODO(issues/119): Strong typing support for enums, specified but not implemented.
+    "enums/strong_proto2",
+    "enums/strong_proto3",
+
+    # Legacy value does not support optional_type.
+    "optionals/optionals",
+
+    # Not yet implemented.
+    "math_ext/ceil",
+    "math_ext/floor",
+    "math_ext/round",
+    "math_ext/trunc",
+    "math_ext/abs",
+    "math_ext/sign",
+    "math_ext/isNaN",
+    "math_ext/isInf",
+    "math_ext/isFinite",
+    "math_ext/bit_and",
+    "math_ext/bit_or",
+    "math_ext/bit_xor",
+    "math_ext/bit_not",
+    "math_ext/bit_shift_left",
+    "math_ext/bit_shift_right",
+    "string_ext/char_at",
+    "string_ext/index_of",
+    "string_ext/last_index_of",
+    "string_ext/ascii_casing/upperascii",
+    "string_ext/ascii_casing/upperascii_unicode",
+    "string_ext/ascii_casing/upperascii_unicode_with_space",
+    "string_ext/replace",
+    "string_ext/substring",
+    "string_ext/trim",
+    "string_ext/quote",
+    "string_ext/value_errors",
+    "string_ext/type_errors",
 ]
+
+_TESTS_TO_SKIP_LEGACY_DASHBOARD = [
+    # Future features for CEL 1.0
+    # TODO(issues/119): Strong typing support for enums, specified but not implemented.
+    "enums/strong_proto2",
+    "enums/strong_proto3",
+
+    # Legacy value does not support optional_type.
+    "optionals/optionals",
+]
+
+# Generates a bunch of `cc_test` whose names follow the pattern
+# `conformance_{modern|legacy}_{arena|refcount}_{optimized|unoptimized}_{recursive|iterative}`.
+gen_conformance_tests(
+    name = "conformance",
+    data = _ALL_TESTS,
+    skip_tests_legacy = _TESTS_TO_SKIP_LEGACY,
+    skip_tests_modern = _TESTS_TO_SKIP_MODERN,
+)
+
+# Generates a bunch of `cc_test` whose names follow the pattern
+# `conformance_dashboard_{modern|legacy}_{arena|refcount}_{optimized|unoptimized}_{recursive|iterative}`.
+gen_conformance_tests(
+    name = "conformance_dashboard",
+    dashboard = True,
+    data = _ALL_TESTS,
+    skip_tests_legacy = _TESTS_TO_SKIP_LEGACY_DASHBOARD,
+    skip_tests_modern = _TESTS_TO_SKIP_MODERN_DASHBOARD,
+    tags = [
+        "guitar",
+        "manual",
+        "notap",
+    ],
+)
