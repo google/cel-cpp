@@ -15,6 +15,7 @@
 #include "google/protobuf/dynamic_message.h"
 #include "google/protobuf/message.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
 #include "eval/public/cel_value.h"
@@ -844,6 +845,14 @@ TEST_F(CelProtoWrapperTest, WrapFailureErrorToAny) {
   ExpectNotWrapped(cel_value, Any::default_instance());
 }
 
+// A CelMap implementation that returns an error for the ListKeys() method.
+class InvalidListKeysCelMapBuilder : public CelMapBuilder {
+ public:
+  absl::StatusOr<const CelList*> ListKeys() const override {
+    return absl::InternalError("Error while invoking ListKeys()");
+  }
+};
+
 TEST_F(CelProtoWrapperTest, DebugString) {
   google::protobuf::Empty e;
   EXPECT_THAT(CelProtoWrapper::CreateMessage(&e, arena()).DebugString(),
@@ -872,6 +881,11 @@ TEST_F(CelProtoWrapperTest, DebugString) {
                      testing::HasSubstr("<string: a>: <bool: 1>"),
                      testing::HasSubstr("<string: b>: <double: 1.0"),
                      testing::HasSubstr("<string: c>: <string: test>")));
+
+  // DebugString of a CelMap with an invalid internal list.
+  InvalidListKeysCelMapBuilder invalid_cel_map;
+  auto cel_map_value = CelValue::CreateMap(&invalid_cel_map);
+  EXPECT_EQ(cel_map_value.DebugString(), "CelMap: invalid list keys");
 }
 
 }  // namespace
