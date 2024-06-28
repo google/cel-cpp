@@ -1,5 +1,5 @@
 steps:
-- name: 'gcr.io/cel-analysis/gcc-9@sha256:6f2f565b870373a3d33affa3e56748fd296a7322cd421a0b2c0b6c414b6dab5a'
+- name: 'gcr.io/cel-analysis/gcc-9@sha256:5c08ae90e33a33010c8e518173a926143ba029affb54ceec288f375f474ea87f'
   args:
   - '--output_base=/bazel' # This is mandatory to avoid steps accidently sharing data.
   - 'test'
@@ -14,7 +14,7 @@ steps:
   - '--local_ram_resources=HOST_RAM*.4'
   id: gcc-9
   waitFor: ['-']
-- name: 'gcr.io/cel-analysis/gcc-9@sha256:6f2f565b870373a3d33affa3e56748fd296a7322cd421a0b2c0b6c414b6dab5a'
+- name: 'gcr.io/cel-analysis/gcc-9@sha256:5c08ae90e33a33010c8e518173a926143ba029affb54ceec288f375f474ea87f'
   env:
   - 'CC=clang-11'
   - 'CXX=clang++-11'
