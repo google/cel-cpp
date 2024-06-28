@@ -1,20 +1,20 @@
 steps:
-- name: 'gcr.io/cel-analysis/gcc-9@sha256:0cb9bf73c3c6b17b7f51f3e70d041ccbab7a77162ddc43b25f21a04b3371b43e'
+- name: 'gcr.io/cel-analysis/gcc-9@sha256:6f2f565b870373a3d33affa3e56748fd296a7322cd421a0b2c0b6c414b6dab5a'
   args:
   - '--output_base=/bazel' # This is mandatory to avoid steps accidently sharing data.
   - 'test'
   - '...'
+  - '--noenable_bzlmod'
   - '--copt=-Wno-deprecated-declarations'
   - '--compilation_mode=fastbuild'
   - '--test_output=errors'
-  - '--distdir=/bazel-distdir'
   - '--show_timestamps'
   - '--test_tag_filters=-benchmark,-notap'
   - '--jobs=HOST_CPUS*.5'
   - '--local_ram_resources=HOST_RAM*.4'
   id: gcc-9
   waitFor: ['-']
-- name: 'gcr.io/cel-analysis/gcc-9@sha256:0cb9bf73c3c6b17b7f51f3e70d041ccbab7a77162ddc43b25f21a04b3371b43e'
+- name: 'gcr.io/cel-analysis/gcc-9@sha256:6f2f565b870373a3d33affa3e56748fd296a7322cd421a0b2c0b6c414b6dab5a'
   env:
   - 'CC=clang-11'
   - 'CXX=clang++-11'
@@ -22,10 +22,10 @@ steps:
   - '--output_base=/bazel' # This is mandatory to avoid steps accidently sharing data.
   - 'test'
   - '...'
+  - '--noenable_bzlmod'
   - '--copt=-Wno-deprecated-declarations'
   - '--compilation_mode=fastbuild'
   - '--test_output=errors'
-  - '--distdir=/bazel-distdir'
   - '--show_timestamps'
   - '--test_tag_filters=-benchmark,-notap'
   - '--jobs=HOST_CPUS*.5'

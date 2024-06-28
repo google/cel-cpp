@@ -7,9 +7,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_jar")
 def base_deps():
     """Base evaluator and test dependencies."""
 
-    # Abseil LTS 20240116.0
-    ABSL_SHA1 = "4a2c63365eff8823a5221db86ef490e828306f9d"
-    ABSL_SHA256 = "f49929d22751bf70dd61922fb1fd05eb7aec5e7a7f870beece79a6e28f0a06c1"
+    # Abseil LTS 20240116.2
+    ABSL_SHA1 = "d7aaad83b488fd62bd51c81ecf16cd938532cc0a"
+    ABSL_SHA256 = "68e7d36d621769ab500b2ebeec6a7910420566874b4b33b340a04bd70e67fe43"
     http_archive(
         name = "com_google_absl",
         urls = ["https://github.com/abseil/abseil-cpp/archive/" + ABSL_SHA1 + ".zip"],
@@ -37,9 +37,9 @@ def base_deps():
         sha256 = BENCHMARK_SHA256,
     )
 
-    # 2022-02-18
-    RE2_SHA1 = "f6834581a8913c03d087de1e5d5b479f8a870400"
-    RE2_SHA256 = "ef7f29b79f9e3a8e4030ea2a0f71a66bd99aa0376fe641d86d47d6129c7f5aed"
+    # 2024-02-01
+    RE2_SHA1 = "9665465b69ab699279ef9fb9454559d90fed1d76"
+    RE2_SHA256 = "dcd82922c7a1d3b7c2a147c045585a9f76066f9c0269a06b857eccbbf6f96dba"
     http_archive(
         name = "com_googlesource_code_re2",
         urls = ["https://github.com/google/re2/archive/" + RE2_SHA1 + ".zip"],
@@ -47,22 +47,35 @@ def base_deps():
         sha256 = RE2_SHA256,
     )
 
-    PROTOBUF_VERSION = "25.1"
-    PROTOBUF_SHA = "9bd87b8280ef720d3240514f884e56a712f2218f0d693b48050c836028940a42"
+    PROTOBUF_SHA1 = "32bedd9b8a794231ca43d6457bb6b8cd3503fca7"
+    PROTOBUF_SHA256 = "77564633c7508ab2c1b8f07d02afe0ddc08c07bd2ca6a3aa3d56cde0e21143a2"
     http_archive(
         name = "com_google_protobuf",
-        sha256 = PROTOBUF_SHA,
-        strip_prefix = "protobuf-" + PROTOBUF_VERSION,
-        urls = ["https://github.com/protocolbuffers/protobuf/archive/v" + PROTOBUF_VERSION + ".tar.gz"],
+        sha256 = PROTOBUF_SHA256,
+        strip_prefix = "protobuf-" + PROTOBUF_SHA1,
+        urls = ["https://github.com/protocolbuffers/protobuf/archive/" + PROTOBUF_SHA1 + ".zip"],
     )
 
-    GOOGLEAPIS_GIT_SHA = "5e6eb76b661f7002a944add149e1ed840ca82bae"  # Feb 1, 2024
-    GOOGLEAPIS_SHA = "3285aa5fadc1ea023a82109cf417d818e593df1698faba47ca451ea2502dc43c"
+    GOOGLEAPIS_GIT_SHA = "6eb56cdf5f54f70d0dbfce051add28a35c1203ce"  # June 26, 2024
+    GOOGLEAPIS_SHA = "6321a7eac9e5280e7abca07ddf2cab9179cbd49a6828c26f4c7c73d5a45f39ad"
     http_archive(
         name = "com_google_googleapis",
         sha256 = GOOGLEAPIS_SHA,
         strip_prefix = "googleapis-" + GOOGLEAPIS_GIT_SHA,
         urls = ["https://github.com/googleapis/googleapis/archive/" + GOOGLEAPIS_GIT_SHA + ".tar.gz"],
+    )
+
+    http_archive(
+        name = "rules_cc",
+        urls = ["https://github.com/bazelbuild/rules_cc/releases/download/0.0.10-rc1/rules_cc-0.0.10-rc1.tar.gz"],
+        sha256 = "d75a040c32954da0d308d3f2ea2ba735490f49b3a7aa3e4b40259ca4b814f825",
+    )
+
+    http_archive(
+        name = "rules_proto",
+        sha256 = "6fb6767d1bef535310547e03247f7518b03487740c11b6c6adb7952033fe1295",
+        strip_prefix = "rules_proto-6.0.2",
+        url = "https://github.com/bazelbuild/rules_proto/releases/download/6.0.2/rules_proto-6.0.2.tar.gz",
     )
 
 def parser_deps():
@@ -114,14 +127,21 @@ def cel_spec_deps():
     """CEL Spec conformance testing."""
     http_archive(
         name = "io_bazel_rules_go",
-        sha256 = "099a9fb96a376ccbbb7d291ed4ecbdfd42f6bc822ab77ae6f1b5cb9e914e94fa",
+        sha256 = "b2038e2de2cace18f032249cb4bb0048abf583a36369fa98f687af1b3f880b26",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.35.0/rules_go-v0.35.0.zip",
-            "https://github.com/bazelbuild/rules_go/releases/download/v0.35.0/rules_go-v0.35.0.zip",
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.48.1/rules_go-v0.48.1.zip",
+            "https://github.com/bazelbuild/rules_go/releases/download/v0.48.1/rules_go-v0.48.1.zip",
         ],
     )
 
-    CEL_SPEC_GIT_SHA = "6b5ebe7ad8773eee28def057e489b2d619586618"  # March 29, 2024
+    http_archive(
+        name = "rules_python",
+        sha256 = "e3f1cc7a04d9b09635afb3130731ed82b5f58eadc8233d4efb59944d92ffc06f",
+        strip_prefix = "rules_python-0.33.2",
+        url = "https://github.com/bazelbuild/rules_python/releases/download/0.33.2/rules_python-0.33.2.tar.gz",
+    )
+
+    CEL_SPEC_GIT_SHA = "6b5ebe7ad8773eee28def057e489b2d619586618"  # June 27, 2024
     http_archive(
         name = "com_google_cel_spec",
         sha256 = "ba927cb660de4105138ed2ec81947eb5041d335d48a7ccfc741fd7cf849b8ff8",
