@@ -26,7 +26,6 @@
 #include <utility>
 
 #include "google/protobuf/struct.pb.h"
-#include "absl/base/config.h"  // IWYU pragma: keep
 #include "absl/base/nullability.h"
 #include "absl/debugging/leak_check.h"
 #include "absl/log/absl_check.h"
