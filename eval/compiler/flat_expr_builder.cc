@@ -606,7 +606,7 @@ class FlatExprVisitor : public cel::AstVisitor {
         // Off by one since mainline expression will be index 0.
         AddStep(CreateCheckLazyInitStep(slot.slot, slot.subexpression + 1,
                                         expr.id()));
-        AddStep(CreateAssignSlotStep(slot.slot));
+        AddStep(CreateAssignSlotStep(slot.slot, expr.id()));
       }
       return;
     } else if (slot.slot >= 0) {

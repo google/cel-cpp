@@ -14,12 +14,15 @@
 
 #include "extensions/bindings_ext.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "base/attribute.h"
 #include "eval/public/activation.h"
@@ -31,7 +34,9 @@
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "eval/public/testing/matchers.h"
 #include "internal/testing.h"
+#include "parser/macro.h"
 #include "parser/parser.h"
 #include "proto/test/v1/proto2/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
@@ -56,10 +61,13 @@ using ::google::api::expr::runtime::FunctionAdapter;
 using ::google::api::expr::runtime::InterpreterOptions;
 using ::google::api::expr::runtime::RegisterBuiltinFunctions;
 using ::google::api::expr::runtime::UnknownProcessingOptions;
+using ::google::api::expr::runtime::test::IsCelInt64;
 using ::google::api::expr::test::v1::proto2::NestedTestAllTypes;
 using ::google::protobuf::Arena;
 using ::google::protobuf::TextFormat;
+using testing::Contains;
 using testing::HasSubstr;
+using testing::Pair;
 using cel::internal::IsOk;
 using cel::internal::StatusIs;
 
@@ -97,7 +105,7 @@ class BindingsExtTest
   bool GetEnableRecursivePlan() { return std::get<2>(GetParam()); }
 };
 
-TEST_P(BindingsExtTest, EndToEnd) {
+TEST_P(BindingsExtTest, Default) {
   const TestInfo& test_info = GetTestInfo();
   Arena arena;
   std::vector<Macro> all_macros = Macro::AllMacros();
@@ -140,6 +148,54 @@ TEST_P(BindingsExtTest, EndToEnd) {
   EXPECT_EQ(out.BoolOrDie(), true);
 }
 
+TEST_P(BindingsExtTest, Tracing) {
+  const TestInfo& test_info = GetTestInfo();
+  Arena arena;
+  std::vector<Macro> all_macros = Macro::AllMacros();
+  std::vector<Macro> bindings_macros = cel::extensions::bindings_macros();
+  all_macros.insert(all_macros.end(), bindings_macros.begin(),
+                    bindings_macros.end());
+  auto result = ParseWithMacros(test_info.expr, all_macros, "<input>");
+  if (!test_info.err.empty()) {
+    EXPECT_THAT(result.status(), StatusIs(absl::StatusCode::kInvalidArgument,
+                                          HasSubstr(test_info.err)));
+    return;
+  }
+  EXPECT_THAT(result, IsOk());
+
+  ParsedExpr parsed_expr = *result;
+  Expr expr = parsed_expr.expr();
+  SourceInfo source_info = parsed_expr.source_info();
+
+  // Obtain CEL Expression builder.
+  InterpreterOptions options;
+  options.enable_heterogeneous_equality = true;
+  options.enable_empty_wrapper_null_unboxing = true;
+  options.constant_folding = GetEnableConstantFolding();
+  options.constant_arena = &arena;
+  options.max_recursion_depth = GetEnableRecursivePlan() ? -1 : 0;
+  std::unique_ptr<CelExpressionBuilder> builder =
+      CreateCelExpressionBuilder(options);
+  ASSERT_OK(builder->GetRegistry()->Register(CreateBindFunction()));
+
+  // Register builtins and configure the execution environment.
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+
+  // Create CelExpression from AST (Expr object).
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&expr, &source_info));
+  Activation activation;
+  // Run evaluation.
+  ASSERT_OK_AND_ASSIGN(
+      CelValue out,
+      cel_expr->Trace(activation, &arena,
+                      [](int64_t, const CelValue&, google::protobuf::Arena*) {
+                        return absl::OkStatus();
+                      }));
+  ASSERT_TRUE(out.IsBool()) << out.DebugString();
+  EXPECT_EQ(out.BoolOrDie(), true);
+}
+
 INSTANTIATE_TEST_SUITE_P(
     CelBindingsExtTest, BindingsExtTest,
     testing::Combine(
@@ -173,6 +229,75 @@ INSTANTIATE_TEST_SUITE_P(
               "variable name must be a simple identifier"}}),
         /*constant_folding*/ testing::Bool(),
         /*recursive_plan*/ testing::Bool()));
+
+constexpr absl::string_view kTraceExpr = R"pb(
+  expr: {
+    id: 11
+    comprehension_expr: {
+      iter_var: "#unused"
+      iter_range: {
+        id: 8
+        list_expr: {}
+      }
+      accu_var: "x"
+      accu_init: {
+        id: 4
+        const_expr: { int64_value: 20 }
+      }
+      loop_condition: {
+        id: 9
+        const_expr: { bool_value: false }
+      }
+      loop_step: {
+        id: 10
+        ident_expr: { name: "x" }
+      }
+      result: {
+        id: 6
+        call_expr: {
+          function: "_*_"
+          args: {
+            id: 5
+            ident_expr: { name: "x" }
+          }
+          args: {
+            id: 7
+            ident_expr: { name: "x" }
+          }
+        }
+      }
+    }
+  })pb";
+
+TEST(BindingsExtTest, TraceSupport) {
+  ParsedExpr expr;
+  ASSERT_TRUE(TextFormat::ParseFromString(kTraceExpr, &expr));
+  InterpreterOptions options;
+  options.enable_heterogeneous_equality = true;
+  options.enable_empty_wrapper_null_unboxing = true;
+  std::unique_ptr<CelExpressionBuilder> builder =
+      CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto plan, builder->CreateExpression(&expr.expr(), &expr.source_info()));
+  Activation activation;
+  google::protobuf::Arena arena;
+  absl::flat_hash_map<int64_t, CelValue> ids;
+  ASSERT_OK_AND_ASSIGN(
+      auto result,
+      plan->Trace(activation, &arena,
+                  [&](int64_t id, const CelValue& value, google::protobuf::Arena* arena) {
+                    ids[id] = value;
+                    return absl::OkStatus();
+                  }));
+
+  EXPECT_TRUE(result.IsInt64() && result.Int64OrDie() == 400)
+      << result.DebugString();
+
+  EXPECT_THAT(ids, Contains(Pair(5, IsCelInt64(20))));
+  EXPECT_THAT(ids, Contains(Pair(7, IsCelInt64(20))));
+}
 
 // Test bind expression with nested field selection.
 //

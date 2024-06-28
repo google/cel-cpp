@@ -114,8 +114,8 @@ class BindStep : public DirectExpressionStep {
 
 class AssignSlotStep : public ExpressionStepBase {
  public:
-  explicit AssignSlotStep(size_t slot_index, bool should_pop)
-      : ExpressionStepBase(/*expr_id=*/-1, /*comes_from_ast=*/false),
+  explicit AssignSlotStep(size_t slot_index, int64_t expr_id, bool should_pop)
+      : ExpressionStepBase(expr_id, /*comes_from_ast=*/(expr_id >= 0)),
         slot_index_(slot_index),
         should_pop_(should_pop) {}
 
@@ -174,12 +174,14 @@ std::unique_ptr<ExpressionStep> CreateCheckLazyInitStep(
                                              expr_id);
 }
 
-std::unique_ptr<ExpressionStep> CreateAssignSlotStep(size_t slot_index) {
-  return std::make_unique<AssignSlotStep>(slot_index, /*should_pop=*/false);
+std::unique_ptr<ExpressionStep> CreateAssignSlotStep(size_t slot_index,
+                                                     int64_t expr_id) {
+  return std::make_unique<AssignSlotStep>(slot_index, expr_id,
+                                          /*should_pop=*/false);
 }
 
 std::unique_ptr<ExpressionStep> CreateAssignSlotAndPopStep(size_t slot_index) {
-  return std::make_unique<AssignSlotStep>(slot_index, /*should_pop=*/true);
+  return std::make_unique<AssignSlotStep>(slot_index, -1, /*should_pop=*/true);
 }
 
 std::unique_ptr<ExpressionStep> CreateClearSlotStep(size_t slot_index,

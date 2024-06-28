@@ -66,7 +66,8 @@ std::unique_ptr<ExpressionStep> CreateCheckLazyInitStep(
     size_t slot_index, size_t subexpression_index, int64_t expr_id);
 
 // Helper step to assign a slot value from the top of stack on initialization.
-std::unique_ptr<ExpressionStep> CreateAssignSlotStep(size_t slot_index);
+std::unique_ptr<ExpressionStep> CreateAssignSlotStep(size_t slot_index,
+                                                     int64_t expr_id);
 std::unique_ptr<ExpressionStep> CreateAssignSlotAndPopStep(size_t slot_index);
 
 // Helper step to clear a slot.

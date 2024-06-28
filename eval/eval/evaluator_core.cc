@@ -137,7 +137,9 @@ absl::StatusOr<cel::Value> ExecutionFrame::Evaluate(
         return std::move(status).Consume();
       }
 
-      if (!expr->comes_from_ast()) {
+      if (pc_ == 0 || !expr->comes_from_ast()) {
+        // Skip if we just started a Call or if the step doesn't map to an
+        // AST id.
         continue;
       }
 

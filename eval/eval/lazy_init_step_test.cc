@@ -95,7 +95,7 @@ TEST_F(LazyInitStepTest, CreateCheckInitStepSkipInit) {
   // This is the expected usage, but in this test we are just depending on the
   // fact that these don't change the stack and fit the program layout
   // requirements.
-  path.push_back(CreateAssignSlotStep(/*slot_index=*/0));
+  path.push_back(CreateAssignSlotStep(/*slot_index=*/0, -1));
   path.push_back(CreateClearSlotStep(/*slot_index=*/0, -1));
 
   ASSERT_OK_AND_ASSIGN(
@@ -116,7 +116,7 @@ TEST_F(LazyInitStepTest, CreateCheckInitStepSkipInit) {
 TEST_F(LazyInitStepTest, CreateAssignSlotStepBasic) {
   ExecutionPath path;
 
-  path.push_back(CreateAssignSlotStep(0));
+  path.push_back(CreateAssignSlotStep(0, /*expr_id=*/-1));
 
   ExecutionFrame frame(path, activation_, runtime_options_, evaluator_state_);
   frame.comprehension_slots().ClearSlot(0);
@@ -156,7 +156,7 @@ TEST_F(LazyInitStepTest, CreateAssignSlotAndPopStepBasic) {
 TEST_F(LazyInitStepTest, CreateAssignSlotStepStackUnderflow) {
   ExecutionPath path;
 
-  path.push_back(CreateAssignSlotStep(0));
+  path.push_back(CreateAssignSlotStep(0, /*expr_id=*/-1));
 
   ExecutionFrame frame(path, activation_, runtime_options_, evaluator_state_);
   frame.comprehension_slots().ClearSlot(0);
