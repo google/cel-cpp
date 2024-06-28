@@ -25,11 +25,14 @@
 #include <string>
 #include <utility>
 
+#include "google/protobuf/struct.pb.h"
 #include "absl/base/config.h"  // IWYU pragma: keep
+#include "absl/base/nullability.h"
 #include "absl/debugging/leak_check.h"
 #include "absl/log/absl_check.h"
 #include "absl/types/optional.h"
 #include "common/allocator.h"
+#include "common/data.h"
 #include "common/internal/reference_count.h"
 #include "common/native_type.h"
 #include "internal/testing.h"
@@ -991,6 +994,304 @@ TEST(Unique, ToAddress) {
   unique = AllocateUnique<bool>(NewDeleteAllocator());
   EXPECT_EQ(cel::to_address(unique), unique.operator->());
 }
+
+class OwnedTest : public TestWithParam<MemoryManagement> {
+ public:
+  Allocator<> GetAllocator() {
+    switch (GetParam()) {
+      case MemoryManagement::kPooling:
+        return ArenaAllocator(&arena_);
+      case MemoryManagement::kReferenceCounting:
+        return NewDeleteAllocator();
+    }
+  }
+
+ private:
+  google::protobuf::Arena arena_;
+};
+
+TEST_P(OwnedTest, Default) {
+  Owned<Data> owned;
+  EXPECT_FALSE(owned);
+  EXPECT_EQ(cel::to_address(owned), nullptr);
+  EXPECT_FALSE(owned != nullptr);
+  EXPECT_FALSE(nullptr != owned);
+}
+
+class TestData final : public Data {
+ public:
+  using InternalArenaConstructable_ = void;
+  using DestructorSkippable_ = void;
+
+  TestData() noexcept : Data() {}
+
+  explicit TestData(absl::Nullable<google::protobuf::Arena*> arena) noexcept
+      : Data(arena) {}
+};
+
+TEST_P(OwnedTest, AllocateSharedData) {
+  auto owned = AllocateShared<TestData>(GetAllocator());
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  EXPECT_EQ(Owner(owned).arena(), GetAllocator().arena());
+  EXPECT_EQ(Borrower(owned).arena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, AllocateSharedMessageLite) {
+  auto owned = AllocateShared<google::protobuf::Value>(GetAllocator());
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  EXPECT_EQ(Owner(owned).arena(), GetAllocator().arena());
+  EXPECT_EQ(Borrower(owned).arena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, WrapSharedData) {
+  auto owned =
+      WrapShared(google::protobuf::Arena::Create<TestData>(GetAllocator().arena()));
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  EXPECT_EQ(Owner(owned).arena(), GetAllocator().arena());
+  EXPECT_EQ(Borrower(owned).arena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, WrapSharedMessageLite) {
+  auto owned = WrapShared(
+      google::protobuf::Arena::Create<google::protobuf::Value>(GetAllocator().arena()));
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  EXPECT_EQ(Owner(owned).arena(), GetAllocator().arena());
+  EXPECT_EQ(Borrower(owned).arena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, SharedFromUniqueData) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  EXPECT_EQ(Owner(owned).arena(), GetAllocator().arena());
+  EXPECT_EQ(Borrower(owned).arena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, SharedFromUniqueMessageLite) {
+  auto owned = Owned(AllocateUnique<google::protobuf::Value>(GetAllocator()));
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  EXPECT_EQ(Owner(owned).arena(), GetAllocator().arena());
+  EXPECT_EQ(Borrower(owned).arena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, CopyConstruct) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  Owned<TestData> copied_owned(owned);
+  EXPECT_EQ(copied_owned->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, MoveConstruct) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  Owned<TestData> moved_owned(std::move(owned));
+  EXPECT_EQ(moved_owned->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, CopyConstructOther) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  Owned<Data> copied_owned(owned);
+  EXPECT_EQ(copied_owned->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, MoveConstructOther) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  Owned<Data> moved_owned(std::move(owned));
+  EXPECT_EQ(moved_owned->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, ConstructBorrowed) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  Owned<TestData> borrowed_owned(Borrowed<TestData>{owned});
+  EXPECT_EQ(borrowed_owned->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, ConstructOwner) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  Owned<TestData> owner_owned(Owner(owned), cel::to_address(owned));
+  EXPECT_EQ(owner_owned->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, ConstructNullPtr) {
+  Owned<Data> owned(nullptr);
+  EXPECT_EQ(owned, nullptr);
+}
+
+TEST_P(OwnedTest, CopyAssign) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  Owned<TestData> copied_owned;
+  copied_owned = owned;
+  EXPECT_EQ(copied_owned->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, MoveAssign) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  Owned<TestData> moved_owned;
+  moved_owned = std::move(owned);
+  EXPECT_EQ(moved_owned->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, CopyAssignOther) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  Owned<Data> copied_owned;
+  copied_owned = owned;
+  EXPECT_EQ(copied_owned->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, MoveAssignOther) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  Owned<Data> moved_owned;
+  moved_owned = std::move(owned);
+  EXPECT_EQ(moved_owned->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, AssignBorrowed) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  Owned<TestData> borrowed_owned;
+  borrowed_owned = Borrowed<TestData>{owned};
+  EXPECT_EQ(borrowed_owned->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, AssignUnique) {
+  Owned<TestData> owned;
+  owned = AllocateUnique<TestData>(GetAllocator());
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(OwnedTest, AssignNullPtr) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  EXPECT_TRUE(owned);
+  owned = nullptr;
+  EXPECT_FALSE(owned);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    OwnedTest, OwnedTest,
+    ::testing::Values(MemoryManagement::kPooling,
+                      MemoryManagement::kReferenceCounting));
+
+class BorrowedTest : public TestWithParam<MemoryManagement> {
+ public:
+  Allocator<> GetAllocator() {
+    switch (GetParam()) {
+      case MemoryManagement::kPooling:
+        return ArenaAllocator(&arena_);
+      case MemoryManagement::kReferenceCounting:
+        return NewDeleteAllocator();
+    }
+  }
+
+ private:
+  google::protobuf::Arena arena_;
+};
+
+TEST_P(BorrowedTest, Default) {
+  Borrowed<Data> borrowed;
+  EXPECT_FALSE(borrowed);
+  EXPECT_EQ(cel::to_address(borrowed), nullptr);
+  EXPECT_FALSE(borrowed != nullptr);
+  EXPECT_FALSE(nullptr != borrowed);
+}
+
+TEST_P(BorrowedTest, CopyConstruct) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  auto borrowed = Borrowed(owned);
+  EXPECT_EQ(borrowed->GetArena(), GetAllocator().arena());
+  Borrowed<TestData> copied_borrowed(borrowed);
+  EXPECT_EQ(copied_borrowed->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(BorrowedTest, MoveConstruct) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  auto borrowed = Borrowed(owned);
+  EXPECT_EQ(borrowed->GetArena(), GetAllocator().arena());
+  Borrowed<TestData> moved_borrowed(std::move(borrowed));
+  EXPECT_EQ(moved_borrowed->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(BorrowedTest, CopyConstructOther) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  auto borrowed = Borrowed(owned);
+  EXPECT_EQ(borrowed->GetArena(), GetAllocator().arena());
+  Borrowed<Data> copied_borrowed(borrowed);
+  EXPECT_EQ(copied_borrowed->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(BorrowedTest, MoveConstructOther) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  auto borrowed = Borrowed(owned);
+  EXPECT_EQ(borrowed->GetArena(), GetAllocator().arena());
+  Borrowed<Data> moved_borrowed(std::move(borrowed));
+  EXPECT_EQ(moved_borrowed->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(BorrowedTest, ConstructNullPtr) {
+  Borrowed<TestData> borrowed(nullptr);
+  EXPECT_FALSE(borrowed);
+}
+
+TEST_P(BorrowedTest, CopyAssign) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  auto borrowed = Borrowed(owned);
+  EXPECT_EQ(borrowed->GetArena(), GetAllocator().arena());
+  Borrowed<TestData> copied_borrowed;
+  copied_borrowed = borrowed;
+  EXPECT_EQ(copied_borrowed->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(BorrowedTest, MoveAssign) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  auto borrowed = Borrowed(owned);
+  EXPECT_EQ(borrowed->GetArena(), GetAllocator().arena());
+  Borrowed<TestData> moved_borrowed;
+  moved_borrowed = std::move(borrowed);
+  EXPECT_EQ(moved_borrowed->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(BorrowedTest, CopyAssignOther) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  auto borrowed = Borrowed(owned);
+  EXPECT_EQ(borrowed->GetArena(), GetAllocator().arena());
+  Borrowed<Data> copied_borrowed;
+  copied_borrowed = borrowed;
+  EXPECT_EQ(copied_borrowed->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(BorrowedTest, MoveAssignOther) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  auto borrowed = Borrowed(owned);
+  EXPECT_EQ(borrowed->GetArena(), GetAllocator().arena());
+  Borrowed<Data> moved_borrowed;
+  moved_borrowed = std::move(borrowed);
+  EXPECT_EQ(moved_borrowed->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(BorrowedTest, AssignOwned) {
+  auto owned = Owned(AllocateUnique<TestData>(GetAllocator()));
+  EXPECT_EQ(owned->GetArena(), GetAllocator().arena());
+  Borrowed<Data> borrowed = owned;
+  EXPECT_EQ(borrowed->GetArena(), GetAllocator().arena());
+}
+
+TEST_P(BorrowedTest, AssignNullPtr) {
+  Borrowed<TestData> borrowed;
+  borrowed = nullptr;
+  EXPECT_FALSE(borrowed);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    BorrowedTest, BorrowedTest,
+    ::testing::Values(MemoryManagement::kPooling,
+                      MemoryManagement::kReferenceCounting));
 
 }  // namespace
 }  // namespace cel

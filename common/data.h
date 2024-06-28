@@ -25,6 +25,10 @@
 namespace cel {
 
 class Data;
+template <typename T>
+struct Ownable;
+template <typename T>
+struct Borrowable;
 
 namespace common_internal {
 
@@ -84,6 +88,10 @@ class Data {
   friend absl::Nullable<const common_internal::ReferenceCount*>
   common_internal::GetDataReferenceCount(
       absl::Nonnull<const Data*> data) noexcept;
+  template <typename T>
+  friend struct Ownable;
+  template <typename T>
+  friend struct Borrowable;
 
   mutable uintptr_t owner_ = kOwnerNone;
 };
