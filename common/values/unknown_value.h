@@ -140,7 +140,7 @@ inline std::ostream& operator<<(std::ostream& out, const UnknownValue& value) {
 
 class UnknownValueView final {
  private:
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const Unknown& Empty();
+  static const Unknown& Empty();
 
  public:
   using alternative_type = UnknownValue;

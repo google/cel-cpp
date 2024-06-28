@@ -93,7 +93,7 @@ class OptionalValue final : public OpaqueValue {
   using interface_type = OptionalValueInterface;
   using view_alternative_type = OptionalValueView;
 
-  ABSL_ATTRIBUTE_PURE_FUNCTION static OptionalValue None();
+  static OptionalValue None();
 
   static OptionalValue Of(MemoryManagerRef memory_manager, cel::Value value);
 
@@ -165,7 +165,7 @@ class OptionalValueView final : public OpaqueValueView {
   using interface_type = OptionalValueInterface;
   using alternative_type = OptionalValue;
 
-  ABSL_ATTRIBUTE_PURE_FUNCTION static OptionalValueView None();
+  static OptionalValueView None();
 
   OptionalValueView() : OptionalValueView(None()) {}
 

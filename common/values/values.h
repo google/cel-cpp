@@ -502,13 +502,13 @@ template <typename T>
 using BaseStructValueViewAlternativeForT =
     typename BaseStructValueViewAlternativeFor<T>::type;
 
-ABSL_ATTRIBUTE_PURE_FUNCTION ErrorValueView GetDefaultErrorValue();
+ErrorValueView GetDefaultErrorValue();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION ParsedListValueView GetEmptyDynListValue();
+ParsedListValueView GetEmptyDynListValue();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION ParsedMapValueView GetEmptyDynDynMapValue();
+ParsedMapValueView GetEmptyDynDynMapValue();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION OptionalValueView GetEmptyDynOptionalValue();
+OptionalValueView GetEmptyDynOptionalValue();
 
 absl::Status ListValueEqual(ValueManager& value_manager, ListValueView lhs,
                             ListValueView rhs, Value& result);

@@ -45,9 +45,9 @@ struct UnknownSetRep final {
   FunctionResultSet function_results;
 };
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const AttributeSet& EmptyAttributeSet();
+const AttributeSet& EmptyAttributeSet();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION const FunctionResultSet& EmptyFunctionResultSet();
+const FunctionResultSet& EmptyFunctionResultSet();
 
 struct UnknownSetAccess;
 

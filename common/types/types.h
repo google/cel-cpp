@@ -226,11 +226,11 @@ template <typename T>
 using BaseTypeViewAlternativeForT =
     typename BaseTypeViewAlternativeFor<T>::type;
 
-ABSL_ATTRIBUTE_PURE_FUNCTION ListTypeView GetDynListType();
+ListTypeView GetDynListType();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION MapTypeView GetDynDynMapType();
+MapTypeView GetDynDynMapType();
 
-ABSL_ATTRIBUTE_PURE_FUNCTION OptionalTypeView GetDynOptionalType();
+OptionalTypeView GetDynOptionalType();
 
 }  // namespace common_internal
 
