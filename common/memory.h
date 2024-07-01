@@ -96,70 +96,12 @@ inline constexpr bool kNotSameAndIsPointerConvertible =
 // Clears the contents of `owner`, and returns the reference count if in use.
 absl::Nullable<const ReferenceCount*> OwnerRelease(Owner owner) noexcept;
 
-// Given a pointer to `T` and a reference count, returns an appropriate tagged
-// pointer as used by `cel::Owner`. If `acquire` is `true`, increments the
-// reference count when present.
-template <typename T>
-uintptr_t EncodeOwnerImpl(absl::Nullable<const T*> ptr,
-                          absl::Nullable<const ReferenceCount*> refcount,
-                          bool acquire = true) noexcept;
-uintptr_t EncodeOwner(absl::Nullable<const google::protobuf::MessageLite*> ptr,
-                      absl::Nullable<const ReferenceCount*> refcount,
-                      bool acquire = true) noexcept;
-uintptr_t EncodeOwner(absl::Nullable<const Data*> ptr,
-                      absl::Nullable<const ReferenceCount*> refcount,
-                      bool acquire = true) noexcept;
-template <typename T>
-std::enable_if_t<kNotMessageLiteAndNotData<T>, uintptr_t> EncodeOwner(
-    absl::Nullable<const T*> ptr,
-    absl::Nullable<const ReferenceCount*> refcount,
-    bool acquire = true) noexcept;
-
-template <typename T>
-Owner MakeOwnerImpl(absl::Nullable<const T*> ptr,
-                    absl::Nullable<const ReferenceCount*> refcount,
-                    bool acquire = true) noexcept;
-Owner MakeOwner(absl::Nullable<const google::protobuf::MessageLite*> ptr,
-                absl::Nullable<const ReferenceCount*> refcount,
-                bool acquire = true) noexcept;
-Owner MakeOwner(absl::Nullable<const Data*> ptr,
-                absl::Nullable<const ReferenceCount*> refcount,
-                bool acquire = true) noexcept;
-template <typename T>
-std::enable_if_t<kNotMessageLiteAndNotData<T>, Owner> MakeOwner(
-    absl::Nullable<const T*> ptr,
-    absl::Nullable<const ReferenceCount*> refcount,
-    bool acquire = true) noexcept;
-
-// Clears the contents of `borrower`, and returns the reference count if in use.
-absl::Nullable<const ReferenceCount*> BorrowerRelease(
-    Borrower borrower) noexcept;
-
-// Given a pointer to `T` and a reference count, returns an appropriate tagged
-// pointer as used by `cel::Borrower`.
-uintptr_t EncodeBorrower(
-    absl::Nullable<const google::protobuf::MessageLite*> ptr,
-    absl::Nullable<const ReferenceCount*> refcount) noexcept;
-uintptr_t EncodeBorrower(
-    absl::Nullable<const Data*> ptr,
-    absl::Nullable<const ReferenceCount*> refcount) noexcept;
-template <typename T>
-std::enable_if_t<kNotMessageLiteAndNotData<T>, uintptr_t> EncodeBorrower(
-    absl::Nullable<const T*> ptr,
-    absl::Nullable<const ReferenceCount*> refcount) noexcept;
-
-template <typename T>
-Borrower MakeBorrowerImpl(
-    absl::Nullable<const T*> ptr,
-    absl::Nullable<const ReferenceCount*> refcount) noexcept;
-Borrower MakeBorrower(absl::Nullable<const google::protobuf::MessageLite*> ptr,
-                      absl::Nullable<const ReferenceCount*> refcount) noexcept;
-Borrower MakeBorrower(absl::Nullable<const Data*> ptr,
-                      absl::Nullable<const ReferenceCount*> refcount) noexcept;
-template <typename T>
-std::enable_if_t<kNotMessageLiteAndNotData<T>, Borrower> MakeBorrower(
-    absl::Nullable<const T*> ptr,
-    absl::Nullable<const ReferenceCount*> refcount) noexcept;
+// Pointer tag used by `cel::Unique` to indicate that the destructor needs to be
+// registered with the arena, but it has not been done yet. Must be done when
+// releasing.
+inline constexpr uintptr_t kUniqueArenaUnownedBit = uintptr_t{1} << 0;
+inline constexpr uintptr_t kUniqueArenaBits = kUniqueArenaUnownedBit;
+inline constexpr uintptr_t kUniqueArenaPointerMask = ~kUniqueArenaBits;
 
 template <typename T>
 T* GetPointer(const Shared<T>& shared);
@@ -183,6 +125,12 @@ template <typename To, typename From>
 Shared<To> StaticCast(Shared<From>&& from);
 template <typename To, typename From>
 SharedView<To> StaticCast(SharedView<From> from);
+
+template <typename T, typename... Args>
+Owned<T> AllocateShared(Allocator<> allocator, Args&&... args);
+
+template <typename T>
+Owned<T> WrapShared(T* object);
 
 // `Owner` represents a reference to some co-owned data, of which this owner is
 // one of the co-owners. When using reference counting, `Owner` performs
@@ -281,6 +229,11 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owner final {
                : nullptr;
   }
 
+  void reset() noexcept {
+    Destroy(ptr_);
+    ptr_ = 0;
+  }
+
   // Tests whether two owners have ownership over the same data, that is they
   // are co-owners.
   friend bool operator==(const Owner& lhs, const Owner& rhs) noexcept {
@@ -290,18 +243,17 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owner final {
   }
 
  private:
+  template <typename T>
+  friend class Unique;
   friend class Borrower;
+  template <typename T, typename... Args>
+  friend Owned<T> AllocateShared(cel::Allocator<> allocator, Args&&... args);
+  template <typename T>
+  friend Owned<T> WrapShared(T* object);
   template <typename U>
   friend struct Ownable;
   friend absl::Nullable<const common_internal::ReferenceCount*>
   common_internal::OwnerRelease(Owner owner) noexcept;
-  template <typename T>
-  friend Owner common_internal::MakeOwnerImpl(
-      absl::Nullable<const T*> ptr,
-      absl::Nullable<const common_internal::ReferenceCount*> refcount,
-      bool acquire) noexcept;
-  friend absl::Nullable<const common_internal::ReferenceCount*>
-  common_internal::BorrowerRelease(Borrower borrower) noexcept;
 
   constexpr explicit Owner(uintptr_t ptr) noexcept : ptr_(ptr) {}
 
@@ -370,79 +322,6 @@ inline absl::Nullable<const ReferenceCount*> OwnerRelease(
     return Owner::AsReferenceCount(ptr);
   }
   return nullptr;
-}
-
-inline uintptr_t EncodeOwnerReferenceCount(
-    absl::Nonnull<const ReferenceCount*> refcount, bool acquire) noexcept {
-  if (acquire) {
-    StrongRef(*refcount);
-  }
-  return reinterpret_cast<uintptr_t>(refcount) |
-         kMetadataOwnerReferenceCountBit;
-}
-
-template <typename T>
-uintptr_t EncodeOwnerImpl(absl::Nullable<const T*> ptr,
-                          absl::Nullable<const ReferenceCount*> refcount,
-                          bool acquire) noexcept {
-  if (refcount != nullptr) {
-    return EncodeOwnerReferenceCount(refcount, acquire);
-  }
-  if (ptr != nullptr) {
-    if (google::protobuf::Arena* arena = ptr->GetArena(); arena != nullptr) {
-      return reinterpret_cast<uintptr_t>(arena) | kMetadataOwnerArenaBit;
-    }
-  }
-  return kMetadataOwnerNone;
-}
-
-inline uintptr_t EncodeOwner(absl::Nullable<const google::protobuf::MessageLite*> ptr,
-                             absl::Nullable<const ReferenceCount*> refcount,
-                             bool acquire) noexcept {
-  return (EncodeOwnerImpl)(ptr, refcount, acquire);
-}
-
-inline uintptr_t EncodeOwner(absl::Nullable<const Data*> ptr,
-                             absl::Nullable<const ReferenceCount*> refcount,
-                             bool acquire) noexcept {
-  return (EncodeOwnerImpl)(ptr, refcount, acquire);
-}
-
-template <typename T>
-std::enable_if_t<kNotMessageLiteAndNotData<T>, uintptr_t> EncodeOwner(
-    absl::Nullable<const T*> ptr,
-    absl::Nullable<const ReferenceCount*> refcount, bool acquire) noexcept {
-  static_assert(IsArenaConstructible<T>::value,
-                "T must be arena constructable");
-  return (EncodeOwnerImpl)(ptr, refcount, acquire);
-}
-
-template <typename T>
-Owner MakeOwnerImpl(absl::Nullable<const T*> ptr,
-                    absl::Nullable<const ReferenceCount*> refcount,
-                    bool acquire) noexcept {
-  return Owner((EncodeOwner)(ptr, refcount, acquire));
-}
-
-inline Owner MakeOwner(absl::Nullable<const google::protobuf::MessageLite*> ptr,
-                       absl::Nullable<const ReferenceCount*> refcount,
-                       bool acquire) noexcept {
-  return (MakeOwnerImpl)(ptr, refcount, acquire);
-}
-
-inline Owner MakeOwner(absl::Nullable<const Data*> ptr,
-                       absl::Nullable<const ReferenceCount*> refcount,
-                       bool acquire) noexcept {
-  return (MakeOwnerImpl)(ptr, refcount, acquire);
-}
-
-template <typename T>
-std::enable_if_t<kNotMessageLiteAndNotData<T>, Owner> MakeOwner(
-    absl::Nullable<const T*> ptr,
-    absl::Nullable<const ReferenceCount*> refcount, bool acquire) noexcept {
-  static_assert(IsArenaConstructible<T>::value,
-                "T must be arena constructable");
-  return (MakeOwnerImpl)(ptr, refcount, acquire);
 }
 
 }  // namespace common_internal
@@ -524,6 +403,8 @@ class Borrower final {
                : nullptr;
   }
 
+  void reset() noexcept { ptr_ = 0; }
+
   // Tests whether two borrowers are borrowing the same data.
   friend bool operator==(Borrower lhs, Borrower rhs) noexcept {
     // A reference count and arena can never occupy the same memory address, so
@@ -535,12 +416,6 @@ class Borrower final {
   friend class Owner;
   template <typename U>
   friend struct Borrowable;
-  template <typename T>
-  friend Borrower common_internal::MakeBorrowerImpl(
-      absl::Nullable<const T*> ptr,
-      absl::Nullable<const common_internal::ReferenceCount*> refcount) noexcept;
-  friend absl::Nullable<const common_internal::ReferenceCount*>
-  common_internal::BorrowerRelease(Borrower borrower) noexcept;
 
   constexpr explicit Borrower(uintptr_t ptr) noexcept : ptr_(ptr) {}
 
@@ -569,65 +444,6 @@ inline bool operator!=(const Owner& lhs, Borrower rhs) noexcept {
 
 inline Owner::Owner(Borrower borrower) noexcept
     : ptr_(Owner::Own(borrower.ptr_)) {}
-
-namespace common_internal {
-
-inline absl::Nullable<const ReferenceCount*> BorrowerRelease(
-    Borrower borrower) noexcept {
-  if (Owner::IsReferenceCount(borrower.ptr_)) {
-    return Owner::AsReferenceCount(borrower.ptr_);
-  }
-  return nullptr;
-}
-
-inline uintptr_t EncodeBorrower(
-    absl::Nullable<const google::protobuf::MessageLite*> ptr,
-    absl::Nullable<const ReferenceCount*> refcount) noexcept {
-  return (EncodeOwner)(ptr, refcount, /*acquire=*/false);
-}
-
-inline uintptr_t EncodeBorrower(
-    absl::Nullable<const Data*> ptr,
-    absl::Nullable<const ReferenceCount*> refcount) noexcept {
-  return (EncodeOwner)(ptr, refcount, /*acquire=*/false);
-}
-
-template <typename T>
-std::enable_if_t<kNotMessageLiteAndNotData<T>, uintptr_t> EncodeBorrower(
-    absl::Nullable<const T*> ptr,
-    absl::Nullable<const ReferenceCount*> refcount) noexcept {
-  return (EncodeOwner)(ptr, refcount, /*acquire=*/false);
-}
-
-template <typename T>
-Borrower MakeBorrowerImpl(
-    absl::Nullable<const T*> ptr,
-    absl::Nullable<const ReferenceCount*> refcount) noexcept {
-  return Borrower((EncodeBorrower)(ptr, refcount));
-}
-
-inline Borrower MakeBorrower(
-    absl::Nullable<const google::protobuf::MessageLite*> ptr,
-    absl::Nullable<const ReferenceCount*> refcount) noexcept {
-  return (MakeBorrowerImpl)(ptr, refcount);
-}
-
-inline Borrower MakeBorrower(
-    absl::Nullable<const Data*> ptr,
-    absl::Nullable<const ReferenceCount*> refcount) noexcept {
-  return (MakeBorrowerImpl)(ptr, refcount);
-}
-
-template <typename T>
-std::enable_if_t<kNotMessageLiteAndNotData<T>, Borrower> MakeBorrower(
-    absl::Nullable<const T*> ptr,
-    absl::Nullable<const ReferenceCount*> refcount) noexcept {
-  static_assert(IsArenaConstructible<T>::value,
-                "T must be arena constructable");
-  return (MakeBorrowerImpl)(ptr, refcount);
-}
-
-}  // namespace common_internal
 
 template <typename T, typename... Args>
 Unique<T> AllocateUnique(Allocator<> allocator, Args&&... args);
@@ -663,7 +479,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
   Unique(const Unique&) = delete;
   Unique& operator=(const Unique&) = delete;
 
-  explicit Unique(T* ptr) noexcept : Unique(ptr, nullptr) {}
+  explicit Unique(T* ptr) noexcept
+      : Unique(ptr, common_internal::GetArena(ptr)) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   Unique(std::nullptr_t) noexcept : Unique() {}
@@ -734,12 +551,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
   // allocated and constructed without an arena, the caller must eventually call
   // `delete`.
   ABSL_MUST_USE_RESULT T* release() noexcept {
-    if constexpr (!IsArenaDestructorSkippable<T>::value) {
-      if (static_cast<bool>(*this) && arena_ != nullptr) {
-        // We never registered the destructor, call it if necessary.
-        arena_->OwnDestructor(ptr_);
-      }
-    }
+    PreRelease();
     return std::exchange(ptr_, nullptr);
   }
 
@@ -748,15 +560,21 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
   void reset(T* ptr) noexcept {
     Delete();
     ptr_ = ptr;
-    arena_ = nullptr;
+    arena_ = reinterpret_cast<uintptr_t>(common_internal::GetArena(ptr));
   }
 
   void reset(std::nullptr_t) noexcept {
     Delete();
     ptr_ = nullptr;
+    arena_ = 0;
   }
 
   explicit operator bool() const noexcept { return get() != nullptr; }
+
+  absl::Nullable<google::protobuf::Arena*> arena() const noexcept {
+    return reinterpret_cast<google::protobuf::Arena*>(
+        arena_ & common_internal::kUniqueArenaPointerMask);
+  }
 
   friend void swap(Unique& lhs, Unique& rhs) noexcept {
     using std::swap;
@@ -767,23 +585,37 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
  private:
   template <typename U>
   friend class Unique;
+  template <typename U>
+  friend class Owned;
   template <typename U, typename... Args>
   friend Unique<U> AllocateUnique(Allocator<> allocator, Args&&... args);
   friend class ReferenceCountingMemoryManager;
   friend class PoolingMemoryManager;
   friend struct std::pointer_traits<Unique<T>>;
 
-  constexpr Unique(T* ptr, google::protobuf::Arena* arena) noexcept
-      : ptr_(ptr), arena_(arena) {}
+  Unique(T* ptr, uintptr_t arena) noexcept : ptr_(ptr), arena_(arena) {}
+
+  Unique(T* ptr, google::protobuf::Arena* arena, bool unowned = false) noexcept
+      : Unique(ptr,
+               reinterpret_cast<uintptr_t>(arena) |
+                   (unowned ? common_internal::kUniqueArenaUnownedBit : 0)) {
+    ABSL_ASSERT(!unowned || (unowned && arena != nullptr));
+  }
+
+  Unique(google::protobuf::Arena* arena, T* ptr, bool unowned = false) noexcept
+      : Unique(ptr, arena, unowned) {}
 
   T* get() const noexcept { return ptr_; }
 
   void Delete() const noexcept {
     if (static_cast<bool>(*this)) {
-      if (arena_ != nullptr) {
-        // We never registered the destructor, call it if necessary.
-        if constexpr (!IsArenaDestructorSkippable<T>::value) {
-          ptr_->~T();
+      if (arena_ != 0) {
+        if ((arena_ & common_internal::kUniqueArenaBits) ==
+            common_internal::kUniqueArenaUnownedBit) {
+          // We never registered the destructor, call it if necessary.
+          if constexpr (!IsArenaDestructorSkippable<T>::value) {
+            ptr_->~T();
+          }
         }
       } else {
         google::protobuf::Arena::Destroy(ptr_);
@@ -791,10 +623,39 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
     }
   }
 
+  void PreRelease() noexcept {
+    if constexpr (!IsArenaDestructorSkippable<T>::value) {
+      if (static_cast<bool>(*this) &&
+          (arena_ & common_internal::kUniqueArenaBits) ==
+              common_internal::kUniqueArenaUnownedBit) {
+        // We never registered the destructor, call it if necessary.
+        arena()->OwnDestructor(ptr_);
+        arena_ &= common_internal::kUniqueArenaPointerMask;
+      }
+    }
+  }
+
+  void Release(T** ptr, Owner* owner) noexcept {
+    if (ptr_ == nullptr) {
+      *ptr = nullptr;
+      return;
+    }
+    PreRelease();
+    *ptr = std::exchange(ptr_, nullptr);
+    if (arena_ == 0) {
+      owner->ptr_ = reinterpret_cast<uintptr_t>(
+                        common_internal::MakeDeletingReferenceCount(*ptr)) |
+                    common_internal::kMetadataOwnerReferenceCountBit;
+    } else {
+      owner->ptr_ = reinterpret_cast<uintptr_t>(arena()) |
+                    common_internal::kMetadataOwnerArenaBit;
+    }
+  }
+
   T* ptr_ = nullptr;
-  // Nonnull when `ptr` was allocated on the arena and its destructor is not
-  // skippable. In that case we must register the destructor upon release.
-  google::protobuf::Arena* arena_ = nullptr;
+  // Potentially tagged pointer to `google::protobuf::Arena`. The tag is used to determine
+  // whether we still need to register the destructor with the `google::protobuf::Arena`.
+  uintptr_t arena_ = 0;
 };
 
 template <typename T>
@@ -804,13 +665,14 @@ template <typename T, typename... Args>
 Unique<T> AllocateUnique(Allocator<> allocator, Args&&... args) {
   T* object;
   auto* arena = allocator.arena();
+  bool unowned;
   if constexpr (IsArenaConstructible<T>::value) {
     object = google::protobuf::Arena::Create<T>(arena, std::forward<Args>(args)...);
     // For arena-compatible proto types, let the Arena::Create handle
     // registering the destructor call.
     // Otherwise, Unique<T> retains a pointer to the owning arena so it may
     // conditionally register T::~T depending on usage.
-    arena = nullptr;
+    unowned = false;
   } else {
     void* p = allocator.allocate_bytes(sizeof(T), alignof(T));
     CEL_INTERNAL_TRY { object = ::new (p) T(std::forward<Args>(args)...); }
@@ -818,8 +680,9 @@ Unique<T> AllocateUnique(Allocator<> allocator, Args&&... args) {
       allocator.deallocate_bytes(p, sizeof(T), alignof(T));
       CEL_INTERNAL_RETHROW;
     }
+    unowned = arena != nullptr;
   }
-  return Unique<T>(object, arena);
+  return Unique<T>(object, arena, unowned);
 }
 
 template <typename T>
@@ -847,12 +710,6 @@ struct pointer_traits<cel::Unique<T>> {
 
 namespace cel {
 
-template <typename T, typename... Args>
-Owned<T> AllocateShared(Allocator<> allocator, Args&&... args);
-
-template <typename T>
-Owned<T> WrapShared(T* object);
-
 // `Owned<T>` points to an object which was allocated using `Allocator<>` or
 // `Allocator<T>`. It has co-ownership over the object. `T` must meet the named
 // requirement `ArenaConstructable`.
@@ -867,32 +724,24 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owned final {
   static_assert(!std::is_void_v<T>, "T must not be void");
 
   Owned() = default;
+  Owned(const Owned&) = default;
+  Owned& operator=(const Owned&) = default;
 
-  Owned(const Owned& other) noexcept : Owned(other.value_, other.refcount_) {
-    common_internal::StrongRef(refcount_);
-  }
-
-  Owned(Owned&& other) noexcept : Owned(other.value_, other.refcount_) {
-    other.value_ = nullptr;
-    other.refcount_ = nullptr;
-  }
+  Owned(Owned&& other) noexcept
+      : Owned(std::exchange(other.value_, nullptr), std::move(other.owner_)) {}
 
   template <typename U,
             typename = std::enable_if_t<
                 common_internal::kNotSameAndIsPointerConvertible<T, U>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  Owned(const Owned<U>& other) noexcept : Owned(other.value_, other.refcount_) {
-    common_internal::StrongRef(refcount_);
-  }
+  Owned(const Owned<U>& other) noexcept : Owned(other.value_, other.owner_) {}
 
   template <typename U,
             typename = std::enable_if_t<
                 common_internal::kNotSameAndIsPointerConvertible<T, U>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  Owned(Owned<U>&& other) noexcept : Owned(other.value_, other.refcount_) {
-    other.value_ = nullptr;
-    other.refcount_ = nullptr;
-  }
+  Owned(Owned<U>&& other) noexcept
+      : Owned(std::exchange(other.value_, nullptr), std::move(other.owner_)) {}
 
   template <typename U, typename = std::enable_if_t<
                             common_internal::kIsPointerConvertible<T, U>>>
@@ -901,40 +750,20 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owned final {
   template <typename U, typename = std::enable_if_t<
                             common_internal::kIsPointerConvertible<T, U>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  Owned(Unique<U>&& other) : Owned(cel::to_address(other), nullptr) {
-    if (value_ != nullptr) {
-      if (value_->GetArena() == nullptr) {
-        refcount_ = common_internal::MakeDeletingReferenceCount(value_);
-      }
-      static_cast<void>(other.release());
-    }
+  Owned(Unique<U>&& other) : Owned() {
+    other.Release(&value_, &owner_);
   }
 
   Owned(Owner owner, T* value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : Owned(value, common_internal::OwnerRelease(std::move(owner))) {}
+      : Owned(value, std::move(owner)) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   Owned(std::nullptr_t) noexcept : Owned() {}
 
-  ~Owned() { common_internal::StrongUnref(refcount_); }
-
-  Owned& operator=(const Owned& other) noexcept {
-    if (ABSL_PREDICT_TRUE(this != &other)) {
-      common_internal::StrongRef(other.refcount_);
-      common_internal::StrongUnref(refcount_);
-      value_ = other.value_;
-      refcount_ = other.refcount_;
-    }
-    return *this;
-  }
-
   Owned& operator=(Owned&& other) noexcept {
     if (ABSL_PREDICT_TRUE(this != &other)) {
-      common_internal::StrongUnref(refcount_);
-      value_ = other.value_;
-      refcount_ = other.refcount_;
-      other.value_ = nullptr;
-      other.refcount_ = nullptr;
+      value_ = std::exchange(other.value_, nullptr);
+      owner_ = std::move(other.owner_);
     }
     return *this;
   }
@@ -944,10 +773,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owned final {
                 common_internal::kNotSameAndIsPointerConvertible<T, U>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   Owned& operator=(const Owned<U>& other) noexcept {
-    common_internal::StrongRef(other.refcount_);
-    common_internal::StrongUnref(refcount_);
     value_ = other.value_;
-    refcount_ = other.refcount_;
+    owner_ = other.owner_;
     return *this;
   }
 
@@ -956,11 +783,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owned final {
                 common_internal::kNotSameAndIsPointerConvertible<T, U>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   Owned& operator=(Owned<U>&& other) noexcept {
-    common_internal::StrongUnref(refcount_);
-    value_ = other.value_;
-    refcount_ = other.refcount_;
-    other.value_ = nullptr;
-    other.refcount_ = nullptr;
+    value_ = std::exchange(other.value_, nullptr);
+    owner_ = std::move(other.owner_);
     return *this;
   }
 
@@ -973,18 +797,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owned final {
                             common_internal::kIsPointerConvertible<T, U>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   Owned& operator=(Unique<U>&& other) {
-    common_internal::StrongUnref(refcount_);
-    value_ = cel::to_address(other);
-    if (value_ != nullptr) {
-      if (value_->GetArena() == nullptr) {
-        refcount_ = common_internal::MakeDeletingReferenceCount(value_);
-      } else {
-        refcount_ = nullptr;
-      }
-      static_cast<void>(other.release());
-    } else {
-      refcount_ = nullptr;
-    }
+    owner_.reset();
+    other.Release(&value_, &owner_);
     return *this;
   }
 
@@ -1005,9 +819,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owned final {
   }
 
   void reset() noexcept {
-    common_internal::StrongUnref(refcount_);
     value_ = nullptr;
-    refcount_ = nullptr;
+    owner_.reset();
   }
 
   explicit operator bool() const noexcept { return get() != nullptr; }
@@ -1015,7 +828,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owned final {
   friend void swap(Owned& lhs, Owned& rhs) noexcept {
     using std::swap;
     swap(lhs.value_, rhs.value_);
-    swap(lhs.refcount_, rhs.refcount_);
+    swap(lhs.owner_, rhs.owner_);
   }
 
  private:
@@ -1033,13 +846,13 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owned final {
   friend Owned<U> WrapShared(U* object);
   friend struct std::pointer_traits<Owned<T>>;
 
-  constexpr Owned(T* value, const ReferenceCount* refcount) noexcept
-      : value_(value), refcount_(refcount) {}
+  Owned(T* value, Owner owner) noexcept
+      : value_(value), owner_(std::move(owner)) {}
 
   T* get() const noexcept { return value_; }
 
   T* value_ = nullptr;
-  const ReferenceCount* refcount_ = nullptr;
+  Owner owner_;
 };
 
 template <typename T>
@@ -1074,33 +887,23 @@ struct pointer_traits<cel::Owned<T>> {
 namespace cel {
 
 template <typename T>
-Owner::Owner(const Owned<T>& owned) noexcept
-    : Owner(common_internal::EncodeOwner(owned.value_, owned.refcount_,
-                                         /*acquire=*/true)) {}
+Owner::Owner(const Owned<T>& owned) noexcept : Owner(owned.owner_) {}
 
 template <typename T>
-Owner::Owner(Owned<T>&& owned) noexcept
-    : Owner(common_internal::EncodeOwner(owned.value_, owned.refcount_,
-                                         /*acquire=*/false)) {
+Owner::Owner(Owned<T>&& owned) noexcept : Owner(std::move(owned.owner_)) {
   owned.value_ = nullptr;
-  owned.refcount_ = nullptr;
 }
 
 template <typename T>
 Owner& Owner::operator=(const Owned<T>& owned) noexcept {
-  Unown(ptr_);
-  ptr_ = common_internal::EncodeOwner(owned.value_, owned.refcount_,
-                                      /*acquire=*/true);
+  *this = owned.owner_;
   return *this;
 }
 
 template <typename T>
 Owner& Owner::operator=(Owned<T>&& owned) noexcept {
-  Unown(ptr_);
-  ptr_ = common_internal::EncodeOwner(owned.value_, owned.refcount_,
-                                      /*acquire=*/false);
+  *this = std::move(owned.owner_);
   owned.value_ = nullptr;
-  owned.refcount_ = nullptr;
   return *this;
 }
 
@@ -1129,26 +932,35 @@ Owned<T> AllocateShared(Allocator<> allocator, Args&&... args) {
   static_assert(IsArenaConstructible<std::remove_const_t<T>>::value,
                 "T must be arena constructable");
   T* object;
-  const common_internal::ReferenceCount* refcount;
+  Owner owner;
   if (allocator.arena() != nullptr) {
     object = allocator.new_object<T>(std::forward<Args>(args)...);
-    refcount = nullptr;
+    owner.ptr_ = reinterpret_cast<uintptr_t>(allocator.arena()) |
+                 common_internal::kMetadataOwnerArenaBit;
   } else {
+    const common_internal::ReferenceCount* refcount;
     std::tie(object, refcount) = common_internal::MakeEmplacedReferenceCount<T>(
         std::forward<Args>(args)...);
+    owner.ptr_ = reinterpret_cast<uintptr_t>(refcount) |
+                 common_internal::kMetadataOwnerReferenceCountBit;
   }
-  return Owned<T>(object, refcount);
+  return Owned<T>(object, std::move(owner));
 }
 
 template <typename T>
 Owned<T> WrapShared(T* object) {
-  const common_internal::ReferenceCount* refcount;
-  if (object == nullptr || object->GetArena() != nullptr) {
-    refcount = nullptr;
+  Owner owner;
+  if (object == nullptr) {
+  } else if (object->GetArena() != nullptr) {
+    owner.ptr_ = reinterpret_cast<uintptr_t>(
+                     static_cast<google::protobuf::Arena*>(object->GetArena())) |
+                 common_internal::kMetadataOwnerArenaBit;
   } else {
-    refcount = common_internal::MakeDeletingReferenceCount(object);
+    owner.ptr_ = reinterpret_cast<uintptr_t>(
+                     common_internal::MakeDeletingReferenceCount(object)) |
+                 common_internal::kMetadataOwnerReferenceCountBit;
   }
-  return Owned<T>(object, refcount);
+  return Owned<T>(object, std::move(owner));
 }
 
 // `Borrowed<T>` points to an object which was allocated using `Allocator<>` or
@@ -1176,23 +988,22 @@ class Borrowed final {
                 common_internal::kNotSameAndIsPointerConvertible<T, U>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   Borrowed(const Borrowed<U>& other) noexcept
-      : Borrowed(other.value_, other.refcount_) {}
+      : Borrowed(other.value_, other.borrower_) {}
 
   template <typename U,
             typename = std::enable_if_t<
                 common_internal::kNotSameAndIsPointerConvertible<T, U>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   Borrowed(Borrowed<U>&& other) noexcept
-      : Borrowed(other.value_, other.refcount_) {}
+      : Borrowed(other.value_, other.borrower_) {}
 
   template <typename U, typename = std::enable_if_t<
                             common_internal::kIsPointerConvertible<T, U>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   Borrowed(const Owned<U>& other ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : Borrowed(other.value_, other.refcount_) {}
+      : Borrowed(other.value_, other.owner_) {}
 
-  Borrowed(Borrower borrower, T* ptr) noexcept
-      : Borrowed(ptr, common_internal::BorrowerRelease(borrower)) {}
+  Borrowed(Borrower borrower, T* ptr) noexcept : Borrowed(ptr, borrower) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   Borrowed(std::nullptr_t) noexcept : Borrowed() {}
@@ -1203,7 +1014,7 @@ class Borrowed final {
   // NOLINTNEXTLINE(google-explicit-constructor)
   Borrowed& operator=(const Borrowed<U>& other) noexcept {
     value_ = other.value_;
-    refcount_ = other.refcount_;
+    borrower_ = other.borrower_;
     return *this;
   }
 
@@ -1213,7 +1024,7 @@ class Borrowed final {
   // NOLINTNEXTLINE(google-explicit-constructor)
   Borrowed& operator=(Borrowed<U>&& other) noexcept {
     value_ = other.value_;
-    refcount_ = other.refcount_;
+    borrower_ = other.borrower_;
     return *this;
   }
 
@@ -1223,7 +1034,7 @@ class Borrowed final {
   Borrowed& operator=(
       const Owned<U>& other ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
     value_ = other.value_;
-    refcount_ = other.refcount_;
+    borrower_ = other.borrower_;
     return *this;
   }
 
@@ -1250,7 +1061,7 @@ class Borrowed final {
 
   void reset() noexcept {
     value_ = nullptr;
-    refcount_ = nullptr;
+    borrower_.reset();
   }
 
   explicit operator bool() const noexcept { return get() != nullptr; }
@@ -1266,13 +1077,13 @@ class Borrowed final {
   friend struct Borrowable;
   friend struct std::pointer_traits<Borrowed<T>>;
 
-  constexpr Borrowed(T* value, const ReferenceCount* refcount) noexcept
-      : value_(value), refcount_(refcount) {}
+  constexpr Borrowed(T* value, Borrower borrower) noexcept
+      : value_(value), borrower_(borrower) {}
 
   T* get() const noexcept { return value_; }
 
   T* value_ = nullptr;
-  const ReferenceCount* refcount_ = nullptr;
+  Borrower borrower_;
 };
 
 template <typename T>
@@ -1303,30 +1114,26 @@ struct pointer_traits<cel::Borrowed<T>> {
 namespace cel {
 
 template <typename T>
-Owner::Owner(Borrowed<T> borrowed) noexcept
-    : Owner(common_internal::EncodeOwner(borrowed.value_, borrowed.refcount_,
-                                         /*acquire=*/true)) {}
+Owner::Owner(Borrowed<T> borrowed) noexcept : Owner(borrowed.borrower_) {}
 
 template <typename T>
 Borrower::Borrower(const Owned<T>& owned ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-    : Borrower(common_internal::EncodeBorrower(owned.value_, owned.refcount_)) {
-}
+    : Borrower(owned.owner_) {}
 
 template <typename T>
 Borrower::Borrower(Borrowed<T> borrowed) noexcept
-    : Borrower(common_internal::EncodeBorrower(borrowed.value_,
-                                               borrowed.refcount_)) {}
+    : Borrower(borrowed.borrower_) {}
 
 template <typename T>
 Borrower& Borrower::operator=(
     const Owned<T>& owned ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
-  ptr_ = common_internal::EncodeBorrower(owned.value_, owned.refcount_);
+  *this = owned.owner_;
   return *this;
 }
 
 template <typename T>
 Borrower& Borrower::operator=(Borrowed<T> borrowed) noexcept {
-  ptr_ = common_internal::EncodeBorrower(borrowed.value_, borrowed.refcount_);
+  *this = borrowed.borrower_;
   return *this;
 }
 
@@ -1353,17 +1160,13 @@ bool operator!=(std::nullptr_t, Borrowed<T> rhs) noexcept {
 template <typename T>
 template <typename U, typename>
 Owned<T>::Owned(Borrowed<U> other) noexcept
-    : Owned(other.value_, other.refcount_) {
-  common_internal::StrongRef(refcount_);
-}
+    : Owned(other.value_, Owner(other.borrower_)) {}
 
 template <typename T>
 template <typename U, typename>
 Owned<T>& Owned<T>::operator=(Borrowed<U> other) noexcept {
-  common_internal::StrongRef(other.refcount_);
-  common_internal::StrongUnref(refcount_);
   value_ = other.value_;
-  refcount_ = other.refcount_;
+  owner_ = Owner(other.borrower_);
   return *this;
 }
 
@@ -1844,7 +1647,7 @@ class PoolingMemoryManager final {
       Deallocate(arena, addr, sizeof(U), alignof(U));
       CEL_INTERNAL_RETHROW;
     }
-    return Unique<T>(static_cast<T*>(ptr), arena);
+    return Unique<T>(static_cast<T*>(ptr), arena, /*unowned=*/true);
   }
 
   // Allocates memory directly from the allocator used by this memory manager.

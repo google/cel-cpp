@@ -15,6 +15,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_ARENA_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_ARENA_H_
 
+#include <type_traits>
+
+#include "absl/base/nullability.h"
 #include "absl/meta/type_traits.h"
 #include "google/protobuf/arena.h"
 
@@ -27,6 +30,23 @@ template <typename T>
 using IsArenaDestructorSkippable =
     absl::conjunction<IsArenaConstructible<T>,
                       google::protobuf::Arena::is_destructor_skippable<T>>;
+
+namespace common_internal {
+
+template <typename T>
+std::enable_if_t<IsArenaConstructible<T>::value, absl::Nullable<google::protobuf::Arena*>>
+GetArena(const T* ptr) {
+  return ptr != nullptr ? ptr->GetArena() : nullptr;
+}
+
+template <typename T>
+std::enable_if_t<!IsArenaConstructible<T>::value,
+                 absl::Nullable<google::protobuf::Arena*>>
+GetArena(const T* ptr) {
+  return nullptr;
+}
+
+}  // namespace common_internal
 
 }  // namespace cel
 

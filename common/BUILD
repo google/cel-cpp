@@ -860,6 +860,7 @@ cc_library(
     name = "arena",
     hdrs = ["arena.h"],
     deps = [
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/meta:type_traits",
         "@com_google_protobuf//:protobuf",
     ],
