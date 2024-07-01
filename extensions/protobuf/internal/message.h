@@ -92,8 +92,7 @@ absl::StatusOr<absl::Nonnull<const google::protobuf::Reflection*>> GetReflection
 
 // Get the `google::protobuf::Reflection` from `google::protobuf::Message`, or abort.
 // Should only be used when it is guaranteed `google::protobuf::Message` has reflection.
-ABSL_ATTRIBUTE_PURE_FUNCTION absl::Nonnull<const google::protobuf::Reflection*>
-GetReflectionOrDie(
+absl::Nonnull<const google::protobuf::Reflection*> GetReflectionOrDie(
     const google::protobuf::Message& message ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
 using ProtoMessageArenaCopyConstructor = absl::Nonnull<google::protobuf::Message*> (*)(

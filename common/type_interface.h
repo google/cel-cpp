@@ -32,10 +32,8 @@ class TypeInterface : public common_internal::DataInterface {
  public:
   using DataInterface::DataInterface;
 
-  ABSL_ATTRIBUTE_PURE_FUNCTION
   virtual TypeKind kind() const = 0;
 
-  ABSL_ATTRIBUTE_PURE_FUNCTION
   virtual absl::string_view name() const = 0;
 
   virtual std::string DebugString() const = 0;

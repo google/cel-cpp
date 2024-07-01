@@ -49,7 +49,6 @@ class DataInterface {
   friend class cel::ValueInterface;
   friend struct NativeTypeTraits<DataInterface>;
 
-  ABSL_ATTRIBUTE_PURE_FUNCTION
   virtual NativeTypeId GetNativeTypeId() const = 0;
 };
 

@@ -49,7 +49,6 @@ struct ReferenceCountFromThis;
 void SetReferenceCountForThat(ReferenceCountFromThis& that,
                               absl::Nullable<ReferenceCount*> refcount);
 
-ABSL_ATTRIBUTE_PURE_FUNCTION
 absl::Nullable<ReferenceCount*> GetReferenceCountForThat(
     const ReferenceCountFromThis& that);
 

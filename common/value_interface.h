@@ -42,7 +42,6 @@ class ValueInterface : public common_internal::DataInterface {
  public:
   using DataInterface::DataInterface;
 
-  ABSL_ATTRIBUTE_PURE_FUNCTION
   virtual ValueKind kind() const = 0;
 
   Type GetType(TypeManager& type_manager) const {
