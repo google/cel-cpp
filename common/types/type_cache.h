@@ -23,7 +23,6 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/no_destructor.h"
-#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/hash/hash.h"
 #include "absl/strings/string_view.h"
@@ -121,7 +120,7 @@ using StructTypeCacheMap = absl::flat_hash_map<absl::string_view, StructType>;
 
 class ProcessLocalTypeCache final {
  public:
-  static absl::Nonnull<const ProcessLocalTypeCache*> Get();
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const ProcessLocalTypeCache* Get();
 
   absl::optional<ListTypeView> FindListType(TypeView element) const;
 

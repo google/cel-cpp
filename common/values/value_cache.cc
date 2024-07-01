@@ -17,7 +17,6 @@
 #include <utility>
 
 #include "absl/base/no_destructor.h"
-#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
@@ -44,7 +43,7 @@ OptionalValueView GetEmptyDynOptionalValue() {
   return ProcessLocalValueCache::Get()->GetEmptyDynOptionalValue();
 }
 
-absl::Nonnull<const ProcessLocalValueCache*> ProcessLocalValueCache::Get() {
+const ProcessLocalValueCache* ProcessLocalValueCache::Get() {
   static const absl::NoDestructor<ProcessLocalValueCache> instance;
   return &*instance;
 }

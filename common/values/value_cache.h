@@ -48,7 +48,7 @@ using OptionalValueCacheMap =
 
 class ProcessLocalValueCache final {
  public:
-  static absl::Nonnull<const ProcessLocalValueCache*> Get();
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const ProcessLocalValueCache* Get();
 
   ErrorValueView GetDefaultErrorValue() const;
 
