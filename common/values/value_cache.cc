@@ -62,7 +62,6 @@ absl::optional<ParsedListValueView> ProcessLocalValueCache::GetEmptyListValue(
 }
 
 ParsedListValueView ProcessLocalValueCache::GetEmptyDynListValue() const {
-  ABSL_CHECK(dyn_list_value_);  // Crash OK
   return *dyn_list_value_;
 }
 
@@ -75,12 +74,10 @@ absl::optional<ParsedMapValueView> ProcessLocalValueCache::GetEmptyMapValue(
 }
 
 ParsedMapValueView ProcessLocalValueCache::GetEmptyDynDynMapValue() const {
-  ABSL_CHECK(dyn_dyn_map_value_);  // Crash OK
   return *dyn_dyn_map_value_;
 }
 
 ParsedMapValueView ProcessLocalValueCache::GetEmptyStringDynMapValue() const {
-  ABSL_CHECK(string_dyn_map_value_);  // Crash OK
   return *string_dyn_map_value_;
 }
 absl::optional<OptionalValueView> ProcessLocalValueCache::GetEmptyOptionalValue(
@@ -93,7 +90,6 @@ absl::optional<OptionalValueView> ProcessLocalValueCache::GetEmptyOptionalValue(
 }
 
 OptionalValueView ProcessLocalValueCache::GetEmptyDynOptionalValue() const {
-  ABSL_CHECK(dyn_optional_value_);  // Crash OK
   return *dyn_optional_value_;
 }
 
@@ -138,16 +134,16 @@ ProcessLocalValueCache::ProcessLocalValueCache()
   }
   dyn_list_value_ =
       GetEmptyListValue(ProcessLocalTypeCache::Get()->GetDynListType());
-  ABSL_CHECK(dyn_list_value_);  // Crash OK
+  ABSL_DCHECK(dyn_list_value_.has_value());
   dyn_dyn_map_value_ =
       GetEmptyMapValue(ProcessLocalTypeCache::Get()->GetDynDynMapType());
-  ABSL_CHECK(dyn_dyn_map_value_);  // Crash OK
+  ABSL_DCHECK(dyn_dyn_map_value_.has_value());
   string_dyn_map_value_ =
       GetEmptyMapValue(ProcessLocalTypeCache::Get()->GetStringDynMapType());
-  ABSL_CHECK(string_dyn_map_value_);  // Crash OK
+  ABSL_DCHECK(string_dyn_map_value_.has_value());
   dyn_optional_value_ =
       GetEmptyOptionalValue(ProcessLocalTypeCache::Get()->GetDynOptionalType());
-  ABSL_CHECK(dyn_optional_value_);  // Crash OK
+  ABSL_DCHECK(dyn_optional_value_.has_value());
 }
 
 }  // namespace cel::common_internal

@@ -103,33 +103,13 @@ ProcessLocalTypeCache::ProcessLocalTypeCache() {
                 StringWrapperType, TimestampType, TypeType, UintType,
                 UintWrapperType, UnknownType>(MemoryManagerRef::Unmanaged());
   dyn_list_type_ = FindListType(DynTypeView());
-  ABSL_CHECK(dyn_list_type_);  // Crash OK
+  ABSL_DCHECK(dyn_list_type_.has_value());
   dyn_dyn_map_type_ = FindMapType(DynTypeView(), DynTypeView());
-  ABSL_CHECK(dyn_dyn_map_type_);  // Crash OK
+  ABSL_DCHECK(dyn_dyn_map_type_.has_value());
   string_dyn_map_type_ = FindMapType(StringTypeView(), DynTypeView());
-  ABSL_CHECK(string_dyn_map_type_);  // Crash OK
+  ABSL_DCHECK(string_dyn_map_type_.has_value());
   dyn_optional_type_ = FindOptionalType(DynTypeView());
-  ABSL_CHECK(dyn_optional_type_);  // Crash OK
-}
-
-ListTypeView ProcessLocalTypeCache::GetDynListType() const {
-  ABSL_CHECK(dyn_list_type_);  // Crash OK
-  return *dyn_list_type_;
-}
-
-MapTypeView ProcessLocalTypeCache::GetDynDynMapType() const {
-  ABSL_CHECK(dyn_dyn_map_type_);  // Crash OK
-  return *dyn_dyn_map_type_;
-}
-
-MapTypeView ProcessLocalTypeCache::GetStringDynMapType() const {
-  ABSL_CHECK(string_dyn_map_type_);  // Crash OK
-  return *string_dyn_map_type_;
-}
-
-OptionalTypeView ProcessLocalTypeCache::GetDynOptionalType() const {
-  ABSL_CHECK(dyn_optional_type_);  // Crash OK
-  return *dyn_optional_type_;
+  ABSL_DCHECK(dyn_optional_type_.has_value());
 }
 
 template <typename... Ts>

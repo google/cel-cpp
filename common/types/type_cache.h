@@ -137,13 +137,13 @@ class ProcessLocalTypeCache final {
 
   SizedInputView<OptionalTypeView> OptionalTypes() const;
 
-  ListTypeView GetDynListType() const;
+  ListTypeView GetDynListType() const { return *dyn_list_type_; }
 
-  MapTypeView GetDynDynMapType() const;
+  MapTypeView GetDynDynMapType() const { return *dyn_dyn_map_type_; }
 
-  MapTypeView GetStringDynMapType() const;
+  MapTypeView GetStringDynMapType() const { return *string_dyn_map_type_; }
 
-  OptionalTypeView GetDynOptionalType() const;
+  OptionalTypeView GetDynOptionalType() const { return *dyn_optional_type_; }
 
  private:
   friend class absl::NoDestructor<ProcessLocalTypeCache>;
