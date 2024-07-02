@@ -36,12 +36,12 @@ class ShadowableValueStep : public ExpressionStepBase {
 };
 
 absl::Status ShadowableValueStep::Evaluate(ExecutionFrame* frame) const {
-  cel::Value scratch;
-  CEL_ASSIGN_OR_RETURN(
-      auto var, frame->modern_activation().FindVariable(frame->value_factory(),
-                                                        identifier_, scratch));
-  if (var.has_value()) {
-    frame->value_stack().Push(cel::Value{*var});
+  cel::Value result;
+  CEL_ASSIGN_OR_RETURN(auto found,
+                       frame->modern_activation().FindVariable(
+                           frame->value_factory(), identifier_, result));
+  if (found) {
+    frame->value_stack().Push(std::move(result));
   } else {
     frame->value_stack().Push(value_);
   }
@@ -69,13 +69,10 @@ class DirectShadowableValueStep : public DirectExpressionStep {
 // 'list' etc, but follows the current behavior of the stack machine version.
 absl::Status DirectShadowableValueStep::Evaluate(
     ExecutionFrameBase& frame, Value& result, AttributeTrail& attribute) const {
-  cel::Value scratch;
-  CEL_ASSIGN_OR_RETURN(auto var,
+  CEL_ASSIGN_OR_RETURN(auto found,
                        frame.activation().FindVariable(frame.value_manager(),
-                                                       identifier_, scratch));
-  if (var.has_value()) {
-    result = *var;
-  } else {
+                                                       identifier_, result));
+  if (!found) {
     result = value_;
   }
   return absl::OkStatus();

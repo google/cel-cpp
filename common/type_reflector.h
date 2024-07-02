@@ -15,7 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPE_REFLECTOR_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_REFLECTOR_H_
 
-#include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
@@ -25,7 +24,6 @@
 #include "common/type_introspector.h"
 #include "common/value.h"
 #include "common/value_factory.h"
-#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -68,18 +66,9 @@ class TypeReflector : public virtual TypeIntrospector {
 
   // `FindValue` returns a new `Value` for the corresponding name `name`. This
   // can be used to translate enum names to numeric values.
-  virtual absl::StatusOr<absl::optional<ValueView>> FindValue(
-      ValueFactory& value_factory, absl::string_view name,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
-  absl::StatusOr<absl::optional<Value>> FindValue(
-      ValueFactory& value_factory, absl::string_view name) const {
-    Value scratch;
-    CEL_ASSIGN_OR_RETURN(auto result, FindValue(value_factory, name, scratch));
-    if (result.has_value()) {
-      return Value{*result};
-    }
-    return absl::nullopt;
-  }
+  virtual absl::StatusOr<bool> FindValue(ValueFactory& value_factory,
+                                         absl::string_view name,
+                                         Value& result) const;
 
   // `DeserializeValue` deserializes the bytes of `value` according to
   // `type_url`. Returns `NOT_FOUND` if `type_url` is unrecognized.

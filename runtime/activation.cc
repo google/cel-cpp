@@ -30,42 +30,44 @@
 
 namespace cel {
 
-absl::StatusOr<absl::optional<ValueView>> Activation::FindVariable(
-    ValueManager& factory, absl::string_view name, Value& scratch) const {
+absl::StatusOr<bool> Activation::FindVariable(ValueManager& factory,
+                                              absl::string_view name,
+                                              Value& result) const {
   auto iter = values_.find(name);
   if (iter == values_.end()) {
-    return absl::nullopt;
+    return false;
   }
 
   const ValueEntry& entry = iter->second;
   if (entry.provider.has_value()) {
-    return ProvideValue(factory, name, scratch);
+    return ProvideValue(factory, name, result);
   }
   if (entry.value.has_value()) {
-    scratch = *entry.value;
-    return scratch;
+    result = *entry.value;
+    return true;
   }
-  return absl::nullopt;
+  return false;
 }
 
-absl::StatusOr<absl::optional<ValueView>> Activation::ProvideValue(
-    ValueManager& factory, absl::string_view name, Value& scratch) const {
+absl::StatusOr<bool> Activation::ProvideValue(ValueManager& factory,
+                                              absl::string_view name,
+                                              Value& result) const {
   absl::MutexLock lock(&mutex_);
   auto iter = values_.find(name);
   ABSL_ASSERT(iter != values_.end());
   ValueEntry& entry = iter->second;
   if (entry.value.has_value()) {
-    scratch = *entry.value;
-    return scratch;
+    result = *entry.value;
+    return true;
   }
 
-  CEL_ASSIGN_OR_RETURN(auto result, (*entry.provider)(factory, name));
-  if (result.has_value()) {
-    entry.value = std::move(result);
-    scratch = *entry.value;
-    return scratch;
+  CEL_ASSIGN_OR_RETURN(auto provided, (*entry.provider)(factory, name));
+  if (provided.has_value()) {
+    entry.value = std::move(provided);
+    result = *entry.value;
+    return true;
   }
-  return absl::nullopt;
+  return false;
 }
 
 std::vector<FunctionOverloadReference> Activation::FindFunctionOverloads(

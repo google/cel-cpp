@@ -40,17 +40,17 @@ class ActivationInterface {
   virtual ~ActivationInterface() = default;
 
   // Find value for a string (possibly qualified) variable name.
-  virtual absl::StatusOr<absl::optional<ValueView>> FindVariable(
-      ValueManager& factory, absl::string_view name,
-      Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
-  virtual absl::StatusOr<absl::optional<Value>> FindVariable(
+  virtual absl::StatusOr<bool> FindVariable(ValueManager& factory,
+                                            absl::string_view name,
+                                            Value& result) const = 0;
+  absl::StatusOr<absl::optional<Value>> FindVariable(
       ValueManager& factory, absl::string_view name) const {
-    Value scratch;
-    CEL_ASSIGN_OR_RETURN(auto maybe, FindVariable(factory, name, scratch));
-    if (!maybe.has_value()) {
-      return absl::nullopt;
+    Value result;
+    CEL_ASSIGN_OR_RETURN(auto found, FindVariable(factory, name, result));
+    if (found) {
+      return result;
     }
-    return Value{*maybe};
+    return absl::nullopt;
   }
 
   // Find a set of context function overloads by name.

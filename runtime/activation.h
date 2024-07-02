@@ -15,7 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_RUNTIME_ACTIVATION_H_
 #define THIRD_PARTY_CEL_CPP_RUNTIME_ACTIVATION_H_
 
-#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -51,9 +50,9 @@ class Activation final : public ActivationInterface {
   Activation() = default;
 
   // Implements ActivationInterface.
-  absl::StatusOr<absl::optional<ValueView>> FindVariable(
-      ValueManager& factory, absl::string_view name,
-      Value& scratch) const override;
+  absl::StatusOr<bool> FindVariable(ValueManager& factory,
+                                    absl::string_view name,
+                                    Value& result) const override;
   using ActivationInterface::FindVariable;
 
   std::vector<FunctionOverloadReference> FindFunctionOverloads(
@@ -110,9 +109,9 @@ class Activation final : public ActivationInterface {
   // Internal getter for provided values.
   // Assumes entry for name is present and is a provided value.
   // Handles synchronization for caching the provided value.
-  absl::StatusOr<absl::optional<ValueView>> ProvideValue(
-      ValueManager& value_factory, absl::string_view name,
-      Value& scratch) const;
+  absl::StatusOr<bool> ProvideValue(ValueManager& value_factory,
+                                    absl::string_view name,
+                                    Value& result) const;
 
   // mutex_ used for safe caching of provided variables
   mutable absl::Mutex mutex_;

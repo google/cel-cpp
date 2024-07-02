@@ -962,9 +962,9 @@ TypeReflector::NewStructValueBuilder(ValueFactory&, StructTypeView) const {
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<ValueView>> TypeReflector::FindValue(
-    ValueFactory&, absl::string_view, Value&) const {
-  return absl::nullopt;
+absl::StatusOr<bool> TypeReflector::FindValue(ValueFactory&, absl::string_view,
+                                              Value&) const {
+  return false;
 }
 
 TypeReflector& TypeReflector::LegacyBuiltin() {

@@ -15,7 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUE_MANAGER_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUE_MANAGER_H_
 
-#include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
@@ -62,12 +61,8 @@ class ValueManager : public virtual ValueFactory,
   }
 
   // See `TypeReflector::FindValue`.
-  absl::StatusOr<absl::optional<ValueView>> FindValue(
-      absl::string_view name, Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    return GetTypeReflector().FindValue(*this, name, scratch);
-  }
-  absl::StatusOr<absl::optional<Value>> FindValue(absl::string_view name) {
-    return GetTypeReflector().FindValue(*this, name);
+  absl::StatusOr<bool> FindValue(absl::string_view name, Value& result) {
+    return GetTypeReflector().FindValue(*this, name, result);
   }
 
   // See `TypeReflector::DeserializeValue`.

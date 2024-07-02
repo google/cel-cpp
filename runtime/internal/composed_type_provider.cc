@@ -61,16 +61,16 @@ ComposedTypeProvider::NewStructValueBuilder(ValueFactory& value_factory,
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<ValueView>> ComposedTypeProvider::FindValue(
-    ValueFactory& value_factory, absl::string_view name, Value& scratch) const {
+absl::StatusOr<bool> ComposedTypeProvider::FindValue(
+    ValueFactory& value_factory, absl::string_view name, Value& result) const {
   for (const std::unique_ptr<TypeReflector>& provider : providers_) {
     CEL_ASSIGN_OR_RETURN(auto value,
-                         provider->FindValue(value_factory, name, scratch));
-    if (value.has_value()) {
+                         provider->FindValue(value_factory, name, result));
+    if (value) {
       return value;
     }
   }
-  return absl::nullopt;
+  return false;
 }
 
 absl::StatusOr<absl::optional<Value>>

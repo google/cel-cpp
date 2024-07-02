@@ -29,10 +29,10 @@ ThreadCompatibleTypeReflector::NewStructValueBuilder(ValueFactory&,
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<ValueView>>
-ThreadCompatibleTypeReflector::FindValue(ValueFactory&, absl::string_view,
-                                         Value&) const {
-  return absl::nullopt;
+absl::StatusOr<bool> ThreadCompatibleTypeReflector::FindValue(ValueFactory&,
+                                                              absl::string_view,
+                                                              Value&) const {
+  return false;
 }
 
 }  // namespace cel::common_internal

@@ -87,6 +87,7 @@ cc_library(
         "//eval/public:base_activation",
         "//eval/public:cel_value",
         "//extensions/protobuf:memory_manager",
+        "//internal:status_macros",
         "//runtime:activation_interface",
         "//runtime:function_overload_reference",
         "@com_google_absl//absl/status:statusor",

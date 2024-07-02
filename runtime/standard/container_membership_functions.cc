@@ -15,14 +15,12 @@
 #include "runtime/standard/container_membership_functions.h"
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
 #include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
 #include "base/builtins.h"
 #include "base/function_adapter.h"
 #include "common/value.h"
@@ -31,7 +29,6 @@
 #include "runtime/function_registry.h"
 #include "runtime/register_function_helper.h"
 #include "runtime/runtime_options.h"
-#include "runtime/standard/equality_functions.h"
 
 namespace cel {
 namespace {
@@ -45,51 +42,51 @@ static constexpr std::array<absl::string_view, 3> in_operators = {
 };
 
 template <class T>
-bool ValueEquals(ValueView value, T other);
+bool ValueEquals(const Value& value, T other);
 
 template <>
-bool ValueEquals(ValueView value, bool other) {
-  if (auto bool_value = As<BoolValueView>(value); bool_value) {
+bool ValueEquals(const Value& value, bool other) {
+  if (auto bool_value = As<BoolValue>(value); bool_value) {
     return bool_value->NativeValue() == other;
   }
   return false;
 }
 
 template <>
-bool ValueEquals(ValueView value, int64_t other) {
-  if (auto int_value = As<IntValueView>(value); int_value) {
+bool ValueEquals(const Value& value, int64_t other) {
+  if (auto int_value = As<IntValue>(value); int_value) {
     return int_value->NativeValue() == other;
   }
   return false;
 }
 
 template <>
-bool ValueEquals(ValueView value, uint64_t other) {
-  if (auto uint_value = As<UintValueView>(value); uint_value) {
+bool ValueEquals(const Value& value, uint64_t other) {
+  if (auto uint_value = As<UintValue>(value); uint_value) {
     return uint_value->NativeValue() == other;
   }
   return false;
 }
 
 template <>
-bool ValueEquals(ValueView value, double other) {
-  if (auto double_value = As<DoubleValueView>(value); double_value) {
+bool ValueEquals(const Value& value, double other) {
+  if (auto double_value = As<DoubleValue>(value); double_value) {
     return double_value->NativeValue() == other;
   }
   return false;
 }
 
 template <>
-bool ValueEquals(ValueView value, const StringValue& other) {
-  if (auto string_value = As<StringValueView>(value); string_value) {
+bool ValueEquals(const Value& value, const StringValue& other) {
+  if (auto string_value = As<StringValue>(value); string_value) {
     return string_value->Equals(other);
   }
   return false;
 }
 
 template <>
-bool ValueEquals(ValueView value, const BytesValue& other) {
-  if (auto bytes_value = As<BytesValueView>(value); bytes_value) {
+bool ValueEquals(const Value& value, const BytesValue& other) {
+  if (auto bytes_value = As<BytesValue>(value); bytes_value) {
     return bytes_value->Equals(other);
   }
   return false;

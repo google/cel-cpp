@@ -64,11 +64,10 @@ absl::Status LookupIdent(const std::string& name, ExecutionFrameBase& frame,
     }
   }
 
-  CEL_ASSIGN_OR_RETURN(auto value, frame.activation().FindVariable(
+  CEL_ASSIGN_OR_RETURN(auto found, frame.activation().FindVariable(
                                        frame.value_manager(), name, result));
 
-  if (value.has_value()) {
-    result = *value;
+  if (found) {
     return absl::OkStatus();
   }
 

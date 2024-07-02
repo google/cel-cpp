@@ -16,12 +16,13 @@
 
 #include <vector>
 
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/memory.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "internal/status_macros.h"
 #include "runtime/function_overload_reference.h"
 #include "google/protobuf/arena.h"
 
@@ -29,8 +30,8 @@ namespace cel::interop_internal {
 
 using ::google::api::expr::runtime::CelFunction;
 
-absl::StatusOr<absl::optional<ValueView>> AdapterActivationImpl::FindVariable(
-    ValueManager& value_factory, absl::string_view name, Value& scratch) const {
+absl::StatusOr<bool> AdapterActivationImpl::FindVariable(
+    ValueManager& value_factory, absl::string_view name, Value& result) const {
   // This implementation should only be used during interop, when we can
   // always assume the memory manager is backed by a protobuf arena.
   google::protobuf::Arena* arena =
@@ -39,9 +40,11 @@ absl::StatusOr<absl::optional<ValueView>> AdapterActivationImpl::FindVariable(
   absl::optional<google::api::expr::runtime::CelValue> legacy_value =
       legacy_activation_.FindValue(name, arena);
   if (!legacy_value.has_value()) {
-    return absl::nullopt;
+    return false;
   }
-  return ModernValue(arena, *legacy_value, scratch);
+  Value scratch;
+  CEL_ASSIGN_OR_RETURN(result, ModernValue(arena, *legacy_value, scratch));
+  return true;
 }
 
 std::vector<FunctionOverloadReference>
