@@ -26,14 +26,12 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::BoolValue;
-using ::cel::BoolValueView;
 using ::cel::Cast;
 using ::cel::ErrorValue;
 using ::cel::InstanceOf;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::ValueKind;
-using ::cel::ValueView;
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;
 
 enum class OpType { kAnd, kOr };
@@ -199,8 +197,8 @@ class LogicalOpStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  ValueView Calculate(ExecutionFrame* frame, absl::Span<const Value> args,
-                      Value& scratch) const {
+  void Calculate(ExecutionFrame* frame, absl::Span<const Value> args,
+                 Value& result) const {
     bool bool_args[2];
     bool has_bool_args[2];
 
@@ -209,7 +207,8 @@ class LogicalOpStep : public ExpressionStepBase {
       if (has_bool_args[i]) {
         bool_args[i] = args[i].As<BoolValue>().NativeValue();
         if (bool_args[i] == shortcircuit_) {
-          return BoolValueView{bool_args[i]};
+          result = BoolValue{bool_args[i]};
+          return;
         }
       }
     }
@@ -217,9 +216,11 @@ class LogicalOpStep : public ExpressionStepBase {
     if (has_bool_args[0] && has_bool_args[1]) {
       switch (op_type_) {
         case OpType::kAnd:
-          return BoolValueView{bool_args[0] && bool_args[1]};
+          result = BoolValue{bool_args[0] && bool_args[1]};
+          return;
         case OpType::kOr:
-          return BoolValueView{bool_args[0] || bool_args[1]};
+          result = BoolValue{bool_args[0] || bool_args[1]};
+          return;
       }
     }
 
@@ -232,23 +233,24 @@ class LogicalOpStep : public ExpressionStepBase {
       absl::optional<cel::UnknownValue> unknown_set =
           frame->attribute_utility().MergeUnknowns(args);
       if (unknown_set.has_value()) {
-        scratch = *unknown_set;
-        return scratch;
+        result = std::move(*unknown_set);
+        return;
       }
     }
 
     if (args[0]->Is<cel::ErrorValue>()) {
-      return args[0];
+      result = args[0];
+      return;
     } else if (args[1]->Is<cel::ErrorValue>()) {
-      return args[1];
+      result = args[1];
+      return;
     }
 
     // Fallback.
-    scratch =
+    result =
         frame->value_factory().CreateErrorValue(CreateNoMatchingOverloadError(
             (op_type_ == OpType::kOr) ? cel::builtin::kOr
                                       : cel::builtin::kAnd));
-    return scratch;
   }
 
   const OpType op_type_;
@@ -263,9 +265,9 @@ absl::Status LogicalOpStep::Evaluate(ExecutionFrame* frame) const {
 
   // Create Span object that contains input arguments to the function.
   auto args = frame->value_stack().GetSpan(2);
-  Value scratch;
-  auto result = Calculate(frame, args, scratch);
-  frame->value_stack().PopAndPush(args.size(), Value{result});
+  Value result;
+  Calculate(frame, args, result);
+  frame->value_stack().PopAndPush(args.size(), std::move(result));
 
   return absl::OkStatus();
 }

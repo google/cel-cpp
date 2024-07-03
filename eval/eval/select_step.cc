@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <memory>
 #include <string>
-#include <tuple>
 #include <utility>
 
 #include "absl/log/absl_log.h"
@@ -29,7 +28,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::cel::BoolValueView;
+using ::cel::BoolValue;
 using ::cel::Cast;
 using ::cel::ErrorValue;
 using ::cel::InstanceOf;
@@ -42,7 +41,6 @@ using ::cel::StructValue;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::ValueKind;
-using ::cel::ValueView;
 
 // Common error for cases where evaluation attempts to perform select operations
 // on an unsupported type.
@@ -79,29 +77,27 @@ absl::optional<Value> CheckForMarkedAttributes(const AttributeTrail& trail,
   return absl::nullopt;
 }
 
-ValueView TestOnlySelect(const StructValue& msg, const std::string& field,
-                         cel::ValueManager& value_factory, Value& scratch) {
-  absl::StatusOr<bool> result = msg.HasFieldByName(field);
+void TestOnlySelect(const StructValue& msg, const std::string& field,
+                    cel::ValueManager& value_factory, Value& result) {
+  absl::StatusOr<bool> has_field = msg.HasFieldByName(field);
 
-  if (!result.ok()) {
-    scratch = value_factory.CreateErrorValue(std::move(result).status());
-    return scratch;
+  if (!has_field.ok()) {
+    result = value_factory.CreateErrorValue(std::move(has_field).status());
+    return;
   }
-  return BoolValueView(*result);
+  result = BoolValue{*has_field};
 }
 
-ValueView TestOnlySelect(const MapValue& map, const StringValue& field_name,
-                         cel::ValueManager& value_factory, Value& scratch) {
+void TestOnlySelect(const MapValue& map, const StringValue& field_name,
+                    cel::ValueManager& value_factory, Value& result) {
   // Field presence only supports string keys containing valid identifier
   // characters.
-  absl::Status presence = map.Has(value_factory, field_name, scratch);
+  absl::Status presence = map.Has(value_factory, field_name, result);
 
   if (!presence.ok()) {
-    scratch = value_factory.CreateErrorValue(std::move(presence));
-    return scratch;
+    result = value_factory.CreateErrorValue(std::move(presence));
+    return;
   }
-
-  return scratch;
 }
 
 // SelectStep performs message field access specified by Expr::Select
@@ -122,10 +118,10 @@ class SelectStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  absl::Status PerformTestOnlySelect(ExecutionFrame* frame, const Value& arg,
-                                     Value& scratch) const;
-  absl::StatusOr<std::pair<ValueView, bool>> PerformSelect(
-      ExecutionFrame* frame, const Value& arg, Value& scratch) const;
+  absl::Status PerformTestOnlySelect(ExecutionFrame* frame,
+                                     const Value& arg) const;
+  absl::StatusOr<bool> PerformSelect(ExecutionFrame* frame, const Value& arg,
+                                     Value& result) const;
 
   cel::StringValue field_value_;
   std::string field_;
@@ -188,8 +184,6 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     return absl::OkStatus();
   }
 
-  Value result_scratch;
-
   // Handle test only Select.
   if (test_field_presence_) {
     if (optional_arg != nullptr) {
@@ -197,10 +191,9 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
         frame->value_stack().PopAndPush(cel::BoolValue{false});
         return absl::OkStatus();
       }
-      return PerformTestOnlySelect(frame, optional_arg->Value(),
-                                   result_scratch);
+      return PerformTestOnlySelect(frame, optional_arg->Value());
     }
-    return PerformTestOnlySelect(frame, arg, result_scratch);
+    return PerformTestOnlySelect(frame, arg);
   }
 
   // Normal select path.
@@ -210,18 +203,17 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
       // Leave optional_arg at the top of the stack. Its empty.
       return absl::OkStatus();
     }
-    ValueView result;
+    Value result;
     bool ok;
-    CEL_ASSIGN_OR_RETURN(
-        std::tie(result, ok),
-        PerformSelect(frame, optional_arg->Value(), result_scratch));
+    CEL_ASSIGN_OR_RETURN(ok,
+                         PerformSelect(frame, optional_arg->Value(), result));
     if (!ok) {
       frame->value_stack().PopAndPush(cel::OptionalValue::None(),
                                       std::move(result_trail));
       return absl::OkStatus();
     }
     frame->value_stack().PopAndPush(
-        cel::OptionalValue::Of(frame->memory_manager(), cel::Value{result}),
+        cel::OptionalValue::Of(frame->memory_manager(), std::move(result)),
         std::move(result_trail));
     return absl::OkStatus();
   }
@@ -230,16 +222,18 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   // Select steps can be applied to either maps or messages
   switch (arg->kind()) {
     case ValueKind::kStruct: {
+      Value result;
       CEL_RETURN_IF_ERROR(arg.As<StructValue>().GetFieldByName(
-          frame->value_factory(), field_, result_scratch, unboxing_option_));
-      frame->value_stack().PopAndPush(std::move(result_scratch),
+          frame->value_factory(), field_, result, unboxing_option_));
+      frame->value_stack().PopAndPush(std::move(result),
                                       std::move(result_trail));
       return absl::OkStatus();
     }
     case ValueKind::kMap: {
-      CEL_RETURN_IF_ERROR(arg.As<MapValue>().Get(frame->value_factory(),
-                                                 field_value_, result_scratch));
-      frame->value_stack().PopAndPush(std::move(result_scratch),
+      Value result;
+      CEL_RETURN_IF_ERROR(
+          arg.As<MapValue>().Get(frame->value_factory(), field_value_, result));
+      frame->value_stack().PopAndPush(std::move(result),
                                       std::move(result_trail));
       return absl::OkStatus();
     }
@@ -250,41 +244,46 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 }
 
 absl::Status SelectStep::PerformTestOnlySelect(ExecutionFrame* frame,
-                                               const Value& arg,
-                                               Value& scratch) const {
+                                               const Value& arg) const {
   switch (arg->kind()) {
-    case ValueKind::kMap:
-      frame->value_stack().PopAndPush(Value{TestOnlySelect(
-          arg.As<MapValue>(), field_value_, frame->value_factory(), scratch)});
+    case ValueKind::kMap: {
+      Value result;
+      TestOnlySelect(arg.As<MapValue>(), field_value_, frame->value_factory(),
+                     result);
+      frame->value_stack().PopAndPush(std::move(result));
       return absl::OkStatus();
-    case ValueKind::kMessage:
-      frame->value_stack().PopAndPush(Value{TestOnlySelect(
-          arg.As<StructValue>(), field_, frame->value_factory(), scratch)});
+    }
+    case ValueKind::kMessage: {
+      Value result;
+      TestOnlySelect(arg.As<StructValue>(), field_, frame->value_factory(),
+                     result);
+      frame->value_stack().PopAndPush(std::move(result));
       return absl::OkStatus();
+    }
     default:
       // Control flow should have returned earlier.
       return InvalidSelectTargetError();
   }
 }
 
-absl::StatusOr<std::pair<ValueView, bool>> SelectStep::PerformSelect(
-    ExecutionFrame* frame, const Value& arg, Value& scratch) const {
+absl::StatusOr<bool> SelectStep::PerformSelect(ExecutionFrame* frame,
+                                               const Value& arg,
+                                               Value& result) const {
   switch (arg->kind()) {
     case ValueKind::kStruct: {
       const auto& struct_value = arg.As<StructValue>();
       CEL_ASSIGN_OR_RETURN(auto ok, struct_value.HasFieldByName(field_));
       if (!ok) {
-        return std::pair{cel::NullValueView{}, false};
+        result = NullValue{};
+        return false;
       }
       CEL_RETURN_IF_ERROR(struct_value.GetFieldByName(
-          frame->value_factory(), field_, scratch, unboxing_option_));
-      return std::pair{scratch, true};
+          frame->value_factory(), field_, result, unboxing_option_));
+      return true;
     }
     case ValueKind::kMap: {
-      CEL_ASSIGN_OR_RETURN(
-          auto ok, arg.As<MapValue>().Find(frame->value_factory(), field_value_,
-                                           scratch));
-      return std::pair{scratch, ok};
+      return arg.As<MapValue>().Find(frame->value_factory(), field_value_,
+                                     result);
     }
     default:
       // Control flow should have returned earlier.
@@ -354,17 +353,16 @@ class DirectSelectStep : public DirectExpressionStep {
         return absl::OkStatus();
     }
 
-    Value scratch;
     if (test_only_) {
       if (optional_arg != nullptr) {
         if (!optional_arg->HasValue()) {
           result = cel::BoolValue{false};
           return absl::OkStatus();
         }
-        result = PerformTestOnlySelect(frame, optional_arg->Value(), scratch);
+        PerformTestOnlySelect(frame, optional_arg->Value(), result);
         return absl::OkStatus();
       }
-      result = PerformTestOnlySelect(frame, result, scratch);
+      PerformTestOnlySelect(frame, result, result);
       return absl::OkStatus();
     }
 
@@ -373,27 +371,21 @@ class DirectSelectStep : public DirectExpressionStep {
         // result is still buffer for the container. just return.
         return absl::OkStatus();
       }
-      CEL_ASSIGN_OR_RETURN(
-          result, PerformOptionalSelect(frame, optional_arg->Value(), scratch));
-
-      return absl::OkStatus();
+      return PerformOptionalSelect(frame, optional_arg->Value(), result);
     }
 
-    CEL_ASSIGN_OR_RETURN(result, PerformSelect(frame, result, scratch));
-    return absl::OkStatus();
+    return PerformSelect(frame, result, result);
   }
 
  private:
   std::unique_ptr<DirectExpressionStep> operand_;
 
-  ValueView PerformTestOnlySelect(ExecutionFrameBase& frame, const Value& value,
-                                  Value& scratch) const;
-  absl::StatusOr<ValueView> PerformOptionalSelect(ExecutionFrameBase& frame,
-                                                  const Value& value,
-                                                  Value& scratch) const;
-  absl::StatusOr<ValueView> PerformSelect(ExecutionFrameBase& frame,
-                                          const Value& value,
-                                          Value& scratch) const;
+  void PerformTestOnlySelect(ExecutionFrameBase& frame, const Value& value,
+                             Value& result) const;
+  absl::Status PerformOptionalSelect(ExecutionFrameBase& frame,
+                                     const Value& value, Value& result) const;
+  absl::Status PerformSelect(ExecutionFrameBase& frame, const Value& value,
+                             Value& result) const;
 
   // Field name in formats supported by each of the map and struct field access
   // APIs.
@@ -409,51 +401,54 @@ class DirectSelectStep : public DirectExpressionStep {
   bool enable_optional_types_;
 };
 
-ValueView DirectSelectStep::PerformTestOnlySelect(ExecutionFrameBase& frame,
-                                                  const cel::Value& value,
-                                                  Value& scratch) const {
+void DirectSelectStep::PerformTestOnlySelect(ExecutionFrameBase& frame,
+                                             const cel::Value& value,
+                                             Value& result) const {
   switch (value.kind()) {
     case ValueKind::kMap:
-      return TestOnlySelect(Cast<MapValue>(value), field_value_,
-                            frame.value_manager(), scratch);
+      TestOnlySelect(Cast<MapValue>(value), field_value_, frame.value_manager(),
+                     result);
+      return;
     case ValueKind::kMessage:
-      return TestOnlySelect(Cast<StructValue>(value), field_,
-                            frame.value_manager(), scratch);
+      TestOnlySelect(Cast<StructValue>(value), field_, frame.value_manager(),
+                     result);
+      return;
     default:
       // Control flow should have returned earlier.
-      scratch =
+      result =
           frame.value_manager().CreateErrorValue(InvalidSelectTargetError());
-      return ValueView{scratch};
+      return;
   }
 }
 
-absl::StatusOr<ValueView> DirectSelectStep::PerformOptionalSelect(
-    ExecutionFrameBase& frame, const Value& value, Value& scratch) const {
+absl::Status DirectSelectStep::PerformOptionalSelect(ExecutionFrameBase& frame,
+                                                     const Value& value,
+                                                     Value& result) const {
   switch (value.kind()) {
     case ValueKind::kStruct: {
       auto struct_value = Cast<StructValue>(value);
       CEL_ASSIGN_OR_RETURN(auto ok, struct_value.HasFieldByName(field_));
       if (!ok) {
-        scratch = OptionalValue::None();
-        return ValueView{scratch};
+        result = OptionalValue::None();
+        return absl::OkStatus();
       }
       CEL_RETURN_IF_ERROR(struct_value.GetFieldByName(
-          frame.value_manager(), field_, scratch, unboxing_option_));
-      scratch = OptionalValue::Of(frame.value_manager().GetMemoryManager(),
-                                  Value(scratch));
-      return ValueView{scratch};
+          frame.value_manager(), field_, result, unboxing_option_));
+      result = OptionalValue::Of(frame.value_manager().GetMemoryManager(),
+                                 std::move(result));
+      return absl::OkStatus();
     }
     case ValueKind::kMap: {
-      CEL_ASSIGN_OR_RETURN(auto lookup,
+      CEL_ASSIGN_OR_RETURN(auto found,
                            Cast<MapValue>(value).Find(frame.value_manager(),
-                                                      field_value_, scratch));
-      if (!lookup) {
-        scratch = OptionalValue::None();
-        return ValueView{scratch};
+                                                      field_value_, result));
+      if (!found) {
+        result = OptionalValue::None();
+        return absl::OkStatus();
       }
-      scratch = OptionalValue::Of(frame.value_manager().GetMemoryManager(),
-                                  Value(scratch));
-      return ValueView{scratch};
+      result = OptionalValue::Of(frame.value_manager().GetMemoryManager(),
+                                 std::move(result));
+      return absl::OkStatus();
     }
     default:
       // Control flow should have returned earlier.
@@ -461,19 +456,16 @@ absl::StatusOr<ValueView> DirectSelectStep::PerformOptionalSelect(
   }
 }
 
-absl::StatusOr<ValueView> DirectSelectStep::PerformSelect(
-    ExecutionFrameBase& frame, const cel::Value& value, Value& scratch) const {
+absl::Status DirectSelectStep::PerformSelect(ExecutionFrameBase& frame,
+                                             const cel::Value& value,
+                                             Value& result) const {
   switch (value.kind()) {
-    case ValueKind::kStruct: {
-      CEL_RETURN_IF_ERROR(Cast<StructValue>(value).GetFieldByName(
-          frame.value_manager(), field_, scratch, unboxing_option_));
-      return scratch;
-    }
-    case ValueKind::kMap: {
-      CEL_RETURN_IF_ERROR(Cast<MapValue>(value).Get(frame.value_manager(),
-                                                    field_value_, scratch));
-      return scratch;
-    }
+    case ValueKind::kStruct:
+      return Cast<StructValue>(value).GetFieldByName(
+          frame.value_manager(), field_, result, unboxing_option_);
+    case ValueKind::kMap:
+      return Cast<MapValue>(value).Get(frame.value_manager(), field_value_,
+                                       result);
     default:
       // Control flow should have returned earlier.
       return InvalidSelectTargetError();

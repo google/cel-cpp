@@ -94,8 +94,8 @@ AttributeQualifier AttributeQualifierFromValue(const Value& v) {
   }
 }
 
-ValueView LookupInMap(const MapValue& cel_map, const Value& key,
-                      ExecutionFrameBase& frame, Value& scratch) {
+void LookupInMap(const MapValue& cel_map, const Value& key,
+                 ExecutionFrameBase& frame, Value& result) {
   if (frame.options().enable_heterogeneous_equality) {
     // Double isn't a supported key type but may be convertible to an integer.
     absl::optional<Number> number = CelNumberFromValue(key);
@@ -103,66 +103,64 @@ ValueView LookupInMap(const MapValue& cel_map, const Value& key,
       // Consider uint as uint first then try coercion (prefer matching the
       // original type of the key value).
       if (key->Is<UintValue>()) {
-        auto lookup = cel_map.Find(frame.value_manager(), key, scratch);
+        auto lookup = cel_map.Find(frame.value_manager(), key, result);
         if (!lookup.ok()) {
-          scratch = frame.value_manager().CreateErrorValue(
+          result = frame.value_manager().CreateErrorValue(
               std::move(lookup).status());
-          return scratch;
+          return;
         }
         if (*lookup) {
-          return scratch;
+          return;
         }
       }
       // double / int / uint -> int
       if (number->LosslessConvertibleToInt()) {
         auto lookup = cel_map.Find(
             frame.value_manager(),
-            frame.value_manager().CreateIntValue(number->AsInt()), scratch);
+            frame.value_manager().CreateIntValue(number->AsInt()), result);
         if (!lookup.ok()) {
-          scratch = frame.value_manager().CreateErrorValue(
+          result = frame.value_manager().CreateErrorValue(
               std::move(lookup).status());
-          return scratch;
+          return;
         }
         if (*lookup) {
-          return scratch;
+          return;
         }
       }
       // double / int -> uint
       if (number->LosslessConvertibleToUint()) {
         auto lookup = cel_map.Find(
             frame.value_manager(),
-            frame.value_manager().CreateUintValue(number->AsUint()), scratch);
+            frame.value_manager().CreateUintValue(number->AsUint()), result);
         if (!lookup.ok()) {
-          scratch = frame.value_manager().CreateErrorValue(
+          result = frame.value_manager().CreateErrorValue(
               std::move(lookup).status());
-          return scratch;
+          return;
         }
         if (*lookup) {
-          return scratch;
+          return;
         }
       }
-      scratch = frame.value_manager().CreateErrorValue(
+      result = frame.value_manager().CreateErrorValue(
           CreateNoSuchKeyError(key->DebugString()));
-      return scratch;
+      return;
     }
   }
 
   absl::Status status = CheckMapKeyType(key);
   if (!status.ok()) {
-    scratch = frame.value_manager().CreateErrorValue(std::move(status));
-    return ValueView{scratch};
+    result = frame.value_manager().CreateErrorValue(std::move(status));
+    return;
   }
 
-  absl::Status lookup = cel_map.Get(frame.value_manager(), key, scratch);
+  absl::Status lookup = cel_map.Get(frame.value_manager(), key, result);
   if (!lookup.ok()) {
-    scratch = frame.value_manager().CreateErrorValue(std::move(lookup));
-    return scratch;
+    result = frame.value_manager().CreateErrorValue(std::move(lookup));
   }
-  return scratch;
 }
 
-ValueView LookupInList(const ListValue& cel_list, const Value& key,
-                       ExecutionFrameBase& frame, Value& scratch) {
+void LookupInList(const ListValue& cel_list, const Value& key,
+                  ExecutionFrameBase& frame, Value& result) {
   absl::optional<int64_t> maybe_idx;
   if (frame.options().enable_heterogeneous_equality) {
     auto number = CelNumberFromValue(key);
@@ -174,56 +172,56 @@ ValueView LookupInList(const ListValue& cel_list, const Value& key,
   }
 
   if (!maybe_idx.has_value()) {
-    scratch = frame.value_manager().CreateErrorValue(absl::UnknownError(
+    result = frame.value_manager().CreateErrorValue(absl::UnknownError(
         absl::StrCat("Index error: expected integer type, got ",
                      cel::KindToString(ValueKindToKind(key->kind())))));
-    return ValueView{scratch};
+    return;
   }
 
   int64_t idx = *maybe_idx;
   auto size = cel_list.Size();
   if (!size.ok()) {
-    scratch = frame.value_manager().CreateErrorValue(size.status());
-    return ValueView{scratch};
+    result = frame.value_manager().CreateErrorValue(size.status());
+    return;
   }
   if (idx < 0 || idx >= *size) {
-    scratch = frame.value_manager().CreateErrorValue(absl::UnknownError(
+    result = frame.value_manager().CreateErrorValue(absl::UnknownError(
         absl::StrCat("Index error: index=", idx, " size=", *size)));
-    return ValueView{scratch};
+    return;
   }
 
-  absl::Status lookup = cel_list.Get(frame.value_manager(), idx, scratch);
+  absl::Status lookup = cel_list.Get(frame.value_manager(), idx, result);
 
   if (!lookup.ok()) {
-    scratch = frame.value_manager().CreateErrorValue(std::move(lookup));
-    return ValueView{scratch};
+    result = frame.value_manager().CreateErrorValue(std::move(lookup));
   }
-  return scratch;
 }
 
-ValueView LookupInContainer(const Value& container, const Value& key,
-                            ExecutionFrameBase& frame, Value& scratch) {
+void LookupInContainer(const Value& container, const Value& key,
+                       ExecutionFrameBase& frame, Value& result) {
   // Select steps can be applied to either maps or messages
   switch (container.kind()) {
     case ValueKind::kMap: {
-      return LookupInMap(Cast<MapValue>(container), key, frame, scratch);
+      LookupInMap(Cast<MapValue>(container), key, frame, result);
+      return;
     }
     case ValueKind::kList: {
-      return LookupInList(Cast<ListValue>(container), key, frame, scratch);
+      LookupInList(Cast<ListValue>(container), key, frame, result);
+      return;
     }
     default:
-      scratch =
+      result =
           frame.value_manager().CreateErrorValue(absl::InvalidArgumentError(
               absl::StrCat("Invalid container type: '",
                            ValueKindToString(container->kind()), "'")));
-      return ValueView{scratch};
+      return;
   }
 }
 
-ValueView PerformLookup(ExecutionFrameBase& frame, const Value& container,
-                        const Value& key, const AttributeTrail& container_trail,
-                        bool enable_optional_types, Value& scratch,
-                        AttributeTrail& trail) {
+void PerformLookup(ExecutionFrameBase& frame, const Value& container,
+                   const Value& key, const AttributeTrail& container_trail,
+                   bool enable_optional_types, Value& result,
+                   AttributeTrail& trail) {
   if (frame.unknown_processing_enabled()) {
     AttributeUtility::Accumulator unknowns =
         frame.attribute_utility().CreateAccumulator();
@@ -231,25 +229,25 @@ ValueView PerformLookup(ExecutionFrameBase& frame, const Value& container,
     unknowns.MaybeAdd(key);
 
     if (!unknowns.IsEmpty()) {
-      scratch = std::move(unknowns).Build();
-      return ValueView{scratch};
+      result = std::move(unknowns).Build();
+      return;
     }
 
     trail = container_trail.Step(AttributeQualifierFromValue(key));
 
     if (frame.attribute_utility().CheckForUnknownExact(trail)) {
-      scratch = frame.attribute_utility().CreateUnknownSet(trail.attribute());
-      return ValueView{scratch};
+      result = frame.attribute_utility().CreateUnknownSet(trail.attribute());
+      return;
     }
   }
 
   if (InstanceOf<ErrorValue>(container)) {
-    scratch = container;
-    return ValueView{scratch};
+    result = container;
+    return;
   }
   if (InstanceOf<ErrorValue>(key)) {
-    scratch = key;
-    return ValueView{scratch};
+    result = key;
+    return;
   }
 
   if (enable_optional_types &&
@@ -259,22 +257,21 @@ ValueView PerformLookup(ExecutionFrameBase& frame, const Value& container,
         *cel::internal::down_cast<const cel::OptionalValueInterface*>(
             cel::Cast<cel::OpaqueValue>(container).operator->());
     if (!optional_value.HasValue()) {
-      scratch = cel::OptionalValue::None();
-      return ValueView{scratch};
+      result = cel::OptionalValue::None();
+      return;
     }
-    auto result =
-        LookupInContainer(optional_value.Value(), key, frame, scratch);
-    if (auto error_value = cel::As<cel::ErrorValueView>(result);
+    LookupInContainer(optional_value.Value(), key, frame, result);
+    if (auto error_value = cel::As<cel::ErrorValue>(result);
         error_value && cel::IsNoSuchKey(error_value->NativeValue())) {
-      scratch = cel::OptionalValue::None();
-      return ValueView{scratch};
+      result = cel::OptionalValue::None();
+      return;
     }
-    scratch = cel::OptionalValue::Of(frame.value_manager().GetMemoryManager(),
-                                     Value{result});
-    return ValueView{scratch};
+    result = cel::OptionalValue::Of(frame.value_manager().GetMemoryManager(),
+                                    std::move(result));
+    return;
   }
 
-  return LookupInContainer(container, key, frame, scratch);
+  LookupInContainer(container, key, frame, result);
 }
 
 // ContainerAccessStep performs message field access specified by Expr::Select
@@ -298,16 +295,16 @@ absl::Status ContainerAccessStep::Evaluate(ExecutionFrame* frame) const {
         "Insufficient arguments supplied for ContainerAccess-type expression");
   }
 
-  Value scratch;
+  Value result;
   AttributeTrail result_trail;
   auto args = frame->value_stack().GetSpan(kNumContainerAccessArguments);
   const AttributeTrail& container_trail =
       frame->value_stack().GetAttributeSpan(kNumContainerAccessArguments)[0];
 
-  auto result = PerformLookup(*frame, args[0], args[1], container_trail,
-                              enable_optional_types_, scratch, result_trail);
-  frame->value_stack().PopAndPush(kNumContainerAccessArguments, Value{result},
-                                  std::move(result_trail));
+  PerformLookup(*frame, args[0], args[1], container_trail,
+                enable_optional_types_, result, result_trail);
+  frame->value_stack().PopAndPush(kNumContainerAccessArguments,
+                                  std::move(result), std::move(result_trail));
 
   return absl::OkStatus();
 }
@@ -344,8 +341,8 @@ absl::Status DirectContainerAccessStep::Evaluate(ExecutionFrameBase& frame,
       container_step_->Evaluate(frame, container, container_trail));
   CEL_RETURN_IF_ERROR(key_step_->Evaluate(frame, key, key_trail));
 
-  result = PerformLookup(frame, container, key, container_trail,
-                         enable_optional_types_, result, trail);
+  PerformLookup(frame, container, key, container_trail, enable_optional_types_,
+                result, trail);
 
   return absl::OkStatus();
 }

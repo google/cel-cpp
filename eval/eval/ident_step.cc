@@ -26,7 +26,6 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::Value;
-using ::cel::ValueView;
 using ::cel::runtime_internal::CreateError;
 
 class IdentStep : public ExpressionStepBase {
@@ -37,11 +36,6 @@ class IdentStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  struct IdentResult {
-    ValueView value;
-    AttributeTrail trail;
-  };
-
   std::string name_;
 };
 
