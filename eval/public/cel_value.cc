@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/base/attributes.h"
@@ -81,7 +82,11 @@ struct DebugStringVisitor {
   }
 
   std::string operator()(const CelMap* arg) {
-    const CelList* keys = arg->ListKeys(arena).value();
+    auto keys_or_error = arg->ListKeys(arena);
+    if (!keys_or_error.status().ok()) {
+      return "invalid list keys";
+    }
+    const CelList* keys = std::move(keys_or_error.value());
     std::vector<std::string> elements;
     elements.reserve(keys->size());
     for (int i = 0; i < keys->size(); i++) {
