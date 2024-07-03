@@ -159,18 +159,18 @@ class AliasingValue : public T {
 // -----------------------------------------------------------------------------
 // cel::Value -> google::protobuf::MapKey
 
-absl::Status ProtoBoolMapKeyFromValueConverter(ValueView value,
+absl::Status ProtoBoolMapKeyFromValueConverter(const Value& value,
                                                google::protobuf::MapKey& key) {
-  if (auto bool_value = As<BoolValueView>(value); bool_value) {
+  if (auto bool_value = As<BoolValue>(value); bool_value) {
     key.SetBoolValue(bool_value->NativeValue());
     return absl::OkStatus();
   }
   return TypeConversionError(value.GetTypeName(), "bool").NativeValue();
 }
 
-absl::Status ProtoInt32MapKeyFromValueConverter(ValueView value,
+absl::Status ProtoInt32MapKeyFromValueConverter(const Value& value,
                                                 google::protobuf::MapKey& key) {
-  if (auto int_value = As<IntValueView>(value); int_value) {
+  if (auto int_value = As<IntValue>(value); int_value) {
     if (int_value->NativeValue() < std::numeric_limits<int32_t>::min() ||
         int_value->NativeValue() > std::numeric_limits<int32_t>::max()) {
       return absl::OutOfRangeError("int64 to int32_t overflow");
@@ -181,18 +181,18 @@ absl::Status ProtoInt32MapKeyFromValueConverter(ValueView value,
   return TypeConversionError(value.GetTypeName(), "int").NativeValue();
 }
 
-absl::Status ProtoInt64MapKeyFromValueConverter(ValueView value,
+absl::Status ProtoInt64MapKeyFromValueConverter(const Value& value,
                                                 google::protobuf::MapKey& key) {
-  if (auto int_value = As<IntValueView>(value); int_value) {
+  if (auto int_value = As<IntValue>(value); int_value) {
     key.SetInt64Value(int_value->NativeValue());
     return absl::OkStatus();
   }
   return TypeConversionError(value.GetTypeName(), "int").NativeValue();
 }
 
-absl::Status ProtoUInt32MapKeyFromValueConverter(ValueView value,
+absl::Status ProtoUInt32MapKeyFromValueConverter(const Value& value,
                                                  google::protobuf::MapKey& key) {
-  if (auto uint_value = As<UintValueView>(value); uint_value) {
+  if (auto uint_value = As<UintValue>(value); uint_value) {
     if (uint_value->NativeValue() > std::numeric_limits<uint32_t>::max()) {
       return absl::OutOfRangeError("uint64 to uint32_t overflow");
     }
@@ -202,18 +202,18 @@ absl::Status ProtoUInt32MapKeyFromValueConverter(ValueView value,
   return TypeConversionError(value.GetTypeName(), "uint").NativeValue();
 }
 
-absl::Status ProtoUInt64MapKeyFromValueConverter(ValueView value,
+absl::Status ProtoUInt64MapKeyFromValueConverter(const Value& value,
                                                  google::protobuf::MapKey& key) {
-  if (auto uint_value = As<UintValueView>(value); uint_value) {
+  if (auto uint_value = As<UintValue>(value); uint_value) {
     key.SetUInt64Value(uint_value->NativeValue());
     return absl::OkStatus();
   }
   return TypeConversionError(value.GetTypeName(), "uint").NativeValue();
 }
 
-absl::Status ProtoStringMapKeyFromValueConverter(ValueView value,
+absl::Status ProtoStringMapKeyFromValueConverter(const Value& value,
                                                  google::protobuf::MapKey& key) {
-  if (auto string_value = As<StringValueView>(value); string_value) {
+  if (auto string_value = As<StringValue>(value); string_value) {
     key.SetStringValue(string_value->NativeString());
     return absl::OkStatus();
   }
@@ -249,49 +249,56 @@ namespace {
 // -----------------------------------------------------------------------------
 // google::protobuf::MapKey -> cel::Value
 
-using ProtoMapKeyToValueConverter =
-    absl::StatusOr<ValueView> (*)(const google::protobuf::MapKey&, ValueManager&, Value&);
+using ProtoMapKeyToValueConverter = absl::Status (*)(const google::protobuf::MapKey&,
+                                                     ValueManager&, Value&);
 
-absl::StatusOr<ValueView> ProtoBoolMapKeyToValueConverter(
-    const google::protobuf::MapKey& key, ValueManager&, Value&) {
+absl::Status ProtoBoolMapKeyToValueConverter(const google::protobuf::MapKey& key,
+                                             ValueManager&, Value& result) {
   CEL_RETURN_IF_ERROR(ProtoMapKeyTypeMismatch(
       google::protobuf::FieldDescriptor::CPPTYPE_BOOL, key.type()));
-  return BoolValueView{key.GetBoolValue()};
+  result = BoolValue{key.GetBoolValue()};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoInt32MapKeyToValueConverter(
-    const google::protobuf::MapKey& key, ValueManager&, Value&) {
+absl::Status ProtoInt32MapKeyToValueConverter(const google::protobuf::MapKey& key,
+                                              ValueManager&, Value& result) {
   CEL_RETURN_IF_ERROR(ProtoMapKeyTypeMismatch(
       google::protobuf::FieldDescriptor::CPPTYPE_INT32, key.type()));
-  return IntValueView{key.GetInt32Value()};
+  result = IntValue{key.GetInt32Value()};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoInt64MapKeyToValueConverter(
-    const google::protobuf::MapKey& key, ValueManager&, Value&) {
+absl::Status ProtoInt64MapKeyToValueConverter(const google::protobuf::MapKey& key,
+                                              ValueManager&, Value& result) {
   CEL_RETURN_IF_ERROR(ProtoMapKeyTypeMismatch(
       google::protobuf::FieldDescriptor::CPPTYPE_INT64, key.type()));
-  return IntValueView{key.GetInt64Value()};
+  result = IntValue{key.GetInt64Value()};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoUInt32MapKeyToValueConverter(
-    const google::protobuf::MapKey& key, ValueManager&, Value&) {
+absl::Status ProtoUInt32MapKeyToValueConverter(const google::protobuf::MapKey& key,
+                                               ValueManager&, Value& result) {
   CEL_RETURN_IF_ERROR(ProtoMapKeyTypeMismatch(
       google::protobuf::FieldDescriptor::CPPTYPE_UINT32, key.type()));
-  return UintValueView{key.GetUInt32Value()};
+  result = UintValue{key.GetUInt32Value()};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoUInt64MapKeyToValueConverter(
-    const google::protobuf::MapKey& key, ValueManager&, Value&) {
+absl::Status ProtoUInt64MapKeyToValueConverter(const google::protobuf::MapKey& key,
+                                               ValueManager&, Value& result) {
   CEL_RETURN_IF_ERROR(ProtoMapKeyTypeMismatch(
       google::protobuf::FieldDescriptor::CPPTYPE_UINT64, key.type()));
-  return UintValueView{key.GetUInt64Value()};
+  result = UintValue{key.GetUInt64Value()};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoStringMapKeyToValueConverter(
-    const google::protobuf::MapKey& key, ValueManager& value_manager, Value&) {
+absl::Status ProtoStringMapKeyToValueConverter(const google::protobuf::MapKey& key,
+                                               ValueManager& value_manager,
+                                               Value& result) {
   CEL_RETURN_IF_ERROR(ProtoMapKeyTypeMismatch(
       google::protobuf::FieldDescriptor::CPPTYPE_STRING, key.type()));
-  return StringValueView{key.GetStringValue()};
+  result = StringValue{key.GetStringValue()};
+  return absl::OkStatus();
 }
 
 absl::StatusOr<ProtoMapKeyToValueConverter> GetProtoMapKeyToValueConverter(
@@ -322,9 +329,9 @@ absl::StatusOr<ProtoMapKeyToValueConverter> GetProtoMapKeyToValueConverter(
 // cel::Value -> google::protobuf::MapValueRef
 
 absl::Status ProtoBoolMapValueFromValueConverter(
-    ValueView value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
+    const Value& value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
     google::protobuf::MapValueRef& value_ref) {
-  if (auto bool_value = As<BoolValueView>(value); bool_value) {
+  if (auto bool_value = As<BoolValue>(value); bool_value) {
     value_ref.SetBoolValue(bool_value->NativeValue());
     return absl::OkStatus();
   }
@@ -332,9 +339,9 @@ absl::Status ProtoBoolMapValueFromValueConverter(
 }
 
 absl::Status ProtoInt32MapValueFromValueConverter(
-    ValueView value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
+    const Value& value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
     google::protobuf::MapValueRef& value_ref) {
-  if (auto int_value = As<IntValueView>(value); int_value) {
+  if (auto int_value = As<IntValue>(value); int_value) {
     if (int_value->NativeValue() < std::numeric_limits<int32_t>::min() ||
         int_value->NativeValue() > std::numeric_limits<int32_t>::max()) {
       return absl::OutOfRangeError("int64 to int32_t overflow");
@@ -346,9 +353,9 @@ absl::Status ProtoInt32MapValueFromValueConverter(
 }
 
 absl::Status ProtoInt64MapValueFromValueConverter(
-    ValueView value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
+    const Value& value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
     google::protobuf::MapValueRef& value_ref) {
-  if (auto int_value = As<IntValueView>(value); int_value) {
+  if (auto int_value = As<IntValue>(value); int_value) {
     value_ref.SetInt64Value(int_value->NativeValue());
     return absl::OkStatus();
   }
@@ -356,9 +363,9 @@ absl::Status ProtoInt64MapValueFromValueConverter(
 }
 
 absl::Status ProtoUInt32MapValueFromValueConverter(
-    ValueView value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
+    const Value& value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
     google::protobuf::MapValueRef& value_ref) {
-  if (auto uint_value = As<UintValueView>(value); uint_value) {
+  if (auto uint_value = As<UintValue>(value); uint_value) {
     if (uint_value->NativeValue() > std::numeric_limits<uint32_t>::max()) {
       return absl::OutOfRangeError("uint64 to uint32_t overflow");
     }
@@ -369,9 +376,9 @@ absl::Status ProtoUInt32MapValueFromValueConverter(
 }
 
 absl::Status ProtoUInt64MapValueFromValueConverter(
-    ValueView value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
+    const Value& value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
     google::protobuf::MapValueRef& value_ref) {
-  if (auto uint_value = As<UintValueView>(value); uint_value) {
+  if (auto uint_value = As<UintValue>(value); uint_value) {
     value_ref.SetUInt64Value(uint_value->NativeValue());
     return absl::OkStatus();
   }
@@ -379,9 +386,9 @@ absl::Status ProtoUInt64MapValueFromValueConverter(
 }
 
 absl::Status ProtoFloatMapValueFromValueConverter(
-    ValueView value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
+    const Value& value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
     google::protobuf::MapValueRef& value_ref) {
-  if (auto double_value = As<DoubleValueView>(value); double_value) {
+  if (auto double_value = As<DoubleValue>(value); double_value) {
     value_ref.SetFloatValue(double_value->NativeValue());
     return absl::OkStatus();
   }
@@ -389,9 +396,9 @@ absl::Status ProtoFloatMapValueFromValueConverter(
 }
 
 absl::Status ProtoDoubleMapValueFromValueConverter(
-    ValueView value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
+    const Value& value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
     google::protobuf::MapValueRef& value_ref) {
-  if (auto double_value = As<DoubleValueView>(value); double_value) {
+  if (auto double_value = As<DoubleValue>(value); double_value) {
     value_ref.SetDoubleValue(double_value->NativeValue());
     return absl::OkStatus();
   }
@@ -399,9 +406,9 @@ absl::Status ProtoDoubleMapValueFromValueConverter(
 }
 
 absl::Status ProtoBytesMapValueFromValueConverter(
-    ValueView value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
+    const Value& value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
     google::protobuf::MapValueRef& value_ref) {
-  if (auto bytes_value = As<BytesValueView>(value); bytes_value) {
+  if (auto bytes_value = As<BytesValue>(value); bytes_value) {
     value_ref.SetStringValue(bytes_value->NativeString());
     return absl::OkStatus();
   }
@@ -409,9 +416,9 @@ absl::Status ProtoBytesMapValueFromValueConverter(
 }
 
 absl::Status ProtoStringMapValueFromValueConverter(
-    ValueView value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
+    const Value& value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
     google::protobuf::MapValueRef& value_ref) {
-  if (auto string_value = As<StringValueView>(value); string_value) {
+  if (auto string_value = As<StringValue>(value); string_value) {
     value_ref.SetStringValue(string_value->NativeString());
     return absl::OkStatus();
   }
@@ -419,9 +426,9 @@ absl::Status ProtoStringMapValueFromValueConverter(
 }
 
 absl::Status ProtoNullMapValueFromValueConverter(
-    ValueView value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
+    const Value& value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
     google::protobuf::MapValueRef& value_ref) {
-  if (InstanceOf<NullValueView>(value) || InstanceOf<IntValueView>(value)) {
+  if (InstanceOf<NullValue>(value) || InstanceOf<IntValue>(value)) {
     value_ref.SetEnumValue(0);
     return absl::OkStatus();
   }
@@ -430,9 +437,9 @@ absl::Status ProtoNullMapValueFromValueConverter(
 }
 
 absl::Status ProtoEnumMapValueFromValueConverter(
-    ValueView value, absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    const Value& value, absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     google::protobuf::MapValueRef& value_ref) {
-  if (auto int_value = As<IntValueView>(value); int_value) {
+  if (auto int_value = As<IntValue>(value); int_value) {
     if (int_value->NativeValue() < std::numeric_limits<int32_t>::min() ||
         int_value->NativeValue() > std::numeric_limits<int32_t>::max()) {
       return absl::OutOfRangeError("int64 to int32_t overflow");
@@ -444,7 +451,7 @@ absl::Status ProtoEnumMapValueFromValueConverter(
 }
 
 absl::Status ProtoMessageMapValueFromValueConverter(
-    ValueView value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
+    const Value& value, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
     google::protobuf::MapValueRef& value_ref) {
   return ProtoMessageFromValueImpl(value, value_ref.MutableMessageValue());
 }
@@ -496,109 +503,120 @@ namespace {
 // -----------------------------------------------------------------------------
 // google::protobuf::MapValueConstRef -> cel::Value
 
-using ProtoMapValueToValueConverter = absl::StatusOr<ValueView> (*)(
+using ProtoMapValueToValueConverter = absl::Status (*)(
     SharedView<const void>, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
     const google::protobuf::MapValueConstRef&, ValueManager&, Value&);
 
-absl::StatusOr<ValueView> ProtoBoolMapValueToValueConverter(
+absl::Status ProtoBoolMapValueToValueConverter(
     SharedView<const void>, absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     const google::protobuf::MapValueConstRef& value_ref, ValueManager& value_manager,
-    Value& value) {
+    Value& result) {
   // Caller validates that the field type is correct.
-  return BoolValueView{value_ref.GetBoolValue()};
+  result = BoolValue{value_ref.GetBoolValue()};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoInt32MapValueToValueConverter(
+absl::Status ProtoInt32MapValueToValueConverter(
     SharedView<const void>, absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     const google::protobuf::MapValueConstRef& value_ref, ValueManager& value_manager,
-    Value& value) {
+    Value& result) {
   // Caller validates that the field type is correct.
-  return IntValueView{value_ref.GetInt32Value()};
+  result = IntValue{value_ref.GetInt32Value()};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoInt64MapValueToValueConverter(
+absl::Status ProtoInt64MapValueToValueConverter(
     SharedView<const void>, absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     const google::protobuf::MapValueConstRef& value_ref, ValueManager& value_manager,
-    Value& value) {
+    Value& result) {
   // Caller validates that the field type is correct.
 
-  return IntValueView{value_ref.GetInt64Value()};
+  result = IntValue{value_ref.GetInt64Value()};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoUInt32MapValueToValueConverter(
+absl::Status ProtoUInt32MapValueToValueConverter(
     SharedView<const void>, absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     const google::protobuf::MapValueConstRef& value_ref, ValueManager& value_manager,
-    Value& value) {
+    Value& result) {
   // Caller validates that the field type is correct.
-  return UintValueView{value_ref.GetUInt32Value()};
+  result = UintValue{value_ref.GetUInt32Value()};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoUInt64MapValueToValueConverter(
+absl::Status ProtoUInt64MapValueToValueConverter(
     SharedView<const void>, absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     const google::protobuf::MapValueConstRef& value_ref, ValueManager& value_manager,
-    Value& value) {
+    Value& result) {
   // Caller validates that the field type is correct.
-  return UintValueView{value_ref.GetUInt64Value()};
+  result = UintValue{value_ref.GetUInt64Value()};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoFloatMapValueToValueConverter(
+absl::Status ProtoFloatMapValueToValueConverter(
     SharedView<const void>, absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     const google::protobuf::MapValueConstRef& value_ref, ValueManager& value_manager,
-    Value& value) {
+    Value& result) {
   // Caller validates that the field type is correct.
-  return DoubleValueView{value_ref.GetFloatValue()};
+  result = DoubleValue{value_ref.GetFloatValue()};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoDoubleMapValueToValueConverter(
+absl::Status ProtoDoubleMapValueToValueConverter(
     SharedView<const void>, absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     const google::protobuf::MapValueConstRef& value_ref, ValueManager& value_manager,
-    Value& value) {
+    Value& result) {
   // Caller validates that the field type is correct.
-  return DoubleValueView{value_ref.GetDoubleValue()};
+  result = DoubleValue{value_ref.GetDoubleValue()};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoBytesMapValueToValueConverter(
+absl::Status ProtoBytesMapValueToValueConverter(
     SharedView<const void>, absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     const google::protobuf::MapValueConstRef& value_ref, ValueManager& value_manager,
-    Value& value) {
+    Value& result) {
   // Caller validates that the field type is correct.
-  return BytesValueView{value_ref.GetStringValue()};
+  result = BytesValue{value_ref.GetStringValue()};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoStringMapValueToValueConverter(
+absl::Status ProtoStringMapValueToValueConverter(
     SharedView<const void>, absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     const google::protobuf::MapValueConstRef& value_ref, ValueManager& value_manager,
-    Value& value) {
+    Value& result) {
   // Caller validates that the field type is correct.
-  return StringValueView{value_ref.GetStringValue()};
+  result = StringValue{value_ref.GetStringValue()};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoNullMapValueToValueConverter(
+absl::Status ProtoNullMapValueToValueConverter(
     SharedView<const void>, absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     const google::protobuf::MapValueConstRef& value_ref, ValueManager& value_manager,
-    Value& value) {
+    Value& result) {
   // Caller validates that the field type is correct.
-  return NullValueView{};
+  result = NullValue{};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoEnumMapValueToValueConverter(
+absl::Status ProtoEnumMapValueToValueConverter(
     SharedView<const void>, absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     const google::protobuf::MapValueConstRef& value_ref, ValueManager& value_manager,
-    Value& value) {
+    Value& result) {
   // Caller validates that the field type is correct.
-  return IntValueView{value_ref.GetEnumValue()};
+  result = IntValue{value_ref.GetEnumValue()};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoMessageMapValueToValueConverter(
+absl::Status ProtoMessageMapValueToValueConverter(
     SharedView<const void> alias,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     const google::protobuf::MapValueConstRef& value_ref, ValueManager& value_manager,
-    Value& value) {
+    Value& result) {
   // Caller validates that the field type is correct.
   CEL_ASSIGN_OR_RETURN(
-      value, ProtoMessageToValueImpl(value_manager, Shared<const void>(alias),
-                                     &value_ref.GetMessageValue()));
-  return value;
+      result, ProtoMessageToValueImpl(value_manager, Shared<const void>(alias),
+                                      &value_ref.GetMessageValue()));
+  return absl::OkStatus();
 }
 
 absl::StatusOr<ProtoMapValueToValueConverter> GetProtoMapValueToValueConverter(
@@ -643,113 +661,123 @@ absl::StatusOr<ProtoMapValueToValueConverter> GetProtoMapValueToValueConverter(
 // -----------------------------------------------------------------------------
 // repeated field -> Value
 
-using ProtoRepeatedFieldToValueAccessor = absl::StatusOr<ValueView> (*)(
+using ProtoRepeatedFieldToValueAccessor = absl::Status (*)(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*>,
     absl::Nonnull<const google::protobuf::Reflection*>,
     absl::Nonnull<const google::protobuf::FieldDescriptor*>, int, ValueManager&, Value&);
 
-absl::StatusOr<ValueView> ProtoBoolRepeatedFieldToValueAccessor(
+absl::Status ProtoBoolRepeatedFieldToValueAccessor(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-    ValueManager&, Value&) {
-  return BoolValueView{reflection->GetRepeatedBool(*message, field, index)};
+    ValueManager&, Value& result) {
+  result = BoolValue{reflection->GetRepeatedBool(*message, field, index)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoInt32RepeatedFieldToValueAccessor(
+absl::Status ProtoInt32RepeatedFieldToValueAccessor(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-    ValueManager&, Value&) {
-  return IntValueView{reflection->GetRepeatedInt32(*message, field, index)};
+    ValueManager&, Value& result) {
+  result = IntValue{reflection->GetRepeatedInt32(*message, field, index)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoInt64RepeatedFieldToValueAccessor(
+absl::Status ProtoInt64RepeatedFieldToValueAccessor(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-    ValueManager&, Value&) {
-  return IntValueView{reflection->GetRepeatedInt64(*message, field, index)};
+    ValueManager&, Value& result) {
+  result = IntValue{reflection->GetRepeatedInt64(*message, field, index)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoUInt32RepeatedFieldToValueAccessor(
+absl::Status ProtoUInt32RepeatedFieldToValueAccessor(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-    ValueManager&, Value&) {
-  return UintValueView{reflection->GetRepeatedUInt32(*message, field, index)};
+    ValueManager&, Value& result) {
+  result = UintValue{reflection->GetRepeatedUInt32(*message, field, index)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoUInt64RepeatedFieldToValueAccessor(
+absl::Status ProtoUInt64RepeatedFieldToValueAccessor(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-    ValueManager&, Value&) {
-  return UintValueView{reflection->GetRepeatedUInt64(*message, field, index)};
+    ValueManager&, Value& result) {
+  result = UintValue{reflection->GetRepeatedUInt64(*message, field, index)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoFloatRepeatedFieldToValueAccessor(
+absl::Status ProtoFloatRepeatedFieldToValueAccessor(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-    ValueManager&, Value&) {
-  return DoubleValueView{reflection->GetRepeatedFloat(*message, field, index)};
+    ValueManager&, Value& result) {
+  result = DoubleValue{reflection->GetRepeatedFloat(*message, field, index)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoDoubleRepeatedFieldToValueAccessor(
+absl::Status ProtoDoubleRepeatedFieldToValueAccessor(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-    ValueManager&, Value&) {
-  return DoubleValueView{reflection->GetRepeatedDouble(*message, field, index)};
+    ValueManager&, Value& result) {
+  result = DoubleValue{reflection->GetRepeatedDouble(*message, field, index)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoBytesRepeatedFieldToValueAccessor(
+absl::Status ProtoBytesRepeatedFieldToValueAccessor(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-    ValueManager& value_manager, Value& value) {
-  value = BytesValue{reflection->GetRepeatedString(*message, field, index)};
-  return value;
+    ValueManager& value_manager, Value& result) {
+  result = BytesValue{reflection->GetRepeatedString(*message, field, index)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoStringRepeatedFieldToValueAccessor(
+absl::Status ProtoStringRepeatedFieldToValueAccessor(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-    ValueManager& value_manager, Value& value) {
-  value = value_manager.CreateUncheckedStringValue(
+    ValueManager& value_manager, Value& result) {
+  result = value_manager.CreateUncheckedStringValue(
       reflection->GetRepeatedString(*message, field, index));
-  return value;
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoNullRepeatedFieldToValueAccessor(
+absl::Status ProtoNullRepeatedFieldToValueAccessor(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*>,
     absl::Nonnull<const google::protobuf::Reflection*>,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*>, int, ValueManager&, Value&) {
-  return NullValueView{};
+    absl::Nonnull<const google::protobuf::FieldDescriptor*>, int, ValueManager&,
+    Value& result) {
+  result = NullValue{};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoEnumRepeatedFieldToValueAccessor(
+absl::Status ProtoEnumRepeatedFieldToValueAccessor(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-    ValueManager& value_manager, Value& value) {
-  return IntValueView{reflection->GetRepeatedEnumValue(*message, field, index)};
+    ValueManager& value_manager, Value& result) {
+  result = IntValue{reflection->GetRepeatedEnumValue(*message, field, index)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoMessageRepeatedFieldToValueAccessor(
+absl::Status ProtoMessageRepeatedFieldToValueAccessor(
     SharedView<const void> aliased,
     absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
-    ValueManager& value_manager, Value& value) {
+    ValueManager& value_manager, Value& result) {
   const auto& field_value =
       reflection->GetRepeatedMessage(*message, field, index);
   CEL_ASSIGN_OR_RETURN(
-      value, ProtoMessageToValueImpl(value_manager, Shared<const void>(aliased),
-                                     &field_value));
-  return value;
+      result, ProtoMessageToValueImpl(
+                  value_manager, Shared<const void>(aliased), &field_value));
+  return absl::OkStatus();
 }
 
 absl::StatusOr<ProtoRepeatedFieldToValueAccessor>
@@ -794,93 +822,103 @@ GetProtoRepeatedFieldToValueAccessor(
 // -----------------------------------------------------------------------------
 // field -> Value
 
-absl::StatusOr<ValueView> ProtoBoolFieldToValue(
+absl::Status ProtoBoolFieldToValue(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueManager&,
-    Value&) {
-  return BoolValueView{reflection->GetBool(*message, field)};
+    Value& result) {
+  result = BoolValue{reflection->GetBool(*message, field)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoInt32FieldToValue(
+absl::Status ProtoInt32FieldToValue(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueManager&,
-    Value&) {
-  return IntValueView{reflection->GetInt32(*message, field)};
+    Value& result) {
+  result = IntValue{reflection->GetInt32(*message, field)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoInt64FieldToValue(
+absl::Status ProtoInt64FieldToValue(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueManager&,
-    Value&) {
-  return IntValueView{reflection->GetInt64(*message, field)};
+    Value& result) {
+  result = IntValue{reflection->GetInt64(*message, field)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoUInt32FieldToValue(
+absl::Status ProtoUInt32FieldToValue(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueManager&,
-    Value&) {
-  return UintValueView{reflection->GetUInt32(*message, field)};
+    Value& result) {
+  result = UintValue{reflection->GetUInt32(*message, field)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoUInt64FieldToValue(
+absl::Status ProtoUInt64FieldToValue(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueManager&,
-    Value&) {
-  return UintValueView{reflection->GetUInt64(*message, field)};
+    Value& result) {
+  result = UintValue{reflection->GetUInt64(*message, field)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoFloatFieldToValue(
+absl::Status ProtoFloatFieldToValue(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueManager&,
-    Value&) {
-  return DoubleValueView{reflection->GetFloat(*message, field)};
+    Value& result) {
+  result = DoubleValue{reflection->GetFloat(*message, field)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoDoubleFieldToValue(
+absl::Status ProtoDoubleFieldToValue(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueManager&,
-    Value&) {
-  return DoubleValueView{reflection->GetDouble(*message, field)};
+    Value& result) {
+  result = DoubleValue{reflection->GetDouble(*message, field)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoBytesFieldToValue(
+absl::Status ProtoBytesFieldToValue(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    ValueManager& value_manager, Value& value) {
-  value = BytesValue{reflection->GetString(*message, field)};
-  return value;
+    ValueManager& value_manager, Value& result) {
+  result = BytesValue{reflection->GetString(*message, field)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoStringFieldToValue(
+absl::Status ProtoStringFieldToValue(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    ValueManager& value_manager, Value& value) {
-  value = StringValue{reflection->GetString(*message, field)};
-  return value;
+    ValueManager& value_manager, Value& result) {
+  result = StringValue{reflection->GetString(*message, field)};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoNullFieldToValue(
+absl::Status ProtoNullFieldToValue(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*>,
     absl::Nonnull<const google::protobuf::Reflection*>,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*>, ValueManager&, Value&) {
-  return NullValueView{};
+    absl::Nonnull<const google::protobuf::FieldDescriptor*>, ValueManager&,
+    Value& result) {
+  result = NullValue{};
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoEnumFieldToValue(
+absl::Status ProtoEnumFieldToValue(
     SharedView<const void>, absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueManager&,
-    Value&) {
-  return IntValueView{reflection->GetEnumValue(*message, field)};
+    Value& result) {
+  result = IntValue{reflection->GetEnumValue(*message, field)};
+  return absl::OkStatus();
 }
 
 bool IsWrapperType(absl::Nonnull<const google::protobuf::Descriptor*> descriptor) {
@@ -908,93 +946,94 @@ bool IsWrapperType(absl::Nonnull<const google::protobuf::Descriptor*> descriptor
   }
 }
 
-absl::StatusOr<ValueView> ProtoMessageFieldToValue(
+absl::Status ProtoMessageFieldToValue(
     SharedView<const void> aliased,
     absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    ValueManager& value_manager, Value& value,
+    ValueManager& value_manager, Value& result,
     ProtoWrapperTypeOptions wrapper_type_options) {
   if (wrapper_type_options == ProtoWrapperTypeOptions::kUnsetNull &&
       IsWrapperType(field->message_type()) &&
       !reflection->HasField(*message, field)) {
-    return NullValueView{};
+    result = NullValueView{};
+    return absl::OkStatus();
   }
   const auto& field_value = reflection->GetMessage(*message, field);
   CEL_ASSIGN_OR_RETURN(
-      value, ProtoMessageToValueImpl(value_manager, Shared<const void>(aliased),
-                                     &field_value));
-  return value;
+      result, ProtoMessageToValueImpl(
+                  value_manager, Shared<const void>(aliased), &field_value));
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoMapFieldToValue(
+absl::Status ProtoMapFieldToValue(
     SharedView<const void> aliased,
     absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     ValueManager& value_manager, Value& value);
 
-absl::StatusOr<ValueView> ProtoRepeatedFieldToValue(
+absl::Status ProtoRepeatedFieldToValue(
     SharedView<const void> aliased,
     absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
     ValueManager& value_manager, Value& value);
 
-absl::StatusOr<ValueView> ProtoFieldToValue(
+absl::Status ProtoFieldToValue(
     SharedView<const void> aliased,
     absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
-    ValueManager& value_manager, Value& value,
+    ValueManager& value_manager, Value& result,
     ProtoWrapperTypeOptions wrapper_type_options) {
   if (field->is_map()) {
     return ProtoMapFieldToValue(aliased, message, reflection, field,
-                                value_manager, value);
+                                value_manager, result);
   }
   if (field->is_repeated()) {
     return ProtoRepeatedFieldToValue(aliased, message, reflection, field,
-                                     value_manager, value);
+                                     value_manager, result);
   }
   switch (field->cpp_type()) {
     case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
       return ProtoBoolFieldToValue(aliased, message, reflection, field,
-                                   value_manager, value);
+                                   value_manager, result);
     case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
       return ProtoInt32FieldToValue(aliased, message, reflection, field,
-                                    value_manager, value);
+                                    value_manager, result);
     case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
       return ProtoInt64FieldToValue(aliased, message, reflection, field,
-                                    value_manager, value);
+                                    value_manager, result);
     case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
       return ProtoUInt32FieldToValue(aliased, message, reflection, field,
-                                     value_manager, value);
+                                     value_manager, result);
     case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
       return ProtoUInt64FieldToValue(aliased, message, reflection, field,
-                                     value_manager, value);
+                                     value_manager, result);
     case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
       return ProtoFloatFieldToValue(aliased, message, reflection, field,
-                                    value_manager, value);
+                                    value_manager, result);
     case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
       return ProtoDoubleFieldToValue(aliased, message, reflection, field,
-                                     value_manager, value);
+                                     value_manager, result);
     case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
       if (field->type() == google::protobuf::FieldDescriptor::TYPE_BYTES) {
         return ProtoBytesFieldToValue(aliased, message, reflection, field,
-                                      value_manager, value);
+                                      value_manager, result);
       }
       return ProtoStringFieldToValue(aliased, message, reflection, field,
-                                     value_manager, value);
+                                     value_manager, result);
     case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
       if (field->enum_type()->full_name() == "google.protobuf.NullValue") {
         return ProtoNullFieldToValue(aliased, message, reflection, field,
-                                     value_manager, value);
+                                     value_manager, result);
       }
       return ProtoEnumFieldToValue(aliased, message, reflection, field,
-                                   value_manager, value);
+                                   value_manager, result);
     case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
       return ProtoMessageFieldToValue(aliased, message, reflection, field,
-                                      value_manager, value,
+                                      value_manager, result,
                                       wrapper_type_options);
     default:
       return absl::InvalidArgumentError(absl::StrCat(
@@ -1024,10 +1063,9 @@ class ParsedProtoListElementIterator final : public ValueIterator {
 
   absl::Status Next(ValueManager& value_manager, Value& result) override {
     Value scratch;
-    CEL_ASSIGN_OR_RETURN(
-        result, field_to_value_accessor_(aliasing_, &message_,
-                                         GetReflectionOrDie(message_), field_,
-                                         index_, value_manager, scratch));
+    CEL_RETURN_IF_ERROR(field_to_value_accessor_(
+        aliasing_, &message_, GetReflectionOrDie(message_), field_, index_,
+        value_manager, result));
     ++index_;
     return absl::OkStatus();
   }
@@ -1086,13 +1124,11 @@ class ParsedProtoListValueInterface
   absl::Status ForEach(ValueManager& value_manager,
                        ForEachCallback callback) const final {
     const auto size = Size();
-    Value element_scratch;
+    Value element;
     for (size_t index = 0; index < size; ++index) {
-      CEL_ASSIGN_OR_RETURN(
-          auto element,
-          field_to_value_accessor_(
-              shared_from_this(), &message_, GetReflectionOrDie(message_),
-              field_, static_cast<int>(index), value_manager, element_scratch));
+      CEL_RETURN_IF_ERROR(field_to_value_accessor_(
+          shared_from_this(), &message_, GetReflectionOrDie(message_), field_,
+          static_cast<int>(index), value_manager, element));
       CEL_ASSIGN_OR_RETURN(auto ok, callback(element));
       if (!ok) {
         break;
@@ -1104,13 +1140,11 @@ class ParsedProtoListValueInterface
   absl::Status ForEach(ValueManager& value_manager,
                        ForEachWithIndexCallback callback) const final {
     const auto size = Size();
-    Value element_scratch;
+    Value element;
     for (size_t index = 0; index < size; ++index) {
-      CEL_ASSIGN_OR_RETURN(
-          auto element,
-          field_to_value_accessor_(
-              shared_from_this(), &message_, GetReflectionOrDie(message_),
-              field_, static_cast<int>(index), value_manager, element_scratch));
+      CEL_RETURN_IF_ERROR(field_to_value_accessor_(
+          shared_from_this(), &message_, GetReflectionOrDie(message_), field_,
+          static_cast<int>(index), value_manager, element));
       CEL_ASSIGN_OR_RETURN(auto ok, callback(index, element));
       if (!ok) {
         break;
@@ -1129,10 +1163,9 @@ class ParsedProtoListValueInterface
   absl::Status GetImpl(ValueManager& value_manager, size_t index,
                        Value& result) const final {
     Value scratch;
-    CEL_ASSIGN_OR_RETURN(
-        result, field_to_value_accessor_(
-                    shared_from_this(), &message_, GetReflectionOrDie(message_),
-                    field_, static_cast<int>(index), value_manager, scratch));
+    CEL_RETURN_IF_ERROR(field_to_value_accessor_(
+        shared_from_this(), &message_, GetReflectionOrDie(message_), field_,
+        static_cast<int>(index), value_manager, result));
     return absl::OkStatus();
   }
 
@@ -1158,8 +1191,8 @@ class ParsedProtoMapKeyIterator final : public ValueIterator {
 
   absl::Status Next(ValueManager& value_manager, Value& result) override {
     Value scratch;
-    CEL_ASSIGN_OR_RETURN(
-        result, map_key_to_value_(begin_.GetKey(), value_manager, scratch));
+    CEL_RETURN_IF_ERROR(
+        map_key_to_value_(begin_.GetKey(), value_manager, result));
     ++begin_;
     return absl::OkStatus();
   }
@@ -1231,12 +1264,11 @@ class ParsedProtoMapValueInterface
     builder->Reserve(Size());
     auto begin = MapBegin(*GetReflectionOrDie(message_), message_, *field_);
     auto end = MapEnd(*GetReflectionOrDie(message_), message_, *field_);
-    Value key_scratch;
+    Value key;
     while (begin != end) {
-      CEL_ASSIGN_OR_RETURN(
-          auto key,
-          map_key_to_value_(begin.GetKey(), value_manager, key_scratch));
-      CEL_RETURN_IF_ERROR(builder->Add(Value(key)));
+      CEL_RETURN_IF_ERROR(
+          map_key_to_value_(begin.GetKey(), value_manager, key));
+      CEL_RETURN_IF_ERROR(builder->Add(std::move(key)));
       ++begin;
     }
     result = std::move(*builder).Build();
@@ -1247,16 +1279,14 @@ class ParsedProtoMapValueInterface
                        ForEachCallback callback) const final {
     auto begin = MapBegin(*GetReflectionOrDie(message_), message_, *field_);
     auto end = MapEnd(*GetReflectionOrDie(message_), message_, *field_);
-    Value key_scratch;
-    Value value_scratch;
+    Value key;
+    Value value;
     while (begin != end) {
-      CEL_ASSIGN_OR_RETURN(
-          auto key,
-          map_key_to_value_(begin.GetKey(), value_manager, key_scratch));
-      CEL_ASSIGN_OR_RETURN(
-          auto value,
-          map_value_to_value_(shared_from_this(), field_, begin.GetValueRef(),
-                              value_manager, value_scratch));
+      CEL_RETURN_IF_ERROR(
+          map_key_to_value_(begin.GetKey(), value_manager, key));
+      CEL_RETURN_IF_ERROR(map_value_to_value_(shared_from_this(), field_,
+                                              begin.GetValueRef(),
+                                              value_manager, value));
       CEL_ASSIGN_OR_RETURN(auto ok, callback(key, value));
       if (!ok) {
         break;
@@ -1276,24 +1306,23 @@ class ParsedProtoMapValueInterface
   absl::StatusOr<bool> FindImpl(ValueManager& value_manager, ValueView key,
                                 Value& result) const final {
     google::protobuf::MapKey map_key;
-    CEL_RETURN_IF_ERROR(map_key_from_value_(key, map_key));
+    CEL_RETURN_IF_ERROR(map_key_from_value_(Value(key), map_key));
     google::protobuf::MapValueConstRef map_value;
     if (!LookupMapValue(*GetReflectionOrDie(message_), message_, *field_,
                         map_key, &map_value)) {
       return false;
     }
     Value scratch;
-    CEL_ASSIGN_OR_RETURN(
-        result, map_value_to_value_(shared_from_this(),
-                                    field_->message_type()->map_value(),
-                                    map_value, value_manager, scratch));
+    CEL_RETURN_IF_ERROR(map_value_to_value_(shared_from_this(),
+                                            field_->message_type()->map_value(),
+                                            map_value, value_manager, result));
     return true;
   }
 
   absl::StatusOr<bool> HasImpl(ValueManager& value_manager,
                                ValueView key) const final {
     google::protobuf::MapKey map_key;
-    CEL_RETURN_IF_ERROR(map_key_from_value_(key, map_key));
+    CEL_RETURN_IF_ERROR(map_key_from_value_(Value(key), map_key));
     return ContainsMapKey(*GetReflectionOrDie(message_), message_, *field_,
                           map_key);
   }
@@ -1333,25 +1362,23 @@ class ParsedProtoQualifyState final : public ProtoQualifyState {
       const google::protobuf::Message* message, const google::protobuf::FieldDescriptor* field,
       ProtoWrapperTypeOptions unboxing_option,
       cel::MemoryManagerRef memory_manager) override {
-    Value scratch;
-    CEL_ASSIGN_OR_RETURN(
-        auto result,
+    Value result;
+    CEL_RETURN_IF_ERROR(
         ProtoFieldToValue(alias_, message, message->GetReflection(), field,
-                          value_manager_, scratch, unboxing_option));
-    result_ = Value{result};
+                          value_manager_, result, unboxing_option));
+    result_ = std::move(result);
     return absl::OkStatus();
   }
 
   absl::Status SetResultFromRepeatedField(
       const google::protobuf::Message* message, const google::protobuf::FieldDescriptor* field,
       int index, cel::MemoryManagerRef memory_manager) override {
+    Value result;
     CEL_ASSIGN_OR_RETURN(auto accessor,
                          GetProtoRepeatedFieldToValueAccessor(field));
-    Value scratch;
-    CEL_ASSIGN_OR_RETURN(auto result,
-                         (*accessor)(alias_, message, message->GetReflection(),
-                                     field, index, value_manager_, scratch));
-    result_ = Value{result};
+    CEL_RETURN_IF_ERROR((*accessor)(alias_, message, message->GetReflection(),
+                                    field, index, value_manager_, result));
+    result_ = std::move(result);
     return absl::OkStatus();
   }
 
@@ -1361,10 +1388,10 @@ class ParsedProtoQualifyState final : public ProtoQualifyState {
       cel::MemoryManagerRef memory_manager) override {
     CEL_ASSIGN_OR_RETURN(auto converter,
                          GetProtoMapValueToValueConverter(field));
-    Value scratch;
-    CEL_ASSIGN_OR_RETURN(auto result, (*converter)(alias_, field, value,
-                                                   value_manager_, scratch));
-    result_ = Value{result};
+    Value result;
+    CEL_RETURN_IF_ERROR(
+        (*converter)(alias_, field, value, value_manager_, result));
+    result_ = std::move(result);
     return absl::OkStatus();
   }
 
@@ -1485,13 +1512,11 @@ class ParsedProtoStructValueInterface
     std::vector<const google::protobuf::FieldDescriptor*> fields;
     const auto* reflection = message().GetReflection();
     reflection->ListFields(message(), &fields);
-    Value value_scratch;
+    Value value;
     for (const auto* field : fields) {
-      CEL_ASSIGN_OR_RETURN(
-          auto value,
-          ProtoFieldToValue(shared_from_this(), &message(), reflection, field,
-                            value_manager, value_scratch,
-                            ProtoWrapperTypeOptions::kUnsetProtoDefault));
+      CEL_RETURN_IF_ERROR(ProtoFieldToValue(
+          shared_from_this(), &message(), reflection, field, value_manager,
+          value, ProtoWrapperTypeOptions::kUnsetProtoDefault));
       CEL_ASSIGN_OR_RETURN(auto ok, callback(field->name(), value));
       if (!ok) {
         break;
@@ -1572,11 +1597,9 @@ class ParsedProtoStructValueInterface
       ValueManager& value_manager,
       absl::Nonnull<const google::protobuf::FieldDescriptor*> field_desc, Value& result,
       ProtoWrapperTypeOptions unboxing_options) const {
-    Value scratch;
-    CEL_ASSIGN_OR_RETURN(
-        result, ProtoFieldToValue(shared_from_this(), &message(),
-                                  message().GetReflection(), field_desc,
-                                  value_manager, scratch, unboxing_options));
+    CEL_RETURN_IF_ERROR(ProtoFieldToValue(
+        shared_from_this(), &message(), message().GetReflection(), field_desc,
+        value_manager, result, unboxing_options));
     return absl::OkStatus();
   }
 };
@@ -1679,7 +1702,7 @@ void ProtoMessageDestruct(void* object) {
   static_cast<google::protobuf::Message*>(object)->~Message();
 }
 
-absl::StatusOr<ValueView> ProtoMapFieldToValue(
+absl::Status ProtoMapFieldToValue(
     SharedView<const void> aliased,
     absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
@@ -1705,10 +1728,10 @@ absl::StatusOr<ValueView> ProtoMapFieldToValue(
                 Shared<const void>(aliased), *message, field,
                 map_key_from_value, map_key_to_value, map_value_to_value)};
   }
-  return value;
+  return absl::OkStatus();
 }
 
-absl::StatusOr<ValueView> ProtoRepeatedFieldToValue(
+absl::Status ProtoRepeatedFieldToValue(
     SharedView<const void> aliased,
     absl::Nonnull<const google::protobuf::Message*> message,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
@@ -1729,7 +1752,7 @@ absl::StatusOr<ValueView> ProtoRepeatedFieldToValue(
                 Shared<const void>(aliased), *message, field,
                 repeated_field_to_value)};
   }
-  return value;
+  return absl::OkStatus();
 }
 
 absl::StatusOr<absl::optional<Value>> WellKnownProtoMessageToValue(
@@ -2040,7 +2063,7 @@ absl::StatusOr<Value> ProtoMessageToValueImpl(
 }
 
 absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValueImpl(
-    ValueView value, absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
+    const Value& value, absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
     absl::Nonnull<google::protobuf::MessageFactory*> factory, google::protobuf::Arena* arena) {
   switch (value.kind()) {
     case ValueKind::kNull: {
@@ -2055,7 +2078,7 @@ absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValueI
           auto message,
           NewProtoMessage(pool, factory, "google.protobuf.BoolValue", arena));
       CEL_RETURN_IF_ERROR(WrapDynamicBoolValueProto(
-          Cast<BoolValueView>(value).NativeValue(), *message));
+          Cast<BoolValue>(value).NativeValue(), *message));
       return message.release();
     }
     case ValueKind::kInt: {
@@ -2063,7 +2086,7 @@ absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValueI
           auto message,
           NewProtoMessage(pool, factory, "google.protobuf.Int64Value", arena));
       CEL_RETURN_IF_ERROR(WrapDynamicInt64ValueProto(
-          Cast<IntValueView>(value).NativeValue(), *message));
+          Cast<IntValue>(value).NativeValue(), *message));
       return message.release();
     }
     case ValueKind::kUint: {
@@ -2071,7 +2094,7 @@ absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValueI
           auto message,
           NewProtoMessage(pool, factory, "google.protobuf.UInt64Value", arena));
       CEL_RETURN_IF_ERROR(WrapDynamicUInt64ValueProto(
-          Cast<UintValueView>(value).NativeValue(), *message));
+          Cast<UintValue>(value).NativeValue(), *message));
       return message.release();
     }
     case ValueKind::kDouble: {
@@ -2079,7 +2102,7 @@ absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValueI
           auto message,
           NewProtoMessage(pool, factory, "google.protobuf.DoubleValue", arena));
       CEL_RETURN_IF_ERROR(WrapDynamicDoubleValueProto(
-          Cast<DoubleValueView>(value).NativeValue(), *message));
+          Cast<DoubleValue>(value).NativeValue(), *message));
       return message.release();
     }
     case ValueKind::kString: {
@@ -2087,7 +2110,7 @@ absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValueI
           auto message,
           NewProtoMessage(pool, factory, "google.protobuf.StringValue", arena));
       CEL_RETURN_IF_ERROR(WrapDynamicStringValueProto(
-          Cast<StringValueView>(value).NativeCord(), *message));
+          Cast<StringValue>(value).NativeCord(), *message));
       return message.release();
     }
     case ValueKind::kBytes: {
@@ -2095,7 +2118,7 @@ absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValueI
           auto message,
           NewProtoMessage(pool, factory, "google.protobuf.BytesValue", arena));
       CEL_RETURN_IF_ERROR(WrapDynamicBytesValueProto(
-          Cast<BytesValueView>(value).NativeCord(), *message));
+          Cast<BytesValue>(value).NativeCord(), *message));
       return message.release();
     }
     case ValueKind::kStruct: {
@@ -2115,7 +2138,7 @@ absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValueI
           auto message,
           NewProtoMessage(pool, factory, "google.protobuf.Duration", arena));
       CEL_RETURN_IF_ERROR(WrapDynamicDurationProto(
-          Cast<DurationValueView>(value).NativeValue(), *message));
+          Cast<DurationValue>(value).NativeValue(), *message));
       return message.release();
     }
     case ValueKind::kTimestamp: {
@@ -2123,7 +2146,7 @@ absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValueI
           auto message,
           NewProtoMessage(pool, factory, "google.protobuf.Timestamp", arena));
       CEL_RETURN_IF_ERROR(WrapDynamicTimestampProto(
-          Cast<TimestampValueView>(value).NativeValue(), *message));
+          Cast<TimestampValue>(value).NativeValue(), *message));
       return message.release();
     }
     case ValueKind::kList: {
@@ -2132,7 +2155,7 @@ absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValueI
           NewProtoMessage(pool, factory, "google.protobuf.ListValue", arena));
       ProtoAnyToJsonConverter converter(pool, factory);
       CEL_ASSIGN_OR_RETURN(
-          auto json, Cast<ListValueView>(value).ConvertToJsonArray(converter));
+          auto json, Cast<ListValue>(value).ConvertToJsonArray(converter));
       CEL_RETURN_IF_ERROR(DynamicListValueProtoFromJson(json, *message));
       return message.release();
     }
@@ -2142,7 +2165,7 @@ absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValueI
           NewProtoMessage(pool, factory, "google.protobuf.Struct", arena));
       ProtoAnyToJsonConverter converter(pool, factory);
       CEL_ASSIGN_OR_RETURN(
-          auto json, Cast<MapValueView>(value).ConvertToJsonObject(converter));
+          auto json, Cast<MapValue>(value).ConvertToJsonObject(converter));
       CEL_RETURN_IF_ERROR(DynamicStructProtoFromJson(json, *message));
       return message.release();
     }
@@ -2153,13 +2176,13 @@ absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValueI
 }
 
 absl::Status ProtoMessageFromValueImpl(
-    ValueView value, absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
+    const Value& value, absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
     absl::Nonnull<google::protobuf::MessageFactory*> factory,
     absl::Nonnull<google::protobuf::Message*> message) {
   CEL_ASSIGN_OR_RETURN(const auto* to_desc, GetDescriptor(*message));
   switch (to_desc->well_known_type()) {
     case google::protobuf::Descriptor::WELLKNOWNTYPE_FLOATVALUE: {
-      if (auto double_value = As<DoubleValueView>(value); double_value) {
+      if (auto double_value = As<DoubleValue>(value); double_value) {
         return WrapDynamicFloatValueProto(
             static_cast<float>(double_value->NativeValue()), *message);
       }
@@ -2167,7 +2190,7 @@ absl::Status ProtoMessageFromValueImpl(
           .NativeValue();
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_DOUBLEVALUE: {
-      if (auto double_value = As<DoubleValueView>(value); double_value) {
+      if (auto double_value = As<DoubleValue>(value); double_value) {
         return WrapDynamicDoubleValueProto(
             static_cast<float>(double_value->NativeValue()), *message);
       }
@@ -2175,7 +2198,7 @@ absl::Status ProtoMessageFromValueImpl(
           .NativeValue();
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_INT32VALUE: {
-      if (auto int_value = As<IntValueView>(value); int_value) {
+      if (auto int_value = As<IntValue>(value); int_value) {
         if (int_value->NativeValue() < std::numeric_limits<int32_t>::min() ||
             int_value->NativeValue() > std::numeric_limits<int32_t>::max()) {
           return absl::OutOfRangeError("int64 to int32_t overflow");
@@ -2187,14 +2210,14 @@ absl::Status ProtoMessageFromValueImpl(
           .NativeValue();
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_INT64VALUE: {
-      if (auto int_value = As<IntValueView>(value); int_value) {
+      if (auto int_value = As<IntValue>(value); int_value) {
         return WrapDynamicInt64ValueProto(int_value->NativeValue(), *message);
       }
       return TypeConversionError(value.GetTypeName(), to_desc->full_name())
           .NativeValue();
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT32VALUE: {
-      if (auto uint_value = As<UintValueView>(value); uint_value) {
+      if (auto uint_value = As<UintValue>(value); uint_value) {
         if (uint_value->NativeValue() > std::numeric_limits<uint32_t>::max()) {
           return absl::OutOfRangeError("uint64 to uint32_t overflow");
         }
@@ -2205,14 +2228,14 @@ absl::Status ProtoMessageFromValueImpl(
           .NativeValue();
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT64VALUE: {
-      if (auto uint_value = As<UintValueView>(value); uint_value) {
+      if (auto uint_value = As<UintValue>(value); uint_value) {
         return WrapDynamicUInt64ValueProto(uint_value->NativeValue(), *message);
       }
       return TypeConversionError(value.GetTypeName(), to_desc->full_name())
           .NativeValue();
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_STRINGVALUE: {
-      if (auto string_value = As<StringValueView>(value); string_value) {
+      if (auto string_value = As<StringValue>(value); string_value) {
         return WrapDynamicStringValueProto(string_value->NativeCord(),
                                            *message);
       }
@@ -2220,14 +2243,14 @@ absl::Status ProtoMessageFromValueImpl(
           .NativeValue();
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_BYTESVALUE: {
-      if (auto bytes_value = As<BytesValueView>(value); bytes_value) {
+      if (auto bytes_value = As<BytesValue>(value); bytes_value) {
         return WrapDynamicBytesValueProto(bytes_value->NativeCord(), *message);
       }
       return TypeConversionError(value.GetTypeName(), to_desc->full_name())
           .NativeValue();
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_BOOLVALUE: {
-      if (auto bool_value = As<BoolValueView>(value); bool_value) {
+      if (auto bool_value = As<BoolValue>(value); bool_value) {
         return WrapDynamicBoolValueProto(bool_value->NativeValue(), *message);
       }
       return TypeConversionError(value.GetTypeName(), to_desc->full_name())
@@ -2239,7 +2262,7 @@ absl::Status ProtoMessageFromValueImpl(
       return WrapDynamicAnyProto(any, *message);
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_DURATION: {
-      if (auto duration_value = As<DurationValueView>(value); duration_value) {
+      if (auto duration_value = As<DurationValue>(value); duration_value) {
         return WrapDynamicDurationProto(duration_value->NativeValue(),
                                         *message);
       }
@@ -2247,8 +2270,7 @@ absl::Status ProtoMessageFromValueImpl(
           .NativeValue();
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_TIMESTAMP: {
-      if (auto timestamp_value = As<TimestampValueView>(value);
-          timestamp_value) {
+      if (auto timestamp_value = As<TimestampValue>(value); timestamp_value) {
         return WrapDynamicTimestampProto(timestamp_value->NativeValue(),
                                          *message);
       }
@@ -2287,7 +2309,7 @@ absl::Status ProtoMessageFromValueImpl(
   // Not a well known type.
 
   // Deal with legacy values.
-  if (auto legacy_value = As<common_internal::LegacyStructValueView>(value);
+  if (auto legacy_value = As<common_internal::LegacyStructValue>(value);
       legacy_value) {
     if ((legacy_value->message_ptr() & base_internal::kMessageWrapperTagMask) ==
         base_internal::kMessageWrapperTagMessageValue) {

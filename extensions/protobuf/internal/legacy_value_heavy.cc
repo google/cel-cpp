@@ -24,7 +24,7 @@
 namespace cel::extensions::protobuf_internal {
 
 absl::StatusOr<google::api::expr::runtime::MessageWrapper>
-MessageWrapperFromValue(ValueView value, google::protobuf::Arena* arena) {
+MessageWrapperFromValue(const Value& value, google::protobuf::Arena* arena) {
   CEL_ASSIGN_OR_RETURN(auto* message,
                        extensions::ProtoMessageFromValue(value, arena));
   return google::api::expr::runtime::MessageWrapper::Builder(message).Build(

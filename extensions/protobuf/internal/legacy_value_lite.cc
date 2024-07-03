@@ -23,7 +23,7 @@
 namespace cel::extensions::protobuf_internal {
 
 absl::StatusOr<google::api::expr::runtime::MessageWrapper>
-MessageWrapperFromValue(ValueView, google::protobuf::Arena*) {
+MessageWrapperFromValue(const Value&, google::protobuf::Arena*) {
   return absl::InvalidArgumentError(
       "cannot reinterpret cel::ValueView as "
       "google::api::expr::runtime::MessageWrapper when using proto-lite");

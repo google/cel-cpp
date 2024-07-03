@@ -23,7 +23,7 @@
 namespace cel::extensions::protobuf_internal {
 
 absl::StatusOr<google::api::expr::runtime::MessageWrapper>
-MessageWrapperFromValue(ValueView value, google::protobuf::Arena* arena);
+MessageWrapperFromValue(const Value& value, google::protobuf::Arena* arena);
 
 }  // namespace cel::extensions::protobuf_internal
 

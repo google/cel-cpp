@@ -31,6 +31,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/functional/overload.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "common/value.h"
 #include "common/value_factory.h"
@@ -49,14 +50,14 @@ namespace cel::extensions {
 
 // Adapt a protobuf enum value to cel:Value.
 template <typename T>
-std::enable_if_t<protobuf_internal::IsProtoEnum<T>, absl::StatusOr<ValueView>>
-ProtoEnumToValue(ValueFactory&, T value,
-                 Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND
-                     ABSL_ATTRIBUTE_UNUSED) {
+std::enable_if_t<protobuf_internal::IsProtoEnum<T>, absl::Status>
+ProtoEnumToValue(ValueFactory&, T value, Value& result) {
   if constexpr (std::is_same_v<T, google::protobuf::NullValue>) {
-    return NullValueView{};
+    result = NullValue{};
+  } else {
+    result = IntValue{static_cast<int>(value)};
   }
-  return IntValueView{static_cast<int>(value)};
+  return absl::OkStatus();
 }
 
 // Adapt a protobuf enum value to cel:Value.
@@ -72,12 +73,12 @@ ProtoEnumToValue(ValueFactory&, T value) {
 // Adapt a cel::Value representing a protobuf enum to the normalized enum value,
 // given the enum descriptor.
 absl::StatusOr<int> ProtoEnumFromValue(
-    ValueView value, absl::Nonnull<const google::protobuf::EnumDescriptor*> desc);
+    const Value& value, absl::Nonnull<const google::protobuf::EnumDescriptor*> desc);
 
 // Adapt a cel::Value representing a protobuf enum to the normalized enum value.
 template <typename T>
 std::enable_if_t<protobuf_internal::IsProtoEnum<T>, absl::StatusOr<T>>
-ProtoEnumFromValue(ValueView value) {
+ProtoEnumFromValue(const Value& value) {
   CEL_ASSIGN_OR_RETURN(
       auto enum_value,
       ProtoEnumFromValue(value, google::protobuf::GetEnumDescriptor<T>()));
@@ -187,13 +188,12 @@ ProtoMessageToValue(ValueManager& value_manager, T&& value) {
 //
 // T value must be a protobuf message class.
 template <typename T>
-std::enable_if_t<protobuf_internal::IsProtoMessage<T>,
-                 absl::StatusOr<ValueView>>
+std::enable_if_t<protobuf_internal::IsProtoMessage<T>, absl::Status>
 ProtoMessageToValue(ValueManager& value_manager, T&& value,
-                    Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+                    Value& result ABSL_ATTRIBUTE_LIFETIME_BOUND) {
   CEL_ASSIGN_OR_RETURN(
-      scratch, ProtoMessageToValue(value_manager, std::forward<T>(value)));
-  return scratch;
+      result, ProtoMessageToValue(value_manager, std::forward<T>(value)));
+  return absl::OkStatus();
 }
 
 // Extract a protobuf message from a CEL value.
@@ -203,7 +203,7 @@ ProtoMessageToValue(ValueManager& value_manager, T&& value,
 // T value must be a protobuf message class.
 template <typename T>
 std::enable_if_t<protobuf_internal::IsProtoMessage<T>, absl::Status>
-ProtoMessageFromValue(ValueView value, T& message,
+ProtoMessageFromValue(const Value& value, T& message,
                       absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
                       absl::Nonnull<google::protobuf::MessageFactory*> factory) {
   return protobuf_internal::ProtoMessageFromValueImpl(value, pool, factory,
@@ -217,7 +217,7 @@ ProtoMessageFromValue(ValueView value, T& message,
 // T value must be a protobuf message class.
 template <typename T>
 std::enable_if_t<protobuf_internal::IsProtoMessage<T>, absl::Status>
-ProtoMessageFromValue(ValueView value, T& message) {
+ProtoMessageFromValue(const Value& value, T& message) {
   return protobuf_internal::ProtoMessageFromValueImpl(value, &message);
 }
 
@@ -227,7 +227,7 @@ ProtoMessageFromValue(ValueView value, T& message) {
 //
 // T value must be a protobuf message class.
 inline absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValue(
-    ValueView value, absl::Nullable<google::protobuf::Arena*> arena) {
+    const Value& value, absl::Nullable<google::protobuf::Arena*> arena) {
   return protobuf_internal::ProtoMessageFromValueImpl(value, arena);
 }
 
@@ -237,7 +237,7 @@ inline absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFro
 //
 // T value must be a protobuf message class.
 inline absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValue(
-    ValueView value, absl::Nullable<google::protobuf::Arena*> arena,
+    const Value& value, absl::Nullable<google::protobuf::Arena*> arena,
     absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
     absl::Nonnull<google::protobuf::MessageFactory*> factory) {
   return protobuf_internal::ProtoMessageFromValueImpl(value, pool, factory,

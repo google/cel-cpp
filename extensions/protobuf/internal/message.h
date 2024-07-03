@@ -142,10 +142,10 @@ absl::StatusOr<Value> ProtoMessageToValueImpl(
 
 // Converts a value to a protocol buffer message.
 absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValueImpl(
-    ValueView value, absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
+    const Value& value, absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
     absl::Nonnull<google::protobuf::MessageFactory*> factory, google::protobuf::Arena* arena);
 inline absl::StatusOr<absl::Nonnull<google::protobuf::Message*>>
-ProtoMessageFromValueImpl(ValueView value, google::protobuf::Arena* arena) {
+ProtoMessageFromValueImpl(const Value& value, google::protobuf::Arena* arena) {
   return ProtoMessageFromValueImpl(
       value, google::protobuf::DescriptorPool::generated_pool(),
       google::protobuf::MessageFactory::generated_factory(), arena);
@@ -153,18 +153,18 @@ ProtoMessageFromValueImpl(ValueView value, google::protobuf::Arena* arena) {
 
 // Converts a value to a specific protocol buffer message.
 absl::Status ProtoMessageFromValueImpl(
-    ValueView value, absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
+    const Value& value, absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
     absl::Nonnull<google::protobuf::MessageFactory*> factory,
     absl::Nonnull<google::protobuf::Message*> message);
 inline absl::Status ProtoMessageFromValueImpl(
-    ValueView value, absl::Nonnull<google::protobuf::Message*> message) {
+    const Value& value, absl::Nonnull<google::protobuf::Message*> message) {
   return ProtoMessageFromValueImpl(
       value, google::protobuf::DescriptorPool::generated_pool(),
       google::protobuf::MessageFactory::generated_factory(), message);
 }
 
 // Converts a value to a specific protocol buffer map key.
-using ProtoMapKeyFromValueConverter = absl::Status (*)(ValueView,
+using ProtoMapKeyFromValueConverter = absl::Status (*)(const Value&,
                                                        google::protobuf::MapKey&);
 
 // Gets the converter for converting from values to protocol buffer map key.
@@ -172,9 +172,9 @@ absl::StatusOr<ProtoMapKeyFromValueConverter> GetProtoMapKeyFromValueConverter(
     google::protobuf::FieldDescriptor::CppType cpp_type);
 
 // Converts a value to a specific protocol buffer map value.
-using ProtoMapValueFromValueConverter =
-    absl::Status (*)(ValueView, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
-                     google::protobuf::MapValueRef&);
+using ProtoMapValueFromValueConverter = absl::Status (*)(
+    const Value&, absl::Nonnull<const google::protobuf::FieldDescriptor*>,
+    google::protobuf::MapValueRef&);
 
 // Gets the converter for converting from values to protocol buffer map value.
 absl::StatusOr<ProtoMapValueFromValueConverter>

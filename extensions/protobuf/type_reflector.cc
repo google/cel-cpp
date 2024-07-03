@@ -64,15 +64,15 @@ using ProtoRepeatedFieldFromValueMutator = absl::Status (*)(
     absl::Nonnull<const google::protobuf::DescriptorPool*>,
     absl::Nonnull<google::protobuf::MessageFactory*>,
     absl::Nonnull<const google::protobuf::Reflection*>, absl::Nonnull<google::protobuf::Message*>,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*>, ValueView);
+    absl::Nonnull<const google::protobuf::FieldDescriptor*>, const Value&);
 
 absl::Status ProtoBoolRepeatedFieldFromValueMutator(
     absl::Nonnull<const google::protobuf::DescriptorPool*>,
     absl::Nonnull<google::protobuf::MessageFactory*>,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueView value) {
-  if (auto bool_value = As<BoolValueView>(value); bool_value) {
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, const Value& value) {
+  if (auto bool_value = As<BoolValue>(value); bool_value) {
     reflection->AddBool(message, field, bool_value->NativeValue());
     return absl::OkStatus();
   }
@@ -84,8 +84,8 @@ absl::Status ProtoInt32RepeatedFieldFromValueMutator(
     absl::Nonnull<google::protobuf::MessageFactory*>,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueView value) {
-  if (auto int_value = As<IntValueView>(value); int_value) {
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, const Value& value) {
+  if (auto int_value = As<IntValue>(value); int_value) {
     if (int_value->NativeValue() < std::numeric_limits<int32_t>::min() ||
         int_value->NativeValue() > std::numeric_limits<int32_t>::max()) {
       return absl::OutOfRangeError("int64 to int32_t overflow");
@@ -102,8 +102,8 @@ absl::Status ProtoInt64RepeatedFieldFromValueMutator(
     absl::Nonnull<google::protobuf::MessageFactory*>,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueView value) {
-  if (auto int_value = As<IntValueView>(value); int_value) {
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, const Value& value) {
+  if (auto int_value = As<IntValue>(value); int_value) {
     reflection->AddInt64(message, field, int_value->NativeValue());
     return absl::OkStatus();
   }
@@ -115,8 +115,8 @@ absl::Status ProtoUInt32RepeatedFieldFromValueMutator(
     absl::Nonnull<google::protobuf::MessageFactory*>,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueView value) {
-  if (auto uint_value = As<UintValueView>(value); uint_value) {
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, const Value& value) {
+  if (auto uint_value = As<UintValue>(value); uint_value) {
     if (uint_value->NativeValue() > std::numeric_limits<uint32_t>::max()) {
       return absl::OutOfRangeError("uint64 to uint32_t overflow");
     }
@@ -132,8 +132,8 @@ absl::Status ProtoUInt64RepeatedFieldFromValueMutator(
     absl::Nonnull<google::protobuf::MessageFactory*>,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueView value) {
-  if (auto uint_value = As<UintValueView>(value); uint_value) {
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, const Value& value) {
+  if (auto uint_value = As<UintValue>(value); uint_value) {
     reflection->AddUInt64(message, field, uint_value->NativeValue());
     return absl::OkStatus();
   }
@@ -145,8 +145,8 @@ absl::Status ProtoFloatRepeatedFieldFromValueMutator(
     absl::Nonnull<google::protobuf::MessageFactory*>,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueView value) {
-  if (auto double_value = As<DoubleValueView>(value); double_value) {
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, const Value& value) {
+  if (auto double_value = As<DoubleValue>(value); double_value) {
     reflection->AddFloat(message, field,
                          static_cast<float>(double_value->NativeValue()));
     return absl::OkStatus();
@@ -159,8 +159,8 @@ absl::Status ProtoDoubleRepeatedFieldFromValueMutator(
     absl::Nonnull<google::protobuf::MessageFactory*>,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueView value) {
-  if (auto double_value = As<DoubleValueView>(value); double_value) {
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, const Value& value) {
+  if (auto double_value = As<DoubleValue>(value); double_value) {
     reflection->AddDouble(message, field, double_value->NativeValue());
     return absl::OkStatus();
   }
@@ -172,8 +172,8 @@ absl::Status ProtoBytesRepeatedFieldFromValueMutator(
     absl::Nonnull<google::protobuf::MessageFactory*>,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueView value) {
-  if (auto bytes_value = As<BytesValueView>(value); bytes_value) {
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, const Value& value) {
+  if (auto bytes_value = As<BytesValue>(value); bytes_value) {
     reflection->AddString(message, field, bytes_value->NativeString());
     return absl::OkStatus();
   }
@@ -185,8 +185,8 @@ absl::Status ProtoStringRepeatedFieldFromValueMutator(
     absl::Nonnull<google::protobuf::MessageFactory*>,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueView value) {
-  if (auto string_value = As<StringValueView>(value); string_value) {
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, const Value& value) {
+  if (auto string_value = As<StringValue>(value); string_value) {
     reflection->AddString(message, field, string_value->NativeString());
     return absl::OkStatus();
   }
@@ -198,8 +198,8 @@ absl::Status ProtoNullRepeatedFieldFromValueMutator(
     absl::Nonnull<google::protobuf::MessageFactory*>,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueView value) {
-  if (InstanceOf<NullValueView>(value) || InstanceOf<IntValueView>(value)) {
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, const Value& value) {
+  if (InstanceOf<NullValue>(value) || InstanceOf<IntValue>(value)) {
     reflection->AddEnumValue(message, field, 0);
     return absl::OkStatus();
   }
@@ -211,9 +211,9 @@ absl::Status ProtoEnumRepeatedFieldFromValueMutator(
     absl::Nonnull<google::protobuf::MessageFactory*>,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueView value) {
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, const Value& value) {
   const auto* enum_descriptor = field->enum_type();
-  if (auto int_value = As<IntValueView>(value); int_value) {
+  if (auto int_value = As<IntValue>(value); int_value) {
     if (int_value->NativeValue() < std::numeric_limits<int>::min() ||
         int_value->NativeValue() > std::numeric_limits<int>::max()) {
       return TypeConversionError(value.GetTypeName(),
@@ -233,7 +233,7 @@ absl::Status ProtoMessageRepeatedFieldFromValueMutator(
     absl::Nonnull<google::protobuf::MessageFactory*> factory,
     absl::Nonnull<const google::protobuf::Reflection*> reflection,
     absl::Nonnull<google::protobuf::Message*> message,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, ValueView value) {
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, const Value& value) {
   auto* element = reflection->AddMessage(message, field, factory);
   auto status = protobuf_internal::ProtoMessageFromValueImpl(value, pool,
                                                              factory, element);
@@ -368,12 +368,12 @@ class ProtoStructValueBuilder final : public StructValueBuilder {
             ValueView entry_key,
             ValueView entry_value) -> absl::StatusOr<bool> {
           google::protobuf::MapKey proto_key;
-          CEL_RETURN_IF_ERROR((*key_converter)(entry_key, proto_key));
+          CEL_RETURN_IF_ERROR((*key_converter)(Value(entry_key), proto_key));
           google::protobuf::MapValueRef proto_value;
           protobuf_internal::InsertOrLookupMapValue(
               *reflection_, message_, *field, proto_key, &proto_value);
-          CEL_RETURN_IF_ERROR(
-              (*value_converter)(entry_value, map_value_field, proto_value));
+          CEL_RETURN_IF_ERROR((*value_converter)(Value(entry_value),
+                                                 map_value_field, proto_value));
           return true;
         }));
     return absl::OkStatus();
@@ -397,7 +397,7 @@ class ProtoStructValueBuilder final : public StructValueBuilder {
           CEL_RETURN_IF_ERROR((*accessor)(type_reflector_.descriptor_pool(),
                                           type_reflector_.message_factory(),
                                           reflection_, message_, field,
-                                          element));
+                                          Value(element)));
           return true;
         }));
     return absl::OkStatus();

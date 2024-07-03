@@ -27,15 +27,15 @@
 namespace cel::extensions {
 
 absl::StatusOr<int> ProtoEnumFromValue(
-    ValueView value, absl::Nonnull<const google::protobuf::EnumDescriptor*> desc) {
+    const Value& value, absl::Nonnull<const google::protobuf::EnumDescriptor*> desc) {
   if (desc->full_name() == "google.protobuf.NullValue") {
-    if (InstanceOf<NullValueView>(value) || InstanceOf<IntValueView>(value)) {
+    if (InstanceOf<NullValue>(value) || InstanceOf<IntValue>(value)) {
       return 0;
     }
     return TypeConversionError(value.GetTypeName(), desc->full_name())
         .NativeValue();
   }
-  if (auto int_value = As<IntValueView>(value); int_value) {
+  if (auto int_value = As<IntValue>(value); int_value) {
     if (int_value->NativeValue() >= 0 &&
         int_value->NativeValue() <= std::numeric_limits<int>::max()) {
       const auto* value_desc =

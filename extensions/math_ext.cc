@@ -52,15 +52,15 @@ Value NumberToValue(CelNumber number) {
   return number.visit<Value>(ToValueVisitor{});
 }
 
-absl::StatusOr<CelNumber> ValueToNumber(ValueView value,
+absl::StatusOr<CelNumber> ValueToNumber(const Value &value,
                                         absl::string_view function) {
-  if (auto int_value = As<IntValueView>(value); int_value) {
+  if (auto int_value = As<IntValue>(value); int_value) {
     return CelNumber::FromInt64(int_value->NativeValue());
   }
-  if (auto uint_value = As<UintValueView>(value); uint_value) {
+  if (auto uint_value = As<UintValue>(value); uint_value) {
     return CelNumber::FromUint64(uint_value->NativeValue());
   }
-  if (auto double_value = As<DoubleValueView>(value); double_value) {
+  if (auto double_value = As<DoubleValue>(value); double_value) {
     return CelNumber::FromDouble(double_value->NativeValue());
   }
   return absl::InvalidArgumentError(

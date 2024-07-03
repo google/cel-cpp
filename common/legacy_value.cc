@@ -1262,8 +1262,8 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
       }
       CEL_ASSIGN_OR_RETURN(
           auto message_wrapper,
-          extensions::protobuf_internal::MessageWrapperFromValue(modern_value,
-                                                                 arena));
+          extensions::protobuf_internal::MessageWrapperFromValue(
+              Value(modern_value), arena));
       return CelValue::CreateMessageWrapper(message_wrapper);
     }
     case ValueKind::kDuration:
