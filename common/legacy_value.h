@@ -27,28 +27,27 @@
 #include "common/unknown.h"
 #include "common/value.h"
 #include "eval/public/cel_value.h"
+#include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 
 namespace cel {
 
-absl::StatusOr<ValueView> ModernValue(
-    google::protobuf::Arena* arena, google::api::expr::runtime::CelValue legacy_value,
-    Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND);
+absl::Status ModernValue(google::protobuf::Arena* arena,
+                         google::api::expr::runtime::CelValue legacy_value,
+                         Value& result);
+inline absl::StatusOr<Value> ModernValue(
+    google::protobuf::Arena* arena, google::api::expr::runtime::CelValue legacy_value) {
+  Value result;
+  CEL_RETURN_IF_ERROR(ModernValue(arena, legacy_value, result));
+  return result;
+}
 
 absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
-    google::protobuf::Arena* arena, ValueView modern_value);
+    google::protobuf::Arena* arena, const Value& modern_value);
 
 }  // namespace cel
 
 namespace cel::interop_internal {
-
-inline StringValueView CreateStringValueFromView(absl::string_view value) {
-  return StringValueView{value};
-}
-
-inline BytesValueView CreateBytesValueFromView(absl::string_view value) {
-  return BytesValueView{value};
-}
 
 absl::StatusOr<Value> FromLegacyValue(
     google::protobuf::Arena* arena,
@@ -86,14 +85,6 @@ inline Value CreateDurationValue(absl::Duration value, bool unchecked = false) {
 
 inline TimestampValue CreateTimestampValue(absl::Time value) {
   return TimestampValue{value};
-}
-
-inline ErrorValueView CreateErrorValueFromView(const absl::Status* value) {
-  return ErrorValueView{*value};
-}
-
-inline UnknownValue CreateUnknownValueFromView(const Unknown* value) {
-  return UnknownValue{*value};
 }
 
 Value LegacyValueToModernValueOrDie(

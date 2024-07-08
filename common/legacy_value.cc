@@ -147,8 +147,7 @@ class CelListIterator final : public ValueIterator {
           "false");
     }
     auto cel_value = cel_list_->Get(arena_, index_++);
-    Value scratch;
-    CEL_ASSIGN_OR_RETURN(result, ModernValue(arena_, cel_value, scratch));
+    CEL_RETURN_IF_ERROR(ModernValue(arena_, cel_value, result));
     return absl::OkStatus();
   }
 
@@ -587,11 +586,8 @@ cel_common_internal_LegacyListValue_Get(uintptr_t impl,
         absl::InvalidArgumentError("index out of bounds"));
     return absl::OkStatus();
   }
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(
-      result,
-      ModernValue(arena, AsCelList(impl)->Get(arena, static_cast<int>(index)),
-                  scratch));
+  CEL_RETURN_IF_ERROR(ModernValue(
+      arena, AsCelList(impl)->Get(arena, static_cast<int>(index)), result));
   return absl::OkStatus();
 }
 
@@ -602,11 +598,10 @@ cel_common_internal_LegacyListValue_ForEach(
   auto* arena =
       extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager());
   const auto size = AsCelList(impl)->size();
-  Value element_scratch;
+  Value element;
   for (int index = 0; index < size; ++index) {
-    CEL_ASSIGN_OR_RETURN(auto element,
-                         ModernValue(arena, AsCelList(impl)->Get(arena, index),
-                                     element_scratch));
+    CEL_RETURN_IF_ERROR(
+        ModernValue(arena, AsCelList(impl)->Get(arena, index), element));
     CEL_ASSIGN_OR_RETURN(auto ok, callback(index, Value(element)));
     if (!ok) {
       break;
@@ -640,11 +635,11 @@ cel_common_internal_LegacyListValue_Contains(uintptr_t impl,
     // Heterogenous equality behavior is to just return false if equality
     // undefined.
     if (equal.has_value() && *equal) {
-      result = BoolValueView{true};
+      result = BoolValue{true};
       return absl::OkStatus();
     }
   }
-  result = BoolValueView{false};
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 
@@ -731,8 +726,7 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
     result = NullValue{};
     return false;
   }
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(result, ModernValue(arena, *cel_value, scratch));
+  CEL_RETURN_IF_ERROR(ModernValue(arena, *cel_value, result));
   return true;
 }
 
@@ -765,8 +759,7 @@ cel_common_internal_LegacyMapValue_Get(uintptr_t impl,
     result = NoSuchKeyError(key.DebugString());
     return absl::OkStatus();
   }
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(result, ModernValue(arena, *cel_value, scratch));
+  CEL_RETURN_IF_ERROR(ModernValue(arena, *cel_value, result));
   return absl::OkStatus();
 }
 
@@ -795,7 +788,7 @@ cel_common_internal_LegacyMapValue_Has(uintptr_t impl,
       extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager());
   CEL_ASSIGN_OR_RETURN(auto cel_key, LegacyValue(arena, key));
   CEL_ASSIGN_OR_RETURN(auto has, AsCelMap(impl)->Has(cel_key));
-  result = BoolValueView{has};
+  result = BoolValue{has};
   return absl::OkStatus();
 }
 
@@ -819,15 +812,14 @@ cel_common_internal_LegacyMapValue_ForEach(uintptr_t impl,
       extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager());
   CEL_ASSIGN_OR_RETURN(auto keys, AsCelMap(impl)->ListKeys(arena));
   const auto size = keys->size();
-  Value key_scratch;
-  Value value_scratch;
+  Value key;
+  Value value;
   for (int index = 0; index < size; ++index) {
     auto cel_key = keys->Get(arena, index);
     auto cel_value = *AsCelMap(impl)->Get(arena, cel_key);
-    CEL_ASSIGN_OR_RETURN(auto key, ModernValue(arena, cel_key, key_scratch));
-    CEL_ASSIGN_OR_RETURN(auto value,
-                         ModernValue(arena, cel_value, value_scratch));
-    CEL_ASSIGN_OR_RETURN(auto ok, callback(Value(key), Value(value)));
+    CEL_RETURN_IF_ERROR(ModernValue(arena, cel_key, key));
+    CEL_RETURN_IF_ERROR(ModernValue(arena, cel_value, value));
+    CEL_ASSIGN_OR_RETURN(auto ok, callback(key, value));
     if (!ok) {
       break;
     }
@@ -919,11 +911,9 @@ cel_common_internal_LegacyStructValue_GetFieldByName(
       auto cel_value,
       access_apis->GetField(name, message_wrapper, unboxing_options,
                             value_manager.GetMemoryManager()));
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(result,
-                       ModernValue(extensions::ProtoMemoryManagerArena(
-                                       value_manager.GetMemoryManager()),
-                                   cel_value, scratch));
+  CEL_RETURN_IF_ERROR(ModernValue(
+      extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager()),
+      cel_value, result));
   return absl::OkStatus();
 }
 
@@ -975,7 +965,7 @@ cel_common_internal_LegacyStructValue_Equal(uintptr_t message_ptr,
     auto other_message_wrapper =
         AsMessageWrapper(legacy_struct_value->message_ptr(),
                          legacy_struct_value->legacy_type_info());
-    result = BoolValueView{
+    result = BoolValue{
         access_apis->IsEqualTo(message_wrapper, other_message_wrapper)};
     return absl::OkStatus();
   }
@@ -985,7 +975,7 @@ cel_common_internal_LegacyStructValue_Equal(uintptr_t message_ptr,
         common_internal::LegacyStructValue(message_ptr, type_info),
         *struct_value, result);
   }
-  result = BoolValueView{false};
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 
@@ -1015,18 +1005,17 @@ cel_common_internal_LegacyStructValue_ForEachField(
                          message_ptr, type_info)));
   }
   auto field_names = access_apis->ListFields(message_wrapper);
-  Value scratch;
+  Value value;
   for (const auto& field_name : field_names) {
     CEL_ASSIGN_OR_RETURN(
         auto cel_value,
         access_apis->GetField(field_name, message_wrapper,
                               ProtoWrapperTypeOptions::kUnsetNull,
                               value_manager.GetMemoryManager()));
-    CEL_ASSIGN_OR_RETURN(auto value,
-                         ModernValue(extensions::ProtoMemoryManagerArena(
-                                         value_manager.GetMemoryManager()),
-                                     cel_value, scratch));
-    CEL_ASSIGN_OR_RETURN(auto ok, callback(field_name, Value(value)));
+    CEL_RETURN_IF_ERROR(ModernValue(
+        extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager()),
+        cel_value, value));
+    CEL_ASSIGN_OR_RETURN(auto ok, callback(field_name, value));
     if (!ok) {
       break;
     }
@@ -1063,11 +1052,9 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
       auto legacy_result,
       access_apis->Qualify(qualifiers, message_wrapper, presence_test,
                            value_manager.GetMemoryManager()));
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(result,
-                       ModernValue(extensions::ProtoMemoryManagerArena(
-                                       value_manager.GetMemoryManager()),
-                                   legacy_result.value, scratch));
+  CEL_RETURN_IF_ERROR(ModernValue(
+      extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager()),
+      legacy_result.value, result));
   return legacy_result.qualifier_count;
 }
 
@@ -1102,91 +1089,117 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
   return memory_manager.MakeUnique<CelMapValueBuilder>(arena, MapType(type));
 }
 
-absl::StatusOr<ValueView> ModernValue(
-    google::protobuf::Arena* arena, google::api::expr::runtime::CelValue legacy_value,
-    Value& scratch) {
+absl::Status ModernValue(google::protobuf::Arena* arena,
+                         google::api::expr::runtime::CelValue legacy_value,
+                         Value& result) {
   switch (legacy_value.type()) {
     case CelValue::Type::kNullType:
-      return NullValueView{};
+      result = NullValue{};
+      return absl::OkStatus();
     case CelValue::Type::kBool:
-      return BoolValueView{legacy_value.BoolOrDie()};
+      result = BoolValue{legacy_value.BoolOrDie()};
+      return absl::OkStatus();
     case CelValue::Type::kInt64:
-      return IntValueView{legacy_value.Int64OrDie()};
+      result = IntValue{legacy_value.Int64OrDie()};
+      return absl::OkStatus();
     case CelValue::Type::kUint64:
-      return UintValueView{legacy_value.Uint64OrDie()};
+      result = UintValue{legacy_value.Uint64OrDie()};
+      return absl::OkStatus();
     case CelValue::Type::kDouble:
-      return DoubleValueView{legacy_value.DoubleOrDie()};
+      result = DoubleValue{legacy_value.DoubleOrDie()};
+      return absl::OkStatus();
     case CelValue::Type::kString:
-      return StringValueView{
+      result = StringValue{
           common_internal::ArenaString(legacy_value.StringOrDie().value())};
+      return absl::OkStatus();
     case CelValue::Type::kBytes:
-      return BytesValueView{
+      result = BytesValue{
           common_internal::ArenaString(legacy_value.BytesOrDie().value())};
+      return absl::OkStatus();
     case CelValue::Type::kMessage: {
       auto message_wrapper = legacy_value.MessageWrapperOrDie();
-      return common_internal::LegacyStructValueView{
+      result = common_internal::LegacyStructValue{
           reinterpret_cast<uintptr_t>(message_wrapper.message_ptr()) |
               (message_wrapper.HasFullProto()
                    ? base_internal::kMessageWrapperTagMessageValue
                    : uintptr_t{0}),
           reinterpret_cast<uintptr_t>(message_wrapper.legacy_type_info())};
+      return absl::OkStatus();
     }
     case CelValue::Type::kDuration:
-      return DurationValueView{legacy_value.DurationOrDie()};
+      result = DurationValue{legacy_value.DurationOrDie()};
+      return absl::OkStatus();
     case CelValue::Type::kTimestamp:
-      return TimestampValueView{legacy_value.TimestampOrDie()};
+      result = TimestampValue{legacy_value.TimestampOrDie()};
+      return absl::OkStatus();
     case CelValue::Type::kList:
-      return ListValueView{common_internal::LegacyListValueView{
+      result = ListValue{common_internal::LegacyListValue{
           reinterpret_cast<uintptr_t>(legacy_value.ListOrDie())}};
+      return absl::OkStatus();
     case CelValue::Type::kMap:
-      return MapValueView{common_internal::LegacyMapValueView{
+      result = MapValue{common_internal::LegacyMapValue{
           reinterpret_cast<uintptr_t>(legacy_value.MapOrDie())}};
+      return absl::OkStatus();
     case CelValue::Type::kUnknownSet:
-      return UnknownValueView{*legacy_value.UnknownSetOrDie()};
+      result = UnknownValue{*legacy_value.UnknownSetOrDie()};
+      return absl::OkStatus();
     case CelValue::Type::kCelType: {
       auto type_name = legacy_value.CelTypeOrDie().value();
       if (type_name == kNullTypeName) {
-        return TypeValueView{NullTypeView{}};
+        result = TypeValue{NullType{}};
+        return absl::OkStatus();
       }
       if (type_name == kBoolTypeName) {
-        return TypeValueView{BoolTypeView{}};
+        result = TypeValue{BoolType{}};
+        return absl::OkStatus();
       }
       if (type_name == kInt64TypeName) {
-        return TypeValueView{IntTypeView{}};
+        result = TypeValue{IntType{}};
+        return absl::OkStatus();
       }
       if (type_name == kUInt64TypeName) {
-        return TypeValueView{UintTypeView{}};
+        result = TypeValue{UintType{}};
+        return absl::OkStatus();
       }
       if (type_name == kDoubleTypeName) {
-        return TypeValueView{DoubleTypeView{}};
+        result = TypeValue{DoubleType{}};
+        return absl::OkStatus();
       }
       if (type_name == kStringTypeName) {
-        return TypeValueView{StringTypeView{}};
+        result = TypeValue{StringType{}};
+        return absl::OkStatus();
       }
       if (type_name == kBytesTypeName) {
-        return TypeValueView{BytesTypeView{}};
+        result = TypeValue{BytesType{}};
+        return absl::OkStatus();
       }
       if (type_name == kDurationTypeName) {
-        return TypeValueView{DurationTypeView{}};
+        result = TypeValue{DurationType{}};
+        return absl::OkStatus();
       }
       if (type_name == kTimestampTypeName) {
-        return TypeValueView{TimestampTypeView{}};
+        result = TypeValue{TimestampType{}};
+        return absl::OkStatus();
       }
       if (type_name == kListTypeName) {
-        return TypeValueView{ListTypeView{}};
+        result = TypeValue{ListType{}};
+        return absl::OkStatus();
       }
       if (type_name == kMapTypeName) {
-        return TypeValueView{MapTypeView{}};
+        result = TypeValue{MapType{}};
+        return absl::OkStatus();
       }
       if (type_name == kCelTypeTypeName) {
-        return TypeValueView{TypeTypeView{}};
+        result = TypeValue{TypeType{}};
+        return absl::OkStatus();
       }
-      scratch = TypeValue{
+      result = TypeValue{
           StructType{extensions::ProtoMemoryManagerRef(arena), type_name}};
-      return scratch;
+      return absl::OkStatus();
     }
     case CelValue::Type::kError:
-      return ErrorValueView{*legacy_value.ErrorOrDie()};
+      result = ErrorValue{*legacy_value.ErrorOrDie()};
+      return absl::OkStatus();
     case CelValue::Type::kAny:
       return absl::InternalError(absl::StrCat(
           "illegal attempt to convert special CelValue type ",
@@ -1195,28 +1208,26 @@ absl::StatusOr<ValueView> ModernValue(
       break;
   }
   return absl::InvalidArgumentError(absl::StrCat(
-      "cel::ValueView does not support ", KindToString(legacy_value.type())));
+      "cel::Value does not support ", KindToString(legacy_value.type())));
 }
 
 absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
-    google::protobuf::Arena* arena, ValueView modern_value) {
+    google::protobuf::Arena* arena, const Value& modern_value) {
   switch (modern_value.kind()) {
     case ValueKind::kNull:
       return CelValue::CreateNull();
     case ValueKind::kBool:
-      return CelValue::CreateBool(
-          Cast<BoolValueView>(modern_value).NativeValue());
+      return CelValue::CreateBool(Cast<BoolValue>(modern_value).NativeValue());
     case ValueKind::kInt:
-      return CelValue::CreateInt64(
-          Cast<IntValueView>(modern_value).NativeValue());
+      return CelValue::CreateInt64(Cast<IntValue>(modern_value).NativeValue());
     case ValueKind::kUint:
       return CelValue::CreateUint64(
-          Cast<UintValueView>(modern_value).NativeValue());
+          Cast<UintValue>(modern_value).NativeValue());
     case ValueKind::kDouble:
       return CelValue::CreateDouble(
-          Cast<DoubleValueView>(modern_value).NativeValue());
+          Cast<DoubleValue>(modern_value).NativeValue());
     case ValueKind::kString: {
-      const auto& string_value = Cast<StringValueView>(modern_value);
+      const auto& string_value = Cast<StringValue>(modern_value);
       if (common_internal::AsSharedByteStringView(string_value)
               .IsPooledString()) {
         return CelValue::CreateStringView(
@@ -1234,7 +1245,7 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
           }));
     }
     case ValueKind::kBytes: {
-      const auto& bytes_value = Cast<BytesValueView>(modern_value);
+      const auto& bytes_value = Cast<BytesValue>(modern_value);
       if (common_internal::AsSharedByteStringView(bytes_value)
               .IsPooledString()) {
         return CelValue::CreateBytesView(
@@ -1253,7 +1264,7 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
     }
     case ValueKind::kStruct: {
       if (auto legacy_struct_value =
-              As<common_internal::LegacyStructValueView>(modern_value);
+              As<common_internal::LegacyStructValue>(modern_value);
           legacy_struct_value.has_value()) {
         return CelValue::CreateMessageWrapper(
             AsMessageWrapper(legacy_struct_value->message_ptr(),
@@ -1267,20 +1278,20 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
     }
     case ValueKind::kDuration:
       return CelValue::CreateUncheckedDuration(
-          Cast<DurationValueView>(modern_value).NativeValue());
+          Cast<DurationValue>(modern_value).NativeValue());
     case ValueKind::kTimestamp:
       return CelValue::CreateTimestamp(
-          Cast<TimestampValueView>(modern_value).NativeValue());
+          Cast<TimestampValue>(modern_value).NativeValue());
     case ValueKind::kList: {
       if (auto legacy_list_value =
-              As<common_internal::LegacyListValueView>(modern_value);
+              As<common_internal::LegacyListValue>(modern_value);
           legacy_list_value.has_value()) {
         return CelValue::CreateList(
             AsCelList(legacy_list_value->NativeValue()));
       }
-      // We have a non-legacy `ListValueView`. We are going to have to
+      // We have a non-legacy `ListValue`. We are going to have to
       // materialize it in its entirety to `CelList`.
-      auto list_value = Cast<ListValueView>(modern_value);
+      auto list_value = Cast<ListValue>(modern_value);
       CEL_ASSIGN_OR_RETURN(auto list_value_size, list_value.Size());
       if (list_value_size == 0) {
         return CelValue::CreateList();
@@ -1306,13 +1317,13 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
     }
     case ValueKind::kMap: {
       if (auto legacy_map_value =
-              As<common_internal::LegacyMapValueView>(modern_value);
+              As<common_internal::LegacyMapValue>(modern_value);
           legacy_map_value.has_value()) {
         return CelValue::CreateMap(AsCelMap(legacy_map_value->NativeValue()));
       }
-      // We have a non-legacy `MapValueView`. We are going to have to
+      // We have a non-legacy `MapValue`. We are going to have to
       // materialize it in its entirety to `CelMap`.
-      auto map_value = Cast<MapValueView>(modern_value);
+      auto map_value = Cast<MapValue>(modern_value);
       CEL_ASSIGN_OR_RETURN(auto map_value_size, map_value.Size());
       if (map_value_size == 0) {
         return CelValue::CreateMap();
@@ -1341,14 +1352,14 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
     }
     case ValueKind::kUnknown:
       return CelValue::CreateUnknownSet(google::protobuf::Arena::Create<Unknown>(
-          arena, Cast<UnknownValueView>(modern_value).NativeValue()));
+          arena, Cast<UnknownValue>(modern_value).NativeValue()));
     case ValueKind::kType:
       return CelValue::CreateCelType(
           CelValue::CelTypeHolder(google::protobuf::Arena::Create<std::string>(
-              arena, Cast<TypeValueView>(modern_value).NativeValue().name())));
+              arena, Cast<TypeValue>(modern_value).NativeValue().name())));
     case ValueKind::kError:
       return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
-          arena, Cast<ErrorValueView>(modern_value).NativeValue()));
+          arena, Cast<ErrorValue>(modern_value).NativeValue()));
     default:
       return absl::InvalidArgumentError(
           absl::StrCat("google::api::expr::runtime::CelValue does not support ",
@@ -1485,7 +1496,7 @@ absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
         return CelValue::CreateList(
             AsCelList(legacy_list_value->NativeValue()));
       }
-      // We have a non-legacy `ListValueView`. We are going to have to
+      // We have a non-legacy `ListValue`. We are going to have to
       // materialize it in its entirety to `CelList`.
       auto list_value = Cast<ListValue>(value);
       CEL_ASSIGN_OR_RETURN(auto list_value_size, list_value.Size());
@@ -1516,7 +1527,7 @@ absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
           legacy_map_value.has_value()) {
         return CelValue::CreateMap(AsCelMap(legacy_map_value->NativeValue()));
       }
-      // We have a non-legacy `MapValueView`. We are going to have to
+      // We have a non-legacy `MapValue`. We are going to have to
       // materialize it in its entirety to `CelMap`.
       auto map_value = Cast<MapValue>(value);
       CEL_ASSIGN_OR_RETURN(auto map_value_size, map_value.Size());

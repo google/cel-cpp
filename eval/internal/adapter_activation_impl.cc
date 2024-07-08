@@ -42,8 +42,7 @@ absl::StatusOr<bool> AdapterActivationImpl::FindVariable(
   if (!legacy_value.has_value()) {
     return false;
   }
-  Value scratch;
-  CEL_ASSIGN_OR_RETURN(result, ModernValue(arena, *legacy_value, scratch));
+  CEL_RETURN_IF_ERROR(ModernValue(arena, *legacy_value, result));
   return true;
 }
 

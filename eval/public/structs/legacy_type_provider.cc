@@ -139,12 +139,11 @@ LegacyTypeProvider::DeserializeValueImpl(cel::ValueFactory& value_factory,
           auto legacy_value,
           mutation_apis->AdaptFromWellKnownType(
               value_factory.GetMemoryManager(), std::move(builder)));
-      cel::Value scratch;
-      CEL_ASSIGN_OR_RETURN(auto modern_value,
-                           ModernValue(cel::extensions::ProtoMemoryManagerArena(
-                                           value_factory.GetMemoryManager()),
-                                       legacy_value, scratch));
-      return cel::Value{modern_value};
+      cel::Value modern_value;
+      CEL_RETURN_IF_ERROR(ModernValue(cel::extensions::ProtoMemoryManagerArena(
+                                          value_factory.GetMemoryManager()),
+                                      legacy_value, modern_value));
+      return modern_value;
     }
   }
   return absl::nullopt;
