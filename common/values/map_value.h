@@ -59,9 +59,10 @@ class ValueView;
 class ValueManager;
 class TypeManager;
 
+absl::Status CheckMapKey(const Value& key);
 absl::Status CheckMapKey(ValueView key);
 
-bool Is(MapValueView lhs, MapValueView rhs);
+bool Is(const MapValue& lhs, const MapValue& rhs);
 
 class MapValue final {
  public:
@@ -154,10 +155,10 @@ class MapValue final {
   absl::StatusOr<JsonObject> ConvertToJsonObject(
       AnyToJsonConverter& converter) const;
 
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
+                              const Value& other) const;
 
   bool IsZeroValue() const;
 
@@ -169,22 +170,24 @@ class MapValue final {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::Status Get(ValueManager& value_manager, ValueView key,
+  absl::Status Get(ValueManager& value_manager, const Value& key,
                    Value& result) const;
-  absl::StatusOr<Value> Get(ValueManager& value_manager, ValueView key) const;
+  absl::StatusOr<Value> Get(ValueManager& value_manager,
+                            const Value& key) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::StatusOr<bool> Find(ValueManager& value_manager, ValueView key,
+  absl::StatusOr<bool> Find(ValueManager& value_manager, const Value& key,
                             Value& result) const;
   absl::StatusOr<std::pair<Value, bool>> Find(ValueManager& value_manager,
-                                              ValueView key) const;
+                                              const Value& key) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::Status Has(ValueManager& value_manager, ValueView key,
+  absl::Status Has(ValueManager& value_manager, const Value& key,
                    Value& result) const;
-  absl::StatusOr<Value> Has(ValueManager& value_manager, ValueView key) const;
+  absl::StatusOr<Value> Has(ValueManager& value_manager,
+                            const Value& key) const;
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
@@ -209,6 +212,7 @@ class MapValue final {
   friend class MapValueView;
   friend struct NativeTypeTraits<MapValue>;
   friend struct CompositionTraits<MapValue>;
+  friend bool Is(const MapValue& lhs, const MapValue& rhs);
 
   common_internal::MapValueViewVariant ToViewVariant() const;
 
@@ -471,7 +475,6 @@ class MapValueView final {
   friend class MapValue;
   friend struct NativeTypeTraits<MapValueView>;
   friend struct CompositionTraits<MapValueView>;
-  friend bool Is(MapValueView lhs, MapValueView rhs);
 
   common_internal::MapValueVariant ToVariant() const;
 
@@ -547,7 +550,7 @@ struct CastTraits<
 
 inline MapValue::MapValue(MapValueView value) : variant_(value.ToVariant()) {}
 
-inline bool Is(MapValueView lhs, MapValueView rhs) {
+inline bool Is(const MapValue& lhs, const MapValue& rhs) {
   return absl::visit(
       [](auto alternative_lhs, auto alternative_rhs) -> bool {
         if constexpr (std::is_same_v<

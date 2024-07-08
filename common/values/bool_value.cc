@@ -72,18 +72,18 @@ absl::StatusOr<Any> BoolValueBase::ConvertToAny(
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::Status BoolValueBase::Equal(ValueManager&, ValueView other,
+absl::Status BoolValueBase::Equal(ValueManager&, const Value& other,
                                   Value& result) const {
-  if (auto other_value = As<BoolValueView>(other); other_value.has_value()) {
-    result = BoolValueView{NativeValue() == other_value->NativeValue()};
+  if (auto other_value = As<BoolValue>(other); other_value.has_value()) {
+    result = BoolValue{NativeValue() == other_value->NativeValue()};
     return absl::OkStatus();
   }
-  result = BoolValueView{false};
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 
 absl::StatusOr<Value> BoolValueBase::Equal(ValueManager& value_manager,
-                                           ValueView other) const {
+                                           const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;

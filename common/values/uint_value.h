@@ -86,10 +86,10 @@ struct UintValueBase {
 
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
 
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
+                              const Value& other) const;
 
   bool IsZeroValue() const { return NativeValue() == 0; }
 

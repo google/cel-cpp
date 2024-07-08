@@ -90,7 +90,7 @@ class TypedListValue final : public ParsedListValueInterface {
     return absl::OkStatus();
   }
 
-  absl::Status Contains(ValueManager& value_manager, ValueView other,
+  absl::Status Contains(ValueManager& value_manager, const Value& other,
                         Value& result) const override {
     for (size_t i = 0; i < elements_.size(); ++i) {
       CEL_RETURN_IF_ERROR(elements_[i].Equal(value_manager, other, result));

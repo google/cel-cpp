@@ -49,12 +49,12 @@ using LegacyMapValue_ConvertToJsonObject =
     absl::StatusOr<JsonObject> (*)(uintptr_t);
 using LegacyMapValue_IsEmpty = bool (*)(uintptr_t);
 using LegacyMapValue_Size = size_t (*)(uintptr_t);
-using LegacyMapValue_Get = absl::Status (*)(uintptr_t, ValueManager&, ValueView,
-                                            Value&);
+using LegacyMapValue_Get = absl::Status (*)(uintptr_t, ValueManager&,
+                                            const Value&, Value&);
 using LegacyMapValue_Find = absl::StatusOr<bool> (*)(uintptr_t, ValueManager&,
-                                                     ValueView, Value&);
-using LegacyMapValue_Has = absl::Status (*)(uintptr_t, ValueManager&, ValueView,
-                                            Value&);
+                                                     const Value&, Value&);
+using LegacyMapValue_Has = absl::Status (*)(uintptr_t, ValueManager&,
+                                            const Value&, Value&);
 using LegacyMapValue_ListKeys = absl::Status (*)(uintptr_t, ValueManager&,
                                                  ListValue&);
 using LegacyMapValue_ForEach =
@@ -100,15 +100,15 @@ cel_common_internal_LegacyMapValue_Size(uintptr_t impl);
 extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool>
 cel_common_internal_LegacyMapValue_Find(uintptr_t impl,
                                         ValueManager& value_manager,
-                                        ValueView key, Value& result);
+                                        const Value& key, Value& result);
 extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
 cel_common_internal_LegacyMapValue_Get(uintptr_t impl,
                                        ValueManager& value_manager,
-                                       ValueView key, Value& result);
+                                       const Value& key, Value& result);
 extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
 cel_common_internal_LegacyMapValue_Has(uintptr_t impl,
                                        ValueManager& value_manager,
-                                       ValueView key, Value& result);
+                                       const Value& key, Value& result);
 extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
 cel_common_internal_LegacyMapValue_ListKeys(uintptr_t impl,
                                             ValueManager& value_manager,
@@ -245,19 +245,20 @@ size_t LegacyMapValue::Size() const {
   return (*legacy_map_value_vtable.size)(impl_);
 }
 
-absl::Status LegacyMapValue::Get(ValueManager& value_manager, ValueView key,
+absl::Status LegacyMapValue::Get(ValueManager& value_manager, const Value& key,
                                  Value& result) const {
   InitializeLegacyMapValue();
   return (*legacy_map_value_vtable.get)(impl_, value_manager, key, result);
 }
 
 absl::StatusOr<bool> LegacyMapValue::Find(ValueManager& value_manager,
-                                          ValueView key, Value& result) const {
+                                          const Value& key,
+                                          Value& result) const {
   InitializeLegacyMapValue();
   return (*legacy_map_value_vtable.find)(impl_, value_manager, key, result);
 }
 
-absl::Status LegacyMapValue::Has(ValueManager& value_manager, ValueView key,
+absl::Status LegacyMapValue::Has(ValueManager& value_manager, const Value& key,
                                  Value& result) const {
   InitializeLegacyMapValue();
   return (*legacy_map_value_vtable.has)(impl_, value_manager, key, result);
@@ -281,9 +282,9 @@ absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyMapValue::NewIterator(
   return (*legacy_map_value_vtable.new_iterator)(impl_, value_manager);
 }
 
-absl::Status LegacyMapValue::Equal(ValueManager& value_manager, ValueView other,
-                                   Value& result) const {
-  if (auto map_value = As<MapValueView>(other); map_value.has_value()) {
+absl::Status LegacyMapValue::Equal(ValueManager& value_manager,
+                                   const Value& other, Value& result) const {
+  if (auto map_value = As<MapValue>(other); map_value.has_value()) {
     return MapValueEqual(value_manager, *this, *map_value, result);
   }
   result = BoolValueView{false};
@@ -351,20 +352,23 @@ size_t LegacyMapValueView::Size() const {
 absl::Status LegacyMapValueView::Get(ValueManager& value_manager, ValueView key,
                                      Value& result) const {
   InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.get)(impl_, value_manager, key, result);
+  return (*legacy_map_value_vtable.get)(impl_, value_manager, Value(key),
+                                        result);
 }
 
 absl::StatusOr<bool> LegacyMapValueView::Find(ValueManager& value_manager,
                                               ValueView key,
                                               Value& result) const {
   InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.find)(impl_, value_manager, key, result);
+  return (*legacy_map_value_vtable.find)(impl_, value_manager, Value(key),
+                                         result);
 }
 
 absl::Status LegacyMapValueView::Has(ValueManager& value_manager, ValueView key,
                                      Value& result) const {
   InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.has)(impl_, value_manager, key, result);
+  return (*legacy_map_value_vtable.has)(impl_, value_manager, Value(key),
+                                        result);
 }
 
 absl::Status LegacyMapValueView::ListKeys(ValueManager& value_manager,
@@ -388,7 +392,8 @@ absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyMapValueView::NewIterator(
 absl::Status LegacyMapValueView::Equal(ValueManager& value_manager,
                                        ValueView other, Value& result) const {
   if (auto map_value = As<MapValueView>(other); map_value.has_value()) {
-    return MapValueEqual(value_manager, *this, *map_value, result);
+    return MapValueEqual(value_manager, MapValue(*this), MapValue(*map_value),
+                         result);
   }
   result = BoolValueView{false};
   return absl::OkStatus();

@@ -510,26 +510,27 @@ ParsedMapValueView GetEmptyDynDynMapValue();
 
 OptionalValueView GetEmptyDynOptionalValue();
 
-absl::Status ListValueEqual(ValueManager& value_manager, ListValueView lhs,
-                            ListValueView rhs, Value& result);
+absl::Status ListValueEqual(ValueManager& value_manager, const ListValue& lhs,
+                            const ListValue& rhs, Value& result);
 
 absl::Status ListValueEqual(ValueManager& value_manager,
                             const ParsedListValueInterface& lhs,
-                            ListValueView rhs, Value& result);
+                            const ListValue& rhs, Value& result);
 
-absl::Status MapValueEqual(ValueManager& value_manager, MapValueView lhs,
-                           MapValueView rhs, Value& result);
+absl::Status MapValueEqual(ValueManager& value_manager, const MapValue& lhs,
+                           const MapValue& rhs, Value& result);
 
 absl::Status MapValueEqual(ValueManager& value_manager,
-                           const ParsedMapValueInterface& lhs, MapValueView rhs,
-                           Value& result);
+                           const ParsedMapValueInterface& lhs,
+                           const MapValue& rhs, Value& result);
 
-absl::Status StructValueEqual(ValueManager& value_manager, StructValueView lhs,
-                              StructValueView rhs, Value& result);
+absl::Status StructValueEqual(ValueManager& value_manager,
+                              const StructValue& lhs, const StructValue& rhs,
+                              Value& result);
 
 absl::Status StructValueEqual(ValueManager& value_manager,
                               const ParsedStructValueInterface& lhs,
-                              StructValueView rhs, Value& result);
+                              const StructValue& rhs, Value& result);
 
 const SharedByteString& AsSharedByteString(const BytesValue& value);
 SharedByteStringView AsSharedByteStringView(BytesValueView value);

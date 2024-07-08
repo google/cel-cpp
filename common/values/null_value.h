@@ -77,10 +77,10 @@ struct NullValueBase {
     return kJsonNull;
   }
 
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
+                              const Value& other) const;
 
   bool IsZeroValue() const { return true; }
 };

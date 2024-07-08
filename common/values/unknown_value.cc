@@ -60,9 +60,9 @@ absl::StatusOr<Json> UnknownValue::ConvertToJson(AnyToJsonConverter&) const {
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
-absl::Status UnknownValue::Equal(ValueManager&, ValueView,
+absl::Status UnknownValue::Equal(ValueManager&, const Value&,
                                  Value& result) const {
-  result = BoolValueView{false};
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 

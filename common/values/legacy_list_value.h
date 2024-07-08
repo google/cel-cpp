@@ -48,7 +48,7 @@ namespace common_internal {
 class LegacyListValue;
 class LegacyListValueView;
 
-bool Is(LegacyListValueView lhs, LegacyListValueView rhs);
+bool Is(const LegacyListValue& lhs, const LegacyListValue& rhs);
 
 class LegacyListValue final {
  public:
@@ -104,10 +104,10 @@ class LegacyListValue final {
   absl::StatusOr<JsonArray> ConvertToJsonArray(
       AnyToJsonConverter& value_manager) const;
 
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;
 
-  absl::Status Contains(ValueManager& value_manager, ValueView other,
+  absl::Status Contains(ValueManager& value_manager, const Value& other,
                         Value& result) const;
 
   bool IsZeroValue() const { return IsEmpty(); }
@@ -143,6 +143,7 @@ class LegacyListValue final {
 
  private:
   friend class LegacyListValueView;
+  friend bool Is(const LegacyListValue& lhs, const LegacyListValue& rhs);
 
   uintptr_t impl_;
 };
@@ -260,7 +261,6 @@ class LegacyListValueView final {
 
  private:
   friend class LegacyListValue;
-  friend bool Is(LegacyListValueView lhs, LegacyListValueView rhs);
 
   uintptr_t impl_;
 };
@@ -276,7 +276,7 @@ inline std::ostream& operator<<(std::ostream& out, LegacyListValueView type) {
 inline LegacyListValue::LegacyListValue(LegacyListValueView value)
     : impl_(value.impl_) {}
 
-inline bool Is(LegacyListValueView lhs, LegacyListValueView rhs) {
+inline bool Is(const LegacyListValue& lhs, const LegacyListValue& rhs) {
   return lhs.impl_ == rhs.impl_;
 }
 

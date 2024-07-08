@@ -73,22 +73,21 @@ OptionalValue OptionalValue::Of(MemoryManagerRef memory_manager,
 }
 
 absl::Status OptionalValueInterface::Equal(ValueManager& value_manager,
-                                           ValueView other,
+                                           const cel::Value& other,
                                            cel::Value& result) const {
-  if (auto other_value = As<OptionalValueView>(other);
-      other_value.has_value()) {
+  if (auto other_value = As<OptionalValue>(other); other_value.has_value()) {
     if (HasValue() != other_value->HasValue()) {
-      result = BoolValueView{false};
+      result = BoolValue{false};
       return absl::OkStatus();
     }
     if (!HasValue()) {
-      result = BoolValueView{true};
+      result = BoolValue{true};
       return absl::OkStatus();
     }
     return Value().Equal(value_manager, other_value->Value(), result);
     return absl::OkStatus();
   }
-  result = BoolValueView{false};
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 

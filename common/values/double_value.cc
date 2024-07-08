@@ -101,30 +101,29 @@ absl::StatusOr<Json> DoubleValueBase::ConvertToJson(AnyToJsonConverter&) const {
   return NativeValue();
 }
 
-absl::Status DoubleValueBase::Equal(ValueManager&, ValueView other,
+absl::Status DoubleValueBase::Equal(ValueManager&, const Value& other,
                                     Value& result) const {
-  if (auto other_value = As<DoubleValueView>(other); other_value.has_value()) {
-    result = BoolValueView{NativeValue() == other_value->NativeValue()};
+  if (auto other_value = As<DoubleValue>(other); other_value.has_value()) {
+    result = BoolValue{NativeValue() == other_value->NativeValue()};
     return absl::OkStatus();
   }
-  if (auto other_value = As<IntValueView>(other); other_value.has_value()) {
+  if (auto other_value = As<IntValue>(other); other_value.has_value()) {
+    result = BoolValue{internal::Number::FromDouble(NativeValue()) ==
+                       internal::Number::FromInt64(other_value->NativeValue())};
+    return absl::OkStatus();
+  }
+  if (auto other_value = As<UintValue>(other); other_value.has_value()) {
     result =
-        BoolValueView{internal::Number::FromDouble(NativeValue()) ==
-                      internal::Number::FromInt64(other_value->NativeValue())};
+        BoolValue{internal::Number::FromDouble(NativeValue()) ==
+                  internal::Number::FromUint64(other_value->NativeValue())};
     return absl::OkStatus();
   }
-  if (auto other_value = As<UintValueView>(other); other_value.has_value()) {
-    result =
-        BoolValueView{internal::Number::FromDouble(NativeValue()) ==
-                      internal::Number::FromUint64(other_value->NativeValue())};
-    return absl::OkStatus();
-  }
-  result = BoolValueView{false};
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 
 absl::StatusOr<Value> DoubleValueBase::Equal(ValueManager& value_manager,
-                                             ValueView other) const {
+                                             const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;

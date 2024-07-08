@@ -74,7 +74,7 @@ class OpaqueValueInterface : public ValueInterface {
     return Cast<OpaqueType>(GetTypeImpl(type_manager));
   }
 
-  virtual absl::Status Equal(ValueManager& value_manager, ValueView other,
+  virtual absl::Status Equal(ValueManager& value_manager, const Value& other,
                              Value& result) const = 0;
 };
 
@@ -149,10 +149,10 @@ class OpaqueValue {
     return interface_->ConvertToJson(converter);
   }
 
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
+                              const Value& other) const;
 
   bool IsZeroValue() const { return false; }
 

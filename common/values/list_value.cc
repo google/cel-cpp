@@ -254,8 +254,8 @@ common_internal::ListValueVariant ListValueView::ToVariant() const {
 
 namespace common_internal {
 
-absl::Status ListValueEqual(ValueManager& value_manager, ListValueView lhs,
-                            ListValueView rhs, Value& result) {
+absl::Status ListValueEqual(ValueManager& value_manager, const ListValue& lhs,
+                            const ListValue& rhs, Value& result) {
   if (Is(lhs, rhs)) {
     result = BoolValueView{true};
     return absl::OkStatus();
@@ -289,7 +289,7 @@ absl::Status ListValueEqual(ValueManager& value_manager, ListValueView lhs,
 
 absl::Status ListValueEqual(ValueManager& value_manager,
                             const ParsedListValueInterface& lhs,
-                            ListValueView rhs, Value& result) {
+                            const ListValue& rhs, Value& result) {
   auto lhs_size = lhs.Size();
   CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
   if (lhs_size != rhs_size) {

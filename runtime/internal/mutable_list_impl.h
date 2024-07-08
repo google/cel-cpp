@@ -59,7 +59,7 @@ class MutableListValue final : public cel::OpaqueValueInterface {
     return kMutableListTypeName;
   }
 
-  absl::Status Equal(ValueManager&, ValueView,
+  absl::Status Equal(ValueManager&, const cel::Value&,
                      cel::Value& result) const override {
     result = BoolValue{false};
     return absl::OkStatus();

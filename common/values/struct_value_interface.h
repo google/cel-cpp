@@ -31,6 +31,7 @@
 
 namespace cel {
 
+class Value;
 class StructValue;
 class StructValueView;
 class ValueView;
@@ -49,7 +50,7 @@ class StructValueInterface : public ValueInterface {
   }
 
   using ForEachFieldCallback =
-      absl::FunctionRef<absl::StatusOr<bool>(absl::string_view, ValueView)>;
+      absl::FunctionRef<absl::StatusOr<bool>(absl::string_view, const Value&)>;
 
  protected:
   Type GetTypeImpl(TypeManager& type_manager) const override {

@@ -111,8 +111,9 @@ absl::StatusOr<Json> ErrorValue::ConvertToJson(AnyToJsonConverter&) const {
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
-absl::Status ErrorValue::Equal(ValueManager&, ValueView, Value& result) const {
-  result = BoolValueView{false};
+absl::Status ErrorValue::Equal(ValueManager&, const Value&,
+                               Value& result) const {
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 

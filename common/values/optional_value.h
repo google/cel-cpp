@@ -64,7 +64,7 @@ class OptionalValueInterface : public OpaqueValueInterface {
 
   virtual bool HasValue() const = 0;
 
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
                      cel::Value& result) const override;
 
   virtual void Value(cel::Value& scratch) const = 0;

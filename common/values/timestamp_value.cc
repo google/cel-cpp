@@ -79,19 +79,18 @@ absl::StatusOr<Json> TimestampValueBase::ConvertToJson(
   return JsonString(std::move(json));
 }
 
-absl::Status TimestampValueBase::Equal(ValueManager&, ValueView other,
+absl::Status TimestampValueBase::Equal(ValueManager&, const Value& other,
                                        Value& result) const {
-  if (auto other_value = As<TimestampValueView>(other);
-      other_value.has_value()) {
-    result = BoolValueView{NativeValue() == other_value->NativeValue()};
+  if (auto other_value = As<TimestampValue>(other); other_value.has_value()) {
+    result = BoolValue{NativeValue() == other_value->NativeValue()};
     return absl::OkStatus();
   }
-  result = BoolValueView{false};
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 
 absl::StatusOr<Value> TimestampValueBase::Equal(ValueManager& value_manager,
-                                                ValueView other) const {
+                                                const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;

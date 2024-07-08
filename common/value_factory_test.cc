@@ -204,19 +204,19 @@ TEST_P(ValueFactoryTest, JsonValueObject) {
                                 StringValueView("c"), StringValueView("d"),
                                 StringValueView("e"), StringValueView("f")}));
   ASSERT_OK_AND_ASSIGN(auto has,
-                       map_value.Has(value_manager(), StringValueView("a")));
+                       map_value.Has(value_manager(), StringValue("a")));
   ASSERT_TRUE(InstanceOf<BoolValue>(has));
   EXPECT_TRUE(Cast<BoolValue>(has).NativeValue());
   ASSERT_OK_AND_ASSIGN(
-      has, map_value.Has(value_manager(), StringValueView(absl::Cord("a"))));
+      has, map_value.Has(value_manager(), StringValue(absl::Cord("a"))));
   ASSERT_TRUE(InstanceOf<BoolValue>(has));
   EXPECT_TRUE(Cast<BoolValue>(has).NativeValue());
 
   ASSERT_OK_AND_ASSIGN(auto get,
-                       map_value.Get(value_manager(), StringValueView("a")));
+                       map_value.Get(value_manager(), StringValue("a")));
   ASSERT_TRUE(InstanceOf<NullValue>(get));
   ASSERT_OK_AND_ASSIGN(
-      get, map_value.Get(value_manager(), StringValueView(absl::Cord("a"))));
+      get, map_value.Get(value_manager(), StringValue(absl::Cord("a"))));
   ASSERT_TRUE(InstanceOf<NullValue>(get));
 }
 

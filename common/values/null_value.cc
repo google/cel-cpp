@@ -58,14 +58,14 @@ absl::StatusOr<Any> NullValueBase::ConvertToAny(
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::Status NullValueBase::Equal(ValueManager&, ValueView other,
+absl::Status NullValueBase::Equal(ValueManager&, const Value& other,
                                   Value& result) const {
-  result = BoolValueView{InstanceOf<NullValueView>(other)};
+  result = BoolValue{InstanceOf<NullValue>(other)};
   return absl::OkStatus();
 }
 
 absl::StatusOr<Value> NullValueBase::Equal(ValueManager& value_manager,
-                                           ValueView other) const {
+                                           const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;

@@ -135,11 +135,10 @@ TEST_P(ListValueTest, Contains) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   ASSERT_OK_AND_ASSIGN(auto contained,
-                       value.Contains(value_manager(), IntValueView(2)));
+                       value.Contains(value_manager(), IntValue(2)));
   ASSERT_TRUE(InstanceOf<BoolValue>(contained));
   EXPECT_TRUE(Cast<BoolValue>(contained).NativeValue());
-  ASSERT_OK_AND_ASSIGN(contained,
-                       value.Contains(value_manager(), IntValueView(3)));
+  ASSERT_OK_AND_ASSIGN(contained, value.Contains(value_manager(), IntValue(3)));
   ASSERT_TRUE(InstanceOf<BoolValue>(contained));
   EXPECT_FALSE(Cast<BoolValue>(contained).NativeValue());
 }

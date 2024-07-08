@@ -25,15 +25,14 @@
 namespace cel {
 
 absl::Status ParsedStructValueInterface::Equal(ValueManager& value_manager,
-                                               ValueView other,
+                                               const Value& other,
                                                Value& result) const {
-  if (auto parsed_struct_value = As<ParsedStructValueView>(other);
+  if (auto parsed_struct_value = As<ParsedStructValue>(other);
       parsed_struct_value.has_value() &&
       NativeTypeId::Of(*this) == NativeTypeId::Of(*parsed_struct_value)) {
     return EqualImpl(value_manager, *parsed_struct_value, result);
   }
-  if (auto struct_value = As<StructValueView>(other);
-      struct_value.has_value()) {
+  if (auto struct_value = As<StructValue>(other); struct_value.has_value()) {
     return common_internal::StructValueEqual(value_manager, *this,
                                              *struct_value, result);
   }
@@ -41,9 +40,9 @@ absl::Status ParsedStructValueInterface::Equal(ValueManager& value_manager,
   return absl::OkStatus();
 }
 
-absl::Status ParsedStructValueInterface::EqualImpl(ValueManager& value_manager,
-                                                   ParsedStructValueView other,
-                                                   Value& result) const {
+absl::Status ParsedStructValueInterface::EqualImpl(
+    ValueManager& value_manager, const ParsedStructValue& other,
+    Value& result) const {
   return common_internal::StructValueEqual(value_manager, *this, other, result);
 }
 

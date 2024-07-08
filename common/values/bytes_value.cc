@@ -89,9 +89,9 @@ absl::StatusOr<Json> BytesValue::ConvertToJson(AnyToJsonConverter&) const {
       [](const auto& value) -> Json { return JsonBytes(value); });
 }
 
-absl::Status BytesValue::Equal(ValueManager&, ValueView other,
+absl::Status BytesValue::Equal(ValueManager&, const Value& other,
                                Value& result) const {
-  if (auto other_value = As<BytesValueView>(other); other_value.has_value()) {
+  if (auto other_value = As<BytesValue>(other); other_value.has_value()) {
     result = NativeValue([other_value](const auto& value) -> BoolValue {
       return other_value->NativeValue(
           [&value](const auto& other_value) -> BoolValue {
@@ -100,7 +100,7 @@ absl::Status BytesValue::Equal(ValueManager&, ValueView other,
     });
     return absl::OkStatus();
   }
-  result = BoolValueView{false};
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 

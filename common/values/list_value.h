@@ -59,7 +59,7 @@ class ValueView;
 class ValueManager;
 class TypeManager;
 
-bool Is(ListValueView lhs, ListValueView rhs);
+bool Is(const ListValue& lhs, const ListValue& rhs);
 
 class ListValue final {
  public:
@@ -153,10 +153,10 @@ class ListValue final {
   absl::StatusOr<JsonArray> ConvertToJsonArray(
       AnyToJsonConverter& converter) const;
 
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
+                              const Value& other) const;
 
   bool IsZeroValue() const;
 
@@ -185,15 +185,16 @@ class ListValue final {
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
 
-  absl::Status Contains(ValueManager& value_manager, ValueView other,
+  absl::Status Contains(ValueManager& value_manager, const Value& other,
                         Value& result) const;
   absl::StatusOr<Value> Contains(ValueManager& value_manager,
-                                 ValueView other) const;
+                                 const Value& other) const;
 
  private:
   friend class ListValueView;
   friend struct NativeTypeTraits<ListValue>;
   friend struct CompositionTraits<ListValue>;
+  friend bool Is(const ListValue& lhs, const ListValue& rhs);
 
   common_internal::ListValueViewVariant ToViewVariant() const;
 
@@ -443,7 +444,6 @@ class ListValueView final {
   friend class ListValue;
   friend struct NativeTypeTraits<ListValueView>;
   friend struct CompositionTraits<ListValueView>;
-  friend bool Is(ListValueView lhs, ListValueView rhs);
 
   common_internal::ListValueVariant ToVariant() const;
 
@@ -520,7 +520,7 @@ struct CastTraits<
 inline ListValue::ListValue(ListValueView value)
     : variant_(value.ToVariant()) {}
 
-inline bool Is(ListValueView lhs, ListValueView rhs) {
+inline bool Is(const ListValue& lhs, const ListValue& rhs) {
   return absl::visit(
       [](auto alternative_lhs, auto alternative_rhs) -> bool {
         if constexpr (std::is_same_v<

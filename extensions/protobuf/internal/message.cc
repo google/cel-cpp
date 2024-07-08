@@ -1303,7 +1303,7 @@ class ParsedProtoMapValueInterface
   }
 
  private:
-  absl::StatusOr<bool> FindImpl(ValueManager& value_manager, ValueView key,
+  absl::StatusOr<bool> FindImpl(ValueManager& value_manager, const Value& key,
                                 Value& result) const final {
     google::protobuf::MapKey map_key;
     CEL_RETURN_IF_ERROR(map_key_from_value_(Value(key), map_key));
@@ -1320,7 +1320,7 @@ class ParsedProtoMapValueInterface
   }
 
   absl::StatusOr<bool> HasImpl(ValueManager& value_manager,
-                               ValueView key) const final {
+                               const Value& key) const final {
     google::protobuf::MapKey map_key;
     CEL_RETURN_IF_ERROR(map_key_from_value_(Value(key), map_key));
     return ContainsMapKey(*GetReflectionOrDie(message_), message_, *field_,
@@ -1403,11 +1403,11 @@ class ParsedProtoQualifyState final : public ProtoQualifyState {
 class ParsedProtoStructValueInterface;
 
 const ParsedProtoStructValueInterface* AsParsedProtoStructValue(
-    ParsedStructValueView value);
+    const ParsedStructValue& value);
 
 const ParsedProtoStructValueInterface* AsParsedProtoStructValue(
-    ValueView value) {
-  if (auto parsed_struct_value = As<ParsedStructValueView>(value);
+    const Value& value) {
+  if (auto parsed_struct_value = As<ParsedStructValue>(value);
       parsed_struct_value) {
     return AsParsedProtoStructValue(*parsed_struct_value);
   }
@@ -1565,7 +1565,7 @@ class ParsedProtoStructValueInterface
 
  private:
   absl::Status EqualImpl(ValueManager& value_manager,
-                         ParsedStructValueView other,
+                         const ParsedStructValue& other,
                          Value& result) const final {
     if (const auto* parsed_proto_struct_value = AsParsedProtoStructValue(other);
         parsed_proto_struct_value) {
@@ -1605,7 +1605,7 @@ class ParsedProtoStructValueInterface
 };
 
 const ParsedProtoStructValueInterface* AsParsedProtoStructValue(
-    ParsedStructValueView value) {
+    const ParsedStructValue& value) {
   return NativeTypeId::Of(value) ==
                  NativeTypeId::For<ParsedProtoStructValueInterface>()
              ? cel::internal::down_cast<const ParsedProtoStructValueInterface*>(

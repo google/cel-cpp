@@ -59,7 +59,7 @@ class ParsedListValueView;
 class ValueManager;
 
 // `Is` checks whether `lhs` and `rhs` have the same identity.
-bool Is(ParsedListValueView lhs, ParsedListValueView rhs);
+bool Is(const ParsedListValue& lhs, const ParsedListValue& rhs);
 
 class ParsedListValueInterface : public ListValueInterface {
  public:
@@ -72,7 +72,7 @@ class ParsedListValueInterface : public ListValueInterface {
   absl::Status SerializeTo(AnyToJsonConverter& converter,
                            absl::Cord& value) const override;
 
-  virtual absl::Status Equal(ValueManager& value_manager, ValueView other,
+  virtual absl::Status Equal(ValueManager& value_manager, const Value& other,
                              Value& result) const;
 
   bool IsZeroValue() const { return IsEmpty(); }
@@ -96,7 +96,7 @@ class ParsedListValueInterface : public ListValueInterface {
   virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
 
-  virtual absl::Status Contains(ValueManager& value_manager, ValueView other,
+  virtual absl::Status Contains(ValueManager& value_manager, const Value& other,
                                 Value& result) const;
 
  protected:
@@ -176,7 +176,7 @@ class ParsedListValue {
     return interface_->ConvertToJsonArray(converter);
   }
 
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;
 
   bool IsZeroValue() const { return interface_->IsZeroValue(); }
@@ -203,7 +203,7 @@ class ParsedListValue {
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
 
-  absl::Status Contains(ValueManager& value_manager, ValueView other,
+  absl::Status Contains(ValueManager& value_manager, const Value& other,
                         Value& result) const;
 
   void swap(ParsedListValue& other) noexcept {
@@ -220,6 +220,7 @@ class ParsedListValue {
  private:
   friend class ParsedListValueView;
   friend struct NativeTypeTraits<ParsedListValue>;
+  friend bool Is(const ParsedListValue& lhs, const ParsedListValue& rhs);
 
   Shared<const ParsedListValueInterface> interface_;
 };
@@ -407,7 +408,6 @@ class ParsedListValueView {
  private:
   friend class ParsedListValue;
   friend struct NativeTypeTraits<ParsedListValueView>;
-  friend bool Is(ParsedListValueView lhs, ParsedListValueView rhs);
 
   SharedView<const ParsedListValueInterface> interface_;
 };
@@ -447,7 +447,7 @@ inline ParsedListValueView::ParsedListValueView()
 inline ParsedListValue::ParsedListValue(ParsedListValueView value)
     : interface_(value.interface_) {}
 
-inline bool Is(ParsedListValueView lhs, ParsedListValueView rhs) {
+inline bool Is(const ParsedListValue& lhs, const ParsedListValue& rhs) {
   return lhs.interface_.operator->() == rhs.interface_.operator->();
 }
 

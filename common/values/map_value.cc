@@ -267,16 +267,16 @@ common_internal::MapValueVariant MapValueView::ToVariant() const {
 
 namespace common_internal {
 
-absl::Status MapValueEqual(ValueManager& value_manager, MapValueView lhs,
-                           MapValueView rhs, Value& result) {
+absl::Status MapValueEqual(ValueManager& value_manager, const MapValue& lhs,
+                           const MapValue& rhs, Value& result) {
   if (Is(lhs, rhs)) {
-    result = BoolValueView{true};
+    result = BoolValue{true};
     return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto lhs_size, lhs.Size());
   CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
   if (lhs_size != rhs_size) {
-    result = BoolValueView{false};
+    result = BoolValue{false};
     return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator(value_manager));
@@ -290,7 +290,7 @@ absl::Status MapValueEqual(ValueManager& value_manager, MapValueView lhs,
     CEL_ASSIGN_OR_RETURN(rhs_value_found,
                          rhs.Find(value_manager, lhs_key, rhs_value));
     if (!rhs_value_found) {
-      result = BoolValueView{false};
+      result = BoolValue{false};
       return absl::OkStatus();
     }
     CEL_RETURN_IF_ERROR(lhs.Get(value_manager, lhs_key, lhs_value));
@@ -306,12 +306,12 @@ absl::Status MapValueEqual(ValueManager& value_manager, MapValueView lhs,
 }
 
 absl::Status MapValueEqual(ValueManager& value_manager,
-                           const ParsedMapValueInterface& lhs, MapValueView rhs,
-                           Value& result) {
+                           const ParsedMapValueInterface& lhs,
+                           const MapValue& rhs, Value& result) {
   auto lhs_size = lhs.Size();
   CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
   if (lhs_size != rhs_size) {
-    result = BoolValueView{false};
+    result = BoolValue{false};
     return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator(value_manager));
@@ -325,7 +325,7 @@ absl::Status MapValueEqual(ValueManager& value_manager,
     CEL_ASSIGN_OR_RETURN(rhs_value_found,
                          rhs.Find(value_manager, lhs_key, rhs_value));
     if (!rhs_value_found) {
-      result = BoolValueView{false};
+      result = BoolValue{false};
       return absl::OkStatus();
     }
     CEL_RETURN_IF_ERROR(lhs.Get(value_manager, lhs_key, lhs_value));
@@ -336,11 +336,26 @@ absl::Status MapValueEqual(ValueManager& value_manager,
     }
   }
   ABSL_DCHECK(!lhs_iterator->HasNext());
-  result = BoolValueView{true};
+  result = BoolValue{true};
   return absl::OkStatus();
 }
 
 }  // namespace common_internal
+
+absl::Status CheckMapKey(const Value& key) {
+  switch (key.kind()) {
+    case ValueKind::kBool:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kInt:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kUint:
+      ABSL_FALLTHROUGH_INTENDED;
+    case ValueKind::kString:
+      return absl::OkStatus();
+    default:
+      return InvalidMapKeyTypeError(key.kind());
+  }
+}
 
 absl::Status CheckMapKey(ValueView key) {
   switch (key.kind()) {

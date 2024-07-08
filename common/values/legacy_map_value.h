@@ -48,7 +48,7 @@ namespace common_internal {
 class LegacyMapValue;
 class LegacyMapValueView;
 
-bool Is(LegacyMapValueView lhs, LegacyMapValueView rhs);
+bool Is(const LegacyMapValue& lhs, const LegacyMapValue& rhs);
 
 class LegacyMapValue final {
  public:
@@ -104,7 +104,7 @@ class LegacyMapValue final {
   absl::StatusOr<JsonObject> ConvertToJsonObject(
       AnyToJsonConverter& value_manager) const;
 
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;
 
   bool IsZeroValue() const { return IsEmpty(); }
@@ -115,13 +115,13 @@ class LegacyMapValue final {
 
   // See the corresponding member function of `MapValueInterface` for
   // documentation.
-  absl::Status Get(ValueManager& value_manager, ValueView key,
+  absl::Status Get(ValueManager& value_manager, const Value& key,
                    Value& result) const;
 
-  absl::StatusOr<bool> Find(ValueManager& value_manager, ValueView key,
+  absl::StatusOr<bool> Find(ValueManager& value_manager, const Value& key,
                             Value& result ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
-  absl::Status Has(ValueManager& value_manager, ValueView key,
+  absl::Status Has(ValueManager& value_manager, const Value& key,
                    Value& result ABSL_ATTRIBUTE_LIFETIME_BOUND) const;
 
   absl::Status ListKeys(ValueManager& value_manager, ListValue& result) const;
@@ -143,6 +143,7 @@ class LegacyMapValue final {
 
  private:
   friend class LegacyMapValueView;
+  friend bool Is(const LegacyMapValue& lhs, const LegacyMapValue& rhs);
 
   uintptr_t impl_;
 };
@@ -275,7 +276,7 @@ inline std::ostream& operator<<(std::ostream& out, LegacyMapValueView type) {
 inline LegacyMapValue::LegacyMapValue(LegacyMapValueView value)
     : impl_(value.impl_) {}
 
-inline bool Is(LegacyMapValueView lhs, LegacyMapValueView rhs) {
+inline bool Is(const LegacyMapValue& lhs, const LegacyMapValue& rhs) {
   return lhs.impl_ == rhs.impl_;
 }
 

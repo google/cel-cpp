@@ -66,7 +66,7 @@ using LegacyStructValue_HasFieldByNumber = absl::StatusOr<bool> (*)(uintptr_t,
                                                                     uintptr_t,
                                                                     int64_t);
 using LegacyStructValue_Equal = absl::Status (*)(uintptr_t, uintptr_t,
-                                                 ValueManager&, ValueView,
+                                                 ValueManager&, const Value&,
                                                  Value&);
 using LegacyStructValue_IsZeroValue = bool (*)(uintptr_t, uintptr_t);
 using LegacyStructValue_ForEachField =
@@ -135,7 +135,7 @@ extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
 cel_common_internal_LegacyStructValue_Equal(uintptr_t message_ptr,
                                             uintptr_t type_info,
                                             ValueManager& value_manager,
-                                            ValueView other, Value& result);
+                                            const Value& other, Value& result);
 extern "C" ABSL_ATTRIBUTE_WEAK bool
 cel_common_internal_LegacyStructValue_IsZeroValue(uintptr_t message_ptr,
                                                   uintptr_t type_info);
@@ -289,7 +289,7 @@ absl::StatusOr<Json> LegacyStructValue::ConvertToJson(
 }
 
 absl::Status LegacyStructValue::Equal(ValueManager& value_manager,
-                                      ValueView other, Value& result) const {
+                                      const Value& other, Value& result) const {
   InitializeLegacyStructValue();
   return (*legacy_struct_value_vtable.equal)(message_ptr_, type_info_,
                                              value_manager, other, result);
@@ -409,8 +409,8 @@ absl::Status LegacyStructValueView::Equal(ValueManager& value_manager,
                                           ValueView other,
                                           Value& result) const {
   InitializeLegacyStructValue();
-  return (*legacy_struct_value_vtable.equal)(message_ptr_, type_info_,
-                                             value_manager, other, result);
+  return (*legacy_struct_value_vtable.equal)(
+      message_ptr_, type_info_, value_manager, Value(other), result);
 }
 
 bool LegacyStructValueView::IsZeroValue() const {

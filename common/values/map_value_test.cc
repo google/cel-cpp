@@ -162,17 +162,16 @@ TEST_P(MapValueTest, Get) {
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       map_value.Get(value_manager(), IntValueView(0)));
+  ASSERT_OK_AND_ASSIGN(auto value, map_value.Get(value_manager(), IntValue(0)));
   ASSERT_TRUE(InstanceOf<DoubleValue>(value));
   ASSERT_EQ(Cast<DoubleValue>(value).NativeValue(), 3.0);
-  ASSERT_OK_AND_ASSIGN(value, map_value.Get(value_manager(), IntValueView(1)));
+  ASSERT_OK_AND_ASSIGN(value, map_value.Get(value_manager(), IntValue(1)));
   ASSERT_TRUE(InstanceOf<DoubleValue>(value));
   ASSERT_EQ(Cast<DoubleValue>(value).NativeValue(), 4.0);
-  ASSERT_OK_AND_ASSIGN(value, map_value.Get(value_manager(), IntValueView(2)));
+  ASSERT_OK_AND_ASSIGN(value, map_value.Get(value_manager(), IntValue(2)));
   ASSERT_TRUE(InstanceOf<DoubleValue>(value));
   ASSERT_EQ(Cast<DoubleValue>(value).NativeValue(), 5.0);
-  EXPECT_THAT(map_value.Get(value_manager(), IntValueView(3)),
+  EXPECT_THAT(map_value.Get(value_manager(), IntValue(3)),
               StatusIs(absl::StatusCode::kNotFound));
 }
 
@@ -185,22 +184,22 @@ TEST_P(MapValueTest, Find) {
   Value value;
   bool ok;
   ASSERT_OK_AND_ASSIGN(std::tie(value, ok),
-                       map_value.Find(value_manager(), IntValueView(0)));
+                       map_value.Find(value_manager(), IntValue(0)));
   ASSERT_TRUE(ok);
   ASSERT_TRUE(InstanceOf<DoubleValue>(value));
   ASSERT_EQ(Cast<DoubleValue>(value).NativeValue(), 3.0);
   ASSERT_OK_AND_ASSIGN(std::tie(value, ok),
-                       map_value.Find(value_manager(), IntValueView(1)));
+                       map_value.Find(value_manager(), IntValue(1)));
   ASSERT_TRUE(ok);
   ASSERT_TRUE(InstanceOf<DoubleValue>(value));
   ASSERT_EQ(Cast<DoubleValue>(value).NativeValue(), 4.0);
   ASSERT_OK_AND_ASSIGN(std::tie(value, ok),
-                       map_value.Find(value_manager(), IntValueView(2)));
+                       map_value.Find(value_manager(), IntValue(2)));
   ASSERT_TRUE(ok);
   ASSERT_TRUE(InstanceOf<DoubleValue>(value));
   ASSERT_EQ(Cast<DoubleValue>(value).NativeValue(), 5.0);
   ASSERT_OK_AND_ASSIGN(std::tie(value, ok),
-                       map_value.Find(value_manager(), IntValueView(3)));
+                       map_value.Find(value_manager(), IntValue(3)));
   ASSERT_FALSE(ok);
 }
 
@@ -210,17 +209,16 @@ TEST_P(MapValueTest, Has) {
       NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       map_value.Has(value_manager(), IntValueView(0)));
+  ASSERT_OK_AND_ASSIGN(auto value, map_value.Has(value_manager(), IntValue(0)));
   ASSERT_TRUE(InstanceOf<BoolValue>(value));
   ASSERT_TRUE(Cast<BoolValue>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, map_value.Has(value_manager(), IntValueView(1)));
+  ASSERT_OK_AND_ASSIGN(value, map_value.Has(value_manager(), IntValue(1)));
   ASSERT_TRUE(InstanceOf<BoolValue>(value));
   ASSERT_TRUE(Cast<BoolValue>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, map_value.Has(value_manager(), IntValueView(2)));
+  ASSERT_OK_AND_ASSIGN(value, map_value.Has(value_manager(), IntValue(2)));
   ASSERT_TRUE(InstanceOf<BoolValue>(value));
   ASSERT_TRUE(Cast<BoolValue>(value).NativeValue());
-  ASSERT_OK_AND_ASSIGN(value, map_value.Has(value_manager(), IntValueView(3)));
+  ASSERT_OK_AND_ASSIGN(value, map_value.Has(value_manager(), IntValue(3)));
   ASSERT_TRUE(InstanceOf<BoolValue>(value));
   ASSERT_FALSE(Cast<BoolValue>(value).NativeValue());
 }
@@ -234,8 +232,8 @@ TEST_P(MapValueTest, ListKeys) {
   ASSERT_OK_AND_ASSIGN(auto list_keys, map_value.ListKeys(value_manager()));
   std::vector<int64_t> keys;
   ASSERT_OK(
-      list_keys.ForEach(value_manager(), [&keys](ValueView element) -> bool {
-        keys.push_back(Cast<IntValueView>(element).NativeValue());
+      list_keys.ForEach(value_manager(), [&keys](const Value& element) -> bool {
+        keys.push_back(Cast<IntValue>(element).NativeValue());
         return true;
       }));
   EXPECT_THAT(keys, UnorderedElementsAreArray({0, 1, 2}));
@@ -248,12 +246,12 @@ TEST_P(MapValueTest, ForEach) {
                            std::pair{IntValue(1), DoubleValue(4.0)},
                            std::pair{IntValue(2), DoubleValue(5.0)}));
   std::vector<std::pair<int64_t, double>> entries;
-  EXPECT_OK(value.ForEach(value_manager(), [&entries](ValueView key,
-                                                      ValueView value) {
-    entries.push_back(std::pair{Cast<IntValueView>(key).NativeValue(),
-                                Cast<DoubleValueView>(value).NativeValue()});
-    return true;
-  }));
+  EXPECT_OK(value.ForEach(
+      value_manager(), [&entries](const Value& key, const Value& value) {
+        entries.push_back(std::pair{Cast<IntValue>(key).NativeValue(),
+                                    Cast<DoubleValue>(value).NativeValue()});
+        return true;
+      }));
   EXPECT_THAT(entries,
               UnorderedElementsAreArray(
                   {std::pair{0, 3.0}, std::pair{1, 4.0}, std::pair{2, 5.0}}));

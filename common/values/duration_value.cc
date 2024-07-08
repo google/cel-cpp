@@ -79,19 +79,18 @@ absl::StatusOr<Json> DurationValueBase::ConvertToJson(
   return JsonString(std::move(json));
 }
 
-absl::Status DurationValueBase::Equal(ValueManager&, ValueView other,
+absl::Status DurationValueBase::Equal(ValueManager&, const Value& other,
                                       Value& result) const {
-  if (auto other_value = As<DurationValueView>(other);
-      other_value.has_value()) {
-    result = BoolValueView{NativeValue() == other_value->NativeValue()};
+  if (auto other_value = As<DurationValue>(other); other_value.has_value()) {
+    result = BoolValue{NativeValue() == other_value->NativeValue()};
     return absl::OkStatus();
   }
-  result = BoolValueView{false};
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 
 absl::StatusOr<Value> DurationValueBase::Equal(ValueManager& value_manager,
-                                               ValueView other) const {
+                                               const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;

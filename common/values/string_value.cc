@@ -91,9 +91,9 @@ absl::StatusOr<Json> StringValue::ConvertToJson(AnyToJsonConverter&) const {
   return NativeCord();
 }
 
-absl::Status StringValue::Equal(ValueManager&, ValueView other,
+absl::Status StringValue::Equal(ValueManager&, const Value& other,
                                 Value& result) const {
-  if (auto other_value = As<StringValueView>(other); other_value.has_value()) {
+  if (auto other_value = As<StringValue>(other); other_value.has_value()) {
     result = NativeValue([other_value](const auto& value) -> BoolValue {
       return other_value->NativeValue(
           [&value](const auto& other_value) -> BoolValue {
@@ -102,7 +102,7 @@ absl::Status StringValue::Equal(ValueManager&, ValueView other,
     });
     return absl::OkStatus();
   }
-  result = BoolValueView{false};
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 

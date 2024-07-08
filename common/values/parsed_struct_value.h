@@ -56,7 +56,7 @@ class ParsedStructValueInterface : public StructValueInterface {
   using alternative_type = ParsedStructValue;
   using view_alternative_type = ParsedStructValueView;
 
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;
 
   virtual bool IsZeroValue() const = 0;
@@ -82,7 +82,7 @@ class ParsedStructValueInterface : public StructValueInterface {
 
  protected:
   virtual absl::Status EqualImpl(ValueManager& value_manager,
-                                 ParsedStructValueView other,
+                                 const ParsedStructValue& other,
                                  Value& result) const;
 };
 
@@ -143,7 +143,7 @@ class ParsedStructValue {
     return interface_->ConvertToJson(converter);
   }
 
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;
 
   bool IsZeroValue() const { return interface_->IsZeroValue(); }

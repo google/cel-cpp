@@ -239,9 +239,9 @@ class JsonMapValue final : public ParsedMapValueInterface {
 
  private:
   // Called by `Find` after performing various argument checks.
-  absl::StatusOr<bool> FindImpl(ValueManager& value_manager, ValueView key,
+  absl::StatusOr<bool> FindImpl(ValueManager& value_manager, const Value& key,
                                 Value& result) const override {
-    return Cast<StringValueView>(key).NativeValue(absl::Overload(
+    return Cast<StringValue>(key).NativeValue(absl::Overload(
         [this, &value_manager, &result](absl::string_view value) -> bool {
           if (auto entry = object_.find(value); entry != object_.end()) {
             JsonToValue(entry->second, value_manager, result);
@@ -259,8 +259,8 @@ class JsonMapValue final : public ParsedMapValueInterface {
   }
 
   // Called by `Has` after performing various argument checks.
-  absl::StatusOr<bool> HasImpl(ValueManager&, ValueView key) const override {
-    return Cast<StringValueView>(key).NativeValue(absl::Overload(
+  absl::StatusOr<bool> HasImpl(ValueManager&, const Value& key) const override {
+    return Cast<StringValue>(key).NativeValue(absl::Overload(
         [this](absl::string_view value) -> bool {
           return object_.contains(value);
         },

@@ -92,7 +92,7 @@ class LegacyStructValue final {
 
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const;
 
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;
 
   bool IsZeroValue() const;

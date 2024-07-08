@@ -172,12 +172,12 @@ class EmptyMapValue final : public ParsedMapValueInterface {
 
   Type GetTypeImpl(TypeManager&) const override { return type_; }
 
-  absl::StatusOr<bool> FindImpl(ValueManager&, ValueView,
+  absl::StatusOr<bool> FindImpl(ValueManager&, const Value&,
                                 Value&) const override {
     return false;
   }
 
-  absl::StatusOr<bool> HasImpl(ValueManager&, ValueView) const override {
+  absl::StatusOr<bool> HasImpl(ValueManager&, const Value&) const override {
     return false;
   }
 

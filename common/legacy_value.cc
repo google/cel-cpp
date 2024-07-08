@@ -607,7 +607,7 @@ cel_common_internal_LegacyListValue_ForEach(
     CEL_ASSIGN_OR_RETURN(auto element,
                          ModernValue(arena, AsCelList(impl)->Get(arena, index),
                                      element_scratch));
-    CEL_ASSIGN_OR_RETURN(auto ok, callback(index, element));
+    CEL_ASSIGN_OR_RETURN(auto ok, callback(index, Value(element)));
     if (!ok) {
       break;
     }
@@ -627,7 +627,8 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY absl::Status
 cel_common_internal_LegacyListValue_Contains(uintptr_t impl,
                                              ValueManager& value_manager,
-                                             ValueView other, Value& result) {
+                                             const Value& other,
+                                             Value& result) {
   auto* arena =
       extensions::ProtoMemoryManagerArena(value_manager.GetMemoryManager());
   CEL_ASSIGN_OR_RETURN(auto legacy_other, LegacyValue(arena, other));
@@ -704,7 +705,7 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
     absl::StatusOr<bool>
     cel_common_internal_LegacyMapValue_Find(uintptr_t impl,
                                             ValueManager& value_manager,
-                                            ValueView key, Value& result) {
+                                            const Value& key, Value& result) {
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
@@ -738,7 +739,7 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY absl::Status
 cel_common_internal_LegacyMapValue_Get(uintptr_t impl,
                                        ValueManager& value_manager,
-                                       ValueView key, Value& result) {
+                                       const Value& key, Value& result) {
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
@@ -772,7 +773,7 @@ cel_common_internal_LegacyMapValue_Get(uintptr_t impl,
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY absl::Status
 cel_common_internal_LegacyMapValue_Has(uintptr_t impl,
                                        ValueManager& value_manager,
-                                       ValueView key, Value& result) {
+                                       const Value& key, Value& result) {
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
@@ -826,7 +827,7 @@ cel_common_internal_LegacyMapValue_ForEach(uintptr_t impl,
     CEL_ASSIGN_OR_RETURN(auto key, ModernValue(arena, cel_key, key_scratch));
     CEL_ASSIGN_OR_RETURN(auto value,
                          ModernValue(arena, cel_value, value_scratch));
-    CEL_ASSIGN_OR_RETURN(auto ok, callback(key, value));
+    CEL_ASSIGN_OR_RETURN(auto ok, callback(Value(key), Value(value)));
     if (!ok) {
       break;
     }
@@ -959,9 +960,8 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY absl::Status
 cel_common_internal_LegacyStructValue_Equal(uintptr_t message_ptr,
                                             uintptr_t type_info,
                                             ValueManager& value_manager,
-                                            ValueView other, Value& result) {
-  if (auto legacy_struct_value =
-          As<common_internal::LegacyStructValueView>(other);
+                                            const Value& other, Value& result) {
+  if (auto legacy_struct_value = As<common_internal::LegacyStructValue>(other);
       legacy_struct_value.has_value()) {
     auto message_wrapper = AsMessageWrapper(message_ptr, type_info);
     const auto* access_apis =
@@ -979,11 +979,10 @@ cel_common_internal_LegacyStructValue_Equal(uintptr_t message_ptr,
         access_apis->IsEqualTo(message_wrapper, other_message_wrapper)};
     return absl::OkStatus();
   }
-  if (auto struct_value = As<StructValueView>(other);
-      struct_value.has_value()) {
+  if (auto struct_value = As<StructValue>(other); struct_value.has_value()) {
     return common_internal::StructValueEqual(
         value_manager,
-        common_internal::LegacyStructValueView(message_ptr, type_info),
+        common_internal::LegacyStructValue(message_ptr, type_info),
         *struct_value, result);
   }
   result = BoolValueView{false};
@@ -1027,7 +1026,7 @@ cel_common_internal_LegacyStructValue_ForEachField(
                          ModernValue(extensions::ProtoMemoryManagerArena(
                                          value_manager.GetMemoryManager()),
                                      cel_value, scratch));
-    CEL_ASSIGN_OR_RETURN(auto ok, callback(field_name, value));
+    CEL_ASSIGN_OR_RETURN(auto ok, callback(field_name, Value(value)));
     if (!ok) {
       break;
     }
@@ -1294,7 +1293,7 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
       CEL_RETURN_IF_ERROR(list_value.ForEach(
           value_manager,
           [arena, elements](size_t index,
-                            ValueView element) -> absl::StatusOr<bool> {
+                            const Value& element) -> absl::StatusOr<bool> {
             CEL_ASSIGN_OR_RETURN(elements[index], LegacyValue(arena, element));
             return true;
           }));
@@ -1328,7 +1327,7 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
       CEL_RETURN_IF_ERROR(map_value.ForEach(
           value_manager,
           [arena, entries, &entry_count](
-              ValueView key, ValueView value) -> absl::StatusOr<bool> {
+              const Value& key, const Value& value) -> absl::StatusOr<bool> {
             auto* entry = ::new (static_cast<void*>(entries + entry_count++))
                 CelMapImpl::Entry{};
             CEL_ASSIGN_OR_RETURN(entry->first, LegacyValue(arena, key));
@@ -1501,7 +1500,7 @@ absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
       CEL_RETURN_IF_ERROR(list_value.ForEach(
           value_manager,
           [arena, elements](size_t index,
-                            ValueView element) -> absl::StatusOr<bool> {
+                            const Value& element) -> absl::StatusOr<bool> {
             CEL_ASSIGN_OR_RETURN(elements[index], LegacyValue(arena, element));
             return true;
           }));
@@ -1534,7 +1533,7 @@ absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
       CEL_RETURN_IF_ERROR(map_value.ForEach(
           value_manager,
           [arena, entries, &entry_count](
-              ValueView key, ValueView value) -> absl::StatusOr<bool> {
+              const Value& key, const Value& value) -> absl::StatusOr<bool> {
             auto* entry = ::new (static_cast<void*>(entries + entry_count++))
                 CelMapImpl::Entry{};
             CEL_ASSIGN_OR_RETURN(entry->first, LegacyValue(arena, key));

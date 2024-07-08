@@ -59,9 +59,9 @@ absl::StatusOr<Json> TypeValue::ConvertToJson(AnyToJsonConverter&) const {
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
-absl::Status TypeValue::Equal(ValueManager&, ValueView other,
+absl::Status TypeValue::Equal(ValueManager&, const Value& other,
                               Value& result) const {
-  if (auto other_value = As<TypeValueView>(other); other_value.has_value()) {
+  if (auto other_value = As<TypeValue>(other); other_value.has_value()) {
     result = BoolValueView{NativeValue() == other_value->NativeValue()};
     return absl::OkStatus();
   }

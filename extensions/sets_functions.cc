@@ -34,7 +34,7 @@ absl::StatusOr<Value> SetsContains(ValueManager& value_factory,
   CEL_RETURN_IF_ERROR(sublist.ForEach(
       value_factory,
       [&list, &value_factory,
-       &any_missing](ValueView sublist_element) -> absl::StatusOr<bool> {
+       &any_missing](const Value& sublist_element) -> absl::StatusOr<bool> {
         CEL_ASSIGN_OR_RETURN(auto contains,
                              list.Contains(value_factory, sublist_element));
 
@@ -54,7 +54,7 @@ absl::StatusOr<Value> SetsIntersects(ValueManager& value_factory,
   CEL_RETURN_IF_ERROR(list.ForEach(
       value_factory,
       [&value_factory, &sublist,
-       &exists](ValueView list_element) -> absl::StatusOr<bool> {
+       &exists](const Value& list_element) -> absl::StatusOr<bool> {
         CEL_ASSIGN_OR_RETURN(auto contains,
                              sublist.Contains(value_factory, list_element));
         // Treat contains return CEL error as false for the sake of

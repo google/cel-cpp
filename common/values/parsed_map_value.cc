@@ -35,7 +35,7 @@ namespace cel {
 
 namespace {
 
-absl::Status NoSuchKeyError(ValueView key) {
+absl::Status NoSuchKeyError(const Value& key) {
   return absl::NotFoundError(
       absl::StrCat("Key not found in map : ", key.DebugString()));
 }
@@ -60,7 +60,8 @@ absl::Status ParsedMapValueInterface::SerializeTo(
 }
 
 absl::Status ParsedMapValueInterface::Get(ValueManager& value_manager,
-                                          ValueView key, Value& result) const {
+                                          const Value& key,
+                                          Value& result) const {
   CEL_ASSIGN_OR_RETURN(bool ok, Find(value_manager, key, result));
   if (ABSL_PREDICT_FALSE(!ok)) {
     switch (result.kind()) {
@@ -76,7 +77,7 @@ absl::Status ParsedMapValueInterface::Get(ValueManager& value_manager,
 }
 
 absl::StatusOr<bool> ParsedMapValueInterface::Find(ValueManager& value_manager,
-                                                   ValueView key,
+                                                   const Value& key,
                                                    Value& result) const {
   switch (key.kind()) {
     case ValueKind::kError:
@@ -104,7 +105,8 @@ absl::StatusOr<bool> ParsedMapValueInterface::Find(ValueManager& value_manager,
 }
 
 absl::Status ParsedMapValueInterface::Has(ValueManager& value_manager,
-                                          ValueView key, Value& result) const {
+                                          const Value& key,
+                                          Value& result) const {
   switch (key.kind()) {
     case ValueKind::kError:
       ABSL_FALLTHROUGH_INTENDED;
@@ -144,9 +146,9 @@ absl::Status ParsedMapValueInterface::ForEach(ValueManager& value_manager,
 }
 
 absl::Status ParsedMapValueInterface::Equal(ValueManager& value_manager,
-                                            ValueView other,
+                                            const Value& other,
                                             Value& result) const {
-  if (auto list_value = As<MapValueView>(other); list_value.has_value()) {
+  if (auto list_value = As<MapValue>(other); list_value.has_value()) {
     return MapValueEqual(value_manager, *this, *list_value, result);
   }
   result = BoolValue{false};

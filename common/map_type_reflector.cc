@@ -414,21 +414,17 @@ class TypedMapValue final : public ParsedMapValueInterface {
   Type GetTypeImpl(TypeManager&) const override { return type_; }
 
  private:
-  absl::StatusOr<bool> FindImpl(ValueManager&, ValueView key,
+  absl::StatusOr<bool> FindImpl(ValueManager&, const Value& key,
                                 Value& result) const override {
-    if (auto entry =
-            entries_.find(Cast<typename K::view_alternative_type>(key));
-        entry != entries_.end()) {
+    if (auto entry = entries_.find(Cast<K>(key)); entry != entries_.end()) {
       result = entry->second;
       return true;
     }
     return false;
   }
 
-  absl::StatusOr<bool> HasImpl(ValueManager&, ValueView key) const override {
-    if (auto entry =
-            entries_.find(Cast<typename K::view_alternative_type>(key));
-        entry != entries_.end()) {
+  absl::StatusOr<bool> HasImpl(ValueManager&, const Value& key) const override {
+    if (auto entry = entries_.find(Cast<K>(key)); entry != entries_.end()) {
       return true;
     }
     return false;

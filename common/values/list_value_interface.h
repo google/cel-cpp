@@ -33,6 +33,7 @@
 
 namespace cel {
 
+class Value;
 class ValueView;
 class ListValue;
 class ListValueView;
@@ -62,10 +63,10 @@ class ListValueInterface : public ValueInterface {
   virtual absl::StatusOr<JsonArray> ConvertToJsonArray(
       AnyToJsonConverter& converter) const = 0;
 
-  using ForEachCallback = absl::FunctionRef<absl::StatusOr<bool>(ValueView)>;
+  using ForEachCallback = absl::FunctionRef<absl::StatusOr<bool>(const Value&)>;
 
   using ForEachWithIndexCallback =
-      absl::FunctionRef<absl::StatusOr<bool>(size_t, ValueView)>;
+      absl::FunctionRef<absl::StatusOr<bool>(size_t, const Value&)>;
 
  protected:
   Type GetTypeImpl(TypeManager& type_manager) const override {

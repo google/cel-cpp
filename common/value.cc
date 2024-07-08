@@ -226,11 +226,11 @@ absl::StatusOr<Json> Value::ConvertToJson(
       variant_);
 }
 
-absl::Status Value::Equal(ValueManager& value_manager, ValueView other,
+absl::Status Value::Equal(ValueManager& value_manager, const Value& other,
                           Value& result) const {
   AssertIsValid();
   return absl::visit(
-      [&value_manager, other,
+      [&value_manager, &other,
        &result](const auto& alternative) -> absl::Status {
         if constexpr (std::is_same_v<
                           absl::remove_cvref_t<decltype(alternative)>,
@@ -246,7 +246,7 @@ absl::Status Value::Equal(ValueManager& value_manager, ValueView other,
 }
 
 absl::StatusOr<Value> Value::Equal(ValueManager& value_manager,
-                                   ValueView other) const {
+                                   const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
@@ -477,7 +477,7 @@ absl::Status ValueView::Equal(ValueManager& value_manager, ValueView other,
           // builds we cannot reach here.
           return absl::InternalError("use of invalid ValueView");
         } else {
-          return alternative.Equal(value_manager, other, result);
+          return alternative.Equal(value_manager, Value(other), result);
         }
       },
       variant_);
@@ -539,7 +539,7 @@ common_internal::ValueVariant ValueView::ToVariant() const {
 }
 
 absl::StatusOr<Value> BytesValue::Equal(ValueManager& value_manager,
-                                        ValueView other) const {
+                                        const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
@@ -553,7 +553,7 @@ absl::StatusOr<Value> BytesValueView::Equal(ValueManager& value_manager,
 }
 
 absl::StatusOr<Value> ErrorValue::Equal(ValueManager& value_manager,
-                                        ValueView other) const {
+                                        const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
@@ -567,7 +567,7 @@ absl::StatusOr<Value> ErrorValueView::Equal(ValueManager& value_manager,
 }
 
 absl::StatusOr<Value> ListValue::Equal(ValueManager& value_manager,
-                                       ValueView other) const {
+                                       const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
@@ -581,7 +581,7 @@ absl::StatusOr<Value> ListValueView::Equal(ValueManager& value_manager,
 }
 
 absl::StatusOr<Value> MapValue::Equal(ValueManager& value_manager,
-                                      ValueView other) const {
+                                      const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
@@ -595,7 +595,7 @@ absl::StatusOr<Value> MapValueView::Equal(ValueManager& value_manager,
 }
 
 absl::StatusOr<Value> OpaqueValue::Equal(ValueManager& value_manager,
-                                         ValueView other) const {
+                                         const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
@@ -609,7 +609,7 @@ absl::StatusOr<Value> OpaqueValueView::Equal(ValueManager& value_manager,
 }
 
 absl::StatusOr<Value> StringValue::Equal(ValueManager& value_manager,
-                                         ValueView other) const {
+                                         const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
@@ -623,7 +623,7 @@ absl::StatusOr<Value> StringValueView::Equal(ValueManager& value_manager,
 }
 
 absl::StatusOr<Value> StructValue::Equal(ValueManager& value_manager,
-                                         ValueView other) const {
+                                         const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
@@ -637,7 +637,7 @@ absl::StatusOr<Value> StructValueView::Equal(ValueManager& value_manager,
 }
 
 absl::StatusOr<Value> TypeValue::Equal(ValueManager& value_manager,
-                                       ValueView other) const {
+                                       const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
@@ -651,7 +651,7 @@ absl::StatusOr<Value> TypeValueView::Equal(ValueManager& value_manager,
 }
 
 absl::StatusOr<Value> UnknownValue::Equal(ValueManager& value_manager,
-                                          ValueView other) const {
+                                          const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
@@ -709,20 +709,20 @@ absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> ListValue::NewIterator(
       variant_);
 }
 
-absl::Status ListValue::Equal(ValueManager& value_manager, ValueView other,
+absl::Status ListValue::Equal(ValueManager& value_manager, const Value& other,
                               Value& result) const {
   return absl::visit(
-      [&value_manager, other,
+      [&value_manager, &other,
        &result](const auto& alternative) -> absl::Status {
         return alternative.Equal(value_manager, other, result);
       },
       variant_);
 }
 
-absl::Status ListValue::Contains(ValueManager& value_manager, ValueView other,
-                                 Value& result) const {
+absl::Status ListValue::Contains(ValueManager& value_manager,
+                                 const Value& other, Value& result) const {
   return absl::visit(
-      [&value_manager, other,
+      [&value_manager, &other,
        &result](const auto& alternative) -> absl::Status {
         return alternative.Contains(value_manager, other, result);
       },
@@ -730,7 +730,7 @@ absl::Status ListValue::Contains(ValueManager& value_manager, ValueView other,
 }
 
 absl::StatusOr<Value> ListValue::Contains(ValueManager& value_manager,
-                                          ValueView other) const {
+                                          const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Contains(value_manager, other, result));
   return result;
@@ -805,26 +805,26 @@ absl::StatusOr<Value> ListValueView::Contains(ValueManager& value_manager,
   return result;
 }
 
-absl::Status MapValue::Get(ValueManager& value_manager, ValueView key,
+absl::Status MapValue::Get(ValueManager& value_manager, const Value& key,
                            Value& result) const {
   return absl::visit(
-      [&value_manager, key, &result](const auto& alternative) -> absl::Status {
+      [&value_manager, &key, &result](const auto& alternative) -> absl::Status {
         return alternative.Get(value_manager, key, result);
       },
       variant_);
 }
 
 absl::StatusOr<Value> MapValue::Get(ValueManager& value_manager,
-                                    ValueView key) const {
+                                    const Value& key) const {
   Value result;
   CEL_RETURN_IF_ERROR(Get(value_manager, key, result));
   return result;
 }
 
-absl::StatusOr<bool> MapValue::Find(ValueManager& value_manager, ValueView key,
-                                    Value& result) const {
+absl::StatusOr<bool> MapValue::Find(ValueManager& value_manager,
+                                    const Value& key, Value& result) const {
   return absl::visit(
-      [&value_manager, key,
+      [&value_manager, &key,
        &result](const auto& alternative) -> absl::StatusOr<bool> {
         return alternative.Find(value_manager, key, result);
       },
@@ -832,23 +832,23 @@ absl::StatusOr<bool> MapValue::Find(ValueManager& value_manager, ValueView key,
 }
 
 absl::StatusOr<std::pair<Value, bool>> MapValue::Find(
-    ValueManager& value_manager, ValueView key) const {
+    ValueManager& value_manager, const Value& key) const {
   Value result;
   CEL_ASSIGN_OR_RETURN(auto ok, Find(value_manager, key, result));
   return std::pair{std::move(result), ok};
 }
 
-absl::Status MapValue::Has(ValueManager& value_manager, ValueView key,
+absl::Status MapValue::Has(ValueManager& value_manager, const Value& key,
                            Value& result) const {
   return absl::visit(
-      [&value_manager, key, &result](const auto& alternative) -> absl::Status {
+      [&value_manager, &key, &result](const auto& alternative) -> absl::Status {
         return alternative.Has(value_manager, key, result);
       },
       variant_);
 }
 
 absl::StatusOr<Value> MapValue::Has(ValueManager& value_manager,
-                                    ValueView key) const {
+                                    const Value& key) const {
   Value result;
   CEL_RETURN_IF_ERROR(Has(value_manager, key, result));
   return result;
@@ -889,10 +889,10 @@ absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> MapValue::NewIterator(
       variant_);
 }
 
-absl::Status MapValue::Equal(ValueManager& value_manager, ValueView other,
+absl::Status MapValue::Equal(ValueManager& value_manager, const Value& other,
                              Value& result) const {
   return absl::visit(
-      [&value_manager, other,
+      [&value_manager, &other,
        &result](const auto& alternative) -> absl::Status {
         return alternative.Equal(value_manager, other, result);
       },
@@ -1047,11 +1047,11 @@ absl::StatusOr<Value> StructValue::GetFieldByNumber(
   return result;
 }
 
-absl::Status StructValue::Equal(ValueManager& value_manager, ValueView other,
+absl::Status StructValue::Equal(ValueManager& value_manager, const Value& other,
                                 Value& result) const {
   AssertIsValid();
   return absl::visit(
-      [&value_manager, other,
+      [&value_manager, &other,
        &result](const auto& alternative) -> absl::Status {
         if constexpr (std::is_same_v<
                           absl::remove_cvref_t<decltype(alternative)>,

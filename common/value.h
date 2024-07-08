@@ -217,10 +217,10 @@ class Value final {
 
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const;
 
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
+                              const Value& other) const;
 
   bool IsZeroValue() const;
 
@@ -937,13 +937,13 @@ ParsedListValue::NewIterator(ValueManager& value_manager) const {
 }
 
 inline absl::Status ParsedListValue::Equal(ValueManager& value_manager,
-                                           ValueView other,
+                                           const Value& other,
                                            Value& result) const {
   return interface_->Equal(value_manager, other, result);
 }
 
 inline absl::Status ParsedListValue::Contains(ValueManager& value_manager,
-                                              ValueView other,
+                                              const Value& other,
                                               Value& result) const {
   return interface_->Contains(value_manager, other, result);
 }
@@ -972,24 +972,25 @@ ParsedListValueView::NewIterator(ValueManager& value_manager) const {
 inline absl::Status ParsedListValueView::Equal(ValueManager& value_manager,
                                                ValueView other,
                                                Value& result) const {
-  return interface_->Equal(value_manager, other, result);
+  return interface_->Equal(value_manager, Value(other), result);
 }
 
 inline absl::Status ParsedListValueView::Contains(ValueManager& value_manager,
                                                   ValueView other,
                                                   Value& result) const {
-  return interface_->Contains(value_manager, other, result);
+  return interface_->Contains(value_manager, Value(other), result);
 }
 
 inline absl::Status OpaqueValue::Equal(ValueManager& value_manager,
-                                       ValueView other, Value& result) const {
+                                       const Value& other,
+                                       Value& result) const {
   return interface_->Equal(value_manager, other, result);
 }
 
 inline absl::Status OpaqueValueView::Equal(ValueManager& value_manager,
                                            ValueView other,
                                            Value& result) const {
-  return interface_->Equal(value_manager, other, result);
+  return interface_->Equal(value_manager, Value(other), result);
 }
 
 inline cel::Value OptionalValueInterface::Value() const {
@@ -1019,18 +1020,18 @@ inline void OptionalValueView::Value(cel::Value& result) const {
 inline cel::Value OptionalValueView::Value() const { return (*this)->Value(); }
 
 inline absl::Status ParsedMapValue::Get(ValueManager& value_manager,
-                                        ValueView key, Value& result) const {
+                                        const Value& key, Value& result) const {
   return interface_->Get(value_manager, key, result);
 }
 
 inline absl::StatusOr<bool> ParsedMapValue::Find(ValueManager& value_manager,
-                                                 ValueView key,
+                                                 const Value& key,
                                                  Value& result) const {
   return interface_->Find(value_manager, key, result);
 }
 
 inline absl::Status ParsedMapValue::Has(ValueManager& value_manager,
-                                        ValueView key, Value& result) const {
+                                        const Value& key, Value& result) const {
   return interface_->Has(value_manager, key, result);
 }
 
@@ -1050,7 +1051,7 @@ ParsedMapValue::NewIterator(ValueManager& value_manager) const {
 }
 
 inline absl::Status ParsedMapValue::Equal(ValueManager& value_manager,
-                                          ValueView other,
+                                          const Value& other,
                                           Value& result) const {
   return interface_->Equal(value_manager, other, result);
 }
@@ -1058,18 +1059,18 @@ inline absl::Status ParsedMapValue::Equal(ValueManager& value_manager,
 inline absl::Status ParsedMapValueView::Get(ValueManager& value_manager,
                                             ValueView key,
                                             Value& result) const {
-  return interface_->Get(value_manager, key, result);
+  return interface_->Get(value_manager, Value(key), result);
 }
 
 inline absl::StatusOr<bool> ParsedMapValueView::Find(
     ValueManager& value_manager, ValueView key, Value& result) const {
-  return interface_->Find(value_manager, key, result);
+  return interface_->Find(value_manager, Value(key), result);
 }
 
 inline absl::Status ParsedMapValueView::Has(ValueManager& value_manager,
                                             ValueView key,
                                             Value& result) const {
-  return interface_->Has(value_manager, key, result);
+  return interface_->Has(value_manager, Value(key), result);
 }
 
 inline absl::Status ParsedMapValueView::ListKeys(ValueManager& value_manager,
@@ -1090,7 +1091,7 @@ ParsedMapValueView::NewIterator(ValueManager& value_manager) const {
 inline absl::Status ParsedMapValueView::Equal(ValueManager& value_manager,
                                               ValueView other,
                                               Value& result) const {
-  return interface_->Equal(value_manager, other, result);
+  return interface_->Equal(value_manager, Value(other), result);
 }
 
 inline absl::Status ParsedStructValue::GetFieldByName(
@@ -1108,7 +1109,7 @@ inline absl::Status ParsedStructValue::GetFieldByNumber(
 }
 
 inline absl::Status ParsedStructValue::Equal(ValueManager& value_manager,
-                                             ValueView other,
+                                             const Value& other,
                                              Value& result) const {
   return interface_->Equal(value_manager, other, result);
 }
@@ -1141,7 +1142,7 @@ inline absl::Status ParsedStructValueView::GetFieldByNumber(
 inline absl::Status ParsedStructValueView::Equal(ValueManager& value_manager,
                                                  ValueView other,
                                                  Value& result) const {
-  return interface_->Equal(value_manager, other, result);
+  return interface_->Equal(value_manager, Value(other), result);
 }
 
 inline absl::Status ParsedStructValueView::ForEachField(

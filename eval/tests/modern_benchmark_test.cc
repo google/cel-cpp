@@ -411,9 +411,9 @@ class RequestMapImpl : public ParsedMapValueInterface {
  protected:
   // Called by `Find` after performing various argument checks.
   absl::StatusOr<bool> FindImpl(
-      ValueManager& value_manager, ValueView key,
+      ValueManager& value_manager, const Value& key,
       Value& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const override {
-    auto string_value = As<StringValueView>(key);
+    auto string_value = As<StringValue>(key);
     if (!string_value) {
       return false;
     }
@@ -431,7 +431,7 @@ class RequestMapImpl : public ParsedMapValueInterface {
 
   // Called by `Has` after performing various argument checks.
   absl::StatusOr<bool> HasImpl(ValueManager& value_manager,
-                               ValueView key) const override {
+                               const Value& key) const override {
     return absl::UnimplementedError("Unsupported.");
   }
 

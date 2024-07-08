@@ -32,7 +32,7 @@
 
 namespace cel {
 
-class ValueView;
+class Value;
 class MapValue;
 class MapValueView;
 
@@ -62,7 +62,7 @@ class MapValueInterface : public ValueInterface {
       AnyToJsonConverter& converter) const = 0;
 
   using ForEachCallback =
-      absl::FunctionRef<absl::StatusOr<bool>(ValueView, ValueView)>;
+      absl::FunctionRef<absl::StatusOr<bool>(const Value&, const Value&)>;
 
  protected:
   Type GetTypeImpl(TypeManager& type_manager) const override {

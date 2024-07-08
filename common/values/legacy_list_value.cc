@@ -57,7 +57,7 @@ using LegacyListValue_NewIterator =
     absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> (*)(uintptr_t,
                                                         ValueManager&);
 using LegacyListValue_Contains = absl::Status (*)(uintptr_t, ValueManager&,
-                                                  ValueView, Value&);
+                                                  const Value&, Value&);
 
 ABSL_CONST_INIT struct {
   absl::once_flag init_once;
@@ -105,7 +105,8 @@ cel_common_internal_LegacyListValue_NewIterator(uintptr_t impl,
 extern "C" ABSL_ATTRIBUTE_WEAK absl::Status
 cel_common_internal_LegacyListValue_Contains(uintptr_t impl,
                                              ValueManager& value_manager,
-                                             ValueView other, Value& scratch);
+                                             const Value& other,
+                                             Value& scratch);
 #endif
 
 void InitializeLegacyListValue() {
@@ -238,10 +239,11 @@ absl::Status LegacyListValue::Get(ValueManager& value_manager, size_t index,
 
 absl::Status LegacyListValue::ForEach(ValueManager& value_manager,
                                       ForEachCallback callback) const {
-  return ForEach(value_manager,
-                 [callback](size_t, ValueView value) -> absl::StatusOr<bool> {
-                   return callback(value);
-                 });
+  return ForEach(
+      value_manager,
+      [callback](size_t, const Value& value) -> absl::StatusOr<bool> {
+        return callback(value);
+      });
 }
 
 absl::Status LegacyListValue::ForEach(ValueManager& value_manager,
@@ -257,16 +259,17 @@ absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyListValue::NewIterator(
 }
 
 absl::Status LegacyListValue::Equal(ValueManager& value_manager,
-                                    ValueView other, Value& result) const {
-  if (auto list_value = As<ListValueView>(other); list_value.has_value()) {
+                                    const Value& other, Value& result) const {
+  if (auto list_value = As<ListValue>(other); list_value.has_value()) {
     return ListValueEqual(value_manager, *this, *list_value, result);
   }
-  result = BoolValueView{false};
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 
 absl::Status LegacyListValue::Contains(ValueManager& value_manager,
-                                       ValueView other, Value& result) const {
+                                       const Value& other,
+                                       Value& result) const {
   InitializeLegacyListValue();
   return (*legacy_list_value_vtable.contains)(impl_, value_manager, other,
                                               result);
@@ -343,10 +346,11 @@ absl::Status LegacyListValueView::Get(ValueManager& value_manager, size_t index,
 
 absl::Status LegacyListValueView::ForEach(ValueManager& value_manager,
                                           ForEachCallback callback) const {
-  return ForEach(value_manager,
-                 [callback](size_t, ValueView value) -> absl::StatusOr<bool> {
-                   return callback(value);
-                 });
+  return ForEach(
+      value_manager,
+      [callback](size_t, const Value& value) -> absl::StatusOr<bool> {
+        return callback(value);
+      });
 }
 
 absl::Status LegacyListValueView::ForEach(
@@ -364,9 +368,10 @@ LegacyListValueView::NewIterator(ValueManager& value_manager) const {
 absl::Status LegacyListValueView::Equal(ValueManager& value_manager,
                                         ValueView other, Value& result) const {
   if (auto list_value = As<ListValueView>(other); list_value.has_value()) {
-    return ListValueEqual(value_manager, *this, *list_value, result);
+    return ListValueEqual(value_manager, ListValue(*this),
+                          ListValue(*list_value), result);
   }
-  result = BoolValueView{false};
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 
@@ -374,8 +379,8 @@ absl::Status LegacyListValueView::Contains(ValueManager& value_manager,
                                            ValueView other,
                                            Value& result) const {
   InitializeLegacyListValue();
-  return (*legacy_list_value_vtable.contains)(impl_, value_manager, other,
-                                              result);
+  return (*legacy_list_value_vtable.contains)(impl_, value_manager,
+                                              Value(other), result);
 }
 
 }  // namespace cel::common_internal

@@ -77,10 +77,11 @@ absl::Status ParsedListValueInterface::Get(ValueManager& value_manager,
 
 absl::Status ParsedListValueInterface::ForEach(ValueManager& value_manager,
                                                ForEachCallback callback) const {
-  return ForEach(value_manager,
-                 [callback](size_t, ValueView value) -> absl::StatusOr<bool> {
-                   return callback(value);
-                 });
+  return ForEach(
+      value_manager,
+      [callback](size_t, const Value& value) -> absl::StatusOr<bool> {
+        return callback(value);
+      });
 }
 
 absl::Status ParsedListValueInterface::ForEach(
@@ -104,9 +105,9 @@ ParsedListValueInterface::NewIterator(ValueManager& value_manager) const {
 }
 
 absl::Status ParsedListValueInterface::Equal(ValueManager& value_manager,
-                                             ValueView other,
+                                             const Value& other,
                                              Value& result) const {
-  if (auto list_value = As<ListValueView>(other); list_value.has_value()) {
+  if (auto list_value = As<ListValue>(other); list_value.has_value()) {
     return ListValueEqual(value_manager, *this, *list_value, result);
   }
   result = BoolValueView{false};
@@ -114,14 +115,14 @@ absl::Status ParsedListValueInterface::Equal(ValueManager& value_manager,
 }
 
 absl::Status ParsedListValueInterface::Contains(ValueManager& value_manager,
-                                                ValueView other,
+                                                const Value& other,
                                                 Value& result) const {
   Value outcome = BoolValue(false);
   Value equal;
   CEL_RETURN_IF_ERROR(
       ForEach(value_manager,
               [&value_manager, other, &outcome,
-               &equal](ValueView element) -> absl::StatusOr<bool> {
+               &equal](const Value& element) -> absl::StatusOr<bool> {
                 CEL_RETURN_IF_ERROR(element.Equal(value_manager, other, equal));
                 if (auto bool_result = As<BoolValue>(equal);
                     bool_result.has_value() && bool_result->NativeValue()) {
