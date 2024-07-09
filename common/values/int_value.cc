@@ -78,22 +78,22 @@ absl::StatusOr<Json> IntValueBase::ConvertToJson(AnyToJsonConverter&) const {
 absl::Status IntValueBase::Equal(ValueManager&, const Value& other,
                                  Value& result) const {
   if (auto other_value = As<IntValue>(other); other_value.has_value()) {
-    result = BoolValueView{NativeValue() == other_value->NativeValue()};
+    result = BoolValue{NativeValue() == other_value->NativeValue()};
     return absl::OkStatus();
   }
   if (auto other_value = As<DoubleValue>(other); other_value.has_value()) {
     result =
-        BoolValueView{internal::Number::FromInt64(NativeValue()) ==
-                      internal::Number::FromDouble(other_value->NativeValue())};
+        BoolValue{internal::Number::FromInt64(NativeValue()) ==
+                  internal::Number::FromDouble(other_value->NativeValue())};
     return absl::OkStatus();
   }
   if (auto other_value = As<UintValue>(other); other_value.has_value()) {
     result =
-        BoolValueView{internal::Number::FromInt64(NativeValue()) ==
-                      internal::Number::FromUint64(other_value->NativeValue())};
+        BoolValue{internal::Number::FromInt64(NativeValue()) ==
+                  internal::Number::FromUint64(other_value->NativeValue())};
     return absl::OkStatus();
   }
-  result = BoolValueView{false};
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 

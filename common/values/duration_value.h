@@ -22,7 +22,6 @@
 #include <ostream>
 #include <string>
 
-#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -36,10 +35,8 @@
 namespace cel {
 
 class Value;
-class ValueView;
 class ValueManager;
 class DurationValue;
-class DurationValueView;
 class TypeManager;
 
 namespace common_internal {
@@ -102,8 +99,6 @@ class DurationValue final : private common_internal::DurationValueBase {
   using Base = DurationValueBase;
 
  public:
-  using view_alternative_type = DurationValueView;
-
   using Base::kKind;
 
   DurationValue() = default;
@@ -114,8 +109,6 @@ class DurationValue final : private common_internal::DurationValueBase {
 
   constexpr explicit DurationValue(absl::Duration value) noexcept
       : Base(value) {}
-
-  constexpr explicit DurationValue(DurationValueView other) noexcept;
 
   using Base::kind;
 
@@ -149,9 +142,6 @@ class DurationValue final : private common_internal::DurationValueBase {
     using std::swap;
     swap(lhs.value, rhs.value);
   }
-
- private:
-  friend class DurationValueView;
 };
 
 inline bool operator==(DurationValue lhs, DurationValue rhs) {
@@ -165,80 +155,6 @@ inline bool operator!=(DurationValue lhs, DurationValue rhs) {
 inline std::ostream& operator<<(std::ostream& out, DurationValue value) {
   return out << value.DebugString();
 }
-
-class DurationValueView final : private common_internal::DurationValueBase {
- private:
-  using Base = DurationValueBase;
-
- public:
-  using alternative_type = DurationValue;
-
-  using Base::kKind;
-
-  DurationValueView() = default;
-  DurationValueView(const DurationValueView&) = default;
-  DurationValueView(DurationValueView&&) = default;
-  DurationValueView& operator=(const DurationValueView&) = default;
-  DurationValueView& operator=(DurationValueView&&) = default;
-
-  constexpr explicit DurationValueView(absl::Duration value) noexcept
-      : Base(value) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr DurationValueView(DurationValue other) noexcept
-      : DurationValueView(static_cast<absl::Duration>(other)) {}
-
-  using Base::kind;
-
-  using Base::GetType;
-
-  using Base::GetTypeName;
-
-  using Base::DebugString;
-
-  using Base::GetSerializedSize;
-
-  using Base::SerializeTo;
-
-  using Base::Serialize;
-
-  using Base::GetTypeUrl;
-
-  using Base::ConvertToAny;
-
-  using Base::ConvertToJson;
-
-  using Base::Equal;
-
-  using Base::IsZeroValue;
-
-  using Base::NativeValue;
-
-  using Base::operator absl::Duration;
-
-  friend void swap(DurationValueView& lhs, DurationValueView& rhs) noexcept {
-    using std::swap;
-    swap(lhs.value, rhs.value);
-  }
-
- private:
-  friend class DurationValue;
-};
-
-inline bool operator==(DurationValueView lhs, DurationValueView rhs) {
-  return static_cast<absl::Duration>(lhs) == static_cast<absl::Duration>(rhs);
-}
-
-inline bool operator!=(DurationValueView lhs, DurationValueView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-inline std::ostream& operator<<(std::ostream& out, DurationValueView value) {
-  return out << value.DebugString();
-}
-
-inline constexpr DurationValue::DurationValue(DurationValueView other) noexcept
-    : DurationValue(static_cast<absl::Duration>(other)) {}
 
 }  // namespace cel
 

@@ -34,7 +34,7 @@
 #include "common/value_manager.h"
 #include "common/values/map_value_interface.h"
 #include "common/values/values.h"
-#include "internal/dynamic_loader.h"
+#include "internal/dynamic_loader.h"  // IWYU pragma: keep
 #include "internal/status_macros.h"
 
 namespace cel::common_internal {
@@ -287,115 +287,7 @@ absl::Status LegacyMapValue::Equal(ValueManager& value_manager,
   if (auto map_value = As<MapValue>(other); map_value.has_value()) {
     return MapValueEqual(value_manager, *this, *map_value, result);
   }
-  result = BoolValueView{false};
-  return absl::OkStatus();
-}
-
-MapType LegacyMapValueView::GetType(TypeManager& type_manager) const {
-  InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.get_type)(impl_, type_manager);
-}
-
-std::string LegacyMapValueView::DebugString() const {
-  InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.debug_string)(impl_);
-}
-
-absl::StatusOr<size_t> LegacyMapValueView::GetSerializedSize(
-    AnyToJsonConverter&) const {
-  InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.get_serialized_size)(impl_);
-}
-
-absl::Status LegacyMapValueView::SerializeTo(AnyToJsonConverter&,
-                                             absl::Cord& value) const {
-  InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.serialize_to)(impl_, value);
-}
-
-// See `ValueInterface::Serialize`.
-absl::StatusOr<absl::Cord> LegacyMapValueView::Serialize(
-    AnyToJsonConverter& value_manager) const {
-  absl::Cord serialized_value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, serialized_value));
-  return serialized_value;
-}
-
-absl::StatusOr<std::string> LegacyMapValueView::GetTypeUrl(
-    absl::string_view prefix) const {
-  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Struct");
-}
-
-absl::StatusOr<Any> LegacyMapValueView::ConvertToAny(
-    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
-  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
-  return MakeAny(std::move(type_url), std::move(value));
-}
-
-absl::StatusOr<JsonObject> LegacyMapValueView::ConvertToJsonObject(
-    AnyToJsonConverter&) const {
-  InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.convert_to_json_object)(impl_);
-}
-
-bool LegacyMapValueView::IsEmpty() const {
-  InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.is_empty)(impl_);
-}
-
-size_t LegacyMapValueView::Size() const {
-  InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.size)(impl_);
-}
-
-absl::Status LegacyMapValueView::Get(ValueManager& value_manager, ValueView key,
-                                     Value& result) const {
-  InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.get)(impl_, value_manager, Value(key),
-                                        result);
-}
-
-absl::StatusOr<bool> LegacyMapValueView::Find(ValueManager& value_manager,
-                                              ValueView key,
-                                              Value& result) const {
-  InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.find)(impl_, value_manager, Value(key),
-                                         result);
-}
-
-absl::Status LegacyMapValueView::Has(ValueManager& value_manager, ValueView key,
-                                     Value& result) const {
-  InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.has)(impl_, value_manager, Value(key),
-                                        result);
-}
-
-absl::Status LegacyMapValueView::ListKeys(ValueManager& value_manager,
-                                          ListValue& result) const {
-  InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.list_keys)(impl_, value_manager, result);
-}
-
-absl::Status LegacyMapValueView::ForEach(ValueManager& value_manager,
-                                         ForEachCallback callback) const {
-  InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.for_each)(impl_, value_manager, callback);
-}
-
-absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> LegacyMapValueView::NewIterator(
-    ValueManager& value_manager) const {
-  InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.new_iterator)(impl_, value_manager);
-}
-
-absl::Status LegacyMapValueView::Equal(ValueManager& value_manager,
-                                       ValueView other, Value& result) const {
-  if (auto map_value = As<MapValueView>(other); map_value.has_value()) {
-    return MapValueEqual(value_manager, MapValue(*this), MapValue(*map_value),
-                         result);
-  }
-  result = BoolValueView{false};
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 

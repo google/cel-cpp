@@ -142,129 +142,6 @@ absl::StatusOr<size_t> MapValue::Size() const {
       variant_);
 }
 
-common_internal::MapValueViewVariant MapValue::ToViewVariant() const {
-  return absl::visit(
-      [](const auto& alternative) -> common_internal::MapValueViewVariant {
-        return common_internal::MapValueViewVariant{
-            absl::in_place_type<typename absl::remove_cvref_t<
-                decltype(alternative)>::view_alternative_type>,
-            alternative};
-      },
-      variant_);
-}
-
-MapType MapValueView::GetType(TypeManager& type_manager) const {
-  return absl::visit(
-      [&type_manager](auto alternative) -> MapType {
-        return alternative.GetType(type_manager);
-      },
-      variant_);
-}
-
-absl::string_view MapValueView::GetTypeName() const {
-  return absl::visit(
-      [](auto alternative) -> absl::string_view {
-        return alternative.GetTypeName();
-      },
-      variant_);
-}
-
-std::string MapValueView::DebugString() const {
-  return absl::visit(
-      [](auto alternative) -> std::string { return alternative.DebugString(); },
-      variant_);
-}
-
-absl::StatusOr<size_t> MapValueView::GetSerializedSize(
-    AnyToJsonConverter& converter) const {
-  return absl::visit(
-      [&converter](auto alternative) -> absl::StatusOr<size_t> {
-        return alternative.GetSerializedSize(converter);
-      },
-      variant_);
-}
-
-absl::Status MapValueView::SerializeTo(AnyToJsonConverter& converter,
-                                       absl::Cord& value) const {
-  return absl::visit(
-      [&converter, &value](auto alternative) -> absl::Status {
-        return alternative.SerializeTo(converter, value);
-      },
-      variant_);
-}
-
-absl::StatusOr<absl::Cord> MapValueView::Serialize(
-    AnyToJsonConverter& converter) const {
-  return absl::visit(
-      [&converter](auto alternative) -> absl::StatusOr<absl::Cord> {
-        return alternative.Serialize(converter);
-      },
-      variant_);
-}
-
-absl::StatusOr<std::string> MapValueView::GetTypeUrl(
-    absl::string_view prefix) const {
-  return absl::visit(
-      [prefix](auto alternative) -> absl::StatusOr<std::string> {
-        return alternative.GetTypeUrl(prefix);
-      },
-      variant_);
-}
-
-absl::StatusOr<Any> MapValueView::ConvertToAny(AnyToJsonConverter& converter,
-                                               absl::string_view prefix) const {
-  return absl::visit(
-      [&converter, prefix](auto alternative) -> absl::StatusOr<Any> {
-        return alternative.ConvertToAny(converter, prefix);
-      },
-      variant_);
-}
-
-absl::StatusOr<Json> MapValueView::ConvertToJson(
-    AnyToJsonConverter& converter) const {
-  return absl::visit(
-      [&converter](auto alternative) -> absl::StatusOr<Json> {
-        return alternative.ConvertToJson(converter);
-      },
-      variant_);
-}
-
-absl::StatusOr<JsonObject> MapValueView::ConvertToJsonObject(
-    AnyToJsonConverter& converter) const {
-  return absl::visit(
-      [&converter](auto alternative) -> absl::StatusOr<JsonObject> {
-        return alternative.ConvertToJsonObject(converter);
-      },
-      variant_);
-}
-
-bool MapValueView::IsZeroValue() const {
-  return absl::visit(
-      [](auto alternative) -> bool { return alternative.IsZeroValue(); },
-      variant_);
-}
-
-absl::StatusOr<bool> MapValueView::IsEmpty() const {
-  return absl::visit(
-      [](auto alternative) -> bool { return alternative.IsEmpty(); }, variant_);
-}
-
-absl::StatusOr<size_t> MapValueView::Size() const {
-  return absl::visit(
-      [](auto alternative) -> size_t { return alternative.Size(); }, variant_);
-}
-
-common_internal::MapValueVariant MapValueView::ToVariant() const {
-  return absl::visit(
-      [](auto alternative) -> common_internal::MapValueVariant {
-        return common_internal::MapValueVariant{
-            absl::in_place_type<typename absl::remove_cvref_t<
-                decltype(alternative)>::alternative_type>,
-            alternative};
-      },
-      variant_);
-}
-
 namespace common_internal {
 
 absl::Status MapValueEqual(ValueManager& value_manager, const MapValue& lhs,
@@ -301,7 +178,7 @@ absl::Status MapValueEqual(ValueManager& value_manager, const MapValue& lhs,
     }
   }
   ABSL_DCHECK(!lhs_iterator->HasNext());
-  result = BoolValueView{true};
+  result = BoolValue{true};
   return absl::OkStatus();
 }
 
@@ -343,21 +220,6 @@ absl::Status MapValueEqual(ValueManager& value_manager,
 }  // namespace common_internal
 
 absl::Status CheckMapKey(const Value& key) {
-  switch (key.kind()) {
-    case ValueKind::kBool:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kInt:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kUint:
-      ABSL_FALLTHROUGH_INTENDED;
-    case ValueKind::kString:
-      return absl::OkStatus();
-    default:
-      return InvalidMapKeyTypeError(key.kind());
-  }
-}
-
-absl::Status CheckMapKey(ValueView key) {
   switch (key.kind()) {
     case ValueKind::kBool:
       ABSL_FALLTHROUGH_INTENDED;

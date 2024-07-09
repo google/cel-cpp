@@ -51,11 +51,9 @@
 namespace cel {
 
 class Value;
-class ValueView;
 class ParsedListValueInterface;
 class ParsedListValueInterfaceIterator;
 class ParsedListValue;
-class ParsedListValueView;
 class ValueManager;
 
 // `Is` checks whether `lhs` and `rhs` have the same identity.
@@ -64,7 +62,6 @@ bool Is(const ParsedListValue& lhs, const ParsedListValue& rhs);
 class ParsedListValueInterface : public ListValueInterface {
  public:
   using alternative_type = ParsedListValue;
-  using view_alternative_type = ParsedListValueView;
 
   absl::StatusOr<size_t> GetSerializedSize(
       AnyToJsonConverter& converter) const override;
@@ -109,11 +106,8 @@ class ParsedListValueInterface : public ListValueInterface {
 class ParsedListValue {
  public:
   using interface_type = ParsedListValueInterface;
-  using view_alternative_type = ParsedListValueView;
 
   static constexpr ValueKind kKind = ParsedListValueInterface::kKind;
-
-  explicit ParsedListValue(ParsedListValueView value);
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   ParsedListValue(Shared<const ParsedListValueInterface> interface)
@@ -218,7 +212,6 @@ class ParsedListValue {
   }
 
  private:
-  friend class ParsedListValueView;
   friend struct NativeTypeTraits<ParsedListValue>;
   friend bool Is(const ParsedListValue& lhs, const ParsedListValue& rhs);
 
@@ -282,196 +275,12 @@ struct CastTraits<
   }
 };
 
-class ParsedListValueView {
- public:
-  using interface_type = ParsedListValueInterface;
-  using alternative_type = ParsedListValue;
-
-  static constexpr ValueKind kKind = ParsedListValue::kKind;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ParsedListValueView(SharedView<const ParsedListValueInterface> interface)
-      : interface_(interface) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ParsedListValueView(
-      const ParsedListValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : interface_(value.interface_) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ParsedListValueView& operator=(
-      const ParsedListValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    interface_ = value.interface_;
-    return *this;
-  }
-
-  ParsedListValueView& operator=(ParsedListValue&&) = delete;
-
-  // By default, this creates an empty list whose type is `list(dyn)`. Unless
-  // you can help it, you should use a more specific typed list value.
-  ParsedListValueView();
-  ParsedListValueView(const ParsedListValueView&) = default;
-  ParsedListValueView(ParsedListValueView&&) = default;
-  ParsedListValueView& operator=(const ParsedListValueView&) = default;
-  ParsedListValueView& operator=(ParsedListValueView&&) = default;
-
-  constexpr ValueKind kind() const { return kKind; }
-
-  ListType GetType(TypeManager& type_manager) const {
-    return interface_->GetType(type_manager);
-  }
-
-  absl::string_view GetTypeName() const { return interface_->GetTypeName(); }
-
-  std::string DebugString() const { return interface_->DebugString(); }
-
-  // See `ValueInterface::GetSerializedSize`.
-  absl::StatusOr<size_t> GetSerializedSize(
-      AnyToJsonConverter& converter) const {
-    return interface_->GetSerializedSize(converter);
-  }
-
-  // See `ValueInterface::SerializeTo`.
-  absl::Status SerializeTo(AnyToJsonConverter& converter,
-                           absl::Cord& value) const {
-    return interface_->SerializeTo(converter, value);
-  }
-
-  // See `ValueInterface::Serialize`.
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& converter) const {
-    return interface_->Serialize(converter);
-  }
-
-  // See `ValueInterface::GetTypeUrl`.
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
-    return interface_->GetTypeUrl(prefix);
-  }
-
-  // See `ValueInterface::ConvertToAny`.
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter& converter,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
-    return interface_->ConvertToAny(converter, prefix);
-  }
-
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const {
-    return interface_->ConvertToJson(converter);
-  }
-
-  absl::StatusOr<JsonArray> ConvertToJsonArray(
-      AnyToJsonConverter& converter) const {
-    return interface_->ConvertToJsonArray(converter);
-  }
-
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
-                     Value& result) const;
-
-  bool IsZeroValue() const { return interface_->IsZeroValue(); }
-
-  bool IsEmpty() const { return interface_->IsEmpty(); }
-
-  size_t Size() const { return interface_->Size(); }
-
-  // See ListValueInterface::Get for documentation.
-  absl::Status Get(ValueManager& value_manager, size_t index,
-                   Value& result) const;
-
-  using ForEachCallback = typename ListValueInterface::ForEachCallback;
-
-  using ForEachWithIndexCallback =
-      typename ListValueInterface::ForEachWithIndexCallback;
-
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachCallback callback) const;
-
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachWithIndexCallback callback) const;
-
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager& value_manager) const;
-
-  absl::Status Contains(ValueManager& value_manager, ValueView other,
-                        Value& result) const;
-
-  void swap(ParsedListValueView& other) noexcept {
-    using std::swap;
-    swap(interface_, other.interface_);
-  }
-
-  const interface_type& operator*() const { return *interface_; }
-
-  absl::Nonnull<const interface_type*> operator->() const {
-    return interface_.operator->();
-  }
-
- private:
-  friend class ParsedListValue;
-  friend struct NativeTypeTraits<ParsedListValueView>;
-
-  SharedView<const ParsedListValueInterface> interface_;
-};
-
-inline void swap(ParsedListValueView& lhs, ParsedListValueView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline std::ostream& operator<<(std::ostream& out, ParsedListValueView type) {
-  return out << type.DebugString();
-}
-
-template <>
-struct NativeTypeTraits<ParsedListValueView> final {
-  static NativeTypeId Id(ParsedListValueView type) {
-    return NativeTypeId::Of(*type.interface_);
-  }
-};
-
-template <typename T>
-struct NativeTypeTraits<T,
-                        std::enable_if_t<std::conjunction_v<
-                            std::negation<std::is_same<ParsedListValueView, T>>,
-                            std::is_base_of<ParsedListValueView, T>>>>
-    final {
-  static NativeTypeId Id(T type) {
-    return NativeTypeTraits<ParsedListValueView>::Id(type);
-  }
-};
-
 inline ParsedListValue::ParsedListValue()
     : ParsedListValue(common_internal::GetEmptyDynListValue()) {}
-
-inline ParsedListValueView::ParsedListValueView()
-    : ParsedListValueView(common_internal::GetEmptyDynListValue()) {}
-
-inline ParsedListValue::ParsedListValue(ParsedListValueView value)
-    : interface_(value.interface_) {}
 
 inline bool Is(const ParsedListValue& lhs, const ParsedListValue& rhs) {
   return lhs.interface_.operator->() == rhs.interface_.operator->();
 }
-
-// ParsedListValueView -> ListValueViewFor<T>
-template <typename To, typename From>
-struct CastTraits<
-    To, From,
-    std::enable_if_t<std::conjunction_v<
-        std::bool_constant<sizeof(To) == sizeof(absl::remove_cvref_t<From>)>,
-        std::bool_constant<alignof(To) == alignof(absl::remove_cvref_t<From>)>,
-        std::is_same<ParsedListValueView, absl::remove_cvref_t<From>>,
-        std::negation<std::is_same<ParsedListValueView, To>>,
-        std::is_base_of<ParsedListValueView, To>>>>
-    final {
-  static bool Compatible(const absl::remove_cvref_t<From>& from) {
-    return SubsumptionTraits<To>::IsA(from);
-  }
-
-  static decltype(auto) Convert(From from) {
-    // `To` is derived from `From`, `From` is `OpaqueType`, and `To` has the
-    // same size and alignment as `OpaqueType`. We can just reinterpret_cast.
-    return SubsumptionTraits<To>::DownCast(std::move(from));
-  }
-};
 
 }  // namespace cel
 

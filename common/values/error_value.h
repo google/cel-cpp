@@ -19,13 +19,11 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_ERROR_VALUE_H_
 
 #include <cstddef>
-#include <memory>
 #include <ostream>
 #include <string>
 #include <utility>
 
 #include "absl/base/attributes.h"
-#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -39,25 +37,19 @@
 namespace cel {
 
 class Value;
-class ValueView;
 class ValueManager;
 class ErrorValue;
-class ErrorValueView;
 class TypeManager;
 
 // `ErrorValue` represents values of the `ErrorType`.
 class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final {
  public:
-  using view_alternative_type = ErrorValueView;
-
   static constexpr ValueKind kKind = ValueKind::kError;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   ErrorValue(absl::Status value) noexcept : value_(std::move(value)) {
     ABSL_DCHECK(!value_.ok()) << "ErrorValue requires a non-OK absl::Status";
   }
-
-  explicit ErrorValue(ErrorValueView value) noexcept;
 
   // By default, this creates an UNKNOWN error. You should always create a more
   // specific error value.
@@ -129,8 +121,6 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final {
   }
 
  private:
-  friend class ErrorValueView;
-
   absl::Status value_;
 };
 
@@ -152,103 +142,9 @@ inline std::ostream& operator<<(std::ostream& out, const ErrorValue& value) {
   return out << value.DebugString();
 }
 
-class ErrorValueView final {
- public:
-  using alternative_type = ErrorValue;
+bool IsNoSuchField(const ErrorValue& value);
 
-  static constexpr ValueKind kKind = ErrorValue::kKind;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ErrorValueView(
-      const absl::Status& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : value_(std::addressof(value)) {
-    ABSL_DCHECK(!value.ok()) << "ErrorValueView requires a non-OK absl::Status";
-  }
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ErrorValueView(const ErrorValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : value_(std::addressof(value.value_)) {
-    ABSL_DCHECK(!value_->ok()) << "use of moved-from ErrorValue";
-  }
-
-  // By default, this creates an UNKNOWN error. You should always create a more
-  // specific error value.
-  ErrorValueView();
-  ErrorValueView(const ErrorValueView&) = default;
-  ErrorValueView(ErrorValueView&&) = default;
-  ErrorValueView& operator=(const ErrorValueView&) = default;
-  ErrorValueView& operator=(ErrorValueView&&) = default;
-
-  constexpr ValueKind kind() const { return kKind; }
-
-  ErrorType GetType(TypeManager&) const { return ErrorType(); }
-
-  absl::string_view GetTypeName() const { return ErrorType::kName; }
-
-  std::string DebugString() const;
-
-  // `GetSerializedSize` always returns `FAILED_PRECONDITION` as `ErrorValue` is
-  // not serializable.
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
-
-  // `SerializeTo` always returns `FAILED_PRECONDITION` as `ErrorValue` is not
-  // serializable.
-  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
-
-  // `Serialize` always returns `FAILED_PRECONDITION` as `ErrorValue` is not
-  // serializable.
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
-
-  // `GetTypeUrl` always returns `FAILED_PRECONDITION` as `ErrorValue` is not
-  // serializable.
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  // `ConvertToAny` always returns `FAILED_PRECONDITION` as `ErrorValue` is not
-  // serializable.
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter&,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const;
-
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
-                     Value& result) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
-
-  bool IsZeroValue() const { return false; }
-
-  const absl::Status& NativeValue() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    ABSL_DCHECK(!value_->ok()) << "use of moved-from ErrorValue";
-    return *value_;
-  }
-
-  void swap(ErrorValueView& other) noexcept {
-    using std::swap;
-    swap(value_, other.value_);
-  }
-
- private:
-  friend class ErrorValue;
-
-  absl::Nonnull<const absl::Status*> value_;
-};
-
-inline void swap(ErrorValueView& lhs, ErrorValueView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline std::ostream& operator<<(std::ostream& out, ErrorValueView value) {
-  return out << value.DebugString();
-}
-
-bool IsNoSuchField(ErrorValueView value);
-
-bool IsNoSuchKey(ErrorValueView value);
-
-inline ErrorValue::ErrorValue(ErrorValueView value) noexcept
-    : value_(value.NativeValue()) {}
+bool IsNoSuchKey(const ErrorValue& value);
 
 }  // namespace cel
 

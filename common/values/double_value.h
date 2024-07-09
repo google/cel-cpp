@@ -22,7 +22,6 @@
 #include <ostream>
 #include <string>
 
-#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -35,10 +34,8 @@
 namespace cel {
 
 class Value;
-class ValueView;
 class ValueManager;
 class DoubleValue;
-class DoubleValueView;
 class TypeManager;
 
 namespace common_internal {
@@ -108,8 +105,6 @@ class DoubleValue final : private common_internal::DoubleValueBase {
   using Base = DoubleValueBase;
 
  public:
-  using view_alternative_type = DoubleValueView;
-
   using Base::kKind;
 
   DoubleValue() = default;
@@ -119,8 +114,6 @@ class DoubleValue final : private common_internal::DoubleValueBase {
   DoubleValue& operator=(DoubleValue&&) = default;
 
   constexpr explicit DoubleValue(double value) noexcept : Base(value) {}
-
-  constexpr explicit DoubleValue(DoubleValueView other) noexcept;
 
   using Base::kind;
 
@@ -154,79 +147,11 @@ class DoubleValue final : private common_internal::DoubleValueBase {
     using std::swap;
     swap(lhs.value, rhs.value);
   }
-
- private:
-  friend class DoubleValueView;
 };
 
 inline std::ostream& operator<<(std::ostream& out, DoubleValue value) {
   return out << value.DebugString();
 }
-
-class DoubleValueView final : private common_internal::DoubleValueBase {
- private:
-  using Base = DoubleValueBase;
-
- public:
-  using alternative_type = DoubleValue;
-
-  using Base::kKind;
-
-  DoubleValueView() = default;
-  DoubleValueView(const DoubleValueView&) = default;
-  DoubleValueView(DoubleValueView&&) = default;
-  DoubleValueView& operator=(const DoubleValueView&) = default;
-  DoubleValueView& operator=(DoubleValueView&&) = default;
-
-  constexpr explicit DoubleValueView(double value) noexcept : Base(value) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr DoubleValueView(DoubleValue other) noexcept
-      : DoubleValueView(static_cast<double>(other)) {}
-
-  using Base::kind;
-
-  using Base::GetType;
-
-  using Base::GetTypeName;
-
-  using Base::DebugString;
-
-  using Base::GetSerializedSize;
-
-  using Base::SerializeTo;
-
-  using Base::Serialize;
-
-  using Base::GetTypeUrl;
-
-  using Base::ConvertToAny;
-
-  using Base::ConvertToJson;
-
-  using Base::Equal;
-
-  using Base::IsZeroValue;
-
-  using Base::NativeValue;
-
-  using Base::operator double;
-
-  friend void swap(DoubleValueView& lhs, DoubleValueView& rhs) noexcept {
-    using std::swap;
-    swap(lhs.value, rhs.value);
-  }
-
- private:
-  friend class BoolValue;
-};
-
-inline std::ostream& operator<<(std::ostream& out, DoubleValueView value) {
-  return out << value.DebugString();
-}
-
-inline constexpr DoubleValue::DoubleValue(DoubleValueView other) noexcept
-    : DoubleValue(static_cast<double>(other)) {}
 
 }  // namespace cel
 

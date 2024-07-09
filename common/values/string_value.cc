@@ -129,7 +129,7 @@ bool StringValue::Equals(const absl::Cord& string) const {
   });
 }
 
-bool StringValue::Equals(StringValueView string) const {
+bool StringValue::Equals(const StringValue& string) const {
   return string.NativeValue(
       [this](const auto& alternative) -> bool { return Equals(alternative); });
 }
@@ -166,108 +166,7 @@ int StringValue::Compare(const absl::Cord& string) const {
   });
 }
 
-int StringValue::Compare(StringValueView string) const {
-  return string.NativeValue(
-      [this](const auto& alternative) -> int { return Compare(alternative); });
-}
-
-std::string StringValueView::DebugString() const {
-  return StringDebugString(*this);
-}
-
-absl::StatusOr<size_t> StringValueView::GetSerializedSize(
-    AnyToJsonConverter&) const {
-  return NativeValue([](const auto& bytes) -> size_t {
-    return internal::SerializedStringValueSize(bytes);
-  });
-}
-
-absl::Status StringValueView::SerializeTo(AnyToJsonConverter&,
-                                          absl::Cord& value) const {
-  return NativeValue([&value](const auto& bytes) -> absl::Status {
-    return internal::SerializeStringValue(bytes, value);
-  });
-}
-
-absl::StatusOr<absl::Cord> StringValueView::Serialize(
-    AnyToJsonConverter& value_manager) const {
-  absl::Cord value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
-  return value;
-}
-
-absl::StatusOr<std::string> StringValueView::GetTypeUrl(
-    absl::string_view prefix) const {
-  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.StringValue");
-}
-
-absl::StatusOr<Any> StringValueView::ConvertToAny(
-    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
-  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
-  return MakeAny(std::move(type_url), std::move(value));
-}
-
-absl::StatusOr<Json> StringValueView::ConvertToJson(AnyToJsonConverter&) const {
-  return NativeCord();
-}
-
-absl::Status StringValueView::Equal(ValueManager&, ValueView other,
-                                    Value& result) const {
-  if (auto other_value = As<StringValueView>(other); other_value.has_value()) {
-    result = NativeValue([other_value](const auto& value) -> BoolValue {
-      return other_value->NativeValue(
-          [&value](const auto& other_value) -> BoolValue {
-            return BoolValue{value == other_value};
-          });
-    });
-    return absl::OkStatus();
-  }
-  result = BoolValueView{false};
-  return absl::OkStatus();
-}
-
-size_t StringValueView::Size() const {
-  return NativeValue([](const auto& alternative) -> size_t {
-    return internal::Utf8CodePointCount(alternative);
-  });
-}
-
-bool StringValueView::IsEmpty() const {
-  return NativeValue(
-      [](const auto& alternative) -> bool { return alternative.empty(); });
-}
-
-bool StringValueView::Equals(absl::string_view string) const {
-  return NativeValue([string](const auto& alternative) -> bool {
-    return alternative == string;
-  });
-}
-
-bool StringValueView::Equals(const absl::Cord& string) const {
-  return NativeValue([&string](const auto& alternative) -> bool {
-    return alternative == string;
-  });
-}
-
-bool StringValueView::Equals(StringValueView string) const {
-  return string.NativeValue(
-      [this](const auto& alternative) -> bool { return Equals(alternative); });
-}
-
-int StringValueView::Compare(absl::string_view string) const {
-  return NativeValue([string](const auto& alternative) -> int {
-    return CompareImpl(alternative, string);
-  });
-}
-
-int StringValueView::Compare(const absl::Cord& string) const {
-  return NativeValue([&string](const auto& alternative) -> int {
-    return CompareImpl(alternative, string);
-  });
-}
-
-int StringValueView::Compare(StringValueView string) const {
+int StringValue::Compare(const StringValue& string) const {
   return string.NativeValue(
       [this](const auto& alternative) -> int { return Compare(alternative); });
 }

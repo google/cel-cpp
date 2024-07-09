@@ -33,13 +33,10 @@ namespace cel {
 
 class Value;
 class StructValue;
-class StructValueView;
-class ValueView;
 
 class StructValueInterface : public ValueInterface {
  public:
   using alternative_type = StructValue;
-  using view_alternative_type = StructValueView;
 
   static constexpr ValueKind kKind = ValueKind::kStruct;
 

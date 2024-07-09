@@ -1228,11 +1228,9 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
           Cast<DoubleValue>(modern_value).NativeValue());
     case ValueKind::kString: {
       const auto& string_value = Cast<StringValue>(modern_value);
-      if (common_internal::AsSharedByteStringView(string_value)
-              .IsPooledString()) {
+      if (common_internal::AsSharedByteString(string_value).IsPooledString()) {
         return CelValue::CreateStringView(
-            common_internal::AsSharedByteStringView(string_value)
-                .AsStringView());
+            common_internal::AsSharedByteString(string_value).AsStringView());
       }
       return string_value.NativeValue(absl::Overload(
           [arena](absl::string_view string) -> CelValue {
@@ -1246,11 +1244,9 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
     }
     case ValueKind::kBytes: {
       const auto& bytes_value = Cast<BytesValue>(modern_value);
-      if (common_internal::AsSharedByteStringView(bytes_value)
-              .IsPooledString()) {
+      if (common_internal::AsSharedByteString(bytes_value).IsPooledString()) {
         return CelValue::CreateBytesView(
-            common_internal::AsSharedByteStringView(bytes_value)
-                .AsStringView());
+            common_internal::AsSharedByteString(bytes_value).AsStringView());
       }
       return bytes_value.NativeValue(absl::Overload(
           [arena](absl::string_view string) -> CelValue {

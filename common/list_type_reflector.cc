@@ -35,7 +35,7 @@
 #include "common/value.h"
 #include "common/value_factory.h"
 #include "common/value_manager.h"
-#include "internal/dynamic_loader.h"
+#include "internal/dynamic_loader.h"  // IWYU pragma: keep
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -126,7 +126,6 @@ class ListValueBuilderImpl final : public ListValueBuilder {
  public:
   using element_type = std::decay_t<decltype(std::declval<T>().GetType(
       std::declval<TypeManager&>()))>;
-  using element_view_type = typename element_type::view_alternative_type;
 
   static_assert(common_internal::IsValueAlternativeV<T> ||
                     std::is_same_v<T, ListValue> ||

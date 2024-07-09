@@ -22,7 +22,6 @@
 #include <string>
 #include <utility>
 
-#include "absl/base/attributes.h"
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
@@ -50,23 +49,22 @@ class ProcessLocalValueCache final {
  public:
   static absl::Nonnull<const ProcessLocalValueCache*> Get();
 
-  ErrorValueView GetDefaultErrorValue() const;
+  ErrorValue GetDefaultErrorValue() const;
 
-  absl::optional<ParsedListValueView> GetEmptyListValue(
-      ListTypeView type) const;
+  absl::optional<ParsedListValue> GetEmptyListValue(ListTypeView type) const;
 
-  ParsedListValueView GetEmptyDynListValue() const;
+  ParsedListValue GetEmptyDynListValue() const;
 
-  absl::optional<ParsedMapValueView> GetEmptyMapValue(MapTypeView type) const;
+  absl::optional<ParsedMapValue> GetEmptyMapValue(MapTypeView type) const;
 
-  ParsedMapValueView GetEmptyDynDynMapValue() const;
+  ParsedMapValue GetEmptyDynDynMapValue() const;
 
-  ParsedMapValueView GetEmptyStringDynMapValue() const;
+  ParsedMapValue GetEmptyStringDynMapValue() const;
 
-  absl::optional<OptionalValueView> GetEmptyOptionalValue(
+  absl::optional<OptionalValue> GetEmptyOptionalValue(
       OptionalTypeView type) const;
 
-  OptionalValueView GetEmptyDynOptionalValue() const;
+  OptionalValue GetEmptyDynOptionalValue() const;
 
  private:
   friend class absl::NoDestructor<ProcessLocalValueCache>;
@@ -77,10 +75,10 @@ class ProcessLocalValueCache final {
   ListValueCacheMap list_values_;
   MapValueCacheMap map_values_;
   OptionalValueCacheMap optional_values_;
-  absl::optional<ParsedListValueView> dyn_list_value_;
-  absl::optional<ParsedMapValueView> dyn_dyn_map_value_;
-  absl::optional<ParsedMapValueView> string_dyn_map_value_;
-  absl::optional<OptionalValueView> dyn_optional_value_;
+  absl::optional<ParsedListValue> dyn_list_value_;
+  absl::optional<ParsedMapValue> dyn_dyn_map_value_;
+  absl::optional<ParsedMapValue> string_dyn_map_value_;
+  absl::optional<OptionalValue> dyn_optional_value_;
 };
 
 class EmptyListValue final : public ParsedListValueInterface {
@@ -149,7 +147,7 @@ class EmptyMapValue final : public ParsedMapValueInterface {
           "expected cached empty list value to be present in process local "
           "cache");
     }
-    result = ListValue(*list_value);
+    result = *list_value;
     return absl::OkStatus();
   }
 

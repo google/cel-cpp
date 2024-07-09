@@ -34,12 +34,10 @@ namespace cel {
 
 class Value;
 class MapValue;
-class MapValueView;
 
 class MapValueInterface : public ValueInterface {
  public:
   using alternative_type = MapValue;
-  using view_alternative_type = MapValueView;
 
   static constexpr ValueKind kKind = ValueKind::kMap;
 

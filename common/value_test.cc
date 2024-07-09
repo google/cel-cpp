@@ -50,31 +50,5 @@ TEST(Value, NativeValueIdDebugDeath) {
   EXPECT_DEBUG_DEATH(static_cast<void>(NativeTypeId::Of(value)), _);
 }
 
-TEST(ValueView, KindDebugDeath) {
-  ValueView value;
-  static_cast<void>(value);
-  EXPECT_DEBUG_DEATH(static_cast<void>(value.kind()), _);
-}
-
-TEST(ValueView, GetTypeNameDeath) {
-  ValueView value;
-  static_cast<void>(value);
-  EXPECT_DEBUG_DEATH(static_cast<void>(value.GetTypeName()), _);
-}
-
-TEST(ValueView, DebugStringDebugDeath) {
-  ValueView value;
-  static_cast<void>(value);
-  std::ostringstream out;
-  out << value;
-  EXPECT_EQ(out.str(), "default ctor ValueView");
-}
-
-TEST(ValueView, NativeValueIdDebugDeath) {
-  ValueView value;
-  static_cast<void>(value);
-  EXPECT_DEBUG_DEATH(static_cast<void>(NativeTypeId::Of(value)), _);
-}
-
 }  // namespace
 }  // namespace cel

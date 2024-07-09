@@ -41,17 +41,13 @@
 namespace cel {
 
 class Value;
-class ValueView;
 class ValueManager;
 class BytesValue;
-class BytesValueView;
 class TypeManager;
 
 // `BytesValue` represents values of the primitive `bytes` type.
 class BytesValue final {
  public:
-  using view_alternative_type = BytesValueView;
-
   static constexpr ValueKind kKind = ValueKind::kBytes;
 
   explicit BytesValue(absl::Cord value) noexcept : value_(std::move(value)) {}
@@ -79,8 +75,6 @@ class BytesValue final {
                                "chosen when 'data' is a string literal")))
       : value_(absl::string_view(data)) {}
 #endif
-
-  explicit BytesValue(BytesValueView value) noexcept;
 
   BytesValue() = default;
   BytesValue(const BytesValue&) = default;
@@ -150,18 +144,17 @@ class BytesValue final {
 
   bool Equals(absl::string_view bytes) const;
   bool Equals(const absl::Cord& bytes) const;
-  bool Equals(BytesValueView bytes) const;
+  bool Equals(const BytesValue& bytes) const;
 
   int Compare(absl::string_view bytes) const;
   int Compare(const absl::Cord& bytes) const;
-  int Compare(BytesValueView bytes) const;
+  int Compare(const BytesValue& bytes) const;
 
   std::string ToString() const { return NativeString(); }
 
   absl::Cord ToCord() const { return NativeCord(); }
 
  private:
-  friend class BytesValueView;
   friend const common_internal::SharedByteString&
   common_internal::AsSharedByteString(const BytesValue& value);
 
@@ -190,155 +183,9 @@ inline bool operator!=(absl::string_view lhs, const BytesValue& rhs) {
   return rhs != lhs;
 }
 
-class BytesValueView final {
- public:
-  using alternative_type = BytesValue;
-
-  static constexpr ValueKind kKind = BytesValue::kKind;
-
-  explicit BytesValueView(
-      const absl::Cord& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : value_(value) {}
-
-  explicit BytesValueView(absl::string_view value) noexcept : value_(value) {}
-
-  explicit BytesValueView(common_internal::ArenaString value) noexcept
-      : value_(value) {}
-
-  explicit BytesValueView(common_internal::SharedByteStringView value) noexcept
-      : value_(value) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  BytesValueView(const BytesValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : value_(value.value_) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  BytesValueView& operator=(
-      const BytesValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    value_ = value.value_;
-    return *this;
-  }
-
-  BytesValueView& operator=(BytesValue&&) = delete;
-
-  BytesValueView() = default;
-  BytesValueView(const BytesValueView&) = default;
-  BytesValueView(BytesValueView&&) = default;
-  BytesValueView& operator=(const BytesValueView&) = default;
-  BytesValueView& operator=(BytesValueView&&) = default;
-
-  constexpr ValueKind kind() const { return kKind; }
-
-  BytesType GetType(TypeManager&) const { return BytesType(); }
-
-  absl::string_view GetTypeName() const { return BytesType::kName; }
-
-  std::string DebugString() const;
-
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
-
-  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
-
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
-
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter&,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
-
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
-                     Value& result) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
-
-  bool IsZeroValue() const {
-    return NativeValue([](const auto& value) -> bool { return value.empty(); });
-  }
-
-  std::string NativeString() const { return value_.ToString(); }
-
-  absl::string_view NativeString(
-      std::string& scratch
-          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return value_.ToString(scratch);
-  }
-
-  absl::Cord NativeCord() const { return value_.ToCord(); }
-
-  template <typename Visitor>
-  std::common_type_t<std::invoke_result_t<Visitor, absl::string_view>,
-                     std::invoke_result_t<Visitor, const absl::Cord&>>
-  NativeValue(Visitor&& visitor) const {
-    return value_.Visit(std::forward<Visitor>(visitor));
-  }
-
-  void swap(BytesValueView& other) noexcept {
-    using std::swap;
-    swap(value_, other.value_);
-  }
-
-  size_t Size() const;
-
-  bool IsEmpty() const;
-
-  bool Equals(absl::string_view bytes) const;
-  bool Equals(const absl::Cord& bytes) const;
-  bool Equals(BytesValueView bytes) const;
-
-  int Compare(absl::string_view bytes) const;
-  int Compare(const absl::Cord& bytes) const;
-  int Compare(BytesValueView bytes) const;
-
-  std::string ToString() const { return NativeString(); }
-
-  absl::Cord ToCord() const { return NativeCord(); }
-
- private:
-  friend class BytesValue;
-  friend common_internal::SharedByteStringView
-  common_internal::AsSharedByteStringView(BytesValueView value);
-
-  common_internal::SharedByteStringView value_;
-};
-
-inline void swap(BytesValueView& lhs, BytesValueView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline bool operator==(BytesValueView lhs, absl::string_view rhs) {
-  return lhs.Equals(rhs);
-}
-
-inline bool operator==(absl::string_view lhs, BytesValueView rhs) {
-  return rhs == lhs;
-}
-
-inline bool operator!=(BytesValueView lhs, absl::string_view rhs) {
-  return !lhs.Equals(rhs);
-}
-
-inline bool operator!=(absl::string_view lhs, BytesValueView rhs) {
-  return rhs != lhs;
-}
-
-inline std::ostream& operator<<(std::ostream& out, BytesValueView value) {
-  return out << value.DebugString();
-}
-
-inline BytesValue::BytesValue(BytesValueView value) noexcept
-    : value_(value.value_) {}
-
 namespace common_internal {
 
 inline const SharedByteString& AsSharedByteString(const BytesValue& value) {
-  return value.value_;
-}
-
-inline SharedByteStringView AsSharedByteStringView(BytesValueView value) {
   return value.value_;
 }
 

@@ -42,21 +42,17 @@
 namespace cel {
 
 class Value;
-class ValueView;
 class ValueManager;
 class StringValue;
-class StringValueView;
 class TypeManager;
 
 // `StringValue` represents values of the primitive `string` type.
 class StringValue final {
  public:
-  using view_alternative_type = StringValueView;
-
   static constexpr ValueKind kKind = ValueKind::kString;
 
-  static StringValue Concat(ValueManager&, StringValueView lhs,
-                            StringValueView rhs);
+  static StringValue Concat(ValueManager&, const StringValue& lhs,
+                            const StringValue& rhs);
 
   explicit StringValue(absl::Cord value) noexcept : value_(std::move(value)) {}
 
@@ -83,8 +79,6 @@ class StringValue final {
                                "chosen when 'data' is a string literal")))
       : value_(absl::string_view(data)) {}
 #endif
-
-  explicit StringValue(StringValueView value) noexcept;
 
   StringValue() = default;
   StringValue(const StringValue&) = default;
@@ -152,11 +146,11 @@ class StringValue final {
 
   bool Equals(absl::string_view string) const;
   bool Equals(const absl::Cord& string) const;
-  bool Equals(StringValueView string) const;
+  bool Equals(const StringValue& string) const;
 
   int Compare(absl::string_view string) const;
   int Compare(const absl::Cord& string) const;
-  int Compare(StringValueView string) const;
+  int Compare(const StringValue& string) const;
 
   std::string ToString() const { return NativeString(); }
 
@@ -176,7 +170,6 @@ class StringValue final {
   }
 
  private:
-  friend class StringValueView;
   friend const common_internal::SharedByteString&
   common_internal::AsSharedByteString(const StringValue& value);
 
@@ -193,6 +186,14 @@ inline bool operator==(absl::string_view lhs, const StringValue& rhs) {
   return rhs == lhs;
 }
 
+inline bool operator==(const StringValue& lhs, const absl::Cord& rhs) {
+  return lhs.Equals(rhs);
+}
+
+inline bool operator==(const absl::Cord& lhs, const StringValue& rhs) {
+  return rhs == lhs;
+}
+
 inline bool operator!=(const StringValue& lhs, absl::string_view rhs) {
   return !operator==(lhs, rhs);
 }
@@ -201,208 +202,40 @@ inline bool operator!=(absl::string_view lhs, const StringValue& rhs) {
   return !operator==(lhs, rhs);
 }
 
+inline bool operator!=(const StringValue& lhs, const absl::Cord& rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline bool operator!=(const absl::Cord& lhs, const StringValue& rhs) {
+  return !operator==(lhs, rhs);
+}
+
 inline bool operator!=(const StringValue& lhs, const StringValue& rhs) {
   return !operator==(lhs, rhs);
+}
+
+inline bool operator<(const StringValue& lhs, absl::string_view rhs) {
+  return lhs.Compare(rhs) < 0;
+}
+
+inline bool operator<(absl::string_view lhs, const StringValue& rhs) {
+  return rhs.Compare(lhs) > 0;
+}
+
+inline bool operator<(const StringValue& lhs, const absl::Cord& rhs) {
+  return lhs.Compare(rhs) < 0;
+}
+
+inline bool operator<(const absl::Cord& lhs, const StringValue& rhs) {
+  return rhs.Compare(lhs) > 0;
 }
 
 inline std::ostream& operator<<(std::ostream& out, const StringValue& value) {
   return out << value.DebugString();
 }
 
-class StringValueView final {
- public:
-  using alternative_type = StringValue;
-
-  static constexpr ValueKind kKind = StringValue::kKind;
-
-  explicit StringValueView(
-      const absl::Cord& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : value_(value) {}
-
-  explicit StringValueView(absl::string_view value) noexcept : value_(value) {}
-
-  explicit StringValueView(common_internal::ArenaString value) noexcept
-      : value_(value) {}
-
-  explicit StringValueView(common_internal::SharedByteStringView value) noexcept
-      : value_(value) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  StringValueView(
-      const StringValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : value_(value.value_) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  StringValueView& operator=(
-      const StringValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    value_ = value.value_;
-    return *this;
-  }
-
-  StringValueView& operator=(StringValue&&) = delete;
-
-  StringValueView() = default;
-  StringValueView(const StringValueView&) = default;
-  StringValueView(StringValueView&&) = default;
-  StringValueView& operator=(const StringValueView&) = default;
-  StringValueView& operator=(StringValueView&&) = default;
-
-  constexpr ValueKind kind() const { return kKind; }
-
-  StringType GetType(TypeManager&) const { return StringType(); }
-
-  absl::string_view GetTypeName() const { return StringType::kName; }
-
-  std::string DebugString() const;
-
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
-
-  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
-
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
-
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter&,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
-
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
-                     Value& result) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
-
-  bool IsZeroValue() const {
-    return NativeValue([](const auto& value) -> bool { return value.empty(); });
-  }
-
-  std::string NativeString() const { return value_.ToString(); }
-
-  absl::string_view NativeString(
-      std::string& scratch
-          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return value_.ToString(scratch);
-  }
-
-  absl::Cord NativeCord() const { return value_.ToCord(); }
-
-  template <typename Visitor>
-  std::common_type_t<std::invoke_result_t<Visitor, absl::string_view>,
-                     std::invoke_result_t<Visitor, const absl::Cord&>>
-  NativeValue(Visitor&& visitor) const {
-    return value_.Visit(std::forward<Visitor>(visitor));
-  }
-
-  void swap(StringValueView& other) noexcept {
-    using std::swap;
-    swap(value_, other.value_);
-  }
-
-  size_t Size() const;
-
-  bool IsEmpty() const;
-
-  bool Equals(absl::string_view string) const;
-  bool Equals(const absl::Cord& string) const;
-  bool Equals(StringValueView string) const;
-
-  int Compare(absl::string_view string) const;
-  int Compare(const absl::Cord& string) const;
-  int Compare(StringValueView string) const;
-
-  std::string ToString() const { return NativeString(); }
-
-  absl::Cord ToCord() const { return NativeCord(); }
-
-  template <typename H>
-  friend H AbslHashValue(H state, StringValueView string) {
-    return H::combine(std::move(state), string.value_);
-  }
-
-  friend bool operator==(StringValueView lhs, StringValueView rhs) {
-    return lhs.value_ == rhs.value_;
-  }
-
-  friend bool operator<(StringValueView lhs, StringValueView rhs) {
-    return lhs.value_ < rhs.value_;
-  }
-
- private:
-  friend class StringValue;
-  friend common_internal::SharedByteStringView
-  common_internal::AsSharedByteStringView(StringValueView value);
-
-  common_internal::SharedByteStringView value_;
-};
-
-inline void swap(StringValueView& lhs, StringValueView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline bool operator==(StringValueView lhs, absl::string_view rhs) {
-  return lhs == StringValueView(rhs);
-}
-
-inline bool operator==(absl::string_view lhs, StringValueView rhs) {
-  return StringValueView(lhs) == rhs;
-}
-
-inline bool operator==(StringValueView lhs, const absl::Cord& rhs) {
-  return lhs == StringValueView(rhs);
-}
-
-inline bool operator==(const absl::Cord& lhs, StringValueView rhs) {
-  return StringValueView(lhs) == rhs;
-}
-
-inline bool operator!=(StringValueView lhs, StringValueView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-inline bool operator!=(StringValueView lhs, absl::string_view rhs) {
-  return !operator==(lhs, rhs);
-}
-
-inline bool operator!=(absl::string_view lhs, StringValueView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-inline bool operator!=(StringValueView lhs, const absl::Cord& rhs) {
-  return !operator==(lhs, rhs);
-}
-
-inline bool operator!=(const absl::Cord& lhs, StringValueView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-inline bool operator<(StringValueView lhs, absl::string_view rhs) {
-  return lhs < StringValueView(rhs);
-}
-
-inline bool operator<(absl::string_view lhs, StringValueView rhs) {
-  return StringValueView(lhs) < rhs;
-}
-
-inline bool operator<(StringValueView lhs, const absl::Cord& rhs) {
-  return lhs < StringValueView(rhs);
-}
-
-inline bool operator<(const absl::Cord& lhs, StringValueView rhs) {
-  return StringValueView(lhs) < rhs;
-}
-
-inline std::ostream& operator<<(std::ostream& out, StringValueView value) {
-  return out << value.DebugString();
-}
-
-inline StringValue::StringValue(StringValueView value) noexcept
-    : value_(value.value_) {}
-
-inline StringValue StringValue::Concat(ValueManager&, StringValueView lhs,
-                                       StringValueView rhs) {
+inline StringValue StringValue::Concat(ValueManager&, const StringValue& lhs,
+                                       const StringValue& rhs) {
   absl::Cord result;
   result.Append(lhs.ToCord());
   result.Append(rhs.ToCord());
@@ -412,10 +245,6 @@ inline StringValue StringValue::Concat(ValueManager&, StringValueView lhs,
 namespace common_internal {
 
 inline const SharedByteString& AsSharedByteString(const StringValue& value) {
-  return value.value_;
-}
-
-inline SharedByteStringView AsSharedByteStringView(StringValueView value) {
   return value.value_;
 }
 

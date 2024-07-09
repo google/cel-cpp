@@ -29,7 +29,7 @@
 #include "common/json.h"
 #include "common/type.h"
 #include "common/value.h"
-#include "internal/dynamic_loader.h"
+#include "internal/dynamic_loader.h"  // IWYU pragma: keep
 #include "internal/status_macros.h"
 #include "runtime/runtime_options.h"
 
@@ -338,125 +338,6 @@ absl::Status LegacyStructValue::ForEachField(
 }
 
 absl::StatusOr<int> LegacyStructValue::Qualify(
-    ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
-    bool presence_test, Value& result) const {
-  InitializeLegacyStructValue();
-  return (*legacy_struct_value_vtable.qualify)(message_ptr_, type_info_,
-                                               value_manager, qualifiers,
-                                               presence_test, result);
-}
-
-StructType LegacyStructValueView::GetType(TypeManager& type_manager) const {
-  InitializeLegacyStructValue();
-  return type_manager.CreateStructType(
-      (*legacy_struct_value_vtable.get_type)(message_ptr_, type_info_));
-}
-
-absl::string_view LegacyStructValueView::GetTypeName() const {
-  InitializeLegacyStructValue();
-  return (*legacy_struct_value_vtable.get_type_name)(message_ptr_, type_info_);
-}
-
-std::string LegacyStructValueView::DebugString() const {
-  InitializeLegacyStructValue();
-  return (*legacy_struct_value_vtable.debug_string)(message_ptr_, type_info_);
-}
-
-absl::StatusOr<size_t> LegacyStructValueView::GetSerializedSize(
-    AnyToJsonConverter&) const {
-  InitializeLegacyStructValue();
-  return (*legacy_struct_value_vtable.get_serialized_size)(message_ptr_,
-                                                           type_info_);
-}
-
-absl::Status LegacyStructValueView::SerializeTo(AnyToJsonConverter&,
-                                                absl::Cord& value) const {
-  InitializeLegacyStructValue();
-  return (*legacy_struct_value_vtable.serialize_to)(message_ptr_, type_info_,
-                                                    value);
-}
-
-absl::StatusOr<absl::Cord> LegacyStructValueView::Serialize(
-    AnyToJsonConverter& value_manager) const {
-  absl::Cord serialized_value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, serialized_value));
-  return serialized_value;
-}
-
-absl::StatusOr<std::string> LegacyStructValueView::GetTypeUrl(
-    absl::string_view prefix) const {
-  InitializeLegacyStructValue();
-  return MakeTypeUrlWithPrefix(
-      prefix,
-      (*legacy_struct_value_vtable.get_type_name)(message_ptr_, type_info_));
-}
-
-absl::StatusOr<Any> LegacyStructValueView::ConvertToAny(
-    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto serialized_value, Serialize(value_manager));
-  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
-  return MakeAny(std::move(type_url), std::move(serialized_value));
-}
-
-absl::StatusOr<Json> LegacyStructValueView::ConvertToJson(
-    AnyToJsonConverter& value_manager) const {
-  InitializeLegacyStructValue();
-  return (*legacy_struct_value_vtable.convert_to_json_object)(message_ptr_,
-                                                              type_info_);
-}
-
-absl::Status LegacyStructValueView::Equal(ValueManager& value_manager,
-                                          ValueView other,
-                                          Value& result) const {
-  InitializeLegacyStructValue();
-  return (*legacy_struct_value_vtable.equal)(
-      message_ptr_, type_info_, value_manager, Value(other), result);
-}
-
-bool LegacyStructValueView::IsZeroValue() const {
-  InitializeLegacyStructValue();
-  return (*legacy_struct_value_vtable.is_zero_value)(message_ptr_, type_info_);
-}
-
-absl::Status LegacyStructValueView::GetFieldByName(
-    ValueManager& value_manager, absl::string_view name, Value& result,
-    ProtoWrapperTypeOptions unboxing_options) const {
-  InitializeLegacyStructValue();
-  return (*legacy_struct_value_vtable.get_field_by_name)(
-      message_ptr_, type_info_, value_manager, name, result, unboxing_options);
-}
-
-absl::Status LegacyStructValueView::GetFieldByNumber(
-    ValueManager& value_manager, int64_t number, Value& result,
-    ProtoWrapperTypeOptions unboxing_options) const {
-  InitializeLegacyStructValue();
-  return (*legacy_struct_value_vtable.get_field_by_number)(
-      message_ptr_, type_info_, value_manager, number, result,
-      unboxing_options);
-}
-
-absl::StatusOr<bool> LegacyStructValueView::HasFieldByName(
-    absl::string_view name) const {
-  InitializeLegacyStructValue();
-  return (*legacy_struct_value_vtable.has_field_by_name)(message_ptr_,
-                                                         type_info_, name);
-}
-
-absl::StatusOr<bool> LegacyStructValueView::HasFieldByNumber(
-    int64_t number) const {
-  InitializeLegacyStructValue();
-  return (*legacy_struct_value_vtable.has_field_by_number)(message_ptr_,
-                                                           type_info_, number);
-}
-
-absl::Status LegacyStructValueView::ForEachField(
-    ValueManager& value_manager, ForEachFieldCallback callback) const {
-  InitializeLegacyStructValue();
-  return (*legacy_struct_value_vtable.for_each_field)(message_ptr_, type_info_,
-                                                      value_manager, callback);
-}
-
-absl::StatusOr<int> LegacyStructValueView::Qualify(
     ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
     bool presence_test, Value& result) const {
   InitializeLegacyStructValue();
