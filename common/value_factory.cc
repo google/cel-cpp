@@ -87,7 +87,7 @@ void JsonArrayDebugString(const JsonArray& json, std::string& out) {
 
 void JsonObjectEntryDebugString(const JsonString& key, const Json& value,
                                 std::string& out) {
-  out.append(StringValue(key).DebugString());
+  out.append(StringValueView(key).DebugString());
   out.append(": ");
   JsonDebugString(value, out);
 }
@@ -113,25 +113,26 @@ void JsonObjectDebugString(const JsonObject& json, std::string& out) {
 }
 
 void JsonDebugString(const Json& json, std::string& out) {
-  absl::visit(
-      absl::Overload(
-          [&out](JsonNull) -> void { out.append(NullValue().DebugString()); },
-          [&out](JsonBool value) -> void {
-            out.append(BoolValue(value).DebugString());
-          },
-          [&out](JsonNumber value) -> void {
-            out.append(DoubleValue(value).DebugString());
-          },
-          [&out](const JsonString& value) -> void {
-            out.append(StringValue(value).DebugString());
-          },
-          [&out](const JsonArray& value) -> void {
-            JsonArrayDebugString(value, out);
-          },
-          [&out](const JsonObject& value) -> void {
-            JsonObjectDebugString(value, out);
-          }),
-      json);
+  absl::visit(absl::Overload(
+                  [&out](JsonNull) -> void {
+                    out.append(NullValueView().DebugString());
+                  },
+                  [&out](JsonBool value) -> void {
+                    out.append(BoolValueView(value).DebugString());
+                  },
+                  [&out](JsonNumber value) -> void {
+                    out.append(DoubleValueView(value).DebugString());
+                  },
+                  [&out](const JsonString& value) -> void {
+                    out.append(StringValueView(value).DebugString());
+                  },
+                  [&out](const JsonArray& value) -> void {
+                    JsonArrayDebugString(value, out);
+                  },
+                  [&out](const JsonObject& value) -> void {
+                    JsonObjectDebugString(value, out);
+                  }),
+              json);
 }
 
 class JsonListValue final : public ParsedListValueInterface {
@@ -338,19 +339,19 @@ OptionalValue ValueFactory::CreateZeroOptionalValue(OptionalTypeView type) {
   return CreateZeroOptionalValueImpl(type);
 }
 
-ListValue ValueFactory::GetZeroDynListValue() {
+ListValueView ValueFactory::GetZeroDynListValue() {
   return ProcessLocalValueCache::Get()->GetEmptyDynListValue();
 }
 
-MapValue ValueFactory::GetZeroDynDynMapValue() {
+MapValueView ValueFactory::GetZeroDynDynMapValue() {
   return ProcessLocalValueCache::Get()->GetEmptyDynDynMapValue();
 }
 
-MapValue ValueFactory::GetZeroStringDynMapValue() {
+MapValueView ValueFactory::GetZeroStringDynMapValue() {
   return ProcessLocalValueCache::Get()->GetEmptyStringDynMapValue();
 }
 
-OptionalValue ValueFactory::GetZeroDynOptionalValue() {
+OptionalValueView ValueFactory::GetZeroDynOptionalValue() {
   return ProcessLocalValueCache::Get()->GetEmptyDynOptionalValue();
 }
 

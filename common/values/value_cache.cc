@@ -28,19 +28,19 @@
 
 namespace cel::common_internal {
 
-ErrorValue GetDefaultErrorValue() {
+ErrorValueView GetDefaultErrorValue() {
   return ProcessLocalValueCache::Get()->GetDefaultErrorValue();
 }
 
-ParsedListValue GetEmptyDynListValue() {
+ParsedListValueView GetEmptyDynListValue() {
   return ProcessLocalValueCache::Get()->GetEmptyDynListValue();
 }
 
-ParsedMapValue GetEmptyDynDynMapValue() {
+ParsedMapValueView GetEmptyDynDynMapValue() {
   return ProcessLocalValueCache::Get()->GetEmptyDynDynMapValue();
 }
 
-OptionalValue GetEmptyDynOptionalValue() {
+OptionalValueView GetEmptyDynOptionalValue() {
   return ProcessLocalValueCache::Get()->GetEmptyDynOptionalValue();
 }
 
@@ -49,11 +49,11 @@ absl::Nonnull<const ProcessLocalValueCache*> ProcessLocalValueCache::Get() {
   return &*instance;
 }
 
-ErrorValue ProcessLocalValueCache::GetDefaultErrorValue() const {
+ErrorValueView ProcessLocalValueCache::GetDefaultErrorValue() const {
   return default_error_value_;
 }
 
-absl::optional<ParsedListValue> ProcessLocalValueCache::GetEmptyListValue(
+absl::optional<ParsedListValueView> ProcessLocalValueCache::GetEmptyListValue(
     ListTypeView type) const {
   if (auto list_value = list_values_.find(type);
       list_value != list_values_.end()) {
@@ -62,11 +62,11 @@ absl::optional<ParsedListValue> ProcessLocalValueCache::GetEmptyListValue(
   return absl::nullopt;
 }
 
-ParsedListValue ProcessLocalValueCache::GetEmptyDynListValue() const {
+ParsedListValueView ProcessLocalValueCache::GetEmptyDynListValue() const {
   return *dyn_list_value_;
 }
 
-absl::optional<ParsedMapValue> ProcessLocalValueCache::GetEmptyMapValue(
+absl::optional<ParsedMapValueView> ProcessLocalValueCache::GetEmptyMapValue(
     MapTypeView type) const {
   if (auto map_value = map_values_.find(type); map_value != map_values_.end()) {
     return map_value->second;
@@ -74,14 +74,14 @@ absl::optional<ParsedMapValue> ProcessLocalValueCache::GetEmptyMapValue(
   return absl::nullopt;
 }
 
-ParsedMapValue ProcessLocalValueCache::GetEmptyDynDynMapValue() const {
+ParsedMapValueView ProcessLocalValueCache::GetEmptyDynDynMapValue() const {
   return *dyn_dyn_map_value_;
 }
 
-ParsedMapValue ProcessLocalValueCache::GetEmptyStringDynMapValue() const {
+ParsedMapValueView ProcessLocalValueCache::GetEmptyStringDynMapValue() const {
   return *string_dyn_map_value_;
 }
-absl::optional<OptionalValue> ProcessLocalValueCache::GetEmptyOptionalValue(
+absl::optional<OptionalValueView> ProcessLocalValueCache::GetEmptyOptionalValue(
     OptionalTypeView type) const {
   if (auto optional_value = optional_values_.find(type);
       optional_value != optional_values_.end()) {
@@ -90,7 +90,7 @@ absl::optional<OptionalValue> ProcessLocalValueCache::GetEmptyOptionalValue(
   return absl::nullopt;
 }
 
-OptionalValue ProcessLocalValueCache::GetEmptyDynOptionalValue() const {
+OptionalValueView ProcessLocalValueCache::GetEmptyDynOptionalValue() const {
   return *dyn_optional_value_;
 }
 

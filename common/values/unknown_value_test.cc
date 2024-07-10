@@ -19,6 +19,7 @@
 #include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/native_type.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
 #include "internal/testing.h"
@@ -108,6 +109,88 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
                                          MemoryManagement::kReferenceCounting)),
     UnknownValueTest::ToString);
+
+using UnknownValueViewTest = common_internal::ThreadCompatibleValueTest<>;
+
+TEST_P(UnknownValueViewTest, Kind) {
+  EXPECT_EQ(UnknownValueView().kind(), UnknownValueView::kKind);
+  EXPECT_EQ(ValueView(UnknownValueView()).kind(), UnknownValueView::kKind);
+}
+
+TEST_P(UnknownValueViewTest, DebugString) {
+  {
+    std::ostringstream out;
+    out << UnknownValueView();
+    EXPECT_EQ(out.str(), "");
+  }
+  {
+    std::ostringstream out;
+    out << ValueView(UnknownValueView());
+    EXPECT_EQ(out.str(), "");
+  }
+}
+
+TEST_P(UnknownValueViewTest, GetSerializedSize) {
+  EXPECT_THAT(UnknownValueView().GetSerializedSize(value_manager()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(UnknownValueViewTest, SerializeTo) {
+  absl::Cord value;
+  EXPECT_THAT(UnknownValueView().SerializeTo(value_manager(), value),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(UnknownValueViewTest, Serialize) {
+  EXPECT_THAT(UnknownValueView().Serialize(value_manager()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(UnknownValueViewTest, GetTypeUrl) {
+  EXPECT_THAT(UnknownValueView().GetTypeUrl(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(UnknownValueViewTest, ConvertToAny) {
+  EXPECT_THAT(UnknownValueView().ConvertToAny(value_manager()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(UnknownValueViewTest, ConvertToJson) {
+  EXPECT_THAT(UnknownValueView().ConvertToJson(value_manager()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(UnknownValueViewTest, NativeTypeId) {
+  EXPECT_EQ(NativeTypeId::Of(UnknownValueView()),
+            NativeTypeId::For<UnknownValueView>());
+  EXPECT_EQ(NativeTypeId::Of(ValueView(UnknownValueView())),
+            NativeTypeId::For<UnknownValueView>());
+}
+
+TEST_P(UnknownValueViewTest, InstanceOf) {
+  EXPECT_TRUE(InstanceOf<UnknownValueView>(UnknownValueView()));
+  EXPECT_TRUE(InstanceOf<UnknownValueView>(ValueView(UnknownValueView())));
+}
+
+TEST_P(UnknownValueViewTest, Cast) {
+  EXPECT_THAT(Cast<UnknownValueView>(UnknownValueView()),
+              An<UnknownValueView>());
+  EXPECT_THAT(Cast<UnknownValueView>(ValueView(UnknownValueView())),
+              An<UnknownValueView>());
+}
+
+TEST_P(UnknownValueViewTest, As) {
+  EXPECT_THAT(As<UnknownValueView>(UnknownValueView()), Ne(absl::nullopt));
+  EXPECT_THAT(As<UnknownValueView>(ValueView(UnknownValueView())),
+              Ne(absl::nullopt));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    UnknownValueViewTest, UnknownValueViewTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    UnknownValueViewTest::ToString);
 
 }  // namespace
 }  // namespace cel

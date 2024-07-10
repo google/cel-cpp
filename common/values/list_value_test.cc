@@ -124,8 +124,8 @@ TEST_P(ListValueTest, ForEach) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
   std::vector<int64_t> elements;
-  EXPECT_OK(value.ForEach(value_manager(), [&elements](const Value& element) {
-    elements.push_back(Cast<IntValue>(element).NativeValue());
+  EXPECT_OK(value.ForEach(value_manager(), [&elements](ValueView element) {
+    elements.push_back(Cast<IntValueView>(element).NativeValue());
     return true;
   }));
   EXPECT_THAT(elements, ElementsAreArray({0, 1, 2}));
@@ -184,6 +184,156 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
                                          MemoryManagement::kReferenceCounting)),
     ListValueTest::ToString);
+
+class ListValueViewTest : public common_internal::ThreadCompatibleValueTest<> {
+ public:
+  template <typename... Args>
+  absl::StatusOr<ListValue> NewIntListValue(Args&&... args) {
+    CEL_ASSIGN_OR_RETURN(auto builder,
+                         value_manager().NewListValueBuilder(GetIntListType()));
+    (static_cast<void>(builder->Add(std::forward<Args>(args))), ...);
+    return std::move(*builder).Build();
+  }
+
+  ListType GetIntListType() {
+    return type_factory().CreateListType(IntTypeView());
+  }
+};
+
+TEST_P(ListValueViewTest, Default) {
+  ListValueView value;
+  EXPECT_THAT(value.IsEmpty(), IsOkAndHolds(true));
+  EXPECT_THAT(value.Size(), IsOkAndHolds(0));
+  EXPECT_EQ(value.DebugString(), "[]");
+  EXPECT_EQ(value.GetType(type_manager()).element(), DynType());
+}
+
+TEST_P(ListValueViewTest, Kind) {
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
+  EXPECT_EQ(ListValueView(value).kind(), ListValueView::kKind);
+  EXPECT_EQ(ValueView(ListValueView(value)).kind(), ListValueView::kKind);
+}
+
+TEST_P(ListValueViewTest, Type) {
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
+  EXPECT_EQ(ListValueView(value).GetType(type_manager()), GetIntListType());
+  EXPECT_EQ(ListValue(ListValueView(value)).GetType(type_manager()),
+            GetIntListType());
+}
+
+TEST_P(ListValueViewTest, DebugString) {
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
+  {
+    std::ostringstream out;
+    out << ListValueView(value);
+    EXPECT_EQ(out.str(), "[0, 1, 2]");
+  }
+  {
+    std::ostringstream out;
+    out << ValueView(ListValueView(value));
+    EXPECT_EQ(out.str(), "[0, 1, 2]");
+  }
+}
+
+TEST_P(ListValueViewTest, IsEmpty) {
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
+  EXPECT_THAT(ListValueView(value).IsEmpty(), IsOkAndHolds(false));
+}
+
+TEST_P(ListValueViewTest, Size) {
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
+  EXPECT_THAT(ListValueView(value).Size(), IsOkAndHolds(3));
+}
+
+TEST_P(ListValueViewTest, Get) {
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
+  ASSERT_OK_AND_ASSIGN(auto element,
+                       ListValueView(value).Get(value_manager(), 0));
+  ASSERT_TRUE(InstanceOf<IntValue>(element));
+  ASSERT_EQ(Cast<IntValue>(element).NativeValue(), 0);
+  ASSERT_OK_AND_ASSIGN(element, ListValueView(value).Get(value_manager(), 1));
+  ASSERT_TRUE(InstanceOf<IntValue>(element));
+  ASSERT_EQ(Cast<IntValue>(element).NativeValue(), 1);
+  ASSERT_OK_AND_ASSIGN(element, ListValueView(value).Get(value_manager(), 2));
+  ASSERT_TRUE(InstanceOf<IntValue>(element));
+  ASSERT_EQ(Cast<IntValue>(element).NativeValue(), 2);
+  EXPECT_THAT(ListValueView(value).Get(value_manager(), 3),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST_P(ListValueViewTest, ForEach) {
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
+  std::vector<int64_t> elements;
+  EXPECT_OK(ListValueView(value).ForEach(
+      value_manager(), [&elements](ValueView element) {
+        elements.push_back(Cast<IntValueView>(element).NativeValue());
+        return true;
+      }));
+  EXPECT_THAT(elements, ElementsAreArray({0, 1, 2}));
+}
+
+TEST_P(ListValueViewTest, Contains) {
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
+  ASSERT_OK_AND_ASSIGN(auto contained, ListValueView(value).Contains(
+                                           value_manager(), IntValueView(2)));
+  ASSERT_TRUE(InstanceOf<BoolValue>(contained));
+  EXPECT_TRUE(Cast<BoolValue>(contained).NativeValue());
+  ASSERT_OK_AND_ASSIGN(contained, ListValueView(value).Contains(
+                                      value_manager(), IntValueView(3)));
+  ASSERT_TRUE(InstanceOf<BoolValue>(contained));
+  EXPECT_FALSE(Cast<BoolValue>(contained).NativeValue());
+}
+
+TEST_P(ListValueViewTest, NewIterator) {
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
+  ASSERT_OK_AND_ASSIGN(auto iterator,
+                       ListValueView(value).NewIterator(value_manager()));
+  std::vector<int64_t> elements;
+  while (iterator->HasNext()) {
+    ASSERT_OK_AND_ASSIGN(auto element, iterator->Next(value_manager()));
+    ASSERT_TRUE(InstanceOf<IntValue>(element));
+    elements.push_back(Cast<IntValue>(element).NativeValue());
+  }
+  EXPECT_EQ(iterator->HasNext(), false);
+  EXPECT_THAT(iterator->Next(value_manager()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+  EXPECT_THAT(elements, ElementsAreArray({0, 1, 2}));
+}
+
+TEST_P(ListValueViewTest, GetSerializedSize) {
+  ASSERT_OK_AND_ASSIGN(auto value, NewIntListValue());
+  EXPECT_THAT(ListValueView(value).GetSerializedSize(value_manager()),
+              StatusIs(absl::StatusCode::kUnimplemented));
+}
+
+TEST_P(ListValueViewTest, ConvertToAny) {
+  ASSERT_OK_AND_ASSIGN(auto value, NewIntListValue());
+  EXPECT_THAT(ListValueView(value).ConvertToAny(value_manager()),
+              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.ListValue"),
+                                   absl::Cord())));
+}
+
+TEST_P(ListValueViewTest, ConvertToJson) {
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
+  EXPECT_THAT(ListValueView(value).ConvertToJson(value_manager()),
+              IsOkAndHolds(Json(MakeJsonArray({0.0, 1.0, 2.0}))));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ListValueViewTest, ListValueViewTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    ListValueViewTest::ToString);
 
 }  // namespace
 }  // namespace cel

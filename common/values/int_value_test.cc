@@ -111,5 +111,90 @@ INSTANTIATE_TEST_SUITE_P(
                                          MemoryManagement::kReferenceCounting)),
     IntValueTest::ToString);
 
+using IntValueViewTest = common_internal::ThreadCompatibleValueTest<>;
+
+TEST_P(IntValueViewTest, Kind) {
+  EXPECT_EQ(IntValueView(1).kind(), IntValueView::kKind);
+  EXPECT_EQ(ValueView(IntValueView(1)).kind(), IntValueView::kKind);
+}
+
+TEST_P(IntValueViewTest, DebugString) {
+  {
+    std::ostringstream out;
+    out << IntValueView(1);
+    EXPECT_EQ(out.str(), "1");
+  }
+  {
+    std::ostringstream out;
+    out << ValueView(IntValueView(1));
+    EXPECT_EQ(out.str(), "1");
+  }
+}
+
+TEST_P(IntValueViewTest, GetSerializedSize) {
+  EXPECT_THAT(IntValueView().GetSerializedSize(value_manager()),
+              IsOkAndHolds(0));
+}
+
+TEST_P(IntValueViewTest, ConvertToAny) {
+  EXPECT_THAT(IntValueView().ConvertToAny(value_manager()),
+              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Int64Value"),
+                                   absl::Cord())));
+}
+
+TEST_P(IntValueViewTest, ConvertToJson) {
+  EXPECT_THAT(IntValueView(1).ConvertToJson(value_manager()),
+              IsOkAndHolds(Json(1.0)));
+}
+
+TEST_P(IntValueViewTest, NativeTypeId) {
+  EXPECT_EQ(NativeTypeId::Of(IntValueView(1)),
+            NativeTypeId::For<IntValueView>());
+  EXPECT_EQ(NativeTypeId::Of(ValueView(IntValueView(1))),
+            NativeTypeId::For<IntValueView>());
+}
+
+TEST_P(IntValueViewTest, InstanceOf) {
+  EXPECT_TRUE(InstanceOf<IntValueView>(IntValueView(1)));
+  EXPECT_TRUE(InstanceOf<IntValueView>(ValueView(IntValueView(1))));
+}
+
+TEST_P(IntValueViewTest, Cast) {
+  EXPECT_THAT(Cast<IntValueView>(IntValueView(1)), An<IntValueView>());
+  EXPECT_THAT(Cast<IntValueView>(ValueView(IntValueView(1))),
+              An<IntValueView>());
+}
+
+TEST_P(IntValueViewTest, As) {
+  EXPECT_THAT(As<IntValueView>(IntValueView(1)), Ne(absl::nullopt));
+  EXPECT_THAT(As<IntValueView>(ValueView(IntValueView(1))), Ne(absl::nullopt));
+}
+
+TEST_P(IntValueViewTest, HashValue) {
+  EXPECT_EQ(absl::HashOf(IntValueView(1)), absl::HashOf(int64_t{1}));
+}
+
+TEST_P(IntValueViewTest, Equality) {
+  EXPECT_NE(IntValueView(IntValue(0)), 1);
+  EXPECT_NE(1, IntValueView(0));
+  EXPECT_NE(IntValueView(0), IntValueView(1));
+  EXPECT_NE(IntValueView(0), IntValue(1));
+  EXPECT_NE(IntValue(1), IntValueView(0));
+}
+
+TEST_P(IntValueViewTest, LessThan) {
+  EXPECT_LT(IntValueView(0), 1);
+  EXPECT_LT(0, IntValueView(1));
+  EXPECT_LT(IntValueView(0), IntValueView(1));
+  EXPECT_LT(IntValueView(0), IntValue(1));
+  EXPECT_LT(IntValue(0), IntValueView(1));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    IntValueViewTest, IntValueViewTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    IntValueViewTest::ToString);
+
 }  // namespace
 }  // namespace cel

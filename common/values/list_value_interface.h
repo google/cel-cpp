@@ -34,11 +34,14 @@
 namespace cel {
 
 class Value;
+class ValueView;
 class ListValue;
+class ListValueView;
 
 class ListValueInterface : public ValueInterface {
  public:
   using alternative_type = ListValue;
+  using view_alternative_type = ListValueView;
 
   static constexpr ValueKind kKind = ValueKind::kList;
 

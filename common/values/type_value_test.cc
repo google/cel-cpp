@@ -110,5 +110,90 @@ INSTANTIATE_TEST_SUITE_P(
                                          MemoryManagement::kReferenceCounting)),
     TypeValueTest::ToString);
 
+using TypeValueViewTest = common_internal::ThreadCompatibleValueTest<>;
+
+TEST_P(TypeValueViewTest, Kind) {
+  EXPECT_EQ(TypeValueView(AnyTypeView()).kind(), TypeValueView::kKind);
+  EXPECT_EQ(ValueView(TypeValueView(AnyTypeView())).kind(),
+            TypeValueView::kKind);
+}
+
+TEST_P(TypeValueViewTest, DebugString) {
+  {
+    std::ostringstream out;
+    out << TypeValueView(AnyTypeView());
+    EXPECT_EQ(out.str(), "google.protobuf.Any");
+  }
+  {
+    std::ostringstream out;
+    out << ValueView(TypeValueView(AnyTypeView()));
+    EXPECT_EQ(out.str(), "google.protobuf.Any");
+  }
+}
+
+TEST_P(TypeValueViewTest, GetSerializedSize) {
+  EXPECT_THAT(TypeValueView(AnyTypeView()).GetSerializedSize(value_manager()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(TypeValueViewTest, SerializeTo) {
+  absl::Cord value;
+  EXPECT_THAT(TypeValueView(AnyTypeView()).SerializeTo(value_manager(), value),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(TypeValueViewTest, Serialize) {
+  EXPECT_THAT(TypeValueView(AnyTypeView()).Serialize(value_manager()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(TypeValueViewTest, GetTypeUrl) {
+  EXPECT_THAT(TypeValueView(AnyTypeView()).GetTypeUrl(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(TypeValueViewTest, ConvertToAny) {
+  EXPECT_THAT(TypeValueView(AnyTypeView()).ConvertToAny(value_manager()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(TypeValueViewTest, ConvertToJson) {
+  EXPECT_THAT(TypeValueView(AnyTypeView()).ConvertToJson(value_manager()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(TypeValueViewTest, NativeTypeId) {
+  EXPECT_EQ(NativeTypeId::Of(TypeValueView(AnyTypeView())),
+            NativeTypeId::For<TypeValueView>());
+  EXPECT_EQ(NativeTypeId::Of(ValueView(TypeValueView(AnyTypeView()))),
+            NativeTypeId::For<TypeValueView>());
+}
+
+TEST_P(TypeValueViewTest, InstanceOf) {
+  EXPECT_TRUE(InstanceOf<TypeValueView>(TypeValueView(AnyTypeView())));
+  EXPECT_TRUE(
+      InstanceOf<TypeValueView>(ValueView(TypeValueView(AnyTypeView()))));
+}
+
+TEST_P(TypeValueViewTest, Cast) {
+  EXPECT_THAT(Cast<TypeValueView>(TypeValueView(AnyTypeView())),
+              An<TypeValueView>());
+  EXPECT_THAT(Cast<TypeValueView>(ValueView(TypeValueView(AnyTypeView()))),
+              An<TypeValueView>());
+}
+
+TEST_P(TypeValueViewTest, As) {
+  EXPECT_THAT(As<TypeValueView>(TypeValueView(AnyTypeView())),
+              Ne(absl::nullopt));
+  EXPECT_THAT(As<TypeValueView>(ValueView(TypeValueView(AnyTypeView()))),
+              Ne(absl::nullopt));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    TypeValueViewTest, TypeValueViewTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    TypeValueViewTest::ToString);
+
 }  // namespace
 }  // namespace cel

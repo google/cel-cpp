@@ -95,5 +95,71 @@ INSTANTIATE_TEST_SUITE_P(
                                          MemoryManagement::kReferenceCounting)),
     NullValueTest::ToString);
 
+using NullValueViewTest = common_internal::ThreadCompatibleValueTest<>;
+
+TEST_P(NullValueViewTest, Kind) {
+  EXPECT_EQ(NullValueView().kind(), NullValueView::kKind);
+  EXPECT_EQ(ValueView(NullValueView()).kind(), NullValueView::kKind);
+}
+
+TEST_P(NullValueViewTest, DebugString) {
+  {
+    std::ostringstream out;
+    out << NullValueView();
+    EXPECT_EQ(out.str(), "null");
+  }
+  {
+    std::ostringstream out;
+    out << ValueView(NullValueView());
+    EXPECT_EQ(out.str(), "null");
+  }
+}
+
+TEST_P(NullValueViewTest, GetSerializedSize) {
+  EXPECT_THAT(NullValueView().GetSerializedSize(value_manager()),
+              IsOkAndHolds(2));
+}
+
+TEST_P(NullValueViewTest, ConvertToAny) {
+  EXPECT_THAT(
+      NullValueView().ConvertToAny(value_manager()),
+      IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Value"),
+                           absl::Cord(absl::string_view("\010\000", 2)))));
+}
+
+TEST_P(NullValueViewTest, ConvertToJson) {
+  EXPECT_THAT(NullValueView().ConvertToJson(value_manager()),
+              IsOkAndHolds(Json(kJsonNull)));
+}
+
+TEST_P(NullValueViewTest, NativeTypeId) {
+  EXPECT_EQ(NativeTypeId::Of(NullValueView()),
+            NativeTypeId::For<NullValueView>());
+  EXPECT_EQ(NativeTypeId::Of(ValueView(NullValueView())),
+            NativeTypeId::For<NullValueView>());
+}
+
+TEST_P(NullValueViewTest, InstanceOf) {
+  EXPECT_TRUE(InstanceOf<NullValueView>(NullValueView()));
+  EXPECT_TRUE(InstanceOf<NullValueView>(ValueView(NullValueView())));
+}
+
+TEST_P(NullValueViewTest, Cast) {
+  EXPECT_THAT(Cast<NullValueView>(NullValueView()), An<NullValueView>());
+  EXPECT_THAT(Cast<NullValueView>(ValueView(NullValueView())),
+              An<NullValueView>());
+}
+
+TEST_P(NullValueViewTest, As) {
+  EXPECT_THAT(As<NullValueView>(NullValueView()), Ne(absl::nullopt));
+  EXPECT_THAT(As<NullValueView>(ValueView(NullValueView())), Ne(absl::nullopt));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    NullValueViewTest, NullValueViewTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    NullValueViewTest::ToString);
+
 }  // namespace
 }  // namespace cel

@@ -41,16 +41,22 @@ namespace cel {
 class TypeManager;
 class ValueManager;
 class Value;
+class ValueView;
 
 namespace common_internal {
 
 class LegacyMapValue;
+class LegacyMapValueView;
 
 bool Is(const LegacyMapValue& lhs, const LegacyMapValue& rhs);
 
 class LegacyMapValue final {
  public:
+  using view_alternative_type = LegacyMapValueView;
+
   static constexpr ValueKind kKind = ValueKind::kMap;
+
+  explicit LegacyMapValue(LegacyMapValueView value);
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   explicit LegacyMapValue(uintptr_t impl) : impl_(impl) {}
@@ -136,6 +142,7 @@ class LegacyMapValue final {
   uintptr_t NativeValue() const { return impl_; }
 
  private:
+  friend class LegacyMapValueView;
   friend bool Is(const LegacyMapValue& lhs, const LegacyMapValue& rhs);
 
   uintptr_t impl_;
@@ -148,6 +155,126 @@ inline void swap(LegacyMapValue& lhs, LegacyMapValue& rhs) noexcept {
 inline std::ostream& operator<<(std::ostream& out, const LegacyMapValue& type) {
   return out << type.DebugString();
 }
+
+class LegacyMapValueView final {
+ public:
+  using alternative_type = LegacyMapValue;
+
+  static constexpr ValueKind kKind = LegacyMapValue::kKind;
+
+  explicit LegacyMapValueView(uintptr_t impl) : impl_(impl) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  LegacyMapValueView(
+      const LegacyMapValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
+      : impl_(value.impl_) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  LegacyMapValueView& operator=(
+      const LegacyMapValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    impl_ = value.impl_;
+    return *this;
+  }
+
+  LegacyMapValueView& operator=(LegacyMapValue&&) = delete;
+
+  // By default, this creates an empty map whose type is `map(dyn, dyn)`. Unless
+  // you can help it, you should use a more specific typed map value.
+  LegacyMapValueView();
+  LegacyMapValueView(const LegacyMapValueView&) = default;
+  LegacyMapValueView(LegacyMapValueView&&) = default;
+  LegacyMapValueView& operator=(const LegacyMapValueView&) = default;
+  LegacyMapValueView& operator=(LegacyMapValueView&&) = default;
+
+  constexpr ValueKind kind() const { return kKind; }
+
+  MapType GetType(TypeManager& type_manager) const;
+
+  absl::string_view GetTypeName() const { return "map"; }
+
+  std::string DebugString() const;
+
+  // See `ValueInterface::GetSerializedSize`.
+  absl::StatusOr<size_t> GetSerializedSize(
+      AnyToJsonConverter& value_manager) const;
+
+  // See `ValueInterface::SerializeTo`.
+  absl::Status SerializeTo(AnyToJsonConverter& value_manager,
+                           absl::Cord& value) const;
+
+  // See `ValueInterface::Serialize`.
+  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& value_manager) const;
+
+  // See `ValueInterface::GetTypeUrl`.
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  // See `ValueInterface::ConvertToAny`.
+  absl::StatusOr<Any> ConvertToAny(
+      AnyToJsonConverter& value_manager,
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const {
+    return ConvertToJsonObject(value_manager);
+  }
+
+  absl::StatusOr<JsonObject> ConvertToJsonObject(
+      AnyToJsonConverter& value_manager) const;
+
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
+
+  bool IsZeroValue() const { return IsEmpty(); }
+
+  bool IsEmpty() const;
+
+  size_t Size() const;
+
+  // See the corresponding member function of `MapValueInterface` for
+  // documentation.
+  absl::Status Get(ValueManager& value_manager, ValueView key,
+                   Value& result) const;
+
+  absl::StatusOr<bool> Find(ValueManager& value_manager, ValueView key,
+                            Value& result) const;
+
+  absl::Status Has(ValueManager& value_manager, ValueView key,
+                   Value& result) const;
+
+  absl::Status ListKeys(ValueManager& value_manager, ListValue& result) const;
+
+  using ForEachCallback = typename MapValueInterface::ForEachCallback;
+
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachCallback callback) const;
+
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
+      ValueManager& value_manager) const;
+
+  void swap(LegacyMapValueView& other) noexcept {
+    using std::swap;
+    swap(impl_, other.impl_);
+  }
+
+  uintptr_t NativeValue() const { return impl_; }
+
+ private:
+  friend class LegacyMapValue;
+  friend bool Is(LegacyMapValueView lhs, LegacyMapValueView rhs);
+
+  uintptr_t impl_;
+};
+
+inline void swap(LegacyMapValueView& lhs, LegacyMapValueView& rhs) noexcept {
+  lhs.swap(rhs);
+}
+
+inline std::ostream& operator<<(std::ostream& out, LegacyMapValueView type) {
+  return out << type.DebugString();
+}
+
+inline LegacyMapValue::LegacyMapValue(LegacyMapValueView value)
+    : impl_(value.impl_) {}
 
 inline bool Is(const LegacyMapValue& lhs, const LegacyMapValue& rhs) {
   return lhs.impl_ == rhs.impl_;

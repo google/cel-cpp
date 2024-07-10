@@ -67,6 +67,7 @@
 namespace cel {
 
 class Value;
+class ValueView;
 
 // `Value` is a composition type which encompasses all values supported by the
 // Common Expression Language. When default constructed or moved, `Value` is in
@@ -75,6 +76,8 @@ class Value;
 // best to fail.
 class Value final {
  public:
+  using view_alternative_type = ValueView;
+
   Value() = default;
   Value(const Value&) = default;
   Value& operator=(const Value&) = default;
@@ -134,6 +137,10 @@ class Value final {
   Value& operator=(StructValue&& value) {
     return *this = CompositionTraits<StructValue>::Get<Value>(std::move(value));
   }
+
+  explicit Value(ValueView other);
+
+  Value& operator=(ValueView other);
 
   template <typename T,
             typename = std::enable_if_t<common_internal::IsValueInterfaceV<T>>>
@@ -263,8 +270,11 @@ class Value final {
   explicit operator bool() const noexcept { return IsValid(); }
 
  private:
+  friend class ValueView;
   friend struct NativeTypeTraits<Value>;
   friend struct CompositionTraits<Value>;
+
+  common_internal::ValueViewVariant ToViewVariant() const;
 
   constexpr bool IsValid() const noexcept {
     return !absl::holds_alternative<absl::monostate>(variant_);
@@ -552,6 +562,316 @@ static_assert(std::is_nothrow_move_constructible_v<Value>);
 static_assert(std::is_nothrow_move_assignable_v<Value>);
 static_assert(std::is_nothrow_swappable_v<Value>);
 
+// `ValueView` is a composition type which acts as a view of `Value` and its
+// composed types. Like `Value`, it is also invalid when default constructed and
+// must be assigned another type.
+class ValueView final {
+ public:
+  using alternative_type = Value;
+
+  ValueView() = default;
+  ValueView(const ValueView&) = default;
+  ValueView(ValueView&&) = default;
+  ValueView& operator=(const ValueView&) = default;
+  ValueView& operator=(ValueView&&) = default;
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ValueView(const Value& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
+      : variant_((value.AssertIsValid(), value.ToViewVariant())) {}
+
+  template <typename T, typename = std::enable_if_t<
+                            common_internal::IsValueAlternativeV<T>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ValueView(const T& alternative ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
+      : variant_(absl::in_place_type<
+                     common_internal::BaseValueViewAlternativeForT<T>>,
+                 alternative) {}
+
+  template <typename T, typename = std::enable_if_t<
+                            common_internal::IsValueViewAlternativeV<T>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ValueView(T alternative) noexcept
+      : variant_(
+            absl::in_place_type<common_internal::BaseValueViewAlternativeForT<
+                absl::remove_cvref_t<T>>>,
+            alternative) {}
+
+  template <typename T,
+            typename = std::enable_if_t<common_internal::IsValueInterfaceV<T>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ValueView(SharedView<const T> interface) noexcept
+      : variant_(absl::in_place_type<
+                     common_internal::BaseValueViewAlternativeForT<T>>,
+                 interface) {}
+
+  ValueView& operator=(const Value& other) {
+    variant_ = (other.AssertIsValid(), other.ToViewVariant());
+    return *this;
+  }
+
+  ValueView& operator=(Value&&) = delete;
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ValueView(const ListValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : ValueView(ListValueView(value)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ValueView(const MapValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : ValueView(MapValueView(value)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ValueView(const StructValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : ValueView(StructValueView(value)) {}
+
+  ValueView(ListValue&&) = delete;
+
+  ValueView(MapValue&&) = delete;
+
+  ValueView(StructValue&&) = delete;
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ValueView(ListValueView value)
+      : ValueView(CompositionTraits<ListValueView>::Get<ValueView>(value)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ValueView(MapValueView value)
+      : ValueView(CompositionTraits<MapValueView>::Get<ValueView>(value)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ValueView(StructValueView value)
+      : ValueView(CompositionTraits<StructValueView>::Get<ValueView>(value)) {}
+
+  template <typename T>
+  std::enable_if_t<common_internal::IsValueAlternativeV<T>, ValueView&>
+  operator=(const T& alternative ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    variant_.emplace<common_internal::BaseValueViewAlternativeForT<T>>(
+        alternative);
+    return *this;
+  }
+
+  template <typename T>
+  std::enable_if_t<
+      std::conjunction_v<
+          std::negation<std::is_lvalue_reference<T>>,
+          common_internal::IsValueAlternative<absl::remove_cvref_t<T>>>,
+      ValueView&>
+  operator=(T&&) = delete;
+
+  template <typename T>
+  std::enable_if_t<common_internal::IsValueViewAlternativeV<T>, ValueView&>
+  operator=(T alternative) {
+    variant_.emplace<
+        common_internal::BaseValueViewAlternativeForT<absl::remove_cvref_t<T>>>(
+        alternative);
+    return *this;
+  }
+
+  ValueKind kind() const;
+
+  Type GetType(TypeManager& type_manager) const;
+
+  absl::string_view GetTypeName() const;
+
+  std::string DebugString() const;
+
+  // `GetSerializedSize` determines the serialized byte size that would result
+  // from serialization, without performing the serialization. If this value
+  // does not support serialization, `FAILED_PRECONDITION` is returned. If this
+  // value does not support calculating serialization size ahead of time,
+  // `UNIMPLEMENTED` is returned.
+  absl::StatusOr<size_t> GetSerializedSize(
+      AnyToJsonConverter& value_manager) const;
+
+  // `SerializeTo` serializes this value and appends it to `value`. If this
+  // value does not support serialization, `FAILED_PRECONDITION` is returned.
+  absl::Status SerializeTo(AnyToJsonConverter& value_manager,
+                           absl::Cord& value) const;
+
+  // `Serialize` serializes this value and returns it as `absl::Cord`. If this
+  // value does not support serialization, `FAILED_PRECONDITION` is returned.
+  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& value_manager) const;
+
+  // 'GetTypeUrl' returns the type URL that can be used as the type URL for
+  // `Any`. If this value does not support serialization, `FAILED_PRECONDITION`
+  // is returned.
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  // 'ConvertToAny' converts this value to `Any`. If this value does not support
+  // serialization, `FAILED_PRECONDITION` is returned.
+  absl::StatusOr<Any> ConvertToAny(
+      AnyToJsonConverter& value_manager,
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const;
+
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
+
+  bool IsZeroValue() const;
+
+  void swap(ValueView& other) noexcept { variant_.swap(other.variant_); }
+
+  explicit operator bool() const noexcept { return IsValid(); }
+
+  friend std::ostream& operator<<(std::ostream& out, ValueView value);
+
+ private:
+  friend class Value;
+  friend struct NativeTypeTraits<ValueView>;
+  friend struct CompositionTraits<ValueView>;
+
+  common_internal::ValueVariant ToVariant() const;
+
+  constexpr bool IsValid() const {
+    return !absl::holds_alternative<absl::monostate>(variant_);
+  }
+
+  void AssertIsValid() const {
+    ABSL_DCHECK(IsValid()) << "use of invalid ValueView";
+  }
+
+  common_internal::ValueViewVariant variant_;
+};
+
+inline void swap(ValueView& lhs, ValueView& rhs) noexcept { lhs.swap(rhs); }
+
+template <>
+struct NativeTypeTraits<ValueView> final {
+  static NativeTypeId Id(ValueView value) {
+    value.AssertIsValid();
+    return absl::visit(
+        [](const auto& alternative) -> NativeTypeId {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return
+            // `NativeTypeId::For<absl::monostate>()`. In debug builds we cannot
+            // reach here.
+            return NativeTypeId::For<absl::monostate>();
+          } else {
+            return NativeTypeId::Of(alternative);
+          }
+        },
+        value.variant_);
+  }
+};
+
+template <>
+struct CompositionTraits<ValueView> final {
+  template <typename U>
+  static std::enable_if_t<common_internal::IsValueViewAlternativeV<U>, bool>
+  HasA(ValueView value) {
+    value.AssertIsValid();
+    using Base = common_internal::BaseValueViewAlternativeForT<U>;
+    if constexpr (std::is_same_v<Base, U>) {
+      return absl::holds_alternative<U>(value.variant_);
+    } else {
+      return InstanceOf<U>(Get<Base>(value));
+    }
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<ListValueView, U>, bool> HasA(
+      ValueView value) {
+    value.AssertIsValid();
+    return absl::holds_alternative<common_internal::LegacyListValueView>(
+               value.variant_) ||
+           absl::holds_alternative<ParsedListValueView>(value.variant_);
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<MapValueView, U>, bool> HasA(
+      ValueView value) {
+    value.AssertIsValid();
+    return absl::holds_alternative<common_internal::LegacyMapValueView>(
+               value.variant_) ||
+           absl::holds_alternative<ParsedMapValueView>(value.variant_);
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<StructValueView, U>, bool> HasA(
+      ValueView value) {
+    value.AssertIsValid();
+    return absl::holds_alternative<common_internal::LegacyStructValueView>(
+               value.variant_) ||
+           absl::holds_alternative<ParsedStructValueView>(value.variant_);
+  }
+
+  template <typename U>
+  static std::enable_if_t<common_internal::IsValueViewAlternativeV<U>, U> Get(
+      ValueView value) {
+    value.AssertIsValid();
+    using Base = common_internal::BaseValueViewAlternativeForT<U>;
+    if constexpr (std::is_same_v<Base, U>) {
+      return absl::get<U>(value.variant_);
+    } else {
+      return Cast<U>(absl::get<Base>(value.variant_));
+    }
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<ListValueView, U>, U> Get(
+      ValueView value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyListValueView>(
+            value.variant_)) {
+      return U{absl::get<common_internal::LegacyListValueView>(value.variant_)};
+    }
+    return U{absl::get<ParsedListValueView>(value.variant_)};
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<MapValueView, U>, U> Get(
+      ValueView value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyMapValueView>(
+            value.variant_)) {
+      return U{absl::get<common_internal::LegacyMapValueView>(value.variant_)};
+    }
+    return U{absl::get<ParsedMapValueView>(value.variant_)};
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<StructValueView, U>, U> Get(
+      ValueView value) {
+    value.AssertIsValid();
+    if (absl::holds_alternative<common_internal::LegacyStructValueView>(
+            value.variant_)) {
+      return U{
+          absl::get<common_internal::LegacyStructValueView>(value.variant_)};
+    }
+    return U{absl::get<ParsedStructValueView>(value.variant_)};
+  }
+};
+
+template <typename To, typename From>
+struct CastTraits<
+    To, From,
+    std::enable_if_t<std::is_same_v<ValueView, absl::remove_cvref_t<From>>>>
+    : CompositionCastTraits<To, From> {};
+
+// Statically assert some expectations.
+static_assert(std::is_default_constructible_v<ValueView>);
+static_assert(std::is_nothrow_copy_constructible_v<ValueView>);
+static_assert(std::is_nothrow_copy_assignable_v<ValueView>);
+static_assert(std::is_nothrow_move_constructible_v<ValueView>);
+static_assert(std::is_nothrow_move_assignable_v<ValueView>);
+static_assert(std::is_nothrow_swappable_v<ValueView>);
+static_assert(std::is_trivially_copyable_v<ValueView>);
+static_assert(std::is_trivially_destructible_v<ValueView>);
+
+inline Value::Value(ValueView other)
+    : variant_((other.AssertIsValid(), other.ToVariant())) {}
+
+inline Value& Value::operator=(ValueView other) {
+  other.AssertIsValid();
+  variant_ = other.ToVariant();
+  return *this;
+}
+
 using ValueIteratorPtr = std::unique_ptr<ValueIterator>;
 
 class ValueIterator {
@@ -587,11 +907,14 @@ using ListValueBuilderInterface = ListValueBuilder;
 using MapValueBuilderInterface = MapValueBuilder;
 using StructValueBuilderInterface = StructValueBuilder;
 
-// Now that Value is complete, we can define various parts of list, map, opaque,
-// and struct which depend on Value.
+// Now that Value and ValueView are complete, we can define various parts of
+// list, map, opaque, and struct which depend on Value and ValueView.
 
 inline ErrorValue::ErrorValue()
     : ErrorValue(common_internal::GetDefaultErrorValue()) {}
+
+inline ErrorValueView::ErrorValueView()
+    : ErrorValueView(common_internal::GetDefaultErrorValue()) {}
 
 inline absl::Status ParsedListValue::Get(ValueManager& value_manager,
                                          size_t index, Value& result) const {
@@ -625,10 +948,49 @@ inline absl::Status ParsedListValue::Contains(ValueManager& value_manager,
   return interface_->Contains(value_manager, other, result);
 }
 
+inline absl::Status ParsedListValueView::Get(ValueManager& value_manager,
+                                             size_t index,
+                                             Value& result) const {
+  return interface_->Get(value_manager, index, result);
+}
+
+inline absl::Status ParsedListValueView::ForEach(
+    ValueManager& value_manager, ForEachCallback callback) const {
+  return interface_->ForEach(value_manager, callback);
+}
+
+inline absl::Status ParsedListValueView::ForEach(
+    ValueManager& value_manager, ForEachWithIndexCallback callback) const {
+  return interface_->ForEach(value_manager, callback);
+}
+
+inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
+ParsedListValueView::NewIterator(ValueManager& value_manager) const {
+  return interface_->NewIterator(value_manager);
+}
+
+inline absl::Status ParsedListValueView::Equal(ValueManager& value_manager,
+                                               ValueView other,
+                                               Value& result) const {
+  return interface_->Equal(value_manager, Value(other), result);
+}
+
+inline absl::Status ParsedListValueView::Contains(ValueManager& value_manager,
+                                                  ValueView other,
+                                                  Value& result) const {
+  return interface_->Contains(value_manager, Value(other), result);
+}
+
 inline absl::Status OpaqueValue::Equal(ValueManager& value_manager,
                                        const Value& other,
                                        Value& result) const {
   return interface_->Equal(value_manager, other, result);
+}
+
+inline absl::Status OpaqueValueView::Equal(ValueManager& value_manager,
+                                           ValueView other,
+                                           Value& result) const {
+  return interface_->Equal(value_manager, Value(other), result);
 }
 
 inline cel::Value OptionalValueInterface::Value() const {
@@ -646,6 +1008,16 @@ inline void OptionalValue::Value(cel::Value& result) const {
 }
 
 inline cel::Value OptionalValue::Value() const { return (*this)->Value(); }
+
+inline OptionalValueView OptionalValueView::None() {
+  return common_internal::GetEmptyDynOptionalValue();
+}
+
+inline void OptionalValueView::Value(cel::Value& result) const {
+  (*this)->Value(result);
+}
+
+inline cel::Value OptionalValueView::Value() const { return (*this)->Value(); }
 
 inline absl::Status ParsedMapValue::Get(ValueManager& value_manager,
                                         const Value& key, Value& result) const {
@@ -684,6 +1056,44 @@ inline absl::Status ParsedMapValue::Equal(ValueManager& value_manager,
   return interface_->Equal(value_manager, other, result);
 }
 
+inline absl::Status ParsedMapValueView::Get(ValueManager& value_manager,
+                                            ValueView key,
+                                            Value& result) const {
+  return interface_->Get(value_manager, Value(key), result);
+}
+
+inline absl::StatusOr<bool> ParsedMapValueView::Find(
+    ValueManager& value_manager, ValueView key, Value& result) const {
+  return interface_->Find(value_manager, Value(key), result);
+}
+
+inline absl::Status ParsedMapValueView::Has(ValueManager& value_manager,
+                                            ValueView key,
+                                            Value& result) const {
+  return interface_->Has(value_manager, Value(key), result);
+}
+
+inline absl::Status ParsedMapValueView::ListKeys(ValueManager& value_manager,
+                                                 ListValue& result) const {
+  return interface_->ListKeys(value_manager, result);
+}
+
+inline absl::Status ParsedMapValueView::ForEach(
+    ValueManager& value_manager, ForEachCallback callback) const {
+  return interface_->ForEach(value_manager, callback);
+}
+
+inline absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
+ParsedMapValueView::NewIterator(ValueManager& value_manager) const {
+  return interface_->NewIterator(value_manager);
+}
+
+inline absl::Status ParsedMapValueView::Equal(ValueManager& value_manager,
+                                              ValueView other,
+                                              Value& result) const {
+  return interface_->Equal(value_manager, Value(other), result);
+}
+
 inline absl::Status ParsedStructValue::GetFieldByName(
     ValueManager& value_manager, absl::string_view name, Value& result,
     ProtoWrapperTypeOptions unboxing_options) const {
@@ -710,6 +1120,37 @@ inline absl::Status ParsedStructValue::ForEachField(
 }
 
 inline absl::StatusOr<int> ParsedStructValue::Qualify(
+    ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+    bool presence_test, Value& result) const {
+  return interface_->Qualify(value_manager, qualifiers, presence_test, result);
+}
+
+inline absl::Status ParsedStructValueView::GetFieldByName(
+    ValueManager& value_manager, absl::string_view name, Value& result,
+    ProtoWrapperTypeOptions unboxing_options) const {
+  return interface_->GetFieldByName(value_manager, name, result,
+                                    unboxing_options);
+}
+
+inline absl::Status ParsedStructValueView::GetFieldByNumber(
+    ValueManager& value_manager, int64_t number, Value& result,
+    ProtoWrapperTypeOptions unboxing_options) const {
+  return interface_->GetFieldByNumber(value_manager, number, result,
+                                      unboxing_options);
+}
+
+inline absl::Status ParsedStructValueView::Equal(ValueManager& value_manager,
+                                                 ValueView other,
+                                                 Value& result) const {
+  return interface_->Equal(value_manager, Value(other), result);
+}
+
+inline absl::Status ParsedStructValueView::ForEachField(
+    ValueManager& value_manager, ForEachFieldCallback callback) const {
+  return interface_->ForEachField(value_manager, callback);
+}
+
+inline absl::StatusOr<int> ParsedStructValueView::Qualify(
     ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
     bool presence_test, Value& result) const {
   return interface_->Qualify(value_manager, qualifiers, presence_test, result);

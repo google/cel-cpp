@@ -212,6 +212,227 @@ absl::StatusOr<bool> StructValue::HasFieldByNumber(int64_t number) const {
       variant_);
 }
 
+common_internal::StructValueViewVariant StructValue::ToViewVariant() const {
+  return absl::visit(
+      [](const auto& alternative) -> common_internal::StructValueViewVariant {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return common_internal::StructValueViewVariant{};
+        } else {
+          return common_internal::StructValueViewVariant(
+              absl::in_place_type<typename absl::remove_cvref_t<
+                  decltype(alternative)>::view_alternative_type>,
+              alternative);
+        }
+      },
+      variant_);
+}
+
+StructType StructValueView::GetType(TypeManager& type_manager) const {
+  AssertIsValid();
+  return absl::visit(
+      [&type_manager](auto alternative) -> StructType {
+        if constexpr (std::is_same_v<
+                          absl::monostate,
+                          absl::remove_cvref_t<decltype(alternative)>>) {
+          ABSL_UNREACHABLE();
+        } else {
+          return alternative.GetType(type_manager);
+        }
+      },
+      variant_);
+}
+
+absl::string_view StructValueView::GetTypeName() const {
+  AssertIsValid();
+  return absl::visit(
+      [](auto alternative) -> absl::string_view {
+        if constexpr (std::is_same_v<
+                          absl::monostate,
+                          absl::remove_cvref_t<decltype(alternative)>>) {
+          return absl::string_view{};
+        } else {
+          return alternative.GetTypeName();
+        }
+      },
+      variant_);
+}
+
+std::string StructValueView::DebugString() const {
+  AssertIsValid();
+  return absl::visit(
+      [](auto alternative) -> std::string {
+        if constexpr (std::is_same_v<
+                          absl::monostate,
+                          absl::remove_cvref_t<decltype(alternative)>>) {
+          return std::string{};
+        } else {
+          return alternative.DebugString();
+        }
+      },
+      variant_);
+}
+
+absl::StatusOr<size_t> StructValueView::GetSerializedSize(
+    AnyToJsonConverter& converter) const {
+  AssertIsValid();
+  return absl::visit(
+      [&converter](auto alternative) -> absl::StatusOr<size_t> {
+        if constexpr (std::is_same_v<
+                          absl::monostate,
+                          absl::remove_cvref_t<decltype(alternative)>>) {
+          return absl::InternalError("use of invalid StructValueView");
+        } else {
+          return alternative.GetSerializedSize(converter);
+        }
+      },
+      variant_);
+}
+
+absl::Status StructValueView::SerializeTo(AnyToJsonConverter& converter,
+                                          absl::Cord& value) const {
+  AssertIsValid();
+  return absl::visit(
+      [&converter, &value](auto alternative) -> absl::Status {
+        if constexpr (std::is_same_v<
+                          absl::monostate,
+                          absl::remove_cvref_t<decltype(alternative)>>) {
+          return absl::InternalError("use of invalid StructValueView");
+        } else {
+          return alternative.SerializeTo(converter, value);
+        }
+      },
+      variant_);
+}
+
+absl::StatusOr<absl::Cord> StructValueView::Serialize(
+    AnyToJsonConverter& converter) const {
+  AssertIsValid();
+  return absl::visit(
+      [&converter](auto alternative) -> absl::StatusOr<absl::Cord> {
+        if constexpr (std::is_same_v<
+                          absl::monostate,
+                          absl::remove_cvref_t<decltype(alternative)>>) {
+          return absl::InternalError("use of invalid StructValueView");
+        } else {
+          return alternative.Serialize(converter);
+        }
+      },
+      variant_);
+}
+
+absl::StatusOr<std::string> StructValueView::GetTypeUrl(
+    absl::string_view prefix) const {
+  AssertIsValid();
+  return absl::visit(
+      [prefix](auto alternative) -> absl::StatusOr<std::string> {
+        if constexpr (std::is_same_v<
+                          absl::monostate,
+                          absl::remove_cvref_t<decltype(alternative)>>) {
+          return absl::InternalError("use of invalid StructValueView");
+        } else {
+          return alternative.GetTypeUrl(prefix);
+        }
+      },
+      variant_);
+}
+
+absl::StatusOr<Any> StructValueView::ConvertToAny(
+    AnyToJsonConverter& converter, absl::string_view prefix) const {
+  AssertIsValid();
+  return absl::visit(
+      [&converter, prefix](auto alternative) -> absl::StatusOr<Any> {
+        if constexpr (std::is_same_v<
+                          absl::monostate,
+                          absl::remove_cvref_t<decltype(alternative)>>) {
+          return absl::InternalError("use of invalid StructValueView");
+        } else {
+          return alternative.ConvertToAny(converter, prefix);
+        }
+      },
+      variant_);
+}
+
+absl::StatusOr<Json> StructValueView::ConvertToJson(
+    AnyToJsonConverter& converter) const {
+  AssertIsValid();
+  return absl::visit(
+      [&converter](auto alternative) -> absl::StatusOr<Json> {
+        if constexpr (std::is_same_v<
+                          absl::monostate,
+                          absl::remove_cvref_t<decltype(alternative)>>) {
+          return absl::InternalError("use of invalid StructValueView");
+        } else {
+          return alternative.ConvertToJson(converter);
+        }
+      },
+      variant_);
+}
+
+bool StructValueView::IsZeroValue() const {
+  AssertIsValid();
+  return absl::visit(
+      [](auto alternative) -> bool {
+        if constexpr (std::is_same_v<
+                          absl::monostate,
+                          absl::remove_cvref_t<decltype(alternative)>>) {
+          return false;
+        } else {
+          return alternative.IsZeroValue();
+        }
+      },
+      variant_);
+}
+
+absl::StatusOr<bool> StructValueView::HasFieldByName(
+    absl::string_view name) const {
+  AssertIsValid();
+  return absl::visit(
+      [name](auto alternative) -> absl::StatusOr<bool> {
+        if constexpr (std::is_same_v<
+                          absl::monostate,
+                          absl::remove_cvref_t<decltype(alternative)>>) {
+          return absl::InternalError("use of invalid StructValueView");
+        } else {
+          return alternative.HasFieldByName(name);
+        }
+      },
+      variant_);
+}
+
+absl::StatusOr<bool> StructValueView::HasFieldByNumber(int64_t number) const {
+  AssertIsValid();
+  return absl::visit(
+      [number](auto alternative) -> absl::StatusOr<bool> {
+        if constexpr (std::is_same_v<
+                          absl::monostate,
+                          absl::remove_cvref_t<decltype(alternative)>>) {
+          return absl::InternalError("use of invalid StructValueView");
+        } else {
+          return alternative.HasFieldByNumber(number);
+        }
+      },
+      variant_);
+}
+
+common_internal::StructValueVariant StructValueView::ToVariant() const {
+  return absl::visit(
+      [](auto alternative) -> common_internal::StructValueVariant {
+        if constexpr (std::is_same_v<
+                          absl::remove_cvref_t<decltype(alternative)>,
+                          absl::monostate>) {
+          return common_internal::StructValueVariant{};
+        } else {
+          return common_internal::StructValueVariant(
+              absl::in_place_type<typename absl::remove_cvref_t<
+                  decltype(alternative)>::alternative_type>,
+              alternative);
+        }
+      },
+      variant_);
+}
+
 namespace common_internal {
 
 absl::Status StructValueEqual(ValueManager& value_manager,

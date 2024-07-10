@@ -29,6 +29,8 @@
 #include <type_traits>
 #include <utility>
 
+#include "absl/base/attributes.h"
+#include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
@@ -53,13 +55,16 @@ namespace cel {
 
 class StructValueInterface;
 class StructValue;
+class StructValueView;
 class Value;
+class ValueView;
 class ValueManager;
 class TypeManager;
 
 class StructValue final {
  public:
   using interface_type = StructValueInterface;
+  using view_alternative_type = StructValueView;
 
   static constexpr ValueKind kKind = StructValueInterface::kKind;
 
@@ -86,6 +91,19 @@ class StructValue final {
             absl::in_place_type<common_internal::BaseStructValueAlternativeForT<
                 absl::remove_cvref_t<T>>>,
             std::forward<T>(value)) {}
+
+  // Constructor for struct value view.
+  explicit StructValue(StructValueView value);
+
+  // Constructor for alternative struct value views.
+  template <typename T, typename = std::enable_if_t<
+                            common_internal::IsStructValueViewAlternativeV<
+                                absl::remove_cvref_t<T>>>>
+  explicit StructValue(T value)
+      : variant_(
+            absl::in_place_type<common_internal::BaseStructValueAlternativeForT<
+                absl::remove_cvref_t<T>>>,
+            value) {}
 
   StructValue() = default;
 
@@ -184,8 +202,11 @@ class StructValue final {
       bool presence_test) const;
 
  private:
+  friend class StructValueView;
   friend struct NativeTypeTraits<StructValue>;
   friend struct CompositionTraits<StructValue>;
+
+  common_internal::StructValueViewVariant ToViewVariant() const;
 
   constexpr bool IsValid() const {
     return !absl::holds_alternative<absl::monostate>(variant_);
@@ -390,6 +411,234 @@ struct CastTraits<
     To, From,
     std::enable_if_t<std::is_same_v<StructValue, absl::remove_cvref_t<From>>>>
     : CompositionCastTraits<To, From> {};
+
+class StructValueView final {
+ public:
+  using interface_type = StructValueInterface;
+  using alternative_type = StructValue;
+
+  static constexpr ValueKind kKind = StructValue::kKind;
+
+  // Constructor for alternative struct value views.
+  template <typename T, typename = std::enable_if_t<
+                            common_internal::IsStructValueViewAlternativeV<T>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StructValueView(T value)
+      : variant_(absl::in_place_type<
+                     common_internal::BaseStructValueViewAlternativeForT<T>>,
+                 value) {}
+
+  // Constructor for struct value.
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StructValueView(const StructValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : variant_(value.ToViewVariant()) {}
+
+  // Constructor for alternative struct values.
+  template <typename T, typename = std::enable_if_t<
+                            common_internal::IsStructValueAlternativeV<T>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StructValueView(const T& value ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : variant_(absl::in_place_type<
+                     common_internal::BaseStructValueViewAlternativeForT<T>>,
+                 value) {}
+
+  // Prevent binding to temporary struct values.
+  StructValueView(StructValue&&) = delete;
+
+  // Prevent binding to temporary alternative struct values.
+  template <
+      typename T,
+      typename = std::enable_if_t<
+          common_internal::IsStructValueAlternativeV<absl::remove_cvref_t<T>>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StructValueView(T&&) = delete;
+
+  StructValueView() = default;
+  StructValueView(const StructValueView&) = default;
+  StructValueView& operator=(const StructValueView&) = default;
+
+  constexpr ValueKind kind() const { return kKind; }
+
+  StructType GetType(TypeManager& type_manager) const;
+
+  absl::string_view GetTypeName() const;
+
+  std::string DebugString() const;
+
+  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter& converter) const;
+
+  absl::Status SerializeTo(AnyToJsonConverter& converter,
+                           absl::Cord& value) const;
+
+  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& converter) const;
+
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Any> ConvertToAny(
+      AnyToJsonConverter& value_manager,
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const;
+
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
+
+  bool IsZeroValue() const;
+
+  void swap(StructValueView& other) noexcept {
+    AssertIsValid();
+    other.AssertIsValid();
+    variant_.swap(other.variant_);
+  }
+
+  absl::Status GetFieldByName(ValueManager& value_manager,
+                              absl::string_view name, Value& result,
+                              ProtoWrapperTypeOptions unboxing_options =
+                                  ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::StatusOr<Value> GetFieldByName(
+      ValueManager& value_manager, absl::string_view name,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
+
+  absl::Status GetFieldByNumber(ValueManager& value_manager, int64_t number,
+                                Value& result,
+                                ProtoWrapperTypeOptions unboxing_options =
+                                    ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::StatusOr<Value> GetFieldByNumber(
+      ValueManager& value_manager, int64_t number,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
+
+  absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
+
+  absl::StatusOr<bool> HasFieldByNumber(int64_t number) const;
+
+  using ForEachFieldCallback = StructValueInterface::ForEachFieldCallback;
+
+  absl::Status ForEachField(ValueManager& value_manager,
+                            ForEachFieldCallback callback) const;
+
+  absl::StatusOr<int> Qualify(ValueManager& value_manager,
+                              absl::Span<const SelectQualifier> qualifiers,
+                              bool presence_test, Value& result) const;
+  absl::StatusOr<std::pair<Value, int>> Qualify(
+      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+      bool presence_test) const;
+
+ private:
+  friend class StructValue;
+  friend struct NativeTypeTraits<StructValueView>;
+  friend struct CompositionTraits<StructValueView>;
+
+  common_internal::StructValueVariant ToVariant() const;
+
+  constexpr bool IsValid() const {
+    return !absl::holds_alternative<absl::monostate>(variant_);
+  }
+
+  void AssertIsValid() const {
+    ABSL_DCHECK(IsValid()) << "use of invalid StructValueView";
+  }
+
+  // Unlike many of the other derived values, `StructValue` is itself a composed
+  // type. This is to avoid making `StructValue` too big and by extension
+  // `Value` too big. Instead we store the derived `StructValue` values in
+  // `Value` and not `StructValue` itself.
+  common_internal::StructValueViewVariant variant_;
+};
+
+inline void swap(StructValueView& lhs, StructValueView& rhs) noexcept {
+  lhs.swap(rhs);
+}
+
+inline std::ostream& operator<<(std::ostream& out, StructValueView value) {
+  return out << value.DebugString();
+}
+
+template <>
+struct NativeTypeTraits<StructValueView> final {
+  static NativeTypeId Id(StructValueView value) {
+    value.AssertIsValid();
+    return absl::visit(
+        [](const auto& alternative) -> NativeTypeId {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            // In optimized builds, we just return
+            // `NativeTypeId::For<absl::monostate>()`. In debug builds we cannot
+            // reach here.
+            return NativeTypeId::For<absl::monostate>();
+          } else {
+            return NativeTypeId::Of(alternative);
+          }
+        },
+        value.variant_);
+  }
+};
+
+template <>
+struct CompositionTraits<StructValueView> final {
+  template <typename U>
+  static std::enable_if_t<common_internal::IsStructValueViewAlternativeV<U>,
+                          bool>
+  HasA(StructValueView value) {
+    value.AssertIsValid();
+    using Base = common_internal::BaseStructValueViewAlternativeForT<U>;
+    if constexpr (std::is_same_v<Base, U>) {
+      return absl::holds_alternative<U>(value.variant_);
+    } else {
+      return InstanceOf<U>(Get<Base>(value));
+    }
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<ValueView, U>, bool> HasA(
+      StructValueView value) {
+    value.AssertIsValid();
+    return true;
+  }
+
+  template <typename U>
+  static std::enable_if_t<common_internal::IsStructValueViewAlternativeV<U>, U>
+  Get(StructValueView value) {
+    value.AssertIsValid();
+    using Base = common_internal::BaseStructValueViewAlternativeForT<U>;
+    if constexpr (std::is_same_v<Base, U>) {
+      return absl::get<U>(value.variant_);
+    } else {
+      return Cast<U>(absl::get<Base>(value.variant_));
+    }
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<ValueView, U>, U> Get(
+      StructValueView value) {
+    value.AssertIsValid();
+    return absl::visit(
+        [](auto alternative) -> U {
+          if constexpr (std::is_same_v<
+                            absl::remove_cvref_t<decltype(alternative)>,
+                            absl::monostate>) {
+            return U{};
+          } else {
+            return U{alternative};
+          }
+        },
+        value.variant_);
+  }
+};
+
+template <typename To, typename From>
+struct CastTraits<To, From,
+                  std::enable_if_t<std::is_same_v<StructValueView,
+                                                  absl::remove_cvref_t<From>>>>
+    : CompositionCastTraits<To, From> {};
+
+inline StructValue::StructValue(StructValueView value)
+    : variant_(value.ToVariant()) {}
 
 class StructValueBuilder {
  public:

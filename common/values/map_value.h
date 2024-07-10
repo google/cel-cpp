@@ -30,6 +30,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
@@ -52,17 +53,21 @@ namespace cel {
 
 class MapValueInterface;
 class MapValue;
+class MapValueView;
 class Value;
+class ValueView;
 class ValueManager;
 class TypeManager;
 
 absl::Status CheckMapKey(const Value& key);
+absl::Status CheckMapKey(ValueView key);
 
 bool Is(const MapValue& lhs, const MapValue& rhs);
 
 class MapValue final {
  public:
   using interface_type = MapValueInterface;
+  using view_alternative_type = MapValueView;
 
   static constexpr ValueKind kKind = MapValueInterface::kKind;
 
@@ -87,6 +92,20 @@ class MapValue final {
             absl::in_place_type<common_internal::BaseMapValueAlternativeForT<
                 absl::remove_cvref_t<T>>>,
             std::forward<T>(value)) {}
+
+  // Constructor for struct value view.
+  explicit MapValue(MapValueView value);
+
+  // Constructor for alternative struct value views.
+  template <
+      typename T,
+      typename = std::enable_if_t<
+          common_internal::IsMapValueViewAlternativeV<absl::remove_cvref_t<T>>>>
+  explicit MapValue(T value)
+      : variant_(
+            absl::in_place_type<common_internal::BaseMapValueAlternativeForT<
+                absl::remove_cvref_t<T>>>,
+            value) {}
 
   MapValue() = default;
 
@@ -190,9 +209,12 @@ class MapValue final {
       ValueManager& value_manager) const;
 
  private:
+  friend class MapValueView;
   friend struct NativeTypeTraits<MapValue>;
   friend struct CompositionTraits<MapValue>;
   friend bool Is(const MapValue& lhs, const MapValue& rhs);
+
+  common_internal::MapValueViewVariant ToViewVariant() const;
 
   // Unlike many of the other derived values, `MapValue` is itself a composed
   // type. This is to avoid making `MapValue` too big and by extension
@@ -326,6 +348,207 @@ struct CastTraits<
     To, From,
     std::enable_if_t<std::is_same_v<MapValue, absl::remove_cvref_t<From>>>>
     : CompositionCastTraits<To, From> {};
+
+class MapValueView final {
+ public:
+  using interface_type = MapValueInterface;
+  using alternative_type = MapValue;
+
+  static constexpr ValueKind kKind = MapValue::kKind;
+
+  // Constructor for alternative struct value views.
+  template <typename T, typename = std::enable_if_t<
+                            common_internal::IsMapValueViewAlternativeV<T>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  MapValueView(T value)
+      : variant_(absl::in_place_type<
+                     common_internal::BaseMapValueViewAlternativeForT<T>>,
+                 value) {}
+
+  // Constructor for struct value.
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  MapValueView(const MapValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : variant_(value.ToViewVariant()) {}
+
+  // Constructor for alternative struct values.
+  template <typename T, typename = std::enable_if_t<
+                            common_internal::IsMapValueAlternativeV<T>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  MapValueView(const T& value ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : variant_(absl::in_place_type<
+                     common_internal::BaseMapValueViewAlternativeForT<T>>,
+                 value) {}
+
+  // Prevent binding to temporary struct values.
+  MapValueView& operator=(MapValue&&) = delete;
+
+  // Prevent binding to temporary alternative struct values.
+  template <typename T,
+            typename = std::enable_if_t<common_internal::IsMapValueAlternativeV<
+                absl::remove_cvref_t<T>>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  MapValueView& operator=(T&&) = delete;
+
+  MapValueView() = default;
+  MapValueView(const MapValueView&) = default;
+  MapValueView& operator=(const MapValueView&) = default;
+
+  constexpr ValueKind kind() const { return kKind; }
+
+  MapType GetType(TypeManager& type_manager) const;
+
+  absl::string_view GetTypeName() const;
+
+  std::string DebugString() const;
+
+  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter& converter) const;
+
+  absl::Status SerializeTo(AnyToJsonConverter& converter,
+                           absl::Cord& value) const;
+
+  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& converter) const;
+
+  absl::StatusOr<std::string> GetTypeUrl(
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Any> ConvertToAny(
+      AnyToJsonConverter& converter,
+      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
+
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const;
+
+  absl::StatusOr<JsonObject> ConvertToJsonObject(
+      AnyToJsonConverter& converter) const;
+
+  absl::Status Equal(ValueManager& value_manager, ValueView other,
+                     Value& result) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              ValueView other) const;
+
+  bool IsZeroValue() const;
+
+  void swap(MapValueView& other) noexcept { variant_.swap(other.variant_); }
+
+  absl::StatusOr<bool> IsEmpty() const;
+
+  absl::StatusOr<size_t> Size() const;
+
+  // See the corresponding member function of `MapValueInterface` for
+  // documentation.
+  absl::Status Get(ValueManager& value_manager, ValueView key,
+                   Value& result) const;
+  absl::StatusOr<Value> Get(ValueManager& value_manager, ValueView key) const;
+
+  // See the corresponding member function of `MapValueInterface` for
+  // documentation.
+  absl::StatusOr<bool> Find(ValueManager& value_manager, ValueView key,
+                            Value& result) const;
+  absl::StatusOr<std::pair<Value, bool>> Find(ValueManager& value_manager,
+                                              ValueView key) const;
+
+  // See the corresponding member function of `MapValueInterface` for
+  // documentation.
+  absl::Status Has(ValueManager& value_manager, ValueView key,
+                   Value& result) const;
+  absl::StatusOr<Value> Has(ValueManager& value_manager, ValueView key) const;
+
+  // See the corresponding member function of `MapValueInterface` for
+  // documentation.
+  absl::Status ListKeys(ValueManager& value_manager, ListValue& result) const;
+  absl::StatusOr<ListValue> ListKeys(ValueManager& value_manager) const;
+
+  // See the corresponding type declaration of `MapValueInterface` for
+  // documentation.
+  using ForEachCallback = typename MapValueInterface::ForEachCallback;
+
+  // See the corresponding member function of `MapValueInterface` for
+  // documentation.
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachCallback callback) const;
+
+  // See the corresponding member function of `MapValueInterface` for
+  // documentation.
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
+      ValueManager& value_manager) const;
+
+ private:
+  friend class MapValue;
+  friend struct NativeTypeTraits<MapValueView>;
+  friend struct CompositionTraits<MapValueView>;
+
+  common_internal::MapValueVariant ToVariant() const;
+
+  // Unlike many of the other derived values, `MapValue` is itself a composed
+  // type. This is to avoid making `MapValue` too big and by extension
+  // `Value` too big. Instead we store the derived `MapValue` values in
+  // `Value` and not `MapValue` itself.
+  common_internal::MapValueViewVariant variant_;
+};
+
+inline void swap(MapValueView& lhs, MapValueView& rhs) noexcept {
+  lhs.swap(rhs);
+}
+
+inline std::ostream& operator<<(std::ostream& out, MapValueView value) {
+  return out << value.DebugString();
+}
+
+template <>
+struct NativeTypeTraits<MapValueView> final {
+  static NativeTypeId Id(MapValueView value) {
+    return absl::visit(
+        [](const auto& alternative) -> NativeTypeId {
+          return NativeTypeId::Of(alternative);
+        },
+        value.variant_);
+  }
+};
+
+template <>
+struct CompositionTraits<MapValueView> final {
+  template <typename U>
+  static std::enable_if_t<common_internal::IsMapValueViewAlternativeV<U>, bool>
+  HasA(MapValueView value) {
+    using Base = common_internal::BaseMapValueViewAlternativeForT<U>;
+    if constexpr (std::is_same_v<Base, U>) {
+      return absl::holds_alternative<U>(value.variant_);
+    } else {
+      return InstanceOf<U>(Get<Base>(value));
+    }
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<ValueView, U>, bool> HasA(
+      MapValueView value) {
+    return true;
+  }
+
+  template <typename U>
+  static std::enable_if_t<common_internal::IsMapValueViewAlternativeV<U>, U>
+  Get(MapValueView value) {
+    using Base = common_internal::BaseMapValueViewAlternativeForT<U>;
+    if constexpr (std::is_same_v<Base, U>) {
+      return absl::get<U>(value.variant_);
+    } else {
+      return Cast<U>(absl::get<Base>(value.variant_));
+    }
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<ValueView, U>, U> Get(
+      MapValueView value) {
+    return absl::visit([](auto alternative) -> U { return U{alternative}; },
+                       value.variant_);
+  }
+};
+
+template <typename To, typename From>
+struct CastTraits<
+    To, From,
+    std::enable_if_t<std::is_same_v<MapValueView, absl::remove_cvref_t<From>>>>
+    : CompositionCastTraits<To, From> {};
+
+inline MapValue::MapValue(MapValueView value) : variant_(value.ToVariant()) {}
 
 inline bool Is(const MapValue& lhs, const MapValue& rhs) {
   return absl::visit(

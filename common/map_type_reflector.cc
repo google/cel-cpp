@@ -31,6 +31,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
@@ -42,7 +43,7 @@
 #include "common/value_factory.h"
 #include "common/value_kind.h"
 #include "common/value_manager.h"
-#include "internal/dynamic_loader.h"  // IWYU pragma: keep
+#include "internal/dynamic_loader.h"
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -64,7 +65,9 @@ struct MapValueKeyHash {
   // Used to enable heterogeneous operations in supporting containers.
   using is_transparent = void;
 
-  size_t operator()(const T& value) const { return absl::HashOf(value); }
+  size_t operator()(typename T::view_alternative_type value) const {
+    return absl::HashOf(value);
+  }
 };
 
 template <typename T>
@@ -72,12 +75,18 @@ struct MapValueKeyEqualTo {
   // Used to enable heterogeneous operations in supporting containers.
   using is_transparent = void;
 
-  bool operator()(const T& lhs, const T& rhs) const { return lhs == rhs; }
+  bool operator()(typename T::view_alternative_type lhs,
+                  typename T::view_alternative_type rhs) const {
+    return lhs == rhs;
+  }
 };
 
 template <typename T>
 struct MapValueKeyLess {
-  bool operator()(const T& lhs, const T& rhs) const { return lhs < rhs; }
+  bool operator()(typename T::view_alternative_type lhs,
+                  typename T::view_alternative_type rhs) const {
+    return lhs < rhs;
+  }
 };
 
 template <>
@@ -85,16 +94,16 @@ struct MapValueKeyHash<Value> {
   // Used to enable heterogeneous operations in supporting containers.
   using is_transparent = void;
 
-  size_t operator()(const Value& value) const {
+  size_t operator()(ValueView value) const {
     switch (value.kind()) {
       case ValueKind::kBool:
-        return absl::HashOf(ValueKind::kBool, Cast<BoolValue>(value));
+        return absl::HashOf(ValueKind::kBool, Cast<BoolValueView>(value));
       case ValueKind::kInt:
-        return absl::HashOf(ValueKind::kInt, Cast<IntValue>(value));
+        return absl::HashOf(ValueKind::kInt, Cast<IntValueView>(value));
       case ValueKind::kUint:
-        return absl::HashOf(ValueKind::kUint, Cast<UintValue>(value));
+        return absl::HashOf(ValueKind::kUint, Cast<UintValueView>(value));
       case ValueKind::kString:
-        return absl::HashOf(ValueKind::kString, Cast<StringValue>(value));
+        return absl::HashOf(ValueKind::kString, Cast<StringValueView>(value));
       default:
         ABSL_DLOG(FATAL) << "Invalid map key value: " << value;
         return 0;
@@ -107,12 +116,12 @@ struct MapValueKeyEqualTo<Value> {
   // Used to enable heterogeneous operations in supporting containers.
   using is_transparent = void;
 
-  bool operator()(const Value& lhs, const Value& rhs) const {
+  bool operator()(ValueView lhs, ValueView rhs) const {
     switch (lhs.kind()) {
       case ValueKind::kBool:
         switch (rhs.kind()) {
           case ValueKind::kBool:
-            return Cast<BoolValue>(lhs) == Cast<BoolValue>(rhs);
+            return Cast<BoolValueView>(lhs) == Cast<BoolValueView>(rhs);
           case ValueKind::kInt:
             ABSL_FALLTHROUGH_INTENDED;
           case ValueKind::kUint:
@@ -126,7 +135,7 @@ struct MapValueKeyEqualTo<Value> {
       case ValueKind::kInt:
         switch (rhs.kind()) {
           case ValueKind::kInt:
-            return Cast<IntValue>(lhs) == Cast<IntValue>(rhs);
+            return Cast<IntValueView>(lhs) == Cast<IntValueView>(rhs);
           case ValueKind::kBool:
             ABSL_FALLTHROUGH_INTENDED;
           case ValueKind::kUint:
@@ -140,7 +149,7 @@ struct MapValueKeyEqualTo<Value> {
       case ValueKind::kUint:
         switch (rhs.kind()) {
           case ValueKind::kUint:
-            return Cast<UintValue>(lhs) == Cast<UintValue>(rhs);
+            return Cast<UintValueView>(lhs) == Cast<UintValueView>(rhs);
           case ValueKind::kBool:
             ABSL_FALLTHROUGH_INTENDED;
           case ValueKind::kInt:
@@ -154,7 +163,7 @@ struct MapValueKeyEqualTo<Value> {
       case ValueKind::kString:
         switch (rhs.kind()) {
           case ValueKind::kString:
-            return Cast<StringValue>(lhs) == Cast<StringValue>(rhs);
+            return Cast<StringValueView>(lhs) == Cast<StringValueView>(rhs);
           case ValueKind::kBool:
             ABSL_FALLTHROUGH_INTENDED;
           case ValueKind::kInt:
@@ -174,12 +183,12 @@ struct MapValueKeyEqualTo<Value> {
 
 template <>
 struct MapValueKeyLess<Value> {
-  bool operator()(const Value& lhs, const Value& rhs) const {
+  bool operator()(ValueView lhs, ValueView rhs) const {
     switch (lhs.kind()) {
       case ValueKind::kBool:
         switch (rhs.kind()) {
           case ValueKind::kBool:
-            return Cast<BoolValue>(lhs) < Cast<BoolValue>(rhs);
+            return Cast<BoolValueView>(lhs) < Cast<BoolValueView>(rhs);
           case ValueKind::kInt:
             ABSL_FALLTHROUGH_INTENDED;
           case ValueKind::kUint:
@@ -193,7 +202,7 @@ struct MapValueKeyLess<Value> {
       case ValueKind::kInt:
         switch (rhs.kind()) {
           case ValueKind::kInt:
-            return Cast<IntValue>(lhs) < Cast<IntValue>(rhs);
+            return Cast<IntValueView>(lhs) < Cast<IntValueView>(rhs);
           case ValueKind::kBool:
             return false;
           case ValueKind::kUint:
@@ -207,7 +216,7 @@ struct MapValueKeyLess<Value> {
       case ValueKind::kUint:
         switch (rhs.kind()) {
           case ValueKind::kUint:
-            return Cast<UintValue>(lhs) < Cast<UintValue>(rhs);
+            return Cast<UintValueView>(lhs) < Cast<UintValueView>(rhs);
           case ValueKind::kBool:
             ABSL_FALLTHROUGH_INTENDED;
           case ValueKind::kInt:
@@ -221,7 +230,7 @@ struct MapValueKeyLess<Value> {
       case ValueKind::kString:
         switch (rhs.kind()) {
           case ValueKind::kString:
-            return Cast<StringValue>(lhs) < Cast<StringValue>(rhs);
+            return Cast<StringValueView>(lhs) < Cast<StringValueView>(rhs);
           case ValueKind::kBool:
             ABSL_FALLTHROUGH_INTENDED;
           case ValueKind::kInt:
@@ -320,6 +329,7 @@ class TypedMapValue final : public ParsedMapValueInterface {
  public:
   using key_type = std::decay_t<decltype(std::declval<K>().GetType(
       std::declval<TypeManager&>()))>;
+  using key_view_type = typename key_type::view_alternative_type;
 
   TypedMapValue(MapType type,
                 absl::flat_hash_map<K, V, MapValueKeyHash<K>,
@@ -327,16 +337,20 @@ class TypedMapValue final : public ParsedMapValueInterface {
       : type_(std::move(type)), entries_(std::move(entries)) {}
 
   std::string DebugString() const override {
-    std::vector<std::pair<K, V>> entries;
+    using KeyViewType = typename K::view_alternative_type;
+    using ValueViewType = typename V::view_alternative_type;
+    using KeyViewValueViewPair = std::pair<KeyViewType, ValueViewType>;
+    std::vector<KeyViewValueViewPair> entries;
     entries.reserve(Size());
     for (const auto& entry : entries_) {
-      entries.push_back(std::pair{K{entry.first}, V{entry.second}});
+      entries.push_back(
+          std::pair{KeyViewType{entry.first}, ValueViewType{entry.second}});
     }
-    std::stable_sort(
-        entries.begin(), entries.end(),
-        [](const std::pair<K, V>& lhs, const std::pair<K, V>& rhs) -> bool {
-          return MapValueKeyLess<K>{}(lhs.first, rhs.first);
-        });
+    std::stable_sort(entries.begin(), entries.end(),
+                     [](const KeyViewValueViewPair& lhs,
+                        const KeyViewValueViewPair& rhs) -> bool {
+                       return MapValueKeyLess<K>{}(lhs.first, rhs.first);
+                     });
     return absl::StrCat(
         "{",
         absl::StrJoin(entries, ", ",
@@ -430,8 +444,10 @@ class MapValueBuilderImpl final : public MapValueBuilder {
  public:
   using key_type = std::decay_t<decltype(std::declval<K>().GetType(
       std::declval<TypeManager&>()))>;
+  using key_view_type = typename key_type::view_alternative_type;
   using value_type = std::decay_t<decltype(std::declval<V>().GetType(
       std::declval<TypeManager&>()))>;
+  using value_view_type = typename value_type::view_alternative_type;
 
   static_assert(common_internal::IsValueAlternativeV<K>,
                 "K must be Value or one of the Value alternatives");
@@ -485,6 +501,7 @@ class MapValueBuilderImpl<Value, V> final : public MapValueBuilder {
  public:
   using value_type = std::decay_t<decltype(std::declval<V>().GetType(
       std::declval<TypeManager&>()))>;
+  using value_view_type = typename value_type::view_alternative_type;
 
   static_assert(common_internal::IsValueAlternativeV<V> ||
                     std::is_same_v<ListValue, V> || std::is_same_v<MapValue, V>,
@@ -532,6 +549,7 @@ class MapValueBuilderImpl<K, Value> final : public MapValueBuilder {
  public:
   using key_type = std::decay_t<decltype(std::declval<K>().GetType(
       std::declval<TypeManager&>()))>;
+  using key_view_type = typename key_type::view_alternative_type;
 
   static_assert(common_internal::IsValueAlternativeV<K>,
                 "K must be Value or one of the Value alternatives");

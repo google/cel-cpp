@@ -36,7 +36,7 @@ absl::Status ParsedStructValueInterface::Equal(ValueManager& value_manager,
     return common_internal::StructValueEqual(value_manager, *this,
                                              *struct_value, result);
   }
-  result = BoolValue{false};
+  result = BoolValueView{false};
   return absl::OkStatus();
 }
 

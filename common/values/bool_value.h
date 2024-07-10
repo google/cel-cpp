@@ -22,6 +22,7 @@
 #include <ostream>
 #include <string>
 
+#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -34,8 +35,10 @@
 namespace cel {
 
 class Value;
+class ValueView;
 class ValueManager;
 class BoolValue;
+class BoolValueView;
 class TypeManager;
 
 namespace common_internal {
@@ -105,6 +108,8 @@ class BoolValue final : private common_internal::BoolValueBase {
   using Base = BoolValueBase;
 
  public:
+  using view_alternative_type = BoolValueView;
+
   using Base::kKind;
 
   BoolValue() = default;
@@ -114,6 +119,8 @@ class BoolValue final : private common_internal::BoolValueBase {
   BoolValue& operator=(BoolValue&&) = default;
 
   constexpr explicit BoolValue(bool value) noexcept : Base(value) {}
+
+  constexpr explicit BoolValue(BoolValueView other) noexcept;
 
   using Base::kind;
 
@@ -147,6 +154,9 @@ class BoolValue final : private common_internal::BoolValueBase {
     using std::swap;
     swap(lhs.value, rhs.value);
   }
+
+ private:
+  friend class BoolValueView;
 };
 
 template <typename H>
@@ -157,6 +167,76 @@ H AbslHashValue(H state, BoolValue value) {
 inline std::ostream& operator<<(std::ostream& out, BoolValue value) {
   return out << value.DebugString();
 }
+
+class BoolValueView final : private common_internal::BoolValueBase {
+ private:
+  using Base = BoolValueBase;
+
+ public:
+  using alternative_type = BoolValue;
+
+  using Base::kKind;
+
+  BoolValueView() = default;
+  BoolValueView(const BoolValueView&) = default;
+  BoolValueView(BoolValueView&&) = default;
+  BoolValueView& operator=(const BoolValueView&) = default;
+  BoolValueView& operator=(BoolValueView&&) = default;
+
+  constexpr explicit BoolValueView(bool value) noexcept : Base(value) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  constexpr BoolValueView(BoolValue other) noexcept
+      : BoolValueView(static_cast<bool>(other)) {}
+
+  using Base::kind;
+
+  using Base::GetType;
+
+  using Base::GetTypeName;
+
+  using Base::DebugString;
+
+  using Base::GetSerializedSize;
+
+  using Base::SerializeTo;
+
+  using Base::Serialize;
+
+  using Base::GetTypeUrl;
+
+  using Base::ConvertToAny;
+
+  using Base::ConvertToJson;
+
+  using Base::Equal;
+
+  using Base::IsZeroValue;
+
+  using Base::NativeValue;
+
+  using Base::operator bool;
+
+  friend void swap(BoolValueView& lhs, BoolValueView& rhs) noexcept {
+    using std::swap;
+    swap(lhs.value, rhs.value);
+  }
+
+ private:
+  friend class BoolValue;
+};
+
+template <typename H>
+H AbslHashValue(H state, BoolValueView value) {
+  return H::combine(std::move(state), value.NativeValue());
+}
+
+inline std::ostream& operator<<(std::ostream& out, BoolValueView value) {
+  return out << value.DebugString();
+}
+
+inline constexpr BoolValue::BoolValue(BoolValueView other) noexcept
+    : BoolValue(static_cast<bool>(other)) {}
 
 }  // namespace cel
 

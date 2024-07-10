@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <string>
 
+#include "absl/base/no_destructor.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -22,6 +23,7 @@
 #include "absl/strings/string_view.h"
 #include "common/any.h"
 #include "common/json.h"
+#include "common/unknown.h"
 #include "common/value.h"
 
 namespace cel {
@@ -61,6 +63,53 @@ absl::StatusOr<Json> UnknownValue::ConvertToJson(AnyToJsonConverter&) const {
 absl::Status UnknownValue::Equal(ValueManager&, const Value&,
                                  Value& result) const {
   result = BoolValue{false};
+  return absl::OkStatus();
+}
+
+const Unknown& UnknownValueView::Empty() {
+  static const absl::NoDestructor<Unknown> empty;
+  return *empty;
+}
+
+absl::StatusOr<size_t> UnknownValueView::GetSerializedSize(
+    AnyToJsonConverter&) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(GetTypeName(), " is unserializable"));
+}
+
+absl::Status UnknownValueView::SerializeTo(AnyToJsonConverter&,
+                                           absl::Cord&) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(GetTypeName(), " is unserializable"));
+}
+
+absl::StatusOr<absl::Cord> UnknownValueView::Serialize(
+    AnyToJsonConverter&) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(GetTypeName(), " is unserializable"));
+}
+
+absl::StatusOr<std::string> UnknownValueView::GetTypeUrl(
+    absl::string_view) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(GetTypeName(), " is unserializable"));
+}
+
+absl::StatusOr<Any> UnknownValueView::ConvertToAny(AnyToJsonConverter&,
+                                                   absl::string_view) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(GetTypeName(), " is unserializable"));
+}
+
+absl::StatusOr<Json> UnknownValueView::ConvertToJson(
+    AnyToJsonConverter&) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(GetTypeName(), " is not convertable to JSON"));
+}
+
+absl::Status UnknownValueView::Equal(ValueManager&, ValueView,
+                                     Value& result) const {
+  result = BoolValueView{false};
   return absl::OkStatus();
 }
 

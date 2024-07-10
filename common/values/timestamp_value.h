@@ -22,6 +22,7 @@
 #include <ostream>
 #include <string>
 
+#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -35,8 +36,10 @@
 namespace cel {
 
 class Value;
+class ValueView;
 class ValueManager;
 class TimestampValue;
+class TimestampValueView;
 class TypeManager;
 
 namespace common_internal {
@@ -99,6 +102,8 @@ class TimestampValue final : private common_internal::TimestampValueBase {
   using Base = TimestampValueBase;
 
  public:
+  using view_alternative_type = TimestampValueView;
+
   using Base::kKind;
 
   TimestampValue() = default;
@@ -108,6 +113,8 @@ class TimestampValue final : private common_internal::TimestampValueBase {
   TimestampValue& operator=(TimestampValue&&) = default;
 
   constexpr explicit TimestampValue(absl::Time value) noexcept : Base(value) {}
+
+  constexpr explicit TimestampValue(TimestampValueView other) noexcept;
 
   using Base::kind;
 
@@ -141,6 +148,9 @@ class TimestampValue final : private common_internal::TimestampValueBase {
     using std::swap;
     swap(lhs.value, rhs.value);
   }
+
+ private:
+  friend class DurationValueView;
 };
 
 constexpr bool operator==(TimestampValue lhs, TimestampValue rhs) {
@@ -154,6 +164,81 @@ constexpr bool operator!=(TimestampValue lhs, TimestampValue rhs) {
 inline std::ostream& operator<<(std::ostream& out, TimestampValue value) {
   return out << value.DebugString();
 }
+
+class TimestampValueView final : private common_internal::TimestampValueBase {
+ private:
+  using Base = TimestampValueBase;
+
+ public:
+  using alternative_type = TimestampValue;
+
+  using Base::kKind;
+
+  TimestampValueView() = default;
+  TimestampValueView(const TimestampValueView&) = default;
+  TimestampValueView(TimestampValueView&&) = default;
+  TimestampValueView& operator=(const TimestampValueView&) = default;
+  TimestampValueView& operator=(TimestampValueView&&) = default;
+
+  constexpr explicit TimestampValueView(absl::Time value) noexcept
+      : Base(value) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  constexpr TimestampValueView(TimestampValue other) noexcept
+      : TimestampValueView(static_cast<absl::Time>(other)) {}
+
+  using Base::kind;
+
+  using Base::GetType;
+
+  using Base::GetTypeName;
+
+  using Base::DebugString;
+
+  using Base::GetSerializedSize;
+
+  using Base::SerializeTo;
+
+  using Base::Serialize;
+
+  using Base::GetTypeUrl;
+
+  using Base::ConvertToAny;
+
+  using Base::ConvertToJson;
+
+  using Base::Equal;
+
+  using Base::IsZeroValue;
+
+  using Base::NativeValue;
+
+  using Base::operator absl::Time;
+
+  friend void swap(TimestampValueView& lhs, TimestampValueView& rhs) noexcept {
+    using std::swap;
+    swap(lhs.value, rhs.value);
+  }
+
+ private:
+  friend class DurationValue;
+};
+
+constexpr bool operator==(TimestampValueView lhs, TimestampValueView rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator!=(TimestampValueView lhs, TimestampValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline std::ostream& operator<<(std::ostream& out, TimestampValueView value) {
+  return out << value.DebugString();
+}
+
+inline constexpr TimestampValue::TimestampValue(
+    TimestampValueView other) noexcept
+    : TimestampValue(static_cast<absl::Time>(other)) {}
 
 }  // namespace cel
 

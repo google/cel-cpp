@@ -45,6 +45,7 @@ using ::cel::UintValue;
 using ::cel::Value;
 using ::cel::ValueKind;
 using ::cel::ValueKindToString;
+using ::cel::ValueView;
 using ::cel::internal::Number;
 using ::cel::runtime_internal::CreateNoSuchKeyError;
 

@@ -199,10 +199,10 @@ TEST_P(ValueFactoryTest, JsonValueObject) {
     ASSERT_OK_AND_ASSIGN(auto key, keys_iterator->Next(value_manager()));
     string_keys.push_back(StringValue(Cast<StringValue>(key)));
   }
-  EXPECT_THAT(string_keys,
-              UnorderedElementsAreArray({StringValue("a"), StringValue("b"),
-                                         StringValue("c"), StringValue("d"),
-                                         StringValue("e"), StringValue("f")}));
+  EXPECT_THAT(string_keys, UnorderedElementsAreArray(
+                               {StringValueView("a"), StringValueView("b"),
+                                StringValueView("c"), StringValueView("d"),
+                                StringValueView("e"), StringValueView("f")}));
   ASSERT_OK_AND_ASSIGN(auto has,
                        map_value.Has(value_manager(), StringValue("a")));
   ASSERT_TRUE(InstanceOf<BoolValue>(has));

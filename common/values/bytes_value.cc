@@ -126,7 +126,7 @@ bool BytesValue::Equals(const absl::Cord& bytes) const {
   });
 }
 
-bool BytesValue::Equals(const BytesValue& bytes) const {
+bool BytesValue::Equals(BytesValueView bytes) const {
   return bytes.NativeValue(
       [this](const auto& alternative) -> bool { return Equals(alternative); });
 }
@@ -163,7 +163,108 @@ int BytesValue::Compare(const absl::Cord& bytes) const {
   });
 }
 
-int BytesValue::Compare(const BytesValue& bytes) const {
+int BytesValue::Compare(BytesValueView bytes) const {
+  return bytes.NativeValue(
+      [this](const auto& alternative) -> int { return Compare(alternative); });
+}
+
+std::string BytesValueView::DebugString() const {
+  return BytesDebugString(*this);
+}
+
+absl::StatusOr<size_t> BytesValueView::GetSerializedSize(
+    AnyToJsonConverter&) const {
+  return NativeValue([](const auto& bytes) -> size_t {
+    return internal::SerializedBytesValueSize(bytes);
+  });
+}
+
+absl::Status BytesValueView::SerializeTo(AnyToJsonConverter&,
+                                         absl::Cord& value) const {
+  return NativeValue([&value](const auto& bytes) -> absl::Status {
+    return internal::SerializeBytesValue(bytes, value);
+  });
+}
+
+absl::StatusOr<absl::Cord> BytesValueView::Serialize(
+    AnyToJsonConverter& value_manager) const {
+  absl::Cord value;
+  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
+  return value;
+}
+
+absl::StatusOr<std::string> BytesValueView::GetTypeUrl(
+    absl::string_view prefix) const {
+  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.BytesValue");
+}
+
+absl::StatusOr<Any> BytesValueView::ConvertToAny(
+    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
+  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
+  return MakeAny(std::move(type_url), std::move(value));
+}
+
+absl::StatusOr<Json> BytesValueView::ConvertToJson(AnyToJsonConverter&) const {
+  return NativeValue(
+      [](const auto& value) -> Json { return JsonBytes(value); });
+}
+
+absl::Status BytesValueView::Equal(ValueManager&, ValueView other,
+                                   Value& result) const {
+  if (auto other_value = As<BytesValueView>(other); other_value.has_value()) {
+    result = NativeValue([other_value](const auto& value) -> BoolValue {
+      return other_value->NativeValue(
+          [&value](const auto& other_value) -> BoolValue {
+            return BoolValue{value == other_value};
+          });
+    });
+    return absl::OkStatus();
+  }
+  result = BoolValueView{false};
+  return absl::OkStatus();
+}
+
+size_t BytesValueView::Size() const {
+  return NativeValue(
+      [](const auto& alternative) -> size_t { return alternative.size(); });
+}
+
+bool BytesValueView::IsEmpty() const {
+  return NativeValue(
+      [](const auto& alternative) -> bool { return alternative.empty(); });
+}
+
+bool BytesValueView::Equals(absl::string_view bytes) const {
+  return NativeValue([bytes](const auto& alternative) -> bool {
+    return alternative == bytes;
+  });
+}
+
+bool BytesValueView::Equals(const absl::Cord& bytes) const {
+  return NativeValue([&bytes](const auto& alternative) -> bool {
+    return alternative == bytes;
+  });
+}
+
+bool BytesValueView::Equals(BytesValueView bytes) const {
+  return bytes.NativeValue(
+      [this](const auto& alternative) -> bool { return Equals(alternative); });
+}
+
+int BytesValueView::Compare(absl::string_view bytes) const {
+  return NativeValue([bytes](const auto& alternative) -> int {
+    return CompareImpl(alternative, bytes);
+  });
+}
+
+int BytesValueView::Compare(const absl::Cord& bytes) const {
+  return NativeValue([&bytes](const auto& alternative) -> int {
+    return CompareImpl(alternative, bytes);
+  });
+}
+
+int BytesValueView::Compare(BytesValueView bytes) const {
   return bytes.NativeValue(
       [this](const auto& alternative) -> int { return Compare(alternative); });
 }

@@ -34,7 +34,7 @@
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "common/values/values.h"
-#include "internal/dynamic_loader.h"  // IWYU pragma: keep
+#include "internal/dynamic_loader.h"
 #include "internal/status_macros.h"
 
 namespace cel::common_internal {
@@ -273,6 +273,114 @@ absl::Status LegacyListValue::Contains(ValueManager& value_manager,
   InitializeLegacyListValue();
   return (*legacy_list_value_vtable.contains)(impl_, value_manager, other,
                                               result);
+}
+
+ListType LegacyListValueView::GetType(TypeManager& type_manager) const {
+  InitializeLegacyListValue();
+  return (*legacy_list_value_vtable.get_type)(impl_, type_manager);
+}
+
+std::string LegacyListValueView::DebugString() const {
+  InitializeLegacyListValue();
+  return (*legacy_list_value_vtable.debug_string)(impl_);
+}
+
+// See `ValueInterface::GetSerializedSize`.
+absl::StatusOr<size_t> LegacyListValueView::GetSerializedSize(
+    AnyToJsonConverter&) const {
+  InitializeLegacyListValue();
+  return (*legacy_list_value_vtable.get_serialized_size)(impl_);
+}
+
+// See `ValueInterface::SerializeTo`.
+absl::Status LegacyListValueView::SerializeTo(AnyToJsonConverter&,
+                                              absl::Cord& value) const {
+  InitializeLegacyListValue();
+  return (*legacy_list_value_vtable.serialize_to)(impl_, value);
+}
+
+// See `ValueInterface::Serialize`.
+absl::StatusOr<absl::Cord> LegacyListValueView::Serialize(
+    AnyToJsonConverter& value_manager) const {
+  absl::Cord serialized_value;
+  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, serialized_value));
+  return serialized_value;
+}
+
+// See `ValueInterface::GetTypeUrl`.
+absl::StatusOr<std::string> LegacyListValueView::GetTypeUrl(
+    absl::string_view prefix) const {
+  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.ListValue");
+}
+
+// See `ValueInterface::ConvertToAny`.
+absl::StatusOr<Any> LegacyListValueView::ConvertToAny(
+    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
+  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
+  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
+  return MakeAny(std::move(type_url), std::move(value));
+}
+
+absl::StatusOr<JsonArray> LegacyListValueView::ConvertToJsonArray(
+    AnyToJsonConverter&) const {
+  InitializeLegacyListValue();
+  return (*legacy_list_value_vtable.convert_to_json_array)(impl_);
+}
+
+bool LegacyListValueView::IsEmpty() const {
+  InitializeLegacyListValue();
+  return (*legacy_list_value_vtable.is_empty)(impl_);
+}
+
+size_t LegacyListValueView::Size() const {
+  InitializeLegacyListValue();
+  return (*legacy_list_value_vtable.size)(impl_);
+}
+
+// See LegacyListValueInterface::Get for documentation.
+absl::Status LegacyListValueView::Get(ValueManager& value_manager, size_t index,
+                                      Value& result) const {
+  InitializeLegacyListValue();
+  return (*legacy_list_value_vtable.get)(impl_, value_manager, index, result);
+}
+
+absl::Status LegacyListValueView::ForEach(ValueManager& value_manager,
+                                          ForEachCallback callback) const {
+  return ForEach(
+      value_manager,
+      [callback](size_t, const Value& value) -> absl::StatusOr<bool> {
+        return callback(value);
+      });
+}
+
+absl::Status LegacyListValueView::ForEach(
+    ValueManager& value_manager, ForEachWithIndexCallback callback) const {
+  InitializeLegacyListValue();
+  return (*legacy_list_value_vtable.for_each)(impl_, value_manager, callback);
+}
+
+absl::StatusOr<absl::Nonnull<ValueIteratorPtr>>
+LegacyListValueView::NewIterator(ValueManager& value_manager) const {
+  InitializeLegacyListValue();
+  return (*legacy_list_value_vtable.new_iterator)(impl_, value_manager);
+}
+
+absl::Status LegacyListValueView::Equal(ValueManager& value_manager,
+                                        ValueView other, Value& result) const {
+  if (auto list_value = As<ListValueView>(other); list_value.has_value()) {
+    return ListValueEqual(value_manager, ListValue(*this),
+                          ListValue(*list_value), result);
+  }
+  result = BoolValue{false};
+  return absl::OkStatus();
+}
+
+absl::Status LegacyListValueView::Contains(ValueManager& value_manager,
+                                           ValueView other,
+                                           Value& result) const {
+  InitializeLegacyListValue();
+  return (*legacy_list_value_vtable.contains)(impl_, value_manager,
+                                              Value(other), result);
 }
 
 }  // namespace cel::common_internal

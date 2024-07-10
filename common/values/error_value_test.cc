@@ -19,6 +19,7 @@
 #include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/native_type.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
 #include "internal/testing.h"
@@ -126,6 +127,104 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
                                          MemoryManagement::kReferenceCounting)),
     ErrorValueTest::ToString);
+
+using ErrorValueViewTest = common_internal::ThreadCompatibleValueTest<>;
+
+TEST_P(ErrorValueViewTest, Default) {
+  ErrorValueView value;
+  EXPECT_THAT(value.NativeValue(), StatusIs(absl::StatusCode::kUnknown));
+}
+
+TEST_P(ErrorValueViewTest, OkStatus) {
+  EXPECT_DEBUG_DEATH(static_cast<void>(ErrorValueView(absl::OkStatus())), _);
+}
+
+TEST_P(ErrorValueViewTest, Kind) {
+  EXPECT_EQ(ErrorValueView(absl::CancelledError()).kind(),
+            ErrorValueView::kKind);
+  EXPECT_EQ(ValueView(ErrorValueView(absl::CancelledError())).kind(),
+            ErrorValueView::kKind);
+}
+
+TEST_P(ErrorValueViewTest, DebugString) {
+  {
+    std::ostringstream out;
+    out << ErrorValueView(absl::CancelledError());
+    EXPECT_THAT(out.str(), Not(IsEmpty()));
+  }
+  {
+    std::ostringstream out;
+    out << ValueView(ErrorValueView(absl::CancelledError()));
+    EXPECT_THAT(out.str(), Not(IsEmpty()));
+  }
+}
+
+TEST_P(ErrorValueViewTest, GetSerializedSize) {
+  EXPECT_THAT(ErrorValueView().GetSerializedSize(value_manager()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(ErrorValueViewTest, SerializeTo) {
+  absl::Cord value;
+  EXPECT_THAT(ErrorValueView().SerializeTo(value_manager(), value),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(ErrorValueViewTest, Serialize) {
+  EXPECT_THAT(ErrorValueView().Serialize(value_manager()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(ErrorValueViewTest, GetTypeUrl) {
+  EXPECT_THAT(ErrorValueView().GetTypeUrl(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(ErrorValueViewTest, ConvertToAny) {
+  EXPECT_THAT(ErrorValueView().ConvertToAny(value_manager()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(ErrorValueViewTest, ConvertToJson) {
+  EXPECT_THAT(ErrorValueView().ConvertToJson(value_manager()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(ErrorValueViewTest, NativeTypeId) {
+  EXPECT_EQ(NativeTypeId::Of(ErrorValueView(absl::CancelledError())),
+            NativeTypeId::For<ErrorValueView>());
+  EXPECT_EQ(NativeTypeId::Of(ValueView(ErrorValueView(absl::CancelledError()))),
+            NativeTypeId::For<ErrorValueView>());
+}
+
+TEST_P(ErrorValueViewTest, InstanceOf) {
+  EXPECT_TRUE(
+      InstanceOf<ErrorValueView>(ErrorValueView(absl::CancelledError())));
+  EXPECT_TRUE(InstanceOf<ErrorValueView>(
+      ValueView(ErrorValueView(absl::CancelledError()))));
+}
+
+TEST_P(ErrorValueViewTest, Cast) {
+  EXPECT_THAT(Cast<ErrorValueView>(ErrorValueView(absl::CancelledError())),
+              An<ErrorValueView>());
+  EXPECT_THAT(
+      Cast<ErrorValueView>(ValueView(ErrorValueView(absl::CancelledError()))),
+      An<ErrorValueView>());
+}
+
+TEST_P(ErrorValueViewTest, As) {
+  EXPECT_THAT(As<ErrorValueView>(ErrorValueView(absl::CancelledError())),
+              Ne(absl::nullopt));
+  EXPECT_THAT(
+      As<ErrorValueView>(ValueView(ErrorValueView(absl::CancelledError()))),
+      Ne(absl::nullopt));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ErrorValueViewTest, ErrorValueViewTest,
+    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
+                                         MemoryManagement::kReferenceCounting)),
+    ErrorValueViewTest::ToString);
 
 }  // namespace
 }  // namespace cel

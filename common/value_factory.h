@@ -64,17 +64,17 @@ class ValueFactory : public virtual TypeFactory {
   OptionalValue CreateZeroOptionalValue(OptionalTypeView type);
 
   // `GetDynListType` gets a view of the `ListType` type `list(dyn)`.
-  ListValue GetZeroDynListValue();
+  ListValueView GetZeroDynListValue();
 
   // `GetDynDynMapType` gets a view of the `MapType` type `map(dyn, dyn)`.
-  MapValue GetZeroDynDynMapValue();
+  MapValueView GetZeroDynDynMapValue();
 
   // `GetDynDynMapType` gets a view of the `MapType` type `map(string, dyn)`.
-  MapValue GetZeroStringDynMapValue();
+  MapValueView GetZeroStringDynMapValue();
 
   // `GetDynOptionalType` gets a view of the `OptionalType` type
   // `optional(dyn)`.
-  OptionalValue GetZeroDynOptionalValue();
+  OptionalValueView GetZeroDynOptionalValue();
 
   NullValue GetNullValue() { return NullValue{}; }
 

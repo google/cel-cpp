@@ -156,5 +156,132 @@ INSTANTIATE_TEST_SUITE_P(
                       MemoryManagement::kReferenceCounting),
     OptionalValueTest::ToString);
 
+class OptionalValueViewTest
+    : public common_internal::ThreadCompatibleValueTest<> {
+ public:
+  OptionalValueView OptionalNone() { return OptionalValueView::None(); }
+
+  OptionalValue OptionalOf(Value value) {
+    return OptionalValue::Of(memory_manager(), std::move(value));
+  }
+};
+
+TEST_P(OptionalValueViewTest, Kind) {
+  auto value = OptionalNone();
+  EXPECT_EQ(value.kind(), OptionalValueView::kKind);
+  EXPECT_EQ(OpaqueValueView(value).kind(), OptionalValueView::kKind);
+  EXPECT_EQ(ValueView(value).kind(), OptionalValueView::kKind);
+}
+
+TEST_P(OptionalValueViewTest, Type) {
+  auto value = OptionalNone();
+  EXPECT_EQ(value.GetType(type_manager()), OptionalType());
+  EXPECT_EQ(OpaqueValueView(value).GetType(type_manager()), OptionalType());
+  EXPECT_EQ(ValueView(value).GetType(type_manager()), OptionalType());
+}
+
+TEST_P(OptionalValueViewTest, DebugString) {
+  auto value = OptionalNone();
+  {
+    std::ostringstream out;
+    out << value;
+    EXPECT_EQ(out.str(), "optional.none()");
+  }
+  {
+    std::ostringstream out;
+    out << OpaqueValueView(value);
+    EXPECT_EQ(out.str(), "optional.none()");
+  }
+  {
+    std::ostringstream out;
+    out << ValueView(value);
+    EXPECT_EQ(out.str(), "optional.none()");
+  }
+  {
+    std::ostringstream out;
+    out << OptionalOf(IntValue());
+    EXPECT_EQ(out.str(), "optional(0)");
+  }
+}
+
+TEST_P(OptionalValueViewTest, GetSerializedSize) {
+  EXPECT_THAT(OptionalValueView().GetSerializedSize(value_manager()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(OptionalValueViewTest, SerializeTo) {
+  absl::Cord value;
+  EXPECT_THAT(OptionalValueView().SerializeTo(value_manager(), value),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(OptionalValueViewTest, Serialize) {
+  EXPECT_THAT(OptionalValueView().Serialize(value_manager()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(OptionalValueViewTest, GetTypeUrl) {
+  EXPECT_THAT(OptionalValueView().GetTypeUrl(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(OptionalValueViewTest, ConvertToAny) {
+  EXPECT_THAT(OptionalValueView().ConvertToAny(value_manager()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(OptionalValueViewTest, ConvertToJson) {
+  EXPECT_THAT(OptionalValueView().ConvertToJson(value_manager()),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+}
+
+TEST_P(OptionalValueViewTest, InstanceOf) {
+  auto value = OptionalNone();
+  EXPECT_TRUE(InstanceOf<OptionalValueView>(value));
+  EXPECT_TRUE(InstanceOf<OptionalValueView>(OpaqueValueView(value)));
+  EXPECT_TRUE(InstanceOf<OptionalValueView>(ValueView(value)));
+}
+
+TEST_P(OptionalValueViewTest, Cast) {
+  auto value = OptionalNone();
+  EXPECT_THAT(Cast<OptionalValueView>(value), An<OptionalValueView>());
+  EXPECT_THAT(Cast<OptionalValueView>(OpaqueValueView(value)),
+              An<OptionalValueView>());
+  EXPECT_THAT(Cast<OptionalValueView>(ValueView(value)),
+              An<OptionalValueView>());
+}
+
+TEST_P(OptionalValueViewTest, As) {
+  auto value = OptionalNone();
+  EXPECT_THAT(As<OptionalValueView>(value), Ne(absl::nullopt));
+  EXPECT_THAT(As<OptionalValueView>(OpaqueValueView(value)), Ne(absl::nullopt));
+  EXPECT_THAT(As<OptionalValueView>(ValueView(value)), Ne(absl::nullopt));
+}
+
+TEST_P(OptionalValueViewTest, HasValue) {
+  auto value_view = OptionalNone();
+  EXPECT_FALSE(value_view.HasValue());
+  auto value = OptionalOf(IntValue());
+  EXPECT_TRUE(OptionalValueView(value).HasValue());
+}
+
+TEST_P(OptionalValueViewTest, Value) {
+  auto value_view = OptionalNone();
+  auto element = value_view.Value();
+  ASSERT_TRUE(InstanceOf<ErrorValue>(element));
+  EXPECT_THAT(Cast<ErrorValue>(element).NativeValue(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+  auto value = OptionalOf(IntValue());
+  element = OptionalValueView(value).Value();
+  ASSERT_TRUE(InstanceOf<IntValue>(element));
+  EXPECT_EQ(Cast<IntValue>(element), IntValue());
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    OptionalValueViewTest, OptionalValueViewTest,
+    ::testing::Values(MemoryManagement::kPooling,
+                      MemoryManagement::kReferenceCounting),
+    OptionalValueViewTest::ToString);
+
 }  // namespace
 }  // namespace cel

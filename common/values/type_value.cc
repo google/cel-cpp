@@ -62,10 +62,53 @@ absl::StatusOr<Json> TypeValue::ConvertToJson(AnyToJsonConverter&) const {
 absl::Status TypeValue::Equal(ValueManager&, const Value& other,
                               Value& result) const {
   if (auto other_value = As<TypeValue>(other); other_value.has_value()) {
-    result = BoolValue{NativeValue() == other_value->NativeValue()};
+    result = BoolValueView{NativeValue() == other_value->NativeValue()};
     return absl::OkStatus();
   }
-  result = BoolValue{false};
+  result = BoolValueView{false};
+  return absl::OkStatus();
+}
+
+absl::StatusOr<size_t> TypeValueView::GetSerializedSize(
+    AnyToJsonConverter&) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(GetTypeName(), " is unserializable"));
+}
+
+absl::Status TypeValueView::SerializeTo(AnyToJsonConverter&,
+                                        absl::Cord&) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(GetTypeName(), " is unserializable"));
+}
+
+absl::StatusOr<absl::Cord> TypeValueView::Serialize(AnyToJsonConverter&) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(GetTypeName(), " is unserializable"));
+}
+
+absl::StatusOr<std::string> TypeValueView::GetTypeUrl(absl::string_view) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(GetTypeName(), " is unserializable"));
+}
+
+absl::StatusOr<Any> TypeValueView::ConvertToAny(AnyToJsonConverter&,
+                                                absl::string_view) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(GetTypeName(), " is unserializable"));
+}
+
+absl::StatusOr<Json> TypeValueView::ConvertToJson(AnyToJsonConverter&) const {
+  return absl::FailedPreconditionError(
+      absl::StrCat(GetTypeName(), " is not convertable to JSON"));
+}
+
+absl::Status TypeValueView::Equal(ValueManager&, ValueView other,
+                                  Value& result) const {
+  if (auto other_value = As<TypeValueView>(other); other_value.has_value()) {
+    result = BoolValueView{NativeValue() == other_value->NativeValue()};
+    return absl::OkStatus();
+  }
+  result = BoolValueView{false};
   return absl::OkStatus();
 }
 

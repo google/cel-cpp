@@ -36,6 +36,7 @@ using ::cel::ListValue;
 using ::cel::MapValue;
 using ::cel::UnknownValue;
 using ::cel::Value;
+using ::cel::ValueView;
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;
 using ::cel::runtime_internal::MutableListValue;
 
@@ -216,7 +217,7 @@ absl::Status ComprehensionDirectStep::Evaluate(ExecutionFrameBase& frame,
   bool should_skip_result = false;
   CEL_RETURN_IF_ERROR(range_list.ForEach(
       frame.value_manager(),
-      [&](size_t index, const Value& v) -> absl::StatusOr<bool> {
+      [&](size_t index, ValueView v) -> absl::StatusOr<bool> {
         CEL_RETURN_IF_ERROR(frame.IncrementIterations());
         // Evaluate loop condition first.
         CEL_RETURN_IF_ERROR(

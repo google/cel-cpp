@@ -365,15 +365,15 @@ class ProtoStructValueBuilder final : public StructValueBuilder {
     CEL_RETURN_IF_ERROR(map_value->ForEach(
         value_manager,
         [this, field, key_converter, map_value_field, value_converter](
-            const Value& entry_key,
-            const Value& entry_value) -> absl::StatusOr<bool> {
+            ValueView entry_key,
+            ValueView entry_value) -> absl::StatusOr<bool> {
           google::protobuf::MapKey proto_key;
-          CEL_RETURN_IF_ERROR((*key_converter)(entry_key, proto_key));
+          CEL_RETURN_IF_ERROR((*key_converter)(Value(entry_key), proto_key));
           google::protobuf::MapValueRef proto_value;
           protobuf_internal::InsertOrLookupMapValue(
               *reflection_, message_, *field, proto_key, &proto_value);
-          CEL_RETURN_IF_ERROR(
-              (*value_converter)(entry_value, map_value_field, proto_value));
+          CEL_RETURN_IF_ERROR((*value_converter)(Value(entry_value),
+                                                 map_value_field, proto_value));
           return true;
         }));
     return absl::OkStatus();
@@ -393,11 +393,11 @@ class ProtoStructValueBuilder final : public StructValueBuilder {
     CEL_RETURN_IF_ERROR(list_value->ForEach(
         value_manager,
         [this, field, accessor,
-         &value_manager](const Value& element) -> absl::StatusOr<bool> {
+         &value_manager](ValueView element) -> absl::StatusOr<bool> {
           CEL_RETURN_IF_ERROR((*accessor)(type_reflector_.descriptor_pool(),
                                           type_reflector_.message_factory(),
                                           reflection_, message_, field,
-                                          element));
+                                          Value(element)));
           return true;
         }));
     return absl::OkStatus();

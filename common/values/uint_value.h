@@ -23,6 +23,7 @@
 #include <ostream>
 #include <string>
 
+#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -35,8 +36,10 @@
 namespace cel {
 
 class Value;
+class ValueView;
 class ValueManager;
 class UintValue;
+class UintValueView;
 class TypeManager;
 
 namespace common_internal {
@@ -106,6 +109,8 @@ class UintValue final : private common_internal::UintValueBase {
   using Base = UintValueBase;
 
  public:
+  using view_alternative_type = UintValueView;
+
   using Base::kKind;
 
   UintValue() = default;
@@ -115,6 +120,8 @@ class UintValue final : private common_internal::UintValueBase {
   UintValue& operator=(UintValue&&) = default;
 
   constexpr explicit UintValue(uint64_t value) noexcept : Base(value) {}
+
+  constexpr explicit UintValue(UintValueView other) noexcept;
 
   using Base::kind;
 
@@ -148,6 +155,9 @@ class UintValue final : private common_internal::UintValueBase {
     using std::swap;
     swap(lhs.value, rhs.value);
   }
+
+ private:
+  friend class UintValueView;
 };
 
 template <typename H>
@@ -166,6 +176,84 @@ constexpr bool operator!=(UintValue lhs, UintValue rhs) {
 inline std::ostream& operator<<(std::ostream& out, UintValue value) {
   return out << value.DebugString();
 }
+
+class UintValueView final : private common_internal::UintValueBase {
+ private:
+  using Base = UintValueBase;
+
+ public:
+  using alternative_type = UintValue;
+
+  using Base::kKind;
+
+  UintValueView() = default;
+  UintValueView(const UintValueView&) = default;
+  UintValueView(UintValueView&&) = default;
+  UintValueView& operator=(const UintValueView&) = default;
+  UintValueView& operator=(UintValueView&&) = default;
+
+  constexpr explicit UintValueView(uint64_t value) noexcept : Base(value) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  constexpr UintValueView(UintValue other) noexcept
+      : UintValueView(static_cast<uint64_t>(other)) {}
+
+  using Base::kind;
+
+  using Base::GetType;
+
+  using Base::GetTypeName;
+
+  using Base::DebugString;
+
+  using Base::GetSerializedSize;
+
+  using Base::SerializeTo;
+
+  using Base::Serialize;
+
+  using Base::GetTypeUrl;
+
+  using Base::ConvertToAny;
+
+  using Base::ConvertToJson;
+
+  using Base::Equal;
+
+  using Base::IsZeroValue;
+
+  using Base::NativeValue;
+
+  using Base::operator uint64_t;
+
+  friend void swap(UintValueView& lhs, UintValueView& rhs) noexcept {
+    using std::swap;
+    swap(lhs.value, rhs.value);
+  }
+
+ private:
+  friend class IntValue;
+};
+
+template <typename H>
+H AbslHashValue(H state, UintValueView value) {
+  return H::combine(std::move(state), value.NativeValue());
+}
+
+constexpr bool operator==(UintValueView lhs, UintValueView rhs) {
+  return lhs.NativeValue() == rhs.NativeValue();
+}
+
+constexpr bool operator!=(UintValueView lhs, UintValueView rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline std::ostream& operator<<(std::ostream& out, UintValueView value) {
+  return out << value.DebugString();
+}
+
+inline constexpr UintValue::UintValue(UintValueView other) noexcept
+    : UintValue(static_cast<uint64_t>(other)) {}
 
 }  // namespace cel
 
