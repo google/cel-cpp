@@ -444,7 +444,7 @@ TEST_P(ProtoValueWrapTest, ProtoMessageForEachField) {
 
   std::vector<std::string> fields;
   auto cb = [&fields](absl::string_view field,
-                      ValueView) -> absl::StatusOr<bool> {
+                      const Value&) -> absl::StatusOr<bool> {
     fields.push_back(std::string(field));
     return true;
   };
@@ -722,7 +722,8 @@ TEST_P(ProtoValueWrapTest, ProtoMapForEach) {
 
   std::vector<std::pair<Value, Value>> pairs;
 
-  auto cb = [&pairs](ValueView key, ValueView value) -> absl::StatusOr<bool> {
+  auto cb = [&pairs](const Value& key,
+                     const Value& value) -> absl::StatusOr<bool> {
     pairs.push_back(std::pair<Value, Value>(key, value));
     return true;
   };
@@ -778,7 +779,8 @@ TEST_P(ProtoValueWrapTest, ProtoListForEachWithIndex) {
 
   std::vector<std::pair<size_t, Value>> elements;
 
-  auto cb = [&elements](size_t index, ValueView value) -> absl::StatusOr<bool> {
+  auto cb = [&elements](size_t index,
+                        const Value& value) -> absl::StatusOr<bool> {
     elements.push_back(std::pair<size_t, Value>(index, value));
     return true;
   };

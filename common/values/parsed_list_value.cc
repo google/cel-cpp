@@ -110,7 +110,7 @@ absl::Status ParsedListValueInterface::Equal(ValueManager& value_manager,
   if (auto list_value = As<ListValue>(other); list_value.has_value()) {
     return ListValueEqual(value_manager, *this, *list_value, result);
   }
-  result = BoolValueView{false};
+  result = BoolValue{false};
   return absl::OkStatus();
 }
 

@@ -16,7 +16,6 @@
 // IWYU pragma: friend "common/value.h"
 
 // `OptionalValue` represents values of the `optional_type` type.
-// `OptionalValueView` is a non-owning view of `OptionalValue`.
 
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_OPTIONAL_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_OPTIONAL_VALUE_H_
@@ -42,17 +41,14 @@
 
 namespace cel {
 
-class ValueView;
 class Value;
 class ValueManager;
 class OptionalValueInterface;
 class OptionalValue;
-class OptionalValueView;
 
 class OptionalValueInterface : public OpaqueValueInterface {
  public:
   using alternative_type = OptionalValue;
-  using view_alternative_type = OptionalValueView;
 
   OptionalType GetType(TypeManager& type_manager) const {
     return Cast<OptionalType>(GetTypeImpl(type_manager));
@@ -91,13 +87,10 @@ struct SubsumptionTraits<OptionalValueInterface> {
 class OptionalValue final : public OpaqueValue {
  public:
   using interface_type = OptionalValueInterface;
-  using view_alternative_type = OptionalValueView;
 
   static OptionalValue None();
 
   static OptionalValue Of(MemoryManagerRef memory_manager, cel::Value value);
-
-  explicit OptionalValue(OptionalValueView value);
 
   OptionalValue() : OptionalValue(None()) {}
 
@@ -157,78 +150,6 @@ struct SubsumptionTraits<OptionalValue> final {
   static OptionalValue DownCast(OpaqueValue&& value) {
     ABSL_DCHECK(IsA(value));
     return OptionalValue(std::move(value));
-  }
-};
-
-class OptionalValueView final : public OpaqueValueView {
- public:
-  using interface_type = OptionalValueInterface;
-  using alternative_type = OptionalValue;
-
-  static OptionalValueView None();
-
-  OptionalValueView() : OptionalValueView(None()) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  OptionalValueView(SharedView<const OptionalValueInterface> interface)
-      : OpaqueValueView(interface) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  OptionalValueView(
-      const OptionalValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : OpaqueValueView(value) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  OptionalValueView& operator=(
-      const OptionalValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    OpaqueValueView::operator=(value);
-    return *this;
-  }
-
-  OptionalValueView& operator=(OptionalValue&&) = delete;
-
-  OptionalValueView(const OptionalValueView&) = default;
-  OptionalValueView& operator=(const OptionalValueView&) = default;
-
-  OptionalType GetType(TypeManager& type_manager) const {
-    return (*this)->GetType(type_manager);
-  }
-
-  bool HasValue() const { return (*this)->HasValue(); }
-
-  void Value(cel::Value& result) const;
-
-  cel::Value Value() const;
-
-  const interface_type& operator*() const {
-    return Cast<OptionalValueInterface>(OpaqueValueView::operator*());
-  }
-
-  absl::Nonnull<const interface_type*> operator->() const {
-    return Cast<OptionalValueInterface>(OpaqueValueView::operator->());
-  }
-
- private:
-  friend struct SubsumptionTraits<OptionalValueView>;
-
-  // Used by SubsumptionTraits to downcast OpaqueTypeView.
-  explicit OptionalValueView(OpaqueValueView value) noexcept
-      : OpaqueValueView(value) {}
-};
-
-inline OptionalValue::OptionalValue(OptionalValueView value)
-    : OpaqueValue(value) {}
-
-template <>
-struct SubsumptionTraits<OptionalValueView> final {
-  static bool IsA(OpaqueValueView value) {
-    return NativeTypeId::Of(value) ==
-           NativeTypeId::For<OptionalValueInterface>();
-  }
-
-  static OptionalValueView DownCast(OpaqueValueView value) {
-    ABSL_DCHECK(IsA(value));
-    return OptionalValueView(value);
   }
 };
 

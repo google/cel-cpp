@@ -30,7 +30,6 @@
 #include <type_traits>
 #include <utility>
 
-#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
@@ -50,21 +49,18 @@
 namespace cel {
 
 class Value;
-class ValueView;
 class OpaqueValueInterface;
 class OpaqueValueInterfaceIterator;
 class OpaqueValue;
-class OpaqueValueView;
 class TypeFactory;
 class ValueManager;
 
 // `Is` checks whether `lhs` and `rhs` have the same identity.
-bool Is(OpaqueValueView lhs, OpaqueValueView rhs);
+bool Is(const OpaqueValue& lhs, const OpaqueValue& rhs);
 
 class OpaqueValueInterface : public ValueInterface {
  public:
   using alternative_type = OpaqueValue;
-  using view_alternative_type = OpaqueValueView;
 
   static constexpr ValueKind kKind = ValueKind::kOpaque;
 
@@ -88,11 +84,8 @@ struct SubsumptionTraits<OpaqueValueInterface> {
 class OpaqueValue {
  public:
   using interface_type = OpaqueValueInterface;
-  using view_alternative_type = OpaqueValueView;
 
   static constexpr ValueKind kKind = OpaqueValueInterface::kKind;
-
-  explicit OpaqueValue(OpaqueValueView value);
 
   template <typename T, typename = std::enable_if_t<std::is_base_of_v<
                             OpaqueValueInterface, std::remove_const_t<T>>>>
@@ -168,8 +161,8 @@ class OpaqueValue {
   }
 
  private:
-  friend class OpaqueValueView;
   friend struct NativeTypeTraits<OpaqueValue>;
+  friend bool Is(const OpaqueValue& lhs, const OpaqueValue& rhs);
 
   Shared<const OpaqueValueInterface> interface_;
 };
@@ -227,157 +220,9 @@ struct CastTraits<
   }
 };
 
-class OpaqueValueView {
- public:
-  using interface_type = OpaqueValueInterface;
-  using alternative_type = OpaqueValue;
-
-  static constexpr ValueKind kKind = OpaqueValue::kKind;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  OpaqueValueView(SharedView<const OpaqueValueInterface> interface)
-      : interface_(interface) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  OpaqueValueView(
-      const OpaqueValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : interface_(value.interface_) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  OpaqueValueView& operator=(
-      const OpaqueValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    interface_ = value.interface_;
-    return *this;
-  }
-
-  OpaqueValueView& operator=(OpaqueValue&&) = delete;
-
-  OpaqueValueView() = delete;
-  OpaqueValueView(const OpaqueValueView&) = default;
-  OpaqueValueView& operator=(const OpaqueValueView&) = default;
-
-  constexpr ValueKind kind() const { return kKind; }
-
-  OpaqueType GetType(TypeManager& type_manager) const {
-    return interface_->GetType(type_manager);
-  }
-
-  absl::string_view GetTypeName() const { return interface_->GetTypeName(); }
-
-  std::string DebugString() const { return interface_->DebugString(); }
-
-  // See `ValueInterface::GetSerializedSize`.
-  absl::StatusOr<size_t> GetSerializedSize(
-      AnyToJsonConverter& converter) const {
-    return interface_->GetSerializedSize(converter);
-  }
-
-  // See `ValueInterface::SerializeTo`.
-  absl::Status SerializeTo(AnyToJsonConverter& converter,
-                           absl::Cord& value) const {
-    return interface_->SerializeTo(converter, value);
-  }
-
-  // See `ValueInterface::Serialize`.
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& converter) const {
-    return interface_->Serialize(converter);
-  }
-
-  // See `ValueInterface::GetTypeUrl`.
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
-    return interface_->GetTypeUrl(prefix);
-  }
-
-  // See `ValueInterface::ConvertToAny`.
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter& converter,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
-    return interface_->ConvertToAny(converter, prefix);
-  }
-
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const {
-    return interface_->ConvertToJson(converter);
-  }
-
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
-                     Value& result) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
-
-  bool IsZeroValue() const { return false; }
-
-  void swap(OpaqueValueView& other) noexcept {
-    using std::swap;
-    swap(interface_, other.interface_);
-  }
-
-  const interface_type& operator*() const { return *interface_; }
-
-  absl::Nonnull<const interface_type*> operator->() const {
-    return interface_.operator->();
-  }
-
- private:
-  friend class OpaqueValue;
-  friend struct NativeTypeTraits<OpaqueValueView>;
-
-  SharedView<const OpaqueValueInterface> interface_;
-};
-
-inline void swap(OpaqueValueView& lhs, OpaqueValueView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline std::ostream& operator<<(std::ostream& out, OpaqueValueView type) {
-  return out << type.DebugString();
-}
-
-template <>
-struct NativeTypeTraits<OpaqueValueView> final {
-  static NativeTypeId Id(OpaqueValueView type) {
-    return NativeTypeId::Of(*type.interface_);
-  }
-};
-
-template <typename T>
-struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
-                               std::negation<std::is_same<OpaqueValueView, T>>,
-                               std::is_base_of<OpaqueValueView, T>>>>
-    final {
-  static NativeTypeId Id(T type) {
-    return NativeTypeTraits<OpaqueValueView>::Id(type);
-  }
-};
-
-inline OpaqueValue::OpaqueValue(OpaqueValueView value)
-    : interface_(value.interface_) {}
-
-inline bool Is(OpaqueValueView lhs, OpaqueValueView rhs) {
+inline bool Is(const OpaqueValue& lhs, const OpaqueValue& rhs) {
   return lhs.operator->() == rhs.operator->();
 }
-
-// OpaqueValueView -> OpaqueValueViewFor<T>
-template <typename To, typename From>
-struct CastTraits<
-    To, From,
-    std::enable_if_t<std::conjunction_v<
-        std::bool_constant<sizeof(To) == sizeof(absl::remove_cvref_t<From>)>,
-        std::bool_constant<alignof(To) == alignof(absl::remove_cvref_t<From>)>,
-        std::is_same<OpaqueValueView, absl::remove_cvref_t<From>>,
-        std::negation<std::is_same<OpaqueValueView, To>>,
-        std::is_base_of<OpaqueValueView, To>>>>
-    final {
-  static bool Compatible(const absl::remove_cvref_t<From>& from) {
-    return SubsumptionTraits<To>::IsA(from);
-  }
-
-  static decltype(auto) Convert(From from) {
-    // `To` is derived from `From`, `From` is `OpaqueType`, and `To` has the
-    // same size and alignment as `OpaqueType`. We can just reinterpret_cast.
-    return SubsumptionTraits<To>::DownCast(std::move(from));
-  }
-};
 
 }  // namespace cel
 

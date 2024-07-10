@@ -22,7 +22,6 @@
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/native_type.h"
-#include "common/type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
 #include "internal/testing.h"
@@ -130,100 +129,6 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
                                          MemoryManagement::kReferenceCounting)),
     BytesValueTest::ToString);
-
-using BytesValueViewTest = common_internal::ThreadCompatibleValueTest<>;
-
-TEST_P(BytesValueViewTest, Kind) {
-  EXPECT_EQ(BytesValueView("foo").kind(), BytesValueView::kKind);
-  EXPECT_EQ(ValueView(BytesValueView("foo")).kind(), BytesValueView::kKind);
-}
-
-TEST_P(BytesValueViewTest, DebugString) {
-  {
-    std::ostringstream out;
-    out << BytesValueView("foo");
-    EXPECT_EQ(out.str(), "b\"foo\"");
-  }
-  {
-    std::ostringstream out;
-    out << ValueView(BytesValueView("foo"));
-    EXPECT_EQ(out.str(), "b\"foo\"");
-  }
-}
-
-TEST_P(BytesValueViewTest, GetSerializedSize) {
-  EXPECT_THAT(BytesValueView().GetSerializedSize(value_manager()),
-              IsOkAndHolds(0));
-}
-
-TEST_P(BytesValueViewTest, ConvertToAny) {
-  EXPECT_THAT(BytesValueView().ConvertToAny(value_manager()),
-              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.BytesValue"),
-                                   absl::Cord())));
-}
-
-TEST_P(BytesValueViewTest, ConvertToJson) {
-  EXPECT_THAT(BytesValueView("foo").ConvertToJson(value_manager()),
-              IsOkAndHolds(Json(JsonBytes("foo"))));
-}
-
-TEST_P(BytesValueViewTest, StringViewEquality) {
-  // NOLINTBEGIN(readability/check)
-  EXPECT_TRUE(BytesValueView("foo") == "foo");
-  EXPECT_FALSE(BytesValueView("foo") == "bar");
-
-  EXPECT_TRUE("foo" == BytesValueView("foo"));
-  EXPECT_FALSE("bar" == BytesValueView("foo"));
-  // NOLINTEND(readability/check)
-}
-
-TEST_P(BytesValueViewTest, StringViewInequality) {
-  // NOLINTBEGIN(readability/check)
-  EXPECT_FALSE(BytesValueView("foo") != "foo");
-  EXPECT_TRUE(BytesValueView("foo") != "bar");
-
-  EXPECT_FALSE("foo" != BytesValueView("foo"));
-  EXPECT_TRUE("bar" != BytesValueView("foo"));
-  // NOLINTEND(readability/check)
-}
-
-TEST_P(BytesValueViewTest, NativeValue) {
-  std::string scratch;
-  EXPECT_EQ(BytesValueView(BytesValue("foo")).NativeString(), "foo");
-  EXPECT_EQ(BytesValueView(BytesValue("foo")).NativeString(scratch), "foo");
-  EXPECT_EQ(BytesValueView(BytesValue("foo")).NativeCord(), "foo");
-}
-
-TEST_P(BytesValueViewTest, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(BytesValueView("foo")),
-            NativeTypeId::For<BytesValueView>());
-  EXPECT_EQ(NativeTypeId::Of(ValueView(BytesValueView("foo"))),
-            NativeTypeId::For<BytesValueView>());
-}
-
-TEST_P(BytesValueViewTest, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<BytesValueView>(BytesValueView("foo")));
-  EXPECT_TRUE(InstanceOf<BytesValueView>(ValueView(BytesValueView("foo"))));
-}
-
-TEST_P(BytesValueViewTest, Cast) {
-  EXPECT_THAT(Cast<BytesValueView>(BytesValueView("foo")),
-              An<BytesValueView>());
-  EXPECT_THAT(Cast<BytesValueView>(ValueView(BytesValueView("foo"))),
-              An<BytesValueView>());
-}
-
-TEST_P(BytesValueViewTest, As) {
-  EXPECT_THAT(As<BytesValueView>(BytesValueView("foo")), Ne(absl::nullopt));
-  EXPECT_THAT(As<BytesValueView>(ValueView(BytesValueView("foo"))),
-              Ne(absl::nullopt));
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    BytesValueViewTest, BytesValueViewTest,
-    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
-                                         MemoryManagement::kReferenceCounting)),
-    BytesValueViewTest::ToString);
 
 }  // namespace
 }  // namespace cel

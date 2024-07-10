@@ -129,141 +129,18 @@ absl::StatusOr<size_t> ListValue::Size() const {
       variant_);
 }
 
-common_internal::ListValueViewVariant ListValue::ToViewVariant() const {
-  return absl::visit(
-      [](const auto& alternative) -> common_internal::ListValueViewVariant {
-        return common_internal::ListValueViewVariant{
-            absl::in_place_type<typename absl::remove_cvref_t<
-                decltype(alternative)>::view_alternative_type>,
-            alternative};
-      },
-      variant_);
-}
-
-ListType ListValueView::GetType(TypeManager& type_manager) const {
-  return absl::visit(
-      [&type_manager](auto alternative) -> ListType {
-        return alternative.GetType(type_manager);
-      },
-      variant_);
-}
-
-absl::string_view ListValueView::GetTypeName() const {
-  return absl::visit(
-      [](auto alternative) -> absl::string_view {
-        return alternative.GetTypeName();
-      },
-      variant_);
-}
-
-std::string ListValueView::DebugString() const {
-  return absl::visit(
-      [](auto alternative) -> std::string { return alternative.DebugString(); },
-      variant_);
-}
-
-absl::StatusOr<size_t> ListValueView::GetSerializedSize(
-    AnyToJsonConverter& converter) const {
-  return absl::visit(
-      [&converter](auto alternative) -> absl::StatusOr<size_t> {
-        return alternative.GetSerializedSize(converter);
-      },
-      variant_);
-}
-
-absl::Status ListValueView::SerializeTo(AnyToJsonConverter& converter,
-                                        absl::Cord& value) const {
-  return absl::visit(
-      [&converter, &value](auto alternative) -> absl::Status {
-        return alternative.SerializeTo(converter, value);
-      },
-      variant_);
-}
-
-absl::StatusOr<absl::Cord> ListValueView::Serialize(
-    AnyToJsonConverter& converter) const {
-  return absl::visit(
-      [&converter](auto alternative) -> absl::StatusOr<absl::Cord> {
-        return alternative.Serialize(converter);
-      },
-      variant_);
-}
-
-absl::StatusOr<std::string> ListValueView::GetTypeUrl(
-    absl::string_view prefix) const {
-  return absl::visit(
-      [prefix](auto alternative) -> absl::StatusOr<std::string> {
-        return alternative.GetTypeUrl(prefix);
-      },
-      variant_);
-}
-
-absl::StatusOr<Any> ListValueView::ConvertToAny(
-    AnyToJsonConverter& converter, absl::string_view prefix) const {
-  return absl::visit(
-      [&converter, prefix](auto alternative) -> absl::StatusOr<Any> {
-        return alternative.ConvertToAny(converter, prefix);
-      },
-      variant_);
-}
-
-absl::StatusOr<Json> ListValueView::ConvertToJson(
-    AnyToJsonConverter& converter) const {
-  return absl::visit(
-      [&converter](auto alternative) -> absl::StatusOr<Json> {
-        return alternative.ConvertToJson(converter);
-      },
-      variant_);
-}
-
-absl::StatusOr<JsonArray> ListValueView::ConvertToJsonArray(
-    AnyToJsonConverter& converter) const {
-  return absl::visit(
-      [&converter](auto alternative) -> absl::StatusOr<JsonArray> {
-        return alternative.ConvertToJsonArray(converter);
-      },
-      variant_);
-}
-
-bool ListValueView::IsZeroValue() const {
-  return absl::visit(
-      [](auto alternative) -> bool { return alternative.IsZeroValue(); },
-      variant_);
-}
-
-absl::StatusOr<bool> ListValueView::IsEmpty() const {
-  return absl::visit(
-      [](auto alternative) -> bool { return alternative.IsEmpty(); }, variant_);
-}
-
-absl::StatusOr<size_t> ListValueView::Size() const {
-  return absl::visit(
-      [](auto alternative) -> size_t { return alternative.Size(); }, variant_);
-}
-
-common_internal::ListValueVariant ListValueView::ToVariant() const {
-  return absl::visit(
-      [](auto alternative) -> common_internal::ListValueVariant {
-        return common_internal::ListValueVariant{
-            absl::in_place_type<typename absl::remove_cvref_t<
-                decltype(alternative)>::alternative_type>,
-            alternative};
-      },
-      variant_);
-}
-
 namespace common_internal {
 
 absl::Status ListValueEqual(ValueManager& value_manager, const ListValue& lhs,
                             const ListValue& rhs, Value& result) {
   if (Is(lhs, rhs)) {
-    result = BoolValueView{true};
+    result = BoolValue{true};
     return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto lhs_size, lhs.Size());
   CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
   if (lhs_size != rhs_size) {
-    result = BoolValueView{false};
+    result = BoolValue{false};
     return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator(value_manager));
@@ -283,7 +160,7 @@ absl::Status ListValueEqual(ValueManager& value_manager, const ListValue& lhs,
   }
   ABSL_DCHECK(!lhs_iterator->HasNext());
   ABSL_DCHECK(!rhs_iterator->HasNext());
-  result = BoolValueView{true};
+  result = BoolValue{true};
   return absl::OkStatus();
 }
 
@@ -293,7 +170,7 @@ absl::Status ListValueEqual(ValueManager& value_manager,
   auto lhs_size = lhs.Size();
   CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
   if (lhs_size != rhs_size) {
-    result = BoolValueView{false};
+    result = BoolValue{false};
     return absl::OkStatus();
   }
   CEL_ASSIGN_OR_RETURN(auto lhs_iterator, lhs.NewIterator(value_manager));
@@ -313,7 +190,7 @@ absl::Status ListValueEqual(ValueManager& value_manager,
   }
   ABSL_DCHECK(!lhs_iterator->HasNext());
   ABSL_DCHECK(!rhs_iterator->HasNext());
-  result = BoolValueView{true};
+  result = BoolValue{true};
   return absl::OkStatus();
 }
 

@@ -100,9 +100,9 @@ ValueMatcher OptionalValueIs(ValueMatcher m);
 MATCHER_P3(StructValueFieldIs, mgr, name, m, "") {
   auto wrapped_m = ::cel::internal::IsOkAndHolds(m);
 
-  return ExplainMatchResult(
-      wrapped_m, cel::StructValueView(arg).GetFieldByName(*mgr, name),
-      result_listener);
+  return ExplainMatchResult(wrapped_m,
+                            cel::StructValue(arg).GetFieldByName(*mgr, name),
+                            result_listener);
 }
 
 // Returns a Matcher that tests the presence of a CEL struct's field.
@@ -110,9 +110,8 @@ MATCHER_P3(StructValueFieldIs, mgr, name, m, "") {
 MATCHER_P2(StructValueFieldHas, name, m, "") {
   auto wrapped_m = ::cel::internal::IsOkAndHolds(m);
 
-  return ExplainMatchResult(wrapped_m,
-                            cel::StructValueView(arg).HasFieldByName(name),
-                            result_listener);
+  return ExplainMatchResult(
+      wrapped_m, cel::StructValue(arg).HasFieldByName(name), result_listener);
 }
 
 class ListValueElementsMatcher {
@@ -127,8 +126,8 @@ class ListValueElementsMatcher {
                        testing::MatchResultListener* result_listener) const {
     std::vector<Value> elements;
     absl::Status s =
-        arg.ForEach(mgr_, [&](ValueView v) -> absl::StatusOr<bool> {
-          elements.push_back(Value(v));
+        arg.ForEach(mgr_, [&](const Value& v) -> absl::StatusOr<bool> {
+          elements.push_back(v);
           return true;
         });
     if (!s.ok()) {
@@ -167,8 +166,9 @@ class MapValueElementsMatcher {
                        testing::MatchResultListener* result_listener) const {
     std::vector<std::pair<Value, Value>> elements;
     absl::Status s = arg.ForEach(
-        mgr_, [&](ValueView key, ValueView value) -> absl::StatusOr<bool> {
-          elements.push_back({Value(key), Value(value)});
+        mgr_,
+        [&](const Value& key, const Value& value) -> absl::StatusOr<bool> {
+          elements.push_back({key, value});
           return true;
         });
     if (!s.ok()) {

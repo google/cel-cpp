@@ -23,7 +23,6 @@
 #include <string>
 #include <utility>
 
-#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -37,23 +36,17 @@
 namespace cel {
 
 class Value;
-class ValueView;
 class ValueManager;
 class TypeValue;
-class TypeValueView;
 class TypeManager;
 
 // `TypeValue` represents values of the primitive `type` type.
 class TypeValue final {
  public:
-  using view_alternative_type = TypeValueView;
-
   static constexpr ValueKind kKind = ValueKind::kType;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   TypeValue(Type value) noexcept : value_(std::move(value)) {}
-
-  explicit TypeValue(TypeValueView value) noexcept;
 
   TypeValue() = default;
   TypeValue(const TypeValue&) = default;
@@ -111,7 +104,6 @@ class TypeValue final {
   absl::string_view name() const { return NativeValue().name(); }
 
  private:
-  friend class TypeValueView;
   friend struct NativeTypeTraits<TypeValue>;
 
   Type value_;
@@ -129,91 +121,6 @@ struct NativeTypeTraits<TypeValue> final {
     return NativeTypeTraits<Type>::SkipDestructor(value.value_);
   }
 };
-
-class TypeValueView final {
- public:
-  using alternative_type = TypeValue;
-
-  static constexpr ValueKind kKind = TypeValue::kKind;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  TypeValueView(TypeView value) noexcept : value_(value) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  TypeValueView(const TypeValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : TypeValueView(TypeView(value.value_)) {}
-
-  TypeValueView() = delete;
-  TypeValueView(const TypeValueView&) = default;
-  TypeValueView(TypeValueView&&) = default;
-  TypeValueView& operator=(const TypeValueView&) = default;
-  TypeValueView& operator=(TypeValueView&&) = default;
-
-  constexpr ValueKind kind() const { return kKind; }
-
-  TypeType GetType(TypeManager&) const { return TypeType(); }
-
-  absl::string_view GetTypeName() const { return TypeType::kName; }
-
-  std::string DebugString() const { return value_.DebugString(); }
-
-  // `GetSerializedSize` always returns `FAILED_PRECONDITION` as `TypeValue` is
-  // not serializable.
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
-
-  // `SerializeTo` always returns `FAILED_PRECONDITION` as `TypeValue` is not
-  // serializable.
-  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
-
-  // `Serialize` always returns `FAILED_PRECONDITION` as `TypeValue` is not
-  // serializable.
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
-
-  // `GetTypeUrl` always returns `FAILED_PRECONDITION` as `TypeValue` is not
-  // serializable.
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  // `ConvertToAny` always returns `FAILED_PRECONDITION` as `TypeValue` is not
-  // serializable.
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter&,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
-
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
-                     Value& result) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
-
-  bool IsZeroValue() const { return false; }
-
-  TypeView NativeValue() const { return value_; }
-
-  void swap(TypeValueView& other) noexcept {
-    using std::swap;
-    swap(value_, other.value_);
-  }
-
-  absl::string_view name() const { return NativeValue().name(); }
-
- private:
-  friend class TypeValue;
-
-  TypeView value_;
-};
-
-inline void swap(TypeValueView& lhs, TypeValueView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline std::ostream& operator<<(std::ostream& out, TypeValueView value) {
-  return out << value.DebugString();
-}
-
-inline TypeValue::TypeValue(TypeValueView value) noexcept
-    : value_(value.value_) {}
 
 }  // namespace cel
 

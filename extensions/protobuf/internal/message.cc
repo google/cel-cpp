@@ -956,7 +956,7 @@ absl::Status ProtoMessageFieldToValue(
   if (wrapper_type_options == ProtoWrapperTypeOptions::kUnsetNull &&
       IsWrapperType(field->message_type()) &&
       !reflection->HasField(*message, field)) {
-    result = NullValueView{};
+    result = NullValue{};
     return absl::OkStatus();
   }
   const auto& field_value = reflection->GetMessage(*message, field);

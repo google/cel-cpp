@@ -37,20 +37,14 @@
 namespace cel {
 
 class Value;
-class ValueView;
 class ValueManager;
 class UnknownValue;
-class UnknownValueView;
 class TypeManager;
 
 // `UnknownValue` represents values of the primitive `duration` type.
 class UnknownValue final {
  public:
-  using view_alternative_type = UnknownValueView;
-
   static constexpr ValueKind kKind = ValueKind::kUnknown;
-
-  explicit UnknownValue(UnknownValueView) noexcept;
 
   explicit UnknownValue(Unknown unknown) : unknown_(std::move(unknown)) {}
 
@@ -125,8 +119,6 @@ class UnknownValue final {
   }
 
  private:
-  friend class UnknownValueView;
-
   Unknown unknown_;
 };
 
@@ -137,127 +129,6 @@ inline void swap(UnknownValue& lhs, UnknownValue& rhs) noexcept {
 inline std::ostream& operator<<(std::ostream& out, const UnknownValue& value) {
   return out << value.DebugString();
 }
-
-class UnknownValueView final {
- private:
-  static const Unknown& Empty();
-
- public:
-  using alternative_type = UnknownValue;
-
-  static constexpr ValueKind kKind = UnknownValue::kKind;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  UnknownValueView(
-      const UnknownValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : unknown_(&value.unknown_) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  UnknownValueView(
-      const Unknown& unknown ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : unknown_(&unknown) {}
-
-  UnknownValueView(UnknownValue&&) = delete;
-
-  UnknownValueView(Unknown&&) = delete;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  UnknownValueView& operator=(
-      const UnknownValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
-    unknown_ = &value.unknown_;
-    return *this;
-  }
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  UnknownValueView& operator=(
-      const Unknown& unknown ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept {
-    unknown_ = &unknown;
-    return *this;
-  }
-
-  UnknownValueView& operator=(UnknownValue&&) = delete;
-
-  UnknownValueView& operator=(Unknown&&) = delete;
-
-  UnknownValueView() = default;
-  UnknownValueView(const UnknownValueView&) = default;
-  UnknownValueView& operator=(const UnknownValueView&) = default;
-
-  constexpr ValueKind kind() const { return kKind; }
-
-  UnknownType GetType(TypeManager&) const { return UnknownType(); }
-
-  absl::string_view GetTypeName() const { return UnknownType::kName; }
-
-  std::string DebugString() const { return ""; }
-
-  // `GetSerializedSize` always returns `FAILED_PRECONDITION` as `UnknownValue`
-  // is not serializable.
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
-
-  // `SerializeTo` always returns `FAILED_PRECONDITION` as `UnknownValue` is not
-  // serializable.
-  absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
-
-  // `Serialize` always returns `FAILED_PRECONDITION` as `UnknownValue` is not
-  // serializable.
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
-
-  // `GetTypeUrl` always returns `FAILED_PRECONDITION` as `UnknownValue` is not
-  // serializable.
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  // `ConvertToAny` always returns `FAILED_PRECONDITION` as `UnknownValue` is
-  // not serializable.
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter&,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  // `ConvertToJson` always returns `FAILED_PRECONDITION` as `UnknownValue` is
-  // not convertible to JSON.
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
-
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
-                     Value& result) const;
-  absl::StatusOr<Value> Equal(ValueManager& value_manager,
-                              ValueView other) const;
-
-  bool IsZeroValue() const { return false; }
-
-  const Unknown& NativeValue() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return *unknown_;
-  }
-
-  void swap(UnknownValueView& other) noexcept {
-    using std::swap;
-    swap(unknown_, other.unknown_);
-  }
-
-  const AttributeSet& attribute_set() const {
-    return unknown_->unknown_attributes();
-  }
-
-  const FunctionResultSet& function_result_set() const {
-    return unknown_->unknown_function_results();
-  }
-
- private:
-  friend class UnknownValue;
-
-  const Unknown* unknown_ = &Empty();
-};
-
-inline void swap(UnknownValueView& lhs, UnknownValueView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline std::ostream& operator<<(std::ostream& out, UnknownValueView value) {
-  return out << value.DebugString();
-}
-
-inline UnknownValue::UnknownValue(UnknownValueView value) noexcept
-    : unknown_(*value.unknown_) {}
 
 }  // namespace cel
 

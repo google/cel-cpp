@@ -23,7 +23,6 @@
 #include <ostream>
 #include <string>
 
-#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -41,22 +40,16 @@ namespace cel {
 class TypeManager;
 class ValueManager;
 class Value;
-class ValueView;
 
 namespace common_internal {
 
 class LegacyListValue;
-class LegacyListValueView;
 
 bool Is(const LegacyListValue& lhs, const LegacyListValue& rhs);
 
 class LegacyListValue final {
  public:
-  using view_alternative_type = LegacyListValueView;
-
   static constexpr ValueKind kKind = ValueKind::kList;
-
-  explicit LegacyListValue(LegacyListValueView value);
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   explicit LegacyListValue(uintptr_t impl) : impl_(impl) {}
@@ -142,7 +135,6 @@ class LegacyListValue final {
   uintptr_t NativeValue() const { return impl_; }
 
  private:
-  friend class LegacyListValueView;
   friend bool Is(const LegacyListValue& lhs, const LegacyListValue& rhs);
 
   uintptr_t impl_;
@@ -156,125 +148,6 @@ inline std::ostream& operator<<(std::ostream& out,
                                 const LegacyListValue& type) {
   return out << type.DebugString();
 }
-
-class LegacyListValueView final {
- public:
-  using alternative_type = LegacyListValue;
-
-  static constexpr ValueKind kKind = LegacyListValue::kKind;
-
-  explicit LegacyListValueView(uintptr_t impl) : impl_(impl) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  LegacyListValueView(
-      const LegacyListValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : impl_(value.impl_) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  LegacyListValueView& operator=(
-      const LegacyListValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    impl_ = value.impl_;
-    return *this;
-  }
-
-  LegacyListValueView& operator=(LegacyListValue&&) = delete;
-
-  // By default, this creates an empty list whose type is `list(dyn)`. Unless
-  // you can help it, you should use a more specific typed list value.
-  LegacyListValueView();
-  LegacyListValueView(const LegacyListValueView&) = default;
-  LegacyListValueView(LegacyListValueView&&) = default;
-  LegacyListValueView& operator=(const LegacyListValueView&) = default;
-  LegacyListValueView& operator=(LegacyListValueView&&) = default;
-
-  constexpr ValueKind kind() const { return kKind; }
-
-  ListType GetType(TypeManager& type_manager) const;
-
-  absl::string_view GetTypeName() const { return "list"; }
-
-  std::string DebugString() const;
-
-  // See `ValueInterface::GetSerializedSize`.
-  absl::StatusOr<size_t> GetSerializedSize(
-      AnyToJsonConverter& value_manager) const;
-
-  // See `ValueInterface::SerializeTo`.
-  absl::Status SerializeTo(AnyToJsonConverter& value_manager,
-                           absl::Cord& value) const;
-
-  // See `ValueInterface::Serialize`.
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& value_manager) const;
-
-  // See `ValueInterface::GetTypeUrl`.
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  // See `ValueInterface::ConvertToAny`.
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter& value_manager,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const {
-    return ConvertToJsonArray(value_manager);
-  }
-
-  absl::StatusOr<JsonArray> ConvertToJsonArray(
-      AnyToJsonConverter& value_manager) const;
-
-  absl::Status Equal(ValueManager& value_manager, ValueView other,
-                     Value& result) const;
-
-  bool IsZeroValue() const { return IsEmpty(); }
-
-  bool IsEmpty() const;
-
-  size_t Size() const;
-
-  // See LegacyListValueInterface::Get for documentation.
-  absl::Status Get(ValueManager& value_manager, size_t index,
-                   Value& result) const;
-
-  using ForEachCallback = typename ListValueInterface::ForEachCallback;
-
-  using ForEachWithIndexCallback =
-      typename ListValueInterface::ForEachWithIndexCallback;
-
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachCallback callback) const;
-
-  absl::Status ForEach(ValueManager& value_manager,
-                       ForEachWithIndexCallback callback) const;
-
-  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
-      ValueManager& value_manager) const;
-
-  absl::Status Contains(ValueManager& value_manager, ValueView other,
-                        Value& result) const;
-
-  void swap(LegacyListValueView& other) noexcept {
-    using std::swap;
-    swap(impl_, other.impl_);
-  }
-
-  uintptr_t NativeValue() const { return impl_; }
-
- private:
-  friend class LegacyListValue;
-
-  uintptr_t impl_;
-};
-
-inline void swap(LegacyListValueView& lhs, LegacyListValueView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline std::ostream& operator<<(std::ostream& out, LegacyListValueView type) {
-  return out << type.DebugString();
-}
-
-inline LegacyListValue::LegacyListValue(LegacyListValueView value)
-    : impl_(value.impl_) {}
 
 inline bool Is(const LegacyListValue& lhs, const LegacyListValue& rhs) {
   return lhs.impl_ == rhs.impl_;

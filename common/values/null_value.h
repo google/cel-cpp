@@ -35,10 +35,8 @@
 namespace cel {
 
 class Value;
-class ValueView;
 class ValueManager;
 class NullValue;
-class NullValueView;
 class TypeManager;
 
 namespace common_internal {
@@ -93,8 +91,6 @@ class NullValue final : private common_internal::NullValueBase {
   using Base = NullValueBase;
 
  public:
-  using view_alternative_type = NullValueView;
-
   using Base::kKind;
 
   NullValue() = default;
@@ -102,8 +98,6 @@ class NullValue final : private common_internal::NullValueBase {
   NullValue(NullValue&&) = default;
   NullValue& operator=(const NullValue&) = default;
   NullValue& operator=(NullValue&&) = default;
-
-  constexpr explicit NullValue(NullValueView other) noexcept;
 
   using Base::kind;
 
@@ -130,9 +124,6 @@ class NullValue final : private common_internal::NullValueBase {
   using Base::IsZeroValue;
 
   friend void swap(NullValue&, NullValue&) noexcept {}
-
- private:
-  friend class NullValueView;
 };
 
 inline bool operator==(NullValue, NullValue) { return true; }
@@ -144,66 +135,6 @@ inline bool operator!=(NullValue lhs, NullValue rhs) {
 inline std::ostream& operator<<(std::ostream& out, const NullValue& value) {
   return out << value.DebugString();
 }
-
-class NullValueView final : private common_internal::NullValueBase {
- private:
-  using Base = NullValueBase;
-
- public:
-  using alternative_type = NullValue;
-
-  using Base::kKind;
-
-  NullValueView() = default;
-  NullValueView(const NullValueView&) = default;
-  NullValueView(NullValueView&&) = default;
-  NullValueView& operator=(const NullValueView&) = default;
-  NullValueView& operator=(NullValueView&&) = default;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr NullValueView(NullValue) noexcept {}
-
-  using Base::kind;
-
-  using Base::GetType;
-
-  using Base::GetTypeName;
-
-  using Base::DebugString;
-
-  using Base::GetSerializedSize;
-
-  using Base::SerializeTo;
-
-  using Base::Serialize;
-
-  using Base::GetTypeUrl;
-
-  using Base::ConvertToAny;
-
-  using Base::ConvertToJson;
-
-  using Base::Equal;
-
-  using Base::IsZeroValue;
-
-  friend void swap(NullValueView&, NullValueView&) noexcept {}
-
- private:
-  friend class NullValue;
-};
-
-inline bool operator==(NullValueView, NullValueView) { return true; }
-
-inline bool operator!=(NullValueView lhs, NullValueView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-inline std::ostream& operator<<(std::ostream& out, NullValueView value) {
-  return out << value.DebugString();
-}
-
-inline constexpr NullValue::NullValue(NullValueView) noexcept {}
 
 }  // namespace cel
 
