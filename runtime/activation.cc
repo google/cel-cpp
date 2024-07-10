@@ -110,4 +110,16 @@ bool Activation::InsertFunction(const cel::FunctionDescriptor& descriptor,
   return true;
 }
 
+Activation::Activation(Activation&& other) {
+  using std::swap;
+  swap(*this, other);
+}
+
+Activation& Activation::operator=(Activation&& other) {
+  using std::swap;
+  Activation tmp(std::move(other));
+  swap(*this, tmp);
+  return *this;
+}
+
 }  // namespace cel

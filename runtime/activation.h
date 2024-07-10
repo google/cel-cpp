@@ -49,6 +49,11 @@ class Activation final : public ActivationInterface {
 
   Activation() = default;
 
+  // Move only.
+  Activation(Activation&& other);
+
+  Activation& operator=(Activation&& other);
+
   // Implements ActivationInterface.
   absl::StatusOr<bool> FindVariable(ValueManager& factory,
                                     absl::string_view name,
@@ -105,6 +110,14 @@ class Activation final : public ActivationInterface {
     std::unique_ptr<cel::FunctionDescriptor> descriptor;
     std::unique_ptr<cel::Function> implementation;
   };
+
+  friend void swap(Activation& a, Activation& b) {
+    using std::swap;
+    swap(a.values_, b.values_);
+    swap(a.functions_, b.functions_);
+    swap(a.unknown_patterns_, b.unknown_patterns_);
+    swap(a.missing_patterns_, b.missing_patterns_);
+  }
 
   // Internal getter for provided values.
   // Assumes entry for name is present and is a provided value.

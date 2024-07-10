@@ -15,21 +15,20 @@
 #include "runtime/activation.h"
 
 #include <memory>
+#include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
 #include "base/function.h"
 #include "base/function_descriptor.h"
 #include "base/type_provider.h"
 #include "common/memory.h"
-#include "common/type_factory.h"
-#include "common/type_manager.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "common/values/legacy_value_manager.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -38,6 +37,7 @@ using testing::ElementsAre;
 using testing::Eq;
 using testing::IsEmpty;
 using testing::Optional;
+using testing::SizeIs;
 using testing::Truly;
 using testing::UnorderedElementsAre;
 using cel::internal::IsOkAndHolds;
@@ -297,6 +297,103 @@ TEST_F(ActivationTest, InsertFunctionFails) {
                        ref.descriptor.types() == std::vector<Kind>{Kind::kAny};
               })))
       << "expected overload Fn(any)";
+}
+
+TEST_F(ActivationTest, MoveAssignment) {
+  Activation moved_from;
+
+  ASSERT_TRUE(
+      moved_from.InsertFunction(FunctionDescriptor("Fn", false, {Kind::kAny}),
+                                std::make_unique<FunctionImpl>()));
+  ASSERT_TRUE(
+      moved_from.InsertOrAssignValue("val", value_factory_.CreateIntValue(42)));
+
+  ASSERT_TRUE(moved_from.InsertOrAssignValueProvider(
+      "val_provided",
+      [](ValueManager& factory,
+         absl::string_view name) -> absl::StatusOr<absl::optional<Value>> {
+        return factory.CreateIntValue(42);
+      }));
+  moved_from.SetUnknownPatterns(
+      {AttributePattern("var1",
+                        {AttributeQualifierPattern::OfString("field1")}),
+       AttributePattern("var1",
+                        {AttributeQualifierPattern::OfString("field2")})});
+  moved_from.SetMissingPatterns(
+      {AttributePattern("var1",
+                        {AttributeQualifierPattern::OfString("field1")}),
+       AttributePattern("var1",
+                        {AttributeQualifierPattern::OfString("field2")})});
+
+  Activation moved_to;
+  moved_to = std::move(moved_from);
+
+  EXPECT_THAT(moved_to.FindVariable(value_factory_, "val"),
+              IsOkAndHolds(Optional(IsIntValue(42))));
+  EXPECT_THAT(moved_to.FindVariable(value_factory_, "val_provided"),
+              IsOkAndHolds(Optional(IsIntValue(42))));
+  EXPECT_THAT(moved_to.FindFunctionOverloads("Fn"), SizeIs(1));
+  EXPECT_THAT(moved_to.GetUnknownAttributes(), SizeIs(2));
+  EXPECT_THAT(moved_to.GetMissingAttributes(), SizeIs(2));
+
+  // moved from value is empty. (well defined but not specified state)
+  // NOLINTBEGIN(bugprone-use-after-move)
+  EXPECT_THAT(moved_from.FindVariable(value_factory_, "val"),
+              IsOkAndHolds(Eq(absl::nullopt)));
+  EXPECT_THAT(moved_from.FindVariable(value_factory_, "val_provided"),
+              IsOkAndHolds(Eq(absl::nullopt)));
+  EXPECT_THAT(moved_from.FindFunctionOverloads("Fn"), SizeIs(0));
+  EXPECT_THAT(moved_from.GetUnknownAttributes(), SizeIs(0));
+  EXPECT_THAT(moved_from.GetMissingAttributes(), SizeIs(0));
+  // NOLINTEND(bugprone-use-after-move)
+}
+
+TEST_F(ActivationTest, MoveCtor) {
+  Activation moved_from;
+
+  ASSERT_TRUE(
+      moved_from.InsertFunction(FunctionDescriptor("Fn", false, {Kind::kAny}),
+                                std::make_unique<FunctionImpl>()));
+  ASSERT_TRUE(
+      moved_from.InsertOrAssignValue("val", value_factory_.CreateIntValue(42)));
+
+  ASSERT_TRUE(moved_from.InsertOrAssignValueProvider(
+      "val_provided",
+      [](ValueManager& factory,
+         absl::string_view name) -> absl::StatusOr<absl::optional<Value>> {
+        return factory.CreateIntValue(42);
+      }));
+  moved_from.SetUnknownPatterns(
+      {AttributePattern("var1",
+                        {AttributeQualifierPattern::OfString("field1")}),
+       AttributePattern("var1",
+                        {AttributeQualifierPattern::OfString("field2")})});
+  moved_from.SetMissingPatterns(
+      {AttributePattern("var1",
+                        {AttributeQualifierPattern::OfString("field1")}),
+       AttributePattern("var1",
+                        {AttributeQualifierPattern::OfString("field2")})});
+
+  Activation moved_to = std::move(moved_from);
+
+  EXPECT_THAT(moved_to.FindVariable(value_factory_, "val"),
+              IsOkAndHolds(Optional(IsIntValue(42))));
+  EXPECT_THAT(moved_to.FindVariable(value_factory_, "val_provided"),
+              IsOkAndHolds(Optional(IsIntValue(42))));
+  EXPECT_THAT(moved_to.FindFunctionOverloads("Fn"), SizeIs(1));
+  EXPECT_THAT(moved_to.GetUnknownAttributes(), SizeIs(2));
+  EXPECT_THAT(moved_to.GetMissingAttributes(), SizeIs(2));
+
+  // moved from value is empty.
+  // NOLINTBEGIN(bugprone-use-after-move)
+  EXPECT_THAT(moved_from.FindVariable(value_factory_, "val"),
+              IsOkAndHolds(Eq(absl::nullopt)));
+  EXPECT_THAT(moved_from.FindVariable(value_factory_, "val_provided"),
+              IsOkAndHolds(Eq(absl::nullopt)));
+  EXPECT_THAT(moved_from.FindFunctionOverloads("Fn"), SizeIs(0));
+  EXPECT_THAT(moved_from.GetUnknownAttributes(), SizeIs(0));
+  EXPECT_THAT(moved_from.GetMissingAttributes(), SizeIs(0));
+  // NOLINTEND(bugprone-use-after-move)
 }
 
 }  // namespace

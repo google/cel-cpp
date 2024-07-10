@@ -86,12 +86,11 @@ cc_test(
         "//base:function",
         "//base:function_descriptor",
         "//common:memory",
-        "//common:type",
         "//common:value",
-        "//internal:status_macros",
         "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
     ],
 )
