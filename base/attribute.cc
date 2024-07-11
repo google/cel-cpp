@@ -206,7 +206,7 @@ bool AttributeQualifier::operator<(const AttributeQualifier& other) const {
 bool Attribute::operator==(const Attribute& other) const {
   // We cannot check pointer equality as a short circuit because we have to
   // treat all invalid AttributeQualifier as not equal to each other.
-  // TODO(issues/41) we only support Ident-rooted attributes at the moment.
+  // TODO we only support Ident-rooted attributes at the moment.
   if (variable_name() != other.variable_name()) {
     return false;
   }

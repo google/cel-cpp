@@ -37,7 +37,7 @@ class TypeReflector : public virtual TypeIntrospector {
   static TypeReflector& ModernBuiltin();
 
   static TypeReflector& Builtin() {
-    // TODO(uncreated-issue/69): Check if it's safe to default to modern.
+    // TODO: Check if it's safe to default to modern.
     // Legacy will prefer legacy container builders for faster interop with
     // client extensions.
     return LegacyBuiltin();

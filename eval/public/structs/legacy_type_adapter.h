@@ -40,7 +40,7 @@ class LegacyTypeMutationApis {
   virtual ~LegacyTypeMutationApis() = default;
 
   // Return whether the type defines the given field.
-  // TODO(uncreated-issue/3): This is only used to eagerly fail during the planning
+  // TODO: This is only used to eagerly fail during the planning
   // phase. Check if it's safe to remove this behavior and fail at runtime.
   virtual bool DefinesField(absl::string_view field_name) const = 0;
 

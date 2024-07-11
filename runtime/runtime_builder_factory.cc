@@ -24,9 +24,9 @@
 namespace cel {
 
 RuntimeBuilder CreateRuntimeBuilder(const RuntimeOptions& options) {
-  // TODO(uncreated-issue/57): and internal API for adding extensions that need to
+  // TODO: and internal API for adding extensions that need to
   // downcast to the runtime impl.
-  // TODO(uncreated-issue/56): add API for attaching an issue listener (replacing the
+  // TODO: add API for attaching an issue listener (replacing the
   // vector<status> overloads).
   auto mutable_runtime =
       std::make_unique<runtime_internal::RuntimeImpl>(options);

@@ -125,7 +125,7 @@ absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
     }
     IsConst operator()(const CreateList& create_list) {
       if (create_list.elements().empty()) {
-        // TODO(uncreated-issue/35): Don't fold for empty list to allow comprehension
+        // TODO: Don't fold for empty list to allow comprehension
         // list append optimization.
         return IsConst::kNonConst;
       }

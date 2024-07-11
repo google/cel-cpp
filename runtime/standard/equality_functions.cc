@@ -540,7 +540,7 @@ absl::StatusOr<absl::optional<bool>> ValueEqualImpl(ValueManager& value_factory,
     return *lhs == *rhs;
   }
 
-  // TODO(uncreated-issue/6): It's currently possible for the interpreter to create a
+  // TODO: It's currently possible for the interpreter to create a
   // map containing an Error. Return no matching overload to propagate an error
   // instead of a false result.
   if (InstanceOf<ErrorValue>(v1) || InstanceOf<UnknownValue>(v1) ||

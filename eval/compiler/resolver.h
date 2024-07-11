@@ -39,7 +39,7 @@ namespace google::api::expr::runtime {
 // by layering on the namespace resolution rules of CEL onto the calls provided
 // by each of these libraries.
 //
-// TODO(issues/105): refactor the Resolver to consider CheckedExpr metadata
+// TODO: refactor the Resolver to consider CheckedExpr metadata
 // for reference resolution.
 class Resolver {
  public:
@@ -97,7 +97,7 @@ class Resolver {
 };
 
 // ArgumentMatcher generates a function signature matcher for CelFunctions.
-// TODO(issues/91): this is the same behavior as parsed exprs in the CPP
+// TODO: this is the same behavior as parsed exprs in the CPP
 // evaluator (just check the right call style and number of arguments), but we
 // should have enough type information in a checked expr to  find a more
 // specific candidate list.

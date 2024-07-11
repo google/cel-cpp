@@ -105,7 +105,7 @@ absl::Status CelValueToValue(const CelValue& value, Value* result,
       break;
     }
     case CelValue::Type::kError:
-      // TODO(issues/87): Migrate to google.api.expr.ExprValue
+      // TODO: Migrate to google.api.expr.ExprValue
       result->set_string_value("CelValue::Type::kError");
       break;
     case CelValue::Type::kCelType:

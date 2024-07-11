@@ -73,7 +73,7 @@ class FlatExprBuilder {
     container_ = std::move(container);
   }
 
-  // TODO(uncreated-issue/45): Add overload for cref AST. At the moment, all the users
+  // TODO: Add overload for cref AST. At the moment, all the users
   // can pass ownership of a freshly converted AST.
   absl::StatusOr<FlatExpression> CreateExpressionImpl(
       std::unique_ptr<cel::Ast> ast,
@@ -89,7 +89,7 @@ class FlatExprBuilder {
   cel::RuntimeOptions options_;
   std::string container_;
   bool enable_optional_types_ = false;
-  // TODO(uncreated-issue/45): evaluate whether we should use a shared_ptr here to
+  // TODO: evaluate whether we should use a shared_ptr here to
   // allow built expressions to keep the registries alive.
   const cel::FunctionRegistry& function_registry_;
   const cel::TypeRegistry& type_registry_;

@@ -86,7 +86,7 @@ absl::Status BindProtoToActivation(
     BindProtoUnsetFieldBehavior unset_field_behavior =
         BindProtoUnsetFieldBehavior::kSkip) {
   static_assert(protobuf_internal::IsProtoMessage<T>);
-  // TODO(uncreated-issue/68): for simplicity, just convert the whole message to a
+  // TODO: for simplicity, just convert the whole message to a
   // struct value. For performance, may be better to convert members as needed.
   CEL_ASSIGN_OR_RETURN(Value parent,
                        ProtoMessageToValue(value_manager, context));

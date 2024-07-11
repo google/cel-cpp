@@ -43,7 +43,7 @@ class LegacyTypeProvider : public cel::TypeReflector {
   //
   // Returned non-null pointers from the adapter implemententation must remain
   // valid as long as the type provider.
-  // TODO(uncreated-issue/3): add alternative for new type system.
+  // TODO: add alternative for new type system.
   virtual absl::optional<LegacyTypeAdapter> ProvideLegacyType(
       absl::string_view name) const = 0;
 
@@ -67,7 +67,7 @@ class LegacyTypeProvider : public cel::TypeReflector {
   // nullopt values are interpreted as not present.
   //
   // Returned non-null pointers must remain valid as long as the type provider.
-  // TODO(uncreated-issue/19): Move protobuf-Any API from top level
+  // TODO: Move protobuf-Any API from top level
   // [Legacy]TypeProviders.
   virtual absl::optional<const LegacyAnyPackingApis*>
   ProvideLegacyAnyPackingApis(

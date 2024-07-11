@@ -231,7 +231,7 @@ class ValueManager {
     auto type_url = any_value->type_url();
     auto pos = type_url.find_last_of('/');
     if (pos == absl::string_view::npos) {
-      // TODO(issues/25) What error code?
+      // TODO What error code?
       // Malformed type_url
       return CreateErrorValue(arena_, "Malformed type_url string");
     }
@@ -242,21 +242,21 @@ class ValueManager {
 
     if (nested_descriptor == nullptr) {
       // Descriptor not found for the type
-      // TODO(issues/25) What error code?
+      // TODO What error code?
       return CreateErrorValue(arena_, "Descriptor not found");
     }
 
     const Message* prototype = message_factory->GetPrototype(nested_descriptor);
     if (prototype == nullptr) {
       // Failed to obtain prototype for the descriptor
-      // TODO(issues/25) What error code?
+      // TODO What error code?
       return CreateErrorValue(arena_, "Prototype not found");
     }
 
     Message* nested_message = prototype->New(arena_);
     if (!any_value->UnpackTo(nested_message)) {
       // Failed to unpack.
-      // TODO(issues/25) What error code?
+      // TODO What error code?
       return CreateErrorValue(arena_, "Failed to unpack Any into message");
     }
 

@@ -42,7 +42,7 @@ class FunctionDescriptor final {
 
   // The argmument types the function accepts.
   //
-  // TODO(uncreated-issue/17): make this kinds
+  // TODO: make this kinds
   const std::vector<Kind>& types() const { return impl_->types; }
 
   // if true (strict, default), error or unknown arguments are propagated

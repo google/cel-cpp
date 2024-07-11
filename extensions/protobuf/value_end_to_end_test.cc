@@ -731,7 +731,7 @@ INSTANTIATE_TEST_SUITE_P(
                map_string_int64 { key: "key1" value: -42 }
              )pb",
              BoolValueIs(false)},
-            // TODO(uncreated-issue/66): with heterogeneous lookups enabled, this
+            // TODO: with heterogeneous lookups enabled, this
             // should just be no such key.
             // Add support for convertible double keys.
             {"map_int32_out_of_range", "msg.map_int32_int64[0x1FFFFFFFF]",
@@ -1037,7 +1037,7 @@ INSTANTIATE_TEST_SUITE_P(
         })),
     ProtobufValueEndToEndTest::ToString);
 
-// TODO(uncreated-issue/66): any support needs the reflection impl for looking up the
+// TODO: any support needs the reflection impl for looking up the
 // type name and corresponding deserializer (outside of the WKTs which are
 // special cased).
 INSTANTIATE_TEST_SUITE_P(

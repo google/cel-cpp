@@ -92,7 +92,7 @@ TEST(RegisterContainerFunctions, RegisterRuntimeListAppend) {
                   std::vector<Kind>{Kind::kOpaque, Kind::kList})));
 }
 
-// TODO(uncreated-issue/41): move functional parsed expr tests when modern APIs for
+// TODO: move functional parsed expr tests when modern APIs for
 // evaluator available.
 
 }  // namespace

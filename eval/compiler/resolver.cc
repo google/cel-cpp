@@ -93,7 +93,7 @@ Resolver::Resolver(
 
 std::vector<std::string> Resolver::FullyQualifiedNames(absl::string_view name,
                                                        int64_t expr_id) const {
-  // TODO(issues/105): refactor the reference resolution into this method.
+  // TODO: refactor the reference resolution into this method.
   // and handle the case where this id is in the reference map as either a
   // function name or identifier name.
   std::vector<std::string> names;

@@ -856,7 +856,7 @@ constexpr char kMapElementsComp[] = R"pb(
     }
   })pb";
 
-// TODO(issues/67): Expected behavior for maps with unknown keys/values in a
+// TODO: Expected behavior for maps with unknown keys/values in a
 // comprehension is a little unclear and the test coverage is a bit sparse.
 // A few more tests should be added for coverage and to help document.
 TEST(UnknownsIterAttrTest, IterAttributeTrailMap) {

@@ -47,21 +47,21 @@ class AstVisitor {
 
   // Expr node handler method. Called for all Expr nodes.
   // Is invoked before child Expr nodes being processed.
-  // TODO(issues/22): this method is not pure virtual to avoid dependencies
+  // TODO: this method is not pure virtual to avoid dependencies
   // breakage. Change it in subsequent CLs.
   virtual void PreVisitExpr(const google::api::expr::v1alpha1::Expr*,
                             const SourcePosition*) {}
 
   // Expr node handler method. Called for all Expr nodes.
   // Is invoked after child Expr nodes are processed.
-  // TODO(issues/22): this method is not pure virtual to avoid dependencies
+  // TODO: this method is not pure virtual to avoid dependencies
   // breakage. Change it in subsequent CLs.
   virtual void PostVisitExpr(const google::api::expr::v1alpha1::Expr*,
                              const SourcePosition*) {}
 
   // Const node handler.
   // Invoked before child nodes are processed.
-  // TODO(issues/22): this method is not pure virtual to avoid dependencies
+  // TODO: this method is not pure virtual to avoid dependencies
   // breakage. Change it in subsequent CLs.
   virtual void PreVisitConst(const google::api::expr::v1alpha1::Constant*,
                              const google::api::expr::v1alpha1::Expr*,
@@ -75,7 +75,7 @@ class AstVisitor {
 
   // Ident node handler.
   // Invoked before child nodes are processed.
-  // TODO(issues/22): this method is not pure virtual to avoid dependencies
+  // TODO: this method is not pure virtual to avoid dependencies
   // breakage. Change it in subsequent CLs.
   virtual void PreVisitIdent(const google::api::expr::v1alpha1::Expr::Ident*,
                              const google::api::expr::v1alpha1::Expr*,
@@ -89,7 +89,7 @@ class AstVisitor {
 
   // Select node handler
   // Invoked before child nodes are processed.
-  // TODO(issues/22): this method is not pure virtual to avoid dependencies
+  // TODO: this method is not pure virtual to avoid dependencies
   // breakage. Change it in subsequent CLs.
   virtual void PreVisitSelect(const google::api::expr::v1alpha1::Expr::Select*,
                               const google::api::expr::v1alpha1::Expr*,
@@ -150,7 +150,7 @@ class AstVisitor {
 
   // CreateList node handler
   // Invoked before child nodes are processed.
-  // TODO(issues/22): this method is not pure virtual to avoid dependencies
+  // TODO: this method is not pure virtual to avoid dependencies
   // breakage. Change it in subsequent CLs.
   virtual void PreVisitCreateList(const google::api::expr::v1alpha1::Expr::CreateList*,
                                   const google::api::expr::v1alpha1::Expr*,
@@ -164,7 +164,7 @@ class AstVisitor {
 
   // CreateStruct node handler
   // Invoked before child nodes are processed.
-  // TODO(issues/22): this method is not pure virtual to avoid dependencies
+  // TODO: this method is not pure virtual to avoid dependencies
   // breakage. Change it in subsequent CLs.
   virtual void PreVisitCreateStruct(
       const google::api::expr::v1alpha1::Expr::CreateStruct*,

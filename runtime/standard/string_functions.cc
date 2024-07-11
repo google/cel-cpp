@@ -32,7 +32,7 @@ namespace {
 absl::StatusOr<StringValue> ConcatString(ValueManager& factory,
                                          const StringValue& value1,
                                          const StringValue& value2) {
-  // TODO(uncreated-issue/53): use StringValue::Concat when remaining interop usages
+  // TODO: use StringValue::Concat when remaining interop usages
   // removed. Modern concat implementation forces additional copies when
   // converting to legacy string values.
   return factory.CreateUncheckedStringValue(
@@ -43,7 +43,7 @@ absl::StatusOr<StringValue> ConcatString(ValueManager& factory,
 absl::StatusOr<BytesValue> ConcatBytes(ValueManager& factory,
                                        const BytesValue& value1,
                                        const BytesValue& value2) {
-  // TODO(uncreated-issue/53): use BytesValue::Concat when remaining interop usages
+  // TODO: use BytesValue::Concat when remaining interop usages
   // removed. Modern concat implementation forces additional copies when
   // converting to legacy string values.
   return factory.CreateBytesValue(

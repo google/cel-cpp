@@ -69,7 +69,7 @@ CelValueMatcher IsCelError(testing::Matcher<absl::Status> m);
 // standard container matchers but given that it is an interface it is a much
 // larger project.
 //
-// TODO(issues/73): Re-use CelValueMatcherImpl. There are template details
+// TODO: Re-use CelValueMatcherImpl. There are template details
 // that need to be worked out specifically on how CelValueMatcherImpl can accept
 // a generic matcher for CelList instead of testing::Matcher<CelList>.
 template <typename ContainerMatcher>
@@ -105,7 +105,7 @@ template <typename ContainerMatcher>
 CelValueMatcher IsCelList(ContainerMatcher m) {
   return CelValueMatcher(new CelListMatcher(m));
 }
-// TODO(issues/73): add helpers for working with maps and unknown sets.
+// TODO: add helpers for working with maps and unknown sets.
 
 }  // namespace test
 }  // namespace runtime

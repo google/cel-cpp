@@ -91,7 +91,7 @@ class BranchCoverageImpl : public BranchCoverage {
     auto value_or = interop_internal::ToLegacyValue(&arena_, value);
 
     if (!value_or.ok()) {
-      // TODO(uncreated-issue/65): Use pointer identity for UnsupportedConversionError
+      // TODO: Use pointer identity for UnsupportedConversionError
       // as a sentinel value. The legacy CEL value just wraps the error pointer.
       // This can be removed after the value migration is complete.
       RecordImpl(expr_id, CelValue::CreateError(&UnsupportedConversionError()));
@@ -214,7 +214,7 @@ void BranchCoverageImpl::RecordImpl(int64_t expr_id, const CelValue& value) {
   coverage_node.evaluate_count++;
   bool is_error = value.IsError() &&
                   // Filter conversion errors for evaluator internal types.
-                  // TODO(uncreated-issue/65): RecordImpl operates on legacy values so
+                  // TODO: RecordImpl operates on legacy values so
                   // special case conversion errors. This error is really just a
                   // sentinel value and doesn't need to round-trip between
                   // legacy and legacy types.

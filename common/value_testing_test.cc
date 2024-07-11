@@ -283,7 +283,7 @@ TEST_P(ValueMatcherTest, MapMatcherMatchesElements) {
                       Pair(IntValueIs(1337), StringValueIs("leet"))))));
 }
 
-// TODO(uncreated-issue/66): struct coverage in follow-up.
+// TODO: struct coverage in follow-up.
 
 INSTANTIATE_TEST_SUITE_P(
     MemoryManagerStrategy, ValueMatcherTest,

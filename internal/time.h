@@ -30,7 +30,7 @@ namespace cel::internal {
   // intent is to widen the CEL spec to support the larger range and match
   // google.protobuf.Duration from protocol buffer messages, which this
   // implementation currently supports.
-  // TODO(google/cel-spec/issues/214): revisit
+  // TODO: revisit
   return absl::Seconds(315576000000) + absl::Nanoseconds(999999999);
 }
 
@@ -40,7 +40,7 @@ namespace cel::internal {
   // intent is to widen the CEL spec to support the larger range and match
   // google.protobuf.Duration from protocol buffer messages, which this
   // implementation currently supports.
-  // TODO(google/cel-spec/issues/214): revisit
+  // TODO: revisit
   return absl::Seconds(-315576000000) + absl::Nanoseconds(-999999999);
 }
 

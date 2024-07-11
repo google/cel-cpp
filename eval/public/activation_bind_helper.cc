@@ -45,7 +45,7 @@ absl::Status BindProtoToActivation(const Message* message, Arena* arena,
         "arena must not be null for BindProtoToActivation.");
   }
 
-  // TODO(issues/24): Improve the utilities to bind dynamic values as well.
+  // TODO: Improve the utilities to bind dynamic values as well.
   const Descriptor* desc = message->GetDescriptor();
   const google::protobuf::Reflection* reflection = message->GetReflection();
   for (int i = 0; i < desc->field_count(); i++) {

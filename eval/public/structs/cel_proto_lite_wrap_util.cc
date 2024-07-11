@@ -247,7 +247,7 @@ CelValue CreateCelValue(const Any& any_value,
   auto type_url = any_value.type_url();
   auto pos = type_url.find_last_of('/');
   if (pos == absl::string_view::npos) {
-    // TODO(issues/25) What error code?
+    // TODO What error code?
     // Malformed type_url
     return CreateErrorValue(arena, "Malformed type_url string");
   }
@@ -259,7 +259,7 @@ CelValue CreateCelValue(const Any& any_value,
       DoubleValue* nested_message = Arena::Create<DoubleValue>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
-        // TODO(issues/25) What error code?
+        // TODO What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into DoubleValue");
       }
       return CreateCelValue(*nested_message, type_provider, arena);
@@ -268,7 +268,7 @@ CelValue CreateCelValue(const Any& any_value,
       FloatValue* nested_message = Arena::Create<FloatValue>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
-        // TODO(issues/25) What error code?
+        // TODO What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into FloatValue");
       }
       return CreateCelValue(*nested_message, type_provider, arena);
@@ -277,7 +277,7 @@ CelValue CreateCelValue(const Any& any_value,
       Int32Value* nested_message = Arena::Create<Int32Value>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
-        // TODO(issues/25) What error code?
+        // TODO What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into Int32Value");
       }
       return CreateCelValue(*nested_message, type_provider, arena);
@@ -286,7 +286,7 @@ CelValue CreateCelValue(const Any& any_value,
       Int64Value* nested_message = Arena::Create<Int64Value>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
-        // TODO(issues/25) What error code?
+        // TODO What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into Int64Value");
       }
       return CreateCelValue(*nested_message, type_provider, arena);
@@ -295,7 +295,7 @@ CelValue CreateCelValue(const Any& any_value,
       UInt32Value* nested_message = Arena::Create<UInt32Value>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
-        // TODO(issues/25) What error code?
+        // TODO What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into UInt32Value");
       }
       return CreateCelValue(*nested_message, type_provider, arena);
@@ -304,7 +304,7 @@ CelValue CreateCelValue(const Any& any_value,
       UInt64Value* nested_message = Arena::Create<UInt64Value>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
-        // TODO(issues/25) What error code?
+        // TODO What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into UInt64Value");
       }
       return CreateCelValue(*nested_message, type_provider, arena);
@@ -313,7 +313,7 @@ CelValue CreateCelValue(const Any& any_value,
       BoolValue* nested_message = Arena::Create<BoolValue>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
-        // TODO(issues/25) What error code?
+        // TODO What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into BoolValue");
       }
       return CreateCelValue(*nested_message, type_provider, arena);
@@ -322,7 +322,7 @@ CelValue CreateCelValue(const Any& any_value,
       Timestamp* nested_message = Arena::Create<Timestamp>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
-        // TODO(issues/25) What error code?
+        // TODO What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into Timestamp");
       }
       return CreateCelValue(*nested_message, type_provider, arena);
@@ -331,7 +331,7 @@ CelValue CreateCelValue(const Any& any_value,
       Duration* nested_message = Arena::Create<Duration>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
-        // TODO(issues/25) What error code?
+        // TODO What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into Duration");
       }
       return CreateCelValue(*nested_message, type_provider, arena);
@@ -340,7 +340,7 @@ CelValue CreateCelValue(const Any& any_value,
       StringValue* nested_message = Arena::Create<StringValue>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
-        // TODO(issues/25) What error code?
+        // TODO What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into StringValue");
       }
       return CreateCelValue(*nested_message, type_provider, arena);
@@ -349,7 +349,7 @@ CelValue CreateCelValue(const Any& any_value,
       BytesValue* nested_message = Arena::Create<BytesValue>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
-        // TODO(issues/25) What error code?
+        // TODO What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into BytesValue");
       }
       return CreateCelValue(*nested_message, type_provider, arena);
@@ -358,7 +358,7 @@ CelValue CreateCelValue(const Any& any_value,
       ListValue* nested_message = Arena::Create<ListValue>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
-        // TODO(issues/25) What error code?
+        // TODO What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into ListValue");
       }
       return CreateCelValue(*nested_message, type_provider, arena);
@@ -367,7 +367,7 @@ CelValue CreateCelValue(const Any& any_value,
       Struct* nested_message = Arena::Create<Struct>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
-        // TODO(issues/25) What error code?
+        // TODO What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into Struct");
       }
       return CreateCelValue(*nested_message, type_provider, arena);
@@ -376,7 +376,7 @@ CelValue CreateCelValue(const Any& any_value,
       Value* nested_message = Arena::Create<Value>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
-        // TODO(issues/25) What error code?
+        // TODO What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into Value");
       }
       return CreateCelValue(*nested_message, type_provider, arena);
@@ -385,7 +385,7 @@ CelValue CreateCelValue(const Any& any_value,
       Any* nested_message = Arena::Create<Any>(arena);
       if (!any_value.UnpackTo(nested_message)) {
         // Failed to unpack.
-        // TODO(issues/25) What error code?
+        // TODO What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into Any");
       }
       return CreateCelValue(*nested_message, type_provider, arena);
@@ -411,7 +411,7 @@ CelValue CreateCelValue(const Any& any_value,
           (*any_apis)->Unpack(any_value, arena);
       if (!nested_message.ok()) {
         // Failed to unpack.
-        // TODO(issues/25) What error code?
+        // TODO What error code?
         return CreateErrorValue(arena,
                                 "Failed to unpack Any into " + full_name);
       }

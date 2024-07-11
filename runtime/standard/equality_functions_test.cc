@@ -134,7 +134,7 @@ TEST(RegisterEqualityFunctionsHeterogeneous, RegistersEqualOperators) {
                   std::vector<Kind>{Kind::kAny, Kind::kAny})));
 }
 
-// TODO(uncreated-issue/41): move functional parsed expr tests when modern APIs for
+// TODO: move functional parsed expr tests when modern APIs for
 // evaluator available.
 
 }  // namespace

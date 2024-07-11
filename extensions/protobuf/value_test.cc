@@ -502,7 +502,7 @@ TEST_P(ProtoValueWrapTest, ProtoMessageQualifyHas) {
 
 TEST_P(ProtoValueWrapTest, ProtoInt64MapListKeys) {
   if (memory_management() == MemoryManagement::kReferenceCounting) {
-    GTEST_SKIP() << "TODO(uncreated-issue/66): use after free";
+    GTEST_SKIP() << "TODO: use after free";
   }
   ASSERT_OK_AND_ASSIGN(
       auto value,
@@ -527,7 +527,7 @@ TEST_P(ProtoValueWrapTest, ProtoInt64MapListKeys) {
 
 TEST_P(ProtoValueWrapTest, ProtoInt32MapListKeys) {
   if (memory_management() == MemoryManagement::kReferenceCounting) {
-    GTEST_SKIP() << "TODO(uncreated-issue/66): use after free";
+    GTEST_SKIP() << "TODO: use after free";
   }
   ASSERT_OK_AND_ASSIGN(
       auto value,
@@ -552,7 +552,7 @@ TEST_P(ProtoValueWrapTest, ProtoInt32MapListKeys) {
 
 TEST_P(ProtoValueWrapTest, ProtoBoolMapListKeys) {
   if (memory_management() == MemoryManagement::kReferenceCounting) {
-    GTEST_SKIP() << "TODO(uncreated-issue/66): use after free";
+    GTEST_SKIP() << "TODO: use after free";
   }
   ASSERT_OK_AND_ASSIGN(
       auto value,
@@ -577,7 +577,7 @@ TEST_P(ProtoValueWrapTest, ProtoBoolMapListKeys) {
 
 TEST_P(ProtoValueWrapTest, ProtoUint32MapListKeys) {
   if (memory_management() == MemoryManagement::kReferenceCounting) {
-    GTEST_SKIP() << "TODO(uncreated-issue/66): use after free";
+    GTEST_SKIP() << "TODO: use after free";
   }
   ASSERT_OK_AND_ASSIGN(
       auto value,
@@ -603,7 +603,7 @@ TEST_P(ProtoValueWrapTest, ProtoUint32MapListKeys) {
 
 TEST_P(ProtoValueWrapTest, ProtoUint64MapListKeys) {
   if (memory_management() == MemoryManagement::kReferenceCounting) {
-    GTEST_SKIP() << "TODO(uncreated-issue/66): use after free";
+    GTEST_SKIP() << "TODO: use after free";
   }
   ASSERT_OK_AND_ASSIGN(
       auto value,
@@ -629,7 +629,7 @@ TEST_P(ProtoValueWrapTest, ProtoUint64MapListKeys) {
 
 TEST_P(ProtoValueWrapTest, ProtoStringMapListKeys) {
   if (memory_management() == MemoryManagement::kReferenceCounting) {
-    GTEST_SKIP() << "TODO(uncreated-issue/66): use after free";
+    GTEST_SKIP() << "TODO: use after free";
   }
   ASSERT_OK_AND_ASSIGN(
       auto value, ProtoMessageToValue(

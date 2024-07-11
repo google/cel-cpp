@@ -253,7 +253,7 @@ class SourceInfo {
   // `id` the `line_offsets[i] < id_positions[id] < line_offsets[i+1]`. The
   // column may be derivd from `id_positions[id] - line_offsets[i]`.
   //
-  // TODO(uncreated-issue/14): clarify this documentation
+  // TODO: clarify this documentation
   std::vector<int32_t> line_offsets_;
 
   // A map from the parse node id (e.g. `Expr.id`) to the code point offset
@@ -339,7 +339,7 @@ enum class PrimitiveType {
 
 // Well-known protobuf types treated with first-class support in CEL.
 //
-// TODO(uncreated-issue/15): represent well-known via abstract types (or however)
+// TODO: represent well-known via abstract types (or however)
 //   they will be named.
 enum class WellKnownType {
   // Unspecified type.
@@ -504,7 +504,7 @@ class FunctionType {
 
 // Application defined abstract type.
 //
-// TODO(uncreated-issue/15): decide on final naming for this.
+// TODO: decide on final naming for this.
 class AbstractType {
  public:
   AbstractType() = default;
@@ -607,7 +607,7 @@ using TypeKind =
 // Analogous to google::api::expr::v1alpha1::Type.
 // Represents a CEL type.
 //
-// TODO(uncreated-issue/15): align with value.proto
+// TODO: align with value.proto
 class Type {
  public:
   Type() = default;

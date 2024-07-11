@@ -139,7 +139,7 @@ class CelTypeRegistry {
   // Internal modern registry.
   cel::TypeRegistry modern_type_registry_;
 
-  // TODO(uncreated-issue/44): This is needed to inspect the registered legacy type
+  // TODO: This is needed to inspect the registered legacy type
   // providers for client tests. This can be removed when they are migrated to
   // use the modern APIs.
   std::vector<std::shared_ptr<const LegacyTypeProvider>> legacy_type_providers_;

@@ -42,7 +42,7 @@ class Function {
     // extension function.
     cel::ValueManager& value_factory() const { return value_manager_; }
 
-    // TODO(uncreated-issue/24): Add accessors for getting attribute stack and mutable
+    // TODO: Add accessors for getting attribute stack and mutable
     // value stack.
    private:
     cel::ValueManager& value_manager_;

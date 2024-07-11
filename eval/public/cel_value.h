@@ -399,7 +399,7 @@ class CelValue {
 
   // Invokes op() with the active value, and returns the result.
   // All overloads of op() must have the same return type.
-  // TODO(uncreated-issue/2): Move to CelProtoWrapper to retain the assumed
+  // TODO: Move to CelProtoWrapper to retain the assumed
   // google::protobuf::Message variant version behavior for client code.
   template <class ReturnType, class Op>
   ReturnType Visit(Op&& op) const {
@@ -419,7 +419,7 @@ class CelValue {
 
   // Factory for message wrapper. This should only be used by internal
   // libraries.
-  // TODO(uncreated-issue/2): exposed for testing while wiring adapter APIs. Should
+  // TODO: exposed for testing while wiring adapter APIs. Should
   // make private visibility after refactors are done.
   static CelValue CreateMessageWrapper(MessageWrapper value) {
     CheckNullPointer(value.message_ptr(), Type::kMessage);
@@ -449,7 +449,7 @@ class CelValue {
 
   // Specialization for MessageWrapper to support legacy behavior while
   // migrating off hard dependency on google::protobuf::Message.
-  // TODO(uncreated-issue/2): Move to CelProtoWrapper.
+  // TODO: Move to CelProtoWrapper.
   template <typename T>
   struct AssignerOp<
       T, std::enable_if_t<std::is_same_v<T, const google::protobuf::Message*>>> {
@@ -576,7 +576,7 @@ class CelMap {
   // error. To be consistent, the runtime should also yield an invalid argument
   // error if the type does not agree with the expected key types held by the
   // container.
-  // TODO(issues/122): Make this method const correct.
+  // TODO: Make this method const correct.
   virtual absl::optional<CelValue> operator[](CelValue key) const = 0;
 
   // Like `operator[](CelValue)` above, but also accepts an arena. Prefer

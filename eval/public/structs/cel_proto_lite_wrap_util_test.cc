@@ -90,7 +90,7 @@ class ProtobufDescriptorAnyPackingApis : public LegacyAnyPackingApis {
 
     if (nested_descriptor == nullptr) {
       // Descriptor not found for the type
-      // TODO(issues/25) What error code?
+      // TODO What error code?
       return absl::InternalError("Descriptor not found");
     }
 

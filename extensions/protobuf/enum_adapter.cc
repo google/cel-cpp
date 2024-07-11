@@ -30,7 +30,7 @@ absl::Status RegisterProtobufEnum(
         absl::StrCat(enum_descriptor->full_name(), " already registered."));
   }
 
-  // TODO(uncreated-issue/42): the registry enum implementation runs linear lookups for
+  // TODO: the registry enum implementation runs linear lookups for
   // constants since this isn't expected to happen at runtime. Consider updating
   // if / when strong enum typing is implemented.
   std::vector<TypeRegistry::Enumerator> enumerators;

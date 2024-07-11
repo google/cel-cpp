@@ -536,7 +536,7 @@ absl::Status RegisterTimeFunctions(FunctionRegistry& registry,
   CEL_RETURN_IF_ERROR(RegisterDurationFunctions(registry));
 
   // Special arithmetic operators for Timestamp and Duration
-  // TODO(uncreated-issue/37): deprecate unchecked time math functions when clients no
+  // TODO: deprecate unchecked time math functions when clients no
   // longer depend on them.
   if (options.enable_timestamp_duration_overflow_errors) {
     return RegisterCheckedTimeArithmeticFunctions(registry);

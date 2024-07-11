@@ -144,19 +144,19 @@ _ALL_TESTS = [
 
 _TESTS_TO_SKIP_MODERN = [
     # Tests which require spec changes.
-    # TODO(issues/93): Deprecate Duration.getMilliseconds.
+    # TODO: Deprecate Duration.getMilliseconds.
     "timestamps/duration_converters/get_milliseconds",
 
     # Broken test cases which should be supported.
-    # TODO(issues/112): Unbound functions result in empty eval response.
+    # TODO: Unbound functions result in empty eval response.
     "basic/functions/unbound",
     "basic/functions/unbound_is_runtime_error",
 
-    # TODO(issues/97): Parse-only qualified variable lookup "x.y" wtih binding "x.y" or "y" within container "x" fails
+    # TODO: Parse-only qualified variable lookup "x.y" wtih binding "x.y" or "y" within container "x" fails
     "fields/qualified_identifier_resolution/qualified_ident,map_field_select,ident_with_longest_prefix_check,qualified_identifier_resolution_unchecked",
     "namespace/qualified/self_eval_qualified_lookup",
     "namespace/namespace/self_eval_container_lookup,self_eval_container_lookup_unchecked",
-    # TODO(issues/117): Integer overflow on enum assignments should error.
+    # TODO: Integer overflow on enum assignments should error.
     "enums/legacy_proto2/select_big,select_neg",
 
     # Skip until fixed.
@@ -165,7 +165,7 @@ _TESTS_TO_SKIP_MODERN = [
     "fields/qualified_identifier_resolution/map_value_repeat_key_heterogeneous",
 
     # Future features for CEL 1.0
-    # TODO(issues/119): Strong typing support for enums, specified but not implemented.
+    # TODO: Strong typing support for enums, specified but not implemented.
     "enums/strong_proto2",
     "enums/strong_proto3",
 
@@ -201,26 +201,26 @@ _TESTS_TO_SKIP_MODERN = [
 
 _TESTS_TO_SKIP_MODERN_DASHBOARD = [
     # Future features for CEL 1.0
-    # TODO(issues/119): Strong typing support for enums, specified but not implemented.
+    # TODO: Strong typing support for enums, specified but not implemented.
     "enums/strong_proto2",
     "enums/strong_proto3",
 ]
 
 _TESTS_TO_SKIP_LEGACY = [
     # Tests which require spec changes.
-    # TODO(issues/93): Deprecate Duration.getMilliseconds.
+    # TODO: Deprecate Duration.getMilliseconds.
     "timestamps/duration_converters/get_milliseconds",
 
     # Broken test cases which should be supported.
-    # TODO(issues/112): Unbound functions result in empty eval response.
+    # TODO: Unbound functions result in empty eval response.
     "basic/functions/unbound",
     "basic/functions/unbound_is_runtime_error",
 
-    # TODO(issues/97): Parse-only qualified variable lookup "x.y" wtih binding "x.y" or "y" within container "x" fails
+    # TODO: Parse-only qualified variable lookup "x.y" wtih binding "x.y" or "y" within container "x" fails
     "fields/qualified_identifier_resolution/qualified_ident,map_field_select,ident_with_longest_prefix_check,qualified_identifier_resolution_unchecked",
     "namespace/qualified/self_eval_qualified_lookup",
     "namespace/namespace/self_eval_container_lookup,self_eval_container_lookup_unchecked",
-    # TODO(issues/117): Integer overflow on enum assignments should error.
+    # TODO: Integer overflow on enum assignments should error.
     "enums/legacy_proto2/select_big,select_neg",
 
     # Skip until fixed.
@@ -229,7 +229,7 @@ _TESTS_TO_SKIP_LEGACY = [
     "fields/qualified_identifier_resolution/map_value_repeat_key_heterogeneous",
 
     # Future features for CEL 1.0
-    # TODO(issues/119): Strong typing support for enums, specified but not implemented.
+    # TODO: Strong typing support for enums, specified but not implemented.
     "enums/strong_proto2",
     "enums/strong_proto3",
 
@@ -268,7 +268,7 @@ _TESTS_TO_SKIP_LEGACY = [
 
 _TESTS_TO_SKIP_LEGACY_DASHBOARD = [
     # Future features for CEL 1.0
-    # TODO(issues/119): Strong typing support for enums, specified but not implemented.
+    # TODO: Strong typing support for enums, specified but not implemented.
     "enums/strong_proto2",
     "enums/strong_proto3",
 

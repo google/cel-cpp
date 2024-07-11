@@ -125,7 +125,7 @@ CelValue CelValue::CreateDuration(absl::Duration value) {
   return CreateUncheckedDuration(value);
 }
 
-// TODO(issues/136): These don't match the CEL runtime typenames. They should
+// TODO: These don't match the CEL runtime typenames. They should
 // be updated where possible for consistency.
 std::string CelValue::TypeName(Type value_type) {
   switch (value_type) {
@@ -289,7 +289,7 @@ CelValue CelValue::CreateMap() { return CreateMap(EmptyCelMap::Get()); }
 CelValue CreateErrorValue(cel::MemoryManagerRef manager,
                           absl::string_view message,
                           absl::StatusCode error_code) {
-  // TODO(uncreated-issue/1): assume arena-style allocator while migrating to new
+  // TODO: assume arena-style allocator while migrating to new
   // value type.
   Arena* arena = cel::extensions::ProtoMemoryManagerArena(manager);
   return CreateErrorValue(arena, message, error_code);
@@ -297,7 +297,7 @@ CelValue CreateErrorValue(cel::MemoryManagerRef manager,
 
 CelValue CreateErrorValue(cel::MemoryManagerRef manager,
                           const absl::Status& status) {
-  // TODO(uncreated-issue/1): assume arena-style allocator while migrating to new
+  // TODO: assume arena-style allocator while migrating to new
   // value type.
   Arena* arena = cel::extensions::ProtoMemoryManagerArena(manager);
   return CreateErrorValue(arena, status);
@@ -367,7 +367,7 @@ CelValue CreateMissingAttributeError(google::protobuf::Arena* arena,
 
 CelValue CreateMissingAttributeError(cel::MemoryManagerRef manager,
                                      absl::string_view missing_attribute_path) {
-  // TODO(uncreated-issue/1): assume arena-style allocator while migrating
+  // TODO: assume arena-style allocator while migrating
   // to new value type.
   return CelValue::CreateError(interop::CreateMissingAttributeError(
       cel::extensions::ProtoMemoryManagerArena(manager),

@@ -53,7 +53,7 @@ absl::StatusOr<ListValue> ConcatList(ValueManager& factory,
     return value1;
   }
 
-  // TODO(uncreated-issue/50): add option for checking lists have homogenous element
+  // TODO: add option for checking lists have homogenous element
   // types and use a more specialized list type when possible.
   CEL_ASSIGN_OR_RETURN(auto list_builder,
                        factory.NewListValueBuilder(factory.GetDynListType()));

@@ -229,7 +229,7 @@ absl::optional<bool> CelValueEqualImpl(const CelValue& v1, const CelValue& v2) {
     return *lhs == *rhs;
   }
 
-  // TODO(uncreated-issue/6): It's currently possible for the interpreter to create a
+  // TODO: It's currently possible for the interpreter to create a
   // map containing an Error. Return no matching overload to propagate an error
   // instead of a false result.
   if (v1.IsError() || v1.IsUnknownSet() || v2.IsError() || v2.IsUnknownSet()) {
