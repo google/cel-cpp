@@ -1,0 +1,69 @@
+// Copyright 2024 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "checker/validation_result.h"
+
+#include <memory>
+#include <utility>
+
+#include "absl/status/status.h"
+#include "base/ast_internal/ast_impl.h"
+#include "base/ast_internal/expr.h"
+#include "checker/type_check_issue.h"
+#include "internal/testing.h"
+
+namespace cel {
+namespace {
+
+using ::cel::ast_internal::AstImpl;
+using ::cel::ast_internal::CheckedExpr;
+using testing::_;
+using testing::IsNull;
+using testing::NotNull;
+using testing::SizeIs;
+using cel::internal::IsOkAndHolds;
+using cel::internal::StatusIs;
+
+TEST(ValidationResultTest, IsValidWithAst) {
+  ValidationResult result(std::make_unique<AstImpl>(CheckedExpr()), {});
+  EXPECT_TRUE(result.IsValid());
+  EXPECT_THAT(result.GetAst(), NotNull());
+  EXPECT_THAT(std::move(result).Consume(), IsOkAndHolds(NotNull()));
+}
+
+TEST(ValidationResultTest, IsNotValidWithoutAst) {
+  ValidationResult result({});
+  EXPECT_FALSE(result.IsValid());
+  EXPECT_THAT(result.GetAst(), IsNull());
+  EXPECT_THAT(std::move(result).Consume(),
+              StatusIs(absl::StatusCode::kFailedPrecondition, _));
+}
+
+TEST(ValidationResultTest, GetIssues) {
+  ValidationResult result(
+      {TypeCheckIssue::CreateError({-1, -1}, "Issue1"),
+       TypeCheckIssue(IssueSeverity::kInformation, {-1, -1}, "Issue2")});
+  EXPECT_FALSE(result.IsValid());
+
+  ASSERT_THAT(result.GetIssues(), SizeIs(2));
+
+  EXPECT_THAT(result.GetIssues()[0].message(), "Issue1");
+  EXPECT_THAT(result.GetIssues()[0].severity(), IssueSeverity::kError);
+
+  EXPECT_THAT(result.GetIssues()[1].message(), "Issue2");
+  EXPECT_THAT(result.GetIssues()[1].severity(), IssueSeverity::kInformation);
+}
+
+}  // namespace
+}  // namespace cel
