@@ -23,6 +23,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
+#include "extensions/protobuf/internal/is_message_lite.h"
 #include "extensions/protobuf/internal/timestamp_lite.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -37,10 +38,12 @@ absl::StatusOr<absl::Time> UnwrapDynamicTimestampProto(
     return absl::InternalError(
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
-  if (desc == google::protobuf::Timestamp::descriptor()) {
-    // Fast path.
-    return UnwrapGeneratedTimestampProto(
-        google::protobuf::DownCastToGenerated<google::protobuf::Timestamp>(message));
+  if constexpr (NotMessageLite<google::protobuf::Timestamp>) {
+    if (desc == google::protobuf::Timestamp::descriptor()) {
+      // Fast path.
+      return UnwrapGeneratedTimestampProto(
+          google::protobuf::DownCastToGenerated<google::protobuf::Timestamp>(message));
+    }
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
@@ -95,10 +98,12 @@ absl::Status WrapDynamicTimestampProto(absl::Time value,
     return absl::InternalError(
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
-  if (ABSL_PREDICT_TRUE(desc == google::protobuf::Timestamp::descriptor())) {
-    return WrapGeneratedTimestampProto(
-        value,
-        google::protobuf::DownCastToGenerated<google::protobuf::Timestamp>(message));
+  if constexpr (NotMessageLite<google::protobuf::Timestamp>) {
+    if (ABSL_PREDICT_TRUE(desc == google::protobuf::Timestamp::descriptor())) {
+      return WrapGeneratedTimestampProto(
+          value,
+          google::protobuf::DownCastToGenerated<google::protobuf::Timestamp>(message));
+    }
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {

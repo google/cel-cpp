@@ -26,6 +26,7 @@
 #include "absl/strings/string_view.h"
 #include "common/any.h"
 #include "extensions/protobuf/internal/any_lite.h"
+#include "extensions/protobuf/internal/is_message_lite.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -38,10 +39,12 @@ absl::StatusOr<Any> UnwrapDynamicAnyProto(const google::protobuf::Message& messa
     return absl::InternalError(
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
-  if (desc == google::protobuf::Any::descriptor()) {
-    // Fast path.
-    return UnwrapGeneratedAnyProto(
-        google::protobuf::DownCastToGenerated<google::protobuf::Any>(message));
+  if constexpr (NotMessageLite<google::protobuf::Any>) {
+    if (desc == google::protobuf::Any::descriptor()) {
+      // Fast path.
+      return UnwrapGeneratedAnyProto(
+          google::protobuf::DownCastToGenerated<google::protobuf::Any>(message));
+    }
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
@@ -96,11 +99,13 @@ absl::Status WrapDynamicAnyProto(absl::string_view type_url,
     return absl::InternalError(
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
-  if (desc == google::protobuf::Any::descriptor()) {
-    // Fast path.
-    return WrapGeneratedAnyProto(
-        type_url, value,
-        google::protobuf::DownCastToGenerated<google::protobuf::Any>(message));
+  if constexpr (NotMessageLite<google::protobuf::Any>) {
+    if (desc == google::protobuf::Any::descriptor()) {
+      // Fast path.
+      return WrapGeneratedAnyProto(
+          type_url, value,
+          google::protobuf::DownCastToGenerated<google::protobuf::Any>(message));
+    }
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {

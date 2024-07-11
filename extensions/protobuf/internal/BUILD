@@ -39,6 +39,7 @@ cc_library(
     hdrs = ["any.h"],
     deps = [
         ":any_lite",
+        ":is_message_lite",
         "//common:any",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:absl_check",
@@ -135,6 +136,7 @@ cc_library(
     hdrs = ["duration.h"],
     deps = [
         ":duration_lite",
+        ":is_message_lite",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status",
@@ -181,6 +183,7 @@ cc_library(
     srcs = ["timestamp.cc"],
     hdrs = ["timestamp.h"],
     deps = [
+        ":is_message_lite",
         ":timestamp_lite",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:absl_check",
@@ -289,6 +292,7 @@ cc_library(
     srcs = ["wrappers.cc"],
     hdrs = ["wrappers.h"],
     deps = [
+        ":is_message_lite",
         ":wrappers_lite",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/functional:function_ref",
@@ -332,6 +336,7 @@ cc_library(
     hdrs = ["field_mask.h"],
     deps = [
         ":field_mask_lite",
+        ":is_message_lite",
         "//common:json",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:absl_check",
@@ -424,6 +429,7 @@ cc_library(
     srcs = ["struct.cc"],
     hdrs = ["struct.h"],
     deps = [
+        ":is_message_lite",
         ":map_reflection",
         ":struct_lite",
         "//common:json",
@@ -497,4 +503,10 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_protobuf//:protobuf",
     ],
+)
+
+cc_library(
+    name = "is_message_lite",
+    hdrs = ["is_message_lite.h"],
+    deps = ["@com_google_protobuf//:protobuf"],
 )

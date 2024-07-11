@@ -25,6 +25,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
+#include "extensions/protobuf/internal/is_message_lite.h"
 #include "extensions/protobuf/internal/wrappers_lite.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -59,9 +60,11 @@ absl::StatusOr<P> UnwrapValueProto(const google::protobuf::Message& message,
     return absl::InternalError(
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
-  if (ABSL_PREDICT_TRUE(desc == T::descriptor())) {
-    // Fast path.
-    return unwrapper(google::protobuf::DownCastToGenerated<T>(message));
+  if constexpr (NotMessageLite<T>) {
+    if (ABSL_PREDICT_TRUE(desc == T::descriptor())) {
+      // Fast path.
+      return unwrapper(google::protobuf::DownCastToGenerated<T>(message));
+    }
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
@@ -96,9 +99,11 @@ absl::Status WrapValueProto(google::protobuf::Message& message, const P& value,
     return absl::InternalError(
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
-  if (ABSL_PREDICT_TRUE(desc == T::descriptor())) {
-    // Fast path.
-    return wrapper(value, google::protobuf::DownCastToGenerated<T>(message));
+  if constexpr (NotMessageLite<T>) {
+    if (ABSL_PREDICT_TRUE(desc == T::descriptor())) {
+      // Fast path.
+      return wrapper(value, google::protobuf::DownCastToGenerated<T>(message));
+    }
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
