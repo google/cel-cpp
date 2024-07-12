@@ -17,6 +17,7 @@
 
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/protobuf_value_factory.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime::internal {
 
@@ -36,8 +37,8 @@ CelValue UnwrapMessageToValue(const google::protobuf::Message* value,
 // Just as CreateMessage should only be used when reading protobuf values,
 // MaybeWrapValue should only be used when assigning protobuf fields.
 const google::protobuf::Message* MaybeWrapValueToMessage(
-    const google::protobuf::Descriptor* descriptor, const CelValue& value,
-    google::protobuf::Arena* arena);
+    const google::protobuf::Descriptor* descriptor, google::protobuf::MessageFactory* factory,
+    const CelValue& value, google::protobuf::Arena* arena);
 
 }  // namespace google::api::expr::runtime::internal
 

@@ -82,28 +82,33 @@ class CelProtoWrapperTest : public ::testing::Test {
   void ExpectWrappedMessage(const CelValue& value,
                             const google::protobuf::Message& message) {
     // Test the input value wraps to the destination message type.
-    auto* result =
-        MaybeWrapValueToMessage(message.GetDescriptor(), value, arena());
+    auto* result = MaybeWrapValueToMessage(
+        message.GetDescriptor(), message.GetReflection()->GetMessageFactory(),
+        value, arena());
     EXPECT_TRUE(result != nullptr);
     EXPECT_THAT(result, testutil::EqualsProto(message));
 
     // Ensure that double wrapping results in the object being wrapped once.
     auto* identity = MaybeWrapValueToMessage(
-        message.GetDescriptor(), ProtobufValueFactoryImpl(result), arena());
+        message.GetDescriptor(), message.GetReflection()->GetMessageFactory(),
+        ProtobufValueFactoryImpl(result), arena());
     EXPECT_TRUE(identity == nullptr);
 
     // Check to make sure that even dynamic messages can be used as input to
     // the wrapping call.
-    result = MaybeWrapValueToMessage(ReflectedCopy(message)->GetDescriptor(),
-                                     value, arena());
+    result = MaybeWrapValueToMessage(
+        ReflectedCopy(message)->GetDescriptor(),
+        ReflectedCopy(message)->GetReflection()->GetMessageFactory(), value,
+        arena());
     EXPECT_TRUE(result != nullptr);
     EXPECT_THAT(result, testutil::EqualsProto(message));
   }
 
   void ExpectNotWrapped(const CelValue& value, const google::protobuf::Message& message) {
     // Test the input value does not wrap by asserting value == result.
-    auto result =
-        MaybeWrapValueToMessage(message.GetDescriptor(), value, arena());
+    auto result = MaybeWrapValueToMessage(
+        message.GetDescriptor(), message.GetReflection()->GetMessageFactory(),
+        value, arena());
     EXPECT_TRUE(result == nullptr);
   }
 

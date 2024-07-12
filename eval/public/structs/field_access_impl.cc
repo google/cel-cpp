@@ -490,8 +490,9 @@ class FieldSetter {
         // When the field is a message, it might be a well-known type with a
         // non-proto representation that requires special handling before it
         // can be set on the field.
-        const google::protobuf::Message* wrapped_value =
-            MaybeWrapValueToMessage(field_desc_->message_type(), value, arena_);
+        const google::protobuf::Message* wrapped_value = MaybeWrapValueToMessage(
+            field_desc_->message_type(),
+            msg_->GetReflection()->GetMessageFactory(), value, arena_);
         if (wrapped_value == nullptr) {
           // It we aren't unboxing to a protobuf null representation, setting a
           // field to null is a no-op.

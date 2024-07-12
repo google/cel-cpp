@@ -15,6 +15,7 @@
 #include "extensions/protobuf/internal/struct.h"
 
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "google/protobuf/struct.pb.h"
@@ -30,6 +31,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
 #include "common/json.h"
+#include "extensions/protobuf/internal/is_generated_message.h"
 #include "extensions/protobuf/internal/is_message_lite.h"
 #include "extensions/protobuf/internal/map_reflection.h"
 #include "extensions/protobuf/internal/struct_lite.h"
@@ -42,6 +44,15 @@
 namespace cel::extensions::protobuf_internal {
 
 namespace {
+
+template <typename T>
+std::enable_if_t<NotMessageLite<T>, google::protobuf::Message*> UpCastMessage(
+    T* message) {
+  return message;
+}
+
+template <typename T>
+std::enable_if_t<IsMessageLite<T>, google::protobuf::Message*> UpCastMessage(T* message);
 
 // Gets the `Descriptor` for `message`, verifying that it is not `nullptr`.
 absl::StatusOr<absl::Nonnull<const google::protobuf::Descriptor*>> GetDescriptor(
@@ -165,7 +176,7 @@ absl::StatusOr<Json> DynamicValueProtoToJson(const google::protobuf::Message& me
   ABSL_DCHECK_EQ(message.GetTypeName(), "google.protobuf.Value");
   CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(message));
   if constexpr (NotMessageLite<google::protobuf::Value>) {
-    if (ABSL_PREDICT_TRUE(desc == google::protobuf::Value::descriptor())) {
+    if (IsGeneratedMessage(message)) {
       return GeneratedValueProtoToJson(
           google::protobuf::DownCastToGenerated<google::protobuf::Value>(message));
     }
@@ -222,7 +233,7 @@ absl::StatusOr<Json> DynamicListValueProtoToJson(
   ABSL_DCHECK_EQ(message.GetTypeName(), "google.protobuf.ListValue");
   CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(message));
   if constexpr (NotMessageLite<google::protobuf::ListValue>) {
-    if (ABSL_PREDICT_TRUE(desc == google::protobuf::ListValue::descriptor())) {
+    if (IsGeneratedMessage(message)) {
       return GeneratedListValueProtoToJson(
           google::protobuf::DownCastToGenerated<google::protobuf::ListValue>(message));
     }
@@ -249,7 +260,7 @@ absl::StatusOr<Json> DynamicStructProtoToJson(const google::protobuf::Message& m
   ABSL_DCHECK_EQ(message.GetTypeName(), "google.protobuf.Struct");
   CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(message));
   if constexpr (NotMessageLite<google::protobuf::Struct>) {
-    if (ABSL_PREDICT_TRUE(desc == google::protobuf::Struct::descriptor())) {
+    if (IsGeneratedMessage(message)) {
       return GeneratedStructProtoToJson(
           google::protobuf::DownCastToGenerated<google::protobuf::Struct>(message));
     }
@@ -284,7 +295,7 @@ absl::Status DynamicValueProtoFromJson(const Json& json,
   ABSL_DCHECK_EQ(message.GetTypeName(), "google.protobuf.Value");
   CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(message));
   if constexpr (NotMessageLite<google::protobuf::Value>) {
-    if (ABSL_PREDICT_TRUE(desc == google::protobuf::Value::descriptor())) {
+    if (IsGeneratedMessage(message)) {
       return GeneratedValueProtoFromJson(
           json, google::protobuf::DownCastToGenerated<google::protobuf::Value>(message));
     }
@@ -371,7 +382,7 @@ absl::Status DynamicListValueProtoFromJson(const JsonArray& json,
   ABSL_DCHECK_EQ(message.GetTypeName(), "google.protobuf.ListValue");
   CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(message));
   if constexpr (NotMessageLite<google::protobuf::ListValue>) {
-    if (ABSL_PREDICT_TRUE(desc == google::protobuf::ListValue::descriptor())) {
+    if (IsGeneratedMessage(message)) {
       return GeneratedListValueProtoFromJson(
           json,
           google::protobuf::DownCastToGenerated<google::protobuf::ListValue>(message));
@@ -401,7 +412,7 @@ absl::Status DynamicStructProtoFromJson(const JsonObject& json,
   ABSL_DCHECK_EQ(message.GetTypeName(), "google.protobuf.Struct");
   CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(message));
   if constexpr (NotMessageLite<google::protobuf::Struct>) {
-    if (ABSL_PREDICT_TRUE(desc == google::protobuf::Struct::descriptor())) {
+    if (IsGeneratedMessage(message)) {
       return GeneratedStructProtoFromJson(
           json, google::protobuf::DownCastToGenerated<google::protobuf::Struct>(message));
     }
@@ -425,6 +436,186 @@ absl::Status DynamicStructProtoFromJson(const JsonObject& json,
         entry.second, *map_value.MutableMessageValue()));
   }
   return absl::OkStatus();
+}
+
+absl::Status DynamicValueProtoSetNullValue(google::protobuf::Message* message) {
+  ABSL_DCHECK_EQ(message->GetTypeName(), "google.protobuf.Value");
+  CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(*message));
+  if constexpr (NotMessageLite<google::protobuf::Value>) {
+    if (IsGeneratedMessage(*message)) {
+      GeneratedValueProtoSetNullValue(
+          google::protobuf::DownCastToGenerated<google::protobuf::Value>(message));
+      return absl::OkStatus();
+    }
+  }
+  CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(*message));
+  CEL_ASSIGN_OR_RETURN(
+      const auto* null_value_field,
+      FindFieldByNumber(desc, google::protobuf::Value::kNullValueFieldNumber));
+  CEL_RETURN_IF_ERROR(
+      CheckFieldEnumType(null_value_field, "google.protobuf.NullValue"));
+  CEL_RETURN_IF_ERROR(CheckFieldSingular(null_value_field));
+  reflection->SetEnumValue(message, null_value_field, 0);
+  return absl::OkStatus();
+}
+
+absl::Status DynamicValueProtoSetBoolValue(bool value,
+                                           google::protobuf::Message* message) {
+  ABSL_DCHECK_EQ(message->GetTypeName(), "google.protobuf.Value");
+  CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(*message));
+  if constexpr (NotMessageLite<google::protobuf::Value>) {
+    if (IsGeneratedMessage(*message)) {
+      GeneratedValueProtoSetBoolValue(
+          value, google::protobuf::DownCastToGenerated<google::protobuf::Value>(message));
+      return absl::OkStatus();
+    }
+  }
+  CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(*message));
+  CEL_ASSIGN_OR_RETURN(
+      const auto* bool_value_field,
+      FindFieldByNumber(desc, google::protobuf::Value::kBoolValueFieldNumber));
+  CEL_RETURN_IF_ERROR(
+      CheckFieldType(bool_value_field, google::protobuf::FieldDescriptor::CPPTYPE_BOOL));
+  CEL_RETURN_IF_ERROR(CheckFieldSingular(bool_value_field));
+  reflection->SetBool(message, bool_value_field, value);
+  return absl::OkStatus();
+}
+
+absl::Status DynamicValueProtoSetNumberValue(double value,
+                                             google::protobuf::Message* message) {
+  ABSL_DCHECK_EQ(message->GetTypeName(), "google.protobuf.Value");
+  CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(*message));
+  if constexpr (NotMessageLite<google::protobuf::Value>) {
+    if (IsGeneratedMessage(*message)) {
+      GeneratedValueProtoSetNumberValue(
+          value, google::protobuf::DownCastToGenerated<google::protobuf::Value>(message));
+      return absl::OkStatus();
+    }
+  }
+  CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(*message));
+  CEL_ASSIGN_OR_RETURN(
+      const auto* number_value_field,
+      FindFieldByNumber(desc,
+                        google::protobuf::Value::kNumberValueFieldNumber));
+  CEL_RETURN_IF_ERROR(CheckFieldType(number_value_field,
+                                     google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE));
+  CEL_RETURN_IF_ERROR(CheckFieldSingular(number_value_field));
+  reflection->SetDouble(message, number_value_field, value);
+  return absl::OkStatus();
+}
+
+absl::Status DynamicValueProtoSetStringValue(absl::string_view value,
+                                             google::protobuf::Message* message) {
+  ABSL_DCHECK_EQ(message->GetTypeName(), "google.protobuf.Value");
+  CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(*message));
+  if constexpr (NotMessageLite<google::protobuf::Value>) {
+    if (IsGeneratedMessage(*message)) {
+      GeneratedValueProtoSetStringValue(
+          value, google::protobuf::DownCastToGenerated<google::protobuf::Value>(message));
+      return absl::OkStatus();
+    }
+  }
+  CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(*message));
+  CEL_ASSIGN_OR_RETURN(
+      const auto* string_value_field,
+      FindFieldByNumber(desc,
+                        google::protobuf::Value::kStringValueFieldNumber));
+  CEL_RETURN_IF_ERROR(CheckFieldType(string_value_field,
+                                     google::protobuf::FieldDescriptor::CPPTYPE_STRING));
+  CEL_RETURN_IF_ERROR(CheckFieldSingular(string_value_field));
+  reflection->SetString(message, string_value_field,
+                        static_cast<std::string>(value));
+  return absl::OkStatus();
+}
+
+absl::StatusOr<google::protobuf::Message*> DynamicValueProtoMutableListValue(
+    google::protobuf::Message* message) {
+  ABSL_DCHECK_EQ(message->GetTypeName(), "google.protobuf.Value");
+  CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(*message));
+  if constexpr (NotMessageLite<google::protobuf::Value> &&
+                NotMessageLite<google::protobuf::ListValue>) {
+    if (IsGeneratedMessage(*message)) {
+      return UpCastMessage(GeneratedValueProtoMutableListValue(
+          google::protobuf::DownCastToGenerated<google::protobuf::Value>(message)));
+    }
+  }
+  CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(*message));
+  CEL_ASSIGN_OR_RETURN(
+      const auto* list_value_field,
+      FindFieldByNumber(desc, google::protobuf::Value::kListValueFieldNumber));
+  CEL_RETURN_IF_ERROR(
+      CheckFieldMessageType(list_value_field, "google.protobuf.ListValue"));
+  CEL_RETURN_IF_ERROR(CheckFieldSingular(list_value_field));
+  return reflection->MutableMessage(message, list_value_field);
+}
+
+absl::StatusOr<google::protobuf::Message*> DynamicValueProtoMutableStructValue(
+    google::protobuf::Message* message) {
+  ABSL_DCHECK_EQ(message->GetTypeName(), "google.protobuf.Value");
+  CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(*message));
+  if constexpr (NotMessageLite<google::protobuf::Value> &&
+                NotMessageLite<google::protobuf::Struct>) {
+    if (IsGeneratedMessage(*message)) {
+      return UpCastMessage(GeneratedValueProtoMutableStructValue(
+          google::protobuf::DownCastToGenerated<google::protobuf::Value>(message)));
+    }
+  }
+  CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(*message));
+  CEL_ASSIGN_OR_RETURN(
+      const auto* struct_value_field,
+      FindFieldByNumber(desc,
+                        google::protobuf::Value::kStructValueFieldNumber));
+  CEL_RETURN_IF_ERROR(
+      CheckFieldMessageType(struct_value_field, "google.protobuf.Struct"));
+  CEL_RETURN_IF_ERROR(CheckFieldSingular(struct_value_field));
+  return reflection->MutableMessage(message, struct_value_field);
+}
+
+absl::StatusOr<google::protobuf::Message*> DynamicListValueProtoAddElement(
+    google::protobuf::Message* message) {
+  ABSL_DCHECK_EQ(message->GetTypeName(), "google.protobuf.ListValue");
+  CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(*message));
+  if constexpr (NotMessageLite<google::protobuf::ListValue>) {
+    if (IsGeneratedMessage(*message)) {
+      return UpCastMessage(GeneratedListValueProtoAddElement(
+          google::protobuf::DownCastToGenerated<google::protobuf::ListValue>(message)));
+    }
+  }
+  CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(*message));
+  CEL_ASSIGN_OR_RETURN(
+      const auto* element_field,
+      FindFieldByNumber(desc, google::protobuf::ListValue::kValuesFieldNumber));
+  CEL_RETURN_IF_ERROR(
+      CheckFieldMessageType(element_field, "google.protobuf.Value"));
+  CEL_RETURN_IF_ERROR(CheckFieldRepeated(element_field));
+  return reflection->AddMessage(message, element_field);
+}
+
+absl::StatusOr<google::protobuf::Message*> DynamicStructValueProtoAddField(
+    absl::string_view name, google::protobuf::Message* message) {
+  ABSL_DCHECK_EQ(message->GetTypeName(), "google.protobuf.Struct");
+  CEL_ASSIGN_OR_RETURN(const auto* desc, GetDescriptor(*message));
+  if constexpr (NotMessageLite<google::protobuf::Struct>) {
+    if (IsGeneratedMessage(*message)) {
+      return UpCastMessage(GeneratedStructValueProtoAddField(
+          name,
+          google::protobuf::DownCastToGenerated<google::protobuf::Struct>(message)));
+    }
+  }
+  CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(*message));
+  CEL_ASSIGN_OR_RETURN(
+      const auto* map_field,
+      FindFieldByNumber(desc, google::protobuf::Struct::kFieldsFieldNumber));
+  CEL_RETURN_IF_ERROR(CheckFieldMap(map_field));
+  CEL_RETURN_IF_ERROR(CheckFieldType(map_field->message_type()->map_key(),
+                                     google::protobuf::FieldDescriptor::CPPTYPE_STRING));
+  CEL_RETURN_IF_ERROR(CheckFieldMessageType(
+      map_field->message_type()->map_value(), "google.protobuf.Value"));
+  google::protobuf::MapKey key;
+  key.SetStringValue(std::string(name));
+  google::protobuf::MapValueRef value;
+  InsertOrLookupMapValue(*reflection, message, *map_field, key, &value);
+  return value.MutableMessageValue();
 }
 
 }  // namespace cel::extensions::protobuf_internal

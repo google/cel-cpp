@@ -25,6 +25,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
+#include "extensions/protobuf/internal/is_generated_message.h"
 #include "extensions/protobuf/internal/is_message_lite.h"
 #include "extensions/protobuf/internal/wrappers_lite.h"
 #include "google/protobuf/descriptor.h"
@@ -61,7 +62,7 @@ absl::StatusOr<P> UnwrapValueProto(const google::protobuf::Message& message,
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
   if constexpr (NotMessageLite<T>) {
-    if (ABSL_PREDICT_TRUE(desc == T::descriptor())) {
+    if (IsGeneratedMessage(message)) {
       // Fast path.
       return unwrapper(google::protobuf::DownCastToGenerated<T>(message));
     }
@@ -100,7 +101,7 @@ absl::Status WrapValueProto(google::protobuf::Message& message, const P& value,
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
   if constexpr (NotMessageLite<T>) {
-    if (ABSL_PREDICT_TRUE(desc == T::descriptor())) {
+    if (IsGeneratedMessage(message)) {
       // Fast path.
       return wrapper(value, google::protobuf::DownCastToGenerated<T>(message));
     }

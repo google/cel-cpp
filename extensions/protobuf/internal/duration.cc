@@ -24,6 +24,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
 #include "extensions/protobuf/internal/duration_lite.h"
+#include "extensions/protobuf/internal/is_generated_message.h"
 #include "extensions/protobuf/internal/is_message_lite.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -39,7 +40,7 @@ absl::StatusOr<absl::Duration> UnwrapDynamicDurationProto(
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
   if constexpr (NotMessageLite<google::protobuf::Duration>) {
-    if (desc == google::protobuf::Duration::descriptor()) {
+    if (IsGeneratedMessage(message)) {
       // Fast path.
       return UnwrapGeneratedDurationProto(
           google::protobuf::DownCastToGenerated<google::protobuf::Duration>(message));
@@ -98,7 +99,7 @@ absl::Status WrapDynamicDurationProto(absl::Duration value,
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
   if constexpr (NotMessageLite<google::protobuf::Duration>) {
-    if (ABSL_PREDICT_TRUE(desc == google::protobuf::Duration::descriptor())) {
+    if (IsGeneratedMessage(message)) {
       return WrapGeneratedDurationProto(
           value,
           google::protobuf::DownCastToGenerated<google::protobuf::Duration>(message));

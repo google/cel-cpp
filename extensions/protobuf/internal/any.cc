@@ -26,6 +26,7 @@
 #include "absl/strings/string_view.h"
 #include "common/any.h"
 #include "extensions/protobuf/internal/any_lite.h"
+#include "extensions/protobuf/internal/is_generated_message.h"
 #include "extensions/protobuf/internal/is_message_lite.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -40,7 +41,7 @@ absl::StatusOr<Any> UnwrapDynamicAnyProto(const google::protobuf::Message& messa
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
   if constexpr (NotMessageLite<google::protobuf::Any>) {
-    if (desc == google::protobuf::Any::descriptor()) {
+    if (IsGeneratedMessage(message)) {
       // Fast path.
       return UnwrapGeneratedAnyProto(
           google::protobuf::DownCastToGenerated<google::protobuf::Any>(message));
@@ -100,7 +101,7 @@ absl::Status WrapDynamicAnyProto(absl::string_view type_url,
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
   if constexpr (NotMessageLite<google::protobuf::Any>) {
-    if (desc == google::protobuf::Any::descriptor()) {
+    if (IsGeneratedMessage(message)) {
       // Fast path.
       return WrapGeneratedAnyProto(
           type_url, value,

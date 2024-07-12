@@ -14,12 +14,14 @@
 
 #include "eval/public/structs/cel_proto_wrapper.h"
 
-#include "google/protobuf/message.h"
 #include "absl/types/optional.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/message_wrapper.h"
 #include "eval/public/structs/cel_proto_wrap_util.h"
 #include "eval/public/structs/proto_message_type_adapter.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 
@@ -44,9 +46,10 @@ CelValue CelProtoWrapper::CreateMessage(const Message* value, Arena* arena) {
 }
 
 absl::optional<CelValue> CelProtoWrapper::MaybeWrapValue(
-    const Descriptor* descriptor, const CelValue& value, Arena* arena) {
+    const Descriptor* descriptor, google::protobuf::MessageFactory* factory,
+    const CelValue& value, Arena* arena) {
   const Message* msg =
-      internal::MaybeWrapValueToMessage(descriptor, value, arena);
+      internal::MaybeWrapValueToMessage(descriptor, factory, value, arena);
   if (msg != nullptr) {
     return InternalWrapMessage(msg);
   } else {

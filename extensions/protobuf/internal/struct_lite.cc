@@ -24,6 +24,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
 #include "common/json.h"
 #include "internal/status_macros.h"
@@ -127,6 +128,45 @@ absl::Status GeneratedStructProtoFromJson(const JsonObject& json,
         field.second, (*fields)[static_cast<std::string>(field.first)]));
   }
   return absl::OkStatus();
+}
+
+void GeneratedValueProtoSetNullValue(google::protobuf::Value* message) {
+  message->set_null_value(google::protobuf::NULL_VALUE);
+}
+
+void GeneratedValueProtoSetBoolValue(bool value,
+                                     google::protobuf::Value* message) {
+  message->set_bool_value(value);
+}
+
+void GeneratedValueProtoSetNumberValue(double value,
+                                       google::protobuf::Value* message) {
+  message->set_number_value(value);
+}
+
+void GeneratedValueProtoSetStringValue(absl::string_view value,
+                                       google::protobuf::Value* message) {
+  message->set_string_value(std::string(value));
+}
+
+google::protobuf::ListValue* GeneratedValueProtoMutableListValue(
+    google::protobuf::Value* message) {
+  return message->mutable_list_value();
+}
+
+google::protobuf::Struct* GeneratedValueProtoMutableStructValue(
+    google::protobuf::Value* message) {
+  return message->mutable_struct_value();
+}
+
+google::protobuf::Value* GeneratedListValueProtoAddElement(
+    google::protobuf::ListValue* message) {
+  return message->add_values();
+}
+
+google::protobuf::Value* GeneratedStructValueProtoAddField(
+    absl::string_view name, google::protobuf::Struct* message) {
+  return &(*message->mutable_fields())[std::string(name)];
 }
 
 }  // namespace cel::extensions::protobuf_internal

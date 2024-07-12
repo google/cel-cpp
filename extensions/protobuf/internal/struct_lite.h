@@ -18,6 +18,7 @@
 #include "google/protobuf/struct.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "common/json.h"
 
 namespace cel::extensions::protobuf_internal {
@@ -39,6 +40,29 @@ absl::Status GeneratedListValueProtoFromJson(
 
 absl::Status GeneratedStructProtoFromJson(const JsonObject& json,
                                           google::protobuf::Struct& message);
+
+void GeneratedValueProtoSetNullValue(google::protobuf::Value* message);
+
+void GeneratedValueProtoSetBoolValue(bool value,
+                                     google::protobuf::Value* message);
+
+void GeneratedValueProtoSetNumberValue(double value,
+                                       google::protobuf::Value* message);
+
+void GeneratedValueProtoSetStringValue(absl::string_view value,
+                                       google::protobuf::Value* message);
+
+google::protobuf::ListValue* GeneratedValueProtoMutableListValue(
+    google::protobuf::Value* message);
+
+google::protobuf::Struct* GeneratedValueProtoMutableStructValue(
+    google::protobuf::Value* message);
+
+google::protobuf::Value* GeneratedListValueProtoAddElement(
+    google::protobuf::ListValue* message);
+
+google::protobuf::Value* GeneratedStructValueProtoAddField(
+    absl::string_view name, google::protobuf::Struct* message);
 
 }  // namespace cel::extensions::protobuf_internal
 

@@ -14,15 +14,12 @@
 
 #include "internal/proto_util.h"
 
-#include <string>
-
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/wrappers.pb.h"
 #include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
 #include "internal/status_macros.h"
 
 namespace google {

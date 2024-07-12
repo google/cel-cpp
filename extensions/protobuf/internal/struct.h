@@ -17,6 +17,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "common/json.h"
 #include "google/protobuf/message.h"
 
@@ -37,6 +38,29 @@ absl::Status DynamicListValueProtoFromJson(const JsonArray& json,
 
 absl::Status DynamicStructProtoFromJson(const JsonObject& json,
                                         google::protobuf::Message& message);
+
+absl::Status DynamicValueProtoSetNullValue(google::protobuf::Message* message);
+
+absl::Status DynamicValueProtoSetBoolValue(bool value,
+                                           google::protobuf::Message* message);
+
+absl::Status DynamicValueProtoSetNumberValue(double value,
+                                             google::protobuf::Message* message);
+
+absl::Status DynamicValueProtoSetStringValue(absl::string_view value,
+                                             google::protobuf::Message* message);
+
+absl::StatusOr<google::protobuf::Message*> DynamicValueProtoMutableListValue(
+    google::protobuf::Message* message);
+
+absl::StatusOr<google::protobuf::Message*> DynamicValueProtoMutableStructValue(
+    google::protobuf::Message* message);
+
+absl::StatusOr<google::protobuf::Message*> DynamicListValueProtoAddElement(
+    google::protobuf::Message* message);
+
+absl::StatusOr<google::protobuf::Message*> DynamicStructValueProtoAddField(
+    absl::string_view name, google::protobuf::Message* message);
 
 }  // namespace cel::extensions::protobuf_internal
 

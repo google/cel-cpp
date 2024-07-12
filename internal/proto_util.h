@@ -17,10 +17,9 @@
 
 #include "google/protobuf/descriptor.pb.h"
 #include "google/protobuf/util/message_differencer.h"
-#include "absl/memory/memory.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/str_format.h"
+#include "extensions/protobuf/internal/is_message_lite.h"
 
 namespace google {
 namespace api {
@@ -37,36 +36,49 @@ struct DefaultProtoEqual {
 template <class MessageType>
 absl::Status ValidateStandardMessageType(
     const google::protobuf::DescriptorPool& descriptor_pool) {
-  const google::protobuf::Descriptor* descriptor = MessageType::descriptor();
-  const google::protobuf::Descriptor* descriptor_from_pool =
-      descriptor_pool.FindMessageTypeByName(descriptor->full_name());
-  if (descriptor_from_pool == nullptr) {
-    return absl::NotFoundError(
-        absl::StrFormat("Descriptor '%s' not found in descriptor pool",
-                        descriptor->full_name()));
-  }
-  if (descriptor_from_pool == descriptor) {
-    return absl::OkStatus();
-  }
-  google::protobuf::DescriptorProto descriptor_proto;
-  google::protobuf::DescriptorProto descriptor_from_pool_proto;
-  descriptor->CopyTo(&descriptor_proto);
-  descriptor_from_pool->CopyTo(&descriptor_from_pool_proto);
+  if constexpr (cel::extensions::protobuf_internal::NotMessageLite<
+                    MessageType>) {
+    const google::protobuf::Descriptor* descriptor = MessageType::descriptor();
+    const google::protobuf::Descriptor* descriptor_from_pool =
+        descriptor_pool.FindMessageTypeByName(descriptor->full_name());
+    if (descriptor_from_pool == nullptr) {
+      return absl::NotFoundError(
+          absl::StrFormat("Descriptor '%s' not found in descriptor pool",
+                          descriptor->full_name()));
+    }
+    if (descriptor_from_pool == descriptor) {
+      return absl::OkStatus();
+    }
+    google::protobuf::DescriptorProto descriptor_proto;
+    google::protobuf::DescriptorProto descriptor_from_pool_proto;
+    descriptor->CopyTo(&descriptor_proto);
+    descriptor_from_pool->CopyTo(&descriptor_from_pool_proto);
 
-  google::protobuf::util::MessageDifferencer descriptor_differencer;
-  // The json_name is a compiler detail and does not change the message content.
-  // It can differ, e.g., between C++ and Go compilers. Hence ignore.
-  const google::protobuf::FieldDescriptor* json_name_field_desc =
-      google::protobuf::FieldDescriptorProto::descriptor()->FindFieldByName("json_name");
-  if (json_name_field_desc != nullptr) {
-    descriptor_differencer.IgnoreField(json_name_field_desc);
-  }
-  if (!descriptor_differencer.Compare(descriptor_proto,
-                                      descriptor_from_pool_proto)) {
-    return absl::FailedPreconditionError(absl::StrFormat(
-        "The descriptor for '%s' in the descriptor pool differs from the "
-        "compiled-in generated version",
-        descriptor->full_name()));
+    google::protobuf::util::MessageDifferencer descriptor_differencer;
+    // The json_name is a compiler detail and does not change the message
+    // content. It can differ, e.g., between C++ and Go compilers. Hence ignore.
+    const google::protobuf::FieldDescriptor* json_name_field_desc =
+        google::protobuf::FieldDescriptorProto::descriptor()->FindFieldByName(
+            "json_name");
+    if (json_name_field_desc != nullptr) {
+      descriptor_differencer.IgnoreField(json_name_field_desc);
+    }
+    if (!descriptor_differencer.Compare(descriptor_proto,
+                                        descriptor_from_pool_proto)) {
+      return absl::FailedPreconditionError(absl::StrFormat(
+          "The descriptor for '%s' in the descriptor pool differs from the "
+          "compiled-in generated version",
+          descriptor->full_name()));
+    }
+  } else {
+    // Lite runtime. Just verify the message exists.
+    const auto& type_name = MessageType::default_instance().GetTypeName();
+    const google::protobuf::Descriptor* descriptor_from_pool =
+        descriptor_pool.FindMessageTypeByName(type_name);
+    if (descriptor_from_pool == nullptr) {
+      return absl::NotFoundError(absl::StrFormat(
+          "Descriptor '%s' not found in descriptor pool", type_name));
+    }
   }
   return absl::OkStatus();
 }

@@ -25,6 +25,7 @@
 #include "absl/strings/str_join.h"
 #include "common/json.h"
 #include "extensions/protobuf/internal/field_mask_lite.h"
+#include "extensions/protobuf/internal/is_generated_message.h"
 #include "extensions/protobuf/internal/is_message_lite.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -41,7 +42,7 @@ absl::StatusOr<JsonString> DynamicFieldMaskProtoToJsonString(
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
   if constexpr (NotMessageLite<google::protobuf::FieldMask>) {
-    if (ABSL_PREDICT_TRUE(desc == google::protobuf::FieldMask::descriptor())) {
+    if (IsGeneratedMessage(message)) {
       return GeneratedFieldMaskProtoToJsonString(
           google::protobuf::DownCastToGenerated<google::protobuf::FieldMask>(message));
     }

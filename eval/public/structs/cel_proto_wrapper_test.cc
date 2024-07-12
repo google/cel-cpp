@@ -60,21 +60,25 @@ class CelProtoWrapperTest : public ::testing::Test {
   void ExpectWrappedMessage(const CelValue& value,
                             const google::protobuf::Message& message) {
     // Test the input value wraps to the destination message type.
-    auto result = CelProtoWrapper::MaybeWrapValue(message.GetDescriptor(),
-                                                  value, arena());
+    auto result = CelProtoWrapper::MaybeWrapValue(
+        message.GetDescriptor(), message.GetReflection()->GetMessageFactory(),
+        value, arena());
     EXPECT_TRUE(result.has_value());
     EXPECT_TRUE((*result).IsMessage());
     EXPECT_THAT((*result).MessageOrDie(), testutil::EqualsProto(message));
 
     // Ensure that double wrapping results in the object being wrapped once.
-    auto identity = CelProtoWrapper::MaybeWrapValue(message.GetDescriptor(),
-                                                    *result, arena());
+    auto identity = CelProtoWrapper::MaybeWrapValue(
+        message.GetDescriptor(), message.GetReflection()->GetMessageFactory(),
+        *result, arena());
     EXPECT_FALSE(identity.has_value());
 
     // Check to make sure that even dynamic messages can be used as input to
     // the wrapping call.
     result = CelProtoWrapper::MaybeWrapValue(
-        ReflectedCopy(message)->GetDescriptor(), value, arena());
+        ReflectedCopy(message)->GetDescriptor(),
+        ReflectedCopy(message)->GetReflection()->GetMessageFactory(), value,
+        arena());
     EXPECT_TRUE(result.has_value());
     EXPECT_TRUE((*result).IsMessage());
     EXPECT_THAT((*result).MessageOrDie(), testutil::EqualsProto(message));
@@ -82,8 +86,9 @@ class CelProtoWrapperTest : public ::testing::Test {
 
   void ExpectNotWrapped(const CelValue& value, const google::protobuf::Message& message) {
     // Test the input value does not wrap by asserting value == result.
-    auto result = CelProtoWrapper::MaybeWrapValue(message.GetDescriptor(),
-                                                  value, arena());
+    auto result = CelProtoWrapper::MaybeWrapValue(
+        message.GetDescriptor(), message.GetReflection()->GetMessageFactory(),
+        value, arena());
     EXPECT_FALSE(result.has_value());
   }
 

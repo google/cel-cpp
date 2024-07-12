@@ -23,6 +23,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
+#include "extensions/protobuf/internal/is_generated_message.h"
 #include "extensions/protobuf/internal/is_message_lite.h"
 #include "extensions/protobuf/internal/timestamp_lite.h"
 #include "google/protobuf/descriptor.h"
@@ -39,7 +40,7 @@ absl::StatusOr<absl::Time> UnwrapDynamicTimestampProto(
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
   if constexpr (NotMessageLite<google::protobuf::Timestamp>) {
-    if (desc == google::protobuf::Timestamp::descriptor()) {
+    if (IsGeneratedMessage(message)) {
       // Fast path.
       return UnwrapGeneratedTimestampProto(
           google::protobuf::DownCastToGenerated<google::protobuf::Timestamp>(message));
@@ -99,7 +100,7 @@ absl::Status WrapDynamicTimestampProto(absl::Time value,
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
   if constexpr (NotMessageLite<google::protobuf::Timestamp>) {
-    if (ABSL_PREDICT_TRUE(desc == google::protobuf::Timestamp::descriptor())) {
+    if (IsGeneratedMessage(message)) {
       return WrapGeneratedTimestampProto(
           value,
           google::protobuf::DownCastToGenerated<google::protobuf::Timestamp>(message));
