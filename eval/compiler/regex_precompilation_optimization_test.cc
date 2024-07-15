@@ -17,14 +17,12 @@
 #include <cstdint>
 #include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/status.h"
 #include "base/ast_internal/ast_impl.h"
-#include "base/ast_internal/expr.h"
 #include "common/memory.h"
 #include "common/values/legacy_value_manager.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
@@ -47,7 +45,6 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::RuntimeIssue;
-using ::cel::ast_internal::CheckedExpr;
 using ::cel::runtime_internal::IssueCollector;
 using ::google::api::expr::parser::Parse;
 using testing::ElementsAre;
@@ -107,8 +104,8 @@ TEST_P(RegexPrecompilationExtensionTest, SmokeTest) {
       CreateRegexPrecompilationExtension(options_.regex_max_program_size);
   ExecutionPath path;
   ProgramBuilder program_builder;
-  CheckedExpr expr;
-  cel::ast_internal::AstImpl ast_impl(std::move(expr));
+  cel::ast_internal::AstImpl ast_impl;
+  ast_impl.set_is_checked(true);
   PlannerContext context(resolver_, runtime_options_, value_factory_,
                          issue_collector_, program_builder);
 

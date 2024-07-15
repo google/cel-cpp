@@ -75,6 +75,7 @@ cc_library(
         ":constant",
         "//common:ast",
         "//common:constant",
+        "//common:expr",
         "//internal:status_macros",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",

@@ -42,6 +42,7 @@ cc_test(
         ":expr",
         "//base:ast",
         "//internal:testing",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 
@@ -52,7 +53,6 @@ cc_library(
         "expr.h",
     ],
     deps = [
-        "//common:ast",
         "//common:constant",
         "//common:expr",
         "@com_google_absl//absl/base:no_destructor",
@@ -70,7 +70,7 @@ cc_test(
     ],
     deps = [
         ":expr",
-        "//common:ast",
+        "//common:expr",
         "//internal:testing",
         "@com_google_absl//absl/types:variant",
     ],

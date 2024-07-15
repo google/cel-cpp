@@ -517,7 +517,6 @@ cc_test(
         ":flat_expr_builder_extensions",
         ":regex_precompilation_optimization",
         "//base/ast_internal:ast_impl",
-        "//base/ast_internal:expr",
         "//common:memory",
         "//common:value",
         "//eval/eval:evaluator_core",

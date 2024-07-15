@@ -73,40 +73,6 @@ TEST(AstConvertersTest, SourceInfoToNative) {
             "name");
 }
 
-TEST(AstConvertersTest, ParsedExprToNative) {
-  google::api::expr::v1alpha1::ParsedExpr parsed_expr;
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        expr { ident_expr { name: "name" } }
-        source_info {
-          syntax_version: "version"
-          location: "location"
-          line_offsets: 1
-          line_offsets: 2
-          positions { key: 1 value: 2 }
-          positions { key: 3 value: 4 }
-          macro_calls {
-            key: 1
-            value { ident_expr { name: "name" } }
-          }
-        }
-      )pb",
-      &parsed_expr));
-
-  auto native_parsed_expr = ConvertProtoParsedExprToNative(parsed_expr);
-
-  ASSERT_TRUE(native_parsed_expr->expr().has_ident_expr());
-  ASSERT_EQ(native_parsed_expr->expr().ident_expr().name(), "name");
-  auto& native_source_info = native_parsed_expr->source_info();
-  EXPECT_EQ(native_source_info.syntax_version(), "version");
-  EXPECT_EQ(native_source_info.location(), "location");
-  EXPECT_EQ(native_source_info.line_offsets(), std::vector<int32_t>({1, 2}));
-  EXPECT_EQ(native_source_info.positions().at(1), 2);
-  EXPECT_EQ(native_source_info.positions().at(3), 4);
-  ASSERT_TRUE(native_source_info.macro_calls().at(1).has_ident_expr());
-  ASSERT_EQ(native_source_info.macro_calls().at(1).ident_expr().name(), "name");
-}
-
 TEST(AstConvertersTest, PrimitiveTypeUnspecifiedToNative) {
   google::api::expr::v1alpha1::Type type;
   type.set_primitive(google::api::expr::v1alpha1::Type::PRIMITIVE_TYPE_UNSPECIFIED);
@@ -415,59 +381,6 @@ TEST(AstConvertersTest, ReferenceToNative) {
   EXPECT_TRUE(native_reference->value().bool_value());
 }
 
-TEST(AstConvertersTest, CheckedExprToNative) {
-  google::api::expr::v1alpha1::CheckedExpr checked_expr;
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        reference_map {
-          key: 1
-          value {
-            name: "name"
-            overload_id: "id1"
-            overload_id: "id2"
-            value { bool_value: true }
-          }
-        }
-        type_map {
-          key: 1
-          value { dyn {} }
-        }
-        source_info {
-          syntax_version: "version"
-          location: "location"
-          line_offsets: 1
-          line_offsets: 2
-          positions { key: 1 value: 2 }
-          positions { key: 3 value: 4 }
-          macro_calls {
-            key: 1
-            value { ident_expr { name: "name" } }
-          }
-        }
-        expr_version: "version"
-        expr { ident_expr { name: "expr" } }
-      )pb",
-      &checked_expr));
-
-  auto native_checked_expr = ConvertProtoCheckedExprToNative(checked_expr);
-
-  EXPECT_EQ(native_checked_expr->reference_map().at(1).name(), "name");
-  EXPECT_EQ(native_checked_expr->reference_map().at(1).overload_id(),
-            std::vector<std::string>({"id1", "id2"}));
-  EXPECT_TRUE(native_checked_expr->reference_map().at(1).value().bool_value());
-  auto& native_source_info = native_checked_expr->source_info();
-  EXPECT_EQ(native_source_info.syntax_version(), "version");
-  EXPECT_EQ(native_source_info.location(), "location");
-  EXPECT_EQ(native_source_info.line_offsets(), std::vector<int32_t>({1, 2}));
-  EXPECT_EQ(native_source_info.positions().at(1), 2);
-  EXPECT_EQ(native_source_info.positions().at(3), 4);
-  ASSERT_TRUE(native_source_info.macro_calls().at(1).has_ident_expr());
-  ASSERT_EQ(native_source_info.macro_calls().at(1).ident_expr().name(), "name");
-  EXPECT_EQ(native_checked_expr->expr_version(), "version");
-  ASSERT_TRUE(native_checked_expr->expr().has_ident_expr());
-  EXPECT_EQ(native_checked_expr->expr().ident_expr().name(), "expr");
-}
-
 }  // namespace
 }  // namespace internal
 
@@ -523,24 +436,23 @@ TEST(AstConvertersTest, CheckedExprToAst) {
 }
 
 TEST(AstConvertersTest, AstToCheckedExprBasic) {
-  ast_internal::Expr expr;
-  expr.set_id(1);
-  expr.mutable_ident_expr().set_name("expr");
+  ast_internal::AstImpl ast;
+  ast.root_expr().set_id(1);
+  ast.root_expr().mutable_ident_expr().set_name("expr");
 
-  ast_internal::SourceInfo source_info;
-  source_info.set_syntax_version("version");
-  source_info.set_location("location");
-  source_info.mutable_line_offsets().push_back(1);
-  source_info.mutable_line_offsets().push_back(2);
-  source_info.mutable_positions().insert({1, 2});
-  source_info.mutable_positions().insert({3, 4});
+  ast.source_info().set_syntax_version("version");
+  ast.source_info().set_location("location");
+  ast.source_info().mutable_line_offsets().push_back(1);
+  ast.source_info().mutable_line_offsets().push_back(2);
+  ast.source_info().mutable_positions().insert({1, 2});
+  ast.source_info().mutable_positions().insert({3, 4});
 
   ast_internal::Expr macro;
   macro.mutable_ident_expr().set_name("name");
-  source_info.mutable_macro_calls().insert({1, std::move(macro)});
+  ast.source_info().mutable_macro_calls().insert({1, std::move(macro)});
 
-  absl::flat_hash_map<int64_t, ast_internal::Type> type_map;
-  absl::flat_hash_map<int64_t, ast_internal::Reference> reference_map;
+  ast_internal::AstImpl::TypeMap type_map;
+  ast_internal::AstImpl::ReferenceMap reference_map;
 
   ast_internal::Reference reference;
   reference.set_name("name");
@@ -551,15 +463,11 @@ TEST(AstConvertersTest, AstToCheckedExprBasic) {
   ast_internal::Type type;
   type.set_type_kind(ast_internal::DynamicType());
 
-  ast_internal::CheckedExpr checked_expr;
+  ast.reference_map().insert({1, std::move(reference)});
+  ast.type_map().insert({1, std::move(type)});
 
-  checked_expr.mutable_reference_map().insert({1, std::move(reference)});
-  checked_expr.mutable_type_map().insert({1, std::move(type)});
-  checked_expr.mutable_source_info() = std::move(source_info);
-  checked_expr.set_expr_version("version");
-  checked_expr.mutable_expr() = std::move(expr);
-
-  ast_internal::AstImpl ast(std::move(checked_expr));
+  ast.set_expr_version("version");
+  ast.set_is_checked(true);
 
   ASSERT_OK_AND_ASSIGN(auto checked_pb, CreateCheckedExprFromAst(ast));
 
@@ -729,12 +637,7 @@ TEST(AstConvertersTest, AstToParsedExprBasic) {
   macro.mutable_ident_expr().set_name("name");
   source_info.mutable_macro_calls().insert({1, std::move(macro)});
 
-  ast_internal::ParsedExpr parsed_expr;
-
-  parsed_expr.mutable_source_info() = std::move(source_info);
-  parsed_expr.mutable_expr() = std::move(expr);
-
-  ast_internal::AstImpl ast(std::move(parsed_expr));
+  ast_internal::AstImpl ast(std::move(expr), std::move(source_info));
 
   ASSERT_OK_AND_ASSIGN(auto checked_pb, CreateParsedExprFromAst(ast));
 

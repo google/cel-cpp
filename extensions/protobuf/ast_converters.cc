@@ -47,7 +47,6 @@ namespace {
 using ::cel::ast_internal::AbstractType;
 using ::cel::ast_internal::Bytes;
 using ::cel::ast_internal::Call;
-using ::cel::ast_internal::CheckedExpr;
 using ::cel::ast_internal::Comprehension;
 using ::cel::ast_internal::Constant;
 using ::cel::ast_internal::CreateList;
@@ -63,7 +62,6 @@ using ::cel::ast_internal::MapType;
 using ::cel::ast_internal::MessageType;
 using ::cel::ast_internal::NullValue;
 using ::cel::ast_internal::ParamType;
-using ::cel::ast_internal::ParsedExpr;
 using ::cel::ast_internal::PrimitiveType;
 using ::cel::ast_internal::PrimitiveTypeWrapper;
 using ::cel::ast_internal::Reference;
@@ -161,21 +159,6 @@ absl::StatusOr<SourceInfo> ConvertProtoSourceInfoToNative(
       absl::flat_hash_map<int64_t, int32_t>(source_info.positions().begin(),
                                             source_info.positions().end()),
       std::move(macro_calls), std::move(extensions));
-}
-
-absl::StatusOr<ParsedExpr> ConvertProtoParsedExprToNative(
-    const google::api::expr::v1alpha1::ParsedExpr& parsed_expr) {
-  auto native_expr = ConvertProtoExprToNative(parsed_expr.expr());
-  if (!native_expr.ok()) {
-    return native_expr.status();
-  }
-  auto native_source_info =
-      ConvertProtoSourceInfoToNative(parsed_expr.source_info());
-  if (!native_source_info.ok()) {
-    return native_source_info.status();
-  }
-  return ParsedExpr(*(std::move(native_expr)),
-                    *(std::move(native_source_info)));
 }
 
 absl::StatusOr<PrimitiveType> ToNative(
@@ -368,44 +351,12 @@ absl::StatusOr<Reference> ConvertProtoReferenceToNative(
   return ret_val;
 }
 
-absl::StatusOr<CheckedExpr> ConvertProtoCheckedExprToNative(
-    const CheckedExprPb& checked_expr) {
-  CheckedExpr ret_val;
-  for (const auto& pair : checked_expr.reference_map()) {
-    auto native_reference = ConvertProtoReferenceToNative(pair.second);
-    if (!native_reference.ok()) {
-      return native_reference.status();
-    }
-    ret_val.mutable_reference_map().emplace(pair.first,
-                                            *(std::move(native_reference)));
-  }
-  for (const auto& pair : checked_expr.type_map()) {
-    auto native_type = ConvertProtoTypeToNative(pair.second);
-    if (!native_type.ok()) {
-      return native_type.status();
-    }
-    ret_val.mutable_type_map().emplace(pair.first, *(std::move(native_type)));
-  }
-  auto native_source_info =
-      ConvertProtoSourceInfoToNative(checked_expr.source_info());
-  if (!native_source_info.ok()) {
-    return native_source_info.status();
-  }
-  ret_val.set_source_info(*(std::move(native_source_info)));
-  ret_val.set_expr_version(checked_expr.expr_version());
-  auto native_checked_expr = ConvertProtoExprToNative(checked_expr.expr());
-  if (!native_checked_expr.ok()) {
-    return native_checked_expr.status();
-  }
-  ret_val.set_expr(*(std::move(native_checked_expr)));
-  return ret_val;
-}
-
 }  // namespace internal
 
 namespace {
 
 using ::cel::ast_internal::AbstractType;
+using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::Bytes;
 using ::cel::ast_internal::Call;
 using ::cel::ast_internal::Comprehension;
@@ -712,9 +663,8 @@ absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
 
 absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
     const ParsedExprPb& parsed_expr) {
-  CEL_ASSIGN_OR_RETURN(cel::ast_internal::ParsedExpr expr,
-                       internal::ConvertProtoParsedExprToNative(parsed_expr));
-  return std::make_unique<cel::ast_internal::AstImpl>(std::move(expr));
+  return CreateAstFromParsedExpr(parsed_expr.expr(),
+                                 &parsed_expr.source_info());
 }
 
 absl::StatusOr<ParsedExprPb> CreateParsedExprFromAst(const Ast& ast) {
@@ -730,9 +680,33 @@ absl::StatusOr<ParsedExprPb> CreateParsedExprFromAst(const Ast& ast) {
 
 absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromCheckedExpr(
     const CheckedExprPb& checked_expr) {
-  CEL_ASSIGN_OR_RETURN(cel::ast_internal::CheckedExpr expr,
-                       internal::ConvertProtoCheckedExprToNative(checked_expr));
-  return std::make_unique<cel::ast_internal::AstImpl>(std::move(expr));
+  CEL_ASSIGN_OR_RETURN(Expr expr,
+                       internal::ConvertProtoExprToNative(checked_expr.expr()));
+  CEL_ASSIGN_OR_RETURN(
+      SourceInfo source_info,
+      internal::ConvertProtoSourceInfoToNative(checked_expr.source_info()));
+
+  AstImpl::ReferenceMap reference_map;
+  for (const auto& pair : checked_expr.reference_map()) {
+    auto native_reference =
+        internal::ConvertProtoReferenceToNative(pair.second);
+    if (!native_reference.ok()) {
+      return native_reference.status();
+    }
+    reference_map.emplace(pair.first, *(std::move(native_reference)));
+  }
+  AstImpl::TypeMap type_map;
+  for (const auto& pair : checked_expr.type_map()) {
+    auto native_type = internal::ConvertProtoTypeToNative(pair.second);
+    if (!native_type.ok()) {
+      return native_type.status();
+    }
+    type_map.emplace(pair.first, *(std::move(native_type)));
+  }
+
+  return std::make_unique<AstImpl>(
+      std::move(expr), std::move(source_info), std::move(reference_map),
+      std::move(type_map), checked_expr.expr_version());
 }
 
 absl::StatusOr<google::api::expr::v1alpha1::CheckedExpr> CreateCheckedExprFromAst(

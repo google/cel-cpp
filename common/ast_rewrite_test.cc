@@ -14,11 +14,13 @@
 
 #include "common/ast_rewrite.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "base/ast_internal/expr.h"
+#include "base/ast_internal/ast_impl.h"
+#include "common/ast.h"
 #include "common/ast_visitor.h"
 #include "common/expr.h"
 #include "extensions/protobuf/ast_converters.h"
@@ -30,9 +32,9 @@ namespace cel {
 
 namespace {
 
-using ast_internal::ParsedExpr;
+using ::cel::ast_internal::AstImpl;
+using ::cel::extensions::CreateAstFromParsedExpr;
 using ::cel::extensions::internal::ConvertProtoExprToNative;
-using ::cel::extensions::internal::ConvertProtoParsedExprToNative;
 using testing::_;
 using testing::ElementsAre;
 using testing::InSequence;
@@ -527,11 +529,12 @@ class RewriterExample : public AstRewriterBase {
 
 TEST(AstRewrite, SelectRewriteExample) {
   ASSERT_OK_AND_ASSIGN(
-      ParsedExpr parsed,
-      ConvertProtoParsedExprToNative(
+      std::unique_ptr<Ast> ast,
+      CreateAstFromParsedExpr(
           google::api::expr::parser::Parse("com.google.Identifier").value()));
+  AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
   RewriterExample example;
-  ASSERT_TRUE(AstRewrite(parsed.mutable_expr(), example));
+  ASSERT_TRUE(AstRewrite(ast_impl.root_expr(), example));
 
   google::api::expr::v1alpha1::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(
@@ -540,7 +543,8 @@ TEST(AstRewrite, SelectRewriteExample) {
         ident_expr { name: "com.google.Identifier" }
       )pb",
       &expected_expr);
-  EXPECT_EQ(parsed.expr(), ConvertProtoExprToNative(expected_expr).value());
+  EXPECT_EQ(ast_impl.root_expr(),
+            ConvertProtoExprToNative(expected_expr).value());
 }
 
 // Rewrites x -> y -> z to demonstrate traversal when a node is rewritten on
@@ -577,11 +581,12 @@ class PreRewriterExample : public AstRewriterBase {
 };
 
 TEST(AstRewrite, PreAndPostVisitExpample) {
-  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed,
-                       ConvertProtoParsedExprToNative(
-                           google::api::expr::parser::Parse("x").value()));
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<Ast> ast,
+      CreateAstFromParsedExpr(google::api::expr::parser::Parse("x").value()));
   PreRewriterExample visitor;
-  ASSERT_TRUE(AstRewrite(parsed.mutable_expr(), visitor));
+  AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
+  ASSERT_TRUE(AstRewrite(ast_impl.root_expr(), visitor));
 
   google::api::expr::v1alpha1::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(
@@ -590,7 +595,8 @@ TEST(AstRewrite, PreAndPostVisitExpample) {
         ident_expr { name: "z" }
       )pb",
       &expected_expr);
-  EXPECT_EQ(parsed.expr(), ConvertProtoExprToNative(expected_expr).value());
+  EXPECT_EQ(ast_impl.root_expr(),
+            ConvertProtoExprToNative(expected_expr).value());
   EXPECT_THAT(visitor.visited_idents(), ElementsAre("y"));
 }
 

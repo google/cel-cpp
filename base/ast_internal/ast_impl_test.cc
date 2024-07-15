@@ -16,6 +16,7 @@
 
 #include <utility>
 
+#include "absl/container/flat_hash_map.h"
 #include "base/ast.h"
 #include "base/ast_internal/expr.h"
 #include "internal/testing.h"
@@ -25,44 +26,6 @@ namespace {
 
 using testing::Pointee;
 using testing::Truly;
-
-TEST(AstImpl, ParsedExprCtor) {
-  // arrange
-  // 2 + 1 == 3
-  ParsedExpr parsed_expr;
-  auto& call = parsed_expr.mutable_expr().mutable_call_expr();
-  parsed_expr.mutable_expr().set_id(5);
-  call.set_function("_==_");
-
-  auto& eq_lhs = call.mutable_args().emplace_back();
-  eq_lhs.mutable_call_expr().set_function("_+_");
-  eq_lhs.set_id(3);
-  auto& sum_lhs = eq_lhs.mutable_call_expr().mutable_args().emplace_back();
-  sum_lhs.mutable_const_expr().set_int_value(2);
-  sum_lhs.set_id(1);
-  auto& sum_rhs = eq_lhs.mutable_call_expr().mutable_args().emplace_back();
-  sum_rhs.mutable_const_expr().set_int_value(1);
-  sum_rhs.set_id(2);
-
-  auto& eq_rhs = call.mutable_args().emplace_back();
-  eq_rhs.mutable_const_expr().set_int_value(3);
-  eq_rhs.set_id(4);
-  parsed_expr.mutable_source_info().mutable_positions()[5] = 6;
-
-  // act
-  AstImpl ast_impl(std::move(parsed_expr));
-  Ast& ast = ast_impl;
-
-  // assert
-  ASSERT_FALSE(ast.IsChecked());
-  EXPECT_EQ(ast_impl.GetType(1), Type(DynamicType()));
-  EXPECT_EQ(ast_impl.GetReturnType(), Type(DynamicType()));
-  EXPECT_EQ(ast_impl.GetReference(1), nullptr);
-  EXPECT_TRUE(ast_impl.root_expr().has_call_expr());
-  EXPECT_EQ(ast_impl.root_expr().call_expr().function(), "_==_");
-  EXPECT_EQ(ast_impl.root_expr().id(), 5);  // Parser IDs leaf to root.
-  EXPECT_EQ(ast_impl.source_info().positions().at(5), 6);  // start pos of ==
-}
 
 TEST(AstImpl, RawExprCtor) {
   // arrange
@@ -103,16 +66,20 @@ TEST(AstImpl, RawExprCtor) {
 }
 
 TEST(AstImpl, CheckedExprCtor) {
-  CheckedExpr expr;
-  expr.mutable_expr().mutable_ident_expr().set_name("int_value");
-  expr.mutable_expr().set_id(1);
+  Expr expr;
+  expr.mutable_ident_expr().set_name("int_value");
+  expr.set_id(1);
   Reference ref;
   ref.set_name("com.int_value");
-  expr.mutable_reference_map()[1] = Reference(ref);
-  expr.mutable_type_map()[1] = Type(PrimitiveType::kInt64);
-  expr.mutable_source_info().set_syntax_version("1.0");
+  AstImpl::ReferenceMap reference_map;
+  reference_map[1] = Reference(ref);
+  AstImpl::TypeMap type_map;
+  type_map[1] = Type(PrimitiveType::kInt64);
+  SourceInfo source_info;
+  source_info.set_syntax_version("1.0");
 
-  AstImpl ast_impl(std::move(expr));
+  AstImpl ast_impl(std::move(expr), std::move(source_info),
+                   std::move(reference_map), std::move(type_map), "1.0");
   Ast& ast = ast_impl;
 
   ASSERT_TRUE(ast.IsChecked());
@@ -126,31 +93,36 @@ TEST(AstImpl, CheckedExprCtor) {
   EXPECT_EQ(ast_impl.root_expr().ident_expr().name(), "int_value");
   EXPECT_EQ(ast_impl.root_expr().id(), 1);
   EXPECT_EQ(ast_impl.source_info().syntax_version(), "1.0");
+  EXPECT_EQ(ast_impl.expr_version(), "1.0");
 }
 
 TEST(AstImpl, CheckedExprDeepCopy) {
-  CheckedExpr expr;
-  auto& root = expr.mutable_expr();
+  Expr root;
   root.set_id(3);
   root.mutable_call_expr().set_function("_==_");
   root.mutable_call_expr().mutable_args().resize(2);
   auto& lhs = root.mutable_call_expr().mutable_args()[0];
   auto& rhs = root.mutable_call_expr().mutable_args()[1];
-  expr.mutable_type_map()[3] = Type(PrimitiveType::kBool);
+  AstImpl::TypeMap type_map;
+  AstImpl::ReferenceMap reference_map;
+  SourceInfo source_info;
+
+  type_map[3] = Type(PrimitiveType::kBool);
 
   lhs.mutable_ident_expr().set_name("int_value");
   lhs.set_id(1);
   Reference ref;
   ref.set_name("com.int_value");
-  expr.mutable_reference_map()[1] = std::move(ref);
-  expr.mutable_type_map()[1] = Type(PrimitiveType::kInt64);
+  reference_map[1] = std::move(ref);
+  type_map[1] = Type(PrimitiveType::kInt64);
 
   rhs.mutable_const_expr().set_int_value(2);
   rhs.set_id(2);
-  expr.mutable_type_map()[2] = Type(PrimitiveType::kInt64);
-  expr.mutable_source_info().set_syntax_version("1.0");
+  type_map[2] = Type(PrimitiveType::kInt64);
+  source_info.set_syntax_version("1.0");
 
-  AstImpl ast_impl(std::move(expr));
+  AstImpl ast_impl(std::move(root), std::move(source_info),
+                   std::move(reference_map), std::move(type_map), "1.0");
   Ast& ast = ast_impl;
 
   ASSERT_TRUE(ast.IsChecked());

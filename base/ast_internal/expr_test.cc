@@ -19,33 +19,13 @@
 #include <utility>
 
 #include "absl/types/variant.h"
-#include "common/ast.h"
+#include "common/expr.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace ast_internal {
 namespace {
 
-TEST(AstTest, ParsedExpr) {
-  ParsedExpr parsed_expr;
-  auto& expr = parsed_expr.mutable_expr();
-  expr.set_id(1);
-  expr.mutable_ident_expr().set_name("name");
-  auto& source_info = parsed_expr.mutable_source_info();
-  source_info.set_syntax_version("syntax_version");
-  source_info.set_location("location");
-  source_info.set_line_offsets({1, 2, 3});
-  source_info.set_positions({{1, 1}, {2, 2}});
-  ASSERT_TRUE(absl::holds_alternative<Ident>(parsed_expr.expr().kind()));
-  ASSERT_EQ(absl::get<Ident>(parsed_expr.expr().kind()).name(), "name");
-  ASSERT_EQ(parsed_expr.source_info().syntax_version(), "syntax_version");
-  ASSERT_EQ(parsed_expr.source_info().location(), "location");
-  EXPECT_THAT(parsed_expr.source_info().line_offsets(),
-              testing::UnorderedElementsAre(1, 2, 3));
-  EXPECT_THAT(
-      parsed_expr.source_info().positions(),
-      testing::UnorderedElementsAre(testing::Pair(1, 1), testing::Pair(2, 2)));
-}
 
 TEST(AstTest, ListTypeMutableConstruction) {
   ListType type;
@@ -87,31 +67,6 @@ TEST(AstTest, FunctionTypeComparatorArgTypes) {
   FunctionType type;
   type.mutable_arg_types().emplace_back(Type());
   EXPECT_FALSE(type == FunctionType());
-}
-
-TEST(AstTest, CheckedExpr) {
-  CheckedExpr checked_expr;
-  auto& expr = checked_expr.mutable_expr();
-  expr.set_id(1);
-  expr.mutable_ident_expr().set_name("name");
-  auto& source_info = checked_expr.mutable_source_info();
-  source_info.set_syntax_version("syntax_version");
-  source_info.set_location("location");
-  source_info.set_line_offsets({1, 2, 3});
-  source_info.set_positions({{1, 1}, {2, 2}});
-  checked_expr.set_expr_version("expr_version");
-  checked_expr.mutable_type_map().insert(
-      {1, Type(PrimitiveType(PrimitiveType::kBool))});
-  ASSERT_TRUE(absl::holds_alternative<Ident>(checked_expr.expr().kind()));
-  ASSERT_EQ(absl::get<Ident>(checked_expr.expr().kind()).name(), "name");
-  ASSERT_EQ(checked_expr.source_info().syntax_version(), "syntax_version");
-  ASSERT_EQ(checked_expr.source_info().location(), "location");
-  EXPECT_THAT(checked_expr.source_info().line_offsets(),
-              testing::UnorderedElementsAre(1, 2, 3));
-  EXPECT_THAT(
-      checked_expr.source_info().positions(),
-      testing::UnorderedElementsAre(testing::Pair(1, 1), testing::Pair(2, 2)));
-  EXPECT_EQ(checked_expr.expr_version(), "expr_version");
 }
 
 TEST(AstTest, ListTypeDefaults) { EXPECT_EQ(ListType().elem_type(), Type()); }

@@ -18,7 +18,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
-#include "common/ast.h"
+#include "common/expr.h"
 
 namespace cel::extensions::protobuf_internal {
 

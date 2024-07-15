@@ -128,10 +128,11 @@ cc_test(
     name = "ast_rewrite_test",
     srcs = ["ast_rewrite_test.cc"],
     deps = [
+        ":ast",
         ":ast_rewrite",
         ":ast_visitor",
         ":expr",
-        "//base/ast_internal:expr",
+        "//base/ast_internal:ast_impl",
         "//extensions/protobuf:ast_converters",
         "//internal:testing",
         "//parser",

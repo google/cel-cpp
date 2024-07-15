@@ -27,7 +27,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
-#include "common/ast.h"
 #include "common/constant.h"
 #include "common/expr.h"
 
@@ -278,39 +277,6 @@ class SourceInfo {
   // implementations. This can be used to either skip redundant work or
   // report an error if the extension is unsupported.
   std::vector<Extension> extensions_;
-};
-
-// Analogous to google::api::expr::v1alpha1::ParsedExpr
-// An expression together with source information as returned by the parser.
-// Move-only type.
-class ParsedExpr {
- public:
-  ParsedExpr() = default;
-  ParsedExpr(Expr expr, SourceInfo source_info)
-      : expr_(std::move(expr)), source_info_(std::move(source_info)) {}
-
-  ParsedExpr(ParsedExpr&& rhs) = default;
-  ParsedExpr& operator=(ParsedExpr&& rhs) = default;
-
-  void set_expr(Expr expr) { expr_ = std::move(expr); }
-
-  void set_source_info(SourceInfo source_info) {
-    source_info_ = std::move(source_info);
-  }
-
-  const Expr& expr() const { return expr_; }
-
-  Expr& mutable_expr() { return expr_; }
-
-  const SourceInfo& source_info() const { return source_info_; }
-
-  SourceInfo& mutable_source_info() { return source_info_; }
-
- private:
-  // The parsed expression.
-  Expr expr_;
-  // The source info derived from input that generated the parsed `expr`.
-  SourceInfo source_info_;
 };
 
 // CEL primitive types.
@@ -842,108 +808,6 @@ class Reference {
   // For references to constants, this may contain the value of the
   // constant if known at compile time.
   absl::optional<Constant> value_;
-};
-
-// Analogous to google::api::expr::v1alpha1::CheckedExpr
-// A CEL expression which has been successfully type checked.
-// Move-only type.
-class CheckedExpr {
- public:
-  CheckedExpr() = default;
-  CheckedExpr(absl::flat_hash_map<int64_t, Reference> reference_map,
-              absl::flat_hash_map<int64_t, Type> type_map,
-              SourceInfo source_info, std::string expr_version, Expr expr)
-      : reference_map_(std::move(reference_map)),
-        type_map_(std::move(type_map)),
-        source_info_(std::move(source_info)),
-        expr_version_(std::move(expr_version)),
-        expr_(std::move(expr)) {}
-
-  CheckedExpr(CheckedExpr&& rhs) = default;
-  CheckedExpr& operator=(CheckedExpr&& rhs) = default;
-
-  void set_reference_map(
-      absl::flat_hash_map<int64_t, Reference> reference_map) {
-    reference_map_ = std::move(reference_map);
-  }
-
-  void set_type_map(absl::flat_hash_map<int64_t, Type> type_map) {
-    type_map_ = std::move(type_map);
-  }
-
-  void set_source_info(SourceInfo source_info) {
-    source_info_ = std::move(source_info);
-  }
-
-  void set_expr_version(std::string expr_version) {
-    expr_version_ = std::move(expr_version);
-  }
-
-  void set_expr(Expr expr) { expr_ = std::move(expr); }
-
-  const absl::flat_hash_map<int64_t, Reference>& reference_map() const {
-    return reference_map_;
-  }
-
-  absl::flat_hash_map<int64_t, Reference>& mutable_reference_map() {
-    return reference_map_;
-  }
-
-  const absl::flat_hash_map<int64_t, Type>& type_map() const {
-    return type_map_;
-  }
-
-  absl::flat_hash_map<int64_t, Type>& mutable_type_map() { return type_map_; }
-
-  const SourceInfo& source_info() const { return source_info_; }
-
-  SourceInfo& mutable_source_info() { return source_info_; }
-
-  const std::string& expr_version() const { return expr_version_; }
-
-  std::string& mutable_expr_version() { return expr_version_; }
-
-  const Expr& expr() const { return expr_; }
-
-  Expr& mutable_expr() { return expr_; }
-
- private:
-  // A map from expression ids to resolved references.
-  //
-  // The following entries are in this table:
-  //
-  // - An Ident or Select expression is represented here if it resolves to a
-  //   declaration. For instance, if `a.b.c` is represented by
-  //   `select(select(id(a), b), c)`, and `a.b` resolves to a declaration,
-  //   while `c` is a field selection, then the reference is attached to the
-  //   nested select expression (but not to the id or or the outer select).
-  //   In turn, if `a` resolves to a declaration and `b.c` are field selections,
-  //   the reference is attached to the ident expression.
-  // - Every Call expression has an entry here, identifying the function being
-  //   called.
-  // - Every CreateStruct expression for a message has an entry, identifying
-  //   the message.
-  absl::flat_hash_map<int64_t, Reference> reference_map_;
-  // A map from expression ids to types.
-  //
-  // Every expression node which has a type different than DYN has a mapping
-  // here. If an expression has type DYN, it is omitted from this map to save
-  // space.
-  absl::flat_hash_map<int64_t, Type> type_map_;
-  // The source info derived from input that generated the parsed `expr` and
-  // any optimizations made during the type-checking pass.
-  SourceInfo source_info_;
-  // The expr version indicates the major / minor version number of the `expr`
-  // representation.
-  //
-  // The most common reason for a version change will be to indicate to the CEL
-  // runtimes that transformations have been performed on the expr during static
-  // analysis. In some cases, this will save the runtime the work of applying
-  // the same or similar transformations prior to evaluation.
-  std::string expr_version_;
-  // The checked expression. Semantically equivalent to the parsed `expr`, but
-  // may have structural differences.
-  Expr expr_;
 };
 
 ////////////////////////////////////////////////////////////////////////

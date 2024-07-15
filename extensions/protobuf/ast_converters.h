@@ -31,14 +31,10 @@ absl::StatusOr<ast_internal::Expr> ConvertProtoExprToNative(
     const google::api::expr::v1alpha1::Expr& expr);
 absl::StatusOr<ast_internal::SourceInfo> ConvertProtoSourceInfoToNative(
     const google::api::expr::v1alpha1::SourceInfo& source_info);
-absl::StatusOr<ast_internal::ParsedExpr> ConvertProtoParsedExprToNative(
-    const google::api::expr::v1alpha1::ParsedExpr& parsed_expr);
 absl::StatusOr<ast_internal::Type> ConvertProtoTypeToNative(
     const google::api::expr::v1alpha1::Type& type);
 absl::StatusOr<ast_internal::Reference> ConvertProtoReferenceToNative(
     const google::api::expr::v1alpha1::Reference& reference);
-absl::StatusOr<ast_internal::CheckedExpr> ConvertProtoCheckedExprToNative(
-    const google::api::expr::v1alpha1::CheckedExpr& checked_expr);
 
 // Conversion utility for the protobuf constant CEL value representation.
 absl::StatusOr<ast_internal::Constant> ConvertConstant(

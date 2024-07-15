@@ -33,6 +33,9 @@ namespace cel::ast_internal {
 // the protobuf representation.
 class AstImpl : public Ast {
  public:
+  using ReferenceMap = absl::flat_hash_map<int64_t, Reference>;
+  using TypeMap = absl::flat_hash_map<int64_t, Type>;
+
   // Overloads for down casting from the public interface to the internal
   // implementation.
   static AstImpl& CastFromPublicAst(Ast& ast) {
@@ -51,34 +54,34 @@ class AstImpl : public Ast {
     return cel::internal::down_cast<const AstImpl*>(ast);
   }
 
+  AstImpl() : is_checked_(false) {}
+
+  AstImpl(Expr expr, SourceInfo source_info)
+      : root_expr_(std::move(expr)),
+        source_info_(std::move(source_info)),
+        is_checked_(false) {}
+
+  AstImpl(Expr expr, SourceInfo source_info, ReferenceMap reference_map,
+          TypeMap type_map, std::string expr_version)
+      : root_expr_(std::move(expr)),
+        source_info_(std::move(source_info)),
+        reference_map_(std::move(reference_map)),
+        type_map_(std::move(type_map)),
+        expr_version_(std::move(expr_version)),
+        is_checked_(true) {}
+
   // Move-only
   AstImpl(const AstImpl& other) = delete;
   AstImpl& operator=(const AstImpl& other) = delete;
   AstImpl(AstImpl&& other) = default;
   AstImpl& operator=(AstImpl&& other) = default;
 
-  explicit AstImpl(Expr expr, SourceInfo source_info)
-      : root_expr_(std::move(expr)),
-        source_info_(std::move(source_info)),
-        is_checked_(false) {}
-
-  explicit AstImpl(ParsedExpr expr)
-      : root_expr_(std::move(expr.mutable_expr())),
-        source_info_(std::move(expr.mutable_source_info())),
-        is_checked_(false) {}
-
-  explicit AstImpl(CheckedExpr expr)
-      : root_expr_(std::move(expr.mutable_expr())),
-        source_info_(std::move(expr.mutable_source_info())),
-        reference_map_(std::move(expr.mutable_reference_map())),
-        type_map_(std::move(expr.mutable_type_map())),
-        expr_version_(std::move(expr.mutable_expr_version())),
-        is_checked_(true) {}
-
   // Implement public Ast APIs.
   bool IsChecked() const override { return is_checked_; }
 
-  // Private functions.
+  // CEL internal functions.
+  void set_is_checked(bool is_checked) { is_checked_ = is_checked; }
+
   const Expr& root_expr() const { return root_expr_; }
   Expr& root_expr() { return root_expr_; }
 
@@ -93,22 +96,53 @@ class AstImpl : public Ast {
     return reference_map_;
   }
 
-  absl::flat_hash_map<int64_t, Reference>& reference_map() {
-    return reference_map_;
-  }
+  ReferenceMap& reference_map() { return reference_map_; }
 
-  const absl::flat_hash_map<int64_t, Type>& type_map() const {
-    return type_map_;
-  }
+  const TypeMap& type_map() const { return type_map_; }
+
+  TypeMap& type_map() { return type_map_; }
 
   absl::string_view expr_version() const { return expr_version_; }
+  void set_expr_version(absl::string_view expr_version) {
+    expr_version_ = expr_version;
+  }
 
  private:
   Expr root_expr_;
+  // The source info derived from input that generated the parsed `expr` and
+  // any optimizations made during the type-checking pass.
   SourceInfo source_info_;
-  absl::flat_hash_map<int64_t, Reference> reference_map_;
-  absl::flat_hash_map<int64_t, Type> type_map_;
+  // A map from expression ids to resolved references.
+  //
+  // The following entries are in this table:
+  //
+  // - An Ident or Select expression is represented here if it resolves to a
+  //   declaration. For instance, if `a.b.c` is represented by
+  //   `select(select(id(a), b), c)`, and `a.b` resolves to a declaration,
+  //   while `c` is a field selection, then the reference is attached to the
+  //   nested select expression (but not to the id or or the outer select).
+  //   In turn, if `a` resolves to a declaration and `b.c` are field selections,
+  //   the reference is attached to the ident expression.
+  // - Every Call expression has an entry here, identifying the function being
+  //   called.
+  // - Every CreateStruct expression for a message has an entry, identifying
+  //   the message.
+  ReferenceMap reference_map_;
+  // A map from expression ids to types.
+  //
+  // Every expression node which has a type different than DYN has a mapping
+  // here. If an expression has type DYN, it is omitted from this map to save
+  // space.
+  TypeMap type_map_;
+  // The expr version indicates the major / minor version number of the `expr`
+  // representation.
+  //
+  // The most common reason for a version change will be to indicate to the CEL
+  // runtimes that transformations have been performed on the expr during static
+  // analysis. In some cases, this will save the runtime the work of applying
+  // the same or similar transformations prior to evaluation.
   std::string expr_version_;
+
   bool is_checked_;
 };
 
