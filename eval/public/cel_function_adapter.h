@@ -106,6 +106,16 @@ using FunctionAdapter =
                                   internal::ProtoAdapterValueConverter>::
         FunctionAdapter<ReturnType, Arguments...>;
 
+template <typename ReturnType, typename T>
+using UnaryFunctionAdapter = internal::FunctionAdapterImpl<
+    internal::ProtoAdapterTypeCodeMatcher,
+    internal::ProtoAdapterValueConverter>::UnaryFunction<ReturnType, T>;
+
+template <typename ReturnType, typename T, typename U>
+using BinaryFunctionAdapter = internal::FunctionAdapterImpl<
+    internal::ProtoAdapterTypeCodeMatcher,
+    internal::ProtoAdapterValueConverter>::BinaryFunction<ReturnType, T, U>;
+
 }  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_ADAPTER_H_

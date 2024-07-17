@@ -15,7 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_PORTABLE_CEL_FUNCTION_ADAPTER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_PORTABLE_CEL_FUNCTION_ADAPTER_H_
 
-#include "eval/public/cel_function_adapter_impl.h"
+#include "eval/public/cel_function_adapter.h"
 
 namespace google::api::expr::runtime {
 
@@ -27,9 +27,7 @@ namespace google::api::expr::runtime {
 //
 // Most users should prefer using the standard FunctionAdapter.
 template <typename ReturnType, typename... Arguments>
-using PortableFunctionAdapter = internal::FunctionAdapterImpl<
-    internal::TypeCodeMatcher,
-    internal::ValueConverter>::FunctionAdapter<ReturnType, Arguments...>;
+using PortableFunctionAdapter = FunctionAdapter<ReturnType, Arguments...>;
 
 // PortableUnaryFunctionAdapter provides a factory for adapting 1 argument
 // functions to CEL extension functions.
@@ -49,9 +47,7 @@ using PortableFunctionAdapter = internal::FunctionAdapterImpl<
 //      PortableUnaryFunctionAdapter<int64_t, int64_t>::Create("negate", true,
 //      func);
 template <typename ReturnType, typename T>
-using PortableUnaryFunctionAdapter = internal::FunctionAdapterImpl<
-    internal::TypeCodeMatcher,
-    internal::ValueConverter>::UnaryFunction<ReturnType, T>;
+using PortableUnaryFunctionAdapter = UnaryFunctionAdapter<ReturnType, T>;
 
 // PortableBinaryFunctionAdapter provides a factory for adapting 2 argument
 // functions to CEL extension functions.
@@ -69,9 +65,7 @@ using PortableUnaryFunctionAdapter = internal::FunctionAdapterImpl<
 //      PortableBinaryFunctionAdapter<bool, int64_t, int64_t>::Create("<",
 //      false, func);
 template <typename ReturnType, typename T, typename U>
-using PortableBinaryFunctionAdapter = internal::FunctionAdapterImpl<
-    internal::TypeCodeMatcher,
-    internal::ValueConverter>::BinaryFunction<ReturnType, T, U>;
+using PortableBinaryFunctionAdapter = BinaryFunctionAdapter<ReturnType, T, U>;
 
 }  // namespace google::api::expr::runtime
 
