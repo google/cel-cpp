@@ -313,6 +313,7 @@ class CelValue {
     return static_cast<const google::protobuf::Message*>(wrapped.message_ptr());
   }
 
+  ABSL_DEPRECATED("Use MessageOrDie")
   MessageWrapper MessageWrapperOrDie() const {
     return GetValueOrDie<MessageWrapper>(Type::kMessage);
   }
@@ -421,6 +422,7 @@ class CelValue {
   // libraries.
   // TODO: exposed for testing while wiring adapter APIs. Should
   // make private visibility after refactors are done.
+  ABSL_DEPRECATED("Use CelProtoWrapper::CreateMessage")
   static CelValue CreateMessageWrapper(MessageWrapper value) {
     CheckNullPointer(value.message_ptr(), Type::kMessage);
     CheckNullPointer(value.legacy_type_info(), Type::kMessage);
