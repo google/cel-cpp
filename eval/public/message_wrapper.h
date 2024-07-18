@@ -17,11 +17,12 @@
 
 #include <cstdint>
 
-#include "google/protobuf/message.h"
-#include "google/protobuf/message_lite.h"
+#include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "absl/numeric/bits.h"
 #include "base/internal/message_wrapper.h"
+#include "google/protobuf/message.h"
+#include "google/protobuf/message_lite.h"
 
 namespace cel::interop_internal {
 struct MessageWrapperAccess;
@@ -36,12 +37,12 @@ class LegacyTypeInfoApis;
 // proto APIs and to support working with the proto lite runtime.
 //
 // Provides operations for checking if down-casting to Message is safe.
-class MessageWrapper {
+class ABSL_DEPRECATED("Use google::protobuf::Message directly") MessageWrapper {
  public:
   // Simple builder class.
   //
   // Wraps a tagged mutable message lite ptr.
-  class Builder {
+  class ABSL_DEPRECATED("Use google::protobuf::Message directly") Builder {
    public:
     explicit Builder(google::protobuf::MessageLite* message)
         : message_ptr_(reinterpret_cast<uintptr_t>(message)) {
