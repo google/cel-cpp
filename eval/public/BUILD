@@ -237,20 +237,7 @@ cc_library(
     hdrs = [
         "portable_cel_function_adapter.h",
     ],
-    deps = [":cel_function_adapter_impl"],
-)
-
-cc_test(
-    name = "portable_cel_function_adapter_test",
-    size = "small",
-    srcs = [
-        "portable_cel_function_adapter_test.cc",
-    ],
-    deps = [
-        ":portable_cel_function_adapter",
-        "//internal:status_macros",
-        "//internal:testing",
-    ],
+    deps = [":cel_function_adapter"],
 )
 
 cc_library(
