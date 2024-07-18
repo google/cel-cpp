@@ -130,11 +130,11 @@ class JsonArrayBuilder {
 
   iterator begin();
 
-  const_iterator begin() const { return impl_.get().begin(); }
+  const_iterator begin() const;
 
   iterator end();
 
-  const_iterator end() const { return impl_.get().end(); }
+  const_iterator end() const;
 
   reverse_iterator rbegin();
 
@@ -191,13 +191,13 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI JsonArray final {
 
   size_type size() const;
 
-  const_iterator begin() const { return impl_.get().begin(); }
+  const_iterator begin() const;
 
-  const_iterator cbegin() const { return impl_.get().cbegin(); }
+  const_iterator cbegin() const;
 
-  const_iterator end() const { return impl_.get().end(); }
+  const_iterator end() const;
 
-  const_iterator cend() const { return impl_.get().cend(); }
+  const_iterator cend() const;
 
   const_reverse_iterator rbegin() const;
 
@@ -259,85 +259,57 @@ class JsonObjectBuilder final {
   JsonObjectBuilder& operator=(const JsonObjectBuilder&) = delete;
   JsonObjectBuilder& operator=(JsonObjectBuilder&&) = default;
 
-  bool empty() const { return impl_.get().empty(); }
+  bool empty() const;
 
-  size_type size() const { return impl_.get().size(); }
+  size_type size() const;
 
-  iterator begin() { return impl_.mutable_get().begin(); }
+  iterator begin();
 
-  const_iterator begin() const { return impl_.get().begin(); }
+  const_iterator begin() const;
 
-  iterator end() { return impl_.mutable_get().end(); }
+  iterator end();
 
-  const_iterator end() const { return impl_.get().end(); }
+  const_iterator end() const;
 
-  void clear() { impl_.mutable_get().clear(); }
-
-  template <typename K>
-  iterator find(const K& key) {
-    return impl_.mutable_get().find(key);
-  }
+  void clear();
 
   template <typename K>
-  bool contains(const K& key) {
-    return impl_.mutable_get().contains(key);
-  }
+  iterator find(const K& key);
+
+  template <typename K>
+  bool contains(const K& key);
 
   template <typename P>
-  std::pair<iterator, bool> insert(P&& value) {
-    return impl_.mutable_get().insert(std::forward<P>(value));
-  }
+  std::pair<iterator, bool> insert(P&& value);
 
   template <typename InputIterator>
-  void insert(InputIterator first, InputIterator last) {
-    impl_.mutable_get().insert(std::move(first), std::move(last));
-  }
+  void insert(InputIterator first, InputIterator last);
 
   void insert(std::initializer_list<value_type> il);
 
   template <typename M>
-  std::pair<iterator, bool> insert_or_assign(const key_type& k, M&& obj) {
-    return impl_.mutable_get().insert_or_assign(k, std::forward<M>(obj));
-  }
+  std::pair<iterator, bool> insert_or_assign(const key_type& k, M&& obj);
 
   template <typename M>
-  std::pair<iterator, bool> insert_or_assign(key_type&& k, M&& obj) {
-    return impl_.mutable_get().insert_or_assign(std::move(k),
-                                                std::forward<M>(obj));
-  }
+  std::pair<iterator, bool> insert_or_assign(key_type&& k, M&& obj);
 
   template <typename... Args>
-  std::pair<iterator, bool> try_emplace(const key_type& key, Args&&... args) {
-    return impl_.mutable_get().try_emplace(key, std::forward<Args>(args)...);
-  }
+  std::pair<iterator, bool> try_emplace(const key_type& key, Args&&... args);
 
   template <typename... Args>
-  std::pair<iterator, bool> try_emplace(key_type&& key, Args&&... args) {
-    return impl_.mutable_get().try_emplace(std::move(key),
-                                           std::forward<Args>(args)...);
-  }
+  std::pair<iterator, bool> try_emplace(key_type&& key, Args&&... args);
 
   template <typename... Args>
-  std::pair<iterator, bool> emplace(Args&&... args) {
-    return impl_.mutable_get().emplace(std::forward<Args>(args)...);
-  }
+  std::pair<iterator, bool> emplace(Args&&... args);
 
   template <typename K>
-  size_type erase(const K& k) {
-    return impl_.mutable_get().erase(k);
-  }
+  size_type erase(const K& k);
 
-  void erase(const_iterator pos) { impl_.mutable_get().erase(std::move(pos)); }
+  void erase(const_iterator pos);
 
-  iterator erase(const_iterator first, const_iterator last) {
-    return impl_.mutable_get().erase(std::move(first), std::move(last));
-  }
+  iterator erase(const_iterator first, const_iterator last);
 
-  void reserve(size_type n) {
-    if (n != 0) {
-      impl_.mutable_get().reserve(n);
-    }
-  }
+  void reserve(size_type n);
 
   JsonObject Build() &&;
 
@@ -374,27 +346,23 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI JsonObject final {
   JsonObject& operator=(const JsonObject&) = default;
   JsonObject& operator=(JsonObject&&) = default;
 
-  bool empty() const { return impl_.get().empty(); }
+  bool empty() const;
 
-  size_type size() const { return impl_.get().size(); }
+  size_type size() const;
 
-  const_iterator begin() const { return impl_.get().begin(); }
+  const_iterator begin() const;
 
-  const_iterator cbegin() const { return impl_.get().cbegin(); }
+  const_iterator cbegin() const;
 
-  const_iterator end() const { return impl_.get().end(); }
+  const_iterator end() const;
 
-  const_iterator cend() const { return impl_.get().cend(); }
-
-  template <typename K>
-  const_iterator find(const K& key) const {
-    return impl_.get().find(key);
-  }
+  const_iterator cend() const;
 
   template <typename K>
-  bool contains(const K& key) const {
-    return impl_.get().contains(key);
-  }
+  const_iterator find(const K& key) const;
+
+  template <typename K>
+  bool contains(const K& key) const;
 
   friend bool operator==(const JsonObject& lhs, const JsonObject& rhs);
 
@@ -408,17 +376,79 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI JsonObject final {
 
   static internal::CopyOnWrite<Container> Empty();
 
-  explicit JsonObject(internal::CopyOnWrite<Container> impl)
-      : impl_(std::move(impl)) {
-    if (impl_.get().empty()) {
-      impl_ = Empty();
-    }
-  }
+  explicit JsonObject(internal::CopyOnWrite<Container> impl);
 
   internal::CopyOnWrite<Container> impl_;
 };
 
 // Json is now fully declared.
+template <typename K>
+JsonObjectBuilder::iterator JsonObjectBuilder::find(const K& key) {
+  return impl_.mutable_get().find(key);
+}
+
+template <typename K>
+bool JsonObjectBuilder::contains(const K& key) {
+  return impl_.mutable_get().contains(key);
+}
+
+template <typename P>
+std::pair<JsonObjectBuilder::iterator, bool> JsonObjectBuilder::insert(
+    P&& value) {
+  return impl_.mutable_get().insert(std::forward<P>(value));
+}
+
+template <typename InputIterator>
+void JsonObjectBuilder::insert(InputIterator first, InputIterator last) {
+  impl_.mutable_get().insert(std::move(first), std::move(last));
+}
+
+template <typename M>
+std::pair<JsonObjectBuilder::iterator, bool>
+JsonObjectBuilder::insert_or_assign(const key_type& k, M&& obj) {
+  return impl_.mutable_get().insert_or_assign(k, std::forward<M>(obj));
+}
+
+template <typename M>
+std::pair<JsonObjectBuilder::iterator, bool>
+JsonObjectBuilder::insert_or_assign(key_type&& k, M&& obj) {
+  return impl_.mutable_get().insert_or_assign(std::move(k),
+                                              std::forward<M>(obj));
+}
+
+template <typename... Args>
+std::pair<JsonObjectBuilder::iterator, bool> JsonObjectBuilder::try_emplace(
+    const key_type& key, Args&&... args) {
+  return impl_.mutable_get().try_emplace(key, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+std::pair<JsonObjectBuilder::iterator, bool> JsonObjectBuilder::try_emplace(
+    key_type&& key, Args&&... args) {
+  return impl_.mutable_get().try_emplace(std::move(key),
+                                         std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+std::pair<JsonObjectBuilder::iterator, bool> JsonObjectBuilder::emplace(
+    Args&&... args) {
+  return impl_.mutable_get().emplace(std::forward<Args>(args)...);
+}
+
+template <typename K>
+JsonObjectBuilder::size_type JsonObjectBuilder::erase(const K& k) {
+  return impl_.mutable_get().erase(k);
+}
+
+template <typename K>
+JsonObject::const_iterator JsonObject::find(const K& key) const {
+  return impl_.get().find(key);
+}
+
+template <typename K>
+bool JsonObject::contains(const K& key) const {
+  return impl_.get().contains(key);
+}
 
 // `cel::JsonInt` returns `value` as `cel::Json`. If `value` is representable as
 // a number, the result with be `cel::JsonNumber`. Otherwise `value` is
@@ -462,7 +492,7 @@ class AnyToJsonConverter {
 };
 
 template <typename T>
-inline JsonArray MakeJsonArray(std::initializer_list<T> il) {
+JsonArray MakeJsonArray(std::initializer_list<T> il) {
   JsonArrayBuilder builder;
   builder.reserve(il.size());
   for (const auto& element : il) {
@@ -471,136 +501,16 @@ inline JsonArray MakeJsonArray(std::initializer_list<T> il) {
   return std::move(builder).Build();
 }
 
-inline JsonObject MakeJsonObject(
-    std::initializer_list<std::pair<JsonString, Json>> il) {
-  JsonObjectBuilder builder;
-  builder.reserve(il.size());
-  for (const auto& entry : il) {
-    builder.insert(entry);
-  }
-  return std::move(builder).Build();
-}
-
-inline JsonArrayBuilder::JsonArrayBuilder(JsonArray array)
-    : impl_(std::move(array.impl_)) {}
-
-inline JsonObjectBuilder::JsonObjectBuilder(JsonObject object)
-    : impl_(std::move(object.impl_)) {}
-
-inline void JsonObjectBuilder::insert(std::initializer_list<value_type> il) {
-  impl_.mutable_get().insert(il);
-}
-
-inline JsonArrayBuilder::size_type JsonArrayBuilder::size() const {
-  return impl_.get().size();
-}
-
-inline JsonArrayBuilder::iterator JsonArrayBuilder::begin() {
-  return impl_.mutable_get().begin();
-}
-
-inline JsonArrayBuilder::iterator JsonArrayBuilder::end() {
-  return impl_.mutable_get().end();
-}
-
-inline JsonArrayBuilder::reverse_iterator JsonArrayBuilder::rbegin() {
-  return impl_.mutable_get().rbegin();
-}
-
-inline JsonArrayBuilder::reverse_iterator JsonArrayBuilder::rend() {
-  return impl_.mutable_get().rend();
-}
-
-inline JsonArrayBuilder::reference JsonArrayBuilder::at(size_type index) {
-  return impl_.mutable_get().at(index);
-}
-
-inline JsonArrayBuilder::reference JsonArrayBuilder::operator[](
-    size_type index) {
-  return (impl_.mutable_get())[index];
-}
-
-inline void JsonArrayBuilder::reserve(size_type n) {
-  if (n != 0) {
-    impl_.mutable_get().reserve(n);
-  }
-}
-
-inline void JsonArrayBuilder::clear() { impl_.mutable_get().clear(); }
-
-inline void JsonArrayBuilder::push_back(Json json) {
-  impl_.mutable_get().push_back(std::move(json));
-}
-
-inline void JsonArrayBuilder::pop_back() { impl_.mutable_get().pop_back(); }
-
-inline JsonArray JsonArrayBuilder::Build() && {
-  return JsonArray(std::move(impl_));
-}
-
-inline JsonArrayBuilder::operator JsonArray() && {
-  return std::move(*this).Build();
-}
-
-inline JsonObject JsonObjectBuilder::Build() && {
-  return JsonObject(std::move(impl_));
-}
-
-inline JsonObjectBuilder::operator JsonObject() && {
-  return std::move(*this).Build();
-}
-
-inline JsonArray::size_type JsonArray::size() const {
-  return impl_.get().size();
-}
-
-inline JsonArray::const_reverse_iterator JsonArray::rbegin() const {
-  return impl_.get().rbegin();
-}
-
-inline JsonArray::const_reverse_iterator JsonArray::crbegin() const {
-  return impl_.get().crbegin();
-}
-
-inline JsonArray::const_reverse_iterator JsonArray::rend() const {
-  return impl_.get().rend();
-}
-
-inline JsonArray::const_reverse_iterator JsonArray::crend() const {
-  return impl_.get().crend();
-}
-
-inline JsonArray::const_reference JsonArray::at(size_type index) const {
-  return impl_.get().at(index);
-}
-
-inline JsonArray::const_reference JsonArray::operator[](size_type index) const {
-  return (impl_.get())[index];
-}
-
-inline bool operator==(const JsonArray& lhs, const JsonArray& rhs) {
-  return lhs.impl_.get() == rhs.impl_.get();
-}
-
-inline bool operator!=(const JsonArray& lhs, const JsonArray& rhs) {
-  return lhs.impl_.get() != rhs.impl_.get();
-}
+JsonObject MakeJsonObject(
+    std::initializer_list<std::pair<JsonString, Json>> il);
 
 template <typename H>
-inline H AbslHashValue(H state, const JsonArray& json_array) {
+H AbslHashValue(H state, const JsonArray& json_array) {
   return H::combine(std::move(state), json_array.impl_.get());
 }
 
-inline bool operator==(const JsonObject& lhs, const JsonObject& rhs) {
-  return lhs.impl_.get() == rhs.impl_.get();
-}
-
-inline bool operator!=(const JsonObject& lhs, const JsonObject& rhs) {
-  return lhs.impl_.get() != rhs.impl_.get();
-}
-
 template <typename H>
-inline H AbslHashValue(H state, const JsonObject& json_object) {
+H AbslHashValue(H state, const JsonObject& json_object) {
   return H::combine(std::move(state), json_object.impl_.get());
 }
 
