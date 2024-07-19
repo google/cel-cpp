@@ -14,13 +14,16 @@
 
 #include "extensions/math_ext.h"
 
+#include <cmath>
 #include <cstdint>
+#include <limits>
 
+#include "absl/base/casts.h"
+#include "absl/base/optimization.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/value.h"
 #include "eval/public/cel_function_registry.h"
@@ -52,7 +55,7 @@ Value NumberToValue(CelNumber number) {
   return number.visit<Value>(ToValueVisitor{});
 }
 
-absl::StatusOr<CelNumber> ValueToNumber(const Value &value,
+absl::StatusOr<CelNumber> ValueToNumber(const Value& value,
                                         absl::string_view function) {
   if (auto int_value = As<IntValue>(value); int_value) {
     return CelNumber::FromInt64(int_value->NativeValue());
@@ -79,17 +82,17 @@ Value MinValue(CelNumber v1, CelNumber v2) {
 }
 
 template <typename T>
-Value Identity(ValueManager &, T v1) {
+Value Identity(ValueManager&, T v1) {
   return NumberToValue(CelNumber(v1));
 }
 
 template <typename T, typename U>
-Value Min(ValueManager &, T v1, U v2) {
+Value Min(ValueManager&, T v1, U v2) {
   return MinValue(CelNumber(v1), CelNumber(v2));
 }
 
-absl::StatusOr<Value> MinList(ValueManager &value_manager,
-                              const ListValue &values) {
+absl::StatusOr<Value> MinList(ValueManager& value_manager,
+                              const ListValue& values) {
   CEL_ASSIGN_OR_RETURN(auto iterator, values.NewIterator(value_manager));
   if (!iterator->HasNext()) {
     return ErrorValue(
@@ -125,12 +128,12 @@ Value MaxValue(CelNumber v1, CelNumber v2) {
 }
 
 template <typename T, typename U>
-Value Max(ValueManager &, T v1, U v2) {
+Value Max(ValueManager&, T v1, U v2) {
   return MaxValue(CelNumber(v1), CelNumber(v2));
 }
 
-absl::StatusOr<Value> MaxList(ValueManager &value_manager,
-                              const ListValue &values) {
+absl::StatusOr<Value> MaxList(ValueManager& value_manager,
+                              const ListValue& values) {
   CEL_ASSIGN_OR_RETURN(auto iterator, values.NewIterator(value_manager));
   if (!iterator->HasNext()) {
     return ErrorValue(
@@ -155,7 +158,7 @@ absl::StatusOr<Value> MaxList(ValueManager &value_manager,
 }
 
 template <typename T, typename U>
-absl::Status RegisterCrossNumericMin(FunctionRegistry &registry) {
+absl::Status RegisterCrossNumericMin(FunctionRegistry& registry) {
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<Value, T, U>::CreateDescriptor(
           kMathMin, /*receiver_style=*/false),
@@ -170,7 +173,7 @@ absl::Status RegisterCrossNumericMin(FunctionRegistry &registry) {
 }
 
 template <typename T, typename U>
-absl::Status RegisterCrossNumericMax(FunctionRegistry &registry) {
+absl::Status RegisterCrossNumericMax(FunctionRegistry& registry) {
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<Value, T, U>::CreateDescriptor(
           kMathMax, /*receiver_style=*/false),
@@ -184,10 +187,122 @@ absl::Status RegisterCrossNumericMax(FunctionRegistry &registry) {
   return absl::OkStatus();
 }
 
+double CeilDouble(ValueManager&, double value) { return std::ceil(value); }
+
+double FloorDouble(ValueManager&, double value) { return std::floor(value); }
+
+double RoundDouble(ValueManager&, double value) { return std::round(value); }
+
+double TruncDouble(ValueManager&, double value) { return std::trunc(value); }
+
+bool IsInfDouble(ValueManager&, double value) { return std::isinf(value); }
+
+bool IsNaNDouble(ValueManager&, double value) { return std::isnan(value); }
+
+bool IsFiniteDouble(ValueManager&, double value) {
+  return std::isfinite(value);
+}
+
+double AbsDouble(ValueManager&, double value) { return std::fabs(value); }
+
+Value AbsInt(ValueManager& value_manager, int64_t value) {
+  if (ABSL_PREDICT_FALSE(value == std::numeric_limits<int64_t>::min())) {
+    return ErrorValue(absl::InvalidArgumentError("integer overflow"));
+  }
+  return IntValue(value < 0 ? -value : value);
+}
+
+uint64_t AbsUint(ValueManager&, uint64_t value) { return value; }
+
+double SignDouble(ValueManager&, double value) {
+  if (std::isnan(value)) {
+    return value;
+  }
+  if (value == 0.0) {
+    return 0.0;
+  }
+  return std::signbit(value) ? -1.0 : 1.0;
+}
+
+int64_t SignInt(ValueManager&, int64_t value) {
+  return value < 0 ? -1 : value > 0 ? 1 : 0;
+}
+
+uint64_t SignUint(ValueManager&, uint64_t value) { return value == 0 ? 0 : 1; }
+
+int64_t BitAndInt(ValueManager&, int64_t lhs, int64_t rhs) { return lhs & rhs; }
+
+uint64_t BitAndUint(ValueManager&, uint64_t lhs, uint64_t rhs) {
+  return lhs & rhs;
+}
+
+int64_t BitOrInt(ValueManager&, int64_t lhs, int64_t rhs) { return lhs | rhs; }
+
+uint64_t BitOrUint(ValueManager&, uint64_t lhs, uint64_t rhs) {
+  return lhs | rhs;
+}
+
+int64_t BitXorInt(ValueManager&, int64_t lhs, int64_t rhs) { return lhs ^ rhs; }
+
+uint64_t BitXorUint(ValueManager&, uint64_t lhs, uint64_t rhs) {
+  return lhs ^ rhs;
+}
+
+int64_t BitNotInt(ValueManager&, int64_t value) { return ~value; }
+
+uint64_t BitNotUint(ValueManager&, uint64_t value) { return ~value; }
+
+Value BitShiftLeftInt(ValueManager&, int64_t lhs, int64_t rhs) {
+  if (ABSL_PREDICT_FALSE(rhs < 0)) {
+    return ErrorValue(absl::InvalidArgumentError(
+        absl::StrCat("math.bitShiftLeft() invalid negative shift: ", rhs)));
+  }
+  if (rhs > 63) {
+    return IntValue(0);
+  }
+  return IntValue(lhs << static_cast<int>(rhs));
+}
+
+Value BitShiftLeftUint(ValueManager&, uint64_t lhs, int64_t rhs) {
+  if (ABSL_PREDICT_FALSE(rhs < 0)) {
+    return ErrorValue(absl::InvalidArgumentError(
+        absl::StrCat("math.bitShiftLeft() invalid negative shift: ", rhs)));
+  }
+  if (rhs > 63) {
+    return UintValue(0);
+  }
+  return UintValue(lhs << static_cast<int>(rhs));
+}
+
+Value BitShiftRightInt(ValueManager&, int64_t lhs, int64_t rhs) {
+  if (ABSL_PREDICT_FALSE(rhs < 0)) {
+    return ErrorValue(absl::InvalidArgumentError(
+        absl::StrCat("math.bitShiftRight() invalid negative shift: ", rhs)));
+  }
+  if (rhs > 63) {
+    return IntValue(0);
+  }
+  // We do not perform a sign extension shift, per the spec we just do the same
+  // thing as uint.
+  return IntValue(absl::bit_cast<int64_t>(absl::bit_cast<uint64_t>(lhs) >>
+                                          static_cast<int>(rhs)));
+}
+
+Value BitShiftRightUint(ValueManager&, uint64_t lhs, int64_t rhs) {
+  if (ABSL_PREDICT_FALSE(rhs < 0)) {
+    return ErrorValue(absl::InvalidArgumentError(
+        absl::StrCat("math.bitShiftRight() invalid negative shift: ", rhs)));
+  }
+  if (rhs > 63) {
+    return UintValue(0);
+  }
+  return UintValue(lhs >> static_cast<int>(rhs));
+}
+
 }  // namespace
 
-absl::Status RegisterMathExtensionFunctions(FunctionRegistry &registry,
-                                            const RuntimeOptions &options) {
+absl::Status RegisterMathExtensionFunctions(FunctionRegistry& registry,
+                                            const RuntimeOptions& options) {
   CEL_RETURN_IF_ERROR(registry.Register(
       UnaryFunctionAdapter<Value, int64_t>::CreateDescriptor(
           kMathMin, /*receiver_style=*/false),
@@ -260,11 +375,123 @@ absl::Status RegisterMathExtensionFunctions(FunctionRegistry &registry,
       UnaryFunctionAdapter<absl::StatusOr<Value>, ListValue>::WrapFunction(
           MaxList)));
 
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<double, double>::CreateDescriptor(
+          "math.ceil", /*receiver_style=*/false),
+      UnaryFunctionAdapter<double, double>::WrapFunction(CeilDouble)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<double, double>::CreateDescriptor(
+          "math.floor", /*receiver_style=*/false),
+      UnaryFunctionAdapter<double, double>::WrapFunction(FloorDouble)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<double, double>::CreateDescriptor(
+          "math.round", /*receiver_style=*/false),
+      UnaryFunctionAdapter<double, double>::WrapFunction(RoundDouble)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<double, double>::CreateDescriptor(
+          "math.trunc", /*receiver_style=*/false),
+      UnaryFunctionAdapter<double, double>::WrapFunction(TruncDouble)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<bool, double>::CreateDescriptor(
+          "math.isInf", /*receiver_style=*/false),
+      UnaryFunctionAdapter<bool, double>::WrapFunction(IsInfDouble)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<bool, double>::CreateDescriptor(
+          "math.isNaN", /*receiver_style=*/false),
+      UnaryFunctionAdapter<bool, double>::WrapFunction(IsNaNDouble)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<bool, double>::CreateDescriptor(
+          "math.isFinite", /*receiver_style=*/false),
+      UnaryFunctionAdapter<bool, double>::WrapFunction(IsFiniteDouble)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<double, double>::CreateDescriptor(
+          "math.abs", /*receiver_style=*/false),
+      UnaryFunctionAdapter<double, double>::WrapFunction(AbsDouble)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<Value, int64_t>::CreateDescriptor(
+          "math.abs", /*receiver_style=*/false),
+      UnaryFunctionAdapter<Value, int64_t>::WrapFunction(AbsInt)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<uint64_t, uint64_t>::CreateDescriptor(
+          "math.abs", /*receiver_style=*/false),
+      UnaryFunctionAdapter<uint64_t, uint64_t>::WrapFunction(AbsUint)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<double, double>::CreateDescriptor(
+          "math.sign", /*receiver_style=*/false),
+      UnaryFunctionAdapter<double, double>::WrapFunction(SignDouble)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<int64_t, int64_t>::CreateDescriptor(
+          "math.sign", /*receiver_style=*/false),
+      UnaryFunctionAdapter<int64_t, int64_t>::WrapFunction(SignInt)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<uint64_t, uint64_t>::CreateDescriptor(
+          "math.sign", /*receiver_style=*/false),
+      UnaryFunctionAdapter<uint64_t, uint64_t>::WrapFunction(SignUint)));
+
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<int64_t, int64_t, int64_t>::CreateDescriptor(
+          "math.bitAnd", /*receiver_style=*/false),
+      BinaryFunctionAdapter<int64_t, int64_t, int64_t>::WrapFunction(
+          BitAndInt)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<uint64_t, uint64_t, uint64_t>::CreateDescriptor(
+          "math.bitAnd", /*receiver_style=*/false),
+      BinaryFunctionAdapter<uint64_t, uint64_t, uint64_t>::WrapFunction(
+          BitAndUint)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<int64_t, int64_t, int64_t>::CreateDescriptor(
+          "math.bitOr", /*receiver_style=*/false),
+      BinaryFunctionAdapter<int64_t, int64_t, int64_t>::WrapFunction(
+          BitOrInt)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<uint64_t, uint64_t, uint64_t>::CreateDescriptor(
+          "math.bitOr", /*receiver_style=*/false),
+      BinaryFunctionAdapter<uint64_t, uint64_t, uint64_t>::WrapFunction(
+          BitOrUint)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<int64_t, int64_t, int64_t>::CreateDescriptor(
+          "math.bitXor", /*receiver_style=*/false),
+      BinaryFunctionAdapter<int64_t, int64_t, int64_t>::WrapFunction(
+          BitXorInt)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<uint64_t, uint64_t, uint64_t>::CreateDescriptor(
+          "math.bitXor", /*receiver_style=*/false),
+      BinaryFunctionAdapter<uint64_t, uint64_t, uint64_t>::WrapFunction(
+          BitXorUint)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<int64_t, int64_t>::CreateDescriptor(
+          "math.bitNot", /*receiver_style=*/false),
+      UnaryFunctionAdapter<int64_t, int64_t>::WrapFunction(BitNotInt)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      UnaryFunctionAdapter<uint64_t, uint64_t>::CreateDescriptor(
+          "math.bitNot", /*receiver_style=*/false),
+      UnaryFunctionAdapter<uint64_t, uint64_t>::WrapFunction(BitNotUint)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<Value, int64_t, int64_t>::CreateDescriptor(
+          "math.bitShiftLeft", /*receiver_style=*/false),
+      BinaryFunctionAdapter<Value, int64_t, int64_t>::WrapFunction(
+          BitShiftLeftInt)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<Value, uint64_t, int64_t>::CreateDescriptor(
+          "math.bitShiftLeft", /*receiver_style=*/false),
+      BinaryFunctionAdapter<Value, uint64_t, int64_t>::WrapFunction(
+          BitShiftLeftUint)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<Value, int64_t, int64_t>::CreateDescriptor(
+          "math.bitShiftRight", /*receiver_style=*/false),
+      BinaryFunctionAdapter<Value, int64_t, int64_t>::WrapFunction(
+          BitShiftRightInt)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      BinaryFunctionAdapter<Value, uint64_t, int64_t>::CreateDescriptor(
+          "math.bitShiftRight", /*receiver_style=*/false),
+      BinaryFunctionAdapter<Value, uint64_t, int64_t>::WrapFunction(
+          BitShiftRightUint)));
+
   return absl::OkStatus();
 }
 
-absl::Status RegisterMathExtensionFunctions(CelFunctionRegistry *registry,
-                                            const InterpreterOptions &options) {
+absl::Status RegisterMathExtensionFunctions(CelFunctionRegistry* registry,
+                                            const InterpreterOptions& options) {
   return RegisterMathExtensionFunctions(
       registry->InternalGetRegistry(),
       google::api::expr::runtime::ConvertToRuntimeOptions(options));
