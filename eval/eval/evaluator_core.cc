@@ -15,6 +15,7 @@
 #include "eval/eval/evaluator_core.h"
 
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <utility>
 
@@ -68,10 +69,12 @@ const ExpressionStep* ExecutionFrame::Next() {
     }
     if (ABSL_PREDICT_TRUE(pc_ == end_pos)) {
       if (!call_stack_.empty()) {
-        pc_ = call_stack_.back().return_pc;
-        execution_path_ = call_stack_.back().return_expression;
-        ABSL_DCHECK_EQ(value_stack().size(),
-                       call_stack_.back().expected_stack_size);
+        SubFrame& subframe = call_stack_.back();
+        pc_ = subframe.return_pc;
+        execution_path_ = subframe.return_expression;
+        ABSL_DCHECK_EQ(value_stack().size(), subframe.expected_stack_size);
+        comprehension_slots().Set(subframe.slot_index, value_stack().Peek(),
+                                  value_stack().PeekAttribute());
         call_stack_.pop_back();
         continue;
       }

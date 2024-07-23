@@ -19,8 +19,8 @@
 #include <utility>
 #include <vector>
 
-#include "absl/base/macros.h"
 #include "absl/base/no_destructor.h"
+#include "absl/log/absl_check.h"
 #include "absl/types/optional.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
@@ -59,7 +59,7 @@ class ComprehensionSlots {
   // Return ptr to slot at index.
   // If not set, returns nullptr.
   Slot* Get(size_t index) {
-    ABSL_ASSERT(index >= 0 && index < slots_.size());
+    ABSL_DCHECK_LT(index, slots_.size());
     auto& slot = slots_[index];
     if (!slot.has_value()) return nullptr;
     return &slot.value();
@@ -71,12 +71,12 @@ class ComprehensionSlots {
   }
 
   void ClearSlot(size_t index) {
-    ABSL_ASSERT(index >= 0 && index < slots_.size());
+    ABSL_DCHECK_LT(index, slots_.size());
     slots_[index] = absl::nullopt;
   }
 
   void Set(size_t index) {
-    ABSL_ASSERT(index >= 0 && index < slots_.size());
+    ABSL_DCHECK_LT(index, slots_.size());
     slots_[index].emplace();
   }
 
@@ -85,7 +85,7 @@ class ComprehensionSlots {
   }
 
   void Set(size_t index, cel::Value value, AttributeTrail attribute) {
-    ABSL_ASSERT(index >= 0 && index < slots_.size());
+    ABSL_DCHECK_LT(index, slots_.size());
     slots_[index] = Slot{std::move(value), std::move(attribute)};
   }
 

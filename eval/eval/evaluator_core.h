@@ -17,6 +17,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -295,16 +296,15 @@ class ExecutionFrame : public ExecutionFrameBase {
   //
   // Only intended for use in built-in notion of lazily evaluated
   // subexpressions.
-  void Call(int return_pc_offset, size_t subexpression_index) {
+  void Call(size_t slot_index, size_t subexpression_index) {
     ABSL_DCHECK_LT(subexpression_index, subexpressions_.size());
     ExecutionPathView subexpression = subexpressions_[subexpression_index];
     ABSL_DCHECK(subexpression != execution_path_);
-    int return_pc = static_cast<int>(pc_) + return_pc_offset;
+    size_t return_pc = pc_;
     // return pc == size() is supported (a tail call).
-    ABSL_DCHECK_GE(return_pc, 0);
-    ABSL_DCHECK_LE(return_pc, static_cast<int>(execution_path_.size()));
-    call_stack_.push_back(SubFrame{static_cast<size_t>(return_pc),
-                                   value_stack().size() + 1, execution_path_});
+    ABSL_DCHECK_LE(return_pc, execution_path_.size());
+    call_stack_.push_back(SubFrame{return_pc, slot_index, execution_path_,
+                                   value_stack().size() + 1});
     pc_ = 0UL;
     execution_path_ = subexpression;
   }
@@ -349,8 +349,9 @@ class ExecutionFrame : public ExecutionFrameBase {
  private:
   struct SubFrame {
     size_t return_pc;
-    size_t expected_stack_size;
+    size_t slot_index;
     ExecutionPathView return_expression;
+    size_t expected_stack_size;
   };
 
   size_t pc_;  // pc_ - Program Counter. Current position on execution path.

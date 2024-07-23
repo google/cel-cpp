@@ -35,59 +35,52 @@ namespace {
 
 using ::cel::Value;
 
-class CheckLazyInitStep : public ExpressionStepBase {
+class LazyInitStep final : public ExpressionStepBase {
  public:
-  CheckLazyInitStep(size_t slot_index, size_t subexpression_index,
-                    int64_t expr_id)
+  LazyInitStep(size_t slot_index, size_t subexpression_index, int64_t expr_id)
       : ExpressionStepBase(expr_id),
         slot_index_(slot_index),
         subexpression_index_(subexpression_index) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override {
-    auto* slot = frame->comprehension_slots().Get(slot_index_);
-    if (slot != nullptr) {
+    if (auto* slot = frame->comprehension_slots().Get(slot_index_);
+        slot != nullptr) {
       frame->value_stack().Push(slot->value, slot->attribute);
-      // skip next step (assign to slot)
-      return frame->JumpTo(1);
+    } else {
+      frame->Call(slot_index_, subexpression_index_);
     }
-
-    // return to next step (assign to slot)
-    frame->Call(0, subexpression_index_);
     return absl::OkStatus();
   }
 
  private:
-  size_t slot_index_;
-  size_t subexpression_index_;
+  const size_t slot_index_;
+  const size_t subexpression_index_;
 };
 
-class DirectCheckLazyInitStep : public DirectExpressionStep {
+class DirectLazyInitStep final : public DirectExpressionStep {
  public:
-  DirectCheckLazyInitStep(size_t slot_index,
-                          const DirectExpressionStep* subexpression,
-                          int64_t expr_id)
+  DirectLazyInitStep(size_t slot_index,
+                     const DirectExpressionStep* subexpression, int64_t expr_id)
       : DirectExpressionStep(expr_id),
         slot_index_(slot_index),
         subexpression_(subexpression) {}
 
   absl::Status Evaluate(ExecutionFrameBase& frame, Value& result,
                         AttributeTrail& attribute) const override {
-    auto* slot = frame.comprehension_slots().Get(slot_index_);
-    if (slot != nullptr) {
+    if (auto* slot = frame.comprehension_slots().Get(slot_index_);
+        slot != nullptr) {
       result = slot->value;
       attribute = slot->attribute;
-      return absl::OkStatus();
+    } else {
+      CEL_RETURN_IF_ERROR(subexpression_->Evaluate(frame, result, attribute));
+      frame.comprehension_slots().Set(slot_index_, result, attribute);
     }
-
-    CEL_RETURN_IF_ERROR(subexpression_->Evaluate(frame, result, attribute));
-    frame.comprehension_slots().Set(slot_index_, result, attribute);
-
     return absl::OkStatus();
   }
 
  private:
-  size_t slot_index_;
-  absl::Nonnull<const DirectExpressionStep*> subexpression_;
+  const size_t slot_index_;
+  const absl::Nonnull<const DirectExpressionStep*> subexpression_;
 };
 
 class BindStep : public DirectExpressionStep {
@@ -112,12 +105,11 @@ class BindStep : public DirectExpressionStep {
   std::unique_ptr<DirectExpressionStep> subexpression_;
 };
 
-class AssignSlotStep : public ExpressionStepBase {
+class AssignSlotAndPopStepStep final : public ExpressionStepBase {
  public:
-  explicit AssignSlotStep(size_t slot_index, int64_t expr_id, bool should_pop)
-      : ExpressionStepBase(expr_id, /*comes_from_ast=*/(expr_id >= 0)),
-        slot_index_(slot_index),
-        should_pop_(should_pop) {}
+  explicit AssignSlotAndPopStepStep(size_t slot_index)
+      : ExpressionStepBase(/*expr_id=*/-1, /*comes_from_ast=*/false),
+        slot_index_(slot_index) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override {
     if (!frame->value_stack().HasEnough(1)) {
@@ -126,17 +118,13 @@ class AssignSlotStep : public ExpressionStepBase {
 
     frame->comprehension_slots().Set(slot_index_, frame->value_stack().Peek(),
                                      frame->value_stack().PeekAttribute());
-
-    if (should_pop_) {
-      frame->value_stack().Pop(1);
-    }
+    frame->value_stack().Pop(1);
 
     return absl::OkStatus();
   }
 
  private:
-  size_t slot_index_;
-  bool should_pop_;
+  const size_t slot_index_;
 };
 
 class ClearSlotStep : public ExpressionStepBase {
@@ -164,24 +152,19 @@ std::unique_ptr<DirectExpressionStep> CreateDirectBindStep(
 std::unique_ptr<DirectExpressionStep> CreateDirectLazyInitStep(
     size_t slot_index, absl::Nonnull<const DirectExpressionStep*> subexpression,
     int64_t expr_id) {
-  return std::make_unique<DirectCheckLazyInitStep>(slot_index, subexpression,
-                                                   expr_id);
+  return std::make_unique<DirectLazyInitStep>(slot_index, subexpression,
+                                              expr_id);
 }
 
-std::unique_ptr<ExpressionStep> CreateCheckLazyInitStep(
-    size_t slot_index, size_t subexpression_index, int64_t expr_id) {
-  return std::make_unique<CheckLazyInitStep>(slot_index, subexpression_index,
-                                             expr_id);
-}
-
-std::unique_ptr<ExpressionStep> CreateAssignSlotStep(size_t slot_index,
-                                                     int64_t expr_id) {
-  return std::make_unique<AssignSlotStep>(slot_index, expr_id,
-                                          /*should_pop=*/false);
+std::unique_ptr<ExpressionStep> CreateLazyInitStep(size_t slot_index,
+                                                   size_t subexpression_index,
+                                                   int64_t expr_id) {
+  return std::make_unique<LazyInitStep>(slot_index, subexpression_index,
+                                        expr_id);
 }
 
 std::unique_ptr<ExpressionStep> CreateAssignSlotAndPopStep(size_t slot_index) {
-  return std::make_unique<AssignSlotStep>(slot_index, -1, /*should_pop=*/true);
+  return std::make_unique<AssignSlotAndPopStepStep>(slot_index);
 }
 
 std::unique_ptr<ExpressionStep> CreateClearSlotStep(size_t slot_index,

@@ -58,16 +58,13 @@ std::unique_ptr<DirectExpressionStep> CreateDirectLazyInitStep(
     size_t slot_index, absl::Nonnull<const DirectExpressionStep*> subexpression,
     int64_t expr_id);
 
-// Creates a guard step that checks that an alias is initialized.
-// If it is, push to stack and jump to the step that depends on the value.
-// Otherwise, run the initialization routine (which pushes the value to top of
-// stack) and set the corresponding slot.
-std::unique_ptr<ExpressionStep> CreateCheckLazyInitStep(
-    size_t slot_index, size_t subexpression_index, int64_t expr_id);
+// Creates a step representing accessing a lazily evaluated alias from
+// a bind or block.
+std::unique_ptr<ExpressionStep> CreateLazyInitStep(size_t slot_index,
+                                                   size_t subexpression_index,
+                                                   int64_t expr_id);
 
 // Helper step to assign a slot value from the top of stack on initialization.
-std::unique_ptr<ExpressionStep> CreateAssignSlotStep(size_t slot_index,
-                                                     int64_t expr_id);
 std::unique_ptr<ExpressionStep> CreateAssignSlotAndPopStep(size_t slot_index);
 
 // Helper step to clear a slot.

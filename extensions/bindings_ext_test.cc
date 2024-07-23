@@ -295,7 +295,7 @@ TEST(BindingsExtTest, TraceSupport) {
   EXPECT_TRUE(result.IsInt64() && result.Int64OrDie() == 400)
       << result.DebugString();
 
-  EXPECT_THAT(ids, Contains(Pair(5, IsCelInt64(20))));
+  EXPECT_THAT(ids, Contains(Pair(4, IsCelInt64(20))));
   EXPECT_THAT(ids, Contains(Pair(7, IsCelInt64(20))));
 }
 
