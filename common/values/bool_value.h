@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <ostream>
 #include <string>
+#include <type_traits>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -38,23 +39,29 @@ class ValueManager;
 class BoolValue;
 class TypeManager;
 
-namespace common_internal {
-
-struct BoolValueBase {
+// `BoolValue` represents values of the primitive `bool` type.
+class BoolValue final {
+ public:
   static constexpr ValueKind kKind = ValueKind::kBool;
 
-  BoolValueBase() = default;
-  BoolValueBase(const BoolValueBase&) = default;
-  BoolValueBase(BoolValueBase&&) = default;
-  BoolValueBase& operator=(const BoolValueBase&) = default;
-  BoolValueBase& operator=(BoolValueBase&&) = default;
+  BoolValue() = default;
+  BoolValue(const BoolValue&) = default;
+  BoolValue(BoolValue&&) = default;
+  BoolValue& operator=(const BoolValue&) = default;
+  BoolValue& operator=(BoolValue&&) = default;
 
-  constexpr explicit BoolValueBase(bool value) noexcept : value(value) {}
+  explicit BoolValue(bool value) noexcept : value_(value) {}
+
+  template <typename T, typename = std::enable_if_t<std::is_same_v<T, bool>>>
+  BoolValue& operator=(T value) noexcept {
+    value_ = value;
+    return *this;
+  }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr operator bool() const noexcept { return value; }
+  operator bool() const noexcept { return value_; }
 
-  constexpr ValueKind kind() const { return kKind; }
+  ValueKind kind() const { return kKind; }
 
   BoolType GetType(TypeManager&) const { return BoolType(); }
 
@@ -92,61 +99,15 @@ struct BoolValueBase {
 
   bool IsZeroValue() const { return NativeValue() == false; }
 
-  constexpr bool NativeValue() const { return value; }
-
-  bool value = false;
-};
-
-}  // namespace common_internal
-
-// `BoolValue` represents values of the primitive `bool` type.
-class BoolValue final : private common_internal::BoolValueBase {
- private:
-  using Base = BoolValueBase;
-
- public:
-  using Base::kKind;
-
-  BoolValue() = default;
-  BoolValue(const BoolValue&) = default;
-  BoolValue(BoolValue&&) = default;
-  BoolValue& operator=(const BoolValue&) = default;
-  BoolValue& operator=(BoolValue&&) = default;
-
-  constexpr explicit BoolValue(bool value) noexcept : Base(value) {}
-
-  using Base::kind;
-
-  using Base::GetType;
-
-  using Base::GetTypeName;
-
-  using Base::DebugString;
-
-  using Base::GetSerializedSize;
-
-  using Base::SerializeTo;
-
-  using Base::Serialize;
-
-  using Base::GetTypeUrl;
-
-  using Base::ConvertToAny;
-
-  using Base::ConvertToJson;
-
-  using Base::Equal;
-
-  using Base::IsZeroValue;
-
-  using Base::NativeValue;
-
-  using Base::operator bool;
+  bool NativeValue() const { return static_cast<bool>(*this); }
 
   friend void swap(BoolValue& lhs, BoolValue& rhs) noexcept {
     using std::swap;
-    swap(lhs.value, rhs.value);
+    swap(lhs.value_, rhs.value_);
   }
+
+ private:
+  bool value_ = false;
 };
 
 template <typename H>

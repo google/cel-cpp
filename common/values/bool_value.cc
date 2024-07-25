@@ -27,7 +27,7 @@
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
 
-namespace cel::common_internal {
+namespace cel {
 
 namespace {
 
@@ -35,45 +35,44 @@ std::string BoolDebugString(bool value) { return value ? "true" : "false"; }
 
 }  // namespace
 
-std::string BoolValueBase::DebugString() const {
+std::string BoolValue::DebugString() const {
   return BoolDebugString(NativeValue());
 }
 
-absl::StatusOr<Json> BoolValueBase::ConvertToJson(AnyToJsonConverter&) const {
+absl::StatusOr<Json> BoolValue::ConvertToJson(AnyToJsonConverter&) const {
   return NativeValue();
 }
 
-absl::StatusOr<size_t> BoolValueBase::GetSerializedSize(
-    AnyToJsonConverter&) const {
+absl::StatusOr<size_t> BoolValue::GetSerializedSize(AnyToJsonConverter&) const {
   return internal::SerializedBoolValueSize(NativeValue());
 }
 
-absl::Status BoolValueBase::SerializeTo(AnyToJsonConverter&,
-                                        absl::Cord& value) const {
+absl::Status BoolValue::SerializeTo(AnyToJsonConverter&,
+                                    absl::Cord& value) const {
   return internal::SerializeBoolValue(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> BoolValueBase::Serialize(
+absl::StatusOr<absl::Cord> BoolValue::Serialize(
     AnyToJsonConverter& value_manager) const {
   absl::Cord value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
 }
 
-absl::StatusOr<std::string> BoolValueBase::GetTypeUrl(
+absl::StatusOr<std::string> BoolValue::GetTypeUrl(
     absl::string_view prefix) const {
   return MakeTypeUrlWithPrefix(prefix, "google.protobuf.BoolValue");
 }
 
-absl::StatusOr<Any> BoolValueBase::ConvertToAny(
-    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
+absl::StatusOr<Any> BoolValue::ConvertToAny(AnyToJsonConverter& value_manager,
+                                            absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::Status BoolValueBase::Equal(ValueManager&, const Value& other,
-                                  Value& result) const {
+absl::Status BoolValue::Equal(ValueManager&, const Value& other,
+                              Value& result) const {
   if (auto other_value = As<BoolValue>(other); other_value.has_value()) {
     result = BoolValue{NativeValue() == other_value->NativeValue()};
     return absl::OkStatus();
@@ -82,11 +81,11 @@ absl::Status BoolValueBase::Equal(ValueManager&, const Value& other,
   return absl::OkStatus();
 }
 
-absl::StatusOr<Value> BoolValueBase::Equal(ValueManager& value_manager,
-                                           const Value& other) const {
+absl::StatusOr<Value> BoolValue::Equal(ValueManager& value_manager,
+                                       const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
 }
 
-}  // namespace cel::common_internal
+}  // namespace cel
