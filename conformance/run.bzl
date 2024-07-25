@@ -35,16 +35,19 @@ def _expand_tests_to_skip(tests_to_skip):
             result.append(test_to_skip[0:slash] + part)
     return result
 
-def _conformance_test_name(name, modern, arena, optimize, recursive):
-    return "{}_{}_{}_{}_{}".format(
-        name,
-        "modern" if modern else "legacy",
-        "arena" if arena else "refcount",
-        "optimized" if optimize else "unoptimized",
-        "recursive" if recursive else "iterative",
+def _conformance_test_name(name, modern, arena, optimize, recursive, skip_check):
+    return "_".join(
+        [
+            name,
+            "modern" if modern else "legacy",
+            "arena" if arena else "refcount",
+            "optimized" if optimize else "unoptimized",
+            "recursive" if recursive else "iterative",
+            "parse_only" if skip_check else "checked",
+        ],
     )
 
-def _conformance_test_args(modern, arena, optimize, recursive, skip_tests, dashboard):
+def _conformance_test_args(modern, arena, optimize, recursive, skip_check, skip_tests, dashboard):
     args = []
     if modern:
         args.append("--modern")
@@ -56,15 +59,19 @@ def _conformance_test_args(modern, arena, optimize, recursive, skip_tests, dashb
         args.append("--opt")
     if recursive:
         args.append("--recursive")
+    if skip_check:
+        args.append("--skip_check")
+    else:
+        args.append("--noskip_check")
     args.append("--skip_tests={}".format(",".join(_expand_tests_to_skip(skip_tests))))
     if dashboard:
         args.append("--dashboard")
     return args
 
-def _conformance_test(name, data, modern, arena, optimize, recursive, skip_tests, tags, dashboard):
+def _conformance_test(name, data, modern, arena, optimize, recursive, skip_check, skip_tests, tags, dashboard):
     native.cc_test(
-        name = _conformance_test_name(name, modern, arena, optimize, recursive),
-        args = _conformance_test_args(modern, arena, optimize, recursive, skip_tests, dashboard) + ["$(location " + test + ")" for test in data],
+        name = _conformance_test_name(name, modern, arena, optimize, recursive, skip_check),
+        args = _conformance_test_args(modern, arena, optimize, recursive, skip_check, skip_tests, dashboard) + ["$(location " + test + ")" for test in data],
         data = data,
         deps = ["//conformance:run"],
         tags = tags,
@@ -83,17 +90,37 @@ def gen_conformance_tests(name, data, dashboard = False, skip_tests_modern = [],
     """
 
     # Modern
-    # _conformance_test(name = name, data = data, modern = True, arena = False, optimize = False, recursive = False, skip_tests = skip_tests_modern, tags = tags, dashboard = dashboard)
-    # _conformance_test(name = name, data = data, modern = True, arena = False, optimize = True, recursive = False, skip_tests = skip_tests_modern, tags = tags, dashboard = dashboard)
-    # _conformance_test(name = name, data = data, modern = True, arena = False, optimize = False, recursive = True, skip_tests = skip_tests_modern, tags = tags, dashboard = dashboard)
-    # _conformance_test(name = name, data = data, modern = True, arena = False, optimize = True, recursive = True, skip_tests = skip_tests_modern, tags = tags, dashboard = dashboard)
-    _conformance_test(name = name, data = data, modern = True, arena = True, optimize = False, recursive = False, skip_tests = skip_tests_modern, tags = tags, dashboard = dashboard)
-    _conformance_test(name = name, data = data, modern = True, arena = True, optimize = True, recursive = False, skip_tests = skip_tests_modern, tags = tags, dashboard = dashboard)
-    _conformance_test(name = name, data = data, modern = True, arena = True, optimize = False, recursive = True, skip_tests = skip_tests_modern, tags = tags, dashboard = dashboard)
-    _conformance_test(name = name, data = data, modern = True, arena = True, optimize = True, recursive = True, skip_tests = skip_tests_modern, tags = tags, dashboard = dashboard)
+    # TODO: enable refcount mode.
+    for skip_check in (True, False):
+        for optimize in (True, False):
+            for recursive in (True, False):
+                # TODO: switch to noisy error after conformance is passing.
+                if skip_check or dashboard:
+                    _conformance_test(
+                        name,
+                        data,
+                        modern = True,
+                        arena = True,
+                        optimize = optimize,
+                        recursive = recursive,
+                        skip_check = skip_check,
+                        skip_tests = skip_tests_modern,
+                        tags = tags,
+                        dashboard = dashboard,
+                    )
 
     # Legacy
-    _conformance_test(name = name, data = data, modern = False, arena = True, optimize = False, recursive = False, skip_tests = skip_tests_legacy, tags = tags, dashboard = dashboard)
-    _conformance_test(name = name, data = data, modern = False, arena = True, optimize = True, recursive = False, skip_tests = skip_tests_legacy, tags = tags, dashboard = dashboard)
-    _conformance_test(name = name, data = data, modern = False, arena = True, optimize = False, recursive = True, skip_tests = skip_tests_legacy, tags = tags, dashboard = dashboard)
-    _conformance_test(name = name, data = data, modern = False, arena = True, optimize = True, recursive = True, skip_tests = skip_tests_legacy, tags = tags, dashboard = dashboard)
+    for optimize in (True, False):
+        for recursive in (True, False):
+            _conformance_test(
+                name = name,
+                data = data,
+                modern = False,
+                arena = True,
+                optimize = optimize,
+                recursive = recursive,
+                skip_check = True,
+                skip_tests = skip_tests_legacy,
+                tags = tags,
+                dashboard = dashboard,
+            )
