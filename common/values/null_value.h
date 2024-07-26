@@ -22,7 +22,6 @@
 #include <ostream>
 #include <string>
 
-#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -39,16 +38,17 @@ class ValueManager;
 class NullValue;
 class TypeManager;
 
-namespace common_internal {
+// `NullValue` represents values of the primitive `duration` type.
 
-struct NullValueBase {
+class NullValue final {
+ public:
   static constexpr ValueKind kKind = ValueKind::kNull;
 
-  NullValueBase() = default;
-  NullValueBase(const NullValueBase&) = default;
-  NullValueBase(NullValueBase&&) = default;
-  NullValueBase& operator=(const NullValueBase&) = default;
-  NullValueBase& operator=(NullValueBase&&) = default;
+  NullValue() = default;
+  NullValue(const NullValue&) = default;
+  NullValue(NullValue&&) = default;
+  NullValue& operator=(const NullValue&) = default;
+  NullValue& operator=(NullValue&&) = default;
 
   constexpr ValueKind kind() const { return kKind; }
 
@@ -81,47 +81,6 @@ struct NullValueBase {
                               const Value& other) const;
 
   bool IsZeroValue() const { return true; }
-};
-
-}  // namespace common_internal
-
-// `NullValue` represents values of the primitive `duration` type.
-class NullValue final : private common_internal::NullValueBase {
- private:
-  using Base = NullValueBase;
-
- public:
-  using Base::kKind;
-
-  NullValue() = default;
-  NullValue(const NullValue&) = default;
-  NullValue(NullValue&&) = default;
-  NullValue& operator=(const NullValue&) = default;
-  NullValue& operator=(NullValue&&) = default;
-
-  using Base::kind;
-
-  using Base::GetType;
-
-  using Base::GetTypeName;
-
-  using Base::DebugString;
-
-  using Base::GetSerializedSize;
-
-  using Base::SerializeTo;
-
-  using Base::Serialize;
-
-  using Base::GetTypeUrl;
-
-  using Base::ConvertToAny;
-
-  using Base::ConvertToJson;
-
-  using Base::Equal;
-
-  using Base::IsZeroValue;
 
   friend void swap(NullValue&, NullValue&) noexcept {}
 };
