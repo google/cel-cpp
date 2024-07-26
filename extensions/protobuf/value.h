@@ -50,24 +50,21 @@ namespace cel::extensions {
 
 // Adapt a protobuf enum value to cel:Value.
 template <typename T>
-std::enable_if_t<protobuf_internal::IsProtoEnum<T>, absl::Status>
-ProtoEnumToValue(ValueFactory&, T value, Value& result) {
-  if constexpr (std::is_same_v<T, google::protobuf::NullValue>) {
-    result = NullValue{};
-  } else {
-    result = IntValue{static_cast<int>(value)};
-  }
+ABSL_DEPRECATED("Use Value::Enum")
+std::enable_if_t<protobuf_internal::IsProtoEnum<T>,
+                 absl::Status> ProtoEnumToValue(ValueFactory&, T value,
+                                                Value& result) {
+  result = Value::Enum(value);
   return absl::OkStatus();
 }
 
 // Adapt a protobuf enum value to cel:Value.
 template <typename T>
-std::enable_if_t<protobuf_internal::IsProtoEnum<T>, absl::StatusOr<Value>>
-ProtoEnumToValue(ValueFactory&, T value) {
-  if constexpr (std::is_same_v<T, google::protobuf::NullValue>) {
-    return NullValue{};
-  }
-  return IntValue{static_cast<int>(value)};
+ABSL_DEPRECATED("Use Value::Enum")
+std::enable_if_t<protobuf_internal::IsProtoEnum<T>,
+                 absl::StatusOr<Value>> ProtoEnumToValue(ValueFactory&,
+                                                         T value) {
+  return Value::Enum(value);
 }
 
 // Adapt a cel::Value representing a protobuf enum to the normalized enum value,

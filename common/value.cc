@@ -23,11 +23,13 @@
 #include <utility>
 
 #include "absl/base/nullability.h"
+#include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
@@ -38,6 +40,7 @@
 #include "common/values/values.h"
 #include "internal/status_macros.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel {
 namespace {
@@ -604,6 +607,31 @@ absl::StatusOr<std::pair<Value, int>> StructValue::Qualify(
   CEL_ASSIGN_OR_RETURN(
       auto count, Qualify(value_manager, qualifiers, presence_test, result));
   return std::pair{std::move(result), count};
+}
+
+Value Value::Enum(absl::Nonnull<const google::protobuf::EnumValueDescriptor*> value) {
+  ABSL_DCHECK(value != nullptr);
+  if (value->type()->full_name() == "google.protobuf.NullValue") {
+    ABSL_DCHECK_EQ(value->number(), 0);
+    return NullValue();
+  }
+  return IntValue(value->number());
+}
+
+Value Value::Enum(absl::Nonnull<const google::protobuf::EnumDescriptor*> type,
+                  int32_t number) {
+  ABSL_DCHECK(type != nullptr);
+  if (type->full_name() == "google.protobuf.NullValue") {
+    ABSL_DCHECK_EQ(number, 0);
+    return NullValue();
+  }
+  if (type->is_closed()) {
+    if (ABSL_PREDICT_FALSE(type->FindValueByNumber(number) == nullptr)) {
+      return ErrorValue(absl::InvalidArgumentError(absl::StrCat(
+          "closed enum has no such value: ", type->full_name(), ".", number)));
+    }
+  }
+  return IntValue(number);
 }
 
 }  // namespace cel

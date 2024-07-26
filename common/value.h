@@ -47,6 +47,7 @@
 #include "common/values/bytes_value.h"  // IWYU pragma: export
 #include "common/values/double_value.h"  // IWYU pragma: export
 #include "common/values/duration_value.h"  // IWYU pragma: export
+#include "common/values/enum_value.h"  // IWYU pragma: export
 #include "common/values/error_value.h"  // IWYU pragma: export
 #include "common/values/int_value.h"  // IWYU pragma: export
 #include "common/values/list_value.h"  // IWYU pragma: export
@@ -63,6 +64,8 @@
 #include "common/values/values.h"
 #include "internal/status_macros.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/generated_enum_reflection.h"
 
 namespace cel {
 
@@ -75,6 +78,29 @@ class Value;
 // best to fail.
 class Value final {
  public:
+  // Returns an appropriate `Value` for the dynamic protobuf enum. For open
+  // enums, returns `cel::IntValue`. For closed enums, returns `cel::ErrorValue`
+  // if the value is not present in the enum otherwise returns `cel::IntValue`.
+  static Value Enum(absl::Nonnull<const google::protobuf::EnumValueDescriptor*> value);
+  static Value Enum(absl::Nonnull<const google::protobuf::EnumDescriptor*> type,
+                    int32_t number);
+
+  // SFINAE overload for generated protobuf enums which are not well-known.
+  // Always returns `cel::IntValue`.
+  template <typename T>
+  static common_internal::EnableIfGeneratedEnum<T, IntValue> Enum(T value) {
+    return IntValue(value);
+  }
+
+  // SFINAE overload for google::protobuf::NullValue. Always returns
+  // `cel::NullValue`.
+  template <typename T>
+  static common_internal::EnableIfWellKnownEnum<T, google::protobuf::NullValue,
+                                                NullValue>
+  Enum(T) {
+    return NullValue();
+  }
+
   Value() = default;
   Value(const Value&) = default;
   Value& operator=(const Value&) = default;
