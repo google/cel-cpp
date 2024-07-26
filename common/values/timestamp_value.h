@@ -39,21 +39,25 @@ class ValueManager;
 class TimestampValue;
 class TypeManager;
 
-namespace common_internal {
-
-struct TimestampValueBase {
+// `TimestampValue` represents values of the primitive `timestamp` type.
+class TimestampValue final {
+ public:
   static constexpr ValueKind kKind = ValueKind::kTimestamp;
 
-  constexpr explicit TimestampValueBase(absl::Time value) noexcept
-      : value(value) {}
+  explicit TimestampValue(absl::Time value) noexcept : value_(value) {}
 
-  TimestampValueBase() = default;
-  TimestampValueBase(const TimestampValueBase&) = default;
-  TimestampValueBase(TimestampValueBase&&) = default;
-  TimestampValueBase& operator=(const TimestampValueBase&) = default;
-  TimestampValueBase& operator=(TimestampValueBase&&) = default;
+  TimestampValue& operator=(absl::Time value) noexcept {
+    value_ = value;
+    return *this;
+  }
 
-  constexpr ValueKind kind() const { return kKind; }
+  TimestampValue() = default;
+  TimestampValue(const TimestampValue&) = default;
+  TimestampValue(TimestampValue&&) = default;
+  TimestampValue& operator=(const TimestampValue&) = default;
+  TimestampValue& operator=(TimestampValue&&) = default;
+
+  ValueKind kind() const { return kKind; }
 
   TimestampType GetType(TypeManager&) const { return TimestampType(); }
 
@@ -83,71 +87,25 @@ struct TimestampValueBase {
 
   bool IsZeroValue() const { return NativeValue() == absl::UnixEpoch(); }
 
-  constexpr absl::Time NativeValue() const { return value; }
+  absl::Time NativeValue() const { return static_cast<absl::Time>(*this); }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr operator absl::Time() const noexcept { return value; }
-
-  absl::Time value = absl::UnixEpoch();
-};
-
-}  // namespace common_internal
-
-// `TimestampValue` represents values of the primitive `timestamp` type.
-class TimestampValue final : private common_internal::TimestampValueBase {
- private:
-  using Base = TimestampValueBase;
-
- public:
-  using Base::kKind;
-
-  TimestampValue() = default;
-  TimestampValue(const TimestampValue&) = default;
-  TimestampValue(TimestampValue&&) = default;
-  TimestampValue& operator=(const TimestampValue&) = default;
-  TimestampValue& operator=(TimestampValue&&) = default;
-
-  constexpr explicit TimestampValue(absl::Time value) noexcept : Base(value) {}
-
-  using Base::kind;
-
-  using Base::GetType;
-
-  using Base::GetTypeName;
-
-  using Base::DebugString;
-
-  using Base::GetSerializedSize;
-
-  using Base::SerializeTo;
-
-  using Base::Serialize;
-
-  using Base::GetTypeUrl;
-
-  using Base::ConvertToAny;
-
-  using Base::ConvertToJson;
-
-  using Base::Equal;
-
-  using Base::IsZeroValue;
-
-  using Base::NativeValue;
-
-  using Base::operator absl::Time;
+  operator absl::Time() const noexcept { return value_; }
 
   friend void swap(TimestampValue& lhs, TimestampValue& rhs) noexcept {
     using std::swap;
-    swap(lhs.value, rhs.value);
+    swap(lhs.value_, rhs.value_);
   }
+
+ private:
+  absl::Time value_ = absl::UnixEpoch();
 };
 
-constexpr bool operator==(TimestampValue lhs, TimestampValue rhs) {
+inline bool operator==(TimestampValue lhs, TimestampValue rhs) {
   return lhs.NativeValue() == rhs.NativeValue();
 }
 
-constexpr bool operator!=(TimestampValue lhs, TimestampValue rhs) {
+inline bool operator!=(TimestampValue lhs, TimestampValue rhs) {
   return !operator==(lhs, rhs);
 }
 

@@ -29,7 +29,7 @@
 #include "internal/status_macros.h"
 #include "internal/time.h"
 
-namespace cel::common_internal {
+namespace cel {
 
 namespace {
 
@@ -39,48 +39,47 @@ std::string TimestampDebugString(absl::Time value) {
 
 }  // namespace
 
-std::string TimestampValueBase::DebugString() const {
+std::string TimestampValue::DebugString() const {
   return TimestampDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> TimestampValueBase::GetSerializedSize(
+absl::StatusOr<size_t> TimestampValue::GetSerializedSize(
     AnyToJsonConverter&) const {
   return internal::SerializedTimestampSize(NativeValue());
 }
 
-absl::Status TimestampValueBase::SerializeTo(AnyToJsonConverter&,
-                                             absl::Cord& value) const {
+absl::Status TimestampValue::SerializeTo(AnyToJsonConverter&,
+                                         absl::Cord& value) const {
   return internal::SerializeTimestamp(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> TimestampValueBase::Serialize(
+absl::StatusOr<absl::Cord> TimestampValue::Serialize(
     AnyToJsonConverter& value_manager) const {
   absl::Cord value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
 }
 
-absl::StatusOr<std::string> TimestampValueBase::GetTypeUrl(
+absl::StatusOr<std::string> TimestampValue::GetTypeUrl(
     absl::string_view prefix) const {
   return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Timestamp");
 }
 
-absl::StatusOr<Any> TimestampValueBase::ConvertToAny(
+absl::StatusOr<Any> TimestampValue::ConvertToAny(
     AnyToJsonConverter& value_manager, absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> TimestampValueBase::ConvertToJson(
-    AnyToJsonConverter&) const {
+absl::StatusOr<Json> TimestampValue::ConvertToJson(AnyToJsonConverter&) const {
   CEL_ASSIGN_OR_RETURN(auto json,
                        internal::EncodeTimestampToJson(NativeValue()));
   return JsonString(std::move(json));
 }
 
-absl::Status TimestampValueBase::Equal(ValueManager&, const Value& other,
-                                       Value& result) const {
+absl::Status TimestampValue::Equal(ValueManager&, const Value& other,
+                                   Value& result) const {
   if (auto other_value = As<TimestampValue>(other); other_value.has_value()) {
     result = BoolValue{NativeValue() == other_value->NativeValue()};
     return absl::OkStatus();
@@ -89,11 +88,11 @@ absl::Status TimestampValueBase::Equal(ValueManager&, const Value& other,
   return absl::OkStatus();
 }
 
-absl::StatusOr<Value> TimestampValueBase::Equal(ValueManager& value_manager,
-                                                const Value& other) const {
+absl::StatusOr<Value> TimestampValue::Equal(ValueManager& value_manager,
+                                            const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
 }
 
-}  // namespace cel::common_internal
+}  // namespace cel
