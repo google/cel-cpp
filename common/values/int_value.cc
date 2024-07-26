@@ -30,7 +30,7 @@
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
 
-namespace cel::common_internal {
+namespace cel {
 
 namespace {
 
@@ -38,45 +38,44 @@ std::string IntDebugString(int64_t value) { return absl::StrCat(value); }
 
 }  // namespace
 
-std::string IntValueBase::DebugString() const {
+std::string IntValue::DebugString() const {
   return IntDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> IntValueBase::GetSerializedSize(
-    AnyToJsonConverter&) const {
+absl::StatusOr<size_t> IntValue::GetSerializedSize(AnyToJsonConverter&) const {
   return internal::SerializedInt64ValueSize(NativeValue());
 }
 
-absl::Status IntValueBase::SerializeTo(AnyToJsonConverter&,
-                                       absl::Cord& value) const {
+absl::Status IntValue::SerializeTo(AnyToJsonConverter&,
+                                   absl::Cord& value) const {
   return internal::SerializeInt64Value(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> IntValueBase::Serialize(
+absl::StatusOr<absl::Cord> IntValue::Serialize(
     AnyToJsonConverter& value_manager) const {
   absl::Cord value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
 }
 
-absl::StatusOr<std::string> IntValueBase::GetTypeUrl(
+absl::StatusOr<std::string> IntValue::GetTypeUrl(
     absl::string_view prefix) const {
   return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Int64Value");
 }
 
-absl::StatusOr<Any> IntValueBase::ConvertToAny(
-    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
+absl::StatusOr<Any> IntValue::ConvertToAny(AnyToJsonConverter& value_manager,
+                                           absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> IntValueBase::ConvertToJson(AnyToJsonConverter&) const {
+absl::StatusOr<Json> IntValue::ConvertToJson(AnyToJsonConverter&) const {
   return JsonInt(NativeValue());
 }
 
-absl::Status IntValueBase::Equal(ValueManager&, const Value& other,
-                                 Value& result) const {
+absl::Status IntValue::Equal(ValueManager&, const Value& other,
+                             Value& result) const {
   if (auto other_value = As<IntValue>(other); other_value.has_value()) {
     result = BoolValue{NativeValue() == other_value->NativeValue()};
     return absl::OkStatus();
@@ -97,11 +96,11 @@ absl::Status IntValueBase::Equal(ValueManager&, const Value& other,
   return absl::OkStatus();
 }
 
-absl::StatusOr<Value> IntValueBase::Equal(ValueManager& value_manager,
-                                          const Value& other) const {
+absl::StatusOr<Value> IntValue::Equal(ValueManager& value_manager,
+                                      const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
 }
 
-}  // namespace cel::common_internal
+}  // namespace cel

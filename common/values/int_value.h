@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <ostream>
 #include <string>
+#include <type_traits>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -39,20 +40,29 @@ class ValueManager;
 class IntValue;
 class TypeManager;
 
-namespace common_internal {
-
-struct IntValueBase {
+// `IntValue` represents values of the primitive `int` type.
+class IntValue final {
+ public:
   static constexpr ValueKind kKind = ValueKind::kInt;
 
-  constexpr explicit IntValueBase(int64_t value) noexcept : value(value) {}
+  explicit IntValue(int64_t value) noexcept : value_(value) {}
 
-  IntValueBase() = default;
-  IntValueBase(const IntValueBase&) = default;
-  IntValueBase(IntValueBase&&) = default;
-  IntValueBase& operator=(const IntValueBase&) = default;
-  IntValueBase& operator=(IntValueBase&&) = default;
+  template <typename T,
+            typename = std::enable_if_t<std::conjunction_v<
+                std::is_integral<T>, std::negation<std::is_same<T, bool>>,
+                std::is_convertible<T, int64_t>>>>
+  IntValue& operator=(T value) noexcept {
+    value_ = value;
+    return *this;
+  }
 
-  constexpr ValueKind kind() const { return kKind; }
+  IntValue() = default;
+  IntValue(const IntValue&) = default;
+  IntValue(IntValue&&) = default;
+  IntValue& operator=(const IntValue&) = default;
+  IntValue& operator=(IntValue&&) = default;
+
+  ValueKind kind() const { return kKind; }
 
   IntType GetType(TypeManager&) const { return IntType(); }
 
@@ -90,64 +100,18 @@ struct IntValueBase {
 
   bool IsZeroValue() const { return NativeValue() == 0; }
 
-  constexpr int64_t NativeValue() const { return value; }
+  int64_t NativeValue() const { return static_cast<int64_t>(*this); }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr operator int64_t() const noexcept { return value; }
-
-  int64_t value = 0;
-};
-
-}  // namespace common_internal
-
-// `IntValue` represents values of the primitive `int` type.
-class IntValue final : private common_internal::IntValueBase {
- private:
-  using Base = IntValueBase;
-
- public:
-  using Base::kKind;
-
-  IntValue() = default;
-  IntValue(const IntValue&) = default;
-  IntValue(IntValue&&) = default;
-  IntValue& operator=(const IntValue&) = default;
-  IntValue& operator=(IntValue&&) = default;
-
-  constexpr explicit IntValue(int64_t value) noexcept : Base(value) {}
-
-  using Base::kind;
-
-  using Base::GetType;
-
-  using Base::GetTypeName;
-
-  using Base::DebugString;
-
-  using Base::GetSerializedSize;
-
-  using Base::SerializeTo;
-
-  using Base::Serialize;
-
-  using Base::GetTypeUrl;
-
-  using Base::ConvertToAny;
-
-  using Base::ConvertToJson;
-
-  using Base::Equal;
-
-  using Base::IsZeroValue;
-
-  using Base::NativeValue;
-
-  using Base::operator int64_t;
+  operator int64_t() const noexcept { return value_; }
 
   friend void swap(IntValue& lhs, IntValue& rhs) noexcept {
     using std::swap;
-    swap(lhs.value, rhs.value);
+    swap(lhs.value_, rhs.value_);
   }
+
+ private:
+  int64_t value_ = 0;
 };
 
 template <typename H>
@@ -155,11 +119,11 @@ H AbslHashValue(H state, IntValue value) {
   return H::combine(std::move(state), value.NativeValue());
 }
 
-constexpr bool operator==(IntValue lhs, IntValue rhs) {
+inline bool operator==(IntValue lhs, IntValue rhs) {
   return lhs.NativeValue() == rhs.NativeValue();
 }
 
-constexpr bool operator!=(IntValue lhs, IntValue rhs) {
+inline bool operator!=(IntValue lhs, IntValue rhs) {
   return !operator==(lhs, rhs);
 }
 
