@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <ostream>
 #include <string>
+#include <type_traits>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -39,18 +40,27 @@ class ValueManager;
 class UintValue;
 class TypeManager;
 
-namespace common_internal {
-
-struct UintValueBase {
+// `UintValue` represents values of the primitive `uint` type.
+class UintValue final {
+ public:
   static constexpr ValueKind kKind = ValueKind::kUint;
 
-  constexpr explicit UintValueBase(uint64_t value) noexcept : value(value) {}
+  explicit UintValue(uint64_t value) noexcept : value_(value) {}
 
-  UintValueBase() = default;
-  UintValueBase(const UintValueBase&) = default;
-  UintValueBase(UintValueBase&&) = default;
-  UintValueBase& operator=(const UintValueBase&) = default;
-  UintValueBase& operator=(UintValueBase&&) = default;
+  template <typename T,
+            typename = std::enable_if_t<std::conjunction_v<
+                std::is_integral<T>, std::negation<std::is_same<T, bool>>,
+                std::is_convertible<T, int64_t>>>>
+  UintValue& operator=(T value) noexcept {
+    value_ = value;
+    return *this;
+  }
+
+  UintValue() = default;
+  UintValue(const UintValue&) = default;
+  UintValue(UintValue&&) = default;
+  UintValue& operator=(const UintValue&) = default;
+  UintValue& operator=(UintValue&&) = default;
 
   constexpr ValueKind kind() const { return kKind; }
 
@@ -90,64 +100,20 @@ struct UintValueBase {
 
   bool IsZeroValue() const { return NativeValue() == 0; }
 
-  constexpr uint64_t NativeValue() const { return value; }
+  constexpr uint64_t NativeValue() const {
+    return static_cast<uint64_t>(*this);
+  }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr operator uint64_t() const noexcept { return value; }
-
-  uint64_t value = 0;
-};
-
-}  // namespace common_internal
-
-// `UintValue` represents values of the primitive `uint` type.
-class UintValue final : private common_internal::UintValueBase {
- private:
-  using Base = UintValueBase;
-
- public:
-  using Base::kKind;
-
-  UintValue() = default;
-  UintValue(const UintValue&) = default;
-  UintValue(UintValue&&) = default;
-  UintValue& operator=(const UintValue&) = default;
-  UintValue& operator=(UintValue&&) = default;
-
-  constexpr explicit UintValue(uint64_t value) noexcept : Base(value) {}
-
-  using Base::kind;
-
-  using Base::GetType;
-
-  using Base::GetTypeName;
-
-  using Base::DebugString;
-
-  using Base::GetSerializedSize;
-
-  using Base::SerializeTo;
-
-  using Base::Serialize;
-
-  using Base::GetTypeUrl;
-
-  using Base::ConvertToAny;
-
-  using Base::ConvertToJson;
-
-  using Base::Equal;
-
-  using Base::IsZeroValue;
-
-  using Base::NativeValue;
-
-  using Base::operator uint64_t;
+  constexpr operator uint64_t() const noexcept { return value_; }
 
   friend void swap(UintValue& lhs, UintValue& rhs) noexcept {
     using std::swap;
-    swap(lhs.value, rhs.value);
+    swap(lhs.value_, rhs.value_);
   }
+
+ private:
+  uint64_t value_ = 0;
 };
 
 template <typename H>
