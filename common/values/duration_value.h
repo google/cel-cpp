@@ -39,21 +39,25 @@ class ValueManager;
 class DurationValue;
 class TypeManager;
 
-namespace common_internal {
-
-struct DurationValueBase {
+// `DurationValue` represents values of the primitive `duration` type.
+class DurationValue final {
+ public:
   static constexpr ValueKind kKind = ValueKind::kDuration;
 
-  constexpr explicit DurationValueBase(absl::Duration value) noexcept
-      : value(value) {}
+  explicit DurationValue(absl::Duration value) noexcept : value_(value) {}
 
-  DurationValueBase() = default;
-  DurationValueBase(const DurationValueBase&) = default;
-  DurationValueBase(DurationValueBase&&) = default;
-  DurationValueBase& operator=(const DurationValueBase&) = default;
-  DurationValueBase& operator=(DurationValueBase&&) = default;
+  DurationValue& operator=(absl::Duration value) noexcept {
+    value_ = value;
+    return *this;
+  }
 
-  constexpr ValueKind kind() const { return kKind; }
+  DurationValue() = default;
+  DurationValue(const DurationValue&) = default;
+  DurationValue(DurationValue&&) = default;
+  DurationValue& operator=(const DurationValue&) = default;
+  DurationValue& operator=(DurationValue&&) = default;
+
+  ValueKind kind() const { return kKind; }
 
   DurationType GetType(TypeManager&) const { return DurationType(); }
 
@@ -83,65 +87,20 @@ struct DurationValueBase {
 
   bool IsZeroValue() const { return NativeValue() == absl::ZeroDuration(); }
 
-  constexpr absl::Duration NativeValue() const { return value; }
+  absl::Duration NativeValue() const {
+    return static_cast<absl::Duration>(*this);
+  }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr operator absl::Duration() const noexcept { return value; }
-
-  absl::Duration value = absl::ZeroDuration();
-};
-
-}  // namespace common_internal
-
-// `DurationValue` represents values of the primitive `duration` type.
-class DurationValue final : private common_internal::DurationValueBase {
- private:
-  using Base = DurationValueBase;
-
- public:
-  using Base::kKind;
-
-  DurationValue() = default;
-  DurationValue(const DurationValue&) = default;
-  DurationValue(DurationValue&&) = default;
-  DurationValue& operator=(const DurationValue&) = default;
-  DurationValue& operator=(DurationValue&&) = default;
-
-  constexpr explicit DurationValue(absl::Duration value) noexcept
-      : Base(value) {}
-
-  using Base::kind;
-
-  using Base::GetType;
-
-  using Base::GetTypeName;
-
-  using Base::DebugString;
-
-  using Base::GetSerializedSize;
-
-  using Base::SerializeTo;
-
-  using Base::Serialize;
-
-  using Base::GetTypeUrl;
-
-  using Base::ConvertToAny;
-
-  using Base::ConvertToJson;
-
-  using Base::Equal;
-
-  using Base::IsZeroValue;
-
-  using Base::NativeValue;
-
-  using Base::operator absl::Duration;
+  operator absl::Duration() const noexcept { return value_; }
 
   friend void swap(DurationValue& lhs, DurationValue& rhs) noexcept {
     using std::swap;
-    swap(lhs.value, rhs.value);
+    swap(lhs.value_, rhs.value_);
   }
+
+ private:
+  absl::Duration value_ = absl::ZeroDuration();
 };
 
 inline bool operator==(DurationValue lhs, DurationValue rhs) {

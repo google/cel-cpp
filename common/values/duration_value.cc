@@ -29,7 +29,7 @@
 #include "internal/status_macros.h"
 #include "internal/time.h"
 
-namespace cel::common_internal {
+namespace cel {
 
 namespace {
 
@@ -39,48 +39,47 @@ std::string DurationDebugString(absl::Duration value) {
 
 }  // namespace
 
-std::string DurationValueBase::DebugString() const {
+std::string DurationValue::DebugString() const {
   return DurationDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> DurationValueBase::GetSerializedSize(
+absl::StatusOr<size_t> DurationValue::GetSerializedSize(
     AnyToJsonConverter&) const {
   return internal::SerializedDurationSize(NativeValue());
 }
 
-absl::Status DurationValueBase::SerializeTo(AnyToJsonConverter&,
-                                            absl::Cord& value) const {
+absl::Status DurationValue::SerializeTo(AnyToJsonConverter&,
+                                        absl::Cord& value) const {
   return internal::SerializeDuration(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> DurationValueBase::Serialize(
+absl::StatusOr<absl::Cord> DurationValue::Serialize(
     AnyToJsonConverter& value_manager) const {
   absl::Cord value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
 }
 
-absl::StatusOr<std::string> DurationValueBase::GetTypeUrl(
+absl::StatusOr<std::string> DurationValue::GetTypeUrl(
     absl::string_view prefix) const {
   return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Duration");
 }
 
-absl::StatusOr<Any> DurationValueBase::ConvertToAny(
+absl::StatusOr<Any> DurationValue::ConvertToAny(
     AnyToJsonConverter& value_manager, absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> DurationValueBase::ConvertToJson(
-    AnyToJsonConverter&) const {
+absl::StatusOr<Json> DurationValue::ConvertToJson(AnyToJsonConverter&) const {
   CEL_ASSIGN_OR_RETURN(auto json,
                        internal::EncodeDurationToJson(NativeValue()));
   return JsonString(std::move(json));
 }
 
-absl::Status DurationValueBase::Equal(ValueManager&, const Value& other,
-                                      Value& result) const {
+absl::Status DurationValue::Equal(ValueManager&, const Value& other,
+                                  Value& result) const {
   if (auto other_value = As<DurationValue>(other); other_value.has_value()) {
     result = BoolValue{NativeValue() == other_value->NativeValue()};
     return absl::OkStatus();
@@ -89,11 +88,11 @@ absl::Status DurationValueBase::Equal(ValueManager&, const Value& other,
   return absl::OkStatus();
 }
 
-absl::StatusOr<Value> DurationValueBase::Equal(ValueManager& value_manager,
-                                               const Value& other) const {
+absl::StatusOr<Value> DurationValue::Equal(ValueManager& value_manager,
+                                           const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
 }
 
-}  // namespace cel::common_internal
+}  // namespace cel
