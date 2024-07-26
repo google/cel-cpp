@@ -217,7 +217,10 @@ class Value final {
 
   bool IsZeroValue() const;
 
-  void swap(Value& other) noexcept { variant_.swap(other.variant_); }
+  friend void swap(Value& lhs, Value& rhs) noexcept {
+    using std::swap;
+    swap(lhs.variant_, rhs.variant_);
+  }
 
   friend std::ostream& operator<<(std::ostream& out, const Value& value);
 
@@ -276,8 +279,6 @@ class Value final {
 
   common_internal::ValueVariant variant_;
 };
-
-inline void swap(Value& lhs, Value& rhs) noexcept { lhs.swap(rhs); }
 
 template <>
 struct NativeTypeTraits<Value> final {
