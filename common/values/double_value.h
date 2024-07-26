@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <ostream>
 #include <string>
+#include <type_traits>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -38,20 +39,27 @@ class ValueManager;
 class DoubleValue;
 class TypeManager;
 
-namespace common_internal {
-
-struct DoubleValueBase {
+class DoubleValue final {
+ public:
   static constexpr ValueKind kKind = ValueKind::kDouble;
 
-  constexpr explicit DoubleValueBase(double value) noexcept : value(value) {}
+  explicit DoubleValue(double value) noexcept : value_(value) {}
 
-  DoubleValueBase() = default;
-  DoubleValueBase(const DoubleValueBase&) = default;
-  DoubleValueBase(DoubleValueBase&&) = default;
-  DoubleValueBase& operator=(const DoubleValueBase&) = default;
-  DoubleValueBase& operator=(DoubleValueBase&&) = default;
+  template <typename T,
+            typename = std::enable_if_t<std::conjunction_v<
+                std::is_floating_point<T>, std::is_convertible<T, double>>>>
+  DoubleValue& operator=(T value) noexcept {
+    value_ = value;
+    return *this;
+  }
 
-  constexpr ValueKind kind() const { return kKind; }
+  DoubleValue() = default;
+  DoubleValue(const DoubleValue&) = default;
+  DoubleValue(DoubleValue&&) = default;
+  DoubleValue& operator=(const DoubleValue&) = default;
+  DoubleValue& operator=(DoubleValue&&) = default;
+
+  ValueKind kind() const { return kKind; }
 
   DoubleType GetType(TypeManager&) const { return DoubleType(); }
 
@@ -89,64 +97,18 @@ struct DoubleValueBase {
 
   bool IsZeroValue() const { return NativeValue() == 0.0; }
 
-  constexpr double NativeValue() const { return value; }
+  double NativeValue() const { return static_cast<double>(*this); }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr operator double() const noexcept { return value; }
-
-  double value = 0.0;
-};
-
-}  // namespace common_internal
-
-// `DoubleValue` represents values of the primitive `double` type.
-class DoubleValue final : private common_internal::DoubleValueBase {
- private:
-  using Base = DoubleValueBase;
-
- public:
-  using Base::kKind;
-
-  DoubleValue() = default;
-  DoubleValue(const DoubleValue&) = default;
-  DoubleValue(DoubleValue&&) = default;
-  DoubleValue& operator=(const DoubleValue&) = default;
-  DoubleValue& operator=(DoubleValue&&) = default;
-
-  constexpr explicit DoubleValue(double value) noexcept : Base(value) {}
-
-  using Base::kind;
-
-  using Base::GetType;
-
-  using Base::GetTypeName;
-
-  using Base::DebugString;
-
-  using Base::GetSerializedSize;
-
-  using Base::SerializeTo;
-
-  using Base::Serialize;
-
-  using Base::GetTypeUrl;
-
-  using Base::ConvertToAny;
-
-  using Base::ConvertToJson;
-
-  using Base::Equal;
-
-  using Base::IsZeroValue;
-
-  using Base::NativeValue;
-
-  using Base::operator double;
+  operator double() const noexcept { return value_; }
 
   friend void swap(DoubleValue& lhs, DoubleValue& rhs) noexcept {
     using std::swap;
-    swap(lhs.value, rhs.value);
+    swap(lhs.value_, rhs.value_);
   }
+
+ private:
+  double value_ = 0.0;
 };
 
 inline std::ostream& operator<<(std::ostream& out, DoubleValue value) {

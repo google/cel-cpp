@@ -31,7 +31,7 @@
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
 
-namespace cel::common_internal {
+namespace cel {
 
 namespace {
 
@@ -64,45 +64,45 @@ std::string DoubleDebugString(double value) {
 
 }  // namespace
 
-std::string DoubleValueBase::DebugString() const {
+std::string DoubleValue::DebugString() const {
   return DoubleDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> DoubleValueBase::GetSerializedSize(
+absl::StatusOr<size_t> DoubleValue::GetSerializedSize(
     AnyToJsonConverter&) const {
   return internal::SerializedDoubleValueSize(NativeValue());
 }
 
-absl::Status DoubleValueBase::SerializeTo(AnyToJsonConverter&,
-                                          absl::Cord& value) const {
+absl::Status DoubleValue::SerializeTo(AnyToJsonConverter&,
+                                      absl::Cord& value) const {
   return internal::SerializeDoubleValue(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> DoubleValueBase::Serialize(
+absl::StatusOr<absl::Cord> DoubleValue::Serialize(
     AnyToJsonConverter& value_manager) const {
   absl::Cord value;
   CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
   return value;
 }
 
-absl::StatusOr<std::string> DoubleValueBase::GetTypeUrl(
+absl::StatusOr<std::string> DoubleValue::GetTypeUrl(
     absl::string_view prefix) const {
   return MakeTypeUrlWithPrefix(prefix, "google.protobuf.DoubleValue");
 }
 
-absl::StatusOr<Any> DoubleValueBase::ConvertToAny(
-    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
+absl::StatusOr<Any> DoubleValue::ConvertToAny(AnyToJsonConverter& value_manager,
+                                              absl::string_view prefix) const {
   CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
   CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
   return MakeAny(std::move(type_url), std::move(value));
 }
 
-absl::StatusOr<Json> DoubleValueBase::ConvertToJson(AnyToJsonConverter&) const {
+absl::StatusOr<Json> DoubleValue::ConvertToJson(AnyToJsonConverter&) const {
   return NativeValue();
 }
 
-absl::Status DoubleValueBase::Equal(ValueManager&, const Value& other,
-                                    Value& result) const {
+absl::Status DoubleValue::Equal(ValueManager&, const Value& other,
+                                Value& result) const {
   if (auto other_value = As<DoubleValue>(other); other_value.has_value()) {
     result = BoolValue{NativeValue() == other_value->NativeValue()};
     return absl::OkStatus();
@@ -122,11 +122,11 @@ absl::Status DoubleValueBase::Equal(ValueManager&, const Value& other,
   return absl::OkStatus();
 }
 
-absl::StatusOr<Value> DoubleValueBase::Equal(ValueManager& value_manager,
-                                             const Value& other) const {
+absl::StatusOr<Value> DoubleValue::Equal(ValueManager& value_manager,
+                                         const Value& other) const {
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
 }
 
-}  // namespace cel::common_internal
+}  // namespace cel
