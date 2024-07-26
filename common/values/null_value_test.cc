@@ -52,10 +52,6 @@ TEST_P(NullValueTest, DebugString) {
   }
 }
 
-TEST_P(NullValueTest, GetSerializedSize) {
-  EXPECT_THAT(NullValue().GetSerializedSize(value_manager()), IsOkAndHolds(2));
-}
-
 TEST_P(NullValueTest, ConvertToAny) {
   EXPECT_THAT(
       NullValue().ConvertToAny(value_manager()),

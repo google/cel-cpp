@@ -179,14 +179,6 @@ class Value final {
 
   std::string DebugString() const;
 
-  // `GetSerializedSize` determines the serialized byte size that would result
-  // from serialization, without performing the serialization. If this value
-  // does not support serialization, `FAILED_PRECONDITION` is returned. If this
-  // value does not support calculating serialization size ahead of time,
-  // `UNIMPLEMENTED` is returned.
-  absl::StatusOr<size_t> GetSerializedSize(
-      AnyToJsonConverter& value_manager) const;
-
   // `SerializeTo` serializes this value and appends it to `value`. If this
   // value does not support serialization, `FAILED_PRECONDITION` is returned.
   absl::Status SerializeTo(AnyToJsonConverter& value_manager,

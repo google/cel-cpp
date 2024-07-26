@@ -62,10 +62,6 @@ class TypeValue final {
 
   std::string DebugString() const { return value_.DebugString(); }
 
-  // `GetSerializedSize` always returns `FAILED_PRECONDITION` as `TypeValue` is
-  // not serializable.
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
-
   // `SerializeTo` always returns `FAILED_PRECONDITION` as `TypeValue` is not
   // serializable.
   absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;

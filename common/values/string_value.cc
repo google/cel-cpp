@@ -54,13 +54,6 @@ std::string StringValue::DebugString() const {
   return StringDebugString(*this);
 }
 
-absl::StatusOr<size_t> StringValue::GetSerializedSize(
-    AnyToJsonConverter&) const {
-  return NativeValue([](const auto& bytes) -> size_t {
-    return internal::SerializedStringValueSize(bytes);
-  });
-}
-
 absl::Status StringValue::SerializeTo(AnyToJsonConverter&,
                                       absl::Cord& value) const {
   return NativeValue([&value](const auto& bytes) -> absl::Status {

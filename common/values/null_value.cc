@@ -29,10 +29,6 @@
 
 namespace cel {
 
-absl::StatusOr<size_t> NullValue::GetSerializedSize(AnyToJsonConverter&) const {
-  return internal::SerializedValueSize(kJsonNull);
-}
-
 absl::Status NullValue::SerializeTo(AnyToJsonConverter&,
                                     absl::Cord& value) const {
   return internal::SerializeValue(kJsonNull, value);

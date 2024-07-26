@@ -52,12 +52,6 @@ class ValueInterface : public common_internal::DataInterface {
 
   virtual std::string DebugString() const = 0;
 
-  // `GetSerializedSize` determines the serialized byte size that would result
-  // from serialization, without performing the serialization. If this value
-  // does not support serialization, `FAILED_PRECONDITION` is returned.
-  virtual absl::StatusOr<size_t> GetSerializedSize(
-      AnyToJsonConverter& converter) const;
-
   // `SerializeTo` serializes this value and appends it to `value`. If this
   // value does not support serialization, `FAILED_PRECONDITION` is returned.
   virtual absl::Status SerializeTo(AnyToJsonConverter& converter,

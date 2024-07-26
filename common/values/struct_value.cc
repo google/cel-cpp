@@ -71,22 +71,6 @@ std::string StructValue::DebugString() const {
       variant_);
 }
 
-absl::StatusOr<size_t> StructValue::GetSerializedSize(
-    AnyToJsonConverter& converter) const {
-  AssertIsValid();
-  return absl::visit(
-      [&converter](const auto& alternative) -> absl::StatusOr<size_t> {
-        if constexpr (std::is_same_v<
-                          absl::monostate,
-                          absl::remove_cvref_t<decltype(alternative)>>) {
-          return absl::InternalError("use of invalid StructValue");
-        } else {
-          return alternative.GetSerializedSize(converter);
-        }
-      },
-      variant_);
-}
-
 absl::Status StructValue::SerializeTo(AnyToJsonConverter& converter,
                                       absl::Cord& value) const {
   AssertIsValid();

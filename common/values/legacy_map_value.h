@@ -71,10 +71,6 @@ class LegacyMapValue final {
 
   std::string DebugString() const;
 
-  // See `ValueInterface::GetSerializedSize`.
-  absl::StatusOr<size_t> GetSerializedSize(
-      AnyToJsonConverter& value_manager) const;
-
   // See `ValueInterface::SerializeTo`.
   absl::Status SerializeTo(AnyToJsonConverter& value_manager,
                            absl::Cord& value) const;

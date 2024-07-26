@@ -198,12 +198,6 @@ std::string LegacyMapValue::DebugString() const {
   return (*legacy_map_value_vtable.debug_string)(impl_);
 }
 
-absl::StatusOr<size_t> LegacyMapValue::GetSerializedSize(
-    AnyToJsonConverter&) const {
-  InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.get_serialized_size)(impl_);
-}
-
 absl::Status LegacyMapValue::SerializeTo(AnyToJsonConverter&,
                                          absl::Cord& value) const {
   InitializeLegacyMapValue();

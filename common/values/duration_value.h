@@ -65,8 +65,6 @@ class DurationValue final {
 
   std::string DebugString() const;
 
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
-
   absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
 
   absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;

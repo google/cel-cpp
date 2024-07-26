@@ -53,11 +53,6 @@ TEST_P(DurationValueTest, DebugString) {
   }
 }
 
-TEST_P(DurationValueTest, GetSerializedSize) {
-  EXPECT_THAT(DurationValue().GetSerializedSize(value_manager()),
-              IsOkAndHolds(0));
-}
-
 TEST_P(DurationValueTest, ConvertToAny) {
   EXPECT_THAT(DurationValue().ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Duration"),

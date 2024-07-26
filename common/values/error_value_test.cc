@@ -63,11 +63,6 @@ TEST_P(ErrorValueTest, DebugString) {
   }
 }
 
-TEST_P(ErrorValueTest, GetSerializedSize) {
-  EXPECT_THAT(ErrorValue().GetSerializedSize(value_manager()),
-              StatusIs(absl::StatusCode::kFailedPrecondition));
-}
-
 TEST_P(ErrorValueTest, SerializeTo) {
   absl::Cord value;
   EXPECT_THAT(ErrorValue().SerializeTo(value_manager(), value),

@@ -53,10 +53,6 @@ TEST_P(IntValueTest, DebugString) {
   }
 }
 
-TEST_P(IntValueTest, GetSerializedSize) {
-  EXPECT_THAT(IntValue().GetSerializedSize(value_manager()), IsOkAndHolds(0));
-}
-
 TEST_P(IntValueTest, ConvertToAny) {
   EXPECT_THAT(IntValue().ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Int64Value"),

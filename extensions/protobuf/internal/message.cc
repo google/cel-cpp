@@ -1424,13 +1424,6 @@ class ParsedProtoStructValueInterface
 
   std::string DebugString() const final { return message().DebugString(); }
 
-  // `GetSerializedSize` determines the serialized byte size that would result
-  // from serialization, without performing the serialization. If this value
-  // does not support serialization, `FAILED_PRECONDITION` is returned.
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const final {
-    return message().ByteSizeLong();
-  }
-
   // `SerializeTo` serializes this value and appends it to `value`. If this
   // value does not support serialization, `FAILED_PRECONDITION` is returned.
   absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const final {

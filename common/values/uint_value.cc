@@ -42,10 +42,6 @@ std::string UintValue::DebugString() const {
   return UintDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> UintValue::GetSerializedSize(AnyToJsonConverter&) const {
-  return internal::SerializedUInt64ValueSize(NativeValue());
-}
-
 absl::Status UintValue::SerializeTo(AnyToJsonConverter&,
                                     absl::Cord& value) const {
   return internal::SerializeUInt64Value(NativeValue(), value);

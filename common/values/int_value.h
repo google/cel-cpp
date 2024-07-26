@@ -70,11 +70,6 @@ class IntValue final {
 
   std::string DebugString() const;
 
-  // `GetSerializedSize` determines the serialized byte size that would result
-  // from serialization, without performing the serialization. This always
-  // succeeds and only returns `absl::StatusOr` to meet concept requirements.
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
-
   // `SerializeTo` serializes this value and appends it to `value`.
   absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
 

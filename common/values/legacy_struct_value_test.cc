@@ -43,12 +43,6 @@ TEST_P(LegacyStructValueTest, DebugString) {
   EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).DebugString()), _);
 }
 
-TEST_P(LegacyStructValueTest, GetSerializedSize) {
-  EXPECT_DEATH(static_cast<void>(
-                   LegacyStructValue(0, 0).GetSerializedSize(value_manager())),
-               _);
-}
-
 TEST_P(LegacyStructValueTest, Serialize) {
   EXPECT_DEATH(
       static_cast<void>(LegacyStructValue(0, 0).Serialize(value_manager())), _);

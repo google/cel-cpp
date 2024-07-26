@@ -73,10 +73,6 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final {
 
   std::string DebugString() const;
 
-  // `GetSerializedSize` always returns `FAILED_PRECONDITION` as `ErrorValue` is
-  // not serializable.
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
-
   // `SerializeTo` always returns `FAILED_PRECONDITION` as `ErrorValue` is not
   // serializable.
   absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;

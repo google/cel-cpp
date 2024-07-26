@@ -43,11 +43,6 @@ std::string DurationValue::DebugString() const {
   return DurationDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> DurationValue::GetSerializedSize(
-    AnyToJsonConverter&) const {
-  return internal::SerializedDurationSize(NativeValue());
-}
-
 absl::Status DurationValue::SerializeTo(AnyToJsonConverter&,
                                         absl::Cord& value) const {
   return internal::SerializeDuration(NativeValue(), value);

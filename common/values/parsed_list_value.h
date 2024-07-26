@@ -63,9 +63,6 @@ class ParsedListValueInterface : public ListValueInterface {
  public:
   using alternative_type = ParsedListValue;
 
-  absl::StatusOr<size_t> GetSerializedSize(
-      AnyToJsonConverter& converter) const override;
-
   absl::Status SerializeTo(AnyToJsonConverter& converter,
                            absl::Cord& value) const override;
 
@@ -130,12 +127,6 @@ class ParsedListValue {
   absl::string_view GetTypeName() const { return interface_->GetTypeName(); }
 
   std::string DebugString() const { return interface_->DebugString(); }
-
-  // See `ValueInterface::GetSerializedSize`.
-  absl::StatusOr<size_t> GetSerializedSize(
-      AnyToJsonConverter& converter) const {
-    return interface_->GetSerializedSize(converter);
-  }
 
   // See `ValueInterface::SerializeTo`.
   absl::Status SerializeTo(AnyToJsonConverter& converter,

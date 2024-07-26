@@ -62,10 +62,6 @@ class UnknownValue final {
 
   std::string DebugString() const { return ""; }
 
-  // `GetSerializedSize` always returns `FAILED_PRECONDITION` as `UnknownValue`
-  // is not serializable.
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter&) const;
-
   // `SerializeTo` always returns `FAILED_PRECONDITION` as `UnknownValue` is not
   // serializable.
   absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;

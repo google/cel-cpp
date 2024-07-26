@@ -48,15 +48,6 @@ std::string ListValue::DebugString() const {
       variant_);
 }
 
-absl::StatusOr<size_t> ListValue::GetSerializedSize(
-    AnyToJsonConverter& converter) const {
-  return absl::visit(
-      [&converter](const auto& alternative) -> absl::StatusOr<size_t> {
-        return alternative.GetSerializedSize(converter);
-      },
-      variant_);
-}
-
 absl::Status ListValue::SerializeTo(AnyToJsonConverter& converter,
                                     absl::Cord& value) const {
   return absl::visit(

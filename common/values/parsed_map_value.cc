@@ -47,12 +47,6 @@ absl::Status InvalidMapKeyTypeError(ValueKind kind) {
 
 }  // namespace
 
-absl::StatusOr<size_t> ParsedMapValueInterface::GetSerializedSize(
-    AnyToJsonConverter&) const {
-  return absl::UnimplementedError(
-      "preflighting serialization size is not implemented by this map");
-}
-
 absl::Status ParsedMapValueInterface::SerializeTo(
     AnyToJsonConverter& value_manager, absl::Cord& value) const {
   CEL_ASSIGN_OR_RETURN(auto json, ConvertToJsonObject(value_manager));

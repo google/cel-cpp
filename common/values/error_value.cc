@@ -79,12 +79,6 @@ bool IsNoSuchKey(const ErrorValue& value) {
 
 std::string ErrorValue::DebugString() const { return ErrorDebugString(value_); }
 
-absl::StatusOr<size_t> ErrorValue::GetSerializedSize(
-    AnyToJsonConverter&) const {
-  return absl::FailedPreconditionError(
-      absl::StrCat(GetTypeName(), " is unserializable"));
-}
-
 absl::Status ErrorValue::SerializeTo(AnyToJsonConverter&, absl::Cord&) const {
   return absl::FailedPreconditionError(
       absl::StrCat(GetTypeName(), " is unserializable"));

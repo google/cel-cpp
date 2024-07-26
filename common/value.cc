@@ -114,24 +114,6 @@ std::string Value::DebugString() const {
       variant_);
 }
 
-absl::StatusOr<size_t> Value::GetSerializedSize(
-    AnyToJsonConverter& value_manager) const {
-  AssertIsValid();
-  return absl::visit(
-      [&value_manager](const auto& alternative) -> absl::StatusOr<size_t> {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          // In optimized builds, we just return an error. In debug builds we
-          // cannot reach here.
-          return absl::InternalError("use of invalid Value");
-        } else {
-          return alternative.GetSerializedSize(value_manager);
-        }
-      },
-      variant_);
-}
-
 absl::Status Value::SerializeTo(AnyToJsonConverter& value_manager,
                                 absl::Cord& value) const {
   AssertIsValid();

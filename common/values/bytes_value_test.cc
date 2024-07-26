@@ -58,10 +58,6 @@ TEST_P(BytesValueTest, DebugString) {
   }
 }
 
-TEST_P(BytesValueTest, GetSerializedSize) {
-  EXPECT_THAT(BytesValue().GetSerializedSize(value_manager()), IsOkAndHolds(0));
-}
-
 TEST_P(BytesValueTest, ConvertToAny) {
   EXPECT_THAT(BytesValue().ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.BytesValue"),

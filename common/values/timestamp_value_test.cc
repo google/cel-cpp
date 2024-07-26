@@ -53,11 +53,6 @@ TEST_P(TimestampValueTest, DebugString) {
   }
 }
 
-TEST_P(TimestampValueTest, GetSerializedSize) {
-  EXPECT_THAT(TimestampValue().GetSerializedSize(value_manager()),
-              IsOkAndHolds(0));
-}
-
 TEST_P(TimestampValueTest, ConvertToAny) {
   EXPECT_THAT(TimestampValue().ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Timestamp"),

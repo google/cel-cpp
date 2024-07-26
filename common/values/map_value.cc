@@ -61,15 +61,6 @@ std::string MapValue::DebugString() const {
       variant_);
 }
 
-absl::StatusOr<size_t> MapValue::GetSerializedSize(
-    AnyToJsonConverter& converter) const {
-  return absl::visit(
-      [&converter](const auto& alternative) -> absl::StatusOr<size_t> {
-        return alternative.GetSerializedSize(converter);
-      },
-      variant_);
-}
-
 absl::Status MapValue::SerializeTo(AnyToJsonConverter& converter,
                                    absl::Cord& value) const {
   return absl::visit(

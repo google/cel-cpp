@@ -116,8 +116,6 @@ class ListValue final {
 
   std::string DebugString() const;
 
-  absl::StatusOr<size_t> GetSerializedSize(AnyToJsonConverter& converter) const;
-
   absl::Status SerializeTo(AnyToJsonConverter& converter,
                            absl::Cord& value) const;
 

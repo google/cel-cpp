@@ -276,16 +276,6 @@ TEST_P(MapValueTest, NewIterator) {
   EXPECT_THAT(keys, UnorderedElementsAreArray({0, 1, 2}));
 }
 
-TEST_P(MapValueTest, GetSerializedSize) {
-  ASSERT_OK_AND_ASSIGN(
-      auto value,
-      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                           std::pair{IntValue(1), DoubleValue(4.0)},
-                           std::pair{IntValue(2), DoubleValue(5.0)}));
-  EXPECT_THAT(value.GetSerializedSize(value_manager()),
-              StatusIs(absl::StatusCode::kUnimplemented));
-}
-
 TEST_P(MapValueTest, ConvertToAny) {
   ASSERT_OK_AND_ASSIGN(auto value, NewIntDoubleMapValue());
   EXPECT_THAT(value.ConvertToAny(value_manager()),

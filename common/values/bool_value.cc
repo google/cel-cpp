@@ -43,10 +43,6 @@ absl::StatusOr<Json> BoolValue::ConvertToJson(AnyToJsonConverter&) const {
   return NativeValue();
 }
 
-absl::StatusOr<size_t> BoolValue::GetSerializedSize(AnyToJsonConverter&) const {
-  return internal::SerializedBoolValueSize(NativeValue());
-}
-
 absl::Status BoolValue::SerializeTo(AnyToJsonConverter&,
                                     absl::Cord& value) const {
   return internal::SerializeBoolValue(NativeValue(), value);

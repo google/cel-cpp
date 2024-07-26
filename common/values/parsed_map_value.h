@@ -66,9 +66,6 @@ class ParsedMapValueInterface : public MapValueInterface {
 
   static constexpr ValueKind kKind = MapValueInterface::kKind;
 
-  absl::StatusOr<size_t> GetSerializedSize(
-      AnyToJsonConverter& value_manager) const override;
-
   absl::Status SerializeTo(AnyToJsonConverter& value_manager,
                            absl::Cord& value) const override;
 
@@ -154,12 +151,6 @@ class ParsedMapValue {
   absl::string_view GetTypeName() const { return interface_->GetTypeName(); }
 
   std::string DebugString() const { return interface_->DebugString(); }
-
-  // See `ValueInterface::GetSerializedSize`.
-  absl::StatusOr<size_t> GetSerializedSize(
-      AnyToJsonConverter& converter) const {
-    return interface_->GetSerializedSize(converter);
-  }
 
   // See `ValueInterface::SerializeTo`.
   absl::Status SerializeTo(AnyToJsonConverter& converter,

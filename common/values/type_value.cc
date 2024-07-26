@@ -28,11 +28,6 @@
 
 namespace cel {
 
-absl::StatusOr<size_t> TypeValue::GetSerializedSize(AnyToJsonConverter&) const {
-  return absl::FailedPreconditionError(
-      absl::StrCat(GetTypeName(), " is unserializable"));
-}
-
 absl::Status TypeValue::SerializeTo(AnyToJsonConverter&, absl::Cord&) const {
   return absl::FailedPreconditionError(
       absl::StrCat(GetTypeName(), " is unserializable"));

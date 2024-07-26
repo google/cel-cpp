@@ -51,13 +51,6 @@ std::string BytesDebugString(const Bytes& value) {
 
 std::string BytesValue::DebugString() const { return BytesDebugString(*this); }
 
-absl::StatusOr<size_t> BytesValue::GetSerializedSize(
-    AnyToJsonConverter&) const {
-  return NativeValue([](const auto& bytes) -> size_t {
-    return internal::SerializedBytesValueSize(bytes);
-  });
-}
-
 absl::Status BytesValue::SerializeTo(AnyToJsonConverter&,
                                      absl::Cord& value) const {
   return NativeValue([&value](const auto& bytes) -> absl::Status {

@@ -106,11 +106,6 @@ class ParsedStructValue {
 
   std::string DebugString() const { return interface_->DebugString(); }
 
-  absl::StatusOr<size_t> GetSerializedSize(
-      AnyToJsonConverter& converter) const {
-    return interface_->GetSerializedSize(converter);
-  }
-
   absl::Status SerializeTo(AnyToJsonConverter& converter,
                            absl::Cord& value) const {
     return interface_->SerializeTo(converter, value);

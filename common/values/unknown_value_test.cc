@@ -50,11 +50,6 @@ TEST_P(UnknownValueTest, DebugString) {
   }
 }
 
-TEST_P(UnknownValueTest, GetSerializedSize) {
-  EXPECT_THAT(UnknownValue().GetSerializedSize(value_manager()),
-              StatusIs(absl::StatusCode::kFailedPrecondition));
-}
-
 TEST_P(UnknownValueTest, SerializeTo) {
   absl::Cord value;
   EXPECT_THAT(UnknownValue().SerializeTo(value_manager(), value),

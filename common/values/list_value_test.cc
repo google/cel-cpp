@@ -159,12 +159,6 @@ TEST_P(ListValueTest, NewIterator) {
   EXPECT_THAT(elements, ElementsAreArray({0, 1, 2}));
 }
 
-TEST_P(ListValueTest, GetSerializedSize) {
-  ASSERT_OK_AND_ASSIGN(auto value, NewIntListValue());
-  EXPECT_THAT(value.GetSerializedSize(value_manager()),
-              StatusIs(absl::StatusCode::kUnimplemented));
-}
-
 TEST_P(ListValueTest, ConvertToAny) {
   ASSERT_OK_AND_ASSIGN(auto value, NewIntListValue());
   EXPECT_THAT(value.ConvertToAny(value_manager()),

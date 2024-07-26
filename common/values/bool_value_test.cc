@@ -52,13 +52,6 @@ TEST_P(BoolValueTest, DebugString) {
   }
 }
 
-TEST_P(BoolValueTest, GetSerializedSize) {
-  EXPECT_THAT(BoolValue(false).GetSerializedSize(value_manager()),
-              IsOkAndHolds(0));
-  EXPECT_THAT(BoolValue(true).GetSerializedSize(value_manager()),
-              IsOkAndHolds(2));
-}
-
 TEST_P(BoolValueTest, ConvertToAny) {
   EXPECT_THAT(BoolValue(false).ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.BoolValue"),

@@ -90,9 +90,6 @@ class BytesValue final {
 
   std::string DebugString() const;
 
-  absl::StatusOr<size_t> GetSerializedSize(
-      AnyToJsonConverter& value_manager) const;
-
   absl::Status SerializeTo(AnyToJsonConverter& value_manager,
                            absl::Cord& value) const;
 

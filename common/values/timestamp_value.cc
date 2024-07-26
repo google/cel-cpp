@@ -43,11 +43,6 @@ std::string TimestampValue::DebugString() const {
   return TimestampDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> TimestampValue::GetSerializedSize(
-    AnyToJsonConverter&) const {
-  return internal::SerializedTimestampSize(NativeValue());
-}
-
 absl::Status TimestampValue::SerializeTo(AnyToJsonConverter&,
                                          absl::Cord& value) const {
   return internal::SerializeTimestamp(NativeValue(), value);

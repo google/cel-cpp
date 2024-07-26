@@ -178,13 +178,6 @@ std::string LegacyListValue::DebugString() const {
   return (*legacy_list_value_vtable.debug_string)(impl_);
 }
 
-// See `ValueInterface::GetSerializedSize`.
-absl::StatusOr<size_t> LegacyListValue::GetSerializedSize(
-    AnyToJsonConverter&) const {
-  InitializeLegacyListValue();
-  return (*legacy_list_value_vtable.get_serialized_size)(impl_);
-}
-
 // See `ValueInterface::SerializeTo`.
 absl::Status LegacyListValue::SerializeTo(AnyToJsonConverter&,
                                           absl::Cord& value) const {

@@ -68,11 +68,6 @@ std::string DoubleValue::DebugString() const {
   return DoubleDebugString(NativeValue());
 }
 
-absl::StatusOr<size_t> DoubleValue::GetSerializedSize(
-    AnyToJsonConverter&) const {
-  return internal::SerializedDoubleValueSize(NativeValue());
-}
-
 absl::Status DoubleValue::SerializeTo(AnyToJsonConverter&,
                                       absl::Cord& value) const {
   return internal::SerializeDoubleValue(NativeValue(), value);

@@ -77,11 +77,6 @@ TEST_P(DoubleValueTest, DebugString) {
   }
 }
 
-TEST_P(DoubleValueTest, GetSerializedSize) {
-  EXPECT_THAT(DoubleValue().GetSerializedSize(value_manager()),
-              IsOkAndHolds(0));
-}
-
 TEST_P(DoubleValueTest, ConvertToAny) {
   EXPECT_THAT(DoubleValue().ConvertToAny(value_manager()),
               IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.DoubleValue"),

@@ -245,13 +245,6 @@ std::string LegacyStructValue::DebugString() const {
   return (*legacy_struct_value_vtable.debug_string)(message_ptr_, type_info_);
 }
 
-absl::StatusOr<size_t> LegacyStructValue::GetSerializedSize(
-    AnyToJsonConverter&) const {
-  InitializeLegacyStructValue();
-  return (*legacy_struct_value_vtable.get_serialized_size)(message_ptr_,
-                                                           type_info_);
-}
-
 absl::Status LegacyStructValue::SerializeTo(AnyToJsonConverter&,
                                             absl::Cord& value) const {
   InitializeLegacyStructValue();
