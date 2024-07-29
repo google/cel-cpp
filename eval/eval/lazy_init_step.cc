@@ -141,6 +141,25 @@ class ClearSlotStep : public ExpressionStepBase {
   size_t slot_index_;
 };
 
+class ClearSlotsStep final : public ExpressionStepBase {
+ public:
+  explicit ClearSlotsStep(size_t slot_index, size_t slot_count, int64_t expr_id)
+      : ExpressionStepBase(expr_id),
+        slot_index_(slot_index),
+        slot_count_(slot_count) {}
+
+  absl::Status Evaluate(ExecutionFrame* frame) const override {
+    for (size_t i = 0; i < slot_count_; ++i) {
+      frame->comprehension_slots().ClearSlot(slot_index_ + i);
+    }
+    return absl::OkStatus();
+  }
+
+ private:
+  const size_t slot_index_;
+  const size_t slot_count_;
+};
+
 }  // namespace
 
 std::unique_ptr<DirectExpressionStep> CreateDirectBindStep(
@@ -170,6 +189,13 @@ std::unique_ptr<ExpressionStep> CreateAssignSlotAndPopStep(size_t slot_index) {
 std::unique_ptr<ExpressionStep> CreateClearSlotStep(size_t slot_index,
                                                     int64_t expr_id) {
   return std::make_unique<ClearSlotStep>(slot_index, expr_id);
+}
+
+std::unique_ptr<ExpressionStep> CreateClearSlotsStep(size_t slot_index,
+                                                     size_t slot_count,
+                                                     int64_t expr_id) {
+  ABSL_DCHECK_GT(slot_count, 0);
+  return std::make_unique<ClearSlotsStep>(slot_index, slot_count, expr_id);
 }
 
 }  // namespace google::api::expr::runtime

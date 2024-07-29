@@ -39,6 +39,7 @@ using ::cel::RuntimeOptions;
 using ::cel::TypeProvider;
 using ::cel::ValueManager;
 using ::cel::extensions::ProtoMemoryManagerRef;
+using testing::IsNull;
 
 class LazyInitStepTest : public testing::Test {
  private:
@@ -140,6 +141,22 @@ TEST_F(LazyInitStepTest, CreateClearSlotStepBasic) {
 
   auto* slot = frame.comprehension_slots().Get(0);
   ASSERT_TRUE(slot == nullptr);
+}
+
+TEST_F(LazyInitStepTest, CreateClearSlotsStepBasic) {
+  ExecutionPath path;
+
+  path.push_back(CreateClearSlotsStep(0, 2, -1));
+
+  ExecutionFrame frame(path, activation_, runtime_options_, evaluator_state_);
+  frame.comprehension_slots().Set(0, value_factory().CreateIntValue(42));
+  frame.comprehension_slots().Set(1, value_factory().CreateIntValue(42));
+
+  // This will error because no return value, step will still evaluate.
+  frame.Evaluate().IgnoreError();
+
+  EXPECT_THAT(frame.comprehension_slots().Get(0), IsNull());
+  EXPECT_THAT(frame.comprehension_slots().Get(1), IsNull());
 }
 
 }  // namespace

@@ -73,6 +73,10 @@ std::unique_ptr<ExpressionStep> CreateAssignSlotAndPopStep(size_t slot_index);
 std::unique_ptr<ExpressionStep> CreateClearSlotStep(size_t slot_index,
                                                     int64_t expr_id);
 
+std::unique_ptr<ExpressionStep> CreateClearSlotsStep(size_t slot_index,
+                                                     size_t slot_count,
+                                                     int64_t expr_id);
+
 }  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_EVAL_LAZY_INIT_STEP_H_
