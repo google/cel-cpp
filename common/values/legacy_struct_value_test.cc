@@ -43,26 +43,11 @@ TEST_P(LegacyStructValueTest, DebugString) {
   EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).DebugString()), _);
 }
 
-TEST_P(LegacyStructValueTest, Serialize) {
-  EXPECT_DEATH(
-      static_cast<void>(LegacyStructValue(0, 0).Serialize(value_manager())), _);
-}
-
 TEST_P(LegacyStructValueTest, SerializeTo) {
   absl::Cord serialize_value;
   EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).SerializeTo(
                    value_manager(), serialize_value)),
                _);
-}
-
-TEST_P(LegacyStructValueTest, GetTypeUrl) {
-  EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).GetTypeUrl()), _);
-}
-
-TEST_P(LegacyStructValueTest, ConvertToAny) {
-  EXPECT_DEATH(
-      static_cast<void>(LegacyStructValue(0, 0).ConvertToAny(value_manager())),
-      _);
 }
 
 TEST_P(LegacyStructValueTest, ConvertToJson) {

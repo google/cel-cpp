@@ -70,33 +70,6 @@ absl::Status MapValue::SerializeTo(AnyToJsonConverter& converter,
       variant_);
 }
 
-absl::StatusOr<absl::Cord> MapValue::Serialize(
-    AnyToJsonConverter& converter) const {
-  return absl::visit(
-      [&converter](const auto& alternative) -> absl::StatusOr<absl::Cord> {
-        return alternative.Serialize(converter);
-      },
-      variant_);
-}
-
-absl::StatusOr<std::string> MapValue::GetTypeUrl(
-    absl::string_view prefix) const {
-  return absl::visit(
-      [prefix](const auto& alternative) -> absl::StatusOr<std::string> {
-        return alternative.GetTypeUrl(prefix);
-      },
-      variant_);
-}
-
-absl::StatusOr<Any> MapValue::ConvertToAny(AnyToJsonConverter& converter,
-                                           absl::string_view prefix) const {
-  return absl::visit(
-      [&converter, prefix](const auto& alternative) -> absl::StatusOr<Any> {
-        return alternative.ConvertToAny(converter, prefix);
-      },
-      variant_);
-}
-
 absl::StatusOr<Json> MapValue::ConvertToJson(
     AnyToJsonConverter& converter) const {
   return absl::visit(

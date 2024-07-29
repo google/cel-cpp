@@ -204,25 +204,6 @@ absl::Status LegacyMapValue::SerializeTo(AnyToJsonConverter&,
   return (*legacy_map_value_vtable.serialize_to)(impl_, value);
 }
 
-absl::StatusOr<absl::Cord> LegacyMapValue::Serialize(
-    AnyToJsonConverter& value_manager) const {
-  absl::Cord serialized_value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, serialized_value));
-  return serialized_value;
-}
-
-absl::StatusOr<std::string> LegacyMapValue::GetTypeUrl(
-    absl::string_view prefix) const {
-  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Struct");
-}
-
-absl::StatusOr<Any> LegacyMapValue::ConvertToAny(
-    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
-  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
-  return MakeAny(std::move(type_url), std::move(value));
-}
-
 absl::StatusOr<JsonObject> LegacyMapValue::ConvertToJsonObject(
     AnyToJsonConverter&) const {
   InitializeLegacyMapValue();

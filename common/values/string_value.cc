@@ -61,25 +61,6 @@ absl::Status StringValue::SerializeTo(AnyToJsonConverter&,
   });
 }
 
-absl::StatusOr<absl::Cord> StringValue::Serialize(
-    AnyToJsonConverter& value_manager) const {
-  absl::Cord value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
-  return value;
-}
-
-absl::StatusOr<std::string> StringValue::GetTypeUrl(
-    absl::string_view prefix) const {
-  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.StringValue");
-}
-
-absl::StatusOr<Any> StringValue::ConvertToAny(AnyToJsonConverter& value_manager,
-                                              absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
-  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
-  return MakeAny(std::move(type_url), std::move(value));
-}
-
 absl::StatusOr<Json> StringValue::ConvertToJson(AnyToJsonConverter&) const {
   return NativeCord();
 }

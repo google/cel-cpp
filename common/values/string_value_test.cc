@@ -60,12 +60,6 @@ TEST_P(StringValueTest, DebugString) {
   }
 }
 
-TEST_P(StringValueTest, ConvertToAny) {
-  EXPECT_THAT(StringValue().ConvertToAny(value_manager()),
-              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.StringValue"),
-                                   absl::Cord())));
-}
-
 TEST_P(StringValueTest, ConvertToJson) {
   EXPECT_THAT(StringValue("foo").ConvertToJson(value_manager()),
               IsOkAndHolds(Json(JsonString("foo"))));

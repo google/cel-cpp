@@ -159,13 +159,6 @@ TEST_P(ListValueTest, NewIterator) {
   EXPECT_THAT(elements, ElementsAreArray({0, 1, 2}));
 }
 
-TEST_P(ListValueTest, ConvertToAny) {
-  ASSERT_OK_AND_ASSIGN(auto value, NewIntListValue());
-  EXPECT_THAT(value.ConvertToAny(value_manager()),
-              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.ListValue"),
-                                   absl::Cord())));
-}
-
 TEST_P(ListValueTest, ConvertToJson) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));

@@ -66,21 +66,6 @@ class UnknownValue final {
   // serializable.
   absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
 
-  // `Serialize` always returns `FAILED_PRECONDITION` as `UnknownValue` is not
-  // serializable.
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
-
-  // `GetTypeUrl` always returns `FAILED_PRECONDITION` as `UnknownValue` is not
-  // serializable.
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  // `ConvertToAny` always returns `FAILED_PRECONDITION` as `UnknownValue` is
-  // not serializable.
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter&,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
   // `ConvertToJson` always returns `FAILED_PRECONDITION` as `UnknownValue` is
   // not convertible to JSON.
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;

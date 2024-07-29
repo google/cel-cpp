@@ -276,13 +276,6 @@ TEST_P(MapValueTest, NewIterator) {
   EXPECT_THAT(keys, UnorderedElementsAreArray({0, 1, 2}));
 }
 
-TEST_P(MapValueTest, ConvertToAny) {
-  ASSERT_OK_AND_ASSIGN(auto value, NewIntDoubleMapValue());
-  EXPECT_THAT(value.ConvertToAny(value_manager()),
-              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Struct"),
-                                   absl::Cord())));
-}
-
 TEST_P(MapValueTest, ConvertToJson) {
   ASSERT_OK_AND_ASSIGN(
       auto value,

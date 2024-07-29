@@ -69,21 +69,6 @@ TEST_P(ErrorValueTest, SerializeTo) {
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
-TEST_P(ErrorValueTest, Serialize) {
-  EXPECT_THAT(ErrorValue().Serialize(value_manager()),
-              StatusIs(absl::StatusCode::kFailedPrecondition));
-}
-
-TEST_P(ErrorValueTest, GetTypeUrl) {
-  EXPECT_THAT(ErrorValue().GetTypeUrl(),
-              StatusIs(absl::StatusCode::kFailedPrecondition));
-}
-
-TEST_P(ErrorValueTest, ConvertToAny) {
-  EXPECT_THAT(ErrorValue().ConvertToAny(value_manager()),
-              StatusIs(absl::StatusCode::kFailedPrecondition));
-}
-
 TEST_P(ErrorValueTest, ConvertToJson) {
   EXPECT_THAT(ErrorValue().ConvertToJson(value_manager()),
               StatusIs(absl::StatusCode::kFailedPrecondition));

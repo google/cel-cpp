@@ -87,54 +87,6 @@ absl::Status StructValue::SerializeTo(AnyToJsonConverter& converter,
       variant_);
 }
 
-absl::StatusOr<absl::Cord> StructValue::Serialize(
-    AnyToJsonConverter& converter) const {
-  AssertIsValid();
-  return absl::visit(
-      [&converter](const auto& alternative) -> absl::StatusOr<absl::Cord> {
-        if constexpr (std::is_same_v<
-                          absl::monostate,
-                          absl::remove_cvref_t<decltype(alternative)>>) {
-          return absl::InternalError("use of invalid StructValue");
-        } else {
-          return alternative.Serialize(converter);
-        }
-      },
-      variant_);
-}
-
-absl::StatusOr<std::string> StructValue::GetTypeUrl(
-    absl::string_view prefix) const {
-  AssertIsValid();
-  return absl::visit(
-      [prefix](const auto& alternative) -> absl::StatusOr<std::string> {
-        if constexpr (std::is_same_v<
-                          absl::monostate,
-                          absl::remove_cvref_t<decltype(alternative)>>) {
-          return absl::InternalError("use of invalid StructValue");
-        } else {
-          return alternative.GetTypeUrl(prefix);
-        }
-      },
-      variant_);
-}
-
-absl::StatusOr<Any> StructValue::ConvertToAny(AnyToJsonConverter& converter,
-                                              absl::string_view prefix) const {
-  AssertIsValid();
-  return absl::visit(
-      [&converter, prefix](const auto& alternative) -> absl::StatusOr<Any> {
-        if constexpr (std::is_same_v<
-                          absl::monostate,
-                          absl::remove_cvref_t<decltype(alternative)>>) {
-          return absl::InternalError("use of invalid StructValue");
-        } else {
-          return alternative.ConvertToAny(converter, prefix);
-        }
-      },
-      variant_);
-}
-
 absl::StatusOr<Json> StructValue::ConvertToJson(
     AnyToJsonConverter& converter) const {
   AssertIsValid();

@@ -34,28 +34,6 @@ absl::Status ValueInterface::SerializeTo(AnyToJsonConverter&,
       absl::StrCat(GetTypeName(), " is unserializable"));
 }
 
-absl::StatusOr<absl::Cord> ValueInterface::Serialize(
-    AnyToJsonConverter& value_manager) const {
-  absl::Cord value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
-  return value;
-}
-
-// NOLINTNEXTLINE(google-default-arguments)
-absl::StatusOr<std::string> ValueInterface::GetTypeUrl(
-    absl::string_view) const {
-  return absl::FailedPreconditionError(
-      absl::StrCat(GetTypeName(), " is unserializable"));
-}
-
-// NOLINTNEXTLINE(google-default-arguments)
-absl::StatusOr<Any> ValueInterface::ConvertToAny(
-    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
-  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
-  return MakeAny(std::move(type_url), std::move(value));
-}
-
 absl::StatusOr<Json> ValueInterface::ConvertToJson(AnyToJsonConverter&) const {
   return absl::FailedPreconditionError(
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));

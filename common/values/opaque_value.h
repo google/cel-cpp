@@ -114,24 +114,6 @@ class OpaqueValue {
     return interface_->SerializeTo(converter, value);
   }
 
-  // See `ValueInterface::Serialize`.
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& converter) const {
-    return interface_->Serialize(converter);
-  }
-
-  // See `ValueInterface::GetTypeUrl`.
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
-    return interface_->GetTypeUrl(prefix);
-  }
-
-  // See `ValueInterface::ConvertToAny`.
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter& converter,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const {
-    return interface_->ConvertToAny(converter, prefix);
-  }
-
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const {
     return interface_->ConvertToJson(converter);
   }

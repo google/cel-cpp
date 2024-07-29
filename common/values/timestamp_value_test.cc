@@ -53,12 +53,6 @@ TEST_P(TimestampValueTest, DebugString) {
   }
 }
 
-TEST_P(TimestampValueTest, ConvertToAny) {
-  EXPECT_THAT(TimestampValue().ConvertToAny(value_manager()),
-              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Timestamp"),
-                                   absl::Cord())));
-}
-
 TEST_P(TimestampValueTest, ConvertToJson) {
   EXPECT_THAT(TimestampValue().ConvertToJson(value_manager()),
               IsOkAndHolds(Json(JsonString("1970-01-01T00:00:00Z"))));

@@ -72,19 +72,6 @@ class BoolValue final {
   // `SerializeTo` serializes this value and appends it to `value`.
   absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
 
-  // `Serialize` serializes this value and returns it as `absl::Cord`.
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
-
-  // 'GetTypeUrl' returns the type URL that can be used as the type URL for
-  // `Any`.
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  // 'ConvertToAny' converts this value to `Any`.
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter&,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const;
 
   absl::Status Equal(ValueManager& value_manager, const Value& other,

@@ -185,28 +185,6 @@ absl::Status LegacyListValue::SerializeTo(AnyToJsonConverter&,
   return (*legacy_list_value_vtable.serialize_to)(impl_, value);
 }
 
-// See `ValueInterface::Serialize`.
-absl::StatusOr<absl::Cord> LegacyListValue::Serialize(
-    AnyToJsonConverter& value_manager) const {
-  absl::Cord serialized_value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, serialized_value));
-  return serialized_value;
-}
-
-// See `ValueInterface::GetTypeUrl`.
-absl::StatusOr<std::string> LegacyListValue::GetTypeUrl(
-    absl::string_view prefix) const {
-  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.ListValue");
-}
-
-// See `ValueInterface::ConvertToAny`.
-absl::StatusOr<Any> LegacyListValue::ConvertToAny(
-    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
-  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
-  return MakeAny(std::move(type_url), std::move(value));
-}
-
 absl::StatusOr<JsonArray> LegacyListValue::ConvertToJsonArray(
     AnyToJsonConverter&) const {
   InitializeLegacyListValue();

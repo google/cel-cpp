@@ -77,12 +77,6 @@ TEST_P(DoubleValueTest, DebugString) {
   }
 }
 
-TEST_P(DoubleValueTest, ConvertToAny) {
-  EXPECT_THAT(DoubleValue().ConvertToAny(value_manager()),
-              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.DoubleValue"),
-                                   absl::Cord())));
-}
-
 TEST_P(DoubleValueTest, ConvertToJson) {
   EXPECT_THAT(DoubleValue(1.0).ConvertToJson(value_manager()),
               IsOkAndHolds(Json(1.0)));

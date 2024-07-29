@@ -52,12 +52,6 @@ TEST_P(BoolValueTest, DebugString) {
   }
 }
 
-TEST_P(BoolValueTest, ConvertToAny) {
-  EXPECT_THAT(BoolValue(false).ConvertToAny(value_manager()),
-              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.BoolValue"),
-                                   absl::Cord())));
-}
-
 TEST_P(BoolValueTest, ConvertToJson) {
   EXPECT_THAT(BoolValue(false).ConvertToJson(value_manager()),
               IsOkAndHolds(Json(false)));

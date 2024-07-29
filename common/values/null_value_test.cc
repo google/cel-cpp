@@ -52,13 +52,6 @@ TEST_P(NullValueTest, DebugString) {
   }
 }
 
-TEST_P(NullValueTest, ConvertToAny) {
-  EXPECT_THAT(
-      NullValue().ConvertToAny(value_manager()),
-      IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Value"),
-                           absl::Cord(absl::string_view("\010\000", 2)))));
-}
-
 TEST_P(NullValueTest, ConvertToJson) {
   EXPECT_THAT(NullValue().ConvertToJson(value_manager()),
               IsOkAndHolds(Json(kJsonNull)));

@@ -696,10 +696,51 @@ class ProtoStructValueBuilder final : public StructValueBuilder {
             ProtoAnyToJsonConverter converter(
                 type_reflector_.descriptor_pool(),
                 type_reflector_.message_factory());
-            CEL_ASSIGN_OR_RETURN(auto any, value.ConvertToAny(converter));
+            absl::Cord serialized;
+            CEL_RETURN_IF_ERROR(value.SerializeTo(converter, serialized));
+            std::string type_url;
+            switch (value.kind()) {
+              case ValueKind::kNull:
+                type_url = MakeTypeUrl("google.protobuf.Value");
+                break;
+              case ValueKind::kBool:
+                type_url = MakeTypeUrl("google.protobuf.BoolValue");
+                break;
+              case ValueKind::kInt:
+                type_url = MakeTypeUrl("google.protobuf.Int64Value");
+                break;
+              case ValueKind::kUint:
+                type_url = MakeTypeUrl("google.protobuf.UInt64Value");
+                break;
+              case ValueKind::kDouble:
+                type_url = MakeTypeUrl("google.protobuf.DoubleValue");
+                break;
+              case ValueKind::kBytes:
+                type_url = MakeTypeUrl("google.protobuf.BytesValue");
+                break;
+              case ValueKind::kString:
+                type_url = MakeTypeUrl("google.protobuf.StringValue");
+                break;
+              case ValueKind::kList:
+                type_url = MakeTypeUrl("google.protobuf.ListValue");
+                break;
+              case ValueKind::kMap:
+                type_url = MakeTypeUrl("google.protobuf.Struct");
+                break;
+              case ValueKind::kDuration:
+                type_url = MakeTypeUrl("google.protobuf.Duration");
+                break;
+              case ValueKind::kTimestamp:
+                type_url = MakeTypeUrl("google.protobuf.Timestamp");
+                break;
+              default:
+                type_url = MakeTypeUrl(value.GetTypeName());
+                break;
+            }
             return protobuf_internal::WrapDynamicAnyProto(
-                any, *reflection_->MutableMessage(
-                         message_, field, type_reflector_.message_factory()));
+                type_url, serialized,
+                *reflection_->MutableMessage(
+                    message_, field, type_reflector_.message_factory()));
           }
           default:
             break;

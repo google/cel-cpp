@@ -123,15 +123,6 @@ class StructValue final {
   absl::Status SerializeTo(AnyToJsonConverter& converter,
                            absl::Cord& value) const;
 
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& converter) const;
-
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter& converter,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const;
 
   absl::Status Equal(ValueManager& value_manager, const Value& other,

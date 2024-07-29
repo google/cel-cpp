@@ -22,6 +22,7 @@
 #include "google/protobuf/timestamp.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "common/any.h"
 #include "common/value.h"
@@ -160,11 +161,11 @@ absl::StatusOr<ConformanceListValue> ListValueToConformance(
 
 absl::StatusOr<google::protobuf::Any> ToProtobufAny(
     ValueManager& value_manager, const StructValue& struct_value) {
-  CEL_ASSIGN_OR_RETURN(cel::Any any, struct_value.ConvertToAny(value_manager));
-
+  absl::Cord serialized;
+  CEL_RETURN_IF_ERROR(struct_value.SerializeTo(value_manager, serialized));
   google::protobuf::Any result;
-  result.set_type_url(any.type_url());
-  result.set_value(std::string(any.value()));
+  result.set_type_url(MakeTypeUrl(struct_value.GetTypeName()));
+  result.set_value(std::string(serialized));
 
   return result;
 }

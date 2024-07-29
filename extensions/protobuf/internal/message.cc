@@ -1434,10 +1434,6 @@ class ParsedProtoStructValueInterface
     return absl::OkStatus();
   }
 
-  absl::StatusOr<std::string> GetTypeUrl(absl::string_view prefix) const final {
-    return MakeTypeUrlWithPrefix(prefix, GetTypeName());
-  }
-
   absl::StatusOr<Json> ConvertToJson(
       AnyToJsonConverter& value_manager) const final {
     return ProtoMessageToJson(value_manager, message());
@@ -2119,7 +2115,8 @@ absl::StatusOr<absl::Nonnull<google::protobuf::Message*>> ProtoMessageFromValueI
           auto message,
           NewProtoMessage(pool, factory, value.GetTypeName(), arena));
       ProtoAnyToJsonConverter converter(pool, factory);
-      CEL_ASSIGN_OR_RETURN(auto serialized, value.Serialize(converter));
+      absl::Cord serialized;
+      CEL_RETURN_IF_ERROR(value.SerializeTo(converter, serialized));
       if (!message->ParsePartialFromCord(serialized)) {
         return absl::UnknownError(
             absl::StrCat("failed to parse `", message->GetTypeName(), "`"));
@@ -2251,8 +2248,48 @@ absl::Status ProtoMessageFromValueImpl(
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_ANY: {
       ProtoAnyToJsonConverter converter(pool, factory);
-      CEL_ASSIGN_OR_RETURN(auto any, value.ConvertToAny(converter));
-      return WrapDynamicAnyProto(any, *message);
+      absl::Cord serialized;
+      CEL_RETURN_IF_ERROR(value.SerializeTo(converter, serialized));
+      std::string type_url;
+      switch (value.kind()) {
+        case ValueKind::kNull:
+          type_url = MakeTypeUrl("google.protobuf.Value");
+          break;
+        case ValueKind::kBool:
+          type_url = MakeTypeUrl("google.protobuf.BoolValue");
+          break;
+        case ValueKind::kInt:
+          type_url = MakeTypeUrl("google.protobuf.Int64Value");
+          break;
+        case ValueKind::kUint:
+          type_url = MakeTypeUrl("google.protobuf.UInt64Value");
+          break;
+        case ValueKind::kDouble:
+          type_url = MakeTypeUrl("google.protobuf.DoubleValue");
+          break;
+        case ValueKind::kBytes:
+          type_url = MakeTypeUrl("google.protobuf.BytesValue");
+          break;
+        case ValueKind::kString:
+          type_url = MakeTypeUrl("google.protobuf.StringValue");
+          break;
+        case ValueKind::kList:
+          type_url = MakeTypeUrl("google.protobuf.ListValue");
+          break;
+        case ValueKind::kMap:
+          type_url = MakeTypeUrl("google.protobuf.Struct");
+          break;
+        case ValueKind::kDuration:
+          type_url = MakeTypeUrl("google.protobuf.Duration");
+          break;
+        case ValueKind::kTimestamp:
+          type_url = MakeTypeUrl("google.protobuf.Timestamp");
+          break;
+        default:
+          type_url = MakeTypeUrl(value.GetTypeName());
+          break;
+      }
+      return WrapDynamicAnyProto(type_url, serialized, *message);
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_DURATION: {
       if (auto duration_value = As<DurationValue>(value); duration_value) {

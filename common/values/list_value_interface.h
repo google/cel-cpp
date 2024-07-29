@@ -50,8 +50,6 @@ class ListValueInterface : public ValueInterface {
 
   absl::string_view GetTypeName() const final { return "list"; }
 
-  absl::StatusOr<std::string> GetTypeUrl(absl::string_view prefix) const final;
-
   absl::StatusOr<Json> ConvertToJson(
       AnyToJsonConverter& converter) const final {
     return ConvertToJsonArray(converter);

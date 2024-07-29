@@ -70,15 +70,6 @@ class LegacyStructValue final {
   absl::Status SerializeTo(AnyToJsonConverter& value_manager,
                            absl::Cord& value) const;
 
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& value_manager) const;
-
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter& value_manager,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const;
 
   absl::Status Equal(ValueManager& value_manager, const Value& other,

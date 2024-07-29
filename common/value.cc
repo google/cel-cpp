@@ -135,59 +135,6 @@ absl::Status Value::SerializeTo(AnyToJsonConverter& value_manager,
       variant_);
 }
 
-absl::StatusOr<absl::Cord> Value::Serialize(
-    AnyToJsonConverter& value_manager) const {
-  AssertIsValid();
-  return absl::visit(
-      [&value_manager](const auto& alternative) -> absl::StatusOr<absl::Cord> {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          // In optimized builds, we just return an error. In debug builds we
-          // cannot reach here.
-          return absl::InternalError("use of invalid Value");
-        } else {
-          return alternative.Serialize(value_manager);
-        }
-      },
-      variant_);
-}
-
-absl::StatusOr<std::string> Value::GetTypeUrl(absl::string_view prefix) const {
-  AssertIsValid();
-  return absl::visit(
-      [prefix](const auto& alternative) -> absl::StatusOr<std::string> {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          // In optimized builds, we just return an error. In debug builds we
-          // cannot reach here.
-          return absl::InternalError("use of invalid Value");
-        } else {
-          return alternative.GetTypeUrl(prefix);
-        }
-      },
-      variant_);
-}
-
-absl::StatusOr<Any> Value::ConvertToAny(AnyToJsonConverter& value_manager,
-                                        absl::string_view prefix) const {
-  AssertIsValid();
-  return absl::visit(
-      [&value_manager, prefix](const auto& alternative) -> absl::StatusOr<Any> {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          // In optimized builds, we just return an error. In debug builds we
-          // cannot reach here.
-          return absl::InternalError("use of invalid Value");
-        } else {
-          return alternative.ConvertToAny(value_manager, prefix);
-        }
-      },
-      variant_);
-}
-
 absl::StatusOr<Json> Value::ConvertToJson(
     AnyToJsonConverter& value_manager) const {
   AssertIsValid();

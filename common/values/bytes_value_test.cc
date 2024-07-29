@@ -58,12 +58,6 @@ TEST_P(BytesValueTest, DebugString) {
   }
 }
 
-TEST_P(BytesValueTest, ConvertToAny) {
-  EXPECT_THAT(BytesValue().ConvertToAny(value_manager()),
-              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.BytesValue"),
-                                   absl::Cord())));
-}
-
 TEST_P(BytesValueTest, ConvertToJson) {
   EXPECT_THAT(BytesValue("foo").ConvertToJson(value_manager()),
               IsOkAndHolds(Json(JsonBytes("foo"))));

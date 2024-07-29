@@ -210,22 +210,6 @@ class Value final {
   absl::Status SerializeTo(AnyToJsonConverter& value_manager,
                            absl::Cord& value) const;
 
-  // `Serialize` serializes this value and returns it as `absl::Cord`. If this
-  // value does not support serialization, `FAILED_PRECONDITION` is returned.
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& value_manager) const;
-
-  // 'GetTypeUrl' returns the type URL that can be used as the type URL for
-  // `Any`. If this value does not support serialization, `FAILED_PRECONDITION`
-  // is returned.
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  // 'ConvertToAny' converts this value to `Any`. If this value does not support
-  // serialization, `FAILED_PRECONDITION` is returned.
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter& value_manager,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const;
 
   absl::Status Equal(ValueManager& value_manager, const Value& other,

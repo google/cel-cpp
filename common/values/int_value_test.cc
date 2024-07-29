@@ -53,12 +53,6 @@ TEST_P(IntValueTest, DebugString) {
   }
 }
 
-TEST_P(IntValueTest, ConvertToAny) {
-  EXPECT_THAT(IntValue().ConvertToAny(value_manager()),
-              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Int64Value"),
-                                   absl::Cord())));
-}
-
 TEST_P(IntValueTest, ConvertToJson) {
   EXPECT_THAT(IntValue(1).ConvertToJson(value_manager()),
               IsOkAndHolds(Json(1.0)));

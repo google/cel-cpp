@@ -74,18 +74,6 @@ class LegacyListValue final {
   absl::Status SerializeTo(AnyToJsonConverter& value_manager,
                            absl::Cord& value) const;
 
-  // See `ValueInterface::Serialize`.
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter& value_manager) const;
-
-  // See `ValueInterface::GetTypeUrl`.
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  // See `ValueInterface::ConvertToAny`.
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter& value_manager,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& value_manager) const {
     return ConvertToJsonArray(value_manager);
   }

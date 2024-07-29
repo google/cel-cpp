@@ -252,28 +252,6 @@ absl::Status LegacyStructValue::SerializeTo(AnyToJsonConverter&,
                                                     value);
 }
 
-absl::StatusOr<absl::Cord> LegacyStructValue::Serialize(
-    AnyToJsonConverter& value_manager) const {
-  absl::Cord serialized_value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, serialized_value));
-  return serialized_value;
-}
-
-absl::StatusOr<std::string> LegacyStructValue::GetTypeUrl(
-    absl::string_view prefix) const {
-  InitializeLegacyStructValue();
-  return MakeTypeUrlWithPrefix(
-      prefix,
-      (*legacy_struct_value_vtable.get_type_name)(message_ptr_, type_info_));
-}
-
-absl::StatusOr<Any> LegacyStructValue::ConvertToAny(
-    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto serialized_value, Serialize(value_manager));
-  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
-  return MakeAny(std::move(type_url), std::move(serialized_value));
-}
-
 absl::StatusOr<Json> LegacyStructValue::ConvertToJson(
     AnyToJsonConverter& value_manager) const {
   InitializeLegacyStructValue();

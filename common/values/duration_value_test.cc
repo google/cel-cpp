@@ -53,12 +53,6 @@ TEST_P(DurationValueTest, DebugString) {
   }
 }
 
-TEST_P(DurationValueTest, ConvertToAny) {
-  EXPECT_THAT(DurationValue().ConvertToAny(value_manager()),
-              IsOkAndHolds(MakeAny(MakeTypeUrl("google.protobuf.Duration"),
-                                   absl::Cord())));
-}
-
 TEST_P(DurationValueTest, ConvertToJson) {
   EXPECT_THAT(DurationValue().ConvertToJson(value_manager()),
               IsOkAndHolds(Json(JsonString("0s"))));

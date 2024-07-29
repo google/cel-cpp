@@ -48,25 +48,6 @@ absl::Status DurationValue::SerializeTo(AnyToJsonConverter&,
   return internal::SerializeDuration(NativeValue(), value);
 }
 
-absl::StatusOr<absl::Cord> DurationValue::Serialize(
-    AnyToJsonConverter& value_manager) const {
-  absl::Cord value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
-  return value;
-}
-
-absl::StatusOr<std::string> DurationValue::GetTypeUrl(
-    absl::string_view prefix) const {
-  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Duration");
-}
-
-absl::StatusOr<Any> DurationValue::ConvertToAny(
-    AnyToJsonConverter& value_manager, absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
-  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
-  return MakeAny(std::move(type_url), std::move(value));
-}
-
 absl::StatusOr<Json> DurationValue::ConvertToJson(AnyToJsonConverter&) const {
   CEL_ASSIGN_OR_RETURN(auto json,
                        internal::EncodeDurationToJson(NativeValue()));

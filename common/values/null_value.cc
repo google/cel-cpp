@@ -34,25 +34,6 @@ absl::Status NullValue::SerializeTo(AnyToJsonConverter&,
   return internal::SerializeValue(kJsonNull, value);
 }
 
-absl::StatusOr<absl::Cord> NullValue::Serialize(
-    AnyToJsonConverter& value_manager) const {
-  absl::Cord value;
-  CEL_RETURN_IF_ERROR(SerializeTo(value_manager, value));
-  return value;
-}
-
-absl::StatusOr<std::string> NullValue::GetTypeUrl(
-    absl::string_view prefix) const {
-  return MakeTypeUrlWithPrefix(prefix, "google.protobuf.Value");
-}
-
-absl::StatusOr<Any> NullValue::ConvertToAny(AnyToJsonConverter& value_manager,
-                                            absl::string_view prefix) const {
-  CEL_ASSIGN_OR_RETURN(auto value, Serialize(value_manager));
-  CEL_ASSIGN_OR_RETURN(auto type_url, GetTypeUrl(prefix));
-  return MakeAny(std::move(type_url), std::move(value));
-}
-
 absl::Status NullValue::Equal(ValueManager&, const Value& other,
                               Value& result) const {
   result = BoolValue{InstanceOf<NullValue>(other)};

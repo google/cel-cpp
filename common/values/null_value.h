@@ -60,15 +60,6 @@ class NullValue final {
 
   absl::Status SerializeTo(AnyToJsonConverter&, absl::Cord& value) const;
 
-  absl::StatusOr<absl::Cord> Serialize(AnyToJsonConverter&) const;
-
-  absl::StatusOr<std::string> GetTypeUrl(
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
-  absl::StatusOr<Any> ConvertToAny(
-      AnyToJsonConverter&,
-      absl::string_view prefix = kTypeGoogleApisComPrefix) const;
-
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter&) const {
     return kJsonNull;
   }
