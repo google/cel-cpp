@@ -392,8 +392,7 @@ class ProtoStructValueBuilder final : public StructValueBuilder {
                                                          value_factory_);
     CEL_RETURN_IF_ERROR(list_value->ForEach(
         value_manager,
-        [this, field, accessor,
-         &value_manager](const Value& element) -> absl::StatusOr<bool> {
+        [this, field, accessor](const Value& element) -> absl::StatusOr<bool> {
           CEL_RETURN_IF_ERROR((*accessor)(type_reflector_.descriptor_pool(),
                                           type_reflector_.message_factory(),
                                           reflection_, message_, field,

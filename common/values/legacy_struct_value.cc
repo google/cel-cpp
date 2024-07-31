@@ -33,6 +33,11 @@
 #include "internal/status_macros.h"
 #include "runtime/runtime_options.h"
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type-c-linkage"
+#endif
+
 namespace cel::common_internal {
 
 namespace {
@@ -318,3 +323,7 @@ absl::StatusOr<int> LegacyStructValue::Qualify(
 }
 
 }  // namespace cel::common_internal
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif

@@ -80,6 +80,11 @@
 #define CEL_ATTRIBUTE_DEFAULT_VISIBILITY
 #endif
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type-c-linkage"
+#endif
+
 namespace cel {
 
 namespace {
@@ -1652,3 +1657,7 @@ bool TestOnly_IsLegacyMapBuilder(const MapValueBuilder& builder) {
 }  // namespace interop_internal
 
 }  // namespace cel
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif

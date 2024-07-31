@@ -620,6 +620,11 @@ ABSL_CONST_INIT struct {
   LegacyTypeReflector_NewMapValueBuilder new_map_value_builder = nullptr;
 } legacy_type_reflector_vtable;
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type-c-linkage"
+#endif
+
 #if ABSL_HAVE_ATTRIBUTE_WEAK
 extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<Unique<MapValueBuilder>>
 cel_common_internal_LegacyTypeReflector_NewMapValueBuilder(
@@ -642,6 +647,10 @@ void InitializeLegacyTypeReflector() {
 #endif
   });
 }
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 }  // namespace
 

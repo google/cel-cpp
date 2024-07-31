@@ -112,7 +112,7 @@ class CelExpressionRecursiveImpl : public CelExpression {
   CelExpressionRecursiveImpl& operator=(const CelExpressionRecursiveImpl&) =
       delete;
   CelExpressionRecursiveImpl(CelExpressionRecursiveImpl&&) = default;
-  CelExpressionRecursiveImpl& operator=(CelExpressionRecursiveImpl&&) = default;
+  CelExpressionRecursiveImpl& operator=(CelExpressionRecursiveImpl&&) = delete;
 
   // Implement CelExpression.
   std::unique_ptr<CelEvaluationState> InitializeState(

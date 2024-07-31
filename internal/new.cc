@@ -41,7 +41,7 @@ namespace cel::internal {
 
 namespace {
 
-[[noreturn]] void ThrowStdBadAlloc() {
+[[noreturn, maybe_unused]] void ThrowStdBadAlloc() {
 #ifdef ABSL_HAVE_EXCEPTIONS
   throw std::bad_alloc();
 #else

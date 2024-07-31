@@ -37,6 +37,11 @@
 #include "internal/dynamic_loader.h"  // IWYU pragma: keep
 #include "internal/status_macros.h"
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type-c-linkage"
+#endif
+
 namespace cel::common_internal {
 
 namespace {
@@ -247,3 +252,7 @@ absl::Status LegacyListValue::Contains(ValueManager& value_manager,
 }
 
 }  // namespace cel::common_internal
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
