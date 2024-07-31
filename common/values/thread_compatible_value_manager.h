@@ -43,11 +43,11 @@ class ThreadCompatibleValueManager : public ThreadCompatibleTypeManager,
   TypeReflector& GetTypeReflector() const final { return *type_reflector_; }
 
  private:
-  ListValue CreateZeroListValueImpl(ListTypeView type) override;
+  ListValue CreateZeroListValueImpl(const ListType& type) override;
 
-  MapValue CreateZeroMapValueImpl(MapTypeView type) override;
+  MapValue CreateZeroMapValueImpl(const MapType& type) override;
 
-  OptionalValue CreateZeroOptionalValueImpl(OptionalTypeView type) override;
+  OptionalValue CreateZeroOptionalValueImpl(const OptionalType& type) override;
 
   Shared<TypeReflector> type_reflector_;
   ListValueCacheMap list_values_;

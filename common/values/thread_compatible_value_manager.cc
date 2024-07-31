@@ -23,42 +23,43 @@
 namespace cel::common_internal {
 
 ListValue ThreadCompatibleValueManager::CreateZeroListValueImpl(
-    ListTypeView type) {
+    const ListType& type) {
   if (auto list_value = list_values_.find(type);
       list_value != list_values_.end()) {
     return list_value->second;
   }
   auto list_value =
       GetMemoryManager().MakeShared<EmptyListValue>(ListType(type));
-  type = list_value->GetType();
+  auto list_type = list_value->GetType();
   return list_values_
-      .insert(std::pair{type, ParsedListValue(std::move(list_value))})
+      .insert(std::pair{list_type, ParsedListValue(std::move(list_value))})
       .first->second;
 }
 
 MapValue ThreadCompatibleValueManager::CreateZeroMapValueImpl(
-    MapTypeView type) {
+    const MapType& type) {
   if (auto map_value = map_values_.find(type); map_value != map_values_.end()) {
     return map_value->second;
   }
   auto map_value = GetMemoryManager().MakeShared<EmptyMapValue>(MapType(type));
-  type = map_value->GetType();
+  auto map_type = map_value->GetType();
   return map_values_
-      .insert(std::pair{type, ParsedMapValue(std::move(map_value))})
+      .insert(std::pair{map_type, ParsedMapValue(std::move(map_value))})
       .first->second;
 }
 
 OptionalValue ThreadCompatibleValueManager::CreateZeroOptionalValueImpl(
-    OptionalTypeView type) {
+    const OptionalType& type) {
   if (auto optional_value = optional_values_.find(type);
       optional_value != optional_values_.end()) {
     return optional_value->second;
   }
   auto optional_value =
       GetMemoryManager().MakeShared<EmptyOptionalValue>(OptionalType(type));
-  type = optional_value->GetType();
+  auto optional_type = optional_value->GetType();
   return optional_values_
-      .insert(std::pair{type, OptionalValue(std::move(optional_value))})
+      .insert(
+          std::pair{optional_type, OptionalValue(std::move(optional_value))})
       .first->second;
 }
 

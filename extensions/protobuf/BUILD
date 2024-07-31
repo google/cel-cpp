@@ -43,9 +43,7 @@ cc_library(
     srcs = ["memory_manager.cc"],
     hdrs = ["memory_manager.h"],
     deps = [
-        "//common:casting",
         "//common:memory",
-        "//common:native_type",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",
         "@com_google_protobuf//:protobuf",

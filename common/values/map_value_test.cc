@@ -73,12 +73,10 @@ class MapValueTest : public common_internal::ThreadCompatibleValueTest<> {
     return std::move(*builder).Build();
   }
 
-  ListType GetIntListType() {
-    return type_factory().CreateListType(IntTypeView());
-  }
+  ListType GetIntListType() { return type_factory().CreateListType(IntType()); }
 
   MapType GetIntDoubleMapType() {
-    return type_factory().CreateMapType(IntTypeView(), DoubleTypeView());
+    return type_factory().CreateMapType(IntType(), DoubleType());
   }
 };
 

@@ -15,16 +15,17 @@
 #include "common/types/legacy_type_manager.h"
 
 #include "absl/strings/string_view.h"
-#include "common/sized_input_view.h"
+#include "absl/types/span.h"
 #include "common/type.h"
 
 namespace cel::common_internal {
 
-ListType LegacyTypeManager::CreateListTypeImpl(TypeView element) {
+ListType LegacyTypeManager::CreateListTypeImpl(const Type& element) {
   return ListType(GetMemoryManager(), Type(element));
 }
 
-MapType LegacyTypeManager::CreateMapTypeImpl(TypeView key, TypeView value) {
+MapType LegacyTypeManager::CreateMapTypeImpl(const Type& key,
+                                             const Type& value) {
   return MapType(GetMemoryManager(), Type(key), Type(value));
 }
 
@@ -33,7 +34,7 @@ StructType LegacyTypeManager::CreateStructTypeImpl(absl::string_view name) {
 }
 
 OpaqueType LegacyTypeManager::CreateOpaqueTypeImpl(
-    absl::string_view name, const SizedInputView<TypeView>& parameters) {
+    absl::string_view name, absl::Span<const Type> parameters) {
   return OpaqueType(GetMemoryManager(), name, parameters);
 }
 

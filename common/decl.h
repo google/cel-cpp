@@ -358,7 +358,7 @@ namespace common_internal {
 
 // Checks whether `from` is assignable to `to`.
 // This can probably be in a better place, it is here currently to ease testing.
-bool TypeIsAssignable(TypeView to, TypeView from);
+bool TypeIsAssignable(const Type& to, const Type& from);
 
 }  // namespace common_internal
 

@@ -31,17 +31,12 @@ namespace cel {
 
 class Type;
 class DurationType;
-class DurationTypeView;
 
 // `DurationType` represents the primitive `duration` type.
 class DurationType final {
  public:
-  using view_alternative_type = DurationTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kDuration;
   static constexpr absl::string_view kName = "google.protobuf.Duration";
-
-  explicit DurationType(DurationTypeView);
 
   DurationType() = default;
   DurationType(const DurationType&) = default;
@@ -84,69 +79,6 @@ H AbslHashValue(H state, DurationType) {
 inline std::ostream& operator<<(std::ostream& out, const DurationType& type) {
   return out << type.DebugString();
 }
-
-class DurationTypeView final {
- public:
-  using alternative_type = DurationType;
-
-  static constexpr TypeKind kKind = DurationType::kKind;
-  static constexpr absl::string_view kName = DurationType::kName;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  DurationTypeView(const DurationType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                       ABSL_ATTRIBUTE_UNUSED) noexcept {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  DurationTypeView& operator=(
-      const DurationType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-          ABSL_ATTRIBUTE_UNUSED) {
-    return *this;
-  }
-
-  DurationTypeView& operator=(DurationType&&) = delete;
-
-  DurationTypeView() = default;
-  DurationTypeView(const DurationTypeView&) = default;
-  DurationTypeView(DurationTypeView&&) = default;
-  DurationTypeView& operator=(const DurationTypeView&) = default;
-  DurationTypeView& operator=(DurationTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  constexpr absl::string_view name() const { return kName; }
-
-  absl::Span<const Type> parameters() const { return {}; }
-
-  std::string DebugString() const { return std::string(name()); }
-
-  constexpr void swap(DurationTypeView&) noexcept {}
-};
-
-inline constexpr void swap(DurationTypeView& lhs,
-                           DurationTypeView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline constexpr bool operator==(DurationTypeView, DurationTypeView) {
-  return true;
-}
-
-inline constexpr bool operator!=(DurationTypeView lhs, DurationTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, DurationTypeView) {
-  // DurationType is really a singleton and all instances are equal.
-  // Nothing to hash.
-  return std::move(state);
-}
-
-inline std::ostream& operator<<(std::ostream& out, DurationTypeView type) {
-  return out << type.DebugString();
-}
-
-inline DurationType::DurationType(DurationTypeView) {}
 
 }  // namespace cel
 

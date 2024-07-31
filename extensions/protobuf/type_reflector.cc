@@ -768,7 +768,7 @@ class ProtoStructValueBuilder final : public StructValueBuilder {
 
 absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
 ProtoTypeReflector::NewStructValueBuilder(ValueFactory& value_factory,
-                                          StructTypeView type) const {
+                                          const StructType& type) const {
   // Well known types are handled via `NewValueBuilder`. If we are requested to
   // create a well known type here, we pretend we do not support it.
   const auto* descriptor =

@@ -613,7 +613,7 @@ class MapValueBuilderImpl<Value, Value> final : public MapValueBuilder {
 };
 
 using LegacyTypeReflector_NewMapValueBuilder =
-    absl::StatusOr<Unique<MapValueBuilder>> (*)(ValueFactory&, MapTypeView);
+    absl::StatusOr<Unique<MapValueBuilder>> (*)(ValueFactory&, const MapType&);
 
 ABSL_CONST_INIT struct {
   absl::once_flag init_once;
@@ -623,7 +623,7 @@ ABSL_CONST_INIT struct {
 #if ABSL_HAVE_ATTRIBUTE_WEAK
 extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<Unique<MapValueBuilder>>
 cel_common_internal_LegacyTypeReflector_NewMapValueBuilder(
-    ValueFactory& value_factory, MapTypeView type);
+    ValueFactory& value_factory, const MapType& type);
 #endif
 
 void InitializeLegacyTypeReflector() {
@@ -646,7 +646,7 @@ void InitializeLegacyTypeReflector() {
 }  // namespace
 
 absl::StatusOr<Unique<MapValueBuilder>> TypeReflector::NewMapValueBuilder(
-    ValueFactory& value_factory, MapTypeView type) const {
+    ValueFactory& value_factory, const MapType& type) const {
   InitializeLegacyTypeReflector();
   auto memory_manager = value_factory.GetMemoryManager();
   if (memory_manager.memory_management() == MemoryManagement::kPooling &&
@@ -980,7 +980,7 @@ absl::StatusOr<Unique<MapValueBuilder>> TypeReflector::NewMapValueBuilder(
 namespace common_internal {
 
 absl::StatusOr<Unique<MapValueBuilder>> LegacyTypeReflector::NewMapValueBuilder(
-    ValueFactory& value_factory, MapTypeView type) const {
+    ValueFactory& value_factory, const MapType& type) const {
   InitializeLegacyTypeReflector();
   auto memory_manager = value_factory.GetMemoryManager();
   if (memory_manager.memory_management() == MemoryManagement::kPooling &&

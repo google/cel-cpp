@@ -31,17 +31,12 @@ namespace cel {
 
 class Type;
 class UintType;
-class UintTypeView;
 
 // `UintType` represents the primitive `uint` type.
 class UintType final {
  public:
-  using view_alternative_type = UintTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kUint;
   static constexpr absl::string_view kName = "uint";
-
-  explicit UintType(UintTypeView);
 
   UintType() = default;
   UintType(const UintType&) = default;
@@ -84,65 +79,6 @@ H AbslHashValue(H state, UintType) {
 inline std::ostream& operator<<(std::ostream& out, const UintType& type) {
   return out << type.DebugString();
 }
-
-class UintTypeView final {
- public:
-  using alternative_type = UintType;
-
-  static constexpr TypeKind kKind = UintType::kKind;
-  static constexpr absl::string_view kName = UintType::kName;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  UintTypeView(const UintType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                   ABSL_ATTRIBUTE_UNUSED) noexcept {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  UintTypeView& operator=(const UintType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                              ABSL_ATTRIBUTE_UNUSED) {
-    return *this;
-  }
-
-  UintTypeView& operator=(UintType&&) = delete;
-
-  UintTypeView() = default;
-  UintTypeView(const UintTypeView&) = default;
-  UintTypeView(UintTypeView&&) = default;
-  UintTypeView& operator=(const UintTypeView&) = default;
-  UintTypeView& operator=(UintTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  constexpr absl::string_view name() const { return kName; }
-
-  absl::Span<const Type> parameters() const { return {}; }
-
-  std::string DebugString() const { return std::string(name()); }
-
-  constexpr void swap(UintTypeView&) noexcept {}
-};
-
-inline constexpr void swap(UintTypeView& lhs, UintTypeView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline constexpr bool operator==(UintTypeView, UintTypeView) { return true; }
-
-inline constexpr bool operator!=(UintTypeView lhs, UintTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, UintTypeView) {
-  // UintType is really a singleton and all instances are equal. Nothing to
-  // hash.
-  return std::move(state);
-}
-
-inline std::ostream& operator<<(std::ostream& out, UintTypeView type) {
-  return out << type.DebugString();
-}
-
-inline UintType::UintType(UintTypeView) {}
 
 }  // namespace cel
 

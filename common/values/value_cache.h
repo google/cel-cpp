@@ -40,10 +40,9 @@ namespace cel {
 
 namespace common_internal {
 
-using ListValueCacheMap = absl::flat_hash_map<ListTypeView, ParsedListValue>;
-using MapValueCacheMap = absl::flat_hash_map<MapTypeView, ParsedMapValue>;
-using OptionalValueCacheMap =
-    absl::flat_hash_map<OptionalTypeView, OptionalValue>;
+using ListValueCacheMap = absl::flat_hash_map<ListType, ParsedListValue>;
+using MapValueCacheMap = absl::flat_hash_map<MapType, ParsedMapValue>;
+using OptionalValueCacheMap = absl::flat_hash_map<OptionalType, OptionalValue>;
 
 class ProcessLocalValueCache final {
  public:
@@ -51,18 +50,18 @@ class ProcessLocalValueCache final {
 
   ErrorValue GetDefaultErrorValue() const;
 
-  absl::optional<ParsedListValue> GetEmptyListValue(ListTypeView type) const;
+  absl::optional<ParsedListValue> GetEmptyListValue(const ListType& type) const;
 
   ParsedListValue GetEmptyDynListValue() const;
 
-  absl::optional<ParsedMapValue> GetEmptyMapValue(MapTypeView type) const;
+  absl::optional<ParsedMapValue> GetEmptyMapValue(const MapType& type) const;
 
   ParsedMapValue GetEmptyDynDynMapValue() const;
 
   ParsedMapValue GetEmptyStringDynMapValue() const;
 
   absl::optional<OptionalValue> GetEmptyOptionalValue(
-      OptionalTypeView type) const;
+      const OptionalType& type) const;
 
   OptionalValue GetEmptyDynOptionalValue() const;
 
@@ -96,7 +95,7 @@ class EmptyListValue final : public ParsedListValueInterface {
     return JsonArray();
   }
 
-  ListTypeView GetType() const { return type_; }
+  ListType GetType() const { return type_; }
 
  private:
   NativeTypeId GetNativeTypeId() const noexcept override {
@@ -161,7 +160,7 @@ class EmptyMapValue final : public ParsedMapValueInterface {
     return JsonObject();
   }
 
-  MapTypeView GetType() const { return type_; }
+  MapType GetType() const { return type_; }
 
  private:
   NativeTypeId GetNativeTypeId() const noexcept override {
@@ -193,7 +192,7 @@ class EmptyOptionalValue final : public OptionalValueInterface {
         absl::FailedPreconditionError("optional.none() dereference"));
   }
 
-  OptionalTypeView GetType() const { return type_; }
+  OptionalType GetType() const { return type_; }
 
  private:
   friend struct NativeTypeTraits<EmptyOptionalValue>;

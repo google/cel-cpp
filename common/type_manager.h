@@ -15,7 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPE_MANAGER_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_MANAGER_H_
 
-#include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
@@ -33,35 +32,19 @@ class TypeManager : public virtual TypeFactory {
   virtual ~TypeManager() = default;
 
   // See `TypeIntrospector::FindType`.
-  absl::StatusOr<absl::optional<TypeView>> FindType(
-      absl::string_view name, Type& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    return GetTypeIntrospector().FindType(*this, name, scratch);
-  }
   absl::StatusOr<absl::optional<Type>> FindType(absl::string_view name) {
     return GetTypeIntrospector().FindType(*this, name);
   }
 
   // See `TypeIntrospector::FindStructTypeFieldByName`.
-  absl::StatusOr<absl::optional<StructTypeFieldView>> FindStructTypeFieldByName(
-      absl::string_view type, absl::string_view name,
-      StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    return GetTypeIntrospector().FindStructTypeFieldByName(*this, type, name,
-                                                           scratch);
-  }
   absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByName(
       absl::string_view type, absl::string_view name) {
     return GetTypeIntrospector().FindStructTypeFieldByName(*this, type, name);
   }
 
   // See `TypeIntrospector::FindStructTypeFieldByName`.
-  absl::StatusOr<absl::optional<StructTypeFieldView>> FindStructTypeFieldByName(
-      StructTypeView type, absl::string_view name,
-      StructTypeField& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    return GetTypeIntrospector().FindStructTypeFieldByName(*this, type, name,
-                                                           scratch);
-  }
   absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByName(
-      StructTypeView type, absl::string_view name) {
+      const StructType& type, absl::string_view name) {
     return GetTypeIntrospector().FindStructTypeFieldByName(*this, type, name);
   }
 

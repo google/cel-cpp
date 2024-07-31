@@ -29,14 +29,14 @@ namespace cel::extensions {
 
 namespace {
 
-absl::StatusOr<TypeView> ProtoSingularFieldTypeToType(
+absl::StatusOr<Type> ProtoSingularFieldTypeToType(
     TypeFactory& type_factory,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field_desc, Type& scratch) {
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field_desc) {
   switch (field_desc->type()) {
     case google::protobuf::FieldDescriptor::TYPE_FLOAT:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_DOUBLE:
-      return DoubleTypeView{};
+      return DoubleType{};
     case google::protobuf::FieldDescriptor::TYPE_SFIXED32:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_SINT32:
@@ -48,7 +48,7 @@ absl::StatusOr<TypeView> ProtoSingularFieldTypeToType(
     case google::protobuf::FieldDescriptor::TYPE_SINT64:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_INT64:
-      return IntTypeView{};
+      return IntType{};
     case google::protobuf::FieldDescriptor::TYPE_FIXED32:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_UINT32:
@@ -56,20 +56,19 @@ absl::StatusOr<TypeView> ProtoSingularFieldTypeToType(
     case google::protobuf::FieldDescriptor::TYPE_FIXED64:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_UINT64:
-      return UintTypeView{};
+      return UintType{};
     case google::protobuf::FieldDescriptor::TYPE_BOOL:
-      return BoolTypeView{};
+      return BoolType{};
     case google::protobuf::FieldDescriptor::TYPE_STRING:
-      return StringTypeView{};
+      return StringType{};
     case google::protobuf::FieldDescriptor::TYPE_GROUP:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
-      return ProtoTypeToType(type_factory, field_desc->message_type(), scratch);
+      return ProtoTypeToType(type_factory, field_desc->message_type());
     case google::protobuf::FieldDescriptor::TYPE_BYTES:
-      return BytesTypeView{};
+      return BytesType{};
     case google::protobuf::FieldDescriptor::TYPE_ENUM:
-      return ProtoEnumTypeToType(type_factory, field_desc->enum_type(),
-                                 scratch);
+      return ProtoEnumTypeToType(type_factory, field_desc->enum_type());
     default:
       return absl::InvalidArgumentError(
           absl::StrCat("unexpected protocol buffer message field type: ",
@@ -79,82 +78,75 @@ absl::StatusOr<TypeView> ProtoSingularFieldTypeToType(
 
 }  // namespace
 
-absl::StatusOr<TypeView> ProtoTypeToType(
-    TypeFactory& type_factory, absl::Nonnull<const google::protobuf::Descriptor*> desc,
-    Type& scratch) {
+absl::StatusOr<Type> ProtoTypeToType(
+    TypeFactory& type_factory, absl::Nonnull<const google::protobuf::Descriptor*> desc) {
   switch (desc->well_known_type()) {
     case google::protobuf::Descriptor::WELLKNOWNTYPE_FLOATVALUE:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::Descriptor::WELLKNOWNTYPE_DOUBLEVALUE:
-      return DoubleWrapperTypeView{};
+      return DoubleWrapperType{};
     case google::protobuf::Descriptor::WELLKNOWNTYPE_INT32VALUE:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::Descriptor::WELLKNOWNTYPE_INT64VALUE:
-      return IntWrapperTypeView{};
+      return IntWrapperType{};
     case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT32VALUE:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT64VALUE:
-      return UintWrapperTypeView{};
+      return UintWrapperType{};
     case google::protobuf::Descriptor::WELLKNOWNTYPE_STRINGVALUE:
-      return StringWrapperTypeView{};
+      return StringWrapperType{};
     case google::protobuf::Descriptor::WELLKNOWNTYPE_BYTESVALUE:
-      return BytesWrapperTypeView{};
+      return BytesWrapperType{};
     case google::protobuf::Descriptor::WELLKNOWNTYPE_BOOLVALUE:
-      return BoolWrapperTypeView{};
+      return BoolWrapperType{};
     case google::protobuf::Descriptor::WELLKNOWNTYPE_ANY:
-      return AnyTypeView{};
+      return AnyType{};
     case google::protobuf::Descriptor::WELLKNOWNTYPE_DURATION:
-      return DurationTypeView{};
+      return DurationType{};
     case google::protobuf::Descriptor::WELLKNOWNTYPE_TIMESTAMP:
-      return TimestampTypeView{};
+      return TimestampType{};
     case google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE:
-      return DynTypeView{};
+      return DynType{};
     case google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE:
       return common_internal::ProcessLocalTypeCache::Get()->GetDynListType();
     case google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT:
       return common_internal::ProcessLocalTypeCache::Get()
           ->GetStringDynMapType();
     default:
-      scratch = type_factory.CreateStructType(desc->full_name());
-      return scratch;
+      return type_factory.CreateStructType(desc->full_name());
   }
 }
 
-absl::StatusOr<TypeView> ProtoEnumTypeToType(
-    TypeFactory&, absl::Nonnull<const google::protobuf::EnumDescriptor*> desc, Type&) {
+absl::StatusOr<Type> ProtoEnumTypeToType(
+    TypeFactory&, absl::Nonnull<const google::protobuf::EnumDescriptor*> desc) {
   if (desc->full_name() == "google.protobuf.NullValue") {
-    return NullTypeView{};
+    return NullType{};
   }
-  return IntTypeView{};
+  return IntType{};
 }
 
-absl::StatusOr<TypeView> ProtoFieldTypeToType(
+absl::StatusOr<Type> ProtoFieldTypeToType(
     TypeFactory& type_factory,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field_desc, Type& scratch) {
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field_desc) {
   if (field_desc->is_map()) {
     Type map_key_scratch;
     Type map_value_scratch;
     CEL_ASSIGN_OR_RETURN(
-        auto key_type, ProtoFieldTypeToType(
-                           type_factory, field_desc->message_type()->map_key(),
-                           map_key_scratch));
+        auto key_type,
+        ProtoFieldTypeToType(type_factory,
+                             field_desc->message_type()->map_key()));
     CEL_ASSIGN_OR_RETURN(
         auto value_type,
         ProtoFieldTypeToType(type_factory,
-                             field_desc->message_type()->map_value(),
-                             map_value_scratch));
-    scratch = type_factory.CreateMapType(key_type, value_type);
-    return scratch;
+                             field_desc->message_type()->map_value()));
+    return type_factory.CreateMapType(key_type, value_type);
   }
   if (field_desc->is_repeated()) {
-    Type element_scratch;
-    CEL_ASSIGN_OR_RETURN(auto element_type,
-                         ProtoSingularFieldTypeToType(type_factory, field_desc,
-                                                      element_scratch));
-    scratch = type_factory.CreateListType(element_type);
-    return scratch;
+    CEL_ASSIGN_OR_RETURN(auto element_type, ProtoSingularFieldTypeToType(
+                                                type_factory, field_desc));
+    return type_factory.CreateListType(element_type);
   }
-  return ProtoSingularFieldTypeToType(type_factory, field_desc, scratch);
+  return ProtoSingularFieldTypeToType(type_factory, field_desc);
 }
 
 }  // namespace cel::extensions

@@ -31,17 +31,12 @@ namespace cel {
 
 class Type;
 class DoubleType;
-class DoubleTypeView;
 
 // `BoolType` represents the primitive `double` type.
 class DoubleType final {
  public:
-  using view_alternative_type = DoubleTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kDouble;
   static constexpr absl::string_view kName = "double";
-
-  explicit DoubleType(DoubleTypeView);
 
   DoubleType() = default;
   DoubleType(const DoubleType&) = default;
@@ -84,67 +79,6 @@ H AbslHashValue(H state, DoubleType) {
 inline std::ostream& operator<<(std::ostream& out, const DoubleType& type) {
   return out << type.DebugString();
 }
-
-class DoubleTypeView final {
- public:
-  using alternative_type = DoubleType;
-
-  static constexpr TypeKind kKind = DoubleType::kKind;
-  static constexpr absl::string_view kName = DoubleType::kName;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  DoubleTypeView(const DoubleType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                     ABSL_ATTRIBUTE_UNUSED) noexcept {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  DoubleTypeView& operator=(const DoubleType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                                ABSL_ATTRIBUTE_UNUSED) {
-    return *this;
-  }
-
-  DoubleTypeView& operator=(DoubleType&&) = delete;
-
-  DoubleTypeView() = default;
-  DoubleTypeView(const DoubleTypeView&) = default;
-  DoubleTypeView(DoubleTypeView&&) = default;
-  DoubleTypeView& operator=(const DoubleTypeView&) = default;
-  DoubleTypeView& operator=(DoubleTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  constexpr absl::string_view name() const { return kName; }
-
-  absl::Span<const Type> parameters() const { return {}; }
-
-  std::string DebugString() const { return std::string(name()); }
-
-  constexpr void swap(DoubleTypeView&) noexcept {}
-};
-
-inline constexpr void swap(DoubleTypeView& lhs, DoubleTypeView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline constexpr bool operator==(DoubleTypeView, DoubleTypeView) {
-  return true;
-}
-
-inline constexpr bool operator!=(DoubleTypeView lhs, DoubleTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, DoubleTypeView) {
-  // DoubleType is really a singleton and all instances are equal. Nothing to
-  // hash.
-  return std::move(state);
-}
-
-inline std::ostream& operator<<(std::ostream& out, DoubleTypeView type) {
-  return out << type.DebugString();
-}
-
-inline DoubleType::DoubleType(DoubleTypeView) {}
 
 }  // namespace cel
 

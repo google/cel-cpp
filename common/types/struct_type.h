@@ -33,9 +33,7 @@ namespace cel {
 
 class Type;
 class StructType;
-class StructTypeView;
 struct StructTypeField;
-struct StructTypeFieldView;
 
 namespace common_internal {
 struct StructTypeData;
@@ -43,11 +41,7 @@ struct StructTypeData;
 
 class StructType final {
  public:
-  using view_alternative_type = StructTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kStruct;
-
-  explicit StructType(StructTypeView other);
 
   StructType(MemoryManagerRef memory_manager, absl::string_view name);
 
@@ -73,7 +67,6 @@ class StructType final {
   }
 
  private:
-  friend class StructTypeView;
   friend struct NativeTypeTraits<StructType>;
 
   Shared<const common_internal::StructTypeData> data_;
@@ -104,70 +97,6 @@ struct NativeTypeTraits<StructType> final {
     return NativeType::SkipDestructor(type.data_);
   }
 };
-
-class StructTypeView final {
- public:
-  using alternative_type = StructType;
-
-  static constexpr TypeKind kKind = StructType::kKind;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  StructTypeView(const StructType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  StructTypeView& operator=(
-      const StructType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    data_ = type.data_;
-    return *this;
-  }
-
-  StructTypeView& operator=(StructType&&) = delete;
-
-  StructTypeView() = delete;
-  StructTypeView(const StructTypeView&) = default;
-  StructTypeView(StructTypeView&&) = default;
-  StructTypeView& operator=(const StructTypeView&) = default;
-  StructTypeView& operator=(StructTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  absl::string_view name() const;
-
-  absl::Span<const Type> parameters() const { return {}; }
-
-  std::string DebugString() const { return std::string(name()); }
-
-  void swap(StructTypeView& other) noexcept {
-    using std::swap;
-    swap(data_, other.data_);
-  }
-
- private:
-  friend class StructType;
-
-  SharedView<const common_internal::StructTypeData> data_;
-};
-
-inline void swap(StructTypeView& lhs, StructTypeView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline bool operator==(StructTypeView lhs, StructTypeView rhs) {
-  return lhs.name() == rhs.name();
-}
-
-inline bool operator!=(StructTypeView lhs, StructTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, StructTypeView type) {
-  return H::combine(std::move(state), type.name());
-}
-
-inline std::ostream& operator<<(std::ostream& out, StructTypeView type) {
-  return out << type.DebugString();
-}
 
 }  // namespace cel
 

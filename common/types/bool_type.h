@@ -31,17 +31,12 @@ namespace cel {
 
 class Type;
 class BoolType;
-class BoolTypeView;
 
 // `BoolType` represents the primitive `bool` type.
 class BoolType final {
  public:
-  using view_alternative_type = BoolTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kBool;
   static constexpr absl::string_view kName = "bool";
-
-  explicit BoolType(BoolTypeView);
 
   BoolType() = default;
   BoolType(const BoolType&) = default;
@@ -84,65 +79,6 @@ H AbslHashValue(H state, BoolType) {
 inline std::ostream& operator<<(std::ostream& out, const BoolType& type) {
   return out << type.DebugString();
 }
-
-class BoolTypeView final {
- public:
-  using alternative_type = BoolType;
-
-  static constexpr TypeKind kKind = BoolType::kKind;
-  static constexpr absl::string_view kName = BoolType::kName;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  BoolTypeView(const BoolType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                   ABSL_ATTRIBUTE_UNUSED) noexcept {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  BoolTypeView& operator=(const BoolType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                              ABSL_ATTRIBUTE_UNUSED) {
-    return *this;
-  }
-
-  BoolTypeView& operator=(BoolType&&) = delete;
-
-  BoolTypeView() = default;
-  BoolTypeView(const BoolTypeView&) = default;
-  BoolTypeView(BoolTypeView&&) = default;
-  BoolTypeView& operator=(const BoolTypeView&) = default;
-  BoolTypeView& operator=(BoolTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  constexpr absl::string_view name() const { return kName; }
-
-  absl::Span<const Type> parameters() const { return {}; }
-
-  std::string DebugString() const { return std::string(name()); }
-
-  constexpr void swap(BoolTypeView&) noexcept {}
-};
-
-inline constexpr void swap(BoolTypeView& lhs, BoolTypeView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline constexpr bool operator==(BoolTypeView, BoolTypeView) { return true; }
-
-inline constexpr bool operator!=(BoolTypeView lhs, BoolTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, BoolTypeView) {
-  // BoolType is really a singleton and all instances are equal. Nothing to
-  // hash.
-  return std::move(state);
-}
-
-inline std::ostream& operator<<(std::ostream& out, BoolTypeView type) {
-  return out << type.DebugString();
-}
-
-inline BoolType::BoolType(BoolTypeView) {}
 
 }  // namespace cel
 

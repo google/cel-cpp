@@ -33,14 +33,12 @@ class ThreadCompatibleTypeIntrospector : public virtual TypeIntrospector {
   ThreadCompatibleTypeIntrospector() = default;
 
  protected:
-  absl::StatusOr<absl::optional<TypeView>> FindTypeImpl(
-      TypeFactory& type_factory, absl::string_view name,
-      Type& scratch) const override;
+  absl::StatusOr<absl::optional<Type>> FindTypeImpl(
+      TypeFactory& type_factory, absl::string_view name) const override;
 
-  absl::StatusOr<absl::optional<StructTypeFieldView>>
-  FindStructTypeFieldByNameImpl(TypeFactory& type_factory,
-                                absl::string_view type, absl::string_view name,
-                                StructTypeField& scratch) const override;
+  absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByNameImpl(
+      TypeFactory& type_factory, absl::string_view type,
+      absl::string_view name) const override;
 };
 
 }  // namespace cel::common_internal

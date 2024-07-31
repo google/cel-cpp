@@ -18,16 +18,15 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_TYPE_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_TYPE_VALUE_H_
 
-#include <cstddef>
 #include <ostream>
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/any.h"
 #include "common/json.h"
 #include "common/native_type.h"
 #include "common/type.h"
@@ -75,7 +74,9 @@ class TypeValue final {
 
   bool IsZeroValue() const { return false; }
 
-  TypeView NativeValue() const { return value_; }
+  const Type& NativeValue() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return value_;
+  }
 
   void swap(TypeValue& other) noexcept {
     using std::swap;

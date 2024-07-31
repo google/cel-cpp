@@ -156,56 +156,53 @@ TEST(FunctionDecl, Overloads) {
 using common_internal::TypeIsAssignable;
 
 TEST(TypeIsAssignable, BoolWrapper) {
-  EXPECT_TRUE(TypeIsAssignable(BoolWrapperTypeView{}, BoolWrapperTypeView{}));
-  EXPECT_TRUE(TypeIsAssignable(BoolWrapperTypeView{}, NullTypeView{}));
-  EXPECT_TRUE(TypeIsAssignable(BoolWrapperTypeView{}, BoolTypeView{}));
-  EXPECT_FALSE(TypeIsAssignable(BoolWrapperTypeView{}, DurationTypeView{}));
+  EXPECT_TRUE(TypeIsAssignable(BoolWrapperType{}, BoolWrapperType{}));
+  EXPECT_TRUE(TypeIsAssignable(BoolWrapperType{}, NullType{}));
+  EXPECT_TRUE(TypeIsAssignable(BoolWrapperType{}, BoolType{}));
+  EXPECT_FALSE(TypeIsAssignable(BoolWrapperType{}, DurationType{}));
 }
 
 TEST(TypeIsAssignable, IntWrapper) {
-  EXPECT_TRUE(TypeIsAssignable(IntWrapperTypeView{}, IntWrapperTypeView{}));
-  EXPECT_TRUE(TypeIsAssignable(IntWrapperTypeView{}, NullTypeView{}));
-  EXPECT_TRUE(TypeIsAssignable(IntWrapperTypeView{}, IntTypeView{}));
-  EXPECT_FALSE(TypeIsAssignable(IntWrapperTypeView{}, DurationTypeView{}));
+  EXPECT_TRUE(TypeIsAssignable(IntWrapperType{}, IntWrapperType{}));
+  EXPECT_TRUE(TypeIsAssignable(IntWrapperType{}, NullType{}));
+  EXPECT_TRUE(TypeIsAssignable(IntWrapperType{}, IntType{}));
+  EXPECT_FALSE(TypeIsAssignable(IntWrapperType{}, DurationType{}));
 }
 
 TEST(TypeIsAssignable, UintWrapper) {
-  EXPECT_TRUE(TypeIsAssignable(UintWrapperTypeView{}, UintWrapperTypeView{}));
-  EXPECT_TRUE(TypeIsAssignable(UintWrapperTypeView{}, NullTypeView{}));
-  EXPECT_TRUE(TypeIsAssignable(UintWrapperTypeView{}, UintTypeView{}));
-  EXPECT_FALSE(TypeIsAssignable(UintWrapperTypeView{}, DurationTypeView{}));
+  EXPECT_TRUE(TypeIsAssignable(UintWrapperType{}, UintWrapperType{}));
+  EXPECT_TRUE(TypeIsAssignable(UintWrapperType{}, NullType{}));
+  EXPECT_TRUE(TypeIsAssignable(UintWrapperType{}, UintType{}));
+  EXPECT_FALSE(TypeIsAssignable(UintWrapperType{}, DurationType{}));
 }
 
 TEST(TypeIsAssignable, DoubleWrapper) {
-  EXPECT_TRUE(
-      TypeIsAssignable(DoubleWrapperTypeView{}, DoubleWrapperTypeView{}));
-  EXPECT_TRUE(TypeIsAssignable(DoubleWrapperTypeView{}, NullTypeView{}));
-  EXPECT_TRUE(TypeIsAssignable(DoubleWrapperTypeView{}, DoubleTypeView{}));
-  EXPECT_FALSE(TypeIsAssignable(DoubleWrapperTypeView{}, DurationTypeView{}));
+  EXPECT_TRUE(TypeIsAssignable(DoubleWrapperType{}, DoubleWrapperType{}));
+  EXPECT_TRUE(TypeIsAssignable(DoubleWrapperType{}, NullType{}));
+  EXPECT_TRUE(TypeIsAssignable(DoubleWrapperType{}, DoubleType{}));
+  EXPECT_FALSE(TypeIsAssignable(DoubleWrapperType{}, DurationType{}));
 }
 
 TEST(TypeIsAssignable, BytesWrapper) {
-  EXPECT_TRUE(TypeIsAssignable(BytesWrapperTypeView{}, BytesWrapperTypeView{}));
-  EXPECT_TRUE(TypeIsAssignable(BytesWrapperTypeView{}, NullTypeView{}));
-  EXPECT_TRUE(TypeIsAssignable(BytesWrapperTypeView{}, BytesTypeView{}));
-  EXPECT_FALSE(TypeIsAssignable(BytesWrapperTypeView{}, DurationTypeView{}));
+  EXPECT_TRUE(TypeIsAssignable(BytesWrapperType{}, BytesWrapperType{}));
+  EXPECT_TRUE(TypeIsAssignable(BytesWrapperType{}, NullType{}));
+  EXPECT_TRUE(TypeIsAssignable(BytesWrapperType{}, BytesType{}));
+  EXPECT_FALSE(TypeIsAssignable(BytesWrapperType{}, DurationType{}));
 }
 
 TEST(TypeIsAssignable, StringWrapper) {
-  EXPECT_TRUE(
-      TypeIsAssignable(StringWrapperTypeView{}, StringWrapperTypeView{}));
-  EXPECT_TRUE(TypeIsAssignable(StringWrapperTypeView{}, NullTypeView{}));
-  EXPECT_TRUE(TypeIsAssignable(StringWrapperTypeView{}, StringTypeView{}));
-  EXPECT_FALSE(TypeIsAssignable(StringWrapperTypeView{}, DurationTypeView{}));
+  EXPECT_TRUE(TypeIsAssignable(StringWrapperType{}, StringWrapperType{}));
+  EXPECT_TRUE(TypeIsAssignable(StringWrapperType{}, NullType{}));
+  EXPECT_TRUE(TypeIsAssignable(StringWrapperType{}, StringType{}));
+  EXPECT_FALSE(TypeIsAssignable(StringWrapperType{}, DurationType{}));
 }
 
 TEST(TypeIsAssignable, Complex) {
   auto memory_manager = MemoryManagerRef::ReferenceCounting();
-  EXPECT_TRUE(TypeIsAssignable(OptionalType(memory_manager, DynTypeView{}),
-                               OptionalType(memory_manager, StringTypeView{})));
-  EXPECT_FALSE(
-      TypeIsAssignable(OptionalType(memory_manager, BoolTypeView{}),
-                       OptionalType(memory_manager, StringTypeView{})));
+  EXPECT_TRUE(TypeIsAssignable(OptionalType(memory_manager, DynType{}),
+                               OptionalType(memory_manager, StringType{})));
+  EXPECT_FALSE(TypeIsAssignable(OptionalType(memory_manager, BoolType{}),
+                                OptionalType(memory_manager, StringType{})));
 }
 
 }  // namespace

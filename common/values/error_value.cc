@@ -62,7 +62,7 @@ ErrorValue TypeConversionError(absl::string_view from, absl::string_view to) {
       absl::StrCat("type conversion error from '", from, "' to '", to, "'")));
 }
 
-ErrorValue TypeConversionError(TypeView from, TypeView to) {
+ErrorValue TypeConversionError(const Type& from, const Type& to) {
   return TypeConversionError(from.DebugString(), to.DebugString());
 }
 

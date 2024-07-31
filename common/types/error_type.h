@@ -31,19 +31,14 @@ namespace cel {
 
 class Type;
 class ErrorType;
-class ErrorTypeView;
 
 // `ErrorType` is a special type which represents an error during type checking
 // or an error value at runtime. See
 // https://github.com/google/cel-spec/blob/master/doc/langdef.md#runtime-errors.
 class ErrorType final {
  public:
-  using view_alternative_type = ErrorTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kError;
   static constexpr absl::string_view kName = "*error*";
-
-  explicit ErrorType(ErrorTypeView);
 
   ErrorType() = default;
   ErrorType(const ErrorType&) = default;
@@ -86,65 +81,6 @@ H AbslHashValue(H state, ErrorType) {
 inline std::ostream& operator<<(std::ostream& out, const ErrorType& type) {
   return out << type.DebugString();
 }
-
-class ErrorTypeView final {
- public:
-  using alternative_type = ErrorType;
-
-  static constexpr TypeKind kKind = ErrorType::kKind;
-  static constexpr absl::string_view kName = ErrorType::kName;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ErrorTypeView(const ErrorType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                    ABSL_ATTRIBUTE_UNUSED) noexcept {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ErrorTypeView& operator=(const ErrorType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                               ABSL_ATTRIBUTE_UNUSED) {
-    return *this;
-  }
-
-  ErrorTypeView& operator=(ErrorType&&) = delete;
-
-  ErrorTypeView() = default;
-  ErrorTypeView(const ErrorTypeView&) = default;
-  ErrorTypeView(ErrorTypeView&&) = default;
-  ErrorTypeView& operator=(const ErrorTypeView&) = default;
-  ErrorTypeView& operator=(ErrorTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  constexpr absl::string_view name() const { return kName; }
-
-  absl::Span<const Type> parameters() const { return {}; }
-
-  std::string DebugString() const { return std::string(name()); }
-
-  constexpr void swap(ErrorTypeView&) noexcept {}
-};
-
-inline constexpr void swap(ErrorTypeView& lhs, ErrorTypeView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline constexpr bool operator==(ErrorTypeView, ErrorTypeView) { return true; }
-
-inline constexpr bool operator!=(ErrorTypeView lhs, ErrorTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, ErrorTypeView) {
-  // ErrorType is really a singleton and all instances are equal. Nothing to
-  // hash.
-  return std::move(state);
-}
-
-inline std::ostream& operator<<(std::ostream& out, ErrorTypeView type) {
-  return out << type.DebugString();
-}
-
-inline ErrorType::ErrorType(ErrorTypeView) {}
 
 }  // namespace cel
 

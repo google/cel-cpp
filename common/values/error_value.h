@@ -18,7 +18,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_ERROR_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_ERROR_VALUE_H_
 
-#include <cstddef>
 #include <ostream>
 #include <string>
 #include <utility>
@@ -29,7 +28,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/any.h"
 #include "common/json.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -115,7 +113,7 @@ ErrorValue DuplicateKeyError();
 
 ErrorValue TypeConversionError(absl::string_view from, absl::string_view to);
 
-ErrorValue TypeConversionError(TypeView from, TypeView to);
+ErrorValue TypeConversionError(const Type& from, const Type& to);
 
 inline void swap(ErrorValue& lhs, ErrorValue& rhs) noexcept { lhs.swap(rhs); }
 

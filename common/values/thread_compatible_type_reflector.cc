@@ -25,7 +25,7 @@ namespace cel::common_internal {
 
 absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
 ThreadCompatibleTypeReflector::NewStructValueBuilder(ValueFactory&,
-                                                     StructTypeView) const {
+                                                     const StructType&) const {
   return absl::nullopt;
 }
 

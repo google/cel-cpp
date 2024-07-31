@@ -77,21 +77,20 @@ class LegacyTypeProvider : public cel::TypeReflector {
 
   absl::StatusOr<absl::optional<cel::Unique<cel::StructValueBuilder>>>
   NewStructValueBuilder(cel::ValueFactory& value_factory,
-                        cel::StructTypeView type) const final;
+                        const cel::StructType& type) const final;
 
  protected:
   absl::StatusOr<absl::optional<cel::Value>> DeserializeValueImpl(
       cel::ValueFactory& value_factory, absl::string_view type_url,
       const absl::Cord& value) const final;
 
-  absl::StatusOr<absl::optional<cel::TypeView>> FindTypeImpl(
-      cel::TypeFactory& type_factory, absl::string_view name,
-      cel::Type& scratch) const final;
+  absl::StatusOr<absl::optional<cel::Type>> FindTypeImpl(
+      cel::TypeFactory& type_factory, absl::string_view name) const final;
 
-  absl::StatusOr<absl::optional<cel::StructTypeFieldView>>
+  absl::StatusOr<absl::optional<cel::StructTypeField>>
   FindStructTypeFieldByNameImpl(cel::TypeFactory& type_factory,
-                                absl::string_view type, absl::string_view name,
-                                cel::StructTypeField& scratch) const final;
+                                absl::string_view type,
+                                absl::string_view name) const final;
 };
 
 }  // namespace google::api::expr::runtime

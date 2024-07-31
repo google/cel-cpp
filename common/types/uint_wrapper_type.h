@@ -31,7 +31,6 @@ namespace cel {
 
 class Type;
 class UintWrapperType;
-class UintWrapperTypeView;
 
 // `UintWrapperType` is a special type which has no direct value
 // representation. It is used to represent `google.protobuf.UInt64Value`, which
@@ -39,12 +38,8 @@ class UintWrapperTypeView;
 // and unpacking at runtime.
 class UintWrapperType final {
  public:
-  using view_alternative_type = UintWrapperTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kUintWrapper;
   static constexpr absl::string_view kName = "google.protobuf.UInt64Value";
-
-  explicit UintWrapperType(UintWrapperTypeView);
 
   UintWrapperType() = default;
   UintWrapperType(const UintWrapperType&) = default;
@@ -91,70 +86,6 @@ inline std::ostream& operator<<(std::ostream& out,
                                 const UintWrapperType& type) {
   return out << type.DebugString();
 }
-
-class UintWrapperTypeView final {
- public:
-  using alternative_type = UintWrapperType;
-
-  static constexpr TypeKind kKind = UintWrapperType::kKind;
-  static constexpr absl::string_view kName = UintWrapperType::kName;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  UintWrapperTypeView(const UintWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                          ABSL_ATTRIBUTE_UNUSED) noexcept {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  UintWrapperTypeView& operator=(
-      const UintWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-          ABSL_ATTRIBUTE_UNUSED) {
-    return *this;
-  }
-
-  UintWrapperTypeView& operator=(UintWrapperType&&) = delete;
-
-  UintWrapperTypeView() = default;
-  UintWrapperTypeView(const UintWrapperTypeView&) = default;
-  UintWrapperTypeView(UintWrapperTypeView&&) = default;
-  UintWrapperTypeView& operator=(const UintWrapperTypeView&) = default;
-  UintWrapperTypeView& operator=(UintWrapperTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  constexpr absl::string_view name() const { return kName; }
-
-  absl::Span<const Type> parameters() const { return {}; }
-
-  std::string DebugString() const { return std::string(name()); }
-
-  constexpr void swap(UintWrapperTypeView&) noexcept {}
-};
-
-inline constexpr void swap(UintWrapperTypeView& lhs,
-                           UintWrapperTypeView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline constexpr bool operator==(UintWrapperTypeView, UintWrapperTypeView) {
-  return true;
-}
-
-inline constexpr bool operator!=(UintWrapperTypeView lhs,
-                                 UintWrapperTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, UintWrapperTypeView) {
-  // UintWrapperType is really a singleton and all instances are equal. Nothing
-  // to hash.
-  return std::move(state);
-}
-
-inline std::ostream& operator<<(std::ostream& out, UintWrapperTypeView type) {
-  return out << type.DebugString();
-}
-
-inline UintWrapperType::UintWrapperType(UintWrapperTypeView) {}
 
 }  // namespace cel
 

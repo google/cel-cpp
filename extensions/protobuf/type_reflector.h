@@ -45,7 +45,7 @@ class ProtoTypeReflector : public TypeReflector, public ProtoTypeIntrospector {
 
   absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
   NewStructValueBuilder(ValueFactory& value_factory,
-                        StructTypeView type) const final;
+                        const StructType& type) const final;
 
   absl::Nonnull<google::protobuf::MessageFactory*> message_factory() const {
     return message_factory_;

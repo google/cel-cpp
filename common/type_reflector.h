@@ -46,17 +46,18 @@ class TypeReflector : public virtual TypeIntrospector {
   // `NewListValueBuilder` returns a new `ListValueBuilderInterface` for the
   // corresponding `ListType` `type`.
   virtual absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(
-      ValueFactory& value_factory, ListTypeView type) const;
+      ValueFactory& value_factory, const ListType& type) const;
 
   // `NewMapValueBuilder` returns a new `MapValueBuilderInterface` for the
   // corresponding `MapType` `type`.
   virtual absl::StatusOr<Unique<MapValueBuilder>> NewMapValueBuilder(
-      ValueFactory& value_factory, MapTypeView type) const;
+      ValueFactory& value_factory, const MapType& type) const;
 
   // `NewStructValueBuilder` returns a new `StructValueBuilder` for the
   // corresponding `StructType` `type`.
   virtual absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
-  NewStructValueBuilder(ValueFactory& value_factory, StructTypeView type) const;
+  NewStructValueBuilder(ValueFactory& value_factory,
+                        const StructType& type) const;
 
   // `NewValueBuilder` returns a new `ValueBuilder` for the corresponding type
   // `name`.  It is primarily used to handle wrapper types which sometimes show
@@ -94,10 +95,10 @@ namespace common_internal {
 class LegacyTypeReflector : public TypeReflector {
  public:
   absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(
-      ValueFactory& value_factory, ListTypeView type) const override;
+      ValueFactory& value_factory, const ListType& type) const override;
 
   absl::StatusOr<Unique<MapValueBuilder>> NewMapValueBuilder(
-      ValueFactory& value_factory, MapTypeView type) const override;
+      ValueFactory& value_factory, const MapType& type) const override;
 };
 
 }  // namespace common_internal

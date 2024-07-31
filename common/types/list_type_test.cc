@@ -37,11 +37,6 @@ TEST(ListType, Default) {
   EXPECT_EQ(list_type.element(), DynType());
 }
 
-TEST(ListTypeView, Default) {
-  ListTypeView list_type;
-  EXPECT_EQ(list_type.element(), DynType());
-}
-
 class ListTypeTest : public common_internal::ThreadCompatibleMemoryTest<> {};
 
 TEST_P(ListTypeTest, Kind) {
@@ -117,91 +112,6 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(MemoryManagement::kPooling,
                       MemoryManagement::kReferenceCounting),
     ListTypeTest::ToString);
-
-class ListTypeViewTest : public common_internal::ThreadCompatibleMemoryTest<> {
-};
-
-TEST_P(ListTypeViewTest, Kind) {
-  auto type = ListType(memory_manager(), BoolType());
-  EXPECT_EQ(ListTypeView(type).kind(), ListTypeView::kKind);
-  EXPECT_EQ(TypeView(ListTypeView(type)).kind(), ListTypeView::kKind);
-}
-
-TEST_P(ListTypeViewTest, Name) {
-  auto type = ListType(memory_manager(), BoolType());
-  EXPECT_EQ(ListTypeView(type).name(), ListTypeView::kName);
-  EXPECT_EQ(TypeView(ListTypeView(type)).name(), ListTypeView::kName);
-}
-
-TEST_P(ListTypeViewTest, DebugString) {
-  auto type = ListType(memory_manager(), BoolType());
-  {
-    std::ostringstream out;
-    out << ListTypeView(type);
-    EXPECT_EQ(out.str(), "list<bool>");
-  }
-  {
-    std::ostringstream out;
-    out << TypeView(ListTypeView(type));
-    EXPECT_EQ(out.str(), "list<bool>");
-  }
-}
-
-TEST_P(ListTypeViewTest, Hash) {
-  auto type = ListType(memory_manager(), BoolType());
-  EXPECT_EQ(absl::HashOf(ListTypeView(type)), absl::HashOf(ListTypeView(type)));
-  EXPECT_EQ(absl::HashOf(ListTypeView(type)), absl::HashOf(ListType(type)));
-}
-
-TEST_P(ListTypeViewTest, Equal) {
-  auto type = ListType(memory_manager(), BoolType());
-  EXPECT_EQ(ListTypeView(type), ListTypeView(type));
-  EXPECT_EQ(TypeView(ListTypeView(type)), ListTypeView(type));
-  EXPECT_EQ(ListTypeView(type), TypeView(ListTypeView(type)));
-  EXPECT_EQ(TypeView(ListTypeView(type)), TypeView(ListTypeView(type)));
-  EXPECT_EQ(ListTypeView(type), ListType(type));
-  EXPECT_EQ(TypeView(ListTypeView(type)), ListType(type));
-  EXPECT_EQ(TypeView(ListTypeView(type)), Type(ListType(type)));
-  EXPECT_EQ(ListType(type), ListTypeView(type));
-  EXPECT_EQ(ListType(type), ListTypeView(type));
-  EXPECT_EQ(ListType(type), TypeView(ListTypeView(type)));
-  EXPECT_EQ(Type(ListType(type)), TypeView(ListTypeView(type)));
-  EXPECT_EQ(ListTypeView(type), ListType(type));
-}
-
-TEST_P(ListTypeViewTest, NativeTypeId) {
-  auto type = ListType(memory_manager(), BoolType());
-  EXPECT_EQ(NativeTypeId::Of(ListTypeView(type)),
-            NativeTypeId::For<ListTypeView>());
-  EXPECT_EQ(NativeTypeId::Of(TypeView(ListTypeView(type))),
-            NativeTypeId::For<ListTypeView>());
-}
-
-TEST_P(ListTypeViewTest, InstanceOf) {
-  auto type = ListType(memory_manager(), BoolType());
-  EXPECT_TRUE(InstanceOf<ListTypeView>(ListTypeView(type)));
-  EXPECT_TRUE(InstanceOf<ListTypeView>(TypeView(ListTypeView(type))));
-}
-
-TEST_P(ListTypeViewTest, Cast) {
-  auto type = ListType(memory_manager(), BoolType());
-  EXPECT_THAT(Cast<ListTypeView>(ListTypeView(type)), An<ListTypeView>());
-  EXPECT_THAT(Cast<ListTypeView>(TypeView(ListTypeView(type))),
-              An<ListTypeView>());
-}
-
-TEST_P(ListTypeViewTest, As) {
-  auto type = ListType(memory_manager(), BoolType());
-  EXPECT_THAT(As<ListTypeView>(ListTypeView(type)), Ne(absl::nullopt));
-  EXPECT_THAT(As<ListTypeView>(TypeView(ListTypeView(type))),
-              Ne(absl::nullopt));
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    ListTypeViewTest, ListTypeViewTest,
-    ::testing::Values(MemoryManagement::kPooling,
-                      MemoryManagement::kReferenceCounting),
-    ListTypeViewTest::ToString);
 
 }  // namespace
 }  // namespace cel

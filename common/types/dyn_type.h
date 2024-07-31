@@ -31,18 +31,13 @@ namespace cel {
 
 class Type;
 class DynType;
-class DynTypeView;
 
 // `DynType` is a special type which represents any type and has no direct value
 // representation.
 class DynType final {
  public:
-  using view_alternative_type = DynTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kDyn;
   static constexpr absl::string_view kName = "dyn";
-
-  explicit DynType(DynTypeView);
 
   DynType() = default;
   DynType(const DynType&) = default;
@@ -84,64 +79,6 @@ H AbslHashValue(H state, DynType) {
 inline std::ostream& operator<<(std::ostream& out, const DynType& type) {
   return out << type.DebugString();
 }
-
-class DynTypeView final {
- public:
-  using alternative_type = DynType;
-
-  static constexpr TypeKind kKind = DynType::kKind;
-  static constexpr absl::string_view kName = DynType::kName;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  DynTypeView(const DynType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                  ABSL_ATTRIBUTE_UNUSED) noexcept {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  DynTypeView& operator=(
-      const DynType& type ABSL_ATTRIBUTE_LIFETIME_BOUND ABSL_ATTRIBUTE_UNUSED) {
-    return *this;
-  }
-
-  DynTypeView& operator=(DynType&&) = delete;
-
-  DynTypeView() = default;
-  DynTypeView(const DynTypeView&) = default;
-  DynTypeView(DynTypeView&&) = default;
-  DynTypeView& operator=(const DynTypeView&) = default;
-  DynTypeView& operator=(DynTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  constexpr absl::string_view name() const { return kName; }
-
-  absl::Span<const Type> parameters() const { return {}; }
-
-  std::string DebugString() const { return std::string(name()); }
-
-  constexpr void swap(DynTypeView&) noexcept {}
-};
-
-inline constexpr void swap(DynTypeView& lhs, DynTypeView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline constexpr bool operator==(DynTypeView, DynTypeView) { return true; }
-
-inline constexpr bool operator!=(DynTypeView lhs, DynTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, DynTypeView) {
-  // DynType is really a singleton and all instances are equal. Nothing to hash.
-  return std::move(state);
-}
-
-inline std::ostream& operator<<(std::ostream& out, DynTypeView type) {
-  return out << type.DebugString();
-}
-
-inline DynType::DynType(DynTypeView) {}
 
 }  // namespace cel
 

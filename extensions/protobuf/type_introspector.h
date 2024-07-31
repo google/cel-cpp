@@ -40,14 +40,12 @@ class ProtoTypeIntrospector : public virtual TypeIntrospector {
   }
 
  protected:
-  absl::StatusOr<absl::optional<TypeView>> FindTypeImpl(
-      TypeFactory& type_factory, absl::string_view name,
-      Type& scratch) const final;
+  absl::StatusOr<absl::optional<Type>> FindTypeImpl(
+      TypeFactory& type_factory, absl::string_view name) const final;
 
-  absl::StatusOr<absl::optional<StructTypeFieldView>>
-  FindStructTypeFieldByNameImpl(TypeFactory& type_factory,
-                                absl::string_view type, absl::string_view name,
-                                StructTypeField& scratch) const final;
+  absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByNameImpl(
+      TypeFactory& type_factory, absl::string_view type,
+      absl::string_view name) const final;
 
  private:
   absl::Nonnull<const google::protobuf::DescriptorPool*> const descriptor_pool_;

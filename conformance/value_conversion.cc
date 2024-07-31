@@ -95,7 +95,7 @@ absl::StatusOr<Value> FromObject(ValueManager& value_manager,
 absl::StatusOr<MapValue> MapValueFromConformance(
     ValueManager& value_manager, const ConformanceMapValue& map_value) {
   CEL_ASSIGN_OR_RETURN(auto builder,
-                       value_manager.NewMapValueBuilder(MapTypeView{}));
+                       value_manager.NewMapValueBuilder(MapType{}));
   for (const auto& entry : map_value.entries()) {
     CEL_ASSIGN_OR_RETURN(auto key,
                          FromConformanceValue(value_manager, entry.key()));
@@ -110,7 +110,7 @@ absl::StatusOr<MapValue> MapValueFromConformance(
 absl::StatusOr<ListValue> ListValueFromConformance(
     ValueManager& value_manager, const ConformanceListValue& list_value) {
   CEL_ASSIGN_OR_RETURN(auto builder,
-                       value_manager.NewListValueBuilder(ListTypeView{}));
+                       value_manager.NewListValueBuilder(ListType{}));
   for (const auto& elem : list_value.values()) {
     CEL_ASSIGN_OR_RETURN(auto value, FromConformanceValue(value_manager, elem));
     CEL_RETURN_IF_ERROR(builder->Add(std::move(value)));

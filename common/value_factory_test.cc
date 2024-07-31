@@ -165,7 +165,7 @@ JsonObject NewJsonObjectForTesting(bool with_array, bool with_nested_object) {
 TEST_P(ValueFactoryTest, JsonValueArray) {
   auto value = value_factory().CreateValueFromJson(NewJsonArrayForTesting());
   ASSERT_TRUE(InstanceOf<ListValue>(value));
-  EXPECT_EQ(TypeView(value.GetType(type_manager())),
+  EXPECT_EQ(Type(value.GetType(type_manager())),
             type_factory().GetDynListType());
   auto list_value = Cast<ListValue>(value);
   EXPECT_THAT(list_value.IsEmpty(), IsOkAndHolds(false));
@@ -180,7 +180,7 @@ TEST_P(ValueFactoryTest, JsonValueArray) {
 TEST_P(ValueFactoryTest, JsonValueObject) {
   auto value = value_factory().CreateValueFromJson(NewJsonObjectForTesting());
   ASSERT_TRUE(InstanceOf<MapValue>(value));
-  EXPECT_EQ(TypeView(value.GetType(type_manager())),
+  EXPECT_EQ(Type(value.GetType(type_manager())),
             type_factory().GetStringDynMapType());
   auto map_value = Cast<MapValue>(value);
   EXPECT_THAT(map_value.IsEmpty(), IsOkAndHolds(false));
@@ -223,13 +223,12 @@ TEST_P(ValueFactoryTest, JsonValueObject) {
 TEST_P(ValueFactoryTest, ListValue) {
   // Primitive zero value types are cached.
   auto list_value1 = value_factory().CreateZeroListValue(
-      type_factory().CreateListType(StringTypeView()));
+      type_factory().CreateListType(StringType()));
   EXPECT_TRUE(
       Is(list_value1, value_factory().CreateZeroListValue(
-                          type_factory().CreateListType(StringTypeView()))));
-  EXPECT_FALSE(
-      Is(list_value1, value_factory().CreateZeroListValue(
-                          type_factory().CreateListType(BoolTypeView()))));
+                          type_factory().CreateListType(StringType()))));
+  EXPECT_FALSE(Is(list_value1, value_factory().CreateZeroListValue(
+                                   type_factory().CreateListType(BoolType()))));
   // Try types which are not cached to exercise other codepath.
   auto struct_type1 = type_factory().CreateStructType("test.Struct1");
   auto struct_type2 = type_factory().CreateStructType("test.Struct2");
@@ -252,23 +251,23 @@ TEST_P(ValueFactoryTest, ListValue) {
 TEST_P(ValueFactoryTest, MapValue) {
   // Primitive zero value types are cached.
   auto map_value1 = value_factory().CreateZeroMapValue(
-      type_factory().CreateMapType(StringTypeView(), IntTypeView()));
-  EXPECT_TRUE(Is(map_value1, value_factory().CreateZeroMapValue(
-                                 type_factory().CreateMapType(StringTypeView(),
-                                                              IntTypeView()))));
-  EXPECT_FALSE(Is(map_value1, value_factory().CreateZeroMapValue(
-                                  type_factory().CreateMapType(
-                                      StringTypeView(), BoolTypeView()))));
+      type_factory().CreateMapType(StringType(), IntType()));
+  EXPECT_TRUE(Is(map_value1,
+                 value_factory().CreateZeroMapValue(
+                     type_factory().CreateMapType(StringType(), IntType()))));
+  EXPECT_FALSE(Is(map_value1,
+                  value_factory().CreateZeroMapValue(
+                      type_factory().CreateMapType(StringType(), BoolType()))));
   // Try types which are not cached to exercise other codepath.
   auto struct_type1 = type_factory().CreateStructType("test.Struct1");
   auto struct_type2 = type_factory().CreateStructType("test.Struct2");
   auto map_value2 = value_factory().CreateZeroMapValue(
-      type_factory().CreateMapType(StringTypeView(), struct_type1));
+      type_factory().CreateMapType(StringType(), struct_type1));
   EXPECT_TRUE(Is(map_value2, value_factory().CreateZeroMapValue(
-                                 type_factory().CreateMapType(StringTypeView(),
+                                 type_factory().CreateMapType(StringType(),
                                                               struct_type1))));
   EXPECT_FALSE(Is(map_value2, value_factory().CreateZeroMapValue(
-                                  type_factory().CreateMapType(StringTypeView(),
+                                  type_factory().CreateMapType(StringType(),
                                                                struct_type2))));
 
   auto zero_map_value = value_factory().GetZeroDynDynMapValue();
@@ -286,13 +285,13 @@ TEST_P(ValueFactoryTest, MapValue) {
 TEST_P(ValueFactoryTest, OptionalType) {
   // Primitive zero value types are cached.
   auto optional_value1 = value_factory().CreateZeroOptionalValue(
-      type_factory().CreateOptionalType(StringTypeView()));
+      type_factory().CreateOptionalType(StringType()));
   EXPECT_TRUE(Is(optional_value1,
                  value_factory().CreateZeroOptionalValue(
-                     type_factory().CreateOptionalType(StringTypeView()))));
-  EXPECT_FALSE(Is(optional_value1,
-                  value_factory().CreateZeroOptionalValue(
-                      type_factory().CreateOptionalType(BoolTypeView()))));
+                     type_factory().CreateOptionalType(StringType()))));
+  EXPECT_FALSE(
+      Is(optional_value1, value_factory().CreateZeroOptionalValue(
+                              type_factory().CreateOptionalType(BoolType()))));
   // Try types which are not cached to exercise other codepath.
   auto struct_type1 = type_factory().CreateStructType("test.Struct1");
   auto struct_type2 = type_factory().CreateStructType("test.Struct2");

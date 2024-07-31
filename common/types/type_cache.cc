@@ -19,11 +19,12 @@
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/function_ref.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
 #include "common/memory.h"
-#include "common/sized_input_view.h"
 #include "common/type.h"
 
 namespace cel::common_internal {
@@ -33,8 +34,8 @@ absl::Nonnull<const ProcessLocalTypeCache*> ProcessLocalTypeCache::Get() {
   return &*type_cache;
 }
 
-absl::optional<ListTypeView> ProcessLocalTypeCache::FindListType(
-    TypeView element) const {
+absl::optional<ListType> ProcessLocalTypeCache::FindListType(
+    const Type& element) const {
   if (auto list_type = list_types_.find(element);
       list_type != list_types_.end()) {
     return list_type->second;
@@ -53,12 +54,15 @@ struct MapValueTransformer {
 
 }  // namespace
 
-SizedInputView<ListTypeView> ProcessLocalTypeCache::ListTypes() const {
-  return SizedInputView<ListTypeView>(list_types_, MapValueTransformer{});
+void ProcessLocalTypeCache::ListTypes(
+    absl::FunctionRef<void(const ListType&)> callback) const {
+  for (const auto& list_type : list_types_) {
+    callback(list_type.second);
+  }
 }
 
-absl::optional<MapTypeView> ProcessLocalTypeCache::FindMapType(
-    TypeView key, TypeView value) const {
+absl::optional<MapType> ProcessLocalTypeCache::FindMapType(
+    const Type& key, const Type& value) const {
   if (auto map_type = map_types_.find(std::make_pair(key, value));
       map_type != map_types_.end()) {
     return map_type->second;
@@ -66,25 +70,28 @@ absl::optional<MapTypeView> ProcessLocalTypeCache::FindMapType(
   return absl::nullopt;
 }
 
-SizedInputView<MapTypeView> ProcessLocalTypeCache::MapTypes() const {
-  return SizedInputView<MapTypeView>(map_types_, MapValueTransformer{});
+void ProcessLocalTypeCache::MapTypes(
+    absl::FunctionRef<void(const MapType&)> callback) const {
+  for (const auto& map_type : map_types_) {
+    callback(map_type.second);
+  }
 }
 
-absl::optional<OpaqueTypeView> ProcessLocalTypeCache::FindOpaqueType(
-    absl::string_view name, const SizedInputView<TypeView>& parameters) const {
+absl::optional<OpaqueType> ProcessLocalTypeCache::FindOpaqueType(
+    absl::string_view name, absl::Span<const Type> parameters) const {
   if (name == OptionalType::kName && parameters.size() == 1) {
     return FindOptionalType(*parameters.begin());
   }
   if (auto opaque_type = opaque_types_.find(
-          OpaqueTypeKeyView{.name = name, .parameters = parameters});
+          OpaqueTypeKey{.name = name, .parameters = parameters});
       opaque_type != opaque_types_.end()) {
     return opaque_type->second;
   }
   return absl::nullopt;
 }
 
-absl::optional<OptionalTypeView> ProcessLocalTypeCache::FindOptionalType(
-    TypeView type) const {
+absl::optional<OptionalType> ProcessLocalTypeCache::FindOptionalType(
+    const Type& type) const {
   if (auto optional_type = optional_types_.find(type);
       optional_type != optional_types_.end()) {
     return optional_type->second;
@@ -92,9 +99,11 @@ absl::optional<OptionalTypeView> ProcessLocalTypeCache::FindOptionalType(
   return absl::nullopt;
 }
 
-SizedInputView<OptionalTypeView> ProcessLocalTypeCache::OptionalTypes() const {
-  return SizedInputView<OptionalTypeView>(optional_types_,
-                                          MapValueTransformer{});
+void ProcessLocalTypeCache::OptionalTypes(
+    absl::FunctionRef<void(const OptionalType&)> callback) const {
+  for (const auto& optional_type : optional_types_) {
+    callback(optional_type.second);
+  }
 }
 
 ProcessLocalTypeCache::ProcessLocalTypeCache() {
@@ -103,13 +112,13 @@ ProcessLocalTypeCache::ProcessLocalTypeCache() {
                 IntType, IntWrapperType, NullType, StringType,
                 StringWrapperType, TimestampType, TypeType, UintType,
                 UintWrapperType, UnknownType>(MemoryManagerRef::Unmanaged());
-  dyn_list_type_ = FindListType(DynTypeView());
+  dyn_list_type_ = FindListType(DynType());
   ABSL_DCHECK(dyn_list_type_.has_value());
-  dyn_dyn_map_type_ = FindMapType(DynTypeView(), DynTypeView());
+  dyn_dyn_map_type_ = FindMapType(DynType(), DynType());
   ABSL_DCHECK(dyn_dyn_map_type_.has_value());
-  string_dyn_map_type_ = FindMapType(StringTypeView(), DynTypeView());
+  string_dyn_map_type_ = FindMapType(StringType(), DynType());
   ABSL_DCHECK(string_dyn_map_type_.has_value());
-  dyn_optional_type_ = FindOptionalType(DynTypeView());
+  dyn_optional_type_ = FindOptionalType(DynType());
   ABSL_DCHECK(dyn_optional_type_.has_value());
 }
 
@@ -141,11 +150,10 @@ void ProcessLocalTypeCache::PopulateOptionalTypes(
                           map_types_.size());
   DoPopulateOptionalTypes<Ts...>(memory_manager);
   for (const auto& list_type : list_types_) {
-    InsertOptionalType(
-        OptionalType(memory_manager, TypeView(list_type.second)));
+    InsertOptionalType(OptionalType(memory_manager, Type(list_type.second)));
   }
   for (const auto& map_type : map_types_) {
-    InsertOptionalType(OptionalType(memory_manager, TypeView(map_type.second)));
+    InsertOptionalType(OptionalType(memory_manager, Type(map_type.second)));
   }
 }
 
@@ -191,8 +199,7 @@ void ProcessLocalTypeCache::InsertMapType(MapType map_type) {
 template <typename T, typename... Ts>
 void ProcessLocalTypeCache::DoPopulateOptionalTypes(
     MemoryManagerRef memory_manager) {
-  InsertOptionalType(
-      OptionalType(memory_manager, typename T::view_alternative_type()));
+  InsertOptionalType(OptionalType(memory_manager, T()));
   if constexpr (sizeof...(Ts) != 0) {
     DoPopulateOptionalTypes<Ts...>(memory_manager);
   }
@@ -206,15 +213,15 @@ void ProcessLocalTypeCache::InsertOptionalType(OptionalType optional_type) {
   ABSL_DCHECK(inserted);
 }
 
-ListTypeView GetDynListType() {
+ListType GetDynListType() {
   return ProcessLocalTypeCache::Get()->GetDynListType();
 }
 
-MapTypeView GetDynDynMapType() {
+MapType GetDynDynMapType() {
   return ProcessLocalTypeCache::Get()->GetDynDynMapType();
 }
 
-OptionalTypeView GetDynOptionalType() {
+OptionalType GetDynOptionalType() {
   return ProcessLocalTypeCache::Get()->GetDynOptionalType();
 }
 

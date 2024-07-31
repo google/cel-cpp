@@ -33,7 +33,6 @@ namespace cel {
 
 class Type;
 class TypeParamType;
-class TypeParamTypeView;
 
 namespace common_internal {
 struct TypeParamTypeData;
@@ -41,11 +40,7 @@ struct TypeParamTypeData;
 
 class TypeParamType final {
  public:
-  using view_alternative_type = TypeParamTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kTypeParam;
-
-  explicit TypeParamType(TypeParamTypeView other);
 
   TypeParamType(MemoryManagerRef memory_manager, absl::string_view name);
 
@@ -71,7 +66,6 @@ class TypeParamType final {
   }
 
  private:
-  friend class TypeParamTypeView;
   friend struct NativeTypeTraits<TypeParamType>;
 
   Shared<const common_internal::TypeParamTypeData> data_;
@@ -104,71 +98,6 @@ struct NativeTypeTraits<TypeParamType> final {
     return NativeType::SkipDestructor(type.data_);
   }
 };
-
-class TypeParamTypeView final {
- public:
-  using alternative_type = TypeParamType;
-
-  static constexpr TypeKind kKind = TypeParamType::kKind;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  TypeParamTypeView(
-      const TypeParamType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  TypeParamTypeView& operator=(
-      const TypeParamType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    data_ = type.data_;
-    return *this;
-  }
-
-  TypeParamTypeView& operator=(TypeParamType&&) = delete;
-
-  TypeParamTypeView() = delete;
-  TypeParamTypeView(const TypeParamTypeView&) = default;
-  TypeParamTypeView(TypeParamTypeView&&) = default;
-  TypeParamTypeView& operator=(const TypeParamTypeView&) = default;
-  TypeParamTypeView& operator=(TypeParamTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  absl::string_view name() const;
-
-  absl::Span<const Type> parameters() const { return {}; }
-
-  std::string DebugString() const { return std::string(name()); }
-
-  void swap(TypeParamTypeView& other) noexcept {
-    using std::swap;
-    swap(data_, other.data_);
-  }
-
- private:
-  friend class TypeParamType;
-
-  SharedView<const common_internal::TypeParamTypeData> data_;
-};
-
-inline void swap(TypeParamTypeView& lhs, TypeParamTypeView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline bool operator==(TypeParamTypeView lhs, TypeParamTypeView rhs) {
-  return lhs.name() == rhs.name();
-}
-
-inline bool operator!=(TypeParamTypeView lhs, TypeParamTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, TypeParamTypeView type) {
-  return H::combine(std::move(state), type.name());
-}
-
-inline std::ostream& operator<<(std::ostream& out, TypeParamTypeView type) {
-  return out << type.DebugString();
-}
 
 }  // namespace cel
 

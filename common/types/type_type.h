@@ -32,7 +32,6 @@ namespace cel {
 
 class Type;
 class TypeType;
-class TypeTypeView;
 
 namespace common_internal {
 struct TypeTypeData;
@@ -41,12 +40,8 @@ struct TypeTypeData;
 // `TypeType` is a special type which represents the type of a type.
 class TypeType final {
  public:
-  using view_alternative_type = TypeTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kType;
   static constexpr absl::string_view kName = "type";
-
-  explicit TypeType(TypeTypeView type);
 
   TypeType(MemoryManagerRef memory_manager, Type parameter);
 
@@ -87,7 +82,7 @@ inline constexpr bool operator!=(const TypeType& lhs, const TypeType& rhs) {
 }
 
 template <typename H>
-H AbslHashValue(H state, TypeType) {
+H AbslHashValue(H state, const TypeType&) {
   // TypeType is really a singleton and all instances are equal. Nothing to
   // hash.
   return std::move(state);
@@ -96,71 +91,6 @@ H AbslHashValue(H state, TypeType) {
 inline std::ostream& operator<<(std::ostream& out, const TypeType& type) {
   return out << type.DebugString();
 }
-
-class TypeTypeView final {
- public:
-  using alternative_type = TypeType;
-
-  static constexpr TypeKind kKind = TypeType::kKind;
-  static constexpr absl::string_view kName = TypeType::kName;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  TypeTypeView(const TypeType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : data_(type.data_) {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  TypeTypeView& operator=(const TypeType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                              ABSL_ATTRIBUTE_UNUSED) {
-    data_ = type.data_;
-    return *this;
-  }
-
-  TypeTypeView& operator=(TypeType&&) = delete;
-
-  TypeTypeView() = default;
-  TypeTypeView(const TypeTypeView&) = default;
-  TypeTypeView(TypeTypeView&&) = default;
-  TypeTypeView& operator=(const TypeTypeView&) = default;
-  TypeTypeView& operator=(TypeTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  constexpr absl::string_view name() const { return kName; }
-
-  absl::Span<const Type> parameters() const;
-
-  std::string DebugString() const { return std::string(name()); }
-
-  constexpr void swap(TypeTypeView& other) noexcept {
-    using std::swap;
-    swap(data_, other.data_);
-  }
-
-  SharedView<const common_internal::TypeTypeData> data_;
-};
-
-inline constexpr void swap(TypeTypeView& lhs, TypeTypeView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline constexpr bool operator==(TypeTypeView, TypeTypeView) { return true; }
-
-inline constexpr bool operator!=(TypeTypeView lhs, TypeTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, TypeTypeView) {
-  // TypeType is really a singleton and all instances are equal. Nothing to
-  // hash.
-  return std::move(state);
-}
-
-inline std::ostream& operator<<(std::ostream& out, TypeTypeView type) {
-  return out << type.DebugString();
-}
-
-inline TypeType::TypeType(TypeTypeView type) : data_(type.data_) {}
 
 }  // namespace cel
 

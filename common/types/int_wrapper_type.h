@@ -31,7 +31,6 @@ namespace cel {
 
 class Type;
 class IntWrapperType;
-class IntWrapperTypeView;
 
 // `IntWrapperType` is a special type which has no direct value
 // representation. It is used to represent `google.protobuf.Int64Value`, which
@@ -39,12 +38,8 @@ class IntWrapperTypeView;
 // and unpacking at runtime.
 class IntWrapperType final {
  public:
-  using view_alternative_type = IntWrapperTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kIntWrapper;
   static constexpr absl::string_view kName = "google.protobuf.Int64Value";
-
-  explicit IntWrapperType(IntWrapperTypeView);
 
   IntWrapperType() = default;
   IntWrapperType(const IntWrapperType&) = default;
@@ -89,70 +84,6 @@ H AbslHashValue(H state, IntWrapperType) {
 inline std::ostream& operator<<(std::ostream& out, const IntWrapperType& type) {
   return out << type.DebugString();
 }
-
-class IntWrapperTypeView final {
- public:
-  using alternative_type = IntWrapperType;
-
-  static constexpr TypeKind kKind = IntWrapperType::kKind;
-  static constexpr absl::string_view kName = IntWrapperType::kName;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  IntWrapperTypeView(const IntWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                         ABSL_ATTRIBUTE_UNUSED) noexcept {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  IntWrapperTypeView& operator=(
-      const IntWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-          ABSL_ATTRIBUTE_UNUSED) {
-    return *this;
-  }
-
-  IntWrapperTypeView& operator=(IntWrapperType&&) = delete;
-
-  IntWrapperTypeView() = default;
-  IntWrapperTypeView(const IntWrapperTypeView&) = default;
-  IntWrapperTypeView(IntWrapperTypeView&&) = default;
-  IntWrapperTypeView& operator=(const IntWrapperTypeView&) = default;
-  IntWrapperTypeView& operator=(IntWrapperTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  constexpr absl::string_view name() const { return kName; }
-
-  absl::Span<const Type> parameters() const { return {}; }
-
-  std::string DebugString() const { return std::string(name()); }
-
-  constexpr void swap(IntWrapperTypeView&) noexcept {}
-};
-
-inline constexpr void swap(IntWrapperTypeView& lhs,
-                           IntWrapperTypeView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline constexpr bool operator==(IntWrapperTypeView, IntWrapperTypeView) {
-  return true;
-}
-
-inline constexpr bool operator!=(IntWrapperTypeView lhs,
-                                 IntWrapperTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, IntWrapperTypeView) {
-  // IntWrapperType is really a singleton and all instances are equal. Nothing
-  // to hash.
-  return std::move(state);
-}
-
-inline std::ostream& operator<<(std::ostream& out, IntWrapperTypeView type) {
-  return out << type.DebugString();
-}
-
-inline IntWrapperType::IntWrapperType(IntWrapperTypeView) {}
 
 }  // namespace cel
 

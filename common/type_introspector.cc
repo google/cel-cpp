@@ -36,15 +36,16 @@ namespace {
 struct FieldNameComparer {
   using is_transparent = void;
 
-  bool operator()(StructTypeFieldView lhs, StructTypeFieldView rhs) const {
+  bool operator()(const StructTypeField& lhs,
+                  const StructTypeField& rhs) const {
     return (*this)(lhs.name, rhs.name);
   }
 
-  bool operator()(StructTypeFieldView lhs, absl::string_view rhs) const {
+  bool operator()(const StructTypeField& lhs, absl::string_view rhs) const {
     return (*this)(lhs.name, rhs);
   }
 
-  bool operator()(absl::string_view lhs, StructTypeFieldView rhs) const {
+  bool operator()(absl::string_view lhs, const StructTypeField& rhs) const {
     return (*this)(lhs, rhs.name);
   }
 
@@ -56,15 +57,16 @@ struct FieldNameComparer {
 struct FieldNumberComparer {
   using is_transparent = void;
 
-  bool operator()(StructTypeFieldView lhs, StructTypeFieldView rhs) const {
+  bool operator()(const StructTypeField& lhs,
+                  const StructTypeField& rhs) const {
     return (*this)(lhs.number, rhs.number);
   }
 
-  bool operator()(StructTypeFieldView lhs, int64_t rhs) const {
+  bool operator()(const StructTypeField& lhs, int64_t rhs) const {
     return (*this)(lhs.number, rhs);
   }
 
-  bool operator()(int64_t lhs, StructTypeFieldView rhs) const {
+  bool operator()(int64_t lhs, const StructTypeField& rhs) const {
     return (*this)(lhs, rhs.number);
   }
 
@@ -72,8 +74,7 @@ struct FieldNumberComparer {
 };
 
 struct WellKnownType {
-  WellKnownType(TypeView type,
-                std::initializer_list<StructTypeFieldView> fields)
+  WellKnownType(const Type& type, std::initializer_list<StructTypeField> fields)
       : type(type), fields_by_name(fields), fields_by_number(fields) {
     std::sort(fields_by_name.begin(), fields_by_name.end(),
               FieldNameComparer{});
@@ -81,15 +82,14 @@ struct WellKnownType {
               FieldNumberComparer{});
   }
 
-  explicit WellKnownType(TypeView type) : WellKnownType(type, {}) {}
+  explicit WellKnownType(const Type& type) : WellKnownType(type, {}) {}
 
-  TypeView type;
+  Type type;
   // We use `2` as that accommodates most well known types.
-  absl::InlinedVector<StructTypeFieldView, 2> fields_by_name;
-  absl::InlinedVector<StructTypeFieldView, 2> fields_by_number;
+  absl::InlinedVector<StructTypeField, 2> fields_by_name;
+  absl::InlinedVector<StructTypeField, 2> fields_by_number;
 
-  absl::optional<StructTypeFieldView> FieldByName(
-      absl::string_view name) const {
+  absl::optional<StructTypeField> FieldByName(absl::string_view name) const {
     // Basically `std::binary_search`.
     auto it = std::lower_bound(fields_by_name.begin(), fields_by_name.end(),
                                name, FieldNameComparer{});
@@ -99,7 +99,7 @@ struct WellKnownType {
     return *it;
   }
 
-  absl::optional<StructTypeFieldView> FieldByNumber(int64_t number) const {
+  absl::optional<StructTypeField> FieldByNumber(int64_t number) const {
     // Basically `std::binary_search`.
     auto it = std::lower_bound(fields_by_number.begin(), fields_by_number.end(),
                                number, FieldNumberComparer{});
@@ -117,93 +117,92 @@ const WellKnownTypesMap& GetWellKnownTypesMap() {
     WellKnownTypesMap* types = new WellKnownTypesMap();
     types->insert_or_assign(
         "google.protobuf.BoolValue",
-        WellKnownType{BoolWrapperTypeView{},
-                      {StructTypeFieldView{"value", BoolTypeView{}, 1}}});
+        WellKnownType{BoolWrapperType{},
+                      {StructTypeField{"value", BoolType{}, 1}}});
     types->insert_or_assign(
         "google.protobuf.Int32Value",
-        WellKnownType{IntWrapperTypeView{},
-                      {StructTypeFieldView{"value", IntTypeView{}, 1}}});
+        WellKnownType{IntWrapperType{},
+                      {StructTypeField{"value", IntType{}, 1}}});
     types->insert_or_assign(
         "google.protobuf.Int64Value",
-        WellKnownType{IntWrapperTypeView{},
-                      {StructTypeFieldView{"value", IntTypeView{}, 1}}});
+        WellKnownType{IntWrapperType{},
+                      {StructTypeField{"value", IntType{}, 1}}});
     types->insert_or_assign(
         "google.protobuf.UInt32Value",
-        WellKnownType{UintWrapperTypeView{},
-                      {StructTypeFieldView{"value", UintTypeView{}, 1}}});
+        WellKnownType{UintWrapperType{},
+                      {StructTypeField{"value", UintType{}, 1}}});
     types->insert_or_assign(
         "google.protobuf.UInt64Value",
-        WellKnownType{UintWrapperTypeView{},
-                      {StructTypeFieldView{"value", UintTypeView{}, 1}}});
+        WellKnownType{UintWrapperType{},
+                      {StructTypeField{"value", UintType{}, 1}}});
     types->insert_or_assign(
         "google.protobuf.FloatValue",
-        WellKnownType{DoubleWrapperTypeView{},
-                      {StructTypeFieldView{"value", DoubleTypeView{}, 1}}});
+        WellKnownType{DoubleWrapperType{},
+                      {StructTypeField{"value", DoubleType{}, 1}}});
     types->insert_or_assign(
         "google.protobuf.DoubleValue",
-        WellKnownType{DoubleWrapperTypeView{},
-                      {StructTypeFieldView{"value", DoubleTypeView{}, 1}}});
+        WellKnownType{DoubleWrapperType{},
+                      {StructTypeField{"value", DoubleType{}, 1}}});
     types->insert_or_assign(
         "google.protobuf.StringValue",
-        WellKnownType{StringWrapperTypeView{},
-                      {StructTypeFieldView{"value", StringTypeView{}, 1}}});
+        WellKnownType{StringWrapperType{},
+                      {StructTypeField{"value", StringType{}, 1}}});
     types->insert_or_assign(
         "google.protobuf.BytesValue",
-        WellKnownType{BytesWrapperTypeView{},
-                      {StructTypeFieldView{"value", BytesTypeView{}, 1}}});
+        WellKnownType{BytesWrapperType{},
+                      {StructTypeField{"value", BytesType{}, 1}}});
     types->insert_or_assign(
         "google.protobuf.Duration",
-        WellKnownType{DurationTypeView{},
-                      {StructTypeFieldView{"seconds", IntTypeView{}, 1},
-                       StructTypeFieldView{"nanos", IntTypeView{}, 2}}});
+        WellKnownType{DurationType{},
+                      {StructTypeField{"seconds", IntType{}, 1},
+                       StructTypeField{"nanos", IntType{}, 2}}});
     types->insert_or_assign(
         "google.protobuf.Timestamp",
-        WellKnownType{TimestampTypeView{},
-                      {StructTypeFieldView{"seconds", IntTypeView{}, 1},
-                       StructTypeFieldView{"nanos", IntTypeView{}, 2}}});
+        WellKnownType{TimestampType{},
+                      {StructTypeField{"seconds", IntType{}, 1},
+                       StructTypeField{"nanos", IntType{}, 2}}});
     types->insert_or_assign(
         "google.protobuf.Value",
         WellKnownType{
-            DynTypeView{},
-            {StructTypeFieldView{"null_value", NullTypeView{}, 1},
-             StructTypeFieldView{"number_value", DoubleTypeView{}, 2},
-             StructTypeFieldView{"string_value", StringTypeView{}, 3},
-             StructTypeFieldView{"bool_value", BoolTypeView{}, 4},
-             StructTypeFieldView{"struct_value",
-                                 common_internal::ProcessLocalTypeCache::Get()
-                                     ->GetStringDynMapType(),
-                                 5},
-             StructTypeFieldView{"list_value", ListTypeView{}, 6}}});
+            DynType{},
+            {StructTypeField{"null_value", NullType{}, 1},
+             StructTypeField{"number_value", DoubleType{}, 2},
+             StructTypeField{"string_value", StringType{}, 3},
+             StructTypeField{"bool_value", BoolType{}, 4},
+             StructTypeField{"struct_value",
+                             common_internal::ProcessLocalTypeCache::Get()
+                                 ->GetStringDynMapType(),
+                             5},
+             StructTypeField{"list_value", ListType{}, 6}}});
     types->insert_or_assign(
         "google.protobuf.ListValue",
-        WellKnownType{ListTypeView{},
-                      {StructTypeFieldView{"values", ListTypeView{}, 1}}});
+        WellKnownType{ListType{}, {StructTypeField{"values", ListType{}, 1}}});
     types->insert_or_assign(
         "google.protobuf.Struct",
         WellKnownType{
             common_internal::ProcessLocalTypeCache::Get()
                 ->GetStringDynMapType(),
-            {StructTypeFieldView{"fields",
-                                 common_internal::ProcessLocalTypeCache::Get()
-                                     ->GetStringDynMapType(),
-                                 1}}});
+            {StructTypeField{"fields",
+                             common_internal::ProcessLocalTypeCache::Get()
+                                 ->GetStringDynMapType(),
+                             1}}});
     types->insert_or_assign(
         "google.protobuf.Any",
-        WellKnownType{AnyTypeView{},
-                      {StructTypeFieldView{"type_url", StringTypeView{}, 1},
-                       StructTypeFieldView{"value", BytesTypeView{}, 2}}});
-    types->insert_or_assign("null_type", WellKnownType{NullTypeView{}});
+        WellKnownType{AnyType{},
+                      {StructTypeField{"type_url", StringType{}, 1},
+                       StructTypeField{"value", BytesType{}, 2}}});
+    types->insert_or_assign("null_type", WellKnownType{NullType{}});
     types->insert_or_assign("google.protobuf.NullValue",
-                            WellKnownType{NullTypeView{}});
-    types->insert_or_assign("bool", WellKnownType{BoolTypeView{}});
-    types->insert_or_assign("int", WellKnownType{IntTypeView{}});
-    types->insert_or_assign("uint", WellKnownType{UintTypeView{}});
-    types->insert_or_assign("double", WellKnownType{DoubleTypeView{}});
-    types->insert_or_assign("bytes", WellKnownType{BytesTypeView{}});
-    types->insert_or_assign("string", WellKnownType{StringTypeView{}});
-    types->insert_or_assign("list", WellKnownType{ListTypeView{}});
-    types->insert_or_assign("map", WellKnownType{MapTypeView{}});
-    types->insert_or_assign("type", WellKnownType{TypeTypeView{}});
+                            WellKnownType{NullType{}});
+    types->insert_or_assign("bool", WellKnownType{BoolType{}});
+    types->insert_or_assign("int", WellKnownType{IntType{}});
+    types->insert_or_assign("uint", WellKnownType{UintType{}});
+    types->insert_or_assign("double", WellKnownType{DoubleType{}});
+    types->insert_or_assign("bytes", WellKnownType{BytesType{}});
+    types->insert_or_assign("string", WellKnownType{StringType{}});
+    types->insert_or_assign("list", WellKnownType{ListType{}});
+    types->insert_or_assign("map", WellKnownType{MapType{}});
+    types->insert_or_assign("type", WellKnownType{TypeType{}});
     return types;
   }();
   return *types;
@@ -211,36 +210,34 @@ const WellKnownTypesMap& GetWellKnownTypesMap() {
 
 }  // namespace
 
-absl::StatusOr<absl::optional<TypeView>> TypeIntrospector::FindType(
-    TypeFactory& type_factory, absl::string_view name, Type& scratch) const {
+absl::StatusOr<absl::optional<Type>> TypeIntrospector::FindType(
+    TypeFactory& type_factory, absl::string_view name) const {
   const auto& well_known_types = GetWellKnownTypesMap();
   if (auto it = well_known_types.find(name); it != well_known_types.end()) {
     return it->second.type;
   }
-  return FindTypeImpl(type_factory, name, scratch);
+  return FindTypeImpl(type_factory, name);
 }
 
-absl::StatusOr<absl::optional<StructTypeFieldView>>
+absl::StatusOr<absl::optional<StructTypeField>>
 TypeIntrospector::FindStructTypeFieldByName(TypeFactory& type_factory,
                                             absl::string_view type,
-                                            absl::string_view name,
-                                            StructTypeField& scratch) const {
+                                            absl::string_view name) const {
   const auto& well_known_types = GetWellKnownTypesMap();
   if (auto it = well_known_types.find(type); it != well_known_types.end()) {
     return it->second.FieldByName(name);
   }
-  return FindStructTypeFieldByNameImpl(type_factory, type, name, scratch);
+  return FindStructTypeFieldByNameImpl(type_factory, type, name);
 }
 
-absl::StatusOr<absl::optional<TypeView>> TypeIntrospector::FindTypeImpl(
-    TypeFactory&, absl::string_view, Type&) const {
+absl::StatusOr<absl::optional<Type>> TypeIntrospector::FindTypeImpl(
+    TypeFactory&, absl::string_view) const {
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<StructTypeFieldView>>
+absl::StatusOr<absl::optional<StructTypeField>>
 TypeIntrospector::FindStructTypeFieldByNameImpl(TypeFactory&, absl::string_view,
-                                                absl::string_view,
-                                                StructTypeField&) const {
+                                                absl::string_view) const {
   return absl::nullopt;
 }
 

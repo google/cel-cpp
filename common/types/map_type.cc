@@ -24,9 +24,4 @@ std::string MapType::DebugString() const {
                       ">");
 }
 
-std::string MapTypeView::DebugString() const {
-  return absl::StrCat("map<", key().DebugString(), ", ", value().DebugString(),
-                      ">");
-}
-
 }  // namespace cel

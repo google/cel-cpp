@@ -20,18 +20,18 @@
 
 namespace cel::common_internal {
 
-ListValue LegacyValueManager::CreateZeroListValueImpl(ListTypeView type) {
+ListValue LegacyValueManager::CreateZeroListValueImpl(const ListType& type) {
   return ParsedListValue(
       GetMemoryManager().MakeShared<EmptyListValue>(ListType(type)));
 }
 
-MapValue LegacyValueManager::CreateZeroMapValueImpl(MapTypeView type) {
+MapValue LegacyValueManager::CreateZeroMapValueImpl(const MapType& type) {
   return ParsedMapValue(
       GetMemoryManager().MakeShared<EmptyMapValue>(MapType(type)));
 }
 
 OptionalValue LegacyValueManager::CreateZeroOptionalValueImpl(
-    OptionalTypeView type) {
+    const OptionalType& type) {
   return OptionalValue(
       GetMemoryManager().MakeShared<EmptyOptionalValue>(OptionalType(type)));
 }

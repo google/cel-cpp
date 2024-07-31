@@ -24,7 +24,6 @@
 #include "absl/types/span.h"
 #include "common/memory.h"
 #include "common/native_type.h"
-#include "common/sized_input_view.h"
 #include "common/type.h"
 
 namespace cel {
@@ -41,7 +40,7 @@ std::string OpaqueDebugString(absl::string_view name,
 }
 
 absl::FixedArray<Type, 1> SizedInputViewToFixedArray(
-    const SizedInputView<TypeView>& parameters) {
+    absl::Span<const Type> parameters) {
   absl::FixedArray<Type, 1> fixed_parameters(parameters.size());
   size_t index = 0;
   for (const auto& parameter : parameters) {
@@ -54,16 +53,12 @@ absl::FixedArray<Type, 1> SizedInputViewToFixedArray(
 }  // namespace
 
 OpaqueType::OpaqueType(MemoryManagerRef memory_manager, absl::string_view name,
-                       const SizedInputView<TypeView>& parameters)
+                       absl::Span<const Type> parameters)
     : data_(memory_manager.MakeShared<common_internal::OpaqueTypeData>(
           std::string(name),
           SizedInputViewToFixedArray(std::move(parameters)))) {}
 
 std::string OpaqueType::DebugString() const {
-  return OpaqueDebugString(name(), parameters());
-}
-
-std::string OpaqueTypeView::DebugString() const {
   return OpaqueDebugString(name(), parameters());
 }
 

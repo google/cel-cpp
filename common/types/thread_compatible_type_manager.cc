@@ -17,13 +17,13 @@
 #include <utility>
 
 #include "absl/strings/string_view.h"
-#include "common/sized_input_view.h"
+#include "absl/types/span.h"
 #include "common/type.h"
 #include "common/types/type_cache.h"
 
 namespace cel::common_internal {
 
-ListType ThreadCompatibleTypeManager::CreateListTypeImpl(TypeView element) {
+ListType ThreadCompatibleTypeManager::CreateListTypeImpl(const Type& element) {
   if (auto list_type = list_types_.find(element);
       list_type != list_types_.end()) {
     return list_type->second;
@@ -32,8 +32,8 @@ ListType ThreadCompatibleTypeManager::CreateListTypeImpl(TypeView element) {
   return list_types_.insert({list_type.element(), list_type}).first->second;
 }
 
-MapType ThreadCompatibleTypeManager::CreateMapTypeImpl(TypeView key,
-                                                       TypeView value) {
+MapType ThreadCompatibleTypeManager::CreateMapTypeImpl(const Type& key,
+                                                       const Type& value) {
   if (auto map_type = map_types_.find(std::make_pair(key, value));
       map_type != map_types_.end()) {
     return map_type->second;
@@ -55,9 +55,9 @@ StructType ThreadCompatibleTypeManager::CreateStructTypeImpl(
 }
 
 OpaqueType ThreadCompatibleTypeManager::CreateOpaqueTypeImpl(
-    absl::string_view name, const SizedInputView<TypeView>& parameters) {
+    absl::string_view name, absl::Span<const Type> parameters) {
   if (auto opaque_type = opaque_types_.find(
-          OpaqueTypeKeyView{.name = name, .parameters = parameters});
+          OpaqueTypeKey{.name = name, .parameters = parameters});
       opaque_type != opaque_types_.end()) {
     return opaque_type->second;
   }

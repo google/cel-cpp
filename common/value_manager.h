@@ -39,18 +39,19 @@ class ValueManager : public virtual ValueFactory,
 
   // See `TypeReflector::NewListValueBuilder`.
   absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(
-      ListTypeView type) {
+      const ListType& type) {
     return GetTypeReflector().NewListValueBuilder(*this, type);
   }
 
   // See `TypeReflector::NewMapValueBuilder`.
-  absl::StatusOr<Unique<MapValueBuilder>> NewMapValueBuilder(MapTypeView type) {
+  absl::StatusOr<Unique<MapValueBuilder>> NewMapValueBuilder(
+      const MapType& type) {
     return GetTypeReflector().NewMapValueBuilder(*this, type);
   }
 
   // See `TypeReflector::NewStructValueBuilder`.
   absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
-  NewStructValueBuilder(StructTypeView type) {
+  NewStructValueBuilder(const StructType& type) {
     return GetTypeReflector().NewStructValueBuilder(*this, type);
   }
 

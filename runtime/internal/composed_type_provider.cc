@@ -29,7 +29,7 @@ namespace cel::runtime_internal {
 
 absl::StatusOr<Unique<ListValueBuilder>>
 ComposedTypeProvider::NewListValueBuilder(ValueFactory& value_factory,
-                                          ListTypeView type) const {
+                                          const ListType& type) const {
   if (use_legacy_container_builders_) {
     return TypeReflector::LegacyBuiltin().NewListValueBuilder(value_factory,
                                                               type);
@@ -40,7 +40,7 @@ ComposedTypeProvider::NewListValueBuilder(ValueFactory& value_factory,
 
 absl::StatusOr<Unique<MapValueBuilder>>
 ComposedTypeProvider::NewMapValueBuilder(ValueFactory& value_factory,
-                                         MapTypeView type) const {
+                                         const MapType& type) const {
   if (use_legacy_container_builders_) {
     return TypeReflector::LegacyBuiltin().NewMapValueBuilder(value_factory,
                                                              type);
@@ -50,7 +50,7 @@ ComposedTypeProvider::NewMapValueBuilder(ValueFactory& value_factory,
 
 absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
 ComposedTypeProvider::NewStructValueBuilder(ValueFactory& value_factory,
-                                            StructTypeView type) const {
+                                            const StructType& type) const {
   for (const std::unique_ptr<TypeReflector>& provider : providers_) {
     CEL_ASSIGN_OR_RETURN(auto builder,
                          provider->NewStructValueBuilder(value_factory, type));
@@ -87,11 +87,10 @@ ComposedTypeProvider::DeserializeValueImpl(ValueFactory& value_factory,
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<TypeView>> ComposedTypeProvider::FindTypeImpl(
-    TypeFactory& type_factory, absl::string_view name, Type& scratch) const {
+absl::StatusOr<absl::optional<Type>> ComposedTypeProvider::FindTypeImpl(
+    TypeFactory& type_factory, absl::string_view name) const {
   for (const std::unique_ptr<TypeReflector>& provider : providers_) {
-    CEL_ASSIGN_OR_RETURN(auto result,
-                         provider->FindType(type_factory, name, scratch));
+    CEL_ASSIGN_OR_RETURN(auto result, provider->FindType(type_factory, name));
     if (result.has_value()) {
       return result;
     }
@@ -99,13 +98,13 @@ absl::StatusOr<absl::optional<TypeView>> ComposedTypeProvider::FindTypeImpl(
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<StructTypeFieldView>>
+absl::StatusOr<absl::optional<StructTypeField>>
 ComposedTypeProvider::FindStructTypeFieldByNameImpl(
-    TypeFactory& type_factory, absl::string_view type, absl::string_view name,
-    StructTypeField& scratch) const {
+    TypeFactory& type_factory, absl::string_view type,
+    absl::string_view name) const {
   for (const std::unique_ptr<TypeReflector>& provider : providers_) {
     CEL_ASSIGN_OR_RETURN(auto result, provider->FindStructTypeFieldByName(
-                                          type_factory, type, name, scratch));
+                                          type_factory, type, name));
     if (result.has_value()) {
       return result;
     }

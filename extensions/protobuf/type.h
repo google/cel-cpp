@@ -15,52 +15,24 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_TYPE_H_
 
-#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "common/type.h"
 #include "common/type_factory.h"
-#include "internal/status_macros.h"
 #include "google/protobuf/descriptor.h"
 
 namespace cel::extensions {
 
-absl::StatusOr<TypeView> ProtoTypeToType(
-    TypeFactory& type_factory, absl::Nonnull<const google::protobuf::Descriptor*> desc,
-    Type& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND);
-inline absl::StatusOr<Type> ProtoTypeToType(
-    TypeFactory& type_factory, absl::Nonnull<const google::protobuf::Descriptor*> desc) {
-  Type scratch;
-  CEL_ASSIGN_OR_RETURN(auto result,
-                       ProtoTypeToType(type_factory, desc, scratch));
-  return Type{result};
-}
+absl::StatusOr<Type> ProtoTypeToType(
+    TypeFactory& type_factory, absl::Nonnull<const google::protobuf::Descriptor*> desc);
 
-absl::StatusOr<TypeView> ProtoEnumTypeToType(
+absl::StatusOr<Type> ProtoEnumTypeToType(
     TypeFactory& type_factory,
-    absl::Nonnull<const google::protobuf::EnumDescriptor*> desc,
-    Type& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND);
-inline absl::StatusOr<Type> ProtoEnumTypeToType(
-    TypeFactory& type_factory,
-    absl::Nonnull<const google::protobuf::EnumDescriptor*> desc) {
-  Type scratch;
-  CEL_ASSIGN_OR_RETURN(auto result,
-                       ProtoEnumTypeToType(type_factory, desc, scratch));
-  return Type{result};
-}
+    absl::Nonnull<const google::protobuf::EnumDescriptor*> desc);
 
-absl::StatusOr<TypeView> ProtoFieldTypeToType(
+absl::StatusOr<Type> ProtoFieldTypeToType(
     TypeFactory& type_factory,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field_desc,
-    Type& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND);
-inline absl::StatusOr<Type> ProtoFieldTypeToType(
-    TypeFactory& type_factory,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field_desc) {
-  Type scratch;
-  CEL_ASSIGN_OR_RETURN(auto result,
-                       ProtoFieldTypeToType(type_factory, field_desc, scratch));
-  return Type{result};
-}
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field_desc);
 
 }  // namespace cel::extensions
 

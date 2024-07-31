@@ -27,36 +27,27 @@
 #include "absl/types/span.h"
 #include "common/casting.h"
 #include "common/memory.h"
-#include "common/sized_input_view.h"
 #include "common/types/opaque_type.h"
 
 namespace cel {
 
 class OptionalType;
-class OptionalTypeView;
 class Type;
-class TypeView;
 
 class OptionalType final : public OpaqueType {
  public:
-  using view_alternative_type = OptionalTypeView;
-
   static constexpr absl::string_view kName = "optional_type";
 
   using OpaqueType::OpaqueType;
-
-  explicit OptionalType(OpaqueTypeView) = delete;
 
   // By default, this type is `optional(dyn)`. Unless you can help it, you
   // should choose a more specific optional type.
   OptionalType();
 
   OptionalType(MemoryManagerRef, absl::string_view,
-               const SizedInputView<TypeView>&) = delete;
+               absl::Span<const Type>) = delete;
 
-  explicit OptionalType(OptionalTypeView type);
-
-  OptionalType(MemoryManagerRef memory_manager, TypeView parameter);
+  OptionalType(MemoryManagerRef memory_manager, const Type& parameter);
 
   absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     auto name = OpaqueType::name();
@@ -108,78 +99,6 @@ struct SubsumptionTraits<OptionalType> final {
   static OptionalType DownCast(OpaqueType&& type) {
     ABSL_DCHECK(IsA(type));
     return OptionalType(std::move(type));
-  }
-};
-
-class OptionalTypeView final : public OpaqueTypeView {
- public:
-  using alternative_type = OptionalType;
-
-  static constexpr absl::string_view kName = OptionalType::kName;
-
-  using OpaqueTypeView::OpaqueTypeView;
-
-  // By default, this type is `optional(dyn)`. Unless you can help it, you
-  // should choose a more specific optional type.
-  OptionalTypeView();
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  OptionalTypeView(const OpaqueType& type) noexcept = delete;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  OptionalTypeView(
-      const OptionalType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  OptionalTypeView& operator=(
-      const OpaqueType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    OpaqueTypeView::operator=(type);
-    return *this;
-  }
-
-  OptionalTypeView& operator=(OpaqueType&&) = delete;
-
-  absl::string_view name() const {
-    auto name = OpaqueTypeView::name();
-    ABSL_DCHECK_EQ(name, kName);
-    return name;
-  }
-
-  absl::Span<const Type> parameters() const {
-    auto parameters = OpaqueTypeView::parameters();
-    ABSL_DCHECK_EQ(parameters.size(), 1);
-    return parameters;
-  }
-
-  const Type& parameter() const;
-
- private:
-  friend struct SubsumptionTraits<OptionalTypeView>;
-
-  // Used by SubsumptionTraits to downcast OpaqueTypeView.
-  explicit OptionalTypeView(OpaqueTypeView type) noexcept
-      : OpaqueTypeView(type) {}
-};
-
-bool operator==(OptionalTypeView lhs, OptionalTypeView rhs);
-
-inline bool operator!=(OptionalTypeView lhs, OptionalTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, OptionalTypeView type);
-
-template <>
-struct SubsumptionTraits<OptionalTypeView> final {
-  static bool IsA(OpaqueTypeView type) {
-    return type.name() == OptionalTypeView::kName &&
-           type.parameters().size() == 1;
-  }
-
-  static OptionalTypeView DownCast(OpaqueTypeView type) {
-    ABSL_DCHECK(IsA(type));
-    return OptionalTypeView(type);
   }
 };
 

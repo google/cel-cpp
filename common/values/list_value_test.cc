@@ -50,9 +50,7 @@ class ListValueTest : public common_internal::ThreadCompatibleValueTest<> {
     return std::move(*builder).Build();
   }
 
-  ListType GetIntListType() {
-    return type_factory().CreateListType(IntTypeView());
-  }
+  ListType GetIntListType() { return type_factory().CreateListType(IntType()); }
 };
 
 TEST_P(ListValueTest, Default) {

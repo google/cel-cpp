@@ -20,8 +20,8 @@
 #include <utility>
 
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "common/memory.h"
-#include "common/sized_input_view.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
 #include "common/type_manager.h"
@@ -45,14 +45,14 @@ class ThreadCompatibleTypeManager : public virtual TypeManager {
   }
 
  private:
-  ListType CreateListTypeImpl(TypeView element) final;
+  ListType CreateListTypeImpl(const Type& element) final;
 
-  MapType CreateMapTypeImpl(TypeView key, TypeView value) final;
+  MapType CreateMapTypeImpl(const Type& key, const Type& value) final;
 
   StructType CreateStructTypeImpl(absl::string_view name) final;
 
-  OpaqueType CreateOpaqueTypeImpl(
-      absl::string_view name, const SizedInputView<TypeView>& parameters) final;
+  OpaqueType CreateOpaqueTypeImpl(absl::string_view name,
+                                  absl::Span<const Type> parameters) final;
 
   MemoryManagerRef memory_manager_;
   Shared<TypeIntrospector> type_introspector_;

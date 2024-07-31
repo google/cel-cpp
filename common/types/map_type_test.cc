@@ -38,12 +38,6 @@ TEST(MapType, Default) {
   EXPECT_EQ(map_type.value(), DynType());
 }
 
-TEST(MapTypeView, Default) {
-  MapTypeView map_type;
-  EXPECT_EQ(map_type.key(), DynType());
-  EXPECT_EQ(map_type.value(), DynType());
-}
-
 class MapTypeTest : public common_internal::ThreadCompatibleMemoryTest<> {};
 
 TEST_P(MapTypeTest, Kind) {
@@ -127,89 +121,6 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(MemoryManagement::kPooling,
                       MemoryManagement::kReferenceCounting),
     MapTypeTest::ToString);
-
-class MapTypeViewTest : public common_internal::ThreadCompatibleMemoryTest<> {};
-
-TEST_P(MapTypeViewTest, Kind) {
-  auto type = MapType(memory_manager(), StringType(), BytesType());
-  EXPECT_EQ(MapTypeView(type).kind(), MapTypeView::kKind);
-  EXPECT_EQ(TypeView(MapTypeView(type)).kind(), MapTypeView::kKind);
-}
-
-TEST_P(MapTypeViewTest, Name) {
-  auto type = MapType(memory_manager(), StringType(), BytesType());
-  EXPECT_EQ(MapTypeView(type).name(), MapTypeView::kName);
-  EXPECT_EQ(TypeView(MapTypeView(type)).name(), MapTypeView::kName);
-}
-
-TEST_P(MapTypeViewTest, DebugString) {
-  auto type = MapType(memory_manager(), StringType(), BytesType());
-  {
-    std::ostringstream out;
-    out << MapTypeView(type);
-    EXPECT_EQ(out.str(), "map<string, bytes>");
-  }
-  {
-    std::ostringstream out;
-    out << TypeView(MapTypeView(type));
-    EXPECT_EQ(out.str(), "map<string, bytes>");
-  }
-}
-
-TEST_P(MapTypeViewTest, Hash) {
-  auto type = MapType(memory_manager(), StringType(), BytesType());
-  EXPECT_EQ(absl::HashOf(MapTypeView(type)), absl::HashOf(MapTypeView(type)));
-  EXPECT_EQ(absl::HashOf(MapTypeView(type)), absl::HashOf(MapType(type)));
-}
-
-TEST_P(MapTypeViewTest, Equal) {
-  auto type = MapType(memory_manager(), StringType(), BytesType());
-  EXPECT_EQ(MapTypeView(type), MapTypeView(type));
-  EXPECT_EQ(TypeView(MapTypeView(type)), MapTypeView(type));
-  EXPECT_EQ(MapTypeView(type), TypeView(MapTypeView(type)));
-  EXPECT_EQ(TypeView(MapTypeView(type)), TypeView(MapTypeView(type)));
-  EXPECT_EQ(MapTypeView(type), MapType(type));
-  EXPECT_EQ(TypeView(MapTypeView(type)), MapType(type));
-  EXPECT_EQ(TypeView(MapTypeView(type)), Type(MapType(type)));
-  EXPECT_EQ(MapType(type), MapTypeView(type));
-  EXPECT_EQ(MapType(type), MapTypeView(type));
-  EXPECT_EQ(MapType(type), TypeView(MapTypeView(type)));
-  EXPECT_EQ(Type(MapType(type)), TypeView(MapTypeView(type)));
-  EXPECT_EQ(MapTypeView(type), MapType(type));
-}
-
-TEST_P(MapTypeViewTest, NativeTypeId) {
-  auto type = MapType(memory_manager(), StringType(), BytesType());
-  EXPECT_EQ(NativeTypeId::Of(MapTypeView(type)),
-            NativeTypeId::For<MapTypeView>());
-  EXPECT_EQ(NativeTypeId::Of(TypeView(MapTypeView(type))),
-            NativeTypeId::For<MapTypeView>());
-}
-
-TEST_P(MapTypeViewTest, InstanceOf) {
-  auto type = MapType(memory_manager(), StringType(), BytesType());
-  EXPECT_TRUE(InstanceOf<MapTypeView>(MapTypeView(type)));
-  EXPECT_TRUE(InstanceOf<MapTypeView>(TypeView(MapTypeView(type))));
-}
-
-TEST_P(MapTypeViewTest, Cast) {
-  auto type = MapType(memory_manager(), StringType(), BytesType());
-  EXPECT_THAT(Cast<MapTypeView>(MapTypeView(type)), An<MapTypeView>());
-  EXPECT_THAT(Cast<MapTypeView>(TypeView(MapTypeView(type))),
-              An<MapTypeView>());
-}
-
-TEST_P(MapTypeViewTest, As) {
-  auto type = MapType(memory_manager(), StringType(), BytesType());
-  EXPECT_THAT(As<MapTypeView>(MapTypeView(type)), Ne(absl::nullopt));
-  EXPECT_THAT(As<MapTypeView>(TypeView(MapTypeView(type))), Ne(absl::nullopt));
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    MapTypeViewTest, MapTypeViewTest,
-    ::testing::Values(MemoryManagement::kPooling,
-                      MemoryManagement::kReferenceCounting),
-    MapTypeViewTest::ToString);
 
 }  // namespace
 }  // namespace cel

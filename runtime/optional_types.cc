@@ -281,13 +281,12 @@ absl::Status RegisterOptionalTypeFunctions(FunctionRegistry& registry,
 
 class OptionalTypeProvider final : public TypeReflector {
  protected:
-  absl::StatusOr<absl::optional<TypeView>> FindTypeImpl(TypeFactory&,
-                                                        absl::string_view name,
-                                                        Type&) const override {
+  absl::StatusOr<absl::optional<Type>> FindTypeImpl(
+      TypeFactory&, absl::string_view name) const override {
     if (name != "optional_type") {
       return absl::nullopt;
     }
-    return OptionalTypeView{};
+    return OptionalType{};
   }
 };
 

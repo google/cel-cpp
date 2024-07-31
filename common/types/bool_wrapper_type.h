@@ -31,7 +31,6 @@ namespace cel {
 
 class Type;
 class BoolWrapperType;
-class BoolWrapperTypeView;
 
 // `BoolWrapperType` is a special type which has no direct value representation.
 // It is used to represent `google.protobuf.BoolValue`, which never exists at
@@ -39,12 +38,8 @@ class BoolWrapperTypeView;
 // runtime.
 class BoolWrapperType final {
  public:
-  using view_alternative_type = BoolWrapperTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kBoolWrapper;
   static constexpr absl::string_view kName = "google.protobuf.BoolValue";
-
-  explicit BoolWrapperType(BoolWrapperTypeView);
 
   BoolWrapperType() = default;
   BoolWrapperType(const BoolWrapperType&) = default;
@@ -91,70 +86,6 @@ inline std::ostream& operator<<(std::ostream& out,
                                 const BoolWrapperType& type) {
   return out << type.DebugString();
 }
-
-class BoolWrapperTypeView final {
- public:
-  using alternative_type = BoolWrapperType;
-
-  static constexpr TypeKind kKind = BoolWrapperType::kKind;
-  static constexpr absl::string_view kName = BoolWrapperType::kName;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  BoolWrapperTypeView(const BoolWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                          ABSL_ATTRIBUTE_UNUSED) noexcept {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  BoolWrapperTypeView& operator=(
-      const BoolWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-          ABSL_ATTRIBUTE_UNUSED) {
-    return *this;
-  }
-
-  BoolWrapperTypeView& operator=(BoolWrapperType&&) = delete;
-
-  BoolWrapperTypeView() = default;
-  BoolWrapperTypeView(const BoolWrapperTypeView&) = default;
-  BoolWrapperTypeView(BoolWrapperTypeView&&) = default;
-  BoolWrapperTypeView& operator=(const BoolWrapperTypeView&) = default;
-  BoolWrapperTypeView& operator=(BoolWrapperTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  constexpr absl::string_view name() const { return kName; }
-
-  absl::Span<const Type> parameters() const { return {}; }
-
-  std::string DebugString() const { return std::string(name()); }
-
-  constexpr void swap(BoolWrapperTypeView&) noexcept {}
-};
-
-inline constexpr void swap(BoolWrapperTypeView& lhs,
-                           BoolWrapperTypeView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline constexpr bool operator==(BoolWrapperTypeView, BoolWrapperTypeView) {
-  return true;
-}
-
-inline constexpr bool operator!=(BoolWrapperTypeView lhs,
-                                 BoolWrapperTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, BoolWrapperTypeView) {
-  // BoolWrapperType is really a singleton and all instances are equal. Nothing
-  // to hash.
-  return std::move(state);
-}
-
-inline std::ostream& operator<<(std::ostream& out, BoolWrapperTypeView type) {
-  return out << type.DebugString();
-}
-
-inline BoolWrapperType::BoolWrapperType(BoolWrapperTypeView) {}
 
 }  // namespace cel
 

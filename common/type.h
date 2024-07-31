@@ -68,7 +68,6 @@
 namespace cel {
 
 class Type;
-class TypeView;
 
 // `Type` is a composition type which encompasses all types supported by the
 // Common Expression Language. When default constructed or moved, `Type` is in a
@@ -77,17 +76,11 @@ class TypeView;
 // best to fail.
 class Type final {
  public:
-  using view_alternative_type = TypeView;
-
   Type() = default;
   Type(const Type&) = default;
   Type(Type&&) = default;
   Type& operator=(const Type&) = default;
   Type& operator=(Type&&) = default;
-
-  explicit Type(TypeView other);
-
-  Type& operator=(TypeView other);
 
   template <typename T,
             typename = std::enable_if_t<common_internal::IsTypeInterfaceV<T>>>
@@ -274,34 +267,8 @@ class Type final {
   const Type* operator->() const { return this; }
 
  private:
-  friend class TypeView;
   friend struct NativeTypeTraits<Type>;
   friend struct CompositionTraits<Type>;
-
-  common_internal::TypeViewVariant ToViewVariant() const {
-    return absl::visit(
-        [](const auto& alternative) -> common_internal::TypeViewVariant {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // Only present in debug builds.
-            static_assert(
-                std::is_same_v<absl::variant_alternative_t<
-                                   0, common_internal::TypeViewVariant>,
-                               absl::monostate>);
-            static_assert(std::is_same_v<absl::variant_alternative_t<
-                                             0, common_internal::TypeVariant>,
-                                         absl::monostate>);
-            return common_internal::TypeViewVariant{};
-          } else {
-            return common_internal::TypeViewVariant(
-                absl::in_place_type<typename absl::remove_cvref_t<
-                    decltype(alternative)>::view_alternative_type>,
-                alternative);
-          }
-        },
-        variant_);
-  }
 
   constexpr bool IsValid() const {
     return !absl::holds_alternative<absl::monostate>(variant_);
@@ -436,327 +403,9 @@ static_assert(std::is_nothrow_move_constructible_v<Type>);
 static_assert(std::is_nothrow_move_assignable_v<Type>);
 static_assert(std::is_nothrow_swappable_v<Type>);
 
-// `TypeView` is a composition type which acts as a view of `Type` and its
-// composed types. Like `Type`, it is also invalid when default constructed and
-// must be assigned another type.
-class TypeView final {
- public:
-  using alternative_type = Type;
-
-  TypeView() = default;
-  TypeView(const TypeView&) = default;
-  TypeView& operator=(const TypeView&) = default;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  TypeView(const Type& type ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : variant_((type.AssertIsValid(), type.ToViewVariant())) {}
-
-  template <typename T,
-            typename = std::enable_if_t<common_internal::IsTypeAlternativeV<T>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  TypeView(const T& alternative ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept
-      : variant_(absl::in_place_type<
-                     common_internal::BaseTypeViewAlternativeForT<T>>,
-                 alternative) {}
-
-  template <typename T,
-            typename = std::enable_if_t<common_internal::IsTypeViewAlternativeV<
-                absl::remove_cvref_t<T>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  TypeView(T alternative) noexcept
-      : variant_(
-            absl::in_place_type<common_internal::BaseTypeViewAlternativeForT<
-                absl::remove_cvref_t<T>>>,
-            alternative) {}
-
-  template <typename T,
-            typename = std::enable_if_t<common_internal::IsTypeInterfaceV<T>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  TypeView(SharedView<const T> interface) noexcept
-      : variant_(absl::in_place_type<
-                     common_internal::BaseTypeViewAlternativeForT<T>>,
-                 interface) {}
-
-  TypeView& operator=(const Type& other) {
-    variant_ = (other.AssertIsValid(), other.ToViewVariant());
-    return *this;
-  }
-
-  TypeView& operator=(Type&&) = delete;
-
-  template <typename T>
-  std::enable_if_t<common_internal::IsTypeAlternativeV<T>, TypeView&> operator=(
-      const T& alternative ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    variant_.emplace<common_internal::BaseTypeViewAlternativeForT<T>>(
-        alternative);
-    return *this;
-  }
-
-  template <typename T>
-  std::enable_if_t<
-      std::conjunction_v<
-          std::negation<std::is_lvalue_reference<T>>,
-          common_internal::IsTypeAlternative<absl::remove_cvref_t<T>>>,
-      TypeView&>
-  operator=(T&&) = delete;
-
-  template <typename T>
-  std::enable_if_t<common_internal::IsTypeViewAlternativeV<T>, TypeView&>
-  operator=(T alternative) {
-    variant_.emplace<
-        common_internal::BaseTypeViewAlternativeForT<absl::remove_cvref_t<T>>>(
-        alternative);
-    return *this;
-  }
-
-  TypeKind kind() const {
-    AssertIsValid();
-    return absl::visit(
-        [](auto alternative) -> TypeKind {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we just return TypeKind::kError. In debug
-            // builds we cannot reach here.
-            return TypeKind::kError;
-          } else {
-            return alternative.kind();
-          }
-        },
-        variant_);
-  }
-
-  absl::string_view name() const {
-    AssertIsValid();
-    return absl::visit(
-        [](auto alternative) -> absl::string_view {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we just return an empty string. In debug
-            // builds we cannot reach here.
-            return absl::string_view();
-          } else {
-            return alternative.name();
-          }
-        },
-        variant_);
-  }
-
-  std::string DebugString() const {
-    AssertIsValid();
-    return absl::visit(
-        [](auto alternative) -> std::string {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we just return an empty string. In debug
-            // builds we cannot reach here.
-            return std::string();
-          } else {
-            return alternative.DebugString();
-          }
-        },
-        variant_);
-  }
-
-  absl::Span<const Type> parameters() const {
-    AssertIsValid();
-    return absl::visit(
-        [](auto alternative) -> absl::Span<const Type> {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we just return an empty string. In debug
-            // builds we cannot reach here.
-            return {};
-          } else {
-            return alternative.parameters();
-          }
-        },
-        variant_);
-  }
-
-  void swap(TypeView& other) noexcept {
-    AssertIsValid();
-    other.AssertIsValid();
-    variant_.swap(other.variant_);
-  }
-
-  template <typename H>
-  friend H AbslHashValue(H state, TypeView type) {
-    type.AssertIsValid();
-    return H::combine(
-        absl::visit(
-            [state = std::move(state)](auto alternative) mutable -> H {
-              if constexpr (std::is_same_v<
-                                absl::remove_cvref_t<decltype(alternative)>,
-                                absl::monostate>) {
-                // In optimized builds, we just hash `absl::monostate`. In debug
-                // builds we cannot reach here.
-                return H::combine(std::move(state), alternative);
-              } else {
-                return H::combine(std::move(state), alternative.kind(),
-                                  alternative);
-              }
-            },
-            type.variant_),
-        type.variant_.index());
-  }
-
-  friend bool operator==(TypeView lhs, TypeView rhs) {
-    lhs.AssertIsValid();
-    rhs.AssertIsValid();
-    return lhs.variant_ == rhs.variant_;
-  }
-
-  friend std::ostream& operator<<(std::ostream& out, TypeView type) {
-    type.AssertIsValid();
-    return absl::visit(
-        [&out](auto alternative) -> std::ostream& {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we do nothing. In debug builds we cannot
-            // reach here.
-            return out;
-          } else {
-            return out << alternative;
-          }
-        },
-        type.variant_);
-  }
-
- private:
-  friend class Type;
-  friend struct NativeTypeTraits<TypeView>;
-  friend struct CompositionTraits<TypeView>;
-
-  common_internal::TypeVariant ToVariant() const {
-    return absl::visit(
-        [](auto alternative) -> common_internal::TypeVariant {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // Only present in debug builds.
-            static_assert(
-                std::is_same_v<absl::variant_alternative_t<
-                                   0, common_internal::TypeViewVariant>,
-                               absl::monostate>);
-            static_assert(std::is_same_v<absl::variant_alternative_t<
-                                             0, common_internal::TypeVariant>,
-                                         absl::monostate>);
-            return common_internal::TypeVariant{};
-          } else {
-            return common_internal::TypeVariant(
-                absl::in_place_type<typename absl::remove_cvref_t<
-                    decltype(alternative)>::alternative_type>,
-                alternative);
-          }
-        },
-        variant_);
-  }
-
-  constexpr bool IsValid() const {
-    return !absl::holds_alternative<absl::monostate>(variant_);
-  }
-
-  void AssertIsValid() const {
-    ABSL_DCHECK(IsValid()) << "use of invalid TypeView";
-  }
-
-  common_internal::TypeViewVariant variant_;
-};
-
-inline void swap(TypeView& lhs, TypeView& rhs) noexcept { lhs.swap(rhs); }
-
-inline bool operator!=(TypeView lhs, TypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <>
-struct NativeTypeTraits<TypeView> final {
-  static NativeTypeId Id(TypeView type) {
-    type.AssertIsValid();
-    return absl::visit(
-        [](const auto& alternative) -> NativeTypeId {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we just return
-            // `NativeTypeId::For<absl::monostate>()`. In debug builds we cannot
-            // reach here.
-            return NativeTypeId::For<absl::monostate>();
-          } else {
-            return NativeTypeId::Of(alternative);
-          }
-        },
-        type.variant_);
-  }
-};
-
-template <>
-struct CompositionTraits<TypeView> final {
-  template <typename U>
-  static std::enable_if_t<common_internal::IsTypeViewAlternativeV<U>, bool>
-  HasA(TypeView type) {
-    type.AssertIsValid();
-    using Base = common_internal::BaseTypeViewAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::holds_alternative<U>(type.variant_);
-    } else {
-      return InstanceOf<U>(Get<Base>(type));
-    }
-  }
-
-  template <typename U>
-  static std::enable_if_t<common_internal::IsTypeViewAlternativeV<U>, U> Get(
-      TypeView type) {
-    type.AssertIsValid();
-    using Base = common_internal::BaseTypeViewAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(type.variant_);
-    } else {
-      return Cast<U>(absl::get<Base>(type.variant_));
-    }
-  }
-};
-
-template <typename To, typename From>
-struct CastTraits<
-    To, From,
-    std::enable_if_t<std::is_same_v<TypeView, absl::remove_cvref_t<From>>>>
-    : CompositionCastTraits<To, From> {};
-
-// Statically assert some expectations.
-static_assert(std::is_default_constructible_v<TypeView>);
-static_assert(std::is_nothrow_copy_constructible_v<TypeView>);
-static_assert(std::is_nothrow_copy_assignable_v<TypeView>);
-static_assert(std::is_nothrow_move_constructible_v<TypeView>);
-static_assert(std::is_nothrow_move_assignable_v<TypeView>);
-static_assert(std::is_nothrow_swappable_v<TypeView>);
-static_assert(std::is_trivially_copyable_v<TypeView>);
-static_assert(std::is_trivially_destructible_v<TypeView>);
-
-inline Type::Type(TypeView other)
-    : variant_((other.AssertIsValid(), other.ToVariant())) {}
-
-inline Type& Type::operator=(TypeView other) {
-  other.AssertIsValid();
-  variant_ = other.ToVariant();
-  return *this;
-}
-
 struct StructTypeField {
   std::string name;
   Type type;
-  // The field number, if less than or equal to 0 it is not available.
-  int64_t number = 0;
-};
-
-struct StructTypeFieldView {
-  absl::string_view name;
-  TypeView type;
   // The field number, if less than or equal to 0 it is not available.
   int64_t number = 0;
 };
@@ -841,8 +490,6 @@ struct NativeTypeTraits<common_internal::FunctionTypeData> final {
 
 inline ListType::ListType() : ListType(common_internal::GetDynListType()) {}
 
-inline ListType::ListType(ListTypeView other) : data_(other.data_) {}
-
 inline ListType::ListType(MemoryManagerRef memory_manager, Type element)
     : data_(memory_manager.MakeShared<common_internal::ListTypeData>(
           std::move(element))) {}
@@ -865,30 +512,7 @@ inline H AbslHashValue(H state, const ListType& type) {
   return H::combine(std::move(state), type.element());
 }
 
-inline ListTypeView::ListTypeView()
-    : ListTypeView(common_internal::GetDynListType()) {}
-
-inline ListTypeView::ListTypeView(const ListType& type) noexcept
-    : data_(type.data_) {}
-
-inline absl::Span<const Type> ListTypeView::parameters() const {
-  return absl::MakeConstSpan(&data_->element, 1);
-}
-
-inline const Type& ListTypeView::element() const { return data_->element; }
-
-inline bool operator==(ListTypeView lhs, ListTypeView rhs) {
-  return lhs.element() == rhs.element();
-}
-
-template <typename H>
-inline H AbslHashValue(H state, ListTypeView type) {
-  return H::combine(std::move(state), type.element());
-}
-
 inline MapType::MapType() : MapType(common_internal::GetDynDynMapType()) {}
-
-inline MapType::MapType(MapTypeView other) : data_(other.data_) {}
 
 inline MapType::MapType(MemoryManagerRef memory_manager, Type key, Type value)
     : data_(memory_manager.MakeShared<common_internal::MapTypeData>(
@@ -916,33 +540,6 @@ inline H AbslHashValue(H state, const MapType& type) {
   return H::combine(std::move(state), type.key(), type.value());
 }
 
-inline MapTypeView::MapTypeView()
-    : MapTypeView(common_internal::GetDynDynMapType()) {}
-
-inline MapTypeView::MapTypeView(const MapType& type) noexcept
-    : data_(type.data_) {}
-
-inline absl::Span<const Type> MapTypeView::parameters() const {
-  return absl::MakeConstSpan(data_->key_and_value);
-}
-
-inline const Type& MapTypeView::key() const { return data_->key_and_value[0]; }
-
-inline const Type& MapTypeView::value() const {
-  return data_->key_and_value[1];
-}
-
-inline bool operator==(MapTypeView lhs, MapTypeView rhs) {
-  return lhs.key() == rhs.key() && lhs.value() == rhs.value();
-}
-
-template <typename H>
-inline H AbslHashValue(H state, MapTypeView type) {
-  return H::combine(std::move(state), type.key(), type.value());
-}
-
-inline StructType::StructType(StructTypeView other) : data_(other.data_) {}
-
 inline StructType::StructType(MemoryManagerRef memory_manager,
                               absl::string_view name)
     : data_(memory_manager.MakeShared<common_internal::StructTypeData>(
@@ -953,14 +550,6 @@ inline absl::string_view StructType::name() const
   return data_->name;
 }
 
-inline StructTypeView::StructTypeView(const StructType& type) noexcept
-    : data_(type.data_) {}
-
-inline absl::string_view StructTypeView::name() const { return data_->name; }
-
-inline TypeParamType::TypeParamType(TypeParamTypeView other)
-    : data_(other.data_) {}
-
 inline TypeParamType::TypeParamType(MemoryManagerRef memory_manager,
                                     absl::string_view name)
     : data_(memory_manager.MakeShared<common_internal::TypeParamTypeData>(
@@ -970,13 +559,6 @@ inline absl::string_view TypeParamType::name() const
     ABSL_ATTRIBUTE_LIFETIME_BOUND {
   return data_->name;
 }
-
-inline TypeParamTypeView::TypeParamTypeView(const TypeParamType& type) noexcept
-    : data_(type.data_) {}
-
-inline absl::string_view TypeParamTypeView::name() const { return data_->name; }
-
-inline OpaqueType::OpaqueType(OpaqueTypeView other) : data_(other.data_) {}
 
 inline absl::string_view OpaqueType::name() const
     ABSL_ATTRIBUTE_LIFETIME_BOUND {
@@ -1003,37 +585,11 @@ inline H AbslHashValue(H state, const OpaqueType& type) {
   return std::move(state);
 }
 
-inline OpaqueTypeView::OpaqueTypeView(const OpaqueType& type) noexcept
-    : data_(type.data_) {}
-
-inline absl::string_view OpaqueTypeView::name() const { return data_->name; }
-
-inline absl::Span<const Type> OpaqueTypeView::parameters() const {
-  return data_->parameters;
-}
-
-inline bool operator==(OpaqueTypeView lhs, OpaqueTypeView rhs) {
-  return lhs.name() == rhs.name() &&
-         absl::c_equal(lhs.parameters(), rhs.parameters());
-}
-
-template <typename H>
-inline H AbslHashValue(H state, OpaqueTypeView type) {
-  state = H::combine(std::move(state), type.name());
-  auto parameters = type.parameters();
-  for (const auto& parameter : parameters) {
-    state = H::combine(std::move(state), parameter);
-  }
-  return std::move(state);
-}
-
 inline OptionalType::OptionalType()
     : OptionalType(common_internal::GetDynOptionalType()) {}
 
-inline OptionalType::OptionalType(OptionalTypeView type) : OpaqueType(type) {}
-
 inline OptionalType::OptionalType(MemoryManagerRef memory_manager,
-                                  TypeView parameter)
+                                  const Type& parameter)
     : OpaqueType(memory_manager, kName, {parameter}) {}
 
 inline const Type& OptionalType::parameter() const
@@ -1049,28 +605,6 @@ template <typename H>
 inline H AbslHashValue(H state, const OptionalType& type) {
   return H::combine(std::move(state), type.parameter());
 }
-
-inline OptionalTypeView::OptionalTypeView()
-    : OptionalTypeView(common_internal::GetDynOptionalType()) {}
-
-inline OptionalTypeView::OptionalTypeView(const OptionalType& type) noexcept
-    : OpaqueTypeView(type) {}
-
-inline const Type& OptionalTypeView::parameter() const {
-  return parameters().front();
-}
-
-inline bool operator==(OptionalTypeView lhs, OptionalTypeView rhs) {
-  return lhs.parameter() == rhs.parameter();
-}
-
-template <typename H>
-inline H AbslHashValue(H state, OptionalTypeView type) {
-  return H::combine(std::move(state), type.parameter());
-}
-
-inline FunctionType::FunctionType(FunctionTypeView other)
-    : data_(other.data_) {}
 
 inline absl::Span<const Type> FunctionType::parameters() const
     ABSL_ATTRIBUTE_LIFETIME_BOUND {
@@ -1100,48 +634,12 @@ inline H AbslHashValue(H state, const FunctionType& type) {
   return std::move(state);
 }
 
-inline FunctionTypeView::FunctionTypeView(const FunctionType& type) noexcept
-    : data_(type.data_) {}
-
-inline absl::Span<const Type> FunctionTypeView::parameters() const {
-  return absl::MakeConstSpan(data_->result_and_args);
-}
-
-inline const Type& FunctionTypeView::result() const {
-  return data_->result_and_args[0];
-}
-
-inline absl::Span<const Type> FunctionTypeView::args() const {
-  return absl::MakeConstSpan(data_->result_and_args).subspan(1);
-}
-
-inline bool operator==(FunctionTypeView lhs, FunctionTypeView rhs) {
-  return lhs.result() == rhs.result() && absl::c_equal(lhs.args(), rhs.args());
-}
-
-template <typename H>
-inline H AbslHashValue(H state, FunctionTypeView type) {
-  state = H::combine(std::move(state), type.result());
-  auto args = type.args();
-  for (const auto& arg : args) {
-    state = H::combine(std::move(state), arg);
-  }
-  return std::move(state);
-}
-
 inline TypeType::TypeType(MemoryManagerRef memory_manager, Type parameter)
     : data_(memory_manager.MakeShared<common_internal::TypeTypeData>(
           std::move(parameter))) {}
 
 inline absl::Span<const Type> TypeType::parameters() const
     ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  if (data_) {
-    return absl::MakeConstSpan(&data_->type, 1);
-  }
-  return {};
-}
-
-inline absl::Span<const Type> TypeTypeView::parameters() const {
   if (data_) {
     return absl::MakeConstSpan(&data_->type, 1);
   }

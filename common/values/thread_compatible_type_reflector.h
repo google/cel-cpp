@@ -35,7 +35,7 @@ class ThreadCompatibleTypeReflector : public ThreadCompatibleTypeIntrospector,
 
   absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
   NewStructValueBuilder(ValueFactory& value_factory,
-                        StructTypeView type) const override;
+                        const StructType& type) const override;
 
   absl::StatusOr<bool> FindValue(ValueFactory& value_factory,
                                  absl::string_view name,

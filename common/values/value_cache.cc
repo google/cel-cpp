@@ -54,7 +54,7 @@ ErrorValue ProcessLocalValueCache::GetDefaultErrorValue() const {
 }
 
 absl::optional<ParsedListValue> ProcessLocalValueCache::GetEmptyListValue(
-    ListTypeView type) const {
+    const ListType& type) const {
   if (auto list_value = list_values_.find(type);
       list_value != list_values_.end()) {
     return list_value->second;
@@ -67,7 +67,7 @@ ParsedListValue ProcessLocalValueCache::GetEmptyDynListValue() const {
 }
 
 absl::optional<ParsedMapValue> ProcessLocalValueCache::GetEmptyMapValue(
-    MapTypeView type) const {
+    const MapType& type) const {
   if (auto map_value = map_values_.find(type); map_value != map_values_.end()) {
     return map_value->second;
   }
@@ -82,7 +82,7 @@ ParsedMapValue ProcessLocalValueCache::GetEmptyStringDynMapValue() const {
   return *string_dyn_map_value_;
 }
 absl::optional<OptionalValue> ProcessLocalValueCache::GetEmptyOptionalValue(
-    OptionalTypeView type) const {
+    const OptionalType& type) const {
   if (auto optional_value = optional_values_.find(type);
       optional_value != optional_values_.end()) {
     return optional_value->second;
@@ -97,9 +97,7 @@ OptionalValue ProcessLocalValueCache::GetEmptyDynOptionalValue() const {
 ProcessLocalValueCache::ProcessLocalValueCache()
     : default_error_value_(absl::UnknownError("unknown error")) {
   MemoryManagerRef memory_manager = MemoryManagerRef::Unmanaged();
-  const auto& list_types = ProcessLocalTypeCache::Get()->ListTypes();
-  list_values_.reserve(list_types.size());
-  for (const auto& list_type : list_types) {
+  ProcessLocalTypeCache::Get()->ListTypes([&](const ListType& list_type) {
     auto inserted =
         list_values_
             .insert_or_assign(
@@ -108,10 +106,8 @@ ProcessLocalValueCache::ProcessLocalValueCache()
                     ListType(list_type))))
             .second;
     ABSL_DCHECK(inserted);
-  }
-  const auto& map_types = ProcessLocalTypeCache::Get()->MapTypes();
-  map_values_.reserve(map_types.size());
-  for (const auto& map_type : map_types) {
+  });
+  ProcessLocalTypeCache::Get()->MapTypes([&](const MapType& map_type) {
     auto inserted =
         map_values_
             .insert_or_assign(
@@ -120,19 +116,18 @@ ProcessLocalValueCache::ProcessLocalValueCache()
                     MapType(map_type))))
             .second;
     ABSL_DCHECK(inserted);
-  }
-  const auto& optional_types = ProcessLocalTypeCache::Get()->OptionalTypes();
-  optional_values_.reserve(optional_types.size());
-  for (const auto& optional_type : optional_types) {
-    auto inserted =
-        optional_values_
-            .insert_or_assign(
-                optional_type,
-                OptionalValue(memory_manager.MakeShared<EmptyOptionalValue>(
-                    OptionalType(optional_type))))
-            .second;
-    ABSL_DCHECK(inserted);
-  }
+  });
+  ProcessLocalTypeCache::Get()->OptionalTypes(
+      [&](const OptionalType& optional_type) {
+        auto inserted =
+            optional_values_
+                .insert_or_assign(
+                    optional_type,
+                    OptionalValue(memory_manager.MakeShared<EmptyOptionalValue>(
+                        OptionalType(optional_type))))
+                .second;
+        ABSL_DCHECK(inserted);
+      });
   dyn_list_value_ =
       GetEmptyListValue(ProcessLocalTypeCache::Get()->GetDynListType());
   ABSL_DCHECK(dyn_list_value_.has_value());

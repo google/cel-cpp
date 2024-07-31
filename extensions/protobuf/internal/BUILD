@@ -507,6 +507,7 @@ cc_library(
         "//eval/public/structs:proto_message_type_adapter",
         "//extensions/protobuf:value",
         "//internal:status_macros",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_protobuf//:protobuf",
     ],

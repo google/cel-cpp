@@ -22,7 +22,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "common/memory.h"
-#include "common/sized_input_view.h"
 #include "common/type.h"
 
 namespace cel {
@@ -42,7 +41,7 @@ std::string FunctionDebugString(const Type& result,
 }
 
 absl::FixedArray<Type, 3> SizedInputViewToFixedArray(
-    TypeView result, const SizedInputView<TypeView>& args) {
+    const Type& result, absl::Span<const Type> args) {
   absl::FixedArray<Type, 3> fixed_args(1 + args.size());
   size_t index = 0;
   fixed_args[index++] = Type(result);
@@ -55,16 +54,12 @@ absl::FixedArray<Type, 3> SizedInputViewToFixedArray(
 
 }  // namespace
 
-FunctionType::FunctionType(MemoryManagerRef memory_manager, TypeView result,
-                           const SizedInputView<TypeView>& args)
+FunctionType::FunctionType(MemoryManagerRef memory_manager, const Type& result,
+                           absl::Span<const Type> args)
     : data_(memory_manager.MakeShared<common_internal::FunctionTypeData>(
           SizedInputViewToFixedArray(result, args))) {}
 
 std::string FunctionType::DebugString() const {
-  return FunctionDebugString(result(), args());
-}
-
-std::string FunctionTypeView::DebugString() const {
   return FunctionDebugString(result(), args());
 }
 

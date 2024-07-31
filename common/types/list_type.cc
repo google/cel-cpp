@@ -23,8 +23,4 @@ std::string ListType::DebugString() const {
   return absl::StrCat("list<", element().DebugString(), ">");
 }
 
-std::string ListTypeView::DebugString() const {
-  return absl::StrCat("list<", element().DebugString(), ">");
-}
-
 }  // namespace cel

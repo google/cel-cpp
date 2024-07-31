@@ -1063,7 +1063,7 @@ namespace {}  // namespace
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
     absl::StatusOr<Unique<ListValueBuilder>>
     cel_common_internal_LegacyTypeReflector_NewListValueBuilder(
-        ValueFactory& value_factory, ListTypeView type) {
+        ValueFactory& value_factory, const ListType& type) {
   auto memory_manager = value_factory.GetMemoryManager();
   auto* arena = extensions::ProtoMemoryManagerArena(memory_manager);
   if (arena == nullptr) {
@@ -1078,7 +1078,7 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
     absl::StatusOr<Unique<MapValueBuilder>>
     cel_common_internal_LegacyTypeReflector_NewMapValueBuilder(
-        ValueFactory& value_factory, MapTypeView type) {
+        ValueFactory& value_factory, const MapType& type) {
   auto memory_manager = value_factory.GetMemoryManager();
   auto* arena = extensions::ProtoMemoryManagerArena(memory_manager);
   if (arena == nullptr) {

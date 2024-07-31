@@ -31,17 +31,12 @@ namespace cel {
 
 class Type;
 class BytesType;
-class BytesTypeView;
 
 // `BoolType` represents the primitive `bytes` type.
 class BytesType final {
  public:
-  using view_alternative_type = BytesTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kBytes;
   static constexpr absl::string_view kName = "bytes";
-
-  explicit BytesType(BytesTypeView);
 
   BytesType() = default;
   BytesType(const BytesType&) = default;
@@ -84,65 +79,6 @@ H AbslHashValue(H state, BytesType) {
 inline std::ostream& operator<<(std::ostream& out, const BytesType& type) {
   return out << type.DebugString();
 }
-
-class BytesTypeView final {
- public:
-  using alternative_type = BytesType;
-
-  static constexpr TypeKind kKind = BytesType::kKind;
-  static constexpr absl::string_view kName = BytesType::kName;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  BytesTypeView(const BytesType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                    ABSL_ATTRIBUTE_UNUSED) noexcept {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  BytesTypeView& operator=(const BytesType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                               ABSL_ATTRIBUTE_UNUSED) {
-    return *this;
-  }
-
-  BytesTypeView& operator=(BytesType&&) = delete;
-
-  BytesTypeView() = default;
-  BytesTypeView(const BytesTypeView&) = default;
-  BytesTypeView(BytesTypeView&&) = default;
-  BytesTypeView& operator=(const BytesTypeView&) = default;
-  BytesTypeView& operator=(BytesTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  constexpr absl::string_view name() const { return kName; }
-
-  absl::Span<const Type> parameters() const { return {}; }
-
-  std::string DebugString() const { return std::string(name()); }
-
-  constexpr void swap(BytesTypeView&) noexcept {}
-};
-
-inline constexpr void swap(BytesTypeView& lhs, BytesTypeView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline constexpr bool operator==(BytesTypeView, BytesTypeView) { return true; }
-
-inline constexpr bool operator!=(BytesTypeView lhs, BytesTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, BytesTypeView) {
-  // BytesType is really a singleton and all instances are equal. Nothing to
-  // hash.
-  return std::move(state);
-}
-
-inline std::ostream& operator<<(std::ostream& out, BytesTypeView type) {
-  return out << type.DebugString();
-}
-
-inline BytesType::BytesType(BytesTypeView) {}
 
 }  // namespace cel
 

@@ -31,7 +31,6 @@ namespace cel {
 
 class Type;
 class BytesWrapperType;
-class BytesWrapperTypeView;
 
 // `BytesWrapperType` is a special type which has no direct value
 // representation. It is used to represent `google.protobuf.BytesValue`, which
@@ -39,12 +38,8 @@ class BytesWrapperTypeView;
 // and unpacking at runtime.
 class BytesWrapperType final {
  public:
-  using view_alternative_type = BytesWrapperTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kBytesWrapper;
   static constexpr absl::string_view kName = "google.protobuf.BytesValue";
-
-  explicit BytesWrapperType(BytesWrapperTypeView);
 
   BytesWrapperType() = default;
   BytesWrapperType(const BytesWrapperType&) = default;
@@ -91,71 +86,6 @@ inline std::ostream& operator<<(std::ostream& out,
                                 const BytesWrapperType& type) {
   return out << type.DebugString();
 }
-
-class BytesWrapperTypeView final {
- public:
-  using alternative_type = BytesWrapperType;
-
-  static constexpr TypeKind kKind = BytesWrapperType::kKind;
-  static constexpr absl::string_view kName = BytesWrapperType::kName;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  BytesWrapperTypeView(
-      const BytesWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-          ABSL_ATTRIBUTE_UNUSED) noexcept {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  BytesWrapperTypeView& operator=(
-      const BytesWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-          ABSL_ATTRIBUTE_UNUSED) {
-    return *this;
-  }
-
-  BytesWrapperTypeView& operator=(BytesWrapperType&&) = delete;
-
-  BytesWrapperTypeView() = default;
-  BytesWrapperTypeView(const BytesWrapperTypeView&) = default;
-  BytesWrapperTypeView(BytesWrapperTypeView&&) = default;
-  BytesWrapperTypeView& operator=(const BytesWrapperTypeView&) = default;
-  BytesWrapperTypeView& operator=(BytesWrapperTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  constexpr absl::string_view name() const { return kName; }
-
-  absl::Span<const Type> parameters() const { return {}; }
-
-  std::string DebugString() const { return std::string(name()); }
-
-  constexpr void swap(BytesWrapperTypeView&) noexcept {}
-};
-
-inline constexpr void swap(BytesWrapperTypeView& lhs,
-                           BytesWrapperTypeView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline constexpr bool operator==(BytesWrapperTypeView, BytesWrapperTypeView) {
-  return true;
-}
-
-inline constexpr bool operator!=(BytesWrapperTypeView lhs,
-                                 BytesWrapperTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, BytesWrapperTypeView) {
-  // BytesWrapperType is really a singleton and all instances are equal. Nothing
-  // to hash.
-  return std::move(state);
-}
-
-inline std::ostream& operator<<(std::ostream& out, BytesWrapperTypeView type) {
-  return out << type.DebugString();
-}
-
-inline BytesWrapperType::BytesWrapperType(BytesWrapperTypeView) {}
 
 }  // namespace cel
 

@@ -23,7 +23,8 @@
 
 namespace cel::common_internal {
 
-ListValue ThreadSafeValueManager::CreateZeroListValueImpl(ListTypeView type) {
+ListValue ThreadSafeValueManager::CreateZeroListValueImpl(
+    const ListType& type) {
   {
     absl::ReaderMutexLock lock(&list_values_mutex_);
     if (auto list_value = list_values_.find(type);
@@ -33,14 +34,14 @@ ListValue ThreadSafeValueManager::CreateZeroListValueImpl(ListTypeView type) {
   }
   auto list_value =
       GetMemoryManager().MakeShared<EmptyListValue>(ListType(type));
-  type = list_value->GetType();
+  auto list_type = list_value->GetType();
   absl::WriterMutexLock lock(&list_values_mutex_);
   return list_values_
-      .insert(std::pair{type, ParsedListValue(std::move(list_value))})
+      .insert(std::pair{list_type, ParsedListValue(std::move(list_value))})
       .first->second;
 }
 
-MapValue ThreadSafeValueManager::CreateZeroMapValueImpl(MapTypeView type) {
+MapValue ThreadSafeValueManager::CreateZeroMapValueImpl(const MapType& type) {
   {
     absl::ReaderMutexLock lock(&map_values_mutex_);
     if (auto map_value = map_values_.find(type);
@@ -49,15 +50,15 @@ MapValue ThreadSafeValueManager::CreateZeroMapValueImpl(MapTypeView type) {
     }
   }
   auto map_value = GetMemoryManager().MakeShared<EmptyMapValue>(MapType(type));
-  type = map_value->GetType();
+  auto map_type = map_value->GetType();
   absl::WriterMutexLock lock(&map_values_mutex_);
   return map_values_
-      .insert(std::pair{type, ParsedMapValue(std::move(map_value))})
+      .insert(std::pair{map_type, ParsedMapValue(std::move(map_value))})
       .first->second;
 }
 
 OptionalValue ThreadSafeValueManager::CreateZeroOptionalValueImpl(
-    OptionalTypeView type) {
+    const OptionalType& type) {
   {
     absl::ReaderMutexLock lock(&optional_values_mutex_);
     if (auto optional_value = optional_values_.find(type);
@@ -67,10 +68,11 @@ OptionalValue ThreadSafeValueManager::CreateZeroOptionalValueImpl(
   }
   auto optional_value =
       GetMemoryManager().MakeShared<EmptyOptionalValue>(OptionalType(type));
-  type = optional_value->GetType();
+  auto optional_type = optional_value->GetType();
   absl::WriterMutexLock lock(&optional_values_mutex_);
   return optional_values_
-      .insert(std::pair{type, OptionalValue(std::move(optional_value))})
+      .insert(
+          std::pair{optional_type, OptionalValue(std::move(optional_value))})
       .first->second;
 }
 

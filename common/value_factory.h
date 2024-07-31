@@ -53,15 +53,15 @@ class ValueFactory : public virtual TypeFactory {
 
   // `CreateZeroListValue` returns an empty `ListValue` with the given type
   // `type`.
-  ListValue CreateZeroListValue(ListTypeView type);
+  ListValue CreateZeroListValue(const ListType& type);
 
   // `CreateZeroMapValue` returns an empty `MapTypeView` with the given type
   // `type`.
-  MapValue CreateZeroMapValue(MapTypeView type);
+  MapValue CreateZeroMapValue(const MapType& type);
 
   // `CreateZeroOptionalValue` returns an empty `OptionalValue` with the given
   // type `type`.
-  OptionalValue CreateZeroOptionalValue(OptionalTypeView type);
+  OptionalValue CreateZeroOptionalValue(const OptionalType& type);
 
   // `GetDynListType` gets a view of the `ListType` type `list(dyn)`.
   ListValue GetZeroDynListValue();
@@ -167,7 +167,7 @@ class ValueFactory : public virtual TypeFactory {
     return TimestampValue{value};
   }
 
-  TypeValue CreateTypeValue(TypeView type) { return TypeValue{Type(type)}; }
+  TypeValue CreateTypeValue(const Type& type) { return TypeValue{Type(type)}; }
 
   UnknownValue CreateUnknownValue() {
     return CreateUnknownValue(AttributeSet(), FunctionResultSet());
@@ -190,11 +190,12 @@ class ValueFactory : public virtual TypeFactory {
  protected:
   friend class common_internal::PiecewiseValueManager;
 
-  virtual ListValue CreateZeroListValueImpl(ListTypeView type) = 0;
+  virtual ListValue CreateZeroListValueImpl(const ListType& type) = 0;
 
-  virtual MapValue CreateZeroMapValueImpl(MapTypeView type) = 0;
+  virtual MapValue CreateZeroMapValueImpl(const MapType& type) = 0;
 
-  virtual OptionalValue CreateZeroOptionalValueImpl(OptionalTypeView type) = 0;
+  virtual OptionalValue CreateZeroOptionalValueImpl(
+      const OptionalType& type) = 0;
 };
 
 }  // namespace cel

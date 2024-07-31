@@ -18,13 +18,13 @@
 
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
-#include "common/sized_input_view.h"
+#include "absl/types/span.h"
 #include "common/type.h"
 #include "common/types/type_cache.h"
 
 namespace cel::common_internal {
 
-ListType ThreadSafeTypeManager::CreateListTypeImpl(TypeView element) {
+ListType ThreadSafeTypeManager::CreateListTypeImpl(const Type& element) {
   {
     absl::ReaderMutexLock lock(&list_types_mutex_);
     if (auto list_type = list_types_.find(element);
@@ -37,7 +37,8 @@ ListType ThreadSafeTypeManager::CreateListTypeImpl(TypeView element) {
   return list_types_.insert({list_type.element(), list_type}).first->second;
 }
 
-MapType ThreadSafeTypeManager::CreateMapTypeImpl(TypeView key, TypeView value) {
+MapType ThreadSafeTypeManager::CreateMapTypeImpl(const Type& key,
+                                                 const Type& value) {
   {
     absl::ReaderMutexLock lock(&map_types_mutex_);
     if (auto map_type = map_types_.find(std::make_pair(key, value));
@@ -66,7 +67,7 @@ StructType ThreadSafeTypeManager::CreateStructTypeImpl(absl::string_view name) {
 }
 
 OpaqueType ThreadSafeTypeManager::CreateOpaqueTypeImpl(
-    absl::string_view name, const SizedInputView<TypeView>& parameters) {
+    absl::string_view name, absl::Span<const Type> parameters) {
   if (auto opaque_type =
           ProcessLocalTypeCache::Get()->FindOpaqueType(name, parameters);
       opaque_type.has_value()) {
@@ -75,7 +76,7 @@ OpaqueType ThreadSafeTypeManager::CreateOpaqueTypeImpl(
   {
     absl::ReaderMutexLock lock(&opaque_types_mutex_);
     if (auto opaque_type = opaque_types_.find(
-            OpaqueTypeKeyView{.name = name, .parameters = parameters});
+            OpaqueTypeKey{.name = name, .parameters = parameters});
         opaque_type != opaque_types_.end()) {
       return opaque_type->second;
     }

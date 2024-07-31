@@ -32,9 +32,7 @@
 namespace cel {
 
 class Type;
-class TypeView;
 class MapType;
-class MapTypeView;
 
 namespace common_internal {
 struct MapTypeData;
@@ -42,12 +40,8 @@ struct MapTypeData;
 
 class MapType final {
  public:
-  using view_alternative_type = MapTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kMap;
   static constexpr absl::string_view kName = "map";
-
-  explicit MapType(MapTypeView other);
 
   MapType(MemoryManagerRef memory_manager, Type key, Type value);
 
@@ -79,7 +73,6 @@ class MapType final {
   const Type& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
-  friend class MapTypeView;
   friend struct NativeTypeTraits<MapType>;
 
   Shared<const common_internal::MapTypeData> data_;
@@ -106,70 +99,6 @@ struct NativeTypeTraits<MapType> final {
     return NativeType::SkipDestructor(type.data_);
   }
 };
-
-class MapTypeView final {
- public:
-  using alternative_type = MapType;
-
-  static constexpr TypeKind kKind = MapType::kKind;
-  static constexpr absl::string_view kName = MapType::kName;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  MapTypeView(const MapType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) noexcept;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  MapTypeView& operator=(const MapType& type ABSL_ATTRIBUTE_LIFETIME_BOUND) {
-    data_ = type.data_;
-    return *this;
-  }
-
-  MapTypeView& operator=(MapType&&) = delete;
-
-  // By default, this type is `map(dyn, dyn)`. Unless you can help it, you
-  // should use a more specific map type.
-  MapTypeView();
-  MapTypeView(const MapTypeView&) = default;
-  MapTypeView(MapTypeView&&) = default;
-  MapTypeView& operator=(const MapTypeView&) = default;
-  MapTypeView& operator=(MapTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  constexpr absl::string_view name() const { return kName; }
-
-  std::string DebugString() const;
-
-  absl::Span<const Type> parameters() const;
-
-  void swap(MapTypeView& other) noexcept {
-    using std::swap;
-    swap(data_, other.data_);
-  }
-
-  const Type& key() const;
-
-  const Type& value() const;
-
- private:
-  friend class MapType;
-
-  SharedView<const common_internal::MapTypeData> data_;
-};
-
-inline void swap(MapTypeView& lhs, MapTypeView& rhs) noexcept { lhs.swap(rhs); }
-
-bool operator==(MapTypeView lhs, MapTypeView rhs);
-
-inline bool operator!=(MapTypeView lhs, MapTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, MapTypeView type);
-
-inline std::ostream& operator<<(std::ostream& out, MapTypeView type) {
-  return out << type.DebugString();
-}
 
 }  // namespace cel
 

@@ -30,7 +30,7 @@ namespace cel {
 
 namespace common_internal {
 
-bool TypeIsAssignable(TypeView to, TypeView from) {
+bool TypeIsAssignable(const Type& to, const Type& from) {
   if (to == from) {
     return true;
   }
@@ -40,23 +40,23 @@ bool TypeIsAssignable(TypeView to, TypeView from) {
   }
   switch (to_kind) {
     case TypeKind::kBoolWrapper:
-      return TypeIsAssignable(NullTypeView{}, from) ||
-             TypeIsAssignable(BoolTypeView{}, from);
+      return TypeIsAssignable(NullType{}, from) ||
+             TypeIsAssignable(BoolType{}, from);
     case TypeKind::kIntWrapper:
-      return TypeIsAssignable(NullTypeView{}, from) ||
-             TypeIsAssignable(IntTypeView{}, from);
+      return TypeIsAssignable(NullType{}, from) ||
+             TypeIsAssignable(IntType{}, from);
     case TypeKind::kUintWrapper:
-      return TypeIsAssignable(NullTypeView{}, from) ||
-             TypeIsAssignable(UintTypeView{}, from);
+      return TypeIsAssignable(NullType{}, from) ||
+             TypeIsAssignable(UintType{}, from);
     case TypeKind::kDoubleWrapper:
-      return TypeIsAssignable(NullTypeView{}, from) ||
-             TypeIsAssignable(DoubleTypeView{}, from);
+      return TypeIsAssignable(NullType{}, from) ||
+             TypeIsAssignable(DoubleType{}, from);
     case TypeKind::kBytesWrapper:
-      return TypeIsAssignable(NullTypeView{}, from) ||
-             TypeIsAssignable(BytesTypeView{}, from);
+      return TypeIsAssignable(NullType{}, from) ||
+             TypeIsAssignable(BytesType{}, from);
     case TypeKind::kStringWrapper:
-      return TypeIsAssignable(NullTypeView{}, from) ||
-             TypeIsAssignable(StringTypeView{}, from);
+      return TypeIsAssignable(NullType{}, from) ||
+             TypeIsAssignable(StringType{}, from);
     default:
       break;
   }
@@ -127,33 +127,33 @@ void AddOverloadInternal(OverloadDeclHashSet& overloads, Overload&& overload,
 }
 
 void CollectTypeParams(absl::flat_hash_set<std::string>& type_params,
-                       TypeView type) {
+                       const Type& type) {
   const auto kind = type.kind();
   switch (kind) {
     case TypeKind::kList: {
-      const auto& list_type = cel::Cast<ListTypeView>(type);
+      const auto& list_type = cel::Cast<ListType>(type);
       CollectTypeParams(type_params, list_type.element());
     } break;
     case TypeKind::kMap: {
-      const auto& map_type = cel::Cast<MapTypeView>(type);
+      const auto& map_type = cel::Cast<MapType>(type);
       CollectTypeParams(type_params, map_type.key());
       CollectTypeParams(type_params, map_type.value());
     } break;
     case TypeKind::kOpaque: {
-      const auto& opaque_type = cel::Cast<OpaqueTypeView>(type);
+      const auto& opaque_type = cel::Cast<OpaqueType>(type);
       for (const auto& param : opaque_type.parameters()) {
         CollectTypeParams(type_params, param);
       }
     } break;
     case TypeKind::kFunction: {
-      const auto& function_type = cel::Cast<FunctionTypeView>(type);
+      const auto& function_type = cel::Cast<FunctionType>(type);
       CollectTypeParams(type_params, function_type.result());
       for (const auto& arg : function_type.args()) {
         CollectTypeParams(type_params, arg);
       }
     } break;
     case TypeKind::kTypeParam:
-      type_params.emplace(cel::Cast<TypeParamTypeView>(type).name());
+      type_params.emplace(cel::Cast<TypeParamType>(type).name());
       break;
     default:
       break;

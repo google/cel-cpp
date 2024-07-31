@@ -208,7 +208,8 @@ class ListValueBuilderImpl<Value> final : public ListValueBuilder {
 };
 
 using LegacyTypeReflector_NewListValueBuilder =
-    absl::StatusOr<Unique<ListValueBuilder>> (*)(ValueFactory&, ListTypeView);
+    absl::StatusOr<Unique<ListValueBuilder>> (*)(ValueFactory&,
+                                                 const ListType&);
 
 ABSL_CONST_INIT struct {
   absl::once_flag init_once;
@@ -218,7 +219,7 @@ ABSL_CONST_INIT struct {
 #if ABSL_HAVE_ATTRIBUTE_WEAK
 extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<Unique<ListValueBuilder>>
 cel_common_internal_LegacyTypeReflector_NewListValueBuilder(
-    ValueFactory& value_factory, ListTypeView type);
+    ValueFactory& value_factory, const ListType& type);
 #endif
 
 void InitializeLegacyTypeReflector() {
@@ -241,7 +242,7 @@ void InitializeLegacyTypeReflector() {
 }  // namespace
 
 absl::StatusOr<Unique<ListValueBuilder>> TypeReflector::NewListValueBuilder(
-    ValueFactory& value_factory, ListTypeView type) const {
+    ValueFactory& value_factory, const ListType& type) const {
   auto memory_manager = value_factory.GetMemoryManager();
   switch (type.element().kind()) {
     case TypeKind::kBool:
@@ -299,7 +300,7 @@ namespace common_internal {
 
 absl::StatusOr<Unique<ListValueBuilder>>
 LegacyTypeReflector::NewListValueBuilder(ValueFactory& value_factory,
-                                         ListTypeView type) const {
+                                         const ListType& type) const {
   InitializeLegacyTypeReflector();
   auto memory_manager = value_factory.GetMemoryManager();
   if (memory_manager.memory_management() == MemoryManagement::kPooling &&

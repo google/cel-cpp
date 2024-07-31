@@ -15,6 +15,7 @@
 #include "eval/public/structs/legacy_type_provider.h"
 
 #include <cstdint>
+#include <string>
 #include <utility>
 
 #include "absl/status/status.h"
@@ -98,7 +99,7 @@ class LegacyStructValueBuilder final : public cel::StructValueBuilder {
 
 absl::StatusOr<absl::optional<cel::Unique<cel::StructValueBuilder>>>
 LegacyTypeProvider::NewStructValueBuilder(cel::ValueFactory& value_factory,
-                                          cel::StructTypeView type) const {
+                                          const cel::StructType& type) const {
   if (auto type_adapter = ProvideLegacyType(type.name());
       type_adapter.has_value()) {
     const auto* mutation_apis = type_adapter->mutation_apis();
@@ -149,32 +150,30 @@ LegacyTypeProvider::DeserializeValueImpl(cel::ValueFactory& value_factory,
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<cel::TypeView>> LegacyTypeProvider::FindTypeImpl(
-    cel::TypeFactory& type_factory, absl::string_view name,
-    cel::Type& scratch) const {
+absl::StatusOr<absl::optional<cel::Type>> LegacyTypeProvider::FindTypeImpl(
+    cel::TypeFactory& type_factory, absl::string_view name) const {
   if (auto type_info = ProvideLegacyTypeInfo(name); type_info.has_value()) {
-    scratch = type_factory.CreateStructType(name);
-    return scratch;
+    return type_factory.CreateStructType(name);
   }
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<cel::StructTypeFieldView>>
+absl::StatusOr<absl::optional<cel::StructTypeField>>
 LegacyTypeProvider::FindStructTypeFieldByNameImpl(
     cel::TypeFactory& type_factory, absl::string_view type,
-    absl::string_view name, cel::StructTypeField& scratch) const {
+    absl::string_view name) const {
   if (auto type_info = ProvideLegacyTypeInfo(type); type_info.has_value()) {
     if (auto field_desc = (*type_info)->FindFieldByName(name);
         field_desc.has_value()) {
-      return cel::StructTypeFieldView{field_desc->name, cel::DynTypeView{},
-                                      field_desc->number};
+      return cel::StructTypeField{std::string(field_desc->name), cel::DynType{},
+                                  field_desc->number};
     } else {
       const auto* mutation_apis =
           (*type_info)->GetMutationApis(MessageWrapper());
       if (mutation_apis == nullptr || !mutation_apis->DefinesField(name)) {
         return absl::nullopt;
       }
-      return cel::StructTypeFieldView{name, cel::DynTypeView{}, 0};
+      return cel::StructTypeField{std::string(name), cel::DynType{}, 0};
     }
   }
   return absl::nullopt;

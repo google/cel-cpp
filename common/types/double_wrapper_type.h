@@ -31,7 +31,6 @@ namespace cel {
 
 class Type;
 class DoubleWrapperType;
-class DoubleWrapperTypeView;
 
 // `DoubleWrapperType` is a special type which has no direct value
 // representation. It is used to represent `google.protobuf.DoubleValue`, which
@@ -39,12 +38,8 @@ class DoubleWrapperTypeView;
 // and unpacking at runtime.
 class DoubleWrapperType final {
  public:
-  using view_alternative_type = DoubleWrapperTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kDoubleWrapper;
   static constexpr absl::string_view kName = "google.protobuf.DoubleValue";
-
-  explicit DoubleWrapperType(DoubleWrapperTypeView);
 
   DoubleWrapperType() = default;
   DoubleWrapperType(const DoubleWrapperType&) = default;
@@ -91,71 +86,6 @@ inline std::ostream& operator<<(std::ostream& out,
                                 const DoubleWrapperType& type) {
   return out << type.DebugString();
 }
-
-class DoubleWrapperTypeView final {
- public:
-  using alternative_type = DoubleWrapperType;
-
-  static constexpr TypeKind kKind = DoubleWrapperType::kKind;
-  static constexpr absl::string_view kName = DoubleWrapperType::kName;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  DoubleWrapperTypeView(
-      const DoubleWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-          ABSL_ATTRIBUTE_UNUSED) noexcept {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  DoubleWrapperTypeView& operator=(
-      const DoubleWrapperType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-          ABSL_ATTRIBUTE_UNUSED) {
-    return *this;
-  }
-
-  DoubleWrapperTypeView& operator=(DoubleWrapperType&&) = delete;
-
-  DoubleWrapperTypeView() = default;
-  DoubleWrapperTypeView(const DoubleWrapperTypeView&) = default;
-  DoubleWrapperTypeView(DoubleWrapperTypeView&&) = default;
-  DoubleWrapperTypeView& operator=(const DoubleWrapperTypeView&) = default;
-  DoubleWrapperTypeView& operator=(DoubleWrapperTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  constexpr absl::string_view name() const { return kName; }
-
-  absl::Span<const Type> parameters() const { return {}; }
-
-  std::string DebugString() const { return std::string(name()); }
-
-  constexpr void swap(DoubleWrapperTypeView&) noexcept {}
-};
-
-inline constexpr void swap(DoubleWrapperTypeView& lhs,
-                           DoubleWrapperTypeView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline constexpr bool operator==(DoubleWrapperTypeView, DoubleWrapperTypeView) {
-  return true;
-}
-
-inline constexpr bool operator!=(DoubleWrapperTypeView lhs,
-                                 DoubleWrapperTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, DoubleWrapperTypeView) {
-  // DoubleWrapperType is really a singleton and all instances are equal.
-  // Nothing to hash.
-  return std::move(state);
-}
-
-inline std::ostream& operator<<(std::ostream& out, DoubleWrapperTypeView type) {
-  return out << type.DebugString();
-}
-
-inline DoubleWrapperType::DoubleWrapperType(DoubleWrapperTypeView) {}
 
 }  // namespace cel
 

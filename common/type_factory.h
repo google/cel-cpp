@@ -16,8 +16,8 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_FACTORY_H_
 
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "common/memory.h"
-#include "common/sized_input_view.h"
 #include "common/type.h"
 
 namespace cel {
@@ -39,12 +39,12 @@ class TypeFactory {
 
   // Creates a `ListType` whose element type is `element`. Requires that
   // `element` is a valid element type for lists.
-  ListType CreateListType(TypeView element);
+  ListType CreateListType(const Type& element);
 
   // Creates a `MapType` whose key type is `key` and value type is `value`.
   // Requires that `key` is a valid key type for maps and `value` is a valid
   // value type for maps.
-  MapType CreateMapType(TypeView key, TypeView value);
+  MapType CreateMapType(const Type& key, const Type& value);
 
   // Creates a `StructType` whose name is `name`. Requires that `name` is a
   // valid relative name, that is one or more `IDENT` (as defined by the Common
@@ -57,23 +57,23 @@ class TypeFactory {
   // `.`, and that `parameters` contains zero or more valid parameter types for
   // opaques.
   OpaqueType CreateOpaqueType(absl::string_view name,
-                              const SizedInputView<TypeView>& parameters);
+                              absl::Span<const Type> parameters);
 
   // Creates a `OptionalType`.
-  OptionalType CreateOptionalType(TypeView parameter);
+  OptionalType CreateOptionalType(const Type& parameter);
 
   // `GetDynListType` gets a view of the `ListType` type `list(dyn)`.
-  ListTypeView GetDynListType();
+  ListType GetDynListType();
 
   // `GetDynDynMapType` gets a view of the `MapType` type `map(dyn, dyn)`.
-  MapTypeView GetDynDynMapType();
+  MapType GetDynDynMapType();
 
   // `GetDynDynMapType` gets a view of the `MapType` type `map(string, dyn)`.
-  MapTypeView GetStringDynMapType();
+  MapType GetStringDynMapType();
 
   // `GetDynOptionalType` gets a view of the `OptionalType` type
   // `optional(dyn)`.
-  OptionalTypeView GetDynOptionalType();
+  OptionalType GetDynOptionalType();
 
   NullType GetNullType() { return NullType{}; }
 
@@ -124,14 +124,14 @@ class TypeFactory {
  protected:
   friend class common_internal::PiecewiseValueManager;
 
-  virtual ListType CreateListTypeImpl(TypeView element) = 0;
+  virtual ListType CreateListTypeImpl(const Type& element) = 0;
 
-  virtual MapType CreateMapTypeImpl(TypeView key, TypeView value) = 0;
+  virtual MapType CreateMapTypeImpl(const Type& key, const Type& value) = 0;
 
   virtual StructType CreateStructTypeImpl(absl::string_view name) = 0;
 
   virtual OpaqueType CreateOpaqueTypeImpl(
-      absl::string_view name, const SizedInputView<TypeView>& parameters) = 0;
+      absl::string_view name, absl::Span<const Type> parameters) = 0;
 };
 
 }  // namespace cel

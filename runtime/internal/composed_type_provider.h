@@ -53,16 +53,16 @@ class ComposedTypeProvider : public TypeReflector {
   // `NewListValueBuilder` returns a new `ListValueBuilderInterface` for the
   // corresponding `ListType` `type`.
   absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(
-      ValueFactory& value_factory, ListTypeView type) const override;
+      ValueFactory& value_factory, const ListType& type) const override;
 
   // `NewMapValueBuilder` returns a new `MapValueBuilderInterface` for the
   // corresponding `MapType` `type`.
   absl::StatusOr<Unique<MapValueBuilder>> NewMapValueBuilder(
-      ValueFactory& value_factory, MapTypeView type) const override;
+      ValueFactory& value_factory, const MapType& type) const override;
 
   absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
   NewStructValueBuilder(ValueFactory& value_factory,
-                        StructTypeView type) const override;
+                        const StructType& type) const override;
 
   absl::StatusOr<bool> FindValue(ValueFactory& value_factory,
                                  absl::string_view name,
@@ -73,14 +73,12 @@ class ComposedTypeProvider : public TypeReflector {
       ValueFactory& value_factory, absl::string_view type_url,
       const absl::Cord& value) const override;
 
-  absl::StatusOr<absl::optional<TypeView>> FindTypeImpl(
-      TypeFactory& type_factory, absl::string_view name,
-      Type& scratch) const override;
+  absl::StatusOr<absl::optional<Type>> FindTypeImpl(
+      TypeFactory& type_factory, absl::string_view name) const override;
 
-  absl::StatusOr<absl::optional<StructTypeFieldView>>
-  FindStructTypeFieldByNameImpl(TypeFactory& type_factory,
-                                absl::string_view type, absl::string_view name,
-                                StructTypeField& scratch) const override;
+  absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByNameImpl(
+      TypeFactory& type_factory, absl::string_view type,
+      absl::string_view name) const override;
 
  private:
   std::vector<std::unique_ptr<TypeReflector>> providers_;

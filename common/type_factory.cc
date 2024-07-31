@@ -18,8 +18,8 @@
 #include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
 #include "common/casting.h"
-#include "common/sized_input_view.h"
 #include "common/type.h"
 #include "common/type_kind.h"
 #include "common/types/type_cache.h"
@@ -35,7 +35,7 @@ using common_internal::OpaqueTypeCacheMap;
 using common_internal::ProcessLocalTypeCache;
 using common_internal::StructTypeCacheMap;
 
-bool IsValidMapKeyType(TypeView type) {
+bool IsValidMapKeyType(const Type& type) {
   switch (type.kind()) {
     case TypeKind::kDyn:
       ABSL_FALLTHROUGH_INTENDED;
@@ -56,7 +56,7 @@ bool IsValidMapKeyType(TypeView type) {
 
 }  // namespace
 
-ListType TypeFactory::CreateListType(TypeView element) {
+ListType TypeFactory::CreateListType(const Type& element) {
   if (auto list_type = ProcessLocalTypeCache::Get()->FindListType(element);
       list_type.has_value()) {
     return ListType(*list_type);
@@ -64,7 +64,7 @@ ListType TypeFactory::CreateListType(TypeView element) {
   return CreateListTypeImpl(element);
 }
 
-MapType TypeFactory::CreateMapType(TypeView key, TypeView value) {
+MapType TypeFactory::CreateMapType(const Type& key, const Type& value) {
   ABSL_DCHECK(IsValidMapKeyType(key)) << key;
   if (auto map_type = ProcessLocalTypeCache::Get()->FindMapType(key, value);
       map_type.has_value()) {
@@ -78,8 +78,8 @@ StructType TypeFactory::CreateStructType(absl::string_view name) {
   return CreateStructTypeImpl(name);
 }
 
-OpaqueType TypeFactory::CreateOpaqueType(
-    absl::string_view name, const SizedInputView<TypeView>& parameters) {
+OpaqueType TypeFactory::CreateOpaqueType(absl::string_view name,
+                                         absl::Span<const Type> parameters) {
   ABSL_DCHECK(internal::IsValidRelativeName(name)) << name;
   if (auto opaque_type =
           ProcessLocalTypeCache::Get()->FindOpaqueType(name, parameters);
@@ -89,23 +89,23 @@ OpaqueType TypeFactory::CreateOpaqueType(
   return CreateOpaqueTypeImpl(name, parameters);
 }
 
-OptionalType TypeFactory::CreateOptionalType(TypeView parameter) {
+OptionalType TypeFactory::CreateOptionalType(const Type& parameter) {
   return Cast<OptionalType>(CreateOpaqueType(OptionalType::kName, {parameter}));
 }
 
-ListTypeView TypeFactory::GetDynListType() {
+ListType TypeFactory::GetDynListType() {
   return ProcessLocalTypeCache::Get()->GetDynListType();
 }
 
-MapTypeView TypeFactory::GetDynDynMapType() {
+MapType TypeFactory::GetDynDynMapType() {
   return ProcessLocalTypeCache::Get()->GetDynDynMapType();
 }
 
-MapTypeView TypeFactory::GetStringDynMapType() {
+MapType TypeFactory::GetStringDynMapType() {
   return ProcessLocalTypeCache::Get()->GetStringDynMapType();
 }
 
-OptionalTypeView TypeFactory::GetDynOptionalType() {
+OptionalType TypeFactory::GetDynOptionalType() {
   return ProcessLocalTypeCache::Get()->GetDynOptionalType();
 }
 

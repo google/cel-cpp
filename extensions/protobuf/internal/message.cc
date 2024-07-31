@@ -1260,7 +1260,7 @@ class ParsedProtoMapValueInterface
   absl::Status ListKeys(ValueManager& value_manager,
                         ListValue& result) const final {
     CEL_ASSIGN_OR_RETURN(auto builder,
-                         value_manager.NewListValueBuilder(ListTypeView{}));
+                         value_manager.NewListValueBuilder(ListType{}));
     builder->Reserve(Size());
     auto begin = MapBegin(*GetReflectionOrDie(message_), message_, *field_);
     auto end = MapEnd(*GetReflectionOrDie(message_), message_, *field_);

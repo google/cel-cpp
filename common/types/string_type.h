@@ -31,17 +31,12 @@ namespace cel {
 
 class Type;
 class StringType;
-class StringTypeView;
 
 // `StringType` represents the primitive `string` type.
 class StringType final {
  public:
-  using view_alternative_type = StringTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kString;
   static constexpr absl::string_view kName = "string";
-
-  explicit StringType(StringTypeView);
 
   StringType() = default;
   StringType(const StringType&) = default;
@@ -84,67 +79,6 @@ H AbslHashValue(H state, StringType) {
 inline std::ostream& operator<<(std::ostream& out, const StringType& type) {
   return out << type.DebugString();
 }
-
-class StringTypeView final {
- public:
-  using alternative_type = StringType;
-
-  static constexpr TypeKind kKind = StringType::kKind;
-  static constexpr absl::string_view kName = StringType::kName;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  StringTypeView(const StringType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                     ABSL_ATTRIBUTE_UNUSED) noexcept {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  StringTypeView& operator=(const StringType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                                ABSL_ATTRIBUTE_UNUSED) {
-    return *this;
-  }
-
-  StringTypeView& operator=(StringType&&) = delete;
-
-  StringTypeView() = default;
-  StringTypeView(const StringTypeView&) = default;
-  StringTypeView(StringTypeView&&) = default;
-  StringTypeView& operator=(const StringTypeView&) = default;
-  StringTypeView& operator=(StringTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  constexpr absl::string_view name() const { return kName; }
-
-  absl::Span<const Type> parameters() const { return {}; }
-
-  std::string DebugString() const { return std::string(name()); }
-
-  constexpr void swap(StringTypeView&) noexcept {}
-};
-
-inline constexpr void swap(StringTypeView& lhs, StringTypeView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline constexpr bool operator==(StringTypeView, StringTypeView) {
-  return true;
-}
-
-inline constexpr bool operator!=(StringTypeView lhs, StringTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, StringTypeView) {
-  // StringType is really a singleton and all instances are equal. Nothing to
-  // hash.
-  return std::move(state);
-}
-
-inline std::ostream& operator<<(std::ostream& out, StringTypeView type) {
-  return out << type.DebugString();
-}
-
-inline StringType::StringType(StringTypeView) {}
 
 }  // namespace cel
 

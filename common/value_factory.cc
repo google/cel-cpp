@@ -313,7 +313,7 @@ MapValue ValueFactory::CreateMapValueFromJsonObject(JsonObject json) {
       GetMemoryManager().MakeShared<JsonMapValue>(std::move(json)));
 }
 
-ListValue ValueFactory::CreateZeroListValue(ListTypeView type) {
+ListValue ValueFactory::CreateZeroListValue(const ListType& type) {
   if (auto list_value = ProcessLocalValueCache::Get()->GetEmptyListValue(type);
       list_value.has_value()) {
     return ListValue(*list_value);
@@ -321,7 +321,7 @@ ListValue ValueFactory::CreateZeroListValue(ListTypeView type) {
   return CreateZeroListValueImpl(type);
 }
 
-MapValue ValueFactory::CreateZeroMapValue(MapTypeView type) {
+MapValue ValueFactory::CreateZeroMapValue(const MapType& type) {
   if (auto map_value = ProcessLocalValueCache::Get()->GetEmptyMapValue(type);
       map_value.has_value()) {
     return MapValue(*map_value);
@@ -329,7 +329,7 @@ MapValue ValueFactory::CreateZeroMapValue(MapTypeView type) {
   return CreateZeroMapValueImpl(type);
 }
 
-OptionalValue ValueFactory::CreateZeroOptionalValue(OptionalTypeView type) {
+OptionalValue ValueFactory::CreateZeroOptionalValue(const OptionalType& type) {
   if (auto optional_value =
           ProcessLocalValueCache::Get()->GetEmptyOptionalValue(type);
       optional_value.has_value()) {

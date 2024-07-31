@@ -958,7 +958,7 @@ absl::StatusOr<absl::optional<Value>> TypeReflector::DeserializeValueImpl(
 }
 
 absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
-TypeReflector::NewStructValueBuilder(ValueFactory&, StructTypeView) const {
+TypeReflector::NewStructValueBuilder(ValueFactory&, const StructType&) const {
   return absl::nullopt;
 }
 

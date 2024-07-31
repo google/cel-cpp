@@ -25,22 +25,21 @@
 
 namespace cel::extensions {
 
-absl::StatusOr<absl::optional<TypeView>> ProtoTypeIntrospector::FindTypeImpl(
-    TypeFactory& type_factory, absl::string_view name, Type& scratch) const {
+absl::StatusOr<absl::optional<Type>> ProtoTypeIntrospector::FindTypeImpl(
+    TypeFactory& type_factory, absl::string_view name) const {
   // We do not have to worry about well known types here.
   // `TypeIntrospector::FindType` handles those directly.
   const auto* desc = descriptor_pool()->FindMessageTypeByName(name);
   if (desc == nullptr) {
     return absl::nullopt;
   }
-  scratch = type_factory.CreateStructType(desc->full_name());
-  return scratch;
+  return type_factory.CreateStructType(desc->full_name());
 }
 
-absl::StatusOr<absl::optional<StructTypeFieldView>>
+absl::StatusOr<absl::optional<StructTypeField>>
 ProtoTypeIntrospector::FindStructTypeFieldByNameImpl(
-    TypeFactory& type_factory, absl::string_view type, absl::string_view name,
-    StructTypeField& scratch) const {
+    TypeFactory& type_factory, absl::string_view type,
+    absl::string_view name) const {
   // We do not have to worry about well known types here.
   // `TypeIntrospector::FindStructTypeFieldByName` handles those directly.
   const auto* desc = descriptor_pool()->FindMessageTypeByName(type);
@@ -54,10 +53,9 @@ ProtoTypeIntrospector::FindStructTypeFieldByNameImpl(
       return absl::nullopt;
     }
   }
-  StructTypeFieldView result;
-  CEL_ASSIGN_OR_RETURN(
-      result.type,
-      ProtoFieldTypeToType(type_factory, field_desc, scratch.type));
+  StructTypeField result;
+  CEL_ASSIGN_OR_RETURN(result.type,
+                       ProtoFieldTypeToType(type_factory, field_desc));
   result.name = field_desc->name();
   result.number = field_desc->number();
   return result;

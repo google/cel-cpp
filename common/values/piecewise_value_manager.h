@@ -18,8 +18,8 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_PIECEWISE_VALUE_MANAGER_H_
 
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "common/memory.h"
-#include "common/sized_input_view.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
 #include "common/type_reflector.h"
@@ -52,11 +52,11 @@ class PiecewiseValueManager final : public ValueManager {
   }
 
  private:
-  ListType CreateListTypeImpl(TypeView element) override {
+  ListType CreateListTypeImpl(const Type& element) override {
     return value_factory_.CreateListTypeImpl(element);
   }
 
-  MapType CreateMapTypeImpl(TypeView key, TypeView value) override {
+  MapType CreateMapTypeImpl(const Type& key, const Type& value) override {
     return value_factory_.CreateMapTypeImpl(key, value);
   }
 
@@ -64,21 +64,20 @@ class PiecewiseValueManager final : public ValueManager {
     return value_factory_.CreateStructTypeImpl(name);
   }
 
-  OpaqueType CreateOpaqueTypeImpl(
-      absl::string_view name,
-      const SizedInputView<TypeView>& parameters) override {
+  OpaqueType CreateOpaqueTypeImpl(absl::string_view name,
+                                  absl::Span<const Type> parameters) override {
     return value_factory_.CreateOpaqueTypeImpl(name, parameters);
   }
 
-  ListValue CreateZeroListValueImpl(ListTypeView type) override {
+  ListValue CreateZeroListValueImpl(const ListType& type) override {
     return value_factory_.CreateZeroListValueImpl(type);
   }
 
-  MapValue CreateZeroMapValueImpl(MapTypeView type) override {
+  MapValue CreateZeroMapValueImpl(const MapType& type) override {
     return value_factory_.CreateZeroMapValueImpl(type);
   }
 
-  OptionalValue CreateZeroOptionalValueImpl(OptionalTypeView type) override {
+  OptionalValue CreateZeroOptionalValueImpl(const OptionalType& type) override {
     return value_factory_.CreateZeroOptionalValueImpl(type);
   }
 

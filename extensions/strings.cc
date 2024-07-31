@@ -157,7 +157,7 @@ absl::StatusOr<Value> Split3(ValueManager& value_manager,
     limit = std::numeric_limits<int64_t>::max();
   }
   CEL_ASSIGN_OR_RETURN(auto builder,
-                       value_manager.NewListValueBuilder(ListTypeView{}));
+                       value_manager.NewListValueBuilder(ListType{}));
   if (string.IsEmpty()) {
     // If string is empty, it doesn't matter what the delimiter is or the limit.
     // We just return a list with a single empty string.

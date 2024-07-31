@@ -31,17 +31,12 @@ namespace cel {
 
 class Type;
 class IntType;
-class IntTypeView;
 
 // `IntType` represents the primitive `int` type.
 class IntType final {
  public:
-  using view_alternative_type = IntTypeView;
-
   static constexpr TypeKind kKind = TypeKind::kInt;
   static constexpr absl::string_view kName = "int";
-
-  explicit IntType(IntTypeView);
 
   IntType() = default;
   IntType(const IntType&) = default;
@@ -83,64 +78,6 @@ H AbslHashValue(H state, IntType) {
 inline std::ostream& operator<<(std::ostream& out, const IntType& type) {
   return out << type.DebugString();
 }
-
-class IntTypeView final {
- public:
-  using alternative_type = IntType;
-
-  static constexpr TypeKind kKind = IntType::kKind;
-  static constexpr absl::string_view kName = IntType::kName;
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  IntTypeView(const IntType& type ABSL_ATTRIBUTE_LIFETIME_BOUND
-                  ABSL_ATTRIBUTE_UNUSED) noexcept {}
-
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  IntTypeView& operator=(
-      const IntType& type ABSL_ATTRIBUTE_LIFETIME_BOUND ABSL_ATTRIBUTE_UNUSED) {
-    return *this;
-  }
-
-  IntTypeView& operator=(IntType&&) = delete;
-
-  IntTypeView() = default;
-  IntTypeView(const IntTypeView&) = default;
-  IntTypeView(IntTypeView&&) = default;
-  IntTypeView& operator=(const IntTypeView&) = default;
-  IntTypeView& operator=(IntTypeView&&) = default;
-
-  constexpr TypeKind kind() const { return kKind; }
-
-  constexpr absl::string_view name() const { return kName; }
-
-  absl::Span<const Type> parameters() const { return {}; }
-
-  std::string DebugString() const { return std::string(name()); }
-
-  constexpr void swap(IntTypeView&) noexcept {}
-};
-
-inline constexpr void swap(IntTypeView& lhs, IntTypeView& rhs) noexcept {
-  lhs.swap(rhs);
-}
-
-inline constexpr bool operator==(IntTypeView, IntTypeView) { return true; }
-
-inline constexpr bool operator!=(IntTypeView lhs, IntTypeView rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename H>
-H AbslHashValue(H state, IntTypeView type) {
-  // IntType is really a singleton and all instances are equal. Nothing to hash.
-  return std::move(state);
-}
-
-inline std::ostream& operator<<(std::ostream& out, IntTypeView type) {
-  return out << type.DebugString();
-}
-
-inline IntType::IntType(IntTypeView) {}
 
 }  // namespace cel
 

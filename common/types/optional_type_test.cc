@@ -37,11 +37,6 @@ TEST(OptionalType, Default) {
   EXPECT_EQ(optional_type.parameter(), DynType());
 }
 
-TEST(OptionalTypeView, Default) {
-  OptionalTypeView optional_type;
-  EXPECT_EQ(optional_type.parameter(), DynType());
-}
-
 class OptionalTypeTest : public common_internal::ThreadCompatibleMemoryTest<> {
 };
 
@@ -140,108 +135,6 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(MemoryManagement::kPooling,
                       MemoryManagement::kReferenceCounting),
     OptionalTypeTest::ToString);
-
-class OptionalTypeViewTest
-    : public common_internal::ThreadCompatibleMemoryTest<> {};
-
-TEST_P(OptionalTypeViewTest, Kind) {
-  auto type = OptionalType(memory_manager(), BoolType());
-  EXPECT_EQ(OptionalTypeView(type).kind(), OptionalTypeView::kKind);
-  EXPECT_EQ(TypeView(OptionalTypeView(type)).kind(), OptionalTypeView::kKind);
-}
-
-TEST_P(OptionalTypeViewTest, Name) {
-  auto type = OptionalType(memory_manager(), BoolType());
-  EXPECT_EQ(OptionalTypeView(type).name(), OptionalTypeView::kName);
-  EXPECT_EQ(TypeView(OptionalTypeView(type)).name(), OptionalTypeView::kName);
-}
-
-TEST_P(OptionalTypeViewTest, DebugString) {
-  auto type = OptionalType(memory_manager(), BoolType());
-  {
-    std::ostringstream out;
-    out << OptionalTypeView(type);
-    EXPECT_EQ(out.str(), "optional_type<bool>");
-  }
-  {
-    std::ostringstream out;
-    out << TypeView(OptionalTypeView(type));
-    EXPECT_EQ(out.str(), "optional_type<bool>");
-  }
-}
-
-TEST_P(OptionalTypeViewTest, Parameter) {
-  auto type = OptionalType(memory_manager(), BoolType());
-  EXPECT_EQ(OptionalTypeView(type).parameter(), BoolType());
-}
-
-TEST_P(OptionalTypeViewTest, Hash) {
-  auto type = OptionalType(memory_manager(), BoolType());
-  EXPECT_EQ(absl::HashOf(OptionalTypeView(type)),
-            absl::HashOf(OptionalTypeView(type)));
-  EXPECT_EQ(absl::HashOf(OptionalTypeView(type)),
-            absl::HashOf(OptionalType(type)));
-}
-
-TEST_P(OptionalTypeViewTest, Equal) {
-  auto type = OptionalType(memory_manager(), BoolType());
-  EXPECT_EQ(OptionalTypeView(type), OptionalTypeView(type));
-  EXPECT_EQ(TypeView(OptionalTypeView(type)), OptionalTypeView(type));
-  EXPECT_EQ(OptionalTypeView(type), TypeView(OptionalTypeView(type)));
-  EXPECT_EQ(TypeView(OptionalTypeView(type)), TypeView(OptionalTypeView(type)));
-  EXPECT_EQ(OptionalTypeView(type), OptionalType(type));
-  EXPECT_EQ(TypeView(OptionalTypeView(type)), OptionalType(type));
-  EXPECT_EQ(TypeView(OptionalTypeView(type)), Type(OptionalType(type)));
-  EXPECT_EQ(OptionalType(type), OptionalTypeView(type));
-  EXPECT_EQ(OptionalType(type), OptionalTypeView(type));
-  EXPECT_EQ(OptionalType(type), TypeView(OptionalTypeView(type)));
-  EXPECT_EQ(Type(OptionalType(type)), TypeView(OptionalTypeView(type)));
-  EXPECT_EQ(OptionalTypeView(type), OptionalType(type));
-}
-
-TEST_P(OptionalTypeViewTest, NativeTypeId) {
-  auto type = OptionalType(memory_manager(), BoolType());
-  EXPECT_EQ(NativeTypeId::Of(OptionalTypeView(type)),
-            NativeTypeId::For<OpaqueTypeView>());
-  EXPECT_EQ(NativeTypeId::Of(TypeView(OptionalTypeView(type))),
-            NativeTypeId::For<OpaqueTypeView>());
-}
-
-TEST_P(OptionalTypeViewTest, InstanceOf) {
-  auto type = OptionalType(memory_manager(), BoolType());
-  EXPECT_TRUE(InstanceOf<OptionalTypeView>(OptionalTypeView(type)));
-  EXPECT_TRUE(InstanceOf<OptionalTypeView>(TypeView(OptionalTypeView(type))));
-  EXPECT_TRUE(InstanceOf<OpaqueTypeView>(OptionalTypeView(type)));
-  EXPECT_TRUE(InstanceOf<OpaqueTypeView>(TypeView(OptionalTypeView(type))));
-}
-
-TEST_P(OptionalTypeViewTest, Cast) {
-  auto type = OptionalType(memory_manager(), BoolType());
-  EXPECT_THAT(Cast<OptionalTypeView>(OptionalTypeView(type)),
-              An<OptionalTypeView>());
-  EXPECT_THAT(Cast<OptionalTypeView>(TypeView(OptionalTypeView(type))),
-              An<OptionalTypeView>());
-  EXPECT_THAT(Cast<OpaqueTypeView>(OptionalTypeView(type)),
-              An<OpaqueTypeView>());
-  EXPECT_THAT(Cast<OpaqueTypeView>(TypeView(OptionalTypeView(type))),
-              An<OpaqueTypeView>());
-}
-
-TEST_P(OptionalTypeViewTest, As) {
-  auto type = OptionalType(memory_manager(), BoolType());
-  EXPECT_THAT(As<OptionalTypeView>(OptionalTypeView(type)), Ne(absl::nullopt));
-  EXPECT_THAT(As<OptionalTypeView>(TypeView(OptionalTypeView(type))),
-              Ne(absl::nullopt));
-  EXPECT_THAT(As<OpaqueTypeView>(OptionalTypeView(type)), Ne(absl::nullopt));
-  EXPECT_THAT(As<OpaqueTypeView>(TypeView(OptionalTypeView(type))),
-              Ne(absl::nullopt));
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    OptionalTypeViewTest, OptionalTypeViewTest,
-    ::testing::Values(MemoryManagement::kPooling,
-                      MemoryManagement::kReferenceCounting),
-    OptionalTypeViewTest::ToString);
 
 }  // namespace
 }  // namespace cel

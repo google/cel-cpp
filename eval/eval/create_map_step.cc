@@ -79,8 +79,8 @@ absl::StatusOr<Value> CreateStructStepForMap::DoEvaluate(
     }
   }
 
-  CEL_ASSIGN_OR_RETURN(auto builder, frame->value_manager().NewMapValueBuilder(
-                                         cel::MapTypeView{}));
+  CEL_ASSIGN_OR_RETURN(
+      auto builder, frame->value_manager().NewMapValueBuilder(cel::MapType{}));
   builder->Reserve(entry_count_);
 
   for (size_t i = 0; i < entry_count_; i += 1) {

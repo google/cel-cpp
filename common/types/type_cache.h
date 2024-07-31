@@ -21,16 +21,15 @@
 #include <cstddef>
 #include <utility>
 
-#include "absl/base/attributes.h"
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/function_ref.h"
 #include "absl/hash/hash.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "common/memory.h"
-#include "common/sized_input_view.h"
 #include "common/type.h"
 
 namespace cel::common_internal {
@@ -49,48 +48,10 @@ H AbslHashValue(H state, const OpaqueTypeKey& key) {
   return std::move(state);
 }
 
-struct OpaqueTypeKeyView {
-  absl::string_view name;
-  const SizedInputView<TypeView>& parameters;
-};
-
-template <typename H>
-H AbslHashValue(H state, const OpaqueTypeKeyView& key) {
-  state = H::combine(std::move(state), key.name);
-  for (const auto& parameter : key.parameters) {
-    state = H::combine(std::move(state), parameter);
-  }
-  return std::move(state);
-}
-
 struct OpaqueTypeKeyEqualTo {
   using is_transparent = void;
 
   bool operator()(const OpaqueTypeKey& lhs, const OpaqueTypeKey& rhs) const {
-    return lhs.name == rhs.name &&
-           lhs.parameters.size() == rhs.parameters.size() &&
-           std::equal(lhs.parameters.begin(), lhs.parameters.end(),
-                      rhs.parameters.begin(), rhs.parameters.end());
-  }
-
-  bool operator()(const OpaqueTypeKey& lhs,
-                  const OpaqueTypeKeyView& rhs) const {
-    return lhs.name == rhs.name &&
-           lhs.parameters.size() == rhs.parameters.size() &&
-           std::equal(lhs.parameters.begin(), lhs.parameters.end(),
-                      rhs.parameters.begin(), rhs.parameters.end());
-  }
-
-  bool operator()(const OpaqueTypeKeyView& lhs,
-                  const OpaqueTypeKey& rhs) const {
-    return lhs.name == rhs.name &&
-           lhs.parameters.size() == rhs.parameters.size() &&
-           std::equal(lhs.parameters.begin(), lhs.parameters.end(),
-                      rhs.parameters.begin(), rhs.parameters.end());
-  }
-
-  bool operator()(const OpaqueTypeKeyView& lhs,
-                  const OpaqueTypeKeyView& rhs) const {
     return lhs.name == rhs.name &&
            lhs.parameters.size() == rhs.parameters.size() &&
            std::equal(lhs.parameters.begin(), lhs.parameters.end(),
@@ -104,47 +65,43 @@ struct OpaqueTypeKeyHash {
   size_t operator()(const OpaqueTypeKey& key) const {
     return absl::HashOf(key);
   }
-
-  size_t operator()(const OpaqueTypeKeyView& key) const {
-    return absl::HashOf(key);
-  }
 };
 
-using ListTypeCacheMap = absl::flat_hash_map<TypeView, ListType>;
-using MapTypeCacheMap =
-    absl::flat_hash_map<std::pair<TypeView, TypeView>, MapType>;
+using ListTypeCacheMap = absl::flat_hash_map<Type, ListType>;
+using MapTypeCacheMap = absl::flat_hash_map<std::pair<Type, Type>, MapType>;
 using OpaqueTypeCacheMap =
     absl::flat_hash_map<OpaqueTypeKey, OpaqueType, OpaqueTypeKeyHash,
                         OpaqueTypeKeyEqualTo>;
-using OptionalTypeCacheMap = absl::flat_hash_map<TypeView, OptionalType>;
+using OptionalTypeCacheMap = absl::flat_hash_map<Type, OptionalType>;
 using StructTypeCacheMap = absl::flat_hash_map<absl::string_view, StructType>;
 
 class ProcessLocalTypeCache final {
  public:
   static absl::Nonnull<const ProcessLocalTypeCache*> Get();
 
-  absl::optional<ListTypeView> FindListType(TypeView element) const;
+  absl::optional<ListType> FindListType(const Type& element) const;
 
-  SizedInputView<ListTypeView> ListTypes() const;
+  void ListTypes(absl::FunctionRef<void(const ListType&)> callback) const;
 
-  absl::optional<MapTypeView> FindMapType(TypeView key, TypeView value) const;
+  absl::optional<MapType> FindMapType(const Type& key, const Type& value) const;
 
-  SizedInputView<MapTypeView> MapTypes() const;
+  void MapTypes(absl::FunctionRef<void(const MapType&)> callback) const;
 
-  absl::optional<OpaqueTypeView> FindOpaqueType(
-      absl::string_view name, const SizedInputView<TypeView>& parameters) const;
+  absl::optional<OpaqueType> FindOpaqueType(
+      absl::string_view name, absl::Span<const Type> parameters) const;
 
-  absl::optional<OptionalTypeView> FindOptionalType(TypeView type) const;
+  absl::optional<OptionalType> FindOptionalType(const Type& type) const;
 
-  SizedInputView<OptionalTypeView> OptionalTypes() const;
+  void OptionalTypes(
+      absl::FunctionRef<void(const OptionalType&)> callback) const;
 
-  ListTypeView GetDynListType() const { return *dyn_list_type_; }
+  ListType GetDynListType() const { return *dyn_list_type_; }
 
-  MapTypeView GetDynDynMapType() const { return *dyn_dyn_map_type_; }
+  MapType GetDynDynMapType() const { return *dyn_dyn_map_type_; }
 
-  MapTypeView GetStringDynMapType() const { return *string_dyn_map_type_; }
+  MapType GetStringDynMapType() const { return *string_dyn_map_type_; }
 
-  OptionalTypeView GetDynOptionalType() const { return *dyn_optional_type_; }
+  OptionalType GetDynOptionalType() const { return *dyn_optional_type_; }
 
  private:
   friend class absl::NoDestructor<ProcessLocalTypeCache>;
@@ -182,10 +139,10 @@ class ProcessLocalTypeCache final {
   MapTypeCacheMap map_types_;
   OptionalTypeCacheMap optional_types_;
   OpaqueTypeCacheMap opaque_types_;
-  absl::optional<ListTypeView> dyn_list_type_;
-  absl::optional<MapTypeView> dyn_dyn_map_type_;
-  absl::optional<MapTypeView> string_dyn_map_type_;
-  absl::optional<OptionalTypeView> dyn_optional_type_;
+  absl::optional<ListType> dyn_list_type_;
+  absl::optional<MapType> dyn_dyn_map_type_;
+  absl::optional<MapType> string_dyn_map_type_;
+  absl::optional<OptionalType> dyn_optional_type_;
 };
 
 }  // namespace cel::common_internal
