@@ -33,6 +33,17 @@ MATCHER_P3(MatchesUnaryDescriptor, name, receiver, expected_kind, "") {
          descriptor.types() == types;
 }
 
+TEST(RegisterTypeConversionFunctions, RegisterBoolConversionFunctions) {
+  FunctionRegistry registry;
+  RuntimeOptions options;
+
+  ASSERT_OK(RegisterTypeConversionFunctions(registry, options));
+
+  EXPECT_THAT(registry.FindStaticOverloads(builtin::kBool, false, {Kind::kAny}),
+              UnorderedElementsAre(
+                  MatchesUnaryDescriptor(builtin::kBool, false, Kind::kBool)));
+}
+
 TEST(RegisterTypeConversionFunctions, RegisterIntConversionFunctions) {
   FunctionRegistry registry;
   RuntimeOptions options;

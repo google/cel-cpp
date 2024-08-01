@@ -42,6 +42,13 @@ using ::cel::internal::MaxTimestamp;
 // Time representing `9999-12-31T23:59:59.999999999Z`.
 const absl::Time kMaxTime = MaxTimestamp();
 
+absl::Status RegisterBoolConversionFunctions(FunctionRegistry& registry,
+                                             const RuntimeOptions&) {
+  // bool -> bool
+  return UnaryFunctionAdapter<bool, bool>::RegisterGlobalOverload(
+      cel::builtin::kBool, [](ValueManager&, bool v) { return v; }, registry);
+}
+
 absl::Status RegisterIntConversionFunctions(FunctionRegistry& registry,
                                             const RuntimeOptions&) {
   // bool -> int
@@ -362,6 +369,8 @@ absl::Status RegisterTimeConversionFunctions(FunctionRegistry& registry,
 
 absl::Status RegisterTypeConversionFunctions(FunctionRegistry& registry,
                                              const RuntimeOptions& options) {
+  CEL_RETURN_IF_ERROR(RegisterBoolConversionFunctions(registry, options));
+
   CEL_RETURN_IF_ERROR(RegisterBytesConversionFunctions(registry, options));
 
   CEL_RETURN_IF_ERROR(RegisterDoubleConversionFunctions(registry, options));
