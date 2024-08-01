@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//bazel:cel_cc_embed.bzl", "cel_cc_embed")
+load("//bazel:cel_proto_transitive_descriptor_set.bzl", "cel_proto_transitive_descriptor_set")
+
 package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
@@ -515,5 +518,93 @@ cc_test(
     deps = [
         ":testing",
         ":to_address",
+    ],
+)
+
+cel_proto_transitive_descriptor_set(
+    name = "minimal_descriptor_set",
+    deps = [
+        "@com_google_protobuf//:any_proto",
+        "@com_google_protobuf//:duration_proto",
+        "@com_google_protobuf//:struct_proto",
+        "@com_google_protobuf//:timestamp_proto",
+        "@com_google_protobuf//:wrappers_proto",
+    ],
+)
+
+cel_cc_embed(
+    name = "minimal_descriptor_set_embed",
+    src = ":minimal_descriptor_set",
+)
+
+cc_library(
+    name = "minimal_descriptor_pool",
+    srcs = ["minimal_descriptor_pool.cc"],
+    hdrs = ["minimal_descriptor_pool.h"],
+    textual_hdrs = [":minimal_descriptor_set_embed"],
+    deps = [
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "minimal_descriptor_pool_test",
+    srcs = ["minimal_descriptor_pool_test.cc"],
+    deps = [
+        ":minimal_descriptor_pool",
+        ":testing",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cel_proto_transitive_descriptor_set(
+    name = "testing_descriptor_set",
+    testonly = True,
+    deps = [
+        "@com_google_cel_spec//proto/test/v1/proto2:test_all_types_proto",
+        "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:eval_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:explain_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:value_proto",
+        "@com_google_protobuf//:any_proto",
+        "@com_google_protobuf//:duration_proto",
+        "@com_google_protobuf//:struct_proto",
+        "@com_google_protobuf//:timestamp_proto",
+        "@com_google_protobuf//:wrappers_proto",
+    ],
+)
+
+cel_cc_embed(
+    name = "testing_descriptor_set_embed",
+    testonly = True,
+    src = ":testing_descriptor_set",
+)
+
+cc_library(
+    name = "testing_descriptor_pool",
+    testonly = True,
+    srcs = ["testing_descriptor_pool.cc"],
+    hdrs = ["testing_descriptor_pool.h"],
+    textual_hdrs = [":testing_descriptor_set_embed"],
+    deps = [
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "testing_descriptor_pool_test",
+    srcs = ["testing_descriptor_pool_test.cc"],
+    deps = [
+        ":testing",
+        ":testing_descriptor_pool",
+        "@com_google_protobuf//:protobuf",
     ],
 )
