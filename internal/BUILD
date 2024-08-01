@@ -608,3 +608,23 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "message_type_name",
+    hdrs = ["message_type_name.h"],
+    deps = [
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "message_type_name_test",
+    srcs = ["message_type_name_test.cc"],
+    deps = [
+        ":message_type_name",
+        ":testing",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
