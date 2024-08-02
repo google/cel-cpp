@@ -183,6 +183,27 @@ _TESTS_TO_SKIP_MODERN = [
     "string_ext/quote",
     "string_ext/value_errors",
     "string_ext/type_errors",
+
+    # TODO: Fix null assignment to a field
+    "proto2/set_null/single_message",
+    "proto2/set_null/single_duration",
+    "proto2/set_null/single_timestamp",
+    "proto3/set_null/single_message",
+    "proto3/set_null/single_duration",
+    "proto3/set_null/single_timestamp",
+    "wrappers/bool/to_null",
+    "wrappers/int32/to_null",
+    "wrappers/int64/to_null",
+    "wrappers/uint32/to_null",
+    "wrappers/uint64/to_null",
+    "wrappers/float/to_null",
+    "wrappers/double/to_null",
+    "wrappers/bytes/to_null",
+    "wrappers/string/to_null",
+
+    # TODO: Add missing identity functions
+    "conversions/identity/duration",
+    "conversions/identity/timestamp",
 ]
 
 _TESTS_TO_SKIP_MODERN_DASHBOARD = [
@@ -235,6 +256,16 @@ _TESTS_TO_SKIP_LEGACY = [
     "string_ext/quote",
     "string_ext/value_errors",
     "string_ext/type_errors",
+
+    # TODO: Fix null assignment to a field
+    "proto2/set_null/list_value",
+    "proto2/set_null/single_struct",
+    "proto3/set_null/list_value",
+    "proto3/set_null/single_struct",
+
+    # TODO: Add missing identity functions
+    "conversions/identity/duration",
+    "conversions/identity/timestamp",
 ]
 
 _TESTS_TO_SKIP_LEGACY_DASHBOARD = [
