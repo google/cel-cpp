@@ -25,10 +25,12 @@
 
 #include "absl/algorithm/container.h"
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/container/fixed_array.h"
 #include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "common/casting.h"
@@ -51,6 +53,7 @@
 #include "common/types/int_wrapper_type.h"  // IWYU pragma: export
 #include "common/types/list_type.h"  // IWYU pragma: export
 #include "common/types/map_type.h"   // IWYU pragma: export
+#include "common/types/message_type.h"  // IWYU pragma: export
 #include "common/types/null_type.h"  // IWYU pragma: export
 #include "common/types/opaque_type.h"  // IWYU pragma: export
 #include "common/types/optional_type.h"  // IWYU pragma: export
@@ -64,6 +67,7 @@
 #include "common/types/uint_type.h"  // IWYU pragma: export
 #include "common/types/uint_wrapper_type.h"  // IWYU pragma: export
 #include "common/types/unknown_type.h"  // IWYU pragma: export
+#include "google/protobuf/descriptor.h"
 
 namespace cel {
 
@@ -76,6 +80,12 @@ class Type;
 // best to fail.
 class Type final {
  public:
+  // Returns an appropriate `Type` for the dynamic protobuf message. For well
+  // known message types, the appropriate `Type` is returned. All others return
+  // `MessageType`.
+  static Type Message(absl::Nonnull<const google::protobuf::Descriptor*> descriptor
+                          ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
   Type() = default;
   Type(const Type&) = default;
   Type(Type&&) = default;
@@ -115,6 +125,15 @@ class Type final {
     variant_.emplace<
         common_internal::BaseTypeAlternativeForT<absl::remove_cvref_t<T>>>(
         std::forward<T>(type));
+    return *this;
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Type(StructType alternative) : variant_(alternative.ToTypeVariant()) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Type& operator=(StructType alternative) {
+    variant_ = alternative.ToTypeVariant();
     return *this;
   }
 
@@ -266,17 +285,50 @@ class Type final {
 
   const Type* operator->() const { return this; }
 
+  bool IsStruct() const {
+    return absl::holds_alternative<common_internal::BasicStructType>(
+               variant_) ||
+           absl::holds_alternative<MessageType>(variant_);
+  }
+
+  bool IsMessage() const {
+    return absl::holds_alternative<MessageType>(variant_);
+  }
+
+  // AsStruct performs a checked cast, returning `StructType` if this type is a
+  // struct or `absl::nullopt` otherwise. If you have already called
+  // `IsStruct()` it is more performant to perform to do
+  // `static_cast<StructType>(type)`.
+  absl::optional<StructType> AsStruct() const;
+
+  // AsMessage performs a checked cast, returning `MessageType` if this type is
+  // both a struct and a message or `absl::nullopt` otherwise. If you have
+  // already called `IsMessage()` it is more performant to perform to do
+  // `static_cast<MessageType>(type)`.
+  absl::optional<MessageType> AsMessage() const;
+
+  explicit operator bool() const {
+    return !absl::holds_alternative<absl::monostate>(variant_);
+  }
+
+  explicit operator StructType() const;
+
+  explicit operator MessageType() const;
+
  private:
   friend struct NativeTypeTraits<Type>;
   friend struct CompositionTraits<Type>;
+  friend class StructType;
+  friend class MessageType;
+  friend class common_internal::BasicStructType;
 
-  constexpr bool IsValid() const {
-    return !absl::holds_alternative<absl::monostate>(variant_);
-  }
+  bool IsValid() const { return static_cast<bool>(*this); }
 
   void AssertIsValid() const {
     ABSL_DCHECK(IsValid()) << "use of invalid Type";
   }
+
+  common_internal::StructTypeVariant ToStructTypeVariant() const;
 
   common_internal::TypeVariant variant_;
 };
@@ -341,6 +393,13 @@ struct CompositionTraits<Type> final {
   }
 
   template <typename U>
+  static std::enable_if_t<std::is_same_v<StructType, U>, bool> HasA(
+      const Type& type) {
+    type.AssertIsValid();
+    return type.IsStruct();
+  }
+
+  template <typename U>
   static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, const U&> Get(
       const Type& type) {
     type.AssertIsValid();
@@ -386,6 +445,32 @@ struct CompositionTraits<Type> final {
     } else {
       return Cast<U>(absl::get<Base>(std::move(type.variant_)));
     }
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<StructType, U>, U> Get(
+      const Type& type) {
+    type.AssertIsValid();
+    return static_cast<StructType>(type);
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<StructType, U>, U> Get(Type& type) {
+    type.AssertIsValid();
+    return static_cast<StructType>(type);
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<StructType, U>, U> Get(
+      const Type&& type) {
+    type.AssertIsValid();
+    return static_cast<StructType>(type);
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<StructType, U>, U> Get(Type&& type) {
+    type.AssertIsValid();
+    return static_cast<StructType>(type);
   }
 };
 
@@ -435,12 +520,6 @@ struct OpaqueTypeData final {
 
   const std::string name;
   const absl::FixedArray<Type, 1> parameters;
-};
-
-struct StructTypeData final {
-  explicit StructTypeData(std::string name) : name(std::move(name)) {}
-
-  const std::string name;
 };
 
 struct TypeParamTypeData final {
@@ -538,16 +617,6 @@ inline bool operator==(const MapType& lhs, const MapType& rhs) {
 template <typename H>
 inline H AbslHashValue(H state, const MapType& type) {
   return H::combine(std::move(state), type.key(), type.value());
-}
-
-inline StructType::StructType(MemoryManagerRef memory_manager,
-                              absl::string_view name)
-    : data_(memory_manager.MakeShared<common_internal::StructTypeData>(
-          std::string(name))) {}
-
-inline absl::string_view StructType::name() const
-    ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return data_->name;
 }
 
 inline TypeParamType::TypeParamType(MemoryManagerRef memory_manager,

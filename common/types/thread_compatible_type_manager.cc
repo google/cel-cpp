@@ -44,16 +44,6 @@ MapType ThreadCompatibleTypeManager::CreateMapTypeImpl(const Type& key,
       .first->second;
 }
 
-StructType ThreadCompatibleTypeManager::CreateStructTypeImpl(
-    absl::string_view name) {
-  if (auto struct_type = struct_types_.find(name);
-      struct_type != struct_types_.end()) {
-    return struct_type->second;
-  }
-  StructType struct_type(GetMemoryManager(), name);
-  return struct_types_.insert({struct_type.name(), struct_type}).first->second;
-}
-
 OpaqueType ThreadCompatibleTypeManager::CreateOpaqueTypeImpl(
     absl::string_view name, absl::Span<const Type> parameters) {
   if (auto opaque_type = opaque_types_.find(

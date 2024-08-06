@@ -48,8 +48,6 @@ class LegacyTypeManager : public virtual TypeManager {
 
   MapType CreateMapTypeImpl(const Type& key, const Type& value) final;
 
-  StructType CreateStructTypeImpl(absl::string_view name) final;
-
   OpaqueType CreateOpaqueTypeImpl(absl::string_view name,
                                   absl::Span<const Type> parameters) final;
 

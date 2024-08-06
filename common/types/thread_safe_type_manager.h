@@ -50,8 +50,6 @@ class ThreadSafeTypeManager : public virtual TypeManager {
 
   MapType CreateMapTypeImpl(const Type& key, const Type& value) final;
 
-  StructType CreateStructTypeImpl(absl::string_view name) final;
-
   OpaqueType CreateOpaqueTypeImpl(absl::string_view name,
                                   absl::Span<const Type> parameters) final;
 
@@ -61,8 +59,6 @@ class ThreadSafeTypeManager : public virtual TypeManager {
   ListTypeCacheMap list_types_ ABSL_GUARDED_BY(list_types_mutex_);
   absl::Mutex map_types_mutex_;
   MapTypeCacheMap map_types_ ABSL_GUARDED_BY(map_types_mutex_);
-  absl::Mutex struct_types_mutex_;
-  StructTypeCacheMap struct_types_ ABSL_GUARDED_BY(struct_types_mutex_);
   absl::Mutex opaque_types_mutex_;
   OpaqueTypeCacheMap opaque_types_ ABSL_GUARDED_BY(opaque_types_mutex_);
 };

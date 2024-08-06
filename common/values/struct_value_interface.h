@@ -21,9 +21,6 @@
 #include "absl/functional/function_ref.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "base/attribute.h"
-#include "common/casting.h"
-#include "common/json.h"
 #include "common/type.h"
 #include "common/type_manager.h"
 #include "common/value_interface.h"
@@ -43,7 +40,7 @@ class StructValueInterface : public ValueInterface {
   ValueKind kind() const final { return kKind; }
 
   StructType GetType(TypeManager& type_manager) const {
-    return Cast<StructType>(GetTypeImpl(type_manager));
+    return common_internal::MakeBasicStructType(GetTypeName());
   }
 
   using ForEachFieldCallback =
@@ -51,7 +48,7 @@ class StructValueInterface : public ValueInterface {
 
  protected:
   Type GetTypeImpl(TypeManager& type_manager) const override {
-    return type_manager.CreateStructType(GetTypeName());
+    return common_internal::MakeBasicStructType(GetTypeName());
   }
 };
 

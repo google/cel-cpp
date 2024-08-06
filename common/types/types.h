@@ -48,6 +48,7 @@ class OptionalType;
 class StringType;
 class StringWrapperType;
 class StructType;
+class MessageType;
 class TimestampType;
 class TypeParamType;
 class TypeType;
@@ -56,6 +57,8 @@ class UintWrapperType;
 class UnknownType;
 
 namespace common_internal {
+
+class BasicStructType;
 
 template <typename Base, typename Derived>
 struct IsDerivedFrom
@@ -84,10 +87,11 @@ struct IsTypeAlternative
           std::is_same<IntWrapperType, T>, std::is_same<ListType, T>,
           std::is_same<MapType, T>, std::is_same<NullType, T>,
           std::is_base_of<OpaqueType, T>, std::is_same<StringType, T>,
-          std::is_same<StringWrapperType, T>, std::is_base_of<StructType, T>,
-          std::is_same<TimestampType, T>, std::is_same<TypeParamType, T>,
-          std::is_same<TypeType, T>, std::is_same<UintType, T>,
-          std::is_same<UintWrapperType, T>, std::is_same<UnknownType, T>>> {};
+          std::is_same<StringWrapperType, T>, std::is_base_of<MessageType, T>,
+          std::is_base_of<BasicStructType, T>, std::is_same<TimestampType, T>,
+          std::is_same<TypeParamType, T>, std::is_same<TypeType, T>,
+          std::is_same<UintType, T>, std::is_same<UintWrapperType, T>,
+          std::is_same<UnknownType, T>>> {};
 
 template <typename T>
 inline constexpr bool IsTypeAlternativeV = IsTypeAlternative<T>::value;
@@ -97,9 +101,21 @@ using TypeVariant =
                   BytesType, BytesWrapperType, DoubleType, DoubleWrapperType,
                   DurationType, DynType, ErrorType, FunctionType, IntType,
                   IntWrapperType, ListType, MapType, NullType, OpaqueType,
-                  StringType, StringWrapperType, StructType, TimestampType,
-                  TypeParamType, TypeType, UintType, UintWrapperType,
-                  UnknownType>;
+                  StringType, StringWrapperType, MessageType, BasicStructType,
+                  TimestampType, TypeParamType, TypeType, UintType,
+                  UintWrapperType, UnknownType>;
+
+template <typename T>
+struct IsStructTypeAlternative
+    : std::bool_constant<std::disjunction_v<std::is_same<BasicStructType, T>,
+                                            std::is_same<MessageType, T>>> {};
+
+template <typename T>
+inline constexpr bool IsStructTypeAlternativeV =
+    IsStructTypeAlternative<T>::value;
+
+using StructTypeVariant =
+    absl::variant<absl::monostate, BasicStructType, MessageType>;
 
 // Get the base type alternative for the given alternative or interface. The
 // base type alternative is the type stored in the `TypeVariant`.
@@ -117,12 +133,6 @@ template <typename T>
 struct BaseTypeAlternativeFor<
     T, std::enable_if_t<std::is_base_of_v<OpaqueType, T>>> {
   using type = OpaqueType;
-};
-
-template <typename T>
-struct BaseTypeAlternativeFor<
-    T, std::enable_if_t<std::is_base_of_v<StructType, T>>> {
-  using type = StructType;
 };
 
 template <typename T>

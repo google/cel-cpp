@@ -53,19 +53,6 @@ MapType ThreadSafeTypeManager::CreateMapTypeImpl(const Type& key,
       .first->second;
 }
 
-StructType ThreadSafeTypeManager::CreateStructTypeImpl(absl::string_view name) {
-  {
-    absl::ReaderMutexLock lock(&struct_types_mutex_);
-    if (auto struct_type = struct_types_.find(name);
-        struct_type != struct_types_.end()) {
-      return struct_type->second;
-    }
-  }
-  StructType struct_type(GetMemoryManager(), name);
-  absl::WriterMutexLock lock(&struct_types_mutex_);
-  return struct_types_.insert({struct_type.name(), struct_type}).first->second;
-}
-
 OpaqueType ThreadSafeTypeManager::CreateOpaqueTypeImpl(
     absl::string_view name, absl::Span<const Type> parameters) {
   if (auto opaque_type =

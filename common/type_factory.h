@@ -46,11 +46,6 @@ class TypeFactory {
   // value type for maps.
   MapType CreateMapType(const Type& key, const Type& value);
 
-  // Creates a `StructType` whose name is `name`. Requires that `name` is a
-  // valid relative name, that is one or more `IDENT` (as defined by the Common
-  // Expression language lexis) joined by `.`.
-  StructType CreateStructType(absl::string_view name);
-
   // Creates a `OpaqueType` whose name is `name` and parameters are
   // `parameters`. Requires that `name` is a valid relative name, that is one or
   // more `IDENT` (as defined by the Common Expression language lexis) joined by
@@ -127,8 +122,6 @@ class TypeFactory {
   virtual ListType CreateListTypeImpl(const Type& element) = 0;
 
   virtual MapType CreateMapTypeImpl(const Type& key, const Type& value) = 0;
-
-  virtual StructType CreateStructTypeImpl(absl::string_view name) = 0;
 
   virtual OpaqueType CreateOpaqueTypeImpl(
       absl::string_view name, absl::Span<const Type> parameters) = 0;

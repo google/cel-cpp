@@ -60,10 +60,6 @@ class PiecewiseValueManager final : public ValueManager {
     return value_factory_.CreateMapTypeImpl(key, value);
   }
 
-  StructType CreateStructTypeImpl(absl::string_view name) override {
-    return value_factory_.CreateStructTypeImpl(name);
-  }
-
   OpaqueType CreateOpaqueTypeImpl(absl::string_view name,
                                   absl::Span<const Type> parameters) override {
     return value_factory_.CreateOpaqueTypeImpl(name, parameters);

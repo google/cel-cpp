@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_TYPE_H_
 
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "common/type.h"
@@ -23,6 +24,7 @@
 
 namespace cel::extensions {
 
+ABSL_DEPRECATED("Use Type::Message")
 absl::StatusOr<Type> ProtoTypeToType(
     TypeFactory& type_factory, absl::Nonnull<const google::protobuf::Descriptor*> desc);
 

@@ -153,7 +153,12 @@ LegacyTypeProvider::DeserializeValueImpl(cel::ValueFactory& value_factory,
 absl::StatusOr<absl::optional<cel::Type>> LegacyTypeProvider::FindTypeImpl(
     cel::TypeFactory& type_factory, absl::string_view name) const {
   if (auto type_info = ProvideLegacyTypeInfo(name); type_info.has_value()) {
-    return type_factory.CreateStructType(name);
+    const auto* descriptor = (*type_info)->GetDescriptor(MessageWrapper());
+    if (descriptor != nullptr) {
+      return cel::MessageType(descriptor);
+    }
+    return cel::common_internal::MakeBasicStructType(
+        (*type_info)->GetTypename(MessageWrapper()));
   }
   return absl::nullopt;
 }

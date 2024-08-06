@@ -12,104 +12,90 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <sstream>
-#include <string>
-
+#include "google/protobuf/descriptor.pb.h"
+#include "absl/base/nullability.h"
 #include "absl/hash/hash.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/die_if_null.h"
 #include "absl/types/optional.h"
-#include "common/casting.h"
-#include "common/memory.h"
-#include "common/memory_testing.h"
-#include "common/native_type.h"
 #include "common/type.h"
+#include "common/type_kind.h"
 #include "internal/testing.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel {
 namespace {
 
-using testing::An;
-using testing::Ne;
-using testing::TestParamInfo;
-using testing::TestWithParam;
+using testing::Eq;
+using testing::Optional;
+using testing::Test;
 
-class StructTypeTest : public common_internal::ThreadCompatibleMemoryTest<> {};
-
-TEST_P(StructTypeTest, Kind) {
-  EXPECT_EQ(StructType(memory_manager(), "test.Struct").kind(),
-            StructType::kKind);
-  EXPECT_EQ(Type(StructType(memory_manager(), "test.Struct")).kind(),
-            StructType::kKind);
-}
-
-TEST_P(StructTypeTest, Name) {
-  EXPECT_EQ(StructType(memory_manager(), "test.Struct").name(), "test.Struct");
-  EXPECT_EQ(Type(StructType(memory_manager(), "test.Struct")).name(),
-            "test.Struct");
-}
-
-TEST_P(StructTypeTest, DebugString) {
-  {
-    std::ostringstream out;
-    out << StructType(memory_manager(), "test.Struct");
-    EXPECT_EQ(out.str(), "test.Struct");
+class StructTypeTest : public Test {
+ public:
+  void SetUp() override {
+    {
+      google::protobuf::FileDescriptorProto file_desc_proto;
+      file_desc_proto.set_syntax("proto3");
+      file_desc_proto.set_package("test");
+      file_desc_proto.set_name("test/struct.proto");
+      file_desc_proto.add_message_type()->set_name("Struct");
+      ABSL_CHECK(pool_.BuildFile(file_desc_proto) != nullptr);
+    }
   }
-  {
-    std::ostringstream out;
-    out << Type(StructType(memory_manager(), "test.Struct"));
-    EXPECT_EQ(out.str(), "test.Struct");
+
+  absl::Nonnull<const google::protobuf::Descriptor*> GetDescriptor() const {
+    return ABSL_DIE_IF_NULL(pool_.FindMessageTypeByName("test.Struct"));
   }
+
+  MessageType GetMessageType() const { return MessageType(GetDescriptor()); }
+
+  common_internal::BasicStructType GetBasicStructType() const {
+    return common_internal::MakeBasicStructType("test.Struct");
+  }
+
+ private:
+  google::protobuf::DescriptorPool pool_;
+};
+
+TEST(StructType, Kind) { EXPECT_EQ(StructType::kind(), TypeKind::kStruct); }
+
+TEST_F(StructTypeTest, Name) {
+  EXPECT_EQ(StructType(GetMessageType()).name(), GetMessageType().name());
+  EXPECT_EQ(StructType(GetBasicStructType()).name(),
+            GetBasicStructType().name());
 }
 
-TEST_P(StructTypeTest, Hash) {
-  EXPECT_EQ(absl::HashOf(StructType(memory_manager(), "test.Struct")),
-            absl::HashOf(StructType(memory_manager(), "test.Struct")));
+TEST_F(StructTypeTest, DebugString) {
+  EXPECT_EQ(StructType(GetMessageType()).DebugString(),
+            GetMessageType().DebugString());
+  EXPECT_EQ(StructType(GetBasicStructType()).DebugString(),
+            GetBasicStructType().DebugString());
 }
 
-TEST_P(StructTypeTest, Equal) {
-  EXPECT_EQ(StructType(memory_manager(), "test.Struct"),
-            StructType(memory_manager(), "test.Struct"));
-  EXPECT_EQ(Type(StructType(memory_manager(), "test.Struct")),
-            StructType(memory_manager(), "test.Struct"));
-  EXPECT_EQ(StructType(memory_manager(), "test.Struct"),
-            Type(StructType(memory_manager(), "test.Struct")));
-  EXPECT_EQ(Type(StructType(memory_manager(), "test.Struct")),
-            Type(StructType(memory_manager(), "test.Struct")));
+TEST_F(StructTypeTest, Hash) {
+  EXPECT_EQ(absl::HashOf(StructType(GetMessageType())),
+            absl::HashOf(StructType(GetBasicStructType())));
 }
 
-TEST_P(StructTypeTest, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(StructType(memory_manager(), "test.Struct")),
-            NativeTypeId::For<StructType>());
-  EXPECT_EQ(NativeTypeId::Of(Type(StructType(memory_manager(), "test.Struct"))),
-            NativeTypeId::For<StructType>());
+TEST_F(StructTypeTest, Equal) {
+  EXPECT_EQ(StructType(GetMessageType()), StructType(GetBasicStructType()));
 }
 
-TEST_P(StructTypeTest, InstanceOf) {
-  EXPECT_TRUE(
-      InstanceOf<StructType>(StructType(memory_manager(), "test.Struct")));
-  EXPECT_TRUE(InstanceOf<StructType>(
-      Type(StructType(memory_manager(), "test.Struct"))));
+TEST_F(StructTypeTest, Is) {
+  EXPECT_TRUE(StructType(GetMessageType()).IsMessage());
+  EXPECT_FALSE(StructType(GetBasicStructType()).IsMessage());
 }
 
-TEST_P(StructTypeTest, Cast) {
-  EXPECT_THAT(Cast<StructType>(StructType(memory_manager(), "test.Struct")),
-              An<StructType>());
-  EXPECT_THAT(
-      Cast<StructType>(Type(StructType(memory_manager(), "test.Struct"))),
-      An<StructType>());
+TEST_F(StructTypeTest, As) {
+  EXPECT_THAT(StructType(GetMessageType()).AsMessage(),
+              Optional(GetMessageType()));
+  EXPECT_THAT(StructType(GetBasicStructType()).AsMessage(), Eq(absl::nullopt));
 }
 
-TEST_P(StructTypeTest, As) {
-  EXPECT_THAT(As<StructType>(StructType(memory_manager(), "test.Struct")),
-              Ne(absl::nullopt));
-  EXPECT_THAT(As<StructType>(Type(StructType(memory_manager(), "test.Struct"))),
-              Ne(absl::nullopt));
+TEST_F(StructTypeTest, Cast) {
+  EXPECT_EQ(static_cast<MessageType>(StructType(GetMessageType())),
+            GetMessageType());
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    StructTypeTest, StructTypeTest,
-    ::testing::Values(MemoryManagement::kPooling,
-                      MemoryManagement::kReferenceCounting),
-    StructTypeTest::ToString);
 
 }  // namespace
 }  // namespace cel

@@ -83,10 +83,8 @@ TEST_P(ProtoTypeTest, ProtoTypeToType) {
   EXPECT_THAT(ProtoTypeToType(type_factory(),
                               google::protobuf::Struct::GetDescriptor()),
               IsOkAndHolds(Eq(MapType(type_factory().GetStringDynMapType()))));
-  EXPECT_THAT(
-      ProtoTypeToType(type_factory(), TestAllTypes::GetDescriptor()),
-      IsOkAndHolds(Eq(StructType(memory_manager(),
-                                 TestAllTypes::GetDescriptor()->full_name()))));
+  EXPECT_THAT(ProtoTypeToType(type_factory(), TestAllTypes::GetDescriptor()),
+              IsOkAndHolds(Eq(MessageType(TestAllTypes::GetDescriptor()))));
 }
 
 TEST_P(ProtoTypeTest, ProtoEnumTypeToType) {
@@ -180,9 +178,8 @@ TEST_P(ProtoTypeTest, ProtoFieldTypeToType) {
       ProtoFieldTypeToType(
           type_factory(),
           TestAllTypes::GetDescriptor()->FindFieldByName("standalone_message")),
-      IsOkAndHolds(Eq(StructType{
-          memory_manager(),
-          TestAllTypes::NestedMessage::GetDescriptor()->full_name()})));
+      IsOkAndHolds(
+          Eq(MessageType{TestAllTypes::NestedMessage::GetDescriptor()})));
   EXPECT_THAT(
       ProtoFieldTypeToType(
           type_factory(),

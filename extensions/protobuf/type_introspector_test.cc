@@ -41,8 +41,7 @@ class ProtoTypeIntrospectorTest
 TEST_P(ProtoTypeIntrospectorTest, FindType) {
   EXPECT_THAT(
       type_manager().FindType(TestAllTypes::descriptor()->full_name()),
-      IsOkAndHolds(Optional(Eq(StructType(
-          memory_manager(), TestAllTypes::GetDescriptor()->full_name())))));
+      IsOkAndHolds(Optional(Eq(MessageType(TestAllTypes::GetDescriptor())))));
   EXPECT_THAT(type_manager().FindType("type.that.does.not.Exist"),
               IsOkAndHolds(Eq(absl::nullopt)));
 }

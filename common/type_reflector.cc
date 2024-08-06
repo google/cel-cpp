@@ -927,7 +927,7 @@ TypeReflector::NewValueBuilder(ValueFactory& value_factory,
   CEL_ASSIGN_OR_RETURN(
       auto maybe_builder,
       NewStructValueBuilder(value_factory,
-                            value_factory.CreateStructType(name)));
+                            common_internal::MakeBasicStructType(name)));
   if (maybe_builder.has_value()) {
     return value_factory.GetMemoryManager().MakeUnique<ValueBuilderForStruct>(
         std::move(*maybe_builder));

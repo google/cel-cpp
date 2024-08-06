@@ -79,42 +79,8 @@ absl::StatusOr<Type> ProtoSingularFieldTypeToType(
 }  // namespace
 
 absl::StatusOr<Type> ProtoTypeToType(
-    TypeFactory& type_factory, absl::Nonnull<const google::protobuf::Descriptor*> desc) {
-  switch (desc->well_known_type()) {
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_FLOATVALUE:
-      ABSL_FALLTHROUGH_INTENDED;
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_DOUBLEVALUE:
-      return DoubleWrapperType{};
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_INT32VALUE:
-      ABSL_FALLTHROUGH_INTENDED;
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_INT64VALUE:
-      return IntWrapperType{};
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT32VALUE:
-      ABSL_FALLTHROUGH_INTENDED;
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT64VALUE:
-      return UintWrapperType{};
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_STRINGVALUE:
-      return StringWrapperType{};
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_BYTESVALUE:
-      return BytesWrapperType{};
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_BOOLVALUE:
-      return BoolWrapperType{};
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_ANY:
-      return AnyType{};
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_DURATION:
-      return DurationType{};
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_TIMESTAMP:
-      return TimestampType{};
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE:
-      return DynType{};
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE:
-      return common_internal::ProcessLocalTypeCache::Get()->GetDynListType();
-    case google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT:
-      return common_internal::ProcessLocalTypeCache::Get()
-          ->GetStringDynMapType();
-    default:
-      return type_factory.CreateStructType(desc->full_name());
-  }
+    TypeFactory&, absl::Nonnull<const google::protobuf::Descriptor*> desc) {
+  return Type::Message(desc);
 }
 
 absl::StatusOr<Type> ProtoEnumTypeToType(

@@ -275,6 +275,7 @@ cc_library(
         "//internal:casts",
         "//internal:status_macros",
         "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -344,7 +345,9 @@ cc_library(
     hdrs = ["legacy_type_info_apis.h"],
     deps = [
         "//eval/public:message_wrapper",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

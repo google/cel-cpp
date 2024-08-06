@@ -36,7 +36,6 @@ using testing::_;
 using testing::Eq;
 using testing::Ne;
 using testing::TestParamInfo;
-using testing::TestWithParam;
 
 enum class ThreadSafety {
   kCompatible,
@@ -98,8 +97,8 @@ TEST_P(TypeFactoryTest, ListType) {
   EXPECT_THAT(type_factory().CreateListType(StringType()), Eq(list_type1));
   EXPECT_THAT(type_factory().CreateListType(BytesType()), Ne(list_type1));
   // Try types which are not cached to exercise other codepath.
-  auto struct_type1 = type_factory().CreateStructType("test.Struct1");
-  auto struct_type2 = type_factory().CreateStructType("test.Struct2");
+  auto struct_type1 = common_internal::MakeBasicStructType("test.Struct1");
+  auto struct_type2 = common_internal::MakeBasicStructType("test.Struct2");
   auto list_type2 = type_factory().CreateListType(struct_type1);
   EXPECT_THAT(type_factory().CreateListType(struct_type1), Eq(list_type2));
   EXPECT_THAT(type_factory().CreateListType(struct_type2), Ne(list_type2));
@@ -116,8 +115,8 @@ TEST_P(TypeFactoryTest, MapType) {
   EXPECT_THAT(type_factory().CreateMapType(StringType(), StringType()),
               Ne(map_type1));
   // Try types which are not cached to exercise other codepath.
-  auto struct_type1 = type_factory().CreateStructType("test.Struct1");
-  auto struct_type2 = type_factory().CreateStructType("test.Struct2");
+  auto struct_type1 = common_internal::MakeBasicStructType("test.Struct1");
+  auto struct_type2 = common_internal::MakeBasicStructType("test.Struct2");
 
   auto map_type2 = type_factory().CreateMapType(StringType(), struct_type1);
   EXPECT_THAT(type_factory().CreateMapType(StringType(), struct_type1),
@@ -137,15 +136,11 @@ TEST_P(TypeFactoryTest, MapTypeInvalidKeyType) {
 }
 
 TEST_P(TypeFactoryTest, StructType) {
-  auto struct_type1 = type_factory().CreateStructType("test.Struct1");
-  EXPECT_THAT(type_factory().CreateStructType("test.Struct1"),
+  auto struct_type1 = common_internal::MakeBasicStructType("test.Struct1");
+  EXPECT_THAT(common_internal::MakeBasicStructType("test.Struct1"),
               Eq(struct_type1));
-  EXPECT_THAT(type_factory().CreateStructType("test.Struct2"),
+  EXPECT_THAT(common_internal::MakeBasicStructType("test.Struct2"),
               Ne(struct_type1));
-}
-
-TEST_P(TypeFactoryTest, StructTypeBadName) {
-  EXPECT_DEBUG_DEATH(type_factory().CreateStructType("test.~"), _);
 }
 
 TEST_P(TypeFactoryTest, OpaqueType) {
@@ -169,8 +164,8 @@ TEST_P(TypeFactoryTest, OptionalType) {
   EXPECT_THAT(type_factory().CreateOptionalType(BytesType()),
               Ne(optional_type1));
   // Try types which are not cached to exercise other codepath.
-  auto struct_type1 = type_factory().CreateStructType("test.Struct1");
-  auto struct_type2 = type_factory().CreateStructType("test.Struct2");
+  auto struct_type1 = common_internal::MakeBasicStructType("test.Struct1");
+  auto struct_type2 = common_internal::MakeBasicStructType("test.Struct2");
   auto optional_type2 = type_factory().CreateOptionalType(struct_type1);
   EXPECT_THAT(type_factory().CreateOptionalType(struct_type1),
               Eq(optional_type2));

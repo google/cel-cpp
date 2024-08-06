@@ -41,37 +41,27 @@ class ProtoTypeReflectorTest
   }
 };
 
-TEST_P(ProtoTypeReflectorTest, NewStructValueBuilder_WellKnownType) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      value_manager().NewStructValueBuilder(value_manager().CreateStructType(
-          google::protobuf::BoolValue::descriptor()->full_name())));
-  ASSERT_FALSE(builder.has_value());
-}
-
 TEST_P(ProtoTypeReflectorTest, NewStructValueBuilder_NoSuchType) {
   ASSERT_OK_AND_ASSIGN(
       auto builder,
       value_manager().NewStructValueBuilder(
-          value_manager().CreateStructType("message.that.does.not.Exist")));
+          common_internal::MakeBasicStructType("message.that.does.not.Exist")));
   ASSERT_FALSE(builder.has_value());
 }
 
 TEST_P(ProtoTypeReflectorTest, NewStructValueBuilder_SetFieldByNumber) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      value_manager().NewStructValueBuilder(value_manager().CreateStructType(
-          TestAllTypes::descriptor()->full_name())));
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       value_manager().NewStructValueBuilder(
+                           MessageType(TestAllTypes::descriptor())));
   ASSERT_TRUE(builder.has_value());
   EXPECT_THAT((*builder)->SetFieldByNumber(13, UnknownValue{}),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 TEST_P(ProtoTypeReflectorTest, NewStructValueBuilder_TypeConversionError) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder,
-      value_manager().NewStructValueBuilder(value_manager().CreateStructType(
-          TestAllTypes::descriptor()->full_name())));
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       value_manager().NewStructValueBuilder(
+                           MessageType(TestAllTypes::descriptor())));
   ASSERT_TRUE(builder.has_value());
   EXPECT_THAT((*builder)->SetFieldByName("single_bool", UnknownValue{}),
               StatusIs(absl::StatusCode::kInvalidArgument));

@@ -230,8 +230,8 @@ TEST_P(ValueFactoryTest, ListValue) {
   EXPECT_FALSE(Is(list_value1, value_factory().CreateZeroListValue(
                                    type_factory().CreateListType(BoolType()))));
   // Try types which are not cached to exercise other codepath.
-  auto struct_type1 = type_factory().CreateStructType("test.Struct1");
-  auto struct_type2 = type_factory().CreateStructType("test.Struct2");
+  auto struct_type1 = common_internal::MakeBasicStructType("test.Struct1");
+  auto struct_type2 = common_internal::MakeBasicStructType("test.Struct2");
   auto list_value2 = value_factory().CreateZeroListValue(
       type_factory().CreateListType(struct_type1));
   EXPECT_TRUE(
@@ -259,8 +259,8 @@ TEST_P(ValueFactoryTest, MapValue) {
                   value_factory().CreateZeroMapValue(
                       type_factory().CreateMapType(StringType(), BoolType()))));
   // Try types which are not cached to exercise other codepath.
-  auto struct_type1 = type_factory().CreateStructType("test.Struct1");
-  auto struct_type2 = type_factory().CreateStructType("test.Struct2");
+  auto struct_type1 = common_internal::MakeBasicStructType("test.Struct1");
+  auto struct_type2 = common_internal::MakeBasicStructType("test.Struct2");
   auto map_value2 = value_factory().CreateZeroMapValue(
       type_factory().CreateMapType(StringType(), struct_type1));
   EXPECT_TRUE(Is(map_value2, value_factory().CreateZeroMapValue(
@@ -293,8 +293,8 @@ TEST_P(ValueFactoryTest, OptionalType) {
       Is(optional_value1, value_factory().CreateZeroOptionalValue(
                               type_factory().CreateOptionalType(BoolType()))));
   // Try types which are not cached to exercise other codepath.
-  auto struct_type1 = type_factory().CreateStructType("test.Struct1");
-  auto struct_type2 = type_factory().CreateStructType("test.Struct2");
+  auto struct_type1 = common_internal::MakeBasicStructType("test.Struct1");
+  auto struct_type2 = common_internal::MakeBasicStructType("test.Struct2");
   auto optional_value2 = value_factory().CreateZeroOptionalValue(
       type_factory().CreateOptionalType(struct_type1));
   EXPECT_TRUE(Is(optional_value2,

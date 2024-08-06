@@ -1198,8 +1198,7 @@ absl::Status ModernValue(google::protobuf::Arena* arena,
         result = TypeValue{TypeType{}};
         return absl::OkStatus();
       }
-      result = TypeValue{
-          StructType{extensions::ProtoMemoryManagerRef(arena), type_name}};
+      result = TypeValue{common_internal::MakeBasicStructType(type_name)};
       return absl::OkStatus();
     }
     case CelValue::Type::kError:
@@ -1642,8 +1641,7 @@ TypeValue CreateTypeValueFromView(google::protobuf::Arena* arena,
     return TypeValue{TypeType{}};
   }
   // This is bad, but technically OK since we are using an arena.
-  return TypeValue{
-      StructType{extensions::ProtoMemoryManagerRef(arena), type_name}};
+  return TypeValue{common_internal::MakeBasicStructType(type_name)};
 }
 
 bool TestOnly_IsLegacyListBuilder(const ListValueBuilder& builder) {

@@ -49,8 +49,6 @@ class ThreadCompatibleTypeManager : public virtual TypeManager {
 
   MapType CreateMapTypeImpl(const Type& key, const Type& value) final;
 
-  StructType CreateStructTypeImpl(absl::string_view name) final;
-
   OpaqueType CreateOpaqueTypeImpl(absl::string_view name,
                                   absl::Span<const Type> parameters) final;
 
@@ -58,7 +56,6 @@ class ThreadCompatibleTypeManager : public virtual TypeManager {
   Shared<TypeIntrospector> type_introspector_;
   ListTypeCacheMap list_types_;
   MapTypeCacheMap map_types_;
-  StructTypeCacheMap struct_types_;
   OpaqueTypeCacheMap opaque_types_;
 };
 

@@ -17,8 +17,10 @@
 
 #include <string>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "eval/public/message_wrapper.h"
+#include "google/protobuf/descriptor.h"
 
 namespace google::api::expr::runtime {
 
@@ -57,6 +59,11 @@ class LegacyTypeInfoApis {
   // outlive any CelValues created by the interpreter.
   virtual const std::string& GetTypename(
       const MessageWrapper& wrapped_message) const = 0;
+
+  virtual absl::Nullable<const google::protobuf::Descriptor*> GetDescriptor(
+      const MessageWrapper& wrapped_message) const {
+    return nullptr;
+  }
 
   // Return a pointer to the wrapped message's access api implementation.
   //

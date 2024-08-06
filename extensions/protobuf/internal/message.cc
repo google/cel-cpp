@@ -1549,7 +1549,7 @@ class ParsedProtoStructValueInterface
 
  protected:
   Type GetTypeImpl(TypeManager& type_manager) const final {
-    return type_manager.CreateStructType(message().GetTypeName());
+    return MessageType(message().GetDescriptor());
   }
 
  private:

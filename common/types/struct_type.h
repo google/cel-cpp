@@ -1,4 +1,4 @@
-// Copyright 2023 Google LLC
+// Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,59 +23,110 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/optimization.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "common/memory.h"
-#include "common/native_type.h"
+#include "absl/types/variant.h"
 #include "common/type_kind.h"
+#include "common/types/basic_struct_type.h"
+#include "common/types/message_type.h"
+#include "common/types/types.h"
 
 namespace cel {
 
 class Type;
-class StructType;
-struct StructTypeField;
-
-namespace common_internal {
-struct StructTypeData;
-}  // namespace common_internal
 
 class StructType final {
  public:
   static constexpr TypeKind kKind = TypeKind::kStruct;
 
-  StructType(MemoryManagerRef memory_manager, absl::string_view name);
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StructType(MessageType other) : StructType() {
+    if (ABSL_PREDICT_TRUE(other)) {
+      variant_.emplace<MessageType>(other);
+    }
+  }
 
-  StructType() = delete;
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StructType(common_internal::BasicStructType other) : StructType() {
+    if (ABSL_PREDICT_TRUE(other)) {
+      variant_.emplace<common_internal::BasicStructType>(other);
+    }
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StructType& operator=(MessageType other) {
+    if (ABSL_PREDICT_TRUE(other)) {
+      variant_.emplace<MessageType>(other);
+    } else {
+      variant_.emplace<absl::monostate>();
+    }
+    return *this;
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StructType& operator=(common_internal::BasicStructType other) {
+    if (ABSL_PREDICT_TRUE(other)) {
+      variant_.emplace<common_internal::BasicStructType>(other);
+    } else {
+      variant_.emplace<absl::monostate>();
+    }
+    return *this;
+  }
+
+  StructType() = default;
   StructType(const StructType&) = default;
   StructType(StructType&&) = default;
   StructType& operator=(const StructType&) = default;
   StructType& operator=(StructType&&) = default;
 
-  constexpr TypeKind kind() const { return kKind; }
+  static TypeKind kind() { return kKind; }
 
   absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return {};
+  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  std::string DebugString() const;
+
+  bool IsMessage() const {
+    return absl::holds_alternative<MessageType>(variant_);
   }
 
-  std::string DebugString() const { return std::string(name()); }
+  // AsMessage performs a checked cast, returning `MessageType` if this type is
+  // a message or `absl::nullopt` otherwise. If you have
+  // already called `IsMessage()` it is more performant to perform to do
+  // `static_cast<MessageType>(type)`.
+  absl::optional<MessageType> AsMessage() const;
 
-  void swap(StructType& other) noexcept {
-    using std::swap;
-    swap(data_, other.data_);
+  explicit operator bool() const {
+    return !absl::holds_alternative<absl::monostate>(variant_);
+  }
+
+  explicit operator MessageType() const;
+
+  friend void swap(StructType& lhs, StructType& rhs) noexcept {
+    lhs.variant_.swap(rhs.variant_);
   }
 
  private:
-  friend struct NativeTypeTraits<StructType>;
+  friend class Type;
+  friend class MessageType;
+  friend class common_internal::BasicStructType;
 
-  Shared<const common_internal::StructTypeData> data_;
+  common_internal::TypeVariant ToTypeVariant() const;
+
+  // The default state is well formed but invalid. It can be checked by using
+  // the explicit bool operator. This is to allow cases where you want to
+  // construct the type and later assign to it before using it. It is required
+  // that any instance returned from a function call or passed to a function
+  // call must not be in the default state.
+  common_internal::StructTypeVariant variant_;
 };
 
-inline void swap(StructType& lhs, StructType& rhs) noexcept { lhs.swap(rhs); }
-
 inline bool operator==(const StructType& lhs, const StructType& rhs) {
-  return lhs.name() == rhs.name();
+  return static_cast<bool>(lhs) == static_cast<bool>(rhs) &&
+         (!static_cast<bool>(lhs) || lhs.name() == rhs.name());
 }
 
 inline bool operator!=(const StructType& lhs, const StructType& rhs) {
@@ -84,19 +135,14 @@ inline bool operator!=(const StructType& lhs, const StructType& rhs) {
 
 template <typename H>
 H AbslHashValue(H state, const StructType& type) {
-  return H::combine(std::move(state), type.name());
+  return H::combine(std::move(state), static_cast<bool>(type)
+                                          ? type.name()
+                                          : absl::string_view());
 }
 
 inline std::ostream& operator<<(std::ostream& out, const StructType& type) {
   return out << type.DebugString();
 }
-
-template <>
-struct NativeTypeTraits<StructType> final {
-  static bool SkipDestructor(const StructType& type) {
-    return NativeType::SkipDestructor(type.data_);
-  }
-};
 
 }  // namespace cel
 

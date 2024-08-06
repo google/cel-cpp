@@ -33,7 +33,7 @@ absl::StatusOr<absl::optional<Type>> ProtoTypeIntrospector::FindTypeImpl(
   if (desc == nullptr) {
     return absl::nullopt;
   }
-  return type_factory.CreateStructType(desc->full_name());
+  return MessageType(desc);
 }
 
 absl::StatusOr<absl::optional<StructTypeField>>

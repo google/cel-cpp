@@ -521,6 +521,7 @@ cc_library(
             "types/*_test.cc",
         ],
     ) + [
+        "type.cc",
         "type_factory.cc",
         "type_introspector.cc",
         "type_manager.cc",
@@ -554,6 +555,7 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:inlined_vector",
         "@com_google_absl//absl/functional:function_ref",
+        "@com_google_absl//absl/functional:overload",
         "@com_google_absl//absl/hash",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/meta:type_traits",
@@ -564,6 +566,7 @@ cc_library(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -581,10 +584,15 @@ cc_test(
         ":memory_testing",
         ":native_type",
         ":type",
+        ":type_kind",
         "//internal:testing",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/hash",
         "@com_google_absl//absl/hash:hash_testing",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:die_if_null",
         "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -631,6 +639,7 @@ cc_library(
         ":unknown",
         ":value_kind",
         "//base:attributes",
+        "//base/internal:message_wrapper",
         "//common/internal:arena_string",
         "//common/internal:data_interface",
         "//common/internal:reference_count",

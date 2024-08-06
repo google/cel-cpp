@@ -20,6 +20,7 @@
 
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "common/memory.h"
@@ -28,6 +29,7 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
+#include "google/protobuf/descriptor.h"
 
 namespace google::api::expr::runtime {
 
@@ -51,6 +53,11 @@ class ProtoMessageTypeAdapter : public LegacyTypeInfoApis,
 
   const std::string& GetTypename(
       const MessageWrapper& wrapped_message) const override;
+
+  absl::Nullable<const google::protobuf::Descriptor*> GetDescriptor(
+      const MessageWrapper& wrapped_message) const override {
+    return descriptor_;
+  }
 
   const LegacyTypeAccessApis* GetAccessApis(
       const MessageWrapper& wrapped_message) const override;

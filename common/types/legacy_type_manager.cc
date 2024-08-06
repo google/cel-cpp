@@ -29,10 +29,6 @@ MapType LegacyTypeManager::CreateMapTypeImpl(const Type& key,
   return MapType(GetMemoryManager(), Type(key), Type(value));
 }
 
-StructType LegacyTypeManager::CreateStructTypeImpl(absl::string_view name) {
-  return StructType(GetMemoryManager(), name);
-}
-
 OpaqueType LegacyTypeManager::CreateOpaqueTypeImpl(
     absl::string_view name, absl::Span<const Type> parameters) {
   return OpaqueType(GetMemoryManager(), name, parameters);

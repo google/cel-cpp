@@ -73,11 +73,6 @@ MapType TypeFactory::CreateMapType(const Type& key, const Type& value) {
   return CreateMapTypeImpl(key, value);
 }
 
-StructType TypeFactory::CreateStructType(absl::string_view name) {
-  ABSL_DCHECK(internal::IsValidRelativeName(name)) << name;
-  return CreateStructTypeImpl(name);
-}
-
 OpaqueType TypeFactory::CreateOpaqueType(absl::string_view name,
                                          absl::Span<const Type> parameters) {
   ABSL_DCHECK(internal::IsValidRelativeName(name)) << name;

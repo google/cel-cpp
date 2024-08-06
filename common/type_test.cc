@@ -85,7 +85,7 @@ TEST(Type, VerifyTypeImplementsAbslHashCorrectly) {
        Type(OptionalType(memory_manager, DynType())),
        Type(StringType()),
        Type(StringWrapperType()),
-       Type(StructType(memory_manager, "test.Struct")),
+       Type(StructType(common_internal::MakeBasicStructType("test.Struct"))),
        Type(TimestampType()),
        Type(TypeParamType(memory_manager, "T")),
        Type(TypeType()),

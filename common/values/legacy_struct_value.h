@@ -29,6 +29,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "base/attribute.h"
 #include "common/any.h"
 #include "common/json.h"
 #include "common/type.h"

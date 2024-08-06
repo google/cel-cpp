@@ -37,6 +37,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
+#include "base/attribute.h"
 #include "common/any.h"
 #include "common/casting.h"
 #include "common/json.h"
