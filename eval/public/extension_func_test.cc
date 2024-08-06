@@ -473,7 +473,7 @@ TEST_F(ExtensionTest, TestGetTimeOfDay) {
 
   PerformGetTimeOfDayTest(&arena, input_val, &time_zonestr, &result);
   const google::type::TimeOfDay* time_of_day_tod =
-      google::protobuf::DynamicCastToGenerated<const google::type::TimeOfDay>(
+      google::protobuf::DynamicCastMessage<const google::type::TimeOfDay>(
           result.MessageOrDie());
 
   ASSERT_EQ(time_of_day_tod->seconds(), tod_message->seconds());
@@ -496,7 +496,7 @@ TEST_F(ExtensionTest, TestGetTimeOfDayUTC) {
 
   PerformGetTimeOfDayUTCTest(&arena, input_time, &result);
   const google::type::TimeOfDay* time_of_day_tod =
-      google::protobuf::DynamicCastToGenerated<const google::type::TimeOfDay>(
+      google::protobuf::DynamicCastMessage<const google::type::TimeOfDay>(
           result.MessageOrDie());
 
   ASSERT_EQ(time_of_day_tod->seconds(), tod_message->seconds());
