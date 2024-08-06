@@ -360,10 +360,7 @@ class CallExpr final {
   std::vector<Expr> args_;
 };
 
-inline bool operator==(const CallExpr& lhs, const CallExpr& rhs) {
-  return lhs.function() == rhs.function() && lhs.target() == rhs.target() &&
-         absl::c_equal(lhs.args(), rhs.args());
-}
+bool operator==(const CallExpr& lhs, const CallExpr& rhs);
 
 inline bool operator!=(const CallExpr& lhs, const CallExpr& rhs) {
   return !operator==(lhs, rhs);
@@ -413,9 +410,7 @@ class ListExpr final {
   std::vector<ListExprElement> elements_;
 };
 
-inline bool operator==(const ListExpr& lhs, const ListExpr& rhs) {
-  return absl::c_equal(lhs.elements(), rhs.elements());
-}
+bool operator==(const ListExpr& lhs, const ListExpr& rhs);
 
 inline bool operator!=(const ListExpr& lhs, const ListExpr& rhs) {
   return !operator==(lhs, rhs);
@@ -489,9 +484,7 @@ class StructExpr final {
   std::vector<StructExprField> fields_;
 };
 
-inline bool operator==(const StructExpr& lhs, const StructExpr& rhs) {
-  return lhs.name() == rhs.name() && absl::c_equal(lhs.fields(), rhs.fields());
-}
+bool operator==(const StructExpr& lhs, const StructExpr& rhs);
 
 inline bool operator!=(const StructExpr& lhs, const StructExpr& rhs) {
   return !operator==(lhs, rhs);
@@ -541,9 +534,7 @@ class MapExpr final {
   std::vector<MapExprEntry> entries_;
 };
 
-inline bool operator==(const MapExpr& lhs, const MapExpr& rhs) {
-  return absl::c_equal(lhs.entries(), rhs.entries());
-}
+bool operator==(const MapExpr& lhs, const MapExpr& rhs);
 
 inline bool operator!=(const MapExpr& lhs, const MapExpr& rhs) {
   return !operator==(lhs, rhs);
@@ -974,6 +965,11 @@ inline bool operator==(const Expr& lhs, const Expr& rhs) {
   return lhs.id() == rhs.id() && lhs.kind() == rhs.kind();
 }
 
+inline bool operator==(const CallExpr& lhs, const CallExpr& rhs) {
+  return lhs.function() == rhs.function() && lhs.target() == rhs.target() &&
+         absl::c_equal(lhs.args(), rhs.args());
+}
+
 inline const Expr& SelectExpr::operand() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
   return has_operand() ? *operand_ : Expr::default_instance();
 }
@@ -1143,6 +1139,10 @@ inline bool operator==(const ListExprElement& lhs, const ListExprElement& rhs) {
   return lhs.expr() == rhs.expr() && lhs.optional() == rhs.optional();
 }
 
+inline bool operator==(const ListExpr& lhs, const ListExpr& rhs) {
+  return absl::c_equal(lhs.elements(), rhs.elements());
+}
+
 // `StructExprField` represents a field in `StructExpr`.
 class StructExprField final {
  public:
@@ -1206,6 +1206,10 @@ class StructExprField final {
 inline bool operator==(const StructExprField& lhs, const StructExprField& rhs) {
   return lhs.id() == rhs.id() && lhs.name() == rhs.name() &&
          lhs.value() == rhs.value() && lhs.optional() == rhs.optional();
+}
+
+inline bool operator==(const StructExpr& lhs, const StructExpr& rhs) {
+  return lhs.name() == rhs.name() && absl::c_equal(lhs.fields(), rhs.fields());
 }
 
 // `MapExprEntry` represents an entry in `MapExpr`.
@@ -1307,6 +1311,10 @@ class MapExprEntry final {
 inline bool operator==(const MapExprEntry& lhs, const MapExprEntry& rhs) {
   return lhs.id() == rhs.id() && lhs.key() == rhs.key() &&
          lhs.value() == rhs.value() && lhs.optional() == rhs.optional();
+}
+
+inline bool operator==(const MapExpr& lhs, const MapExpr& rhs) {
+  return absl::c_equal(lhs.entries(), rhs.entries());
 }
 
 inline void MapExpr::Clear() { entries_.clear(); }
