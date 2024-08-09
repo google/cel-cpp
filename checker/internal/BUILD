@@ -1,0 +1,111 @@
+# Copyright 2024 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+package(
+    # Implementation details for the checker library.
+    default_visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "type_check_env",
+    srcs = ["type_check_env.cc"],
+    hdrs = ["type_check_env.h"],
+    deps = [
+        "//common:decl",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_library(
+    name = "namespace_generator",
+    srcs = ["namespace_generator.cc"],
+    hdrs = ["namespace_generator.h"],
+    deps = [
+        "//internal:lexis",
+        "@com_google_absl//absl/functional:function_ref",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "namespace_generator_test",
+    srcs = ["namespace_generator_test.cc"],
+    deps = [
+        ":namespace_generator",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_library(
+    name = "type_checker_impl",
+    srcs = ["type_checker_impl.cc"],
+    hdrs = ["type_checker_impl.h"],
+    deps = [
+        ":namespace_generator",
+        ":type_check_env",
+        "//base/ast_internal:ast_impl",
+        "//base/ast_internal:expr",
+        "//checker:type_check_issue",
+        "//checker:type_checker",
+        "//checker:validation_result",
+        "//common:ast",
+        "//common:ast_rewrite",
+        "//common:ast_traverse",
+        "//common:ast_visitor",
+        "//common:ast_visitor_base",
+        "//common:decl",
+        "//common:expr",
+        "//common:source",
+        "//common:type",
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "type_checker_impl_test",
+    srcs = ["type_checker_impl_test.cc"],
+    deps = [
+        ":type_check_env",
+        ":type_checker_impl",
+        "//base/ast_internal:ast_impl",
+        "//base/ast_internal:expr",
+        "//checker:type_check_issue",
+        "//checker:validation_result",
+        "//common:ast",
+        "//common:decl",
+        "//common:type",
+        "//extensions/protobuf:ast_converters",
+        "//internal:status_macros",
+        "//internal:testing",
+        "//parser",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+    ],
+)
