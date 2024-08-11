@@ -43,7 +43,7 @@ absl::StatusOr<absl::Duration> UnwrapDynamicDurationProto(
     if (IsGeneratedMessage(message)) {
       // Fast path.
       return UnwrapGeneratedDurationProto(
-          google::protobuf::DownCastToGenerated<google::protobuf::Duration>(message));
+          google::protobuf::DownCastMessage<google::protobuf::Duration>(message));
     }
   }
   const auto* reflect = message.GetReflection();
@@ -101,8 +101,7 @@ absl::Status WrapDynamicDurationProto(absl::Duration value,
   if constexpr (NotMessageLite<google::protobuf::Duration>) {
     if (IsGeneratedMessage(message)) {
       return WrapGeneratedDurationProto(
-          value,
-          google::protobuf::DownCastToGenerated<google::protobuf::Duration>(message));
+          value, google::protobuf::DownCastMessage<google::protobuf::Duration>(message));
     }
   }
   const auto* reflect = message.GetReflection();
