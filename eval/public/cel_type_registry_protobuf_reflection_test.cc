@@ -44,8 +44,8 @@ using testing::UnorderedElementsAre;
 
 MATCHER_P(TypeNameIs, name, "") {
   const Type& type = arg;
-  *result_listener << "got typename: " << type->name();
-  return type->name() == name;
+  *result_listener << "got typename: " << type.name();
+  return type.name() == name;
 }
 
 MATCHER_P(MatchesEnumDescriptor, desc, "") {
@@ -107,9 +107,9 @@ TEST(CelTypeRegistryTypeProviderTest, StructTypes) {
       absl::optional<cel::Type> struct_message_type,
       value_manager.FindType("google.api.expr.runtime.TestMessage"));
   ASSERT_TRUE(struct_message_type.has_value());
-  ASSERT_TRUE((*struct_message_type)->Is<StructType>())
-      << (*struct_message_type)->DebugString();
-  EXPECT_THAT(struct_message_type->As<StructType>().name(),
+  ASSERT_TRUE((*struct_message_type).Is<StructType>())
+      << (*struct_message_type).DebugString();
+  EXPECT_THAT(struct_message_type->As<StructType>()->name(),
               Eq("google.api.expr.runtime.TestMessage"));
 
   // Can't override builtins.

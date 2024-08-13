@@ -137,75 +137,25 @@ class Type final {
     return *this;
   }
 
-  TypeKind kind() const {
-    AssertIsValid();
-    return absl::visit(
-        [](const auto& alternative) -> TypeKind {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we just return TypeKind::kError. In debug
-            // builds we cannot reach here.
-            return TypeKind::kError;
-          } else {
-            return alternative.kind();
-          }
-        },
-        variant_);
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Type(OptionalType alternative) : Type(OpaqueType(std::move(alternative))) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Type& operator=(OptionalType alternative) {
+    return *this = OpaqueType(std::move(alternative));
   }
 
-  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    AssertIsValid();
-    return absl::visit(
-        [](const auto& alternative) -> absl::string_view {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we just return an empty string. In debug
-            // builds we cannot reach here.
-            return absl::string_view();
-          } else {
-            return alternative.name();
-          }
-        },
-        variant_);
-  }
+  TypeKind kind() const;
 
-  std::string DebugString() const {
-    AssertIsValid();
-    return absl::visit(
-        [](const auto& alternative) -> std::string {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we just return an empty string. In debug
-            // builds we cannot reach here.
-            return std::string();
-          } else {
-            return alternative.DebugString();
-          }
-        },
-        variant_);
-  }
+  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    AssertIsValid();
-    return absl::visit(
-        [](const auto& alternative) -> absl::Span<const Type> {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we just return an empty string. In debug
-            // builds we cannot reach here.
-            return {};
-          } else {
-            return alternative.parameters();
-          }
-        },
-        variant_);
-  }
+  std::string DebugString() const;
 
-  void swap(Type& other) noexcept { variant_.swap(other.variant_); }
+  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  friend void swap(Type& lhs, Type& rhs) noexcept {
+    lhs.variant_.swap(rhs.variant_);
+  }
 
   template <typename H>
   friend H AbslHashValue(H state, const Type& type) {
@@ -228,14 +178,9 @@ class Type final {
         type.variant_.index());
   }
 
-  friend bool operator==(const Type& lhs, const Type& rhs) {
-    lhs.AssertIsValid();
-    rhs.AssertIsValid();
-    return lhs.variant_ == rhs.variant_;
-  }
+  friend bool operator==(const Type& lhs, const Type& rhs);
 
   friend std::ostream& operator<<(std::ostream& out, const Type& type) {
-    type.AssertIsValid();
     return absl::visit(
         [&out](const auto& alternative) -> std::ostream& {
           if constexpr (std::is_same_v<
@@ -251,39 +196,69 @@ class Type final {
         type.variant_);
   }
 
-  template <typename T>
-  ABSL_DEPRECATED("Use cel::InstanceOf")
-  bool Is() const {
-    return cel::InstanceOf<T>(*this);
+  bool IsAny() const { return absl::holds_alternative<AnyType>(variant_); }
+
+  bool IsBool() const { return absl::holds_alternative<BoolType>(variant_); }
+
+  bool IsBoolWrapper() const {
+    return absl::holds_alternative<BoolWrapperType>(variant_);
   }
 
-  template <typename T>
-  ABSL_DEPRECATED("Use cel::Cast or cel::As")
-  auto As() const& {
-    return cel::Cast<T>(*this);
+  bool IsBytes() const { return absl::holds_alternative<BytesType>(variant_); }
+
+  bool IsBytesWrapper() const {
+    return absl::holds_alternative<BytesWrapperType>(variant_);
   }
 
-  template <typename T>
-  ABSL_DEPRECATED("Use cel::Cast or cel::As")
-  auto As() & {
-    return cel::Cast<T>(*this);
+  bool IsDouble() const {
+    return absl::holds_alternative<DoubleType>(variant_);
   }
 
-  template <typename T>
-  ABSL_DEPRECATED("Use cel::Cast or cel::As")
-  auto As() const&& {
-    return cel::Cast<T>(std::move(*this));
+  bool IsDoubleWrapper() const {
+    return absl::holds_alternative<DoubleWrapperType>(variant_);
   }
 
-  template <typename T>
-  ABSL_DEPRECATED("Use cel::Cast or cel::As")
-  auto As() && {
-    return cel::Cast<T>(std::move(*this));
+  bool IsDuration() const {
+    return absl::holds_alternative<DurationType>(variant_);
   }
 
-  Type* operator->() { return this; }
+  bool IsDyn() const { return absl::holds_alternative<DynType>(variant_); }
 
-  const Type* operator->() const { return this; }
+  bool IsError() const { return absl::holds_alternative<ErrorType>(variant_); }
+
+  bool IsFunction() const {
+    return absl::holds_alternative<FunctionType>(variant_);
+  }
+
+  bool IsInt() const { return absl::holds_alternative<IntType>(variant_); }
+
+  bool IsIntWrapper() const {
+    return absl::holds_alternative<IntWrapperType>(variant_);
+  }
+
+  bool IsList() const { return absl::holds_alternative<ListType>(variant_); }
+
+  bool IsMap() const { return absl::holds_alternative<MapType>(variant_); }
+
+  bool IsMessage() const {
+    return absl::holds_alternative<MessageType>(variant_);
+  }
+
+  bool IsNull() const { return absl::holds_alternative<NullType>(variant_); }
+
+  bool IsOpaque() const {
+    return absl::holds_alternative<OpaqueType>(variant_);
+  }
+
+  bool IsOptional() const;
+
+  bool IsString() const {
+    return absl::holds_alternative<StringType>(variant_);
+  }
+
+  bool IsStringWrapper() const {
+    return absl::holds_alternative<StringWrapperType>(variant_);
+  }
 
   bool IsStruct() const {
     return absl::holds_alternative<common_internal::BasicStructType>(
@@ -291,15 +266,200 @@ class Type final {
            absl::holds_alternative<MessageType>(variant_);
   }
 
-  bool IsMessage() const {
-    return absl::holds_alternative<MessageType>(variant_);
+  bool IsTimestamp() const {
+    return absl::holds_alternative<TimestampType>(variant_);
   }
 
-  // AsStruct performs a checked cast, returning `StructType` if this type is a
-  // struct or `absl::nullopt` otherwise. If you have already called
-  // `IsStruct()` it is more performant to perform to do
-  // `static_cast<StructType>(type)`.
-  absl::optional<StructType> AsStruct() const;
+  bool IsTypeParam() const {
+    return absl::holds_alternative<TypeParamType>(variant_);
+  }
+
+  bool IsType() const { return absl::holds_alternative<TypeType>(variant_); }
+
+  bool IsUint() const { return absl::holds_alternative<UintType>(variant_); }
+
+  bool IsUintWrapper() const {
+    return absl::holds_alternative<UintWrapperType>(variant_);
+  }
+
+  bool IsUnknown() const {
+    return absl::holds_alternative<UnknownType>(variant_);
+  }
+
+  bool IsWrapper() const {
+    return IsBoolWrapper() || IsIntWrapper() || IsUintWrapper() ||
+           IsDoubleWrapper() || IsBytesWrapper() || IsStringWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<AnyType, T>, bool> Is() const {
+    return IsAny();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BoolType, T>, bool> Is() const {
+    return IsBool();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BoolWrapperType, T>, bool> Is() const {
+    return IsBoolWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BytesType, T>, bool> Is() const {
+    return IsBytes();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BytesWrapperType, T>, bool> Is() const {
+    return IsBytesWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DoubleType, T>, bool> Is() const {
+    return IsDouble();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DoubleWrapperType, T>, bool> Is() const {
+    return IsDoubleWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DurationType, T>, bool> Is() const {
+    return IsDuration();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DynType, T>, bool> Is() const {
+    return IsDyn();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ErrorType, T>, bool> Is() const {
+    return IsError();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<FunctionType, T>, bool> Is() const {
+    return IsFunction();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<IntType, T>, bool> Is() const {
+    return IsInt();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<IntWrapperType, T>, bool> Is() const {
+    return IsIntWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ListType, T>, bool> Is() const {
+    return IsList();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MapType, T>, bool> Is() const {
+    return IsMap();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageType, T>, bool> Is() const {
+    return IsMessage();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<NullType, T>, bool> Is() const {
+    return IsNull();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OpaqueType, T>, bool> Is() const {
+    return IsOpaque();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalType, T>, bool> Is() const {
+    return IsOptional();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StringType, T>, bool> Is() const {
+    return IsString();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StringWrapperType, T>, bool> Is() const {
+    return IsStringWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StructType, T>, bool> Is() const {
+    return IsStruct();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TimestampType, T>, bool> Is() const {
+    return IsTimestamp();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TypeParamType, T>, bool> Is() const {
+    return IsTypeParam();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TypeType, T>, bool> Is() const {
+    return IsType();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UintType, T>, bool> Is() const {
+    return IsUint();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UintWrapperType, T>, bool> Is() const {
+    return IsUintWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UnknownType, T>, bool> Is() const {
+    return IsUnknown();
+  }
+
+  absl::optional<AnyType> AsAny() const;
+
+  absl::optional<BoolType> AsBool() const;
+
+  absl::optional<BoolWrapperType> AsBoolWrapper() const;
+
+  absl::optional<BytesType> AsBytes() const;
+
+  absl::optional<BytesWrapperType> AsBytesWrapper() const;
+
+  absl::optional<DoubleType> AsDouble() const;
+
+  absl::optional<DoubleWrapperType> AsDoubleWrapper() const;
+
+  absl::optional<DurationType> AsDuration() const;
+
+  absl::optional<DynType> AsDyn() const;
+
+  absl::optional<ErrorType> AsError() const;
+
+  absl::optional<FunctionType> AsFunction() const;
+
+  absl::optional<IntType> AsInt() const;
+
+  absl::optional<IntWrapperType> AsIntWrapper() const;
+
+  absl::optional<ListType> AsList() const;
+
+  absl::optional<MapType> AsMap() const;
 
   // AsMessage performs a checked cast, returning `MessageType` if this type is
   // both a struct and a message or `absl::nullopt` otherwise. If you have
@@ -307,13 +467,272 @@ class Type final {
   // `static_cast<MessageType>(type)`.
   absl::optional<MessageType> AsMessage() const;
 
+  absl::optional<NullType> AsNull() const;
+
+  absl::optional<OpaqueType> AsOpaque() const;
+
+  absl::optional<OptionalType> AsOptional() const;
+
+  absl::optional<StringType> AsString() const;
+
+  absl::optional<StringWrapperType> AsStringWrapper() const;
+
+  // AsStruct performs a checked cast, returning `StructType` if this type is a
+  // struct or `absl::nullopt` otherwise. If you have already called
+  // `IsStruct()` it is more performant to perform to do
+  // `static_cast<StructType>(type)`.
+  absl::optional<StructType> AsStruct() const;
+
+  absl::optional<TimestampType> AsTimestamp() const;
+
+  absl::optional<TypeParamType> AsTypeParam() const;
+
+  absl::optional<TypeType> AsType() const;
+
+  absl::optional<UintType> AsUint() const;
+
+  absl::optional<UintWrapperType> AsUintWrapper() const;
+
+  absl::optional<UnknownType> AsUnknown() const;
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<AnyType, T>, absl::optional<AnyType>> As()
+      const {
+    return AsAny();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BoolType, T>, absl::optional<BoolType>> As()
+      const {
+    return AsBool();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BoolWrapperType, T>,
+                   absl::optional<BoolWrapperType>>
+  As() const {
+    return AsBoolWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BytesType, T>, absl::optional<BytesType>> As()
+      const {
+    return AsBytes();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BytesWrapperType, T>,
+                   absl::optional<BytesWrapperType>>
+  As() const {
+    return AsBytesWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DoubleType, T>, absl::optional<DoubleType>>
+  As() const {
+    return AsDouble();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DoubleWrapperType, T>,
+                   absl::optional<DoubleWrapperType>>
+  As() const {
+    return AsDoubleWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DurationType, T>,
+                   absl::optional<DurationType>>
+  As() const {
+    return AsDuration();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DynType, T>, absl::optional<DynType>> As()
+      const {
+    return AsDyn();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ErrorType, T>, absl::optional<ErrorType>> As()
+      const {
+    return AsError();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<FunctionType, T>,
+                   absl::optional<FunctionType>>
+  As() const {
+    return AsFunction();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<IntType, T>, absl::optional<IntType>> As()
+      const {
+    return AsInt();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<IntWrapperType, T>,
+                   absl::optional<IntWrapperType>>
+  As() const {
+    return AsIntWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ListType, T>, absl::optional<ListType>> As()
+      const {
+    return AsList();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MapType, T>, absl::optional<MapType>> As()
+      const {
+    return AsMap();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageType, T>, absl::optional<MessageType>>
+  As() const {
+    return AsMessage();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<NullType, T>, absl::optional<NullType>> As()
+      const {
+    return AsNull();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OpaqueType, T>, absl::optional<OpaqueType>>
+  As() const {
+    return AsOpaque();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalType, T>,
+                   absl::optional<OptionalType>>
+  As() const {
+    return AsOptional();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StringType, T>, absl::optional<StringType>>
+  As() const {
+    return AsString();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StringWrapperType, T>,
+                   absl::optional<StringWrapperType>>
+  As() const {
+    return AsStringWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StructType, T>, absl::optional<StructType>>
+  As() const {
+    return AsStruct();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TimestampType, T>,
+                   absl::optional<TimestampType>>
+  As() const {
+    return AsTimestamp();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TypeParamType, T>,
+                   absl::optional<TypeParamType>>
+  As() const {
+    return AsTypeParam();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TypeType, T>, absl::optional<TypeType>> As()
+      const {
+    return AsType();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UintType, T>, absl::optional<UintType>> As()
+      const {
+    return AsUint();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UintWrapperType, T>,
+                   absl::optional<UintWrapperType>>
+  As() const {
+    return AsUintWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UnknownType, T>, absl::optional<UnknownType>>
+  As() const {
+    return AsUnknown();
+  }
+
   explicit operator bool() const {
     return !absl::holds_alternative<absl::monostate>(variant_);
   }
 
-  explicit operator StructType() const;
+  explicit operator AnyType() const;
+
+  explicit operator BoolType() const;
+
+  explicit operator BoolWrapperType() const;
+
+  explicit operator BytesType() const;
+
+  explicit operator BytesWrapperType() const;
+
+  explicit operator DoubleType() const;
+
+  explicit operator DoubleWrapperType() const;
+
+  explicit operator DurationType() const;
+
+  explicit operator DynType() const;
+
+  explicit operator ErrorType() const;
+
+  explicit operator FunctionType() const;
+
+  explicit operator IntType() const;
+
+  explicit operator IntWrapperType() const;
+
+  explicit operator ListType() const;
+
+  explicit operator MapType() const;
 
   explicit operator MessageType() const;
+
+  explicit operator NullType() const;
+
+  explicit operator OpaqueType() const;
+
+  explicit operator OptionalType() const;
+
+  explicit operator StringType() const;
+
+  explicit operator StringWrapperType() const;
+
+  explicit operator StructType() const;
+
+  explicit operator TimestampType() const;
+
+  explicit operator TypeParamType() const;
+
+  explicit operator TypeType() const;
+
+  explicit operator UintType() const;
+
+  explicit operator UintWrapperType() const;
+
+  explicit operator UnknownType() const;
 
  private:
   friend struct NativeTypeTraits<Type>;
@@ -332,8 +751,6 @@ class Type final {
 
   common_internal::TypeVariant variant_;
 };
-
-inline void swap(Type& lhs, Type& rhs) noexcept { lhs.swap(rhs); }
 
 inline bool operator!=(const Type& lhs, const Type& rhs) {
   return !operator==(lhs, rhs);
@@ -383,13 +800,7 @@ struct CompositionTraits<Type> final {
   static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, bool> HasA(
       const Type& type) {
     type.AssertIsValid();
-    using Base = common_internal::BaseTypeAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::holds_alternative<U>(type.variant_);
-    } else {
-      return absl::holds_alternative<Base>(type.variant_) &&
-             InstanceOf<U>(Get<U>(type));
-    }
+    return type.Is<U>();
   }
 
   template <typename U>
@@ -400,51 +811,38 @@ struct CompositionTraits<Type> final {
   }
 
   template <typename U>
-  static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, const U&> Get(
+  static std::enable_if_t<std::is_same_v<OptionalType, U>, bool> HasA(
       const Type& type) {
     type.AssertIsValid();
-    using Base = common_internal::BaseTypeAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(type.variant_);
-    } else {
-      return Cast<U>(absl::get<Base>(type.variant_));
-    }
+    return type.IsOptional();
   }
 
   template <typename U>
-  static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U&> Get(
+  static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U> Get(
+      const Type& type) {
+    type.AssertIsValid();
+    return static_cast<U>(type);
+  }
+
+  template <typename U>
+  static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U> Get(
       Type& type) {
     type.AssertIsValid();
-    using Base = common_internal::BaseTypeAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(type.variant_);
-    } else {
-      return Cast<U>(absl::get<Base>(type.variant_));
-    }
+    return static_cast<U>(type);
   }
 
   template <typename U>
   static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U> Get(
       const Type&& type) {
     type.AssertIsValid();
-    using Base = common_internal::BaseTypeAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(std::move(type.variant_));
-    } else {
-      return Cast<U>(absl::get<Base>(std::move(type.variant_)));
-    }
+    return static_cast<U>(type);
   }
 
   template <typename U>
   static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U> Get(
       Type&& type) {
     type.AssertIsValid();
-    using Base = common_internal::BaseTypeAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(std::move(type.variant_));
-    } else {
-      return Cast<U>(absl::get<Base>(std::move(type.variant_)));
-    }
+    return static_cast<U>(type);
   }
 
   template <typename U>
@@ -471,6 +869,32 @@ struct CompositionTraits<Type> final {
   static std::enable_if_t<std::is_same_v<StructType, U>, U> Get(Type&& type) {
     type.AssertIsValid();
     return static_cast<StructType>(type);
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<OptionalType, U>, U> Get(
+      const Type& type) {
+    type.AssertIsValid();
+    return static_cast<OptionalType>(type);
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<OptionalType, U>, U> Get(Type& type) {
+    type.AssertIsValid();
+    return static_cast<OptionalType>(type);
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<OptionalType, U>, U> Get(
+      const Type&& type) {
+    type.AssertIsValid();
+    return static_cast<OptionalType>(type);
+  }
+
+  template <typename U>
+  static std::enable_if_t<std::is_same_v<OptionalType, U>, U> Get(Type&& type) {
+    type.AssertIsValid();
+    return static_cast<OptionalType>(type);
   }
 };
 
@@ -657,22 +1081,9 @@ inline H AbslHashValue(H state, const OpaqueType& type) {
 inline OptionalType::OptionalType()
     : OptionalType(common_internal::GetDynOptionalType()) {}
 
-inline OptionalType::OptionalType(MemoryManagerRef memory_manager,
-                                  const Type& parameter)
-    : OpaqueType(memory_manager, kName, {parameter}) {}
-
 inline const Type& OptionalType::parameter() const
     ABSL_ATTRIBUTE_LIFETIME_BOUND {
   return parameters().front();
-}
-
-inline bool operator==(const OptionalType& lhs, const OptionalType& rhs) {
-  return lhs.parameter() == rhs.parameter();
-}
-
-template <typename H>
-inline H AbslHashValue(H state, const OptionalType& type) {
-  return H::combine(std::move(state), type.parameter());
 }
 
 inline absl::Span<const Type> FunctionType::parameters() const

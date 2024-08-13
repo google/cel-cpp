@@ -184,7 +184,7 @@ TEST_F(ResolverTest, FindTypeBySimpleName) {
 
   ASSERT_OK_AND_ASSIGN(auto type, resolver.FindType("TestMessage", -1));
   EXPECT_TRUE(type.has_value());
-  EXPECT_EQ(type->second->name(), "google.api.expr.runtime.TestMessage");
+  EXPECT_EQ(type->second.name(), "google.api.expr.runtime.TestMessage");
 }
 
 TEST_F(ResolverTest, FindTypeByQualifiedName) {
@@ -201,7 +201,7 @@ TEST_F(ResolverTest, FindTypeByQualifiedName) {
   ASSERT_OK_AND_ASSIGN(
       auto type, resolver.FindType(".google.api.expr.runtime.TestMessage", -1));
   ASSERT_TRUE(type.has_value());
-  EXPECT_EQ(type->second->name(), "google.api.expr.runtime.TestMessage");
+  EXPECT_EQ(type->second.name(), "google.api.expr.runtime.TestMessage");
 }
 
 TEST_F(ResolverTest, TestFindDescriptorNotFound) {

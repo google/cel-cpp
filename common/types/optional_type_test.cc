@@ -87,13 +87,6 @@ TEST_P(OptionalTypeTest, Equal) {
             Type(OptionalType(memory_manager(), BoolType())));
 }
 
-TEST_P(OptionalTypeTest, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(OptionalType(memory_manager(), BoolType())),
-            NativeTypeId::For<OpaqueType>());
-  EXPECT_EQ(NativeTypeId::Of(Type(OptionalType(memory_manager(), BoolType()))),
-            NativeTypeId::For<OpaqueType>());
-}
-
 TEST_P(OptionalTypeTest, InstanceOf) {
   EXPECT_TRUE(
       InstanceOf<OptionalType>(OptionalType(memory_manager(), BoolType())));

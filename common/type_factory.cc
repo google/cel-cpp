@@ -85,7 +85,8 @@ OpaqueType TypeFactory::CreateOpaqueType(absl::string_view name,
 }
 
 OptionalType TypeFactory::CreateOptionalType(const Type& parameter) {
-  return Cast<OptionalType>(CreateOpaqueType(OptionalType::kName, {parameter}));
+  return static_cast<OptionalType>(
+      CreateOpaqueType(OptionalType::kName, {parameter}));
 }
 
 ListType TypeFactory::GetDynListType() {

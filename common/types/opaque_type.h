@@ -25,10 +25,9 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
-#include "absl/meta/type_traits.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "common/casting.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type_kind.h"
@@ -37,25 +36,32 @@ namespace cel {
 
 class Type;
 class OpaqueType;
+class OptionalType;
 
 namespace common_internal {
 struct OpaqueTypeData;
 }  // namespace common_internal
 
-class OpaqueType {
+class OpaqueType final {
  public:
   static constexpr TypeKind kKind = TypeKind::kOpaque;
 
   OpaqueType(MemoryManagerRef memory_manager, absl::string_view name,
              absl::Span<const Type> parameters);
 
-  OpaqueType() = delete;
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  OpaqueType(OptionalType type);
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  OpaqueType& operator=(OptionalType type);
+
+  OpaqueType() = default;
   OpaqueType(const OpaqueType&) = default;
   OpaqueType(OpaqueType&&) = default;
   OpaqueType& operator=(const OpaqueType&) = default;
   OpaqueType& operator=(OpaqueType&&) = default;
 
-  constexpr TypeKind kind() const { return kKind; }
+  static TypeKind kind() { return kKind; }
 
   absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
@@ -67,6 +73,24 @@ class OpaqueType {
   }
 
   absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  bool IsOptional() const;
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalType, T>, bool> Is() const {
+    return IsOptional();
+  }
+
+  absl::optional<OptionalType> AsOptional() const;
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalType, T>,
+                   absl::optional<OptionalType>>
+  As() const;
+
+  explicit operator bool() const { return static_cast<bool>(data_); }
+
+  explicit operator OptionalType() const;
 
  private:
   friend struct NativeTypeTraits<OpaqueType>;
@@ -88,53 +112,6 @@ H AbslHashValue(H state, const OpaqueType& type);
 inline std::ostream& operator<<(std::ostream& out, const OpaqueType& type) {
   return out << type.DebugString();
 }
-
-template <>
-struct NativeTypeTraits<OpaqueType> final {
-  static NativeTypeId Id(const OpaqueType&) {
-    return NativeTypeId::For<OpaqueType>();
-  }
-
-  static bool SkipDestructor(const OpaqueType& type) {
-    return NativeType::SkipDestructor(type.data_);
-  }
-};
-
-template <typename T>
-struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
-                               std::negation<std::is_same<OpaqueType, T>>,
-                               std::is_base_of<OpaqueType, T>>>>
-    final {
-  static NativeTypeId Id(const T& type) {
-    return NativeTypeTraits<OpaqueType>::Id(type);
-  }
-
-  static bool SkipDestructor(const T& type) {
-    return NativeTypeTraits<OpaqueType>::SkipDestructor(type);
-  }
-};
-
-// OpaqueType -> Derived
-template <typename To, typename From>
-struct CastTraits<
-    To, From,
-    std::enable_if_t<std::conjunction_v<
-        std::bool_constant<sizeof(To) == sizeof(absl::remove_cvref_t<From>)>,
-        std::bool_constant<alignof(To) == alignof(absl::remove_cvref_t<From>)>,
-        std::is_same<OpaqueType, absl::remove_cvref_t<From>>,
-        std::negation<std::is_same<OpaqueType, To>>,
-        std::is_base_of<OpaqueType, To>>>>
-    final {
-  static bool Compatible(const absl::remove_cvref_t<From>& from) {
-    return SubsumptionTraits<To>::IsA(from);
-  }
-
-  static decltype(auto) Convert(From from) {
-    // `To` is derived from `From`, `From` is `EnumType`, and `To` has the
-    // same size and alignment as `EnumType`. We can just reinterpret_cast.
-    return SubsumptionTraits<To>::DownCast(std::move(from));
-  }
-};
 
 }  // namespace cel
 

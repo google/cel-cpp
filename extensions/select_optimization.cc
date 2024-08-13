@@ -389,7 +389,7 @@ class RewriterImpl : public AstRewriterBase {
             ? GetRuntimeType(checker_type.message_type().type())
             : absl::nullopt;
     if (rt_type.has_value() && (*rt_type).Is<StructType>()) {
-      const StructType& runtime_type = (*rt_type)->As<StructType>();
+      const StructType& runtime_type = static_cast<StructType>(*rt_type);
       absl::optional<SelectInstruction> field_or =
           GetSelectInstruction(runtime_type, planner_context_, field_name);
       if (field_or.has_value()) {

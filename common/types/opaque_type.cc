@@ -14,6 +14,7 @@
 
 #include <cstddef>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "absl/container/fixed_array.h"
@@ -21,9 +22,9 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "common/memory.h"
-#include "common/native_type.h"
 #include "common/type.h"
 
 namespace cel {
@@ -60,6 +61,22 @@ OpaqueType::OpaqueType(MemoryManagerRef memory_manager, absl::string_view name,
 
 std::string OpaqueType::DebugString() const {
   return OpaqueDebugString(name(), parameters());
+}
+
+bool OpaqueType::IsOptional() const {
+  return name() == OptionalType::kName && parameters().size() == 1;
+}
+
+absl::optional<OptionalType> OpaqueType::AsOptional() const {
+  if (IsOptional()) {
+    return static_cast<OptionalType>(*this);
+  }
+  return absl::nullopt;
+}
+
+OpaqueType::operator OptionalType() const {
+  ABSL_DCHECK(IsOptional()) << DebugString();
+  return OptionalType(absl::in_place, *this);
 }
 
 }  // namespace cel

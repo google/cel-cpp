@@ -133,8 +133,8 @@ TEST(CelTypeRegistryTest, TestFindTypeAdapterNotFound) {
 
 MATCHER_P(TypeNameIs, name, "") {
   const Type& type = arg;
-  *result_listener << "got typename: " << type->name();
-  return type->name() == name;
+  *result_listener << "got typename: " << type.name();
+  return type.name() == name;
 }
 
 TEST(CelTypeRegistryTypeProviderTest, Builtins) {

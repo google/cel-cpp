@@ -39,12 +39,6 @@ TEST(Type, NameDebugDeath) {
   EXPECT_DEBUG_DEATH(static_cast<void>(type.name()), _);
 }
 
-TEST(Type, DebugStringDebugDeath) {
-  Type type;
-  std::ostringstream out;
-  EXPECT_DEBUG_DEATH(static_cast<void>(out << type), _);
-}
-
 TEST(Type, HashDebugDeath) {
   Type type;
   static_cast<void>(type);

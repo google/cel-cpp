@@ -18,15 +18,18 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPES_OPTIONAL_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPES_OPTIONAL_TYPE_H_
 
-#include <memory>
+#include <ostream>
+#include <string>
+#include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
-#include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "common/casting.h"
+#include "absl/utility/utility.h"
 #include "common/memory.h"
+#include "common/type_kind.h"
 #include "common/types/opaque_type.h"
 
 namespace cel {
@@ -34,11 +37,10 @@ namespace cel {
 class OptionalType;
 class Type;
 
-class OptionalType final : public OpaqueType {
+class OptionalType final {
  public:
+  static constexpr TypeKind kKind = TypeKind::kOpaque;
   static constexpr absl::string_view kName = "optional_type";
-
-  using OpaqueType::OpaqueType;
 
   // By default, this type is `optional(dyn)`. Unless you can help it, you
   // should choose a more specific optional type.
@@ -47,60 +49,69 @@ class OptionalType final : public OpaqueType {
   OptionalType(MemoryManagerRef, absl::string_view,
                absl::Span<const Type>) = delete;
 
-  OptionalType(MemoryManagerRef memory_manager, const Type& parameter);
+  OptionalType(MemoryManagerRef memory_manager, const Type& parameter)
+      : opaque_(OpaqueType(memory_manager, kName,
+                           absl::MakeConstSpan(&parameter, 1))) {}
+
+  static TypeKind kind() { return kKind; }
 
   absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    auto name = OpaqueType::name();
-    ABSL_DCHECK_EQ(name, kName);
-    return name;
+    return opaque_.name();
   }
 
+  std::string DebugString() const { return opaque_.DebugString(); }
+
   absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    auto parameters = OpaqueType::parameters();
-    ABSL_DCHECK_EQ(static_cast<int>(parameters.size()), 1);
-    return parameters;
+    return opaque_.parameters();
   }
 
   const Type& parameter() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+  explicit operator bool() const { return static_cast<bool>(opaque_); }
+
+  friend void swap(OptionalType& lhs, OptionalType& rhs) noexcept {
+    using std::swap;
+    swap(lhs.opaque_, rhs.opaque_);
+  }
+
+  template <typename H>
+  friend H AbslHashValue(H state, const OptionalType& type) {
+    return H::combine(std::move(state), type.opaque_);
+  }
+
+  friend bool operator==(const OptionalType& lhs, const OptionalType& rhs) {
+    return lhs.opaque_ == rhs.opaque_;
+  }
+
  private:
-  // Used by SubsumptionTraits to downcast OpaqueType rvalue references.
-  explicit OptionalType(OpaqueType&& type) noexcept
-      : OpaqueType(std::move(type)) {}
+  friend class OpaqueType;
 
-  friend struct SubsumptionTraits<OptionalType>;
+  OptionalType(absl::in_place_t, OpaqueType type) : opaque_(std::move(type)) {}
+
+  OpaqueType opaque_;
 };
-
-bool operator==(const OptionalType& lhs, const OptionalType& rhs);
 
 inline bool operator!=(const OptionalType& lhs, const OptionalType& rhs) {
   return !operator==(lhs, rhs);
 }
 
-template <typename H>
-H AbslHashValue(H state, const OptionalType& type);
+inline std::ostream& operator<<(std::ostream& out, const OptionalType& type) {
+  return out << type.DebugString();
+}
 
-template <>
-struct SubsumptionTraits<OptionalType> final {
-  static bool IsA(const OpaqueType& type) {
-    return type.name() == OptionalType::kName && type.parameters().size() == 1;
-  }
+inline OpaqueType::OpaqueType(OptionalType type)
+    : OpaqueType(std::move(type.opaque_)) {}
 
-  static const OptionalType& DownCast(const OpaqueType& type) {
-    ABSL_DCHECK(IsA(type));
-    return *reinterpret_cast<const OptionalType*>(std::addressof(type));
-  }
+inline OpaqueType& OpaqueType::operator=(OptionalType type) {
+  return *this = std::move(type.opaque_);
+}
 
-  static OptionalType& DownCast(OpaqueType& type) {
-    ABSL_DCHECK(IsA(type));
-    return *reinterpret_cast<OptionalType*>(std::addressof(type));
-  }
-
-  static OptionalType DownCast(OpaqueType&& type) {
-    ABSL_DCHECK(IsA(type));
-    return OptionalType(std::move(type));
-  }
-};
+template <typename T>
+inline std::enable_if_t<std::is_same_v<OptionalType, T>,
+                        absl::optional<OptionalType>>
+OpaqueType::As() const {
+  return AsOptional();
+}
 
 }  // namespace cel
 
