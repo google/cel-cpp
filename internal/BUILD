@@ -207,6 +207,31 @@ cc_library(
 )
 
 cc_library(
+    name = "string_pool",
+    srcs = ["string_pool.cc"],
+    hdrs = ["string_pool.h"],
+    deps = [
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/log:die_if_null",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "string_pool_test",
+    srcs = ["string_pool_test.cc"],
+    deps = [
+        ":string_pool",
+        ":testing",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "strings",
     srcs = ["strings.cc"],
     hdrs = ["strings.h"],
