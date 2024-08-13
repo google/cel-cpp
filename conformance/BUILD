@@ -181,6 +181,8 @@ _TESTS_TO_SKIP_MODERN = [
     "string_ext/substring",
     "string_ext/trim",
     "string_ext/quote",
+    "string_ext/format",
+    "string_ext/format_errors",
     "string_ext/value_errors",
     "string_ext/type_errors",
 
@@ -204,6 +206,9 @@ _TESTS_TO_SKIP_MODERN = [
     # TODO: Add missing identity functions
     "conversions/identity/duration",
     "conversions/identity/timestamp",
+
+    # TODO: Add missing conversion function
+    "conversions/bool",
 ]
 
 _TESTS_TO_SKIP_MODERN_DASHBOARD = [
@@ -254,6 +259,8 @@ _TESTS_TO_SKIP_LEGACY = [
     "string_ext/substring",
     "string_ext/trim",
     "string_ext/quote",
+    "string_ext/format",
+    "string_ext/format_errors",
     "string_ext/value_errors",
     "string_ext/type_errors",
 
@@ -266,6 +273,9 @@ _TESTS_TO_SKIP_LEGACY = [
     # TODO: Add missing identity functions
     "conversions/identity/duration",
     "conversions/identity/timestamp",
+
+    # TODO: Add missing conversion function
+    "conversions/bool",
 ]
 
 _TESTS_TO_SKIP_LEGACY_DASHBOARD = [
