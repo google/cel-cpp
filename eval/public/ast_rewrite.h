@@ -55,7 +55,7 @@ class AstRewriter : public AstVisitor {
 };
 
 // Trivial implementation for AST rewriters.
-// Virtual methods are overriden with no-op callbacks.
+// Virtual methods are overridden with no-op callbacks.
 class AstRewriterBase : public AstRewriter {
  public:
   ~AstRewriterBase() override {}
