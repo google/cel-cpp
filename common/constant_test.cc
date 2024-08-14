@@ -15,6 +15,8 @@
 #include "common/constant.h"
 
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <string>
 
 #include "absl/strings/has_absl_stringify.h"
@@ -34,6 +36,7 @@ TEST(Constant, NullValue) {
   EXPECT_THAT(const_expr.has_null_value(), IsFalse());
   const_expr.set_null_value();
   EXPECT_THAT(const_expr.has_null_value(), IsTrue());
+  EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<std::nullptr_t>());
 }
 
 TEST(Constant, BoolValue) {
@@ -43,6 +46,7 @@ TEST(Constant, BoolValue) {
   const_expr.set_bool_value(false);
   EXPECT_THAT(const_expr.has_bool_value(), IsTrue());
   EXPECT_EQ(const_expr.bool_value(), false);
+  EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<bool>());
 }
 
 TEST(Constant, IntValue) {
@@ -52,6 +56,7 @@ TEST(Constant, IntValue) {
   const_expr.set_int_value(0);
   EXPECT_THAT(const_expr.has_int_value(), IsTrue());
   EXPECT_EQ(const_expr.int_value(), 0);
+  EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<int64_t>());
 }
 
 TEST(Constant, UintValue) {
@@ -61,6 +66,7 @@ TEST(Constant, UintValue) {
   const_expr.set_uint_value(0);
   EXPECT_THAT(const_expr.has_uint_value(), IsTrue());
   EXPECT_EQ(const_expr.uint_value(), 0);
+  EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<uint64_t>());
 }
 
 TEST(Constant, DoubleValue) {
@@ -70,6 +76,7 @@ TEST(Constant, DoubleValue) {
   const_expr.set_double_value(0);
   EXPECT_THAT(const_expr.has_double_value(), IsTrue());
   EXPECT_EQ(const_expr.double_value(), 0);
+  EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<double>());
 }
 
 TEST(Constant, BytesValue) {
@@ -79,6 +86,7 @@ TEST(Constant, BytesValue) {
   const_expr.set_bytes_value("foo");
   EXPECT_THAT(const_expr.has_bytes_value(), IsTrue());
   EXPECT_EQ(const_expr.bytes_value(), "foo");
+  EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<BytesConstant>());
 }
 
 TEST(Constant, StringValue) {
@@ -88,6 +96,7 @@ TEST(Constant, StringValue) {
   const_expr.set_string_value("foo");
   EXPECT_THAT(const_expr.has_string_value(), IsTrue());
   EXPECT_EQ(const_expr.string_value(), "foo");
+  EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<StringConstant>());
 }
 
 TEST(Constant, DurationValue) {
@@ -97,6 +106,7 @@ TEST(Constant, DurationValue) {
   const_expr.set_duration_value(absl::ZeroDuration());
   EXPECT_THAT(const_expr.has_duration_value(), IsTrue());
   EXPECT_EQ(const_expr.duration_value(), absl::ZeroDuration());
+  EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<absl::Duration>());
 }
 
 TEST(Constant, TimestampValue) {
@@ -106,6 +116,7 @@ TEST(Constant, TimestampValue) {
   const_expr.set_timestamp_value(absl::UnixEpoch());
   EXPECT_THAT(const_expr.has_timestamp_value(), IsTrue());
   EXPECT_EQ(const_expr.timestamp_value(), absl::UnixEpoch());
+  EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<absl::Time>());
 }
 
 TEST(Constant, Equality) {

@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
@@ -89,11 +90,60 @@ class StringConstant final : public std::string {
   friend class Constant;
 };
 
+namespace common_internal {
+
+template <size_t I, typename U, typename T, typename... Ts>
+struct ConstantKindIndexer {
+  static constexpr size_t value =
+      std::conditional_t<std::is_same_v<U, T>,
+                         std::integral_constant<size_t, I>,
+                         ConstantKindIndexer<I + 1, U, Ts...>>::value;
+};
+
+template <size_t I, typename U, typename T>
+struct ConstantKindIndexer<I, U, T> {
+  static constexpr size_t value = std::conditional_t<
+      std::is_same_v<U, T>, std::integral_constant<size_t, I>,
+      std::integral_constant<size_t, absl::variant_npos>>::value;
+};
+
+template <typename... Ts>
+struct ConstantKindImpl {
+  using VariantType = absl::variant<Ts...>;
+
+  template <typename U>
+  static constexpr size_t IndexOf() {
+    return ConstantKindIndexer<0, U, Ts...>::value;
+  }
+};
+
+using ConstantKind =
+    ConstantKindImpl<absl::monostate, std::nullptr_t, bool, int64_t, uint64_t,
+                     double, BytesConstant, StringConstant, absl::Duration,
+                     absl::Time>;
+
+static_assert(ConstantKind::IndexOf<absl::monostate>() == 0);
+static_assert(ConstantKind::IndexOf<std::nullptr_t>() == 1);
+static_assert(ConstantKind::IndexOf<bool>() == 2);
+static_assert(ConstantKind::IndexOf<int64_t>() == 3);
+static_assert(ConstantKind::IndexOf<uint64_t>() == 4);
+static_assert(ConstantKind::IndexOf<double>() == 5);
+static_assert(ConstantKind::IndexOf<BytesConstant>() == 6);
+static_assert(ConstantKind::IndexOf<StringConstant>() == 7);
+static_assert(ConstantKind::IndexOf<absl::Duration>() == 8);
+static_assert(ConstantKind::IndexOf<absl::Time>() == 9);
+static_assert(ConstantKind::IndexOf<void>() == absl::variant_npos);
+
+}  // namespace common_internal
+
 // Constant is a variant composed of all the literal types support by the Common
 // Expression Language.
-using ConstantKind = absl::variant<absl::monostate, std::nullptr_t, bool,
-                                   int64_t, uint64_t, double, BytesConstant,
-                                   StringConstant, absl::Duration, absl::Time>;
+using ConstantKind = common_internal::ConstantKind::VariantType;
+
+template <typename U>
+constexpr size_t ConstantKindIndexOf() {
+  return common_internal::ConstantKind::IndexOf<U>();
+}
 
 // Returns the `null` literal.
 std::string FormatNullConstant();
