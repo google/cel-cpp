@@ -30,11 +30,6 @@ TEST_P(LegacyStructValueTest, Kind) {
   EXPECT_EQ(LegacyStructValue(0, 0).kind(), ValueKind::kStruct);
 }
 
-TEST_P(LegacyStructValueTest, GetType) {
-  EXPECT_DEATH(
-      static_cast<void>(LegacyStructValue(0, 0).GetType(type_manager())), _);
-}
-
 TEST_P(LegacyStructValueTest, GetTypeName) {
   EXPECT_DEATH(static_cast<void>(LegacyStructValue(0, 0).GetTypeName()), _);
 }

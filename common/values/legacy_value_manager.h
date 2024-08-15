@@ -18,7 +18,6 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_VALUE_MANAGER_H_
 
 #include "common/memory.h"
-#include "common/type.h"
 #include "common/type_reflector.h"
 #include "common/types/legacy_type_manager.h"
 #include "common/value.h"
@@ -42,12 +41,6 @@ class LegacyValueManager : public LegacyTypeManager, public ValueManager {
   }
 
  private:
-  ListValue CreateZeroListValueImpl(const ListType& type) override;
-
-  MapValue CreateZeroMapValueImpl(const MapType& type) override;
-
-  OptionalValue CreateZeroOptionalValueImpl(const OptionalType& type) override;
-
   const TypeReflector& type_reflector_;
 };
 

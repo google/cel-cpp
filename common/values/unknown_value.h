@@ -56,8 +56,6 @@ class UnknownValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  UnknownType GetType(TypeManager&) const { return UnknownType(); }
-
   absl::string_view GetTypeName() const { return UnknownType::kName; }
 
   std::string DebugString() const { return ""; }

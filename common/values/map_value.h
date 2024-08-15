@@ -111,8 +111,6 @@ class MapValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  MapType GetType(TypeManager& type_manager) const;
-
   absl::string_view GetTypeName() const;
 
   std::string DebugString() const;

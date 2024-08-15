@@ -16,9 +16,9 @@
 
 #include "absl/status/status.h"
 #include "common/constant.h"
-#include "common/memory.h"
 #include "common/type.h"
 #include "internal/testing.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 namespace {
@@ -121,14 +121,12 @@ TEST(OverloadDecl, Equality) {
 }
 
 TEST(OverloadDecl, GetTypeParams) {
-  auto memory_manager = MemoryManagerRef::ReferenceCounting();
+  google::protobuf::Arena arena;
   auto overload_decl = MakeOverloadDecl(
-      "foo", ListType(memory_manager, TypeParamType(memory_manager, "A")),
-      MapType(memory_manager, TypeParamType(memory_manager, "B"),
-              TypeParamType(memory_manager, "C")),
-      OpaqueType(memory_manager, "bar",
-                 {FunctionType(memory_manager,
-                               TypeParamType(memory_manager, "D"), {})}));
+      "foo", ListType(&arena, TypeParamType("A")),
+      MapType(&arena, TypeParamType("B"), TypeParamType("C")),
+      OpaqueType(&arena, "bar",
+                 {FunctionType(&arena, TypeParamType("D"), {})}));
   EXPECT_THAT(overload_decl.GetTypeParams(),
               UnorderedElementsAre("A", "B", "C", "D"));
 }
@@ -198,11 +196,11 @@ TEST(TypeIsAssignable, StringWrapper) {
 }
 
 TEST(TypeIsAssignable, Complex) {
-  auto memory_manager = MemoryManagerRef::ReferenceCounting();
-  EXPECT_TRUE(TypeIsAssignable(OptionalType(memory_manager, DynType{}),
-                               OptionalType(memory_manager, StringType{})));
-  EXPECT_FALSE(TypeIsAssignable(OptionalType(memory_manager, BoolType{}),
-                                OptionalType(memory_manager, StringType{})));
+  google::protobuf::Arena arena;
+  EXPECT_TRUE(TypeIsAssignable(OptionalType(&arena, DynType{}),
+                               OptionalType(&arena, StringType{})));
+  EXPECT_FALSE(TypeIsAssignable(OptionalType(&arena, BoolType{}),
+                                OptionalType(&arena, StringType{})));
 }
 
 }  // namespace

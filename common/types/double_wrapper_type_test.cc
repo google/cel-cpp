@@ -15,17 +15,11 @@
 #include <sstream>
 
 #include "absl/hash/hash.h"
-#include "absl/types/optional.h"
-#include "common/casting.h"
-#include "common/native_type.h"
 #include "common/type.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
-
-using testing::An;
-using testing::Ne;
 
 TEST(DoubleWrapperType, Kind) {
   EXPECT_EQ(DoubleWrapperType().kind(), DoubleWrapperType::kKind);
@@ -60,31 +54,6 @@ TEST(DoubleWrapperType, Equal) {
   EXPECT_EQ(Type(DoubleWrapperType()), DoubleWrapperType());
   EXPECT_EQ(DoubleWrapperType(), Type(DoubleWrapperType()));
   EXPECT_EQ(Type(DoubleWrapperType()), Type(DoubleWrapperType()));
-}
-
-TEST(DoubleWrapperType, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(DoubleWrapperType()),
-            NativeTypeId::For<DoubleWrapperType>());
-  EXPECT_EQ(NativeTypeId::Of(Type(DoubleWrapperType())),
-            NativeTypeId::For<DoubleWrapperType>());
-}
-
-TEST(DoubleWrapperType, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<DoubleWrapperType>(DoubleWrapperType()));
-  EXPECT_TRUE(InstanceOf<DoubleWrapperType>(Type(DoubleWrapperType())));
-}
-
-TEST(DoubleWrapperType, Cast) {
-  EXPECT_THAT(Cast<DoubleWrapperType>(DoubleWrapperType()),
-              An<DoubleWrapperType>());
-  EXPECT_THAT(Cast<DoubleWrapperType>(Type(DoubleWrapperType())),
-              An<DoubleWrapperType>());
-}
-
-TEST(DoubleWrapperType, As) {
-  EXPECT_THAT(As<DoubleWrapperType>(DoubleWrapperType()), Ne(absl::nullopt));
-  EXPECT_THAT(As<DoubleWrapperType>(Type(DoubleWrapperType())),
-              Ne(absl::nullopt));
 }
 
 }  // namespace

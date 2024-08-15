@@ -15,7 +15,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
-#include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/call_once.h"
@@ -26,12 +25,10 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/internal/message_wrapper.h"
-#include "common/any.h"
 #include "common/json.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "internal/dynamic_loader.h"  // IWYU pragma: keep
-#include "internal/status_macros.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
@@ -237,7 +234,7 @@ void InitializeLegacyStructValue() {
 
 }  // namespace
 
-StructType LegacyStructValue::GetType(TypeManager& type_manager) const {
+StructType LegacyStructValue::GetRuntimeType() const {
   InitializeLegacyStructValue();
   if ((message_ptr_ & ::cel::base_internal::kMessageWrapperTagMask) ==
       ::cel::base_internal::kMessageWrapperTagMessageValue) {

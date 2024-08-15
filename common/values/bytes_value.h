@@ -30,7 +30,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/any.h"
 #include "common/internal/arena_string.h"
 #include "common/internal/shared_byte_string.h"
 #include "common/json.h"
@@ -83,8 +82,6 @@ class BytesValue final {
   BytesValue& operator=(BytesValue&&) = default;
 
   constexpr ValueKind kind() const { return kKind; }
-
-  BytesType GetType(TypeManager&) const { return BytesType(); }
 
   absl::string_view GetTypeName() const { return BytesType::kName; }
 

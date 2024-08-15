@@ -26,7 +26,6 @@
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "common/type_kind.h"
-#include "common/types/type_cache.h"
 #include "common/types/types.h"
 #include "google/protobuf/descriptor.h"
 
@@ -65,8 +64,7 @@ Type Type::Message(absl::Nonnull<const Descriptor*> descriptor) {
     case Descriptor::WELLKNOWNTYPE_LISTVALUE:
       return ListType();
     case Descriptor::WELLKNOWNTYPE_STRUCT:
-      return common_internal::ProcessLocalTypeCache::Get()
-          ->GetStringDynMapType();
+      return JsonMapType();
     default:
       return MessageType(descriptor);
   }

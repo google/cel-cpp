@@ -18,7 +18,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_INT_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_INT_VALUE_H_
 
-#include <cstddef>
 #include <cstdint>
 #include <ostream>
 #include <string>
@@ -28,7 +27,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/any.h"
 #include "common/json.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -63,8 +61,6 @@ class IntValue final {
   IntValue& operator=(IntValue&&) = default;
 
   ValueKind kind() const { return kKind; }
-
-  IntType GetType(TypeManager&) const { return IntType(); }
 
   absl::string_view GetTypeName() const { return IntType::kName; }
 

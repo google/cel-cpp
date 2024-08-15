@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <cstddef>
-#include <tuple>
 
 #include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
@@ -21,7 +20,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "common/casting.h"
-#include "common/type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "internal/status_macros.h"
@@ -36,14 +34,6 @@ absl::Status InvalidMapKeyTypeError(ValueKind kind) {
 }
 
 }  // namespace
-
-MapType MapValue::GetType(TypeManager& type_manager) const {
-  return absl::visit(
-      [&type_manager](const auto& alternative) -> MapType {
-        return alternative.GetType(type_manager);
-      },
-      variant_);
-}
 
 absl::string_view MapValue::GetTypeName() const {
   return absl::visit(

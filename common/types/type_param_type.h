@@ -25,8 +25,6 @@
 #include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "common/memory.h"
-#include "common/native_type.h"
 #include "common/type_kind.h"
 
 namespace cel {
@@ -35,24 +33,25 @@ class Type;
 class TypeParamType;
 
 namespace common_internal {
-struct TypeParamTypeData;
+class TypeParamTypePool;
 }  // namespace common_internal
 
 class TypeParamType final {
  public:
   static constexpr TypeKind kKind = TypeKind::kTypeParam;
 
-  TypeParamType(MemoryManagerRef memory_manager, absl::string_view name);
+  explicit TypeParamType(absl::string_view name ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : name_(name) {}
 
-  TypeParamType() = delete;
+  TypeParamType() = default;
   TypeParamType(const TypeParamType&) = default;
   TypeParamType(TypeParamType&&) = default;
   TypeParamType& operator=(const TypeParamType&) = default;
   TypeParamType& operator=(TypeParamType&&) = default;
 
-  constexpr TypeKind kind() const { return kKind; }
+  static TypeKind kind() { return kKind; }
 
-  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND { return name_; }
 
   absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return {};
@@ -60,20 +59,14 @@ class TypeParamType final {
 
   std::string DebugString() const { return std::string(name()); }
 
-  void swap(TypeParamType& other) noexcept {
+  friend void swap(TypeParamType& lhs, TypeParamType& rhs) noexcept {
     using std::swap;
-    swap(data_, other.data_);
+    swap(lhs.name_, rhs.name_);
   }
 
  private:
-  friend struct NativeTypeTraits<TypeParamType>;
-
-  Shared<const common_internal::TypeParamTypeData> data_;
+  absl::string_view name_;
 };
-
-inline void swap(TypeParamType& lhs, TypeParamType& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline bool operator==(const TypeParamType& lhs, const TypeParamType& rhs) {
   return lhs.name() == rhs.name();
@@ -91,13 +84,6 @@ H AbslHashValue(H state, const TypeParamType& type) {
 inline std::ostream& operator<<(std::ostream& out, const TypeParamType& type) {
   return out << type.DebugString();
 }
-
-template <>
-struct NativeTypeTraits<TypeParamType> final {
-  static bool SkipDestructor(const TypeParamType& type) {
-    return NativeType::SkipDestructor(type.data_);
-  }
-};
 
 }  // namespace cel
 

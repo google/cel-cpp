@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cstddef>
 #include <string>
 
+#include "absl/base/no_destructor.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -22,7 +22,6 @@
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "common/any.h"
 #include "common/json.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -36,7 +35,15 @@ std::string ErrorDebugString(const absl::Status& value) {
   return value.ToString(absl::StatusToStringMode::kWithEverything);
 }
 
+const absl::Status& DefaultErrorValue() {
+  static const absl::NoDestructor<absl::Status> value(
+      absl::UnknownError("unknown error"));
+  return *value;
+}
+
 }  // namespace
+
+ErrorValue::ErrorValue() : ErrorValue(DefaultErrorValue()) {}
 
 ErrorValue NoSuchFieldError(absl::string_view field) {
   return ErrorValue(absl::NotFoundError(

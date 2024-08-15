@@ -64,8 +64,6 @@ class UintValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  UintType GetType(TypeManager&) const { return UintType(); }
-
   absl::string_view GetTypeName() const { return UintType::kName; }
 
   std::string DebugString() const;

@@ -13,19 +13,20 @@
 // limitations under the License.
 
 #include <cstddef>
+#include <cstring>
 #include <string>
 #include <type_traits>
-#include <utility>
 
-#include "absl/container/fixed_array.h"
+#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "common/memory.h"
+#include "absl/utility/utility.h"
 #include "common/type.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 
@@ -40,27 +41,46 @@ std::string OpaqueDebugString(absl::string_view name,
       name, "<", absl::StrJoin(parameters, ", ", absl::StreamFormatter()), ">");
 }
 
-absl::FixedArray<Type, 1> SizedInputViewToFixedArray(
-    absl::Span<const Type> parameters) {
-  absl::FixedArray<Type, 1> fixed_parameters(parameters.size());
-  size_t index = 0;
-  for (const auto& parameter : parameters) {
-    fixed_parameters[index++] = Type(parameter);
-  }
-  ABSL_DCHECK_EQ(index, parameters.size());
-  return fixed_parameters;
-}
-
 }  // namespace
 
-OpaqueType::OpaqueType(MemoryManagerRef memory_manager, absl::string_view name,
+namespace common_internal {
+
+absl::Nonnull<OpaqueTypeData*> OpaqueTypeData::Create(
+    absl::Nonnull<google::protobuf::Arena*> arena, absl::string_view name,
+    absl::Span<const Type> parameters) {
+  return ::new (arena->AllocateAligned(
+      offsetof(OpaqueTypeData, parameters) + (parameters.size() * sizeof(Type)),
+      alignof(OpaqueTypeData))) OpaqueTypeData(name, parameters);
+}
+
+OpaqueTypeData::OpaqueTypeData(absl::string_view name,
+                               absl::Span<const Type> parameters)
+    : name(name), parameters_size(parameters.size()) {
+  std::memcpy(this->parameters, parameters.data(),
+              parameters_size * sizeof(Type));
+}
+
+}  // namespace common_internal
+
+OpaqueType::OpaqueType(absl::Nonnull<google::protobuf::Arena*> arena,
+                       absl::string_view name,
                        absl::Span<const Type> parameters)
-    : data_(memory_manager.MakeShared<common_internal::OpaqueTypeData>(
-          std::string(name),
-          SizedInputViewToFixedArray(std::move(parameters)))) {}
+    : OpaqueType(
+          common_internal::OpaqueTypeData::Create(arena, name, parameters)) {}
 
 std::string OpaqueType::DebugString() const {
+  ABSL_DCHECK(*this);
   return OpaqueDebugString(name(), parameters());
+}
+
+absl::string_view OpaqueType::name() const {
+  ABSL_DCHECK(*this);
+  return data_->name;
+}
+
+absl::Span<const Type> OpaqueType::parameters() const {
+  ABSL_DCHECK(*this);
+  return absl::MakeConstSpan(data_->parameters, data_->parameters_size);
 }
 
 bool OpaqueType::IsOptional() const {

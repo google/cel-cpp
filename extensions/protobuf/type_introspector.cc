@@ -54,8 +54,7 @@ ProtoTypeIntrospector::FindStructTypeFieldByNameImpl(
     }
   }
   StructTypeField result;
-  CEL_ASSIGN_OR_RETURN(result.type,
-                       ProtoFieldTypeToType(type_factory, field_desc));
+  result.type = DynType();
   result.name = field_desc->name();
   result.number = field_desc->number();
   return result;

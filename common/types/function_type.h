@@ -23,11 +23,12 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type_kind.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 
@@ -36,26 +37,26 @@ class FunctionType;
 
 namespace common_internal {
 struct FunctionTypeData;
+class FunctionTypePool;
 }  // namespace common_internal
 
 class FunctionType final {
  public:
   static constexpr TypeKind kKind = TypeKind::kFunction;
+  static constexpr absl::string_view kName = "function";
 
-  FunctionType(MemoryManagerRef memory_manager, const Type& result,
+  FunctionType(absl::Nonnull<google::protobuf::Arena*> arena, const Type& result,
                absl::Span<const Type> args);
 
-  FunctionType() = delete;
+  FunctionType() = default;
   FunctionType(const FunctionType&) = default;
   FunctionType(FunctionType&&) = default;
   FunctionType& operator=(const FunctionType&) = default;
   FunctionType& operator=(FunctionType&&) = default;
 
-  constexpr TypeKind kind() const { return kKind; }
+  static TypeKind kind() { return kKind; }
 
-  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return "function";
-  }
+  static absl::string_view name() { return kName; }
 
   absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
@@ -65,20 +66,22 @@ class FunctionType final {
 
   absl::Span<const Type> args() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  void swap(FunctionType& other) noexcept {
+  friend void swap(FunctionType& lhs, FunctionType& rhs) noexcept {
     using std::swap;
-    swap(data_, other.data_);
+    swap(lhs.data_, rhs.data_);
   }
+
+  explicit operator bool() const { return data_ != nullptr; }
 
  private:
   friend struct NativeTypeTraits<FunctionType>;
 
-  Shared<const common_internal::FunctionTypeData> data_;
-};
+  explicit FunctionType(
+      absl::Nullable<const common_internal::FunctionTypeData*> data)
+      : data_(data) {}
 
-inline void swap(FunctionType& lhs, FunctionType& rhs) noexcept {
-  lhs.swap(rhs);
-}
+  absl::Nullable<const common_internal::FunctionTypeData*> data_ = nullptr;
+};
 
 bool operator==(const FunctionType& lhs, const FunctionType& rhs);
 

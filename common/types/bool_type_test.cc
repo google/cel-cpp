@@ -15,17 +15,11 @@
 #include <sstream>
 
 #include "absl/hash/hash.h"
-#include "absl/types/optional.h"
-#include "common/casting.h"
-#include "common/native_type.h"
 #include "common/type.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
-
-using testing::An;
-using testing::Ne;
 
 TEST(BoolType, Kind) {
   EXPECT_EQ(BoolType().kind(), BoolType::kKind);
@@ -59,26 +53,6 @@ TEST(BoolType, Equal) {
   EXPECT_EQ(Type(BoolType()), BoolType());
   EXPECT_EQ(BoolType(), Type(BoolType()));
   EXPECT_EQ(Type(BoolType()), Type(BoolType()));
-}
-
-TEST(BoolType, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(BoolType()), NativeTypeId::For<BoolType>());
-  EXPECT_EQ(NativeTypeId::Of(Type(BoolType())), NativeTypeId::For<BoolType>());
-}
-
-TEST(BoolType, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<BoolType>(BoolType()));
-  EXPECT_TRUE(InstanceOf<BoolType>(Type(BoolType())));
-}
-
-TEST(BoolType, Cast) {
-  EXPECT_THAT(Cast<BoolType>(BoolType()), An<BoolType>());
-  EXPECT_THAT(Cast<BoolType>(Type(BoolType())), An<BoolType>());
-}
-
-TEST(BoolType, As) {
-  EXPECT_THAT(As<BoolType>(BoolType()), Ne(absl::nullopt));
-  EXPECT_THAT(As<BoolType>(Type(BoolType())), Ne(absl::nullopt));
 }
 
 }  // namespace

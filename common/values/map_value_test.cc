@@ -21,8 +21,6 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
-#include "common/any.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
@@ -55,8 +53,8 @@ class MapValueTest : public common_internal::ThreadCompatibleValueTest<> {
  public:
   template <typename... Args>
   absl::StatusOr<MapValue> NewIntDoubleMapValue(Args&&... args) {
-    CEL_ASSIGN_OR_RETURN(auto builder, value_manager().NewMapValueBuilder(
-                                           GetIntDoubleMapType()));
+    CEL_ASSIGN_OR_RETURN(auto builder,
+                         value_manager().NewMapValueBuilder(MapType()));
     (static_cast<void>(builder->Put(std::forward<Args>(args).first,
                                     std::forward<Args>(args).second)),
      ...);
@@ -65,18 +63,12 @@ class MapValueTest : public common_internal::ThreadCompatibleValueTest<> {
 
   template <typename... Args>
   absl::StatusOr<MapValue> NewJsonMapValue(Args&&... args) {
-    CEL_ASSIGN_OR_RETURN(auto builder, value_manager().NewMapValueBuilder(
-                                           type_factory().GetJsonMapType()));
+    CEL_ASSIGN_OR_RETURN(auto builder,
+                         value_manager().NewMapValueBuilder(JsonMapType()));
     (static_cast<void>(builder->Put(std::forward<Args>(args).first,
                                     std::forward<Args>(args).second)),
      ...);
     return std::move(*builder).Build();
-  }
-
-  ListType GetIntListType() { return type_factory().CreateListType(IntType()); }
-
-  MapType GetIntDoubleMapType() {
-    return type_factory().CreateMapType(IntType(), DoubleType());
   }
 };
 
@@ -85,13 +77,10 @@ TEST_P(MapValueTest, Default) {
   EXPECT_THAT(map_value.IsEmpty(), IsOkAndHolds(true));
   EXPECT_THAT(map_value.Size(), IsOkAndHolds(0));
   EXPECT_EQ(map_value.DebugString(), "{}");
-  EXPECT_EQ(map_value.GetType(type_manager()).key(), DynType());
-  EXPECT_EQ(map_value.GetType(type_manager()).value(), DynType());
   ASSERT_OK_AND_ASSIGN(auto list_value, map_value.ListKeys(value_manager()));
   EXPECT_THAT(list_value.IsEmpty(), IsOkAndHolds(true));
   EXPECT_THAT(list_value.Size(), IsOkAndHolds(0));
   EXPECT_EQ(list_value.DebugString(), "[]");
-  EXPECT_EQ(list_value.GetType(type_manager()).element(), DynType());
   ASSERT_OK_AND_ASSIGN(auto iterator, map_value.NewIterator(value_manager()));
   EXPECT_FALSE(iterator->HasNext());
   EXPECT_THAT(iterator->Next(value_manager()),
@@ -106,16 +95,6 @@ TEST_P(MapValueTest, Kind) {
                            std::pair{IntValue(2), DoubleValue(5.0)}));
   EXPECT_EQ(value.kind(), MapValue::kKind);
   EXPECT_EQ(Value(value).kind(), MapValue::kKind);
-}
-
-TEST_P(MapValueTest, Type) {
-  ASSERT_OK_AND_ASSIGN(
-      auto value,
-      NewIntDoubleMapValue(std::pair{IntValue(0), DoubleValue(3.0)},
-                           std::pair{IntValue(1), DoubleValue(4.0)},
-                           std::pair{IntValue(2), DoubleValue(5.0)}));
-  EXPECT_EQ(value.GetType(type_manager()), GetIntDoubleMapType());
-  EXPECT_EQ(Value(value).GetType(type_manager()), GetIntDoubleMapType());
 }
 
 TEST_P(MapValueTest, DebugString) {

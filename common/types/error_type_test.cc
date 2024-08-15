@@ -15,17 +15,11 @@
 #include <sstream>
 
 #include "absl/hash/hash.h"
-#include "absl/types/optional.h"
-#include "common/casting.h"
-#include "common/native_type.h"
 #include "common/type.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
-
-using testing::An;
-using testing::Ne;
 
 TEST(ErrorType, Kind) {
   EXPECT_EQ(ErrorType().kind(), ErrorType::kKind);
@@ -59,27 +53,6 @@ TEST(ErrorType, Equal) {
   EXPECT_EQ(Type(ErrorType()), ErrorType());
   EXPECT_EQ(ErrorType(), Type(ErrorType()));
   EXPECT_EQ(Type(ErrorType()), Type(ErrorType()));
-}
-
-TEST(ErrorType, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(ErrorType()), NativeTypeId::For<ErrorType>());
-  EXPECT_EQ(NativeTypeId::Of(Type(ErrorType())),
-            NativeTypeId::For<ErrorType>());
-}
-
-TEST(ErrorType, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<ErrorType>(ErrorType()));
-  EXPECT_TRUE(InstanceOf<ErrorType>(Type(ErrorType())));
-}
-
-TEST(ErrorType, Cast) {
-  EXPECT_THAT(Cast<ErrorType>(ErrorType()), An<ErrorType>());
-  EXPECT_THAT(Cast<ErrorType>(Type(ErrorType())), An<ErrorType>());
-}
-
-TEST(ErrorType, As) {
-  EXPECT_THAT(As<ErrorType>(ErrorType()), Ne(absl::nullopt));
-  EXPECT_THAT(As<ErrorType>(Type(ErrorType())), Ne(absl::nullopt));
 }
 
 }  // namespace

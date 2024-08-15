@@ -15,17 +15,11 @@
 #include <sstream>
 
 #include "absl/hash/hash.h"
-#include "absl/types/optional.h"
-#include "common/casting.h"
-#include "common/native_type.h"
 #include "common/type.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
-
-using testing::An;
-using testing::Ne;
 
 TEST(UintWrapperType, Kind) {
   EXPECT_EQ(UintWrapperType().kind(), UintWrapperType::kKind);
@@ -59,29 +53,6 @@ TEST(UintWrapperType, Equal) {
   EXPECT_EQ(Type(UintWrapperType()), UintWrapperType());
   EXPECT_EQ(UintWrapperType(), Type(UintWrapperType()));
   EXPECT_EQ(Type(UintWrapperType()), Type(UintWrapperType()));
-}
-
-TEST(UintWrapperType, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(UintWrapperType()),
-            NativeTypeId::For<UintWrapperType>());
-  EXPECT_EQ(NativeTypeId::Of(Type(UintWrapperType())),
-            NativeTypeId::For<UintWrapperType>());
-}
-
-TEST(UintWrapperType, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<UintWrapperType>(UintWrapperType()));
-  EXPECT_TRUE(InstanceOf<UintWrapperType>(Type(UintWrapperType())));
-}
-
-TEST(UintWrapperType, Cast) {
-  EXPECT_THAT(Cast<UintWrapperType>(UintWrapperType()), An<UintWrapperType>());
-  EXPECT_THAT(Cast<UintWrapperType>(Type(UintWrapperType())),
-              An<UintWrapperType>());
-}
-
-TEST(UintWrapperType, As) {
-  EXPECT_THAT(As<UintWrapperType>(UintWrapperType()), Ne(absl::nullopt));
-  EXPECT_THAT(As<UintWrapperType>(Type(UintWrapperType())), Ne(absl::nullopt));
 }
 
 }  // namespace

@@ -18,7 +18,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_BOOL_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_BOOL_VALUE_H_
 
-#include <cstddef>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -27,7 +26,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/any.h"
 #include "common/json.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -62,8 +60,6 @@ class BoolValue final {
   operator bool() const noexcept { return value_; }
 
   ValueKind kind() const { return kKind; }
-
-  BoolType GetType(TypeManager&) const { return BoolType(); }
 
   absl::string_view GetTypeName() const { return BoolType::kName; }
 

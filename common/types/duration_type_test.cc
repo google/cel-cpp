@@ -15,17 +15,11 @@
 #include <sstream>
 
 #include "absl/hash/hash.h"
-#include "absl/types/optional.h"
-#include "common/casting.h"
-#include "common/native_type.h"
 #include "common/type.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
-
-using testing::An;
-using testing::Ne;
 
 TEST(DurationType, Kind) {
   EXPECT_EQ(DurationType().kind(), DurationType::kKind);
@@ -59,28 +53,6 @@ TEST(DurationType, Equal) {
   EXPECT_EQ(Type(DurationType()), DurationType());
   EXPECT_EQ(DurationType(), Type(DurationType()));
   EXPECT_EQ(Type(DurationType()), Type(DurationType()));
-}
-
-TEST(DurationType, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(DurationType()),
-            NativeTypeId::For<DurationType>());
-  EXPECT_EQ(NativeTypeId::Of(Type(DurationType())),
-            NativeTypeId::For<DurationType>());
-}
-
-TEST(DurationType, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<DurationType>(DurationType()));
-  EXPECT_TRUE(InstanceOf<DurationType>(Type(DurationType())));
-}
-
-TEST(DurationType, Cast) {
-  EXPECT_THAT(Cast<DurationType>(DurationType()), An<DurationType>());
-  EXPECT_THAT(Cast<DurationType>(Type(DurationType())), An<DurationType>());
-}
-
-TEST(DurationType, As) {
-  EXPECT_THAT(As<DurationType>(DurationType()), Ne(absl::nullopt));
-  EXPECT_THAT(As<DurationType>(Type(DurationType())), Ne(absl::nullopt));
 }
 
 }  // namespace

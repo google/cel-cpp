@@ -53,7 +53,6 @@ TEST_P(ProtoTypeIntrospectorTest, FindStructTypeFieldByName) {
   ASSERT_TRUE(field.has_value());
   EXPECT_THAT(field->name, Eq("single_int32"));
   EXPECT_THAT(field->number, Eq(1));
-  EXPECT_THAT(field->type, Eq(IntType{}));
   EXPECT_THAT(
       type_manager().FindStructTypeFieldByName(
           TestAllTypes::descriptor()->full_name(), "field_that_does_not_exist"),

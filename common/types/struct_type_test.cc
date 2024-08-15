@@ -17,7 +17,6 @@
 #include "absl/hash/hash.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/die_if_null.h"
-#include "absl/types/optional.h"
 #include "common/type.h"
 #include "common/type_kind.h"
 #include "internal/testing.h"
@@ -26,8 +25,6 @@
 namespace cel {
 namespace {
 
-using testing::Eq;
-using testing::Optional;
 using testing::Test;
 
 class StructTypeTest : public Test {
@@ -79,22 +76,6 @@ TEST_F(StructTypeTest, Hash) {
 
 TEST_F(StructTypeTest, Equal) {
   EXPECT_EQ(StructType(GetMessageType()), StructType(GetBasicStructType()));
-}
-
-TEST_F(StructTypeTest, Is) {
-  EXPECT_TRUE(StructType(GetMessageType()).IsMessage());
-  EXPECT_FALSE(StructType(GetBasicStructType()).IsMessage());
-}
-
-TEST_F(StructTypeTest, As) {
-  EXPECT_THAT(StructType(GetMessageType()).AsMessage(),
-              Optional(GetMessageType()));
-  EXPECT_THAT(StructType(GetBasicStructType()).AsMessage(), Eq(absl::nullopt));
-}
-
-TEST_F(StructTypeTest, Cast) {
-  EXPECT_EQ(static_cast<MessageType>(StructType(GetMessageType())),
-            GetMessageType());
 }
 
 }  // namespace

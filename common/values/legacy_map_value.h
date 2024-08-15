@@ -65,8 +65,6 @@ class LegacyMapValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  MapType GetType(TypeManager& type_manager) const;
-
   absl::string_view GetTypeName() const { return "map"; }
 
   std::string DebugString() const;

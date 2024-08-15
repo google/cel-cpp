@@ -55,8 +55,6 @@ class TypeValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  TypeType GetType(TypeManager&) const { return TypeType(); }
-
   absl::string_view GetTypeName() const { return TypeType::kName; }
 
   std::string DebugString() const { return value_.DebugString(); }
@@ -100,7 +98,8 @@ inline std::ostream& operator<<(std::ostream& out, const TypeValue& value) {
 template <>
 struct NativeTypeTraits<TypeValue> final {
   static bool SkipDestructor(const TypeValue& value) {
-    return NativeTypeTraits<Type>::SkipDestructor(value.value_);
+    // Type is trivial.
+    return true;
   }
 };
 

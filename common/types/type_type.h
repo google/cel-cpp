@@ -23,10 +23,11 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "common/memory.h"
 #include "common/type_kind.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 
@@ -35,6 +36,7 @@ class TypeType;
 
 namespace common_internal {
 struct TypeTypeData;
+class TypeTypePool;
 }  // namespace common_internal
 
 // `TypeType` is a special type which represents the type of a type.
@@ -43,7 +45,7 @@ class TypeType final {
   static constexpr TypeKind kKind = TypeKind::kType;
   static constexpr absl::string_view kName = "type";
 
-  TypeType(MemoryManagerRef memory_manager, Type parameter);
+  TypeType(absl::Nonnull<google::protobuf::Arena*> arena, const Type& parameter);
 
   TypeType() = default;
   TypeType(const TypeType&) = default;
@@ -51,27 +53,25 @@ class TypeType final {
   TypeType& operator=(const TypeType&) = default;
   TypeType& operator=(TypeType&&) = default;
 
-  constexpr TypeKind kind() const { return kKind; }
+  static TypeKind kind() { return kKind; }
 
-  constexpr absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return kName;
-  }
+  static absl::string_view name() { return kName; }
 
   absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   std::string DebugString() const { return std::string(name()); }
 
-  constexpr void swap(TypeType& other) noexcept {
+  friend void swap(TypeType& lhs, TypeType& rhs) noexcept {
     using std::swap;
-    swap(data_, other.data_);
+    swap(lhs.data_, rhs.data_);
   }
 
-  Shared<const common_internal::TypeTypeData> data_;
-};
+ private:
+  explicit TypeType(absl::Nullable<const common_internal::TypeTypeData*> data)
+      : data_(data) {}
 
-inline constexpr void swap(TypeType& lhs, TypeType& rhs) noexcept {
-  lhs.swap(rhs);
-}
+  absl::Nullable<const common_internal::TypeTypeData*> data_ = nullptr;
+};
 
 inline constexpr bool operator==(const TypeType&, const TypeType&) {
   return true;

@@ -33,7 +33,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
-#include "common/any.h"
+#include "common/casting.h"
 #include "common/json.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -60,21 +60,44 @@ static_assert(kValueToKindArray.size() ==
 
 }  // namespace
 
-Type Value::GetType(TypeManager& type_manager) const {
+Type Value::GetRuntimeType() const {
   AssertIsValid();
-  return absl::visit(
-      [&type_manager](const auto& alternative) -> Type {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          // In optimized builds, we just return an invalid type. In debug
-          // builds we cannot reach here.
-          return Type();
-        } else {
-          return alternative.GetType(type_manager);
-        }
-      },
-      variant_);
+  switch (kind()) {
+    case ValueKind::kNull:
+      return NullType();
+    case ValueKind::kBool:
+      return BoolType();
+    case ValueKind::kInt:
+      return IntType();
+    case ValueKind::kUint:
+      return UintType();
+    case ValueKind::kDouble:
+      return DoubleType();
+    case ValueKind::kString:
+      return StringType();
+    case ValueKind::kBytes:
+      return BytesType();
+    case ValueKind::kStruct:
+      return Cast<StructValue>(*this).GetRuntimeType();
+    case ValueKind::kDuration:
+      return DurationType();
+    case ValueKind::kTimestamp:
+      return TimestampType();
+    case ValueKind::kList:
+      return ListType();
+    case ValueKind::kMap:
+      return MapType();
+    case ValueKind::kUnknown:
+      return UnknownType();
+    case ValueKind::kType:
+      return TypeType();
+    case ValueKind::kError:
+      return ErrorType();
+    case ValueKind::kOpaque:
+      return Cast<OpaqueValue>(*this).GetRuntimeType();
+    default:
+      return Type();
+  }
 }
 
 ValueKind Value::kind() const {

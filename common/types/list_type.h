@@ -23,11 +23,11 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "common/memory.h"
-#include "common/native_type.h"
 #include "common/type_kind.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 
@@ -36,6 +36,7 @@ class ListType;
 
 namespace common_internal {
 struct ListTypeData;
+class ListTypePool;
 }  // namespace common_internal
 
 class ListType final {
@@ -43,7 +44,7 @@ class ListType final {
   static constexpr TypeKind kKind = TypeKind::kList;
   static constexpr absl::string_view kName = "list";
 
-  ListType(MemoryManagerRef memory_manager, Type element);
+  ListType(absl::Nonnull<google::protobuf::Arena*> arena, const Type& element);
 
   // By default, this type is `list(dyn)`. Unless you can help it, you should
   // use a more specific list type.
@@ -53,30 +54,27 @@ class ListType final {
   ListType& operator=(const ListType&) = default;
   ListType& operator=(ListType&&) = default;
 
-  constexpr TypeKind kind() const { return kKind; }
+  static TypeKind kind() { return kKind; }
 
-  constexpr absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return kName;
-  }
+  static absl::string_view name() { return kName; }
 
   std::string DebugString() const;
 
   absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  void swap(ListType& other) noexcept {
+  friend void swap(ListType& lhs, ListType& rhs) noexcept {
     using std::swap;
-    swap(data_, other.data_);
+    swap(lhs.data_, rhs.data_);
   }
 
   const Type& element() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
-  friend struct NativeTypeTraits<ListType>;
+  explicit ListType(absl::Nonnull<const common_internal::ListTypeData*> data)
+      : data_(data) {}
 
-  Shared<const common_internal::ListTypeData> data_;
+  absl::Nonnull<const common_internal::ListTypeData*> data_;
 };
-
-inline void swap(ListType& lhs, ListType& rhs) noexcept { lhs.swap(rhs); }
 
 bool operator==(const ListType& lhs, const ListType& rhs);
 
@@ -91,12 +89,7 @@ inline std::ostream& operator<<(std::ostream& out, const ListType& type) {
   return out << type.DebugString();
 }
 
-template <>
-struct NativeTypeTraits<ListType> final {
-  static bool SkipDestructor(const ListType& type) {
-    return NativeType::SkipDestructor(type.data_);
-  }
-};
+inline ListType JsonListType() { return ListType(); }
 
 }  // namespace cel
 

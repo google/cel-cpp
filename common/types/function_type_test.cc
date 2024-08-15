@@ -13,113 +13,61 @@
 // limitations under the License.
 
 #include <sstream>
-#include <string>
 
 #include "absl/hash/hash.h"
-#include "absl/types/optional.h"
-#include "common/casting.h"
-#include "common/memory.h"
-#include "common/memory_testing.h"
-#include "common/native_type.h"
 #include "common/type.h"
 #include "internal/testing.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 namespace {
 
-using testing::An;
-using testing::Ne;
-using testing::TestParamInfo;
-using testing::TestWithParam;
-
-class FunctionTypeTest : public common_internal::ThreadCompatibleMemoryTest<> {
-};
-
-TEST_P(FunctionTypeTest, Kind) {
-  EXPECT_EQ(FunctionType(memory_manager(), DynType{}, {BytesType()}).kind(),
+TEST(FunctionType, Kind) {
+  google::protobuf::Arena arena;
+  EXPECT_EQ(FunctionType(&arena, DynType{}, {BytesType()}).kind(),
             FunctionType::kKind);
-  EXPECT_EQ(
-      Type(FunctionType(memory_manager(), DynType{}, {BytesType()})).kind(),
-      FunctionType::kKind);
+  EXPECT_EQ(Type(FunctionType(&arena, DynType{}, {BytesType()})).kind(),
+            FunctionType::kKind);
 }
 
-TEST_P(FunctionTypeTest, Name) {
-  EXPECT_EQ(FunctionType(memory_manager(), DynType{}, {BytesType()}).name(),
+TEST(FunctionType, Name) {
+  google::protobuf::Arena arena;
+  EXPECT_EQ(FunctionType(&arena, DynType{}, {BytesType()}).name(), "function");
+  EXPECT_EQ(Type(FunctionType(&arena, DynType{}, {BytesType()})).name(),
             "function");
-  EXPECT_EQ(
-      Type(FunctionType(memory_manager(), DynType{}, {BytesType()})).name(),
-      "function");
 }
 
-TEST_P(FunctionTypeTest, DebugString) {
+TEST(FunctionType, DebugString) {
+  google::protobuf::Arena arena;
   {
     std::ostringstream out;
-    out << FunctionType(memory_manager(), DynType{}, {BytesType()});
+    out << FunctionType(&arena, DynType{}, {BytesType()});
     EXPECT_EQ(out.str(), "(bytes) -> dyn");
   }
   {
     std::ostringstream out;
-    out << Type(FunctionType(memory_manager(), DynType{}, {BytesType()}));
+    out << Type(FunctionType(&arena, DynType{}, {BytesType()}));
     EXPECT_EQ(out.str(), "(bytes) -> dyn");
   }
 }
 
-TEST_P(FunctionTypeTest, Hash) {
-  EXPECT_EQ(
-      absl::HashOf(FunctionType(memory_manager(), DynType{}, {BytesType()})),
-      absl::HashOf(FunctionType(memory_manager(), DynType{}, {BytesType()})));
+TEST(FunctionType, Hash) {
+  google::protobuf::Arena arena;
+  EXPECT_EQ(absl::HashOf(FunctionType(&arena, DynType{}, {BytesType()})),
+            absl::HashOf(FunctionType(&arena, DynType{}, {BytesType()})));
 }
 
-TEST_P(FunctionTypeTest, Equal) {
-  EXPECT_EQ(FunctionType(memory_manager(), DynType{}, {BytesType()}),
-            FunctionType(memory_manager(), DynType{}, {BytesType()}));
-  EXPECT_EQ(Type(FunctionType(memory_manager(), DynType{}, {BytesType()})),
-            FunctionType(memory_manager(), DynType{}, {BytesType()}));
-  EXPECT_EQ(FunctionType(memory_manager(), DynType{}, {BytesType()}),
-            Type(FunctionType(memory_manager(), DynType{}, {BytesType()})));
-  EXPECT_EQ(Type(FunctionType(memory_manager(), DynType{}, {BytesType()})),
-            Type(FunctionType(memory_manager(), DynType{}, {BytesType()})));
+TEST(FunctionType, Equal) {
+  google::protobuf::Arena arena;
+  EXPECT_EQ(FunctionType(&arena, DynType{}, {BytesType()}),
+            FunctionType(&arena, DynType{}, {BytesType()}));
+  EXPECT_EQ(Type(FunctionType(&arena, DynType{}, {BytesType()})),
+            FunctionType(&arena, DynType{}, {BytesType()}));
+  EXPECT_EQ(FunctionType(&arena, DynType{}, {BytesType()}),
+            Type(FunctionType(&arena, DynType{}, {BytesType()})));
+  EXPECT_EQ(Type(FunctionType(&arena, DynType{}, {BytesType()})),
+            Type(FunctionType(&arena, DynType{}, {BytesType()})));
 }
-
-TEST_P(FunctionTypeTest, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(
-                FunctionType(memory_manager(), DynType{}, {BytesType()})),
-            NativeTypeId::For<FunctionType>());
-  EXPECT_EQ(NativeTypeId::Of(
-                Type(FunctionType(memory_manager(), DynType{}, {BytesType()}))),
-            NativeTypeId::For<FunctionType>());
-}
-
-TEST_P(FunctionTypeTest, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<FunctionType>(
-      FunctionType(memory_manager(), DynType{}, {BytesType()})));
-  EXPECT_TRUE(InstanceOf<FunctionType>(
-      Type(FunctionType(memory_manager(), DynType{}, {BytesType()}))));
-}
-
-TEST_P(FunctionTypeTest, Cast) {
-  EXPECT_THAT(Cast<FunctionType>(
-                  FunctionType(memory_manager(), DynType{}, {BytesType()})),
-              An<FunctionType>());
-  EXPECT_THAT(Cast<FunctionType>(Type(
-                  FunctionType(memory_manager(), DynType{}, {BytesType()}))),
-              An<FunctionType>());
-}
-
-TEST_P(FunctionTypeTest, As) {
-  EXPECT_THAT(As<FunctionType>(
-                  FunctionType(memory_manager(), DynType{}, {BytesType()})),
-              Ne(absl::nullopt));
-  EXPECT_THAT(As<FunctionType>(Type(
-                  FunctionType(memory_manager(), DynType{}, {BytesType()}))),
-              Ne(absl::nullopt));
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    FunctionTypeTest, FunctionTypeTest,
-    ::testing::Values(MemoryManagement::kPooling,
-                      MemoryManagement::kReferenceCounting),
-    FunctionTypeTest::ToString);
 
 }  // namespace
 }  // namespace cel

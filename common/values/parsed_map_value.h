@@ -37,13 +37,10 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
-#include "common/any.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
-#include "common/type.h"
 #include "common/value_interface.h"
 #include "common/value_kind.h"
 #include "common/values/map_value_interface.h"
@@ -112,8 +109,6 @@ class ParsedMapValueInterface : public MapValueInterface {
       ValueManager& value_manager) const = 0;
 
  protected:
-  Type GetTypeImpl(TypeManager&) const override { return MapType(); }
-
   // Called by `Find` after performing various argument checks.
   virtual absl::StatusOr<bool> FindImpl(ValueManager& value_manager,
                                         const Value& key,
@@ -143,10 +138,6 @@ class ParsedMapValue {
   ParsedMapValue& operator=(ParsedMapValue&&) = default;
 
   constexpr ValueKind kind() const { return kKind; }
-
-  MapType GetType(TypeManager& type_manager) const {
-    return interface_->GetType(type_manager);
-  }
 
   absl::string_view GetTypeName() const { return interface_->GetTypeName(); }
 
@@ -281,9 +272,6 @@ struct CastTraits<
     return SubsumptionTraits<To>::DownCast(std::move(from));
   }
 };
-
-inline ParsedMapValue::ParsedMapValue()
-    : ParsedMapValue(common_internal::GetEmptyDynDynMapValue()) {}
 
 inline bool Is(const ParsedMapValue& lhs, const ParsedMapValue& rhs) {
   return lhs.interface_.operator->() == rhs.interface_.operator->();

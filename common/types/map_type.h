@@ -23,11 +23,11 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "common/memory.h"
-#include "common/native_type.h"
 #include "common/type_kind.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 
@@ -36,14 +36,18 @@ class MapType;
 
 namespace common_internal {
 struct MapTypeData;
+class MapTypePool;
 }  // namespace common_internal
+
+MapType JsonMapType();
 
 class MapType final {
  public:
   static constexpr TypeKind kKind = TypeKind::kMap;
   static constexpr absl::string_view kName = "map";
 
-  MapType(MemoryManagerRef memory_manager, Type key, Type value);
+  MapType(absl::Nonnull<google::protobuf::Arena*> arena, const Type& key,
+          const Type& value);
 
   // By default, this type is `map(dyn, dyn)`. Unless you can help it, you
   // should use a more specific map type.
@@ -53,19 +57,17 @@ class MapType final {
   MapType& operator=(const MapType&) = default;
   MapType& operator=(MapType&&) = default;
 
-  constexpr TypeKind kind() const { return kKind; }
+  static TypeKind kind() { return kKind; }
 
-  constexpr absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return kName;
-  }
+  static absl::string_view name() { return kName; }
 
   std::string DebugString() const;
 
   absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  void swap(MapType& other) noexcept {
+  friend void swap(MapType& lhs, MapType& rhs) noexcept {
     using std::swap;
-    swap(data_, other.data_);
+    swap(lhs.data_, rhs.data_);
   }
 
   const Type& key() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
@@ -73,12 +75,13 @@ class MapType final {
   const Type& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
-  friend struct NativeTypeTraits<MapType>;
+  friend MapType JsonMapType();
 
-  Shared<const common_internal::MapTypeData> data_;
+  explicit MapType(absl::Nonnull<const common_internal::MapTypeData*> data)
+      : data_(data) {}
+
+  absl::Nonnull<const common_internal::MapTypeData*> data_;
 };
-
-inline void swap(MapType& lhs, MapType& rhs) noexcept { lhs.swap(rhs); }
 
 bool operator==(const MapType& lhs, const MapType& rhs);
 
@@ -92,13 +95,6 @@ H AbslHashValue(H state, const MapType& type);
 inline std::ostream& operator<<(std::ostream& out, const MapType& type) {
   return out << type.DebugString();
 }
-
-template <>
-struct NativeTypeTraits<MapType> final {
-  static bool SkipDestructor(const MapType& type) {
-    return NativeType::SkipDestructor(type.data_);
-  }
-};
 
 }  // namespace cel
 

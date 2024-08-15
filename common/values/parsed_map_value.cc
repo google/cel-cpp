@@ -14,10 +14,11 @@
 
 #include <cstddef>
 #include <memory>
-#include <tuple>
-#include <utility>
+#include <string>
 
 #include "absl/base/attributes.h"
+#include "absl/base/no_destructor.h"
+#include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -25,6 +26,9 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "common/casting.h"
+#include "common/json.h"
+#include "common/memory.h"
+#include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "common/values/values.h"
@@ -44,6 +48,62 @@ absl::Status InvalidMapKeyTypeError(ValueKind kind) {
   return absl::InvalidArgumentError(
       absl::StrCat("Invalid map key type: '", ValueKindToString(kind), "'"));
 }
+
+class EmptyMapValueKeyIterator final : public ValueIterator {
+ public:
+  bool HasNext() override { return false; }
+
+  absl::Status Next(ValueManager&, Value&) override {
+    return absl::FailedPreconditionError(
+        "ValueIterator::Next() called when "
+        "ValueIterator::HasNext() returns false");
+  }
+};
+
+class EmptyMapValue final : public ParsedMapValueInterface {
+ public:
+  static const EmptyMapValue& Get() {
+    static const absl::NoDestructor<EmptyMapValue> empty;
+    return *empty;
+  }
+
+  EmptyMapValue() = default;
+
+  std::string DebugString() const override { return "{}"; }
+
+  bool IsEmpty() const override { return true; }
+
+  size_t Size() const override { return 0; }
+
+  absl::Status ListKeys(ValueManager&, ListValue& result) const override {
+    result = ListValue();
+    return absl::OkStatus();
+  }
+
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
+      ValueManager&) const override {
+    return std::make_unique<EmptyMapValueKeyIterator>();
+  }
+
+  absl::StatusOr<JsonObject> ConvertToJsonObject(
+      AnyToJsonConverter&) const override {
+    return JsonObject();
+  }
+
+ private:
+  NativeTypeId GetNativeTypeId() const noexcept override {
+    return NativeTypeId::For<EmptyMapValue>();
+  }
+
+  absl::StatusOr<bool> FindImpl(ValueManager&, const Value&,
+                                Value&) const override {
+    return false;
+  }
+
+  absl::StatusOr<bool> HasImpl(ValueManager&, const Value&) const override {
+    return false;
+  }
+};
 
 }  // namespace
 
@@ -148,5 +208,9 @@ absl::Status ParsedMapValueInterface::Equal(ValueManager& value_manager,
   result = BoolValue{false};
   return absl::OkStatus();
 }
+
+ParsedMapValue::ParsedMapValue()
+    : ParsedMapValue(
+          common_internal::MakeShared(&EmptyMapValue::Get(), nullptr)) {}
 
 }  // namespace cel

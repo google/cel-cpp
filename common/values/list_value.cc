@@ -18,19 +18,10 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "common/casting.h"
-#include "common/type.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
 
 namespace cel {
-
-ListType ListValue::GetType(TypeManager& type_manager) const {
-  return absl::visit(
-      [&type_manager](const auto& alternative) -> ListType {
-        return alternative.GetType(type_manager);
-      },
-      variant_);
-}
 
 absl::string_view ListValue::GetTypeName() const {
   return absl::visit(

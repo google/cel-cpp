@@ -28,9 +28,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/any.h"
 #include "common/json.h"
-#include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/list_value_interface.h"
 #include "common/values/values.h"
@@ -63,8 +61,6 @@ class LegacyListValue final {
   LegacyListValue& operator=(LegacyListValue&&) = default;
 
   constexpr ValueKind kind() const { return kKind; }
-
-  ListType GetType(TypeManager& type_manager) const;
 
   absl::string_view GetTypeName() const { return "list"; }
 

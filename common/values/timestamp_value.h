@@ -59,8 +59,6 @@ class TimestampValue final {
 
   ValueKind kind() const { return kKind; }
 
-  TimestampType GetType(TypeManager&) const { return TimestampType(); }
-
   absl::string_view GetTypeName() const { return TimestampType::kName; }
 
   std::string DebugString() const;

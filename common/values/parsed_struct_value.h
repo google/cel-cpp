@@ -99,9 +99,7 @@ class ParsedStructValue {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  StructType GetType(TypeManager& type_manager) const {
-    return interface_->GetType(type_manager);
-  }
+  StructType GetRuntimeType() const { return interface_->GetRuntimeType(); }
 
   absl::string_view GetTypeName() const { return interface_->GetTypeName(); }
 

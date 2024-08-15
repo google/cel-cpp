@@ -15,17 +15,11 @@
 #include <sstream>
 
 #include "absl/hash/hash.h"
-#include "absl/types/optional.h"
-#include "common/casting.h"
-#include "common/native_type.h"
 #include "common/type.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
-
-using testing::An;
-using testing::Ne;
 
 TEST(DynType, Kind) {
   EXPECT_EQ(DynType().kind(), DynType::kKind);
@@ -59,26 +53,6 @@ TEST(DynType, Equal) {
   EXPECT_EQ(Type(DynType()), DynType());
   EXPECT_EQ(DynType(), Type(DynType()));
   EXPECT_EQ(Type(DynType()), Type(DynType()));
-}
-
-TEST(DynType, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(DynType()), NativeTypeId::For<DynType>());
-  EXPECT_EQ(NativeTypeId::Of(Type(DynType())), NativeTypeId::For<DynType>());
-}
-
-TEST(DynType, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<DynType>(DynType()));
-  EXPECT_TRUE(InstanceOf<DynType>(Type(DynType())));
-}
-
-TEST(DynType, Cast) {
-  EXPECT_THAT(Cast<DynType>(DynType()), An<DynType>());
-  EXPECT_THAT(Cast<DynType>(Type(DynType())), An<DynType>());
-}
-
-TEST(DynType, As) {
-  EXPECT_THAT(As<DynType>(DynType()), Ne(absl::nullopt));
-  EXPECT_THAT(As<DynType>(Type(DynType())), Ne(absl::nullopt));
 }
 
 }  // namespace

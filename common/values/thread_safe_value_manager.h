@@ -19,15 +19,11 @@
 
 #include <utility>
 
-#include "absl/base/thread_annotations.h"
-#include "absl/synchronization/mutex.h"
 #include "common/memory.h"
-#include "common/type.h"
 #include "common/type_reflector.h"
 #include "common/types/thread_safe_type_manager.h"
 #include "common/value.h"
 #include "common/value_manager.h"
-#include "common/values/value_cache.h"
 
 namespace cel::common_internal {
 
@@ -49,20 +45,7 @@ class ThreadSafeValueManager : public ThreadSafeTypeManager,
   TypeReflector& GetTypeReflector() const final { return *type_reflector_; }
 
  private:
-  ListValue CreateZeroListValueImpl(const ListType& type) override;
-
-  MapValue CreateZeroMapValueImpl(const MapType& type) override;
-
-  OptionalValue CreateZeroOptionalValueImpl(const OptionalType& type) override;
-
   Shared<TypeReflector> type_reflector_;
-  absl::Mutex list_values_mutex_;
-  ListValueCacheMap list_values_ ABSL_GUARDED_BY(list_values_mutex_);
-  absl::Mutex map_values_mutex_;
-  MapValueCacheMap map_values_ ABSL_GUARDED_BY(map_values_mutex_);
-  absl::Mutex optional_values_mutex_;
-  OptionalValueCacheMap optional_values_
-      ABSL_GUARDED_BY(optional_values_mutex_);
 };
 
 }  // namespace cel::common_internal

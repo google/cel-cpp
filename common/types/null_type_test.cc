@@ -15,17 +15,11 @@
 #include <sstream>
 
 #include "absl/hash/hash.h"
-#include "absl/types/optional.h"
-#include "common/casting.h"
-#include "common/native_type.h"
 #include "common/type.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
-
-using testing::An;
-using testing::Ne;
 
 TEST(NullType, Kind) {
   EXPECT_EQ(NullType().kind(), NullType::kKind);
@@ -59,26 +53,6 @@ TEST(NullType, Equal) {
   EXPECT_EQ(Type(NullType()), NullType());
   EXPECT_EQ(NullType(), Type(NullType()));
   EXPECT_EQ(Type(NullType()), Type(NullType()));
-}
-
-TEST(NullType, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(NullType()), NativeTypeId::For<NullType>());
-  EXPECT_EQ(NativeTypeId::Of(Type(NullType())), NativeTypeId::For<NullType>());
-}
-
-TEST(NullType, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<NullType>(NullType()));
-  EXPECT_TRUE(InstanceOf<NullType>(Type(NullType())));
-}
-
-TEST(NullType, Cast) {
-  EXPECT_THAT(Cast<NullType>(NullType()), An<NullType>());
-  EXPECT_THAT(Cast<NullType>(Type(NullType())), An<NullType>());
-}
-
-TEST(NullType, As) {
-  EXPECT_THAT(As<NullType>(NullType()), Ne(absl::nullopt));
-  EXPECT_THAT(As<NullType>(Type(NullType())), Ne(absl::nullopt));
 }
 
 }  // namespace

@@ -172,12 +172,10 @@ std::string ConstantList(bool overlap, int len) {
 absl::StatusOr<std::unique_ptr<ListStorage>> RegisterModernLists(
     bool overlap, int len, cel::ValueManager& value_factory,
     Activation& activation) {
-  auto list_type = value_factory.CreateListType(value_factory.GetDynType());
-
   CEL_ASSIGN_OR_RETURN(auto x_builder,
-                       value_factory.NewListValueBuilder(list_type));
+                       value_factory.NewListValueBuilder(ListType()));
   CEL_ASSIGN_OR_RETURN(auto y_builder,
-                       value_factory.NewListValueBuilder(list_type));
+                       value_factory.NewListValueBuilder(ListType()));
 
   x_builder->Reserve(len + 1);
   y_builder->Reserve(len + 1);

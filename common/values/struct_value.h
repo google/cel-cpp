@@ -21,7 +21,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_STRUCT_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_STRUCT_VALUE_H_
 
-#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <ostream>
@@ -38,7 +37,6 @@
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/attribute.h"
-#include "common/any.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/native_type.h"
@@ -115,7 +113,7 @@ class StructValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  StructType GetType(TypeManager& type_manager) const;
+  StructType GetRuntimeType() const;
 
   absl::string_view GetTypeName() const;
 

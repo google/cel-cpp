@@ -464,7 +464,7 @@ class CelListValueBuilder final : public ListValueBuilder {
 
   ListValue Build() && override {
     if (elements_.empty()) {
-      return ListValue(value_factory_.CreateZeroListValue(type_));
+      return ListValue();
     }
     return common_internal::LegacyListValue{reinterpret_cast<uintptr_t>(
         static_cast<CelList*>(google::protobuf::Arena::Create<CelListValue>(

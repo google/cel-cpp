@@ -32,10 +32,6 @@ absl::StatusOr<Type> ProtoEnumTypeToType(
     TypeFactory& type_factory,
     absl::Nonnull<const google::protobuf::EnumDescriptor*> desc);
 
-absl::StatusOr<Type> ProtoFieldTypeToType(
-    TypeFactory& type_factory,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field_desc);
-
 }  // namespace cel::extensions
 
 #endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_TYPE_H_

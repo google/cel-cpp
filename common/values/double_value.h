@@ -18,7 +18,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_DOUBLE_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_DOUBLE_VALUE_H_
 
-#include <cstddef>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -27,7 +26,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/any.h"
 #include "common/json.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -60,8 +58,6 @@ class DoubleValue final {
   DoubleValue& operator=(DoubleValue&&) = default;
 
   ValueKind kind() const { return kKind; }
-
-  DoubleType GetType(TypeManager&) const { return DoubleType(); }
 
   absl::string_view GetTypeName() const { return DoubleType::kName; }
 

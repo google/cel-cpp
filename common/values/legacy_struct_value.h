@@ -18,7 +18,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_STRUCT_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_LEGACY_STRUCT_VALUE_H_
 
-#include <cstddef>
 #include <cstdint>
 #include <ostream>
 #include <string>
@@ -30,7 +29,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
-#include "common/any.h"
 #include "common/json.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -62,7 +60,7 @@ class LegacyStructValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  StructType GetType(TypeManager& type_manager) const;
+  StructType GetRuntimeType() const;
 
   absl::string_view GetTypeName() const;
 

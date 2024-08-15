@@ -50,9 +50,7 @@ TEST_P(OptionalValueTest, Kind) {
 
 TEST_P(OptionalValueTest, Type) {
   auto value = OptionalNone();
-  EXPECT_EQ(value.GetType(type_manager()), OptionalType());
-  EXPECT_EQ(OpaqueValue(value).GetType(type_manager()), OptionalType());
-  EXPECT_EQ(Value(value).GetType(type_manager()), OptionalType());
+  EXPECT_EQ(value.GetRuntimeType(), OptionalType());
 }
 
 TEST_P(OptionalValueTest, DebugString) {

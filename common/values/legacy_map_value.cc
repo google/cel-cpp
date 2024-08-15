@@ -193,11 +193,6 @@ void InitializeLegacyMapValue() {
 
 }  // namespace
 
-MapType LegacyMapValue::GetType(TypeManager& type_manager) const {
-  InitializeLegacyMapValue();
-  return (*legacy_map_value_vtable.get_type)(impl_, type_manager);
-}
-
 std::string LegacyMapValue::DebugString() const {
   InitializeLegacyMapValue();
   return (*legacy_map_value_vtable.debug_string)(impl_);

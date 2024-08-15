@@ -19,15 +19,11 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_LIST_VALUE_INTERFACE_H_
 
 #include <cstddef>
-#include <string>
 
 #include "absl/functional/function_ref.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "common/casting.h"
 #include "common/json.h"
-#include "common/type.h"
-#include "common/type_manager.h"
 #include "common/value_interface.h"
 #include "common/value_kind.h"
 
@@ -44,10 +40,6 @@ class ListValueInterface : public ValueInterface {
 
   ValueKind kind() const final { return kKind; }
 
-  ListType GetType(TypeManager& type_manager) const {
-    return Cast<ListType>(GetTypeImpl(type_manager));
-  }
-
   absl::string_view GetTypeName() const final { return "list"; }
 
   absl::StatusOr<Json> ConvertToJson(
@@ -62,11 +54,6 @@ class ListValueInterface : public ValueInterface {
 
   using ForEachWithIndexCallback =
       absl::FunctionRef<absl::StatusOr<bool>(size_t, const Value&)>;
-
- protected:
-  Type GetTypeImpl(TypeManager& type_manager) const override {
-    return Type(type_manager.GetDynListType());
-  }
 };
 
 }  // namespace cel

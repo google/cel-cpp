@@ -24,13 +24,14 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "absl/utility/utility.h"
-#include "common/memory.h"
 #include "common/type_kind.h"
 #include "common/types/opaque_type.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 
@@ -46,18 +47,14 @@ class OptionalType final {
   // should choose a more specific optional type.
   OptionalType();
 
-  OptionalType(MemoryManagerRef, absl::string_view,
-               absl::Span<const Type>) = delete;
-
-  OptionalType(MemoryManagerRef memory_manager, const Type& parameter)
-      : opaque_(OpaqueType(memory_manager, kName,
-                           absl::MakeConstSpan(&parameter, 1))) {}
+  OptionalType(absl::Nonnull<google::protobuf::Arena*> arena, const Type& parameter)
+      : OptionalType(
+            absl::in_place,
+            OpaqueType(arena, kName, absl::MakeConstSpan(&parameter, 1))) {}
 
   static TypeKind kind() { return kKind; }
 
-  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return opaque_.name();
-  }
+  static absl::string_view name() { return kName; }
 
   std::string DebugString() const { return opaque_.DebugString(); }
 

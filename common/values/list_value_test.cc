@@ -20,8 +20,6 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/cord.h"
-#include "common/any.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
@@ -45,12 +43,10 @@ class ListValueTest : public common_internal::ThreadCompatibleValueTest<> {
   template <typename... Args>
   absl::StatusOr<ListValue> NewIntListValue(Args&&... args) {
     CEL_ASSIGN_OR_RETURN(auto builder,
-                         value_manager().NewListValueBuilder(GetIntListType()));
+                         value_manager().NewListValueBuilder(ListType()));
     (static_cast<void>(builder->Add(std::forward<Args>(args))), ...);
     return std::move(*builder).Build();
   }
-
-  ListType GetIntListType() { return type_factory().CreateListType(IntType()); }
 };
 
 TEST_P(ListValueTest, Default) {
@@ -58,7 +54,6 @@ TEST_P(ListValueTest, Default) {
   EXPECT_THAT(value.IsEmpty(), IsOkAndHolds(true));
   EXPECT_THAT(value.Size(), IsOkAndHolds(0));
   EXPECT_EQ(value.DebugString(), "[]");
-  EXPECT_EQ(value.GetType(type_manager()).element(), DynType());
 }
 
 TEST_P(ListValueTest, Kind) {
@@ -71,8 +66,6 @@ TEST_P(ListValueTest, Kind) {
 TEST_P(ListValueTest, Type) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        NewIntListValue(IntValue(0), IntValue(1), IntValue(2)));
-  EXPECT_EQ(value.GetType(type_manager()), GetIntListType());
-  EXPECT_EQ(Value(value).GetType(type_manager()), GetIntListType());
 }
 
 TEST_P(ListValueTest, DebugString) {

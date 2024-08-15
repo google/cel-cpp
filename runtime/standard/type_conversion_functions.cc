@@ -396,7 +396,7 @@ absl::Status RegisterTypeConversionFunctions(FunctionRegistry& registry,
   return UnaryFunctionAdapter<Value, const Value&>::RegisterGlobalOverload(
       cel::builtin::kType,
       [](ValueManager& factory, const Value& value) {
-        return factory.CreateTypeValue(value.GetType(factory));
+        return factory.CreateTypeValue(value.GetRuntimeType());
       },
       registry);
 }

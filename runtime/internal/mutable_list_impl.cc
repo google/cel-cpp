@@ -42,10 +42,6 @@ std::string MutableListValue::DebugString() const {
   return kMutableListTypeName;
 }
 
-Type MutableListValue::GetTypeImpl(TypeManager& type_manager) const {
-  return type_manager.CreateOpaqueType(kMutableListTypeName, {});
-}
-
 NativeTypeId MutableListValue::GetNativeTypeId() const {
   return cel::NativeTypeId::For<MutableListValue>();
 }

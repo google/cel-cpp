@@ -1547,8 +1547,7 @@ class ParsedProtoStructValueInterface
 
   virtual const google::protobuf::Message& message() const = 0;
 
- protected:
-  Type GetTypeImpl(TypeManager& type_manager) const final {
+  StructType GetRuntimeType() const final {
     return MessageType(message().GetDescriptor());
   }
 

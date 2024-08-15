@@ -30,7 +30,6 @@
 #include "common/type.h"
 #include "common/type_factory.h"
 #include "common/type_reflector.h"
-#include "common/types/type_cache.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "internal/testing.h"
@@ -38,9 +37,7 @@
 namespace cel {
 namespace {
 
-using common_internal::ProcessLocalTypeCache;
 using testing::TestParamInfo;
-using testing::TestWithParam;
 using testing::UnorderedElementsAreArray;
 using cel::internal::IsOkAndHolds;
 
@@ -165,8 +162,7 @@ JsonObject NewJsonObjectForTesting(bool with_array, bool with_nested_object) {
 TEST_P(ValueFactoryTest, JsonValueArray) {
   auto value = value_factory().CreateValueFromJson(NewJsonArrayForTesting());
   ASSERT_TRUE(InstanceOf<ListValue>(value));
-  EXPECT_EQ(Type(value.GetType(type_manager())),
-            type_factory().GetDynListType());
+  EXPECT_EQ(Type(value.GetRuntimeType()), type_factory().GetDynListType());
   auto list_value = Cast<ListValue>(value);
   EXPECT_THAT(list_value.IsEmpty(), IsOkAndHolds(false));
   EXPECT_THAT(list_value.Size(), IsOkAndHolds(6));
@@ -180,8 +176,6 @@ TEST_P(ValueFactoryTest, JsonValueArray) {
 TEST_P(ValueFactoryTest, JsonValueObject) {
   auto value = value_factory().CreateValueFromJson(NewJsonObjectForTesting());
   ASSERT_TRUE(InstanceOf<MapValue>(value));
-  EXPECT_EQ(Type(value.GetType(type_manager())),
-            type_factory().GetStringDynMapType());
   auto map_value = Cast<MapValue>(value);
   EXPECT_THAT(map_value.IsEmpty(), IsOkAndHolds(false));
   EXPECT_THAT(map_value.Size(), IsOkAndHolds(6));
@@ -218,96 +212,6 @@ TEST_P(ValueFactoryTest, JsonValueObject) {
   ASSERT_OK_AND_ASSIGN(
       get, map_value.Get(value_manager(), StringValue(absl::Cord("a"))));
   ASSERT_TRUE(InstanceOf<NullValue>(get));
-}
-
-TEST_P(ValueFactoryTest, ListValue) {
-  // Primitive zero value types are cached.
-  auto list_value1 = value_factory().CreateZeroListValue(
-      type_factory().CreateListType(StringType()));
-  EXPECT_TRUE(
-      Is(list_value1, value_factory().CreateZeroListValue(
-                          type_factory().CreateListType(StringType()))));
-  EXPECT_FALSE(Is(list_value1, value_factory().CreateZeroListValue(
-                                   type_factory().CreateListType(BoolType()))));
-  // Try types which are not cached to exercise other codepath.
-  auto struct_type1 = common_internal::MakeBasicStructType("test.Struct1");
-  auto struct_type2 = common_internal::MakeBasicStructType("test.Struct2");
-  auto list_value2 = value_factory().CreateZeroListValue(
-      type_factory().CreateListType(struct_type1));
-  EXPECT_TRUE(
-      Is(list_value2, value_factory().CreateZeroListValue(
-                          type_factory().CreateListType(struct_type1))));
-  EXPECT_FALSE(
-      Is(list_value2, value_factory().CreateZeroListValue(
-                          type_factory().CreateListType(struct_type2))));
-
-  auto zero_list_value = value_factory().GetZeroDynListValue();
-  EXPECT_THAT(zero_list_value.IsEmpty(), IsOkAndHolds(true));
-  EXPECT_THAT(zero_list_value.Size(), IsOkAndHolds(0));
-  EXPECT_EQ(zero_list_value.GetType(type_manager()),
-            ProcessLocalTypeCache::Get()->GetDynListType());
-}
-
-TEST_P(ValueFactoryTest, MapValue) {
-  // Primitive zero value types are cached.
-  auto map_value1 = value_factory().CreateZeroMapValue(
-      type_factory().CreateMapType(StringType(), IntType()));
-  EXPECT_TRUE(Is(map_value1,
-                 value_factory().CreateZeroMapValue(
-                     type_factory().CreateMapType(StringType(), IntType()))));
-  EXPECT_FALSE(Is(map_value1,
-                  value_factory().CreateZeroMapValue(
-                      type_factory().CreateMapType(StringType(), BoolType()))));
-  // Try types which are not cached to exercise other codepath.
-  auto struct_type1 = common_internal::MakeBasicStructType("test.Struct1");
-  auto struct_type2 = common_internal::MakeBasicStructType("test.Struct2");
-  auto map_value2 = value_factory().CreateZeroMapValue(
-      type_factory().CreateMapType(StringType(), struct_type1));
-  EXPECT_TRUE(Is(map_value2, value_factory().CreateZeroMapValue(
-                                 type_factory().CreateMapType(StringType(),
-                                                              struct_type1))));
-  EXPECT_FALSE(Is(map_value2, value_factory().CreateZeroMapValue(
-                                  type_factory().CreateMapType(StringType(),
-                                                               struct_type2))));
-
-  auto zero_map_value = value_factory().GetZeroDynDynMapValue();
-  EXPECT_THAT(zero_map_value.IsEmpty(), IsOkAndHolds(true));
-  EXPECT_THAT(zero_map_value.Size(), IsOkAndHolds(0));
-  EXPECT_EQ(zero_map_value.GetType(type_manager()),
-            ProcessLocalTypeCache::Get()->GetDynDynMapType());
-  zero_map_value = value_factory().GetZeroStringDynMapValue();
-  EXPECT_THAT(zero_map_value.IsEmpty(), IsOkAndHolds(true));
-  EXPECT_THAT(zero_map_value.Size(), IsOkAndHolds(0));
-  EXPECT_EQ(zero_map_value.GetType(type_manager()),
-            ProcessLocalTypeCache::Get()->GetStringDynMapType());
-}
-
-TEST_P(ValueFactoryTest, OptionalType) {
-  // Primitive zero value types are cached.
-  auto optional_value1 = value_factory().CreateZeroOptionalValue(
-      type_factory().CreateOptionalType(StringType()));
-  EXPECT_TRUE(Is(optional_value1,
-                 value_factory().CreateZeroOptionalValue(
-                     type_factory().CreateOptionalType(StringType()))));
-  EXPECT_FALSE(
-      Is(optional_value1, value_factory().CreateZeroOptionalValue(
-                              type_factory().CreateOptionalType(BoolType()))));
-  // Try types which are not cached to exercise other codepath.
-  auto struct_type1 = common_internal::MakeBasicStructType("test.Struct1");
-  auto struct_type2 = common_internal::MakeBasicStructType("test.Struct2");
-  auto optional_value2 = value_factory().CreateZeroOptionalValue(
-      type_factory().CreateOptionalType(struct_type1));
-  EXPECT_TRUE(Is(optional_value2,
-                 value_factory().CreateZeroOptionalValue(
-                     type_factory().CreateOptionalType(struct_type1))));
-  EXPECT_FALSE(Is(optional_value2,
-                  value_factory().CreateZeroOptionalValue(
-                      type_factory().CreateOptionalType(struct_type2))));
-
-  auto zero_optional_value = value_factory().GetZeroDynOptionalValue();
-  EXPECT_FALSE(zero_optional_value.HasValue());
-  EXPECT_EQ(zero_optional_value.GetType(type_manager()),
-            ProcessLocalTypeCache::Get()->GetDynOptionalType());
 }
 
 INSTANTIATE_TEST_SUITE_P(

@@ -17,16 +17,10 @@
 #include <sstream>
 
 #include "absl/hash/hash.h"
-#include "absl/types/optional.h"
-#include "common/casting.h"
-#include "common/native_type.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
-
-using testing::An;
-using testing::Ne;
 
 TEST(TypeType, Kind) {
   EXPECT_EQ(TypeType().kind(), TypeType::kKind);
@@ -60,26 +54,6 @@ TEST(TypeType, Equal) {
   EXPECT_EQ(Type(TypeType()), TypeType());
   EXPECT_EQ(TypeType(), Type(TypeType()));
   EXPECT_EQ(Type(TypeType()), Type(TypeType()));
-}
-
-TEST(TypeType, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(TypeType()), NativeTypeId::For<TypeType>());
-  EXPECT_EQ(NativeTypeId::Of(Type(TypeType())), NativeTypeId::For<TypeType>());
-}
-
-TEST(TypeType, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<TypeType>(TypeType()));
-  EXPECT_TRUE(InstanceOf<TypeType>(Type(TypeType())));
-}
-
-TEST(TypeType, Cast) {
-  EXPECT_THAT(Cast<TypeType>(TypeType()), An<TypeType>());
-  EXPECT_THAT(Cast<TypeType>(Type(TypeType())), An<TypeType>());
-}
-
-TEST(TypeType, As) {
-  EXPECT_THAT(As<TypeType>(TypeType()), Ne(absl::nullopt));
-  EXPECT_THAT(As<TypeType>(Type(TypeType())), Ne(absl::nullopt));
 }
 
 }  // namespace

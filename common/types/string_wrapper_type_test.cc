@@ -15,17 +15,11 @@
 #include <sstream>
 
 #include "absl/hash/hash.h"
-#include "absl/types/optional.h"
-#include "common/casting.h"
-#include "common/native_type.h"
 #include "common/type.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
-
-using testing::An;
-using testing::Ne;
 
 TEST(StringWrapperType, Kind) {
   EXPECT_EQ(StringWrapperType().kind(), StringWrapperType::kKind);
@@ -60,31 +54,6 @@ TEST(StringWrapperType, Equal) {
   EXPECT_EQ(Type(StringWrapperType()), StringWrapperType());
   EXPECT_EQ(StringWrapperType(), Type(StringWrapperType()));
   EXPECT_EQ(Type(StringWrapperType()), Type(StringWrapperType()));
-}
-
-TEST(StringWrapperType, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(StringWrapperType()),
-            NativeTypeId::For<StringWrapperType>());
-  EXPECT_EQ(NativeTypeId::Of(Type(StringWrapperType())),
-            NativeTypeId::For<StringWrapperType>());
-}
-
-TEST(StringWrapperType, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<StringWrapperType>(StringWrapperType()));
-  EXPECT_TRUE(InstanceOf<StringWrapperType>(Type(StringWrapperType())));
-}
-
-TEST(StringWrapperType, Cast) {
-  EXPECT_THAT(Cast<StringWrapperType>(StringWrapperType()),
-              An<StringWrapperType>());
-  EXPECT_THAT(Cast<StringWrapperType>(Type(StringWrapperType())),
-              An<StringWrapperType>());
-}
-
-TEST(StringWrapperType, As) {
-  EXPECT_THAT(As<StringWrapperType>(StringWrapperType()), Ne(absl::nullopt));
-  EXPECT_THAT(As<StringWrapperType>(Type(StringWrapperType())),
-              Ne(absl::nullopt));
 }
 
 }  // namespace

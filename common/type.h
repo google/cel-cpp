@@ -16,8 +16,9 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_H_
 
 #include <algorithm>
-#include <array>
+#include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -26,17 +27,12 @@
 #include "absl/algorithm/container.h"
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
-#include "absl/container/fixed_array.h"
 #include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
-#include "common/casting.h"
-#include "common/memory.h"
-#include "common/native_type.h"
-#include "common/type_interface.h"  // IWYU pragma: export
 #include "common/type_kind.h"
 #include "common/types/any_type.h"   // IWYU pragma: export
 #include "common/types/bool_type.h"  // IWYU pragma: export
@@ -67,6 +63,7 @@
 #include "common/types/uint_type.h"  // IWYU pragma: export
 #include "common/types/uint_wrapper_type.h"  // IWYU pragma: export
 #include "common/types/unknown_type.h"  // IWYU pragma: export
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 
 namespace cel {
@@ -74,10 +71,13 @@ namespace cel {
 class Type;
 
 // `Type` is a composition type which encompasses all types supported by the
-// Common Expression Language. When default constructed or moved, `Type` is in a
+// Common Expression Language. When default constructed, `Type` is in a
 // known but invalid state. Any attempt to use it from then on, without
 // assigning another type, is undefined behavior. In debug builds, we do our
 // best to fail.
+//
+// The data underlying `Type` is either static or owned by `google::protobuf::Arena`. As
+// such, care must be taken to ensure types remain valid throughout their use.
 class Type final {
  public:
   // Returns an appropriate `Type` for the dynamic protobuf message. For well
@@ -93,38 +93,19 @@ class Type final {
   Type& operator=(Type&&) = default;
 
   template <typename T,
-            typename = std::enable_if_t<common_internal::IsTypeInterfaceV<T>>>
+            typename = std::enable_if_t<common_internal::IsTypeAlternativeV<
+                absl::remove_reference_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  Type(const Shared<const T>& interface) noexcept
-      : variant_(
-            absl::in_place_type<common_internal::BaseTypeAlternativeForT<T>>,
-            interface) {}
-
-  template <typename T,
-            typename = std::enable_if_t<common_internal::IsTypeInterfaceV<T>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Type(Shared<const T>&& interface) noexcept
-      : variant_(
-            absl::in_place_type<common_internal::BaseTypeAlternativeForT<T>>,
-            std::move(interface)) {}
-
-  template <typename T,
-            typename = std::enable_if_t<
-                common_internal::IsTypeAlternativeV<absl::remove_cvref_t<T>>>>
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  Type(T&& alternative) noexcept
-      : variant_(absl::in_place_type<common_internal::BaseTypeAlternativeForT<
-                     absl::remove_cvref_t<T>>>,
+  constexpr Type(T&& alternative) noexcept
+      : variant_(absl::in_place_type<absl::remove_cvref_t<T>>,
                  std::forward<T>(alternative)) {}
 
   template <typename T,
-            typename = std::enable_if_t<
-                common_internal::IsTypeAlternativeV<absl::remove_cvref_t<T>>>>
+            typename = std::enable_if_t<common_internal::IsTypeAlternativeV<
+                absl::remove_reference_t<T>>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   Type& operator=(T&& type) noexcept {
-    variant_.emplace<
-        common_internal::BaseTypeAlternativeForT<absl::remove_cvref_t<T>>>(
-        std::forward<T>(type));
+    variant_.emplace<absl::remove_cvref_t<T>>(std::forward<T>(type));
     return *this;
   }
 
@@ -735,8 +716,6 @@ class Type final {
   explicit operator UnknownType() const;
 
  private:
-  friend struct NativeTypeTraits<Type>;
-  friend struct CompositionTraits<Type>;
   friend class StructType;
   friend class MessageType;
   friend class common_internal::BasicStructType;
@@ -756,153 +735,7 @@ inline bool operator!=(const Type& lhs, const Type& rhs) {
   return !operator==(lhs, rhs);
 }
 
-template <>
-struct NativeTypeTraits<Type> final {
-  static NativeTypeId Id(const Type& type) {
-    type.AssertIsValid();
-    return absl::visit(
-        [](const auto& alternative) -> NativeTypeId {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we just return
-            // `NativeTypeId::For<absl::monostate>()`. In debug builds we cannot
-            // reach here.
-            return NativeTypeId::For<absl::monostate>();
-          } else {
-            return NativeTypeId::Of(alternative);
-          }
-        },
-        type.variant_);
-  }
-
-  static bool SkipDestructor(const Type& type) {
-    type.AssertIsValid();
-    return absl::visit(
-        [](const auto& alternative) -> bool {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we just say we should skip the destructor.
-            // In debug builds we cannot reach here.
-            return true;
-          } else {
-            return NativeType::SkipDestructor(alternative);
-          }
-        },
-        type.variant_);
-  }
-};
-
-template <>
-struct CompositionTraits<Type> final {
-  template <typename U>
-  static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, bool> HasA(
-      const Type& type) {
-    type.AssertIsValid();
-    return type.Is<U>();
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<StructType, U>, bool> HasA(
-      const Type& type) {
-    type.AssertIsValid();
-    return type.IsStruct();
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<OptionalType, U>, bool> HasA(
-      const Type& type) {
-    type.AssertIsValid();
-    return type.IsOptional();
-  }
-
-  template <typename U>
-  static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U> Get(
-      const Type& type) {
-    type.AssertIsValid();
-    return static_cast<U>(type);
-  }
-
-  template <typename U>
-  static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U> Get(
-      Type& type) {
-    type.AssertIsValid();
-    return static_cast<U>(type);
-  }
-
-  template <typename U>
-  static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U> Get(
-      const Type&& type) {
-    type.AssertIsValid();
-    return static_cast<U>(type);
-  }
-
-  template <typename U>
-  static std::enable_if_t<common_internal::IsTypeAlternativeV<U>, U> Get(
-      Type&& type) {
-    type.AssertIsValid();
-    return static_cast<U>(type);
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<StructType, U>, U> Get(
-      const Type& type) {
-    type.AssertIsValid();
-    return static_cast<StructType>(type);
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<StructType, U>, U> Get(Type& type) {
-    type.AssertIsValid();
-    return static_cast<StructType>(type);
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<StructType, U>, U> Get(
-      const Type&& type) {
-    type.AssertIsValid();
-    return static_cast<StructType>(type);
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<StructType, U>, U> Get(Type&& type) {
-    type.AssertIsValid();
-    return static_cast<StructType>(type);
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<OptionalType, U>, U> Get(
-      const Type& type) {
-    type.AssertIsValid();
-    return static_cast<OptionalType>(type);
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<OptionalType, U>, U> Get(Type& type) {
-    type.AssertIsValid();
-    return static_cast<OptionalType>(type);
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<OptionalType, U>, U> Get(
-      const Type&& type) {
-    type.AssertIsValid();
-    return static_cast<OptionalType>(type);
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<OptionalType, U>, U> Get(Type&& type) {
-    type.AssertIsValid();
-    return static_cast<OptionalType>(type);
-  }
-};
-
-template <typename To, typename From>
-struct CastTraits<
-    To, From,
-    std::enable_if_t<std::is_same_v<Type, absl::remove_cvref_t<From>>>>
-    : CompositionCastTraits<To, From> {};
+inline Type JsonType() { return DynType(); }
 
 // Statically assert some expectations.
 static_assert(std::is_default_constructible_v<Type>);
@@ -925,86 +758,71 @@ struct StructTypeField {
 namespace common_internal {
 
 struct ListTypeData final {
-  explicit ListTypeData(Type element) noexcept : element(std::move(element)) {}
+  static absl::Nonnull<ListTypeData*> Create(
+      absl::Nonnull<google::protobuf::Arena*> arena, const Type& element);
 
-  const Type element;
+  ListTypeData() = default;
+  ListTypeData(const ListTypeData&) = delete;
+  ListTypeData(ListTypeData&&) = delete;
+  ListTypeData& operator=(const ListTypeData&) = delete;
+  ListTypeData& operator=(ListTypeData&&) = delete;
+
+  Type element = DynType();
+
+ private:
+  explicit ListTypeData(const Type& element);
 };
 
 struct MapTypeData final {
-  explicit MapTypeData(Type key, Type value) noexcept
-      : key_and_value{std::move(key), std::move(value)} {}
+  static absl::Nonnull<MapTypeData*> Create(absl::Nonnull<google::protobuf::Arena*> arena,
+                                            const Type& key, const Type& value);
 
-  std::array<Type, 2> key_and_value;
-};
-
-struct OpaqueTypeData final {
-  explicit OpaqueTypeData(std::string name,
-                          absl::FixedArray<Type, 1> parameters)
-      : name(std::move(name)), parameters(std::move(parameters)) {}
-
-  const std::string name;
-  const absl::FixedArray<Type, 1> parameters;
-};
-
-struct TypeParamTypeData final {
-  explicit TypeParamTypeData(std::string name) : name(std::move(name)) {}
-
-  const std::string name;
+  Type key_and_value[2];
 };
 
 struct FunctionTypeData final {
-  explicit FunctionTypeData(absl::FixedArray<Type, 3> result_and_args)
-      : result_and_args(std::move(result_and_args)) {}
+  static absl::Nonnull<FunctionTypeData*> Create(
+      absl::Nonnull<google::protobuf::Arena*> arena, const Type& result,
+      absl::Span<const Type> args);
 
-  const absl::FixedArray<Type, 3> result_and_args;
+  FunctionTypeData() = delete;
+  FunctionTypeData(const FunctionTypeData&) = delete;
+  FunctionTypeData(FunctionTypeData&&) = delete;
+  FunctionTypeData& operator=(const FunctionTypeData&) = delete;
+  FunctionTypeData& operator=(FunctionTypeData&&) = delete;
+
+  const size_t args_size;
+  // Flexible array, has `args_size` elements, with the first element being the
+  // return type. FunctionTypeData has a variable length size, which includes
+  // this flexible array.
+  Type args[];
+
+ private:
+  FunctionTypeData(const Type& result, absl::Span<const Type> args);
 };
 
-struct TypeTypeData final {
-  explicit TypeTypeData(Type type) : type(std::move(type)) {}
+struct OpaqueTypeData final {
+  static absl::Nonnull<OpaqueTypeData*> Create(
+      absl::Nonnull<google::protobuf::Arena*> arena, absl::string_view name,
+      absl::Span<const Type> parameters);
 
-  const Type type;
+  OpaqueTypeData() = delete;
+  OpaqueTypeData(const OpaqueTypeData&) = delete;
+  OpaqueTypeData(OpaqueTypeData&&) = delete;
+  OpaqueTypeData& operator=(const OpaqueTypeData&) = delete;
+  OpaqueTypeData& operator=(OpaqueTypeData&&) = delete;
+
+  const absl::string_view name;
+  const size_t parameters_size;
+  // Flexible array, has `parameters_size` elements. OpaqueTypeData has a
+  // variable length size, which includes this flexible array.
+  Type parameters[];
+
+ private:
+  OpaqueTypeData(absl::string_view name, absl::Span<const Type> parameters);
 };
 
 }  // namespace common_internal
-
-template <>
-struct NativeTypeTraits<common_internal::ListTypeData> final {
-  static bool SkipDestructor(const common_internal::ListTypeData& data) {
-    return NativeType::SkipDestructor(data.element);
-  }
-};
-
-template <>
-struct NativeTypeTraits<common_internal::MapTypeData> final {
-  static bool SkipDestructor(const common_internal::MapTypeData& data) {
-    return NativeType::SkipDestructor(data.key_and_value[0]) &&
-           NativeType::SkipDestructor(data.key_and_value[1]);
-  }
-};
-
-template <>
-struct NativeTypeTraits<common_internal::FunctionTypeData> final {
-  static bool SkipDestructor(const common_internal::FunctionTypeData& data) {
-    return absl::c_all_of(data.result_and_args, [](const Type& type) -> bool {
-      return NativeType::SkipDestructor(type);
-    });
-  }
-};
-
-inline ListType::ListType() : ListType(common_internal::GetDynListType()) {}
-
-inline ListType::ListType(MemoryManagerRef memory_manager, Type element)
-    : data_(memory_manager.MakeShared<common_internal::ListTypeData>(
-          std::move(element))) {}
-
-inline absl::Span<const Type> ListType::parameters() const
-    ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return absl::MakeConstSpan(&data_->element, 1);
-}
-
-inline const Type& ListType::element() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return data_->element;
-}
 
 inline bool operator==(const ListType& lhs, const ListType& rhs) {
   return &lhs == &rhs || lhs.element() == rhs.element();
@@ -1015,25 +833,6 @@ inline H AbslHashValue(H state, const ListType& type) {
   return H::combine(std::move(state), type.element());
 }
 
-inline MapType::MapType() : MapType(common_internal::GetDynDynMapType()) {}
-
-inline MapType::MapType(MemoryManagerRef memory_manager, Type key, Type value)
-    : data_(memory_manager.MakeShared<common_internal::MapTypeData>(
-          std::move(key), std::move(value))) {}
-
-inline absl::Span<const Type> MapType::parameters() const
-    ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return absl::MakeConstSpan(data_->key_and_value);
-}
-
-inline const Type& MapType::key() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return data_->key_and_value[0];
-}
-
-inline const Type& MapType::value() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return data_->key_and_value[1];
-}
-
 inline bool operator==(const MapType& lhs, const MapType& rhs) {
   return &lhs == &rhs || (lhs.key() == rhs.key() && lhs.value() == rhs.value());
 }
@@ -1041,26 +840,6 @@ inline bool operator==(const MapType& lhs, const MapType& rhs) {
 template <typename H>
 inline H AbslHashValue(H state, const MapType& type) {
   return H::combine(std::move(state), type.key(), type.value());
-}
-
-inline TypeParamType::TypeParamType(MemoryManagerRef memory_manager,
-                                    absl::string_view name)
-    : data_(memory_manager.MakeShared<common_internal::TypeParamTypeData>(
-          std::string(name))) {}
-
-inline absl::string_view TypeParamType::name() const
-    ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return data_->name;
-}
-
-inline absl::string_view OpaqueType::name() const
-    ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return data_->name;
-}
-
-inline absl::Span<const Type> OpaqueType::parameters() const
-    ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return data_->parameters;
 }
 
 inline bool operator==(const OpaqueType& lhs, const OpaqueType& rhs) {
@@ -1078,28 +857,6 @@ inline H AbslHashValue(H state, const OpaqueType& type) {
   return std::move(state);
 }
 
-inline OptionalType::OptionalType()
-    : OptionalType(common_internal::GetDynOptionalType()) {}
-
-inline const Type& OptionalType::parameter() const
-    ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return parameters().front();
-}
-
-inline absl::Span<const Type> FunctionType::parameters() const
-    ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return absl::MakeConstSpan(data_->result_and_args);
-}
-
-inline const Type& FunctionType::result() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return data_->result_and_args[0];
-}
-
-inline absl::Span<const Type> FunctionType::args() const
-    ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return absl::MakeConstSpan(data_->result_and_args).subspan(1);
-}
-
 inline bool operator==(const FunctionType& lhs, const FunctionType& rhs) {
   return lhs.result() == rhs.result() && absl::c_equal(lhs.args(), rhs.args());
 }
@@ -1112,18 +869,6 @@ inline H AbslHashValue(H state, const FunctionType& type) {
     state = H::combine(std::move(state), arg);
   }
   return std::move(state);
-}
-
-inline TypeType::TypeType(MemoryManagerRef memory_manager, Type parameter)
-    : data_(memory_manager.MakeShared<common_internal::TypeTypeData>(
-          std::move(parameter))) {}
-
-inline absl::Span<const Type> TypeType::parameters() const
-    ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  if (data_) {
-    return absl::MakeConstSpan(&data_->type, 1);
-  }
-  return {};
 }
 
 }  // namespace cel

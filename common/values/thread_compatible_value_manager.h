@@ -20,12 +20,10 @@
 #include <utility>
 
 #include "common/memory.h"
-#include "common/type.h"
 #include "common/type_reflector.h"
 #include "common/types/thread_compatible_type_manager.h"
 #include "common/value.h"
 #include "common/value_manager.h"
-#include "common/values/value_cache.h"
 
 namespace cel::common_internal {
 
@@ -43,16 +41,7 @@ class ThreadCompatibleValueManager : public ThreadCompatibleTypeManager,
   TypeReflector& GetTypeReflector() const final { return *type_reflector_; }
 
  private:
-  ListValue CreateZeroListValueImpl(const ListType& type) override;
-
-  MapValue CreateZeroMapValueImpl(const MapType& type) override;
-
-  OptionalValue CreateZeroOptionalValueImpl(const OptionalType& type) override;
-
   Shared<TypeReflector> type_reflector_;
-  ListValueCacheMap list_values_;
-  MapValueCacheMap map_values_;
-  OptionalValueCacheMap optional_values_;
 };
 
 }  // namespace cel::common_internal

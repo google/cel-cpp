@@ -13,121 +13,67 @@
 // limitations under the License.
 
 #include <sstream>
-#include <string>
 
 #include "absl/hash/hash.h"
-#include "absl/types/optional.h"
-#include "common/casting.h"
-#include "common/memory.h"
-#include "common/memory_testing.h"
-#include "common/native_type.h"
 #include "common/type.h"
 #include "internal/testing.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 namespace {
-
-using testing::An;
-using testing::Ne;
-using testing::TestParamInfo;
-using testing::TestWithParam;
 
 TEST(OptionalType, Default) {
   OptionalType optional_type;
   EXPECT_EQ(optional_type.parameter(), DynType());
 }
 
-class OptionalTypeTest : public common_internal::ThreadCompatibleMemoryTest<> {
-};
-
-TEST_P(OptionalTypeTest, Kind) {
-  EXPECT_EQ(OptionalType(memory_manager(), BoolType()).kind(),
-            OptionalType::kKind);
-  EXPECT_EQ(Type(OptionalType(memory_manager(), BoolType())).kind(),
-            OptionalType::kKind);
+TEST(OptionalType, Kind) {
+  google::protobuf::Arena arena;
+  EXPECT_EQ(OptionalType(&arena, BoolType()).kind(), OptionalType::kKind);
+  EXPECT_EQ(Type(OptionalType(&arena, BoolType())).kind(), OptionalType::kKind);
 }
 
-TEST_P(OptionalTypeTest, Name) {
-  EXPECT_EQ(OptionalType(memory_manager(), BoolType()).name(),
-            OptionalType::kName);
-  EXPECT_EQ(Type(OptionalType(memory_manager(), BoolType())).name(),
-            OptionalType::kName);
+TEST(OptionalType, Name) {
+  google::protobuf::Arena arena;
+  EXPECT_EQ(OptionalType(&arena, BoolType()).name(), OptionalType::kName);
+  EXPECT_EQ(Type(OptionalType(&arena, BoolType())).name(), OptionalType::kName);
 }
 
-TEST_P(OptionalTypeTest, DebugString) {
+TEST(OptionalType, DebugString) {
+  google::protobuf::Arena arena;
   {
     std::ostringstream out;
-    out << OptionalType(memory_manager(), BoolType());
+    out << OptionalType(&arena, BoolType());
     EXPECT_EQ(out.str(), "optional_type<bool>");
   }
   {
     std::ostringstream out;
-    out << Type(OptionalType(memory_manager(), BoolType()));
+    out << Type(OptionalType(&arena, BoolType()));
     EXPECT_EQ(out.str(), "optional_type<bool>");
   }
 }
 
-TEST_P(OptionalTypeTest, Parameter) {
-  EXPECT_EQ(OptionalType(memory_manager(), BoolType()).parameter(), BoolType());
+TEST(OptionalType, Parameter) {
+  google::protobuf::Arena arena;
+  EXPECT_EQ(OptionalType(&arena, BoolType()).parameter(), BoolType());
 }
 
-TEST_P(OptionalTypeTest, Hash) {
-  EXPECT_EQ(absl::HashOf(OptionalType(memory_manager(), BoolType())),
-            absl::HashOf(OptionalType(memory_manager(), BoolType())));
+TEST(OptionalType, Hash) {
+  google::protobuf::Arena arena;
+  EXPECT_EQ(absl::HashOf(OptionalType(&arena, BoolType())),
+            absl::HashOf(OptionalType(&arena, BoolType())));
 }
 
-TEST_P(OptionalTypeTest, Equal) {
-  EXPECT_EQ(OptionalType(memory_manager(), BoolType()),
-            OptionalType(memory_manager(), BoolType()));
-  EXPECT_EQ(Type(OptionalType(memory_manager(), BoolType())),
-            OptionalType(memory_manager(), BoolType()));
-  EXPECT_EQ(OptionalType(memory_manager(), BoolType()),
-            Type(OptionalType(memory_manager(), BoolType())));
-  EXPECT_EQ(Type(OptionalType(memory_manager(), BoolType())),
-            Type(OptionalType(memory_manager(), BoolType())));
+TEST(OptionalType, Equal) {
+  google::protobuf::Arena arena;
+  EXPECT_EQ(OptionalType(&arena, BoolType()), OptionalType(&arena, BoolType()));
+  EXPECT_EQ(Type(OptionalType(&arena, BoolType())),
+            OptionalType(&arena, BoolType()));
+  EXPECT_EQ(OptionalType(&arena, BoolType()),
+            Type(OptionalType(&arena, BoolType())));
+  EXPECT_EQ(Type(OptionalType(&arena, BoolType())),
+            Type(OptionalType(&arena, BoolType())));
 }
-
-TEST_P(OptionalTypeTest, InstanceOf) {
-  EXPECT_TRUE(
-      InstanceOf<OptionalType>(OptionalType(memory_manager(), BoolType())));
-  EXPECT_TRUE(InstanceOf<OptionalType>(
-      Type(OptionalType(memory_manager(), BoolType()))));
-  EXPECT_TRUE(
-      InstanceOf<OpaqueType>(OptionalType(memory_manager(), BoolType())));
-  EXPECT_TRUE(
-      InstanceOf<OpaqueType>(Type(OptionalType(memory_manager(), BoolType()))));
-}
-
-TEST_P(OptionalTypeTest, Cast) {
-  EXPECT_THAT(Cast<OptionalType>(OptionalType(memory_manager(), BoolType())),
-              An<OptionalType>());
-  EXPECT_THAT(
-      Cast<OptionalType>(Type(OptionalType(memory_manager(), BoolType()))),
-      An<OptionalType>());
-  EXPECT_THAT(Cast<OpaqueType>(OptionalType(memory_manager(), BoolType())),
-              An<OpaqueType>());
-  EXPECT_THAT(
-      Cast<OpaqueType>(Type(OptionalType(memory_manager(), BoolType()))),
-      An<OpaqueType>());
-}
-
-TEST_P(OptionalTypeTest, As) {
-  EXPECT_THAT(As<OptionalType>(OptionalType(memory_manager(), BoolType())),
-              Ne(absl::nullopt));
-  EXPECT_THAT(
-      As<OptionalType>(Type(OptionalType(memory_manager(), BoolType()))),
-      Ne(absl::nullopt));
-  EXPECT_THAT(As<OpaqueType>(OptionalType(memory_manager(), BoolType())),
-              Ne(absl::nullopt));
-  EXPECT_THAT(As<OpaqueType>(Type(OptionalType(memory_manager(), BoolType()))),
-              Ne(absl::nullopt));
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    OptionalTypeTest, OptionalTypeTest,
-    ::testing::Values(MemoryManagement::kPooling,
-                      MemoryManagement::kReferenceCounting),
-    OptionalTypeTest::ToString);
 
 }  // namespace
 }  // namespace cel

@@ -42,7 +42,6 @@
 #include "common/type.h"
 #include "common/value.h"
 #include "common/value_manager.h"
-#include "common/values/value_cache.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
 #include "internal/utf8.h"
@@ -50,8 +49,6 @@
 namespace cel {
 
 namespace {
-
-using common_internal::ProcessLocalValueCache;
 
 void JsonToValue(const Json& json, ValueFactory& value_factory, Value& result) {
   absl::visit(
@@ -154,10 +151,6 @@ class JsonListValue final : public ParsedListValueInterface {
   }
 
  private:
-  Type GetTypeImpl(TypeManager& type_manager) const override {
-    return ListType(type_manager.GetDynListType());
-  }
-
   absl::Status GetImpl(ValueManager& value_manager, size_t index,
                        Value& result) const override {
     JsonToValue(array_[index], value_manager, result);
@@ -268,10 +261,6 @@ class JsonMapValue final : public ParsedMapValueInterface {
         }));
   }
 
-  Type GetTypeImpl(TypeManager& type_manager) const override {
-    return MapType(type_manager.GetStringDynMapType());
-  }
-
   NativeTypeId GetNativeTypeId() const noexcept override {
     return NativeTypeId::For<JsonMapValue>();
   }
@@ -313,45 +302,14 @@ MapValue ValueFactory::CreateMapValueFromJsonObject(JsonObject json) {
       GetMemoryManager().MakeShared<JsonMapValue>(std::move(json)));
 }
 
-ListValue ValueFactory::CreateZeroListValue(const ListType& type) {
-  if (auto list_value = ProcessLocalValueCache::Get()->GetEmptyListValue(type);
-      list_value.has_value()) {
-    return ListValue(*list_value);
-  }
-  return CreateZeroListValueImpl(type);
-}
+ListValue ValueFactory::GetZeroDynListValue() { return ListValue(); }
 
-MapValue ValueFactory::CreateZeroMapValue(const MapType& type) {
-  if (auto map_value = ProcessLocalValueCache::Get()->GetEmptyMapValue(type);
-      map_value.has_value()) {
-    return MapValue(*map_value);
-  }
-  return CreateZeroMapValueImpl(type);
-}
+MapValue ValueFactory::GetZeroDynDynMapValue() { return MapValue(); }
 
-OptionalValue ValueFactory::CreateZeroOptionalValue(const OptionalType& type) {
-  if (auto optional_value =
-          ProcessLocalValueCache::Get()->GetEmptyOptionalValue(type);
-      optional_value.has_value()) {
-    return OptionalValue(*optional_value);
-  }
-  return CreateZeroOptionalValueImpl(type);
-}
-
-ListValue ValueFactory::GetZeroDynListValue() {
-  return ProcessLocalValueCache::Get()->GetEmptyDynListValue();
-}
-
-MapValue ValueFactory::GetZeroDynDynMapValue() {
-  return ProcessLocalValueCache::Get()->GetEmptyDynDynMapValue();
-}
-
-MapValue ValueFactory::GetZeroStringDynMapValue() {
-  return ProcessLocalValueCache::Get()->GetEmptyStringDynMapValue();
-}
+MapValue ValueFactory::GetZeroStringDynMapValue() { return MapValue(); }
 
 OptionalValue ValueFactory::GetZeroDynOptionalValue() {
-  return ProcessLocalValueCache::Get()->GetEmptyDynOptionalValue();
+  return OptionalValue();
 }
 
 namespace {

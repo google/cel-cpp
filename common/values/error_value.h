@@ -65,8 +65,6 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  ErrorType GetType(TypeManager&) const { return ErrorType(); }
-
   absl::string_view GetTypeName() const { return ErrorType::kName; }
 
   std::string DebugString() const;

@@ -15,17 +15,11 @@
 #include <sstream>
 
 #include "absl/hash/hash.h"
-#include "absl/types/optional.h"
-#include "common/casting.h"
-#include "common/native_type.h"
 #include "common/type.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
-
-using testing::An;
-using testing::Ne;
 
 TEST(BoolWrapperType, Kind) {
   EXPECT_EQ(BoolWrapperType().kind(), BoolWrapperType::kKind);
@@ -59,29 +53,6 @@ TEST(BoolWrapperType, Equal) {
   EXPECT_EQ(Type(BoolWrapperType()), BoolWrapperType());
   EXPECT_EQ(BoolWrapperType(), Type(BoolWrapperType()));
   EXPECT_EQ(Type(BoolWrapperType()), Type(BoolWrapperType()));
-}
-
-TEST(BoolWrapperType, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(BoolWrapperType()),
-            NativeTypeId::For<BoolWrapperType>());
-  EXPECT_EQ(NativeTypeId::Of(Type(BoolWrapperType())),
-            NativeTypeId::For<BoolWrapperType>());
-}
-
-TEST(BoolWrapperType, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<BoolWrapperType>(BoolWrapperType()));
-  EXPECT_TRUE(InstanceOf<BoolWrapperType>(Type(BoolWrapperType())));
-}
-
-TEST(BoolWrapperType, Cast) {
-  EXPECT_THAT(Cast<BoolWrapperType>(BoolWrapperType()), An<BoolWrapperType>());
-  EXPECT_THAT(Cast<BoolWrapperType>(Type(BoolWrapperType())),
-              An<BoolWrapperType>());
-}
-
-TEST(BoolWrapperType, As) {
-  EXPECT_THAT(As<BoolWrapperType>(BoolWrapperType()), Ne(absl::nullopt));
-  EXPECT_THAT(As<BoolWrapperType>(Type(BoolWrapperType())), Ne(absl::nullopt));
 }
 
 }  // namespace

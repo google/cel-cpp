@@ -14,7 +14,9 @@
 
 #include <cstddef>
 #include <memory>
+#include <string>
 
+#include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/status/status.h"
@@ -22,12 +24,50 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/casting.h"
+#include "common/json.h"
+#include "common/memory.h"
+#include "common/native_type.h"
 #include "common/value.h"
 #include "common/values/values.h"
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
 
 namespace cel {
+
+namespace {
+
+class EmptyListValue final : public ParsedListValueInterface {
+ public:
+  static const EmptyListValue& Get() {
+    static const absl::NoDestructor<EmptyListValue> empty;
+    return *empty;
+  }
+
+  EmptyListValue() = default;
+
+  std::string DebugString() const override { return "[]"; }
+
+  bool IsEmpty() const override { return true; }
+
+  size_t Size() const override { return 0; }
+
+  absl::StatusOr<JsonArray> ConvertToJsonArray(
+      AnyToJsonConverter&) const override {
+    return JsonArray();
+  }
+
+ private:
+  NativeTypeId GetNativeTypeId() const noexcept override {
+    return NativeTypeId::For<EmptyListValue>();
+  }
+
+  absl::Status GetImpl(ValueManager&, size_t, Value&) const override {
+    // Not reachable, `Get` performs index checking.
+    return absl::InternalError("unreachable");
+  }
+};
+
+}  // namespace
 
 class ParsedListValueInterfaceIterator final : public ValueIterator {
  public:
@@ -128,5 +168,9 @@ absl::Status ParsedListValueInterface::Contains(ValueManager& value_manager,
   result = outcome;
   return absl::OkStatus();
 }
+
+ParsedListValue::ParsedListValue()
+    : ParsedListValue(
+          common_internal::MakeShared(&EmptyListValue::Get(), nullptr)) {}
 
 }  // namespace cel

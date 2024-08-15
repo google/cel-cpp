@@ -55,6 +55,8 @@ class MutableListValue final : public cel::OpaqueValueInterface {
 
   explicit MutableListValue(cel::Unique<cel::ListValueBuilder> list_builder);
 
+  OpaqueType GetRuntimeType() const override { return OpaqueType(); }
+
   absl::string_view GetTypeName() const override {
     return kMutableListTypeName;
   }
@@ -77,8 +79,6 @@ class MutableListValue final : public cel::OpaqueValueInterface {
   std::string DebugString() const override;
 
  private:
-  Type GetTypeImpl(TypeManager& type_manager) const override;
-
   cel::NativeTypeId GetNativeTypeId() const override;
 
   cel::Unique<cel::ListValueBuilder> list_builder_;

@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 #include <cstddef>
 #include <string>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -36,7 +36,6 @@
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
-#include "common/type_kind.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_factory.h"
@@ -289,11 +288,10 @@ struct MapValueKeyJson<Value> {
   }
 };
 
-template <typename K, typename V>
-class TypedMapValueKeyIterator final : public ValueIterator {
+class MapValueKeyIteratorImpl final : public ValueIterator {
  public:
-  explicit TypedMapValueKeyIterator(
-      const ValueFlatHashMapFor<K, V>& entries ABSL_ATTRIBUTE_LIFETIME_BOUND)
+  explicit MapValueKeyIteratorImpl(const ValueFlatHashMapFor<Value, Value>&
+                                       entries ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : begin_(entries.begin()), end_(entries.end()) {}
 
   bool HasNext() override { return begin_ != end_; }
@@ -311,32 +309,28 @@ class TypedMapValueKeyIterator final : public ValueIterator {
   }
 
  private:
-  typename ValueFlatHashMapFor<K, V>::const_iterator begin_;
-  const typename ValueFlatHashMapFor<K, V>::const_iterator end_;
+  typename ValueFlatHashMapFor<Value, Value>::const_iterator begin_;
+  const typename ValueFlatHashMapFor<Value, Value>::const_iterator end_;
 };
 
-template <typename K, typename V>
-class TypedMapValue final : public ParsedMapValueInterface {
+class MapValueImpl final : public ParsedMapValueInterface {
  public:
-  using key_type = std::decay_t<decltype(std::declval<K>().GetType(
-      std::declval<TypeManager&>()))>;
-
-  TypedMapValue(MapType type,
-                absl::flat_hash_map<K, V, MapValueKeyHash<K>,
-                                    MapValueKeyEqualTo<K>>&& entries)
-      : type_(std::move(type)), entries_(std::move(entries)) {}
+  explicit MapValueImpl(
+      absl::flat_hash_map<Value, Value, MapValueKeyHash<Value>,
+                          MapValueKeyEqualTo<Value>>&& entries)
+      : entries_(std::move(entries)) {}
 
   std::string DebugString() const override {
-    std::vector<std::pair<K, V>> entries;
+    std::vector<std::pair<Value, Value>> entries;
     entries.reserve(Size());
     for (const auto& entry : entries_) {
-      entries.push_back(std::pair{K{entry.first}, V{entry.second}});
+      entries.push_back(std::pair{entry.first, entry.second});
     }
-    std::stable_sort(
-        entries.begin(), entries.end(),
-        [](const std::pair<K, V>& lhs, const std::pair<K, V>& rhs) -> bool {
-          return MapValueKeyLess<K>{}(lhs.first, rhs.first);
-        });
+    std::stable_sort(entries.begin(), entries.end(),
+                     [](const std::pair<Value, Value>& lhs,
+                        const std::pair<Value, Value>& rhs) -> bool {
+                       return MapValueKeyLess<Value>{}(lhs.first, rhs.first);
+                     });
     return absl::StrCat(
         "{",
         absl::StrJoin(entries, ", ",
@@ -354,7 +348,8 @@ class TypedMapValue final : public ParsedMapValueInterface {
     JsonObjectBuilder builder;
     builder.reserve(Size());
     for (const auto& entry : entries_) {
-      CEL_ASSIGN_OR_RETURN(auto json_key, MapValueKeyJson<K>{}(entry.first));
+      CEL_ASSIGN_OR_RETURN(auto json_key,
+                           MapValueKeyJson<Value>{}(entry.first));
       CEL_ASSIGN_OR_RETURN(auto json_value,
                            entry.second.ConvertToJson(value_manager));
       if (!builder.insert(std::pair{std::move(json_key), std::move(json_value)})
@@ -368,10 +363,8 @@ class TypedMapValue final : public ParsedMapValueInterface {
 
   absl::Status ListKeys(ValueManager& value_manager,
                         ListValue& result) const override {
-    CEL_ASSIGN_OR_RETURN(
-        auto keys,
-        value_manager.NewListValueBuilder(
-            value_manager.CreateListType(Cast<key_type>(type_.key()))));
+    CEL_ASSIGN_OR_RETURN(auto keys,
+                         value_manager.NewListValueBuilder(ListType()));
     keys->Reserve(Size());
     for (const auto& entry : entries_) {
       CEL_RETURN_IF_ERROR(keys->Add(entry.first));
@@ -393,16 +386,13 @@ class TypedMapValue final : public ParsedMapValueInterface {
 
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager&) const override {
-    return std::make_unique<TypedMapValueKeyIterator<K, V>>(entries_);
+    return std::make_unique<MapValueKeyIteratorImpl>(entries_);
   }
-
- protected:
-  Type GetTypeImpl(TypeManager&) const override { return type_; }
 
  private:
   absl::StatusOr<bool> FindImpl(ValueManager&, const Value& key,
                                 Value& result) const override {
-    if (auto entry = entries_.find(Cast<K>(key)); entry != entries_.end()) {
+    if (auto entry = entries_.find(key); entry != entries_.end()) {
       result = entry->second;
       return true;
     }
@@ -410,173 +400,25 @@ class TypedMapValue final : public ParsedMapValueInterface {
   }
 
   absl::StatusOr<bool> HasImpl(ValueManager&, const Value& key) const override {
-    if (auto entry = entries_.find(Cast<K>(key)); entry != entries_.end()) {
+    if (auto entry = entries_.find(key); entry != entries_.end()) {
       return true;
     }
     return false;
   }
 
   NativeTypeId GetNativeTypeId() const noexcept override {
-    return NativeTypeId::For<TypedMapValue<K, V>>();
+    return NativeTypeId::For<MapValueImpl>();
   }
 
-  const MapType type_;
-  const absl::flat_hash_map<K, V, MapValueKeyHash<K>, MapValueKeyEqualTo<K>>
+  const absl::flat_hash_map<Value, Value, MapValueKeyHash<Value>,
+                            MapValueKeyEqualTo<Value>>
       entries_;
 };
 
-template <typename K, typename V>
 class MapValueBuilderImpl final : public MapValueBuilder {
  public:
-  using key_type = std::decay_t<decltype(std::declval<K>().GetType(
-      std::declval<TypeManager&>()))>;
-  using value_type = std::decay_t<decltype(std::declval<V>().GetType(
-      std::declval<TypeManager&>()))>;
-
-  static_assert(common_internal::IsValueAlternativeV<K>,
-                "K must be Value or one of the Value alternatives");
-  static_assert(common_internal::IsValueAlternativeV<V> ||
-                    std::is_same_v<ListValue, V> || std::is_same_v<MapValue, V>,
-                "V must be Value or one of the Value alternatives");
-
-  MapValueBuilderImpl(MemoryManagerRef memory_manager, MapType type)
-      : memory_manager_(memory_manager), type_(std::move(type)) {}
-
-  MapValueBuilderImpl(const MapValueBuilderImpl&) = delete;
-  MapValueBuilderImpl(MapValueBuilderImpl&&) = delete;
-  MapValueBuilderImpl& operator=(const MapValueBuilderImpl&) = delete;
-  MapValueBuilderImpl& operator=(MapValueBuilderImpl&&) = delete;
-
-  absl::Status Put(Value key, Value value) override {
-    if (key.Is<ErrorValue>()) {
-      return key.As<ErrorValue>().NativeValue();
-    }
-    if (value.Is<ErrorValue>()) {
-      return value.As<ErrorValue>().NativeValue();
-    }
-    auto inserted =
-        entries_.insert({Cast<K>(std::move(key)), Cast<V>(std::move(value))})
-            .second;
-    if (!inserted) {
-      return DuplicateKeyError().NativeValue();
-    }
-    return absl::OkStatus();
-  }
-
-  bool IsEmpty() const override { return entries_.empty(); }
-
-  size_t Size() const override { return entries_.size(); }
-
-  void Reserve(size_t capacity) override { entries_.reserve(capacity); }
-
-  MapValue Build() && override {
-    return ParsedMapValue(memory_manager_.MakeShared<TypedMapValue<K, V>>(
-        std::move(type_), std::move(entries_)));
-  }
-
- private:
-  MemoryManagerRef memory_manager_;
-  MapType type_;
-  ValueFlatHashMapFor<K, V> entries_;
-};
-
-template <typename V>
-class MapValueBuilderImpl<Value, V> final : public MapValueBuilder {
- public:
-  using value_type = std::decay_t<decltype(std::declval<V>().GetType(
-      std::declval<TypeManager&>()))>;
-
-  static_assert(common_internal::IsValueAlternativeV<V> ||
-                    std::is_same_v<ListValue, V> || std::is_same_v<MapValue, V>,
-                "V must be Value or one of the Value alternatives");
-
-  MapValueBuilderImpl(MemoryManagerRef memory_manager, MapType type)
-      : memory_manager_(memory_manager), type_(std::move(type)) {}
-
-  absl::Status Put(Value key, Value value) override {
-    if (key.Is<ErrorValue>()) {
-      return key.As<ErrorValue>().NativeValue();
-    }
-    if (value.Is<ErrorValue>()) {
-      return value.As<ErrorValue>().NativeValue();
-    }
-    auto inserted =
-        entries_.insert({std::move(key), Cast<V>(std::move(value))}).second;
-    if (!inserted) {
-      return DuplicateKeyError().NativeValue();
-    }
-    return absl::OkStatus();
-  }
-
-  bool IsEmpty() const override { return entries_.empty(); }
-
-  size_t Size() const override { return entries_.size(); }
-
-  void Reserve(size_t capacity) override { entries_.reserve(capacity); }
-
-  MapValue Build() && override {
-    return ParsedMapValue(memory_manager_.MakeShared<TypedMapValue<Value, V>>(
-        std::move(type_), std::move(entries_)));
-  }
-
- private:
-  MemoryManagerRef memory_manager_;
-  MapType type_;
-  absl::flat_hash_map<Value, V, MapValueKeyHash<Value>,
-                      MapValueKeyEqualTo<Value>>
-      entries_;
-};
-
-template <typename K>
-class MapValueBuilderImpl<K, Value> final : public MapValueBuilder {
- public:
-  using key_type = std::decay_t<decltype(std::declval<K>().GetType(
-      std::declval<TypeManager&>()))>;
-
-  static_assert(common_internal::IsValueAlternativeV<K>,
-                "K must be Value or one of the Value alternatives");
-
-  MapValueBuilderImpl(MemoryManagerRef memory_manager, MapType type)
-      : memory_manager_(memory_manager), type_(std::move(type)) {}
-
-  absl::Status Put(Value key, Value value) override {
-    if (key.Is<ErrorValue>()) {
-      return key.As<ErrorValue>().NativeValue();
-    }
-    if (value.Is<ErrorValue>()) {
-      return value.As<ErrorValue>().NativeValue();
-    }
-    auto inserted =
-        entries_.insert({Cast<K>(std::move(key)), std::move(value)}).second;
-    if (!inserted) {
-      return DuplicateKeyError().NativeValue();
-    }
-    return absl::OkStatus();
-  }
-
-  bool IsEmpty() const override { return entries_.empty(); }
-
-  size_t Size() const override { return entries_.size(); }
-
-  void Reserve(size_t capacity) override { entries_.reserve(capacity); }
-
-  MapValue Build() && override {
-    return ParsedMapValue(memory_manager_.MakeShared<TypedMapValue<K, Value>>(
-        std::move(type_), std::move(entries_)));
-  }
-
- private:
-  MemoryManagerRef memory_manager_;
-  MapType type_;
-  absl::flat_hash_map<K, Value, MapValueKeyHash<K>, MapValueKeyEqualTo<K>>
-      entries_;
-};
-
-template <>
-class MapValueBuilderImpl<Value, Value> final : public MapValueBuilder {
- public:
-  MapValueBuilderImpl(MemoryManagerRef memory_manager, MapType type)
-      : memory_manager_(memory_manager), type_(std::move(type)) {}
+  explicit MapValueBuilderImpl(MemoryManagerRef memory_manager)
+      : memory_manager_(memory_manager) {}
 
   absl::Status Put(Value key, Value value) override {
     if (key.Is<ErrorValue>()) {
@@ -600,13 +442,11 @@ class MapValueBuilderImpl<Value, Value> final : public MapValueBuilder {
 
   MapValue Build() && override {
     return ParsedMapValue(
-        memory_manager_.MakeShared<TypedMapValue<Value, Value>>(
-            std::move(type_), std::move(entries_)));
+        memory_manager_.MakeShared<MapValueImpl>(std::move(entries_)));
   }
 
  private:
   MemoryManagerRef memory_manager_;
-  MapType type_;
   absl::flat_hash_map<Value, Value, MapValueKeyHash<Value>,
                       MapValueKeyEqualTo<Value>>
       entries_;
@@ -670,320 +510,7 @@ absl::StatusOr<Unique<MapValueBuilder>> TypeReflector::NewMapValueBuilder(
       return status_or_builder;
     }
   }
-  switch (type.key().kind()) {
-    case TypeKind::kBool:
-      switch (type.value().kind()) {
-        case TypeKind::kBool:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<BoolValue, BoolValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kBytes:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<BoolValue, BytesValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kDouble:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<BoolValue, DoubleValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kDuration:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<BoolValue, DurationValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kInt:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<BoolValue, IntValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kList:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<BoolValue, ListValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kMap:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<BoolValue, MapValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kNull:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<BoolValue, NullValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kOpaque:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<BoolValue, OpaqueValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kString:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<BoolValue, StringValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kTimestamp:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<BoolValue, TimestampValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kType:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<BoolValue, TypeValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kUint:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<BoolValue, UintValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kDyn:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<BoolValue, Value>>(memory_manager,
-                                                                 MapType(type));
-        default:
-          return absl::InvalidArgumentError(absl::StrCat(
-              "invalid map value type: ", type.value().DebugString()));
-      }
-    case TypeKind::kInt:
-      switch (type.value().kind()) {
-        case TypeKind::kBool:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<IntValue, BoolValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kBytes:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<IntValue, BytesValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kDouble:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<IntValue, DoubleValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kDuration:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<IntValue, DurationValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kInt:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<IntValue, IntValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kList:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<IntValue, ListValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kMap:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<IntValue, MapValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kNull:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<IntValue, NullValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kOpaque:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<IntValue, OpaqueValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kString:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<IntValue, StringValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kTimestamp:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<IntValue, TimestampValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kType:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<IntValue, TypeValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kUint:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<IntValue, UintValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kDyn:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<IntValue, Value>>(memory_manager,
-                                                                MapType(type));
-        default:
-          return absl::InvalidArgumentError(absl::StrCat(
-              "invalid map value type: ", type.value().DebugString()));
-      }
-    case TypeKind::kUint:
-      switch (type.value().kind()) {
-        case TypeKind::kBool:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<UintValue, BoolValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kBytes:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<UintValue, BytesValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kDouble:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<UintValue, DoubleValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kDuration:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<UintValue, DurationValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kInt:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<UintValue, IntValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kList:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<UintValue, ListValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kMap:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<UintValue, MapValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kNull:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<UintValue, NullValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kOpaque:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<UintValue, OpaqueValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kString:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<UintValue, StringValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kTimestamp:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<UintValue, TimestampValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kType:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<UintValue, TypeValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kUint:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<UintValue, UintValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kDyn:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<UintValue, Value>>(memory_manager,
-                                                                 MapType(type));
-        default:
-          return absl::InvalidArgumentError(absl::StrCat(
-              "invalid map value type: ", type.value().DebugString()));
-      }
-    case TypeKind::kString:
-      switch (type.value().kind()) {
-        case TypeKind::kBool:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<StringValue, BoolValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kBytes:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<StringValue, BytesValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kDouble:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<StringValue, DoubleValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kDuration:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<StringValue, DurationValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kInt:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<StringValue, IntValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kList:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<StringValue, ListValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kMap:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<StringValue, MapValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kNull:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<StringValue, NullValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kOpaque:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<StringValue, OpaqueValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kString:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<StringValue, StringValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kTimestamp:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<StringValue, TimestampValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kType:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<StringValue, TypeValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kUint:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<StringValue, UintValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kDyn:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<StringValue, Value>>(
-                  memory_manager, MapType(type));
-        default:
-          return absl::InvalidArgumentError(absl::StrCat(
-              "invalid map value type: ", type.value().DebugString()));
-      }
-    case TypeKind::kDyn:
-      switch (type.value().kind()) {
-        case TypeKind::kBool:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, BoolValue>>(memory_manager,
-                                                                 MapType(type));
-        case TypeKind::kBytes:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, BytesValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kDouble:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, DoubleValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kDuration:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, DurationValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kInt:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, IntValue>>(memory_manager,
-                                                                MapType(type));
-        case TypeKind::kList:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, ListValue>>(memory_manager,
-                                                                 MapType(type));
-        case TypeKind::kMap:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, MapValue>>(memory_manager,
-                                                                MapType(type));
-        case TypeKind::kNull:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, NullValue>>(memory_manager,
-                                                                 MapType(type));
-        case TypeKind::kOpaque:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, OpaqueValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kString:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, StringValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kTimestamp:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, TimestampValue>>(
-                  memory_manager, MapType(type));
-        case TypeKind::kType:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, TypeValue>>(memory_manager,
-                                                                 MapType(type));
-        case TypeKind::kUint:
-          return memory_manager
-              .MakeUnique<MapValueBuilderImpl<Value, UintValue>>(memory_manager,
-                                                                 MapType(type));
-        case TypeKind::kDyn:
-          return memory_manager.MakeUnique<MapValueBuilderImpl<Value, Value>>(
-              memory_manager, MapType(type));
-        default:
-          return absl::InvalidArgumentError(absl::StrCat(
-              "invalid map value type: ", type.value().DebugString()));
-      }
-    default:
-      return absl::InvalidArgumentError(
-          absl::StrCat("invalid map key type: ", type.key().DebugString()));
-  }
+  return memory_manager.MakeUnique<MapValueBuilderImpl>(memory_manager);
 }
 
 namespace common_internal {

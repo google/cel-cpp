@@ -19,13 +19,9 @@
 
 #include <utility>
 
-#include "absl/strings/string_view.h"
-#include "absl/types/span.h"
 #include "common/memory.h"
-#include "common/type.h"
 #include "common/type_introspector.h"
 #include "common/type_manager.h"
-#include "common/types/type_cache.h"
 
 namespace cel::common_internal {
 
@@ -45,18 +41,8 @@ class ThreadCompatibleTypeManager : public virtual TypeManager {
   }
 
  private:
-  ListType CreateListTypeImpl(const Type& element) final;
-
-  MapType CreateMapTypeImpl(const Type& key, const Type& value) final;
-
-  OpaqueType CreateOpaqueTypeImpl(absl::string_view name,
-                                  absl::Span<const Type> parameters) final;
-
   MemoryManagerRef memory_manager_;
   Shared<TypeIntrospector> type_introspector_;
-  ListTypeCacheMap list_types_;
-  MapTypeCacheMap map_types_;
-  OpaqueTypeCacheMap opaque_types_;
 };
 
 }  // namespace cel::common_internal

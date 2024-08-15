@@ -88,8 +88,6 @@ class StringValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  StringType GetType(TypeManager&) const { return StringType(); }
-
   absl::string_view GetTypeName() const { return StringType::kName; }
 
   std::string DebugString() const;

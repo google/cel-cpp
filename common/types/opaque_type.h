@@ -25,12 +25,12 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
-#include "common/memory.h"
-#include "common/native_type.h"
 #include "common/type_kind.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 
@@ -40,13 +40,15 @@ class OptionalType;
 
 namespace common_internal {
 struct OpaqueTypeData;
+class OpaqueTypePool;
 }  // namespace common_internal
 
 class OpaqueType final {
  public:
   static constexpr TypeKind kKind = TypeKind::kOpaque;
 
-  OpaqueType(MemoryManagerRef memory_manager, absl::string_view name,
+  // `name` must outlive the instance.
+  OpaqueType(absl::Nonnull<google::protobuf::Arena*> arena, absl::string_view name,
              absl::Span<const Type> parameters);
 
   // NOLINTNEXTLINE(google-explicit-constructor)
@@ -67,12 +69,14 @@ class OpaqueType final {
 
   std::string DebugString() const;
 
-  void swap(OpaqueType& other) noexcept {
-    using std::swap;
-    swap(data_, other.data_);
-  }
-
   absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  explicit operator bool() const { return data_ != nullptr; }
+
+  friend void swap(OpaqueType& lhs, OpaqueType& rhs) noexcept {
+    using std::swap;
+    swap(lhs.data_, rhs.data_);
+  }
 
   bool IsOptional() const;
 
@@ -88,17 +92,17 @@ class OpaqueType final {
                    absl::optional<OptionalType>>
   As() const;
 
-  explicit operator bool() const { return static_cast<bool>(data_); }
-
   explicit operator OptionalType() const;
 
  private:
-  friend struct NativeTypeTraits<OpaqueType>;
+  friend class OptionalType;
 
-  Shared<const common_internal::OpaqueTypeData> data_;
+  constexpr explicit OpaqueType(
+      absl::Nullable<const common_internal::OpaqueTypeData*> data)
+      : data_(data) {}
+
+  absl::Nullable<const common_internal::OpaqueTypeData*> data_ = nullptr;
 };
-
-inline void swap(OpaqueType& lhs, OpaqueType& rhs) noexcept { lhs.swap(rhs); }
 
 bool operator==(const OpaqueType& lhs, const OpaqueType& rhs);
 

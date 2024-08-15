@@ -173,11 +173,6 @@ void InitializeLegacyListValue() {
 
 }  // namespace
 
-ListType LegacyListValue::GetType(TypeManager& type_manager) const {
-  InitializeLegacyListValue();
-  return (*legacy_list_value_vtable.get_type)(impl_, type_manager);
-}
-
 std::string LegacyListValue::DebugString() const {
   InitializeLegacyListValue();
   return (*legacy_list_value_vtable.debug_string)(impl_);

@@ -18,15 +18,10 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_MAP_VALUE_INTERFACE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_MAP_VALUE_INTERFACE_H_
 
-#include <string>
-
 #include "absl/functional/function_ref.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "common/casting.h"
 #include "common/json.h"
-#include "common/type.h"
-#include "common/type_manager.h"
 #include "common/value_interface.h"
 #include "common/value_kind.h"
 
@@ -43,10 +38,6 @@ class MapValueInterface : public ValueInterface {
 
   ValueKind kind() const final { return kKind; }
 
-  MapType GetType(TypeManager& type_manager) const {
-    return Cast<MapType>(GetTypeImpl(type_manager));
-  }
-
   absl::string_view GetTypeName() const final { return "map"; }
 
   absl::StatusOr<Json> ConvertToJson(
@@ -59,11 +50,6 @@ class MapValueInterface : public ValueInterface {
 
   using ForEachCallback =
       absl::FunctionRef<absl::StatusOr<bool>(const Value&, const Value&)>;
-
- protected:
-  Type GetTypeImpl(TypeManager& type_manager) const override {
-    return Type(type_manager.GetDynDynMapType());
-  }
 };
 
 }  // namespace cel

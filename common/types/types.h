@@ -19,12 +19,10 @@
 
 #include <type_traits>
 
+#include "absl/meta/type_traits.h"
 #include "absl/types/variant.h"
 
 namespace cel {
-
-class TypeInterface;
-class OpaqueTypeInterface;
 
 class Type;
 class AnyType;
@@ -60,38 +58,23 @@ namespace common_internal {
 
 class BasicStructType;
 
-template <typename Base, typename Derived>
-struct IsDerivedFrom
-    : std::bool_constant<
-          std::conjunction_v<std::negation<std::is_same<Base, Derived>>,
-                             std::is_base_of<Base, Derived>>> {};
-
-template <typename Base, typename Derived>
-inline constexpr bool IsDerivedFromV = IsDerivedFrom<Base, Derived>::value;
-
-template <typename T>
-struct IsTypeInterface : IsDerivedFrom<TypeInterface, T> {};
-
-template <typename T>
-inline constexpr bool IsTypeInterfaceV = IsTypeInterface<T>::value;
-
-template <typename T>
+template <typename T, typename U = absl::remove_cv_t<T>>
 struct IsTypeAlternative
     : std::bool_constant<std::disjunction_v<
-          std::is_same<AnyType, T>, std::is_same<BoolType, T>,
-          std::is_same<BoolWrapperType, T>, std::is_same<BytesType, T>,
-          std::is_same<BytesWrapperType, T>, std::is_same<DoubleType, T>,
-          std::is_same<DoubleWrapperType, T>, std::is_same<DurationType, T>,
-          std::is_same<DynType, T>, std::is_same<ErrorType, T>,
-          std::is_same<FunctionType, T>, std::is_same<IntType, T>,
-          std::is_same<IntWrapperType, T>, std::is_same<ListType, T>,
-          std::is_same<MapType, T>, std::is_same<NullType, T>,
-          std::is_base_of<OpaqueType, T>, std::is_same<StringType, T>,
-          std::is_same<StringWrapperType, T>, std::is_base_of<MessageType, T>,
-          std::is_base_of<BasicStructType, T>, std::is_same<TimestampType, T>,
-          std::is_same<TypeParamType, T>, std::is_same<TypeType, T>,
-          std::is_same<UintType, T>, std::is_same<UintWrapperType, T>,
-          std::is_same<UnknownType, T>>> {};
+          std::is_same<AnyType, U>, std::is_same<BoolType, U>,
+          std::is_same<BoolWrapperType, U>, std::is_same<BytesType, U>,
+          std::is_same<BytesWrapperType, U>, std::is_same<DoubleType, U>,
+          std::is_same<DoubleWrapperType, U>, std::is_same<DurationType, U>,
+          std::is_same<DynType, U>, std::is_same<ErrorType, U>,
+          std::is_same<FunctionType, U>, std::is_same<IntType, U>,
+          std::is_same<IntWrapperType, U>, std::is_same<ListType, U>,
+          std::is_same<MapType, U>, std::is_same<NullType, U>,
+          std::is_same<OpaqueType, U>, std::is_same<StringType, U>,
+          std::is_same<StringWrapperType, U>, std::is_same<MessageType, U>,
+          std::is_same<BasicStructType, U>, std::is_same<TimestampType, U>,
+          std::is_same<TypeParamType, U>, std::is_same<TypeType, U>,
+          std::is_same<UintType, U>, std::is_same<UintWrapperType, U>,
+          std::is_same<UnknownType, U>>> {};
 
 template <typename T>
 inline constexpr bool IsTypeAlternativeV = IsTypeAlternative<T>::value;
@@ -105,44 +88,8 @@ using TypeVariant =
                   TimestampType, TypeParamType, TypeType, UintType,
                   UintWrapperType, UnknownType>;
 
-template <typename T>
-struct IsStructTypeAlternative
-    : std::bool_constant<std::disjunction_v<std::is_same<BasicStructType, T>,
-                                            std::is_same<MessageType, T>>> {};
-
-template <typename T>
-inline constexpr bool IsStructTypeAlternativeV =
-    IsStructTypeAlternative<T>::value;
-
 using StructTypeVariant =
     absl::variant<absl::monostate, BasicStructType, MessageType>;
-
-// Get the base type alternative for the given alternative or interface. The
-// base type alternative is the type stored in the `TypeVariant`.
-template <typename T, typename = void>
-struct BaseTypeAlternativeFor {
-  static_assert(IsTypeAlternativeV<T>);
-  using type = T;
-};
-
-template <typename T>
-struct BaseTypeAlternativeFor<T, std::enable_if_t<IsTypeInterfaceV<T>>>
-    : BaseTypeAlternativeFor<typename T::alternative_type> {};
-
-template <typename T>
-struct BaseTypeAlternativeFor<
-    T, std::enable_if_t<std::is_base_of_v<OpaqueType, T>>> {
-  using type = OpaqueType;
-};
-
-template <typename T>
-using BaseTypeAlternativeForT = typename BaseTypeAlternativeFor<T>::type;
-
-ListType GetDynListType();
-
-MapType GetDynDynMapType();
-
-OptionalType GetDynOptionalType();
 
 }  // namespace common_internal
 

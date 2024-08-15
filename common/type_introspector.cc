@@ -27,7 +27,6 @@
 #include "common/type.h"
 #include "common/types/thread_compatible_type_introspector.h"
 #include "common/types/thread_safe_type_introspector.h"
-#include "common/types/type_cache.h"
 
 namespace cel {
 
@@ -163,29 +162,20 @@ const WellKnownTypesMap& GetWellKnownTypesMap() {
                        StructTypeField{"nanos", IntType{}, 2}}});
     types->insert_or_assign(
         "google.protobuf.Value",
-        WellKnownType{
-            DynType{},
-            {StructTypeField{"null_value", NullType{}, 1},
-             StructTypeField{"number_value", DoubleType{}, 2},
-             StructTypeField{"string_value", StringType{}, 3},
-             StructTypeField{"bool_value", BoolType{}, 4},
-             StructTypeField{"struct_value",
-                             common_internal::ProcessLocalTypeCache::Get()
-                                 ->GetStringDynMapType(),
-                             5},
-             StructTypeField{"list_value", ListType{}, 6}}});
+        WellKnownType{DynType{},
+                      {StructTypeField{"null_value", NullType{}, 1},
+                       StructTypeField{"number_value", DoubleType{}, 2},
+                       StructTypeField{"string_value", StringType{}, 3},
+                       StructTypeField{"bool_value", BoolType{}, 4},
+                       StructTypeField{"struct_value", JsonMapType(), 5},
+                       StructTypeField{"list_value", ListType{}, 6}}});
     types->insert_or_assign(
         "google.protobuf.ListValue",
         WellKnownType{ListType{}, {StructTypeField{"values", ListType{}, 1}}});
     types->insert_or_assign(
         "google.protobuf.Struct",
-        WellKnownType{
-            common_internal::ProcessLocalTypeCache::Get()
-                ->GetStringDynMapType(),
-            {StructTypeField{"fields",
-                             common_internal::ProcessLocalTypeCache::Get()
-                                 ->GetStringDynMapType(),
-                             1}}});
+        WellKnownType{JsonMapType(),
+                      {StructTypeField{"fields", JsonMapType(), 1}}});
     types->insert_or_assign(
         "google.protobuf.Any",
         WellKnownType{AnyType{},

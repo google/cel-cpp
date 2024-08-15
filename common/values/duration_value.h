@@ -18,7 +18,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_DURATION_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_DURATION_VALUE_H_
 
-#include <cstddef>
 #include <ostream>
 #include <string>
 
@@ -27,7 +26,6 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
-#include "common/any.h"
 #include "common/json.h"
 #include "common/type.h"
 #include "common/value_kind.h"
@@ -58,8 +56,6 @@ class DurationValue final {
   DurationValue& operator=(DurationValue&&) = default;
 
   ValueKind kind() const { return kKind; }
-
-  DurationType GetType(TypeManager&) const { return DurationType(); }
 
   absl::string_view GetTypeName() const { return DurationType::kName; }
 

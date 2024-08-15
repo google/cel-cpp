@@ -24,7 +24,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_OPAQUE_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_OPAQUE_VALUE_H_
 
-#include <cstddef>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -36,7 +35,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/any.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
@@ -66,9 +64,7 @@ class OpaqueValueInterface : public ValueInterface {
 
   ValueKind kind() const final { return kKind; }
 
-  OpaqueType GetType(TypeManager& type_manager) const {
-    return Cast<OpaqueType>(GetTypeImpl(type_manager));
-  }
+  virtual OpaqueType GetRuntimeType() const = 0;
 
   virtual absl::Status Equal(ValueManager& value_manager, const Value& other,
                              Value& result) const = 0;
@@ -100,9 +96,7 @@ class OpaqueValue {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  OpaqueType GetType(TypeManager& type_manager) const {
-    return interface_->GetType(type_manager);
-  }
+  OpaqueType GetRuntimeType() const { return interface_->GetRuntimeType(); }
 
   absl::string_view GetTypeName() const { return interface_->GetTypeName(); }
 

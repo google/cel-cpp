@@ -17,10 +17,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_PIECEWISE_VALUE_MANAGER_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_PIECEWISE_VALUE_MANAGER_H_
 
-#include "absl/strings/string_view.h"
-#include "absl/types/span.h"
 #include "common/memory.h"
-#include "common/type.h"
 #include "common/type_introspector.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
@@ -52,31 +49,6 @@ class PiecewiseValueManager final : public ValueManager {
   }
 
  private:
-  ListType CreateListTypeImpl(const Type& element) override {
-    return value_factory_.CreateListTypeImpl(element);
-  }
-
-  MapType CreateMapTypeImpl(const Type& key, const Type& value) override {
-    return value_factory_.CreateMapTypeImpl(key, value);
-  }
-
-  OpaqueType CreateOpaqueTypeImpl(absl::string_view name,
-                                  absl::Span<const Type> parameters) override {
-    return value_factory_.CreateOpaqueTypeImpl(name, parameters);
-  }
-
-  ListValue CreateZeroListValueImpl(const ListType& type) override {
-    return value_factory_.CreateZeroListValueImpl(type);
-  }
-
-  MapValue CreateZeroMapValueImpl(const MapType& type) override {
-    return value_factory_.CreateZeroMapValueImpl(type);
-  }
-
-  OptionalValue CreateZeroOptionalValueImpl(const OptionalType& type) override {
-    return value_factory_.CreateZeroOptionalValueImpl(type);
-  }
-
   const TypeReflector& type_reflector_;
   ValueFactory& value_factory_;
 };

@@ -22,13 +22,12 @@
 
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 
-#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "common/casting.h"
 #include "common/memory.h"
@@ -37,7 +36,6 @@
 #include "common/value_interface.h"
 #include "common/value_kind.h"
 #include "common/values/opaque_value.h"
-#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -50,9 +48,7 @@ class OptionalValueInterface : public OpaqueValueInterface {
  public:
   using alternative_type = OptionalValue;
 
-  OptionalType GetType(TypeManager& type_manager) const {
-    return Cast<OptionalType>(GetTypeImpl(type_manager));
-  }
+  OpaqueType GetRuntimeType() const final { return OptionalType(); }
 
   absl::string_view GetTypeName() const final { return "optional_type"; }
 
@@ -68,8 +64,6 @@ class OptionalValueInterface : public OpaqueValueInterface {
   cel::Value Value() const;
 
  private:
-  Type GetTypeImpl(TypeManager&) const override { return OptionalType(); }
-
   NativeTypeId GetNativeTypeId() const noexcept final {
     return NativeTypeId::For<OptionalValueInterface>();
   }
@@ -104,8 +98,8 @@ class OptionalValue final : public OpaqueValue {
   // NOLINTNEXTLINE(google-explicit-constructor)
   OptionalValue(Shared<T> interface) : OpaqueValue(std::move(interface)) {}
 
-  OptionalType GetType(TypeManager& type_manager) const {
-    return (*this)->GetType(type_manager);
+  OptionalType GetRuntimeType() const {
+    return static_cast<OptionalType>((*this)->GetRuntimeType());
   }
 
   bool HasValue() const { return (*this)->HasValue(); }

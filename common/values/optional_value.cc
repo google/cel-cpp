@@ -15,20 +15,31 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/no_destructor.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "common/casting.h"
 #include "common/memory.h"
 #include "common/native_type.h"
-#include "common/type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 
 namespace cel {
 
 namespace {
+
+class EmptyOptionalValue final : public OptionalValueInterface {
+ public:
+  EmptyOptionalValue() = default;
+
+  bool HasValue() const override { return false; }
+
+  void Value(cel::Value& result) const override {
+    result = ErrorValue(
+        absl::FailedPreconditionError("optional.none() dereference"));
+  }
+};
 
 class FullOptionalValue final : public OptionalValueInterface {
  public:
@@ -40,10 +51,6 @@ class FullOptionalValue final : public OptionalValueInterface {
 
  private:
   friend struct NativeTypeTraits<FullOptionalValue>;
-
-  Type GetTypeImpl(TypeManager& type_manager) const override {
-    return type_manager.CreateOptionalType(value_.GetType(type_manager));
-  }
 
   const cel::Value value_;
 };
@@ -70,6 +77,11 @@ OptionalValue OptionalValue::Of(MemoryManagerRef memory_manager,
               value.kind() != ValueKind::kUnknown);
   return OptionalValue(
       memory_manager.MakeShared<FullOptionalValue>(std::move(value)));
+}
+
+OptionalValue OptionalValue::None() {
+  static const absl::NoDestructor<EmptyOptionalValue> empty;
+  return OptionalValue(common_internal::MakeShared(&*empty, nullptr));
 }
 
 absl::Status OptionalValueInterface::Equal(ValueManager& value_manager,

@@ -15,17 +15,11 @@
 #include <sstream>
 
 #include "absl/hash/hash.h"
-#include "absl/types/optional.h"
-#include "common/casting.h"
-#include "common/native_type.h"
 #include "common/type.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
-
-using testing::An;
-using testing::Ne;
 
 TEST(TimestampType, Kind) {
   EXPECT_EQ(TimestampType().kind(), TimestampType::kKind);
@@ -59,28 +53,6 @@ TEST(TimestampType, Equal) {
   EXPECT_EQ(Type(TimestampType()), TimestampType());
   EXPECT_EQ(TimestampType(), Type(TimestampType()));
   EXPECT_EQ(Type(TimestampType()), Type(TimestampType()));
-}
-
-TEST(TimestampType, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(TimestampType()),
-            NativeTypeId::For<TimestampType>());
-  EXPECT_EQ(NativeTypeId::Of(Type(TimestampType())),
-            NativeTypeId::For<TimestampType>());
-}
-
-TEST(TimestampType, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<TimestampType>(TimestampType()));
-  EXPECT_TRUE(InstanceOf<TimestampType>(Type(TimestampType())));
-}
-
-TEST(TimestampType, Cast) {
-  EXPECT_THAT(Cast<TimestampType>(TimestampType()), An<TimestampType>());
-  EXPECT_THAT(Cast<TimestampType>(Type(TimestampType())), An<TimestampType>());
-}
-
-TEST(TimestampType, As) {
-  EXPECT_THAT(As<TimestampType>(TimestampType()), Ne(absl::nullopt));
-  EXPECT_THAT(As<TimestampType>(Type(TimestampType())), Ne(absl::nullopt));
 }
 
 }  // namespace

@@ -51,18 +51,6 @@ class ValueFactory : public virtual TypeFactory {
   // equivalent to the JSON object `JsonObject`.
   MapValue CreateMapValueFromJsonObject(JsonObject json);
 
-  // `CreateZeroListValue` returns an empty `ListValue` with the given type
-  // `type`.
-  ListValue CreateZeroListValue(const ListType& type);
-
-  // `CreateZeroMapValue` returns an empty `MapTypeView` with the given type
-  // `type`.
-  MapValue CreateZeroMapValue(const MapType& type);
-
-  // `CreateZeroOptionalValue` returns an empty `OptionalValue` with the given
-  // type `type`.
-  OptionalValue CreateZeroOptionalValue(const OptionalType& type);
-
   // `GetDynListType` gets a view of the `ListType` type `list(dyn)`.
   ListValue GetZeroDynListValue();
 
@@ -189,13 +177,6 @@ class ValueFactory : public virtual TypeFactory {
 
  protected:
   friend class common_internal::PiecewiseValueManager;
-
-  virtual ListValue CreateZeroListValueImpl(const ListType& type) = 0;
-
-  virtual MapValue CreateZeroMapValueImpl(const MapType& type) = 0;
-
-  virtual OptionalValue CreateZeroOptionalValueImpl(
-      const OptionalType& type) = 0;
 };
 
 }  // namespace cel

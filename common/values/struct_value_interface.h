@@ -22,7 +22,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "common/type.h"
-#include "common/type_manager.h"
 #include "common/value_interface.h"
 #include "common/value_kind.h"
 
@@ -39,17 +38,12 @@ class StructValueInterface : public ValueInterface {
 
   ValueKind kind() const final { return kKind; }
 
-  StructType GetType(TypeManager& type_manager) const {
+  virtual StructType GetRuntimeType() const {
     return common_internal::MakeBasicStructType(GetTypeName());
   }
 
   using ForEachFieldCallback =
       absl::FunctionRef<absl::StatusOr<bool>(absl::string_view, const Value&)>;
-
- protected:
-  Type GetTypeImpl(TypeManager& type_manager) const override {
-    return common_internal::MakeBasicStructType(GetTypeName());
-  }
 };
 
 }  // namespace cel

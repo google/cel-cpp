@@ -26,16 +26,16 @@
 
 namespace cel {
 
-StructType StructValue::GetType(TypeManager& type_manager) const {
+StructType StructValue::GetRuntimeType() const {
   AssertIsValid();
   return absl::visit(
-      [&type_manager](const auto& alternative) -> StructType {
+      [](const auto& alternative) -> StructType {
         if constexpr (std::is_same_v<
                           absl::monostate,
                           absl::remove_cvref_t<decltype(alternative)>>) {
           ABSL_UNREACHABLE();
         } else {
-          return alternative.GetType(type_manager);
+          return alternative.GetRuntimeType();
         }
       },
       variant_);

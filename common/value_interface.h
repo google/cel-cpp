@@ -18,19 +18,15 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUE_INTERFACE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUE_INTERFACE_H_
 
-#include <cstddef>
 #include <string>
 
-#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/any.h"
 #include "common/casting.h"
 #include "common/internal/data_interface.h"
 #include "common/json.h"
-#include "common/type.h"
 #include "common/value_kind.h"
 
 namespace cel {
@@ -43,10 +39,6 @@ class ValueInterface : public common_internal::DataInterface {
   using DataInterface::DataInterface;
 
   virtual ValueKind kind() const = 0;
-
-  Type GetType(TypeManager& type_manager) const {
-    return GetTypeImpl(type_manager);
-  }
 
   virtual absl::string_view GetTypeName() const = 0;
 
@@ -61,9 +53,6 @@ class ValueInterface : public common_internal::DataInterface {
   // support conversion to JSON, `FAILED_PRECONDITION` is returned.
   virtual absl::StatusOr<Json> ConvertToJson(
       AnyToJsonConverter& converter) const;
-
- protected:
-  virtual Type GetTypeImpl(TypeManager&) const = 0;
 };
 
 // Enable `InstanceOf`, `Cast`, and `As` using subsumption relationships.

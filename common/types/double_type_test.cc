@@ -15,17 +15,11 @@
 #include <sstream>
 
 #include "absl/hash/hash.h"
-#include "absl/types/optional.h"
-#include "common/casting.h"
-#include "common/native_type.h"
 #include "common/type.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
-
-using testing::An;
-using testing::Ne;
 
 TEST(DoubleType, Kind) {
   EXPECT_EQ(DoubleType().kind(), DoubleType::kKind);
@@ -59,27 +53,6 @@ TEST(DoubleType, Equal) {
   EXPECT_EQ(Type(DoubleType()), DoubleType());
   EXPECT_EQ(DoubleType(), Type(DoubleType()));
   EXPECT_EQ(Type(DoubleType()), Type(DoubleType()));
-}
-
-TEST(DoubleType, NativeTypeId) {
-  EXPECT_EQ(NativeTypeId::Of(DoubleType()), NativeTypeId::For<DoubleType>());
-  EXPECT_EQ(NativeTypeId::Of(Type(DoubleType())),
-            NativeTypeId::For<DoubleType>());
-}
-
-TEST(DoubleType, InstanceOf) {
-  EXPECT_TRUE(InstanceOf<DoubleType>(DoubleType()));
-  EXPECT_TRUE(InstanceOf<DoubleType>(Type(DoubleType())));
-}
-
-TEST(DoubleType, Cast) {
-  EXPECT_THAT(Cast<DoubleType>(DoubleType()), An<DoubleType>());
-  EXPECT_THAT(Cast<DoubleType>(Type(DoubleType())), An<DoubleType>());
-}
-
-TEST(DoubleType, As) {
-  EXPECT_THAT(As<DoubleType>(DoubleType()), Ne(absl::nullopt));
-  EXPECT_THAT(As<DoubleType>(Type(DoubleType())), Ne(absl::nullopt));
 }
 
 }  // namespace

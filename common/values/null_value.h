@@ -52,8 +52,6 @@ class NullValue final {
 
   constexpr ValueKind kind() const { return kKind; }
 
-  NullType GetType(TypeManager&) const { return NullType(); }
-
   absl::string_view GetTypeName() const { return NullType::kName; }
 
   std::string DebugString() const { return "null"; }

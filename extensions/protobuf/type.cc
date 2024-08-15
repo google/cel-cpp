@@ -21,7 +21,6 @@
 #include "absl/strings/str_cat.h"
 #include "common/type.h"
 #include "common/type_factory.h"
-#include "common/types/type_cache.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/descriptor.h"
 
@@ -89,30 +88,6 @@ absl::StatusOr<Type> ProtoEnumTypeToType(
     return NullType{};
   }
   return IntType{};
-}
-
-absl::StatusOr<Type> ProtoFieldTypeToType(
-    TypeFactory& type_factory,
-    absl::Nonnull<const google::protobuf::FieldDescriptor*> field_desc) {
-  if (field_desc->is_map()) {
-    Type map_key_scratch;
-    Type map_value_scratch;
-    CEL_ASSIGN_OR_RETURN(
-        auto key_type,
-        ProtoFieldTypeToType(type_factory,
-                             field_desc->message_type()->map_key()));
-    CEL_ASSIGN_OR_RETURN(
-        auto value_type,
-        ProtoFieldTypeToType(type_factory,
-                             field_desc->message_type()->map_value()));
-    return type_factory.CreateMapType(key_type, value_type);
-  }
-  if (field_desc->is_repeated()) {
-    CEL_ASSIGN_OR_RETURN(auto element_type, ProtoSingularFieldTypeToType(
-                                                type_factory, field_desc));
-    return type_factory.CreateListType(element_type);
-  }
-  return ProtoSingularFieldTypeToType(type_factory, field_desc);
 }
 
 }  // namespace cel::extensions

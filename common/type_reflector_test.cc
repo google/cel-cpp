@@ -38,18 +38,16 @@ using cel::internal::StatusIs;
 
 using TypeReflectorTest = common_internal::ThreadCompatibleValueTest<>;
 
-#define TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(element_type)          \
-  TEST_P(TypeReflectorTest, NewListValueBuilder_##element_type) {         \
-    auto list_type = type_factory().CreateListType(element_type());       \
-    ASSERT_OK_AND_ASSIGN(auto list_value_builder,                         \
-                         value_manager().NewListValueBuilder(list_type)); \
-    EXPECT_TRUE(list_value_builder->IsEmpty());                           \
-    EXPECT_EQ(list_value_builder->Size(), 0);                             \
-    auto list_value = std::move(*list_value_builder).Build();             \
-    EXPECT_THAT(list_value.IsEmpty(), IsOkAndHolds(true));                \
-    EXPECT_THAT(list_value.Size(), IsOkAndHolds(0));                      \
-    EXPECT_EQ(list_value.DebugString(), "[]");                            \
-    EXPECT_EQ(list_value.GetType(type_manager()), list_type);             \
+#define TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(element_type)           \
+  TEST_P(TypeReflectorTest, NewListValueBuilder_##element_type) {          \
+    ASSERT_OK_AND_ASSIGN(auto list_value_builder,                          \
+                         value_manager().NewListValueBuilder(ListType())); \
+    EXPECT_TRUE(list_value_builder->IsEmpty());                            \
+    EXPECT_EQ(list_value_builder->Size(), 0);                              \
+    auto list_value = std::move(*list_value_builder).Build();              \
+    EXPECT_THAT(list_value.IsEmpty(), IsOkAndHolds(true));                 \
+    EXPECT_THAT(list_value.Size(), IsOkAndHolds(0));                       \
+    EXPECT_EQ(list_value.DebugString(), "[]");                             \
   }
 
 TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(BoolType)
@@ -69,24 +67,16 @@ TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST(DynType)
 
 #undef TYPE_REFLECTOR_NEW_LIST_VALUE_BUILDER_TEST
 
-TEST_P(TypeReflectorTest, NewListValueBuilder_ErrorType) {
-  EXPECT_THAT(value_manager().NewListValueBuilder(
-                  ListType(memory_manager(), ErrorType())),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-}
-
 #define TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(key_type, value_type)     \
   TEST_P(TypeReflectorTest, NewMapValueBuilder_##key_type##_##value_type) { \
-    auto map_type = type_factory().CreateMapType(key_type(), value_type()); \
     ASSERT_OK_AND_ASSIGN(auto map_value_builder,                            \
-                         value_manager().NewMapValueBuilder(map_type));     \
+                         value_manager().NewMapValueBuilder(MapType()));    \
     EXPECT_TRUE(map_value_builder->IsEmpty());                              \
     EXPECT_EQ(map_value_builder->Size(), 0);                                \
     auto map_value = std::move(*map_value_builder).Build();                 \
     EXPECT_THAT(map_value.IsEmpty(), IsOkAndHolds(true));                   \
     EXPECT_THAT(map_value.Size(), IsOkAndHolds(0));                         \
     EXPECT_EQ(map_value.DebugString(), "{}");                               \
-    EXPECT_EQ(map_value.GetType(type_manager()), map_type);                 \
   }
 
 TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(BoolType, BoolType)
@@ -166,22 +156,6 @@ TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, DynType)
 
 #undef TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST
 
-#define TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(key_type, value_type)     \
-  TEST_P(TypeReflectorTest, NewMapValueBuilder_##key_type##_##value_type) { \
-    EXPECT_THAT(value_manager().NewMapValueBuilder(                         \
-                    MapType(memory_manager(), key_type(), value_type())),   \
-                StatusIs(absl::StatusCode::kInvalidArgument));              \
-  }
-
-TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(BoolType, ErrorType)
-TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(IntType, ErrorType)
-TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(UintType, ErrorType)
-TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(StringType, ErrorType)
-TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(DynType, ErrorType)
-TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST(ErrorType, ErrorType)
-
-#undef TYPE_REFLECTOR_NEW_MAP_VALUE_BUILDER_TEST
-
 TEST_P(TypeReflectorTest, NewListValueBuilderCoverage_Dynamic) {
   ASSERT_OK_AND_ASSIGN(auto builder,
                        value_manager().NewListValueBuilder(
@@ -197,8 +171,7 @@ TEST_P(TypeReflectorTest, NewListValueBuilderCoverage_Dynamic) {
 
 TEST_P(TypeReflectorTest, NewMapValueBuilderCoverage_DynamicDynamic) {
   ASSERT_OK_AND_ASSIGN(auto builder,
-                       value_manager().NewMapValueBuilder(
-                           type_factory().CreateMapType(DynType(), DynType())));
+                       value_manager().NewMapValueBuilder(MapType()));
   EXPECT_OK(builder->Put(BoolValue(false), IntValue(1)));
   EXPECT_OK(builder->Put(BoolValue(true), IntValue(2)));
   EXPECT_OK(builder->Put(IntValue(0), IntValue(3)));
@@ -216,9 +189,8 @@ TEST_P(TypeReflectorTest, NewMapValueBuilderCoverage_DynamicDynamic) {
 }
 
 TEST_P(TypeReflectorTest, NewMapValueBuilderCoverage_StaticDynamic) {
-  ASSERT_OK_AND_ASSIGN(
-      auto builder, value_manager().NewMapValueBuilder(
-                        type_factory().CreateMapType(BoolType(), DynType())));
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       value_manager().NewMapValueBuilder(MapType()));
   EXPECT_OK(builder->Put(BoolValue(true), IntValue(0)));
   EXPECT_EQ(builder->Size(), 1);
   EXPECT_FALSE(builder->IsEmpty());
@@ -228,8 +200,7 @@ TEST_P(TypeReflectorTest, NewMapValueBuilderCoverage_StaticDynamic) {
 
 TEST_P(TypeReflectorTest, NewMapValueBuilderCoverage_DynamicStatic) {
   ASSERT_OK_AND_ASSIGN(auto builder,
-                       value_manager().NewMapValueBuilder(
-                           type_factory().CreateMapType(DynType(), IntType())));
+                       value_manager().NewMapValueBuilder(MapType()));
   EXPECT_OK(builder->Put(BoolValue(true), IntValue(0)));
   EXPECT_EQ(builder->Size(), 1);
   EXPECT_FALSE(builder->IsEmpty());

@@ -34,13 +34,11 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
-#include "common/any.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
-#include "common/type_manager.h"
 #include "common/value_interface.h"  // IWYU pragma: export
 #include "common/value_kind.h"
 #include "common/values/bool_value.h"  // IWYU pragma: export
@@ -199,7 +197,7 @@ class Value final {
 
   ValueKind kind() const;
 
-  Type GetType(TypeManager& type_manager) const;
+  Type GetRuntimeType() const;
 
   absl::string_view GetTypeName() const;
 
@@ -593,9 +591,6 @@ using StructValueBuilderInterface = StructValueBuilder;
 // Now that Value is complete, we can define various parts of list, map, opaque,
 // and struct which depend on Value.
 
-inline ErrorValue::ErrorValue()
-    : ErrorValue(common_internal::GetDefaultErrorValue()) {}
-
 inline absl::Status ParsedListValue::Get(ValueManager& value_manager,
                                          size_t index, Value& result) const {
   return interface_->Get(value_manager, index, result);
@@ -638,10 +633,6 @@ inline cel::Value OptionalValueInterface::Value() const {
   cel::Value result;
   Value(result);
   return result;
-}
-
-inline OptionalValue OptionalValue::None() {
-  return OptionalValue(common_internal::GetEmptyDynOptionalValue());
 }
 
 inline void OptionalValue::Value(cel::Value& result) const {
