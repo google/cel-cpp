@@ -18,6 +18,7 @@
 #include <string>
 #include <utility>
 
+#include "google/protobuf/any.pb.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/time/time.h"
@@ -328,7 +329,7 @@ absl::StatusOr<JsonObject> DeserializeStruct(const absl::Cord& data) {
   return std::move(object_builder).Build();
 }
 
-absl::StatusOr<Any> DeserializeAny(const absl::Cord& data) {
+absl::StatusOr<google::protobuf::Any> DeserializeAny(const absl::Cord& data) {
   absl::Cord type_url;
   absl::Cord value;
   ProtoWireDecoder decoder("google.protobuf.Any", data);

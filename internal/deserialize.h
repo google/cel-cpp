@@ -17,10 +17,10 @@
 
 #include <cstdint>
 
+#include "google/protobuf/any.pb.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/time/time.h"
-#include "common/any.h"
 #include "common/json.h"
 
 namespace cel::internal {
@@ -56,7 +56,7 @@ absl::StatusOr<JsonArray> DeserializeListValue(const absl::Cord& data);
 
 absl::StatusOr<JsonObject> DeserializeStruct(const absl::Cord& data);
 
-absl::StatusOr<Any> DeserializeAny(const absl::Cord& data);
+absl::StatusOr<google::protobuf::Any> DeserializeAny(const absl::Cord& data);
 
 }  // namespace cel::internal
 

@@ -18,6 +18,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_ANY_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_ANY_H_
 
+#include "google/protobuf/any.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -29,16 +30,17 @@ namespace cel::extensions::protobuf_internal {
 
 // Converts `google.protobuf.Any` to `Any`. No validation is performed. The type
 // name of `message` must be `google.protobuf.Any`.
-absl::StatusOr<Any> UnwrapDynamicAnyProto(const google::protobuf::Message& message);
+absl::StatusOr<google::protobuf::Any> UnwrapDynamicAnyProto(
+    const google::protobuf::Message& message);
 
 // Converts `Any` to `google.protobuf.Any`. No validation is performed. The type
 // name of `message` must be `google.protobuf.Any`.
 absl::Status WrapDynamicAnyProto(absl::string_view type_url,
                                  const absl::Cord& value,
                                  google::protobuf::Message& message);
-inline absl::Status WrapDynamicAnyProto(const Any& any,
+inline absl::Status WrapDynamicAnyProto(const google::protobuf::Any& any,
                                         google::protobuf::Message& message) {
-  return WrapDynamicAnyProto(any.type_url(), any.value(), message);
+  return WrapDynamicAnyProto(any.type_url(), GetAnyValueAsCord(any), message);
 }
 
 }  // namespace cel::extensions::protobuf_internal

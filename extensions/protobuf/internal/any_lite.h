@@ -29,7 +29,7 @@ namespace cel::extensions::protobuf_internal {
 
 // Converts `google.protobuf.Any` to `Any`. No validation is performed. The type
 // name of `message` must be `google.protobuf.Any`.
-absl::StatusOr<Any> UnwrapGeneratedAnyProto(
+absl::StatusOr<google::protobuf::Any> UnwrapGeneratedAnyProto(
     const google::protobuf::Any& message);
 
 // Converts `Any` to `google.protobuf.Any`. No validation is performed. The type
@@ -37,9 +37,9 @@ absl::StatusOr<Any> UnwrapGeneratedAnyProto(
 absl::Status WrapGeneratedAnyProto(absl::string_view type_url,
                                    const absl::Cord& value,
                                    google::protobuf::Any& message);
-inline absl::Status WrapGeneratedAnyProto(const Any& any,
+inline absl::Status WrapGeneratedAnyProto(const google::protobuf::Any& any,
                                           google::protobuf::Any& message) {
-  return WrapGeneratedAnyProto(any.type_url(), any.value(), message);
+  return WrapGeneratedAnyProto(any.type_url(), GetAnyValueAsCord(any), message);
 }
 
 }  // namespace cel::extensions::protobuf_internal

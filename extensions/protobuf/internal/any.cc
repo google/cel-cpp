@@ -33,7 +33,8 @@
 
 namespace cel::extensions::protobuf_internal {
 
-absl::StatusOr<Any> UnwrapDynamicAnyProto(const google::protobuf::Message& message) {
+absl::StatusOr<google::protobuf::Any> UnwrapDynamicAnyProto(
+    const google::protobuf::Message& message) {
   ABSL_DCHECK_EQ(message.GetTypeName(), "google.protobuf.Any");
   const auto* desc = message.GetDescriptor();
   if (ABSL_PREDICT_FALSE(desc == nullptr)) {

@@ -1790,9 +1790,9 @@ absl::StatusOr<absl::optional<Value>> WellKnownProtoMessageToValue(
     }
     case google::protobuf::Descriptor::WELLKNOWNTYPE_ANY: {
       CEL_ASSIGN_OR_RETURN(auto any, UnwrapDynamicAnyProto(*message));
-      CEL_ASSIGN_OR_RETURN(auto value,
-                           type_reflector.DeserializeValue(
-                               value_factory, any.type_url(), any.value()));
+      CEL_ASSIGN_OR_RETURN(auto value, type_reflector.DeserializeValue(
+                                           value_factory, any.type_url(),
+                                           GetAnyValueAsCord(any)));
       if (!value) {
         return absl::NotFoundError(
             absl::StrCat("unable to find deserializer for ", any.type_url()));

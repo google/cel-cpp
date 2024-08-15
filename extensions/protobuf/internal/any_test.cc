@@ -20,7 +20,6 @@
 #include "google/protobuf/descriptor.pb.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/cord.h"
-#include "common/any.h"
 #include "extensions/protobuf/internal/any_lite.h"
 #include "internal/testing.h"
 #include "google/protobuf/descriptor.h"
@@ -29,14 +28,6 @@
 
 namespace cel::extensions::protobuf_internal {
 namespace {
-
-using testing::Eq;
-using cel::internal::IsOkAndHolds;
-
-TEST(Any, GeneratedFromProto) {
-  EXPECT_THAT(UnwrapGeneratedAnyProto(google::protobuf::Any()),
-              IsOkAndHolds(Eq(Any())));
-}
 
 TEST(Any, CustomFromProto) {
   google::protobuf::SimpleDescriptorDatabase database;
@@ -49,9 +40,11 @@ TEST(Any, CustomFromProto) {
   pool.AllowUnknownDependencies();
   google::protobuf::DynamicMessageFactory factory(&pool);
   factory.SetDelegateToGeneratedFactory(false);
-  EXPECT_THAT(UnwrapDynamicAnyProto(*factory.GetPrototype(
-                  pool.FindMessageTypeByName("google.protobuf.Any"))),
-              IsOkAndHolds(Eq(Any())));
+  ASSERT_OK_AND_ASSIGN(auto unwrapped,
+                       UnwrapDynamicAnyProto(*factory.GetPrototype(
+                           pool.FindMessageTypeByName("google.protobuf.Any"))));
+  EXPECT_EQ(unwrapped.type_url(), "");
+  EXPECT_EQ(unwrapped.value(), "");
 }
 
 TEST(Any, GeneratedToProto) {

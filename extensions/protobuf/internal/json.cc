@@ -166,7 +166,7 @@ absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
   builder.insert_or_assign(JsonString("@type"), JsonString(any.type_url()));
   if (type_name == "google.protobuf.BoolValue") {
     google::protobuf::BoolValue value_message;
-    if (!value_message.ParseFromCord(any.value())) {
+    if (!value_message.ParseFromCord(GetAnyValueAsCord(any))) {
       return absl::InvalidArgumentError(
           absl::StrCat("failed to parse `", value_message.GetTypeName(), "`"));
     }
@@ -175,7 +175,7 @@ absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
   }
   if (type_name == "google.protobuf.Int32Value") {
     google::protobuf::Int32Value value_message;
-    if (!value_message.ParseFromCord(any.value())) {
+    if (!value_message.ParseFromCord(GetAnyValueAsCord(any))) {
       return absl::UnknownError(
           absl::StrCat("failed to parse `", value_message.GetTypeName(), "`"));
     }
@@ -185,7 +185,7 @@ absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
   }
   if (type_name == "google.protobuf.Int64Value") {
     google::protobuf::Int64Value value_message;
-    if (!value_message.ParseFromCord(any.value())) {
+    if (!value_message.ParseFromCord(GetAnyValueAsCord(any))) {
       return absl::UnknownError(
           absl::StrCat("failed to parse `", value_message.GetTypeName(), "`"));
     }
@@ -195,7 +195,7 @@ absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
   }
   if (type_name == "google.protobuf.UInt32Value") {
     google::protobuf::UInt32Value value_message;
-    if (!value_message.ParseFromCord(any.value())) {
+    if (!value_message.ParseFromCord(GetAnyValueAsCord(any))) {
       return absl::UnknownError(
           absl::StrCat("failed to parse `", value_message.GetTypeName(), "`"));
     }
@@ -205,7 +205,7 @@ absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
   }
   if (type_name == "google.protobuf.UInt64Value") {
     google::protobuf::UInt64Value value_message;
-    if (!value_message.ParseFromCord(any.value())) {
+    if (!value_message.ParseFromCord(GetAnyValueAsCord(any))) {
       return absl::UnknownError(
           absl::StrCat("failed to parse `", value_message.GetTypeName(), "`"));
     }
@@ -215,7 +215,7 @@ absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
   }
   if (type_name == "google.protobuf.FloatValue") {
     google::protobuf::FloatValue value_message;
-    if (!value_message.ParseFromCord(any.value())) {
+    if (!value_message.ParseFromCord(GetAnyValueAsCord(any))) {
       return absl::UnknownError(
           absl::StrCat("failed to parse `", value_message.GetTypeName(), "`"));
     }
@@ -225,7 +225,7 @@ absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
   }
   if (type_name == "google.protobuf.DoubleValue") {
     google::protobuf::DoubleValue value_message;
-    if (!value_message.ParseFromCord(any.value())) {
+    if (!value_message.ParseFromCord(GetAnyValueAsCord(any))) {
       return absl::UnknownError(
           absl::StrCat("failed to parse `", value_message.GetTypeName(), "`"));
     }
@@ -234,7 +234,7 @@ absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
   }
   if (type_name == "google.protobuf.BytesValue") {
     google::protobuf::BytesValue value_message;
-    if (!value_message.ParseFromCord(any.value())) {
+    if (!value_message.ParseFromCord(GetAnyValueAsCord(any))) {
       return absl::UnknownError(
           absl::StrCat("failed to parse `", value_message.GetTypeName(), "`"));
     }
@@ -244,7 +244,7 @@ absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
   }
   if (type_name == "google.protobuf.StringValue") {
     google::protobuf::StringValue value_message;
-    if (!value_message.ParseFromCord(any.value())) {
+    if (!value_message.ParseFromCord(GetAnyValueAsCord(any))) {
       return absl::UnknownError(
           absl::StrCat("failed to parse `", value_message.GetTypeName(), "`"));
     }
@@ -254,7 +254,7 @@ absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
   }
   if (type_name == "google.protobuf.FieldMask") {
     google::protobuf::FieldMask value_message;
-    if (!value_message.ParseFromCord(any.value())) {
+    if (!value_message.ParseFromCord(GetAnyValueAsCord(any))) {
       return absl::UnknownError(
           absl::StrCat("failed to parse `", value_message.GetTypeName(), "`"));
     }
@@ -265,7 +265,7 @@ absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
   }
   if (type_name == "google.protobuf.ListValue") {
     google::protobuf::ListValue value_message;
-    if (!value_message.ParseFromCord(any.value())) {
+    if (!value_message.ParseFromCord(GetAnyValueAsCord(any))) {
       return absl::UnknownError(
           absl::StrCat("failed to parse `", value_message.GetTypeName(), "`"));
     }
@@ -276,7 +276,7 @@ absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
   }
   if (type_name == "google.protobuf.Struct") {
     google::protobuf::Struct value_message;
-    if (!value_message.ParseFromCord(any.value())) {
+    if (!value_message.ParseFromCord(GetAnyValueAsCord(any))) {
       return absl::UnknownError(
           absl::StrCat("failed to parse `", value_message.GetTypeName(), "`"));
     }
@@ -287,7 +287,7 @@ absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
   }
   if (type_name == "google.protobuf.Value") {
     google::protobuf::Value value_message;
-    if (!value_message.ParseFromCord(any.value())) {
+    if (!value_message.ParseFromCord(GetAnyValueAsCord(any))) {
       return absl::UnknownError(
           absl::StrCat("failed to parse `", value_message.GetTypeName(), "`"));
     }
@@ -298,7 +298,7 @@ absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
   }
   if (type_name == "google.protobuf.Duration") {
     google::protobuf::Duration value_message;
-    if (!value_message.ParseFromCord(any.value())) {
+    if (!value_message.ParseFromCord(GetAnyValueAsCord(any))) {
       return absl::UnknownError(
           absl::StrCat("failed to parse `", value_message.GetTypeName(), "`"));
     }
@@ -311,7 +311,7 @@ absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
   }
   if (type_name == "google.protobuf.Timestamp") {
     google::protobuf::Timestamp value_message;
-    if (!value_message.ParseFromCord(any.value())) {
+    if (!value_message.ParseFromCord(GetAnyValueAsCord(any))) {
       return absl::UnknownError(
           absl::StrCat("failed to parse `", value_message.GetTypeName(), "`"));
     }
@@ -325,7 +325,7 @@ absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
   }
   if (type_name == "google.protobuf.Empty") {
     google::protobuf::Empty value_message;
-    if (!value_message.ParseFromCord(any.value())) {
+    if (!value_message.ParseFromCord(GetAnyValueAsCord(any))) {
       return absl::UnknownError(
           absl::StrCat("failed to parse `", value_message.GetTypeName(), "`"));
     }
@@ -337,8 +337,9 @@ absl::StatusOr<Json> ProtoAnyToJson(AnyToJsonConverter& converter,
     return absl::InvalidArgumentError(
         "refusing to convert recursive `google.protobuf.Any` to JSON");
   }
-  CEL_ASSIGN_OR_RETURN(auto json_value,
-                       converter.ConvertToJson(any.type_url(), any.value()));
+  CEL_ASSIGN_OR_RETURN(
+      auto json_value,
+      converter.ConvertToJson(any.type_url(), GetAnyValueAsCord(any)));
   if (!absl::holds_alternative<JsonObject>(json_value)) {
     return absl::InternalError("expected JSON object");
   }

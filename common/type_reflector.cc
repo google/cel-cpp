@@ -793,8 +793,8 @@ class AnyValueBuilder final : public WellKnownValueBuilder {
 
   absl::Status Deserialize(const absl::Cord& serialized_value) override {
     CEL_ASSIGN_OR_RETURN(auto any, internal::DeserializeAny(serialized_value));
-    type_url_ = any.release_type_url();
-    value_ = any.release_value();
+    type_url_ = any.type_url();
+    value_ = GetAnyValueAsCord(any);
     return absl::OkStatus();
   }
 

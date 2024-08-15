@@ -15,10 +15,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_ANY_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_ANY_H_
 
-#include <ostream>
 #include <string>
-#include <utility>
 
+#include "google/protobuf/any.pb.h"
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/strings/cord.h"
@@ -28,67 +27,34 @@
 
 namespace cel {
 
-// `Any` is a native C++ representation of `google.protobuf.Any`, without the
-// protocol buffer dependency.
-class Any final {
- public:
-  Any() = default;
-
-  Any(std::string type_url, absl::Cord value)
-      : type_url_(std::move(type_url)), value_(std::move(value)) {}
-
-  void set_type_url(std::string type_url) { type_url_ = std::move(type_url); }
-
-  absl::string_view type_url() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return type_url_;
-  }
-
-  std::string release_type_url() {
-    std::string type_url;
-    type_url.swap(type_url_);
-    return type_url;
-  }
-
-  void set_value(absl::Cord value) { value_ = std::move(value); }
-
-  const absl::Cord& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return value_;
-  }
-
-  absl::Cord release_value() {
-    absl::Cord value;
-    value.swap(value_);
-    return value;
-  }
-
-  std::string DebugString() const;
-
- private:
-  std::string type_url_;
-  absl::Cord value_;
-};
-
-inline std::ostream& operator<<(std::ostream& out, const Any& any) {
-  return out << any.DebugString();
-}
-
-inline bool operator==(const Any& lhs, const Any& rhs) {
-  return lhs.type_url() == rhs.type_url() && lhs.value() == rhs.value();
-}
-
-inline bool operator!=(const Any& lhs, const Any& rhs) {
-  return !operator==(lhs, rhs);
-}
-
-inline Any MakeAny(std::string type_url, absl::Cord value) {
-  Any any;
-  any.set_type_url(std::move(type_url));
-  any.set_value(std::move(value));
+inline google::protobuf::Any MakeAny(absl::string_view type_url,
+                                     const absl::Cord& value) {
+  google::protobuf::Any any;
+  any.set_type_url(type_url);
+  any.set_value(static_cast<std::string>(value));
   return any;
 }
 
-inline Any MakeAny(std::string type_url, const std::string& value) {
-  return MakeAny(std::move(type_url), absl::Cord(value));
+inline google::protobuf::Any MakeAny(absl::string_view type_url,
+                                     absl::string_view value) {
+  google::protobuf::Any any;
+  any.set_type_url(type_url);
+  any.set_value(value);
+  return any;
+}
+
+inline absl::Cord GetAnyValueAsCord(const google::protobuf::Any& any) {
+  return absl::Cord(any.value());
+}
+
+inline std::string GetAnyValueAsString(const google::protobuf::Any& any) {
+  return std::string(any.value());
+}
+
+inline absl::string_view GetAnyValueAsStringView(
+    const google::protobuf::Any& any ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  return absl::string_view(any.value());
 }
 
 inline constexpr absl::string_view kTypeGoogleApisComPrefix =

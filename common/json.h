@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 
+#include "google/protobuf/any.pb.h"
 #include "absl/base/attributes.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
@@ -466,17 +467,17 @@ Json JsonBytes(absl::string_view value);
 Json JsonBytes(const absl::Cord& value);
 
 // Serializes `json` as `google.protobuf.Any` with type `google.protobuf.Value`.
-absl::StatusOr<Any> JsonToAny(const Json& json);
+absl::StatusOr<google::protobuf::Any> JsonToAny(const Json& json);
 absl::Status JsonToAnyValue(const Json& json, absl::Cord& data);
 
 // Serializes `json` as `google.protobuf.Any` with type
 // `google.protobuf.ListValue`.
-absl::StatusOr<Any> JsonArrayToAny(const JsonArray& json);
+absl::StatusOr<google::protobuf::Any> JsonArrayToAny(const JsonArray& json);
 absl::Status JsonArrayToAnyValue(const JsonArray& json, absl::Cord& data);
 
 // Serializes `json` as `google.protobuf.Any` with type
 // `google.protobuf.Struct`.
-absl::StatusOr<Any> JsonObjectToAny(const JsonObject& json);
+absl::StatusOr<google::protobuf::Any> JsonObjectToAny(const JsonObject& json);
 absl::Status JsonObjectToAnyValue(const JsonObject& json, absl::Cord& data);
 
 class AnyToJsonConverter {
@@ -486,8 +487,8 @@ class AnyToJsonConverter {
   virtual absl::StatusOr<Json> ConvertToJson(absl::string_view type_url,
                                              const absl::Cord& value) = 0;
 
-  absl::StatusOr<Json> ConvertToJson(const Any& any) {
-    return ConvertToJson(any.type_url(), any.value());
+  absl::StatusOr<Json> ConvertToJson(const google::protobuf::Any& any) {
+    return ConvertToJson(any.type_url(), GetAnyValueAsCord(any));
   }
 };
 

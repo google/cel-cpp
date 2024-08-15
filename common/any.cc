@@ -14,29 +14,10 @@
 
 #include "common/any.h"
 
-#include <string>
-
 #include "absl/base/nullability.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "internal/strings.h"
 
 namespace cel {
-
-std::string Any::DebugString() const {
-  std::string value_scratch;
-  absl::string_view value_view;
-  if (auto flat = value().TryFlat(); flat.has_value()) {
-    value_view = *flat;
-  } else {
-    value_scratch = static_cast<std::string>(value());
-    value_view = value_scratch;
-  }
-  return absl::StrCat("google.protobuf.Any{type_url: ",
-                      internal::FormatStringLiteral(type_url()),
-                      ", value: ", internal::FormatBytesLiteral(value_view),
-                      "}");
-}
 
 bool ParseTypeUrl(absl::string_view type_url,
                   absl::Nullable<absl::string_view*> prefix,

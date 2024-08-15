@@ -381,19 +381,19 @@ absl::Status JsonObjectToAnyValue(const JsonObject& json, absl::Cord& data) {
   return absl::OkStatus();
 }
 
-absl::StatusOr<Any> JsonToAny(const Json& json) {
+absl::StatusOr<google::protobuf::Any> JsonToAny(const Json& json) {
   absl::Cord data;
   CEL_RETURN_IF_ERROR(JsonToAnyValue(json, data));
   return MakeAny(MakeTypeUrl(kJsonTypeName), std::move(data));
 }
 
-absl::StatusOr<Any> JsonArrayToAny(const JsonArray& json) {
+absl::StatusOr<google::protobuf::Any> JsonArrayToAny(const JsonArray& json) {
   absl::Cord data;
   CEL_RETURN_IF_ERROR(JsonArrayToAnyValue(json, data));
   return MakeAny(MakeTypeUrl(kJsonArrayTypeName), std::move(data));
 }
 
-absl::StatusOr<Any> JsonObjectToAny(const JsonObject& json) {
+absl::StatusOr<google::protobuf::Any> JsonObjectToAny(const JsonObject& json) {
   absl::Cord data;
   CEL_RETURN_IF_ERROR(JsonObjectToAnyValue(json, data));
   return MakeAny(MakeTypeUrl(kJsonObjectTypeName), std::move(data));

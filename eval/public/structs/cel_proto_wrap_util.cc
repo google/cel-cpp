@@ -42,6 +42,7 @@
 #include "absl/synchronization/mutex.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
+#include "common/any.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/protobuf_value_factory.h"
 #include "eval/testutil/test_message.pb.h"
@@ -268,8 +269,8 @@ class ValueManager {
       return CreateErrorValue(arena_, status_or_unwrapped.status());
     }
     return ValueFromAny(status_or_unwrapped->type_url(),
-                        status_or_unwrapped->value(), descriptor_pool_,
-                        message_factory_);
+                        cel::GetAnyValueAsCord(*status_or_unwrapped),
+                        descriptor_pool_, message_factory_);
   }
 
   CelValue ValueFromAny(absl::string_view type_url, const absl::Cord& payload,

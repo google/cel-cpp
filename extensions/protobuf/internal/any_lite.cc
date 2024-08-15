@@ -14,20 +14,17 @@
 
 #include "extensions/protobuf/internal/any_lite.h"
 
-#include <string>
-
 #include "google/protobuf/any.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/any.h"
 
 namespace cel::extensions::protobuf_internal {
 
-absl::StatusOr<Any> UnwrapGeneratedAnyProto(
+absl::StatusOr<google::protobuf::Any> UnwrapGeneratedAnyProto(
     const google::protobuf::Any& message) {
-  return MakeAny(std::string(message.type_url()), absl::Cord(message.value()));
+  return message;
 }
 
 absl::Status WrapGeneratedAnyProto(absl::string_view type_url,
