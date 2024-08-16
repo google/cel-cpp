@@ -20,6 +20,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "base/builtins.h"
@@ -85,7 +86,8 @@ absl::Status RegisterIntConversionFunctions(FunctionRegistry& registry,
             int64_t result;
             if (!absl::SimpleAtoi(s.ToString(), &result)) {
               return value_factory.CreateErrorValue(
-                  absl::InvalidArgumentError("cannot convert string to int"));
+                  absl::InvalidArgumentError(absl::StrFormat(
+                      "cannot convert string '%s' to int", s.ToString())));
             }
             return value_factory.CreateIntValue(result);
           },
@@ -330,14 +332,13 @@ absl::Status RegisterTimeConversionFunctions(FunctionRegistry& registry,
   CEL_RETURN_IF_ERROR(status);
 
   // timestamp conversion from int.
-  status =
-      UnaryFunctionAdapter<Value, int64_t>::RegisterGlobalOverload(
-          cel::builtin::kTimestamp,
-          [](ValueManager& value_factory, int64_t epoch_seconds) -> Value {
-            return value_factory.CreateUncheckedTimestampValue(
-                absl::FromUnixSeconds(epoch_seconds));
-          },
-          registry);
+  status = UnaryFunctionAdapter<Value, int64_t>::RegisterGlobalOverload(
+      cel::builtin::kTimestamp,
+      [](ValueManager& value_factory, int64_t epoch_seconds) -> Value {
+        return value_factory.CreateUncheckedTimestampValue(
+            absl::FromUnixSeconds(epoch_seconds));
+      },
+      registry);
   CEL_RETURN_IF_ERROR(status);
 
   // timestamp() conversion from string.
