@@ -34,6 +34,7 @@ class DoubleType;
 class DoubleWrapperType;
 class DurationType;
 class DynType;
+class EnumType;
 class ErrorType;
 class FunctionType;
 class IntType;
@@ -65,16 +66,16 @@ struct IsTypeAlternative
           std::is_same<BoolWrapperType, U>, std::is_same<BytesType, U>,
           std::is_same<BytesWrapperType, U>, std::is_same<DoubleType, U>,
           std::is_same<DoubleWrapperType, U>, std::is_same<DurationType, U>,
-          std::is_same<DynType, U>, std::is_same<ErrorType, U>,
-          std::is_same<FunctionType, U>, std::is_same<IntType, U>,
-          std::is_same<IntWrapperType, U>, std::is_same<ListType, U>,
-          std::is_same<MapType, U>, std::is_same<NullType, U>,
-          std::is_same<OpaqueType, U>, std::is_same<StringType, U>,
-          std::is_same<StringWrapperType, U>, std::is_same<MessageType, U>,
-          std::is_same<BasicStructType, U>, std::is_same<TimestampType, U>,
-          std::is_same<TypeParamType, U>, std::is_same<TypeType, U>,
-          std::is_same<UintType, U>, std::is_same<UintWrapperType, U>,
-          std::is_same<UnknownType, U>>> {};
+          std::is_same<DynType, U>, std::is_same<EnumType, U>,
+          std::is_same<ErrorType, U>, std::is_same<FunctionType, U>,
+          std::is_same<IntType, U>, std::is_same<IntWrapperType, U>,
+          std::is_same<ListType, U>, std::is_same<MapType, U>,
+          std::is_same<NullType, U>, std::is_same<OpaqueType, U>,
+          std::is_same<StringType, U>, std::is_same<StringWrapperType, U>,
+          std::is_same<MessageType, U>, std::is_same<BasicStructType, U>,
+          std::is_same<TimestampType, U>, std::is_same<TypeParamType, U>,
+          std::is_same<TypeType, U>, std::is_same<UintType, U>,
+          std::is_same<UintWrapperType, U>, std::is_same<UnknownType, U>>> {};
 
 template <typename T>
 inline constexpr bool IsTypeAlternativeV = IsTypeAlternative<T>::value;
@@ -82,11 +83,11 @@ inline constexpr bool IsTypeAlternativeV = IsTypeAlternative<T>::value;
 using TypeVariant =
     absl::variant<absl::monostate, AnyType, BoolType, BoolWrapperType,
                   BytesType, BytesWrapperType, DoubleType, DoubleWrapperType,
-                  DurationType, DynType, ErrorType, FunctionType, IntType,
-                  IntWrapperType, ListType, MapType, NullType, OpaqueType,
-                  StringType, StringWrapperType, MessageType, BasicStructType,
-                  TimestampType, TypeParamType, TypeType, UintType,
-                  UintWrapperType, UnknownType>;
+                  DurationType, DynType, EnumType, ErrorType, FunctionType,
+                  IntType, IntWrapperType, ListType, MapType, NullType,
+                  OpaqueType, StringType, StringWrapperType, MessageType,
+                  BasicStructType, TimestampType, TypeParamType, TypeType,
+                  UintType, UintWrapperType, UnknownType>;
 
 using StructTypeVariant =
     absl::variant<absl::monostate, BasicStructType, MessageType>;

@@ -69,19 +69,27 @@ Type Type::Message(absl::Nonnull<const Descriptor*> descriptor) {
       return MessageType(descriptor);
   }
 }
+
+Type Type::Enum(absl::Nonnull<const google::protobuf::EnumDescriptor*> descriptor) {
+  if (descriptor->full_name() == "google.protobuf.NullValue") {
+    return NullType();
+  }
+  return EnumType(descriptor);
+}
+
 namespace {
 
-static constexpr std::array<TypeKind, 28> kTypeToKindArray = {
+static constexpr std::array<TypeKind, 29> kTypeToKindArray = {
     TypeKind::kError,       TypeKind::kAny,           TypeKind::kBool,
     TypeKind::kBoolWrapper, TypeKind::kBytes,         TypeKind::kBytesWrapper,
     TypeKind::kDouble,      TypeKind::kDoubleWrapper, TypeKind::kDuration,
-    TypeKind::kDyn,         TypeKind::kError,         TypeKind::kFunction,
-    TypeKind::kInt,         TypeKind::kIntWrapper,    TypeKind::kList,
-    TypeKind::kMap,         TypeKind::kNull,          TypeKind::kOpaque,
-    TypeKind::kString,      TypeKind::kStringWrapper, TypeKind::kStruct,
-    TypeKind::kStruct,      TypeKind::kTimestamp,     TypeKind::kTypeParam,
-    TypeKind::kType,        TypeKind::kUint,          TypeKind::kUintWrapper,
-    TypeKind::kUnknown};
+    TypeKind::kDyn,         TypeKind::kEnum,          TypeKind::kError,
+    TypeKind::kFunction,    TypeKind::kInt,           TypeKind::kIntWrapper,
+    TypeKind::kList,        TypeKind::kMap,           TypeKind::kNull,
+    TypeKind::kOpaque,      TypeKind::kString,        TypeKind::kStringWrapper,
+    TypeKind::kStruct,      TypeKind::kStruct,        TypeKind::kTimestamp,
+    TypeKind::kTypeParam,   TypeKind::kType,          TypeKind::kUint,
+    TypeKind::kUintWrapper, TypeKind::kUnknown};
 
 static_assert(kTypeToKindArray.size() ==
                   absl::variant_size<common_internal::TypeVariant>(),
@@ -220,6 +228,10 @@ absl::optional<DurationType> Type::AsDuration() const {
 
 absl::optional<DynType> Type::AsDyn() const {
   return GetOrNullopt<DynType>(variant_);
+}
+
+absl::optional<EnumType> Type::AsEnum() const {
+  return GetOrNullopt<EnumType>(variant_);
 }
 
 absl::optional<ErrorType> Type::AsError() const {
@@ -361,6 +373,11 @@ Type::operator DurationType() const {
 Type::operator DynType() const {
   ABSL_DCHECK(IsDyn()) << DebugString();
   return GetOrDie<DynType>(variant_);
+}
+
+Type::operator EnumType() const {
+  ABSL_DCHECK(IsEnum()) << DebugString();
+  return GetOrDie<EnumType>(variant_);
 }
 
 Type::operator ErrorType() const {

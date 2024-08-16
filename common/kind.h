@@ -52,6 +52,7 @@ enum class Kind /* : uint8_t */ {
 
   kTypeParam,
   kFunction,
+  kEnum,
 
   // Legacy aliases, deprecated do not use.
   kNullType = kNull,

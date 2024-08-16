@@ -16,16 +16,31 @@
 
 #include "absl/hash/hash.h"
 #include "absl/hash/hash_testing.h"
-#include "common/native_type.h"
+#include "absl/log/die_if_null.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
 #include "google/protobuf/arena.h"
 
 namespace cel {
 namespace {
 
+using ::cel::internal::GetTestingDescriptorPool;
 using testing::_;
 using testing::An;
 using testing::Optional;
+
+TEST(Type, Enum) {
+  EXPECT_EQ(
+      Type::Enum(
+          ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
+              "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"))),
+      EnumType(ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
+          "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"))));
+  EXPECT_EQ(Type::Enum(
+                ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
+                    "google.protobuf.NullValue"))),
+            NullType());
+}
 
 TEST(Type, KindDebugDeath) {
   Type type;
@@ -75,6 +90,12 @@ TEST(Type, Is) {
 
   EXPECT_TRUE(Type(DynType()).Is<DynType>());
 
+  EXPECT_TRUE(
+      Type(EnumType(
+               ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
+                   "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"))))
+          .Is<EnumType>());
+
   EXPECT_TRUE(Type(ErrorType()).Is<ErrorType>());
 
   EXPECT_TRUE(Type(FunctionType(&arena, DynType(), {})).Is<FunctionType>());
@@ -87,6 +108,15 @@ TEST(Type, Is) {
   EXPECT_TRUE(Type(ListType()).Is<ListType>());
 
   EXPECT_TRUE(Type(MapType()).Is<MapType>());
+
+  EXPECT_TRUE(Type(MessageType(ABSL_DIE_IF_NULL(
+                       GetTestingDescriptorPool()->FindMessageTypeByName(
+                           "google.api.expr.test.v1.proto3.TestAllTypes"))))
+                  .IsStruct());
+  EXPECT_TRUE(Type(MessageType(ABSL_DIE_IF_NULL(
+                       GetTestingDescriptorPool()->FindMessageTypeByName(
+                           "google.api.expr.test.v1.proto3.TestAllTypes"))))
+                  .IsMessage());
 
   EXPECT_TRUE(Type(NullType()).Is<NullType>());
 
@@ -133,6 +163,13 @@ TEST(Type, As) {
 
   EXPECT_THAT(Type(DynType()).As<DynType>(), Optional(An<DynType>()));
 
+  EXPECT_THAT(
+      Type(EnumType(
+               ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
+                   "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"))))
+          .As<EnumType>(),
+      Optional(An<EnumType>()));
+
   EXPECT_THAT(Type(ErrorType()).As<ErrorType>(), Optional(An<ErrorType>()));
 
   EXPECT_TRUE(Type(FunctionType(&arena, DynType(), {})).Is<FunctionType>());
@@ -145,6 +182,17 @@ TEST(Type, As) {
   EXPECT_THAT(Type(ListType()).As<ListType>(), Optional(An<ListType>()));
 
   EXPECT_THAT(Type(MapType()).As<MapType>(), Optional(An<MapType>()));
+
+  EXPECT_THAT(Type(MessageType(ABSL_DIE_IF_NULL(
+                       GetTestingDescriptorPool()->FindMessageTypeByName(
+                           "google.api.expr.test.v1.proto3.TestAllTypes"))))
+                  .As<StructType>(),
+              Optional(An<StructType>()));
+  EXPECT_THAT(Type(MessageType(ABSL_DIE_IF_NULL(
+                       GetTestingDescriptorPool()->FindMessageTypeByName(
+                           "google.api.expr.test.v1.proto3.TestAllTypes"))))
+                  .As<MessageType>(),
+              Optional(An<MessageType>()));
 
   EXPECT_THAT(Type(NullType()).As<NullType>(), Optional(An<NullType>()));
 
@@ -201,6 +249,12 @@ TEST(Type, Cast) {
 
   EXPECT_THAT(static_cast<DynType>(Type(DynType())), An<DynType>());
 
+  EXPECT_THAT(
+      static_cast<EnumType>(Type(EnumType(
+          ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
+              "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"))))),
+      An<EnumType>());
+
   EXPECT_THAT(static_cast<ErrorType>(Type(ErrorType())), An<ErrorType>());
 
   EXPECT_TRUE(Type(FunctionType(&arena, DynType(), {})).Is<FunctionType>());
@@ -215,6 +269,15 @@ TEST(Type, Cast) {
   EXPECT_THAT(static_cast<ListType>(Type(ListType())), An<ListType>());
 
   EXPECT_THAT(static_cast<MapType>(Type(MapType())), An<MapType>());
+
+  EXPECT_THAT(static_cast<StructType>(Type(MessageType(ABSL_DIE_IF_NULL(
+                  GetTestingDescriptorPool()->FindMessageTypeByName(
+                      "google.api.expr.test.v1.proto3.TestAllTypes"))))),
+              An<StructType>());
+  EXPECT_THAT(static_cast<MessageType>(Type(MessageType(ABSL_DIE_IF_NULL(
+                  GetTestingDescriptorPool()->FindMessageTypeByName(
+                      "google.api.expr.test.v1.proto3.TestAllTypes"))))),
+              An<MessageType>());
 
   EXPECT_THAT(static_cast<NullType>(Type(NullType())), An<NullType>());
 

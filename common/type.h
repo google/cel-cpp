@@ -43,6 +43,7 @@
 #include "common/types/double_wrapper_type.h"  // IWYU pragma: export
 #include "common/types/duration_type.h"  // IWYU pragma: export
 #include "common/types/dyn_type.h"    // IWYU pragma: export
+#include "common/types/enum_type.h"   // IWYU pragma: export
 #include "common/types/error_type.h"  // IWYU pragma: export
 #include "common/types/function_type.h"  // IWYU pragma: export
 #include "common/types/int_type.h"  // IWYU pragma: export
@@ -85,6 +86,12 @@ class Type final {
   // `MessageType`.
   static Type Message(absl::Nonnull<const google::protobuf::Descriptor*> descriptor
                           ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+  // Returns an appropriate `Type` for the dynamic protobuf enum. For well
+  // known enum types, the appropriate `Type` is returned. All others return
+  // `EnumType`.
+  static Type Enum(absl::Nonnull<const google::protobuf::EnumDescriptor*> descriptor
+                       ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   Type() = default;
   Type(const Type&) = default;
@@ -205,6 +212,8 @@ class Type final {
 
   bool IsDyn() const { return absl::holds_alternative<DynType>(variant_); }
 
+  bool IsEnum() const { return absl::holds_alternative<EnumType>(variant_); }
+
   bool IsError() const { return absl::holds_alternative<ErrorType>(variant_); }
 
   bool IsFunction() const {
@@ -315,6 +324,11 @@ class Type final {
   template <typename T>
   std::enable_if_t<std::is_same_v<DynType, T>, bool> Is() const {
     return IsDyn();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<EnumType, T>, bool> Is() const {
+    return IsEnum();
   }
 
   template <typename T>
@@ -430,6 +444,8 @@ class Type final {
 
   absl::optional<DynType> AsDyn() const;
 
+  absl::optional<EnumType> AsEnum() const;
+
   absl::optional<ErrorType> AsError() const;
 
   absl::optional<FunctionType> AsFunction() const;
@@ -532,6 +548,12 @@ class Type final {
   std::enable_if_t<std::is_same_v<DynType, T>, absl::optional<DynType>> As()
       const {
     return AsDyn();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<EnumType, T>, absl::optional<EnumType>> As()
+      const {
+    return AsEnum();
   }
 
   template <typename T>
@@ -676,6 +698,8 @@ class Type final {
   explicit operator DurationType() const;
 
   explicit operator DynType() const;
+
+  explicit operator EnumType() const;
 
   explicit operator ErrorType() const;
 

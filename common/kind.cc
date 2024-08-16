@@ -70,6 +70,8 @@ absl::string_view KindToString(Kind kind) {
       return "google.protobuf.StringValue";
     case Kind::kBytesWrapper:
       return "google.protobuf.BytesValue";
+    case Kind::kEnum:
+      return "enum";
     default:
       return "*error*";
   }

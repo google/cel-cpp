@@ -56,6 +56,7 @@ enum class TypeKind : std::underlying_type_t<Kind> {
 
   kTypeParam = static_cast<int>(Kind::kTypeParam),
   kFunction = static_cast<int>(Kind::kFunction),
+  kEnum = static_cast<int>(Kind::kEnum),
 
   // Legacy aliases, deprecated do not use.
   kNullType = kNull,
