@@ -20,7 +20,6 @@
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
-#include "absl/meta/type_traits.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
@@ -79,17 +78,17 @@ Type Type::Enum(absl::Nonnull<const google::protobuf::EnumDescriptor*> descripto
 
 namespace {
 
-static constexpr std::array<TypeKind, 29> kTypeToKindArray = {
-    TypeKind::kError,       TypeKind::kAny,           TypeKind::kBool,
+static constexpr std::array<TypeKind, 28> kTypeToKindArray = {
+    TypeKind::kDyn,         TypeKind::kAny,           TypeKind::kBool,
     TypeKind::kBoolWrapper, TypeKind::kBytes,         TypeKind::kBytesWrapper,
     TypeKind::kDouble,      TypeKind::kDoubleWrapper, TypeKind::kDuration,
-    TypeKind::kDyn,         TypeKind::kEnum,          TypeKind::kError,
-    TypeKind::kFunction,    TypeKind::kInt,           TypeKind::kIntWrapper,
-    TypeKind::kList,        TypeKind::kMap,           TypeKind::kNull,
-    TypeKind::kOpaque,      TypeKind::kString,        TypeKind::kStringWrapper,
-    TypeKind::kStruct,      TypeKind::kStruct,        TypeKind::kTimestamp,
-    TypeKind::kTypeParam,   TypeKind::kType,          TypeKind::kUint,
-    TypeKind::kUintWrapper, TypeKind::kUnknown};
+    TypeKind::kEnum,        TypeKind::kError,         TypeKind::kFunction,
+    TypeKind::kInt,         TypeKind::kIntWrapper,    TypeKind::kList,
+    TypeKind::kMap,         TypeKind::kNull,          TypeKind::kOpaque,
+    TypeKind::kString,      TypeKind::kStringWrapper, TypeKind::kStruct,
+    TypeKind::kStruct,      TypeKind::kTimestamp,     TypeKind::kTypeParam,
+    TypeKind::kType,        TypeKind::kUint,          TypeKind::kUintWrapper,
+    TypeKind::kUnknown};
 
 static_assert(kTypeToKindArray.size() ==
                   absl::variant_size<common_internal::TypeVariant>(),
@@ -98,64 +97,34 @@ static_assert(kTypeToKindArray.size() ==
 }  // namespace
 
 TypeKind Type::kind() const {
-  ABSL_DCHECK(*this);
   return kTypeToKindArray[variant_.index()];
 }
 
 absl::string_view Type::name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  ABSL_DCHECK(*this);
   return absl::visit(
       [](const auto& alternative) -> absl::string_view {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          // In optimized builds, we just return an empty string. In debug
-          // builds we cannot reach here.
-          return absl::string_view();
-        } else {
-          return alternative.name();
-        }
+        return alternative.name();
       },
       variant_);
 }
 
 std::string Type::DebugString() const {
-  ABSL_DCHECK(*this);
   return absl::visit(
       [](const auto& alternative) -> std::string {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          // In optimized builds, we just return an empty string. In debug
-          // builds we cannot reach here.
-          return std::string();
-        } else {
-          return alternative.DebugString();
-        }
+        return alternative.DebugString();
       },
       variant_);
 }
 
 absl::Span<const Type> Type::parameters() const {
-  ABSL_DCHECK(*this);
   return absl::visit(
       [](const auto& alternative) -> absl::Span<const Type> {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
-          // In optimized builds, we just return an empty string. In debug
-          // builds we cannot reach here.
-          return {};
-        } else {
-          return alternative.parameters();
-        }
+        return alternative.parameters();
       },
       variant_);
 }
 
 bool operator==(const Type& lhs, const Type& rhs) {
-  lhs.AssertIsValid();
-  rhs.AssertIsValid();
   if (lhs.IsStruct() && rhs.IsStruct()) {
     return static_cast<StructType>(lhs) == static_cast<StructType>(rhs);
   } else if (lhs.IsStruct() || rhs.IsStruct()) {

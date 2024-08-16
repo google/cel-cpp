@@ -14,7 +14,6 @@
 
 #include "common/type.h"
 
-#include "absl/hash/hash.h"
 #include "absl/hash/hash_testing.h"
 #include "absl/log/die_if_null.h"
 #include "internal/testing.h"
@@ -25,9 +24,13 @@ namespace cel {
 namespace {
 
 using ::cel::internal::GetTestingDescriptorPool;
-using testing::_;
 using testing::An;
 using testing::Optional;
+
+TEST(Type, Default) {
+  EXPECT_EQ(Type(), DynType());
+  EXPECT_TRUE(Type().IsDyn());
+}
 
 TEST(Type, Enum) {
   EXPECT_EQ(
@@ -42,28 +45,73 @@ TEST(Type, Enum) {
             NullType());
 }
 
-TEST(Type, KindDebugDeath) {
-  Type type;
-  static_cast<void>(type);
-  EXPECT_DEBUG_DEATH(static_cast<void>(type.kind()), _);
-}
+TEST(Type, Kind) {
+  google::protobuf::Arena arena;
 
-TEST(Type, NameDebugDeath) {
-  Type type;
-  static_cast<void>(type);
-  EXPECT_DEBUG_DEATH(static_cast<void>(type.name()), _);
-}
+  EXPECT_EQ(Type(AnyType()).kind(), AnyType::kKind);
 
-TEST(Type, HashDebugDeath) {
-  Type type;
-  static_cast<void>(type);
-  EXPECT_DEBUG_DEATH(static_cast<void>(absl::HashOf(type)), _);
-}
+  EXPECT_EQ(Type(BoolType()).kind(), BoolType::kKind);
 
-TEST(Type, EqualDebugDeath) {
-  Type type;
-  static_cast<void>(type);
-  EXPECT_DEBUG_DEATH(static_cast<void>(type == type), _);
+  EXPECT_EQ(Type(BoolWrapperType()).kind(), BoolWrapperType::kKind);
+
+  EXPECT_EQ(Type(BytesType()).kind(), BytesType::kKind);
+
+  EXPECT_EQ(Type(BytesWrapperType()).kind(), BytesWrapperType::kKind);
+
+  EXPECT_EQ(Type(DoubleType()).kind(), DoubleType::kKind);
+
+  EXPECT_EQ(Type(DoubleWrapperType()).kind(), DoubleWrapperType::kKind);
+
+  EXPECT_EQ(Type(DurationType()).kind(), DurationType::kKind);
+
+  EXPECT_EQ(Type(DynType()).kind(), DynType::kKind);
+
+  EXPECT_EQ(
+      Type(EnumType(
+               ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
+                   "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"))))
+          .kind(),
+      EnumType::kKind);
+
+  EXPECT_EQ(Type(ErrorType()).kind(), ErrorType::kKind);
+
+  EXPECT_EQ(Type(FunctionType(&arena, DynType(), {})).kind(),
+            FunctionType::kKind);
+
+  EXPECT_EQ(Type(IntType()).kind(), IntType::kKind);
+
+  EXPECT_EQ(Type(IntWrapperType()).kind(), IntWrapperType::kKind);
+
+  EXPECT_EQ(Type(ListType()).kind(), ListType::kKind);
+
+  EXPECT_EQ(Type(MapType()).kind(), MapType::kKind);
+
+  EXPECT_EQ(Type(MessageType(ABSL_DIE_IF_NULL(
+                     GetTestingDescriptorPool()->FindMessageTypeByName(
+                         "google.api.expr.test.v1.proto3.TestAllTypes"))))
+                .kind(),
+            MessageType::kKind);
+  EXPECT_EQ(Type(MessageType(ABSL_DIE_IF_NULL(
+                     GetTestingDescriptorPool()->FindMessageTypeByName(
+                         "google.api.expr.test.v1.proto3.TestAllTypes"))))
+                .kind(),
+            MessageType::kKind);
+
+  EXPECT_EQ(Type(NullType()).kind(), NullType::kKind);
+
+  EXPECT_EQ(Type(OptionalType()).kind(), OpaqueType::kKind);
+
+  EXPECT_EQ(Type(StringType()).kind(), StringType::kKind);
+
+  EXPECT_EQ(Type(StringWrapperType()).kind(), StringWrapperType::kKind);
+
+  EXPECT_EQ(Type(TimestampType()).kind(), TimestampType::kKind);
+
+  EXPECT_EQ(Type(UintType()).kind(), UintType::kKind);
+
+  EXPECT_EQ(Type(UintWrapperType()).kind(), UintWrapperType::kKind);
+
+  EXPECT_EQ(Type(UnknownType()).kind(), UnknownType::kKind);
 }
 
 TEST(Type, Is) {

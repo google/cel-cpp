@@ -81,13 +81,13 @@ template <typename T>
 inline constexpr bool IsTypeAlternativeV = IsTypeAlternative<T>::value;
 
 using TypeVariant =
-    absl::variant<absl::monostate, AnyType, BoolType, BoolWrapperType,
-                  BytesType, BytesWrapperType, DoubleType, DoubleWrapperType,
-                  DurationType, DynType, EnumType, ErrorType, FunctionType,
-                  IntType, IntWrapperType, ListType, MapType, NullType,
-                  OpaqueType, StringType, StringWrapperType, MessageType,
-                  BasicStructType, TimestampType, TypeParamType, TypeType,
-                  UintType, UintWrapperType, UnknownType>;
+    absl::variant<DynType, AnyType, BoolType, BoolWrapperType, BytesType,
+                  BytesWrapperType, DoubleType, DoubleWrapperType, DurationType,
+                  EnumType, ErrorType, FunctionType, IntType, IntWrapperType,
+                  ListType, MapType, NullType, OpaqueType, StringType,
+                  StringWrapperType, MessageType, BasicStructType,
+                  TimestampType, TypeParamType, TypeType, UintType,
+                  UintWrapperType, UnknownType>;
 
 using StructTypeVariant =
     absl::variant<absl::monostate, BasicStructType, MessageType>;

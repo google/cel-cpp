@@ -27,7 +27,6 @@
 #include "absl/algorithm/container.h"
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
-#include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
@@ -93,6 +92,7 @@ class Type final {
   static Type Enum(absl::Nonnull<const google::protobuf::EnumDescriptor*> descriptor
                        ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
+  // The default constructor results in Type being DynType.
   Type() = default;
   Type(const Type&) = default;
   Type(Type&&) = default;
@@ -147,20 +147,11 @@ class Type final {
 
   template <typename H>
   friend H AbslHashValue(H state, const Type& type) {
-    type.AssertIsValid();
     return H::combine(
         absl::visit(
             [state = std::move(state)](const auto& alternative) mutable -> H {
-              if constexpr (std::is_same_v<
-                                absl::remove_cvref_t<decltype(alternative)>,
-                                absl::monostate>) {
-                // In optimized builds, we just hash `absl::monostate`. In debug
-                // builds we cannot reach here.
-                return H::combine(std::move(state), alternative);
-              } else {
-                return H::combine(std::move(state), alternative.kind(),
-                                  alternative);
-              }
+              return H::combine(std::move(state), alternative.kind(),
+                                alternative);
             },
             type.variant_),
         type.variant_.index());
@@ -171,15 +162,7 @@ class Type final {
   friend std::ostream& operator<<(std::ostream& out, const Type& type) {
     return absl::visit(
         [&out](const auto& alternative) -> std::ostream& {
-          if constexpr (std::is_same_v<
-                            absl::remove_cvref_t<decltype(alternative)>,
-                            absl::monostate>) {
-            // In optimized builds, we do nothing. In debug builds we cannot
-            // reach here.
-            return out;
-          } else {
-            return out << alternative;
-          }
+          return out << alternative;
         },
         type.variant_);
   }
@@ -677,10 +660,6 @@ class Type final {
     return AsUnknown();
   }
 
-  explicit operator bool() const {
-    return !absl::holds_alternative<absl::monostate>(variant_);
-  }
-
   explicit operator AnyType() const;
 
   explicit operator BoolType() const;
@@ -743,12 +722,6 @@ class Type final {
   friend class StructType;
   friend class MessageType;
   friend class common_internal::BasicStructType;
-
-  bool IsValid() const { return static_cast<bool>(*this); }
-
-  void AssertIsValid() const {
-    ABSL_DCHECK(IsValid()) << "use of invalid Type";
-  }
 
   common_internal::StructTypeVariant ToStructTypeVariant() const;
 
