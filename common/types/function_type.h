@@ -37,7 +37,6 @@ class FunctionType;
 
 namespace common_internal {
 struct FunctionTypeData;
-class FunctionTypePool;
 }  // namespace common_internal
 
 class FunctionType final {

@@ -36,7 +36,6 @@ class MapType;
 
 namespace common_internal {
 struct MapTypeData;
-class MapTypePool;
 }  // namespace common_internal
 
 MapType JsonMapType();

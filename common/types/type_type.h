@@ -36,7 +36,6 @@ class TypeType;
 
 namespace common_internal {
 struct TypeTypeData;
-class TypeTypePool;
 }  // namespace common_internal
 
 // `TypeType` is a special type which represents the type of a type.

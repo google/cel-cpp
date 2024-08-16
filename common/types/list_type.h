@@ -36,7 +36,6 @@ class ListType;
 
 namespace common_internal {
 struct ListTypeData;
-class ListTypePool;
 }  // namespace common_internal
 
 class ListType final {

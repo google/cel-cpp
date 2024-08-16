@@ -32,10 +32,6 @@ namespace cel {
 class Type;
 class TypeParamType;
 
-namespace common_internal {
-class TypeParamTypePool;
-}  // namespace common_internal
-
 class TypeParamType final {
  public:
   static constexpr TypeKind kKind = TypeKind::kTypeParam;

@@ -40,7 +40,6 @@ class OptionalType;
 
 namespace common_internal {
 struct OpaqueTypeData;
-class OpaqueTypePool;
 }  // namespace common_internal
 
 class OpaqueType final {
