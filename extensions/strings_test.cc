@@ -39,6 +39,34 @@ using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::parser::ParserOptions;
 
+TEST(Strings, Replace) {
+  MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
+  const auto options = RuntimeOptions{};
+  ASSERT_OK_AND_ASSIGN(auto builder, CreateStandardRuntimeBuilder(options));
+  EXPECT_OK(RegisterStringsFunctions(builder.function_registry(), options));
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                       Parse("foo.replace(\"_\", \" \") == \"hello world!\"",
+                             "<input>", ParserOptions{}));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+
+  common_internal::LegacyValueManager value_factory(memory_manager,
+                                                    runtime->GetTypeProvider());
+
+  Activation activation;
+  activation.InsertOrAssignValue("foo",
+                                 StringValue{absl::Cord("hello_world!")});
+
+  ASSERT_OK_AND_ASSIGN(Value result,
+                       program->Evaluate(activation, value_factory));
+  ASSERT_TRUE(result.Is<BoolValue>());
+  EXPECT_TRUE(result.As<BoolValue>().NativeValue());
+}
+
 TEST(Strings, SplitWithEmptyDelimiterCord) {
   MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
   const auto options = RuntimeOptions{};
