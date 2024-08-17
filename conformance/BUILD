@@ -45,6 +45,7 @@ cc_library(
     hdrs = ["service.h"],
     deps = [
         ":value_conversion",
+        "//common:expr",
         "//common:memory",
         "//common:source",
         "//common:value",
@@ -67,6 +68,8 @@ cc_library(
         "//extensions/protobuf:value",
         "//internal:status_macros",
         "//parser",
+        "//parser:macro",
+        "//parser:macro_expr_factory",
         "//parser:macro_registry",
         "//parser:options",
         "//parser:standard_macros",
@@ -82,6 +85,8 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
         "@com_google_cel_spec//proto/test/v1/proto2:test_all_types_cc_proto",
         "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
         "@com_google_googleapis//google/api/expr/conformance/v1alpha1:conformance_cc_proto",
@@ -141,6 +146,7 @@ _ALL_TESTS = [
     "@com_google_cel_spec//tests/simple:testdata/timestamps.textproto",
     "@com_google_cel_spec//tests/simple:testdata/unknowns.textproto",
     "@com_google_cel_spec//tests/simple:testdata/wrappers.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/block_ext.textproto",
 ]
 
 _TESTS_TO_SKIP_MODERN = [
@@ -209,6 +215,13 @@ _TESTS_TO_SKIP_MODERN = [
 
     # TODO: Add missing conversion function
     "conversions/bool",
+
+    # cel.@block
+    "block_ext/basic/multiple_macros_1",
+    "block_ext/basic/multiple_macros_2",
+    "block_ext/basic/multiple_macros_3",
+    "block_ext/basic/nested_macros",
+    "block_ext/basic/nested_macros_2",
 ]
 
 _TESTS_TO_SKIP_MODERN_DASHBOARD = [
@@ -276,6 +289,17 @@ _TESTS_TO_SKIP_LEGACY = [
 
     # TODO: Add missing conversion function
     "conversions/bool",
+
+    # cel.@block
+    "block_ext/basic/optional_list",
+    "block_ext/basic/optional_map",
+    "block_ext/basic/optional_map_chained",
+    "block_ext/basic/optional_message",
+    "block_ext/basic/multiple_macros_1",
+    "block_ext/basic/multiple_macros_2",
+    "block_ext/basic/multiple_macros_3",
+    "block_ext/basic/nested_macros",
+    "block_ext/basic/nested_macros_2",
 ]
 
 _TESTS_TO_SKIP_LEGACY_DASHBOARD = [

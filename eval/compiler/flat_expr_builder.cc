@@ -38,8 +38,10 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
+#include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/strings/strip.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
@@ -301,6 +303,10 @@ bool IsBind(const cel::ast_internal::Comprehension* comprehension) {
          comprehension->iter_range().list_expr().elements().empty();
 }
 
+bool IsBlock(const cel::ast_internal::Call* call) {
+  return call->function() == "cel.@block";
+}
+
 // Visitor for Comprehension expressions.
 class ComprehensionVisitor {
  public:
@@ -397,7 +403,6 @@ class FlatExprVisitor : public cel::AstVisitor {
         value_factory_(value_factory),
         progress_status_(absl::OkStatus()),
         resolved_select_expr_(nullptr),
-        parent_expr_(nullptr),
         options_(options),
         program_optimizers_(std::move(program_optimizers)),
         issue_collector_(issue_collector),
@@ -416,9 +421,14 @@ class FlatExprVisitor : public cel::AstVisitor {
       resume_from_suppressed_branch_ = &expr;
     }
 
-    program_builder_.EnterSubexpression(&expr);
+    if (block_.has_value()) {
+      BlockInfo& block = *block_;
+      if (block.in && block.bindings_set.contains(&expr)) {
+        block.current_binding = &expr;
+      }
+    }
 
-    parent_expr_ = &expr;
+    program_builder_.EnterSubexpression(&expr);
 
     for (const std::unique_ptr<ProgramOptimizer>& optimizer :
          program_optimizers_) {
@@ -462,6 +472,20 @@ class FlatExprVisitor : public cel::AstVisitor {
       SetProgressStatusError(
           MaybeExtractSubexpression(&expr, comprehension_stack_.back()));
     }
+
+    if (block_.has_value()) {
+      BlockInfo& block = *block_;
+      if (block.current_binding == &expr) {
+        int index = program_builder_.ExtractSubexpression(&expr);
+        if (index == -1) {
+          SetProgressStatusError(
+              absl::InvalidArgumentError("failed to extract subexpression"));
+          return;
+        }
+        block.subexpressions[block.current_index++] = index;
+        block.current_binding = nullptr;
+      }
+    }
   }
 
   void PostVisitConst(const cel::ast_internal::Expr& expr,
@@ -499,6 +523,47 @@ class FlatExprVisitor : public cel::AstVisitor {
   // If lazy evaluation enabled and ided as a lazy expression,
   // subexpression and slot will be set.
   SlotLookupResult LookupSlot(absl::string_view path) {
+    if (block_.has_value()) {
+      const BlockInfo& block = *block_;
+      if (block.in) {
+        absl::string_view index_suffix = path;
+        if (absl::ConsumePrefix(&index_suffix, "@index")) {
+          size_t index;
+          if (!absl::SimpleAtoi(index_suffix, &index)) {
+            SetProgressStatusError(
+                issue_collector_.AddIssue(RuntimeIssue::CreateWarning(
+                    absl::InvalidArgumentError("bad @index"))));
+            return {-1, -1};
+          }
+          if (index >= block.size) {
+            SetProgressStatusError(
+                issue_collector_.AddIssue(RuntimeIssue::CreateWarning(
+                    absl::InvalidArgumentError(absl::StrCat(
+                        "invalid @index greater than number of bindings: ",
+                        index, " >= ", block.size)))));
+            return {-1, -1};
+          }
+          if (index >= block.current_index) {
+            SetProgressStatusError(
+                issue_collector_.AddIssue(RuntimeIssue::CreateWarning(
+                    absl::InvalidArgumentError(absl::StrCat(
+                        "@index references current or future binding: ", index,
+                        " >= ", block.current_index)))));
+            return {-1, -1};
+          }
+          return {static_cast<int>(block.index + index),
+                  block.subexpressions[index]};
+        }
+        if (absl::ConsumePrefix(&index_suffix, "@c:") ||
+            absl::ConsumePrefix(&index_suffix, "@x:")) {
+          SetProgressStatusError(issue_collector_.AddIssue(
+              RuntimeIssue::CreateWarning(absl::InvalidArgumentError(
+                  "support is not yet implemented for CSE generated @c: or @x: "
+                  "comprehension variables"))));
+          return {-1, -1};
+        }
+      }
+    }
     if (!comprehension_stack_.empty()) {
       for (int i = comprehension_stack_.size() - 1; i >= 0; i--) {
         const ComprehensionStackRecord& record = comprehension_stack_[i];
@@ -740,6 +805,55 @@ class FlatExprVisitor : public cel::AstVisitor {
                call_expr.has_target() && call_expr.args().size() == 1) {
       cond_visitor = std::make_unique<BinaryCondVisitor>(
           this, BinaryCond::kOptionalOrValue, options_.short_circuiting);
+    } else if (IsBlock(&call_expr)) {
+      // cel.@block
+      if (block_.has_value()) {
+        // There can only be one for now.
+        SetProgressStatusError(
+            absl::InvalidArgumentError("multiple cel.@block are not allowed"));
+        return;
+      }
+      block_ = BlockInfo();
+      BlockInfo& block = *block_;
+      block.in = true;
+      if (call_expr.args().empty()) {
+        SetProgressStatusError(absl::InvalidArgumentError(
+            "malformed cel.@block: missing list of bound expressions"));
+        return;
+      }
+      if (call_expr.args().size() != 2) {
+        SetProgressStatusError(absl::InvalidArgumentError(
+            "malformed cel.@block: missing bound expression"));
+        return;
+      }
+      if (!call_expr.args()[0].has_list_expr()) {
+        SetProgressStatusError(
+            absl::InvalidArgumentError("malformed cel.@block: first argument "
+                                       "is not a list of bound expressions"));
+        return;
+      }
+      const auto& list_expr = call_expr.args().front().list_expr();
+      block.size = list_expr.elements().size();
+      if (block.size == 0) {
+        SetProgressStatusError(absl::InvalidArgumentError(
+            "malformed cel.@block: list of bound expressions is empty"));
+        return;
+      }
+      block.bindings_set.reserve(block.size);
+      for (const auto& list_expr_element : list_expr.elements()) {
+        if (list_expr_element.optional()) {
+          SetProgressStatusError(
+              absl::InvalidArgumentError("malformed cel.@block: list of bound "
+                                         "expressions contains an optional"));
+          return;
+        }
+        block.bindings_set.insert(&list_expr_element.expr());
+      }
+      block.index = index_manager().ReserveSlots(block.size);
+      block.expr = &expr;
+      block.bindings = &call_expr.args()[0];
+      block.bound = &call_expr.args()[1];
+      block.subexpressions.resize(block.size, -1);
     } else {
       return;
     }
@@ -1049,6 +1163,16 @@ class FlatExprVisitor : public cel::AstVisitor {
       return;
     }
 
+    if (block_.has_value()) {
+      BlockInfo& block = *block_;
+      if (block.expr == &expr) {
+        block.in = false;
+        index_manager().ReleaseSlots(block.size);
+        AddStep(CreateClearSlotsStep(block.index, block.size, -1));
+        return;
+      }
+    }
+
     // Establish the search criteria for a given function.
     absl::string_view function = call_expr.function();
 
@@ -1260,6 +1384,15 @@ class FlatExprVisitor : public cel::AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
+
+    if (block_.has_value()) {
+      BlockInfo& block = *block_;
+      if (block.bindings == &expr) {
+        // Do nothing, this is the cel.@block bindings list.
+        return;
+      }
+    }
+
     if (!comprehension_stack_.empty()) {
       const ComprehensionStackRecord& comprehension =
           comprehension_stack_.back();
@@ -1514,6 +1647,36 @@ class FlatExprVisitor : public cel::AstVisitor {
     std::unique_ptr<ComprehensionVisitor> visitor;
   };
 
+  struct BlockInfo {
+    // True if we are currently visiting the `cel.@block` node or any of its
+    // children.
+    bool in = false;
+    // Pointer to the `cel.@block` node.
+    const cel::ast_internal::Expr* expr = nullptr;
+    // Pointer to the `cel.@block` bindings, that is the first argument to the
+    // function.
+    const cel::ast_internal::Expr* bindings = nullptr;
+    // Set of pointers to the elements of `bindings` above.
+    absl::flat_hash_set<const cel::ast_internal::Expr*> bindings_set;
+    // Pointer to the `cel.@block` bound expression, that is the second argument
+    // to the function.
+    const cel::ast_internal::Expr* bound = nullptr;
+    // The number of entries in the `cel.@block`.
+    size_t size = 0;
+    // Starting slot index for `cel.@block`. We occupy he slot indices `index`
+    // through `index + size + (var_size * 2)`.
+    size_t index = 0;
+    // The current slot index we are processing, any index references must be
+    // less than this to be valid.
+    size_t current_index = 0;
+    // Pointer to the current `cel.@block` being processed, that is one of the
+    // elements within the first argument.
+    const cel::ast_internal::Expr* current_binding = nullptr;
+    // Mapping between block indices and their subexpressions, fixed size with
+    // exactly `size` elements. Unprocessed indices are set to `-1`.
+    std::vector<int> subexpressions;
+  };
+
   bool PlanningSuppressed() const {
     return resume_from_suppressed_branch_ != nullptr;
   }
@@ -1593,10 +1756,6 @@ class FlatExprVisitor : public cel::AstVisitor {
   // field is used as marker suppressing CelExpression creation for SELECTs.
   const cel::ast_internal::Expr* resolved_select_expr_;
 
-  // Used for assembling a temporary tree mapping program segments
-  // to source expr nodes.
-  const cel::ast_internal::Expr* parent_expr_;
-
   const cel::RuntimeOptions& options_;
 
   std::vector<ComprehensionStackRecord> comprehension_stack_;
@@ -1610,6 +1769,7 @@ class FlatExprVisitor : public cel::AstVisitor {
   IndexManager index_manager_;
 
   bool enable_optional_types_;
+  absl::optional<BlockInfo> block_;
 };
 
 void BinaryCondVisitor::PreVisit(const cel::ast_internal::Expr* expr) {

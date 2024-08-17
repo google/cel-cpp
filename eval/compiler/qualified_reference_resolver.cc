@@ -58,7 +58,8 @@ bool IsSpecialFunction(absl::string_view function_name) {
          function_name == cel::builtin::kOr ||
          function_name == cel::builtin::kIndex ||
          function_name == cel::builtin::kTernary ||
-         function_name == kOptionalOr || function_name == kOptionalOrValue;
+         function_name == kOptionalOr || function_name == kOptionalOrValue ||
+         function_name == "cel.@block";
 }
 
 bool OverloadExists(const Resolver& resolver, absl::string_view name,

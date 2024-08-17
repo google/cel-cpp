@@ -14,6 +14,7 @@
 
 #include "conformance/service.h"
 
+#include <cstdint>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -33,7 +34,11 @@
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
+#include "absl/types/span.h"
+#include "common/expr.h"
 #include "common/memory.h"
 #include "common/source.h"
 #include "common/value.h"
@@ -56,6 +61,8 @@
 #include "extensions/protobuf/type_reflector.h"
 #include "extensions/strings.h"
 #include "internal/status_macros.h"
+#include "parser/macro.h"
+#include "parser/macro_expr_factory.h"
 #include "parser/macro_registry.h"
 #include "parser/options.h"
 #include "parser/parser.h"
@@ -89,6 +96,103 @@ using ::google::protobuf::Arena;
 namespace google::api::expr::runtime {
 
 namespace {
+
+bool IsCelNamespace(const cel::Expr& target) {
+  return target.has_ident_expr() && target.ident_expr().name() == "cel";
+}
+
+absl::optional<cel::Expr> CelBlockMacroExpander(cel::MacroExprFactory& factory,
+                                                cel::Expr& target,
+                                                absl::Span<cel::Expr> args) {
+  if (!IsCelNamespace(target)) {
+    return absl::nullopt;
+  }
+  cel::Expr& bindings_arg = args[0];
+  if (!bindings_arg.has_list_expr()) {
+    return factory.ReportErrorAt(
+        bindings_arg, "cel.block requires the first arg to be a list literal");
+  }
+  return factory.NewCall("cel.@block", args);
+}
+
+absl::optional<cel::Expr> CelIndexMacroExpander(cel::MacroExprFactory& factory,
+                                                cel::Expr& target,
+                                                absl::Span<cel::Expr> args) {
+  if (!IsCelNamespace(target)) {
+    return absl::nullopt;
+  }
+  cel::Expr& index_arg = args[0];
+  if (!index_arg.has_const_expr() || !index_arg.const_expr().has_int_value()) {
+    return factory.ReportErrorAt(
+        index_arg, "cel.index requires a single non-negative int constant arg");
+  }
+  int64_t index = index_arg.const_expr().int_value();
+  if (index < 0) {
+    return factory.ReportErrorAt(
+        index_arg, "cel.index requires a single non-negative int constant arg");
+  }
+  return factory.NewIdent(absl::StrCat("@index", index));
+}
+
+absl::optional<cel::Expr> CelIterVarMacroExpander(
+    cel::MacroExprFactory& factory, cel::Expr& target,
+    absl::Span<cel::Expr> args) {
+  if (!IsCelNamespace(target)) {
+    return absl::nullopt;
+  }
+  cel::Expr& index_arg = args[0];
+  if (!index_arg.has_const_expr() || !index_arg.const_expr().has_int_value()) {
+    return factory.ReportErrorAt(
+        index_arg,
+        "cel.iterVar requires a single non-negative int constant arg");
+  }
+  int64_t index = index_arg.const_expr().int_value();
+  if (index < 0) {
+    return factory.ReportErrorAt(
+        index_arg,
+        "cel.iterVar requires a single non-negative int constant arg");
+  }
+  return factory.NewIdent(absl::StrCat("@c:", index));
+}
+
+absl::optional<cel::Expr> CelAccuVarMacroExpander(
+    cel::MacroExprFactory& factory, cel::Expr& target,
+    absl::Span<cel::Expr> args) {
+  if (!IsCelNamespace(target)) {
+    return absl::nullopt;
+  }
+  cel::Expr& index_arg = args[0];
+  if (!index_arg.has_const_expr() || !index_arg.const_expr().has_int_value()) {
+    return factory.ReportErrorAt(
+        index_arg,
+        "cel.accuVar requires a single non-negative int constant arg");
+  }
+  int64_t index = index_arg.const_expr().int_value();
+  if (index < 0) {
+    return factory.ReportErrorAt(
+        index_arg,
+        "cel.accuVar requires a single non-negative int constant arg");
+  }
+  return factory.NewIdent(absl::StrCat("@x:", index));
+}
+
+absl::Status RegisterCelBlockMacros(cel::MacroRegistry& registry) {
+  CEL_ASSIGN_OR_RETURN(auto block_macro,
+                       cel::Macro::Receiver("block", 2, CelBlockMacroExpander));
+  CEL_RETURN_IF_ERROR(registry.RegisterMacro(block_macro));
+  CEL_ASSIGN_OR_RETURN(auto index_macro,
+                       cel::Macro::Receiver("index", 1, CelIndexMacroExpander));
+  CEL_RETURN_IF_ERROR(registry.RegisterMacro(index_macro));
+  CEL_ASSIGN_OR_RETURN(
+      auto iter_var_macro,
+      cel::Macro::Receiver("iterVar", 1, CelIterVarMacroExpander));
+  CEL_RETURN_IF_ERROR(registry.RegisterMacro(iter_var_macro));
+  CEL_ASSIGN_OR_RETURN(
+      auto accu_var_macro,
+      cel::Macro::Receiver("accuVar", 1, CelAccuVarMacroExpander));
+  CEL_RETURN_IF_ERROR(registry.RegisterMacro(accu_var_macro));
+  return absl::OkStatus();
+}
 
 google::rpc::Code ToGrpcCode(absl::StatusCode code) {
   return static_cast<google::rpc::Code>(code);
@@ -126,6 +230,7 @@ absl::Status LegacyParse(const conformance::v1alpha1::ParseRequest& request,
   CEL_RETURN_IF_ERROR(cel::extensions::RegisterBindingsMacros(macros, options));
   CEL_RETURN_IF_ERROR(cel::extensions::RegisterMathMacros(macros, options));
   CEL_RETURN_IF_ERROR(cel::extensions::RegisterProtoMacros(macros, options));
+  CEL_RETURN_IF_ERROR(RegisterCelBlockMacros(macros));
   CEL_ASSIGN_OR_RETURN(auto source, cel::NewSource(request.cel_source(),
                                                    request.source_location()));
   CEL_ASSIGN_OR_RETURN(auto parsed_expr,
