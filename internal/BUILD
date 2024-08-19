@@ -654,3 +654,56 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "parse_text_proto",
+    testonly = True,
+    hdrs = ["parse_text_proto.h"],
+    deps = [
+        ":message_type_name",
+        ":testing_descriptor_pool",
+        ":testing_message_factory",
+        "//common:allocator",
+        "//common:memory",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/log:die_if_null",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "equals_text_proto",
+    testonly = True,
+    srcs = ["equals_text_proto.cc"],
+    hdrs = ["equals_text_proto.h"],
+    deps = [
+        ":parse_text_proto",
+        ":testing",
+        ":testing_descriptor_pool",
+        ":testing_message_factory",
+        "//common:allocator",
+        "//common:memory",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "testing_message_factory",
+    testonly = True,
+    srcs = ["testing_message_factory.cc"],
+    hdrs = ["testing_message_factory.h"],
+    deps = [
+        ":testing_descriptor_pool",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
