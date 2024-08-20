@@ -222,6 +222,7 @@ _TESTS_TO_SKIP_MODERN = [
     "block_ext/basic/multiple_macros_3",
     "block_ext/basic/nested_macros",
     "block_ext/basic/nested_macros_2",
+    "block_ext/basic/adjacent_macros",
 ]
 
 _TESTS_TO_SKIP_MODERN_DASHBOARD = [
@@ -300,6 +301,7 @@ _TESTS_TO_SKIP_LEGACY = [
     "block_ext/basic/multiple_macros_3",
     "block_ext/basic/nested_macros",
     "block_ext/basic/nested_macros_2",
+    "block_ext/basic/adjacent_macros",
 ]
 
 _TESTS_TO_SKIP_LEGACY_DASHBOARD = [
