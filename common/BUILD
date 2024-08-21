@@ -259,7 +259,9 @@ cc_test(
     deps = [
         ":any",
         "//internal:testing",
+        "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/strings:string_view",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

@@ -14,11 +14,24 @@
 
 #include "common/any.h"
 
+#include <string>
+
+#include "google/protobuf/any.pb.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
+
+TEST(Any, Value) {
+  google::protobuf::Any any;
+  std::string scratch;
+  SetAnyValueFromCord(&any, absl::Cord("Hello World!"));
+  EXPECT_EQ(GetAnyValueAsCord(any), "Hello World!");
+  EXPECT_EQ(GetAnyValueAsString(any), "Hello World!");
+  EXPECT_EQ(GetAnyValueAsStringView(any, scratch), "Hello World!");
+}
 
 TEST(MakeTypeUrlWithPrefix, Basic) {
   EXPECT_EQ(MakeTypeUrlWithPrefix("foo", "bar.Baz"), "foo/bar.Baz");

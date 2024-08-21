@@ -51,6 +51,11 @@ inline std::string GetAnyValueAsString(const google::protobuf::Any& any) {
   return std::string(any.value());
 }
 
+inline void SetAnyValueFromCord(absl::Nonnull<google::protobuf::Any*> any,
+                                const absl::Cord& value) {
+  any->set_value(static_cast<std::string>(value));
+}
+
 inline absl::string_view GetAnyValueAsStringView(
     const google::protobuf::Any& any ABSL_ATTRIBUTE_LIFETIME_BOUND,
     std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
