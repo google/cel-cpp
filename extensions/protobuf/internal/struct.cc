@@ -178,7 +178,7 @@ absl::StatusOr<Json> DynamicValueProtoToJson(const google::protobuf::Message& me
   if constexpr (NotMessageLite<google::protobuf::Value>) {
     if (IsGeneratedMessage(message)) {
       return GeneratedValueProtoToJson(
-          google::protobuf::DownCastToGenerated<google::protobuf::Value>(message));
+          google::protobuf::DownCastMessage<google::protobuf::Value>(message));
     }
   }
   CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(message));
@@ -235,7 +235,7 @@ absl::StatusOr<Json> DynamicListValueProtoToJson(
   if constexpr (NotMessageLite<google::protobuf::ListValue>) {
     if (IsGeneratedMessage(message)) {
       return GeneratedListValueProtoToJson(
-          google::protobuf::DownCastToGenerated<google::protobuf::ListValue>(message));
+          google::protobuf::DownCastMessage<google::protobuf::ListValue>(message));
     }
   }
   CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(message));
@@ -262,7 +262,7 @@ absl::StatusOr<Json> DynamicStructProtoToJson(const google::protobuf::Message& m
   if constexpr (NotMessageLite<google::protobuf::Struct>) {
     if (IsGeneratedMessage(message)) {
       return GeneratedStructProtoToJson(
-          google::protobuf::DownCastToGenerated<google::protobuf::Struct>(message));
+          google::protobuf::DownCastMessage<google::protobuf::Struct>(message));
     }
   }
   CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(message));
@@ -297,7 +297,7 @@ absl::Status DynamicValueProtoFromJson(const Json& json,
   if constexpr (NotMessageLite<google::protobuf::Value>) {
     if (IsGeneratedMessage(message)) {
       return GeneratedValueProtoFromJson(
-          json, google::protobuf::DownCastToGenerated<google::protobuf::Value>(message));
+          json, google::protobuf::DownCastMessage<google::protobuf::Value>(message));
     }
   }
   CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(message));
@@ -384,8 +384,7 @@ absl::Status DynamicListValueProtoFromJson(const JsonArray& json,
   if constexpr (NotMessageLite<google::protobuf::ListValue>) {
     if (IsGeneratedMessage(message)) {
       return GeneratedListValueProtoFromJson(
-          json,
-          google::protobuf::DownCastToGenerated<google::protobuf::ListValue>(message));
+          json, google::protobuf::DownCastMessage<google::protobuf::ListValue>(message));
     }
   }
   CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(message));
@@ -414,7 +413,7 @@ absl::Status DynamicStructProtoFromJson(const JsonObject& json,
   if constexpr (NotMessageLite<google::protobuf::Struct>) {
     if (IsGeneratedMessage(message)) {
       return GeneratedStructProtoFromJson(
-          json, google::protobuf::DownCastToGenerated<google::protobuf::Struct>(message));
+          json, google::protobuf::DownCastMessage<google::protobuf::Struct>(message));
     }
   }
   CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(message));
@@ -444,7 +443,7 @@ absl::Status DynamicValueProtoSetNullValue(google::protobuf::Message* message) {
   if constexpr (NotMessageLite<google::protobuf::Value>) {
     if (IsGeneratedMessage(*message)) {
       GeneratedValueProtoSetNullValue(
-          google::protobuf::DownCastToGenerated<google::protobuf::Value>(message));
+          google::protobuf::DownCastMessage<google::protobuf::Value>(message));
       return absl::OkStatus();
     }
   }
@@ -466,7 +465,7 @@ absl::Status DynamicValueProtoSetBoolValue(bool value,
   if constexpr (NotMessageLite<google::protobuf::Value>) {
     if (IsGeneratedMessage(*message)) {
       GeneratedValueProtoSetBoolValue(
-          value, google::protobuf::DownCastToGenerated<google::protobuf::Value>(message));
+          value, google::protobuf::DownCastMessage<google::protobuf::Value>(message));
       return absl::OkStatus();
     }
   }
@@ -488,7 +487,7 @@ absl::Status DynamicValueProtoSetNumberValue(double value,
   if constexpr (NotMessageLite<google::protobuf::Value>) {
     if (IsGeneratedMessage(*message)) {
       GeneratedValueProtoSetNumberValue(
-          value, google::protobuf::DownCastToGenerated<google::protobuf::Value>(message));
+          value, google::protobuf::DownCastMessage<google::protobuf::Value>(message));
       return absl::OkStatus();
     }
   }
@@ -511,7 +510,7 @@ absl::Status DynamicValueProtoSetStringValue(absl::string_view value,
   if constexpr (NotMessageLite<google::protobuf::Value>) {
     if (IsGeneratedMessage(*message)) {
       GeneratedValueProtoSetStringValue(
-          value, google::protobuf::DownCastToGenerated<google::protobuf::Value>(message));
+          value, google::protobuf::DownCastMessage<google::protobuf::Value>(message));
       return absl::OkStatus();
     }
   }
@@ -536,7 +535,7 @@ absl::StatusOr<google::protobuf::Message*> DynamicValueProtoMutableListValue(
                 NotMessageLite<google::protobuf::ListValue>) {
     if (IsGeneratedMessage(*message)) {
       return UpCastMessage(GeneratedValueProtoMutableListValue(
-          google::protobuf::DownCastToGenerated<google::protobuf::Value>(message)));
+          google::protobuf::DownCastMessage<google::protobuf::Value>(message)));
     }
   }
   CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(*message));
@@ -557,7 +556,7 @@ absl::StatusOr<google::protobuf::Message*> DynamicValueProtoMutableStructValue(
                 NotMessageLite<google::protobuf::Struct>) {
     if (IsGeneratedMessage(*message)) {
       return UpCastMessage(GeneratedValueProtoMutableStructValue(
-          google::protobuf::DownCastToGenerated<google::protobuf::Value>(message)));
+          google::protobuf::DownCastMessage<google::protobuf::Value>(message)));
     }
   }
   CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(*message));
@@ -578,7 +577,7 @@ absl::StatusOr<google::protobuf::Message*> DynamicListValueProtoAddElement(
   if constexpr (NotMessageLite<google::protobuf::ListValue>) {
     if (IsGeneratedMessage(*message)) {
       return UpCastMessage(GeneratedListValueProtoAddElement(
-          google::protobuf::DownCastToGenerated<google::protobuf::ListValue>(message)));
+          google::protobuf::DownCastMessage<google::protobuf::ListValue>(message)));
     }
   }
   CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(*message));
@@ -598,8 +597,7 @@ absl::StatusOr<google::protobuf::Message*> DynamicStructValueProtoAddField(
   if constexpr (NotMessageLite<google::protobuf::Struct>) {
     if (IsGeneratedMessage(*message)) {
       return UpCastMessage(GeneratedStructValueProtoAddField(
-          name,
-          google::protobuf::DownCastToGenerated<google::protobuf::Struct>(message)));
+          name, google::protobuf::DownCastMessage<google::protobuf::Struct>(message)));
     }
   }
   CEL_ASSIGN_OR_RETURN(const auto* reflection, GetReflection(*message));

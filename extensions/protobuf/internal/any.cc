@@ -45,7 +45,7 @@ absl::StatusOr<google::protobuf::Any> UnwrapDynamicAnyProto(
     if (IsGeneratedMessage(message)) {
       // Fast path.
       return UnwrapGeneratedAnyProto(
-          google::protobuf::DownCastToGenerated<google::protobuf::Any>(message));
+          google::protobuf::DownCastMessage<google::protobuf::Any>(message));
     }
   }
   const auto* reflect = message.GetReflection();
@@ -106,7 +106,7 @@ absl::Status WrapDynamicAnyProto(absl::string_view type_url,
       // Fast path.
       return WrapGeneratedAnyProto(
           type_url, value,
-          google::protobuf::DownCastToGenerated<google::protobuf::Any>(message));
+          google::protobuf::DownCastMessage<google::protobuf::Any>(message));
     }
   }
   const auto* reflect = message.GetReflection();

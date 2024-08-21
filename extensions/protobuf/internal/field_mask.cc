@@ -44,7 +44,7 @@ absl::StatusOr<JsonString> DynamicFieldMaskProtoToJsonString(
   if constexpr (NotMessageLite<google::protobuf::FieldMask>) {
     if (IsGeneratedMessage(message)) {
       return GeneratedFieldMaskProtoToJsonString(
-          google::protobuf::DownCastToGenerated<google::protobuf::FieldMask>(message));
+          google::protobuf::DownCastMessage<google::protobuf::FieldMask>(message));
     }
   }
   const auto* reflection = message.GetReflection();
