@@ -27,8 +27,8 @@
 #include "absl/types/optional.h"
 #include "absl/utility/utility.h"
 #include "common/native_type.h"
+#include "common/optional_ref.h"
 #include "internal/casts.h"
-#include "internal/optional_ref.h"
 
 namespace cel {
 
@@ -200,7 +200,7 @@ struct AsImpl final {
 
   template <typename From>
   ABSL_MUST_USE_RESULT decltype(auto) operator()(From&& from) const {
-    // Returns either `absl::optional` or `cel::internal::optional_ref`
+    // Returns either `absl::optional` or `cel::optional_ref`
     // depending on the return type of `CastTraits::Convert`. The use of these
     // two types is an implementation detail.
     static_assert(!std::is_volatile_v<From>,
@@ -210,14 +210,13 @@ struct AsImpl final {
     using R = decltype(CastImpl<To>{}(std::forward<From>(from)));
     if (!InstanceOfImpl<To>{}(from)) {
       if constexpr (std::is_lvalue_reference_v<R>) {
-        return cel::internal::optional_ref<std::remove_reference_t<R>>{
-            absl::nullopt};
+        return cel::optional_ref<std::remove_reference_t<R>>{absl::nullopt};
       } else {
         return absl::optional<absl::remove_cvref_t<R>>{absl::nullopt};
       }
     }
     if constexpr (std::is_lvalue_reference_v<R>) {
-      return cel::internal::optional_ref<std::remove_reference_t<R>>{
+      return cel::optional_ref<std::remove_reference_t<R>>{
           CastImpl<To>{}(std::forward<From>(from))};
     } else {
       return absl::optional<absl::remove_cvref_t<R>>{
