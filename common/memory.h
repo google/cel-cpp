@@ -448,8 +448,14 @@ inline Owner::Owner(Borrower borrower) noexcept
 template <typename T, typename... Args>
 Unique<T> AllocateUnique(Allocator<> allocator, Args&&... args);
 
+// Wrap an already created `T` in `Unique`. Requires that `T` is not const,
+// otherwise `GetArena()` may return slightly unexpected results depending on if
+// it is the default value.
 template <typename T>
-Unique<T> WrapUnique(T* object);
+std::enable_if_t<!std::is_const_v<T>, Unique<T>> WrapUnique(T* object);
+
+template <typename T>
+Unique<T> WrapUnique(T* object, Allocator<> allocator);
 
 // `Unique<T>` points to an object which was allocated using `Allocator<>` or
 // `Allocator<T>`. It has ownership over the object, and will perform any
@@ -589,6 +595,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
   friend class Owned;
   template <typename U, typename... Args>
   friend Unique<U> AllocateUnique(Allocator<> allocator, Args&&... args);
+  template <typename U>
+  Unique<U> WrapUnique(U* object, Allocator<> allocator);
   friend class ReferenceCountingMemoryManager;
   friend class PoolingMemoryManager;
   friend struct std::pointer_traits<Unique<T>>;
@@ -686,8 +694,13 @@ Unique<T> AllocateUnique(Allocator<> allocator, Args&&... args) {
 }
 
 template <typename T>
-Unique<T> WrapUnique(T* object) {
+std::enable_if_t<!std::is_const_v<T>, Unique<T>> WrapUnique(T* object) {
   return Unique<T>(object);
+}
+
+template <typename T>
+Unique<T> WrapUnique(T* object, Allocator<> allocator) {
+  return Unique<T>(allocator.arena(), object);
 }
 
 }  // namespace cel
