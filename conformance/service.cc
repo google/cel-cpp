@@ -34,8 +34,10 @@
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/strings/strip.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "checker/optional.h"
@@ -623,6 +625,13 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
     CEL_ASSIGN_OR_RETURN(std::unique_ptr<cel::Ast> ast,
                          cel::extensions::CreateAstFromParsedExpr(parsed_expr));
 
+    absl::string_view location = parsed_expr.source_info().location();
+    std::unique_ptr<cel::Source> source;
+    if (absl::StartsWith(location, "Source: ")) {
+      location = absl::StripPrefix(location, "Source: ");
+      CEL_ASSIGN_OR_RETURN(source, cel::NewSource(location));
+    }
+
     cel::TypeCheckerBuilder builder;
 
     builder.AddTypeProvider(
@@ -672,7 +681,11 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
     for (const auto& checker_issue : validation_result.GetIssues()) {
       auto* issue = response.add_issues();
       issue->set_code(ToGrpcCode(absl::StatusCode::kInvalidArgument));
-      issue->set_message(checker_issue.message());
+      if (source) {
+        issue->set_message(checker_issue.ToDisplayString(*source));
+      } else {
+        issue->set_message(checker_issue.message());
+      }
     }
 
     const cel::Ast* checked_ast = validation_result.GetAst();
