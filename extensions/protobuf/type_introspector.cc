@@ -20,8 +20,6 @@
 #include "common/type.h"
 #include "common/type_factory.h"
 #include "common/type_introspector.h"
-#include "extensions/protobuf/type.h"
-#include "internal/status_macros.h"
 
 namespace cel::extensions {
 
@@ -53,11 +51,7 @@ ProtoTypeIntrospector::FindStructTypeFieldByNameImpl(
       return absl::nullopt;
     }
   }
-  StructTypeField result;
-  result.type = DynType();
-  result.name = field_desc->name();
-  result.number = field_desc->number();
-  return result;
+  return MessageTypeField(field_desc);
 }
 
 }  // namespace cel::extensions

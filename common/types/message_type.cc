@@ -17,6 +17,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
+#include "absl/log/absl_check.h"
 #include "absl/strings/str_cat.h"
 #include "common/type.h"
 #include "google/protobuf/descriptor.h"
@@ -72,6 +73,23 @@ std::string MessageType::DebugString() const {
                                                    : absl::PadSpec::kZeroPad8));
   }
   return std::string();
+}
+
+std::string MessageTypeField::DebugString() const {
+  if (ABSL_PREDICT_TRUE(static_cast<bool>(*this))) {
+    static_assert(sizeof(descriptor_) == 8 || sizeof(descriptor_) == 4,
+                  "sizeof(void*) is neither 8 nor 4");
+    return absl::StrCat("[", (*this)->number(), "]", (*this)->name(), "@0x",
+                        absl::Hex(descriptor_, sizeof(descriptor_) == 8
+                                                   ? absl::PadSpec::kZeroPad16
+                                                   : absl::PadSpec::kZeroPad8));
+  }
+  return std::string();
+}
+
+Type MessageTypeField::GetType() const {
+  ABSL_DCHECK(*this);
+  return Type::Field(descriptor_);
 }
 
 }  // namespace cel

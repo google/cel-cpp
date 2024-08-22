@@ -22,15 +22,13 @@
 #include <string>
 #include <utility>
 
-#include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/span.h"
 #include "common/type_kind.h"
 
 namespace cel {
 
 class Type;
-class BytesType;
+class TypeParameters;
 
 // `BoolType` represents the primitive `bytes` type.
 class BytesType final {
@@ -44,17 +42,13 @@ class BytesType final {
   BytesType& operator=(const BytesType&) = default;
   BytesType& operator=(BytesType&&) = default;
 
-  constexpr TypeKind kind() const { return kKind; }
+  static TypeKind kind() { return kKind; }
 
-  constexpr absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return kName;
-  }
+  static absl::string_view name() { return kName; }
 
-  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return {};
-  }
+  static TypeParameters GetParameters();
 
-  std::string DebugString() const { return std::string(name()); }
+  static std::string DebugString() { return std::string(name()); }
 
   constexpr void swap(BytesType&) noexcept {}
 };

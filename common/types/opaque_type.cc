@@ -70,7 +70,7 @@ OpaqueType::OpaqueType(absl::Nonnull<google::protobuf::Arena*> arena,
 
 std::string OpaqueType::DebugString() const {
   ABSL_DCHECK(*this);
-  return OpaqueDebugString(name(), parameters());
+  return OpaqueDebugString(name(), GetParameters());
 }
 
 absl::string_view OpaqueType::name() const {
@@ -78,13 +78,14 @@ absl::string_view OpaqueType::name() const {
   return data_->name;
 }
 
-absl::Span<const Type> OpaqueType::parameters() const {
+TypeParameters OpaqueType::GetParameters() const {
   ABSL_DCHECK(*this);
-  return absl::MakeConstSpan(data_->parameters, data_->parameters_size);
+  return TypeParameters(
+      absl::MakeConstSpan(data_->parameters, data_->parameters_size));
 }
 
 bool OpaqueType::IsOptional() const {
-  return name() == OptionalType::kName && parameters().size() == 1;
+  return name() == OptionalType::kName && GetParameters().size() == 1;
 }
 
 absl::optional<OptionalType> OpaqueType::AsOptional() const {

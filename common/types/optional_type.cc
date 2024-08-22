@@ -63,6 +63,6 @@ ABSL_CONST_INIT const DynOptionalTypeData kDynOptionalTypeData = {
 OptionalType::OptionalType()
     : opaque_(&common_internal::kDynOptionalTypeData.opaque) {}
 
-const Type& OptionalType::parameter() const { return parameters().front(); }
+Type OptionalType::GetParameter() const { return GetParameters().front(); }
 
 }  // namespace cel

@@ -33,7 +33,7 @@
 namespace cel {
 
 class Type;
-class FunctionType;
+class TypeParameters;
 
 namespace common_internal {
 struct FunctionTypeData;
@@ -57,7 +57,7 @@ class FunctionType final {
 
   static absl::string_view name() { return kName; }
 
-  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  TypeParameters GetParameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   std::string DebugString() const;
 

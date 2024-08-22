@@ -18,7 +18,6 @@
 #include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "common/type.h"
 #include "common/types/types.h"
@@ -36,14 +35,15 @@ absl::string_view StructType::name() const {
       variant_);
 }
 
-absl::Span<const Type> StructType::parameters() const {
+TypeParameters StructType::GetParameters() const {
   ABSL_DCHECK(*this);
   return absl::visit(
-      absl::Overload([](absl::monostate) { return absl::Span<const Type>(); },
-                     [](const common_internal::BasicStructType& alt) {
-                       return alt.parameters();
-                     },
-                     [](const MessageType& alt) { return alt.parameters(); }),
+      absl::Overload(
+          [](absl::monostate) { return TypeParameters(); },
+          [](const common_internal::BasicStructType& alt) {
+            return alt.GetParameters();
+          },
+          [](const MessageType& alt) { return alt.GetParameters(); }),
       variant_);
 }
 

@@ -35,8 +35,8 @@
 namespace cel {
 
 class Type;
-class OpaqueType;
 class OptionalType;
+class TypeParameters;
 
 namespace common_internal {
 struct OpaqueTypeData;
@@ -68,7 +68,7 @@ class OpaqueType final {
 
   std::string DebugString() const;
 
-  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  TypeParameters GetParameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   explicit operator bool() const { return data_ != nullptr; }
 

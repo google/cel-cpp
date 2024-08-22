@@ -16,10 +16,11 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/strings/str_cat.h"
-#include "absl/types/span.h"
 #include "common/type.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel {
 
@@ -62,13 +63,55 @@ std::string MapType::DebugString() const {
                       ">");
 }
 
-absl::Span<const Type> MapType::parameters() const {
-  return absl::MakeConstSpan(data_->key_and_value, 2);
+TypeParameters MapType::GetParameters() const {
+  ABSL_DCHECK_NE(data_, 0);
+  if ((data_ & kBasicBit) == kBasicBit) {
+    const auto* data = reinterpret_cast<const common_internal::MapTypeData*>(
+        data_ & kPointerMask);
+    return TypeParameters(data->key_and_value[0], data->key_and_value[1]);
+  }
+  if ((data_ & kProtoBit) == kProtoBit) {
+    const auto* descriptor =
+        reinterpret_cast<const google::protobuf::Descriptor*>(data_ & kPointerMask);
+    return TypeParameters(Type::Field(descriptor->map_key()),
+                          Type::Field(descriptor->map_value()));
+  }
+  return TypeParameters(Type(), Type());
 }
 
-const Type& MapType::key() const { return data_->key_and_value[0]; }
+Type MapType::GetKey() const {
+  ABSL_DCHECK_NE(data_, 0);
+  if ((data_ & kBasicBit) == kBasicBit) {
+    return reinterpret_cast<const common_internal::MapTypeData*>(data_ &
+                                                                 kPointerMask)
+        ->key_and_value[0];
+  }
+  if ((data_ & kProtoBit) == kProtoBit) {
+    return Type::Field(
+        reinterpret_cast<const google::protobuf::Descriptor*>(data_ & kPointerMask)
+            ->map_key());
+  }
+  return Type();
+}
 
-const Type& MapType::value() const { return data_->key_and_value[1]; }
+Type MapType::key() const { return GetKey(); }
+
+Type MapType::GetValue() const {
+  ABSL_DCHECK_NE(data_, 0);
+  if ((data_ & kBasicBit) == kBasicBit) {
+    return reinterpret_cast<const common_internal::MapTypeData*>(data_ &
+                                                                 kPointerMask)
+        ->key_and_value[1];
+  }
+  if ((data_ & kProtoBit) == kProtoBit) {
+    return Type::Field(
+        reinterpret_cast<const google::protobuf::Descriptor*>(data_ & kPointerMask)
+            ->map_value());
+  }
+  return Type();
+}
+
+Type MapType::value() const { return GetValue(); }
 
 MapType JsonMapType() {
   return MapType(&common_internal::kStringDynMapTypeData);

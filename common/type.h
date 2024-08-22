@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <iterator>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -27,11 +28,13 @@
 #include "absl/algorithm/container.h"
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
+#include "absl/utility/utility.h"
 #include "common/type_kind.h"
 #include "common/types/any_type.h"   // IWYU pragma: export
 #include "common/types/bool_type.h"  // IWYU pragma: export
@@ -69,6 +72,7 @@
 namespace cel {
 
 class Type;
+class TypeParameters;
 
 // `Type` is a composition type which encompasses all types supported by the
 // Common Expression Language. When default constructed, `Type` is in a
@@ -86,11 +90,17 @@ class Type final {
   static Type Message(absl::Nonnull<const google::protobuf::Descriptor*> descriptor
                           ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
+  // Returns an appropriate `Type` for the dynamic protobuf message field.
+  static Type Field(absl::Nonnull<const google::protobuf::FieldDescriptor*> descriptor
+                        ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
   // Returns an appropriate `Type` for the dynamic protobuf enum. For well
   // known enum types, the appropriate `Type` is returned. All others return
   // `EnumType`.
   static Type Enum(absl::Nonnull<const google::protobuf::EnumDescriptor*> descriptor
                        ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+  using Parameters = TypeParameters;
 
   // The default constructor results in Type being DynType.
   Type() = default;
@@ -139,7 +149,7 @@ class Type final {
 
   std::string DebugString() const;
 
-  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  Parameters GetParameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   friend void swap(Type& lhs, Type& rhs) noexcept {
     lhs.variant_.swap(rhs.variant_);
@@ -147,14 +157,11 @@ class Type final {
 
   template <typename H>
   friend H AbslHashValue(H state, const Type& type) {
-    return H::combine(
-        absl::visit(
-            [state = std::move(state)](const auto& alternative) mutable -> H {
-              return H::combine(std::move(state), alternative.kind(),
-                                alternative);
-            },
-            type.variant_),
-        type.variant_.index());
+    return absl::visit(
+        [state = std::move(state)](const auto& alternative) mutable -> H {
+          return H::combine(std::move(state), alternative, alternative.kind());
+        },
+        type.variant_);
   }
 
   friend bool operator==(const Type& lhs, const Type& rhs);
@@ -718,6 +725,14 @@ class Type final {
 
   explicit operator UnknownType() const;
 
+  // Returns an unwrapped `Type` for a wrapped type, otherwise just returns
+  // this.
+  Type Unwrap() const;
+
+  // Returns an wrapped `Type` for a primitive type, otherwise just returns
+  // this.
+  Type Wrap() const;
+
  private:
   friend class StructType;
   friend class MessageType;
@@ -742,15 +757,257 @@ static_assert(std::is_nothrow_move_constructible_v<Type>);
 static_assert(std::is_nothrow_move_assignable_v<Type>);
 static_assert(std::is_nothrow_swappable_v<Type>);
 
-struct StructTypeField {
-  std::string name;
-  Type type;
-  // The field number, if less than or equal to 0 it is not available.
-  int64_t number = 0;
+// TypeParameters is a specialized view of a contiguous list of `Type`. It is
+// very similar to `absl::Span<const Type>`, except that it has a small amount
+// of inline storage. Thus the pointers and references returned by
+// TypeParameters are invalidated upon copying or moving.
+//
+// We store up to 2 types inline. This is done to accommodate list and map types
+// which correspond to protocol buffer message fields. We launder around their
+// descriptors and would have to allocate to return the type parameters. We want
+// to avoid this, as types are supposed to be constant after creation.
+class TypeParameters final {
+ public:
+  using element_type = const Type;
+  using value_type = Type;
+  using pointer = element_type*;
+  using const_pointer = const element_type*;
+  using reference = element_type&;
+  using const_reference = const element_type&;
+  using iterator = pointer;
+  using const_iterator = const_pointer;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+  using size_type = size_t;
+  using difference_type = ptrdiff_t;
+
+  explicit TypeParameters(absl::Span<const Type> types);
+
+  TypeParameters() = default;
+  TypeParameters(const TypeParameters&) = default;
+  TypeParameters(TypeParameters&&) = default;
+  TypeParameters& operator=(const TypeParameters&) = default;
+  TypeParameters& operator=(TypeParameters&&) = default;
+
+  size_type size() const { return size_; }
+
+  bool empty() const { return size() == 0; }
+
+  const_reference front() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    ABSL_DCHECK(!empty());
+    return data()[0];
+  }
+
+  const_reference back() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    ABSL_DCHECK(!empty());
+    return data()[size() - 1];
+  }
+
+  const_reference operator[](size_type index) const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    ABSL_DCHECK_LT(index, size());
+    return data()[index];
+  }
+
+  const_pointer data() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return size() <= 2 ? reinterpret_cast<const Type*>(&internal_[0])
+                       : external_;
+  }
+
+  const_iterator begin() const ABSL_ATTRIBUTE_LIFETIME_BOUND { return data(); }
+
+  const_iterator cbegin() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return begin();
+  }
+
+  const_iterator end() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return data() + size();
+  }
+
+  const_iterator cend() const ABSL_ATTRIBUTE_LIFETIME_BOUND { return end(); }
+
+  const_reverse_iterator rbegin() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::make_reverse_iterator(end());
+  }
+
+  const_reverse_iterator crbegin() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return rbegin();
+  }
+
+  const_reverse_iterator rend() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::make_reverse_iterator(begin());
+  }
+
+  const_reverse_iterator crend() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return rend();
+  }
+
+ private:
+  friend class ListType;
+  friend class MapType;
+
+  explicit TypeParameters(const Type& element);
+
+  explicit TypeParameters(const Type& key, const Type& value);
+
+  // When size_ <= 2, elements are stored directly in `internal_`. Otherwise we
+  // store a pointer to the elements in `external_`.
+  size_t size_ = 0;
+  union {
+    const Type* external_ = nullptr;
+    // Old versions of GCC do not like `Type internal_[2]`, so we cheat.
+    alignas(Type) char internal_[sizeof(Type) * 2];
+  };
 };
 
-// Now that Type and TypeView are complete, we can define various parts of list,
-// map, opaque, and struct which depend on Type and TypeView.
+// Now that TypeParameters is defined, we can define `GetParameters()` for most
+// types.
+
+inline TypeParameters AnyType::GetParameters() { return {}; }
+
+inline TypeParameters BoolType::GetParameters() { return {}; }
+
+inline TypeParameters BoolWrapperType::GetParameters() { return {}; }
+
+inline TypeParameters BytesType::GetParameters() { return {}; }
+
+inline TypeParameters BytesWrapperType::GetParameters() { return {}; }
+
+inline TypeParameters DoubleType::GetParameters() { return {}; }
+
+inline TypeParameters DoubleWrapperType::GetParameters() { return {}; }
+
+inline TypeParameters DurationType::GetParameters() { return {}; }
+
+inline TypeParameters DynType::GetParameters() { return {}; }
+
+inline TypeParameters EnumType::GetParameters() { return {}; }
+
+inline TypeParameters ErrorType::GetParameters() { return {}; }
+
+inline TypeParameters IntType::GetParameters() { return {}; }
+
+inline TypeParameters IntWrapperType::GetParameters() { return {}; }
+
+inline TypeParameters MessageType::GetParameters() { return {}; }
+
+inline TypeParameters NullType::GetParameters() { return {}; }
+
+inline TypeParameters OptionalType::GetParameters() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return opaque_.GetParameters();
+}
+
+inline TypeParameters StringType::GetParameters() { return {}; }
+
+inline TypeParameters StringWrapperType::GetParameters() { return {}; }
+
+inline TypeParameters TimestampType::GetParameters() { return {}; }
+
+inline TypeParameters TypeParamType::GetParameters() { return {}; }
+
+inline TypeParameters UintType::GetParameters() { return {}; }
+
+inline TypeParameters UintWrapperType::GetParameters() { return {}; }
+
+inline TypeParameters UnknownType::GetParameters() { return {}; }
+
+namespace common_internal {
+
+inline TypeParameters BasicStructType::GetParameters() { return {}; }
+
+Type SingularMessageFieldType(
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> descriptor);
+
+class BasicStructTypeField final {
+ public:
+  BasicStructTypeField(absl::string_view name, int32_t number, Type type)
+      : name_(name), number_(number), type_(type) {}
+
+  BasicStructTypeField(const BasicStructTypeField&) = default;
+  BasicStructTypeField(BasicStructTypeField&&) = default;
+  BasicStructTypeField& operator=(const BasicStructTypeField&) = default;
+  BasicStructTypeField& operator=(BasicStructTypeField&&) = default;
+
+  std::string DebugString() const;
+
+  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND { return name_; }
+
+  int32_t number() const ABSL_ATTRIBUTE_LIFETIME_BOUND { return number_; }
+
+  Type GetType() const { return type_; }
+
+  explicit operator bool() const { return !name_.empty() || number_ >= 1; }
+
+ private:
+  absl::string_view name_;
+  int32_t number_ = 0;
+  Type type_;
+};
+
+inline bool operator==(const BasicStructTypeField& lhs,
+                       const BasicStructTypeField& rhs) {
+  return lhs.name() == rhs.name() && lhs.number() == rhs.number() &&
+         lhs.GetType() == rhs.GetType();
+}
+
+inline bool operator!=(const BasicStructTypeField& lhs,
+                       const BasicStructTypeField& rhs) {
+  return !operator==(lhs, rhs);
+}
+
+}  // namespace common_internal
+
+class StructTypeField final {
+ public:
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StructTypeField(common_internal::BasicStructTypeField field)
+      : variant_(absl::in_place_type<common_internal::BasicStructTypeField>,
+                 field) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StructTypeField(MessageTypeField field)
+      : variant_(absl::in_place_type<MessageTypeField>, field) {}
+
+  StructTypeField() = default;
+  StructTypeField(const StructTypeField&) = default;
+  StructTypeField(StructTypeField&&) = default;
+  StructTypeField& operator=(const StructTypeField&) = default;
+  StructTypeField& operator=(StructTypeField&&) = default;
+
+  std::string DebugString() const;
+
+  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  int32_t number() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  Type GetType() const;
+
+  explicit operator bool() const;
+
+  bool IsMessage() const {
+    return absl::holds_alternative<MessageTypeField>(variant_);
+  }
+
+  absl::optional<MessageTypeField> AsMessage() const;
+
+  explicit operator MessageTypeField() const;
+
+ private:
+  absl::variant<common_internal::BasicStructTypeField, MessageTypeField>
+      variant_;
+};
+
+inline bool operator==(const StructTypeField& lhs, const StructTypeField& rhs) {
+  return lhs.name() == rhs.name() && lhs.number() == rhs.number() &&
+         lhs.GetType() == rhs.GetType();
+}
+
+inline bool operator!=(const StructTypeField& lhs, const StructTypeField& rhs) {
+  return !operator==(lhs, rhs);
+}
+
+// Now that Type is defined, we can define everything else.
 
 namespace common_internal {
 
@@ -821,37 +1078,50 @@ struct OpaqueTypeData final {
 
 }  // namespace common_internal
 
+inline bool operator==(const MessageTypeField& lhs,
+                       const MessageTypeField& rhs) {
+  return lhs.name() == rhs.name() && lhs.number() == rhs.number() &&
+         lhs.GetType() == rhs.GetType();
+}
+
+inline bool operator!=(const MessageTypeField& lhs,
+                       const MessageTypeField& rhs) {
+  return !operator==(lhs, rhs);
+}
+
 inline bool operator==(const ListType& lhs, const ListType& rhs) {
-  return &lhs == &rhs || lhs.element() == rhs.element();
+  return &lhs == &rhs || lhs.GetElement() == rhs.GetElement();
 }
 
 template <typename H>
 inline H AbslHashValue(H state, const ListType& type) {
-  return H::combine(std::move(state), type.element());
+  return H::combine(std::move(state), type.GetElement(), size_t{1});
 }
 
 inline bool operator==(const MapType& lhs, const MapType& rhs) {
-  return &lhs == &rhs || (lhs.key() == rhs.key() && lhs.value() == rhs.value());
+  return &lhs == &rhs ||
+         (lhs.GetKey() == rhs.GetKey() && lhs.GetValue() == rhs.GetValue());
 }
 
 template <typename H>
 inline H AbslHashValue(H state, const MapType& type) {
-  return H::combine(std::move(state), type.key(), type.value());
+  return H::combine(std::move(state), type.GetKey(), type.GetValue(),
+                    size_t{2});
 }
 
 inline bool operator==(const OpaqueType& lhs, const OpaqueType& rhs) {
   return lhs.name() == rhs.name() &&
-         absl::c_equal(lhs.parameters(), rhs.parameters());
+         absl::c_equal(lhs.GetParameters(), rhs.GetParameters());
 }
 
 template <typename H>
 inline H AbslHashValue(H state, const OpaqueType& type) {
   state = H::combine(std::move(state), type.name());
-  auto parameters = type.parameters();
+  auto parameters = type.GetParameters();
   for (const auto& parameter : parameters) {
     state = H::combine(std::move(state), parameter);
   }
-  return std::move(state);
+  return H::combine(std::move(state), parameters.size());
 }
 
 inline bool operator==(const FunctionType& lhs, const FunctionType& rhs) {
@@ -865,7 +1135,7 @@ inline H AbslHashValue(H state, const FunctionType& type) {
   for (const auto& arg : args) {
     state = H::combine(std::move(state), arg);
   }
-  return std::move(state);
+  return H::combine(std::move(state), args.size());
 }
 
 }  // namespace cel

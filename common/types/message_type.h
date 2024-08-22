@@ -19,6 +19,7 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPES_MESSAGE_TYPE_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <ostream>
 #include <string>
@@ -28,16 +29,18 @@
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/span.h"
 #include "common/type_kind.h"
 #include "google/protobuf/descriptor.h"
 
 namespace cel {
 
 class Type;
+class TypeParameters;
 
 bool IsWellKnownMessageType(
     absl::Nonnull<const google::protobuf::Descriptor*> descriptor);
+
+class MessageTypeField;
 
 class MessageType final {
  public:
@@ -69,10 +72,7 @@ class MessageType final {
 
   std::string DebugString() const;
 
-  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    ABSL_DCHECK(*this);
-    return {};
-  }
+  static TypeParameters GetParameters();
 
   const google::protobuf::Descriptor& operator*() const {
     ABSL_DCHECK(*this);
@@ -125,6 +125,71 @@ template <>
 struct pointer_traits<cel::MessageType> {
   using pointer = cel::MessageType;
   using element_type = typename cel::MessageType::element_type;
+  using difference_type = ptrdiff_t;
+
+  static element_type* to_address(const pointer& p) noexcept {
+    return p.descriptor_;
+  }
+};
+
+}  // namespace std
+
+namespace cel {
+
+class MessageTypeField final {
+ public:
+  using element_type = const google::protobuf::FieldDescriptor;
+
+  explicit MessageTypeField(
+      absl::Nullable<const google::protobuf::FieldDescriptor*> descriptor)
+      : descriptor_(descriptor) {}
+
+  MessageTypeField() = default;
+  MessageTypeField(const MessageTypeField&) = default;
+  MessageTypeField(MessageTypeField&&) = default;
+  MessageTypeField& operator=(const MessageTypeField&) = default;
+  MessageTypeField& operator=(MessageTypeField&&) = default;
+
+  std::string DebugString() const;
+
+  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return (*this)->name();
+  }
+
+  int32_t number() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return (*this)->number();
+  }
+
+  Type GetType() const;
+
+  const google::protobuf::FieldDescriptor& operator*() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    ABSL_DCHECK(*this);
+    return *descriptor_;
+  }
+
+  absl::Nonnull<const google::protobuf::FieldDescriptor*> operator->() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    ABSL_DCHECK(*this);
+    return descriptor_;
+  }
+
+  explicit operator bool() const { return descriptor_ != nullptr; }
+
+ private:
+  friend struct std::pointer_traits<MessageTypeField>;
+
+  absl::Nullable<const google::protobuf::FieldDescriptor*> descriptor_ = nullptr;
+};
+
+}  // namespace cel
+
+namespace std {
+
+template <>
+struct pointer_traits<cel::MessageTypeField> {
+  using pointer = cel::MessageTypeField;
+  using element_type = typename cel::MessageTypeField::element_type;
   using difference_type = ptrdiff_t;
 
   static element_type* to_address(const pointer& p) noexcept {

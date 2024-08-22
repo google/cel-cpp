@@ -14,6 +14,7 @@
 
 #include "common/type.h"
 
+#include "absl/hash/hash.h"
 #include "absl/hash/hash_testing.h"
 #include "absl/log/die_if_null.h"
 #include "internal/testing.h"
@@ -25,6 +26,8 @@ namespace {
 
 using ::cel::internal::GetTestingDescriptorPool;
 using testing::An;
+using testing::ElementsAre;
+using testing::IsEmpty;
 using testing::Optional;
 
 TEST(Type, Default) {
@@ -43,6 +46,117 @@ TEST(Type, Enum) {
                 ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
                     "google.protobuf.NullValue"))),
             NullType());
+}
+
+TEST(Type, Field) {
+  google::protobuf::Arena arena;
+  const auto* descriptor =
+      ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindMessageTypeByName(
+          "google.api.expr.test.v1.proto3.TestAllTypes"));
+  EXPECT_EQ(
+      Type::Field(ABSL_DIE_IF_NULL(descriptor->FindFieldByName("single_bool"))),
+      BoolType());
+  EXPECT_EQ(
+      Type::Field(ABSL_DIE_IF_NULL(descriptor->FindFieldByName("null_value"))),
+      NullType());
+  EXPECT_EQ(Type::Field(
+                ABSL_DIE_IF_NULL(descriptor->FindFieldByName("single_int32"))),
+            IntType());
+  EXPECT_EQ(Type::Field(
+                ABSL_DIE_IF_NULL(descriptor->FindFieldByName("single_sint32"))),
+            IntType());
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                descriptor->FindFieldByName("single_sfixed32"))),
+            IntType());
+  EXPECT_EQ(Type::Field(
+                ABSL_DIE_IF_NULL(descriptor->FindFieldByName("single_int64"))),
+            IntType());
+  EXPECT_EQ(Type::Field(
+                ABSL_DIE_IF_NULL(descriptor->FindFieldByName("single_sint64"))),
+            IntType());
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                descriptor->FindFieldByName("single_sfixed64"))),
+            IntType());
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                descriptor->FindFieldByName("single_fixed32"))),
+            UintType());
+  EXPECT_EQ(Type::Field(
+                ABSL_DIE_IF_NULL(descriptor->FindFieldByName("single_uint32"))),
+            UintType());
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                descriptor->FindFieldByName("single_fixed64"))),
+            UintType());
+  EXPECT_EQ(Type::Field(
+                ABSL_DIE_IF_NULL(descriptor->FindFieldByName("single_uint64"))),
+            UintType());
+  EXPECT_EQ(Type::Field(
+                ABSL_DIE_IF_NULL(descriptor->FindFieldByName("single_float"))),
+            DoubleType());
+  EXPECT_EQ(Type::Field(
+                ABSL_DIE_IF_NULL(descriptor->FindFieldByName("single_double"))),
+            DoubleType());
+  EXPECT_EQ(Type::Field(
+                ABSL_DIE_IF_NULL(descriptor->FindFieldByName("single_bytes"))),
+            BytesType());
+  EXPECT_EQ(Type::Field(
+                ABSL_DIE_IF_NULL(descriptor->FindFieldByName("single_string"))),
+            StringType());
+  EXPECT_EQ(
+      Type::Field(ABSL_DIE_IF_NULL(descriptor->FindFieldByName("single_any"))),
+      AnyType());
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                descriptor->FindFieldByName("single_duration"))),
+            DurationType());
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                descriptor->FindFieldByName("single_timestamp"))),
+            TimestampType());
+  EXPECT_EQ(Type::Field(
+                ABSL_DIE_IF_NULL(descriptor->FindFieldByName("single_struct"))),
+            JsonMapType());
+  EXPECT_EQ(
+      Type::Field(ABSL_DIE_IF_NULL(descriptor->FindFieldByName("list_value"))),
+      JsonListType());
+  EXPECT_EQ(Type::Field(
+                ABSL_DIE_IF_NULL(descriptor->FindFieldByName("single_value"))),
+            JsonType());
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                descriptor->FindFieldByName("single_bool_wrapper"))),
+            BoolWrapperType());
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                descriptor->FindFieldByName("single_int32_wrapper"))),
+            IntWrapperType());
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                descriptor->FindFieldByName("single_int64_wrapper"))),
+            IntWrapperType());
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                descriptor->FindFieldByName("single_uint32_wrapper"))),
+            UintWrapperType());
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                descriptor->FindFieldByName("single_uint64_wrapper"))),
+            UintWrapperType());
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                descriptor->FindFieldByName("single_float_wrapper"))),
+            DoubleWrapperType());
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                descriptor->FindFieldByName("single_double_wrapper"))),
+            DoubleWrapperType());
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                descriptor->FindFieldByName("single_bytes_wrapper"))),
+            BytesWrapperType());
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                descriptor->FindFieldByName("single_string_wrapper"))),
+            StringWrapperType());
+  EXPECT_EQ(
+      Type::Field(
+          ABSL_DIE_IF_NULL(descriptor->FindFieldByName("standalone_enum"))),
+      EnumType(ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
+          "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"))));
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                descriptor->FindFieldByName("repeated_int32"))),
+            ListType(&arena, IntType()));
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                descriptor->FindFieldByName("map_int32_int32"))),
+            MapType(&arena, IntType(), IntType()));
 }
 
 TEST(Type, Kind) {
@@ -114,6 +228,73 @@ TEST(Type, Kind) {
   EXPECT_EQ(Type(UnknownType()).kind(), UnknownType::kKind);
 }
 
+TEST(Type, GetParameters) {
+  google::protobuf::Arena arena;
+
+  EXPECT_THAT(Type(AnyType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(Type(BoolType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(Type(BoolWrapperType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(Type(BytesType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(Type(BytesWrapperType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(Type(DoubleType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(Type(DoubleWrapperType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(Type(DurationType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(Type(DynType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(
+      Type(EnumType(
+               ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
+                   "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"))))
+          .GetParameters(),
+      IsEmpty());
+
+  EXPECT_THAT(Type(ErrorType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(Type(FunctionType(&arena, DynType(),
+                                {IntType(), StringType(), DynType()}))
+                  .GetParameters(),
+              ElementsAre(DynType(), IntType(), StringType(), DynType()));
+
+  EXPECT_THAT(Type(IntType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(Type(IntWrapperType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(Type(ListType()).GetParameters(), ElementsAre(DynType()));
+
+  EXPECT_THAT(Type(MapType()).GetParameters(),
+              ElementsAre(DynType(), DynType()));
+
+  EXPECT_THAT(Type(MessageType(ABSL_DIE_IF_NULL(
+                       GetTestingDescriptorPool()->FindMessageTypeByName(
+                           "google.api.expr.test.v1.proto3.TestAllTypes"))))
+                  .GetParameters(),
+              IsEmpty());
+
+  EXPECT_THAT(Type(NullType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(Type(OptionalType()).GetParameters(), ElementsAre(DynType()));
+
+  EXPECT_THAT(Type(StringType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(Type(StringWrapperType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(Type(TimestampType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(Type(UintType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(Type(UintWrapperType()).GetParameters(), IsEmpty());
+
+  EXPECT_THAT(Type(UnknownType()).GetParameters(), IsEmpty());
+}
+
 TEST(Type, Is) {
   google::protobuf::Arena arena;
 
@@ -177,6 +358,10 @@ TEST(Type, Is) {
   EXPECT_TRUE(Type(StringWrapperType()).IsWrapper());
 
   EXPECT_TRUE(Type(TimestampType()).Is<TimestampType>());
+
+  EXPECT_TRUE(Type(TypeType()).Is<TypeType>());
+
+  EXPECT_TRUE(Type(TypeParamType("T")).Is<TypeParamType>());
 
   EXPECT_TRUE(Type(UintType()).Is<UintType>());
 
@@ -256,6 +441,11 @@ TEST(Type, As) {
 
   EXPECT_THAT(Type(TimestampType()).As<TimestampType>(),
               Optional(An<TimestampType>()));
+
+  EXPECT_THAT(Type(TypeType()).As<TypeType>(), Optional(An<TypeType>()));
+
+  EXPECT_THAT(Type(TypeParamType("T")).As<TypeParamType>(),
+              Optional(An<TypeParamType>()));
 
   EXPECT_THAT(Type(UintType()).As<UintType>(), Optional(An<UintType>()));
 
@@ -344,6 +534,11 @@ TEST(Type, Cast) {
   EXPECT_THAT(static_cast<TimestampType>(Type(TimestampType())),
               An<TimestampType>());
 
+  EXPECT_THAT(static_cast<TypeType>(Type(TypeType())), An<TypeType>());
+
+  EXPECT_THAT(static_cast<TypeParamType>(Type(TypeParamType("T"))),
+              An<TypeParamType>());
+
   EXPECT_THAT(static_cast<UintType>(Type(UintType())), An<UintType>());
 
   EXPECT_THAT(static_cast<UintWrapperType>(Type(UintWrapperType())),
@@ -356,6 +551,7 @@ TEST(Type, Cast) {
 
 TEST(Type, VerifyTypeImplementsAbslHashCorrectly) {
   google::protobuf::Arena arena;
+
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly(
       {Type(AnyType()),
        Type(BoolType()),
@@ -383,6 +579,61 @@ TEST(Type, VerifyTypeImplementsAbslHashCorrectly) {
        Type(UintType()),
        Type(UintWrapperType()),
        Type(UnknownType())}));
+
+  EXPECT_EQ(
+      absl::HashOf(Type::Field(
+          ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindMessageTypeByName(
+                               "google.api.expr.test.v1.proto3.TestAllTypes"))
+              ->FindFieldByName("repeated_int64"))),
+      absl::HashOf(Type(ListType(&arena, IntType()))));
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                            GetTestingDescriptorPool()->FindMessageTypeByName(
+                                "google.api.expr.test.v1.proto3.TestAllTypes"))
+                            ->FindFieldByName("repeated_int64")),
+            Type(ListType(&arena, IntType())));
+
+  EXPECT_EQ(
+      absl::HashOf(Type::Field(
+          ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindMessageTypeByName(
+                               "google.api.expr.test.v1.proto3.TestAllTypes"))
+              ->FindFieldByName("map_int64_int64"))),
+      absl::HashOf(Type(MapType(&arena, IntType(), IntType()))));
+  EXPECT_EQ(Type::Field(ABSL_DIE_IF_NULL(
+                            GetTestingDescriptorPool()->FindMessageTypeByName(
+                                "google.api.expr.test.v1.proto3.TestAllTypes"))
+                            ->FindFieldByName("map_int64_int64")),
+            Type(MapType(&arena, IntType(), IntType())));
+
+  EXPECT_EQ(absl::HashOf(Type(MessageType(ABSL_DIE_IF_NULL(
+                GetTestingDescriptorPool()->FindMessageTypeByName(
+                    "google.api.expr.test.v1.proto3.TestAllTypes"))))),
+            absl::HashOf(Type(StructType(common_internal::MakeBasicStructType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")))));
+  EXPECT_EQ(Type(MessageType(ABSL_DIE_IF_NULL(
+                GetTestingDescriptorPool()->FindMessageTypeByName(
+                    "google.api.expr.test.v1.proto3.TestAllTypes")))),
+            Type(StructType(common_internal::MakeBasicStructType(
+                "google.api.expr.test.v1.proto3.TestAllTypes"))));
+}
+
+TEST(Type, Unwrap) {
+  EXPECT_EQ(Type(BoolWrapperType()).Unwrap(), BoolType());
+  EXPECT_EQ(Type(IntWrapperType()).Unwrap(), IntType());
+  EXPECT_EQ(Type(UintWrapperType()).Unwrap(), UintType());
+  EXPECT_EQ(Type(DoubleWrapperType()).Unwrap(), DoubleType());
+  EXPECT_EQ(Type(BytesWrapperType()).Unwrap(), BytesType());
+  EXPECT_EQ(Type(StringWrapperType()).Unwrap(), StringType());
+  EXPECT_EQ(Type(AnyType()).Unwrap(), AnyType());
+}
+
+TEST(Type, Wrap) {
+  EXPECT_EQ(Type(BoolType()).Wrap(), BoolWrapperType());
+  EXPECT_EQ(Type(IntType()).Wrap(), IntWrapperType());
+  EXPECT_EQ(Type(UintType()).Wrap(), UintWrapperType());
+  EXPECT_EQ(Type(DoubleType()).Wrap(), DoubleWrapperType());
+  EXPECT_EQ(Type(BytesType()).Wrap(), BytesWrapperType());
+  EXPECT_EQ(Type(StringType()).Wrap(), StringWrapperType());
+  EXPECT_EQ(Type(AnyType()).Wrap(), AnyType());
 }
 
 }  // namespace

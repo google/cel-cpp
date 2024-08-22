@@ -25,14 +25,13 @@
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/span.h"
 #include "common/type_kind.h"
 #include "google/protobuf/arena.h"
 
 namespace cel {
 
 class Type;
-class TypeType;
+class TypeParameters;
 
 namespace common_internal {
 struct TypeTypeData;
@@ -56,7 +55,7 @@ class TypeType final {
 
   static absl::string_view name() { return kName; }
 
-  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  TypeParameters GetParameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   std::string DebugString() const { return std::string(name()); }
 
@@ -64,6 +63,8 @@ class TypeType final {
     using std::swap;
     swap(lhs.data_, rhs.data_);
   }
+
+  Type GetType() const;
 
  private:
   explicit TypeType(absl::Nullable<const common_internal::TypeTypeData*> data)

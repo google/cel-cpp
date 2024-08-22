@@ -48,7 +48,7 @@ class OpaqueTypePool final {
   using OpaqueTypeTuple = std::tuple<absl::string_view, absl::Span<const Type>>;
 
   static OpaqueTypeTuple AsTuple(const OpaqueType& opaque_type) {
-    return AsTuple(opaque_type.name(), opaque_type.parameters());
+    return AsTuple(opaque_type.name(), opaque_type.GetParameters());
   }
 
   static OpaqueTypeTuple AsTuple(absl::string_view name,

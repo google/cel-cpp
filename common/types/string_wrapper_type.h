@@ -22,15 +22,13 @@
 #include <string>
 #include <utility>
 
-#include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/span.h"
 #include "common/type_kind.h"
 
 namespace cel {
 
 class Type;
-class StringWrapperType;
+class TypeParameters;
 
 // `StringWrapperType` is a special type which has no direct value
 // representation. It is used to represent `google.protobuf.StringValue`, which
@@ -47,17 +45,13 @@ class StringWrapperType final {
   StringWrapperType& operator=(const StringWrapperType&) = default;
   StringWrapperType& operator=(StringWrapperType&&) = default;
 
-  constexpr TypeKind kind() const { return kKind; }
+  static TypeKind kind() { return kKind; }
 
-  constexpr absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return kName;
-  }
+  static absl::string_view name() { return kName; }
 
-  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return {};
-  }
+  static TypeParameters GetParameters();
 
-  std::string DebugString() const { return std::string(name()); }
+  static std::string DebugString() { return std::string(name()); }
 
   constexpr void swap(StringWrapperType&) noexcept {}
 };

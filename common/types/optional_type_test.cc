@@ -24,7 +24,7 @@ namespace {
 
 TEST(OptionalType, Default) {
   OptionalType optional_type;
-  EXPECT_EQ(optional_type.parameter(), DynType());
+  EXPECT_EQ(optional_type.GetParameter(), DynType());
 }
 
 TEST(OptionalType, Kind) {
@@ -55,7 +55,7 @@ TEST(OptionalType, DebugString) {
 
 TEST(OptionalType, Parameter) {
   google::protobuf::Arena arena;
-  EXPECT_EQ(OptionalType(&arena, BoolType()).parameter(), BoolType());
+  EXPECT_EQ(OptionalType(&arena, BoolType()).GetParameter(), BoolType());
 }
 
 TEST(OptionalType, Hash) {

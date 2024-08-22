@@ -44,11 +44,18 @@ struct TypeTypeData final {
 TypeType::TypeType(absl::Nonnull<google::protobuf::Arena*> arena, const Type& parameter)
     : TypeType(common_internal::TypeTypeData::Create(arena, parameter)) {}
 
-absl::Span<const Type> TypeType::parameters() const {
+TypeParameters TypeType::GetParameters() const {
   if (data_) {
-    return absl::MakeConstSpan(&data_->type, 1);
+    return TypeParameters(absl::MakeConstSpan(&data_->type, 1));
   }
   return {};
+}
+
+Type TypeType::GetType() const {
+  if (data_) {
+    return data_->type;
+  }
+  return Type();
 }
 
 }  // namespace cel

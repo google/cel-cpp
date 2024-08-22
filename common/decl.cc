@@ -22,7 +22,6 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "common/casting.h"
 #include "common/type.h"
 #include "common/type_kind.h"
 
@@ -64,8 +63,8 @@ bool TypeIsAssignable(const Type& to, const Type& from) {
   if (to_kind != from_kind || to.name() != from.name()) {
     return false;
   }
-  const auto& to_params = to.parameters();
-  const auto& from_params = from.parameters();
+  auto to_params = to.GetParameters();
+  auto from_params = from.GetParameters();
   const auto params_size = to_params.size();
   if (params_size != from_params.size()) {
     return false;
@@ -141,7 +140,7 @@ void CollectTypeParams(absl::flat_hash_set<std::string>& type_params,
     } break;
     case TypeKind::kOpaque: {
       const auto& opaque_type = static_cast<OpaqueType>(type);
-      for (const auto& param : opaque_type.parameters()) {
+      for (const auto& param : opaque_type.GetParameters()) {
         CollectTypeParams(type_params, param);
       }
     } break;

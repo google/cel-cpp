@@ -18,29 +18,40 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPES_MAP_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPES_MAP_TYPE_H_
 
+#include <cstdint>
 #include <ostream>
 #include <string>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
+#include "absl/numeric/bits.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/span.h"
 #include "common/type_kind.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel {
 
 class Type;
-class MapType;
+class TypeParameters;
 
 namespace common_internal {
 struct MapTypeData;
 }  // namespace common_internal
 
+class MapType;
+
 MapType JsonMapType();
 
 class MapType final {
+ private:
+  static constexpr uintptr_t kBasicBit = 1;
+  static constexpr uintptr_t kProtoBit = 2;
+  static constexpr uintptr_t kBits = kBasicBit | kProtoBit;
+  static constexpr uintptr_t kPointerMask = ~kBits;
+
  public:
   static constexpr TypeKind kKind = TypeKind::kMap;
   static constexpr absl::string_view kName = "map";
@@ -62,24 +73,43 @@ class MapType final {
 
   std::string DebugString() const;
 
-  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  TypeParameters GetParameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   friend void swap(MapType& lhs, MapType& rhs) noexcept {
     using std::swap;
     swap(lhs.data_, rhs.data_);
   }
 
-  const Type& key() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  ABSL_DEPRECATED("Use GetKey")
+  Type key() const;
 
-  const Type& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  Type GetKey() const;
+
+  ABSL_DEPRECATED("Use GetValue")
+  Type value() const;
+
+  Type GetValue() const;
 
  private:
+  friend class Type;
   friend MapType JsonMapType();
 
   explicit MapType(absl::Nonnull<const common_internal::MapTypeData*> data)
-      : data_(data) {}
+      : data_(reinterpret_cast<uintptr_t>(data) | kBasicBit) {
+    ABSL_DCHECK_GE(absl::countr_zero(reinterpret_cast<uintptr_t>(data)), 2)
+        << "alignment must be greater than 2";
+  }
 
-  absl::Nonnull<const common_internal::MapTypeData*> data_;
+  explicit MapType(absl::Nonnull<const google::protobuf::Descriptor*> descriptor)
+      : data_(reinterpret_cast<uintptr_t>(descriptor) | kProtoBit) {
+    ABSL_DCHECK_GE(absl::countr_zero(reinterpret_cast<uintptr_t>(descriptor)),
+                   2)
+        << "alignment must be greater than 2";
+    ABSL_DCHECK(descriptor->map_key() != nullptr);
+    ABSL_DCHECK(descriptor->map_value() != nullptr);
+  }
+
+  uintptr_t data_;
 };
 
 bool operator==(const MapType& lhs, const MapType& rhs);

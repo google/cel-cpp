@@ -38,7 +38,7 @@ TEST(BasicStructType, Name) {
   EXPECT_TRUE(type);
   EXPECT_THAT(type.name(), Eq("test.Struct"));
   EXPECT_THAT(type.DebugString(), Eq("test.Struct"));
-  EXPECT_THAT(type.parameters(), IsEmpty());
+  EXPECT_THAT(type.GetParameters(), IsEmpty());
   EXPECT_NE(type, BasicStructType());
   EXPECT_NE(BasicStructType(), type);
 }

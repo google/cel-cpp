@@ -16,10 +16,11 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/strings/str_cat.h"
-#include "absl/types/span.h"
 #include "common/type.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel {
 
@@ -52,13 +53,24 @@ std::string ListType::DebugString() const {
   return absl::StrCat("list<", element().DebugString(), ">");
 }
 
-absl::Span<const Type> ListType::parameters() const
-    ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return absl::MakeConstSpan(&data_->element, 1);
+TypeParameters ListType::GetParameters() const {
+  return TypeParameters(GetElement());
 }
 
-const Type& ListType::element() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-  return data_->element;
+Type ListType::GetElement() const {
+  ABSL_DCHECK_NE(data_, 0);
+  if ((data_ & kBasicBit) == kBasicBit) {
+    return reinterpret_cast<const common_internal::ListTypeData*>(data_ &
+                                                                  kPointerMask)
+        ->element;
+  }
+  if ((data_ & kProtoBit) == kProtoBit) {
+    return common_internal::SingularMessageFieldType(
+        reinterpret_cast<const google::protobuf::FieldDescriptor*>(data_ & kPointerMask));
+  }
+  return Type();
 }
+
+Type ListType::element() const { return GetElement(); }
 
 }  // namespace cel

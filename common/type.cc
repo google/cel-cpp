@@ -15,11 +15,14 @@
 #include "common/type.h"
 
 #include <array>
+#include <cstdint>
+#include <cstring>
 #include <string>
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
@@ -31,6 +34,7 @@
 namespace cel {
 
 using ::google::protobuf::Descriptor;
+using ::google::protobuf::FieldDescriptor;
 
 Type Type::Message(absl::Nonnull<const Descriptor*> descriptor) {
   switch (descriptor->well_known_type()) {
@@ -96,9 +100,7 @@ static_assert(kTypeToKindArray.size() ==
 
 }  // namespace
 
-TypeKind Type::kind() const {
-  return kTypeToKindArray[variant_.index()];
-}
+TypeKind Type::kind() const { return kTypeToKindArray[variant_.index()]; }
 
 absl::string_view Type::name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
   return absl::visit(
@@ -116,10 +118,10 @@ std::string Type::DebugString() const {
       variant_);
 }
 
-absl::Span<const Type> Type::parameters() const {
+TypeParameters Type::GetParameters() const {
   return absl::visit(
-      [](const auto& alternative) -> absl::Span<const Type> {
-        return alternative.parameters();
+      [](const auto& alternative) -> TypeParameters {
+        return alternative.GetParameters();
       },
       variant_);
 }
@@ -450,6 +452,183 @@ Type::operator UintWrapperType() const {
 Type::operator UnknownType() const {
   ABSL_DCHECK(IsUnknown()) << DebugString();
   return GetOrDie<UnknownType>(variant_);
+}
+
+Type Type::Unwrap() const {
+  switch (kind()) {
+    case TypeKind::kBoolWrapper:
+      return BoolType();
+    case TypeKind::kIntWrapper:
+      return IntType();
+    case TypeKind::kUintWrapper:
+      return UintType();
+    case TypeKind::kDoubleWrapper:
+      return DoubleType();
+    case TypeKind::kBytesWrapper:
+      return BytesType();
+    case TypeKind::kStringWrapper:
+      return StringType();
+    default:
+      return *this;
+  }
+}
+
+Type Type::Wrap() const {
+  switch (kind()) {
+    case TypeKind::kBool:
+      return BoolWrapperType();
+    case TypeKind::kInt:
+      return IntWrapperType();
+    case TypeKind::kUint:
+      return UintWrapperType();
+    case TypeKind::kDouble:
+      return DoubleWrapperType();
+    case TypeKind::kBytes:
+      return BytesWrapperType();
+    case TypeKind::kString:
+      return StringWrapperType();
+    default:
+      return *this;
+  }
+}
+
+namespace common_internal {
+
+Type SingularMessageFieldType(
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> descriptor) {
+  ABSL_DCHECK(!descriptor->is_map());
+  switch (descriptor->type()) {
+    case FieldDescriptor::TYPE_BOOL:
+      return BoolType();
+    case FieldDescriptor::TYPE_SFIXED32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case FieldDescriptor::TYPE_SINT32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case FieldDescriptor::TYPE_INT32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case FieldDescriptor::TYPE_SFIXED64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case FieldDescriptor::TYPE_SINT64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case FieldDescriptor::TYPE_INT64:
+      return IntType();
+    case FieldDescriptor::TYPE_FIXED32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case FieldDescriptor::TYPE_UINT32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case FieldDescriptor::TYPE_FIXED64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case FieldDescriptor::TYPE_UINT64:
+      return UintType();
+    case FieldDescriptor::TYPE_FLOAT:
+      ABSL_FALLTHROUGH_INTENDED;
+    case FieldDescriptor::TYPE_DOUBLE:
+      return DoubleType();
+    case FieldDescriptor::TYPE_BYTES:
+      return BytesType();
+    case FieldDescriptor::TYPE_STRING:
+      return StringType();
+    case FieldDescriptor::TYPE_GROUP:
+      ABSL_FALLTHROUGH_INTENDED;
+    case FieldDescriptor::TYPE_MESSAGE:
+      return Type::Message(descriptor->message_type());
+    case FieldDescriptor::TYPE_ENUM:
+      return Type::Enum(descriptor->enum_type());
+    default:
+      return Type();
+  }
+}
+
+std::string BasicStructTypeField::DebugString() const {
+  if (!name().empty() && number() >= 1) {
+    return absl::StrCat("[", number(), "]", name());
+  }
+  if (!name().empty()) {
+    return std::string(name());
+  }
+  if (number() >= 1) {
+    return absl::StrCat(number());
+  }
+  return std::string();
+}
+
+}  // namespace common_internal
+
+Type Type::Field(absl::Nonnull<const google::protobuf::FieldDescriptor*> descriptor) {
+  if (descriptor->is_map()) {
+    return MapType(descriptor->message_type());
+  }
+  if (descriptor->is_repeated()) {
+    return ListType(descriptor);
+  }
+  return common_internal::SingularMessageFieldType(descriptor);
+}
+
+std::string StructTypeField::DebugString() const {
+  return absl::visit(
+      [](const auto& alternative) -> std::string {
+        return alternative.DebugString();
+      },
+      variant_);
+}
+
+absl::string_view StructTypeField::name() const {
+  return absl::visit(
+      [](const auto& alternative) -> absl::string_view {
+        return alternative.name();
+      },
+      variant_);
+}
+
+int32_t StructTypeField::number() const {
+  return absl::visit(
+      [](const auto& alternative) -> int32_t { return alternative.number(); },
+      variant_);
+}
+
+Type StructTypeField::GetType() const {
+  return absl::visit(
+      [](const auto& alternative) -> Type { return alternative.GetType(); },
+      variant_);
+}
+
+StructTypeField::operator bool() const {
+  return absl::visit(
+      [](const auto& alternative) -> bool {
+        return static_cast<bool>(alternative);
+      },
+      variant_);
+}
+
+absl::optional<MessageTypeField> StructTypeField::AsMessage() const {
+  if (const auto* alternative = absl::get_if<MessageTypeField>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  return absl::nullopt;
+}
+
+StructTypeField::operator MessageTypeField() const {
+  ABSL_DCHECK(IsMessage());
+  return absl::get<MessageTypeField>(variant_);
+}
+
+TypeParameters::TypeParameters(absl::Span<const Type> types)
+    : size_(types.size()) {
+  if (size_ <= 2) {
+    std::memcpy(&internal_[0], types.data(), size_ * sizeof(Type));
+  } else {
+    external_ = types.data();
+  }
+}
+
+TypeParameters::TypeParameters(const Type& element) : size_(1) {
+  std::memcpy(&internal_[0], &element, sizeof(element));
+}
+
+TypeParameters::TypeParameters(const Type& key, const Type& value) : size_(2) {
+  std::memcpy(&internal_[0], &key, sizeof(key));
+  std::memcpy(&internal_[0] + sizeof(key), &value, sizeof(value));
 }
 
 }  // namespace cel

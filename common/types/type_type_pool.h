@@ -44,8 +44,8 @@ class TypeTypePool final {
     using is_transparent = void;
 
     size_t operator()(const TypeType& type_type) const {
-      ABSL_DCHECK_EQ(type_type.parameters().size(), 1);
-      return (*this)(type_type.parameters().front());
+      ABSL_DCHECK_EQ(type_type.GetParameters().size(), 1);
+      return (*this)(type_type.GetParameters().front());
     }
 
     size_t operator()(const Type& type) const {
@@ -57,19 +57,19 @@ class TypeTypePool final {
     using is_transparent = void;
 
     bool operator()(const TypeType& lhs, const TypeType& rhs) const {
-      ABSL_DCHECK_EQ(lhs.parameters().size(), 1);
-      ABSL_DCHECK_EQ(rhs.parameters().size(), 1);
-      return (*this)(lhs.parameters().front(), rhs.parameters().front());
+      ABSL_DCHECK_EQ(lhs.GetParameters().size(), 1);
+      ABSL_DCHECK_EQ(rhs.GetParameters().size(), 1);
+      return (*this)(lhs.GetParameters().front(), rhs.GetParameters().front());
     }
 
     bool operator()(const TypeType& lhs, const Type& rhs) const {
-      ABSL_DCHECK_EQ(lhs.parameters().size(), 1);
-      return (*this)(lhs.parameters().front(), rhs);
+      ABSL_DCHECK_EQ(lhs.GetParameters().size(), 1);
+      return (*this)(lhs.GetParameters().front(), rhs);
     }
 
     bool operator()(const Type& lhs, const TypeType& rhs) const {
-      ABSL_DCHECK_EQ(rhs.parameters().size(), 1);
-      return (*this)(lhs, rhs.parameters().front());
+      ABSL_DCHECK_EQ(rhs.GetParameters().size(), 1);
+      return (*this)(lhs, rhs.GetParameters().front());
     }
 
     bool operator()(const Type& lhs, const Type& rhs) const {

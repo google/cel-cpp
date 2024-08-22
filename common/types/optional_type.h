@@ -35,8 +35,8 @@
 
 namespace cel {
 
-class OptionalType;
 class Type;
+class TypeParameters;
 
 class OptionalType final {
  public:
@@ -58,11 +58,9 @@ class OptionalType final {
 
   std::string DebugString() const { return opaque_.DebugString(); }
 
-  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return opaque_.parameters();
-  }
+  TypeParameters GetParameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  const Type& parameter() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  Type GetParameter() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   explicit operator bool() const { return static_cast<bool>(opaque_); }
 

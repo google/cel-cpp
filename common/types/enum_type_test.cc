@@ -56,7 +56,7 @@ TEST(EnumType, Descriptor) {
   EXPECT_TRUE(type);
   EXPECT_THAT(type.name(), Eq("test.Enum"));
   EXPECT_THAT(type.DebugString(), StartsWith("test.Enum@0x"));
-  EXPECT_THAT(type.parameters(), IsEmpty());
+  EXPECT_THAT(type.GetParameters(), IsEmpty());
   EXPECT_NE(type, EnumType());
   EXPECT_NE(EnumType(), type);
   EXPECT_EQ(cel::to_address(type), desc);

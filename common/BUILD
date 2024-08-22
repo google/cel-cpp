@@ -559,6 +559,7 @@ cc_library(
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/log:die_if_null",
         "@com_google_absl//absl/meta:type_traits",
+        "@com_google_absl//absl/numeric:bits",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
@@ -580,7 +581,6 @@ cc_test(
     ],
     deps = [
         ":memory",
-        ":native_type",
         ":type",
         ":type_kind",
         "//internal:testing",

@@ -18,27 +18,36 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPES_LIST_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPES_LIST_TYPE_H_
 
+#include <cstdint>
 #include <ostream>
 #include <string>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
+#include "absl/numeric/bits.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/span.h"
 #include "common/type_kind.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel {
 
 class Type;
-class ListType;
+class TypeParameters;
 
 namespace common_internal {
 struct ListTypeData;
 }  // namespace common_internal
 
 class ListType final {
+ private:
+  static constexpr uintptr_t kBasicBit = 1;
+  static constexpr uintptr_t kProtoBit = 2;
+  static constexpr uintptr_t kBits = kBasicBit | kProtoBit;
+  static constexpr uintptr_t kPointerMask = ~kBits;
+
  public:
   static constexpr TypeKind kKind = TypeKind::kList;
   static constexpr absl::string_view kName = "list";
@@ -59,20 +68,37 @@ class ListType final {
 
   std::string DebugString() const;
 
-  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  TypeParameters GetParameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   friend void swap(ListType& lhs, ListType& rhs) noexcept {
     using std::swap;
     swap(lhs.data_, rhs.data_);
   }
 
-  const Type& element() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  ABSL_DEPRECATED("Use GetElement")
+  Type element() const;
+
+  Type GetElement() const;
 
  private:
-  explicit ListType(absl::Nonnull<const common_internal::ListTypeData*> data)
-      : data_(data) {}
+  friend class Type;
 
-  absl::Nonnull<const common_internal::ListTypeData*> data_;
+  explicit ListType(absl::Nonnull<const common_internal::ListTypeData*> data)
+      : data_(reinterpret_cast<uintptr_t>(data) | kBasicBit) {
+    ABSL_DCHECK_GE(absl::countr_zero(reinterpret_cast<uintptr_t>(data)), 2)
+        << "alignment must be greater than 2";
+  }
+
+  explicit ListType(absl::Nonnull<const google::protobuf::FieldDescriptor*> descriptor)
+      : data_(reinterpret_cast<uintptr_t>(descriptor) | kProtoBit) {
+    ABSL_DCHECK_GE(absl::countr_zero(reinterpret_cast<uintptr_t>(descriptor)),
+                   2)
+        << "alignment must be greater than 2";
+    ABSL_DCHECK(descriptor->is_repeated());
+    ABSL_DCHECK(!descriptor->is_map());
+  }
+
+  uintptr_t data_;
 };
 
 bool operator==(const ListType& lhs, const ListType& rhs);

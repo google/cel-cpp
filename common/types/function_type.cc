@@ -71,9 +71,9 @@ std::string FunctionType::DebugString() const {
   return FunctionDebugString(result(), args());
 }
 
-absl::Span<const Type> FunctionType::parameters() const {
+TypeParameters FunctionType::GetParameters() const {
   ABSL_DCHECK(*this);
-  return absl::MakeConstSpan(data_->args, data_->args_size);
+  return TypeParameters(absl::MakeConstSpan(data_->args, data_->args_size));
 }
 
 const Type& FunctionType::result() const {

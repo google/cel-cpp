@@ -25,18 +25,19 @@
 #include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/span.h"
 #include "common/type_kind.h"
 
 namespace cel {
 
 class Type;
+class TypeParameters;
 
 bool IsWellKnownMessageType(absl::string_view name);
 
 namespace common_internal {
 
 class BasicStructType;
+class BasicStructTypeField;
 
 // Constructs `BasicStructType` from a type name. The type name must not be one
 // of the well known message types we treat specially, if it is behavior is
@@ -61,10 +62,7 @@ class BasicStructType final {
     return name_;
   }
 
-  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    ABSL_DCHECK(*this);
-    return {};
-  }
+  static TypeParameters GetParameters();
 
   std::string DebugString() const {
     return std::string(static_cast<bool>(*this) ? name() : absl::string_view());

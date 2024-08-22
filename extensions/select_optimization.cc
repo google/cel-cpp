@@ -156,7 +156,7 @@ absl::optional<SelectInstruction> GetSelectInstruction(
                       .FindStructTypeFieldByName(runtime_type, field_name)
                       .value_or(absl::nullopt);
   if (field_or.has_value()) {
-    return SelectInstruction{field_or->number, field_or->name};
+    return SelectInstruction{field_or->number(), std::string(field_or->name())};
   }
   return absl::nullopt;
 }

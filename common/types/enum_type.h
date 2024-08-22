@@ -28,13 +28,13 @@
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/span.h"
 #include "common/type_kind.h"
 #include "google/protobuf/descriptor.h"
 
 namespace cel {
 
 class Type;
+class TypeParameters;
 
 bool IsWellKnownEnumType(
     absl::Nonnull<const google::protobuf::EnumDescriptor*> descriptor);
@@ -69,10 +69,7 @@ class EnumType final {
 
   std::string DebugString() const;
 
-  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    ABSL_DCHECK(*this);
-    return {};
-  }
+  static TypeParameters GetParameters();
 
   const google::protobuf::EnumDescriptor& operator*() const {
     ABSL_DCHECK(*this);

@@ -22,15 +22,13 @@
 #include <string>
 #include <utility>
 
-#include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/span.h"
 #include "common/type_kind.h"
 
 namespace cel {
 
 class Type;
-class NullType;
+class TypeParameters;
 
 // `NullType` represents the primitive `null_type` type.
 class NullType final {
@@ -44,17 +42,13 @@ class NullType final {
   NullType& operator=(const NullType&) = default;
   NullType& operator=(NullType&&) = default;
 
-  constexpr TypeKind kind() const { return kKind; }
+  static TypeKind kind() { return kKind; }
 
-  constexpr absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return kName;
-  }
+  static absl::string_view name() { return kName; }
 
-  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return {};
-  }
+  static TypeParameters GetParameters();
 
-  std::string DebugString() const { return std::string(name()); }
+  static std::string DebugString() { return std::string(name()); }
 
   constexpr void swap(NullType&) noexcept {}
 };

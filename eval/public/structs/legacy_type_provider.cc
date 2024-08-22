@@ -15,7 +15,6 @@
 #include "eval/public/structs/legacy_type_provider.h"
 
 #include <cstdint>
-#include <string>
 #include <utility>
 
 #include "absl/status/status.h"
@@ -42,7 +41,6 @@ namespace google::api::expr::runtime {
 namespace {
 
 using google::api::expr::runtime::LegacyTypeAdapter;
-using google::api::expr::runtime::LegacyTypeInfoApis;
 using google::api::expr::runtime::MessageWrapper;
 
 class LegacyStructValueBuilder final : public cel::StructValueBuilder {
@@ -170,15 +168,16 @@ LegacyTypeProvider::FindStructTypeFieldByNameImpl(
   if (auto type_info = ProvideLegacyTypeInfo(type); type_info.has_value()) {
     if (auto field_desc = (*type_info)->FindFieldByName(name);
         field_desc.has_value()) {
-      return cel::StructTypeField{std::string(field_desc->name), cel::DynType{},
-                                  field_desc->number};
+      return cel::common_internal::BasicStructTypeField(
+          field_desc->name, field_desc->number, cel::DynType{});
     } else {
       const auto* mutation_apis =
           (*type_info)->GetMutationApis(MessageWrapper());
       if (mutation_apis == nullptr || !mutation_apis->DefinesField(name)) {
         return absl::nullopt;
       }
-      return cel::StructTypeField{std::string(name), cel::DynType{}, 0};
+      return cel::common_internal::BasicStructTypeField(name, 0,
+                                                        cel::DynType{});
     }
   }
   return absl::nullopt;

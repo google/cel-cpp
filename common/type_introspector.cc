@@ -32,20 +32,27 @@ namespace cel {
 
 namespace {
 
+common_internal::BasicStructTypeField MakeBasicStructTypeField(
+    absl::string_view name, Type type, int32_t number) {
+  return common_internal::BasicStructTypeField(name, number, type);
+}
+
 struct FieldNameComparer {
   using is_transparent = void;
 
-  bool operator()(const StructTypeField& lhs,
-                  const StructTypeField& rhs) const {
-    return (*this)(lhs.name, rhs.name);
+  bool operator()(const common_internal::BasicStructTypeField& lhs,
+                  const common_internal::BasicStructTypeField& rhs) const {
+    return (*this)(lhs.name(), rhs.name());
   }
 
-  bool operator()(const StructTypeField& lhs, absl::string_view rhs) const {
-    return (*this)(lhs.name, rhs);
+  bool operator()(const common_internal::BasicStructTypeField& lhs,
+                  absl::string_view rhs) const {
+    return (*this)(lhs.name(), rhs);
   }
 
-  bool operator()(absl::string_view lhs, const StructTypeField& rhs) const {
-    return (*this)(lhs, rhs.name);
+  bool operator()(absl::string_view lhs,
+                  const common_internal::BasicStructTypeField& rhs) const {
+    return (*this)(lhs, rhs.name());
   }
 
   bool operator()(absl::string_view lhs, absl::string_view rhs) const {
@@ -56,24 +63,28 @@ struct FieldNameComparer {
 struct FieldNumberComparer {
   using is_transparent = void;
 
-  bool operator()(const StructTypeField& lhs,
-                  const StructTypeField& rhs) const {
-    return (*this)(lhs.number, rhs.number);
+  bool operator()(const common_internal::BasicStructTypeField& lhs,
+                  const common_internal::BasicStructTypeField& rhs) const {
+    return (*this)(lhs.number(), rhs.number());
   }
 
-  bool operator()(const StructTypeField& lhs, int64_t rhs) const {
-    return (*this)(lhs.number, rhs);
+  bool operator()(const common_internal::BasicStructTypeField& lhs,
+                  int64_t rhs) const {
+    return (*this)(lhs.number(), rhs);
   }
 
-  bool operator()(int64_t lhs, const StructTypeField& rhs) const {
-    return (*this)(lhs, rhs.number);
+  bool operator()(int64_t lhs,
+                  const common_internal::BasicStructTypeField& rhs) const {
+    return (*this)(lhs, rhs.number());
   }
 
   bool operator()(int64_t lhs, int64_t rhs) const { return lhs < rhs; }
 };
 
 struct WellKnownType {
-  WellKnownType(const Type& type, std::initializer_list<StructTypeField> fields)
+  WellKnownType(
+      const Type& type,
+      std::initializer_list<common_internal::BasicStructTypeField> fields)
       : type(type), fields_by_name(fields), fields_by_number(fields) {
     std::sort(fields_by_name.begin(), fields_by_name.end(),
               FieldNameComparer{});
@@ -85,14 +96,15 @@ struct WellKnownType {
 
   Type type;
   // We use `2` as that accommodates most well known types.
-  absl::InlinedVector<StructTypeField, 2> fields_by_name;
-  absl::InlinedVector<StructTypeField, 2> fields_by_number;
+  absl::InlinedVector<common_internal::BasicStructTypeField, 2> fields_by_name;
+  absl::InlinedVector<common_internal::BasicStructTypeField, 2>
+      fields_by_number;
 
   absl::optional<StructTypeField> FieldByName(absl::string_view name) const {
     // Basically `std::binary_search`.
     auto it = std::lower_bound(fields_by_name.begin(), fields_by_name.end(),
                                name, FieldNameComparer{});
-    if (it == fields_by_name.end() || it->name != name) {
+    if (it == fields_by_name.end() || it->name() != name) {
       return absl::nullopt;
     }
     return *it;
@@ -102,7 +114,7 @@ struct WellKnownType {
     // Basically `std::binary_search`.
     auto it = std::lower_bound(fields_by_number.begin(), fields_by_number.end(),
                                number, FieldNumberComparer{});
-    if (it == fields_by_number.end() || it->number != number) {
+    if (it == fields_by_number.end() || it->number() != number) {
       return absl::nullopt;
     }
     return *it;
@@ -117,70 +129,72 @@ const WellKnownTypesMap& GetWellKnownTypesMap() {
     types->insert_or_assign(
         "google.protobuf.BoolValue",
         WellKnownType{BoolWrapperType{},
-                      {StructTypeField{"value", BoolType{}, 1}}});
+                      {MakeBasicStructTypeField("value", BoolType{}, 1)}});
     types->insert_or_assign(
         "google.protobuf.Int32Value",
         WellKnownType{IntWrapperType{},
-                      {StructTypeField{"value", IntType{}, 1}}});
+                      {MakeBasicStructTypeField("value", IntType{}, 1)}});
     types->insert_or_assign(
         "google.protobuf.Int64Value",
         WellKnownType{IntWrapperType{},
-                      {StructTypeField{"value", IntType{}, 1}}});
+                      {MakeBasicStructTypeField("value", IntType{}, 1)}});
     types->insert_or_assign(
         "google.protobuf.UInt32Value",
         WellKnownType{UintWrapperType{},
-                      {StructTypeField{"value", UintType{}, 1}}});
+                      {MakeBasicStructTypeField("value", UintType{}, 1)}});
     types->insert_or_assign(
         "google.protobuf.UInt64Value",
         WellKnownType{UintWrapperType{},
-                      {StructTypeField{"value", UintType{}, 1}}});
+                      {MakeBasicStructTypeField("value", UintType{}, 1)}});
     types->insert_or_assign(
         "google.protobuf.FloatValue",
         WellKnownType{DoubleWrapperType{},
-                      {StructTypeField{"value", DoubleType{}, 1}}});
+                      {MakeBasicStructTypeField("value", DoubleType{}, 1)}});
     types->insert_or_assign(
         "google.protobuf.DoubleValue",
         WellKnownType{DoubleWrapperType{},
-                      {StructTypeField{"value", DoubleType{}, 1}}});
+                      {MakeBasicStructTypeField("value", DoubleType{}, 1)}});
     types->insert_or_assign(
         "google.protobuf.StringValue",
         WellKnownType{StringWrapperType{},
-                      {StructTypeField{"value", StringType{}, 1}}});
+                      {MakeBasicStructTypeField("value", StringType{}, 1)}});
     types->insert_or_assign(
         "google.protobuf.BytesValue",
         WellKnownType{BytesWrapperType{},
-                      {StructTypeField{"value", BytesType{}, 1}}});
+                      {MakeBasicStructTypeField("value", BytesType{}, 1)}});
     types->insert_or_assign(
         "google.protobuf.Duration",
         WellKnownType{DurationType{},
-                      {StructTypeField{"seconds", IntType{}, 1},
-                       StructTypeField{"nanos", IntType{}, 2}}});
+                      {MakeBasicStructTypeField("seconds", IntType{}, 1),
+                       MakeBasicStructTypeField("nanos", IntType{}, 2)}});
     types->insert_or_assign(
         "google.protobuf.Timestamp",
         WellKnownType{TimestampType{},
-                      {StructTypeField{"seconds", IntType{}, 1},
-                       StructTypeField{"nanos", IntType{}, 2}}});
+                      {MakeBasicStructTypeField("seconds", IntType{}, 1),
+                       MakeBasicStructTypeField("nanos", IntType{}, 2)}});
     types->insert_or_assign(
         "google.protobuf.Value",
-        WellKnownType{DynType{},
-                      {StructTypeField{"null_value", NullType{}, 1},
-                       StructTypeField{"number_value", DoubleType{}, 2},
-                       StructTypeField{"string_value", StringType{}, 3},
-                       StructTypeField{"bool_value", BoolType{}, 4},
-                       StructTypeField{"struct_value", JsonMapType(), 5},
-                       StructTypeField{"list_value", ListType{}, 6}}});
+        WellKnownType{
+            DynType{},
+            {MakeBasicStructTypeField("null_value", NullType{}, 1),
+             MakeBasicStructTypeField("number_value", DoubleType{}, 2),
+             MakeBasicStructTypeField("string_value", StringType{}, 3),
+             MakeBasicStructTypeField("bool_value", BoolType{}, 4),
+             MakeBasicStructTypeField("struct_value", JsonMapType(), 5),
+             MakeBasicStructTypeField("list_value", ListType{}, 6)}});
     types->insert_or_assign(
         "google.protobuf.ListValue",
-        WellKnownType{ListType{}, {StructTypeField{"values", ListType{}, 1}}});
+        WellKnownType{ListType{},
+                      {MakeBasicStructTypeField("values", ListType{}, 1)}});
     types->insert_or_assign(
         "google.protobuf.Struct",
         WellKnownType{JsonMapType(),
-                      {StructTypeField{"fields", JsonMapType(), 1}}});
+                      {MakeBasicStructTypeField("fields", JsonMapType(), 1)}});
     types->insert_or_assign(
         "google.protobuf.Any",
         WellKnownType{AnyType{},
-                      {StructTypeField{"type_url", StringType{}, 1},
-                       StructTypeField{"value", BytesType{}, 2}}});
+                      {MakeBasicStructTypeField("type_url", StringType{}, 1),
+                       MakeBasicStructTypeField("value", BytesType{}, 2)}});
     types->insert_or_assign("null_type", WellKnownType{NullType{}});
     types->insert_or_assign("google.protobuf.NullValue",
                             WellKnownType{NullType{}});

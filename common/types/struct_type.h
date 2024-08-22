@@ -26,7 +26,6 @@
 #include "absl/base/optimization.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "common/type_kind.h"
 #include "common/types/basic_struct_type.h"
@@ -36,6 +35,7 @@
 namespace cel {
 
 class Type;
+class TypeParameters;
 
 class StructType final {
  public:
@@ -85,7 +85,7 @@ class StructType final {
 
   absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  TypeParameters GetParameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   std::string DebugString() const;
 

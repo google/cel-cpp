@@ -24,13 +24,12 @@
 
 #include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/span.h"
 #include "common/type_kind.h"
 
 namespace cel {
 
 class Type;
-class TypeParamType;
+class TypeParameters;
 
 class TypeParamType final {
  public:
@@ -49,9 +48,7 @@ class TypeParamType final {
 
   absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND { return name_; }
 
-  absl::Span<const Type> parameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return {};
-  }
+  static TypeParameters GetParameters();
 
   std::string DebugString() const { return std::string(name()); }
 
