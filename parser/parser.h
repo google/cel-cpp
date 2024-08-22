@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// CEL does not support calling the parser during C++ static initialization.
+// Callers must ensure the parser is only invoked after C++ static initializers
+// are run. Failing to do so is undefined behavior. The current reason for this
+// is the parser uses ANTLRv4, which also makes no guarantees about being safe
+// with regard to C++ static initialization. As such, neither do we.
+
 #ifndef THIRD_PARTY_CEL_CPP_PARSER_PARSER_H_
 #define THIRD_PARTY_CEL_CPP_PARSER_PARSER_H_
 
@@ -48,24 +54,34 @@ class VerboseParsedExpr {
   EnrichedSourceInfo enriched_source_info_;
 };
 
+// See comments at the top of the file for information about usage during C++
+// static initialization.
 absl::StatusOr<VerboseParsedExpr> EnrichedParse(
     absl::string_view expression, const std::vector<Macro>& macros,
     absl::string_view description = "<input>",
     const ParserOptions& options = ParserOptions());
 
+// See comments at the top of the file for information about usage during C++
+// static initialization.
 absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> Parse(
     absl::string_view expression, absl::string_view description = "<input>",
     const ParserOptions& options = ParserOptions());
 
+// See comments at the top of the file for information about usage during C++
+// static initialization.
 absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> ParseWithMacros(
     absl::string_view expression, const std::vector<Macro>& macros,
     absl::string_view description = "<input>",
     const ParserOptions& options = ParserOptions());
 
+// See comments at the top of the file for information about usage during C++
+// static initialization.
 absl::StatusOr<VerboseParsedExpr> EnrichedParse(
     const cel::Source& source, const cel::MacroRegistry& registry,
     const ParserOptions& options = ParserOptions());
 
+// See comments at the top of the file for information about usage during C++
+// static initialization.
 absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> Parse(
     const cel::Source& source, const cel::MacroRegistry& registry,
     const ParserOptions& options = ParserOptions());
