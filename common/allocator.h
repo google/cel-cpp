@@ -29,6 +29,26 @@
 
 namespace cel {
 
+enum class AllocatorKind {
+  kArena = 1,
+  kNewDelete = 2,
+};
+
+template <typename S>
+void AbslStringify(S& sink, AllocatorKind kind) {
+  switch (kind) {
+    case AllocatorKind::kArena:
+      sink.Append("ARENA");
+      return;
+    case AllocatorKind::kNewDelete:
+      sink.Append("NEW_DELETE");
+      return;
+    default:
+      sink.Append("ERROR");
+      return;
+  }
+}
+
 template <typename T = void>
 class Allocator;
 

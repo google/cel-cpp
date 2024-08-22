@@ -866,6 +866,7 @@ cc_test(
     deps = [
         ":allocator",
         "//internal:testing",
+        "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],
 )

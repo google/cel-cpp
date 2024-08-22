@@ -19,6 +19,7 @@
 
 #include "common/allocator.h"
 
+#include "absl/strings/str_cat.h"
 #include "internal/testing.h"
 #include "google/protobuf/arena.h"
 
@@ -26,6 +27,12 @@ namespace cel {
 namespace {
 
 using testing::NotNull;
+
+TEST(AllocatorKind, AbslStringify) {
+  EXPECT_EQ(absl::StrCat(AllocatorKind::kArena), "ARENA");
+  EXPECT_EQ(absl::StrCat(AllocatorKind::kNewDelete), "NEW_DELETE");
+  EXPECT_EQ(absl::StrCat(static_cast<AllocatorKind>(0)), "ERROR");
+}
 
 TEST(NewDeleteAllocator, Bytes) {
   auto allocator = NewDeleteAllocator();
