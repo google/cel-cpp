@@ -324,21 +324,37 @@ Value CreateDurationFromString(ValueManager& value_factory,
 absl::Status RegisterTimeConversionFunctions(FunctionRegistry& registry,
                                              const RuntimeOptions& options) {
   // duration() conversion from string.
-  absl::Status status =
-      UnaryFunctionAdapter<Value, const StringValue&>::RegisterGlobalOverload(
-          cel::builtin::kDuration, CreateDurationFromString, registry);
-  CEL_RETURN_IF_ERROR(status);
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<Value, const StringValue&>::RegisterGlobalOverload(
+          cel::builtin::kDuration, CreateDurationFromString, registry)));
 
   // timestamp conversion from int.
-  status =
-      UnaryFunctionAdapter<Value, int64_t>::RegisterGlobalOverload(
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<Value, int64_t>::RegisterGlobalOverload(
           cel::builtin::kTimestamp,
           [](ValueManager& value_factory, int64_t epoch_seconds) -> Value {
             return value_factory.CreateUncheckedTimestampValue(
                 absl::FromUnixSeconds(epoch_seconds));
           },
-          registry);
-  CEL_RETURN_IF_ERROR(status);
+          registry)));
+
+  // timestamp -> timestamp
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<Value, absl::Time>::RegisterGlobalOverload(
+          cel::builtin::kTimestamp,
+          [](ValueManager&, absl::Time value) -> Value {
+            return TimestampValue(value);
+          },
+          registry)));
+
+  // duration -> duration
+  CEL_RETURN_IF_ERROR(
+      (UnaryFunctionAdapter<Value, absl::Duration>::RegisterGlobalOverload(
+          cel::builtin::kDuration,
+          [](ValueManager&, absl::Duration value) -> Value {
+            return DurationValue(value);
+          },
+          registry)));
 
   // timestamp() conversion from string.
   bool enable_timestamp_duration_overflow_errors =

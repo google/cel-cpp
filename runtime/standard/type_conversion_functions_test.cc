@@ -147,12 +147,15 @@ TEST(RegisterTypeConversionFunctions, RegisterTimeConversionFunctions) {
       registry.FindStaticOverloads(builtin::kTimestamp, false, {Kind::kAny}),
       UnorderedElementsAre(
           MatchesUnaryDescriptor(builtin::kTimestamp, false, Kind::kInt),
-          MatchesUnaryDescriptor(builtin::kTimestamp, false, Kind::kString)));
+          MatchesUnaryDescriptor(builtin::kTimestamp, false, Kind::kString),
+          MatchesUnaryDescriptor(builtin::kTimestamp, false,
+                                 Kind::kTimestamp)));
 
   EXPECT_THAT(
       registry.FindStaticOverloads(builtin::kDuration, false, {Kind::kAny}),
       UnorderedElementsAre(
-          MatchesUnaryDescriptor(builtin::kDuration, false, Kind::kString)));
+          MatchesUnaryDescriptor(builtin::kDuration, false, Kind::kString),
+          MatchesUnaryDescriptor(builtin::kDuration, false, Kind::kDuration)));
 }
 
 TEST(RegisterTypeConversionFunctions, RegisterMetaTypeConversionFunctions) {

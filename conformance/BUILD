@@ -209,10 +209,6 @@ _TESTS_TO_SKIP_MODERN = [
     "wrappers/bytes/to_null",
     "wrappers/string/to_null",
 
-    # TODO: Add missing identity functions
-    "conversions/identity/duration",
-    "conversions/identity/timestamp",
-
     # TODO: Add missing conversion function
     "conversions/bool",
 
@@ -286,10 +282,6 @@ _TESTS_TO_SKIP_LEGACY = [
     "proto2/set_null/single_struct",
     "proto3/set_null/list_value",
     "proto3/set_null/single_struct",
-
-    # TODO: Add missing identity functions
-    "conversions/identity/duration",
-    "conversions/identity/timestamp",
 
     # TODO: Add missing conversion function
     "conversions/bool",
