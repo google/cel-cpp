@@ -18,7 +18,6 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPES_MAP_TYPE_POOL_H_
 
 #include <cstddef>
-#include <functional>
 #include <tuple>
 
 #include "absl/base/nullability.h"
@@ -41,15 +40,14 @@ class MapTypePool final {
   MapType InternMapType(const Type& key, const Type& value);
 
  private:
-  using MapTypeTuple = std::tuple<std::reference_wrapper<const Type>,
-                                  std::reference_wrapper<const Type>>;
+  using MapTypeTuple = std::tuple<Type, Type>;
 
   static MapTypeTuple AsTuple(const MapType& map_type) {
-    return AsTuple(map_type.key(), map_type.value());
+    return AsTuple(map_type.GetKey(), map_type.GetValue());
   }
 
   static MapTypeTuple AsTuple(const Type& key, const Type& value) {
-    return MapTypeTuple{std::cref(key), std::cref(value)};
+    return MapTypeTuple{key, value};
   }
 
   struct Hasher {

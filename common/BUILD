@@ -960,3 +960,116 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "type_pool",
+    srcs = ["type_pool.cc"],
+    hdrs = ["type_pool.h"],
+    deps = [
+        ":arena_string",
+        ":arena_string_pool",
+        ":type",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "type_pool_test",
+    srcs = ["type_pool_test.cc"],
+    deps = [
+        ":arena_string_pool",
+        ":type",
+        ":type_pool",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "type_proto",
+    srcs = ["type_proto.cc"],
+    hdrs = ["type_proto.h"],
+    deps = [
+        ":type",
+        ":type_kind",
+        ":type_pool",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:inlined_vector",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "type_proto_test",
+    srcs = ["type_proto_test.cc"],
+    deps = [
+        ":arena_string_pool",
+        ":type",
+        ":type_pool",
+        ":type_proto",
+        "//internal:proto_matchers",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_cel_spec//proto/cel/expr:checked_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "type_proto_v1alpha1",
+    srcs = ["type_proto_v1alpha1.cc"],
+    hdrs = ["type_proto_v1alpha1.h"],
+    deps = [
+        ":type",
+        ":type_kind",
+        ":type_pool",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:inlined_vector",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "type_proto_v1alpha1_test",
+    srcs = ["type_proto_v1alpha1_test.cc"],
+    deps = [
+        ":arena_string_pool",
+        ":type",
+        ":type_pool",
+        ":type_proto_v1alpha1",
+        "//internal:proto_matchers",
+        "//internal:testing",
+        "//internal:testing_descriptor_pool",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
