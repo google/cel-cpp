@@ -16,8 +16,6 @@
 
 #include "eval/compiler/flat_expr_builder.h"
 
-#include <cstddef>
-#include <fstream>
 #include <functional>
 #include <memory>
 #include <string>
@@ -28,10 +26,8 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/field_mask.pb.h"
 #include "google/protobuf/descriptor.pb.h"
-#include "google/protobuf/text_format.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
-#include "absl/strings/str_format.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -2394,6 +2390,229 @@ TEST(UpdatedConstantFolding, FoldsLists) {
   // any intermediates in the unoptimized case.
   EXPECT_LE(arena.SpaceUsed() - before_size, 512);
   EXPECT_THAT(result, test::IsCelList(SizeIs(12)));
+}
+
+TEST(FlatExprBuilderTest, BlockBadIndex) {
+  ParsedExpr parsed_expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr: {
+          call_expr: {
+            function: "cel.@block"
+            args {
+              list_expr: { elements { const_expr: { string_value: "foo" } } }
+            }
+            args { ident_expr: { name: "@index-1" } }
+          }
+        }
+      )pb",
+      &parsed_expr));
+
+  CelExpressionBuilderFlatImpl builder;
+  EXPECT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(absl::StatusCode::kInvalidArgument, HasSubstr("bad @index")));
+}
+
+TEST(FlatExprBuilderTest, OutOfRangeBlockIndex) {
+  ParsedExpr parsed_expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr: {
+          call_expr: {
+            function: "cel.@block"
+            args {
+              list_expr: { elements { const_expr: { string_value: "foo" } } }
+            }
+            args { ident_expr: { name: "@index1" } }
+          }
+        }
+      )pb",
+      &parsed_expr));
+
+  CelExpressionBuilderFlatImpl builder;
+  EXPECT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("invalid @index greater than number of bindings:")));
+}
+
+TEST(FlatExprBuilderTest, EarlyBlockIndex) {
+  ParsedExpr parsed_expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr: {
+          call_expr: {
+            function: "cel.@block"
+            args { list_expr: { elements { ident_expr: { name: "@index0" } } } }
+            args { ident_expr: { name: "@index0" } }
+          }
+        }
+      )pb",
+      &parsed_expr));
+
+  CelExpressionBuilderFlatImpl builder;
+  EXPECT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("@index references current or future binding:")));
+}
+
+TEST(FlatExprBuilderTest, OutOfScopeCSE) {
+  ParsedExpr parsed_expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr: { ident_expr: { name: "@ac:0:0" } }
+      )pb",
+      &parsed_expr));
+
+  CelExpressionBuilderFlatImpl builder;
+  EXPECT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("out of scope reference to CSE generated "
+                         "comprehension variable")));
+}
+
+TEST(FlatExprBuilderTest, BlockMissingBindings) {
+  ParsedExpr parsed_expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr: { call_expr: { function: "cel.@block" } }
+      )pb",
+      &parsed_expr));
+
+  CelExpressionBuilderFlatImpl builder;
+  EXPECT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr(
+                   "malformed cel.@block: missing list of bound expressions")));
+}
+
+TEST(FlatExprBuilderTest, BlockMissingExpression) {
+  ParsedExpr parsed_expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr: {
+          call_expr: {
+            function: "cel.@block"
+            args { list_expr: {} }
+          }
+        }
+      )pb",
+      &parsed_expr));
+
+  CelExpressionBuilderFlatImpl builder;
+  EXPECT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("malformed cel.@block: missing bound expression")));
+}
+
+TEST(FlatExprBuilderTest, BlockNotListOfBoundExpressions) {
+  ParsedExpr parsed_expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr: {
+          call_expr: {
+            function: "cel.@block"
+            args { ident_expr: { name: "@index0" } }
+            args { ident_expr: { name: "@index0" } }
+          }
+        }
+      )pb",
+      &parsed_expr));
+
+  CelExpressionBuilderFlatImpl builder;
+  EXPECT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("malformed cel.@block: first argument is not a list "
+                         "of bound expressions")));
+}
+
+TEST(FlatExprBuilderTest, BlockEmptyListOfBoundExpressions) {
+  ParsedExpr parsed_expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr: {
+          call_expr: {
+            function: "cel.@block"
+            args { list_expr: {} }
+            args { ident_expr: { name: "@index0" } }
+          }
+        }
+      )pb",
+      &parsed_expr));
+
+  CelExpressionBuilderFlatImpl builder;
+  EXPECT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(
+          absl::StatusCode::kInvalidArgument,
+          HasSubstr(
+              "malformed cel.@block: list of bound expressions is empty")));
+}
+
+TEST(FlatExprBuilderTest, BlockOptionalListOfBoundExpressions) {
+  ParsedExpr parsed_expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr: {
+          call_expr: {
+            function: "cel.@block"
+            args {
+              list_expr: {
+                elements { const_expr: { string_value: "foo" } }
+                optional_indices: [ 0 ]
+              }
+            }
+            args { ident_expr: { name: "@index0" } }
+          }
+        }
+      )pb",
+      &parsed_expr));
+
+  CelExpressionBuilderFlatImpl builder;
+  EXPECT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("malformed cel.@block: list of bound expressions "
+                         "contains an optional")));
+}
+
+TEST(FlatExprBuilderTest, BlockNested) {
+  ParsedExpr parsed_expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr: {
+          call_expr: {
+            function: "cel.@block"
+            args {
+              list_expr: { elements { const_expr: { string_value: "foo" } } }
+            }
+            args {
+              call_expr: {
+                function: "cel.@block"
+                args {
+                  list_expr: {
+                    elements { const_expr: { string_value: "foo" } }
+                  }
+                }
+                args { ident_expr: { name: "@index1" } }
+              }
+            }
+          }
+        }
+      )pb",
+      &parsed_expr));
+
+  CelExpressionBuilderFlatImpl builder;
+  EXPECT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("multiple cel.@block are not allowed")));
 }
 
 }  // namespace
