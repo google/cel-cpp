@@ -7,9 +7,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_jar")
 def base_deps():
     """Base evaluator and test dependencies."""
 
-    # Abseil LTS 20240116.2
-    ABSL_SHA1 = "d7aaad83b488fd62bd51c81ecf16cd938532cc0a"
-    ABSL_SHA256 = "68e7d36d621769ab500b2ebeec6a7910420566874b4b33b340a04bd70e67fe43"
+    # Abseil LTS 20240722.0
+    ABSL_SHA1 = "4447c7562e3bc702ade25105912dce503f0c4010"
+    ABSL_SHA256 = "d8342ad77aa9e16103c486b615460c24a695a1f04cdb760eb02fef780df99759"
     http_archive(
         name = "com_google_absl",
         urls = ["https://github.com/abseil/abseil-cpp/archive/" + ABSL_SHA1 + ".zip"],
@@ -17,9 +17,9 @@ def base_deps():
         sha256 = ABSL_SHA256,
     )
 
-    # v1.14.0
-    GOOGLETEST_SHA1 = "f8d7d77c06936315286eb55f8de22cd23c188571"
-    GOOGLETEST_SHA256 = "b976cf4fd57b318afdb1bdb27fc708904b3e4bed482859eb94ba2b4bdd077fe2"
+    # v1.15.2
+    GOOGLETEST_SHA1 = "b514bdc898e2951020cbdca1304b75f5950d1f59"
+    GOOGLETEST_SHA256 = "8c0ceafa3ea24bf78e3519b7846d99e76c45899aa4dac4d64e7dd62e495de9fd"
     http_archive(
         name = "com_google_googletest",
         urls = ["https://github.com/google/googletest/archive/" + GOOGLETEST_SHA1 + ".zip"],

@@ -904,3 +904,222 @@ cc_library(
         "@com_google_absl//absl/utility",
     ],
 )
+
+cc_library(
+    name = "arena_string",
+    hdrs = ["arena_string.h"],
+    deps = [
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_test(
+    name = "arena_string_test",
+    srcs = ["arena_string_test.cc"],
+    deps = [
+        ":arena_string",
+        "//internal:testing",
+        "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/hash:hash_testing",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_library(
+    name = "arena_string_pool",
+    hdrs = ["arena_string_pool.h"],
+    deps = [
+        ":arena_string",
+        "//internal:string_pool",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "arena_string_pool_test",
+    srcs = ["arena_string_pool_test.cc"],
+    deps = [
+        ":arena_string_pool",
+        "//internal:testing",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "arena_bytes",
+    hdrs = ["arena_bytes.h"],
+    deps = [
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_test(
+    name = "arena_bytes_test",
+    srcs = ["arena_bytes_test.cc"],
+    deps = [
+        ":arena_bytes",
+        "//internal:testing",
+        "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/hash:hash_testing",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_library(
+    name = "arena_bytes_pool",
+    hdrs = ["arena_bytes_pool.h"],
+    deps = [
+        ":arena_bytes",
+        "//internal:string_pool",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "arena_bytes_pool_test",
+    srcs = ["arena_bytes_pool_test.cc"],
+    deps = [
+        ":arena_bytes_pool",
+        "//internal:testing",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "arena_constant",
+    srcs = ["arena_constant.cc"],
+    hdrs = ["arena_constant.h"],
+    deps = [
+        ":arena_bytes",
+        ":arena_bytes_pool",
+        ":arena_string",
+        ":arena_string_pool",
+        ":constant",
+        "//internal:time",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/functional:overload",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:variant",
+        "@com_google_absl//absl/utility",
+    ],
+)
+
+cc_test(
+    name = "arena_constant_test",
+    srcs = ["arena_constant_test.cc"],
+    deps = [
+        ":arena_bytes",
+        ":arena_bytes_pool",
+        ":arena_constant",
+        ":arena_string",
+        ":arena_string_pool",
+        ":constant",
+        "//internal:testing",
+        "@com_google_absl//absl/hash:hash_testing",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:variant",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "arena_constant_proto",
+    srcs = ["arena_constant_proto.cc"],
+    hdrs = ["arena_constant_proto.h"],
+    deps = [
+        ":arena_bytes",
+        ":arena_bytes_pool",
+        ":arena_constant",
+        ":arena_string",
+        ":arena_string_pool",
+        "//internal:proto_time_encoding",
+        "//internal:status_macros",
+        "//internal:time",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "arena_constant_proto_test",
+    srcs = ["arena_constant_proto_test.cc"],
+    deps = [
+        ":arena_bytes",
+        ":arena_bytes_pool",
+        ":arena_constant",
+        ":arena_constant_proto",
+        ":arena_string",
+        ":arena_string_pool",
+        "//internal:proto_matchers",
+        "//internal:testing",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "arena_constant_proto_v1alpha1",
+    srcs = ["arena_constant_proto_v1alpha1.cc"],
+    hdrs = ["arena_constant_proto_v1alpha1.h"],
+    deps = [
+        ":arena_bytes",
+        ":arena_bytes_pool",
+        ":arena_constant",
+        ":arena_string",
+        ":arena_string_pool",
+        "//internal:proto_time_encoding",
+        "//internal:status_macros",
+        "//internal:time",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "arena_constant_proto_v1alpha1_test",
+    srcs = ["arena_constant_proto_v1alpha1_test.cc"],
+    deps = [
+        ":arena_bytes",
+        ":arena_bytes_pool",
+        ":arena_constant",
+        ":arena_constant_proto_v1alpha1",
+        ":arena_string",
+        ":arena_string_pool",
+        "//internal:proto_matchers",
+        "//internal:testing",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
