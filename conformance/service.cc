@@ -140,19 +140,22 @@ absl::optional<cel::Expr> CelIterVarMacroExpander(
   if (!IsCelNamespace(target)) {
     return absl::nullopt;
   }
-  cel::Expr& index_arg = args[0];
-  if (!index_arg.has_const_expr() || !index_arg.const_expr().has_int_value()) {
+  cel::Expr& depth_arg = args[0];
+  if (!depth_arg.has_const_expr() || !depth_arg.const_expr().has_int_value() ||
+      depth_arg.const_expr().int_value() < 0) {
     return factory.ReportErrorAt(
-        index_arg,
-        "cel.iterVar requires a single non-negative int constant arg");
+        depth_arg, "cel.iterVar requires two non-negative int constant args");
   }
-  int64_t index = index_arg.const_expr().int_value();
-  if (index < 0) {
+  cel::Expr& unique_arg = args[1];
+  if (!unique_arg.has_const_expr() ||
+      !unique_arg.const_expr().has_int_value() ||
+      unique_arg.const_expr().int_value() < 0) {
     return factory.ReportErrorAt(
-        index_arg,
-        "cel.iterVar requires a single non-negative int constant arg");
+        unique_arg, "cel.iterVar requires two non-negative int constant args");
   }
-  return factory.NewIdent(absl::StrCat("@c:", index));
+  return factory.NewIdent(
+      absl::StrCat("@it:", depth_arg.const_expr().int_value(), ":",
+                   unique_arg.const_expr().int_value()));
 }
 
 absl::optional<cel::Expr> CelAccuVarMacroExpander(
@@ -161,19 +164,22 @@ absl::optional<cel::Expr> CelAccuVarMacroExpander(
   if (!IsCelNamespace(target)) {
     return absl::nullopt;
   }
-  cel::Expr& index_arg = args[0];
-  if (!index_arg.has_const_expr() || !index_arg.const_expr().has_int_value()) {
+  cel::Expr& depth_arg = args[0];
+  if (!depth_arg.has_const_expr() || !depth_arg.const_expr().has_int_value() ||
+      depth_arg.const_expr().int_value() < 0) {
     return factory.ReportErrorAt(
-        index_arg,
-        "cel.accuVar requires a single non-negative int constant arg");
+        depth_arg, "cel.accuVar requires two non-negative int constant args");
   }
-  int64_t index = index_arg.const_expr().int_value();
-  if (index < 0) {
+  cel::Expr& unique_arg = args[1];
+  if (!unique_arg.has_const_expr() ||
+      !unique_arg.const_expr().has_int_value() ||
+      unique_arg.const_expr().int_value() < 0) {
     return factory.ReportErrorAt(
-        index_arg,
-        "cel.accuVar requires a single non-negative int constant arg");
+        unique_arg, "cel.accuVar requires two non-negative int constant args");
   }
-  return factory.NewIdent(absl::StrCat("@x:", index));
+  return factory.NewIdent(
+      absl::StrCat("@ac:", depth_arg.const_expr().int_value(), ":",
+                   unique_arg.const_expr().int_value()));
 }
 
 absl::Status RegisterCelBlockMacros(cel::MacroRegistry& registry) {
@@ -185,11 +191,11 @@ absl::Status RegisterCelBlockMacros(cel::MacroRegistry& registry) {
   CEL_RETURN_IF_ERROR(registry.RegisterMacro(index_macro));
   CEL_ASSIGN_OR_RETURN(
       auto iter_var_macro,
-      cel::Macro::Receiver("iterVar", 1, CelIterVarMacroExpander));
+      cel::Macro::Receiver("iterVar", 2, CelIterVarMacroExpander));
   CEL_RETURN_IF_ERROR(registry.RegisterMacro(iter_var_macro));
   CEL_ASSIGN_OR_RETURN(
       auto accu_var_macro,
-      cel::Macro::Receiver("accuVar", 1, CelAccuVarMacroExpander));
+      cel::Macro::Receiver("accuVar", 2, CelAccuVarMacroExpander));
   CEL_RETURN_IF_ERROR(registry.RegisterMacro(accu_var_macro));
   return absl::OkStatus();
 }

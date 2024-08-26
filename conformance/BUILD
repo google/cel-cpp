@@ -211,17 +211,6 @@ _TESTS_TO_SKIP_MODERN = [
 
     # TODO: Add missing conversion function
     "conversions/bool",
-
-    # cel.@block
-    "block_ext/basic/multiple_macros_1",
-    "block_ext/basic/multiple_macros_2",
-    "block_ext/basic/multiple_macros_3",
-    "block_ext/basic/nested_macros",
-    "block_ext/basic/nested_macros_1",
-    "block_ext/basic/nested_macros_2",
-    "block_ext/basic/adjacent_macros",
-    "block_ext/basic/macro_shadowed_variable_1",
-    "block_ext/basic/macro_shadowed_variable_2",
 ]
 
 _TESTS_TO_SKIP_MODERN_DASHBOARD = [
@@ -291,15 +280,6 @@ _TESTS_TO_SKIP_LEGACY = [
     "block_ext/basic/optional_map",
     "block_ext/basic/optional_map_chained",
     "block_ext/basic/optional_message",
-    "block_ext/basic/multiple_macros_1",
-    "block_ext/basic/multiple_macros_2",
-    "block_ext/basic/multiple_macros_3",
-    "block_ext/basic/nested_macros",
-    "block_ext/basic/nested_macros_1",
-    "block_ext/basic/nested_macros_2",
-    "block_ext/basic/adjacent_macros",
-    "block_ext/basic/macro_shadowed_variable_1",
-    "block_ext/basic/macro_shadowed_variable_2",
 ]
 
 _TESTS_TO_SKIP_LEGACY_DASHBOARD = [

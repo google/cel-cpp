@@ -531,13 +531,13 @@ class FlatExprVisitor : public cel::AstVisitor {
           size_t index;
           if (!absl::SimpleAtoi(index_suffix, &index)) {
             SetProgressStatusError(
-                issue_collector_.AddIssue(RuntimeIssue::CreateWarning(
+                issue_collector_.AddIssue(RuntimeIssue::CreateError(
                     absl::InvalidArgumentError("bad @index"))));
             return {-1, -1};
           }
           if (index >= block.size) {
             SetProgressStatusError(
-                issue_collector_.AddIssue(RuntimeIssue::CreateWarning(
+                issue_collector_.AddIssue(RuntimeIssue::CreateError(
                     absl::InvalidArgumentError(absl::StrCat(
                         "invalid @index greater than number of bindings: ",
                         index, " >= ", block.size)))));
@@ -545,7 +545,7 @@ class FlatExprVisitor : public cel::AstVisitor {
           }
           if (index >= block.current_index) {
             SetProgressStatusError(
-                issue_collector_.AddIssue(RuntimeIssue::CreateWarning(
+                issue_collector_.AddIssue(RuntimeIssue::CreateError(
                     absl::InvalidArgumentError(absl::StrCat(
                         "@index references current or future binding: ", index,
                         " >= ", block.current_index)))));
@@ -553,14 +553,6 @@ class FlatExprVisitor : public cel::AstVisitor {
           }
           return {static_cast<int>(block.index + index),
                   block.subexpressions[index]};
-        }
-        if (absl::ConsumePrefix(&index_suffix, "@c:") ||
-            absl::ConsumePrefix(&index_suffix, "@x:")) {
-          SetProgressStatusError(issue_collector_.AddIssue(
-              RuntimeIssue::CreateWarning(absl::InvalidArgumentError(
-                  "support is not yet implemented for CSE generated @c: or @x: "
-                  "comprehension variables"))));
-          return {-1, -1};
         }
       }
     }
@@ -587,6 +579,16 @@ class FlatExprVisitor : public cel::AstVisitor {
           return {slot, subexpression};
         }
       }
+    }
+    if (absl::StartsWith(path, "@it:") || absl::StartsWith(path, "@it2:") ||
+        absl::StartsWith(path, "@ac:")) {
+      // If we see a CSE generated comprehension variable that was not
+      // resolvable through the normal comprehension scope resolution, reject it
+      // now rather than surfacing errors at activation time.
+      SetProgressStatusError(
+          issue_collector_.AddIssue(RuntimeIssue::CreateError(
+              absl::InvalidArgumentError("out of scope reference to CSE "
+                                         "generated comprehension variable"))));
     }
     return {-1, -1};
   }
