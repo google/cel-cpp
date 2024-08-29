@@ -29,9 +29,9 @@
 namespace cel {
 namespace {
 
-using testing::_;
-using testing::NotNull;
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
+using ::testing::_;
+using ::testing::NotNull;
 
 TEST(Value, KindDebugDeath) {
   Value value;

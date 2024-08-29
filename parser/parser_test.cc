@@ -38,10 +38,10 @@ namespace google::api::expr::parser {
 
 namespace {
 
+using ::absl_testing::IsOk;
 using ::google::api::expr::v1alpha1::Expr;
-using testing::HasSubstr;
-using testing::Not;
-using cel::internal::IsOk;
+using ::testing::HasSubstr;
+using ::testing::Not;
 
 struct TestInfo {
   TestInfo(const std::string& I, const std::string& P,

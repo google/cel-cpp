@@ -39,10 +39,10 @@ namespace cel::extensions {
 namespace internal {
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::cel::ast_internal::NullValue;
 using ::cel::ast_internal::PrimitiveType;
 using ::cel::ast_internal::WellKnownType;
-using cel::internal::StatusIs;
 
 TEST(AstConvertersTest, SourceInfoToNative) {
   google::api::expr::v1alpha1::SourceInfo source_info;
@@ -386,11 +386,11 @@ TEST(AstConvertersTest, ReferenceToNative) {
 
 namespace {
 
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
 using ::cel::internal::test::EqualsProto;
 using ::google::api::expr::parser::Parse;
-using testing::HasSubstr;
-using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
+using ::testing::HasSubstr;
 
 using ParsedExprPb = google::api::expr::v1alpha1::ParsedExpr;
 using CheckedExprPb = google::api::expr::v1alpha1::CheckedExpr;

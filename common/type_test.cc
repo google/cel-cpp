@@ -25,10 +25,10 @@ namespace cel {
 namespace {
 
 using ::cel::internal::GetTestingDescriptorPool;
-using testing::An;
-using testing::ElementsAre;
-using testing::IsEmpty;
-using testing::Optional;
+using ::testing::An;
+using ::testing::ElementsAre;
+using ::testing::IsEmpty;
+using ::testing::Optional;
 
 TEST(Type, Default) {
   EXPECT_EQ(Type(), DynType());

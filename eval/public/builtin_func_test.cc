@@ -51,7 +51,7 @@ using google::protobuf::Arena;
 using ::cel::internal::MaxDuration;
 using ::cel::internal::MinDuration;
 using ::cel::internal::MinTimestamp;
-using testing::Eq;
+using ::testing::Eq;
 
 class BuiltinsTest : public ::testing::Test {
  protected:

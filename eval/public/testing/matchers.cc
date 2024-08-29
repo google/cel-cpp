@@ -19,9 +19,9 @@ void PrintTo(const CelValue& value, std::ostream* os) {
 namespace test {
 namespace {
 
-using testing::_;
-using testing::MatcherInterface;
-using testing::MatchResultListener;
+using ::testing::_;
+using ::testing::MatcherInterface;
+using ::testing::MatchResultListener;
 
 class CelValueEqualImpl : public MatcherInterface<CelValue> {
  public:

@@ -15,12 +15,12 @@ namespace {
 
 using google::api::expr::v1alpha1::Expr;
 
+using ::absl_testing::StatusIs;
 using ::google::protobuf::Duration;
 using ::google::protobuf::Timestamp;
-using testing::Eq;
-using testing::IsEmpty;
-using testing::SizeIs;
-using cel::internal::StatusIs;
+using ::testing::Eq;
+using ::testing::IsEmpty;
+using ::testing::SizeIs;
 
 class DummyMap : public CelMap {
  public:

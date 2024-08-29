@@ -23,8 +23,8 @@ namespace cel::ast_internal {
 
 namespace {
 
-using testing::_;
-using testing::Ref;
+using ::testing::_;
+using ::testing::Ref;
 
 class MockAstVisitor : public AstVisitor {
  public:

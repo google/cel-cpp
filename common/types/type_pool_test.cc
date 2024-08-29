@@ -23,7 +23,7 @@ namespace cel::common_internal {
 namespace {
 
 using ::cel::internal::GetTestingDescriptorPool;
-using testing::_;
+using ::testing::_;
 
 TEST(TypePool, MakeStructType) {
   google::protobuf::Arena arena;

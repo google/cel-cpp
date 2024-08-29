@@ -29,8 +29,8 @@
 namespace cel::extensions::protobuf_internal {
 namespace {
 
-using testing::Eq;
-using cel::internal::IsOkAndHolds;
+using ::absl_testing::IsOkAndHolds;
+using ::testing::Eq;
 
 TEST(Timestamp, GeneratedFromProto) {
   EXPECT_THAT(UnwrapGeneratedTimestampProto(google::protobuf::Timestamp()),

@@ -23,8 +23,8 @@
 namespace cel {
 namespace {
 
-using testing::IsEmpty;
-using testing::UnorderedElementsAre;
+using ::testing::IsEmpty;
+using ::testing::UnorderedElementsAre;
 
 MATCHER_P3(MatchesUnaryDescriptor, name, receiver, expected_kind, "") {
   const FunctionDescriptor& descriptor = arg.descriptor;

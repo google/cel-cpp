@@ -27,10 +27,10 @@
 namespace cel {
 namespace {
 
-using testing::An;
-using testing::Ne;
-using testing::TestParamInfo;
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
+using ::testing::An;
+using ::testing::Ne;
+using ::testing::TestParamInfo;
 
 class OptionalValueTest : public common_internal::ThreadCompatibleValueTest<> {
  public:

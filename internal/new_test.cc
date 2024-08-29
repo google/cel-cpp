@@ -24,8 +24,8 @@
 namespace cel::internal {
 namespace {
 
-using testing::Ge;
-using testing::NotNull;
+using ::testing::Ge;
+using ::testing::NotNull;
 
 TEST(New, Basic) {
   void* p = New(sizeof(uint64_t));

@@ -23,12 +23,12 @@
 namespace cel::internal {
 namespace {
 
-using testing::ElementsAre;
-using testing::Eq;
-using testing::IsFalse;
-using testing::IsTrue;
-using testing::UnorderedElementsAre;
-using testing::VariantWith;
+using ::testing::ElementsAre;
+using ::testing::Eq;
+using ::testing::IsFalse;
+using ::testing::IsTrue;
+using ::testing::UnorderedElementsAre;
+using ::testing::VariantWith;
 
 TEST(Json, DefaultConstructor) {
   EXPECT_THAT(Json(), VariantWith<JsonNull>(Eq(kJsonNull)));

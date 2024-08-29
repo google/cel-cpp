@@ -48,6 +48,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::cel::Attribute;
 using ::cel::AttributeQualifier;
 using ::cel::AttributeSet;
@@ -68,12 +69,11 @@ using ::cel::extensions::ProtoMessageToValue;
 using ::cel::internal::test::EqualsProto;
 using ::cel::test::IntValueIs;
 using ::google::api::expr::test::v1::proto3::TestAllTypes;
-using testing::_;
-using testing::Eq;
-using testing::HasSubstr;
-using testing::Return;
-using testing::UnorderedElementsAre;
-using cel::internal::StatusIs;
+using ::testing::_;
+using ::testing::Eq;
+using ::testing::HasSubstr;
+using ::testing::Return;
+using ::testing::UnorderedElementsAre;
 
 struct RunExpressionOptions {
   bool enable_unknowns = false;

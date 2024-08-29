@@ -20,7 +20,7 @@
 namespace cel::internal {
 namespace {
 
-using testing::NotNull;
+using ::testing::NotNull;
 
 TEST(TestingDescriptorPool, NullValue) {
   ASSERT_THAT(GetTestingDescriptorPool()->FindEnumTypeByName(

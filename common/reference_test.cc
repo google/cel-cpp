@@ -24,11 +24,11 @@
 namespace cel {
 namespace {
 
-using testing::_;
-using testing::ElementsAre;
-using testing::Eq;
-using testing::IsEmpty;
-using testing::VariantWith;
+using ::testing::_;
+using ::testing::ElementsAre;
+using ::testing::Eq;
+using ::testing::IsEmpty;
+using ::testing::VariantWith;
 
 TEST(VariableReference, Value) {
   VariableReference variable_reference;

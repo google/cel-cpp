@@ -23,7 +23,7 @@
 namespace cel {
 namespace {
 
-using testing::UnorderedElementsAre;
+using ::testing::UnorderedElementsAre;
 
 MATCHER_P2(MatchesOperatorDescriptor, name, expected_kind, "") {
   const FunctionDescriptor& descriptor = arg.descriptor;

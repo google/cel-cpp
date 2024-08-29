@@ -34,8 +34,8 @@ namespace {
 using ::cel::internal::DynamicParseTextProto;
 using ::cel::internal::GetTestingDescriptorPool;
 using ::cel::internal::GetTestingMessageFactory;
-using testing::PrintToStringParamName;
-using testing::TestWithParam;
+using ::testing::PrintToStringParamName;
+using ::testing::TestWithParam;
 
 using TestAllTypesProto3 = ::google::api::expr::test::v1::proto3::TestAllTypes;
 

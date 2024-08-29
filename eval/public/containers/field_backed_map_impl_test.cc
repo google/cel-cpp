@@ -14,10 +14,10 @@
 namespace google::api::expr::runtime {
 namespace {
 
-using testing::Eq;
-using testing::HasSubstr;
-using testing::UnorderedPointwise;
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
+using ::testing::Eq;
+using ::testing::HasSubstr;
+using ::testing::UnorderedPointwise;
 
 // Test factory for FieldBackedMaps from message and field name.
 std::unique_ptr<FieldBackedMapImpl> CreateMap(const TestMessage* message,

@@ -35,12 +35,12 @@ using ::cel::MemoryManagerRef;
 using ::cel::StructType;
 using ::cel::Type;
 using ::google::protobuf::Struct;
-using testing::AllOf;
-using testing::Contains;
-using testing::Eq;
-using testing::Optional;
-using testing::Pair;
-using testing::UnorderedElementsAre;
+using ::testing::AllOf;
+using ::testing::Contains;
+using ::testing::Eq;
+using ::testing::Optional;
+using ::testing::Pair;
+using ::testing::UnorderedElementsAre;
 
 MATCHER_P(TypeNameIs, name, "") {
   const Type& type = arg;

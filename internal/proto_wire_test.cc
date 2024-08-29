@@ -35,9 +35,9 @@ inline constexpr bool operator==(const ProtoWireTag& lhs,
 
 namespace {
 
-using testing::Eq;
-using testing::Optional;
-using cel::internal::IsOkAndHolds;
+using ::absl_testing::IsOkAndHolds;
+using ::testing::Eq;
+using ::testing::Optional;
 
 TEST(Varint, Size) {
   EXPECT_EQ(VarintSize(int32_t{-1}),

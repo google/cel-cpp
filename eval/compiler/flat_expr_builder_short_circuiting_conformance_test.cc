@@ -24,8 +24,8 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::google::api::expr::v1alpha1::Expr;
-using testing::Eq;
-using testing::SizeIs;
+using ::testing::Eq;
+using ::testing::SizeIs;
 
 constexpr char kTwoLogicalOp[] = R"cel(
 id: 1

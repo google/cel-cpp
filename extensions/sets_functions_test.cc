@@ -44,8 +44,8 @@ using ::google::api::expr::runtime::CreateCelExpressionBuilder;
 using ::google::api::expr::runtime::FunctionAdapter;
 using ::google::api::expr::runtime::InterpreterOptions;
 
+using ::absl_testing::IsOk;
 using ::google::protobuf::Arena;
-using cel::internal::IsOk;
 
 struct TestInfo {
   std::string expr;

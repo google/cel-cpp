@@ -28,9 +28,9 @@
 namespace cel {
 namespace {
 
-using testing::An;
-using testing::Ne;
-using cel::internal::IsOkAndHolds;
+using ::absl_testing::IsOkAndHolds;
+using ::testing::An;
+using ::testing::Ne;
 
 using BoolValueTest = common_internal::ThreadCompatibleValueTest<>;
 

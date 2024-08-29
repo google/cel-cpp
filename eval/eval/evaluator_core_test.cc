@@ -24,8 +24,8 @@ using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::interop_internal::CreateIntValue;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::runtime::RegisterBuiltinFunctions;
-using testing::_;
-using testing::Eq;
+using ::testing::_;
+using ::testing::Eq;
 
 // Fake expression implementation
 // Pushes int64_t(0) on top of value stack.

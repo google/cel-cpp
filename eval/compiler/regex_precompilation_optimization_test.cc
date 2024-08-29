@@ -47,7 +47,7 @@ namespace {
 using ::cel::RuntimeIssue;
 using ::cel::runtime_internal::IssueCollector;
 using ::google::api::expr::parser::Parse;
-using testing::ElementsAre;
+using ::testing::ElementsAre;
 
 namespace exprpb = google::api::expr::v1alpha1;
 

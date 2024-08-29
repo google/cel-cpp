@@ -32,7 +32,7 @@ namespace {
 
 using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::SourceInfo;
-using testing::ValuesIn;
+using ::testing::ValuesIn;
 
 struct TestCase {
   std::string test_name;

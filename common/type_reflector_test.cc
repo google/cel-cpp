@@ -31,10 +31,10 @@
 namespace cel {
 namespace {
 
-using testing::Optional;
-using cel::internal::IsOk;
-using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
+using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
+using ::testing::Optional;
 
 using TypeReflectorTest = common_internal::ThreadCompatibleValueTest<>;
 

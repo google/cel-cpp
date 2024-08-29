@@ -58,11 +58,11 @@ using ::google::api::expr::runtime::CreateContainerBackedMap;
 using ::google::api::expr::runtime::MessageWrapper;
 using ::google::api::expr::runtime::TestMessage;
 using ::google::api::expr::runtime::TrivialTypeInfo;
-using testing::_;
-using testing::Combine;
-using testing::Optional;
-using testing::Values;
-using testing::ValuesIn;
+using ::testing::_;
+using ::testing::Combine;
+using ::testing::Optional;
+using ::testing::Values;
+using ::testing::ValuesIn;
 
 struct EqualityTestCase {
   enum class ErrorKind { kMissingOverload, kMissingIdentifier };

@@ -27,14 +27,14 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::cel::TypeProvider;
 using ::cel::ast_internal::Constant;
 using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::NullValue;
 using ::cel::extensions::ProtoMemoryManagerRef;
-using testing::Eq;
-using testing::HasSubstr;
-using cel::internal::StatusIs;
+using ::testing::Eq;
+using ::testing::HasSubstr;
 
 absl::StatusOr<CelValue> RunConstantExpression(
     const Expr* expr, const Constant& const_expr, google::protobuf::Arena* arena,

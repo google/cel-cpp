@@ -29,8 +29,8 @@ namespace {
 using ::google::protobuf::ListValue;
 using ::google::protobuf::Struct;
 using ::google::protobuf::Arena;
-using testing::Eq;
-using testing::SizeIs;
+using ::testing::Eq;
+using ::testing::SizeIs;
 
 CelFunctionDescriptor kTwoInt("TwoInt", false,
                               {CelValue::Type::kInt64, CelValue::Type::kInt64});

@@ -22,8 +22,8 @@
 namespace cel {
 namespace {
 
-using testing::IsEmpty;
-using testing::UnorderedElementsAre;
+using ::testing::IsEmpty;
+using ::testing::UnorderedElementsAre;
 
 enum class CallStyle { kFree, kReceiver };
 

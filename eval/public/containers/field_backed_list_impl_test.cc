@@ -13,8 +13,8 @@ namespace expr {
 namespace runtime {
 namespace {
 
-using testing::Eq;
-using testing::DoubleEq;
+using ::testing::Eq;
+using ::testing::DoubleEq;
 
 using testutil::EqualsProto;
 

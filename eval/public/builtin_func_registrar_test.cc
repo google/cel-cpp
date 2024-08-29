@@ -42,10 +42,10 @@ namespace {
 using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::SourceInfo;
 
+using ::absl_testing::StatusIs;
 using ::cel::internal::MaxDuration;
 using ::cel::internal::MinDuration;
-using testing::HasSubstr;
-using cel::internal::StatusIs;
+using ::testing::HasSubstr;
 
 struct TestCase {
   std::string test_name;

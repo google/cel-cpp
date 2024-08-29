@@ -45,6 +45,8 @@
 namespace cel::extensions {
 namespace {
 
+using ::absl_testing::IsOk;
+using ::absl_testing::StatusIs;
 using ::google::api::expr::v1alpha1::CheckedExpr;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::ParsedExpr;
@@ -65,11 +67,9 @@ using ::google::api::expr::runtime::test::IsCelInt64;
 using ::google::api::expr::test::v1::proto2::NestedTestAllTypes;
 using ::google::protobuf::Arena;
 using ::google::protobuf::TextFormat;
-using testing::Contains;
-using testing::HasSubstr;
-using testing::Pair;
-using cel::internal::IsOk;
-using cel::internal::StatusIs;
+using ::testing::Contains;
+using ::testing::HasSubstr;
+using ::testing::Pair;
 
 struct TestInfo {
   std::string expr;

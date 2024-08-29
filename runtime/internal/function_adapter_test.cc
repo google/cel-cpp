@@ -30,7 +30,7 @@
 namespace cel::runtime_internal {
 namespace {
 
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
 
 static_assert(AdaptedKind<int64_t>() == Kind::kInt, "int adapts to int64_t");
 static_assert(AdaptedKind<uint64_t>() == Kind::kUint,

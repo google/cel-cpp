@@ -40,8 +40,8 @@ namespace {
 
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::rpc::context::AttributeContext;
-using testing::Combine;
-using testing::ValuesIn;
+using ::testing::Combine;
+using ::testing::ValuesIn;
 
 MATCHER_P2(DefinesHomogenousOverload, name, argument_type,
            absl::StrCat(name, " for ", CelValue::TypeName(argument_type))) {

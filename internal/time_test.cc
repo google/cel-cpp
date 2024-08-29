@@ -24,7 +24,7 @@
 namespace cel::internal {
 namespace {
 
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
 
 TEST(MaxDuration, ProtoEquiv) {
   EXPECT_EQ(MaxDuration(),

@@ -31,13 +31,13 @@
 namespace cel::extensions {
 namespace {
 
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
 using ::cel::test::IntValueIs;
 using ::google::api::expr::test::v1::proto2::TestAllTypes;
-using testing::Eq;
-using testing::HasSubstr;
-using testing::Optional;
-using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
+using ::testing::Eq;
+using ::testing::HasSubstr;
+using ::testing::Optional;
 
 class BindProtoToActivationTest
     : public common_internal::ThreadCompatibleValueTest<> {

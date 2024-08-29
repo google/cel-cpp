@@ -72,6 +72,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::cel::Value;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::internal::test::EqualsProto;
@@ -81,12 +82,11 @@ using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::v1alpha1::SourceInfo;
 using ::google::api::expr::test::v1::proto3::TestAllTypes;
-using testing::_;
-using testing::Eq;
-using testing::HasSubstr;
-using testing::SizeIs;
-using testing::Truly;
-using cel::internal::StatusIs;
+using ::testing::_;
+using ::testing::Eq;
+using ::testing::HasSubstr;
+using ::testing::SizeIs;
+using ::testing::Truly;
 
 inline constexpr absl::string_view kSimpleTestMessageDescriptorSetFile =
     "eval/testutil/"

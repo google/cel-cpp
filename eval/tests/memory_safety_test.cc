@@ -38,9 +38,9 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::absl_testing::IsOkAndHolds;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::rpc::context::AttributeContext;
-using cel::internal::IsOkAndHolds;
 using testutil::EqualsProto;
 
 struct TestCase {

@@ -39,7 +39,7 @@ using ::cel::RuntimeOptions;
 using ::cel::TypeProvider;
 using ::cel::ValueManager;
 using ::cel::extensions::ProtoMemoryManagerRef;
-using testing::IsNull;
+using ::testing::IsNull;
 
 class LazyInitStepTest : public testing::Test {
  private:

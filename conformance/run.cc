@@ -63,7 +63,7 @@ ABSL_FLAG(bool, dashboard, false, "Dashboard mode, ignore test failures");
 
 namespace {
 
-using testing::IsEmpty;
+using ::testing::IsEmpty;
 
 using google::api::expr::conformance::v1alpha1::EvalRequest;
 using google::api::expr::conformance::v1alpha1::EvalResponse;

@@ -22,10 +22,10 @@
 namespace cel {
 namespace {
 
-using testing::Eq;
-using testing::IsEmpty;
-using testing::NotNull;
-using testing::StartsWith;
+using ::testing::Eq;
+using ::testing::IsEmpty;
+using ::testing::NotNull;
+using ::testing::StartsWith;
 
 TEST(EnumType, Kind) { EXPECT_EQ(EnumType::kind(), TypeKind::kEnum); }
 

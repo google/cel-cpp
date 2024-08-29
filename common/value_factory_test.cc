@@ -37,9 +37,9 @@
 namespace cel {
 namespace {
 
-using testing::TestParamInfo;
-using testing::UnorderedElementsAreArray;
-using cel::internal::IsOkAndHolds;
+using ::absl_testing::IsOkAndHolds;
+using ::testing::TestParamInfo;
+using ::testing::UnorderedElementsAreArray;
 
 enum class ThreadSafety {
   kCompatible,

@@ -52,6 +52,7 @@ namespace cel::runtime_internal {
 
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::cel::RuntimeIssue;
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::Expr;
@@ -68,8 +69,7 @@ using ::google::api::expr::runtime::ProgramBuilder;
 using ::google::api::expr::runtime::ProgramOptimizer;
 using ::google::api::expr::runtime::ProgramOptimizerFactory;
 using ::google::api::expr::runtime::Resolver;
-using testing::SizeIs;
-using cel::internal::StatusIs;
+using ::testing::SizeIs;
 
 class UpdatedConstantFoldingTest : public testing::Test {
  public:

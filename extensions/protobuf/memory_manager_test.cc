@@ -21,9 +21,9 @@
 namespace cel::extensions {
 namespace {
 
-using testing::Eq;
-using testing::IsNull;
-using testing::NotNull;
+using ::testing::Eq;
+using ::testing::IsNull;
+using ::testing::NotNull;
 
 TEST(ProtoMemoryManager, MemoryManagement) {
   google::protobuf::Arena arena;

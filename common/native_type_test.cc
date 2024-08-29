@@ -23,9 +23,9 @@
 namespace cel {
 namespace {
 
-using testing::IsEmpty;
-using testing::Not;
-using testing::SizeIs;
+using ::testing::IsEmpty;
+using ::testing::Not;
+using ::testing::SizeIs;
 
 struct Type1 {};
 

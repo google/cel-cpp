@@ -22,7 +22,7 @@ namespace {
 using ::cel::TypeProvider;
 using ::cel::interop_internal::CreateTypeValueFromView;
 using ::google::protobuf::Arena;
-using testing::Eq;
+using ::testing::Eq;
 
 absl::StatusOr<CelValue> RunShadowableExpression(std::string identifier,
                                                  cel::Value value,

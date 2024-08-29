@@ -26,7 +26,7 @@
 namespace cel {
 namespace {
 
-using testing::NotNull;
+using ::testing::NotNull;
 
 TEST(AllocatorKind, AbslStringify) {
   EXPECT_EQ(absl::StrCat(AllocatorKind::kArena), "ARENA");

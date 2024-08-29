@@ -30,9 +30,9 @@
 namespace cel::extensions::protobuf_internal {
 namespace {
 
-using testing::Eq;
-using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
+using ::testing::Eq;
 
 TEST(BoolWrapper, GeneratedFromProto) {
   EXPECT_THAT(UnwrapGeneratedBoolValueProto(google::protobuf::BoolValue()),

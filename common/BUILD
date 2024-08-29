@@ -420,6 +420,7 @@ cc_library(
         ":value_kind",
         "//internal:testing",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",

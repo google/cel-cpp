@@ -46,9 +46,9 @@ namespace google::api::expr::runtime::internal {
 
 namespace {
 
-using testing::Eq;
-using testing::UnorderedPointwise;
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
+using ::testing::Eq;
+using ::testing::UnorderedPointwise;
 using testutil::EqualsProto;
 
 using google::protobuf::Duration;

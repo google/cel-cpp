@@ -24,8 +24,8 @@
 namespace cel::ast_internal {
 namespace {
 
-using testing::Pointee;
-using testing::Truly;
+using ::testing::Pointee;
+using ::testing::Truly;
 
 TEST(AstImpl, RawExprCtor) {
   // arrange

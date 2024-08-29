@@ -41,7 +41,7 @@ using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::protobuf::Arena;
-using testing::ElementsAre;
+using ::testing::ElementsAre;
 
 // var1 > 3 && F1('arg1') || var2 > 3 && F2('arg2')
 constexpr char kExprTextproto[] = R"pb(

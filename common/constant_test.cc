@@ -27,9 +27,9 @@
 namespace cel {
 namespace {
 
-using testing::IsEmpty;
-using testing::IsFalse;
-using testing::IsTrue;
+using ::testing::IsEmpty;
+using ::testing::IsFalse;
+using ::testing::IsTrue;
 
 TEST(Constant, NullValue) {
   Constant const_expr;

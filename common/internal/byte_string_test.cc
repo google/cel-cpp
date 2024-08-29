@@ -47,12 +47,12 @@ struct ByteStringViewTestFriend {
 
 namespace {
 
-using testing::Eq;
-using testing::IsEmpty;
-using testing::Not;
-using testing::Optional;
-using testing::SizeIs;
-using testing::TestWithParam;
+using ::testing::Eq;
+using ::testing::IsEmpty;
+using ::testing::Not;
+using ::testing::Optional;
+using ::testing::SizeIs;
+using ::testing::TestWithParam;
 
 TEST(ByteStringKind, Ostream) {
   {

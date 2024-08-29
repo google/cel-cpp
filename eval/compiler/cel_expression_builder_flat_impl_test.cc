@@ -59,6 +59,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::google::api::expr::v1alpha1::CheckedExpr;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::ParsedExpr;
@@ -68,12 +69,11 @@ using ::google::api::expr::parser::Parse;
 using ::google::api::expr::parser::ParseWithMacros;
 using ::google::api::expr::test::v1::proto3::NestedTestAllTypes;
 using ::google::api::expr::test::v1::proto3::TestAllTypes;
-using testing::_;
-using testing::Contains;
-using testing::HasSubstr;
-using testing::IsNull;
-using testing::NotNull;
-using cel::internal::StatusIs;
+using ::testing::_;
+using ::testing::Contains;
+using ::testing::HasSubstr;
+using ::testing::IsNull;
+using ::testing::NotNull;
 
 TEST(CelExpressionBuilderFlatImplTest, Error) {
   Expr expr;

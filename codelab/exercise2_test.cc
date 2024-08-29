@@ -21,11 +21,11 @@
 namespace google::api::expr::codelab {
 namespace {
 
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
 using ::google::rpc::context::AttributeContext;
 using ::google::protobuf::TextFormat;
-using testing::HasSubstr;
-using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
+using ::testing::HasSubstr;
 
 TEST(Exercise2Var, Simple) {
   EXPECT_THAT(ParseAndEvaluate("bool_var", false), IsOkAndHolds(false));

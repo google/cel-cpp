@@ -47,6 +47,8 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
 using ::cel::Ast;
 using ::cel::RuntimeIssue;
 using ::cel::ast_internal::AstImpl;
@@ -54,13 +56,11 @@ using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::SourceInfo;
 using ::cel::extensions::internal::ConvertProtoExprToNative;
 using ::cel::runtime_internal::IssueCollector;
-using testing::Contains;
-using testing::ElementsAre;
-using testing::Eq;
-using testing::IsEmpty;
-using testing::UnorderedElementsAre;
-using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
+using ::testing::Contains;
+using ::testing::ElementsAre;
+using ::testing::Eq;
+using ::testing::IsEmpty;
+using ::testing::UnorderedElementsAre;
 
 // foo.bar.var1 && bar.foo.var2
 constexpr char kExpr[] = R"(

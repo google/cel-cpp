@@ -49,6 +49,9 @@
 namespace cel::extensions {
 namespace {
 
+using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
 using ::cel::internal::test::EqualsProto;
 using ::cel::test::BoolValueIs;
 using ::cel::test::BytesValueIs;
@@ -66,17 +69,14 @@ using ::cel::test::TimestampValueIs;
 using ::cel::test::UintValueIs;
 using ::cel::test::ValueKindIs;
 using ::google::api::expr::test::v1::proto2::TestAllTypes;
-using testing::_;
-using testing::AllOf;
-using testing::ElementsAre;
-using testing::Eq;
-using testing::HasSubstr;
-using testing::IsTrue;
-using testing::Pair;
-using testing::UnorderedElementsAre;
-using cel::internal::IsOk;
-using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
+using ::testing::_;
+using ::testing::AllOf;
+using ::testing::ElementsAre;
+using ::testing::Eq;
+using ::testing::HasSubstr;
+using ::testing::IsTrue;
+using ::testing::Pair;
+using ::testing::UnorderedElementsAre;
 
 template <typename T>
 T ParseTextOrDie(absl::string_view text) {

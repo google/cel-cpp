@@ -28,9 +28,9 @@
 namespace cel::extensions {
 namespace {
 
+using ::absl_testing::IsOkAndHolds;
 using ::google::api::expr::test::v1::proto2::TestAllTypes;
-using testing::Eq;
-using cel::internal::IsOkAndHolds;
+using ::testing::Eq;
 
 class ProtoTypeTest : public common_internal::ThreadCompatibleTypeTest<> {};
 

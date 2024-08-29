@@ -25,7 +25,7 @@
 namespace cel {
 namespace {
 
-using testing::Test;
+using ::testing::Test;
 
 class StructTypeTest : public Test {
  public:

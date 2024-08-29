@@ -26,12 +26,12 @@
 namespace cel {
 namespace {
 
-using testing::_;
-using testing::An;
-using testing::IsEmpty;
-using testing::Ne;
-using testing::Not;
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
+using ::testing::_;
+using ::testing::An;
+using ::testing::IsEmpty;
+using ::testing::Ne;
+using ::testing::Not;
 
 using ErrorValueTest = common_internal::ThreadCompatibleValueTest<>;
 

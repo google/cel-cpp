@@ -24,7 +24,7 @@ namespace runtime {
 
 namespace {
 
-using testing::Eq;
+using ::testing::Eq;
 using google::api::expr::v1alpha1::SourceInfo;
 
 class SourcePositionTest : public testing::Test {

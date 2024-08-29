@@ -35,10 +35,10 @@
 namespace cel {
 namespace {
 
-using testing::ElementsAre;
-using testing::HasSubstr;
-using testing::IsEmpty;
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
+using ::testing::ElementsAre;
+using ::testing::HasSubstr;
+using ::testing::IsEmpty;
 
 class FunctionAdapterTest : public ::testing::Test {
  public:

@@ -29,21 +29,21 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
 using ::cel::MemoryManagerRef;
 using ::cel::Type;
 using ::cel::TypeFactory;
 using ::cel::TypeManager;
 using ::cel::TypeProvider;
 using ::cel::ValueManager;
-using testing::Contains;
-using testing::Eq;
-using testing::Key;
-using testing::Optional;
-using testing::Pair;
-using testing::Truly;
-using testing::UnorderedElementsAre;
-using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
+using ::testing::Contains;
+using ::testing::Eq;
+using ::testing::Key;
+using ::testing::Optional;
+using ::testing::Pair;
+using ::testing::Truly;
+using ::testing::UnorderedElementsAre;
 
 class TestTypeProvider : public LegacyTypeProvider {
  public:

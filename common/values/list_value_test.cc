@@ -33,10 +33,10 @@
 namespace cel {
 namespace {
 
-using testing::ElementsAreArray;
-using testing::TestParamInfo;
-using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
+using ::testing::ElementsAreArray;
+using ::testing::TestParamInfo;
 
 class ListValueTest : public common_internal::ThreadCompatibleValueTest<> {
  public:

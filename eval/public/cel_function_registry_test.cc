@@ -17,13 +17,13 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using testing::ElementsAre;
-using testing::Eq;
-using testing::HasSubstr;
-using testing::Property;
-using testing::SizeIs;
-using testing::Truly;
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
+using ::testing::ElementsAre;
+using ::testing::Eq;
+using ::testing::HasSubstr;
+using ::testing::Property;
+using ::testing::SizeIs;
+using ::testing::Truly;
 
 class ConstCelFunction : public CelFunction {
  public:

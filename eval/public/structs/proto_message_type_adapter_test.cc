@@ -40,20 +40,20 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
 using ::cel::ProtoWrapperTypeOptions;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::internal::test::EqualsProto;
 using ::google::protobuf::Int64Value;
-using testing::_;
-using testing::AllOf;
-using testing::ElementsAre;
-using testing::Eq;
-using testing::Field;
-using testing::HasSubstr;
-using testing::Optional;
-using testing::Truly;
-using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
+using ::testing::_;
+using ::testing::AllOf;
+using ::testing::ElementsAre;
+using ::testing::Eq;
+using ::testing::Field;
+using ::testing::HasSubstr;
+using ::testing::Optional;
+using ::testing::Truly;
 
 using LegacyQualifyResult = LegacyTypeAccessApis::LegacyQualifyResult;
 

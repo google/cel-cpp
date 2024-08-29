@@ -37,10 +37,10 @@
 namespace cel::extensions {
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::Parse;
-using testing::HasSubstr;
-using cel::internal::StatusIs;
+using ::testing::HasSubstr;
 
 using ValueMatcher = testing::Matcher<Value>;
 

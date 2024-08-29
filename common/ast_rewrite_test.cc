@@ -35,10 +35,10 @@ namespace {
 using ::cel::ast_internal::AstImpl;
 using ::cel::extensions::CreateAstFromParsedExpr;
 using ::cel::extensions::internal::ConvertProtoExprToNative;
-using testing::_;
-using testing::ElementsAre;
-using testing::InSequence;
-using testing::Ref;
+using ::testing::_;
+using ::testing::ElementsAre;
+using ::testing::InSequence;
+using ::testing::Ref;
 
 class MockAstRewriter : public AstRewriter {
  public:

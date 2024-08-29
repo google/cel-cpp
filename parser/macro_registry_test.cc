@@ -22,10 +22,10 @@
 namespace cel {
 namespace {
 
-using testing::Eq;
-using testing::Ne;
-using cel::internal::IsOk;
-using cel::internal::StatusIs;
+using ::absl_testing::IsOk;
+using ::absl_testing::StatusIs;
+using ::testing::Eq;
+using ::testing::Ne;
 
 TEST(MacroRegistry, RegisterAndFind) {
   MacroRegistry macros;

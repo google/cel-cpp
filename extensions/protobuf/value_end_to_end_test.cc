@@ -41,6 +41,7 @@
 namespace cel::extensions {
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::cel::test::BoolValueIs;
 using ::cel::test::BytesValueIs;
 using ::cel::test::DoubleValueIs;
@@ -58,10 +59,9 @@ using ::cel::test::ValueMatcher;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::test::v1::proto3::TestAllTypes;
-using testing::_;
-using testing::AnyOf;
-using testing::HasSubstr;
-using cel::internal::StatusIs;
+using ::testing::_;
+using ::testing::AnyOf;
+using ::testing::HasSubstr;
 
 struct TestCase {
   std::string name;

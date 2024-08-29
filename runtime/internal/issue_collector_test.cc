@@ -20,9 +20,9 @@
 namespace cel::runtime_internal {
 namespace {
 
-using testing::ElementsAre;
-using testing::Truly;
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
+using ::testing::ElementsAre;
+using ::testing::Truly;
 
 template <typename Matcher, typename T>
 bool ApplyMatcher(Matcher m, const T& t) {

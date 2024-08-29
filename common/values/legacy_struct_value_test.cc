@@ -22,7 +22,7 @@
 namespace cel::common_internal {
 namespace {
 
-using testing::_;
+using ::testing::_;
 
 class LegacyStructValueTest : public ThreadCompatibleValueTest<> {};
 

@@ -23,6 +23,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::cel::Cast;
 using ::cel::ErrorValue;
 using ::cel::InstanceOf;
@@ -35,10 +36,9 @@ using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::ast_internal::Expr;
 using ::google::protobuf::Arena;
-using testing::Eq;
-using testing::HasSubstr;
-using testing::SizeIs;
-using cel::internal::StatusIs;
+using ::testing::Eq;
+using ::testing::HasSubstr;
+using ::testing::SizeIs;
 
 TEST(IdentStepTest, TestIdentStep) {
   Expr expr;

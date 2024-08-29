@@ -22,12 +22,12 @@
 namespace cel {
 namespace {
 
-using testing::An;
-using testing::Eq;
-using testing::IsEmpty;
-using testing::NotNull;
-using testing::Optional;
-using testing::StartsWith;
+using ::testing::An;
+using ::testing::Eq;
+using ::testing::IsEmpty;
+using ::testing::NotNull;
+using ::testing::Optional;
+using ::testing::StartsWith;
 
 TEST(MessageType, Kind) { EXPECT_EQ(MessageType::kind(), TypeKind::kStruct); }
 

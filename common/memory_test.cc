@@ -46,13 +46,13 @@ namespace {
 
 // NOLINTBEGIN(bugprone-use-after-move)
 
-using testing::_;
-using testing::IsFalse;
-using testing::IsNull;
-using testing::IsTrue;
-using testing::NotNull;
-using testing::TestParamInfo;
-using testing::TestWithParam;
+using ::testing::_;
+using ::testing::IsFalse;
+using ::testing::IsNull;
+using ::testing::IsTrue;
+using ::testing::NotNull;
+using ::testing::TestParamInfo;
+using ::testing::TestWithParam;
 
 TEST(MemoryManagement, ostream) {
   {

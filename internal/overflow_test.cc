@@ -27,8 +27,8 @@
 namespace cel::internal {
 namespace {
 
-using testing::HasSubstr;
-using testing::ValuesIn;
+using ::testing::HasSubstr;
+using ::testing::ValuesIn;
 
 template <typename T>
 struct TestCase {

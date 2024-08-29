@@ -42,10 +42,10 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::Parse;
-using testing::HasSubstr;
-using cel::internal::StatusIs;
+using ::testing::HasSubstr;
 
 // Evaluates cel expression:
 // '"1" + "1" + ...'

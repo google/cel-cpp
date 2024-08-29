@@ -28,8 +28,8 @@ using google::api::expr::internal::ValidateStandardMessageTypes;
 using google::api::expr::runtime::AddStandardMessageTypesToDescriptorPool;
 using google::api::expr::runtime::GetStandardMessageTypesFileDescriptorSet;
 
-using testing::HasSubstr;
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
+using ::testing::HasSubstr;
 
 TEST(ProtoUtil, ValidateStandardMessageTypesOk) {
   google::protobuf::DescriptorPool descriptor_pool;

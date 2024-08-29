@@ -61,15 +61,15 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::rpc::context::AttributeContext;
-using testing::_;
-using testing::Combine;
-using testing::HasSubstr;
-using testing::Optional;
-using testing::Values;
-using testing::ValuesIn;
-using cel::internal::StatusIs;
+using ::testing::_;
+using ::testing::Combine;
+using ::testing::HasSubstr;
+using ::testing::Optional;
+using ::testing::Values;
+using ::testing::ValuesIn;
 
 MATCHER_P2(DefinesHomogenousOverload, name, argument_type,
            absl::StrCat(name, " for ", CelValue::TypeName(argument_type))) {

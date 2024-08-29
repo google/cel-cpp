@@ -26,8 +26,8 @@
 namespace cel::common_internal {
 namespace {
 
-using testing::NotNull;
-using testing::WhenDynamicCastTo;
+using ::testing::NotNull;
+using ::testing::WhenDynamicCastTo;
 
 class Object : public virtual ReferenceCountFromThis {
  public:

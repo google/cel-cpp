@@ -19,8 +19,8 @@
 namespace cel::common_internal {
 namespace {
 
-using testing::Eq;
-using testing::IsEmpty;
+using ::testing::Eq;
+using ::testing::IsEmpty;
 
 TEST(BasicStructType, Kind) {
   EXPECT_EQ(BasicStructType::kind(), TypeKind::kStruct);

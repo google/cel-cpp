@@ -37,6 +37,7 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::cel::BoolValue;
 using ::cel::IntValue;
 using ::cel::TypeProvider;
@@ -48,11 +49,10 @@ using ::cel::test::BoolValueIs;
 using ::google::protobuf::ListValue;
 using ::google::protobuf::Struct;
 using ::google::protobuf::Arena;
-using testing::_;
-using testing::Eq;
-using testing::Return;
-using testing::SizeIs;
-using cel::internal::StatusIs;
+using ::testing::_;
+using ::testing::Eq;
+using ::testing::Return;
+using ::testing::SizeIs;
 
 Ident CreateIdent(const std::string& var) {
   Ident expr;

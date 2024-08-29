@@ -23,7 +23,7 @@
 namespace cel {
 namespace {
 
-using testing::UnorderedElementsAre;
+using ::testing::UnorderedElementsAre;
 
 MATCHER_P3(MatchesOperatorDescriptor, name, expected_kind1, expected_kind2,
            "") {

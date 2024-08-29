@@ -34,15 +34,15 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::cel::TypeProvider;
 using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::SourceInfo;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::protobuf::Struct;
-using testing::_;
-using testing::AllOf;
-using testing::HasSubstr;
-using cel::internal::StatusIs;
+using ::testing::_;
+using ::testing::AllOf;
+using ::testing::HasSubstr;
 
 using TestParamType = std::tuple<bool, bool, bool>;
 

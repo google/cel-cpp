@@ -34,11 +34,11 @@
 namespace cel {
 namespace {
 
-using testing::TestParamInfo;
-using testing::UnorderedElementsAreArray;
-using cel::internal::IsOk;
-using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
+using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
+using ::testing::TestParamInfo;
+using ::testing::UnorderedElementsAreArray;
 
 TEST(MapValue, CheckKey) {
   EXPECT_THAT(CheckMapKey(BoolValue()), IsOk());

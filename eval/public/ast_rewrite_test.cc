@@ -32,9 +32,9 @@ using ::google::api::expr::v1alpha1::Constant;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::v1alpha1::SourceInfo;
-using testing::_;
-using testing::ElementsAre;
-using testing::InSequence;
+using ::testing::_;
+using ::testing::ElementsAre;
+using ::testing::InSequence;
 
 using Ident = google::api::expr::v1alpha1::Expr::Ident;
 using Select = google::api::expr::v1alpha1::Expr::Select;

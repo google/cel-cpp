@@ -61,10 +61,10 @@ using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::internal::test::EqualsProto;
 using ::google::protobuf::Arena;
 using ::google::protobuf::Message;
-using testing::Eq;
-using testing::IsNull;
-using testing::Not;
-using testing::Pointwise;
+using ::testing::Eq;
+using ::testing::IsNull;
+using ::testing::Not;
+using ::testing::Pointwise;
 
 absl::StatusOr<ExecutionPath> MakeStackMachinePath(absl::string_view field) {
   ExecutionPath path;

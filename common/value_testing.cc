@@ -34,7 +34,7 @@ void PrintTo(const Value& value, std::ostream* os) { *os << value << "\n"; }
 namespace test {
 namespace {
 
-using testing::Matcher;
+using ::testing::Matcher;
 
 template <typename Type>
 constexpr ValueKind ToValueKind() {

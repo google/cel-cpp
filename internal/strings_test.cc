@@ -28,7 +28,7 @@
 namespace cel::internal {
 namespace {
 
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
 
 constexpr char kUnicodeNotAllowedInBytes1[] =
     "Unicode escape sequence \\u cannot be used in bytes literals";

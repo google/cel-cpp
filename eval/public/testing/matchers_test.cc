@@ -11,14 +11,14 @@
 namespace google::api::expr::runtime::test {
 namespace {
 
-using testing::Contains;
-using testing::DoubleEq;
-using testing::DoubleNear;
-using testing::ElementsAre;
-using testing::Gt;
-using testing::Lt;
-using testing::Not;
-using testing::UnorderedElementsAre;
+using ::testing::Contains;
+using ::testing::DoubleEq;
+using ::testing::DoubleNear;
+using ::testing::ElementsAre;
+using ::testing::Gt;
+using ::testing::Lt;
+using ::testing::Not;
+using ::testing::UnorderedElementsAre;
 using testutil::EqualsProto;
 
 TEST(IsCelValue, EqualitySmoketest) {

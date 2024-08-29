@@ -36,6 +36,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::cel::BoolValue;
 using ::cel::Cast;
 using ::cel::ErrorValue;
@@ -48,11 +49,10 @@ using ::cel::ValueManager;
 using ::cel::ast_internal::Expr;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::google::protobuf::Arena;
-using testing::ElementsAre;
-using testing::Eq;
-using testing::HasSubstr;
-using testing::Truly;
-using cel::internal::StatusIs;
+using ::testing::ElementsAre;
+using ::testing::Eq;
+using ::testing::HasSubstr;
+using ::testing::Truly;
 
 class LogicStepTest : public testing::TestWithParam<bool> {
  public:

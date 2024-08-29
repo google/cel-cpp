@@ -34,12 +34,12 @@ namespace cel {
 
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::cel::runtime_internal::FunctionProvider;
-using testing::ElementsAre;
-using testing::HasSubstr;
-using testing::SizeIs;
-using testing::Truly;
-using cel::internal::StatusIs;
+using ::testing::ElementsAre;
+using ::testing::HasSubstr;
+using ::testing::SizeIs;
+using ::testing::Truly;
 
 class ConstIntFunction : public cel::Function {
  public:

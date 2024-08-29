@@ -22,9 +22,9 @@
 namespace google::api::expr::codelab {
 namespace {
 
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
 using ::google::rpc::context::AttributeContext;
-using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
 
 // Helper for a simple CelExpression with no context.
 absl::StatusOr<bool> TruthTableTest(absl::string_view statement) {

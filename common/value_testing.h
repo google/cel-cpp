@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
@@ -98,7 +99,7 @@ ValueMatcher OptionalValueIs(ValueMatcher m);
 // Returns a Matcher that tests the value of a CEL struct's field.
 // ValueManager* mgr must remain valid for the lifetime of the matcher.
 MATCHER_P3(StructValueFieldIs, mgr, name, m, "") {
-  auto wrapped_m = ::cel::internal::IsOkAndHolds(m);
+  auto wrapped_m = ::absl_testing::IsOkAndHolds(m);
 
   return ExplainMatchResult(wrapped_m,
                             cel::StructValue(arg).GetFieldByName(*mgr, name),
@@ -108,7 +109,7 @@ MATCHER_P3(StructValueFieldIs, mgr, name, m, "") {
 // Returns a Matcher that tests the presence of a CEL struct's field.
 // ValueManager* mgr must remain valid for the lifetime of the matcher.
 MATCHER_P2(StructValueFieldHas, name, m, "") {
-  auto wrapped_m = ::cel::internal::IsOkAndHolds(m);
+  auto wrapped_m = ::absl_testing::IsOkAndHolds(m);
 
   return ExplainMatchResult(
       wrapped_m, cel::StructValue(arg).HasFieldByName(name), result_listener);

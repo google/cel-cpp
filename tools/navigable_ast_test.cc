@@ -29,10 +29,10 @@ namespace {
 
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::parser::Parse;
-using testing::ElementsAre;
-using testing::IsEmpty;
-using testing::Pair;
-using testing::SizeIs;
+using ::testing::ElementsAre;
+using ::testing::IsEmpty;
+using ::testing::Pair;
+using ::testing::SizeIs;
 
 TEST(NavigableAst, Basic) {
   Expr const_node;

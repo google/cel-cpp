@@ -41,15 +41,15 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::IsOk;
+using ::absl_testing::StatusIs;
 using ::cel::TypeProvider;
 using ::cel::ast_internal::Call;
 using ::cel::ast_internal::Expr;
 using ::cel::ast_internal::Ident;
-using testing::Eq;
-using testing::Not;
-using testing::Truly;
-using cel::internal::IsOk;
-using cel::internal::StatusIs;
+using ::testing::Eq;
+using ::testing::Not;
+using ::testing::Truly;
 
 int GetExprId() {
   static int id = 0;

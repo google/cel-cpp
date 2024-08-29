@@ -65,6 +65,7 @@ namespace cel {
 
 namespace {
 
+using ::absl_testing::IsOkAndHolds;
 using ::cel::extensions::ProtobufRuntimeAdapter;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::google::api::expr::v1alpha1::Expr;
@@ -73,7 +74,6 @@ using ::google::api::expr::v1alpha1::SourceInfo;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::runtime::RequestContext;
 using ::google::rpc::context::AttributeContext;
-using cel::internal::IsOkAndHolds;
 
 RuntimeOptions GetOptions() {
   RuntimeOptions options;

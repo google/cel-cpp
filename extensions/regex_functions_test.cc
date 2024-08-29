@@ -36,13 +36,13 @@ namespace cel::extensions {
 
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::google::api::expr::runtime::CelValue;
-using cel::internal::StatusIs;
 using Builder = ::google::api::expr::runtime::CelExpressionBuilder;
+using ::absl_testing::IsOkAndHolds;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::runtime::test::IsCelError;
 using ::google::api::expr::runtime::test::IsCelString;
-using cel::internal::IsOkAndHolds;
 
 struct TestCase {
   const std::string expr_string;

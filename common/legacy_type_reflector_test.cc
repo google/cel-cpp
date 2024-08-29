@@ -26,11 +26,11 @@
 namespace cel {
 namespace {
 
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
 using ::cel::common_internal::LegacyValueManager;
 using ::cel::interop_internal::TestOnly_IsLegacyListBuilder;
 using ::cel::interop_internal::TestOnly_IsLegacyMapBuilder;
-using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
 
 class TypeReflectorLegacyTest
     : public common_internal::ThreadCompatibleValueTest<> {};

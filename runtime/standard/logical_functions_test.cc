@@ -41,10 +41,10 @@
 namespace cel {
 namespace {
 
-using testing::ElementsAre;
-using testing::HasSubstr;
-using testing::Matcher;
-using testing::Truly;
+using ::testing::ElementsAre;
+using ::testing::HasSubstr;
+using ::testing::Matcher;
+using ::testing::Truly;
 
 MATCHER_P3(DescriptorIs, name, arg_kinds, is_receiver, "") {
   const FunctionOverloadReference& ref = arg;

@@ -44,7 +44,7 @@ using ::cel::TypeFactory;
 using ::cel::TypeManager;
 using ::cel::TypeValue;
 using ::cel::ValueManager;
-using testing::Eq;
+using ::testing::Eq;
 
 class FakeFunction : public CelFunction {
  public:

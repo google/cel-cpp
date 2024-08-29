@@ -35,13 +35,13 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::cel::internal::MaxDuration;
 using ::cel::internal::MaxTimestamp;
 using ::google::api::expr::test::v1::proto3::TestAllTypes;
 using ::google::protobuf::Arena;
 using ::google::protobuf::FieldDescriptor;
-using testing::HasSubstr;
-using cel::internal::StatusIs;
+using ::testing::HasSubstr;
 
 TEST(FieldAccessTest, SetDuration) {
   Arena arena;

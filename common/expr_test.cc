@@ -22,13 +22,13 @@
 namespace cel {
 namespace {
 
-using testing::_;
-using testing::Eq;
-using testing::IsEmpty;
-using testing::IsFalse;
-using testing::IsTrue;
-using testing::SizeIs;
-using testing::VariantWith;
+using ::testing::_;
+using ::testing::Eq;
+using ::testing::IsEmpty;
+using ::testing::IsFalse;
+using ::testing::IsTrue;
+using ::testing::SizeIs;
+using ::testing::VariantWith;
 
 Expr MakeUnspecifiedExpr(ExprId id) {
   Expr expr;

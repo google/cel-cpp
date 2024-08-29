@@ -41,8 +41,8 @@ namespace {
 using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::SourceInfo;
 
-using testing::HasSubstr;
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
+using ::testing::HasSubstr;
 
 struct TestCase {
   std::string test_name;

@@ -22,14 +22,14 @@
 namespace cel {
 namespace {
 
-using testing::Eq;
-using testing::Ge;
-using testing::Gt;
-using testing::IsEmpty;
-using testing::Le;
-using testing::Lt;
-using testing::Ne;
-using testing::SizeIs;
+using ::testing::Eq;
+using ::testing::Ge;
+using ::testing::Gt;
+using ::testing::IsEmpty;
+using ::testing::Le;
+using ::testing::Lt;
+using ::testing::Ne;
+using ::testing::SizeIs;
 
 TEST(ArenaString, Default) {
   ArenaString string;

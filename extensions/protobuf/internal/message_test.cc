@@ -20,9 +20,9 @@
 namespace cel::extensions::protobuf_internal {
 namespace {
 
+using ::absl_testing::IsOkAndHolds;
 using ::google::api::expr::test::v1::proto2::TestAllTypes;
-using testing::NotNull;
-using cel::internal::IsOkAndHolds;
+using ::testing::NotNull;
 
 TEST(GetDescriptor, NotNull) {
   TestAllTypes message;

@@ -42,10 +42,10 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::google::api::expr::v1alpha1::CheckedExpr;
 using ::google::api::expr::v1alpha1::ParsedExpr;
-using testing::HasSubstr;
-using cel::internal::StatusIs;
+using ::testing::HasSubstr;
 
 class CelExpressionBuilderFlatImplComprehensionsTest
     : public testing::TestWithParam<bool> {

@@ -21,10 +21,10 @@
 namespace cel {
 namespace {
 
-using testing::ElementsAre;
-using testing::Eq;
-using testing::Ne;
-using testing::Optional;
+using ::testing::ElementsAre;
+using ::testing::Eq;
+using ::testing::Ne;
+using ::testing::Optional;
 
 TEST(SourceRange, Default) {
   SourceRange range;

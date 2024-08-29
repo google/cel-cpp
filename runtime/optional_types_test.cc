@@ -49,6 +49,8 @@
 namespace cel::extensions {
 namespace {
 
+using ::absl_testing::IsOk;
+using ::absl_testing::StatusIs;
 using ::cel::extensions::ProtobufRuntimeAdapter;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::test::BoolValueIs;
@@ -58,10 +60,8 @@ using ::cel::test::OptionalValueIsEmpty;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::parser::ParserOptions;
-using testing::ElementsAre;
-using testing::HasSubstr;
-using cel::internal::IsOk;
-using cel::internal::StatusIs;
+using ::testing::ElementsAre;
+using ::testing::HasSubstr;
 
 MATCHER_P(MatchesOptionalReceiver1, name, "") {
   const FunctionDescriptor& descriptor = arg.descriptor;

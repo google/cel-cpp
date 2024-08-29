@@ -24,7 +24,7 @@
 namespace google::api::expr::runtime {
 namespace {
 
-using testing::Optional;
+using ::testing::Optional;
 
 
 TEST(CelNumber, GetNumberFromCelValue) {

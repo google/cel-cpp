@@ -25,8 +25,8 @@
 namespace cel {
 namespace {
 
-using testing::Eq;
-using testing::Optional;
+using ::testing::Eq;
+using ::testing::Optional;
 
 template <typename Op, typename OpId>
 void TestOperator(Op op, OpId id, absl::string_view name,

@@ -19,8 +19,8 @@
 namespace google::api::expr::codelab {
 namespace {
 
-using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
 
 TEST(Exercise1, PrintHelloWorld) {
   EXPECT_THAT(ParseAndEvaluate("'Hello, World!'"),

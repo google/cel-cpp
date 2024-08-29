@@ -20,16 +20,16 @@ namespace runtime {
 
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::cel::extensions::ProtoMemoryManager;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::protobuf::Arena;
-using testing::ElementsAre;
-using testing::Eq;
-using testing::HasSubstr;
-using testing::IsEmpty;
-using testing::Property;
-using testing::Return;
-using cel::internal::StatusIs;
+using ::testing::ElementsAre;
+using ::testing::Eq;
+using ::testing::HasSubstr;
+using ::testing::IsEmpty;
+using ::testing::Property;
+using ::testing::Return;
 
 class MockValueProducer : public CelValueProducer {
  public:

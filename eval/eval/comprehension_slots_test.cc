@@ -30,6 +30,7 @@ namespace google::api::expr::runtime {
 
 using ::cel::Attribute;
 
+using ::absl_testing::IsOkAndHolds;
 using ::cel::MemoryManagerRef;
 using ::cel::StringValue;
 using ::cel::TypeFactory;
@@ -37,8 +38,7 @@ using ::cel::TypeManager;
 using ::cel::TypeProvider;
 using ::cel::Value;
 using ::cel::ValueManager;
-using testing::Truly;
-using cel::internal::IsOkAndHolds;
+using ::testing::Truly;
 
 TEST(ComprehensionSlots, Basic) {
   cel::common_internal::LegacyValueManager factory(

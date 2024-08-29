@@ -24,11 +24,11 @@ namespace runtime {
 
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::SourceInfo;
 using ::google::protobuf::Arena;
 using ::google::protobuf::TextFormat;
-using cel::internal::StatusIs;
 
 // Simple one parameter function that records the message argument it receives.
 class RecordArgFunction : public CelFunction {

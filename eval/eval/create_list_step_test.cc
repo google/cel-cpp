@@ -37,6 +37,9 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
 using ::cel::Attribute;
 using ::cel::AttributeQualifier;
 using ::cel::AttributeSet;
@@ -50,13 +53,10 @@ using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::ast_internal::Expr;
 using ::cel::test::IntValueIs;
-using testing::Eq;
-using testing::HasSubstr;
-using testing::Not;
-using testing::UnorderedElementsAre;
-using cel::internal::IsOk;
-using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
+using ::testing::Eq;
+using ::testing::HasSubstr;
+using ::testing::Not;
+using ::testing::UnorderedElementsAre;
 
 // Helper method. Creates simple pipeline containing Select step and runs it.
 absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,

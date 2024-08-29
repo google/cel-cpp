@@ -26,9 +26,9 @@
 namespace cel {
 namespace {
 
-using testing::An;
-using testing::Ne;
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
+using ::testing::An;
+using ::testing::Ne;
 
 using UnknownValueTest = common_internal::ThreadCompatibleValueTest<>;
 

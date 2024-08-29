@@ -28,10 +28,10 @@
 namespace google::api::expr::runtime::internal {
 namespace {
 
-using testing::Eq;
-using testing::HasSubstr;
-using testing::UnorderedPointwise;
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
+using ::testing::Eq;
+using ::testing::HasSubstr;
+using ::testing::UnorderedPointwise;
 
 class FieldBackedMapTestImpl : public FieldBackedMapImpl {
  public:

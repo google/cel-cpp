@@ -26,11 +26,11 @@
 namespace cel::test {
 namespace {
 
-using testing::_;
-using testing::ElementsAre;
-using testing::Truly;
-using testing::UnorderedElementsAre;
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
+using ::testing::_;
+using ::testing::ElementsAre;
+using ::testing::Truly;
+using ::testing::UnorderedElementsAre;
 
 TEST(BoolValueIs, Match) { EXPECT_THAT(BoolValue(true), BoolValueIs(true)); }
 

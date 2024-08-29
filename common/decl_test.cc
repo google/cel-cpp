@@ -23,10 +23,10 @@
 namespace cel {
 namespace {
 
-using testing::ElementsAre;
-using testing::IsEmpty;
-using testing::UnorderedElementsAre;
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
+using ::testing::ElementsAre;
+using ::testing::IsEmpty;
+using ::testing::UnorderedElementsAre;
 
 TEST(VariableDecl, Name) {
   VariableDecl variable_decl;

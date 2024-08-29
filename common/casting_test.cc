@@ -24,10 +24,10 @@
 namespace cel {
 namespace {
 
-using testing::_;
-using testing::Eq;
-using testing::Ne;
-using testing::Ref;
+using ::testing::_;
+using ::testing::Eq;
+using ::testing::Ne;
+using ::testing::Ref;
 
 enum class AncestryKind {
   kParent,

@@ -37,6 +37,7 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::cel::Activation;
 using ::cel::As;
 using ::cel::ErrorValue;
@@ -54,9 +55,8 @@ using ::cel::test::ErrorValueIs;
 using ::cel::test::IntValueIs;
 using ::cel::test::OptionalValueIs;
 using ::cel::test::ValueKindIs;
-using testing::HasSubstr;
-using testing::NiceMock;
-using cel::internal::StatusIs;
+using ::testing::HasSubstr;
+using ::testing::NiceMock;
 
 class MockDirectStep : public DirectExpressionStep {
  public:

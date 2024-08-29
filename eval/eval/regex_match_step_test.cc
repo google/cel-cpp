@@ -29,11 +29,11 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::absl_testing::StatusIs;
 using google::api::expr::v1alpha1::CheckedExpr;
 using google::api::expr::v1alpha1::Reference;
-using testing::Eq;
-using testing::HasSubstr;
-using cel::internal::StatusIs;
+using ::testing::Eq;
+using ::testing::HasSubstr;
 
 Reference MakeMatchesStringOverload() {
   Reference reference;

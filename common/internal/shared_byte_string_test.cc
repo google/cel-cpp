@@ -26,10 +26,10 @@
 namespace cel::common_internal {
 namespace {
 
-using testing::Eq;
-using testing::IsEmpty;
-using testing::Ne;
-using testing::Not;
+using ::testing::Eq;
+using ::testing::IsEmpty;
+using ::testing::Ne;
+using ::testing::Not;
 
 class OwningObject final : public ReferenceCounted {
  public:

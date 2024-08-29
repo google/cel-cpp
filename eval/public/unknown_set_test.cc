@@ -17,8 +17,8 @@ namespace runtime {
 namespace {
 
 using ::google::protobuf::Arena;
-using testing::IsEmpty;
-using testing::UnorderedElementsAre;
+using ::testing::IsEmpty;
+using ::testing::UnorderedElementsAre;
 
 UnknownFunctionResultSet MakeFunctionResult(Arena* arena, int64_t id) {
   CelFunctionDescriptor desc("OneInt", false, {CelValue::Type::kInt64});

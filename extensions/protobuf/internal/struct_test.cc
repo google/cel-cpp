@@ -32,10 +32,10 @@
 namespace cel::extensions::protobuf_internal {
 namespace {
 
+using ::absl_testing::IsOkAndHolds;
 using ::google::api::expr::testutil::EqualsProto;
-using testing::IsEmpty;
-using testing::VariantWith;
-using cel::internal::IsOkAndHolds;
+using ::testing::IsEmpty;
+using ::testing::VariantWith;
 
 template <typename T>
 T ParseTextOrDie(absl::string_view text) {

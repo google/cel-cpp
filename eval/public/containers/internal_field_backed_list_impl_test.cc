@@ -26,8 +26,8 @@ namespace google::api::expr::runtime::internal {
 namespace {
 
 using ::google::api::expr::testutil::EqualsProto;
-using testing::DoubleEq;
-using testing::Eq;
+using ::testing::DoubleEq;
+using ::testing::Eq;
 
 // Helper method. Creates simple pipeline containing Select step and runs it.
 std::unique_ptr<CelList> CreateList(const TestMessage* message,

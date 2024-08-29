@@ -12,10 +12,10 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using testing::Eq;
-using testing::IsNull;
-using testing::Not;
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
+using ::testing::Eq;
+using ::testing::IsNull;
+using ::testing::Not;
 
 TEST(ContainerBackedMapImplTest, TestMapInt64) {
   std::vector<std::pair<CelValue, CelValue>> args = {

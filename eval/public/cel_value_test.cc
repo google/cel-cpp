@@ -22,14 +22,14 @@
 
 namespace google::api::expr::runtime {
 
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::runtime_internal::kDurationHigh;
 using ::cel::runtime_internal::kDurationLow;
-using testing::Eq;
-using testing::HasSubstr;
-using testing::NotNull;
-using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
+using ::testing::Eq;
+using ::testing::HasSubstr;
+using ::testing::NotNull;
 
 class DummyMap : public CelMap {
  public:

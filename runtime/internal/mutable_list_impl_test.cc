@@ -27,7 +27,7 @@
 namespace cel::runtime_internal {
 namespace {
 
-using cel::internal::IsOkAndHolds;
+using ::absl_testing::IsOkAndHolds;
 
 TEST(MutableListImplValue, Creation) {
   common_internal::LegacyValueManager value_factory(

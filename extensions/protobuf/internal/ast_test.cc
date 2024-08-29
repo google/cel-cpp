@@ -26,9 +26,9 @@
 namespace cel::extensions::protobuf_internal {
 namespace {
 
+using ::absl_testing::IsOk;
+using ::absl_testing::StatusIs;
 using ::cel::internal::test::EqualsProto;
-using cel::internal::IsOk;
-using cel::internal::StatusIs;
 
 using ExprProto = google::api::expr::v1alpha1::Expr;
 

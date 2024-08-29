@@ -56,8 +56,8 @@ using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::test::BoolValueIs;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::Parse;
-using testing::ElementsAre;
-using testing::Truly;
+using ::testing::ElementsAre;
+using ::testing::Truly;
 
 struct EvaluateResultTestCase {
   std::string name;

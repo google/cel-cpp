@@ -37,6 +37,7 @@
 namespace cel::extensions {
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::v1alpha1::SourceInfo;
@@ -52,8 +53,7 @@ using ::google::api::expr::runtime::InterpreterOptions;
 using ::google::api::expr::runtime::RegisterBuiltinFunctions;
 using ::google::api::expr::runtime::test::EqualsCelValue;
 using ::google::protobuf::Arena;
-using testing::HasSubstr;
-using cel::internal::StatusIs;
+using ::testing::HasSubstr;
 
 constexpr absl::string_view kMathMin = "math.@min";
 constexpr absl::string_view kMathMax = "math.@max";

@@ -48,8 +48,8 @@ namespace google::api::expr::runtime::internal {
 
 namespace {
 
-using testing::Eq;
-using testing::UnorderedPointwise;
+using ::testing::Eq;
+using ::testing::UnorderedPointwise;
 
 using google::protobuf::Duration;
 using google::protobuf::ListValue;

@@ -21,9 +21,9 @@ using ::cel::AttributeSet;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::extensions::ProtoMemoryManagerRef;
-using testing::Eq;
-using testing::SizeIs;
-using testing::UnorderedPointwise;
+using ::testing::Eq;
+using ::testing::SizeIs;
+using ::testing::UnorderedPointwise;
 
 class AttributeUtilityTest : public ::testing::Test {
  public:

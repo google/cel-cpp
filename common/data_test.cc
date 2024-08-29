@@ -27,7 +27,7 @@
 namespace cel {
 namespace {
 
-using testing::IsNull;
+using ::testing::IsNull;
 
 class DataTest final : public Data {
  public:

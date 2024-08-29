@@ -28,9 +28,9 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using testing::HasSubstr;
-using testing::UnorderedElementsAre;
-using cel::internal::StatusIs;
+using ::absl_testing::StatusIs;
+using ::testing::HasSubstr;
+using ::testing::UnorderedElementsAre;
 
 TEST(DescriptorPoolUtilsTest, PopulatesEmptyDescriptorPool) {
   google::protobuf::DescriptorPool descriptor_pool;

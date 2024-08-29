@@ -38,13 +38,13 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::cel::RuntimeIssue;
 using ::cel::ast_internal::Expr;
 using ::cel::runtime_internal::IssueCollector;
-using testing::ElementsAre;
-using testing::IsEmpty;
-using testing::Optional;
-using cel::internal::StatusIs;
+using ::testing::ElementsAre;
+using ::testing::IsEmpty;
+using ::testing::Optional;
 
 using Subexpression = ProgramBuilder::Subexpression;
 

@@ -33,6 +33,8 @@
 
 namespace cel {
 namespace {
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
 using testing::ElementsAre;
 using testing::Eq;
 using testing::IsEmpty;
@@ -40,8 +42,6 @@ using testing::Optional;
 using testing::SizeIs;
 using testing::Truly;
 using testing::UnorderedElementsAre;
-using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
 
 MATCHER_P(IsIntValue, x, absl::StrCat("is IntValue Handle with value ", x)) {
   const Value& handle = arg;

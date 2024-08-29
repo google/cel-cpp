@@ -54,7 +54,7 @@ using ::cel::ValueManager;
 using ::cel::ast_internal::Expr;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::google::protobuf::Arena;
-using testing::Eq;
+using ::testing::Eq;
 
 class LogicStepTest : public testing::TestWithParam<bool> {
  public:
