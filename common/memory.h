@@ -95,6 +95,8 @@ inline constexpr bool kNotSameAndIsPointerConvertible =
 
 // Clears the contents of `owner`, and returns the reference count if in use.
 absl::Nullable<const ReferenceCount*> OwnerRelease(Owner owner) noexcept;
+template <typename T>
+Owned<const T> WrapEternal(const T* value);
 
 // Pointer tag used by `cel::Unique` to indicate that the destructor needs to be
 // registered with the arena, but it has not been done yet. Must be done when
@@ -857,6 +859,8 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owned final {
   friend Owned<U> AllocateShared(Allocator<> allocator, Args&&... args);
   template <typename U>
   friend Owned<U> WrapShared(U* object);
+  template <typename U>
+  friend Owned<const U> common_internal::WrapEternal(const U* value);
   friend struct std::pointer_traits<Owned<T>>;
 
   Owned(T* value, Owner owner) noexcept
@@ -975,6 +979,15 @@ Owned<T> WrapShared(T* object) {
   }
   return Owned<T>(object, std::move(owner));
 }
+
+namespace common_internal {
+
+template <typename T>
+Owned<const T> WrapEternal(const T* value) {
+  return Owned<const T>(value, Owner::None());
+}
+
+}  // namespace common_internal
 
 // `Borrowed<T>` points to an object which was allocated using `Allocator<>` or
 // `Allocator<T>`. It has no ownership over the object, and is only valid so

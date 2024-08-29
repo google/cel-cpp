@@ -50,9 +50,15 @@
 #include "common/values/int_value.h"  // IWYU pragma: export
 #include "common/values/list_value.h"  // IWYU pragma: export
 #include "common/values/map_value.h"  // IWYU pragma: export
+#include "common/values/message_value.h"  // IWYU pragma: export
 #include "common/values/null_value.h"  // IWYU pragma: export
 #include "common/values/opaque_value.h"  // IWYU pragma: export
 #include "common/values/optional_value.h"  // IWYU pragma: export
+#include "common/values/parsed_json_list_value.h"  // IWYU pragma: export
+#include "common/values/parsed_json_map_value.h"  // IWYU pragma: export
+#include "common/values/parsed_map_field_value.h"  // IWYU pragma: export
+#include "common/values/parsed_message_value.h"  // IWYU pragma: export
+#include "common/values/parsed_repeated_field_value.h"  // IWYU pragma: export
 #include "common/values/string_value.h"  // IWYU pragma: export
 #include "common/values/struct_value.h"  // IWYU pragma: export
 #include "common/values/timestamp_value.h"  // IWYU pragma: export
