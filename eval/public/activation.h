@@ -29,6 +29,10 @@ class Activation : public BaseActivation {
   Activation(const Activation&) = delete;
   Activation& operator=(const Activation&) = delete;
 
+  // Move-constructible/move-assignable
+  Activation(Activation&& other) = default;
+  Activation& operator=(Activation&& other) = default;
+
   // BaseActivation
   std::vector<const CelFunction*> FindFunctionOverloads(
       absl::string_view name) const override;
