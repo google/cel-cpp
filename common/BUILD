@@ -913,3 +913,49 @@ cc_library(
         "@com_google_absl//absl/utility",
     ],
 )
+
+cc_library(
+    name = "arena_string",
+    hdrs = ["arena_string.h"],
+    deps = [
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_test(
+    name = "arena_string_test",
+    srcs = ["arena_string_test.cc"],
+    deps = [
+        ":arena_string",
+        "//internal:testing",
+        "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/hash:hash_testing",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_library(
+    name = "arena_string_pool",
+    hdrs = ["arena_string_pool.h"],
+    deps = [
+        ":arena_string",
+        "//internal:string_pool",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "arena_string_pool_test",
+    srcs = ["arena_string_pool_test.cc"],
+    deps = [
+        ":arena_string_pool",
+        "//internal:testing",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
