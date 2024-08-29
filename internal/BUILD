@@ -581,6 +581,7 @@ cel_proto_transitive_descriptor_set(
     name = "testing_descriptor_set",
     testonly = True,
     deps = [
+        "@com_google_cel_spec//proto/cel/expr:expr_proto",
         "@com_google_cel_spec//proto/test/v1/proto2:test_all_types_proto",
         "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_proto",
