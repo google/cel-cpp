@@ -860,6 +860,20 @@ class TypeParameters final {
   };
 };
 
+inline bool operator==(const TypeParameters& lhs, const TypeParameters& rhs) {
+  return absl::c_equal(lhs, rhs);
+}
+
+inline bool operator!=(const TypeParameters& lhs, const TypeParameters& rhs) {
+  return !operator==(lhs, rhs);
+}
+
+template <typename H>
+H AbslHashValue(H state, const TypeParameters& parameters) {
+  return H::combine_contiguous(std::move(state), parameters.data(),
+                               parameters.size());
+}
+
 // Now that TypeParameters is defined, we can define `GetParameters()` for most
 // types.
 
