@@ -53,11 +53,11 @@ inline constexpr int kNumContainerAccessArguments = 2;
 absl::optional<Number> CelNumberFromValue(const Value& value) {
   switch (value->kind()) {
     case ValueKind::kInt64:
-      return Number::FromInt64(value.As<IntValue>().NativeValue());
+      return Number::FromInt64(static_cast<IntValue>(value).NativeValue());
     case ValueKind::kUint64:
-      return Number::FromUint64(value.As<UintValue>().NativeValue());
+      return Number::FromUint64(static_cast<UintValue>(value).NativeValue());
     case ValueKind::kDouble:
-      return Number::FromDouble(value.As<DoubleValue>().NativeValue());
+      return Number::FromDouble(static_cast<DoubleValue>(value).NativeValue());
     default:
       return absl::nullopt;
   }
@@ -80,13 +80,16 @@ absl::Status CheckMapKeyType(const Value& key) {
 AttributeQualifier AttributeQualifierFromValue(const Value& v) {
   switch (v->kind()) {
     case ValueKind::kString:
-      return AttributeQualifier::OfString(v.As<StringValue>().ToString());
+      return AttributeQualifier::OfString(
+          static_cast<StringValue>(v).ToString());
     case ValueKind::kInt64:
-      return AttributeQualifier::OfInt(v.As<IntValue>().NativeValue());
+      return AttributeQualifier::OfInt(static_cast<IntValue>(v).NativeValue());
     case ValueKind::kUint64:
-      return AttributeQualifier::OfUint(v.As<UintValue>().NativeValue());
+      return AttributeQualifier::OfUint(
+          static_cast<UintValue>(v).NativeValue());
     case ValueKind::kBool:
-      return AttributeQualifier::OfBool(v.As<BoolValue>().NativeValue());
+      return AttributeQualifier::OfBool(
+          static_cast<BoolValue>(v).NativeValue());
     default:
       // Non-matching qualifier.
       return AttributeQualifier();
@@ -167,7 +170,7 @@ void LookupInList(const ListValue& cel_list, const Value& key,
       maybe_idx = number->AsInt();
     }
   } else if (InstanceOf<IntValue>(key)) {
-    maybe_idx = key.As<IntValue>().NativeValue();
+    maybe_idx = static_cast<IntValue>(key).NativeValue();
   }
 
   if (!maybe_idx.has_value()) {

@@ -65,7 +65,7 @@ TEST(Strings, SplitWithEmptyDelimiterCord) {
   ASSERT_OK_AND_ASSIGN(Value result,
                        program->Evaluate(activation, value_factory));
   ASSERT_TRUE(result.Is<BoolValue>());
-  EXPECT_TRUE(result.As<BoolValue>().NativeValue());
+  EXPECT_TRUE(static_cast<BoolValue>(result).NativeValue());
 }
 
 }  // namespace

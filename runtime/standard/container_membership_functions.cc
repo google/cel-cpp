@@ -177,16 +177,16 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
     Value int_key = factory.CreateIntValue(key);
     auto result = map_value.Has(factory, int_key);
     if (enable_heterogeneous_equality) {
-      if (result.ok() && (*result)->Is<BoolValue>() &&
-          (*result)->As<BoolValue>().NativeValue()) {
+      if (result.ok() && (*result).Is<BoolValue>() &&
+          static_cast<BoolValue>(*result).NativeValue()) {
         return std::move(*result);
       }
       Number number = Number::FromInt64(key);
       if (number.LosslessConvertibleToUint()) {
         const auto& result =
             map_value.Has(factory, factory.CreateUintValue(number.AsUint()));
-        if (result.ok() && (*result)->Is<BoolValue>() &&
-            (*result)->As<BoolValue>().NativeValue()) {
+        if (result.ok() && (*result).Is<BoolValue>() &&
+            static_cast<BoolValue>(*result).NativeValue()) {
           return std::move(*result);
         }
       }
@@ -218,16 +218,16 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
     Value uint_key = factory.CreateUintValue(key);
     const auto& result = map_value.Has(factory, uint_key);
     if (enable_heterogeneous_equality) {
-      if (result.ok() && (*result)->Is<BoolValue>() &&
-          (*result)->As<BoolValue>().NativeValue()) {
+      if (result.ok() && (*result).Is<BoolValue>() &&
+          static_cast<BoolValue>(*result).NativeValue()) {
         return std::move(*result);
       }
       Number number = Number::FromUint64(key);
       if (number.LosslessConvertibleToInt()) {
         const auto& result =
             map_value.Has(factory, factory.CreateIntValue(number.AsInt()));
-        if (result.ok() && (*result)->Is<BoolValue>() &&
-            (*result)->As<BoolValue>().NativeValue()) {
+        if (result.ok() && (*result).Is<BoolValue>() &&
+            static_cast<BoolValue>(*result).NativeValue()) {
           return std::move(*result);
         }
       }
@@ -245,16 +245,16 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
     if (number.LosslessConvertibleToInt()) {
       const auto& result =
           map_value.Has(factory, factory.CreateIntValue(number.AsInt()));
-      if (result.ok() && (*result)->Is<BoolValue>() &&
-          (*result)->As<BoolValue>().NativeValue()) {
+      if (result.ok() && (*result).Is<BoolValue>() &&
+          static_cast<BoolValue>(*result).NativeValue()) {
         return std::move(*result);
       }
     }
     if (number.LosslessConvertibleToUint()) {
       const auto& result =
           map_value.Has(factory, factory.CreateUintValue(number.AsUint()));
-      if (result.ok() && (*result)->Is<BoolValue>() &&
-          (*result)->As<BoolValue>().NativeValue()) {
+      if (result.ok() && (*result).Is<BoolValue>() &&
+          static_cast<BoolValue>(*result).NativeValue()) {
         return std::move(*result);
       }
     }

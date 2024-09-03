@@ -67,7 +67,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionInt) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<IntValue>());
-  EXPECT_EQ(result.As<IntValue>().NativeValue(), 42);
+  EXPECT_EQ(static_cast<IntValue>(result).NativeValue(), 42);
 }
 
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionDouble) {
@@ -79,7 +79,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionDouble) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<DoubleValue>());
-  EXPECT_EQ(result.As<DoubleValue>().NativeValue(), 80.0);
+  EXPECT_EQ(static_cast<DoubleValue>(result).NativeValue(), 80.0);
 }
 
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionUint) {
@@ -91,7 +91,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionUint) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<UintValue>());
-  EXPECT_EQ(result.As<UintValue>().NativeValue(), 42);
+  EXPECT_EQ(static_cast<UintValue>(result).NativeValue(), 42);
 }
 
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionBool) {
@@ -103,7 +103,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionBool) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<BoolValue>());
-  EXPECT_EQ(result.As<BoolValue>().NativeValue(), false);
+  EXPECT_EQ(static_cast<BoolValue>(result).NativeValue(), false);
 }
 
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionTimestamp) {
@@ -119,7 +119,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionTimestamp) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<TimestampValue>());
-  EXPECT_EQ(result.As<TimestampValue>().NativeValue(),
+  EXPECT_EQ(static_cast<TimestampValue>(result).NativeValue(),
             absl::UnixEpoch() + absl::Minutes(1));
 }
 
@@ -136,7 +136,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionDuration) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<DurationValue>());
-  EXPECT_EQ(result.As<DurationValue>().NativeValue(), absl::Seconds(8));
+  EXPECT_EQ(static_cast<DurationValue>(result).NativeValue(), absl::Seconds(8));
 }
 
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionString) {
@@ -152,7 +152,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionString) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<StringValue>());
-  EXPECT_EQ(result.As<StringValue>().ToString(), "pre_string");
+  EXPECT_EQ(static_cast<StringValue>(result).ToString(), "pre_string");
 }
 
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionBytes) {
@@ -168,21 +168,21 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionBytes) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<BytesValue>());
-  EXPECT_EQ(result.As<BytesValue>().ToString(), "pre_bytes");
+  EXPECT_EQ(static_cast<BytesValue>(result).ToString(), "pre_bytes");
 }
 
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionAny) {
   using FunctionAdapter = UnaryFunctionAdapter<uint64_t, Value>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
       [](ValueManager&, const Value& x) -> uint64_t {
-        return x.As<UintValue>().NativeValue() - 2;
+        return static_cast<UintValue>(x).NativeValue() - 2;
       });
 
   std::vector<Value> args{value_factory().CreateUintValue(44)};
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<UintValue>());
-  EXPECT_EQ(result.As<UintValue>().NativeValue(), 42);
+  EXPECT_EQ(static_cast<UintValue>(result).NativeValue(), 42);
 }
 
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionReturnError) {
@@ -197,7 +197,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionReturnError) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<ErrorValue>());
-  EXPECT_THAT(result.As<ErrorValue>().NativeValue(),
+  EXPECT_THAT(static_cast<ErrorValue>(result).NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument, "test_error"));
 }
 
@@ -227,7 +227,7 @@ TEST_F(FunctionAdapterTest,
 
   std::vector<Value> args{value_factory().CreateUintValue(44)};
   ASSERT_OK_AND_ASSIGN(Value result, wrapped->Invoke(test_context(), args));
-  EXPECT_EQ(result.As<UintValue>().NativeValue(), 44);
+  EXPECT_EQ(static_cast<UintValue>(result).NativeValue(), 44);
 }
 
 TEST_F(FunctionAdapterTest,
@@ -382,7 +382,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionInt) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<IntValue>());
-  EXPECT_EQ(result.As<IntValue>().NativeValue(), 42);
+  EXPECT_EQ(static_cast<IntValue>(result).NativeValue(), 42);
 }
 
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionDouble) {
@@ -395,7 +395,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionDouble) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<DoubleValue>());
-  EXPECT_EQ(result.As<DoubleValue>().NativeValue(), 80.0);
+  EXPECT_EQ(static_cast<DoubleValue>(result).NativeValue(), 80.0);
 }
 
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionUint) {
@@ -408,7 +408,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionUint) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<UintValue>());
-  EXPECT_EQ(result.As<UintValue>().NativeValue(), 42);
+  EXPECT_EQ(static_cast<UintValue>(result).NativeValue(), 42);
 }
 
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionBool) {
@@ -421,7 +421,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionBool) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<BoolValue>());
-  EXPECT_EQ(result.As<BoolValue>().NativeValue(), true);
+  EXPECT_EQ(static_cast<BoolValue>(result).NativeValue(), true);
 }
 
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionTimestamp) {
@@ -443,7 +443,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionTimestamp) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<TimestampValue>());
-  EXPECT_EQ(result.As<TimestampValue>().NativeValue(),
+  EXPECT_EQ(static_cast<TimestampValue>(result).NativeValue(),
             absl::UnixEpoch() + absl::Seconds(2));
 }
 
@@ -464,7 +464,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionDuration) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<DurationValue>());
-  EXPECT_EQ(result.As<DurationValue>().NativeValue(), absl::Seconds(5));
+  EXPECT_EQ(static_cast<DurationValue>(result).NativeValue(), absl::Seconds(5));
 }
 
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionString) {
@@ -486,7 +486,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionString) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<StringValue>());
-  EXPECT_EQ(result.As<StringValue>().ToString(), "abcdef");
+  EXPECT_EQ(static_cast<StringValue>(result).ToString(), "abcdef");
 }
 
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionBytes) {
@@ -508,15 +508,15 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionBytes) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<BytesValue>());
-  EXPECT_EQ(result.As<BytesValue>().ToString(), "abcdef");
+  EXPECT_EQ(static_cast<BytesValue>(result).ToString(), "abcdef");
 }
 
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionAny) {
   using FunctionAdapter = BinaryFunctionAdapter<uint64_t, Value, Value>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
       [](ValueManager&, const Value& x, const Value& y) -> uint64_t {
-        return x.As<UintValue>().NativeValue() -
-               static_cast<int64_t>(y.As<DoubleValue>().NativeValue());
+        return static_cast<UintValue>(x).NativeValue() -
+               static_cast<int64_t>(static_cast<DoubleValue>(y).NativeValue());
       });
 
   std::vector<Value> args{value_factory().CreateUintValue(44),
@@ -524,7 +524,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionAny) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<UintValue>());
-  EXPECT_EQ(result.As<UintValue>().NativeValue(), 42);
+  EXPECT_EQ(static_cast<UintValue>(result).NativeValue(), 42);
 }
 
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionReturnError) {
@@ -540,7 +540,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionReturnError) {
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
   ASSERT_TRUE(result->Is<ErrorValue>());
-  EXPECT_THAT(result.As<ErrorValue>().NativeValue(),
+  EXPECT_THAT(static_cast<ErrorValue>(result).NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument, "test_error"));
 }
 
@@ -718,7 +718,7 @@ TEST_F(FunctionAdapterTest, VariadicFunctionAdapterWrapFunction0Args) {
 
   ASSERT_OK_AND_ASSIGN(auto result, fn->Invoke(test_context(), {}));
   ASSERT_TRUE(result->Is<StringValue>());
-  EXPECT_EQ(result.As<StringValue>().ToString(), "abc");
+  EXPECT_EQ(static_cast<StringValue>(result).ToString(), "abc");
 }
 
 TEST_F(FunctionAdapterTest, VariadicFunctionAdapterCreateDescriptor3Args) {
@@ -751,7 +751,7 @@ TEST_F(FunctionAdapterTest, VariadicFunctionAdapterWrapFunction3Args) {
                        value_factory().CreateStringValue("abcd"));
   ASSERT_OK_AND_ASSIGN(auto result, fn->Invoke(test_context(), args));
   ASSERT_TRUE(result->Is<StringValue>());
-  EXPECT_EQ(result.As<StringValue>().ToString(), "42_false_abcd");
+  EXPECT_EQ(static_cast<StringValue>(result).ToString(), "42_false_abcd");
 }
 
 TEST_F(FunctionAdapterTest,

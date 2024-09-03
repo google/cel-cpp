@@ -449,7 +449,7 @@ class CelListValueBuilder final : public ListValueBuilder {
 
   absl::Status Add(Value value) override {
     if (value.Is<ErrorValue>()) {
-      return value.As<ErrorValue>().NativeValue();
+      return static_cast<ErrorValue>(std::move(value)).NativeValue();
     }
     CEL_ASSIGN_OR_RETURN(auto legacy_value, LegacyValue(arena_, value));
     elements_.push_back(legacy_value);
@@ -501,10 +501,10 @@ class CelMapValueBuilder final : public MapValueBuilder {
 
   absl::Status Put(Value key, Value value) override {
     if (key.Is<ErrorValue>()) {
-      return key.As<ErrorValue>().NativeValue();
+      return static_cast<ErrorValue>(std::move(key)).NativeValue();
     }
     if (value.Is<ErrorValue>()) {
-      return value.As<ErrorValue>().NativeValue();
+      return static_cast<ErrorValue>(std::move(value)).NativeValue();
     }
     CEL_ASSIGN_OR_RETURN(auto legacy_key, LegacyValue(arena_, key));
     CEL_ASSIGN_OR_RETURN(auto legacy_value, LegacyValue(arena_, value));

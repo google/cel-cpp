@@ -46,7 +46,8 @@ using testing::UnorderedElementsAre;
 MATCHER_P(IsIntValue, x, absl::StrCat("is IntValue Handle with value ", x)) {
   const Value& handle = arg;
 
-  return handle->Is<IntValue>() && handle.As<IntValue>().NativeValue() == x;
+  return handle->Is<IntValue>() &&
+         static_cast<IntValue>(handle).NativeValue() == x;
 }
 
 MATCHER_P(AttributePatternMatches, val, "matches AttributePattern") {

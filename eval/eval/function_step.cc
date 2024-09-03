@@ -130,7 +130,7 @@ bool IsUnknownFunctionResultError(const Value& result) {
     return false;
   }
 
-  const auto& status = result.As<cel::ErrorValue>().NativeValue();
+  const auto& status = static_cast<cel::ErrorValue>(result).NativeValue();
 
   if (status.code() != absl::StatusCode::kUnavailable) {
     return false;

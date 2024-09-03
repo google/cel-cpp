@@ -81,7 +81,7 @@ TEST_F(LazyInitStepTest, CreateCheckInitStepDoesInit) {
   ASSERT_OK_AND_ASSIGN(auto value, frame.Evaluate());
 
   EXPECT_TRUE(value->Is<IntValue>() &&
-              value->As<IntValue>().NativeValue() == 42);
+              static_cast<IntValue>(value).NativeValue() == 42);
 }
 
 TEST_F(LazyInitStepTest, CreateCheckInitStepSkipInit) {
@@ -105,7 +105,7 @@ TEST_F(LazyInitStepTest, CreateCheckInitStepSkipInit) {
   ASSERT_OK_AND_ASSIGN(auto value, frame.Evaluate());
 
   EXPECT_TRUE(value->Is<IntValue>() &&
-              value->As<IntValue>().NativeValue() == 42);
+              static_cast<IntValue>(value).NativeValue() == 42);
 }
 
 TEST_F(LazyInitStepTest, CreateAssignSlotAndPopStepBasic) {
@@ -124,7 +124,7 @@ TEST_F(LazyInitStepTest, CreateAssignSlotAndPopStepBasic) {
   auto* slot = frame.comprehension_slots().Get(0);
   ASSERT_TRUE(slot != nullptr);
   EXPECT_TRUE(slot->value->Is<IntValue>() &&
-              slot->value->As<IntValue>().NativeValue() == 42);
+              static_cast<IntValue>(slot->value).NativeValue() == 42);
   EXPECT_TRUE(frame.value_stack().empty());
 }
 

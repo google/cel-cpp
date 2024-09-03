@@ -56,20 +56,21 @@ struct TestCase {
 MATCHER_P(IsIntValue, expected, "") {
   const Value& value = arg;
   return value->Is<IntValue>() &&
-         value->As<IntValue>().NativeValue() == expected;
+         static_cast<IntValue>(value).NativeValue() == expected;
 }
 
 MATCHER_P(IsBoolValue, expected, "") {
   const Value& value = arg;
   return value->Is<BoolValue>() &&
-         value->As<BoolValue>().NativeValue() == expected;
+         static_cast<BoolValue>(value).NativeValue() == expected;
 }
 
 MATCHER_P(IsErrorValue, expected_substr, "") {
   const Value& value = arg;
   return value->Is<ErrorValue>() &&
-         absl::StrContains(value->As<ErrorValue>().NativeValue().message(),
-                           expected_substr);
+         absl::StrContains(
+             static_cast<ErrorValue>(value).NativeValue().message(),
+             expected_substr);
 }
 
 class RegexPrecompilationTest : public testing::TestWithParam<TestCase> {};

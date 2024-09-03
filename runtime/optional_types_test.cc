@@ -325,7 +325,7 @@ TEST(OptionalTypesTest, ErrorShortCircuiting) {
 
   EXPECT_EQ(unreachable_count, 0);
   ASSERT_TRUE(result->Is<ErrorValue>()) << result->DebugString();
-  EXPECT_THAT(result->As<ErrorValue>().NativeValue(),
+  EXPECT_THAT(static_cast<ErrorValue>(result).NativeValue(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("divide by zero")));
 }

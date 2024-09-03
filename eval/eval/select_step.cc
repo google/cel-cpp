@@ -223,7 +223,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   switch (arg->kind()) {
     case ValueKind::kStruct: {
       Value result;
-      CEL_RETURN_IF_ERROR(arg.As<StructValue>().GetFieldByName(
+      CEL_RETURN_IF_ERROR(static_cast<StructValue>(arg).GetFieldByName(
           frame->value_factory(), field_, result, unboxing_option_));
       frame->value_stack().PopAndPush(std::move(result),
                                       std::move(result_trail));
@@ -231,8 +231,8 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     }
     case ValueKind::kMap: {
       Value result;
-      CEL_RETURN_IF_ERROR(
-          arg.As<MapValue>().Get(frame->value_factory(), field_value_, result));
+      CEL_RETURN_IF_ERROR(static_cast<MapValue>(arg).Get(frame->value_factory(),
+                                                         field_value_, result));
       frame->value_stack().PopAndPush(std::move(result),
                                       std::move(result_trail));
       return absl::OkStatus();
@@ -248,15 +248,15 @@ absl::Status SelectStep::PerformTestOnlySelect(ExecutionFrame* frame,
   switch (arg->kind()) {
     case ValueKind::kMap: {
       Value result;
-      TestOnlySelect(arg.As<MapValue>(), field_value_, frame->value_factory(),
-                     result);
+      TestOnlySelect(static_cast<MapValue>(arg), field_value_,
+                     frame->value_factory(), result);
       frame->value_stack().PopAndPush(std::move(result));
       return absl::OkStatus();
     }
     case ValueKind::kMessage: {
       Value result;
-      TestOnlySelect(arg.As<StructValue>(), field_, frame->value_factory(),
-                     result);
+      TestOnlySelect(static_cast<StructValue>(arg), field_,
+                     frame->value_factory(), result);
       frame->value_stack().PopAndPush(std::move(result));
       return absl::OkStatus();
     }
@@ -271,7 +271,7 @@ absl::StatusOr<bool> SelectStep::PerformSelect(ExecutionFrame* frame,
                                                Value& result) const {
   switch (arg->kind()) {
     case ValueKind::kStruct: {
-      const auto& struct_value = arg.As<StructValue>();
+      const auto& struct_value = static_cast<StructValue>(arg);
       CEL_ASSIGN_OR_RETURN(auto ok, struct_value.HasFieldByName(field_));
       if (!ok) {
         result = NullValue{};
@@ -282,8 +282,8 @@ absl::StatusOr<bool> SelectStep::PerformSelect(ExecutionFrame* frame,
       return true;
     }
     case ValueKind::kMap: {
-      return arg.As<MapValue>().Find(frame->value_factory(), field_value_,
-                                     result);
+      return static_cast<MapValue>(arg).Find(frame->value_factory(),
+                                             field_value_, result);
     }
     default:
       // Control flow should have returned earlier.

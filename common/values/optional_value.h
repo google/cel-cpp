@@ -25,13 +25,16 @@
 #include <type_traits>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/memory.h"
 #include "common/native_type.h"
+#include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/value_interface.h"
 #include "common/value_kind.h"
@@ -86,6 +89,10 @@ class OptionalValue final : public OpaqueValue {
 
   static OptionalValue Of(MemoryManagerRef memory_manager, cel::Value value);
 
+  // Used by SubsumptionTraits to downcast OpaqueType rvalue references.
+  explicit OptionalValue(OpaqueValue&& value) noexcept
+      : OpaqueValue(std::move(value)) {}
+
   OptionalValue() : OptionalValue(None()) {}
 
   OptionalValue(const OptionalValue&) = default;
@@ -116,12 +123,32 @@ class OptionalValue final : public OpaqueValue {
     return Cast<OptionalValueInterface>(OpaqueValue::operator->());
   }
 
+  bool IsOptional() const = delete;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>, bool> Is() const = delete;
+  optional_ref<const OptionalValue> AsOptional() & = delete;
+  optional_ref<const OptionalValue> AsOptional() const& = delete;
+  absl::optional<OptionalValue> AsOptional() && = delete;
+  absl::optional<OptionalValue> AsOptional() const&& = delete;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                   optional_ref<const OptionalValue>>
+  As() & = delete;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                   optional_ref<const OptionalValue>>
+  As() const& = delete;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                   absl::optional<OptionalValue>>
+  As() && = delete;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                   absl::optional<OptionalValue>>
+  As() const&& = delete;
+
  private:
   friend struct SubsumptionTraits<OptionalValue>;
-
-  // Used by SubsumptionTraits to downcast OpaqueType rvalue references.
-  explicit OptionalValue(OpaqueValue&& value) noexcept
-      : OpaqueValue(std::move(value)) {}
 };
 
 template <>
@@ -146,6 +173,34 @@ struct SubsumptionTraits<OptionalValue> final {
     return OptionalValue(std::move(value));
   }
 };
+
+template <typename T>
+    inline std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                            optional_ref<const OptionalValue>>
+    OpaqueValue::As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return AsOptional();
+}
+
+template <typename T>
+inline std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                        optional_ref<const OptionalValue>>
+OpaqueValue::As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return AsOptional();
+}
+
+template <typename T>
+inline std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                        absl::optional<OptionalValue>>
+OpaqueValue::As() && {
+  return std::move(*this).AsOptional();
+}
+
+template <typename T>
+inline std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                        absl::optional<OptionalValue>>
+OpaqueValue::As() const&& {
+  return std::move(*this).AsOptional();
+}
 
 }  // namespace cel
 

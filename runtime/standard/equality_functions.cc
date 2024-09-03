@@ -162,11 +162,11 @@ absl::StatusOr<absl::optional<bool>> OpaqueEqual(ValueManager& manager,
 
 absl::optional<Number> NumberFromValue(const Value& value) {
   if (value.Is<IntValue>()) {
-    return Number::FromInt64(value.As<IntValue>().NativeValue());
+    return Number::FromInt64(static_cast<IntValue>(value).NativeValue());
   } else if (value.Is<UintValue>()) {
-    return Number::FromUint64(value.As<UintValue>().NativeValue());
+    return Number::FromUint64(static_cast<UintValue>(value).NativeValue());
   } else if (value.Is<DoubleValue>()) {
-    return Number::FromDouble(value.As<DoubleValue>().NativeValue());
+    return Number::FromDouble(static_cast<DoubleValue>(value).NativeValue());
   }
 
   return absl::nullopt;
@@ -453,8 +453,8 @@ absl::StatusOr<absl::optional<bool>> HomogenousValueEqual(ValueManager& factory,
       return Equal<const StringValue&>(Cast<StringValue>(v1),
                                        Cast<StringValue>(v2));
     case ValueKind::kBytes:
-      return Equal<const cel::BytesValue&>(v1->As<cel::BytesValue>(),
-                                           v2->As<cel::BytesValue>());
+      return Equal<const cel::BytesValue&>(static_cast<cel::BytesValue>(v1),
+                                           static_cast<cel::BytesValue>(v2));
     case ValueKind::kList:
       return ListEqual<EqualsProvider>(factory, Cast<ListValue>(v1),
                                        Cast<ListValue>(v2));

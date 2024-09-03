@@ -264,7 +264,7 @@ absl::StatusOr<Value> ApplyQualifier(const Value& operand,
                   cel::runtime_internal::CreateNoMatchingOverloadError(
                       "<select>"));
             }
-            return operand.As<StructValue>().GetFieldByName(
+            return static_cast<StructValue>(operand).GetFieldByName(
                 value_factory, field_specifier.name);
           },
           [&](const AttributeQualifier& qualifier) -> absl::StatusOr<Value> {
@@ -273,13 +273,14 @@ absl::StatusOr<Value> ApplyQualifier(const Value& operand,
               if (!index_or.ok()) {
                 return value_factory.CreateErrorValue(index_or.status());
               }
-              return operand.As<ListValue>().Get(value_factory, *index_or);
+              return static_cast<ListValue>(operand).Get(value_factory,
+                                                         *index_or);
             } else if (operand.Is<MapValue>()) {
               auto key_or = MapKeyFromQualifier(qualifier, value_factory);
               if (!key_or.ok()) {
                 return value_factory.CreateErrorValue(key_or.status());
               }
-              return operand.As<MapValue>().Get(value_factory, *key_or);
+              return static_cast<MapValue>(operand).Get(value_factory, *key_or);
             }
             return value_factory.CreateErrorValue(
                 cel::runtime_internal::CreateNoMatchingOverloadError(
@@ -316,8 +317,8 @@ absl::StatusOr<Value> FallbackSelect(
                         "<select>"));
               }
               CEL_ASSIGN_OR_RETURN(
-                  bool present,
-                  elem->As<StructValue>().HasFieldByName(field_specifier.name));
+                  bool present, static_cast<StructValue>(*elem).HasFieldByName(
+                                    field_specifier.name));
               return value_factory.CreateBoolValue(present);
             },
             [&](const AttributeQualifier& qualifier) -> absl::StatusOr<Value> {
@@ -327,7 +328,7 @@ absl::StatusOr<Value> FallbackSelect(
                         "has"));
               }
 
-              return elem->As<MapValue>().Has(
+              return static_cast<MapValue>(*elem).Has(
                   value_factory, value_factory.CreateUncheckedStringValue(
                                      std::string(*qualifier.GetStringKey())));
             }),
@@ -702,8 +703,9 @@ absl::Status StackMachineImpl::Evaluate(ExecutionFrame* frame) const {
         "Expected struct type for select optimization.");
   }
 
-  CEL_ASSIGN_OR_RETURN(Value result,
-                       impl_.ApplySelect(*frame, operand->As<StructValue>()));
+  CEL_ASSIGN_OR_RETURN(
+      Value result,
+      impl_.ApplySelect(*frame, static_cast<StructValue>(operand)));
 
   frame->value_stack().Pop(kStackInputs);
   frame->value_stack().Push(std::move(result), std::move(attribute_trail));

@@ -29,16 +29,19 @@
 #include <type_traits>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
+#include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/value_interface.h"
 #include "common/value_kind.h"
@@ -118,6 +121,53 @@ class OpaqueValue {
                               const Value& other) const;
 
   bool IsZeroValue() const { return false; }
+
+  // Returns `true` if this opaque value is an instance of an optional value.
+  bool IsOptional() const;
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsOptional()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>, bool> Is() const {
+    return IsOptional();
+  }
+
+  // Performs a checked cast from an opaque value to an optional value,
+  // returning a non-empty optional with either a value or reference to the
+  // optional value. Otherwise an empty optional is returned.
+  optional_ref<const OptionalValue> AsOptional() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const OptionalValue> AsOptional()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<OptionalValue> AsOptional() &&;
+  absl::optional<OptionalValue> AsOptional() const&&;
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsOptional()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                       optional_ref<const OptionalValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                   optional_ref<const OptionalValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                   absl::optional<OptionalValue>>
+  As() &&;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                   absl::optional<OptionalValue>>
+  As() const&&;
+
+  // Performs an unchecked cast from an opaque value to an optional value. In
+  // debug builds a best effort is made to crash. If `IsOptional()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator const OptionalValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator const OptionalValue&() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator OptionalValue() &&;
+  explicit operator OptionalValue() const&&;
 
   void swap(OpaqueValue& other) noexcept {
     using std::swap;

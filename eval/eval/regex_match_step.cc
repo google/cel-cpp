@@ -81,8 +81,8 @@ class RegexMatchStep final : public ExpressionStepBase {
                           "First argument for regular "
                           "expression match must be a string");
     }
-    bool match =
-        subject.As<cel::StringValue>().NativeValue(MatchesVisitor{*re2_});
+    bool match = static_cast<cel::StringValue>(subject).NativeValue(
+        MatchesVisitor{*re2_});
     frame->value_stack().Pop(kNumRegexMatchArguments);
     frame->value_stack().Push(frame->value_factory().CreateBoolValue(match));
     return absl::OkStatus();

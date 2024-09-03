@@ -32,12 +32,14 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
+#include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/value_interface.h"  // IWYU pragma: export
 #include "common/value_kind.h"
@@ -230,52 +232,873 @@ class Value final {
 
   friend std::ostream& operator<<(std::ostream& out, const Value& value);
 
-  template <typename T>
-  ABSL_DEPRECATED("Use cel::InstanceOf")
-  bool Is() const {
-    return cel::InstanceOf<T>(*this);
-  }
-
-  template <typename T>
-  ABSL_DEPRECATED("Use cel::Cast or cel::As")
-  auto As() const& {
-    return cel::Cast<T>(*this);
-  }
-
-  template <typename T>
-  ABSL_DEPRECATED("Use cel::Cast or cel::As")
-  auto As() & {
-    return cel::Cast<T>(*this);
-  }
-
-  template <typename T>
-  ABSL_DEPRECATED("Use cel::Cast or cel::As")
-  auto As() const&& {
-    return cel::Cast<T>(std::move(*this));
-  }
-
-  template <typename T>
-  ABSL_DEPRECATED("Use cel::Cast or cel::As")
-  auto As() && {
-    return cel::Cast<T>(std::move(*this));
-  }
-
   ABSL_DEPRECATED("Just use operator.()")
   Value* operator->() { return this; }
 
   ABSL_DEPRECATED("Just use operator.()")
   const Value* operator->() const { return this; }
 
+  // Returns `true` if this value is an instance of a bool value.
+  bool IsBool() const { return absl::holds_alternative<BoolValue>(variant_); }
+
+  // Returns `true` if this value is an instance of a bytes value.
+  bool IsBytes() const { return absl::holds_alternative<BytesValue>(variant_); }
+
+  // Returns `true` if this value is an instance of a double value.
+  bool IsDouble() const {
+    return absl::holds_alternative<DoubleValue>(variant_);
+  }
+
+  // Returns `true` if this value is an instance of a duration value.
+  bool IsDuration() const {
+    return absl::holds_alternative<DurationValue>(variant_);
+  }
+
+  // Returns `true` if this value is an instance of an error value.
+  bool IsError() const { return absl::holds_alternative<ErrorValue>(variant_); }
+
+  // Returns `true` if this value is an instance of an int value.
+  bool IsInt() const { return absl::holds_alternative<IntValue>(variant_); }
+
+  // Returns `true` if this value is an instance of a list value.
+  bool IsList() const {
+    return absl::holds_alternative<common_internal::LegacyListValue>(
+               variant_) ||
+           absl::holds_alternative<ParsedListValue>(variant_);
+  }
+
+  // Returns `true` if this value is an instance of a map value.
+  bool IsMap() const {
+    return absl::holds_alternative<common_internal::LegacyMapValue>(variant_) ||
+           absl::holds_alternative<ParsedMapValue>(variant_);
+  }
+
+  // Returns `true` if this value is an instance of a null value.
+  bool IsNull() const { return absl::holds_alternative<NullValue>(variant_); }
+
+  // Returns `true` if this value is an instance of an opaque value.
+  bool IsOpaque() const {
+    return absl::holds_alternative<OpaqueValue>(variant_);
+  }
+
+  // Returns `true` if this value is an instance of an optional value. If `true`
+  // is returned, it is implied that `IsOpaque()` would also return true.
+  bool IsOptional() const {
+    if (const auto* alternative = absl::get_if<OpaqueValue>(&variant_);
+        alternative != nullptr) {
+      return alternative->IsOptional();
+    }
+    return false;
+  }
+
+  // Returns `true` if this value is an instance of a string value.
+  bool IsString() const {
+    return absl::holds_alternative<StringValue>(variant_);
+  }
+
+  // Returns `true` if this value is an instance of a struct value.
+  bool IsStruct() const {
+    return absl::holds_alternative<common_internal::LegacyStructValue>(
+               variant_) ||
+           absl::holds_alternative<ParsedStructValue>(variant_);
+  }
+
+  // Returns `true` if this value is an instance of a timestamp value.
+  bool IsTimestamp() const {
+    return absl::holds_alternative<TimestampValue>(variant_);
+  }
+
+  // Returns `true` if this value is an instance of a type value.
+  bool IsType() const { return absl::holds_alternative<TypeValue>(variant_); }
+
+  // Returns `true` if this value is an instance of a uint value.
+  bool IsUint() const { return absl::holds_alternative<UintValue>(variant_); }
+
+  // Returns `true` if this value is an instance of an unknown value.
+  bool IsUnknown() const {
+    return absl::holds_alternative<UnknownValue>(variant_);
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsBool()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BoolValue, T>, bool> Is() const {
+    return IsBool();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsBytes()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BytesValue, T>, bool> Is() const {
+    return IsBytes();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsDouble()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DoubleValue, T>, bool> Is() const {
+    return IsDouble();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsDuration()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DurationValue, T>, bool> Is() const {
+    return IsDuration();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsError()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ErrorValue, T>, bool> Is() const {
+    return IsError();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsInt()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<IntValue, T>, bool> Is() const {
+    return IsInt();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsList()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ListValue, T>, bool> Is() const {
+    return IsList();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsMap()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MapValue, T>, bool> Is() const {
+    return IsMap();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsNull()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<NullValue, T>, bool> Is() const {
+    return IsNull();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsOpaque()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OpaqueValue, T>, bool> Is() const {
+    return IsOpaque();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsOptional()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>, bool> Is() const {
+    return IsOptional();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsString()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StringValue, T>, bool> Is() const {
+    return IsString();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsStruct()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StructValue, T>, bool> Is() const {
+    return IsStruct();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsTimestamp()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TimestampValue, T>, bool> Is() const {
+    return IsTimestamp();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsType()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TypeValue, T>, bool> Is() const {
+    return IsType();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsUint()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UintValue, T>, bool> Is() const {
+    return IsUint();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsUnknown()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UnknownValue, T>, bool> Is() const {
+    return IsUnknown();
+  }
+
+  // Performs a checked cast from a value to a bool value,
+  // returning a non-empty optional with either a value or reference to the
+  // bool value. Otherwise an empty optional is returned.
+  absl::optional<BoolValue> AsBool() const;
+
+  // Performs a checked cast from a value to a bytes value,
+  // returning a non-empty optional with either a value or reference to the
+  // bytes value. Otherwise an empty optional is returned.
+  optional_ref<const BytesValue> AsBytes() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const BytesValue> AsBytes() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<BytesValue> AsBytes() &&;
+  absl::optional<BytesValue> AsBytes() const&&;
+
+  // Performs a checked cast from a value to a double value,
+  // returning a non-empty optional with either a value or reference to the
+  // double value. Otherwise an empty optional is returned.
+  absl::optional<DoubleValue> AsDouble() const;
+
+  // Performs a checked cast from a value to a duration value,
+  // returning a non-empty optional with either a value or reference to the
+  // duration value. Otherwise an empty optional is returned.
+  absl::optional<DurationValue> AsDuration() const;
+
+  // Performs a checked cast from a value to an error value,
+  // returning a non-empty optional with either a value or reference to the
+  // error value. Otherwise an empty optional is returned.
+  optional_ref<const ErrorValue> AsError() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const ErrorValue> AsError() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ErrorValue> AsError() &&;
+  absl::optional<ErrorValue> AsError() const&&;
+
+  // Performs a checked cast from a value to an int value,
+  // returning a non-empty optional with either a value or reference to the
+  // int value. Otherwise an empty optional is returned.
+  absl::optional<IntValue> AsInt() const;
+
+  // Performs a checked cast from a value to a list value,
+  // returning a non-empty optional with either a value or reference to the
+  // list value. Otherwise an empty optional is returned.
+  absl::optional<ListValue> AsList() &;
+  absl::optional<ListValue> AsList() const&;
+  absl::optional<ListValue> AsList() &&;
+  absl::optional<ListValue> AsList() const&&;
+
+  // Performs a checked cast from a value to a map value,
+  // returning a non-empty optional with either a value or reference to the
+  // map value. Otherwise an empty optional is returned.
+  absl::optional<MapValue> AsMap() &;
+  absl::optional<MapValue> AsMap() const&;
+  absl::optional<MapValue> AsMap() &&;
+  absl::optional<MapValue> AsMap() const&&;
+
+  // Performs a checked cast from a value to a null value,
+  // returning a non-empty optional with either a value or reference to the
+  // null value. Otherwise an empty optional is returned.
+  absl::optional<NullValue> AsNull() const;
+
+  // Performs a checked cast from a value to an opaque value,
+  // returning a non-empty optional with either a value or reference to the
+  // opaque value. Otherwise an empty optional is returned.
+  optional_ref<const OpaqueValue> AsOpaque() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const OpaqueValue> AsOpaque()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<OpaqueValue> AsOpaque() &&;
+  absl::optional<OpaqueValue> AsOpaque() const&&;
+
+  // Performs a checked cast from a value to an optional value,
+  // returning a non-empty optional with either a value or reference to the
+  // optional value. Otherwise an empty optional is returned.
+  optional_ref<const OptionalValue> AsOptional() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const OptionalValue> AsOptional()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<OptionalValue> AsOptional() &&;
+  absl::optional<OptionalValue> AsOptional() const&&;
+
+  // Performs a checked cast from a value to a string value,
+  // returning a non-empty optional with either a value or reference to the
+  // string value. Otherwise an empty optional is returned.
+  optional_ref<const StringValue> AsString() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const StringValue> AsString()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<StringValue> AsString() &&;
+  absl::optional<StringValue> AsString() const&&;
+
+  // Performs a checked cast from a value to a struct value,
+  // returning a non-empty optional with either a value or reference to the
+  // struct value. Otherwise an empty optional is returned.
+  absl::optional<StructValue> AsStruct() &;
+  absl::optional<StructValue> AsStruct() const&;
+  absl::optional<StructValue> AsStruct() &&;
+  absl::optional<StructValue> AsStruct() const&&;
+
+  // Performs a checked cast from a value to a timestamp value,
+  // returning a non-empty optional with either a value or reference to the
+  // timestamp value. Otherwise an empty optional is returned.
+  absl::optional<TimestampValue> AsTimestamp() const;
+
+  // Performs a checked cast from a value to a type value,
+  // returning a non-empty optional with either a value or reference to the
+  // type value. Otherwise an empty optional is returned.
+  optional_ref<const TypeValue> AsType() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const TypeValue> AsType() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<TypeValue> AsType() &&;
+  absl::optional<TypeValue> AsType() const&&;
+
+  // Performs a checked cast from a value to an uint value,
+  // returning a non-empty optional with either a value or reference to the
+  // uint value. Otherwise an empty optional is returned.
+  absl::optional<UintValue> AsUint() const;
+
+  // Performs a checked cast from a value to an unknown value,
+  // returning a non-empty optional with either a value or reference to the
+  // unknown value. Otherwise an empty optional is returned.
+  optional_ref<const UnknownValue> AsUnknown() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const UnknownValue> AsUnknown()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<UnknownValue> AsUnknown() &&;
+  absl::optional<UnknownValue> AsUnknown() const&&;
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsBool()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BoolValue, T>, absl::optional<BoolValue>>
+  As() & {
+    return AsBool();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BoolValue, T>, absl::optional<BoolValue>> As()
+      const& {
+    return AsBool();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BoolValue, T>, absl::optional<BoolValue>>
+  As() && {
+    return AsBool();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BoolValue, T>, absl::optional<BoolValue>> As()
+      const&& {
+    return AsBool();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsBytes()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<BytesValue, T>,
+                       optional_ref<const BytesValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsBytes();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BytesValue, T>,
+                   optional_ref<const BytesValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsBytes();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BytesValue, T>, absl::optional<BytesValue>>
+  As() && {
+    return std::move(*this).AsBytes();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BytesValue, T>, absl::optional<BytesValue>>
+  As() const&& {
+    return std::move(*this).AsBytes();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsDouble()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DoubleValue, T>, absl::optional<DoubleValue>>
+  As() & {
+    return AsDouble();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DoubleValue, T>, absl::optional<DoubleValue>>
+  As() const& {
+    return AsDouble();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DoubleValue, T>, absl::optional<DoubleValue>>
+  As() && {
+    return AsDouble();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DoubleValue, T>, absl::optional<DoubleValue>>
+  As() const&& {
+    return AsDouble();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsDuration()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DurationValue, T>,
+                   absl::optional<DurationValue>>
+  As() & {
+    return AsDuration();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DurationValue, T>,
+                   absl::optional<DurationValue>>
+  As() const& {
+    return AsDuration();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DurationValue, T>,
+                   absl::optional<DurationValue>>
+  As() && {
+    return AsDuration();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DurationValue, T>,
+                   absl::optional<DurationValue>>
+  As() const&& {
+    return AsDuration();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsError()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ErrorValue, T>,
+                       optional_ref<const ErrorValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsError();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ErrorValue, T>,
+                   optional_ref<const ErrorValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsError();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ErrorValue, T>, absl::optional<ErrorValue>>
+  As() && {
+    return std::move(*this).AsError();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ErrorValue, T>, absl::optional<ErrorValue>>
+  As() const&& {
+    return std::move(*this).AsError();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsInt()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<IntValue, T>, absl::optional<IntValue>>
+  As() & {
+    return AsInt();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<IntValue, T>, absl::optional<IntValue>> As()
+      const& {
+    return AsInt();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<IntValue, T>, absl::optional<IntValue>>
+  As() && {
+    return AsInt();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<IntValue, T>, absl::optional<IntValue>> As()
+      const&& {
+    return AsInt();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsList()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ListValue, T>, absl::optional<ListValue>>
+  As() & {
+    return AsList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ListValue, T>, absl::optional<ListValue>> As()
+      const& {
+    return AsList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ListValue, T>, absl::optional<ListValue>>
+  As() && {
+    return std::move(*this).AsList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ListValue, T>, absl::optional<ListValue>> As()
+      const&& {
+    return std::move(*this).AsList();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsMap()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MapValue, T>, absl::optional<MapValue>>
+  As() & {
+    return AsMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MapValue, T>, absl::optional<MapValue>> As()
+      const& {
+    return AsMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MapValue, T>, absl::optional<MapValue>>
+  As() && {
+    return std::move(*this).AsMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MapValue, T>, absl::optional<MapValue>> As()
+      const&& {
+    return std::move(*this).AsMap();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsNull()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<NullValue, T>, absl::optional<NullValue>>
+  As() & {
+    return AsNull();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<NullValue, T>, absl::optional<NullValue>> As()
+      const& {
+    return AsNull();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<NullValue, T>, absl::optional<NullValue>>
+  As() && {
+    return AsNull();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<NullValue, T>, absl::optional<NullValue>> As()
+      const&& {
+    return AsNull();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsOpaque()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<OpaqueValue, T>,
+                       optional_ref<const OpaqueValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsOpaque();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OpaqueValue, T>,
+                   optional_ref<const OpaqueValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsOpaque();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OpaqueValue, T>, absl::optional<OpaqueValue>>
+  As() && {
+    return std::move(*this).AsOpaque();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OpaqueValue, T>, absl::optional<OpaqueValue>>
+  As() const&& {
+    return std::move(*this).AsOpaque();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsOptional()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                       optional_ref<const OptionalValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsOptional();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                   optional_ref<const OptionalValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsOptional();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                   absl::optional<OptionalValue>>
+  As() && {
+    return std::move(*this).AsOptional();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                   absl::optional<OptionalValue>>
+  As() const&& {
+    return std::move(*this).AsOptional();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsString()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<StringValue, T>,
+                       optional_ref<const StringValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsString();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StringValue, T>,
+                   optional_ref<const StringValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsString();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StringValue, T>, absl::optional<StringValue>>
+  As() && {
+    return std::move(*this).AsString();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StringValue, T>, absl::optional<StringValue>>
+  As() const&& {
+    return std::move(*this).AsString();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsStruct()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StructValue, T>, absl::optional<StructValue>>
+  As() & {
+    return AsStruct();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StructValue, T>, absl::optional<StructValue>>
+  As() const& {
+    return AsStruct();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StructValue, T>, absl::optional<StructValue>>
+  As() && {
+    return std::move(*this).AsStruct();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StructValue, T>, absl::optional<StructValue>>
+  As() const&& {
+    return std::move(*this).AsStruct();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsTimestamp()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TimestampValue, T>,
+                   absl::optional<TimestampValue>>
+  As() & {
+    return AsTimestamp();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TimestampValue, T>,
+                   absl::optional<TimestampValue>>
+  As() const& {
+    return AsTimestamp();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TimestampValue, T>,
+                   absl::optional<TimestampValue>>
+  As() && {
+    return AsTimestamp();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TimestampValue, T>,
+                   absl::optional<TimestampValue>>
+  As() const&& {
+    return AsTimestamp();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsType()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<TypeValue, T>,
+                       optional_ref<const TypeValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsType();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TypeValue, T>, optional_ref<const TypeValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsType();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TypeValue, T>, absl::optional<TypeValue>>
+  As() && {
+    return std::move(*this).AsType();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TypeValue, T>, absl::optional<TypeValue>> As()
+      const&& {
+    return std::move(*this).AsType();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsUint()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UintValue, T>, absl::optional<UintValue>>
+  As() & {
+    return AsUint();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UintValue, T>, absl::optional<UintValue>> As()
+      const& {
+    return AsUint();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UintValue, T>, absl::optional<UintValue>>
+  As() && {
+    return AsUint();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UintValue, T>, absl::optional<UintValue>> As()
+      const&& {
+    return AsUint();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsUnknown()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<UnknownValue, T>,
+                       optional_ref<const UnknownValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsUnknown();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UnknownValue, T>,
+                   optional_ref<const UnknownValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsUnknown();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UnknownValue, T>,
+                   absl::optional<UnknownValue>>
+  As() && {
+    return std::move(*this).AsUnknown();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UnknownValue, T>,
+                   absl::optional<UnknownValue>>
+  As() const&& {
+    return std::move(*this).AsUnknown();
+  }
+
+  // Performs an unchecked cast from a value to a bool value. In
+  // debug builds a best effort is made to crash. If `IsBool()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator BoolValue() const;
+
+  // Performs an unchecked cast from a value to a bytes value. In
+  // debug builds a best effort is made to crash. If `IsBytes()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator const BytesValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator const BytesValue&() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator BytesValue() &&;
+  explicit operator BytesValue() const&&;
+
+  // Performs an unchecked cast from a value to a double value. In
+  // debug builds a best effort is made to crash. If `IsDouble()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator DoubleValue() const;
+
+  // Performs an unchecked cast from a value to a duration value. In
+  // debug builds a best effort is made to crash. If `IsDuration()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator DurationValue() const;
+
+  // Performs an unchecked cast from a value to an error value. In
+  // debug builds a best effort is made to crash. If `IsError()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator const ErrorValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator const ErrorValue&() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator ErrorValue() &&;
+  explicit operator ErrorValue() const&&;
+
+  // Performs an unchecked cast from a value to an int value. In
+  // debug builds a best effort is made to crash. If `IsInt()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator IntValue() const;
+
+  // Performs an unchecked cast from a value to a list value. In
+  // debug builds a best effort is made to crash. If `IsList()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator ListValue() &;
+  explicit operator ListValue() const&;
+  explicit operator ListValue() &&;
+  explicit operator ListValue() const&&;
+
+  // Performs an unchecked cast from a value to a map value. In
+  // debug builds a best effort is made to crash. If `IsMap()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator MapValue() &;
+  explicit operator MapValue() const&;
+  explicit operator MapValue() &&;
+  explicit operator MapValue() const&&;
+
+  // Performs an unchecked cast from a value to a null value. In
+  // debug builds a best effort is made to crash. If `IsNull()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator NullValue() const;
+
+  // Performs an unchecked cast from a value to an opaque value. In
+  // debug builds a best effort is made to crash. If `IsOpaque()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator const OpaqueValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator const OpaqueValue&() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator OpaqueValue() &&;
+  explicit operator OpaqueValue() const&&;
+
+  // Performs an unchecked cast from a value to an optional value. In
+  // debug builds a best effort is made to crash. If `IsOptional()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator const OptionalValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator const OptionalValue&() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator OptionalValue() &&;
+  explicit operator OptionalValue() const&&;
+
+  // Performs an unchecked cast from a value to a string value. In
+  // debug builds a best effort is made to crash. If `IsString()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator const StringValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator const StringValue&() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator StringValue() &&;
+  explicit operator StringValue() const&&;
+
+  // Performs an unchecked cast from a value to a struct value. In
+  // debug builds a best effort is made to crash. If `IsStruct()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator StructValue() &;
+  explicit operator StructValue() const&;
+  explicit operator StructValue() &&;
+  explicit operator StructValue() const&&;
+
+  // Performs an unchecked cast from a value to a timestamp value. In
+  // debug builds a best effort is made to crash. If `IsTimestamp()` would
+  // return false, calling this method is undefined behavior.
+  explicit operator TimestampValue() const;
+
+  // Performs an unchecked cast from a value to a type value. In
+  // debug builds a best effort is made to crash. If `IsType()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator const TypeValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator const TypeValue&() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator TypeValue() &&;
+  explicit operator TypeValue() const&&;
+
+  // Performs an unchecked cast from a value to an uint value. In
+  // debug builds a best effort is made to crash. If `IsUint()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator UintValue() const;
+
+  // Performs an unchecked cast from a value to an unknown value. In
+  // debug builds a best effort is made to crash. If `IsUnknown()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator const UnknownValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator const UnknownValue&() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator UnknownValue() &&;
+  explicit operator UnknownValue() const&&;
+
   // When `Value` is default constructed, it is in a valid but undefined state.
   // Any attempt to use it invokes undefined behavior. This mention can be used
   // to test whether this value is valid.
-  explicit operator bool() const noexcept { return IsValid(); }
+  explicit operator bool() const { return IsValid(); }
 
  private:
   friend struct NativeTypeTraits<Value>;
   friend struct CompositionTraits<Value>;
 
-  constexpr bool IsValid() const noexcept {
+  constexpr bool IsValid() const {
     return !absl::holds_alternative<absl::monostate>(variant_);
   }
 

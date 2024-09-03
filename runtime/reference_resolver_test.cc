@@ -84,7 +84,7 @@ TEST(ReferenceResolver, ResolveQualifiedFunctions) {
   ASSERT_OK_AND_ASSIGN(Value value,
                        program->Evaluate(activation, value_factory.get()));
   ASSERT_TRUE(value->Is<BoolValue>());
-  EXPECT_TRUE(value->As<BoolValue>().NativeValue());
+  EXPECT_TRUE(static_cast<BoolValue>(value).NativeValue());
 }
 
 TEST(ReferenceResolver, ResolveQualifiedFunctionsCheckedOnly) {
@@ -216,7 +216,7 @@ TEST(ReferenceResolver, ResolveQualifiedIdentifiers) {
                        program->Evaluate(activation, value_factory.get()));
 
   ASSERT_TRUE(value->Is<IntValue>());
-  EXPECT_EQ(value->As<IntValue>().NativeValue(), 7);
+  EXPECT_EQ(static_cast<IntValue>(value).NativeValue(), 7);
 }
 
 TEST(ReferenceResolver, ResolveQualifiedIdentifiersSkipParseOnly) {
@@ -251,7 +251,7 @@ TEST(ReferenceResolver, ResolveQualifiedIdentifiersSkipParseOnly) {
                        program->Evaluate(activation, value_factory.get()));
 
   ASSERT_TRUE(value->Is<ErrorValue>());
-  EXPECT_THAT(value->As<ErrorValue>().NativeValue(),
+  EXPECT_THAT(static_cast<ErrorValue>(value).NativeValue(),
               StatusIs(absl::StatusCode::kUnknown, HasSubstr("\"com\"")));
 }
 
@@ -335,7 +335,7 @@ TEST(ReferenceResolver, ResolveEnumConstants) {
                        program->Evaluate(activation, value_factory.get()));
 
   ASSERT_TRUE(value->Is<BoolValue>());
-  EXPECT_TRUE(value->As<BoolValue>().NativeValue());
+  EXPECT_TRUE(static_cast<BoolValue>(value).NativeValue());
 }
 
 TEST(ReferenceResolver, ResolveEnumConstantsSkipParseOnly) {
@@ -364,7 +364,7 @@ TEST(ReferenceResolver, ResolveEnumConstantsSkipParseOnly) {
 
   ASSERT_TRUE(value->Is<ErrorValue>());
   EXPECT_THAT(
-      value->As<ErrorValue>().NativeValue(),
+      static_cast<ErrorValue>(value).NativeValue(),
       StatusIs(absl::StatusCode::kUnknown,
                HasSubstr("\"google.api.expr.test.v1.proto2.GlobalEnum.GAZ\"")));
 }

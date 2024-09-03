@@ -126,7 +126,7 @@ class ListValueBuilderImpl final : public ListValueBuilder {
 
   absl::Status Add(Value value) override {
     if (value.Is<ErrorValue>()) {
-      return value.As<ErrorValue>().NativeValue();
+      return static_cast<ErrorValue>(std::move(value)).NativeValue();
     }
     elements_.push_back(std::move(value));
     return absl::OkStatus();

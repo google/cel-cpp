@@ -705,6 +705,7 @@ cc_test(
         "//internal:testing",
         "//internal:testing_descriptor_pool",
         "//internal:testing_message_factory",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/hash",
         "@com_google_absl//absl/log:die_if_null",
