@@ -961,3 +961,49 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "arena_bytes",
+    hdrs = ["arena_bytes.h"],
+    deps = [
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_test(
+    name = "arena_bytes_test",
+    srcs = ["arena_bytes_test.cc"],
+    deps = [
+        ":arena_bytes",
+        "//internal:testing",
+        "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/hash:hash_testing",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_library(
+    name = "arena_bytes_pool",
+    hdrs = ["arena_bytes_pool.h"],
+    deps = [
+        ":arena_bytes",
+        "//internal:string_pool",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "arena_bytes_pool_test",
+    srcs = ["arena_bytes_pool_test.cc"],
+    deps = [
+        ":arena_bytes_pool",
+        "//internal:testing",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
