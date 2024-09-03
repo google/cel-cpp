@@ -65,7 +65,8 @@ namespace common_internal {
 
 // Implementation of `cel::InstanceOf`.
 template <typename To>
-struct InstanceOfImpl final {
+struct ABSL_DEPRECATED("Use Is member functions instead.")
+    InstanceOfImpl final {
   static_assert(!std::is_pointer_v<To>, "To must not be a pointer");
   static_assert(!std::is_array_v<To>, "To must not be an array");
   static_assert(!std::is_lvalue_reference_v<To>,
@@ -79,6 +80,7 @@ struct InstanceOfImpl final {
   explicit InstanceOfImpl() = default;
 
   template <typename From>
+  ABSL_DEPRECATED("Use Is member functions instead.")
   ABSL_MUST_USE_RESULT bool operator()(const From& from) const {
     static_assert(!std::is_volatile_v<From>,
                   "From must not be volatile qualified");
@@ -107,6 +109,7 @@ struct InstanceOfImpl final {
   }
 
   template <typename From>
+  ABSL_DEPRECATED("Use Is member functions instead.")
   ABSL_MUST_USE_RESULT bool operator()(const From* from) const {
     static_assert(!std::is_volatile_v<From>,
                   "From must not be volatile qualified");
@@ -117,7 +120,9 @@ struct InstanceOfImpl final {
 
 // Implementation of `cel::Cast`.
 template <typename To>
-struct CastImpl final {
+struct ABSL_DEPRECATED(
+    "Use explicit conversion functions instead through static_cast.")
+    CastImpl final {
   static_assert(!std::is_pointer_v<To>, "To must not be a pointer");
   static_assert(!std::is_array_v<To>, "To must not be an array");
   static_assert(!std::is_lvalue_reference_v<To>,
@@ -131,7 +136,10 @@ struct CastImpl final {
   explicit CastImpl() = default;
 
   template <typename From>
-  ABSL_MUST_USE_RESULT decltype(auto) operator()(From&& from) const {
+  ABSL_DEPRECATED(
+      "Use explicit conversion functions instead through static_cast.")
+  ABSL_MUST_USE_RESULT decltype(auto)
+  operator()(From&& from) const {
     static_assert(!std::is_volatile_v<From>,
                   "From must not be volatile qualified");
     static_assert(std::is_class_v<absl::remove_cvref_t<From>>,
@@ -168,7 +176,10 @@ struct CastImpl final {
   }
 
   template <typename From>
-  ABSL_MUST_USE_RESULT decltype(auto) operator()(From* from) const {
+  ABSL_DEPRECATED(
+      "Use explicit conversion functions instead through static_cast.")
+  ABSL_MUST_USE_RESULT decltype(auto)
+  operator()(From* from) const {
     static_assert(!std::is_volatile_v<From>,
                   "From must not be volatile qualified");
     static_assert(std::is_class_v<From>, "From must be a non-union class");
@@ -185,7 +196,7 @@ struct CastImpl final {
 
 // Implementation of `cel::As`.
 template <typename To>
-struct AsImpl final {
+struct ABSL_DEPRECATED("Use As member functions instead.") AsImpl final {
   static_assert(!std::is_pointer_v<To>, "To must not be a pointer");
   static_assert(!std::is_array_v<To>, "To must not be an array");
   static_assert(!std::is_lvalue_reference_v<To>,
@@ -199,6 +210,7 @@ struct AsImpl final {
   explicit AsImpl() = default;
 
   template <typename From>
+  ABSL_DEPRECATED("Use As member functions instead.")
   ABSL_MUST_USE_RESULT decltype(auto) operator()(From&& from) const {
     // Returns either `absl::optional` or `cel::optional_ref`
     // depending on the return type of `CastTraits::Convert`. The use of these
@@ -226,6 +238,7 @@ struct AsImpl final {
 
   // Returns a pointer.
   template <typename From>
+  ABSL_DEPRECATED("Use As member functions instead.")
   ABSL_MUST_USE_RESULT decltype(auto) operator()(From* from) const {
     // Returns either `absl::optional` or `To*` depending on the return type of
     // `CastTraits::Convert`. The use of these two types is an implementation

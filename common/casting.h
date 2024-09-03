@@ -17,6 +17,7 @@
 
 #include <type_traits>
 
+#include "absl/base/attributes.h"
 #include "absl/meta/type_traits.h"
 #include "common/internal/casting.h"
 #include "internal/casts.h"
@@ -154,6 +155,7 @@ struct CompositionCastTraits {
 //   Cast<Subclass>(superclass).SomeMethod();
 // }
 template <typename To>
+ABSL_DEPRECATED("Use Is member functions instead.")
 inline constexpr common_internal::InstanceOfImpl<To> InstanceOf{};
 
 // `Cast<To>(From)` is a "checked cast". In debug builds an assertion is emitted
@@ -168,6 +170,8 @@ inline constexpr common_internal::InstanceOfImpl<To> InstanceOf{};
 //   Cast<Subclass>(superclass).SomeMethod();
 // }
 template <typename To>
+ABSL_DEPRECATED(
+    "Use explicit conversion functions instead through static_cast.")
 inline constexpr common_internal::CastImpl<To> Cast{};
 
 // `As<To>(From)` is a "checking cast". The result is explicitly convertible to
@@ -186,6 +190,7 @@ inline constexpr common_internal::CastImpl<To> Cast{};
 //   subclass->SomeMethod();
 // }
 template <typename To>
+ABSL_DEPRECATED("Use As member functions instead.")
 inline constexpr common_internal::AsImpl<To> As{};
 
 }  // namespace cel

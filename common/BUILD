@@ -271,6 +271,7 @@ cc_library(
     deps = [
         "//common/internal:casting",
         "//internal:casts",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/meta:type_traits",
     ],
 )
