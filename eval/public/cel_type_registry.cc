@@ -15,6 +15,7 @@
 #include "eval/public/cel_type_registry.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -67,7 +68,8 @@ void AddEnumFromDescriptor(const google::protobuf::EnumDescriptor* desc,
   std::vector<CelTypeRegistry::Enumerator> enumerators;
   enumerators.reserve(desc->value_count());
   for (int i = 0; i < desc->value_count(); i++) {
-    enumerators.push_back({desc->value(i)->name(), desc->value(i)->number()});
+    enumerators.push_back(
+        {std::string(desc->value(i)->name()), desc->value(i)->number()});
   }
   registry.RegisterEnum(desc->full_name(), std::move(enumerators));
 }
