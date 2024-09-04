@@ -15,6 +15,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_INTERNAL_PROTO_UTIL_H_
 #define THIRD_PARTY_CEL_CPP_INTERNAL_PROTO_UTIL_H_
 
+#include <string>
+
 #include "google/protobuf/descriptor.pb.h"
 #include "google/protobuf/util/message_differencer.h"
 #include "absl/status/status.h"
@@ -55,6 +57,8 @@ absl::Status ValidateStandardMessageType(
     descriptor_from_pool->CopyTo(&descriptor_from_pool_proto);
 
     google::protobuf::util::MessageDifferencer descriptor_differencer;
+    std::string differences;
+    descriptor_differencer.ReportDifferencesToString(&differences);
     // The json_name is a compiler detail and does not change the message
     // content. It can differ, e.g., between C++ and Go compilers. Hence ignore.
     const google::protobuf::FieldDescriptor* json_name_field_desc =
@@ -67,8 +71,8 @@ absl::Status ValidateStandardMessageType(
                                         descriptor_from_pool_proto)) {
       return absl::FailedPreconditionError(absl::StrFormat(
           "The descriptor for '%s' in the descriptor pool differs from the "
-          "compiled-in generated version",
-          descriptor->full_name()));
+          "compiled-in generated version as follows: %s",
+          descriptor->full_name(), differences));
     }
   } else {
     // Lite runtime. Just verify the message exists.
