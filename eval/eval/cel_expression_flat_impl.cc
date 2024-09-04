@@ -76,7 +76,6 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
     CelEvaluationListener callback) const {
   auto state =
       ::cel::internal::down_cast<CelExpressionFlatEvaluationState*>(_state);
-  state->state().Reset();
   cel::interop_internal::AdapterActivationImpl modern_activation(activation);
 
   CEL_ASSIGN_OR_RETURN(
