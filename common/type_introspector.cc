@@ -26,7 +26,6 @@
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/types/thread_compatible_type_introspector.h"
-#include "common/types/thread_safe_type_introspector.h"
 
 namespace cel {
 
@@ -249,12 +248,6 @@ Shared<TypeIntrospector> NewThreadCompatibleTypeIntrospector(
     MemoryManagerRef memory_manager) {
   return memory_manager
       .MakeShared<common_internal::ThreadCompatibleTypeIntrospector>();
-}
-
-Shared<TypeIntrospector> NewThreadSafeTypeIntrospector(
-    MemoryManagerRef memory_manager) {
-  return memory_manager
-      .MakeShared<common_internal::ThreadSafeTypeIntrospector>();
 }
 
 }  // namespace cel

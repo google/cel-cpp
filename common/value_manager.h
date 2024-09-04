@@ -83,11 +83,6 @@ class ValueManager : public virtual ValueFactory,
 Shared<ValueManager> NewThreadCompatibleValueManager(
     MemoryManagerRef memory_manager, Shared<TypeReflector> type_reflector);
 
-// Creates a new `ValueManager` which is thread safe if and only if the provided
-// `ValueFactory` and `TypeReflector` are also thread safe.
-Shared<ValueManager> NewThreadSafeValueManager(
-    MemoryManagerRef memory_manager, Shared<TypeReflector> type_reflector);
-
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUE_MANAGER_H_

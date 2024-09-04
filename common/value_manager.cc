@@ -25,7 +25,6 @@
 #include "common/memory.h"
 #include "common/type_reflector.h"
 #include "common/values/thread_compatible_value_manager.h"
-#include "common/values/thread_safe_value_manager.h"
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -35,12 +34,6 @@ Shared<ValueManager> NewThreadCompatibleValueManager(
   return memory_manager
       .MakeShared<common_internal::ThreadCompatibleValueManager>(
           memory_manager, std::move(type_reflector));
-}
-
-Shared<ValueManager> NewThreadSafeValueManager(
-    MemoryManagerRef memory_manager, Shared<TypeReflector> type_reflector) {
-  return memory_manager.MakeShared<common_internal::ThreadSafeValueManager>(
-      memory_manager, std::move(type_reflector));
 }
 
 absl::StatusOr<Json> ValueManager::ConvertToJson(absl::string_view type_url,

@@ -65,9 +65,6 @@ class TypeIntrospector {
 Shared<TypeIntrospector> NewThreadCompatibleTypeIntrospector(
     MemoryManagerRef memory_manager);
 
-Shared<TypeIntrospector> NewThreadSafeTypeIntrospector(
-    MemoryManagerRef memory_manager);
-
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_TYPE_INTROSPECTOR_H_

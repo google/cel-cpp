@@ -38,7 +38,6 @@
 #include "common/value_factory.h"
 #include "common/values/piecewise_value_manager.h"
 #include "common/values/thread_compatible_type_reflector.h"
-#include "common/values/thread_safe_type_reflector.h"
 #include "internal/deserialize.h"
 #include "internal/overflow.h"
 #include "internal/status_macros.h"
@@ -981,11 +980,6 @@ Shared<TypeReflector> NewThreadCompatibleTypeReflector(
     MemoryManagerRef memory_manager) {
   return memory_manager
       .MakeShared<common_internal::ThreadCompatibleTypeReflector>();
-}
-
-Shared<TypeReflector> NewThreadSafeTypeReflector(
-    MemoryManagerRef memory_manager) {
-  return memory_manager.MakeShared<common_internal::ThreadSafeTypeReflector>();
 }
 
 }  // namespace cel

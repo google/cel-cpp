@@ -41,35 +41,11 @@ using ::absl_testing::IsOkAndHolds;
 using ::testing::TestParamInfo;
 using ::testing::UnorderedElementsAreArray;
 
-enum class ThreadSafety {
-  kCompatible,
-  kSafe,
-};
-
-std::ostream& operator<<(std::ostream& out, ThreadSafety thread_safety) {
-  switch (thread_safety) {
-    case ThreadSafety::kCompatible:
-      return out << "THREAD_SAFE";
-    case ThreadSafety::kSafe:
-      return out << "THREAD_COMPATIBLE";
-  }
-}
-
-class ValueFactoryTest
-    : public common_internal::ThreadCompatibleMemoryTest<ThreadSafety> {
+class ValueFactoryTest : public common_internal::ThreadCompatibleMemoryTest<> {
  public:
   void SetUp() override {
-    switch (thread_safety()) {
-      case ThreadSafety::kCompatible:
-        value_manager_ = NewThreadCompatibleValueManager(
-            memory_manager(),
-            NewThreadCompatibleTypeReflector(memory_manager()));
-        break;
-      case ThreadSafety::kSafe:
-        value_manager_ = NewThreadSafeValueManager(
-            memory_manager(), NewThreadSafeTypeReflector(memory_manager()));
-        break;
-    }
+    value_manager_ = NewThreadCompatibleValueManager(
+        memory_manager(), NewThreadCompatibleTypeReflector(memory_manager()));
   }
 
   void TearDown() override { Finish(); }
@@ -87,12 +63,10 @@ class ValueFactoryTest
 
   ValueManager& value_manager() const { return **value_manager_; }
 
-  ThreadSafety thread_safety() const { return std::get<1>(GetParam()); }
-
   static std::string ToString(
-      TestParamInfo<std::tuple<MemoryManagement, ThreadSafety>> param) {
+      TestParamInfo<std::tuple<MemoryManagement>> param) {
     std::ostringstream out;
-    out << std::get<0>(param.param) << "_" << std::get<1>(param.param);
+    out << std::get<0>(param.param);
     return out.str();
   }
 
@@ -216,10 +190,8 @@ TEST_P(ValueFactoryTest, JsonValueObject) {
 
 INSTANTIATE_TEST_SUITE_P(
     ValueFactoryTest, ValueFactoryTest,
-    ::testing::Combine(::testing::Values(MemoryManagement::kPooling,
-                                         MemoryManagement::kReferenceCounting),
-                       ::testing::Values(ThreadSafety::kCompatible,
-                                         ThreadSafety::kSafe)),
+    ::testing::Values(MemoryManagement::kPooling,
+                      MemoryManagement::kReferenceCounting),
     ValueFactoryTest::ToString);
 
 }  // namespace

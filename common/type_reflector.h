@@ -86,9 +86,6 @@ class TypeReflector : public virtual TypeIntrospector {
 Shared<TypeReflector> NewThreadCompatibleTypeReflector(
     MemoryManagerRef memory_manager);
 
-Shared<TypeReflector> NewThreadSafeTypeReflector(
-    MemoryManagerRef memory_manager);
-
 namespace common_internal {
 
 // Implementation backing LegacyBuiltin().
