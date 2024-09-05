@@ -18,6 +18,7 @@
 #include <string>
 
 #include "absl/base/no_destructor.h"
+#include "absl/strings/string_view.h"
 #include "eval/public/message_wrapper.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 
@@ -27,9 +28,8 @@ namespace google::api::expr::runtime {
 // operations need to be supported.
 class TrivialTypeInfo : public LegacyTypeInfoApis {
  public:
-  const std::string& GetTypename(const MessageWrapper& wrapper) const override {
-    static absl::NoDestructor<std::string> kTypename("opaque");
-    return *kTypename;
+  absl::string_view GetTypename(const MessageWrapper& wrapper) const override {
+    return "opaque";
   }
 
   std::string DebugString(const MessageWrapper& wrapper) const override {

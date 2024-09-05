@@ -348,6 +348,7 @@ cc_library(
         "//eval/public:message_wrapper",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings:string_view",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -360,6 +361,7 @@ cc_library(
         ":legacy_type_info_apis",
         "//eval/public:message_wrapper",
         "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/strings:string_view",
     ],
 )
 
@@ -434,6 +436,7 @@ cc_test(
         ":legacy_type_info_apis",
         ":legacy_type_provider",
         "//internal:testing",
+        "@com_google_absl//absl/strings:string_view",
     ],
 )
 

@@ -94,7 +94,7 @@ class MockAccessor : public LegacyTypeAccessApis, public LegacyTypeInfoApis {
                ProtoWrapperTypeOptions unboxing_option,
                cel::MemoryManagerRef memory_manager),
               (const override));
-  MOCK_METHOD((const std::string&), GetTypename,
+  MOCK_METHOD(absl::string_view, GetTypename,
               (const CelValue::MessageWrapper& instance), (const override));
   MOCK_METHOD(std::string, DebugString,
               (const CelValue::MessageWrapper& instance), (const override));

@@ -1173,6 +1173,7 @@ cc_test(
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
         "@com_google_protobuf//:protobuf",
     ],
 )

@@ -17,6 +17,7 @@
 #include <optional>
 #include <string>
 
+#include "absl/strings/string_view.h"
 #include "eval/public/structs/legacy_any_packing.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "internal/testing.h"
@@ -38,7 +39,7 @@ class LegacyTypeInfoApisEmpty : public LegacyTypeInfoApis {
       const MessageWrapper& wrapped_message) const override {
     return "";
   }
-  const std::string& GetTypename(
+  absl::string_view GetTypename(
       const MessageWrapper& wrapped_message) const override {
     return test_string_;
   }

@@ -51,7 +51,7 @@ class ProtoMessageTypeAdapter : public LegacyTypeInfoApis,
   // Implement LegacyTypeInfoApis
   std::string DebugString(const MessageWrapper& wrapped_message) const override;
 
-  const std::string& GetTypename(
+  absl::string_view GetTypename(
       const MessageWrapper& wrapped_message) const override;
 
   absl::Nullable<const google::protobuf::Descriptor*> GetDescriptor(

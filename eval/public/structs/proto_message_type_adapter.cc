@@ -351,7 +351,7 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
   }
 
   // Implement TypeInfo Apis
-  const std::string& GetTypename(
+  absl::string_view GetTypename(
       const MessageWrapper& wrapped_message) const override {
     if (!wrapped_message.HasFullProto() ||
         wrapped_message.message_ptr() == nullptr) {
@@ -452,7 +452,7 @@ std::string ProtoMessageTypeAdapter::DebugString(
   return message->ShortDebugString();
 }
 
-const std::string& ProtoMessageTypeAdapter::GetTypename(
+absl::string_view ProtoMessageTypeAdapter::GetTypename(
     const MessageWrapper& wrapped_message) const {
   return descriptor_->full_name();
 }

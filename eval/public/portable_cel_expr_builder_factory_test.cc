@@ -26,6 +26,7 @@
 #include "absl/container/node_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_options.h"
@@ -243,15 +244,12 @@ class DemoTimestamp : public LegacyTypeInfoApis, public LegacyTypeMutationApis {
 
   std::string DebugString(
       const MessageWrapper& wrapped_message) const override {
-    return GetTypename(wrapped_message);
+    return std::string(GetTypename(wrapped_message));
   }
 
-  const std::string& GetTypename(
+  absl::string_view GetTypename(
       const MessageWrapper& wrapped_message) const override {
-    static const std::string* kTypename = []() {
-      return new std::string("google.protobuf.Timestamp");
-    }();
-    return *kTypename;
+    return "google.protobuf.Timestamp";
   }
 
   const LegacyTypeAccessApis* GetAccessApis(
@@ -290,7 +288,7 @@ class DemoTypeInfo : public LegacyTypeInfoApis {
       : owning_provider_(*owning_provider) {}
   std::string DebugString(const MessageWrapper& wrapped_message) const override;
 
-  const std::string& GetTypename(
+  absl::string_view GetTypename(
       const MessageWrapper& wrapped_message) const override;
 
   const LegacyTypeAccessApis* GetAccessApis(
@@ -308,15 +306,12 @@ class DemoTestMessage : public LegacyTypeInfoApis,
 
   std::string DebugString(
       const MessageWrapper& wrapped_message) const override {
-    return GetTypename(wrapped_message);
+    return std::string(GetTypename(wrapped_message));
   }
 
-  const std::string& GetTypename(
+  absl::string_view GetTypename(
       const MessageWrapper& wrapped_message) const override {
-    static const std::string* kTypename = []() {
-      return new std::string("google.api.expr.runtime.TestMessage");
-    }();
-    return *kTypename;
+    return "google.api.expr.runtime.TestMessage";
   }
 
   const LegacyTypeAccessApis* GetAccessApis(
@@ -427,7 +422,7 @@ std::string DemoTypeInfo::DebugString(
   return wrapped_message.message_ptr()->GetTypeName();
 }
 
-const std::string& DemoTypeInfo::GetTypename(
+absl::string_view DemoTypeInfo::GetTypename(
     const MessageWrapper& wrapped_message) const {
   return owning_provider_.GetStableType(wrapped_message.message_ptr());
 }

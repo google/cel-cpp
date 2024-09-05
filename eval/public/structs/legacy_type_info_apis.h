@@ -19,6 +19,7 @@
 
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "eval/public/message_wrapper.h"
 #include "google/protobuf/descriptor.h"
 
@@ -54,10 +55,10 @@ class LegacyTypeInfoApis {
   virtual std::string DebugString(
       const MessageWrapper& wrapped_message) const = 0;
 
-  // Return a const-reference to the typename for the wrapped message's type.
+  // Return a reference to the typename for the wrapped message's type.
   // The CEL interpreter assumes that the typename is owned externally and will
   // outlive any CelValues created by the interpreter.
-  virtual const std::string& GetTypename(
+  virtual absl::string_view GetTypename(
       const MessageWrapper& wrapped_message) const = 0;
 
   virtual absl::Nullable<const google::protobuf::Descriptor*> GetDescriptor(
