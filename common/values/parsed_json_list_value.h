@@ -18,17 +18,26 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_PARSED_JSON_LIST_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_PARSED_JSON_LIST_VALUE_H_
 
+#include <cstddef>
+#include <memory>
+#include <string>
 #include <type_traits>
 #include <utility>
 
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/struct.pb.h"
+#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
+#include "common/values/list_value_interface.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
@@ -36,6 +45,8 @@
 namespace cel {
 
 class Value;
+class ValueManager;
+class ValueIterator;
 
 // ParsedJsonListValue is a ListValue backed by the google.protobuf.ListValue
 // well known message type.
@@ -65,6 +76,51 @@ class ParsedJsonListValue final {
   static absl::string_view GetTypeName() { return kName; }
 
   static ListType GetRuntimeType() { return JsonListType(); }
+
+  std::string DebugString() const;
+
+  absl::Status SerializeTo(AnyToJsonConverter& converter,
+                           absl::Cord& value) const;
+
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const;
+
+  absl::StatusOr<JsonArray> ConvertToJsonArray(
+      AnyToJsonConverter& converter) const;
+
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
+                     Value& result) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              const Value& other) const;
+
+  bool IsZeroValue() const;
+
+  bool IsEmpty() const;
+
+  size_t Size() const;
+
+  // See ListValueInterface::Get for documentation.
+  absl::Status Get(ValueManager& value_manager, size_t index,
+                   Value& result) const;
+  absl::StatusOr<Value> Get(ValueManager& value_manager, size_t index) const;
+
+  using ForEachCallback = typename ListValueInterface::ForEachCallback;
+
+  using ForEachWithIndexCallback =
+      typename ListValueInterface::ForEachWithIndexCallback;
+
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachCallback callback) const;
+
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachWithIndexCallback callback) const;
+
+  absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>> NewIterator(
+      ValueManager& value_manager) const;
+
+  absl::Status Contains(ValueManager& value_manager, const Value& other,
+                        Value& result) const;
+  absl::StatusOr<Value> Contains(ValueManager& value_manager,
+                                 const Value& other) const;
 
   // Returns `true` if `ParsedJsonListValue` is in a valid state. Currently only
   // moves place `ParsedJsonListValue` in an invalid state.

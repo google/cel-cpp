@@ -19,7 +19,9 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_PARSED_MESSAGE_VALUE_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "google/protobuf/any.pb.h"
@@ -28,10 +30,18 @@
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/die_if_null.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
+#include "base/attribute.h"
+#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
+#include "common/values/struct_value_interface.h"
+#include "runtime/runtime_options.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
@@ -39,6 +49,7 @@ namespace cel {
 
 class MessageValue;
 class Value;
+class ValueManager;
 
 class ParsedMessageValue final {
  public:
@@ -89,6 +100,54 @@ class ParsedMessageValue final {
     ABSL_DCHECK(*this);
     return value_.operator->();
   }
+
+  bool IsZeroValue() const;
+
+  std::string DebugString() const;
+
+  absl::Status SerializeTo(AnyToJsonConverter& converter,
+                           absl::Cord& value) const;
+
+  absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const;
+
+  absl::Status Equal(ValueManager& value_manager, const Value& other,
+                     Value& result) const;
+  absl::StatusOr<Value> Equal(ValueManager& value_manager,
+                              const Value& other) const;
+
+  absl::Status GetFieldByName(ValueManager& value_manager,
+                              absl::string_view name, Value& result,
+                              ProtoWrapperTypeOptions unboxing_options =
+                                  ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::StatusOr<Value> GetFieldByName(
+      ValueManager& value_manager, absl::string_view name,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
+
+  absl::Status GetFieldByNumber(ValueManager& value_manager, int64_t number,
+                                Value& result,
+                                ProtoWrapperTypeOptions unboxing_options =
+                                    ProtoWrapperTypeOptions::kUnsetNull) const;
+  absl::StatusOr<Value> GetFieldByNumber(
+      ValueManager& value_manager, int64_t number,
+      ProtoWrapperTypeOptions unboxing_options =
+          ProtoWrapperTypeOptions::kUnsetNull) const;
+
+  absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
+
+  absl::StatusOr<bool> HasFieldByNumber(int64_t number) const;
+
+  using ForEachFieldCallback = StructValueInterface::ForEachFieldCallback;
+
+  absl::Status ForEachField(ValueManager& value_manager,
+                            ForEachFieldCallback callback) const;
+
+  absl::StatusOr<int> Qualify(ValueManager& value_manager,
+                              absl::Span<const SelectQualifier> qualifiers,
+                              bool presence_test, Value& result) const;
+  absl::StatusOr<std::pair<Value, int>> Qualify(
+      ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
+      bool presence_test) const;
 
   // Returns `true` if `ParsedMessageValue` is in a valid state.
   explicit operator bool() const { return static_cast<bool>(value_); }
