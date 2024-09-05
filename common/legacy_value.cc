@@ -878,7 +878,7 @@ cel_common_internal_LegacyStructValue_GetType(uintptr_t message_ptr,
                                               uintptr_t type_info) {
   auto message_wrapper = AsMessageWrapper(message_ptr, type_info);
   if (ABSL_PREDICT_TRUE(message_wrapper.message_ptr() != nullptr)) {
-    return message_wrapper.message_ptr()->GetTypeName();
+    return std::string(message_wrapper.message_ptr()->GetTypeName());
   }
   return std::string(
       message_wrapper.legacy_type_info()->GetTypename(message_wrapper));
