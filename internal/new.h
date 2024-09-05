@@ -29,6 +29,8 @@ inline constexpr size_t kDefaultNewAlignment =
 #endif
     ;  // NOLINT(whitespace/semicolon)
 
+// Allocates memory which has a size of at least `size` and a minimum alignment
+// of `kDefaultNewAlignment`.
 void* New(size_t size);
 
 // Allocates memory which has a size of at least `size` and a minimum alignment
