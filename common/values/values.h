@@ -50,6 +50,7 @@ class TimestampValue;
 class TypeValue;
 class UintValue;
 class UnknownValue;
+class ParsedMessageValue;
 
 class ParsedListValue;
 class ParsedListValueInterface;
@@ -135,8 +136,8 @@ template <typename T>
 inline constexpr bool IsStructValueAlternativeV =
     IsStructValueAlternative<T>::value;
 
-using StructValueVariant =
-    absl::variant<absl::monostate, ParsedStructValue, LegacyStructValue>;
+using StructValueVariant = absl::variant<absl::monostate, ParsedStructValue,
+                                         LegacyStructValue, ParsedMessageValue>;
 
 template <typename T>
 struct IsValueInterface
@@ -162,11 +163,13 @@ struct IsValueAlternative
 template <typename T>
 inline constexpr bool IsValueAlternativeV = IsValueAlternative<T>::value;
 
-using ValueVariant = absl::variant<
-    absl::monostate, BoolValue, BytesValue, DoubleValue, DurationValue,
-    ErrorValue, IntValue, LegacyListValue, ParsedListValue, LegacyMapValue,
-    ParsedMapValue, NullValue, OpaqueValue, StringValue, LegacyStructValue,
-    ParsedStructValue, TimestampValue, TypeValue, UintValue, UnknownValue>;
+using ValueVariant =
+    absl::variant<absl::monostate, BoolValue, BytesValue, DoubleValue,
+                  DurationValue, ErrorValue, IntValue, LegacyListValue,
+                  ParsedListValue, LegacyMapValue, ParsedMapValue, NullValue,
+                  OpaqueValue, StringValue, LegacyStructValue,
+                  ParsedStructValue, ParsedMessageValue, TimestampValue,
+                  TypeValue, UintValue, UnknownValue>;
 
 // Get the base type alternative for the given alternative or interface. The
 // base type alternative is the type stored in the `ValueVariant`.

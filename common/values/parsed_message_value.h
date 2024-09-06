@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <ostream>
 #include <string>
 #include <utility>
 
@@ -48,6 +49,7 @@
 namespace cel {
 
 class MessageValue;
+class StructValue;
 class Value;
 class ValueManager;
 
@@ -159,6 +161,7 @@ class ParsedMessageValue final {
 
  private:
   friend std::pointer_traits<ParsedMessageValue>;
+  friend class StructValue;
 
   absl::Nonnull<const google::protobuf::Reflection*> GetReflectionOrDie() const {
     return ABSL_DIE_IF_NULL(GetReflection());  // Crash OK
@@ -166,6 +169,11 @@ class ParsedMessageValue final {
 
   Owned<const google::protobuf::Message> value_;
 };
+
+inline std::ostream& operator<<(std::ostream& out,
+                                const ParsedMessageValue& value) {
+  return out << value.DebugString();
+}
 
 }  // namespace cel
 

@@ -25,7 +25,12 @@
 #include "common/native_type.h"
 #include "common/type.h"
 #include "common/value_testing.h"
+#include "internal/parse_text_proto.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
+#include "internal/testing_message_factory.h"
+#include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/generated_enum_reflection.h"
 
@@ -33,11 +38,16 @@ namespace cel {
 namespace {
 
 using ::absl_testing::StatusIs;
+using ::cel::internal::DynamicParseTextProto;
+using ::cel::internal::GetTestingDescriptorPool;
+using ::cel::internal::GetTestingMessageFactory;
 using ::testing::_;
 using ::testing::An;
 using ::testing::Eq;
 using ::testing::NotNull;
 using ::testing::Optional;
+
+using TestAllTypesProto3 = ::google::api::expr::test::v1::proto3::TestAllTypes;
 
 TEST(Value, KindDebugDeath) {
   Value value;
@@ -134,6 +144,10 @@ TEST(Value, Is) {
   EXPECT_TRUE(Value(OptionalValue()).Is<OpaqueValue>());
   EXPECT_TRUE(Value(OptionalValue()).Is<OptionalValue>());
 
+  EXPECT_TRUE(Value(ParsedMessageValue()).Is<StructValue>());
+  EXPECT_TRUE(Value(ParsedMessageValue()).Is<MessageValue>());
+  EXPECT_TRUE(Value(ParsedMessageValue()).Is<ParsedMessageValue>());
+
   EXPECT_TRUE(Value(StringValue()).Is<StringValue>());
 
   EXPECT_TRUE(Value(TimestampValue()).Is<TimestampValue>());
@@ -166,6 +180,8 @@ constexpr const T&& AsConstRValueRef(T& t ABSL_ATTRIBUTE_LIFETIME_BOUND) {
 }
 
 TEST(Value, As) {
+  google::protobuf::Arena arena;
+
   EXPECT_THAT(Value(BoolValue()).As<BoolValue>(), Optional(An<BoolValue>()));
   EXPECT_THAT(Value(BoolValue()).As<ErrorValue>(), Eq(absl::nullopt));
 
@@ -235,6 +251,27 @@ TEST(Value, As) {
     EXPECT_THAT(Value(MapValue()).As<ErrorValue>(), Eq(absl::nullopt));
   }
 
+  {
+    Value value(ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
+        &arena, R"pb()pb", GetTestingDescriptorPool(),
+        GetTestingMessageFactory())});
+    Value other_value = value;
+    EXPECT_THAT(AsLValueRef<Value>(value).As<MessageValue>(),
+                Optional(An<MessageValue>()));
+    EXPECT_THAT(AsConstLValueRef<Value>(value).As<MessageValue>(),
+                Optional(An<MessageValue>()));
+    EXPECT_THAT(AsRValueRef<Value>(value).As<MessageValue>(),
+                Optional(An<MessageValue>()));
+    EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<MessageValue>(),
+                Optional(An<MessageValue>()));
+    EXPECT_THAT(
+        Value(ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
+                  &arena, R"pb()pb", GetTestingDescriptorPool(),
+                  GetTestingMessageFactory())})
+            .As<ErrorValue>(),
+        Eq(absl::nullopt));
+  }
+
   EXPECT_THAT(Value(NullValue()).As<NullValue>(), Optional(An<NullValue>()));
   EXPECT_THAT(Value(NullValue()).As<ErrorValue>(), Eq(absl::nullopt));
 
@@ -281,6 +318,21 @@ TEST(Value, As) {
   }
 
   {
+    Value value(ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
+        &arena, R"pb()pb", GetTestingDescriptorPool(),
+        GetTestingMessageFactory())});
+    Value other_value = value;
+    EXPECT_THAT(AsLValueRef<Value>(value).As<ParsedMessageValue>(),
+                Optional(An<ParsedMessageValue>()));
+    EXPECT_THAT(AsConstLValueRef<Value>(value).As<ParsedMessageValue>(),
+                Optional(An<ParsedMessageValue>()));
+    EXPECT_THAT(AsRValueRef<Value>(value).As<ParsedMessageValue>(),
+                Optional(An<ParsedMessageValue>()));
+    EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<ParsedMessageValue>(),
+                Optional(An<ParsedMessageValue>()));
+  }
+
+  {
     Value value(StringValue{});
     Value other_value = value;
     EXPECT_THAT(AsLValueRef<Value>(value).As<StringValue>(),
@@ -292,6 +344,21 @@ TEST(Value, As) {
     EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<StringValue>(),
                 Optional(An<StringValue>()));
     EXPECT_THAT(Value(StringValue()).As<ErrorValue>(), Eq(absl::nullopt));
+  }
+
+  {
+    Value value(ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
+        &arena, R"pb()pb", GetTestingDescriptorPool(),
+        GetTestingMessageFactory())});
+    Value other_value = value;
+    EXPECT_THAT(AsLValueRef<Value>(value).As<StructValue>(),
+                Optional(An<StructValue>()));
+    EXPECT_THAT(AsConstLValueRef<Value>(value).As<StructValue>(),
+                Optional(An<StructValue>()));
+    EXPECT_THAT(AsRValueRef<Value>(value).As<StructValue>(),
+                Optional(An<StructValue>()));
+    EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<StructValue>(),
+                Optional(An<StructValue>()));
   }
 
   EXPECT_THAT(Value(TimestampValue()).As<TimestampValue>(),
@@ -332,6 +399,8 @@ TEST(Value, As) {
 }
 
 TEST(Value, Cast) {
+  google::protobuf::Arena arena;
+
   EXPECT_THAT(static_cast<BoolValue>(Value(BoolValue())), An<BoolValue>());
 
   {
@@ -394,6 +463,21 @@ TEST(Value, Cast) {
                 An<MapValue>());
   }
 
+  {
+    Value value(ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
+        &arena, R"pb()pb", GetTestingDescriptorPool(),
+        GetTestingMessageFactory())});
+    Value other_value = value;
+    EXPECT_THAT(static_cast<MessageValue>(AsLValueRef<Value>(value)),
+                An<MessageValue>());
+    EXPECT_THAT(static_cast<MessageValue>(AsConstLValueRef<Value>(value)),
+                An<MessageValue>());
+    EXPECT_THAT(static_cast<MessageValue>(AsRValueRef<Value>(value)),
+                An<MessageValue>());
+    EXPECT_THAT(static_cast<MessageValue>(AsConstRValueRef<Value>(other_value)),
+                An<MessageValue>());
+  }
+
   EXPECT_THAT(static_cast<NullValue>(Value(NullValue())), An<NullValue>());
 
   {
@@ -439,6 +523,22 @@ TEST(Value, Cast) {
   }
 
   {
+    Value value(ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
+        &arena, R"pb()pb", GetTestingDescriptorPool(),
+        GetTestingMessageFactory())});
+    Value other_value = value;
+    EXPECT_THAT(static_cast<ParsedMessageValue>(AsLValueRef<Value>(value)),
+                An<ParsedMessageValue>());
+    EXPECT_THAT(static_cast<ParsedMessageValue>(AsConstLValueRef<Value>(value)),
+                An<ParsedMessageValue>());
+    EXPECT_THAT(static_cast<ParsedMessageValue>(AsRValueRef<Value>(value)),
+                An<ParsedMessageValue>());
+    EXPECT_THAT(
+        static_cast<ParsedMessageValue>(AsConstRValueRef<Value>(other_value)),
+        An<ParsedMessageValue>());
+  }
+
+  {
     Value value(StringValue{});
     Value other_value = value;
     EXPECT_THAT(static_cast<StringValue>(AsLValueRef<Value>(value)),
@@ -449,6 +549,21 @@ TEST(Value, Cast) {
                 An<StringValue>());
     EXPECT_THAT(static_cast<StringValue>(AsConstRValueRef<Value>(other_value)),
                 An<StringValue>());
+  }
+
+  {
+    Value value(ParsedMessageValue{DynamicParseTextProto<TestAllTypesProto3>(
+        &arena, R"pb()pb", GetTestingDescriptorPool(),
+        GetTestingMessageFactory())});
+    Value other_value = value;
+    EXPECT_THAT(static_cast<StructValue>(AsLValueRef<Value>(value)),
+                An<StructValue>());
+    EXPECT_THAT(static_cast<StructValue>(AsConstLValueRef<Value>(value)),
+                An<StructValue>());
+    EXPECT_THAT(static_cast<StructValue>(AsRValueRef<Value>(value)),
+                An<StructValue>());
+    EXPECT_THAT(static_cast<StructValue>(AsConstRValueRef<Value>(other_value)),
+                An<StructValue>());
   }
 
   EXPECT_THAT(static_cast<TimestampValue>(Value(TimestampValue())),

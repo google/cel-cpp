@@ -28,21 +28,27 @@
 #include <type_traits>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
+#include "absl/utility/utility.h"
 #include "base/attribute.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/native_type.h"
+#include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/legacy_struct_value.h"  // IWYU pragma: export
+#include "common/values/message_value.h"
+#include "common/values/parsed_message_value.h"
 #include "common/values/parsed_struct_value.h"  // IWYU pragma: export
 #include "common/values/struct_value_interface.h"  // IWYU pragma: export
 #include "common/values/values.h"
@@ -85,6 +91,22 @@ class StructValue final {
             absl::in_place_type<common_internal::BaseStructValueAlternativeForT<
                 absl::remove_cvref_t<T>>>,
             std::forward<T>(value)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StructValue(const MessageValue& other)
+      : variant_(other.ToStructValueVariant()) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StructValue(MessageValue&& other)
+      : variant_(std::move(other).ToStructValueVariant()) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StructValue(const ParsedMessageValue& other)
+      : variant_(absl::in_place_type<ParsedMessageValue>, other) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StructValue(ParsedMessageValue&& other)
+      : variant_(absl::in_place_type<ParsedMessageValue>, std::move(other)) {}
 
   StructValue() = default;
 
@@ -171,6 +193,104 @@ class StructValue final {
       ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
       bool presence_test) const;
 
+  // Returns `true` if this value is an instance of a message value. If `true`
+  // is returned, it is implied that `IsOpaque()` would also return true.
+  bool IsMessage() const { return IsParsedMessage(); }
+
+  // Returns `true` if this value is an instance of a parsed message value. If
+  // `true` is returned, it is implied that `IsMessage()` would also return
+  // true.
+  bool IsParsedMessage() const {
+    return absl::holds_alternative<ParsedMessageValue>(variant_);
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsMessage()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>, bool> Is() const {
+    return IsMessage();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsParsedMessage()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>, bool> Is() const {
+    return IsParsedMessage();
+  }
+
+  // Performs a checked cast from a value to a message value,
+  // returning a non-empty optional with either a value or reference to the
+  // message value. Otherwise an empty optional is returned.
+  absl::optional<MessageValue> AsMessage() &;
+  absl::optional<MessageValue> AsMessage() const&;
+  absl::optional<MessageValue> AsMessage() &&;
+  absl::optional<MessageValue> AsMessage() const&&;
+
+  // Performs a checked cast from a value to a parsed message value,
+  // returning a non-empty optional with either a value or reference to the
+  // parsed message value. Otherwise an empty optional is returned.
+  optional_ref<const ParsedMessageValue> AsParsedMessage() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const ParsedMessageValue> AsParsedMessage()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ParsedMessageValue> AsParsedMessage() &&;
+  absl::optional<ParsedMessageValue> AsParsedMessage() const&&;
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsMessage()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>,
+                   absl::optional<MessageValue>>
+  As() &;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>,
+                   absl::optional<MessageValue>>
+  As() const&;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>,
+                   absl::optional<MessageValue>>
+  As() &&;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>,
+                   absl::optional<MessageValue>>
+  As() const&&;
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsParsedMessage()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                       optional_ref<const ParsedMessageValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                   optional_ref<const ParsedMessageValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                   absl::optional<ParsedMessageValue>>
+  As() &&;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                   absl::optional<ParsedMessageValue>>
+  As() const&&;
+
+  // Performs an unchecked cast from a value to a message value. In
+  // debug builds a best effort is made to crash. If `IsMessage()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator MessageValue() &;
+  explicit operator MessageValue() const&;
+  explicit operator MessageValue() &&;
+  explicit operator MessageValue() const&&;
+
+  // Performs an unchecked cast from a value to a parsed message value. In
+  // debug builds a best effort is made to crash. If `IsParsedMessage()` would
+  // return false, calling this method is undefined behavior.
+  explicit operator const ParsedMessageValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator const ParsedMessageValue&()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator ParsedMessageValue() &&;
+  explicit operator ParsedMessageValue() const&&;
+
  private:
   friend struct NativeTypeTraits<StructValue>;
   friend struct CompositionTraits<StructValue>;
@@ -194,6 +314,62 @@ inline void swap(StructValue& lhs, StructValue& rhs) noexcept { lhs.swap(rhs); }
 
 inline std::ostream& operator<<(std::ostream& out, const StructValue& value) {
   return out << value.DebugString();
+}
+
+template <typename T>
+inline std::enable_if_t<std::is_same_v<MessageValue, T>,
+                        absl::optional<MessageValue>>
+StructValue::As() & {
+  return AsMessage();
+}
+
+template <typename T>
+inline std::enable_if_t<std::is_same_v<MessageValue, T>,
+                        absl::optional<MessageValue>>
+StructValue::As() const& {
+  return AsMessage();
+}
+
+template <typename T>
+inline std::enable_if_t<std::is_same_v<MessageValue, T>,
+                        absl::optional<MessageValue>>
+StructValue::As() && {
+  return std::move(*this).AsMessage();
+}
+
+template <typename T>
+inline std::enable_if_t<std::is_same_v<MessageValue, T>,
+                        absl::optional<MessageValue>>
+StructValue::As() const&& {
+  return std::move(*this).AsMessage();
+}
+
+template <typename T>
+    inline std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                            optional_ref<const ParsedMessageValue>>
+    StructValue::As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return AsParsedMessage();
+}
+
+template <typename T>
+inline std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                        optional_ref<const ParsedMessageValue>>
+StructValue::As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return AsParsedMessage();
+}
+
+template <typename T>
+inline std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                        absl::optional<ParsedMessageValue>>
+StructValue::As() && {
+  return std::move(*this).AsParsedMessage();
+}
+
+template <typename T>
+inline std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                        absl::optional<ParsedMessageValue>>
+StructValue::As() const&& {
+  return std::move(*this).AsParsedMessage();
 }
 
 template <>

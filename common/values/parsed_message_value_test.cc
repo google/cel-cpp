@@ -88,6 +88,12 @@ class ParsedMessageValueTest : public TestWithParam<AllocatorKind> {
 
   ValueManager& value_manager() { return **value_manager_; }
 
+  template <typename T>
+  ParsedMessageValue MakeParsedMessage(absl::string_view text) {
+    return ParsedMessageValue(DynamicParseTextProto<T>(
+        allocator(), R"pb()pb", descriptor_pool(), message_factory()));
+  }
+
  private:
   absl::optional<google::protobuf::Arena> arena_;
   absl::optional<Shared<ValueManager>> value_manager_;
@@ -130,50 +136,43 @@ TEST_P(ParsedMessageValueTest, DebugString) {
 }
 
 TEST_P(ParsedMessageValueTest, IsZeroValue) {
-  ParsedMessageValue valid_value(DynamicParseTextProto<TestAllTypesProto3>(
-      allocator(), R"pb()pb", descriptor_pool(), message_factory()));
+  MessageValue valid_value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
   EXPECT_TRUE(valid_value.IsZeroValue());
 }
 
 TEST_P(ParsedMessageValueTest, SerializeTo) {
-  ParsedMessageValue valid_value(DynamicParseTextProto<TestAllTypesProto3>(
-      allocator(), R"pb()pb", descriptor_pool(), message_factory()));
+  MessageValue valid_value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
   absl::Cord serialized;
   EXPECT_THAT(valid_value.SerializeTo(value_manager(), serialized),
               StatusIs(absl::StatusCode::kUnimplemented));
 }
 
 TEST_P(ParsedMessageValueTest, ConvertToJson) {
-  ParsedMessageValue valid_value(DynamicParseTextProto<TestAllTypesProto3>(
-      allocator(), R"pb()pb", descriptor_pool(), message_factory()));
+  MessageValue valid_value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
   EXPECT_THAT(valid_value.ConvertToJson(value_manager()),
               StatusIs(absl::StatusCode::kUnimplemented));
 }
 
 TEST_P(ParsedMessageValueTest, Equal) {
-  ParsedMessageValue valid_value(DynamicParseTextProto<TestAllTypesProto3>(
-      allocator(), R"pb()pb", descriptor_pool(), message_factory()));
+  MessageValue valid_value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
   EXPECT_THAT(valid_value.Equal(value_manager(), BoolValue()),
               StatusIs(absl::StatusCode::kUnimplemented));
 }
 
 TEST_P(ParsedMessageValueTest, GetFieldByName) {
-  ParsedMessageValue valid_value(DynamicParseTextProto<TestAllTypesProto3>(
-      allocator(), R"pb()pb", descriptor_pool(), message_factory()));
+  MessageValue valid_value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
   EXPECT_THAT(valid_value.GetFieldByName(value_manager(), "does_not_exist"),
               StatusIs(absl::StatusCode::kUnimplemented));
 }
 
 TEST_P(ParsedMessageValueTest, GetFieldByNumber) {
-  ParsedMessageValue valid_value(DynamicParseTextProto<TestAllTypesProto3>(
-      allocator(), R"pb()pb", descriptor_pool(), message_factory()));
+  MessageValue valid_value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
   EXPECT_THAT(valid_value.GetFieldByNumber(value_manager(), 1),
               StatusIs(absl::StatusCode::kUnimplemented));
 }
 
 TEST_P(ParsedMessageValueTest, ForEachField) {
-  ParsedMessageValue valid_value(DynamicParseTextProto<TestAllTypesProto3>(
-      allocator(), R"pb()pb", descriptor_pool(), message_factory()));
+  MessageValue valid_value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
   EXPECT_THAT(valid_value.ForEachField(
                   value_manager(),
                   [](absl::string_view, const Value&) -> absl::StatusOr<bool> {
@@ -183,8 +182,7 @@ TEST_P(ParsedMessageValueTest, ForEachField) {
 }
 
 TEST_P(ParsedMessageValueTest, Qualify) {
-  ParsedMessageValue valid_value(DynamicParseTextProto<TestAllTypesProto3>(
-      allocator(), R"pb()pb", descriptor_pool(), message_factory()));
+  MessageValue valid_value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
   EXPECT_THAT(valid_value.Qualify(value_manager(), {}, /*presence_test=*/false),
               StatusIs(absl::StatusCode::kUnimplemented));
 }

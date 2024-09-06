@@ -14,12 +14,17 @@
 
 #include <cstddef>
 #include <string>
+#include <utility>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
+#include "absl/types/variant.h"
 #include "common/casting.h"
+#include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
@@ -241,5 +246,109 @@ absl::Status StructValueEqual(ValueManager& value_manager,
 }
 
 }  // namespace common_internal
+
+absl::optional<MessageValue> StructValue::AsMessage() & {
+  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  return absl::nullopt;
+}
+
+absl::optional<MessageValue> StructValue::AsMessage() const& {
+  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  return absl::nullopt;
+}
+
+absl::optional<MessageValue> StructValue::AsMessage() && {
+  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  return absl::nullopt;
+}
+
+absl::optional<MessageValue> StructValue::AsMessage() const&& {
+  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  return absl::nullopt;
+}
+
+optional_ref<const ParsedMessageValue> StructValue::AsParsedMessage() & {
+  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  return absl::nullopt;
+}
+
+optional_ref<const ParsedMessageValue> StructValue::AsParsedMessage() const& {
+  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  return absl::nullopt;
+}
+
+absl::optional<ParsedMessageValue> StructValue::AsParsedMessage() && {
+  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  return absl::nullopt;
+}
+
+absl::optional<ParsedMessageValue> StructValue::AsParsedMessage() const&& {
+  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  return absl::nullopt;
+}
+
+StructValue::operator MessageValue() & {
+  ABSL_DCHECK(IsMessage()) << *this;
+  return absl::get<ParsedMessageValue>(variant_);
+}
+
+StructValue::operator MessageValue() const& {
+  ABSL_DCHECK(IsMessage()) << *this;
+  return absl::get<ParsedMessageValue>(variant_);
+}
+
+StructValue::operator MessageValue() && {
+  ABSL_DCHECK(IsMessage()) << *this;
+  return absl::get<ParsedMessageValue>(std::move(variant_));
+}
+
+StructValue::operator MessageValue() const&& {
+  ABSL_DCHECK(IsMessage()) << *this;
+  return absl::get<ParsedMessageValue>(std::move(variant_));
+}
+
+StructValue::operator const ParsedMessageValue&() & {
+  ABSL_DCHECK(IsParsedMessage()) << *this;
+  return absl::get<ParsedMessageValue>(variant_);
+}
+
+StructValue::operator const ParsedMessageValue&() const& {
+  ABSL_DCHECK(IsParsedMessage()) << *this;
+  return absl::get<ParsedMessageValue>(variant_);
+}
+
+StructValue::operator ParsedMessageValue() && {
+  ABSL_DCHECK(IsParsedMessage()) << *this;
+  return absl::get<ParsedMessageValue>(std::move(variant_));
+}
+
+StructValue::operator ParsedMessageValue() const&& {
+  ABSL_DCHECK(IsParsedMessage()) << *this;
+  return absl::get<ParsedMessageValue>(std::move(variant_));
+}
 
 }  // namespace cel

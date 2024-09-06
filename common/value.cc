@@ -48,14 +48,14 @@
 namespace cel {
 namespace {
 
-static constexpr std::array<ValueKind, 20> kValueToKindArray = {
-    ValueKind::kError,  ValueKind::kBool,      ValueKind::kBytes,
-    ValueKind::kDouble, ValueKind::kDuration,  ValueKind::kError,
-    ValueKind::kInt,    ValueKind::kList,      ValueKind::kList,
-    ValueKind::kMap,    ValueKind::kMap,       ValueKind::kNull,
-    ValueKind::kOpaque, ValueKind::kString,    ValueKind::kStruct,
-    ValueKind::kStruct, ValueKind::kTimestamp, ValueKind::kType,
-    ValueKind::kUint,   ValueKind::kUnknown};
+static constexpr std::array<ValueKind, 21> kValueToKindArray = {
+    ValueKind::kError,  ValueKind::kBool,     ValueKind::kBytes,
+    ValueKind::kDouble, ValueKind::kDuration, ValueKind::kError,
+    ValueKind::kInt,    ValueKind::kList,     ValueKind::kList,
+    ValueKind::kMap,    ValueKind::kMap,      ValueKind::kNull,
+    ValueKind::kOpaque, ValueKind::kString,   ValueKind::kStruct,
+    ValueKind::kStruct, ValueKind::kStruct,   ValueKind::kTimestamp,
+    ValueKind::kType,   ValueKind::kUint,     ValueKind::kUnknown};
 
 static_assert(kValueToKindArray.size() ==
                   absl::variant_size<common_internal::ValueVariant>(),
@@ -81,7 +81,7 @@ Type Value::GetRuntimeType() const {
     case ValueKind::kBytes:
       return BytesType();
     case ValueKind::kStruct:
-      return Cast<StructValue>(*this).GetRuntimeType();
+      return static_cast<StructValue>(*this).GetRuntimeType();
     case ValueKind::kDuration:
       return DurationType();
     case ValueKind::kTimestamp:
@@ -807,6 +807,38 @@ absl::optional<MapValue> Value::AsMap() const&& {
   return absl::nullopt;
 }
 
+absl::optional<MessageValue> Value::AsMessage() & {
+  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  return absl::nullopt;
+}
+
+absl::optional<MessageValue> Value::AsMessage() const& {
+  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  return absl::nullopt;
+}
+
+absl::optional<MessageValue> Value::AsMessage() && {
+  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  return absl::nullopt;
+}
+
+absl::optional<MessageValue> Value::AsMessage() const&& {
+  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  return absl::nullopt;
+}
+
 absl::optional<NullValue> Value::AsNull() const {
   if (const auto* alternative = absl::get_if<NullValue>(&variant_);
       alternative != nullptr) {
@@ -878,6 +910,37 @@ absl::optional<OptionalValue> Value::AsOptional() const&& {
   }
   return absl::nullopt;
 }
+optional_ref<const ParsedMessageValue> Value::AsParsedMessage() & {
+  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  return absl::nullopt;
+}
+
+optional_ref<const ParsedMessageValue> Value::AsParsedMessage() const& {
+  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  return absl::nullopt;
+}
+
+absl::optional<ParsedMessageValue> Value::AsParsedMessage() && {
+  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  return absl::nullopt;
+}
+
+absl::optional<ParsedMessageValue> Value::AsParsedMessage() const&& {
+  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  return absl::nullopt;
+}
 
 optional_ref<const StringValue> Value::AsString() & {
   if (const auto* alternative = absl::get_if<StringValue>(&variant_);
@@ -921,6 +984,10 @@ absl::optional<StructValue> Value::AsStruct() & {
       alternative != nullptr) {
     return *alternative;
   }
+  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
   return absl::nullopt;
 }
 
@@ -931,6 +998,10 @@ absl::optional<StructValue> Value::AsStruct() const& {
     return *alternative;
   }
   if (const auto* alternative = absl::get_if<ParsedStructValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
       alternative != nullptr) {
     return *alternative;
   }
@@ -947,6 +1018,10 @@ absl::optional<StructValue> Value::AsStruct() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
+  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
   return absl::nullopt;
 }
 
@@ -957,6 +1032,10 @@ absl::optional<StructValue> Value::AsStruct() const&& {
     return std::move(*alternative);
   }
   if (auto* alternative = absl::get_if<ParsedStructValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
   }
@@ -1222,6 +1301,26 @@ Value::operator MapValue() const&& {
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
+Value::operator MessageValue() & {
+  ABSL_DCHECK(IsMessage()) << *this;
+  return absl::get<ParsedMessageValue>(variant_);
+}
+
+Value::operator MessageValue() const& {
+  ABSL_DCHECK(IsMessage()) << *this;
+  return absl::get<ParsedMessageValue>(variant_);
+}
+
+Value::operator MessageValue() && {
+  ABSL_DCHECK(IsMessage()) << *this;
+  return absl::get<ParsedMessageValue>(std::move(variant_));
+}
+
+Value::operator MessageValue() const&& {
+  ABSL_DCHECK(IsMessage()) << *this;
+  return absl::get<ParsedMessageValue>(std::move(variant_));
+}
+
 Value::operator NullValue() const {
   ABSL_DCHECK(IsNull()) << *this;
   return absl::get<NullValue>(variant_);
@@ -1269,6 +1368,26 @@ Value::operator OptionalValue() const&& {
       absl::get<OpaqueValue>(std::move(variant_)));
 }
 
+Value::operator const ParsedMessageValue&() & {
+  ABSL_DCHECK(IsMessage()) << *this;
+  return absl::get<ParsedMessageValue>(variant_);
+}
+
+Value::operator const ParsedMessageValue&() const& {
+  ABSL_DCHECK(IsMessage()) << *this;
+  return absl::get<ParsedMessageValue>(variant_);
+}
+
+Value::operator ParsedMessageValue() && {
+  ABSL_DCHECK(IsMessage()) << *this;
+  return absl::get<ParsedMessageValue>(std::move(variant_));
+}
+
+Value::operator ParsedMessageValue() const&& {
+  ABSL_DCHECK(IsMessage()) << *this;
+  return absl::get<ParsedMessageValue>(std::move(variant_));
+}
+
 Value::operator const StringValue&() & {
   ABSL_DCHECK(IsString()) << *this;
   return absl::get<StringValue>(variant_);
@@ -1300,6 +1419,10 @@ Value::operator StructValue() & {
       alternative != nullptr) {
     return *alternative;
   }
+  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
@@ -1311,6 +1434,10 @@ Value::operator StructValue() const& {
     return *alternative;
   }
   if (const auto* alternative = absl::get_if<ParsedStructValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
       alternative != nullptr) {
     return *alternative;
   }
@@ -1328,6 +1455,10 @@ Value::operator StructValue() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
+  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
@@ -1339,6 +1470,10 @@ Value::operator StructValue() const&& {
     return std::move(*alternative);
   }
   if (auto* alternative = absl::get_if<ParsedStructValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
   }

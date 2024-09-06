@@ -35,6 +35,7 @@
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
+#include "absl/utility/utility.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
@@ -167,6 +168,44 @@ class Value final {
     return *this = CompositionTraits<StructValue>::Get<Value>(std::move(value));
   }
 
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(const MessageValue& value) : variant_(value.ToValueVariant()) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(MessageValue&& value) : variant_(std::move(value).ToValueVariant()) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(const MessageValue& value) {
+    variant_ = value.ToValueVariant();
+    return *this;
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(MessageValue&& value) {
+    variant_ = std::move(value).ToValueVariant();
+    return *this;
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(const ParsedMessageValue& value)
+      : variant_(absl::in_place_type<ParsedMessageValue>, value) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(ParsedMessageValue&& value)
+      : variant_(absl::in_place_type<ParsedMessageValue>, std::move(value)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(const ParsedMessageValue& value) {
+    variant_.emplace<ParsedMessageValue>(value);
+    return *this;
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(ParsedMessageValue&& value) {
+    variant_.emplace<ParsedMessageValue>(std::move(value));
+    return *this;
+  }
+
   template <typename T,
             typename = std::enable_if_t<common_internal::IsValueInterfaceV<T>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
@@ -273,6 +312,12 @@ class Value final {
            absl::holds_alternative<ParsedMapValue>(variant_);
   }
 
+  // Returns `true` if this value is an instance of a message value. If `true`
+  // is returned, it is implied that `IsStruct()` would also return true.
+  bool IsMessage() const {
+    return absl::holds_alternative<ParsedMessageValue>(variant_);
+  }
+
   // Returns `true` if this value is an instance of a null value.
   bool IsNull() const { return absl::holds_alternative<NullValue>(variant_); }
 
@@ -291,6 +336,13 @@ class Value final {
     return false;
   }
 
+  // Returns `true` if this value is an instance of a parsed message value. If
+  // `true` is returned, it is implied that `IsMessage()` would also return
+  // true.
+  bool IsParsedMessage() const {
+    return absl::holds_alternative<ParsedMessageValue>(variant_);
+  }
+
   // Returns `true` if this value is an instance of a string value.
   bool IsString() const {
     return absl::holds_alternative<StringValue>(variant_);
@@ -300,7 +352,8 @@ class Value final {
   bool IsStruct() const {
     return absl::holds_alternative<common_internal::LegacyStructValue>(
                variant_) ||
-           absl::holds_alternative<ParsedStructValue>(variant_);
+           absl::holds_alternative<ParsedStructValue>(variant_) ||
+           absl::holds_alternative<ParsedMessageValue>(variant_);
   }
 
   // Returns `true` if this value is an instance of a timestamp value.
@@ -376,6 +429,13 @@ class Value final {
   }
 
   // Convenience method for use with template metaprogramming. See
+  // `IsMessage()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>, bool> Is() const {
+    return IsMessage();
+  }
+
+  // Convenience method for use with template metaprogramming. See
   // `IsNull()`.
   template <typename T>
   std::enable_if_t<std::is_same_v<NullValue, T>, bool> Is() const {
@@ -394,6 +454,13 @@ class Value final {
   template <typename T>
   std::enable_if_t<std::is_same_v<OptionalValue, T>, bool> Is() const {
     return IsOptional();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsParsedMessage()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>, bool> Is() const {
+    return IsParsedMessage();
   }
 
   // Convenience method for use with template metaprogramming. See
@@ -490,6 +557,14 @@ class Value final {
   absl::optional<MapValue> AsMap() &&;
   absl::optional<MapValue> AsMap() const&&;
 
+  // Performs a checked cast from a value to a message value,
+  // returning a non-empty optional with either a value or reference to the
+  // message value. Otherwise an empty optional is returned.
+  absl::optional<MessageValue> AsMessage() &;
+  absl::optional<MessageValue> AsMessage() const&;
+  absl::optional<MessageValue> AsMessage() &&;
+  absl::optional<MessageValue> AsMessage() const&&;
+
   // Performs a checked cast from a value to a null value,
   // returning a non-empty optional with either a value or reference to the
   // null value. Otherwise an empty optional is returned.
@@ -513,6 +588,16 @@ class Value final {
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<OptionalValue> AsOptional() &&;
   absl::optional<OptionalValue> AsOptional() const&&;
+
+  // Performs a checked cast from a value to a parsed message value,
+  // returning a non-empty optional with either a value or reference to the
+  // parsed message value. Otherwise an empty optional is returned.
+  optional_ref<const ParsedMessageValue> AsParsedMessage() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const ParsedMessageValue> AsParsedMessage()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ParsedMessageValue> AsParsedMessage() &&;
+  absl::optional<ParsedMessageValue> AsParsedMessage() const&&;
 
   // Performs a checked cast from a value to a string value,
   // returning a non-empty optional with either a value or reference to the
@@ -751,6 +836,33 @@ class Value final {
   }
 
   // Convenience method for use with template metaprogramming. See
+  // `AsMessage()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>,
+                   absl::optional<MessageValue>>
+  As() & {
+    return AsMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>,
+                   absl::optional<MessageValue>>
+  As() const& {
+    return AsMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>,
+                   absl::optional<MessageValue>>
+  As() && {
+    return std::move(*this).AsMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>,
+                   absl::optional<MessageValue>>
+  As() const&& {
+    return std::move(*this).AsMessage();
+  }
+
+  // Convenience method for use with template metaprogramming. See
   // `AsNull()`.
   template <typename T>
   std::enable_if_t<std::is_same_v<NullValue, T>, absl::optional<NullValue>>
@@ -823,6 +935,33 @@ class Value final {
                    absl::optional<OptionalValue>>
   As() const&& {
     return std::move(*this).AsOptional();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsParsedMessage()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                       optional_ref<const ParsedMessageValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                   optional_ref<const ParsedMessageValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                   absl::optional<ParsedMessageValue>>
+  As() && {
+    return std::move(*this).AsParsedMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                   absl::optional<ParsedMessageValue>>
+  As() const&& {
+    return std::move(*this).AsParsedMessage();
   }
 
   // Convenience method for use with template metaprogramming. See
@@ -1026,6 +1165,14 @@ class Value final {
   explicit operator MapValue() &&;
   explicit operator MapValue() const&&;
 
+  // Performs an unchecked cast from a value to a message value. In
+  // debug builds a best effort is made to crash. If `IsMessage()` would return
+  // false, calling this method is undefined behavior.
+  explicit operator MessageValue() &;
+  explicit operator MessageValue() const&;
+  explicit operator MessageValue() &&;
+  explicit operator MessageValue() const&&;
+
   // Performs an unchecked cast from a value to a null value. In
   // debug builds a best effort is made to crash. If `IsNull()` would return
   // false, calling this method is undefined behavior.
@@ -1046,6 +1193,15 @@ class Value final {
   explicit operator const OptionalValue&() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   explicit operator OptionalValue() &&;
   explicit operator OptionalValue() const&&;
+
+  // Performs an unchecked cast from a value to a parsed message value. In
+  // debug builds a best effort is made to crash. If `IsParsedMessage()` would
+  // return false, calling this method is undefined behavior.
+  explicit operator const ParsedMessageValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator const ParsedMessageValue&()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  explicit operator ParsedMessageValue() &&;
+  explicit operator ParsedMessageValue() const&&;
 
   // Performs an unchecked cast from a value to a string value. In
   // debug builds a best effort is made to crash. If `IsString()` would return
