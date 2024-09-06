@@ -96,7 +96,7 @@ std::unique_ptr<CelEvaluationState> CelExpressionFlatImpl::InitializeState(
 
 absl::StatusOr<CelValue> CelExpressionFlatImpl::Evaluate(
     const BaseActivation& activation, CelEvaluationState* state) const {
-  return Trace(activation, state, CelEvaluationListener());
+  return Trace(activation, state, /*callback=*/nullptr);
 }
 
 absl::StatusOr<std::unique_ptr<CelExpressionRecursiveImpl>>
