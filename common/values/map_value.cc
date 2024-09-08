@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cstddef>
+#include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
@@ -186,6 +187,22 @@ absl::Status CheckMapKey(const Value& key) {
     default:
       return InvalidMapKeyTypeError(key.kind());
   }
+}
+
+common_internal::ValueVariant MapValue::ToValueVariant() const& {
+  return absl::visit(
+      [](const auto& alternative) -> common_internal::ValueVariant {
+        return alternative;
+      },
+      variant_);
+}
+
+common_internal::ValueVariant MapValue::ToValueVariant() && {
+  return absl::visit(
+      [](auto&& alternative) -> common_internal::ValueVariant {
+        return std::move(alternative);
+      },
+      std::move(variant_));
 }
 
 }  // namespace cel

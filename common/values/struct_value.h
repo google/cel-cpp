@@ -292,8 +292,12 @@ class StructValue final {
   explicit operator ParsedMessageValue() const&&;
 
  private:
+  friend class Value;
   friend struct NativeTypeTraits<StructValue>;
   friend struct CompositionTraits<StructValue>;
+
+  common_internal::ValueVariant ToValueVariant() const&;
+  common_internal::ValueVariant ToValueVariant() &&;
 
   constexpr bool IsValid() const {
     return !absl::holds_alternative<absl::monostate>(variant_);

@@ -48,14 +48,16 @@
 namespace cel {
 namespace {
 
-static constexpr std::array<ValueKind, 21> kValueToKindArray = {
-    ValueKind::kError,  ValueKind::kBool,     ValueKind::kBytes,
-    ValueKind::kDouble, ValueKind::kDuration, ValueKind::kError,
-    ValueKind::kInt,    ValueKind::kList,     ValueKind::kList,
-    ValueKind::kMap,    ValueKind::kMap,      ValueKind::kNull,
-    ValueKind::kOpaque, ValueKind::kString,   ValueKind::kStruct,
-    ValueKind::kStruct, ValueKind::kStruct,   ValueKind::kTimestamp,
-    ValueKind::kType,   ValueKind::kUint,     ValueKind::kUnknown};
+static constexpr std::array<ValueKind, 25> kValueToKindArray = {
+    ValueKind::kError,     ValueKind::kBool,     ValueKind::kBytes,
+    ValueKind::kDouble,    ValueKind::kDuration, ValueKind::kError,
+    ValueKind::kInt,       ValueKind::kList,     ValueKind::kList,
+    ValueKind::kList,      ValueKind::kList,     ValueKind::kMap,
+    ValueKind::kMap,       ValueKind::kMap,      ValueKind::kMap,
+    ValueKind::kNull,      ValueKind::kOpaque,   ValueKind::kString,
+    ValueKind::kStruct,    ValueKind::kStruct,   ValueKind::kStruct,
+    ValueKind::kTimestamp, ValueKind::kType,     ValueKind::kUint,
+    ValueKind::kUnknown};
 
 static_assert(kValueToKindArray.size() ==
                   absl::variant_size<common_internal::ValueVariant>(),
@@ -713,6 +715,15 @@ absl::optional<ListValue> Value::AsList() & {
       alternative != nullptr) {
     return *alternative;
   }
+  if (const auto* alternative =
+          absl::get_if<ParsedRepeatedFieldValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  if (const auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
   return absl::nullopt;
 }
 
@@ -723,6 +734,15 @@ absl::optional<ListValue> Value::AsList() const& {
     return *alternative;
   }
   if (const auto* alternative = absl::get_if<ParsedListValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  if (const auto* alternative =
+          absl::get_if<ParsedRepeatedFieldValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  if (const auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
       alternative != nullptr) {
     return *alternative;
   }
@@ -739,6 +759,14 @@ absl::optional<ListValue> Value::AsList() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
+  if (auto* alternative = absl::get_if<ParsedRepeatedFieldValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  if (auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
   return absl::nullopt;
 }
 
@@ -749,6 +777,14 @@ absl::optional<ListValue> Value::AsList() const&& {
     return std::move(*alternative);
   }
   if (auto* alternative = absl::get_if<ParsedListValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  if (auto* alternative = absl::get_if<ParsedRepeatedFieldValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  if (auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
   }
@@ -765,6 +801,14 @@ absl::optional<MapValue> Value::AsMap() & {
       alternative != nullptr) {
     return *alternative;
   }
+  if (const auto* alternative = absl::get_if<ParsedMapFieldValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  if (const auto* alternative = absl::get_if<ParsedJsonMapValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
   return absl::nullopt;
 }
 
@@ -775,6 +819,14 @@ absl::optional<MapValue> Value::AsMap() const& {
     return *alternative;
   }
   if (const auto* alternative = absl::get_if<ParsedMapValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  if (const auto* alternative = absl::get_if<ParsedMapFieldValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  if (const auto* alternative = absl::get_if<ParsedJsonMapValue>(&variant_);
       alternative != nullptr) {
     return *alternative;
   }
@@ -791,6 +843,14 @@ absl::optional<MapValue> Value::AsMap() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
+  if (auto* alternative = absl::get_if<ParsedMapFieldValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  if (auto* alternative = absl::get_if<ParsedJsonMapValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
   return absl::nullopt;
 }
 
@@ -801,6 +861,14 @@ absl::optional<MapValue> Value::AsMap() const&& {
     return std::move(*alternative);
   }
   if (auto* alternative = absl::get_if<ParsedMapValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  if (auto* alternative = absl::get_if<ParsedMapFieldValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  if (auto* alternative = absl::get_if<ParsedJsonMapValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
   }
@@ -1200,6 +1268,15 @@ Value::operator ListValue() & {
       alternative != nullptr) {
     return *alternative;
   }
+  if (const auto* alternative =
+          absl::get_if<ParsedRepeatedFieldValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  if (const auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
@@ -1211,6 +1288,15 @@ Value::operator ListValue() const& {
     return *alternative;
   }
   if (const auto* alternative = absl::get_if<ParsedListValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  if (const auto* alternative =
+          absl::get_if<ParsedRepeatedFieldValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  if (const auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
       alternative != nullptr) {
     return *alternative;
   }
@@ -1228,6 +1314,14 @@ Value::operator ListValue() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
+  if (auto* alternative = absl::get_if<ParsedRepeatedFieldValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  if (auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
@@ -1239,6 +1333,14 @@ Value::operator ListValue() const&& {
     return std::move(*alternative);
   }
   if (auto* alternative = absl::get_if<ParsedListValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  if (auto* alternative = absl::get_if<ParsedRepeatedFieldValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  if (auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
   }
@@ -1256,6 +1358,14 @@ Value::operator MapValue() & {
       alternative != nullptr) {
     return *alternative;
   }
+  if (const auto* alternative = absl::get_if<ParsedMapFieldValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  if (const auto* alternative = absl::get_if<ParsedJsonMapValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
@@ -1267,6 +1377,14 @@ Value::operator MapValue() const& {
     return *alternative;
   }
   if (const auto* alternative = absl::get_if<ParsedMapValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  if (const auto* alternative = absl::get_if<ParsedMapFieldValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  if (const auto* alternative = absl::get_if<ParsedJsonMapValue>(&variant_);
       alternative != nullptr) {
     return *alternative;
   }
@@ -1284,6 +1402,14 @@ Value::operator MapValue() && {
       alternative != nullptr) {
     return std::move(*alternative);
   }
+  if (auto* alternative = absl::get_if<ParsedMapFieldValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  if (auto* alternative = absl::get_if<ParsedJsonMapValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
@@ -1295,6 +1421,14 @@ Value::operator MapValue() const&& {
     return std::move(*alternative);
   }
   if (auto* alternative = absl::get_if<ParsedMapValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  if (auto* alternative = absl::get_if<ParsedMapFieldValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  if (auto* alternative = absl::get_if<ParsedJsonMapValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
   }

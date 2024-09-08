@@ -37,14 +37,15 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
-#include "common/any.h"
+#include "absl/utility/utility.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/native_type.h"
-#include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/legacy_map_value.h"  // IWYU pragma: export
 #include "common/values/map_value_interface.h"  // IWYU pragma: export
+#include "common/values/parsed_json_map_value.h"
+#include "common/values/parsed_map_field_value.h"
 #include "common/values/parsed_map_value.h"  // IWYU pragma: export
 #include "common/values/values.h"
 
@@ -89,10 +90,24 @@ class MapValue final {
             std::forward<T>(value)) {}
 
   MapValue() = default;
+  MapValue(const MapValue&) = default;
+  MapValue(MapValue&&) = default;
 
-  MapValue(const MapValue& other) : variant_(other.variant_) {}
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  MapValue(const ParsedMapFieldValue& other)
+      : variant_(absl::in_place_type<ParsedMapFieldValue>, other) {}
 
-  MapValue(MapValue&& other) noexcept : variant_(std::move(other.variant_)) {}
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  MapValue(ParsedMapFieldValue&& other)
+      : variant_(absl::in_place_type<ParsedMapFieldValue>, std::move(other)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  MapValue(const ParsedJsonMapValue& other)
+      : variant_(absl::in_place_type<ParsedJsonMapValue>, other) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  MapValue(ParsedJsonMapValue&& other)
+      : variant_(absl::in_place_type<ParsedJsonMapValue>, std::move(other)) {}
 
   MapValue& operator=(const MapValue& other) {
     ABSL_DCHECK(this != std::addressof(other))
@@ -177,9 +192,13 @@ class MapValue final {
       ValueManager& value_manager) const;
 
  private:
+  friend class Value;
   friend struct NativeTypeTraits<MapValue>;
   friend struct CompositionTraits<MapValue>;
   friend bool Is(const MapValue& lhs, const MapValue& rhs);
+
+  common_internal::ValueVariant ToValueVariant() const&;
+  common_internal::ValueVariant ToValueVariant() &&;
 
   // Unlike many of the other derived values, `MapValue` is itself a composed
   // type. This is to avoid making `MapValue` too big and by extension
@@ -316,7 +335,7 @@ struct CastTraits<
 
 inline bool Is(const MapValue& lhs, const MapValue& rhs) {
   return absl::visit(
-      [](auto alternative_lhs, auto alternative_rhs) -> bool {
+      [](const auto& alternative_lhs, const auto& alternative_rhs) -> bool {
         if constexpr (std::is_same_v<
                           absl::remove_cvref_t<decltype(alternative_lhs)>,
                           absl::remove_cvref_t<decltype(alternative_rhs)>>) {

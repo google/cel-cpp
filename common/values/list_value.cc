@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include <cstddef>
+#include <utility>
 
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/variant.h"
 #include "common/casting.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
@@ -150,5 +152,21 @@ absl::Status ListValueEqual(ValueManager& value_manager,
 }
 
 }  // namespace common_internal
+
+common_internal::ValueVariant ListValue::ToValueVariant() const& {
+  return absl::visit(
+      [](const auto& alternative) -> common_internal::ValueVariant {
+        return alternative;
+      },
+      variant_);
+}
+
+common_internal::ValueVariant ListValue::ToValueVariant() && {
+  return absl::visit(
+      [](auto&& alternative) -> common_internal::ValueVariant {
+        return std::move(alternative);
+      },
+      std::move(variant_));
+}
 
 }  // namespace cel

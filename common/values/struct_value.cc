@@ -351,4 +351,20 @@ StructValue::operator ParsedMessageValue() const&& {
   return absl::get<ParsedMessageValue>(std::move(variant_));
 }
 
+common_internal::ValueVariant StructValue::ToValueVariant() const& {
+  return absl::visit(
+      [](const auto& alternative) -> common_internal::ValueVariant {
+        return alternative;
+      },
+      variant_);
+}
+
+common_internal::ValueVariant StructValue::ToValueVariant() && {
+  return absl::visit(
+      [](auto&& alternative) -> common_internal::ValueVariant {
+        return std::move(alternative);
+      },
+      std::move(variant_));
+}
+
 }  // namespace cel

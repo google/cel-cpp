@@ -115,57 +115,57 @@ class Value final {
   Value& operator=(Value&&) = default;
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(const ListValue& value)
-      : Value(CompositionTraits<ListValue>::Get<Value>(value)) {}
+  Value(const ListValue& value) : variant_(value.ToValueVariant()) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(ListValue&& value)
-      : Value(CompositionTraits<ListValue>::Get<Value>(std::move(value))) {}
+  Value(ListValue&& value) : variant_(std::move(value).ToValueVariant()) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   Value& operator=(const ListValue& value) {
-    return *this = CompositionTraits<ListValue>::Get<Value>(value);
+    variant_ = value.ToValueVariant();
+    return *this;
   }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   Value& operator=(ListValue&& value) {
-    return *this = CompositionTraits<ListValue>::Get<Value>(std::move(value));
+    variant_ = std::move(value).ToValueVariant();
+    return *this;
   }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(const MapValue& value)
-      : Value(CompositionTraits<MapValue>::Get<Value>(value)) {}
+  Value(const MapValue& value) : variant_(value.ToValueVariant()) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(MapValue&& value)
-      : Value(CompositionTraits<MapValue>::Get<Value>(std::move(value))) {}
+  Value(MapValue&& value) : variant_(std::move(value).ToValueVariant()) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   Value& operator=(const MapValue& value) {
-    return *this = CompositionTraits<MapValue>::Get<Value>(value);
+    variant_ = value.ToValueVariant();
+    return *this;
   }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   Value& operator=(MapValue&& value) {
-    return *this = CompositionTraits<MapValue>::Get<Value>(std::move(value));
+    variant_ = std::move(value).ToValueVariant();
+    return *this;
   }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(const StructValue& value)
-      : Value(CompositionTraits<StructValue>::Get<Value>(value)) {}
+  Value(const StructValue& value) : variant_(value.ToValueVariant()) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
-  Value(StructValue&& value)
-      : Value(CompositionTraits<StructValue>::Get<Value>(std::move(value))) {}
+  Value(StructValue&& value) : variant_(std::move(value).ToValueVariant()) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   Value& operator=(const StructValue& value) {
-    return *this = CompositionTraits<StructValue>::Get<Value>(value);
+    variant_ = value.ToValueVariant();
+    return *this;
   }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   Value& operator=(StructValue&& value) {
-    return *this = CompositionTraits<StructValue>::Get<Value>(std::move(value));
+    variant_ = std::move(value).ToValueVariant();
+    return *this;
   }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
@@ -303,13 +303,17 @@ class Value final {
   bool IsList() const {
     return absl::holds_alternative<common_internal::LegacyListValue>(
                variant_) ||
-           absl::holds_alternative<ParsedListValue>(variant_);
+           absl::holds_alternative<ParsedListValue>(variant_) ||
+           absl::holds_alternative<ParsedRepeatedFieldValue>(variant_) ||
+           absl::holds_alternative<ParsedJsonListValue>(variant_);
   }
 
   // Returns `true` if this value is an instance of a map value.
   bool IsMap() const {
     return absl::holds_alternative<common_internal::LegacyMapValue>(variant_) ||
-           absl::holds_alternative<ParsedMapValue>(variant_);
+           absl::holds_alternative<ParsedMapValue>(variant_) ||
+           absl::holds_alternative<ParsedMapFieldValue>(variant_) ||
+           absl::holds_alternative<ParsedJsonMapValue>(variant_);
   }
 
   // Returns `true` if this value is an instance of a message value. If `true`

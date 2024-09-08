@@ -36,13 +36,16 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "absl/utility/utility.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/native_type.h"
 #include "common/value_kind.h"
 #include "common/values/legacy_list_value.h"  // IWYU pragma: export
 #include "common/values/list_value_interface.h"  // IWYU pragma: export
+#include "common/values/parsed_json_list_value.h"
 #include "common/values/parsed_list_value.h"  // IWYU pragma: export
+#include "common/values/parsed_repeated_field_value.h"
 #include "common/values/values.h"
 
 namespace cel {
@@ -86,10 +89,25 @@ class ListValue final {
             std::forward<T>(value)) {}
 
   ListValue() = default;
+  ListValue(const ListValue&) = default;
+  ListValue(ListValue&&) = default;
 
-  ListValue(const ListValue& other) : variant_(other.variant_) {}
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ListValue(const ParsedRepeatedFieldValue& other)
+      : variant_(absl::in_place_type<ParsedRepeatedFieldValue>, other) {}
 
-  ListValue(ListValue&& other) noexcept : variant_(std::move(other.variant_)) {}
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ListValue(ParsedRepeatedFieldValue&& other)
+      : variant_(absl::in_place_type<ParsedRepeatedFieldValue>,
+                 std::move(other)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ListValue(const ParsedJsonListValue& other)
+      : variant_(absl::in_place_type<ParsedJsonListValue>, other) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  ListValue(ParsedJsonListValue&& other)
+      : variant_(absl::in_place_type<ParsedJsonListValue>, std::move(other)) {}
 
   ListValue& operator=(const ListValue& other) {
     ABSL_DCHECK(this != std::addressof(other))
@@ -158,9 +176,13 @@ class ListValue final {
                                  const Value& other) const;
 
  private:
+  friend class Value;
   friend struct NativeTypeTraits<ListValue>;
   friend struct CompositionTraits<ListValue>;
   friend bool Is(const ListValue& lhs, const ListValue& rhs);
+
+  common_internal::ValueVariant ToValueVariant() const&;
+  common_internal::ValueVariant ToValueVariant() &&;
 
   // Unlike many of the other derived values, `ListValue` is itself a composed
   // type. This is to avoid making `ListValue` too big and by extension
@@ -297,7 +319,7 @@ struct CastTraits<
 
 inline bool Is(const ListValue& lhs, const ListValue& rhs) {
   return absl::visit(
-      [](auto alternative_lhs, auto alternative_rhs) -> bool {
+      [](const auto& alternative_lhs, const auto& alternative_rhs) -> bool {
         if constexpr (std::is_same_v<
                           absl::remove_cvref_t<decltype(alternative_lhs)>,
                           absl::remove_cvref_t<decltype(alternative_rhs)>>) {

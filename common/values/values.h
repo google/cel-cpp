@@ -51,6 +51,10 @@ class TypeValue;
 class UintValue;
 class UnknownValue;
 class ParsedMessageValue;
+class ParsedMapFieldValue;
+class ParsedRepeatedFieldValue;
+class ParsedJsonListValue;
+class ParsedJsonMapValue;
 
 class ParsedListValue;
 class ParsedListValueInterface;
@@ -94,7 +98,9 @@ template <typename T>
 inline constexpr bool IsListValueAlternativeV =
     IsListValueAlternative<T>::value;
 
-using ListValueVariant = absl::variant<ParsedListValue, LegacyListValue>;
+using ListValueVariant =
+    absl::variant<ParsedListValue, LegacyListValue, ParsedRepeatedFieldValue,
+                  ParsedJsonListValue>;
 
 template <typename T>
 struct IsMapValueInterface
@@ -114,7 +120,8 @@ struct IsMapValueAlternative
 template <typename T>
 inline constexpr bool IsMapValueAlternativeV = IsMapValueAlternative<T>::value;
 
-using MapValueVariant = absl::variant<ParsedMapValue, LegacyMapValue>;
+using MapValueVariant = absl::variant<ParsedMapValue, LegacyMapValue,
+                                      ParsedMapFieldValue, ParsedJsonMapValue>;
 
 template <typename T>
 struct IsStructValueInterface
@@ -163,13 +170,13 @@ struct IsValueAlternative
 template <typename T>
 inline constexpr bool IsValueAlternativeV = IsValueAlternative<T>::value;
 
-using ValueVariant =
-    absl::variant<absl::monostate, BoolValue, BytesValue, DoubleValue,
-                  DurationValue, ErrorValue, IntValue, LegacyListValue,
-                  ParsedListValue, LegacyMapValue, ParsedMapValue, NullValue,
-                  OpaqueValue, StringValue, LegacyStructValue,
-                  ParsedStructValue, ParsedMessageValue, TimestampValue,
-                  TypeValue, UintValue, UnknownValue>;
+using ValueVariant = absl::variant<
+    absl::monostate, BoolValue, BytesValue, DoubleValue, DurationValue,
+    ErrorValue, IntValue, LegacyListValue, ParsedListValue,
+    ParsedRepeatedFieldValue, ParsedJsonListValue, LegacyMapValue,
+    ParsedMapValue, ParsedMapFieldValue, ParsedJsonMapValue, NullValue,
+    OpaqueValue, StringValue, LegacyStructValue, ParsedStructValue,
+    ParsedMessageValue, TimestampValue, TypeValue, UintValue, UnknownValue>;
 
 // Get the base type alternative for the given alternative or interface. The
 // base type alternative is the type stored in the `ValueVariant`.
