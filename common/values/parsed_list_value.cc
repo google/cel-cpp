@@ -88,6 +88,18 @@ class ParsedListValueInterfaceIterator final : public ValueIterator {
     return interface_.GetImpl(value_manager_, index_++, result);
   }
 
+  absl::Status Next2(ValueManager&, Value& key, Value& value) override {
+    if (ABSL_PREDICT_FALSE(index_ >= size_)) {
+      return absl::FailedPreconditionError(
+          "ValueIterator::Next2() called when "
+          "ValueIterator::HasNext() returns false");
+    }
+    key = IntValue(index_);
+    CEL_RETURN_IF_ERROR(interface_.GetImpl(value_manager_, index_, value));
+    ++index_;
+    return absl::OkStatus();
+  }
+
  private:
   const ParsedListValueInterface& interface_;
   ValueManager& value_manager_;

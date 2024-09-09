@@ -184,6 +184,10 @@ class JsonMapValueKeyIterator final : public ValueIterator {
     return absl::OkStatus();
   }
 
+  absl::Status Next2(ValueManager&, Value&, Value&) override {
+    return absl::UnimplementedError("Next2 is not yet implemented");
+  }
+
  private:
   typename JsonObject::const_iterator begin_;
   typename JsonObject::const_iterator end_;

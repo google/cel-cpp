@@ -1631,15 +1631,30 @@ class ValueIterator {
 
   virtual bool HasNext() = 0;
 
-  // Returns a view of the next value. If the underlying implementation cannot
-  // directly return a view of a value, the value will be stored in `scratch`,
-  // and the returned view will be that of `scratch`.
+  // Returns the next value. When iterating over `ListValue` this returns the
+  // value. When iterator over `MapValue` this returns the key.
+  //
+  // Primarily used by comprehensions v1.
   virtual absl::Status Next(ValueManager& value_manager, Value& result) = 0;
-
   absl::StatusOr<Value> Next(ValueManager& value_manager) {
     Value result;
     CEL_RETURN_IF_ERROR(Next(value_manager, result));
     return result;
+  }
+
+  // Returns the next key and value. When iterating over `ListValue` the current
+  // index is stored in `key` and the current value at that index is stored in
+  // `value`. When iterating over `MapValue` this current key is stored in `key`
+  // and the value for that key is stored in `value`.
+  //
+  // Primarily used by comprehensions v2.
+  virtual absl::Status Next2(ValueManager& value_manager, Value& key,
+                             Value& value) = 0;
+  absl::StatusOr<std::pair<Value, Value>> Next2(ValueManager& value_manager) {
+    Value key;
+    Value value;
+    CEL_RETURN_IF_ERROR(Next2(value_manager, key, value));
+    return std::pair{std::move(key), std::move(value)};
   }
 };
 

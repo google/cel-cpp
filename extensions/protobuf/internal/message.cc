@@ -1062,10 +1062,19 @@ class ParsedProtoListElementIterator final : public ValueIterator {
   bool HasNext() override { return index_ < size_; }
 
   absl::Status Next(ValueManager& value_manager, Value& result) override {
-    Value scratch;
     CEL_RETURN_IF_ERROR(field_to_value_accessor_(
         aliasing_, &message_, GetReflectionOrDie(message_), field_, index_,
         value_manager, result));
+    ++index_;
+    return absl::OkStatus();
+  }
+
+  absl::Status Next2(ValueManager& value_manager, Value& key,
+                     Value& value) override {
+    CEL_RETURN_IF_ERROR(field_to_value_accessor_(
+        aliasing_, &message_, GetReflectionOrDie(message_), field_, index_,
+        value_manager, value));
+    key = IntValue(index_);
     ++index_;
     return absl::OkStatus();
   }
@@ -1190,11 +1199,15 @@ class ParsedProtoMapKeyIterator final : public ValueIterator {
   bool HasNext() override { return begin_ != end_; }
 
   absl::Status Next(ValueManager& value_manager, Value& result) override {
-    Value scratch;
     CEL_RETURN_IF_ERROR(
         map_key_to_value_(begin_.GetKey(), value_manager, result));
     ++begin_;
     return absl::OkStatus();
+  }
+
+  absl::Status Next2(ValueManager& value_manager, Value& key,
+                     Value& value) override {
+    return absl::UnimplementedError("Next is not yet implemented");
   }
 
  private:
