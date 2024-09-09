@@ -203,7 +203,6 @@ cc_library(
     srcs = ["legacy_type_provider.cc"],
     hdrs = ["legacy_type_provider.h"],
     deps = [
-        ":legacy_any_packing",
         ":legacy_type_adapter",
         ":legacy_type_info_apis",
         "//common:any",
@@ -365,15 +364,6 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "legacy_any_packing",
-    hdrs = ["legacy_any_packing.h"],
-    deps = [
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
 cc_test(
     name = "trivial_legacy_type_info_test",
     srcs = ["trivial_legacy_type_info_test.cc"],
@@ -388,7 +378,6 @@ cc_test(
     name = "legacy_type_provider_test",
     srcs = ["legacy_type_provider_test.cc"],
     deps = [
-        ":legacy_any_packing",
         ":legacy_type_info_apis",
         ":legacy_type_provider",
         "//internal:testing",

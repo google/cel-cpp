@@ -24,7 +24,6 @@
 #include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_factory.h"
-#include "eval/public/structs/legacy_any_packing.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 
 namespace google::api::expr::runtime {
@@ -55,22 +54,6 @@ class LegacyTypeProvider : public cel::TypeReflector {
   // created ones, the TypeInfoApis returned from this method should be the same
   // as the ones used in value creation.
   virtual absl::optional<const LegacyTypeInfoApis*> ProvideLegacyTypeInfo(
-      ABSL_ATTRIBUTE_UNUSED absl::string_view name) const {
-    return absl::nullopt;
-  }
-
-  // Return LegacyAnyPackingApis for the fully qualified type name if available.
-  // It is only used by CreateCelValue/CreateMessageFromValue functions from
-  // cel_proto_lite_wrap_util. It is not directly used by the runtime, but may
-  // be needed in a TypeProvider implementation.
-  //
-  // nullopt values are interpreted as not present.
-  //
-  // Returned non-null pointers must remain valid as long as the type provider.
-  // TODO: Move protobuf-Any API from top level
-  // [Legacy]TypeProviders.
-  virtual absl::optional<const LegacyAnyPackingApis*>
-  ProvideLegacyAnyPackingApis(
       ABSL_ATTRIBUTE_UNUSED absl::string_view name) const {
     return absl::nullopt;
   }

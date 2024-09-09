@@ -54,11 +54,6 @@ class LegacyToModernTypeProviderAdapter : public LegacyTypeProvider {
     return provider_.ProvideLegacyTypeInfo(name);
   }
 
-  absl::optional<const LegacyAnyPackingApis*> ProvideLegacyAnyPackingApis(
-      absl::string_view name) const override {
-    return provider_.ProvideLegacyAnyPackingApis(name);
-  }
-
  private:
   const LegacyTypeProvider& provider_;
 };
