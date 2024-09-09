@@ -32,7 +32,7 @@ namespace google::api::expr::runtime {
 
 // Implementation of a type provider that generates types from protocol buffer
 // descriptors.
-class ProtobufDescriptorProvider : public LegacyTypeProvider {
+class ProtobufDescriptorProvider final : public LegacyTypeProvider {
  public:
   ProtobufDescriptorProvider(const google::protobuf::DescriptorPool* pool,
                              google::protobuf::MessageFactory* factory)
