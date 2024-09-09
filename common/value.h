@@ -133,6 +133,47 @@ class Value final {
   }
 
   // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(const ParsedRepeatedFieldValue& value)
+      : variant_(absl::in_place_type<ParsedRepeatedFieldValue>, value) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(ParsedRepeatedFieldValue&& value)
+      : variant_(absl::in_place_type<ParsedRepeatedFieldValue>,
+                 std::move(value)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(const ParsedRepeatedFieldValue& value) {
+    variant_.emplace<ParsedRepeatedFieldValue>(value);
+    return *this;
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(ParsedRepeatedFieldValue&& value) {
+    variant_.emplace<ParsedRepeatedFieldValue>(std::move(value));
+    return *this;
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(const ParsedJsonListValue& value)
+      : variant_(absl::in_place_type<ParsedJsonListValue>, value) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(ParsedJsonListValue&& value)
+      : variant_(absl::in_place_type<ParsedJsonListValue>, std::move(value)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(const ParsedJsonListValue& value) {
+    variant_.emplace<ParsedJsonListValue>(value);
+    return *this;
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(ParsedJsonListValue&& value) {
+    variant_.emplace<ParsedJsonListValue>(std::move(value));
+    return *this;
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
   Value(const MapValue& value) : variant_(value.ToValueVariant()) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
@@ -147,6 +188,46 @@ class Value final {
   // NOLINTNEXTLINE(google-explicit-constructor)
   Value& operator=(MapValue&& value) {
     variant_ = std::move(value).ToValueVariant();
+    return *this;
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(const ParsedMapFieldValue& value)
+      : variant_(absl::in_place_type<ParsedMapFieldValue>, value) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(ParsedMapFieldValue&& value)
+      : variant_(absl::in_place_type<ParsedMapFieldValue>, std::move(value)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(const ParsedMapFieldValue& value) {
+    variant_.emplace<ParsedMapFieldValue>(value);
+    return *this;
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(ParsedMapFieldValue&& value) {
+    variant_.emplace<ParsedMapFieldValue>(std::move(value));
+    return *this;
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(const ParsedJsonMapValue& value)
+      : variant_(absl::in_place_type<ParsedJsonMapValue>, value) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value(ParsedJsonMapValue&& value)
+      : variant_(absl::in_place_type<ParsedJsonMapValue>, std::move(value)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(const ParsedJsonMapValue& value) {
+    variant_.emplace<ParsedJsonMapValue>(value);
+    return *this;
+  }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  Value& operator=(ParsedJsonMapValue&& value) {
+    variant_.emplace<ParsedJsonMapValue>(std::move(value));
     return *this;
   }
 

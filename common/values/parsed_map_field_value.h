@@ -20,6 +20,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <ostream>
 #include <string>
 #include <utility>
 
@@ -138,6 +139,11 @@ class ParsedMapFieldValue final {
   Owned<const google::protobuf::Message> message_;
   absl::Nullable<const google::protobuf::FieldDescriptor*> field_ = nullptr;
 };
+
+inline std::ostream& operator<<(std::ostream& out,
+                                const ParsedMapFieldValue& value) {
+  return out << value.DebugString();
+}
 
 }  // namespace cel
 

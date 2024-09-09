@@ -20,6 +20,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <ostream>
 #include <string>
 #include <utility>
 
@@ -136,6 +137,11 @@ class ParsedRepeatedFieldValue final {
   Owned<const google::protobuf::Message> message_;
   absl::Nullable<const google::protobuf::FieldDescriptor*> field_ = nullptr;
 };
+
+inline std::ostream& operator<<(std::ostream& out,
+                                const ParsedRepeatedFieldValue& value) {
+  return out << value.DebugString();
+}
 
 }  // namespace cel
 
