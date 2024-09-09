@@ -20,6 +20,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <ostream>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -152,6 +153,11 @@ class ParsedJsonListValue final {
   // may be lite, or a dynamic message representing `google.protobuf.ListValue`.
   Owned<const google::protobuf::MessageLite> value_;
 };
+
+inline std::ostream& operator<<(std::ostream& out,
+                                const ParsedJsonListValue& value) {
+  return out << value.DebugString();
+}
 
 }  // namespace cel
 
