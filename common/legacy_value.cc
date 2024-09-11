@@ -156,6 +156,19 @@ class CelListIterator final : public ValueIterator {
     return absl::OkStatus();
   }
 
+  absl::Status Next2(ValueManager&, Value& key, Value& value) override {
+    if (!HasNext()) {
+      return absl::FailedPreconditionError(
+          "ValueIterator::Next2() called when ValueIterator::HasNext() returns "
+          "false");
+    }
+    key = IntValue(index_);
+    CEL_RETURN_IF_ERROR(
+        ModernValue(arena_, cel_list_->Get(arena_, index_), value));
+    ++index_;
+    return absl::OkStatus();
+  }
+
  private:
   google::protobuf::Arena* const arena_;
   const CelList* const cel_list_;

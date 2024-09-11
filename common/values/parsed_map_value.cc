@@ -58,6 +58,12 @@ class EmptyMapValueKeyIterator final : public ValueIterator {
         "ValueIterator::Next() called when "
         "ValueIterator::HasNext() returns false");
   }
+
+  absl::Status Next2(ValueManager&, Value&, Value&) override {
+    return absl::FailedPreconditionError(
+        "ValueIterator::Next2() called when "
+        "ValueIterator::HasNext() returns false");
+  }
 };
 
 class EmptyMapValue final : public ParsedMapValueInterface {

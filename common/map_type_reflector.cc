@@ -308,6 +308,18 @@ class MapValueKeyIteratorImpl final : public ValueIterator {
     return absl::OkStatus();
   }
 
+  absl::Status Next2(ValueManager&, Value& key, Value& value) override {
+    if (ABSL_PREDICT_FALSE(begin_ == end_)) {
+      return absl::FailedPreconditionError(
+          "ValueIterator::Next2() called when "
+          "ValueIterator::HasNext() returns false");
+    }
+    key = Value(begin_->first);
+    value = Value(begin_->second);
+    ++begin_;
+    return absl::OkStatus();
+  }
+
  private:
   typename ValueFlatHashMapFor<Value, Value>::const_iterator begin_;
   const typename ValueFlatHashMapFor<Value, Value>::const_iterator end_;
