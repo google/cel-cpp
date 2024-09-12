@@ -38,6 +38,8 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "checker/type_checker_builder.h"
+#include "common/ast.h"
 #include "common/expr.h"
 #include "common/memory.h"
 #include "common/source.h"
@@ -55,9 +57,9 @@
 #include "extensions/math_ext.h"
 #include "extensions/math_ext_macros.h"
 #include "extensions/proto_ext.h"
+#include "extensions/protobuf/ast_converters.h"
 #include "extensions/protobuf/enum_adapter.h"
 #include "extensions/protobuf/memory_manager.h"
-#include "extensions/protobuf/runtime_adapter.h"
 #include "extensions/protobuf/type_reflector.h"
 #include "extensions/strings.h"
 #include "internal/status_macros.h"
@@ -87,7 +89,6 @@ using ::cel::Runtime;
 using ::cel::RuntimeOptions;
 using ::cel::conformance_internal::FromConformanceValue;
 using ::cel::conformance_internal::ToConformanceValue;
-using ::cel::extensions::ProtobufRuntimeAdapter;
 using ::cel::extensions::ProtoMemoryManagerRef;
 using ::cel::extensions::RegisterProtobufEnum;
 
@@ -504,14 +505,16 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
 
   void Check(const conformance::v1alpha1::CheckRequest& request,
              conformance::v1alpha1::CheckResponse& response) override {
-    auto issue = response.add_issues();
-    issue->set_message("Check is not supported");
-    issue->set_code(google::rpc::Code::UNIMPLEMENTED);
+    auto status = DoCheck(request, response);
+    if (!status.ok()) {
+      auto* issue = response.add_issues();
+      issue->set_code(ToGrpcCode(status.code()));
+      issue->set_message(status.message());
+    }
   }
 
   absl::Status Eval(const conformance::v1alpha1::EvalRequest& request,
                     conformance::v1alpha1::EvalResponse& response) override {
-    google::api::expr::v1alpha1::Expr expr = ExtractExpr(request);
     google::protobuf::Arena arena;
     auto proto_memory_manager = ProtoMemoryManagerRef(&arena);
     cel::MemoryManagerRef memory_manager =
@@ -526,7 +529,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
     std::unique_ptr<const cel::Runtime> runtime =
         std::move(runtime_status).value();
 
-    auto program_status = ProtobufRuntimeAdapter::CreateProgram(*runtime, expr);
+    auto program_status = Plan(*runtime, request);
     if (!program_status.ok()) {
       return absl::InternalError(program_status.status().ToString(
           absl::StatusToStringMode::kWithEverything));
@@ -591,6 +594,65 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
         constant_memory_manager_(
             use_arena_ ? ProtoMemoryManagerRef(&constant_arena_)
                        : cel::MemoryManagerRef::ReferenceCounting()) {}
+
+  static absl::Status DoCheck(
+      const conformance::v1alpha1::CheckRequest& request,
+      conformance::v1alpha1::CheckResponse& response) {
+    google::api::expr::v1alpha1::ParsedExpr parsed_expr;
+
+    (parsed_expr).MergeFrom(request.parsed_expr());
+
+    CEL_ASSIGN_OR_RETURN(std::unique_ptr<cel::Ast> ast,
+                         cel::extensions::CreateAstFromParsedExpr(parsed_expr));
+
+    cel::TypeCheckerBuilder builder;
+    // TODO: apply the type env to the checker builder for custom
+    // variables and functions.
+    CEL_ASSIGN_OR_RETURN(auto checker, std::move(builder).Build());
+
+    CEL_ASSIGN_OR_RETURN(auto validation_result,
+                         checker->Check(std::move(ast)));
+
+    for (const auto& checker_issue : validation_result.GetIssues()) {
+      auto* issue = response.add_issues();
+      issue->set_code(ToGrpcCode(absl::StatusCode::kInvalidArgument));
+      issue->set_message(checker_issue.message());
+    }
+
+    const cel::Ast* checked_ast = validation_result.GetAst();
+    if (!validation_result.IsValid() || checked_ast == nullptr) {
+      return absl::OkStatus();
+    }
+    CEL_ASSIGN_OR_RETURN(
+        google::api::expr::v1alpha1::CheckedExpr pb_checked_ast,
+        cel::extensions::CreateCheckedExprFromAst(*validation_result.GetAst()));
+    *response.mutable_checked_expr() = std::move(pb_checked_ast);
+    return absl::OkStatus();
+  }
+
+  static absl::StatusOr<std::unique_ptr<cel::TraceableProgram>> Plan(
+      const cel::Runtime& runtime,
+      const conformance::v1alpha1::EvalRequest& request) {
+    std::unique_ptr<cel::Ast> ast;
+    if (request.has_parsed_expr()) {
+      google::api::expr::v1alpha1::ParsedExpr unversioned;
+      (unversioned).MergeFrom(request.parsed_expr());
+
+      CEL_ASSIGN_OR_RETURN(ast, cel::extensions::CreateAstFromParsedExpr(
+                                    std::move(unversioned)));
+
+    } else if (request.has_checked_expr()) {
+      google::api::expr::v1alpha1::CheckedExpr unversioned;
+      (unversioned).MergeFrom(request.checked_expr());
+      CEL_ASSIGN_OR_RETURN(ast, cel::extensions::CreateAstFromCheckedExpr(
+                                    std::move(unversioned)));
+    }
+    if (ast == nullptr) {
+      return absl::InternalError("no expression provided");
+    }
+
+    return runtime.CreateTraceableProgram(std::move(ast));
+  }
 
   RuntimeOptions options_;
   bool use_arena_;

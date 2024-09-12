@@ -45,6 +45,8 @@ cc_library(
     hdrs = ["service.h"],
     deps = [
         ":value_conversion",
+        "//checker:type_checker_builder",
+        "//common:ast",
         "//common:expr",
         "//common:memory",
         "//common:source",
@@ -62,6 +64,7 @@ cc_library(
         "//extensions:math_ext_macros",
         "//extensions:proto_ext",
         "//extensions:strings",
+        "//extensions/protobuf:ast_converters",
         "//extensions/protobuf:enum_adapter",
         "//extensions/protobuf:memory_manager",
         "//extensions/protobuf:runtime_adapter",

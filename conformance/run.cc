@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "google/api/expr/conformance/v1alpha1/conformance_service.pb.h"
+#include "google/api/expr/v1alpha1/checked.pb.h"  // IWYU pragma: keep
 #include "google/api/expr/v1alpha1/eval.pb.h"
 #include "google/api/expr/v1alpha1/value.pb.h"
 #include "google/rpc/code.pb.h"
@@ -60,11 +61,14 @@ ABSL_FLAG(bool, recursive, false,
           "default nesting limit.");
 ABSL_FLAG(std::vector<std::string>, skip_tests, {}, "Tests to skip");
 ABSL_FLAG(bool, dashboard, false, "Dashboard mode, ignore test failures");
+ABSL_FLAG(bool, skip_check, true, "Skip type checking the expressions");
 
 namespace {
 
 using ::testing::IsEmpty;
 
+using google::api::expr::conformance::v1alpha1::CheckRequest;
+using google::api::expr::conformance::v1alpha1::CheckResponse;
 using google::api::expr::conformance::v1alpha1::EvalRequest;
 using google::api::expr::conformance::v1alpha1::EvalResponse;
 using google::api::expr::conformance::v1alpha1::ParseRequest;
@@ -86,6 +90,40 @@ std::string DescribeMessage(const google::protobuf::Message& message) {
     string = "\"\"\n";
   }
   return string;
+}
+
+MATCHER_P(MatchesConformanceValue, expected, "") {
+  static auto* kFieldComparator = []() {
+    auto* field_comparator = new DefaultFieldComparator();
+    field_comparator->set_treat_nan_as_equal(true);
+    return field_comparator;
+  }();
+  static auto* kDifferencer = []() {
+    auto* differencer = new MessageDifferencer();
+    differencer->set_message_field_comparison(MessageDifferencer::EQUIVALENT);
+    differencer->set_field_comparator(kFieldComparator);
+    const auto* descriptor =
+        google::api::expr::v1alpha1::MapValue::descriptor();
+    const auto* entries_field = descriptor->FindFieldByName("entries");
+    const auto* key_field =
+        entries_field->message_type()->FindFieldByName("key");
+    differencer->TreatAsMap(entries_field, key_field);
+    return differencer;
+  }();
+
+  const google::api::expr::v1alpha1::ExprValue& got = arg;
+  const google::api::expr::v1alpha1::Value& want = expected;
+
+  google::api::expr::v1alpha1::ExprValue test_value;
+  (*test_value.mutable_value()) = want;
+
+  if (kDifferencer->Compare(got, test_value)) {
+    return true;
+  }
+  (*result_listener) << "got: " << DescribeMessage(got);
+  (*result_listener) << "\n";
+  (*result_listener) << "wanted: " << DescribeMessage(test_value);
+  return false;
 }
 
 bool ShouldSkipTest(absl::Span<const std::string> tests_to_skip,
@@ -128,15 +166,31 @@ class ConformanceTest : public testing::Test {
     ParseResponse parse_response;
     service_->Parse(parse_request, parse_response);
     ASSERT_THAT(parse_response.issues(), IsEmpty());
+
     EvalRequest eval_request;
     if (!test_.container().empty()) {
       eval_request.set_container(test_.container());
     }
-    eval_request.set_allocated_parsed_expr(
-        parse_response.release_parsed_expr());
     if (!test_.bindings().empty()) {
       *eval_request.mutable_bindings() = test_.bindings();
     }
+
+    if (absl::GetFlag(FLAGS_skip_check) || test_.disable_check()) {
+      eval_request.set_allocated_parsed_expr(
+          parse_response.release_parsed_expr());
+    } else {
+      CheckRequest check_request;
+      check_request.set_allocated_parsed_expr(
+          parse_response.release_parsed_expr());
+      check_request.set_container(test_.container());
+      (*check_request.mutable_type_env()) = test_.type_env();
+      CheckResponse check_response;
+      service_->Check(check_request, check_response);
+      ASSERT_THAT(check_response.issues(), IsEmpty());
+      eval_request.set_allocated_checked_expr(
+          check_response.release_checked_expr());
+    }
+
     EvalResponse eval_response;
     if (auto status = service_->Eval(eval_request, eval_response);
         !status.ok()) {
@@ -147,25 +201,9 @@ class ConformanceTest : public testing::Test {
     ASSERT_TRUE(eval_response.has_result()) << eval_response;
     switch (test_.result_matcher_case()) {
       case SimpleTest::kValue: {
-        // We should extract this to a matcher eventually.
-        DefaultFieldComparator field_comparator;
-        field_comparator.set_treat_nan_as_equal(true);
-        MessageDifferencer differencer;
-        differencer.set_message_field_comparison(
-            MessageDifferencer::EQUIVALENT);
-        differencer.set_field_comparator(&field_comparator);
-        const auto* descriptor =
-            google::api::expr::v1alpha1::MapValue::descriptor();
-        const auto* entries_field = descriptor->FindFieldByName("entries");
-        const auto* key_field =
-            entries_field->message_type()->FindFieldByName("key");
-        differencer.TreatAsMap(entries_field, key_field);
         google::api::expr::v1alpha1::ExprValue test_value;
-        *test_value.mutable_value() = test_.value();
-        EXPECT_TRUE(differencer.Compare(eval_response.result(), test_value))
-            << "expected:\n"
-            << DescribeMessage(test_value) << "got:\n"
-            << DescribeMessage(eval_response.result());
+        EXPECT_THAT(eval_response.result(),
+                    MatchesConformanceValue(test_.value()));
         break;
       }
       case SimpleTest::kEvalError:
