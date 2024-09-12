@@ -96,7 +96,8 @@ absl::StatusOr<Json> ProtoSingularFieldToJson(
   }
 }
 
-absl::StatusOr<JsonString> ProtoMapKeyToJsonString(const google::protobuf::MapKey& key) {
+absl::StatusOr<JsonString> ProtoMapKeyToJsonString(
+    const google::protobuf::MapKeyConstRef& key) {
   switch (key.type()) {
     case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
       return key.GetBoolValue() ? JsonString("true") : JsonString("false");
@@ -471,7 +472,7 @@ absl::StatusOr<JsonObject> ProtoMapFieldToJsonObject(
   auto begin = MapBegin(*reflection, message, *field);
   auto end = MapEnd(*reflection, message, *field);
   while (begin != end) {
-    CEL_ASSIGN_OR_RETURN(auto key, ProtoMapKeyToJsonString(begin.GetKey()));
+    CEL_ASSIGN_OR_RETURN(auto key, ProtoMapKeyToJsonString(begin.GetKeyRef()));
     CEL_ASSIGN_OR_RETURN(
         auto value,
         ProtoMapValueToJson(converter, field->message_type()->map_value(),

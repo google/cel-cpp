@@ -249,10 +249,10 @@ namespace {
 // -----------------------------------------------------------------------------
 // google::protobuf::MapKey -> cel::Value
 
-using ProtoMapKeyToValueConverter = absl::Status (*)(const google::protobuf::MapKey&,
-                                                     ValueManager&, Value&);
+using ProtoMapKeyToValueConverter =
+    absl::Status (*)(const google::protobuf::MapKeyConstRef&, ValueManager&, Value&);
 
-absl::Status ProtoBoolMapKeyToValueConverter(const google::protobuf::MapKey& key,
+absl::Status ProtoBoolMapKeyToValueConverter(const google::protobuf::MapKeyConstRef& key,
                                              ValueManager&, Value& result) {
   CEL_RETURN_IF_ERROR(ProtoMapKeyTypeMismatch(
       google::protobuf::FieldDescriptor::CPPTYPE_BOOL, key.type()));
@@ -260,7 +260,7 @@ absl::Status ProtoBoolMapKeyToValueConverter(const google::protobuf::MapKey& key
   return absl::OkStatus();
 }
 
-absl::Status ProtoInt32MapKeyToValueConverter(const google::protobuf::MapKey& key,
+absl::Status ProtoInt32MapKeyToValueConverter(const google::protobuf::MapKeyConstRef& key,
                                               ValueManager&, Value& result) {
   CEL_RETURN_IF_ERROR(ProtoMapKeyTypeMismatch(
       google::protobuf::FieldDescriptor::CPPTYPE_INT32, key.type()));
@@ -268,7 +268,7 @@ absl::Status ProtoInt32MapKeyToValueConverter(const google::protobuf::MapKey& ke
   return absl::OkStatus();
 }
 
-absl::Status ProtoInt64MapKeyToValueConverter(const google::protobuf::MapKey& key,
+absl::Status ProtoInt64MapKeyToValueConverter(const google::protobuf::MapKeyConstRef& key,
                                               ValueManager&, Value& result) {
   CEL_RETURN_IF_ERROR(ProtoMapKeyTypeMismatch(
       google::protobuf::FieldDescriptor::CPPTYPE_INT64, key.type()));
@@ -276,25 +276,25 @@ absl::Status ProtoInt64MapKeyToValueConverter(const google::protobuf::MapKey& ke
   return absl::OkStatus();
 }
 
-absl::Status ProtoUInt32MapKeyToValueConverter(const google::protobuf::MapKey& key,
-                                               ValueManager&, Value& result) {
+absl::Status ProtoUInt32MapKeyToValueConverter(
+    const google::protobuf::MapKeyConstRef& key, ValueManager&, Value& result) {
   CEL_RETURN_IF_ERROR(ProtoMapKeyTypeMismatch(
       google::protobuf::FieldDescriptor::CPPTYPE_UINT32, key.type()));
   result = UintValue{key.GetUInt32Value()};
   return absl::OkStatus();
 }
 
-absl::Status ProtoUInt64MapKeyToValueConverter(const google::protobuf::MapKey& key,
-                                               ValueManager&, Value& result) {
+absl::Status ProtoUInt64MapKeyToValueConverter(
+    const google::protobuf::MapKeyConstRef& key, ValueManager&, Value& result) {
   CEL_RETURN_IF_ERROR(ProtoMapKeyTypeMismatch(
       google::protobuf::FieldDescriptor::CPPTYPE_UINT64, key.type()));
   result = UintValue{key.GetUInt64Value()};
   return absl::OkStatus();
 }
 
-absl::Status ProtoStringMapKeyToValueConverter(const google::protobuf::MapKey& key,
-                                               ValueManager& value_manager,
-                                               Value& result) {
+absl::Status ProtoStringMapKeyToValueConverter(
+    const google::protobuf::MapKeyConstRef& key, ValueManager& value_manager,
+    Value& result) {
   CEL_RETURN_IF_ERROR(ProtoMapKeyTypeMismatch(
       google::protobuf::FieldDescriptor::CPPTYPE_STRING, key.type()));
   result = StringValue{key.GetStringValue()};
@@ -1192,7 +1192,7 @@ class ParsedProtoMapKeyIterator final : public ValueIterator {
   absl::Status Next(ValueManager& value_manager, Value& result) override {
     Value scratch;
     CEL_RETURN_IF_ERROR(
-        map_key_to_value_(begin_.GetKey(), value_manager, result));
+        map_key_to_value_(begin_.GetKeyRef(), value_manager, result));
     ++begin_;
     return absl::OkStatus();
   }
@@ -1267,7 +1267,7 @@ class ParsedProtoMapValueInterface
     Value key;
     while (begin != end) {
       CEL_RETURN_IF_ERROR(
-          map_key_to_value_(begin.GetKey(), value_manager, key));
+          map_key_to_value_(begin.GetKeyRef(), value_manager, key));
       CEL_RETURN_IF_ERROR(builder->Add(std::move(key)));
       ++begin;
     }
@@ -1283,7 +1283,7 @@ class ParsedProtoMapValueInterface
     Value value;
     while (begin != end) {
       CEL_RETURN_IF_ERROR(
-          map_key_to_value_(begin.GetKey(), value_manager, key));
+          map_key_to_value_(begin.GetKeyRef(), value_manager, key));
       CEL_RETURN_IF_ERROR(map_value_to_value_(shared_from_this(), field_,
                                               begin.GetValueRef(),
                                               value_manager, value));
