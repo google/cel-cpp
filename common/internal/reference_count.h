@@ -23,6 +23,7 @@
 #include <atomic>
 #include <cstdint>
 #include <new>
+#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -30,6 +31,7 @@
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
+#include "absl/strings/string_view.h"
 #include "common/arena.h"
 #include "common/data.h"
 #include "google/protobuf/arena.h"
@@ -397,6 +399,12 @@ inline bool IsExpiredRef(
     absl::Nullable<const ReferenceCount*> refcount) noexcept {
   return refcount != nullptr ? IsExpiredRef(*refcount) : false;
 }
+
+std::pair<absl::Nonnull<const ReferenceCount*>, absl::string_view>
+MakeReferenceCountedString(absl::string_view value);
+
+std::pair<absl::Nonnull<const ReferenceCount*>, absl::string_view>
+MakeReferenceCountedString(std::string&& value);
 
 }  // namespace cel::common_internal
 

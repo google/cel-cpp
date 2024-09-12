@@ -17,9 +17,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <memory>
-#include <new>
 #include <string>
+#include <tuple>
 #include <utility>
 
 #include "absl/base/nullability.h"
@@ -34,7 +33,6 @@
 #include "common/internal/metadata.h"
 #include "common/internal/reference_count.h"
 #include "common/memory.h"
-#include "internal/new.h"
 #include "google/protobuf/arena.h"
 
 namespace cel::common_internal {
@@ -48,62 +46,6 @@ char* CopyCordToArray(const absl::Cord& cord, char* data) {
   }
   return data;
 }
-
-class ReferenceCountedStdString final : public ReferenceCounted {
- public:
-  template <typename String>
-  explicit ReferenceCountedStdString(String&& string) {
-    ::new (static_cast<void*>(&string_[0]))
-        std::string(std::forward<String>(string));
-  }
-
-  const char* data() const noexcept {
-    return std::launder(reinterpret_cast<const std::string*>(&string_[0]))
-        ->data();
-  }
-
-  size_t size() const noexcept {
-    return std::launder(reinterpret_cast<const std::string*>(&string_[0]))
-        ->size();
-  }
-
- private:
-  void Finalize() noexcept override {
-    std::destroy_at(std::launder(reinterpret_cast<std::string*>(&string_[0])));
-  }
-
-  alignas(std::string) char string_[sizeof(std::string)];
-};
-
-class ReferenceCountedString final : public ReferenceCounted {
- public:
-  static const ReferenceCountedString* New(const char* data, size_t size) {
-    size_t offset = offsetof(ReferenceCountedString, data_);
-    return ::new (internal::New(offset + size))
-        ReferenceCountedString(size, data);
-  }
-
-  const char* data() const noexcept {
-    return reinterpret_cast<const char*>(&data_);
-  }
-
-  size_t size() const noexcept { return size_; }
-
- private:
-  ReferenceCountedString(size_t size, const char* data) noexcept : size_(size) {
-    std::memcpy(&data_, data, size);
-  }
-
-  void Delete() noexcept override {
-    void* const that = this;
-    const auto size = size_;
-    std::destroy_at(this);
-    internal::SizedDelete(that, offsetof(ReferenceCountedString, data_) + size);
-  }
-
-  const size_t size_;
-  char data_[];
-};
 
 template <typename T>
 T ConsumeAndDestroy(T& object) {
@@ -162,15 +104,12 @@ ByteString ByteString::Borrowed(Owner owner, absl::string_view string) {
   if (string.size() <= kSmallByteStringCapacity || arena != nullptr) {
     return ByteString(arena, string);
   }
-  const auto* refcount = OwnerRelease(owner);
+  const auto* refcount = OwnerRelease(std::move(owner));
   // A nullptr refcount indicates somebody called us to borrow something that
   // has no owner. If this is the case, we fallback to assuming operator
   // new/delete and convert it to a reference count.
   if (refcount == nullptr) {
-    auto* refcount_string =
-        ReferenceCountedString::New(string.data(), string.size());
-    string = absl::string_view(refcount_string->data(), string.size());
-    refcount = refcount_string;
+    std::tie(refcount, string) = MakeReferenceCountedString(string);
   }
   return ByteString(refcount, string);
 }
@@ -925,11 +864,10 @@ void ByteString::SetMedium(absl::Nullable<google::protobuf::Arena*> arena,
     rep_.medium.owner =
         reinterpret_cast<uintptr_t>(arena) | kMetadataOwnerArenaBit;
   } else {
-    const auto* refcount =
-        ReferenceCountedString::New(string.data(), string.size());
-    rep_.medium.data = refcount->data();
-    rep_.medium.owner =
-        reinterpret_cast<uintptr_t>(refcount) | kMetadataOwnerReferenceCountBit;
+    auto pair = MakeReferenceCountedString(string);
+    rep_.medium.data = pair.second.data();
+    rep_.medium.owner = reinterpret_cast<uintptr_t>(pair.first) |
+                        kMetadataOwnerReferenceCountBit;
   }
 }
 
@@ -944,10 +882,10 @@ void ByteString::SetMedium(absl::Nullable<google::protobuf::Arena*> arena,
     rep_.medium.owner =
         reinterpret_cast<uintptr_t>(arena) | kMetadataOwnerArenaBit;
   } else {
-    const auto* refcount = new ReferenceCountedStdString(std::move(string));
-    rep_.medium.data = refcount->data();
-    rep_.medium.owner =
-        reinterpret_cast<uintptr_t>(refcount) | kMetadataOwnerReferenceCountBit;
+    auto pair = MakeReferenceCountedString(std::move(string));
+    rep_.medium.data = pair.second.data();
+    rep_.medium.owner = reinterpret_cast<uintptr_t>(pair.first) |
+                        kMetadataOwnerReferenceCountBit;
   }
 }
 
