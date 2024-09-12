@@ -16,8 +16,10 @@
 #define THIRD_PARTY_CEL_CPP_CHECKER_INTERNAL_TYPE_CHECKER_IMPL_H_
 
 #include <memory>
+#include <utility>
 
 #include "absl/status/statusor.h"
+#include "checker/internal/type_check_env.h"
 #include "checker/type_checker.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
@@ -29,7 +31,7 @@ namespace cel::checker_internal {
 // See cel::TypeCheckerBuilder for constructing instances.
 class TypeCheckerImpl : public TypeChecker {
  public:
-  TypeCheckerImpl() = default;
+  explicit TypeCheckerImpl(TypeCheckEnv env) : env_(std::move(env)) {}
 
   TypeCheckerImpl(const TypeCheckerImpl&) = delete;
   TypeCheckerImpl& operator=(const TypeCheckerImpl&) = delete;
@@ -38,6 +40,9 @@ class TypeCheckerImpl : public TypeChecker {
 
   absl::StatusOr<ValidationResult> Check(
       std::unique_ptr<Ast> ast) const override;
+
+ private:
+  TypeCheckEnv env_;
 };
 
 }  // namespace cel::checker_internal

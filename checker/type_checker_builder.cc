@@ -14,15 +14,49 @@
 #include "checker/type_checker_builder.h"
 
 #include <memory>
+#include <utility>
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "checker/internal/type_check_env.h"
 #include "checker/internal/type_checker_impl.h"
 #include "checker/type_checker.h"
+#include "common/decl.h"
 
 namespace cel {
 
 absl::StatusOr<std::unique_ptr<TypeChecker>> TypeCheckerBuilder::Build() && {
-  return std::make_unique<checker_internal::TypeCheckerImpl>();
+  return std::make_unique<checker_internal::TypeCheckerImpl>(std::move(env_));
+}
+
+absl::Status TypeCheckerBuilder::AddLibrary(CheckerLibrary library) {
+  if (!library.id.empty() && !library_ids_.insert(library.id).second) {
+    return absl::AlreadyExistsError(
+        absl::StrCat("library '", library.id, "' already exists"));
+  }
+  absl::Status status = library.options(*this);
+
+  libraries_.push_back(std::move(library));
+  return status;
+}
+
+absl::Status TypeCheckerBuilder::AddVariable(const VariableDecl& decl) {
+  bool inserted = env_.InsertVariableIfAbsent(decl);
+  if (!inserted) {
+    return absl::AlreadyExistsError(
+        absl::StrCat("variable '", decl.name(), "' already exists"));
+  }
+  return absl::OkStatus();
+}
+
+absl::Status TypeCheckerBuilder::AddFunction(const FunctionDecl& decl) {
+  bool inserted = env_.InsertFunctionIfAbsent(decl);
+  if (!inserted) {
+    return absl::AlreadyExistsError(
+        absl::StrCat("function '", decl.name(), "' already exists"));
+  }
+  return absl::OkStatus();
 }
 
 }  // namespace cel

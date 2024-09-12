@@ -81,7 +81,28 @@ cc_library(
     hdrs = ["type_checker_builder.h"],
     deps = [
         ":type_checker",
+        "//checker/internal:type_check_env",
         "//checker/internal:type_checker_impl",
+        "//common:decl",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/functional:any_invocable",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "type_checker_builder_test",
+    srcs = ["type_checker_builder_test.cc"],
+    deps = [
+        ":type_checker_builder",
+        ":validation_result",
+        "//checker/internal:test_ast_helpers",
+        "//common:decl",
+        "//common:type",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
     ],
 )

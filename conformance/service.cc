@@ -40,9 +40,11 @@
 #include "absl/types/span.h"
 #include "checker/type_checker_builder.h"
 #include "common/ast.h"
+#include "common/decl.h"
 #include "common/expr.h"
 #include "common/memory.h"
 #include "common/source.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "conformance/value_conversion.h"
 #include "eval/public/activation.h"
@@ -85,8 +87,11 @@
 
 
 using ::cel::CreateStandardRuntimeBuilder;
+using ::cel::DynType;
+using ::cel::FunctionDecl;
 using ::cel::Runtime;
 using ::cel::RuntimeOptions;
+using ::cel::VariableDecl;
 using ::cel::conformance_internal::FromConformanceValue;
 using ::cel::conformance_internal::ToConformanceValue;
 using ::cel::extensions::ProtoMemoryManagerRef;
@@ -608,6 +613,31 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
     cel::TypeCheckerBuilder builder;
     // TODO: apply the type env to the checker builder for custom
     // variables and functions.
+
+    for (const auto& decl : request.type_env()) {
+      const auto& name = decl.name();
+      if (decl.has_function()) {
+        FunctionDecl fn_decl;
+        fn_decl.set_name(name);
+        for (const auto& overload_pb : decl.function().overloads()) {
+          cel::OverloadDecl overload;
+          overload.set_id(overload_pb.overload_id());
+          if (overload_pb.is_instance_function()) {
+            overload.set_member(true);
+          }
+          for (auto& _ : overload_pb.params()) {
+            overload.mutable_args().push_back(DynType{});
+          }
+          CEL_RETURN_IF_ERROR(fn_decl.AddOverload(std::move(overload)));
+        }
+        CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(fn_decl)));
+      } else if (decl.has_ident()) {
+        VariableDecl var_decl;
+        var_decl.set_name(name);
+        CEL_RETURN_IF_ERROR(builder.AddVariable(var_decl));
+      }
+    }
+
     CEL_ASSIGN_OR_RETURN(auto checker, std::move(builder).Build());
 
     CEL_ASSIGN_OR_RETURN(auto validation_result,

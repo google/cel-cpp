@@ -24,7 +24,7 @@ namespace cel {
 // Trivial base implementation of AstVisitor.
 class AstVisitorBase : public AstVisitor {
  public:
-  AstVisitorBase() {}
+  AstVisitorBase() = default;
 
   // Non-copyable
   AstVisitorBase(const AstVisitorBase&) = delete;
@@ -39,6 +39,8 @@ class AstVisitorBase : public AstVisitor {
   // Ident node handler.
   // Invoked after child nodes are processed.
   void PostVisitIdent(const Expr&, const IdentExpr&) override {}
+
+  void PreVisitSelect(const Expr&, const SelectExpr&) override {}
 
   // Select node handler
   // Invoked after child nodes are processed.

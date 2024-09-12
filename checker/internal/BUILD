@@ -18,15 +18,123 @@ package(
 )
 
 cc_library(
+    name = "test_ast_helpers",
+    testonly = 1,
+    srcs = ["test_ast_helpers.cc"],
+    hdrs = ["test_ast_helpers.h"],
+    deps = [
+        "//common:ast",
+        "//extensions/protobuf:ast_converters",
+        "//internal:status_macros",
+        "//parser",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_test(
+    name = "test_ast_helpers_test",
+    srcs = ["test_ast_helpers_test.cc"],
+    deps = [
+        ":test_ast_helpers",
+        "//base/ast_internal:ast_impl",
+        "//common:ast",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+    ],
+)
+
+cc_library(
+    name = "type_check_env",
+    srcs = ["type_check_env.cc"],
+    hdrs = ["type_check_env.h"],
+    deps = [
+        "//common:decl",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_library(
+    name = "namespace_generator",
+    srcs = ["namespace_generator.cc"],
+    hdrs = ["namespace_generator.h"],
+    deps = [
+        "//internal:lexis",
+        "@com_google_absl//absl/functional:function_ref",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "namespace_generator_test",
+    srcs = ["namespace_generator_test.cc"],
+    deps = [
+        ":namespace_generator",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings:string_view",
+    ],
+)
+
+cc_library(
     name = "type_checker_impl",
     srcs = ["type_checker_impl.cc"],
     hdrs = ["type_checker_impl.h"],
     deps = [
+        ":namespace_generator",
+        ":type_check_env",
+        "//base/ast_internal:ast_impl",
+        "//base/ast_internal:expr",
         "//checker:type_check_issue",
         "//checker:type_checker",
         "//checker:validation_result",
         "//common:ast",
+        "//common:ast_rewrite",
+        "//common:ast_traverse",
+        "//common:ast_visitor",
+        "//common:ast_visitor_base",
+        "//common:decl",
+        "//common:expr",
         "//common:source",
+        "//common:type",
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "type_checker_impl_test",
+    srcs = ["type_checker_impl_test.cc"],
+    deps = [
+        ":test_ast_helpers",
+        ":type_check_env",
+        ":type_checker_impl",
+        "//base/ast_internal:ast_impl",
+        "//base/ast_internal:expr",
+        "//checker:type_check_issue",
+        "//checker:validation_result",
+        "//common:ast",
+        "//common:decl",
+        "//common:type",
+        "//internal:status_macros",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings",
     ],
 )
