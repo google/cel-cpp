@@ -284,7 +284,7 @@ absl::StatusOr<Json> DynamicStructProtoToJson(const google::protobuf::Message& m
     CEL_ASSIGN_OR_RETURN(
         auto value,
         DynamicValueProtoToJson(map_begin.GetValueRef().GetMessageValue()));
-    builder.insert_or_assign(absl::Cord(map_begin.GetKey().GetStringValue()),
+    builder.insert_or_assign(absl::Cord(map_begin.GetKeyRef().GetStringValue()),
                              std::move(value));
   }
   return std::move(builder).Build();
