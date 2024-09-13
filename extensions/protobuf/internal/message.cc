@@ -160,7 +160,8 @@ class AliasingValue : public T {
 // cel::Value -> google::protobuf::MapKey
 
 absl::Status ProtoBoolMapKeyFromValueConverter(const Value& value,
-                                               google::protobuf::MapKey& key) {
+                                               google::protobuf::MapKey& key,
+                                               std::string&) {
   if (auto bool_value = As<BoolValue>(value); bool_value) {
     key.SetBoolValue(bool_value->NativeValue());
     return absl::OkStatus();
@@ -169,7 +170,8 @@ absl::Status ProtoBoolMapKeyFromValueConverter(const Value& value,
 }
 
 absl::Status ProtoInt32MapKeyFromValueConverter(const Value& value,
-                                                google::protobuf::MapKey& key) {
+                                                google::protobuf::MapKey& key,
+                                                std::string&) {
   if (auto int_value = As<IntValue>(value); int_value) {
     if (int_value->NativeValue() < std::numeric_limits<int32_t>::min() ||
         int_value->NativeValue() > std::numeric_limits<int32_t>::max()) {
@@ -182,7 +184,8 @@ absl::Status ProtoInt32MapKeyFromValueConverter(const Value& value,
 }
 
 absl::Status ProtoInt64MapKeyFromValueConverter(const Value& value,
-                                                google::protobuf::MapKey& key) {
+                                                google::protobuf::MapKey& key,
+                                                std::string&) {
   if (auto int_value = As<IntValue>(value); int_value) {
     key.SetInt64Value(int_value->NativeValue());
     return absl::OkStatus();
@@ -191,7 +194,8 @@ absl::Status ProtoInt64MapKeyFromValueConverter(const Value& value,
 }
 
 absl::Status ProtoUInt32MapKeyFromValueConverter(const Value& value,
-                                                 google::protobuf::MapKey& key) {
+                                                 google::protobuf::MapKey& key,
+                                                 std::string&) {
   if (auto uint_value = As<UintValue>(value); uint_value) {
     if (uint_value->NativeValue() > std::numeric_limits<uint32_t>::max()) {
       return absl::OutOfRangeError("uint64 to uint32_t overflow");
@@ -203,7 +207,8 @@ absl::Status ProtoUInt32MapKeyFromValueConverter(const Value& value,
 }
 
 absl::Status ProtoUInt64MapKeyFromValueConverter(const Value& value,
-                                                 google::protobuf::MapKey& key) {
+                                                 google::protobuf::MapKey& key,
+                                                 std::string&) {
   if (auto uint_value = As<UintValue>(value); uint_value) {
     key.SetUInt64Value(uint_value->NativeValue());
     return absl::OkStatus();
@@ -212,9 +217,11 @@ absl::Status ProtoUInt64MapKeyFromValueConverter(const Value& value,
 }
 
 absl::Status ProtoStringMapKeyFromValueConverter(const Value& value,
-                                                 google::protobuf::MapKey& key) {
+                                                 google::protobuf::MapKey& key,
+                                                 std::string& key_string) {
   if (auto string_value = As<StringValue>(value); string_value) {
-    key.SetStringValue(string_value->NativeString());
+    key_string = string_value->NativeString();
+    key.SetStringValue(key_string);
     return absl::OkStatus();
   }
   return TypeConversionError(value.GetTypeName(), "string").NativeValue();
@@ -1306,7 +1313,9 @@ class ParsedProtoMapValueInterface
   absl::StatusOr<bool> FindImpl(ValueManager& value_manager, const Value& key,
                                 Value& result) const final {
     google::protobuf::MapKey map_key;
-    CEL_RETURN_IF_ERROR(map_key_from_value_(Value(key), map_key));
+    std::string map_key_string;
+    CEL_RETURN_IF_ERROR(
+        map_key_from_value_(Value(key), map_key, map_key_string));
     google::protobuf::MapValueConstRef map_value;
     if (!LookupMapValue(*GetReflectionOrDie(message_), message_, *field_,
                         map_key, &map_value)) {
@@ -1322,7 +1331,9 @@ class ParsedProtoMapValueInterface
   absl::StatusOr<bool> HasImpl(ValueManager& value_manager,
                                const Value& key) const final {
     google::protobuf::MapKey map_key;
-    CEL_RETURN_IF_ERROR(map_key_from_value_(Value(key), map_key));
+    std::string map_key_string;
+    CEL_RETURN_IF_ERROR(
+        map_key_from_value_(Value(key), map_key, map_key_string));
     return ContainsMapKey(*GetReflectionOrDie(message_), message_, *field_,
                           map_key);
   }

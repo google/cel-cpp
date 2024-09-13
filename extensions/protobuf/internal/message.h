@@ -17,6 +17,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <string>
 #include <type_traits>
 
 #include "absl/base/attributes.h"
@@ -165,7 +166,8 @@ inline absl::Status ProtoMessageFromValueImpl(
 
 // Converts a value to a specific protocol buffer map key.
 using ProtoMapKeyFromValueConverter = absl::Status (*)(const Value&,
-                                                       google::protobuf::MapKey&);
+                                                       google::protobuf::MapKey&,
+                                                       std::string&);
 
 // Gets the converter for converting from values to protocol buffer map key.
 absl::StatusOr<ProtoMapKeyFromValueConverter> GetProtoMapKeyFromValueConverter(

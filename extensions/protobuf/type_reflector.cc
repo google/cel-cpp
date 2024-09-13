@@ -367,8 +367,10 @@ class ProtoStructValueBuilder final : public StructValueBuilder {
         [this, field, key_converter, map_value_field, value_converter](
             const Value& entry_key,
             const Value& entry_value) -> absl::StatusOr<bool> {
+          std::string proto_key_string;
           google::protobuf::MapKey proto_key;
-          CEL_RETURN_IF_ERROR((*key_converter)(entry_key, proto_key));
+          CEL_RETURN_IF_ERROR(
+              (*key_converter)(entry_key, proto_key, proto_key_string));
           google::protobuf::MapValueRef proto_value;
           protobuf_internal::InsertOrLookupMapValue(
               *reflection_, message_, *field, proto_key, &proto_value);
