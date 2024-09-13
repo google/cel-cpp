@@ -16,6 +16,7 @@
 
 #include <limits>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "google/protobuf/descriptor.h"
@@ -173,6 +174,7 @@ absl::StatusOr<bool> FieldBackedMapImpl::LookupMapValue(
     return InvalidMapKeyType(key_desc_->cpp_type_name());
   }
 
+  std::string map_key_string;
   google::protobuf::MapKey proto_key;
   switch (key_desc_->cpp_type()) {
     case google::protobuf::FieldDescriptor::CPPTYPE_BOOL: {
@@ -197,8 +199,8 @@ absl::StatusOr<bool> FieldBackedMapImpl::LookupMapValue(
     case google::protobuf::FieldDescriptor::CPPTYPE_STRING: {
       CelValue::StringHolder key_value;
       key.GetValue(&key_value);
-      auto str = key_value.value();
-      proto_key.SetStringValue(std::string(str.begin(), str.end()));
+      map_key_string.assign(key_value.value().data(), key_value.value().size());
+      proto_key.SetStringValue(map_key_string);
     } break;
     case google::protobuf::FieldDescriptor::CPPTYPE_UINT32: {
       uint64_t key_value;

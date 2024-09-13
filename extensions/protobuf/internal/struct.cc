@@ -426,8 +426,9 @@ absl::Status DynamicStructProtoFromJson(const JsonObject& json,
   CEL_RETURN_IF_ERROR(CheckFieldMessageType(
       fields_field->message_type()->map_value(), "google.protobuf.Value"));
   for (const auto& entry : json) {
+    std::string map_key_string = static_cast<std::string>(entry.first);
     google::protobuf::MapKey map_key;
-    map_key.SetStringValue(static_cast<std::string>(entry.first));
+    map_key.SetStringValue(map_key_string);
     google::protobuf::MapValueRef map_value;
     protobuf_internal::InsertOrLookupMapValue(
         *reflection, &message, *fields_field, map_key, &map_value);
@@ -609,8 +610,9 @@ absl::StatusOr<google::protobuf::Message*> DynamicStructValueProtoAddField(
                                      google::protobuf::FieldDescriptor::CPPTYPE_STRING));
   CEL_RETURN_IF_ERROR(CheckFieldMessageType(
       map_field->message_type()->map_value(), "google.protobuf.Value"));
+  std::string key_string = std::string(name);
   google::protobuf::MapKey key;
-  key.SetStringValue(std::string(name));
+  key.SetStringValue(key_string);
   google::protobuf::MapValueRef value;
   InsertOrLookupMapValue(*reflection, message, *map_field, key, &value);
   return value.MutableMessageValue();
