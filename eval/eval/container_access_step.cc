@@ -264,7 +264,7 @@ void PerformLookup(ExecutionFrameBase& frame, const Value& container,
     }
     LookupInContainer(optional_value.Value(), key, frame, result);
     if (auto error_value = cel::As<cel::ErrorValue>(result);
-        error_value && cel::IsNoSuchKey(error_value->NativeValue())) {
+        error_value && cel::IsNoSuchKey(*error_value)) {
       result = cel::OptionalValue::None();
       return;
     }

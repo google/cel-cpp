@@ -44,24 +44,23 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final {
  public:
   static constexpr ValueKind kKind = ValueKind::kError;
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  ErrorValue(absl::Status value) noexcept : value_(std::move(value)) {
+  explicit ErrorValue(absl::Status value) : value_(std::move(value)) {
     ABSL_DCHECK(!value_.ok()) << "ErrorValue requires a non-OK absl::Status";
+  }
+
+  ErrorValue& operator=(absl::Status status) {
+    value_ = std::move(status);
+    ABSL_DCHECK(!value_.ok()) << "ErrorValue requires a non-OK absl::Status";
+    return *this;
   }
 
   // By default, this creates an UNKNOWN error. You should always create a more
   // specific error value.
   ErrorValue();
   ErrorValue(const ErrorValue&) = default;
-
+  ErrorValue(ErrorValue&&) = default;
   ErrorValue& operator=(const ErrorValue&) = default;
-
-  ErrorValue(ErrorValue&& other) noexcept : value_(std::move(other.value_)) {}
-
-  ErrorValue& operator=(ErrorValue&& other) noexcept {
-    value_ = std::move(other.value_);
-    return *this;
-  }
+  ErrorValue& operator=(ErrorValue&&) = default;
 
   constexpr ValueKind kind() const { return kKind; }
 
@@ -92,9 +91,9 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final {
     return std::move(value_);
   }
 
-  void swap(ErrorValue& other) noexcept {
+  friend void swap(ErrorValue& lhs, ErrorValue& rhs) noexcept {
     using std::swap;
-    swap(value_, other.value_);
+    swap(lhs.value_, rhs.value_);
   }
 
  private:
@@ -112,8 +111,6 @@ ErrorValue DuplicateKeyError();
 ErrorValue TypeConversionError(absl::string_view from, absl::string_view to);
 
 ErrorValue TypeConversionError(const Type& from, const Type& to);
-
-inline void swap(ErrorValue& lhs, ErrorValue& rhs) noexcept { lhs.swap(rhs); }
 
 inline std::ostream& operator<<(std::ostream& out, const ErrorValue& value) {
   return out << value.DebugString();
