@@ -42,7 +42,7 @@ GetArena(const T* ptr) {
 template <typename T>
 std::enable_if_t<!IsArenaConstructible<T>::value,
                  absl::Nullable<google::protobuf::Arena*>>
-GetArena(const T* ptr) {
+GetArena([[maybe_unused]] const T* ptr) {
   return nullptr;
 }
 
