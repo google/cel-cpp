@@ -15,7 +15,6 @@
 #include <array>
 
 #include "absl/algorithm/container.h"
-#include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
 #include "absl/strings/strip.h"
 #include "common/type.h"
@@ -23,9 +22,8 @@
 namespace cel {
 
 bool IsWellKnownMessageType(absl::string_view name) {
-  ABSL_CONST_INIT static constexpr absl::string_view kPrefix =
-      "google.protobuf.";
-  ABSL_CONST_INIT static constexpr std::array<absl::string_view, 15> kNames = {
+  static constexpr absl::string_view kPrefix = "google.protobuf.";
+  static constexpr std::array<absl::string_view, 15> kNames = {
       "Any",         "BoolValue",   "BytesValue", "DoubleValue", "Duration",
       "FloatValue",  "Int32Value",  "Int64Value", "ListValue",   "UInt32Value",
       "UInt64Value", "StringValue", "Struct",     "Timestamp",   "Value",
