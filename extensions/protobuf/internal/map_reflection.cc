@@ -14,6 +14,11 @@
 
 #include "extensions/protobuf/internal/map_reflection.h"
 
+#include "absl/base/nullability.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/map_field.h"
+#include "google/protobuf/message.h"
+
 namespace google::protobuf::expr {
 
 class CelMapReflectionFriend final {
@@ -61,6 +66,14 @@ class CelMapReflectionFriend final {
                                      const google::protobuf::MapKey& key,
                                      google::protobuf::MapValueRef* value) {
     return reflection.InsertOrLookupMapValue(message, &field, key, value);
+  }
+
+  static bool DeleteMapValue(
+      absl::Nonnull<const google::protobuf::Reflection*> reflection,
+      absl::Nonnull<google::protobuf::Message*> message,
+      absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+      const google::protobuf::MapKey& key) {
+    return reflection->DeleteMapValue(message, field, key);
   }
 };
 
@@ -113,6 +126,14 @@ bool InsertOrLookupMapValue(const google::protobuf::Reflection& reflection,
                             google::protobuf::MapValueRef* value) {
   return google::protobuf::expr::CelMapReflectionFriend::InsertOrLookupMapValue(
       reflection, message, field, key, value);
+}
+
+bool DeleteMapValue(absl::Nonnull<const google::protobuf::Reflection*> reflection,
+                    absl::Nonnull<google::protobuf::Message*> message,
+                    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+                    const google::protobuf::MapKey& key) {
+  return google::protobuf::expr::CelMapReflectionFriend::DeleteMapValue(
+      reflection, message, field, key);
 }
 
 }  // namespace cel::extensions::protobuf_internal

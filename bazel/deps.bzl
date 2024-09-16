@@ -47,8 +47,9 @@ def base_deps():
         sha256 = RE2_SHA256,
     )
 
-    PROTOBUF_SHA1 = "32bedd9b8a794231ca43d6457bb6b8cd3503fca7"
-    PROTOBUF_SHA256 = "77564633c7508ab2c1b8f07d02afe0ddc08c07bd2ca6a3aa3d56cde0e21143a2"
+    # v28.0
+    PROTOBUF_SHA1 = "439c42c735ae1efed57ab7771986f2a3c0b99319"
+    PROTOBUF_SHA256 = "495b76871df8d102e5c539f9d43f990f5ca53ac183702f5ed90070ba8c8759d1"
     http_archive(
         name = "com_google_protobuf",
         sha256 = PROTOBUF_SHA256,

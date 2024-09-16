@@ -16,6 +16,8 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_MAP_REFLECTION_H_
 
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
+#include "google/protobuf/descriptor.h"
 #include "google/protobuf/map_field.h"
 #include "google/protobuf/message.h"
 
@@ -54,6 +56,11 @@ bool InsertOrLookupMapValue(const google::protobuf::Reflection& reflection,
                             const google::protobuf::MapKey& key,
                             google::protobuf::MapValueRef* value)
     ABSL_ATTRIBUTE_NONNULL();
+
+bool DeleteMapValue(absl::Nonnull<const google::protobuf::Reflection*> reflection,
+                    absl::Nonnull<google::protobuf::Message*> message,
+                    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+                    const google::protobuf::MapKey& key);
 
 }  // namespace cel::extensions::protobuf_internal
 

@@ -693,3 +693,48 @@ cc_library(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "well_known_types",
+    srcs = ["well_known_types.cc"],
+    hdrs = ["well_known_types.h"],
+    deps = [
+        ":status_macros",
+        "//common:any",
+        "//common:json",
+        "//common:memory",
+        "//extensions/protobuf/internal:map_reflection",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/functional:overload",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:variant",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "well_known_types_test",
+    srcs = ["well_known_types_test.cc"],
+    deps = [
+        ":message_type_name",
+        ":minimal_descriptor_pool",
+        ":testing",
+        ":testing_descriptor_pool",
+        ":testing_message_factory",
+        ":well_known_types",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/log:die_if_null",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_protobuf//:protobuf",
+    ],
+)

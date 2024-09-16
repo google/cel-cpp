@@ -598,7 +598,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
   template <typename U, typename... Args>
   friend Unique<U> AllocateUnique(Allocator<> allocator, Args&&... args);
   template <typename U>
-  Unique<U> WrapUnique(U* object, Allocator<> allocator);
+  friend Unique<U> WrapUnique(U* object, Allocator<> allocator);
   friend class ReferenceCountingMemoryManager;
   friend class PoolingMemoryManager;
   friend struct std::pointer_traits<Unique<T>>;
@@ -702,7 +702,27 @@ std::enable_if_t<!std::is_const_v<T>, Unique<T>> WrapUnique(T* object) {
 
 template <typename T>
 Unique<T> WrapUnique(T* object, Allocator<> allocator) {
-  return Unique<T>(allocator.arena(), object);
+  return Unique<T>(object, allocator.arena());
+}
+
+template <typename T>
+inline bool operator==(const Unique<T>& lhs, std::nullptr_t) {
+  return !static_cast<bool>(lhs);
+}
+
+template <typename T>
+inline bool operator==(std::nullptr_t, const Unique<T>& rhs) {
+  return !static_cast<bool>(rhs);
+}
+
+template <typename T>
+inline bool operator!=(const Unique<T>& lhs, std::nullptr_t) {
+  return static_cast<bool>(lhs);
+}
+
+template <typename T>
+inline bool operator!=(std::nullptr_t, const Unique<T>& rhs) {
+  return static_cast<bool>(rhs);
 }
 
 }  // namespace cel
