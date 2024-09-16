@@ -969,7 +969,7 @@ class StructTypeField final {
   StructTypeField(MessageTypeField field)
       : variant_(absl::in_place_type<MessageTypeField>, field) {}
 
-  StructTypeField() = default;
+  StructTypeField() = delete;
   StructTypeField(const StructTypeField&) = default;
   StructTypeField(StructTypeField&&) = default;
   StructTypeField& operator=(const StructTypeField&) = default;
