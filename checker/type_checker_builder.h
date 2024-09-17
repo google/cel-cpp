@@ -17,12 +17,14 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "checker/internal/type_check_env.h"
 #include "checker/type_checker.h"
 #include "common/decl.h"
@@ -42,10 +44,21 @@ struct CheckerLibrary {
   ConfigureBuilderCallback options;
 };
 
+// Options for enabling core type checker features.
+struct CheckerOptions {
+  // Enable overloads for numeric comparisons across types.
+  // For example, 1.0 < 2 will resolve to lt_double_int.
+  //
+  // By default, this is disabled and expressions must explicitly cast to dyn or
+  // the same type to compare.
+  bool enable_cross_numeric_comparisons = false;
+};
+
 // Builder for TypeChecker instances.
 class TypeCheckerBuilder {
  public:
-  TypeCheckerBuilder() = default;
+  explicit TypeCheckerBuilder(CheckerOptions options = {})
+      : options_(std::move(options)) {}
 
   TypeCheckerBuilder(const TypeCheckerBuilder&) = delete;
   TypeCheckerBuilder& operator=(const TypeCheckerBuilder&) = delete;
@@ -59,9 +72,12 @@ class TypeCheckerBuilder {
   absl::Status AddVariable(const VariableDecl& decl);
   absl::Status AddFunction(const FunctionDecl& decl);
 
-  void set_container(std::string container);
+  void set_container(absl::string_view container);
+
+  const CheckerOptions& options() const { return options_; }
 
  private:
+  CheckerOptions options_;
   std::vector<CheckerLibrary> libraries_;
   absl::flat_hash_set<std::string> library_ids_;
 

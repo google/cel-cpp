@@ -46,6 +46,17 @@ cc_test(
 )
 
 cc_library(
+    name = "builtins_arena",
+    srcs = ["builtins_arena.cc"],
+    hdrs = ["builtins_arena.h"],
+    deps = [
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "type_check_env",
     srcs = ["type_check_env.cc"],
     hdrs = ["type_check_env.h"],

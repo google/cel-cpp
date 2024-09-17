@@ -106,3 +106,42 @@ cc_test(
         "@com_google_absl//absl/status:status_matchers",
     ],
 )
+
+cc_library(
+    name = "standard_library",
+    srcs = ["standard_library.cc"],
+    hdrs = ["standard_library.h"],
+    deps = [
+        ":type_checker_builder",
+        "//base:builtins",
+        "//checker/internal:builtins_arena",
+        "//common:constant",
+        "//common:decl",
+        "//common:memory",
+        "//common:type",
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/status",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "standard_library_test",
+    srcs = ["standard_library_test.cc"],
+    deps = [
+        ":standard_library",
+        ":type_checker",
+        ":type_checker_builder",
+        ":validation_result",
+        "//base/ast_internal:ast_impl",
+        "//base/ast_internal:expr",
+        "//checker/internal:test_ast_helpers",
+        "//common:ast",
+        "//common:constant",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+    ],
+)

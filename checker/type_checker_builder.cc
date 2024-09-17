@@ -14,11 +14,13 @@
 #include "checker/type_checker_builder.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "checker/internal/type_check_env.h"
 #include "checker/internal/type_checker_impl.h"
 #include "checker/type_checker.h"
@@ -57,6 +59,10 @@ absl::Status TypeCheckerBuilder::AddFunction(const FunctionDecl& decl) {
         absl::StrCat("function '", decl.name(), "' already exists"));
   }
   return absl::OkStatus();
+}
+
+void TypeCheckerBuilder::set_container(absl::string_view container) {
+  env_.set_container(std::string(container));
 }
 
 }  // namespace cel
