@@ -87,19 +87,19 @@ class MockAccessor : public LegacyTypeAccessApis, public LegacyTypeInfoApis {
   MOCK_METHOD(absl::StatusOr<bool>, HasField,
               (absl::string_view field_name,
                const CelValue::MessageWrapper& value),
-              (const override));
+              (const, override));
   MOCK_METHOD(absl::StatusOr<CelValue>, GetField,
               (absl::string_view field_name,
                const CelValue::MessageWrapper& instance,
                ProtoWrapperTypeOptions unboxing_option,
                cel::MemoryManagerRef memory_manager),
-              (const override));
+              (const, override));
   MOCK_METHOD(absl::string_view, GetTypename,
-              (const CelValue::MessageWrapper& instance), (const override));
+              (const CelValue::MessageWrapper& instance), (const, override));
   MOCK_METHOD(std::string, DebugString,
-              (const CelValue::MessageWrapper& instance), (const override));
+              (const CelValue::MessageWrapper& instance), (const, override));
   MOCK_METHOD(std::vector<absl::string_view>, ListFields,
-              (const CelValue::MessageWrapper& value), (const override));
+              (const CelValue::MessageWrapper& value), (const, override));
   const LegacyTypeAccessApis* GetAccessApis(
       const CelValue::MessageWrapper& instance) const override {
     return this;

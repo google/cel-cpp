@@ -63,7 +63,7 @@ class MockDirectStep : public DirectExpressionStep {
   MOCK_METHOD(absl::Status, Evaluate,
               (ExecutionFrameBase & frame, Value& result,
                AttributeTrail& scratch),
-              (const override));
+              (const, override));
 };
 
 std::unique_ptr<DirectExpressionStep> MockNeverCalledDirectStep() {

@@ -257,7 +257,8 @@ class MockDirectStep : public DirectExpressionStep {
   MockDirectStep() : DirectExpressionStep(-1) {}
 
   MOCK_METHOD(absl::Status, Evaluate,
-              (ExecutionFrameBase&, Value&, AttributeTrail&), (const override));
+              (ExecutionFrameBase&, Value&, AttributeTrail&),
+              (const, override));
 };
 
 // Test fixture for comprehensions.
