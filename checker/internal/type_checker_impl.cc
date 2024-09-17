@@ -14,12 +14,14 @@
 
 #include "checker/internal/type_checker_impl.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
@@ -27,9 +29,12 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
+#include "absl/time/time.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
+#include "checker/internal/builtins_arena.h"
 #include "checker/internal/namespace_generator.h"
 #include "checker/internal/type_check_env.h"
 #include "checker/type_check_issue.h"
@@ -39,11 +44,14 @@
 #include "common/ast_traverse.h"
 #include "common/ast_visitor.h"
 #include "common/ast_visitor_base.h"
+#include "common/constant.h"
 #include "common/decl.h"
 #include "common/expr.h"
 #include "common/source.h"
 #include "common/type.h"
+#include "common/type_kind.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/arena.h"
 
 namespace cel::checker_internal {
 namespace {
@@ -52,6 +60,19 @@ using cel::ast_internal::AstImpl;
 
 using AstType = cel::ast_internal::Type;
 using Severity = TypeCheckIssue::Severity;
+
+Type FreeListType() {
+  static absl::NoDestructor<Type> kInstance(
+      Type(ListType(BuiltinsArena(), TypeParamType("element_type"))));
+  return *kInstance;
+}
+
+Type FreeMapType() {
+  static absl::NoDestructor<Type> kInstance(
+      Type(MapType(BuiltinsArena(), TypeParamType("key_type"),
+                   TypeParamType("value_type"))));
+  return *kInstance;
+}
 
 std::string FormatCandidate(absl::Span<const std::string> qualifiers) {
   return absl::StrJoin(qualifiers, ".");
@@ -82,6 +103,119 @@ SourceLocation ComputeSourceLocation(const AstImpl& ast, int64_t expr_id) {
   return SourceLocation{line_idx + 1, rel_position};
 }
 
+// Flatten the type to the AST type representation to remove any lifecycle
+// dependency between the type check environment and the AST.
+//
+// TODO: It may be better to do this at the point of serialization
+// in the future, but requires corresponding change for the runtime to correctly
+// rehydrate the serialized Ast.
+absl::StatusOr<AstType> FlattenType(const Type& type);
+
+absl::StatusOr<AstType> FlattenAbstractType(const OpaqueType& type) {
+  std::vector<AstType> parameter_types;
+  parameter_types.reserve(type.GetParameters().size());
+  for (const auto& param : type.GetParameters()) {
+    CEL_ASSIGN_OR_RETURN(auto param_type, FlattenType(param));
+    parameter_types.push_back(std::move(param_type));
+  }
+
+  return AstType(ast_internal::AbstractType(std::string(type.name()),
+                                            std::move(parameter_types)));
+}
+
+absl::StatusOr<AstType> FlattenMapType(const MapType& type) {
+  CEL_ASSIGN_OR_RETURN(auto key, FlattenType(type.key()));
+  CEL_ASSIGN_OR_RETURN(auto value, FlattenType(type.value()));
+
+  return AstType(
+      ast_internal::MapType(std::make_unique<AstType>(std::move(key)),
+                            std::make_unique<AstType>(std::move(value))));
+}
+
+absl::StatusOr<AstType> FlattenListType(const ListType& type) {
+  CEL_ASSIGN_OR_RETURN(auto elem, FlattenType(type.element()));
+
+  return AstType(
+      ast_internal::ListType(std::make_unique<AstType>(std::move(elem))));
+}
+
+absl::StatusOr<AstType> FlattenMessageType(const StructType& type) {
+  return AstType(ast_internal::MessageType(std::string(type.name())));
+}
+
+absl::StatusOr<AstType> FlattenTypeType(const TypeType& type) {
+  if (type.GetParameters().size() > 1) {
+    return absl::InternalError(
+        absl::StrCat("Unsupported type: ", type.DebugString()));
+  }
+  if (type.GetParameters().empty()) {
+    return AstType(std::make_unique<AstType>());
+  }
+  CEL_ASSIGN_OR_RETURN(auto param, FlattenType(type.GetParameters()[0]));
+  return AstType(std::make_unique<AstType>(std::move(param)));
+}
+
+absl::StatusOr<AstType> FlattenType(const Type& type) {
+  switch (type.kind()) {
+    case TypeKind::kDyn:
+      return AstType(ast_internal::DynamicType());
+    case TypeKind::kError:
+      return AstType(ast_internal::ErrorType());
+    case TypeKind::kNull:
+      return AstType(ast_internal::NullValue());
+    case TypeKind::kBool:
+      return AstType(ast_internal::PrimitiveType::kBool);
+    case TypeKind::kInt:
+      return AstType(ast_internal::PrimitiveType::kInt64);
+    case TypeKind::kUint:
+      return AstType(ast_internal::PrimitiveType::kUint64);
+    case TypeKind::kDouble:
+      return AstType(ast_internal::PrimitiveType::kDouble);
+    case TypeKind::kString:
+      return AstType(ast_internal::PrimitiveType::kString);
+    case TypeKind::kBytes:
+      return AstType(ast_internal::PrimitiveType::kBytes);
+    case TypeKind::kDuration:
+      return AstType(ast_internal::WellKnownType::kDuration);
+    case TypeKind::kTimestamp:
+      return AstType(ast_internal::WellKnownType::kTimestamp);
+    case TypeKind::kStruct:
+      return FlattenMessageType(static_cast<StructType>(type));
+    case TypeKind::kList:
+      return FlattenListType(static_cast<ListType>(type));
+    case TypeKind::kMap:
+      return FlattenMapType(static_cast<MapType>(type));
+    case TypeKind::kOpaque:
+      return FlattenAbstractType(static_cast<OpaqueType>(type));
+    case TypeKind::kBoolWrapper:
+      return AstType(ast_internal::PrimitiveTypeWrapper(
+          ast_internal::PrimitiveType::kBool));
+    case TypeKind::kIntWrapper:
+      return AstType(ast_internal::PrimitiveTypeWrapper(
+          ast_internal::PrimitiveType::kInt64));
+    case TypeKind::kUintWrapper:
+      return AstType(ast_internal::PrimitiveTypeWrapper(
+          ast_internal::PrimitiveType::kUint64));
+    case TypeKind::kDoubleWrapper:
+      return AstType(ast_internal::PrimitiveTypeWrapper(
+          ast_internal::PrimitiveType::kDouble));
+    case TypeKind::kStringWrapper:
+      return AstType(ast_internal::PrimitiveTypeWrapper(
+          ast_internal::PrimitiveType::kString));
+    case TypeKind::kBytesWrapper:
+      return AstType(ast_internal::PrimitiveTypeWrapper(
+          ast_internal::PrimitiveType::kBytes));
+    case TypeKind::kTypeParam:
+      // Convert any remaining free type params to dyn.
+      return AstType(ast_internal::DynamicType());
+    case TypeKind::kType:
+      return FlattenTypeType(static_cast<TypeType>(type));
+    default:
+      return absl::InternalError(
+          absl::StrCat("Unsupported type: ", type.DebugString()));
+  }
+}  // namespace
+
 class ResolveVisitor : public AstVisitorBase {
  public:
   struct FunctionResolution {
@@ -92,13 +226,15 @@ class ResolveVisitor : public AstVisitorBase {
   ResolveVisitor(absl::string_view container,
                  NamespaceGenerator namespace_generator,
                  const TypeCheckEnv& env, const AstImpl& ast,
-                 std::vector<TypeCheckIssue>& issues)
+                 std::vector<TypeCheckIssue>& issues,
+                 absl::Nonnull<google::protobuf::Arena*> arena)
       : container_(container),
         namespace_generator_(std::move(namespace_generator)),
         env_(&env),
         issues_(&issues),
         ast_(&ast),
         root_scope_(env.MakeVariableScope()),
+        arena_(arena),
         current_scope_(&root_scope_) {}
 
   void PreVisitExpr(const Expr& expr) override { expr_stack_.push_back(&expr); }
@@ -110,11 +246,17 @@ class ResolveVisitor : public AstVisitorBase {
     expr_stack_.pop_back();
   }
 
+  void PostVisitConst(const Expr& expr, const Constant& constant) override;
+
   void PreVisitComprehension(const Expr& expr,
                              const ComprehensionExpr& comprehension) override;
 
   void PostVisitComprehension(const Expr& expr,
                               const ComprehensionExpr& comprehension) override;
+
+  void PostVisitMap(const Expr& expr, const MapExpr& map) override;
+
+  void PostVisitList(const Expr& expr, const ListExpr& list) override;
 
   void PreVisitComprehensionSubexpression(
       const Expr& expr, const ComprehensionExpr& comprehension,
@@ -137,7 +279,7 @@ class ResolveVisitor : public AstVisitorBase {
     // based on the runtime configuration.
   }
 
-  // Accessors for resolve values.
+  // Accessors for resolved values.
   const absl::flat_hash_map<const Expr*, FunctionResolution>& functions()
       const {
     return functions_;
@@ -148,14 +290,16 @@ class ResolveVisitor : public AstVisitorBase {
     return attributes_;
   }
 
+  const absl::flat_hash_map<const Expr*, Type>& types() const { return types_; }
+
   const absl::Status& status() const { return status_; }
 
  private:
   struct ComprehensionScope {
     const Expr* comprehension_expr;
     const VariableScope* parent;
-    const VariableScope* accu_scope;
-    const VariableScope* iter_scope;
+    VariableScope* accu_scope;
+    VariableScope* iter_scope;
   };
 
   void ResolveSimpleIdentifier(const Expr& expr, absl::string_view name);
@@ -174,12 +318,18 @@ class ResolveVisitor : public AstVisitorBase {
                      container_, "')")));
   }
 
+  Type GetTypeOrDyn(const Expr* expr) {
+    auto iter = types_.find(expr);
+    return iter != types_.end() ? iter->second : DynType();
+  }
+
   absl::string_view container_;
   NamespaceGenerator namespace_generator_;
   absl::Nonnull<const TypeCheckEnv*> env_;
   absl::Nonnull<std::vector<TypeCheckIssue>*> issues_;
   absl::Nonnull<const ast_internal::AstImpl*> ast_;
   VariableScope root_scope_;
+  absl::Nonnull<google::protobuf::Arena*> arena_;
 
   // state tracking for the traversal.
   const VariableScope* current_scope_;
@@ -193,6 +343,8 @@ class ResolveVisitor : public AstVisitorBase {
   // References that were resolved and may require AST rewrites.
   absl::flat_hash_map<const Expr*, FunctionResolution> functions_;
   absl::flat_hash_map<const Expr*, const VariableDecl*> attributes_;
+
+  absl::flat_hash_map<const Expr*, Type> types_;
 };
 
 void ResolveVisitor::PostVisitIdent(const Expr& expr, const IdentExpr& ident) {
@@ -236,6 +388,155 @@ void ResolveVisitor::PostVisitIdent(const Expr& expr, const IdentExpr& ident) {
   }
 }
 
+void ResolveVisitor::PostVisitConst(const Expr& expr,
+                                    const Constant& constant) {
+  switch (constant.kind().index()) {
+    case ConstantKindIndexOf<std::nullptr_t>():
+      types_[&expr] = NullType();
+      break;
+    case ConstantKindIndexOf<bool>():
+      types_[&expr] = BoolType();
+      break;
+    case ConstantKindIndexOf<int64_t>():
+      types_[&expr] = IntType();
+      break;
+    case ConstantKindIndexOf<uint64_t>():
+      types_[&expr] = UintType();
+      break;
+    case ConstantKindIndexOf<double>():
+      types_[&expr] = DoubleType();
+      break;
+    case ConstantKindIndexOf<BytesConstant>():
+      types_[&expr] = BytesType();
+      break;
+    case ConstantKindIndexOf<StringConstant>():
+      types_[&expr] = StringType();
+      break;
+    case ConstantKindIndexOf<absl::Duration>():
+      types_[&expr] = DurationType();
+      break;
+    case ConstantKindIndexOf<absl::Time>():
+      types_[&expr] = TimestampType();
+      break;
+    default:
+      issues_->push_back(TypeCheckIssue::CreateError(
+          ComputeSourceLocation(*ast_, expr.id()),
+          absl::StrCat("unsupported constant type: ",
+                       constant.kind().index())));
+      break;
+  }
+}
+
+bool IsSupportedKeyType(const Type& type) {
+  switch (type.kind()) {
+    case TypeKind::kBool:
+    case TypeKind::kInt:
+    case TypeKind::kUint:
+    case TypeKind::kString:
+    case TypeKind::kDyn:
+      return true;
+    default:
+      return false;
+  }
+}
+
+void ResolveVisitor::PostVisitMap(const Expr& expr, const MapExpr& map) {
+  // Roughly follows map type inferencing behavior in Go.
+  //
+  // We try to infer the type of the map if all of the keys or values are
+  // homogeneously typed, otherwise assume the type parameter is dyn (defer to
+  // runtime for enforcing type compatibility).
+  //
+  // TODO: Widening behavior is not well documented for map / list
+  // construction in the spec and is a bit inconsistent between implementations.
+  //
+  // In the future, we should probably default enforce homogeneously
+  // typed maps unless tagged as JSON (and the values are assignable to
+  // the JSON value union type).
+
+  absl::optional<Type> overall_key_type;
+  absl::optional<Type> overall_value_type;
+
+  for (const auto& entry : map.entries()) {
+    const Expr* key = &entry.key();
+    Type key_type = GetTypeOrDyn(key);
+    if (!IsSupportedKeyType(key_type)) {
+      // The Go type checker implementation can allow any type as a map key, but
+      // per the spec this should be limited to the types listed in
+      // IsSupportedKeyType.
+      //
+      // To match the Go implementation, we just warn here, but in the future
+      // we should consider making this an error.
+      issues_->push_back(TypeCheckIssue(
+          Severity::kWarning, ComputeSourceLocation(*ast_, key->id()),
+          absl::StrCat("unsupported map key type: ", key_type.DebugString())));
+    }
+    if (overall_key_type.has_value()) {
+      if (key_type != *overall_key_type) {
+        overall_key_type = DynType();
+      }
+    } else {
+      overall_key_type = key_type;
+    }
+
+    const Expr* value = &entry.value();
+    Type value_type = GetTypeOrDyn(value);
+    if (entry.optional()) {
+      if (value_type.IsOptional()) {
+        value_type = static_cast<OptionalType>(value_type).GetParameter();
+      }
+    }
+    if (overall_value_type.has_value()) {
+      if (value_type != *overall_value_type) {
+        overall_value_type = DynType();
+      }
+    } else {
+      overall_value_type = value_type;
+    }
+  }
+
+  if (overall_value_type.has_value() && overall_key_type.has_value()) {
+    types_[&expr] = MapType(arena_, *overall_key_type, *overall_value_type);
+    return;
+  } else if (overall_value_type.has_value() != overall_key_type.has_value()) {
+    status_.Update(absl::InternalError(
+        "Map has mismatched key and value type inference resolution"));
+    return;
+  }
+
+  types_[&expr] = FreeMapType();
+}
+
+void ResolveVisitor::PostVisitList(const Expr& expr, const ListExpr& list) {
+  // Follows list type inferencing behavior in Go (see map comments above).
+
+  absl::optional<Type> overall_value_type;
+
+  for (const auto& element : list.elements()) {
+    const Expr* value = &element.expr();
+    Type value_type = GetTypeOrDyn(value);
+    if (element.optional()) {
+      if (value_type.IsOptional()) {
+        value_type = static_cast<OptionalType>(value_type).GetParameter();
+      }
+    }
+    if (overall_value_type.has_value()) {
+      if (value_type != *overall_value_type) {
+        overall_value_type = DynType();
+      }
+    } else {
+      overall_value_type = value_type;
+    }
+  }
+
+  if (overall_value_type.has_value()) {
+    types_[&expr] = ListType(arena_, *overall_value_type);
+    return;
+  }
+
+  types_[&expr] = FreeListType();
+}
+
 void ResolveVisitor::PostVisitCall(const Expr& expr, const CallExpr& call) {
   if (auto iter = maybe_namespaced_functions_.find(&expr);
       iter != maybe_namespaced_functions_.end()) {
@@ -271,15 +572,10 @@ void ResolveVisitor::PostVisitCall(const Expr& expr, const CallExpr& call) {
 void ResolveVisitor::PreVisitComprehension(
     const Expr& expr, const ComprehensionExpr& comprehension) {
   std::unique_ptr<VariableScope> accu_scope = current_scope_->MakeNestedScope();
-  const auto* accu_scope_ptr = accu_scope.get();
+  auto* accu_scope_ptr = accu_scope.get();
 
   std::unique_ptr<VariableScope> iter_scope = accu_scope->MakeNestedScope();
-  const auto* iter_scope_ptr = iter_scope.get();
-
-  iter_scope->InsertVariableIfAbsent(
-      MakeVariableDecl(comprehension.iter_var(), DynType()));
-  accu_scope->InsertVariableIfAbsent(
-      MakeVariableDecl(comprehension.accu_var(), DynType()));
+  auto* iter_scope_ptr = iter_scope.get();
 
   // Keep the temporary decls alive as long as the visitor.
   comprehension_vars_.push_back(std::move(accu_scope));
@@ -307,6 +603,7 @@ void ResolveVisitor::PreVisitComprehensionSubexpression(
     status_.Update(absl::InternalError("Comprehension scope stack broken"));
     return;
   }
+
   switch (comprehension_arg) {
     case ComprehensionArg::LOOP_CONDITION:
       current_scope_ = scope.accu_scope;
@@ -337,6 +634,45 @@ void ResolveVisitor::PostVisitComprehensionSubexpression(
     return;
   }
   current_scope_ = scope.parent;
+
+  // Setting the type depends on the order the visitor is called -- the visitor
+  // guarantees iter range and accu init are visited before subexpressions where
+  // the corresponding variables can be referenced.
+  switch (comprehension_arg) {
+    case ComprehensionArg::ACCU_INIT:
+      scope.accu_scope->InsertVariableIfAbsent(MakeVariableDecl(
+          comprehension.accu_var(), GetTypeOrDyn(&comprehension.accu_init())));
+      break;
+    case ComprehensionArg::ITER_RANGE: {
+      Type range_type = GetTypeOrDyn(&comprehension.iter_range());
+      Type iter_type = DynType();
+      switch (range_type.kind()) {
+        case TypeKind::kList:
+          iter_type = static_cast<ListType>(range_type).element();
+          break;
+        case TypeKind::kMap:
+          iter_type = static_cast<MapType>(range_type).key();
+          break;
+        case TypeKind::kDyn:
+          break;
+        default:
+          issues_->push_back(TypeCheckIssue::CreateError(
+              ComputeSourceLocation(*ast_, expr.id()),
+              absl::StrCat("expression of type '", range_type.DebugString(),
+                           "' cannot be the range of a comprehension (must be "
+                           "list, map, or dynamic)")));
+          break;
+      }
+      scope.iter_scope->InsertVariableIfAbsent(
+          MakeVariableDecl(comprehension.iter_var(), iter_type));
+      break;
+    }
+    case ComprehensionArg::RESULT:
+      types_[&expr] = types_[&expr];
+      break;
+    default:
+      break;
+  }
 }
 
 const FunctionDecl* ResolveVisitor::ResolveFunctionCall(
@@ -377,6 +713,7 @@ void ResolveVisitor::ResolveSimpleIdentifier(const Expr& expr,
   }
 
   attributes_[&expr] = decl;
+  types_[&expr] = decl->type();
 }
 
 void ResolveVisitor::ResolveQualifiedIdentifier(
@@ -411,6 +748,7 @@ void ResolveVisitor::ResolveQualifiedIdentifier(
   }
 
   attributes_[root] = decl;
+  types_[root] = decl->type();
 }
 
 void ResolveVisitor::PostVisitSelect(const Expr& expr,
@@ -419,20 +757,20 @@ void ResolveVisitor::PostVisitSelect(const Expr& expr,
 class ResolveRewriter : public AstRewriterBase {
  public:
   explicit ResolveRewriter(const ResolveVisitor& visitor,
-                           AstImpl::ReferenceMap& references)
-      : visitor_(visitor), reference_map_(references) {}
+                           AstImpl::ReferenceMap& references,
+                           AstImpl::TypeMap& types)
+      : visitor_(visitor), reference_map_(references), type_map_(types) {}
   bool PostVisitRewrite(Expr& expr) override {
+    bool rewritten = false;
     if (auto iter = visitor_.attributes().find(&expr);
         iter != visitor_.attributes().end()) {
       const VariableDecl* decl = iter->second;
       auto& ast_ref = reference_map_[expr.id()];
       ast_ref.set_name(decl->name());
       expr.mutable_ident_expr().set_name(decl->name());
-      return true;
-    }
-
-    if (auto iter = visitor_.functions().find(&expr);
-        iter != visitor_.functions().end()) {
+      rewritten = true;
+    } else if (auto iter = visitor_.functions().find(&expr);
+               iter != visitor_.functions().end()) {
       const FunctionDecl* decl = iter->second.decl;
       const bool needs_rewrite = iter->second.namespace_rewrite;
       auto& ast_ref = reference_map_[expr.id()];
@@ -445,15 +783,31 @@ class ResolveRewriter : public AstRewriterBase {
       if (needs_rewrite && expr.call_expr().has_target()) {
         expr.mutable_call_expr().set_target(nullptr);
       }
-      return true;
+      rewritten = true;
     }
 
-    return false;
+    if (auto iter = visitor_.types().find(&expr);
+        iter != visitor_.types().end()) {
+      auto flattened_type = FlattenType(iter->second);
+
+      if (!flattened_type.ok()) {
+        status_.Update(flattened_type.status());
+        return rewritten;
+      }
+      type_map_[expr.id()] = *std::move(flattened_type);
+      rewritten = true;
+    }
+
+    return rewritten;
   }
 
+  const absl::Status& status() const { return status_; }
+
  private:
+  absl::Status status_;
   const ResolveVisitor& visitor_;
   AstImpl::ReferenceMap& reference_map_;
+  AstImpl::TypeMap& type_map_;
 };
 
 }  // namespace
@@ -461,13 +815,14 @@ class ResolveRewriter : public AstRewriterBase {
 absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
     std::unique_ptr<Ast> ast) const {
   auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
+  google::protobuf::Arena type_arena;
 
   std::vector<TypeCheckIssue> issues;
   CEL_ASSIGN_OR_RETURN(auto generator,
                        NamespaceGenerator::Create(env_.container()));
 
   ResolveVisitor visitor(env_.container(), std::move(generator), env_, ast_impl,
-                         issues);
+                         issues, &type_arena);
   CEL_RETURN_IF_ERROR(visitor.status());
 
   TraversalOptions opts;
@@ -484,8 +839,12 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
     }
   }
 
-  ResolveRewriter rewriter(visitor, ast_impl.reference_map());
+  ResolveRewriter rewriter(visitor, ast_impl.reference_map(),
+                           ast_impl.type_map());
   AstRewrite(ast_impl.root_expr(), rewriter);
+
+  CEL_RETURN_IF_ERROR(rewriter.status());
+
   ast_impl.set_is_checked(true);
 
   return ValidationResult(std::move(ast), std::move(issues));

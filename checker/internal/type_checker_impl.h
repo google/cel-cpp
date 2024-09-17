@@ -23,6 +23,7 @@
 #include "checker/type_checker.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
+#include "google/protobuf/arena.h"
 
 namespace cel::checker_internal {
 
@@ -43,6 +44,7 @@ class TypeCheckerImpl : public TypeChecker {
 
  private:
   TypeCheckEnv env_;
+  google::protobuf::Arena type_arena_;
 };
 
 }  // namespace cel::checker_internal

@@ -14,9 +14,12 @@
 
 #include "checker/internal/type_checker_impl.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
+#include "absl/base/no_destructor.h"
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/match.h"
@@ -32,6 +35,8 @@
 #include "common/type.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 namespace checker_internal {
@@ -41,12 +46,14 @@ namespace {
 using ::absl_testing::IsOk;
 using ::cel::ast_internal::AstImpl;
 using ::cel::ast_internal::Reference;
+using ::google::api::expr::test::v1::proto3::TestAllTypes;
 using ::testing::_;
 using ::testing::Contains;
 using ::testing::ElementsAre;
 using ::testing::IsEmpty;
 using ::testing::Pair;
 
+using AstType = ast_internal::Type;
 using Severity = TypeCheckIssue::Severity;
 
 std::string SevString(Severity severity) {
@@ -73,6 +80,11 @@ void AbslStringify(Sink& sink, const TypeCheckIssue& issue) {
 
 namespace checker_internal {
 namespace {
+
+absl::Nonnull<google::protobuf::Arena*> TestTypeArena() {
+  static absl::NoDestructor<google::protobuf::Arena> kArena;
+  return &(*kArena);
+}
 
 MATCHER_P2(IsIssueWithSubstring, severity, substring, "") {
   const TypeCheckIssue& issue = arg;
@@ -366,6 +378,107 @@ TEST_F(TypeCheckerImplTest, NamespaceFunctionCallResolved) {
   EXPECT_FALSE(ast_impl.root_expr().call_expr().has_target());
 }
 
+TEST_F(TypeCheckerImplTest, MixedListTypeToDyn) {
+  TypeCheckEnv env;
+
+  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("[1, 'a']"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+  auto& ast_impl = AstImpl::CastFromPublicAst(*result.GetAst());
+  EXPECT_TRUE(ast_impl.type_map().at(1).list_type().elem_type().has_dyn());
+}
+
+TEST_F(TypeCheckerImplTest, FreeListTypeToDyn) {
+  TypeCheckEnv env;
+
+  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("[]"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+  auto& ast_impl = AstImpl::CastFromPublicAst(*result.GetAst());
+  EXPECT_TRUE(ast_impl.type_map().at(1).list_type().elem_type().has_dyn());
+}
+
+TEST_F(TypeCheckerImplTest, FreeMapTypeToDyn) {
+  TypeCheckEnv env;
+
+  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("{}"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+  auto& ast_impl = AstImpl::CastFromPublicAst(*result.GetAst());
+  EXPECT_TRUE(ast_impl.type_map().at(1).map_type().key_type().has_dyn());
+  EXPECT_TRUE(ast_impl.type_map().at(1).map_type().value_type().has_dyn());
+}
+
+TEST_F(TypeCheckerImplTest, MapTypeWithMixedKeys) {
+  TypeCheckEnv env;
+
+  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("{'a': 1, 2: 3}"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+  auto& ast_impl = AstImpl::CastFromPublicAst(*result.GetAst());
+  EXPECT_TRUE(ast_impl.type_map().at(1).map_type().key_type().has_dyn());
+  EXPECT_EQ(ast_impl.type_map().at(1).map_type().value_type().primitive(),
+            ast_internal::PrimitiveType::kInt64);
+}
+
+TEST_F(TypeCheckerImplTest, MapTypeUnsupportedKeyWarns) {
+  TypeCheckEnv env;
+
+  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("{{}: 'a'}"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(),
+              ElementsAre(IsIssueWithSubstring(Severity::kWarning,
+                                               "unsupported map key type:")));
+}
+
+TEST_F(TypeCheckerImplTest, MapTypeWithMixedValues) {
+  TypeCheckEnv env;
+
+  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("{'a': 1, 'b': '2'}"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+  auto& ast_impl = AstImpl::CastFromPublicAst(*result.GetAst());
+  EXPECT_EQ(ast_impl.type_map().at(1).map_type().key_type().primitive(),
+            ast_internal::PrimitiveType::kString);
+  EXPECT_TRUE(ast_impl.type_map().at(1).map_type().value_type().has_dyn());
+}
+
 TEST_F(TypeCheckerImplTest, ComprehensionVariablesResolved) {
   TypeCheckEnv env;
 
@@ -374,6 +487,21 @@ TEST_F(TypeCheckerImplTest, ComprehensionVariablesResolved) {
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast,
                        MakeTestParsedAst("[1, 2, 3].exists(x, x * x > 10)"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+}
+
+TEST_F(TypeCheckerImplTest, MapComprehensionVariablesResolved) {
+  TypeCheckEnv env;
+
+  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(
+      auto ast, MakeTestParsedAst("{'a': 1, 'b': 2}.exists(x, x == 'b')"));
   ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
 
   EXPECT_TRUE(result.IsValid());
@@ -438,6 +566,234 @@ TEST_F(TypeCheckerImplTest, ComprehensionVarsFollowQualifiedIdentPriority) {
   auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
   EXPECT_THAT(ast_impl.reference_map(),
               Contains(Pair(_, IsVariableReference("x.y"))));
+}
+
+struct PrimitiveLiteralsTestCase {
+  std::string expr;
+  ast_internal::PrimitiveType expected_type;
+};
+
+class PrimitiveLiteralsTest
+    : public testing::TestWithParam<PrimitiveLiteralsTestCase> {};
+
+TEST_P(PrimitiveLiteralsTest, LiteralsTypeInferred) {
+  TypeCheckEnv env;
+  const PrimitiveLiteralsTestCase& test_case = GetParam();
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst(test_case.expr));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
+  EXPECT_EQ(ast_impl.type_map()[1].primitive(), test_case.expected_type);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    PrimitiveLiteralsTests, PrimitiveLiteralsTest,
+    ::testing::Values(
+        PrimitiveLiteralsTestCase{
+            .expr = "1",
+            .expected_type = ast_internal::PrimitiveType::kInt64,
+        },
+        PrimitiveLiteralsTestCase{
+            .expr = "1.0",
+            .expected_type = ast_internal::PrimitiveType::kDouble,
+        },
+        PrimitiveLiteralsTestCase{
+            .expr = "1u",
+            .expected_type = ast_internal::PrimitiveType::kUint64,
+        },
+        PrimitiveLiteralsTestCase{
+            .expr = "'string'",
+            .expected_type = ast_internal::PrimitiveType::kString,
+        },
+        PrimitiveLiteralsTestCase{
+            .expr = "b'bytes'",
+            .expected_type = ast_internal::PrimitiveType::kBytes,
+        },
+        PrimitiveLiteralsTestCase{
+            .expr = "false",
+            .expected_type = ast_internal::PrimitiveType::kBool,
+        }));
+struct AstTypeConversionTestCase {
+  Type decl_type;
+  ast_internal::Type expected_type;
+};
+
+class AstTypeConversionTest
+    : public testing::TestWithParam<AstTypeConversionTestCase> {};
+
+TEST_P(AstTypeConversionTest, TypeConversion) {
+  TypeCheckEnv env;
+  ASSERT_TRUE(
+      env.InsertVariableIfAbsent(MakeVariableDecl("x", GetParam().decl_type)));
+  const AstTypeConversionTestCase& test_case = GetParam();
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("x"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
+  EXPECT_EQ(ast_impl.type_map()[1], test_case.expected_type)
+      << GetParam().decl_type.DebugString();
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Primitives, AstTypeConversionTest,
+    ::testing::Values(
+        AstTypeConversionTestCase{
+            .decl_type = NullType(),
+            .expected_type = AstType(ast_internal::NullValue()),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = DynType(),
+            .expected_type = AstType(ast_internal::DynamicType()),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = BoolType(),
+            .expected_type = AstType(ast_internal::PrimitiveType::kBool),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = IntType(),
+            .expected_type = AstType(ast_internal::PrimitiveType::kInt64),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = UintType(),
+            .expected_type = AstType(ast_internal::PrimitiveType::kUint64),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = DoubleType(),
+            .expected_type = AstType(ast_internal::PrimitiveType::kDouble),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = StringType(),
+            .expected_type = AstType(ast_internal::PrimitiveType::kString),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = BytesType(),
+            .expected_type = AstType(ast_internal::PrimitiveType::kBytes),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = TimestampType(),
+            .expected_type = AstType(ast_internal::WellKnownType::kTimestamp),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = DurationType(),
+            .expected_type = AstType(ast_internal::WellKnownType::kDuration),
+        }));
+
+INSTANTIATE_TEST_SUITE_P(
+    Wrappers, AstTypeConversionTest,
+    ::testing::Values(
+        AstTypeConversionTestCase{
+            .decl_type = IntWrapperType(),
+            .expected_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kInt64)),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = UintWrapperType(),
+            .expected_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kUint64)),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = DoubleWrapperType(),
+            .expected_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kDouble)),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = BoolWrapperType(),
+            .expected_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kBool)),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = StringWrapperType(),
+            .expected_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kString)),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = BytesWrapperType(),
+            .expected_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kBytes)),
+        }));
+
+INSTANTIATE_TEST_SUITE_P(
+    ComplexTypes, AstTypeConversionTest,
+    ::testing::Values(
+        AstTypeConversionTestCase{
+            .decl_type = ListType(TestTypeArena(), IntType()),
+            .expected_type =
+                AstType(ast_internal::ListType(std::make_unique<AstType>(
+                    ast_internal::PrimitiveType::kInt64))),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = MapType(TestTypeArena(), IntType(), IntType()),
+            .expected_type = AstType(ast_internal::MapType(
+                std::make_unique<AstType>(ast_internal::PrimitiveType::kInt64),
+                std::make_unique<AstType>(
+                    ast_internal::PrimitiveType::kInt64))),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = TypeType(TestTypeArena(), IntType()),
+            .expected_type = AstType(
+                std::make_unique<AstType>(ast_internal::PrimitiveType::kInt64)),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = OpaqueType(TestTypeArena(), "tuple",
+                                    {IntType(), IntType()}),
+            .expected_type = AstType(ast_internal::AbstractType(
+                "tuple", {AstType(ast_internal::PrimitiveType::kInt64),
+                          AstType(ast_internal::PrimitiveType::kInt64)})),
+        },
+        AstTypeConversionTestCase{
+            .decl_type = StructType(MessageType(TestAllTypes::descriptor())),
+            .expected_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes"))}));
+
+TEST_F(TypeCheckerImplTest, NullLiteral) {
+  TypeCheckEnv env;
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("null"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
+  EXPECT_TRUE(ast_impl.type_map()[1].has_null());
+}
+
+TEST_F(TypeCheckerImplTest, ComprehensionUnsupportedRange) {
+  TypeCheckEnv env;
+  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+
+  env.InsertVariableIfAbsent(MakeVariableDecl("y", IntType()));
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("'abc'.all(x, y == 2)"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_FALSE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(), Contains(IsIssueWithSubstring(
+                                      Severity::kError,
+                                      "expression of type 'string' cannot be "
+                                      "the range of a comprehension")));
+}
+
+TEST_F(TypeCheckerImplTest, ComprehensionDynRange) {
+  TypeCheckEnv env;
+  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+
+  env.InsertVariableIfAbsent(MakeVariableDecl("range", DynType()));
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("range.all(x, x == 2)"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
 }
 
 }  // namespace
