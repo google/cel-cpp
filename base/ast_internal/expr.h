@@ -739,6 +739,16 @@ class Type {
   }
 
   bool operator==(const Type& other) const {
+    if (absl::holds_alternative<std::unique_ptr<Type>>(type_kind_) &&
+        absl::holds_alternative<std::unique_ptr<Type>>(other.type_kind_)) {
+      const auto& self_type = absl::get<std::unique_ptr<Type>>(type_kind_);
+      const auto& other_type =
+          absl::get<std::unique_ptr<Type>>(other.type_kind_);
+      if (self_type == nullptr || other_type == nullptr) {
+        return self_type == other_type;
+      }
+      return *self_type == *other_type;
+    }
     return type_kind_ == other.type_kind_;
   }
 

@@ -98,7 +98,11 @@ TEST(AstTest, TypeDefaults) {
 TEST(AstTest, TypeComparatorTest) {
   Type type;
   type.set_type_kind(std::make_unique<Type>(PrimitiveType::kBool));
-  EXPECT_FALSE(type.type() == Type());
+
+  EXPECT_TRUE(type == Type(std::make_unique<Type>(PrimitiveType::kBool)));
+  EXPECT_FALSE(type == Type(PrimitiveType::kBool));
+  EXPECT_FALSE(type == Type(std::unique_ptr<Type>()));
+  EXPECT_FALSE(type == Type(std::make_unique<Type>(PrimitiveType::kInt64)));
 }
 
 TEST(AstTest, ExprMutableConstruction) {
