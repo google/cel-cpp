@@ -14,6 +14,8 @@
 
 #include "internal/well_known_types.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <string>
 
 #include "google/protobuf/any.pb.h"
@@ -28,28 +30,42 @@
 #include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
+#include "absl/time/time.h"
+#include "absl/types/variant.h"
+#include "common/memory.h"
 #include "internal/message_type_name.h"
 #include "internal/minimal_descriptor_pool.h"
+#include "internal/parse_text_proto.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
 #include "internal/testing_message_factory.h"
+#include "proto/test/v1/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel::well_known_types {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
 using ::cel::internal::GetMinimalDescriptorPool;
 using ::cel::internal::GetTestingDescriptorPool;
 using ::cel::internal::GetTestingMessageFactory;
+using ::testing::_;
 using ::testing::HasSubstr;
 using ::testing::IsNull;
 using ::testing::NotNull;
+using ::testing::Test;
+using ::testing::VariantWith;
 
-class ReflectionTest : public ::testing::Test {
+using TestAllTypesProto3 = ::google::api::expr::test::v1::proto3::TestAllTypes;
+
+class ReflectionTest : public Test {
  public:
   absl::Nonnull<google::protobuf::Arena*> arena() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return &arena_;
@@ -59,6 +75,14 @@ class ReflectionTest : public ::testing::Test {
     return scratch_space_;
   }
 
+  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() {
+    return GetTestingDescriptorPool();
+  }
+
+  absl::Nonnull<google::protobuf::MessageFactory*> message_factory() {
+    return GetTestingMessageFactory();
+  }
+
   template <typename T>
   absl::Nonnull<T*> MakeGenerated() {
     return google::protobuf::Arena::Create<T>(arena());
@@ -66,12 +90,11 @@ class ReflectionTest : public ::testing::Test {
 
   template <typename T>
   absl::Nonnull<google::protobuf::Message*> MakeDynamic() {
-    const auto* descriptor_pool = GetTestingDescriptorPool();
     const auto* descriptor =
-        ABSL_DIE_IF_NULL(descriptor_pool->FindMessageTypeByName(
+        ABSL_DIE_IF_NULL(descriptor_pool()->FindMessageTypeByName(
             internal::MessageTypeNameFor<T>()));
     const auto* prototype =
-        ABSL_DIE_IF_NULL(GetTestingMessageFactory()->GetPrototype(descriptor));
+        ABSL_DIE_IF_NULL(message_factory()->GetPrototype(descriptor));
     return prototype->New(arena());
   }
 
@@ -505,6 +528,401 @@ TEST_F(ReflectionTest, MessageDescriptorMissing) {
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("descriptor missing for protocol buffer "
                                  "message well known type: ")));
+}
+
+class AdaptFromMessageTest : public Test {
+ public:
+  absl::Nonnull<google::protobuf::Arena*> arena() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return &arena_;
+  }
+
+  std::string& scratch_space() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return scratch_space_;
+  }
+
+  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() {
+    return GetTestingDescriptorPool();
+  }
+
+  absl::Nonnull<google::protobuf::MessageFactory*> message_factory() {
+    return GetTestingMessageFactory();
+  }
+
+  template <typename T>
+  absl::Nonnull<google::protobuf::Message*> MakeDynamic() {
+    const auto* descriptor_pool = GetTestingDescriptorPool();
+    const auto* descriptor =
+        ABSL_DIE_IF_NULL(descriptor_pool->FindMessageTypeByName(
+            internal::MessageTypeNameFor<T>()));
+    const auto* prototype =
+        ABSL_DIE_IF_NULL(GetTestingMessageFactory()->GetPrototype(descriptor));
+    return prototype->New(arena());
+  }
+
+  template <typename T>
+  Owned<google::protobuf::Message> DynamicParseTextProto(absl::string_view text) {
+    return ::cel::internal::DynamicParseTextProto<T>(
+        arena(), text, descriptor_pool(), message_factory());
+  }
+
+  absl::StatusOr<Value> AdaptFromMessage(const google::protobuf::Message& message) {
+    return well_known_types::AdaptFromMessage(
+        arena(), message, descriptor_pool(), message_factory(),
+        scratch_space());
+  }
+
+ private:
+  google::protobuf::Arena arena_;
+  std::string scratch_space_;
+};
+
+TEST_F(AdaptFromMessageTest, BoolValue) {
+  auto message =
+      DynamicParseTextProto<google::protobuf::BoolValue>(R"pb(value: true)pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<bool>(true)));
+}
+
+TEST_F(AdaptFromMessageTest, Int32Value) {
+  auto message =
+      DynamicParseTextProto<google::protobuf::Int32Value>(R"pb(value: 1)pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<int32_t>(1)));
+}
+
+TEST_F(AdaptFromMessageTest, Int64Value) {
+  auto message =
+      DynamicParseTextProto<google::protobuf::Int64Value>(R"pb(value: 1)pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<int64_t>(1)));
+}
+
+TEST_F(AdaptFromMessageTest, UInt32Value) {
+  auto message =
+      DynamicParseTextProto<google::protobuf::UInt32Value>(R"pb(value: 1)pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<uint32_t>(1)));
+}
+
+TEST_F(AdaptFromMessageTest, UInt64Value) {
+  auto message =
+      DynamicParseTextProto<google::protobuf::UInt64Value>(R"pb(value: 1)pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<uint64_t>(1)));
+}
+
+TEST_F(AdaptFromMessageTest, FloatValue) {
+  auto message =
+      DynamicParseTextProto<google::protobuf::FloatValue>(R"pb(value: 1.0)pb");
+  EXPECT_THAT(AdaptFromMessage(*message), IsOkAndHolds(VariantWith<float>(1)));
+}
+
+TEST_F(AdaptFromMessageTest, DoubleValue) {
+  auto message =
+      DynamicParseTextProto<google::protobuf::DoubleValue>(R"pb(value: 1.0)pb");
+  EXPECT_THAT(AdaptFromMessage(*message), IsOkAndHolds(VariantWith<double>(1)));
+}
+
+TEST_F(AdaptFromMessageTest, BytesValue) {
+  auto message = DynamicParseTextProto<google::protobuf::BytesValue>(
+      R"pb(value: "foo")pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<BytesValue>(BytesValue("foo"))));
+}
+
+TEST_F(AdaptFromMessageTest, StringValue) {
+  auto message = DynamicParseTextProto<google::protobuf::StringValue>(
+      R"pb(value: "foo")pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<StringValue>(StringValue("foo"))));
+}
+
+TEST_F(AdaptFromMessageTest, Duration) {
+  auto message = DynamicParseTextProto<google::protobuf::Duration>(
+      R"pb(seconds: 1 nanos: 1)pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<absl::Duration>(absl::Seconds(1) +
+                                                       absl::Nanoseconds(1))));
+}
+
+TEST_F(AdaptFromMessageTest, Duration_SecondsOutOfRange) {
+  auto message = DynamicParseTextProto<google::protobuf::Duration>(
+      R"pb(seconds: 0x7fffffffffffffff nanos: 1)pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("invalid duration seconds: ")));
+}
+
+TEST_F(AdaptFromMessageTest, Duration_NanosOutOfRange) {
+  auto message = DynamicParseTextProto<google::protobuf::Duration>(
+      R"pb(seconds: 1 nanos: 0x7fffffff)pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("invalid duration nanoseconds: ")));
+}
+
+TEST_F(AdaptFromMessageTest, Duration_SignMismatch) {
+  auto message =
+      DynamicParseTextProto<google::protobuf::Duration>(R"pb(seconds: -1
+                                                             nanos: 1)pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("duration sign mismatch: ")));
+}
+
+TEST_F(AdaptFromMessageTest, Timestamp) {
+  auto message =
+      DynamicParseTextProto<google::protobuf::Timestamp>(R"pb(seconds: 1
+                                                              nanos: 1)pb");
+  EXPECT_THAT(
+      AdaptFromMessage(*message),
+      IsOkAndHolds(VariantWith<absl::Time>(
+          absl::UnixEpoch() + absl::Seconds(1) + absl::Nanoseconds(1))));
+}
+
+TEST_F(AdaptFromMessageTest, Timestamp_SecondsOutOfRange) {
+  auto message = DynamicParseTextProto<google::protobuf::Timestamp>(
+      R"pb(seconds: 0x7fffffffffffffff nanos: 1)pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("invalid timestamp seconds: ")));
+}
+
+TEST_F(AdaptFromMessageTest, Timestamp_NanosOutOfRange) {
+  auto message = DynamicParseTextProto<google::protobuf::Timestamp>(
+      R"pb(seconds: 1 nanos: 0x7fffffff)pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("invalid timestamp nanoseconds: ")));
+}
+
+TEST_F(AdaptFromMessageTest, Value_NullValue) {
+  auto message = DynamicParseTextProto<google::protobuf::Value>(
+      R"pb(null_value: NULL_VALUE)pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<std::nullptr_t>(nullptr)));
+}
+
+TEST_F(AdaptFromMessageTest, Value_BoolValue) {
+  auto message =
+      DynamicParseTextProto<google::protobuf::Value>(R"pb(bool_value: true)pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<bool>(true)));
+}
+
+TEST_F(AdaptFromMessageTest, Value_NumberValue) {
+  auto message = DynamicParseTextProto<google::protobuf::Value>(
+      R"pb(number_value: 1.0)pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<double>(1.0)));
+}
+
+TEST_F(AdaptFromMessageTest, Value_StringValue) {
+  auto message = DynamicParseTextProto<google::protobuf::Value>(
+      R"pb(string_value: "foo")pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<StringValue>(StringValue("foo"))));
+}
+
+TEST_F(AdaptFromMessageTest, Value_ListValue) {
+  auto message =
+      DynamicParseTextProto<google::protobuf::Value>(R"pb(list_value: {})pb");
+  EXPECT_THAT(
+      AdaptFromMessage(*message),
+      IsOkAndHolds(VariantWith<ListValue>(VariantWith<ListValueConstRef>(_))));
+}
+
+TEST_F(AdaptFromMessageTest, Value_StructValue) {
+  auto message =
+      DynamicParseTextProto<google::protobuf::Value>(R"pb(struct_value: {})pb");
+  EXPECT_THAT(
+      AdaptFromMessage(*message),
+      IsOkAndHolds(VariantWith<Struct>(VariantWith<StructConstRef>(_))));
+}
+
+TEST_F(AdaptFromMessageTest, ListValue) {
+  auto message = DynamicParseTextProto<google::protobuf::ListValue>(R"pb()pb");
+  EXPECT_THAT(
+      AdaptFromMessage(*message),
+      IsOkAndHolds(VariantWith<ListValue>(VariantWith<ListValueConstRef>(_))));
+}
+
+TEST_F(AdaptFromMessageTest, Struct) {
+  auto message = DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb");
+  EXPECT_THAT(
+      AdaptFromMessage(*message),
+      IsOkAndHolds(VariantWith<Struct>(VariantWith<StructConstRef>(_))));
+}
+
+TEST_F(AdaptFromMessageTest, TestAllTypesProto3) {
+  auto message = DynamicParseTextProto<TestAllTypesProto3>(R"pb()pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<absl::monostate>(absl::monostate())));
+}
+
+TEST_F(AdaptFromMessageTest, Any_BoolValue) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.BoolValue")pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<bool>(false)));
+}
+
+TEST_F(AdaptFromMessageTest, Any_Int32Value) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.Int32Value")pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<int32_t>(0)));
+}
+
+TEST_F(AdaptFromMessageTest, Any_Int64Value) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.Int64Value")pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<int64_t>(0)));
+}
+
+TEST_F(AdaptFromMessageTest, Any_UInt32Value) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.UInt32Value")pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<uint32_t>(0)));
+}
+
+TEST_F(AdaptFromMessageTest, Any_UInt64Value) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.UInt64Value")pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<uint64_t>(0)));
+}
+
+TEST_F(AdaptFromMessageTest, Any_FloatValue) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.FloatValue")pb");
+  EXPECT_THAT(AdaptFromMessage(*message), IsOkAndHolds(VariantWith<float>(0)));
+}
+
+TEST_F(AdaptFromMessageTest, Any_DoubleValue) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.DoubleValue")pb");
+  EXPECT_THAT(AdaptFromMessage(*message), IsOkAndHolds(VariantWith<double>(0)));
+}
+
+TEST_F(AdaptFromMessageTest, Any_BytesValue) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.BytesValue")pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<BytesValue>(BytesValue())));
+}
+
+TEST_F(AdaptFromMessageTest, Any_StringValue) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.StringValue")pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<StringValue>(StringValue())));
+}
+
+TEST_F(AdaptFromMessageTest, Any_Duration) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.Duration")pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<absl::Duration>(absl::ZeroDuration())));
+}
+
+TEST_F(AdaptFromMessageTest, Any_Timestamp) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.Timestamp")pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<absl::Time>(absl::UnixEpoch())));
+}
+
+TEST_F(AdaptFromMessageTest, Any_Value_NullValue) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.Value")pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<std::nullptr_t>(nullptr)));
+}
+
+TEST_F(AdaptFromMessageTest, Any_Value_BoolValue) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+
+      R"pb(type_url: "type.googleapis.com/google.protobuf.Value"
+           value: "\x20\x01")pb");  // bool_value: true
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<bool>(true)));
+}
+
+TEST_F(AdaptFromMessageTest, Any_Value_NumberValue) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.Value"
+           value: "\x11\x00\x00\x00\x00\x00\x00\x00\x00")pb");  // number_value:
+                                                                 // 1.0
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<double>(0.0)));
+}
+
+TEST_F(AdaptFromMessageTest, Any_Value_StringValue) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.Value"
+           value: "\x1a\x03\x66\x6f\x6f")pb");  // string_value: "foo"
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<StringValue>(StringValue("foo"))));
+}
+
+TEST_F(AdaptFromMessageTest, Any_Value_ListValue) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.Value"
+           value: "\x32\x00")pb");  // list_value: {}
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<ListValue>(
+                  VariantWith<ListValuePtr>(NotNull()))));
+}
+
+TEST_F(AdaptFromMessageTest, Any_Value_StructValue) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.Value"
+           value: "\x2a\x00")pb");  // struct_value: {}
+  EXPECT_THAT(
+      AdaptFromMessage(*message),
+      IsOkAndHolds(VariantWith<Struct>(VariantWith<StructPtr>(NotNull()))));
+}
+
+TEST_F(AdaptFromMessageTest, Any_ListValue) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.ListValue")pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<ListValue>(
+                  VariantWith<ListValuePtr>(NotNull()))));
+}
+
+TEST_F(AdaptFromMessageTest, Any_Struct) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.protobuf.Struct")pb");
+  EXPECT_THAT(
+      AdaptFromMessage(*message),
+      IsOkAndHolds(VariantWith<Struct>(VariantWith<StructPtr>(NotNull()))));
+}
+
+TEST_F(AdaptFromMessageTest, Any_TestAllTypesProto3) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes")pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              IsOkAndHolds(VariantWith<Unique<google::protobuf::Message>>(NotNull())));
+}
+
+TEST_F(AdaptFromMessageTest, Any_BadTypeUrlDomain) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.example.com/google.protobuf.BoolValue")pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("unable to find descriptor for type URL: ")));
+}
+
+TEST_F(AdaptFromMessageTest, Any_UnknownMessage) {
+  auto message = DynamicParseTextProto<google::protobuf::Any>(
+      R"pb(type_url: "type.googleapis.com/message.that.does.not.Exist")pb");
+  EXPECT_THAT(AdaptFromMessage(*message),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("unable to find descriptor for type name: ")));
 }
 
 }  // namespace

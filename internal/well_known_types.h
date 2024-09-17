@@ -28,7 +28,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_INTERNAL_WELL_KNOWN_TYPES_H_
 #define THIRD_PARTY_CEL_CPP_INTERNAL_WELL_KNOWN_TYPES_H_
 
+#include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <string>
 
 #include "google/protobuf/any.pb.h"
@@ -45,6 +47,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/time/time.h"
 #include "absl/types/variant.h"
 #include "common/any.h"
 #include "common/memory.h"
@@ -1151,6 +1154,96 @@ class FieldMaskReflection final {
 absl::StatusOr<FieldMaskReflection> GetFieldMaskReflection(
     absl::Nonnull<const google::protobuf::Descriptor*> descriptor
         ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+using ListValuePtr = Unique<google::protobuf::Message>;
+
+using ListValueConstRef = std::reference_wrapper<const google::protobuf::Message>;
+
+using StructPtr = Unique<google::protobuf::Message>;
+
+using StructConstRef = std::reference_wrapper<const google::protobuf::Message>;
+
+// Variant holding `std::reference_wrapper<const
+// google::protobuf::Message>` or `Unique<google::protobuf::Message>`, either of which is an
+// instance of `google.protobuf.ListValue` which is either a generated message
+// or dynamic message.
+class ListValue final : public absl::variant<ListValueConstRef, ListValuePtr> {
+  using absl::variant<ListValueConstRef, ListValuePtr>::variant;
+};
+
+// Older versions of GCC do not deal with inheriting from variant correctly when
+// using `visit`, so we cheat by upcasting.
+inline const absl::variant<ListValueConstRef, ListValuePtr>& AsVariant(
+    const ListValue& value) {
+  return static_cast<const absl::variant<ListValueConstRef, ListValuePtr>&>(
+      value);
+}
+inline absl::variant<ListValueConstRef, ListValuePtr>& AsVariant(
+    ListValue& value) {
+  return static_cast<absl::variant<ListValueConstRef, ListValuePtr>&>(value);
+}
+inline const absl::variant<ListValueConstRef, ListValuePtr>&& AsVariant(
+    const ListValue&& value) {
+  return static_cast<const absl::variant<ListValueConstRef, ListValuePtr>&&>(
+      value);
+}
+inline absl::variant<ListValueConstRef, ListValuePtr>&& AsVariant(
+    ListValue&& value) {
+  return static_cast<absl::variant<ListValueConstRef, ListValuePtr>&&>(value);
+}
+
+// Variant holding `std::reference_wrapper<const
+// google::protobuf::Message>` or `Unique<google::protobuf::Message>`, either of which is an
+// instance of `google.protobuf.Struct` which is either a generated message or
+// dynamic message.
+class Struct final : public absl::variant<StructConstRef, StructPtr> {
+ public:
+  using absl::variant<StructConstRef, StructPtr>::variant;
+};
+
+// Older versions of GCC do not deal with inheriting from variant correctly when
+// using `visit`, so we cheat by upcasting.
+inline const absl::variant<StructConstRef, StructPtr>& AsVariant(
+    const Struct& value) {
+  return static_cast<const absl::variant<StructConstRef, StructPtr>&>(value);
+}
+inline absl::variant<StructConstRef, StructPtr>& AsVariant(Struct& value) {
+  return static_cast<absl::variant<StructConstRef, StructPtr>&>(value);
+}
+inline const absl::variant<StructConstRef, StructPtr>&& AsVariant(
+    const Struct&& value) {
+  return static_cast<const absl::variant<StructConstRef, StructPtr>&&>(value);
+}
+inline absl::variant<StructConstRef, StructPtr>&& AsVariant(Struct&& value) {
+  return static_cast<absl::variant<StructConstRef, StructPtr>&&>(value);
+}
+
+// Variant capable of representing any unwrapped well known type or message.
+using Value = absl::variant<absl::monostate, std::nullptr_t, bool, int32_t,
+                            int64_t, uint32_t, uint64_t, float, double,
+                            StringValue, BytesValue, absl::Duration, absl::Time,
+                            ListValue, Struct, Unique<google::protobuf::Message>>;
+
+// Unpacks the given instance of `google.protobuf.Any`.
+absl::StatusOr<Unique<google::protobuf::Message>> UnpackAnyFrom(
+    absl::Nullable<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    AnyReflection& reflection, const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> pool
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<google::protobuf::MessageFactory*> factory
+        ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+// Performs any necessary unwrapping of a well known message type. If no
+// unwrapping is necessary, the resulting `Value` holds the alternative
+// `absl::monostate`.
+absl::StatusOr<Value> AdaptFromMessage(
+    absl::Nullable<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::Message& message ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> pool
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<google::protobuf::MessageFactory*> factory
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
 class Reflection final {
  public:

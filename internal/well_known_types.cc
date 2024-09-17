@@ -16,7 +16,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "google/protobuf/any.pb.h"
@@ -37,6 +39,8 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
+#include "absl/strings/strip.h"
+#include "absl/time/time.h"
 #include "absl/types/variant.h"
 #include "common/json.h"
 #include "common/memory.h"
@@ -48,6 +52,7 @@
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
 #include "google/protobuf/reflection.h"
+#include "google/protobuf/util/time_util.h"
 
 namespace cel::well_known_types {
 
@@ -58,6 +63,7 @@ using ::google::protobuf::DescriptorPool;
 using ::google::protobuf::EnumDescriptor;
 using ::google::protobuf::FieldDescriptor;
 using ::google::protobuf::OneofDescriptor;
+using ::google::protobuf::util::TimeUtil;
 
 using CppStringType = ::google::protobuf::FieldDescriptor::CppStringType;
 
@@ -74,7 +80,7 @@ absl::string_view FlatStringValue(
             scratch = static_cast<std::string>(cord);
             return scratch;
           }),
-      static_cast<const absl::variant<absl::string_view, absl::Cord>&>(value));
+      AsVariant(value));
 }
 
 StringValue CopyStringValue(const StringValue& value,
@@ -90,7 +96,7 @@ StringValue CopyStringValue(const StringValue& value,
             return string;
           },
           [](const absl::Cord& cord) -> StringValue { return cord; }),
-      static_cast<const absl::variant<absl::string_view, absl::Cord>&>(value));
+      AsVariant(value));
 }
 
 BytesValue CopyBytesValue(const BytesValue& value,
@@ -105,7 +111,7 @@ BytesValue CopyBytesValue(const BytesValue& value,
             return string;
           },
           [](const absl::Cord& cord) -> BytesValue { return cord; }),
-      static_cast<const absl::variant<absl::string_view, absl::Cord>&>(value));
+      AsVariant(value));
 }
 
 google::protobuf::Reflection::ScratchSpace& GetScratchSpace() {
@@ -1523,6 +1529,305 @@ absl::Status Reflection::Initialize(absl::Nonnull<const DescriptorPool*> pool) {
   CEL_RETURN_IF_ERROR(ListValue().Initialize(pool));
   CEL_RETURN_IF_ERROR(Struct().Initialize(pool));
   return absl::OkStatus();
+}
+
+namespace {
+
+// AdaptListValue verifies the message is the well known type
+// `google.protobuf.ListValue` and performs the complicated logic of reimaging
+// it as `ListValue`. If adapted is empty, we return as a reference. If adapted
+// is present, message must be a reference to the value held in adapted and it
+// will be returned by value.
+absl::StatusOr<ListValue> AdaptListValue(absl::Nullable<google::protobuf::Arena*> arena,
+                                         const google::protobuf::Message& message,
+                                         Unique<google::protobuf::Message> adapted) {
+  ABSL_DCHECK(!adapted || &message == cel::to_address(adapted));
+  const auto* descriptor = message.GetDescriptor();
+  if (ABSL_PREDICT_FALSE(descriptor == nullptr)) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("missing descriptor for protocol buffer message: ",
+                     message.GetTypeName()));
+  }
+  // Not much to do. Just verify the well known type is well-formed.
+  CEL_RETURN_IF_ERROR(GetListValueReflection(descriptor).status());
+  if (adapted) {
+    return ListValue(std::move(adapted));
+  }
+  return ListValue(std::cref(message));
+}
+
+// AdaptStruct verifies the message is the well known type
+// `google.protobuf.Struct` and performs the complicated logic of reimaging it
+// as `Struct`. If adapted is empty, we return as a reference. If adapted is
+// present, message must be a reference to the value held in adapted and it will
+// be returned by value.
+absl::StatusOr<Struct> AdaptStruct(absl::Nullable<google::protobuf::Arena*> arena,
+                                   const google::protobuf::Message& message,
+                                   Unique<google::protobuf::Message> adapted) {
+  ABSL_DCHECK(!adapted || &message == cel::to_address(adapted));
+  const auto* descriptor = message.GetDescriptor();
+  if (ABSL_PREDICT_FALSE(descriptor == nullptr)) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("missing descriptor for protocol buffer message: ",
+                     message.GetTypeName()));
+  }
+  // Not much to do. Just verify the well known type is well-formed.
+  CEL_RETURN_IF_ERROR(GetStructReflection(descriptor).status());
+  if (adapted) {
+    return Struct(std::move(adapted));
+  }
+  return Struct(std::cref(message));
+}
+
+// AdaptAny recursively unpacks a protocol buffer message which is an instance
+// of `google.protobuf.Any`.
+absl::StatusOr<Unique<google::protobuf::Message>> AdaptAny(
+    absl::Nullable<google::protobuf::Arena*> arena, AnyReflection& reflection,
+    const google::protobuf::Message& message, absl::Nonnull<const Descriptor*> descriptor,
+    absl::Nonnull<const DescriptorPool*> pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> factory) {
+  ABSL_DCHECK_EQ(descriptor->well_known_type(), Descriptor::WELLKNOWNTYPE_ANY);
+  absl::Nonnull<const google::protobuf::Message*> to_unwrap = &message;
+  Unique<google::protobuf::Message> unwrapped;
+  std::string type_url_scratch;
+  std::string value_scratch;
+  do {
+    CEL_RETURN_IF_ERROR(reflection.Initialize(descriptor));
+    StringValue type_url = reflection.GetTypeUrl(*to_unwrap, type_url_scratch);
+    absl::string_view type_url_view =
+        FlatStringValue(type_url, type_url_scratch);
+    if (!absl::ConsumePrefix(&type_url_view, "type.googleapis.com/") &&
+        !absl::ConsumePrefix(&type_url_view, "type.googleprod.com/")) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "unable to find descriptor for type URL: ", type_url_view));
+    }
+    const auto* packed_descriptor = pool->FindMessageTypeByName(type_url_view);
+    if (packed_descriptor == nullptr) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "unable to find descriptor for type name: ", type_url_view));
+    }
+    const auto* prototype = factory->GetPrototype(packed_descriptor);
+    if (prototype == nullptr) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "unable to build prototype for type name: ", type_url_view));
+    }
+    BytesValue value = reflection.GetValue(*to_unwrap, value_scratch);
+    Unique<google::protobuf::Message> unpacked = WrapUnique(prototype->New(arena), arena);
+    const bool ok = absl::visit(absl::Overload(
+                                    [&](absl::string_view string) -> bool {
+                                      return unpacked->ParseFromString(string);
+                                    },
+                                    [&](const absl::Cord& cord) -> bool {
+                                      return unpacked->ParseFromCord(cord);
+                                    }),
+                                AsVariant(value));
+    if (!ok) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "failed to unpack protocol buffer message: ", type_url_view));
+    }
+    // We can only update unwrapped at this point, not before. This is because
+    // we could have been unpacking from unwrapped itself.
+    unwrapped = std::move(unpacked);
+    to_unwrap = cel::to_address(unwrapped);
+    descriptor = to_unwrap->GetDescriptor();
+    if (descriptor == nullptr) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("missing descriptor for protocol buffer message: ",
+                       to_unwrap->GetTypeName()));
+    }
+  } while (descriptor->well_known_type() == Descriptor::WELLKNOWNTYPE_ANY);
+  return unwrapped;
+}
+
+}  // namespace
+
+absl::StatusOr<Unique<google::protobuf::Message>> UnpackAnyFrom(
+    absl::Nullable<google::protobuf::Arena*> arena, AnyReflection& reflection,
+    const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> factory) {
+  ABSL_DCHECK_EQ(message.GetDescriptor()->well_known_type(),
+                 Descriptor::WELLKNOWNTYPE_ANY);
+  return AdaptAny(arena, reflection, message, message.GetDescriptor(), pool,
+                  factory);
+}
+
+absl::StatusOr<well_known_types::Value> AdaptFromMessage(
+    absl::Nullable<google::protobuf::Arena*> arena, const google::protobuf::Message& message,
+    absl::Nonnull<const DescriptorPool*> pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> factory, std::string& scratch) {
+  const auto* descriptor = message.GetDescriptor();
+  if (ABSL_PREDICT_FALSE(descriptor == nullptr)) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("missing descriptor for protocol buffer message: ",
+                     message.GetTypeName()));
+  }
+  absl::Nonnull<const google::protobuf::Message*> to_adapt;
+  Unique<google::protobuf::Message> adapted;
+  Descriptor::WellKnownType well_known_type = descriptor->well_known_type();
+  if (well_known_type == Descriptor::WELLKNOWNTYPE_ANY) {
+    AnyReflection reflection;
+    CEL_ASSIGN_OR_RETURN(
+        adapted, UnpackAnyFrom(arena, reflection, message, pool, factory));
+    to_adapt = cel::to_address(adapted);
+    // GetDescriptor() is guaranteed to be nonnull by AdaptAny().
+    descriptor = to_adapt->GetDescriptor();
+    well_known_type = descriptor->well_known_type();
+  } else {
+    to_adapt = &message;
+  }
+  switch (descriptor->well_known_type()) {
+    case Descriptor::WELLKNOWNTYPE_DOUBLEVALUE: {
+      CEL_ASSIGN_OR_RETURN(auto reflection,
+                           GetDoubleValueReflection(descriptor));
+      return reflection.GetValue(*to_adapt);
+    }
+    case Descriptor::WELLKNOWNTYPE_FLOATVALUE: {
+      CEL_ASSIGN_OR_RETURN(auto reflection,
+                           GetFloatValueReflection(descriptor));
+      return reflection.GetValue(*to_adapt);
+    }
+    case Descriptor::WELLKNOWNTYPE_INT64VALUE: {
+      CEL_ASSIGN_OR_RETURN(auto reflection,
+                           GetInt64ValueReflection(descriptor));
+      return reflection.GetValue(*to_adapt);
+    }
+    case Descriptor::WELLKNOWNTYPE_UINT64VALUE: {
+      CEL_ASSIGN_OR_RETURN(auto reflection,
+                           GetUInt64ValueReflection(descriptor));
+      return reflection.GetValue(*to_adapt);
+    }
+    case Descriptor::WELLKNOWNTYPE_INT32VALUE: {
+      CEL_ASSIGN_OR_RETURN(auto reflection,
+                           GetInt32ValueReflection(descriptor));
+      return reflection.GetValue(*to_adapt);
+    }
+    case Descriptor::WELLKNOWNTYPE_UINT32VALUE: {
+      CEL_ASSIGN_OR_RETURN(auto reflection,
+                           GetUInt32ValueReflection(descriptor));
+      return reflection.GetValue(*to_adapt);
+    }
+    case Descriptor::WELLKNOWNTYPE_STRINGVALUE: {
+      CEL_ASSIGN_OR_RETURN(auto reflection,
+                           GetStringValueReflection(descriptor));
+      auto value = reflection.GetValue(*to_adapt, scratch);
+      if (adapted) {
+        // value might actually be a view of data owned by adapted, force a copy
+        // to scratch if that is the case.
+        value = CopyStringValue(value, scratch);
+      }
+      return value;
+    }
+    case Descriptor::WELLKNOWNTYPE_BYTESVALUE: {
+      CEL_ASSIGN_OR_RETURN(auto reflection,
+                           GetBytesValueReflection(descriptor));
+      auto value = reflection.GetValue(*to_adapt, scratch);
+      if (adapted) {
+        // value might actually be a view of data owned by adapted, force a copy
+        // to scratch if that is the case.
+        value = CopyBytesValue(value, scratch);
+      }
+      return value;
+    }
+    case Descriptor::WELLKNOWNTYPE_BOOLVALUE: {
+      CEL_ASSIGN_OR_RETURN(auto reflection, GetBoolValueReflection(descriptor));
+      return reflection.GetValue(*to_adapt);
+    }
+    case Descriptor::WELLKNOWNTYPE_ANY:
+      // This is unreachable, as AdaptAny() above recursively unpacks.
+      ABSL_UNREACHABLE();
+    case Descriptor::WELLKNOWNTYPE_DURATION: {
+      CEL_ASSIGN_OR_RETURN(auto reflection, GetDurationReflection(descriptor));
+      int64_t seconds = reflection.GetSeconds(*to_adapt);
+      if (ABSL_PREDICT_FALSE(seconds < TimeUtil::kDurationMinSeconds ||
+                             seconds > TimeUtil::kDurationMaxSeconds)) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("invalid duration seconds: ", seconds));
+      }
+      int32_t nanos = reflection.GetNanos(*to_adapt);
+      if (ABSL_PREDICT_FALSE(nanos < TimeUtil::kDurationMinNanoseconds ||
+                             nanos > TimeUtil::kDurationMaxNanoseconds)) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("invalid duration nanoseconds: ", nanos));
+      }
+      if ((seconds < 0 && nanos > 0) || (seconds > 0 && nanos < 0)) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("duration sign mismatch: seconds=", seconds,
+                         ", nanoseconds=", nanos));
+      }
+      return absl::Seconds(seconds) + absl::Nanoseconds(nanos);
+    }
+    case Descriptor::WELLKNOWNTYPE_TIMESTAMP: {
+      CEL_ASSIGN_OR_RETURN(auto reflection, GetTimestampReflection(descriptor));
+      int64_t seconds = reflection.GetSeconds(*to_adapt);
+      if (ABSL_PREDICT_FALSE(seconds < TimeUtil::kTimestampMinSeconds ||
+                             seconds > TimeUtil::kTimestampMaxSeconds)) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("invalid timestamp seconds: ", seconds));
+      }
+      int32_t nanos = reflection.GetNanos(*to_adapt);
+      if (ABSL_PREDICT_FALSE(nanos < TimeUtil::kTimestampMinNanoseconds ||
+                             nanos > TimeUtil::kTimestampMaxNanoseconds)) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("invalid timestamp nanoseconds: ", nanos));
+      }
+      return absl::UnixEpoch() + absl::Seconds(seconds) +
+             absl::Nanoseconds(nanos);
+    }
+    case Descriptor::WELLKNOWNTYPE_VALUE: {
+      CEL_ASSIGN_OR_RETURN(auto reflection, GetValueReflection(descriptor));
+      const auto kind_case = reflection.GetKindCase(*to_adapt);
+      switch (kind_case) {
+        case google::protobuf::Value::KIND_NOT_SET:
+          ABSL_FALLTHROUGH_INTENDED;
+        case google::protobuf::Value::kNullValue:
+          return nullptr;
+        case google::protobuf::Value::kNumberValue:
+          return reflection.GetNumberValue(*to_adapt);
+        case google::protobuf::Value::kStringValue: {
+          auto value = reflection.GetStringValue(*to_adapt, scratch);
+          if (adapted) {
+            value = CopyStringValue(value, scratch);
+          }
+          return value;
+        }
+        case google::protobuf::Value::kBoolValue:
+          return reflection.GetBoolValue(*to_adapt);
+        case google::protobuf::Value::kStructValue: {
+          if (adapted) {
+            // We can release.
+            adapted = reflection.ReleaseStructValue(cel::to_address(adapted));
+            to_adapt = cel::to_address(adapted);
+          } else {
+            to_adapt = &reflection.GetStructValue(*to_adapt);
+          }
+          return AdaptStruct(arena, *to_adapt, std::move(adapted));
+        }
+        case google::protobuf::Value::kListValue: {
+          if (adapted) {
+            // We can release.
+            adapted = reflection.ReleaseListValue(cel::to_address(adapted));
+            to_adapt = cel::to_address(adapted);
+          } else {
+            to_adapt = &reflection.GetListValue(*to_adapt);
+          }
+          return AdaptListValue(arena, *to_adapt, std::move(adapted));
+        }
+        default:
+          return absl::InvalidArgumentError(
+              absl::StrCat("unexpected value kind case: ", kind_case));
+      }
+    }
+    case Descriptor::WELLKNOWNTYPE_LISTVALUE:
+      return AdaptListValue(arena, *to_adapt, std::move(adapted));
+    case Descriptor::WELLKNOWNTYPE_STRUCT:
+      return AdaptStruct(arena, *to_adapt, std::move(adapted));
+    default:
+      if (adapted) {
+        return adapted;
+      }
+      return absl::monostate{};
+  }
 }
 
 }  // namespace cel::well_known_types
