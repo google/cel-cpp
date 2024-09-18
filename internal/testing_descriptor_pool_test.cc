@@ -145,6 +145,20 @@ TEST(TestingDescriptorPool, Struct) {
   EXPECT_EQ(desc->well_known_type(), google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT);
 }
 
+TEST(TestingDescriptorPool, FieldMask) {
+  const auto* desc = GetTestingDescriptorPool()->FindMessageTypeByName(
+      "google.protobuf.FieldMask");
+  ASSERT_THAT(desc, NotNull());
+  EXPECT_EQ(desc->well_known_type(),
+            google::protobuf::Descriptor::WELLKNOWNTYPE_FIELDMASK);
+}
+
+TEST(TestingDescriptorPool, Empty) {
+  const auto* desc = GetTestingDescriptorPool()->FindMessageTypeByName(
+      "google.protobuf.Empty");
+  ASSERT_THAT(desc, NotNull());
+}
+
 TEST(TestingDescriptorPool, TestAllTypesProto2) {
   EXPECT_THAT(GetTestingDescriptorPool()->FindMessageTypeByName(
                   "google.api.expr.test.v1.proto2.TestAllTypes"),
