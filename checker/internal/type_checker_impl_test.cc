@@ -14,16 +14,20 @@
 
 #include "checker/internal/type_checker_impl.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "checker/internal/test_ast_helpers.h"
@@ -52,6 +56,8 @@ using ::testing::Contains;
 using ::testing::ElementsAre;
 using ::testing::IsEmpty;
 using ::testing::Pair;
+
+using AstType = cel::ast_internal::Type;
 
 using AstType = ast_internal::Type;
 using Severity = TypeCheckIssue::Severity;
@@ -111,6 +117,27 @@ MATCHER_P(IsVariableReference, var_name, "") {
   return false;
 }
 
+MATCHER_P2(IsFunctionReference, fn_name, overloads, "") {
+  const Reference& reference = arg;
+  if (reference.name() != fn_name) {
+    *result_listener << "expected: " << fn_name
+                     << "\nactual: " << reference.name();
+  }
+
+  absl::flat_hash_set<std::string> got_overload_set(
+      reference.overload_id().begin(), reference.overload_id().end());
+  absl::flat_hash_set<std::string> want_overload_set(overloads.begin(),
+                                                     overloads.end());
+
+  if (got_overload_set != want_overload_set) {
+    *result_listener << "expected overload_ids: "
+                     << absl::StrJoin(want_overload_set, ",")
+                     << "\nactual: " << absl::StrJoin(got_overload_set, ",");
+  }
+
+  return reference.name() == fn_name && got_overload_set == want_overload_set;
+}
+
 class TypeCheckerImplTest : public ::testing::Test {
  public:
   TypeCheckerImplTest() = default;
@@ -120,6 +147,10 @@ class TypeCheckerImplTest : public ::testing::Test {
     add_op.set_name("_+_");
     CEL_RETURN_IF_ERROR(add_op.AddOverload(
         MakeOverloadDecl("add_int_int", IntType(), IntType(), IntType())));
+    CEL_RETURN_IF_ERROR(add_op.AddOverload(
+        MakeOverloadDecl("add_uint_uint", UintType(), UintType(), UintType())));
+    CEL_RETURN_IF_ERROR(add_op.AddOverload(MakeOverloadDecl(
+        "add_double_double", DoubleType(), DoubleType(), DoubleType())));
 
     FunctionDecl not_op;
     not_op.set_name("!_");
@@ -163,14 +194,28 @@ class TypeCheckerImplTest : public ::testing::Test {
     FunctionDecl eq_op;
     eq_op.set_name("_==_");
     CEL_RETURN_IF_ERROR(eq_op.AddOverload(
-        MakeOverloadDecl("eq_int_int",
+        MakeOverloadDecl("equals",
                          /*return_type=*/BoolType{}, IntType(), IntType())));
+
+    FunctionDecl ternary_op;
+    ternary_op.set_name("_?_:_");
+    CEL_RETURN_IF_ERROR(eq_op.AddOverload(
+        MakeOverloadDecl("conditional",
+                         /*return_type=*/
+                         TypeParamType("A"), BoolType{}, TypeParamType("A"),
+                         TypeParamType("A"))));
 
     FunctionDecl to_int;
     to_int.set_name("int");
     CEL_RETURN_IF_ERROR(to_int.AddOverload(
         MakeOverloadDecl("to_int",
-                         /*return_type=*/IntType(), DynType{})));
+                         /*return_type=*/IntType(), DynType())));
+
+    FunctionDecl to_dyn;
+    to_dyn.set_name("dyn");
+    CEL_RETURN_IF_ERROR(to_dyn.AddOverload(
+        MakeOverloadDecl("to_dyn",
+                         /*return_type=*/DynType(), DynType())));
 
     env.InsertFunctionIfAbsent(std::move(not_op));
     env.InsertFunctionIfAbsent(std::move(not_strictly_false));
@@ -182,6 +227,8 @@ class TypeCheckerImplTest : public ::testing::Test {
     env.InsertFunctionIfAbsent(std::move(gt_op));
     env.InsertFunctionIfAbsent(std::move(to_int));
     env.InsertFunctionIfAbsent(std::move(eq_op));
+    env.InsertFunctionIfAbsent(std::move(ternary_op));
+    env.InsertFunctionIfAbsent(std::move(to_dyn));
 
     return absl::OkStatus();
   }
@@ -500,8 +547,8 @@ TEST_F(TypeCheckerImplTest, MapComprehensionVariablesResolved) {
   ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
 
   TypeCheckerImpl impl(std::move(env));
-  ASSERT_OK_AND_ASSIGN(
-      auto ast, MakeTestParsedAst("{'a': 1, 'b': 2}.exists(x, x == 'b')"));
+  ASSERT_OK_AND_ASSIGN(auto ast,
+                       MakeTestParsedAst("{1: 3, 2: 4}.exists(x, x == 2)"));
   ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
 
   EXPECT_TRUE(result.IsValid());
@@ -794,6 +841,102 @@ TEST_F(TypeCheckerImplTest, ComprehensionDynRange) {
   EXPECT_TRUE(result.IsValid());
 
   EXPECT_THAT(result.GetIssues(), IsEmpty());
+}
+
+TEST_F(TypeCheckerImplTest, BasicOvlResolution) {
+  TypeCheckEnv env;
+  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+
+  env.InsertVariableIfAbsent(MakeVariableDecl("x", DoubleType()));
+  env.InsertVariableIfAbsent(MakeVariableDecl("y", DoubleType()));
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("x + y"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+
+  // Assumes parser numbering: + should always be id 2.
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
+  EXPECT_THAT(ast_impl.reference_map()[2],
+              IsFunctionReference(
+                  "_+_", std::vector<std::string>{"add_double_double"}));
+}
+
+TEST_F(TypeCheckerImplTest, OvlResolutionMultipleOverloads) {
+  TypeCheckEnv env;
+  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+
+  env.InsertVariableIfAbsent(MakeVariableDecl("x", DoubleType()));
+  env.InsertVariableIfAbsent(MakeVariableDecl("y", DoubleType()));
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("dyn(x) + dyn(y)"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+
+  // Assumes parser numbering: + should always be id 3.
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
+  EXPECT_THAT(ast_impl.reference_map()[3],
+              IsFunctionReference("_+_", std::vector<std::string>{
+                                             "add_double_double", "add_int_int",
+                                             "add_uint_uint"}));
+}
+
+TEST_F(TypeCheckerImplTest, BasicFunctionResultTypeResolution) {
+  TypeCheckEnv env;
+  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+
+  env.InsertVariableIfAbsent(MakeVariableDecl("x", DoubleType()));
+  env.InsertVariableIfAbsent(MakeVariableDecl("y", DoubleType()));
+  env.InsertVariableIfAbsent(MakeVariableDecl("z", DoubleType()));
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("x + y + z"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+
+  // Assumes parser numbering: + should always be id 2 and 4.
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
+  EXPECT_THAT(ast_impl.reference_map()[2],
+              IsFunctionReference(
+                  "_+_", std::vector<std::string>{"add_double_double"}));
+  EXPECT_THAT(ast_impl.reference_map()[4],
+              IsFunctionReference(
+                  "_+_", std::vector<std::string>{"add_double_double"}));
+  int64_t root_id = ast_impl.root_expr().id();
+  EXPECT_EQ(ast_impl.type_map()[root_id].primitive(),
+            ast_internal::PrimitiveType::kDouble);
+}
+
+TEST_F(TypeCheckerImplTest, BasicOvlResolutionNoMatch) {
+  TypeCheckEnv env;
+  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+
+  env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
+  env.InsertVariableIfAbsent(MakeVariableDecl("y", StringType()));
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("x + y"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_FALSE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(),
+              Contains(IsIssueWithSubstring(Severity::kError,
+                                            "no matching overload for '_+_'"
+                                            " applied to (int, string)")));
 }
 
 }  // namespace

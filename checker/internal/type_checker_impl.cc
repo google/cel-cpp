@@ -37,6 +37,7 @@
 #include "checker/internal/builtins_arena.h"
 #include "checker/internal/namespace_generator.h"
 #include "checker/internal/type_check_env.h"
+#include "checker/internal/type_inference_context.h"
 #include "checker/type_check_issue.h"
 #include "checker/validation_result.h"
 #include "common/ast.h"
@@ -226,11 +227,13 @@ class ResolveVisitor : public AstVisitorBase {
   ResolveVisitor(absl::string_view container,
                  NamespaceGenerator namespace_generator,
                  const TypeCheckEnv& env, const AstImpl& ast,
+                 TypeInferenceContext& inference_context,
                  std::vector<TypeCheckIssue>& issues,
                  absl::Nonnull<google::protobuf::Arena*> arena)
       : container_(container),
         namespace_generator_(std::move(namespace_generator)),
         env_(&env),
+        inference_context_(&inference_context),
         issues_(&issues),
         ast_(&ast),
         root_scope_(env.MakeVariableScope()),
@@ -302,14 +305,32 @@ class ResolveVisitor : public AstVisitorBase {
     VariableScope* iter_scope;
   };
 
+  struct FunctionOverloadMatch {
+    // Overall result type.
+    // If resolution is incomplete, this will be DynType.
+    Type result_type;
+    // A new declaration with the narrowed overload candidates.
+    // Owned by the Check call scoped arena.
+    const FunctionDecl* decl;
+  };
+
   void ResolveSimpleIdentifier(const Expr& expr, absl::string_view name);
 
   void ResolveQualifiedIdentifier(const Expr& expr,
                                   absl::Span<const std::string> qualifiers);
 
-  const FunctionDecl* ResolveFunctionCall(const Expr& expr,
-                                          absl::string_view function_name,
-                                          int arg_count, bool is_receiver);
+  // Resolves the function call shape (i.e. the number of arguments and call
+  // style) for the given function call.
+  const FunctionDecl* ResolveFunctionCallShape(const Expr& expr,
+                                               absl::string_view function_name,
+                                               int arg_count, bool is_receiver);
+
+  // Resolves the applicable function overloads for the given function call.
+  //
+  // If found, assigns a new function decl with the resolved overloads.
+  void ResolveFunctionOverloads(const Expr& expr, const FunctionDecl& decl,
+                                int arg_count, bool is_receiver,
+                                bool is_namespaced);
 
   void ReportMissingReference(const Expr& expr, absl::string_view name) {
     issues_->push_back(TypeCheckIssue::CreateError(
@@ -318,6 +339,9 @@ class ResolveVisitor : public AstVisitorBase {
                      container_, "')")));
   }
 
+  // TODO: This should switch to a failing check once all core
+  // features are supported. For now, we allow dyn for implementing the
+  // typechecker behaviors in isolation.
   Type GetTypeOrDyn(const Expr* expr) {
     auto iter = types_.find(expr);
     return iter != types_.end() ? iter->second : DynType();
@@ -326,6 +350,7 @@ class ResolveVisitor : public AstVisitorBase {
   absl::string_view container_;
   NamespaceGenerator namespace_generator_;
   absl::Nonnull<const TypeCheckEnv*> env_;
+  absl::Nonnull<TypeInferenceContext*> inference_context_;
   absl::Nonnull<std::vector<TypeCheckIssue>*> issues_;
   absl::Nonnull<const ast_internal::AstImpl*> ast_;
   VariableScope root_scope_;
@@ -504,7 +529,7 @@ void ResolveVisitor::PostVisitMap(const Expr& expr, const MapExpr& map) {
     return;
   }
 
-  types_[&expr] = FreeMapType();
+  types_[&expr] = inference_context_->InstantiateTypeParams(FreeMapType());
 }
 
 void ResolveVisitor::PostVisitList(const Expr& expr, const ListExpr& list) {
@@ -534,22 +559,26 @@ void ResolveVisitor::PostVisitList(const Expr& expr, const ListExpr& list) {
     return;
   }
 
-  types_[&expr] = FreeListType();
+  types_[&expr] = inference_context_->InstantiateTypeParams(FreeListType());
 }
 
 void ResolveVisitor::PostVisitCall(const Expr& expr, const CallExpr& call) {
+  // Handle disambiguation of namespaced functions.
   if (auto iter = maybe_namespaced_functions_.find(&expr);
       iter != maybe_namespaced_functions_.end()) {
     std::string namespaced_name =
         absl::StrCat(FormatCandidate(iter->second), ".", call.function());
     const FunctionDecl* decl =
-        ResolveFunctionCall(expr, namespaced_name, call.args().size(),
-                            /* is_receiver= */ false);
+        ResolveFunctionCallShape(expr, namespaced_name, call.args().size(),
+                                 /* is_receiver= */ false);
     if (decl != nullptr) {
-      functions_[&expr] = {decl, /*namespace_rewrite=*/true};
+      ResolveFunctionOverloads(expr, *decl, call.args().size(),
+                               /* is_receiver= */ false,
+                               /* is_namespaced= */ true);
       return;
     }
-    // Resolve the target as an attribute (deferred earlier).
+    // Else, resolve the target as an attribute (deferred earlier), then
+    // resolve the function call normally.
     ResolveQualifiedIdentifier(call.target(), iter->second);
   }
 
@@ -558,11 +587,12 @@ void ResolveVisitor::PostVisitCall(const Expr& expr, const CallExpr& call) {
     ++arg_count;
   }
 
-  const FunctionDecl* decl =
-      ResolveFunctionCall(expr, call.function(), arg_count, call.has_target());
+  const FunctionDecl* decl = ResolveFunctionCallShape(
+      expr, call.function(), arg_count, call.has_target());
 
   if (decl != nullptr) {
-    functions_[&expr] = {decl, /*namespace_rewrite=*/false};
+    ResolveFunctionOverloads(expr, *decl, arg_count, call.has_target(),
+                             /* is_namespaced= */ false);
     return;
   }
 
@@ -675,7 +705,7 @@ void ResolveVisitor::PostVisitComprehensionSubexpression(
   }
 }
 
-const FunctionDecl* ResolveVisitor::ResolveFunctionCall(
+const FunctionDecl* ResolveVisitor::ResolveFunctionCallShape(
     const Expr& expr, absl::string_view function_name, int arg_count,
     bool is_receiver) {
   const FunctionDecl* decl = nullptr;
@@ -697,6 +727,51 @@ const FunctionDecl* ResolveVisitor::ResolveFunctionCall(
   return decl;
 }
 
+void ResolveVisitor::ResolveFunctionOverloads(const Expr& expr,
+                                              const FunctionDecl& decl,
+                                              int arg_count, bool is_receiver,
+                                              bool is_namespaced) {
+  std::vector<Type> arg_types;
+  arg_types.reserve(arg_count);
+  if (is_receiver) {
+    arg_types.push_back(GetTypeOrDyn(&expr.call_expr().target()));
+  }
+  for (int i = 0; i < expr.call_expr().args().size(); ++i) {
+    arg_types.push_back(GetTypeOrDyn(&expr.call_expr().args()[i]));
+  }
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      inference_context_->ResolveOverload(decl, arg_types, is_receiver);
+
+  if (!resolution.has_value()) {
+    issues_->push_back(TypeCheckIssue::CreateError(
+        ComputeSourceLocation(*ast_, expr.id()),
+        absl::StrCat("found no matching overload for '", decl.name(),
+                     "' applied to (",
+                     absl::StrJoin(arg_types, ", ",
+                                   [](std::string* out, const Type& type) {
+                                     out->append(type.DebugString());
+                                   }),
+                     ")")));
+    return;
+  }
+
+  auto* result_decl = google::protobuf::Arena::Create<FunctionDecl>(arena_);
+  result_decl->set_name(decl.name());
+  for (const auto& ovl : resolution->overloads) {
+    absl::Status s = result_decl->AddOverload(ovl);
+    if (!s.ok()) {
+      // Overloads should be filtered list from the original declaration,
+      // so a status means an invariant was broken.
+      status_.Update(absl::InternalError(absl::StrCat(
+          "failed to add overload to resolved function declaration: ", s)));
+    }
+  }
+
+  functions_[&expr] = {result_decl, is_namespaced};
+  types_[&expr] = resolution->result_type;
+}
+
 void ResolveVisitor::ResolveSimpleIdentifier(const Expr& expr,
                                              absl::string_view name) {
   const VariableDecl* decl = nullptr;
@@ -713,7 +788,7 @@ void ResolveVisitor::ResolveSimpleIdentifier(const Expr& expr,
   }
 
   attributes_[&expr] = decl;
-  types_[&expr] = decl->type();
+  types_[&expr] = inference_context_->InstantiateTypeParams(decl->type());
 }
 
 void ResolveVisitor::ResolveQualifiedIdentifier(
@@ -748,7 +823,7 @@ void ResolveVisitor::ResolveQualifiedIdentifier(
   }
 
   attributes_[root] = decl;
-  types_[root] = decl->type();
+  types_[root] = inference_context_->InstantiateTypeParams(decl->type());
 }
 
 void ResolveVisitor::PostVisitSelect(const Expr& expr,
@@ -821,24 +896,25 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
   CEL_ASSIGN_OR_RETURN(auto generator,
                        NamespaceGenerator::Create(env_.container()));
 
+  TypeInferenceContext type_inference_context(&type_arena);
   ResolveVisitor visitor(env_.container(), std::move(generator), env_, ast_impl,
-                         issues, &type_arena);
-  CEL_RETURN_IF_ERROR(visitor.status());
+                         type_inference_context, issues, &type_arena);
 
   TraversalOptions opts;
   opts.use_comprehension_callbacks = true;
   AstTraverse(ast_impl.root_expr(), visitor, opts);
+  CEL_RETURN_IF_ERROR(visitor.status());
 
-  // Apply updates as needed.
-  // Happens in a second pass to simplify validating that pointers haven't
-  // been invalidated by other updates.
-
+  // If any issues are errors, return without an AST.
   for (const auto& issue : issues) {
     if (issue.severity() == Severity::kError) {
       return ValidationResult(std::move(issues));
     }
   }
 
+  // Apply updates as needed.
+  // Happens in a second pass to simplify validating that pointers haven't
+  // been invalidated by other updates.
   ResolveRewriter rewriter(visitor, ast_impl.reference_map(),
                            ast_impl.type_map());
   AstRewrite(ast_impl.root_expr(), rewriter);

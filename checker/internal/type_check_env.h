@@ -112,7 +112,8 @@ class TypeCheckEnv {
   }
 
   // Inserts a function declaration into the environment of the current scope if
-  // is is not already present. Parent scopes are not searched.
+  // is is not already present. Parent scopes are not searched (allowing for
+  // shadowing).
   //
   // Returns true if the decl was inserted, false otherwise.
   bool InsertFunctionIfAbsent(FunctionDecl decl) {
