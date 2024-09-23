@@ -422,10 +422,10 @@ class MapValueBuilderImpl final : public MapValueBuilder {
 
   absl::Status Put(Value key, Value value) override {
     if (key.Is<ErrorValue>()) {
-      return static_cast<ErrorValue>(std::move(key)).NativeValue();
+      return std::move(key).Get<ErrorValue>().NativeValue();
     }
     if (value.Is<ErrorValue>()) {
-      return static_cast<ErrorValue>(std::move(value)).NativeValue();
+      return std::move(value).Get<ErrorValue>().NativeValue();
     }
     auto inserted = entries_.insert({std::move(key), std::move(value)}).second;
     if (!inserted) {

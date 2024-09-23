@@ -57,7 +57,7 @@ TEST(ComprehensionSlots, Basic) {
 
   EXPECT_THAT(slot0->value, Truly([](const Value& v) {
                 return v.Is<StringValue>() &&
-                       static_cast<StringValue>(v).ToString() == "abcd";
+                       v.GetString().ToString() == "abcd";
               }))
       << "value is 'abcd'";
 
@@ -75,7 +75,7 @@ TEST(ComprehensionSlots, Basic) {
   ASSERT_TRUE(slot3 != nullptr);
   EXPECT_THAT(slot3->value, Truly([](const Value& v) {
                 return v.Is<StringValue>() &&
-                       static_cast<StringValue>(v).ToString() == "abcd";
+                       v.GetString().ToString() == "abcd";
               }))
       << "value is 'abcd'";
 

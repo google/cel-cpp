@@ -72,8 +72,7 @@ class InstrumentationTest : public ::testing::Test {
 MATCHER_P(IsIntValue, expected, "") {
   const Value& got = arg;
 
-  return got.Is<IntValue>() &&
-         static_cast<IntValue>(got).NativeValue() == expected;
+  return got.Is<IntValue>() && got.GetInt().NativeValue() == expected;
 }
 
 TEST_F(InstrumentationTest, Basic) {
@@ -337,8 +336,7 @@ TEST_F(InstrumentationTest, OptimizedStepsNotEvaluated) {
       plan.EvaluateWithCallback(activation, EvaluationListener(), state));
 
   EXPECT_THAT(expr_ids, ElementsAre(1, 2));
-  EXPECT_TRUE(value.Is<cel::BoolValue>() &&
-              static_cast<cel::BoolValue>(value).NativeValue());
+  EXPECT_TRUE(value.Is<cel::BoolValue>() && value.GetBool().NativeValue());
 }
 
 TEST_F(InstrumentationTest, NoopSkipped) {

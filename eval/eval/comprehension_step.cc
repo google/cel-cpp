@@ -451,8 +451,7 @@ absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
     frame->comprehension_slots().ClearSlot(accu_slot_);
     return frame->JumpTo(error_jump_offset_);
   }
-  bool loop_condition =
-      static_cast<cel::BoolValue>(loop_condition_value).NativeValue();
+  bool loop_condition = loop_condition_value.GetBool().NativeValue();
   frame->value_stack().Pop(1);  // loop_condition
   if (!loop_condition && shortcircuiting_) {
     return frame->JumpTo(jump_offset_);

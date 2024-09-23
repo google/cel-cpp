@@ -164,10 +164,24 @@ class OpaqueValue {
   // Performs an unchecked cast from an opaque value to an optional value. In
   // debug builds a best effort is made to crash. If `IsOptional()` would return
   // false, calling this method is undefined behavior.
-  explicit operator const OptionalValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator const OptionalValue&() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator OptionalValue() &&;
-  explicit operator OptionalValue() const&&;
+  const OptionalValue& GetOptional() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const OptionalValue& GetOptional() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  OptionalValue GetOptional() &&;
+  OptionalValue GetOptional() const&&;
+
+  // Convenience method for use with template metaprogramming. See
+  // `Optional()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<OptionalValue, T>, const OptionalValue&>
+      Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>, const OptionalValue&> Get()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>, OptionalValue> Get() &&;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>, OptionalValue> Get()
+      const&&;
 
   void swap(OpaqueValue& other) noexcept {
     using std::swap;

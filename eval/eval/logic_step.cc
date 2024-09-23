@@ -205,7 +205,7 @@ class LogicalOpStep : public ExpressionStepBase {
     for (size_t i = 0; i < args.size(); i++) {
       has_bool_args[i] = args[i]->Is<BoolValue>();
       if (has_bool_args[i]) {
-        bool_args[i] = static_cast<BoolValue>(args[i]).NativeValue();
+        bool_args[i] = args[i].GetBool().NativeValue();
         if (bool_args[i] == shortcircuit_) {
           result = BoolValue{bool_args[i]};
           return;

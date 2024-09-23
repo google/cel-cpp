@@ -53,22 +53,19 @@ struct TestCase {
 
 MATCHER_P(IsIntValue, expected, "") {
   const Value& value = arg;
-  return value->Is<IntValue>() &&
-         static_cast<IntValue>(value).NativeValue() == expected;
+  return value->Is<IntValue>() && value.GetInt().NativeValue() == expected;
 }
 
 MATCHER_P(IsBoolValue, expected, "") {
   const Value& value = arg;
-  return value->Is<BoolValue>() &&
-         static_cast<BoolValue>(value).NativeValue() == expected;
+  return value->Is<BoolValue>() && value.GetBool().NativeValue() == expected;
 }
 
 MATCHER_P(IsErrorValue, expected_substr, "") {
   const Value& value = arg;
   return value->Is<ErrorValue>() &&
-         absl::StrContains(
-             static_cast<ErrorValue>(value).NativeValue().message(),
-             expected_substr);
+         absl::StrContains(value.GetError().NativeValue().message(),
+                           expected_substr);
 }
 
 class ConstantFoldingExtTest : public testing::TestWithParam<TestCase> {};

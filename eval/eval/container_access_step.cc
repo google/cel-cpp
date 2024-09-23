@@ -53,11 +53,11 @@ inline constexpr int kNumContainerAccessArguments = 2;
 absl::optional<Number> CelNumberFromValue(const Value& value) {
   switch (value->kind()) {
     case ValueKind::kInt64:
-      return Number::FromInt64(static_cast<IntValue>(value).NativeValue());
+      return Number::FromInt64(value.GetInt().NativeValue());
     case ValueKind::kUint64:
-      return Number::FromUint64(static_cast<UintValue>(value).NativeValue());
+      return Number::FromUint64(value.GetUint().NativeValue());
     case ValueKind::kDouble:
-      return Number::FromDouble(static_cast<DoubleValue>(value).NativeValue());
+      return Number::FromDouble(value.GetDouble().NativeValue());
     default:
       return absl::nullopt;
   }
@@ -80,16 +80,13 @@ absl::Status CheckMapKeyType(const Value& key) {
 AttributeQualifier AttributeQualifierFromValue(const Value& v) {
   switch (v->kind()) {
     case ValueKind::kString:
-      return AttributeQualifier::OfString(
-          static_cast<StringValue>(v).ToString());
+      return AttributeQualifier::OfString(v.GetString().ToString());
     case ValueKind::kInt64:
-      return AttributeQualifier::OfInt(static_cast<IntValue>(v).NativeValue());
+      return AttributeQualifier::OfInt(v.GetInt().NativeValue());
     case ValueKind::kUint64:
-      return AttributeQualifier::OfUint(
-          static_cast<UintValue>(v).NativeValue());
+      return AttributeQualifier::OfUint(v.GetUint().NativeValue());
     case ValueKind::kBool:
-      return AttributeQualifier::OfBool(
-          static_cast<BoolValue>(v).NativeValue());
+      return AttributeQualifier::OfBool(v.GetBool().NativeValue());
     default:
       // Non-matching qualifier.
       return AttributeQualifier();
@@ -170,7 +167,7 @@ void LookupInList(const ListValue& cel_list, const Value& key,
       maybe_idx = number->AsInt();
     }
   } else if (InstanceOf<IntValue>(key)) {
-    maybe_idx = static_cast<IntValue>(key).NativeValue();
+    maybe_idx = key.GetInt().NativeValue();
   }
 
   if (!maybe_idx.has_value()) {

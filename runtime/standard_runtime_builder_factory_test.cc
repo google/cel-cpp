@@ -590,8 +590,7 @@ TEST(StandardRuntimeTest, RuntimeIssueSupport) {
 
     ASSERT_OK_AND_ASSIGN(auto result,
                          program->Evaluate(activation, value_factory.get()));
-    EXPECT_TRUE(result->Is<BoolValue>() &&
-                static_cast<BoolValue>(result).NativeValue());
+    EXPECT_TRUE(result->Is<BoolValue>() && result.GetBool().NativeValue());
   }
 }
 

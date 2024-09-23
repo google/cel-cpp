@@ -55,8 +55,7 @@ MATCHER_P3(DescriptorIs, name, arg_kinds, is_receiver, "") {
 
 MATCHER_P(IsBool, expected, "") {
   const Value& value = arg;
-  return value->Is<BoolValue>() &&
-         static_cast<BoolValue>(value).NativeValue() == expected;
+  return value->Is<BoolValue>() && value.GetBool().NativeValue() == expected;
 }
 
 // TODO: replace this with a parsed expr when the non-protobuf
@@ -188,17 +187,16 @@ INSTANTIATE_TEST_SUITE_P(
                    return {value_factory.CreateUnknownValue()};
                  },
                  IsBool(true)},
-        TestCase{
-            builtin::kNotStrictlyFalse,
-            [](ValueManager& value_factory) -> std::vector<Value> {
-              return {value_factory.CreateIntValue(42)};
-            },
-            Truly([](const Value& v) {
-              return v->Is<ErrorValue>() &&
-                     absl::StrContains(
-                         static_cast<ErrorValue>(v).NativeValue().message(),
-                         "No matching overloads");
-            })},
+        TestCase{builtin::kNotStrictlyFalse,
+                 [](ValueManager& value_factory) -> std::vector<Value> {
+                   return {value_factory.CreateIntValue(42)};
+                 },
+                 Truly([](const Value& v) {
+                   return v->Is<ErrorValue>() &&
+                          absl::StrContains(
+                              v.GetError().NativeValue().message(),
+                              "No matching overloads");
+                 })},
     }));
 
 }  // namespace

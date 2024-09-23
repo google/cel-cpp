@@ -117,13 +117,13 @@ TEST_F(ResolverTest, TestFindConstantEnum) {
   auto enum_value = resolver.FindConstant("TestEnum.TEST_ENUM_1", -1);
   ASSERT_TRUE(enum_value);
   ASSERT_TRUE(enum_value->Is<IntValue>());
-  EXPECT_THAT(static_cast<IntValue>(*enum_value).NativeValue(), Eq(1L));
+  EXPECT_THAT(enum_value->GetInt().NativeValue(), Eq(1L));
 
   enum_value = resolver.FindConstant(
       ".google.api.expr.runtime.TestMessage.TestEnum.TEST_ENUM_2", -1);
   ASSERT_TRUE(enum_value);
   ASSERT_TRUE(enum_value->Is<IntValue>());
-  EXPECT_THAT(static_cast<IntValue>(*enum_value).NativeValue(), Eq(2L));
+  EXPECT_THAT(enum_value->GetInt().NativeValue(), Eq(2L));
 }
 
 TEST_F(ResolverTest, TestFindConstantUnqualifiedType) {
@@ -135,7 +135,7 @@ TEST_F(ResolverTest, TestFindConstantUnqualifiedType) {
   auto type_value = resolver.FindConstant("int", -1);
   EXPECT_TRUE(type_value);
   EXPECT_TRUE(type_value->Is<TypeValue>());
-  EXPECT_THAT(static_cast<TypeValue>(*type_value).name(), Eq("int"));
+  EXPECT_THAT(type_value->GetType().name(), Eq("int"));
 }
 
 TEST_F(ResolverTest, TestFindConstantFullyQualifiedType) {
@@ -153,7 +153,7 @@ TEST_F(ResolverTest, TestFindConstantFullyQualifiedType) {
       resolver.FindConstant(".google.api.expr.runtime.TestMessage", -1);
   ASSERT_TRUE(type_value);
   ASSERT_TRUE(type_value->Is<TypeValue>());
-  EXPECT_THAT(static_cast<TypeValue>(*type_value).name(),
+  EXPECT_THAT(type_value->GetType().name(),
               Eq("google.api.expr.runtime.TestMessage"));
 }
 

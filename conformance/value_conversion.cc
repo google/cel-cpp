@@ -207,25 +207,25 @@ absl::StatusOr<google::api::expr::v1alpha1::Value> ToConformanceValue(
   google::api::expr::v1alpha1::Value result;
   switch (value->kind()) {
     case ValueKind::kBool:
-      result.set_bool_value(static_cast<BoolValue>(value).NativeValue());
+      result.set_bool_value(value.GetBool().NativeValue());
       break;
     case ValueKind::kInt:
-      result.set_int64_value(static_cast<IntValue>(value).NativeValue());
+      result.set_int64_value(value.GetInt().NativeValue());
       break;
     case ValueKind::kUint:
-      result.set_uint64_value(static_cast<UintValue>(value).NativeValue());
+      result.set_uint64_value(value.GetUint().NativeValue());
       break;
     case ValueKind::kDouble:
-      result.set_double_value(static_cast<DoubleValue>(value).NativeValue());
+      result.set_double_value(value.GetDouble().NativeValue());
       break;
     case ValueKind::kString:
-      result.set_string_value(static_cast<StringValue>(value).ToString());
+      result.set_string_value(value.GetString().ToString());
       break;
     case ValueKind::kBytes:
-      result.set_bytes_value(static_cast<BytesValue>(value).ToString());
+      result.set_bytes_value(value.GetBytes().ToString());
       break;
     case ValueKind::kType:
-      result.set_type_value(static_cast<TypeValue>(value).name());
+      result.set_type_value(value.GetType().name());
       break;
     case ValueKind::kNull:
       result.set_null_value(google::protobuf::NullValue::NULL_VALUE);
@@ -233,33 +233,32 @@ absl::StatusOr<google::api::expr::v1alpha1::Value> ToConformanceValue(
     case ValueKind::kDuration: {
       google::protobuf::Duration duration;
       CEL_RETURN_IF_ERROR(internal::EncodeDuration(
-          static_cast<DurationValue>(value).NativeValue(), &duration));
+          value.GetDuration().NativeValue(), &duration));
       result.mutable_object_value()->PackFrom(duration);
       break;
     }
     case ValueKind::kTimestamp: {
       google::protobuf::Timestamp timestamp;
-      CEL_RETURN_IF_ERROR(internal::EncodeTime(
-          static_cast<TimestampValue>(value).NativeValue(), &timestamp));
+      CEL_RETURN_IF_ERROR(
+          internal::EncodeTime(value.GetTimestamp().NativeValue(), &timestamp));
       result.mutable_object_value()->PackFrom(timestamp);
       break;
     }
     case ValueKind::kMap: {
       CEL_ASSIGN_OR_RETURN(
           *result.mutable_map_value(),
-          MapValueToConformance(value_manager, static_cast<MapValue>(value)));
+          MapValueToConformance(value_manager, value.GetMap()));
       break;
     }
     case ValueKind::kList: {
       CEL_ASSIGN_OR_RETURN(
           *result.mutable_list_value(),
-          ListValueToConformance(value_manager, static_cast<ListValue>(value)));
+          ListValueToConformance(value_manager, value.GetList()));
       break;
     }
     case ValueKind::kStruct: {
-      CEL_ASSIGN_OR_RETURN(
-          *result.mutable_object_value(),
-          ToProtobufAny(value_manager, static_cast<StructValue>(value)));
+      CEL_ASSIGN_OR_RETURN(*result.mutable_object_value(),
+                           ToProtobufAny(value_manager, value.GetStruct()));
       break;
     }
     default:

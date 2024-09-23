@@ -83,7 +83,7 @@ Type Value::GetRuntimeType() const {
     case ValueKind::kBytes:
       return BytesType();
     case ValueKind::kStruct:
-      return static_cast<StructValue>(*this).GetRuntimeType();
+      return this->GetStruct().GetRuntimeType();
     case ValueKind::kDuration:
       return DurationType();
     case ValueKind::kTimestamp:
@@ -99,9 +99,9 @@ Type Value::GetRuntimeType() const {
     case ValueKind::kError:
       return ErrorType();
     case ValueKind::kOpaque:
-      return Cast<OpaqueValue>(*this).GetRuntimeType();
+      return this->GetOpaque().GetRuntimeType();
     default:
-      return Type();
+      return cel::Type();
   }
 }
 
@@ -1190,62 +1190,62 @@ absl::optional<UnknownValue> Value::AsUnknown() const&& {
   return absl::nullopt;
 }
 
-Value::operator BoolValue() const {
+BoolValue Value::GetBool() const {
   ABSL_DCHECK(IsBool()) << *this;
   return absl::get<BoolValue>(variant_);
 }
 
-Value::operator const BytesValue&() & {
+const BytesValue& Value::GetBytes() & {
   ABSL_DCHECK(IsBytes()) << *this;
   return absl::get<BytesValue>(variant_);
 }
 
-Value::operator const BytesValue&() const& {
+const BytesValue& Value::GetBytes() const& {
   ABSL_DCHECK(IsBytes()) << *this;
   return absl::get<BytesValue>(variant_);
 }
 
-Value::operator BytesValue() && {
+BytesValue Value::GetBytes() && {
   ABSL_DCHECK(IsBytes()) << *this;
   return absl::get<BytesValue>(std::move(variant_));
 }
 
-Value::operator BytesValue() const&& {
+BytesValue Value::GetBytes() const&& {
   ABSL_DCHECK(IsBytes()) << *this;
   return absl::get<BytesValue>(std::move(variant_));
 }
 
-Value::operator DoubleValue() const {
+DoubleValue Value::GetDouble() const {
   ABSL_DCHECK(IsDouble()) << *this;
   return absl::get<DoubleValue>(variant_);
 }
 
-Value::operator DurationValue() const {
+DurationValue Value::GetDuration() const {
   ABSL_DCHECK(IsDuration()) << *this;
   return absl::get<DurationValue>(variant_);
 }
 
-Value::operator const ErrorValue&() & {
+const ErrorValue& Value::GetError() & {
   ABSL_DCHECK(IsError()) << *this;
   return absl::get<ErrorValue>(variant_);
 }
 
-Value::operator const ErrorValue&() const& {
+const ErrorValue& Value::GetError() const& {
   ABSL_DCHECK(IsError()) << *this;
   return absl::get<ErrorValue>(variant_);
 }
 
-Value::operator ErrorValue() && {
+ErrorValue Value::GetError() && {
   ABSL_DCHECK(IsError()) << *this;
   return absl::get<ErrorValue>(std::move(variant_));
 }
 
-Value::operator ErrorValue() const&& {
+ErrorValue Value::GetError() const&& {
   ABSL_DCHECK(IsError()) << *this;
   return absl::get<ErrorValue>(std::move(variant_));
 }
 
-Value::operator IntValue() const {
+IntValue Value::GetInt() const {
   ABSL_DCHECK(IsInt()) << *this;
   return absl::get<IntValue>(variant_);
 }
@@ -1257,7 +1257,7 @@ Value::operator IntValue() const {
   ABSL_LOG(FATAL) << absl::bad_variant_access().what() /* Crash OK */
 #endif
 
-Value::operator ListValue() & {
+ListValue Value::GetList() & {
   ABSL_DCHECK(IsList()) << *this;
   if (const auto* alternative =
           absl::get_if<common_internal::LegacyListValue>(&variant_);
@@ -1280,7 +1280,7 @@ Value::operator ListValue() & {
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
-Value::operator ListValue() const& {
+ListValue Value::GetList() const& {
   ABSL_DCHECK(IsList()) << *this;
   if (const auto* alternative =
           absl::get_if<common_internal::LegacyListValue>(&variant_);
@@ -1303,7 +1303,7 @@ Value::operator ListValue() const& {
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
-Value::operator ListValue() && {
+ListValue Value::GetList() && {
   ABSL_DCHECK(IsList()) << *this;
   if (auto* alternative =
           absl::get_if<common_internal::LegacyListValue>(&variant_);
@@ -1325,7 +1325,7 @@ Value::operator ListValue() && {
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
-Value::operator ListValue() const&& {
+ListValue Value::GetList() const&& {
   ABSL_DCHECK(IsList()) << *this;
   if (auto* alternative =
           absl::get_if<common_internal::LegacyListValue>(&variant_);
@@ -1347,7 +1347,7 @@ Value::operator ListValue() const&& {
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
-Value::operator MapValue() & {
+MapValue Value::GetMap() & {
   ABSL_DCHECK(IsMap()) << *this;
   if (const auto* alternative =
           absl::get_if<common_internal::LegacyMapValue>(&variant_);
@@ -1369,7 +1369,7 @@ Value::operator MapValue() & {
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
-Value::operator MapValue() const& {
+MapValue Value::GetMap() const& {
   ABSL_DCHECK(IsMap()) << *this;
   if (const auto* alternative =
           absl::get_if<common_internal::LegacyMapValue>(&variant_);
@@ -1391,7 +1391,7 @@ Value::operator MapValue() const& {
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
-Value::operator MapValue() && {
+MapValue Value::GetMap() && {
   ABSL_DCHECK(IsMap()) << *this;
   if (auto* alternative =
           absl::get_if<common_internal::LegacyMapValue>(&variant_);
@@ -1413,7 +1413,7 @@ Value::operator MapValue() && {
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
-Value::operator MapValue() const&& {
+MapValue Value::GetMap() const&& {
   ABSL_DCHECK(IsMap()) << *this;
   if (auto* alternative =
           absl::get_if<common_internal::LegacyMapValue>(&variant_);
@@ -1435,114 +1435,154 @@ Value::operator MapValue() const&& {
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
-Value::operator MessageValue() & {
+MessageValue Value::GetMessage() & {
   ABSL_DCHECK(IsMessage()) << *this;
   return absl::get<ParsedMessageValue>(variant_);
 }
 
-Value::operator MessageValue() const& {
+MessageValue Value::GetMessage() const& {
   ABSL_DCHECK(IsMessage()) << *this;
   return absl::get<ParsedMessageValue>(variant_);
 }
 
-Value::operator MessageValue() && {
+MessageValue Value::GetMessage() && {
   ABSL_DCHECK(IsMessage()) << *this;
   return absl::get<ParsedMessageValue>(std::move(variant_));
 }
 
-Value::operator MessageValue() const&& {
+MessageValue Value::GetMessage() const&& {
   ABSL_DCHECK(IsMessage()) << *this;
   return absl::get<ParsedMessageValue>(std::move(variant_));
 }
 
-Value::operator NullValue() const {
+NullValue Value::GetNull() const {
   ABSL_DCHECK(IsNull()) << *this;
   return absl::get<NullValue>(variant_);
 }
 
-Value::operator const OpaqueValue&() & {
+const OpaqueValue& Value::GetOpaque() & {
   ABSL_DCHECK(IsOpaque()) << *this;
   return absl::get<OpaqueValue>(variant_);
 }
 
-Value::operator const OpaqueValue&() const& {
+const OpaqueValue& Value::GetOpaque() const& {
   ABSL_DCHECK(IsOpaque()) << *this;
   return absl::get<OpaqueValue>(variant_);
 }
 
-Value::operator OpaqueValue() && {
+OpaqueValue Value::GetOpaque() && {
   ABSL_DCHECK(IsOpaque()) << *this;
   return absl::get<OpaqueValue>(std::move(variant_));
 }
 
-Value::operator OpaqueValue() const&& {
+OpaqueValue Value::GetOpaque() const&& {
   ABSL_DCHECK(IsOpaque()) << *this;
   return absl::get<OpaqueValue>(std::move(variant_));
 }
 
-Value::operator const OptionalValue&() & {
+const OptionalValue& Value::GetOptional() & {
   ABSL_DCHECK(IsOptional()) << *this;
   return static_cast<OptionalValue&>(absl::get<OpaqueValue>(variant_));
 }
 
-Value::operator const OptionalValue&() const& {
+const OptionalValue& Value::GetOptional() const& {
   ABSL_DCHECK(IsOptional()) << *this;
   return static_cast<const OptionalValue&>(absl::get<OpaqueValue>(variant_));
 }
 
-Value::operator OptionalValue() && {
+OptionalValue Value::GetOptional() && {
   ABSL_DCHECK(IsOptional()) << *this;
   return static_cast<OptionalValue&&>(
       absl::get<OpaqueValue>(std::move(variant_)));
 }
 
-Value::operator OptionalValue() const&& {
+OptionalValue Value::GetOptional() const&& {
   ABSL_DCHECK(IsOptional()) << *this;
   return static_cast<const OptionalValue&&>(
       absl::get<OpaqueValue>(std::move(variant_)));
 }
 
-Value::operator const ParsedMessageValue&() & {
-  ABSL_DCHECK(IsMessage()) << *this;
+const ParsedJsonListValue& Value::GetParsedJsonList() & {
+  ABSL_DCHECK(IsParsedJsonList()) << *this;
+  return absl::get<ParsedJsonListValue>(variant_);
+}
+
+const ParsedJsonListValue& Value::GetParsedJsonList() const& {
+  ABSL_DCHECK(IsParsedJsonList()) << *this;
+  return absl::get<ParsedJsonListValue>(variant_);
+}
+
+ParsedJsonListValue Value::GetParsedJsonList() && {
+  ABSL_DCHECK(IsParsedJsonList()) << *this;
+  return absl::get<ParsedJsonListValue>(std::move(variant_));
+}
+
+ParsedJsonListValue Value::GetParsedJsonList() const&& {
+  ABSL_DCHECK(IsParsedJsonList()) << *this;
+  return absl::get<ParsedJsonListValue>(std::move(variant_));
+}
+
+const ParsedJsonMapValue& Value::GetParsedJsonMap() & {
+  ABSL_DCHECK(IsParsedJsonMap()) << *this;
+  return absl::get<ParsedJsonMapValue>(variant_);
+}
+
+const ParsedJsonMapValue& Value::GetParsedJsonMap() const& {
+  ABSL_DCHECK(IsParsedJsonMap()) << *this;
+  return absl::get<ParsedJsonMapValue>(variant_);
+}
+
+ParsedJsonMapValue Value::GetParsedJsonMap() && {
+  ABSL_DCHECK(IsParsedJsonMap()) << *this;
+  return absl::get<ParsedJsonMapValue>(std::move(variant_));
+}
+
+ParsedJsonMapValue Value::GetParsedJsonMap() const&& {
+  ABSL_DCHECK(IsParsedJsonMap()) << *this;
+  return absl::get<ParsedJsonMapValue>(std::move(variant_));
+}
+
+const ParsedMessageValue& Value::GetParsedMessage() & {
+  ABSL_DCHECK(IsParsedMessage()) << *this;
   return absl::get<ParsedMessageValue>(variant_);
 }
 
-Value::operator const ParsedMessageValue&() const& {
-  ABSL_DCHECK(IsMessage()) << *this;
+const ParsedMessageValue& Value::GetParsedMessage() const& {
+  ABSL_DCHECK(IsParsedMessage()) << *this;
   return absl::get<ParsedMessageValue>(variant_);
 }
 
-Value::operator ParsedMessageValue() && {
-  ABSL_DCHECK(IsMessage()) << *this;
+ParsedMessageValue Value::GetParsedMessage() && {
+  ABSL_DCHECK(IsParsedMessage()) << *this;
   return absl::get<ParsedMessageValue>(std::move(variant_));
 }
 
-Value::operator ParsedMessageValue() const&& {
-  ABSL_DCHECK(IsMessage()) << *this;
+ParsedMessageValue Value::GetParsedMessage() const&& {
+  ABSL_DCHECK(IsParsedMessage()) << *this;
   return absl::get<ParsedMessageValue>(std::move(variant_));
 }
 
-Value::operator const StringValue&() & {
+const StringValue& Value::GetString() & {
   ABSL_DCHECK(IsString()) << *this;
   return absl::get<StringValue>(variant_);
 }
 
-Value::operator const StringValue&() const& {
+const StringValue& Value::GetString() const& {
   ABSL_DCHECK(IsString()) << *this;
   return absl::get<StringValue>(variant_);
 }
 
-Value::operator StringValue() && {
+StringValue Value::GetString() && {
   ABSL_DCHECK(IsString()) << *this;
   return absl::get<StringValue>(std::move(variant_));
 }
 
-Value::operator StringValue() const&& {
+StringValue Value::GetString() const&& {
   ABSL_DCHECK(IsString()) << *this;
   return absl::get<StringValue>(std::move(variant_));
 }
 
-Value::operator StructValue() & {
+StructValue Value::GetStruct() & {
   ABSL_DCHECK(IsStruct()) << *this;
   if (const auto* alternative =
           absl::get_if<common_internal::LegacyStructValue>(&variant_);
@@ -1560,7 +1600,7 @@ Value::operator StructValue() & {
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
-Value::operator StructValue() const& {
+StructValue Value::GetStruct() const& {
   ABSL_DCHECK(IsStruct()) << *this;
   if (const auto* alternative =
           absl::get_if<common_internal::LegacyStructValue>(&variant_);
@@ -1578,7 +1618,7 @@ Value::operator StructValue() const& {
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
-Value::operator StructValue() && {
+StructValue Value::GetStruct() && {
   ABSL_DCHECK(IsStruct()) << *this;
   if (auto* alternative =
           absl::get_if<common_internal::LegacyStructValue>(&variant_);
@@ -1596,7 +1636,7 @@ Value::operator StructValue() && {
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
-Value::operator StructValue() const&& {
+StructValue Value::GetStruct() const&& {
   ABSL_DCHECK(IsStruct()) << *this;
   if (auto* alternative =
           absl::get_if<common_internal::LegacyStructValue>(&variant_);
@@ -1614,52 +1654,52 @@ Value::operator StructValue() const&& {
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
-Value::operator TimestampValue() const {
+TimestampValue Value::GetTimestamp() const {
   ABSL_DCHECK(IsTimestamp()) << *this;
   return absl::get<TimestampValue>(variant_);
 }
 
-Value::operator const TypeValue&() & {
+const TypeValue& Value::GetType() & {
   ABSL_DCHECK(IsType()) << *this;
   return absl::get<TypeValue>(variant_);
 }
 
-Value::operator const TypeValue&() const& {
+const TypeValue& Value::GetType() const& {
   ABSL_DCHECK(IsType()) << *this;
   return absl::get<TypeValue>(variant_);
 }
 
-Value::operator TypeValue() && {
+TypeValue Value::GetType() && {
   ABSL_DCHECK(IsType()) << *this;
   return absl::get<TypeValue>(std::move(variant_));
 }
 
-Value::operator TypeValue() const&& {
+TypeValue Value::GetType() const&& {
   ABSL_DCHECK(IsType()) << *this;
   return absl::get<TypeValue>(std::move(variant_));
 }
 
-Value::operator UintValue() const {
+UintValue Value::GetUint() const {
   ABSL_DCHECK(IsUint()) << *this;
   return absl::get<UintValue>(variant_);
 }
 
-Value::operator const UnknownValue&() & {
+const UnknownValue& Value::GetUnknown() & {
   ABSL_DCHECK(IsUnknown()) << *this;
   return absl::get<UnknownValue>(variant_);
 }
 
-Value::operator const UnknownValue&() const& {
+const UnknownValue& Value::GetUnknown() const& {
   ABSL_DCHECK(IsUnknown()) << *this;
   return absl::get<UnknownValue>(variant_);
 }
 
-Value::operator UnknownValue() && {
+UnknownValue Value::GetUnknown() && {
   ABSL_DCHECK(IsUnknown()) << *this;
   return absl::get<UnknownValue>(std::move(variant_));
 }
 
-Value::operator UnknownValue() const&& {
+UnknownValue Value::GetUnknown() const&& {
   ABSL_DCHECK(IsUnknown()) << *this;
   return absl::get<UnknownValue>(std::move(variant_));
 }

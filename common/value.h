@@ -421,6 +421,20 @@ class Value final {
     return false;
   }
 
+  // Returns `true` if this value is an instance of a parsed JSON list value. If
+  // `true` is returned, it is implied that `IsList()` would also return
+  // true.
+  bool IsParsedJsonList() const {
+    return absl::holds_alternative<ParsedJsonListValue>(variant_);
+  }
+
+  // Returns `true` if this value is an instance of a parsed JSON map value. If
+  // `true` is returned, it is implied that `IsMap()` would also return
+  // true.
+  bool IsParsedJsonMap() const {
+    return absl::holds_alternative<ParsedJsonMapValue>(variant_);
+  }
+
   // Returns `true` if this value is an instance of a parsed message value. If
   // `true` is returned, it is implied that `IsMessage()` would also return
   // true.
@@ -1201,134 +1215,591 @@ class Value final {
   // Performs an unchecked cast from a value to a bool value. In
   // debug builds a best effort is made to crash. If `IsBool()` would return
   // false, calling this method is undefined behavior.
-  explicit operator BoolValue() const;
+  BoolValue GetBool() const;
 
   // Performs an unchecked cast from a value to a bytes value. In
   // debug builds a best effort is made to crash. If `IsBytes()` would return
   // false, calling this method is undefined behavior.
-  explicit operator const BytesValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator const BytesValue&() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator BytesValue() &&;
-  explicit operator BytesValue() const&&;
+  const BytesValue& GetBytes() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const BytesValue& GetBytes() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  BytesValue GetBytes() &&;
+  BytesValue GetBytes() const&&;
 
   // Performs an unchecked cast from a value to a double value. In
   // debug builds a best effort is made to crash. If `IsDouble()` would return
   // false, calling this method is undefined behavior.
-  explicit operator DoubleValue() const;
+  DoubleValue GetDouble() const;
 
   // Performs an unchecked cast from a value to a duration value. In
   // debug builds a best effort is made to crash. If `IsDuration()` would return
   // false, calling this method is undefined behavior.
-  explicit operator DurationValue() const;
+  DurationValue GetDuration() const;
 
   // Performs an unchecked cast from a value to an error value. In
   // debug builds a best effort is made to crash. If `IsError()` would return
   // false, calling this method is undefined behavior.
-  explicit operator const ErrorValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator const ErrorValue&() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator ErrorValue() &&;
-  explicit operator ErrorValue() const&&;
+  const ErrorValue& GetError() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const ErrorValue& GetError() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  ErrorValue GetError() &&;
+  ErrorValue GetError() const&&;
 
   // Performs an unchecked cast from a value to an int value. In
   // debug builds a best effort is made to crash. If `IsInt()` would return
   // false, calling this method is undefined behavior.
-  explicit operator IntValue() const;
+  IntValue GetInt() const;
 
   // Performs an unchecked cast from a value to a list value. In
   // debug builds a best effort is made to crash. If `IsList()` would return
   // false, calling this method is undefined behavior.
-  explicit operator ListValue() &;
-  explicit operator ListValue() const&;
-  explicit operator ListValue() &&;
-  explicit operator ListValue() const&&;
+  ListValue GetList() &;
+  ListValue GetList() const&;
+  ListValue GetList() &&;
+  ListValue GetList() const&&;
 
   // Performs an unchecked cast from a value to a map value. In
   // debug builds a best effort is made to crash. If `IsMap()` would return
   // false, calling this method is undefined behavior.
-  explicit operator MapValue() &;
-  explicit operator MapValue() const&;
-  explicit operator MapValue() &&;
-  explicit operator MapValue() const&&;
+  MapValue GetMap() &;
+  MapValue GetMap() const&;
+  MapValue GetMap() &&;
+  MapValue GetMap() const&&;
 
   // Performs an unchecked cast from a value to a message value. In
   // debug builds a best effort is made to crash. If `IsMessage()` would return
   // false, calling this method is undefined behavior.
-  explicit operator MessageValue() &;
-  explicit operator MessageValue() const&;
-  explicit operator MessageValue() &&;
-  explicit operator MessageValue() const&&;
+  MessageValue GetMessage() &;
+  MessageValue GetMessage() const&;
+  MessageValue GetMessage() &&;
+  MessageValue GetMessage() const&&;
 
   // Performs an unchecked cast from a value to a null value. In
   // debug builds a best effort is made to crash. If `IsNull()` would return
   // false, calling this method is undefined behavior.
-  explicit operator NullValue() const;
+  NullValue GetNull() const;
 
   // Performs an unchecked cast from a value to an opaque value. In
   // debug builds a best effort is made to crash. If `IsOpaque()` would return
   // false, calling this method is undefined behavior.
-  explicit operator const OpaqueValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator const OpaqueValue&() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator OpaqueValue() &&;
-  explicit operator OpaqueValue() const&&;
+  const OpaqueValue& GetOpaque() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const OpaqueValue& GetOpaque() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  OpaqueValue GetOpaque() &&;
+  OpaqueValue GetOpaque() const&&;
 
   // Performs an unchecked cast from a value to an optional value. In
   // debug builds a best effort is made to crash. If `IsOptional()` would return
   // false, calling this method is undefined behavior.
-  explicit operator const OptionalValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator const OptionalValue&() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator OptionalValue() &&;
-  explicit operator OptionalValue() const&&;
+  const OptionalValue& GetOptional() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const OptionalValue& GetOptional() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  OptionalValue GetOptional() &&;
+  OptionalValue GetOptional() const&&;
+
+  // Performs an unchecked cast from a value to a parsed message value. In
+  // debug builds a best effort is made to crash. If `IsParsedJsonList()` would
+  // return false, calling this method is undefined behavior.
+  const ParsedJsonListValue& GetParsedJsonList() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const ParsedJsonListValue& GetParsedJsonList()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  ParsedJsonListValue GetParsedJsonList() &&;
+  ParsedJsonListValue GetParsedJsonList() const&&;
+
+  // Performs an unchecked cast from a value to a parsed message value. In
+  // debug builds a best effort is made to crash. If `IsParsedJsonMap()` would
+  // return false, calling this method is undefined behavior.
+  const ParsedJsonMapValue& GetParsedJsonMap() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const ParsedJsonMapValue& GetParsedJsonMap()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  ParsedJsonMapValue GetParsedJsonMap() &&;
+  ParsedJsonMapValue GetParsedJsonMap() const&&;
 
   // Performs an unchecked cast from a value to a parsed message value. In
   // debug builds a best effort is made to crash. If `IsParsedMessage()` would
   // return false, calling this method is undefined behavior.
-  explicit operator const ParsedMessageValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator const ParsedMessageValue&()
+  const ParsedMessageValue& GetParsedMessage() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const ParsedMessageValue& GetParsedMessage()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator ParsedMessageValue() &&;
-  explicit operator ParsedMessageValue() const&&;
+  ParsedMessageValue GetParsedMessage() &&;
+  ParsedMessageValue GetParsedMessage() const&&;
 
   // Performs an unchecked cast from a value to a string value. In
   // debug builds a best effort is made to crash. If `IsString()` would return
   // false, calling this method is undefined behavior.
-  explicit operator const StringValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator const StringValue&() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator StringValue() &&;
-  explicit operator StringValue() const&&;
+  const StringValue& GetString() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const StringValue& GetString() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  StringValue GetString() &&;
+  StringValue GetString() const&&;
 
   // Performs an unchecked cast from a value to a struct value. In
   // debug builds a best effort is made to crash. If `IsStruct()` would return
   // false, calling this method is undefined behavior.
-  explicit operator StructValue() &;
-  explicit operator StructValue() const&;
-  explicit operator StructValue() &&;
-  explicit operator StructValue() const&&;
+  StructValue GetStruct() &;
+  StructValue GetStruct() const&;
+  StructValue GetStruct() &&;
+  StructValue GetStruct() const&&;
 
   // Performs an unchecked cast from a value to a timestamp value. In
   // debug builds a best effort is made to crash. If `IsTimestamp()` would
   // return false, calling this method is undefined behavior.
-  explicit operator TimestampValue() const;
+  TimestampValue GetTimestamp() const;
 
   // Performs an unchecked cast from a value to a type value. In
   // debug builds a best effort is made to crash. If `IsType()` would return
   // false, calling this method is undefined behavior.
-  explicit operator const TypeValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator const TypeValue&() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator TypeValue() &&;
-  explicit operator TypeValue() const&&;
+  const TypeValue& GetType() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const TypeValue& GetType() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  TypeValue GetType() &&;
+  TypeValue GetType() const&&;
 
   // Performs an unchecked cast from a value to an uint value. In
   // debug builds a best effort is made to crash. If `IsUint()` would return
   // false, calling this method is undefined behavior.
-  explicit operator UintValue() const;
+  UintValue GetUint() const;
 
   // Performs an unchecked cast from a value to an unknown value. In
   // debug builds a best effort is made to crash. If `IsUnknown()` would return
   // false, calling this method is undefined behavior.
-  explicit operator const UnknownValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator const UnknownValue&() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator UnknownValue() &&;
-  explicit operator UnknownValue() const&&;
+  const UnknownValue& GetUnknown() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const UnknownValue& GetUnknown() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  UnknownValue GetUnknown() &&;
+  UnknownValue GetUnknown() const&&;
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetBool()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BoolValue, T>, BoolValue> Get() & {
+    return GetBool();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BoolValue, T>, BoolValue> Get() const& {
+    return GetBool();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BoolValue, T>, BoolValue> Get() && {
+    return GetBool();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BoolValue, T>, BoolValue> Get() const&& {
+    return GetBool();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetBytes()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<BytesValue, T>, const BytesValue&> Get() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetBytes();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BytesValue, T>, const BytesValue&> Get()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetBytes();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BytesValue, T>, BytesValue> Get() && {
+    return std::move(*this).GetBytes();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BytesValue, T>, BytesValue> Get() const&& {
+    return std::move(*this).GetBytes();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetDouble()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DoubleValue, T>, DoubleValue> Get() & {
+    return GetDouble();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DoubleValue, T>, DoubleValue> Get() const& {
+    return GetDouble();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DoubleValue, T>, DoubleValue> Get() && {
+    return GetDouble();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DoubleValue, T>, DoubleValue> Get() const&& {
+    return GetDouble();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetDuration()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DurationValue, T>, DurationValue> Get() & {
+    return GetDuration();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DurationValue, T>, DurationValue> Get()
+      const& {
+    return GetDuration();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DurationValue, T>, DurationValue> Get() && {
+    return GetDuration();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DurationValue, T>, DurationValue> Get()
+      const&& {
+    return GetDuration();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetError()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ErrorValue, T>, const ErrorValue&> Get() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetError();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ErrorValue, T>, const ErrorValue&> Get()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetError();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ErrorValue, T>, ErrorValue> Get() && {
+    return std::move(*this).GetError();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ErrorValue, T>, ErrorValue> Get() const&& {
+    return std::move(*this).GetError();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetInt()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<IntValue, T>, IntValue> Get() & {
+    return GetInt();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<IntValue, T>, IntValue> Get() const& {
+    return GetInt();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<IntValue, T>, IntValue> Get() && {
+    return GetInt();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<IntValue, T>, IntValue> Get() const&& {
+    return GetInt();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetList()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ListValue, T>, ListValue> Get() & {
+    return GetList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ListValue, T>, ListValue> Get() const& {
+    return GetList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ListValue, T>, ListValue> Get() && {
+    return std::move(*this).GetList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ListValue, T>, ListValue> Get() const&& {
+    return std::move(*this).GetList();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetMap()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MapValue, T>, MapValue> Get() & {
+    return GetMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MapValue, T>, MapValue> Get() const& {
+    return GetMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MapValue, T>, MapValue> Get() && {
+    return std::move(*this).GetMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MapValue, T>, MapValue> Get() const&& {
+    return std::move(*this).GetMap();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetMessage()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>, MessageValue> Get() & {
+    return GetMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>, MessageValue> Get() const& {
+    return GetMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>, MessageValue> Get() && {
+    return std::move(*this).GetMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>, MessageValue> Get()
+      const&& {
+    return std::move(*this).GetMessage();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetNull()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<NullValue, T>, NullValue> Get() & {
+    return GetNull();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<NullValue, T>, NullValue> Get() const& {
+    return GetNull();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<NullValue, T>, NullValue> Get() && {
+    return GetNull();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<NullValue, T>, NullValue> Get() const&& {
+    return GetNull();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetOpaque()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<OpaqueValue, T>, const OpaqueValue&>
+      Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetOpaque();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OpaqueValue, T>, const OpaqueValue&> Get()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetOpaque();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OpaqueValue, T>, OpaqueValue> Get() && {
+    return std::move(*this).GetOpaque();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OpaqueValue, T>, OpaqueValue> Get() const&& {
+    return std::move(*this).GetOpaque();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetOptional()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<OptionalValue, T>, const OptionalValue&>
+      Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetOptional();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>, const OptionalValue&> Get()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetOptional();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>, OptionalValue> Get() && {
+    return std::move(*this).GetOptional();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>, OptionalValue> Get()
+      const&& {
+    return std::move(*this).GetOptional();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetParsedJsonList()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedJsonListValue, T>,
+                       const ParsedJsonListValue&>
+      Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedJsonList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedJsonListValue, T>,
+                   const ParsedJsonListValue&>
+  Get() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedJsonList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedJsonListValue, T>, ParsedJsonListValue>
+  Get() && {
+    return std::move(*this).GetParsedJsonList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedJsonListValue, T>, ParsedJsonListValue>
+  Get() const&& {
+    return std::move(*this).GetParsedJsonList();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetParsedJsonMap()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedJsonMapValue, T>,
+                       const ParsedJsonMapValue&>
+      Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedJsonMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedJsonMapValue, T>,
+                   const ParsedJsonMapValue&>
+  Get() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedJsonMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedJsonMapValue, T>, ParsedJsonMapValue>
+  Get() && {
+    return std::move(*this).GetParsedJsonMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedJsonMapValue, T>, ParsedJsonMapValue>
+  Get() const&& {
+    return std::move(*this).GetParsedJsonMap();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetParsedMessage()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                       const ParsedMessageValue&>
+      Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                   const ParsedMessageValue&>
+  Get() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>, ParsedMessageValue>
+  Get() && {
+    return std::move(*this).GetParsedMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>, ParsedMessageValue>
+  Get() const&& {
+    return std::move(*this).GetParsedMessage();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetString()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<StringValue, T>, const StringValue&>
+      Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetString();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StringValue, T>, const StringValue&> Get()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetString();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StringValue, T>, StringValue> Get() && {
+    return std::move(*this).GetString();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StringValue, T>, StringValue> Get() const&& {
+    return std::move(*this).GetString();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetStruct()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StructValue, T>, StructValue> Get() & {
+    return GetStruct();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StructValue, T>, StructValue> Get() const& {
+    return GetStruct();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StructValue, T>, StructValue> Get() && {
+    return std::move(*this).GetStruct();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StructValue, T>, StructValue> Get() const&& {
+    return std::move(*this).GetStruct();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetTimestamp()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TimestampValue, T>, TimestampValue> Get() & {
+    return GetTimestamp();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TimestampValue, T>, TimestampValue> Get()
+      const& {
+    return GetTimestamp();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TimestampValue, T>, TimestampValue> Get() && {
+    return GetTimestamp();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TimestampValue, T>, TimestampValue> Get()
+      const&& {
+    return GetTimestamp();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetType()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<TypeValue, T>, const TypeValue&> Get() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetType();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TypeValue, T>, const TypeValue&> Get()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetType();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TypeValue, T>, TypeValue> Get() && {
+    return std::move(*this).GetType();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TypeValue, T>, TypeValue> Get() const&& {
+    return std::move(*this).GetType();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetUint()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UintValue, T>, UintValue> Get() & {
+    return GetUint();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UintValue, T>, UintValue> Get() const& {
+    return GetUint();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UintValue, T>, UintValue> Get() && {
+    return GetUint();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UintValue, T>, UintValue> Get() const&& {
+    return GetUint();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetUnknown()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<UnknownValue, T>, const UnknownValue&>
+      Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetUnknown();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UnknownValue, T>, const UnknownValue&> Get()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetUnknown();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UnknownValue, T>, UnknownValue> Get() && {
+    return std::move(*this).GetUnknown();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UnknownValue, T>, UnknownValue> Get()
+      const&& {
+    return std::move(*this).GetUnknown();
+  }
 
   // When `Value` is default constructed, it is in a valid but undefined state.
   // Any attempt to use it invokes undefined behavior. This mention can be used

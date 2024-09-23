@@ -116,11 +116,11 @@ class OptionalValue final : public OpaqueValue {
   cel::Value Value() const;
 
   const interface_type& operator*() const {
-    return Cast<OptionalValueInterface>(OpaqueValue::operator*());
+    return cel::Cast<OptionalValueInterface>(OpaqueValue::operator*());
   }
 
   absl::Nonnull<const interface_type*> operator->() const {
-    return Cast<OptionalValueInterface>(OpaqueValue::operator->());
+    return cel::Cast<OptionalValueInterface>(OpaqueValue::operator->());
   }
 
   bool IsOptional() const = delete;
@@ -130,6 +130,10 @@ class OptionalValue final : public OpaqueValue {
   optional_ref<const OptionalValue> AsOptional() const& = delete;
   absl::optional<OptionalValue> AsOptional() && = delete;
   absl::optional<OptionalValue> AsOptional() const&& = delete;
+  const OptionalValue& GetOptional() & = delete;
+  const OptionalValue& GetOptional() const& = delete;
+  OptionalValue GetOptional() && = delete;
+  OptionalValue GetOptional() const&& = delete;
   template <typename T>
   std::enable_if_t<std::is_same_v<OptionalValue, T>,
                    optional_ref<const OptionalValue>>
@@ -146,6 +150,22 @@ class OptionalValue final : public OpaqueValue {
   std::enable_if_t<std::is_same_v<OptionalValue, T>,
                    absl::optional<OptionalValue>>
   As() const&& = delete;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                   optional_ref<const OptionalValue>>
+  Get() & = delete;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                   optional_ref<const OptionalValue>>
+  Get() const& = delete;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                   absl::optional<OptionalValue>>
+  Get() && = delete;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalValue, T>,
+                   absl::optional<OptionalValue>>
+  Get() const&& = delete;
 
  private:
   friend struct SubsumptionTraits<OptionalValue>;
@@ -200,6 +220,30 @@ inline std::enable_if_t<std::is_same_v<OptionalValue, T>,
                         absl::optional<OptionalValue>>
 OpaqueValue::As() const&& {
   return std::move(*this).AsOptional();
+}
+
+template <typename T>
+    std::enable_if_t<std::is_same_v<OptionalValue, T>, const OptionalValue&>
+    OpaqueValue::Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return GetOptional();
+}
+
+template <typename T>
+std::enable_if_t<std::is_same_v<OptionalValue, T>, const OptionalValue&>
+OpaqueValue::Get() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return GetOptional();
+}
+
+template <typename T>
+std::enable_if_t<std::is_same_v<OptionalValue, T>, OptionalValue>
+OpaqueValue::Get() && {
+  return std::move(*this).GetOptional();
+}
+
+template <typename T>
+std::enable_if_t<std::is_same_v<OptionalValue, T>, OptionalValue>
+OpaqueValue::Get() const&& {
+  return std::move(*this).GetOptional();
 }
 
 }  // namespace cel

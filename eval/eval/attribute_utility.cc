@@ -82,7 +82,7 @@ absl::optional<UnknownValue> AttributeUtility::MergeUnknowns(
     if (!result_set.has_value()) {
       result_set.emplace();
     }
-    const auto& current_set = static_cast<cel::UnknownValue>(value);
+    const auto& current_set = value.GetUnknown();
 
     cel::base_internal::UnknownSetAccess::Add(
         *result_set, UnknownSet(current_set.attribute_set(),

@@ -61,9 +61,8 @@ class CondJumpStep : public JumpStepBase {
     }
 
     const auto& value = frame->value_stack().Peek();
-    const auto should_jump =
-        value.Is<BoolValue>() &&
-        jump_condition_ == static_cast<BoolValue>(value).NativeValue();
+    const auto should_jump = value.Is<BoolValue>() &&
+                             jump_condition_ == value.GetBool().NativeValue();
 
     if (!leave_on_stack_) {
       frame->value_stack().Pop(1);

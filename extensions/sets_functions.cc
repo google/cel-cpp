@@ -39,8 +39,8 @@ absl::StatusOr<Value> SetsContains(ValueManager& value_factory,
                              list.Contains(value_factory, sublist_element));
 
         // Treat CEL error as missing
-        any_missing = !contains->Is<BoolValue>() ||
-                      !static_cast<BoolValue>(contains).NativeValue();
+        any_missing =
+            !contains->Is<BoolValue>() || !contains.GetBool().NativeValue();
         // The first false result will terminate the loop.
         return !any_missing;
       }));
@@ -59,8 +59,7 @@ absl::StatusOr<Value> SetsIntersects(ValueManager& value_factory,
                              sublist.Contains(value_factory, list_element));
         // Treat contains return CEL error as false for the sake of
         // intersecting.
-        exists = contains->Is<BoolValue>() &&
-                 static_cast<BoolValue>(contains).NativeValue();
+        exists = contains->Is<BoolValue>() && contains.GetBool().NativeValue();
         return !exists;
       }));
 
@@ -73,7 +72,7 @@ absl::StatusOr<Value> SetsEquivalent(ValueManager& value_factory,
   CEL_ASSIGN_OR_RETURN(auto contains_sublist,
                        SetsContains(value_factory, list, sublist));
   if (contains_sublist.Is<BoolValue>() &&
-      !static_cast<BoolValue>(contains_sublist).NativeValue()) {
+      !contains_sublist.GetBool().NativeValue()) {
     return contains_sublist;
   }
   return SetsContains(value_factory, sublist, list);

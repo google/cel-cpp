@@ -178,7 +178,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
     auto result = map_value.Has(factory, int_key);
     if (enable_heterogeneous_equality) {
       if (result.ok() && (*result).Is<BoolValue>() &&
-          static_cast<BoolValue>(*result).NativeValue()) {
+          result->GetBool().NativeValue()) {
         return std::move(*result);
       }
       Number number = Number::FromInt64(key);
@@ -186,7 +186,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
         const auto& result =
             map_value.Has(factory, factory.CreateUintValue(number.AsUint()));
         if (result.ok() && (*result).Is<BoolValue>() &&
-            static_cast<BoolValue>(*result).NativeValue()) {
+            result->GetBool().NativeValue()) {
           return std::move(*result);
         }
       }
@@ -219,7 +219,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
     const auto& result = map_value.Has(factory, uint_key);
     if (enable_heterogeneous_equality) {
       if (result.ok() && (*result).Is<BoolValue>() &&
-          static_cast<BoolValue>(*result).NativeValue()) {
+          result->GetBool().NativeValue()) {
         return std::move(*result);
       }
       Number number = Number::FromUint64(key);
@@ -227,7 +227,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
         const auto& result =
             map_value.Has(factory, factory.CreateIntValue(number.AsInt()));
         if (result.ok() && (*result).Is<BoolValue>() &&
-            static_cast<BoolValue>(*result).NativeValue()) {
+            result->GetBool().NativeValue()) {
           return std::move(*result);
         }
       }
@@ -246,7 +246,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
       const auto& result =
           map_value.Has(factory, factory.CreateIntValue(number.AsInt()));
       if (result.ok() && (*result).Is<BoolValue>() &&
-          static_cast<BoolValue>(*result).NativeValue()) {
+          result->GetBool().NativeValue()) {
         return std::move(*result);
       }
     }
@@ -254,7 +254,7 @@ absl::Status RegisterMapMembershipFunctions(FunctionRegistry& registry,
       const auto& result =
           map_value.Has(factory, factory.CreateUintValue(number.AsUint()));
       if (result.ok() && (*result).Is<BoolValue>() &&
-          static_cast<BoolValue>(*result).NativeValue()) {
+          result->GetBool().NativeValue()) {
         return std::move(*result);
       }
     }

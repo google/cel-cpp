@@ -61,22 +61,22 @@ absl::optional<OptionalValue> OpaqueValue::AsOptional() const&& {
   return absl::nullopt;
 }
 
-OpaqueValue::operator const OptionalValue&() & {
+const OptionalValue& OpaqueValue::GetOptional() & {
   ABSL_DCHECK(IsOptional()) << *this;
   return *reinterpret_cast<const OptionalValue*>(this);
 }
 
-OpaqueValue::operator const OptionalValue&() const& {
+const OptionalValue& OpaqueValue::GetOptional() const& {
   ABSL_DCHECK(IsOptional()) << *this;
   return *reinterpret_cast<const OptionalValue*>(this);
 }
 
-OpaqueValue::operator OptionalValue() && {
+OptionalValue OpaqueValue::GetOptional() && {
   ABSL_DCHECK(IsOptional()) << *this;
   return std::move(*reinterpret_cast<OptionalValue*>(this));
 }
 
-OpaqueValue::operator OptionalValue() const&& {
+OptionalValue OpaqueValue::GetOptional() const&& {
   ABSL_DCHECK(IsOptional()) << *this;
   return std::move(*reinterpret_cast<const OptionalValue*>(this));
 }

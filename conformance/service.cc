@@ -570,8 +570,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
 
     cel::Value result = eval_status.value();
     if (result->Is<cel::ErrorValue>()) {
-      const absl::Status& error =
-          static_cast<cel::ErrorValue>(result).NativeValue();
+      const absl::Status& error = result.GetError().NativeValue();
       *response.mutable_result()
            ->mutable_error()
            ->add_errors()

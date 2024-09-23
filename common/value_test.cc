@@ -428,94 +428,86 @@ TEST(Value, As) {
   }
 }
 
-TEST(Value, Cast) {
+template <typename To, typename From>
+decltype(auto) DoGet(From&& from) {
+  return std::forward<From>(from).template Get<To>();
+}
+
+TEST(Value, Get) {
   google::protobuf::Arena arena;
 
-  EXPECT_THAT(static_cast<BoolValue>(Value(BoolValue())), An<BoolValue>());
+  EXPECT_THAT(DoGet<BoolValue>(Value(BoolValue())), An<BoolValue>());
 
   {
     Value value(BytesValue{});
     Value other_value = value;
-    EXPECT_THAT(static_cast<BytesValue>(AsLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<BytesValue>(AsLValueRef<Value>(value)), An<BytesValue>());
+    EXPECT_THAT(DoGet<BytesValue>(AsConstLValueRef<Value>(value)),
                 An<BytesValue>());
-    EXPECT_THAT(static_cast<BytesValue>(AsConstLValueRef<Value>(value)),
-                An<BytesValue>());
-    EXPECT_THAT(static_cast<BytesValue>(AsRValueRef<Value>(value)),
-                An<BytesValue>());
-    EXPECT_THAT(static_cast<BytesValue>(AsConstRValueRef<Value>(other_value)),
+    EXPECT_THAT(DoGet<BytesValue>(AsRValueRef<Value>(value)), An<BytesValue>());
+    EXPECT_THAT(DoGet<BytesValue>(AsConstRValueRef<Value>(other_value)),
                 An<BytesValue>());
   }
 
-  EXPECT_THAT(static_cast<DoubleValue>(Value(DoubleValue())),
-              An<DoubleValue>());
+  EXPECT_THAT(DoGet<DoubleValue>(Value(DoubleValue())), An<DoubleValue>());
 
-  EXPECT_THAT(static_cast<DurationValue>(Value(DurationValue())),
+  EXPECT_THAT(DoGet<DurationValue>(Value(DurationValue())),
               An<DurationValue>());
 
   {
     Value value(ErrorValue{});
     Value other_value = value;
-    EXPECT_THAT(static_cast<ErrorValue>(AsLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<ErrorValue>(AsLValueRef<Value>(value)), An<ErrorValue>());
+    EXPECT_THAT(DoGet<ErrorValue>(AsConstLValueRef<Value>(value)),
                 An<ErrorValue>());
-    EXPECT_THAT(static_cast<ErrorValue>(AsConstLValueRef<Value>(value)),
-                An<ErrorValue>());
-    EXPECT_THAT(static_cast<ErrorValue>(AsRValueRef<Value>(value)),
-                An<ErrorValue>());
-    EXPECT_THAT(static_cast<ErrorValue>(AsConstRValueRef<Value>(other_value)),
+    EXPECT_THAT(DoGet<ErrorValue>(AsRValueRef<Value>(value)), An<ErrorValue>());
+    EXPECT_THAT(DoGet<ErrorValue>(AsConstRValueRef<Value>(other_value)),
                 An<ErrorValue>());
   }
 
-  EXPECT_THAT(static_cast<IntValue>(Value(IntValue())), An<IntValue>());
+  EXPECT_THAT(DoGet<IntValue>(Value(IntValue())), An<IntValue>());
 
   {
     Value value(ListValue{});
     Value other_value = value;
-    EXPECT_THAT(static_cast<ListValue>(AsLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<ListValue>(AsLValueRef<Value>(value)), An<ListValue>());
+    EXPECT_THAT(DoGet<ListValue>(AsConstLValueRef<Value>(value)),
                 An<ListValue>());
-    EXPECT_THAT(static_cast<ListValue>(AsConstLValueRef<Value>(value)),
-                An<ListValue>());
-    EXPECT_THAT(static_cast<ListValue>(AsRValueRef<Value>(value)),
-                An<ListValue>());
-    EXPECT_THAT(static_cast<ListValue>(AsConstRValueRef<Value>(other_value)),
+    EXPECT_THAT(DoGet<ListValue>(AsRValueRef<Value>(value)), An<ListValue>());
+    EXPECT_THAT(DoGet<ListValue>(AsConstRValueRef<Value>(other_value)),
                 An<ListValue>());
   }
 
   {
     Value value(ParsedJsonListValue{});
     Value other_value = value;
-    EXPECT_THAT(static_cast<ListValue>(AsLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<ListValue>(AsLValueRef<Value>(value)), An<ListValue>());
+    EXPECT_THAT(DoGet<ListValue>(AsConstLValueRef<Value>(value)),
                 An<ListValue>());
-    EXPECT_THAT(static_cast<ListValue>(AsConstLValueRef<Value>(value)),
-                An<ListValue>());
-    EXPECT_THAT(static_cast<ListValue>(AsRValueRef<Value>(value)),
-                An<ListValue>());
-    EXPECT_THAT(static_cast<ListValue>(AsConstRValueRef<Value>(other_value)),
+    EXPECT_THAT(DoGet<ListValue>(AsRValueRef<Value>(value)), An<ListValue>());
+    EXPECT_THAT(DoGet<ListValue>(AsConstRValueRef<Value>(other_value)),
                 An<ListValue>());
   }
 
   {
     Value value(MapValue{});
     Value other_value = value;
-    EXPECT_THAT(static_cast<MapValue>(AsLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<MapValue>(AsLValueRef<Value>(value)), An<MapValue>());
+    EXPECT_THAT(DoGet<MapValue>(AsConstLValueRef<Value>(value)),
                 An<MapValue>());
-    EXPECT_THAT(static_cast<MapValue>(AsConstLValueRef<Value>(value)),
-                An<MapValue>());
-    EXPECT_THAT(static_cast<MapValue>(AsRValueRef<Value>(value)),
-                An<MapValue>());
-    EXPECT_THAT(static_cast<MapValue>(AsConstRValueRef<Value>(other_value)),
+    EXPECT_THAT(DoGet<MapValue>(AsRValueRef<Value>(value)), An<MapValue>());
+    EXPECT_THAT(DoGet<MapValue>(AsConstRValueRef<Value>(other_value)),
                 An<MapValue>());
   }
 
   {
     Value value(ParsedJsonMapValue{});
     Value other_value = value;
-    EXPECT_THAT(static_cast<MapValue>(AsLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<MapValue>(AsLValueRef<Value>(value)), An<MapValue>());
+    EXPECT_THAT(DoGet<MapValue>(AsConstLValueRef<Value>(value)),
                 An<MapValue>());
-    EXPECT_THAT(static_cast<MapValue>(AsConstLValueRef<Value>(value)),
-                An<MapValue>());
-    EXPECT_THAT(static_cast<MapValue>(AsRValueRef<Value>(value)),
-                An<MapValue>());
-    EXPECT_THAT(static_cast<MapValue>(AsConstRValueRef<Value>(other_value)),
+    EXPECT_THAT(DoGet<MapValue>(AsRValueRef<Value>(value)), An<MapValue>());
+    EXPECT_THAT(DoGet<MapValue>(AsConstRValueRef<Value>(other_value)),
                 An<MapValue>());
   }
 
@@ -524,57 +516,55 @@ TEST(Value, Cast) {
         &arena, R"pb()pb", GetTestingDescriptorPool(),
         GetTestingMessageFactory())});
     Value other_value = value;
-    EXPECT_THAT(static_cast<MessageValue>(AsLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<MessageValue>(AsLValueRef<Value>(value)),
                 An<MessageValue>());
-    EXPECT_THAT(static_cast<MessageValue>(AsConstLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<MessageValue>(AsConstLValueRef<Value>(value)),
                 An<MessageValue>());
-    EXPECT_THAT(static_cast<MessageValue>(AsRValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<MessageValue>(AsRValueRef<Value>(value)),
                 An<MessageValue>());
-    EXPECT_THAT(static_cast<MessageValue>(AsConstRValueRef<Value>(other_value)),
+    EXPECT_THAT(DoGet<MessageValue>(AsConstRValueRef<Value>(other_value)),
                 An<MessageValue>());
   }
 
-  EXPECT_THAT(static_cast<NullValue>(Value(NullValue())), An<NullValue>());
+  EXPECT_THAT(DoGet<NullValue>(Value(NullValue())), An<NullValue>());
 
   {
     Value value(OptionalValue{});
     Value other_value = value;
-    EXPECT_THAT(static_cast<OpaqueValue>(AsLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<OpaqueValue>(AsLValueRef<Value>(value)),
                 An<OpaqueValue>());
-    EXPECT_THAT(static_cast<OpaqueValue>(AsConstLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<OpaqueValue>(AsConstLValueRef<Value>(value)),
                 An<OpaqueValue>());
-    EXPECT_THAT(static_cast<OpaqueValue>(AsRValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<OpaqueValue>(AsRValueRef<Value>(value)),
                 An<OpaqueValue>());
-    EXPECT_THAT(static_cast<OpaqueValue>(AsConstRValueRef<Value>(other_value)),
+    EXPECT_THAT(DoGet<OpaqueValue>(AsConstRValueRef<Value>(other_value)),
                 An<OpaqueValue>());
   }
 
   {
     Value value(OptionalValue{});
     Value other_value = value;
-    EXPECT_THAT(static_cast<OptionalValue>(AsLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<OptionalValue>(AsLValueRef<Value>(value)),
                 An<OptionalValue>());
-    EXPECT_THAT(static_cast<OptionalValue>(AsConstLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<OptionalValue>(AsConstLValueRef<Value>(value)),
                 An<OptionalValue>());
-    EXPECT_THAT(static_cast<OptionalValue>(AsRValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<OptionalValue>(AsRValueRef<Value>(value)),
                 An<OptionalValue>());
-    EXPECT_THAT(
-        static_cast<OptionalValue>(AsConstRValueRef<Value>(other_value)),
-        An<OptionalValue>());
+    EXPECT_THAT(DoGet<OptionalValue>(AsConstRValueRef<Value>(other_value)),
+                An<OptionalValue>());
   }
 
   {
     OpaqueValue value(OptionalValue{});
     OpaqueValue other_value = value;
-    EXPECT_THAT(static_cast<OptionalValue>(AsLValueRef<OpaqueValue>(value)),
+    EXPECT_THAT(DoGet<OptionalValue>(AsLValueRef<OpaqueValue>(value)),
+                An<OptionalValue>());
+    EXPECT_THAT(DoGet<OptionalValue>(AsConstLValueRef<OpaqueValue>(value)),
+                An<OptionalValue>());
+    EXPECT_THAT(DoGet<OptionalValue>(AsRValueRef<OpaqueValue>(value)),
                 An<OptionalValue>());
     EXPECT_THAT(
-        static_cast<OptionalValue>(AsConstLValueRef<OpaqueValue>(value)),
-        An<OptionalValue>());
-    EXPECT_THAT(static_cast<OptionalValue>(AsRValueRef<OpaqueValue>(value)),
-                An<OptionalValue>());
-    EXPECT_THAT(
-        static_cast<OptionalValue>(AsConstRValueRef<OpaqueValue>(other_value)),
+        DoGet<OptionalValue>(AsConstRValueRef<OpaqueValue>(other_value)),
         An<OptionalValue>());
   }
 
@@ -583,27 +573,26 @@ TEST(Value, Cast) {
         &arena, R"pb()pb", GetTestingDescriptorPool(),
         GetTestingMessageFactory())});
     Value other_value = value;
-    EXPECT_THAT(static_cast<ParsedMessageValue>(AsLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<ParsedMessageValue>(AsLValueRef<Value>(value)),
                 An<ParsedMessageValue>());
-    EXPECT_THAT(static_cast<ParsedMessageValue>(AsConstLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<ParsedMessageValue>(AsConstLValueRef<Value>(value)),
                 An<ParsedMessageValue>());
-    EXPECT_THAT(static_cast<ParsedMessageValue>(AsRValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<ParsedMessageValue>(AsRValueRef<Value>(value)),
                 An<ParsedMessageValue>());
-    EXPECT_THAT(
-        static_cast<ParsedMessageValue>(AsConstRValueRef<Value>(other_value)),
-        An<ParsedMessageValue>());
+    EXPECT_THAT(DoGet<ParsedMessageValue>(AsConstRValueRef<Value>(other_value)),
+                An<ParsedMessageValue>());
   }
 
   {
     Value value(StringValue{});
     Value other_value = value;
-    EXPECT_THAT(static_cast<StringValue>(AsLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<StringValue>(AsLValueRef<Value>(value)),
                 An<StringValue>());
-    EXPECT_THAT(static_cast<StringValue>(AsConstLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<StringValue>(AsConstLValueRef<Value>(value)),
                 An<StringValue>());
-    EXPECT_THAT(static_cast<StringValue>(AsRValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<StringValue>(AsRValueRef<Value>(value)),
                 An<StringValue>());
-    EXPECT_THAT(static_cast<StringValue>(AsConstRValueRef<Value>(other_value)),
+    EXPECT_THAT(DoGet<StringValue>(AsConstRValueRef<Value>(other_value)),
                 An<StringValue>());
   }
 
@@ -612,44 +601,42 @@ TEST(Value, Cast) {
         &arena, R"pb()pb", GetTestingDescriptorPool(),
         GetTestingMessageFactory())});
     Value other_value = value;
-    EXPECT_THAT(static_cast<StructValue>(AsLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<StructValue>(AsLValueRef<Value>(value)),
                 An<StructValue>());
-    EXPECT_THAT(static_cast<StructValue>(AsConstLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<StructValue>(AsConstLValueRef<Value>(value)),
                 An<StructValue>());
-    EXPECT_THAT(static_cast<StructValue>(AsRValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<StructValue>(AsRValueRef<Value>(value)),
                 An<StructValue>());
-    EXPECT_THAT(static_cast<StructValue>(AsConstRValueRef<Value>(other_value)),
+    EXPECT_THAT(DoGet<StructValue>(AsConstRValueRef<Value>(other_value)),
                 An<StructValue>());
   }
 
-  EXPECT_THAT(static_cast<TimestampValue>(Value(TimestampValue())),
+  EXPECT_THAT(DoGet<TimestampValue>(Value(TimestampValue())),
               An<TimestampValue>());
 
   {
     Value value(TypeValue(StringType{}));
     Value other_value = value;
-    EXPECT_THAT(static_cast<TypeValue>(AsLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<TypeValue>(AsLValueRef<Value>(value)), An<TypeValue>());
+    EXPECT_THAT(DoGet<TypeValue>(AsConstLValueRef<Value>(value)),
                 An<TypeValue>());
-    EXPECT_THAT(static_cast<TypeValue>(AsConstLValueRef<Value>(value)),
-                An<TypeValue>());
-    EXPECT_THAT(static_cast<TypeValue>(AsRValueRef<Value>(value)),
-                An<TypeValue>());
-    EXPECT_THAT(static_cast<TypeValue>(AsConstRValueRef<Value>(other_value)),
+    EXPECT_THAT(DoGet<TypeValue>(AsRValueRef<Value>(value)), An<TypeValue>());
+    EXPECT_THAT(DoGet<TypeValue>(AsConstRValueRef<Value>(other_value)),
                 An<TypeValue>());
   }
 
-  EXPECT_THAT(static_cast<UintValue>(Value(UintValue())), An<UintValue>());
+  EXPECT_THAT(DoGet<UintValue>(Value(UintValue())), An<UintValue>());
 
   {
     Value value(UnknownValue{});
     Value other_value = value;
-    EXPECT_THAT(static_cast<UnknownValue>(AsLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<UnknownValue>(AsLValueRef<Value>(value)),
                 An<UnknownValue>());
-    EXPECT_THAT(static_cast<UnknownValue>(AsConstLValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<UnknownValue>(AsConstLValueRef<Value>(value)),
                 An<UnknownValue>());
-    EXPECT_THAT(static_cast<UnknownValue>(AsRValueRef<Value>(value)),
+    EXPECT_THAT(DoGet<UnknownValue>(AsRValueRef<Value>(value)),
                 An<UnknownValue>());
-    EXPECT_THAT(static_cast<UnknownValue>(AsConstRValueRef<Value>(other_value)),
+    EXPECT_THAT(DoGet<UnknownValue>(AsConstRValueRef<Value>(other_value)),
                 An<UnknownValue>());
   }
 }
