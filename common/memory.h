@@ -95,6 +95,8 @@ inline constexpr bool kNotSameAndIsPointerConvertible =
 
 // Clears the contents of `owner`, and returns the reference count if in use.
 absl::Nullable<const ReferenceCount*> OwnerRelease(Owner owner) noexcept;
+absl::Nullable<const ReferenceCount*> BorrowerRelease(
+    Borrower borrower) noexcept;
 template <typename T>
 Owned<const T> WrapEternal(const T* value);
 
@@ -132,7 +134,7 @@ template <typename T, typename... Args>
 Owned<T> AllocateShared(Allocator<> allocator, Args&&... args);
 
 template <typename T>
-Owned<T> WrapShared(T* object);
+Owned<T> WrapShared(T* object, Allocator<> allocator);
 
 // `Owner` represents a reference to some co-owned data, of which this owner is
 // one of the co-owners. When using reference counting, `Owner` performs
@@ -251,11 +253,13 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owner final {
   template <typename T, typename... Args>
   friend Owned<T> AllocateShared(cel::Allocator<> allocator, Args&&... args);
   template <typename T>
-  friend Owned<T> WrapShared(T* object);
+  friend Owned<T> WrapShared(T* object, cel::Allocator<> allocator);
   template <typename U>
   friend struct Ownable;
   friend absl::Nullable<const common_internal::ReferenceCount*>
   common_internal::OwnerRelease(Owner owner) noexcept;
+  friend absl::Nullable<const common_internal::ReferenceCount*>
+  common_internal::BorrowerRelease(Borrower borrower) noexcept;
 
   constexpr explicit Owner(uintptr_t ptr) noexcept : ptr_(ptr) {}
 
@@ -418,6 +422,8 @@ class Borrower final {
   friend class Owner;
   template <typename U>
   friend struct Borrowable;
+  friend absl::Nullable<const common_internal::ReferenceCount*>
+  common_internal::BorrowerRelease(Borrower borrower) noexcept;
 
   constexpr explicit Borrower(uintptr_t ptr) noexcept : ptr_(ptr) {}
 
@@ -446,6 +452,19 @@ inline bool operator!=(const Owner& lhs, Borrower rhs) noexcept {
 
 inline Owner::Owner(Borrower borrower) noexcept
     : ptr_(Owner::Own(borrower.ptr_)) {}
+
+namespace common_internal {
+
+inline absl::Nullable<const ReferenceCount*> BorrowerRelease(
+    Borrower borrower) noexcept {
+  uintptr_t ptr = borrower.ptr_;
+  if (Owner::IsReferenceCount(ptr)) {
+    return Owner::AsReferenceCount(ptr);
+  }
+  return nullptr;
+}
+
+}  // namespace common_internal
 
 template <typename T, typename... Args>
 Unique<T> AllocateUnique(Allocator<> allocator, Args&&... args);
@@ -858,6 +877,10 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owned final {
     owner_.reset();
   }
 
+  absl::Nullable<google::protobuf::Arena*> arena() const noexcept {
+    return owner_.arena();
+  }
+
   explicit operator bool() const noexcept { return get() != nullptr; }
 
   friend void swap(Owned& lhs, Owned& rhs) noexcept {
@@ -878,7 +901,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Owned final {
   template <typename U, typename... Args>
   friend Owned<U> AllocateShared(Allocator<> allocator, Args&&... args);
   template <typename U>
-  friend Owned<U> WrapShared(U* object);
+  friend Owned<U> WrapShared(U* object, Allocator<> allocator);
   template <typename U>
   friend Owned<const U> common_internal::WrapEternal(const U* value);
   friend struct std::pointer_traits<Owned<T>>;
@@ -985,12 +1008,12 @@ Owned<T> AllocateShared(Allocator<> allocator, Args&&... args) {
 }
 
 template <typename T>
-Owned<T> WrapShared(T* object) {
+Owned<T> WrapShared(T* object, Allocator<> allocator) {
   Owner owner;
   if (object == nullptr) {
-  } else if (object->GetArena() != nullptr) {
+  } else if (allocator.arena() != nullptr) {
     owner.ptr_ = reinterpret_cast<uintptr_t>(
-                     static_cast<google::protobuf::Arena*>(object->GetArena())) |
+                     static_cast<google::protobuf::Arena*>(allocator.arena())) |
                  common_internal::kMetadataOwnerArenaBit;
   } else {
     owner.ptr_ = reinterpret_cast<uintptr_t>(
@@ -998,6 +1021,11 @@ Owned<T> WrapShared(T* object) {
                  common_internal::kMetadataOwnerReferenceCountBit;
   }
   return Owned<T>(object, std::move(owner));
+}
+
+template <typename T>
+std::enable_if_t<!std::is_const_v<T>, Owned<T>> WrapShared(T* object) {
+  return WrapShared(object, object->GetArena());
 }
 
 namespace common_internal {
@@ -1108,6 +1136,10 @@ class Borrowed final {
   void reset() noexcept {
     value_ = nullptr;
     borrower_.reset();
+  }
+
+  absl::Nullable<google::protobuf::Arena*> arena() const noexcept {
+    return borrower_.arena();
   }
 
   explicit operator bool() const noexcept { return get() != nullptr; }

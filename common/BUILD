@@ -629,6 +629,7 @@ cc_library(
         "value_manager.h",
     ],
     deps = [
+        ":allocator",
         ":any",
         ":casting",
         ":json",
@@ -646,6 +647,7 @@ cc_library(
         "//common/internal:shared_byte_string",
         "//internal:deserialize",
         "//internal:dynamic_loader",
+        "//internal:json",
         "//internal:number",
         "//internal:overflow",
         "//internal:serialize",
@@ -653,6 +655,7 @@ cc_library(
         "//internal:strings",
         "//internal:time",
         "//internal:utf8",
+        "//internal:well_known_types",
         "//runtime:runtime_options",
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",

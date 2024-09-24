@@ -30,8 +30,10 @@
 #include "absl/meta/type_traits.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/allocator.h"
 #include "common/internal/arena_string.h"
 #include "common/internal/reference_count.h"
+#include "common/memory.h"
 
 namespace cel::common_internal {
 
@@ -144,6 +146,21 @@ class SharedByteString final {
     content_.string.data = string.data();
     content_.string.refcount = kByteStringReferenceCountPooledBit;
   }
+
+  // Constructs a shared byte string using `allocator` to allocate memory.
+  SharedByteString(Allocator<> allocator, absl::string_view value);
+
+  // Constructs a shared byte string using `allocator` to allocate memory,
+  // if necessary.
+  SharedByteString(Allocator<> allocator, const absl::Cord& value);
+
+  // Constructs a shared byte string which is borrowed and references `value`.
+  SharedByteString(Borrower borrower, absl::string_view value)
+      : SharedByteString(common_internal::BorrowerRelease(borrower), value) {}
+
+  // Constructs a shared byte string which is borrowed and references `value`.
+  SharedByteString(Borrower, const absl::Cord& value)
+      : SharedByteString(value) {}
 
   ~SharedByteString() noexcept {
     if (header_.is_cord) {

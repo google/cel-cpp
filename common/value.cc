@@ -17,6 +17,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -35,6 +36,7 @@
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
+#include "base/attribute.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/optional_ref.h"
@@ -978,6 +980,71 @@ absl::optional<OptionalValue> Value::AsOptional() const&& {
   }
   return absl::nullopt;
 }
+
+optional_ref<const ParsedJsonListValue> Value::AsParsedJsonList() & {
+  if (const auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  return absl::nullopt;
+}
+
+optional_ref<const ParsedJsonListValue> Value::AsParsedJsonList() const& {
+  if (const auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  return absl::nullopt;
+}
+
+absl::optional<ParsedJsonListValue> Value::AsParsedJsonList() && {
+  if (auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  return absl::nullopt;
+}
+
+absl::optional<ParsedJsonListValue> Value::AsParsedJsonList() const&& {
+  if (auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  return absl::nullopt;
+}
+
+optional_ref<const ParsedJsonMapValue> Value::AsParsedJsonMap() & {
+  if (const auto* alternative = absl::get_if<ParsedJsonMapValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  return absl::nullopt;
+}
+
+optional_ref<const ParsedJsonMapValue> Value::AsParsedJsonMap() const& {
+  if (const auto* alternative = absl::get_if<ParsedJsonMapValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  return absl::nullopt;
+}
+
+absl::optional<ParsedJsonMapValue> Value::AsParsedJsonMap() && {
+  if (auto* alternative = absl::get_if<ParsedJsonMapValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  return absl::nullopt;
+}
+
+absl::optional<ParsedJsonMapValue> Value::AsParsedJsonMap() const&& {
+  if (auto* alternative = absl::get_if<ParsedJsonMapValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  return absl::nullopt;
+}
+
 optional_ref<const ParsedMessageValue> Value::AsParsedMessage() & {
   if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
       alternative != nullptr) {
@@ -1702,6 +1769,25 @@ UnknownValue Value::GetUnknown() && {
 UnknownValue Value::GetUnknown() const&& {
   ABSL_DCHECK(IsUnknown()) << *this;
   return absl::get<UnknownValue>(std::move(variant_));
+}
+
+namespace {
+
+class EmptyValueIterator final : public ValueIterator {
+ public:
+  bool HasNext() override { return false; }
+
+  absl::Status Next(ValueManager&, Value&) override {
+    return absl::FailedPreconditionError(
+        "`ValueIterator::Next` called after `ValueIterator::HasNext` returned "
+        "false");
+  }
+};
+
+}  // namespace
+
+absl::Nonnull<std::unique_ptr<ValueIterator>> NewEmptyValueIterator() {
+  return std::make_unique<EmptyValueIterator>();
 }
 
 }  // namespace cel

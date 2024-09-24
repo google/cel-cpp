@@ -361,6 +361,12 @@ class Value final {
   // Returns `true` if this value is an instance of a bool value.
   bool IsBool() const { return absl::holds_alternative<BoolValue>(variant_); }
 
+  // Returns `true` if this value is an instance of a bool value and true.
+  bool IsTrue() const { return IsBool() && GetBool().NativeValue(); }
+
+  // Returns `true` if this value is an instance of a bool value and false.
+  bool IsFalse() const { return IsBool() && !GetBool().NativeValue(); }
+
   // Returns `true` if this value is an instance of a bytes value.
   bool IsBytes() const { return absl::holds_alternative<BytesValue>(variant_); }
 
@@ -556,6 +562,20 @@ class Value final {
   }
 
   // Convenience method for use with template metaprogramming. See
+  // `IsParsedJsonList()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedJsonListValue, T>, bool> Is() const {
+    return IsParsedJsonList();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsParsedJsonMap()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedJsonMapValue, T>, bool> Is() const {
+    return IsParsedJsonMap();
+  }
+
+  // Convenience method for use with template metaprogramming. See
   // `IsParsedMessage()`.
   template <typename T>
   std::enable_if_t<std::is_same_v<ParsedMessageValue, T>, bool> Is() const {
@@ -687,6 +707,26 @@ class Value final {
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<OptionalValue> AsOptional() &&;
   absl::optional<OptionalValue> AsOptional() const&&;
+
+  // Performs a checked cast from a value to a parsed JSON list value,
+  // returning a non-empty optional with either a value or reference to the
+  // parsed message value. Otherwise an empty optional is returned.
+  optional_ref<const ParsedJsonListValue> AsParsedJsonList() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const ParsedJsonListValue> AsParsedJsonList()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ParsedJsonListValue> AsParsedJsonList() &&;
+  absl::optional<ParsedJsonListValue> AsParsedJsonList() const&&;
+
+  // Performs a checked cast from a value to a parsed JSON map value,
+  // returning a non-empty optional with either a value or reference to the
+  // parsed message value. Otherwise an empty optional is returned.
+  optional_ref<const ParsedJsonMapValue> AsParsedJsonMap() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const ParsedJsonMapValue> AsParsedJsonMap()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ParsedJsonMapValue> AsParsedJsonMap() &&;
+  absl::optional<ParsedJsonMapValue> AsParsedJsonMap() const&&;
 
   // Performs a checked cast from a value to a parsed message value,
   // returning a non-empty optional with either a value or reference to the
@@ -1034,6 +1074,60 @@ class Value final {
                    absl::optional<OptionalValue>>
   As() const&& {
     return std::move(*this).AsOptional();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsParsedJsonList()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedJsonListValue, T>,
+                       optional_ref<const ParsedJsonListValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedJsonList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedJsonListValue, T>,
+                   optional_ref<const ParsedJsonListValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedJsonList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedJsonListValue, T>,
+                   absl::optional<ParsedJsonListValue>>
+  As() && {
+    return std::move(*this).AsParsedJsonList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedJsonListValue, T>,
+                   absl::optional<ParsedJsonListValue>>
+  As() const&& {
+    return std::move(*this).AsParsedJsonList();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsParsedJsonMap()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedJsonMapValue, T>,
+                       optional_ref<const ParsedJsonMapValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedJsonMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedJsonMapValue, T>,
+                   optional_ref<const ParsedJsonMapValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedJsonMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedJsonMapValue, T>,
+                   absl::optional<ParsedJsonMapValue>>
+  As() && {
+    return std::move(*this).AsParsedJsonMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedJsonMapValue, T>,
+                   absl::optional<ParsedJsonMapValue>>
+  As() const&& {
+    return std::move(*this).AsParsedJsonMap();
   }
 
   // Convenience method for use with template metaprogramming. See
@@ -2113,6 +2207,8 @@ class ValueIterator {
     return result;
   }
 };
+
+absl::Nonnull<std::unique_ptr<ValueIterator>> NewEmptyValueIterator();
 
 class ValueBuilder {
  public:

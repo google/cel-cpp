@@ -127,7 +127,7 @@ class AbstractTypeMatcherImpl : public testing::MatcherInterface<const Value&> {
 
   bool MatchAndExplain(const Value& v,
                        testing::MatchResultListener* listener) const override {
-    return InstanceOf<Type>(v) && matcher_.Matches(Cast<Type>(v));
+    return v.Is<Type>() && matcher_.Matches(v.template Get<Type>());
   }
 
   void DescribeTo(std::ostream* os) const override {

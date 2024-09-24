@@ -30,9 +30,11 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/allocator.h"
 #include "common/internal/arena_string.h"
 #include "common/internal/shared_byte_string.h"
 #include "common/json.h"
+#include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/values.h"
@@ -74,6 +76,18 @@ class BytesValue final {
                                "chosen when 'data' is a string literal")))
       : value_(absl::string_view(data)) {}
 #endif
+
+  BytesValue(Allocator<> allocator, absl::string_view value)
+      : value_(allocator, value) {}
+
+  BytesValue(Allocator<> allocator, const absl::Cord& value)
+      : value_(allocator, value) {}
+
+  BytesValue(Borrower borrower, absl::string_view value)
+      : value_(borrower, value) {}
+
+  BytesValue(Borrower borrower, const absl::Cord& value)
+      : value_(borrower, value) {}
 
   BytesValue() = default;
   BytesValue(const BytesValue&) = default;

@@ -141,7 +141,7 @@ ParsedListValueInterface::NewIterator(ValueManager& value_manager) const {
 absl::Status ParsedListValueInterface::Equal(ValueManager& value_manager,
                                              const Value& other,
                                              Value& result) const {
-  if (auto list_value = As<ListValue>(other); list_value.has_value()) {
+  if (auto list_value = other.As<ListValue>(); list_value.has_value()) {
     return ListValueEqual(value_manager, *this, *list_value, result);
   }
   result = BoolValue{false};

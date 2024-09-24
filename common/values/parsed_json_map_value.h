@@ -34,11 +34,13 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/variant.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/map_value_interface.h"
+#include "internal/status_macros.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
@@ -49,6 +51,10 @@ class Value;
 class ValueManager;
 class ListValue;
 class ValueIterator;
+
+namespace common_internal {
+absl::Status CheckWellKnownStructMessage(const google::protobuf::MessageLite& message);
+}  // namespace common_internal
 
 // ParsedJsonMapValue is a MapValue backed by the google.protobuf.Struct
 // well known message type.
@@ -87,16 +93,19 @@ class ParsedJsonMapValue final {
   absl::StatusOr<Json> ConvertToJson(AnyToJsonConverter& converter) const;
 
   absl::StatusOr<JsonObject> ConvertToJsonObject(
-      AnyToJsonConverter& converter) const;
+      AnyToJsonConverter& converter) const {
+    CEL_ASSIGN_OR_RETURN(auto value, ConvertToJson(converter));
+    return absl::get<JsonObject>(std::move(value));
+  }
 
   absl::Status Equal(ValueManager& value_manager, const Value& other,
                      Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
                               const Value& other) const;
 
-  bool IsZeroValue() const;
+  bool IsZeroValue() const { return IsEmpty(); }
 
-  bool IsEmpty() const;
+  bool IsEmpty() const { return Size() == 0; }
 
   size_t Size() const;
 
@@ -135,26 +144,31 @@ class ParsedJsonMapValue final {
     swap(lhs.value_, rhs.value_);
   }
 
+  friend bool operator==(const ParsedJsonMapValue& lhs,
+                         const ParsedJsonMapValue& rhs);
+
  private:
-  static bool IsStruct(const google::protobuf::MessageLite& message) {
-    return google::protobuf::DynamicCastMessage<google::protobuf::Struct>(&message) !=
-               nullptr ||
-           google::protobuf::DownCastMessage<google::protobuf::Message>(message)
-                   .GetDescriptor()
-                   ->well_known_type() ==
-               google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT;
+  static absl::Status CheckStruct(
+      absl::Nullable<const google::protobuf::MessageLite*> message) {
+    return message == nullptr
+               ? absl::OkStatus()
+               : common_internal::CheckWellKnownStructMessage(*message);
   }
 
   explicit ParsedJsonMapValue(Owned<const google::protobuf::MessageLite> value)
       : value_(std::move(value)) {
-    ABSL_DCHECK(!value_ || IsStruct(*value_))
-        << value_->GetTypeName() << " must be google.protobuf.Struct";
+    ABSL_DCHECK_OK(CheckStruct(cel::to_address(value_)));
   }
 
   // This is either the generated `google::protobuf::Struct` message, which
   // may be lite, or a dynamic message representing `google.protobuf.Struct`.
   Owned<const google::protobuf::MessageLite> value_;
 };
+
+inline bool operator!=(const ParsedJsonMapValue& lhs,
+                       const ParsedJsonMapValue& rhs) {
+  return !operator==(lhs, rhs);
+}
 
 inline std::ostream& operator<<(std::ostream& out,
                                 const ParsedJsonMapValue& value) {

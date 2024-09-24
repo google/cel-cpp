@@ -202,7 +202,7 @@ absl::Status ParsedMapValueInterface::ForEach(ValueManager& value_manager,
 absl::Status ParsedMapValueInterface::Equal(ValueManager& value_manager,
                                             const Value& other,
                                             Value& result) const {
-  if (auto list_value = As<MapValue>(other); list_value.has_value()) {
+  if (auto list_value = other.As<MapValue>(); list_value.has_value()) {
     return MapValueEqual(value_manager, *this, *list_value, result);
   }
   result = BoolValue{false};

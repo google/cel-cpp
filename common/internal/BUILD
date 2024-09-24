@@ -84,10 +84,13 @@ cc_test(
 
 cc_library(
     name = "shared_byte_string",
+    srcs = ["shared_byte_string.cc"],
     hdrs = ["shared_byte_string.h"],
     deps = [
         ":arena_string",
         ":reference_count",
+        "//common:allocator",
+        "//common:memory",
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/functional:overload",
@@ -95,6 +98,7 @@ cc_library(
         "@com_google_absl//absl/meta:type_traits",
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/strings:string_view",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

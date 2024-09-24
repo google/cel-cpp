@@ -124,6 +124,8 @@ TEST(Value, DynamicClosedEnum) {
 
 TEST(Value, Is) {
   EXPECT_TRUE(Value(BoolValue()).Is<BoolValue>());
+  EXPECT_TRUE(Value(BoolValue(true)).IsTrue());
+  EXPECT_TRUE(Value(BoolValue(false)).IsFalse());
 
   EXPECT_TRUE(Value(BytesValue()).Is<BytesValue>());
 
@@ -137,9 +139,11 @@ TEST(Value, Is) {
 
   EXPECT_TRUE(Value(ListValue()).Is<ListValue>());
   EXPECT_TRUE(Value(ParsedJsonListValue()).Is<ListValue>());
+  EXPECT_TRUE(Value(ParsedJsonListValue()).Is<ParsedJsonListValue>());
 
   EXPECT_TRUE(Value(MapValue()).Is<MapValue>());
   EXPECT_TRUE(Value(ParsedJsonMapValue()).Is<MapValue>());
+  EXPECT_TRUE(Value(ParsedJsonMapValue()).Is<ParsedJsonMapValue>());
 
   EXPECT_TRUE(Value(NullValue()).Is<NullValue>());
 
@@ -254,6 +258,19 @@ TEST(Value, As) {
   }
 
   {
+    Value value(ParsedJsonListValue{});
+    Value other_value = value;
+    EXPECT_THAT(AsLValueRef<Value>(value).As<ParsedJsonListValue>(),
+                Optional(An<ParsedJsonListValue>()));
+    EXPECT_THAT(AsConstLValueRef<Value>(value).As<ParsedJsonListValue>(),
+                Optional(An<ParsedJsonListValue>()));
+    EXPECT_THAT(AsRValueRef<Value>(value).As<ParsedJsonListValue>(),
+                Optional(An<ParsedJsonListValue>()));
+    EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<ParsedJsonListValue>(),
+                Optional(An<ParsedJsonListValue>()));
+  }
+
+  {
     Value value(MapValue{});
     Value other_value = value;
     EXPECT_THAT(AsLValueRef<Value>(value).As<MapValue>(),
@@ -279,6 +296,19 @@ TEST(Value, As) {
     EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<MapValue>(),
                 Optional(An<MapValue>()));
     EXPECT_THAT(Value(MapValue()).As<ErrorValue>(), Eq(absl::nullopt));
+  }
+
+  {
+    Value value(ParsedJsonMapValue{});
+    Value other_value = value;
+    EXPECT_THAT(AsLValueRef<Value>(value).As<ParsedJsonMapValue>(),
+                Optional(An<ParsedJsonMapValue>()));
+    EXPECT_THAT(AsConstLValueRef<Value>(value).As<ParsedJsonMapValue>(),
+                Optional(An<ParsedJsonMapValue>()));
+    EXPECT_THAT(AsRValueRef<Value>(value).As<ParsedJsonMapValue>(),
+                Optional(An<ParsedJsonMapValue>()));
+    EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<ParsedJsonMapValue>(),
+                Optional(An<ParsedJsonMapValue>()));
   }
 
   {
@@ -490,6 +520,20 @@ TEST(Value, Get) {
   }
 
   {
+    Value value(ParsedJsonListValue{});
+    Value other_value = value;
+    EXPECT_THAT(DoGet<ParsedJsonListValue>(AsLValueRef<Value>(value)),
+                An<ParsedJsonListValue>());
+    EXPECT_THAT(DoGet<ParsedJsonListValue>(AsConstLValueRef<Value>(value)),
+                An<ParsedJsonListValue>());
+    EXPECT_THAT(DoGet<ParsedJsonListValue>(AsRValueRef<Value>(value)),
+                An<ParsedJsonListValue>());
+    EXPECT_THAT(
+        DoGet<ParsedJsonListValue>(AsConstRValueRef<Value>(other_value)),
+        An<ParsedJsonListValue>());
+  }
+
+  {
     Value value(MapValue{});
     Value other_value = value;
     EXPECT_THAT(DoGet<MapValue>(AsLValueRef<Value>(value)), An<MapValue>());
@@ -509,6 +553,19 @@ TEST(Value, Get) {
     EXPECT_THAT(DoGet<MapValue>(AsRValueRef<Value>(value)), An<MapValue>());
     EXPECT_THAT(DoGet<MapValue>(AsConstRValueRef<Value>(other_value)),
                 An<MapValue>());
+  }
+
+  {
+    Value value(ParsedJsonMapValue{});
+    Value other_value = value;
+    EXPECT_THAT(DoGet<ParsedJsonMapValue>(AsLValueRef<Value>(value)),
+                An<ParsedJsonMapValue>());
+    EXPECT_THAT(DoGet<ParsedJsonMapValue>(AsConstLValueRef<Value>(value)),
+                An<ParsedJsonMapValue>());
+    EXPECT_THAT(DoGet<ParsedJsonMapValue>(AsRValueRef<Value>(value)),
+                An<ParsedJsonMapValue>());
+    EXPECT_THAT(DoGet<ParsedJsonMapValue>(AsConstRValueRef<Value>(other_value)),
+                An<ParsedJsonMapValue>());
   }
 
   {
