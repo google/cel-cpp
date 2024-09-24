@@ -501,23 +501,6 @@ cc_library(
 )
 
 cc_library(
-    name = "page_size",
-    srcs = ["page_size.cc"],
-    hdrs = ["page_size.h"],
-    deps = ["@com_google_absl//absl/base:core_headers"],
-)
-
-cc_test(
-    name = "page_size_test",
-    srcs = ["page_size_test.cc"],
-    deps = [
-        ":page_size",
-        ":testing",
-        "@com_google_absl//absl/numeric:bits",
-    ],
-)
-
-cc_library(
     name = "to_address",
     hdrs = ["to_address.h"],
     deps = [
