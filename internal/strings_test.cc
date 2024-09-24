@@ -14,14 +14,18 @@
 
 #include "internal/strings.h"
 
+#include <cstddef>
 #include <set>
 #include <string>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/strings/ascii.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/cord_test_helpers.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_format.h"
+#include "absl/strings/string_view.h"
 #include "internal/testing.h"
 #include "internal/utf8.h"
 
@@ -45,6 +49,13 @@ void TestQuotedString(const std::string& unquoted, const std::string& quoted) {
 
 void TestString(const std::string& unquoted) {
   TestQuotedString(unquoted, FormatStringLiteral(unquoted));
+  TestQuotedString(unquoted, FormatStringLiteral(absl::Cord(unquoted)));
+  if (unquoted.size() > 1) {
+    const size_t mid = unquoted.size() / 2;
+    TestQuotedString(unquoted, FormatStringLiteral(absl::MakeFragmentedCord(
+                                   {absl::string_view(unquoted).substr(0, mid),
+                                    absl::string_view(unquoted).substr(mid)})));
+  }
   TestQuotedString(unquoted,
                    absl::StrCat("'''", EscapeString(unquoted), "'''"));
   TestQuotedString(unquoted,

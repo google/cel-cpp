@@ -14,10 +14,12 @@
 
 #include "internal/json.h"
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -25,6 +27,7 @@
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "absl/base/attributes.h"
+#include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
 #include "absl/functional/overload.h"
@@ -34,6 +37,7 @@
 #include "absl/strings/ascii.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/escaping.h"
+#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
@@ -41,6 +45,7 @@
 #include "common/json.h"
 #include "extensions/protobuf/internal/map_reflection.h"
 #include "internal/status_macros.h"
+#include "internal/strings.h"
 #include "internal/well_known_types.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/map_field.h"
@@ -53,8 +58,14 @@ namespace cel::internal {
 namespace {
 
 using ::cel::well_known_types::AsVariant;
+using ::cel::well_known_types::GetListValueReflection;
+using ::cel::well_known_types::GetListValueReflectionOrDie;
 using ::cel::well_known_types::GetRepeatedBytesField;
 using ::cel::well_known_types::GetRepeatedStringField;
+using ::cel::well_known_types::GetStructReflection;
+using ::cel::well_known_types::GetStructReflectionOrDie;
+using ::cel::well_known_types::GetValueReflection;
+using ::cel::well_known_types::GetValueReflectionOrDie;
 using ::cel::well_known_types::ListValueReflection;
 using ::cel::well_known_types::Reflection;
 using ::cel::well_known_types::StructReflection;
@@ -1242,6 +1253,753 @@ absl::Status MessageFieldToJson(
                                                            message_factory);
   CEL_RETURN_IF_ERROR(state->Initialize(result));
   return state->FieldToJson(message, field, result);
+}
+
+absl::Status CheckJson(const google::protobuf::MessageLite& message) {
+  if (const auto* generated_message =
+          google::protobuf::DynamicCastMessage<google::protobuf::Value>(&message);
+      generated_message) {
+    return absl::OkStatus();
+  }
+  if (const auto* dynamic_message =
+          google::protobuf::DynamicCastMessage<google::protobuf::Message>(&message);
+      dynamic_message) {
+    CEL_ASSIGN_OR_RETURN(auto reflection,
+                         GetValueReflection(dynamic_message->GetDescriptor()));
+    CEL_RETURN_IF_ERROR(
+        GetListValueReflection(reflection.GetListValueDescriptor()).status());
+    CEL_RETURN_IF_ERROR(
+        GetStructReflection(reflection.GetStructDescriptor()).status());
+    return absl::OkStatus();
+  }
+  return absl::InvalidArgumentError(
+      absl::StrCat("message must be an instance of `google.protobuf.Value`: ",
+                   message.GetTypeName()));
+}
+
+absl::Status CheckJsonList(const google::protobuf::MessageLite& message) {
+  if (const auto* generated_message =
+          google::protobuf::DynamicCastMessage<google::protobuf::ListValue>(&message);
+      generated_message) {
+    return absl::OkStatus();
+  }
+  if (const auto* dynamic_message =
+          google::protobuf::DynamicCastMessage<google::protobuf::Message>(&message);
+      dynamic_message) {
+    CEL_ASSIGN_OR_RETURN(
+        auto reflection,
+        GetListValueReflection(dynamic_message->GetDescriptor()));
+    CEL_ASSIGN_OR_RETURN(auto value_reflection,
+                         GetValueReflection(reflection.GetValueDescriptor()));
+    CEL_RETURN_IF_ERROR(
+        GetStructReflection(value_reflection.GetStructDescriptor()).status());
+    return absl::OkStatus();
+  }
+  return absl::InvalidArgumentError(absl::StrCat(
+      "message must be an instance of `google.protobuf.ListValue`: ",
+      message.GetTypeName()));
+}
+
+absl::Status CheckJsonMap(const google::protobuf::MessageLite& message) {
+  if (const auto* generated_message =
+          google::protobuf::DynamicCastMessage<google::protobuf::Struct>(&message);
+      generated_message) {
+    return absl::OkStatus();
+  }
+  if (const auto* dynamic_message =
+          google::protobuf::DynamicCastMessage<google::protobuf::Message>(&message);
+      dynamic_message) {
+    CEL_ASSIGN_OR_RETURN(auto reflection,
+                         GetStructReflection(dynamic_message->GetDescriptor()));
+    CEL_ASSIGN_OR_RETURN(auto value_reflection,
+                         GetValueReflection(reflection.GetValueDescriptor()));
+    CEL_RETURN_IF_ERROR(
+        GetListValueReflection(value_reflection.GetListValueDescriptor())
+            .status());
+    return absl::OkStatus();
+  }
+  return absl::InvalidArgumentError(
+      absl::StrCat("message must be an instance of `google.protobuf.Struct`: ",
+                   message.GetTypeName()));
+}
+
+namespace {
+
+class JsonMapIterator final {
+ public:
+  using Generated =
+      typename google::protobuf::Map<std::string,
+                           google::protobuf::Value>::const_iterator;
+  using Dynamic = google::protobuf::MapIterator;
+  using Value = std::pair<well_known_types::StringValue,
+                          absl::Nonnull<const google::protobuf::MessageLite*>>;
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  JsonMapIterator(Generated generated) : variant_(std::move(generated)) {}
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  JsonMapIterator(Dynamic dynamic) : variant_(std::move(dynamic)) {}
+
+  JsonMapIterator(const JsonMapIterator&) = default;
+  JsonMapIterator(JsonMapIterator&&) = default;
+  JsonMapIterator& operator=(const JsonMapIterator&) = default;
+  JsonMapIterator& operator=(JsonMapIterator&&) = default;
+
+  Value Next(std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    Value result;
+    absl::visit(absl::Overload(
+                    [&](Generated& generated) -> void {
+                      result = std::pair{absl::string_view(generated->first),
+                                         &generated->second};
+                      ++generated;
+                    },
+                    [&](Dynamic& dynamic) -> void {
+                      const auto& key = dynamic.GetKey().GetStringValue();
+                      scratch.assign(key.data(), key.size());
+                      result =
+                          std::pair{absl::string_view(scratch),
+                                    &dynamic.GetValueRef().GetMessageValue()};
+                      ++dynamic;
+                    }),
+                variant_);
+    return result;
+  }
+
+ private:
+  absl::variant<Generated, Dynamic> variant_;
+};
+
+class JsonAccessor {
+ public:
+  virtual ~JsonAccessor() = default;
+
+  virtual google::protobuf::Value::KindCase GetKindCase(
+      const google::protobuf::MessageLite& message) const = 0;
+
+  virtual bool GetBoolValue(const google::protobuf::MessageLite& message) const = 0;
+
+  virtual double GetNumberValue(const google::protobuf::MessageLite& message) const = 0;
+
+  virtual well_known_types::StringValue GetStringValue(
+      const google::protobuf::MessageLite& message,
+      std::string& scratch ABSL_ATTRIBUTE_LIFETIME_BOUND) const = 0;
+
+  virtual const google::protobuf::MessageLite& GetListValue(
+      const google::protobuf::MessageLite& message) const = 0;
+
+  virtual int ValuesSize(const google::protobuf::MessageLite& message) const = 0;
+
+  virtual const google::protobuf::MessageLite& Values(const google::protobuf::MessageLite& message,
+                                            int index) const = 0;
+
+  virtual const google::protobuf::MessageLite& GetStructValue(
+      const google::protobuf::MessageLite& message) const = 0;
+
+  virtual int FieldsSize(const google::protobuf::MessageLite& message) const = 0;
+
+  virtual absl::Nullable<const google::protobuf::MessageLite*> FindField(
+      const google::protobuf::MessageLite& message, absl::string_view name) const = 0;
+
+  virtual JsonMapIterator IterateFields(
+      const google::protobuf::MessageLite& message) const = 0;
+};
+
+class GeneratedJsonAccessor final : public JsonAccessor {
+ public:
+  static absl::Nonnull<const GeneratedJsonAccessor*> Singleton() {
+    static const absl::NoDestructor<GeneratedJsonAccessor> singleton;
+    return &*singleton;
+  }
+
+  google::protobuf::Value::KindCase GetKindCase(
+      const google::protobuf::MessageLite& message) const override {
+    return ValueReflection::GetKindCase(
+        google::protobuf::DownCastMessage<google::protobuf::Value>(message));
+  }
+
+  bool GetBoolValue(const google::protobuf::MessageLite& message) const override {
+    return ValueReflection::GetBoolValue(
+        google::protobuf::DownCastMessage<google::protobuf::Value>(message));
+  }
+
+  double GetNumberValue(const google::protobuf::MessageLite& message) const override {
+    return ValueReflection::GetNumberValue(
+        google::protobuf::DownCastMessage<google::protobuf::Value>(message));
+  }
+
+  well_known_types::StringValue GetStringValue(
+      const google::protobuf::MessageLite& message, std::string&) const override {
+    return ValueReflection::GetStringValue(
+        google::protobuf::DownCastMessage<google::protobuf::Value>(message));
+  }
+
+  const google::protobuf::MessageLite& GetListValue(
+      const google::protobuf::MessageLite& message) const override {
+    return ValueReflection::GetListValue(
+        google::protobuf::DownCastMessage<google::protobuf::Value>(message));
+  }
+
+  int ValuesSize(const google::protobuf::MessageLite& message) const override {
+    return ListValueReflection::ValuesSize(
+        google::protobuf::DownCastMessage<google::protobuf::ListValue>(message));
+  }
+
+  const google::protobuf::MessageLite& Values(const google::protobuf::MessageLite& message,
+                                    int index) const override {
+    return ListValueReflection::Values(
+        google::protobuf::DownCastMessage<google::protobuf::ListValue>(message), index);
+  }
+
+  const google::protobuf::MessageLite& GetStructValue(
+      const google::protobuf::MessageLite& message) const override {
+    return ValueReflection::GetStructValue(
+        google::protobuf::DownCastMessage<google::protobuf::Value>(message));
+  }
+
+  int FieldsSize(const google::protobuf::MessageLite& message) const override {
+    return StructReflection::FieldsSize(
+        google::protobuf::DownCastMessage<google::protobuf::Struct>(message));
+  }
+
+  absl::Nullable<const google::protobuf::MessageLite*> FindField(
+      const google::protobuf::MessageLite& message,
+      absl::string_view name) const override {
+    return StructReflection::FindField(
+        google::protobuf::DownCastMessage<google::protobuf::Struct>(message), name);
+  }
+
+  JsonMapIterator IterateFields(
+      const google::protobuf::MessageLite& message) const override {
+    return StructReflection::BeginFields(
+        google::protobuf::DownCastMessage<google::protobuf::Struct>(message));
+  }
+};
+
+class DynamicJsonAccessor final : public JsonAccessor {
+ public:
+  void InitializeValue(const google::protobuf::Message& message) {
+    value_reflection_ = GetValueReflectionOrDie(message.GetDescriptor());
+    list_value_reflection_ =
+        GetListValueReflectionOrDie(value_reflection_.GetListValueDescriptor());
+    struct_reflection_ =
+        GetStructReflectionOrDie(value_reflection_.GetStructDescriptor());
+  }
+
+  void InitializeListValue(const google::protobuf::Message& message) {
+    list_value_reflection_ =
+        GetListValueReflectionOrDie(message.GetDescriptor());
+    value_reflection_ =
+        GetValueReflectionOrDie(list_value_reflection_.GetValueDescriptor());
+    struct_reflection_ =
+        GetStructReflectionOrDie(value_reflection_.GetStructDescriptor());
+  }
+
+  void InitializeStruct(const google::protobuf::Message& message) {
+    struct_reflection_ = GetStructReflectionOrDie(message.GetDescriptor());
+    value_reflection_ =
+        GetValueReflectionOrDie(struct_reflection_.GetValueDescriptor());
+    list_value_reflection_ =
+        GetListValueReflectionOrDie(value_reflection_.GetListValueDescriptor());
+  }
+
+  google::protobuf::Value::KindCase GetKindCase(
+      const google::protobuf::MessageLite& message) const override {
+    return value_reflection_.GetKindCase(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message));
+  }
+
+  bool GetBoolValue(const google::protobuf::MessageLite& message) const override {
+    return value_reflection_.GetBoolValue(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message));
+  }
+
+  double GetNumberValue(const google::protobuf::MessageLite& message) const override {
+    return value_reflection_.GetNumberValue(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message));
+  }
+
+  well_known_types::StringValue GetStringValue(
+      const google::protobuf::MessageLite& message, std::string& scratch) const override {
+    return value_reflection_.GetStringValue(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message), scratch);
+  }
+
+  const google::protobuf::MessageLite& GetListValue(
+      const google::protobuf::MessageLite& message) const override {
+    return value_reflection_.GetListValue(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message));
+  }
+
+  int ValuesSize(const google::protobuf::MessageLite& message) const override {
+    return list_value_reflection_.ValuesSize(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message));
+  }
+
+  const google::protobuf::MessageLite& Values(const google::protobuf::MessageLite& message,
+                                    int index) const override {
+    return list_value_reflection_.Values(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message), index);
+  }
+
+  const google::protobuf::MessageLite& GetStructValue(
+      const google::protobuf::MessageLite& message) const override {
+    return value_reflection_.GetStructValue(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message));
+  }
+
+  int FieldsSize(const google::protobuf::MessageLite& message) const override {
+    return struct_reflection_.FieldsSize(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message));
+  }
+
+  absl::Nullable<const google::protobuf::MessageLite*> FindField(
+      const google::protobuf::MessageLite& message,
+      absl::string_view name) const override {
+    return struct_reflection_.FindField(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message), name);
+  }
+
+  JsonMapIterator IterateFields(
+      const google::protobuf::MessageLite& message) const override {
+    return struct_reflection_.BeginFields(
+        google::protobuf::DownCastMessage<google::protobuf::Message>(message));
+  }
+
+ private:
+  ValueReflection value_reflection_;
+  ListValueReflection list_value_reflection_;
+  StructReflection struct_reflection_;
+};
+
+std::string JsonStringDebugString(const well_known_types::StringValue& value) {
+  return absl::visit(absl::Overload(
+                         [&](absl::string_view string) -> std::string {
+                           return FormatStringLiteral(string);
+                         },
+                         [&](const absl::Cord& cord) -> std::string {
+                           return FormatStringLiteral(cord);
+                         }),
+                     well_known_types::AsVariant(value));
+}
+
+std::string JsonNumberDebugString(double value) {
+  if (std::isfinite(value)) {
+    if (std::floor(value) != value) {
+      // The double is not representable as a whole number, so use
+      // absl::StrCat which will add decimal places.
+      return absl::StrCat(value);
+    }
+    // absl::StrCat historically would represent 0.0 as 0, and we want the
+    // decimal places so ZetaSQL correctly assumes the type as double
+    // instead of int64_t.
+    std::string stringified = absl::StrCat(value);
+    if (!absl::StrContains(stringified, '.')) {
+      absl::StrAppend(&stringified, ".0");
+    } else {
+      // absl::StrCat has a decimal now? Use it directly.
+    }
+    return stringified;
+  }
+  if (std::isnan(value)) {
+    return "nan";
+  }
+  if (std::signbit(value)) {
+    return "-infinity";
+  }
+  return "+infinity";
+}
+
+class JsonDebugStringState final {
+ public:
+  JsonDebugStringState(absl::Nonnull<const JsonAccessor*> accessor,
+                       absl::Nonnull<std::string*> output)
+      : accessor_(accessor), output_(output) {}
+
+  void ValueDebugString(const google::protobuf::MessageLite& message) {
+    const auto kind_case = accessor_->GetKindCase(message);
+    switch (kind_case) {
+      case google::protobuf::Value::KIND_NOT_SET:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::Value::kNullValue:
+        output_->append("null");
+        break;
+      case google::protobuf::Value::kBoolValue:
+        if (accessor_->GetBoolValue(message)) {
+          output_->append("true");
+        } else {
+          output_->append("false");
+        }
+        break;
+      case google::protobuf::Value::kNumberValue:
+        output_->append(
+            JsonNumberDebugString(accessor_->GetNumberValue(message)));
+        break;
+      case google::protobuf::Value::kStringValue:
+        output_->append(JsonStringDebugString(
+            accessor_->GetStringValue(message, scratch_)));
+        break;
+      case google::protobuf::Value::kListValue:
+        ListValueDebugString(accessor_->GetListValue(message));
+        break;
+      case google::protobuf::Value::kStructValue:
+        StructDebugString(accessor_->GetStructValue(message));
+        break;
+      default:
+        // Should not get here, but if for some terrible reason
+        // `google.protobuf.Value` is expanded, just skip.
+        break;
+    }
+  }
+
+  void ListValueDebugString(const google::protobuf::MessageLite& message) {
+    const int size = accessor_->ValuesSize(message);
+    output_->push_back('[');
+    for (int i = 0; i < size; ++i) {
+      if (i > 0) {
+        output_->append(", ");
+      }
+      ValueDebugString(accessor_->Values(message, i));
+    }
+    output_->push_back(']');
+  }
+
+  void StructDebugString(const google::protobuf::MessageLite& message) {
+    const int size = accessor_->FieldsSize(message);
+    std::string key_scratch;
+    well_known_types::StringValue key;
+    absl::Nonnull<const google::protobuf::MessageLite*> value;
+    auto iterator = accessor_->IterateFields(message);
+    output_->push_back('{');
+    for (int i = 0; i < size; ++i) {
+      if (i > 0) {
+        output_->append(", ");
+      }
+      std::tie(key, value) = iterator.Next(key_scratch);
+      output_->append(JsonStringDebugString(key));
+      output_->append(": ");
+      ValueDebugString(*value);
+    }
+    output_->push_back('}');
+  }
+
+ private:
+  const absl::Nonnull<const JsonAccessor*> accessor_;
+  const absl::Nonnull<std::string*> output_;
+  std::string scratch_;
+};
+
+}  // namespace
+
+std::string JsonDebugString(const google::protobuf::Value& message) {
+  std::string output;
+  JsonDebugStringState(GeneratedJsonAccessor::Singleton(), &output)
+      .ValueDebugString(message);
+  return output;
+}
+
+std::string JsonDebugString(const google::protobuf::Message& message) {
+  DynamicJsonAccessor accessor;
+  accessor.InitializeValue(message);
+  std::string output;
+  JsonDebugStringState(&accessor, &output).ValueDebugString(message);
+  return output;
+}
+
+std::string JsonListDebugString(const google::protobuf::ListValue& message) {
+  std::string output;
+  JsonDebugStringState(GeneratedJsonAccessor::Singleton(), &output)
+      .ListValueDebugString(message);
+  return output;
+}
+
+std::string JsonListDebugString(const google::protobuf::Message& message) {
+  DynamicJsonAccessor accessor;
+  accessor.InitializeListValue(message);
+  std::string output;
+  JsonDebugStringState(&accessor, &output).ListValueDebugString(message);
+  return output;
+}
+
+std::string JsonMapDebugString(const google::protobuf::Struct& message) {
+  std::string output;
+  JsonDebugStringState(GeneratedJsonAccessor::Singleton(), &output)
+      .StructDebugString(message);
+  return output;
+}
+
+std::string JsonMapDebugString(const google::protobuf::Message& message) {
+  DynamicJsonAccessor accessor;
+  accessor.InitializeStruct(message);
+  std::string output;
+  JsonDebugStringState(&accessor, &output).StructDebugString(message);
+  return output;
+}
+
+namespace {
+
+class JsonEqualsState final {
+ public:
+  explicit JsonEqualsState(absl::Nonnull<const JsonAccessor*> lhs_accessor,
+                           absl::Nonnull<const JsonAccessor*> rhs_accessor)
+      : lhs_accessor_(lhs_accessor), rhs_accessor_(rhs_accessor) {}
+
+  bool ValueEqual(const google::protobuf::MessageLite& lhs,
+                  const google::protobuf::MessageLite& rhs) {
+    auto lhs_kind_case = lhs_accessor_->GetKindCase(lhs);
+    if (lhs_kind_case == google::protobuf::Value::KIND_NOT_SET) {
+      lhs_kind_case = google::protobuf::Value::kNullValue;
+    }
+    auto rhs_kind_case = rhs_accessor_->GetKindCase(rhs);
+    if (rhs_kind_case == google::protobuf::Value::KIND_NOT_SET) {
+      rhs_kind_case = google::protobuf::Value::kNullValue;
+    }
+    if (lhs_kind_case != rhs_kind_case) {
+      return false;
+    }
+    switch (lhs_kind_case) {
+      case google::protobuf::Value::KIND_NOT_SET:
+        ABSL_UNREACHABLE();
+      case google::protobuf::Value::kNullValue:
+        return true;
+      case google::protobuf::Value::kBoolValue:
+        return lhs_accessor_->GetBoolValue(lhs) ==
+               rhs_accessor_->GetBoolValue(rhs);
+      case google::protobuf::Value::kNumberValue:
+        return lhs_accessor_->GetNumberValue(lhs) ==
+               rhs_accessor_->GetNumberValue(rhs);
+      case google::protobuf::Value::kStringValue:
+        return lhs_accessor_->GetStringValue(lhs, lhs_scratch_) ==
+               rhs_accessor_->GetStringValue(rhs, rhs_scratch_);
+      case google::protobuf::Value::kListValue:
+        return ListValueEqual(lhs_accessor_->GetListValue(lhs),
+                              rhs_accessor_->GetListValue(rhs));
+      case google::protobuf::Value::kStructValue:
+        return StructEqual(lhs_accessor_->GetStructValue(lhs),
+                           rhs_accessor_->GetStructValue(rhs));
+      default:
+        // Should not get here, but if for some terrible reason
+        // `google.protobuf.Value` is expanded, default to false.
+        return false;
+    }
+  }
+
+  bool ListValueEqual(const google::protobuf::MessageLite& lhs,
+                      const google::protobuf::MessageLite& rhs) {
+    const int lhs_size = lhs_accessor_->ValuesSize(lhs);
+    const int rhs_size = rhs_accessor_->ValuesSize(rhs);
+    if (lhs_size != rhs_size) {
+      return false;
+    }
+    for (int i = 0; i < lhs_size; ++i) {
+      if (!ValueEqual(lhs_accessor_->Values(lhs, i),
+                      rhs_accessor_->Values(rhs, i))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool StructEqual(const google::protobuf::MessageLite& lhs,
+                   const google::protobuf::MessageLite& rhs) {
+    const int lhs_size = lhs_accessor_->FieldsSize(lhs);
+    const int rhs_size = rhs_accessor_->FieldsSize(rhs);
+    if (lhs_size != rhs_size) {
+      return false;
+    }
+    if (lhs_size == 0) {
+      return true;
+    }
+    std::string lhs_key_scratch;
+    well_known_types::StringValue lhs_key;
+    absl::Nonnull<const google::protobuf::MessageLite*> lhs_value;
+    auto lhs_iterator = lhs_accessor_->IterateFields(lhs);
+    for (int i = 0; i < lhs_size; ++i) {
+      std::tie(lhs_key, lhs_value) = lhs_iterator.Next(lhs_key_scratch);
+      if (const auto* rhs_value = rhs_accessor_->FindField(
+              rhs, absl::visit(
+                       absl::Overload(
+                           [](absl::string_view string) -> absl::string_view {
+                             return string;
+                           },
+                           [&lhs_key_scratch](
+                               const absl::Cord& cord) -> absl::string_view {
+                             if (auto flat = cord.TryFlat(); flat) {
+                               return *flat;
+                             }
+                             absl::CopyCordToString(cord, &lhs_key_scratch);
+                             return absl::string_view(lhs_key_scratch);
+                           }),
+                       AsVariant(lhs_key)));
+          rhs_value == nullptr || !ValueEqual(*lhs_value, *rhs_value)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+ private:
+  const absl::Nonnull<const JsonAccessor*> lhs_accessor_;
+  const absl::Nonnull<const JsonAccessor*> rhs_accessor_;
+  std::string lhs_scratch_;
+  std::string rhs_scratch_;
+};
+
+}  // namespace
+
+bool JsonEquals(const google::protobuf::Value& lhs,
+                const google::protobuf::Value& rhs) {
+  return JsonEqualsState(GeneratedJsonAccessor::Singleton(),
+                         GeneratedJsonAccessor::Singleton())
+      .ValueEqual(lhs, rhs);
+}
+
+bool JsonEquals(const google::protobuf::Value& lhs,
+                const google::protobuf::Message& rhs) {
+  DynamicJsonAccessor rhs_accessor;
+  rhs_accessor.InitializeValue(rhs);
+  return JsonEqualsState(GeneratedJsonAccessor::Singleton(), &rhs_accessor)
+      .ValueEqual(lhs, rhs);
+}
+
+bool JsonEquals(const google::protobuf::Message& lhs,
+                const google::protobuf::Value& rhs) {
+  DynamicJsonAccessor lhs_accessor;
+  lhs_accessor.InitializeValue(lhs);
+  return JsonEqualsState(&lhs_accessor, GeneratedJsonAccessor::Singleton())
+      .ValueEqual(lhs, rhs);
+}
+
+bool JsonEquals(const google::protobuf::Message& lhs, const google::protobuf::Message& rhs) {
+  DynamicJsonAccessor lhs_accessor;
+  lhs_accessor.InitializeValue(lhs);
+  DynamicJsonAccessor rhs_accessor;
+  rhs_accessor.InitializeValue(rhs);
+  return JsonEqualsState(&lhs_accessor, &rhs_accessor).ValueEqual(lhs, rhs);
+}
+
+bool JsonEquals(const google::protobuf::MessageLite& lhs,
+                const google::protobuf::MessageLite& rhs) {
+  const auto* lhs_generated =
+      google::protobuf::DynamicCastMessage<google::protobuf::Value>(&lhs);
+  const auto* rhs_generated =
+      google::protobuf::DynamicCastMessage<google::protobuf::Value>(&rhs);
+  if (lhs_generated && rhs_generated) {
+    return JsonEquals(*lhs_generated, *rhs_generated);
+  }
+  if (lhs_generated) {
+    return JsonEquals(*lhs_generated,
+                      google::protobuf::DownCastMessage<google::protobuf::Message>(rhs));
+  }
+  if (rhs_generated) {
+    return JsonEquals(google::protobuf::DownCastMessage<google::protobuf::Message>(lhs),
+                      *rhs_generated);
+  }
+  return JsonEquals(google::protobuf::DownCastMessage<google::protobuf::Message>(lhs),
+                    google::protobuf::DownCastMessage<google::protobuf::Message>(rhs));
+}
+
+bool JsonListEquals(const google::protobuf::ListValue& lhs,
+                    const google::protobuf::ListValue& rhs) {
+  return JsonEqualsState(GeneratedJsonAccessor::Singleton(),
+                         GeneratedJsonAccessor::Singleton())
+      .ListValueEqual(lhs, rhs);
+}
+
+bool JsonListEquals(const google::protobuf::ListValue& lhs,
+                    const google::protobuf::Message& rhs) {
+  DynamicJsonAccessor rhs_accessor;
+  rhs_accessor.InitializeListValue(rhs);
+  return JsonEqualsState(GeneratedJsonAccessor::Singleton(), &rhs_accessor)
+      .ListValueEqual(lhs, rhs);
+}
+
+bool JsonListEquals(const google::protobuf::Message& lhs,
+                    const google::protobuf::ListValue& rhs) {
+  DynamicJsonAccessor lhs_accessor;
+  lhs_accessor.InitializeListValue(lhs);
+  return JsonEqualsState(&lhs_accessor, GeneratedJsonAccessor::Singleton())
+      .ListValueEqual(lhs, rhs);
+}
+
+bool JsonListEquals(const google::protobuf::Message& lhs, const google::protobuf::Message& rhs) {
+  DynamicJsonAccessor lhs_accessor;
+  lhs_accessor.InitializeListValue(lhs);
+  DynamicJsonAccessor rhs_accessor;
+  rhs_accessor.InitializeListValue(rhs);
+  return JsonEqualsState(&lhs_accessor, &rhs_accessor).ListValueEqual(lhs, rhs);
+}
+
+bool JsonListEquals(const google::protobuf::MessageLite& lhs,
+                    const google::protobuf::MessageLite& rhs) {
+  const auto* lhs_generated =
+      google::protobuf::DynamicCastMessage<google::protobuf::ListValue>(&lhs);
+  const auto* rhs_generated =
+      google::protobuf::DynamicCastMessage<google::protobuf::ListValue>(&rhs);
+  if (lhs_generated && rhs_generated) {
+    return JsonListEquals(*lhs_generated, *rhs_generated);
+  }
+  if (lhs_generated) {
+    return JsonListEquals(*lhs_generated,
+                          google::protobuf::DownCastMessage<google::protobuf::Message>(rhs));
+  }
+  if (rhs_generated) {
+    return JsonListEquals(google::protobuf::DownCastMessage<google::protobuf::Message>(lhs),
+                          *rhs_generated);
+  }
+  return JsonListEquals(google::protobuf::DownCastMessage<google::protobuf::Message>(lhs),
+                        google::protobuf::DownCastMessage<google::protobuf::Message>(rhs));
+}
+
+bool JsonMapEquals(const google::protobuf::Struct& lhs,
+                   const google::protobuf::Struct& rhs) {
+  return JsonEqualsState(GeneratedJsonAccessor::Singleton(),
+                         GeneratedJsonAccessor::Singleton())
+      .StructEqual(lhs, rhs);
+}
+
+bool JsonMapEquals(const google::protobuf::Struct& lhs,
+                   const google::protobuf::Message& rhs) {
+  DynamicJsonAccessor rhs_accessor;
+  rhs_accessor.InitializeStruct(rhs);
+  return JsonEqualsState(GeneratedJsonAccessor::Singleton(), &rhs_accessor)
+      .StructEqual(lhs, rhs);
+}
+
+bool JsonMapEquals(const google::protobuf::Message& lhs,
+                   const google::protobuf::Struct& rhs) {
+  DynamicJsonAccessor lhs_accessor;
+  lhs_accessor.InitializeStruct(lhs);
+  return JsonEqualsState(&lhs_accessor, GeneratedJsonAccessor::Singleton())
+      .StructEqual(lhs, rhs);
+}
+
+bool JsonMapEquals(const google::protobuf::Message& lhs, const google::protobuf::Message& rhs) {
+  DynamicJsonAccessor lhs_accessor;
+  lhs_accessor.InitializeStruct(lhs);
+  DynamicJsonAccessor rhs_accessor;
+  rhs_accessor.InitializeStruct(rhs);
+  return JsonEqualsState(&lhs_accessor, &rhs_accessor).StructEqual(lhs, rhs);
+}
+
+bool JsonMapEquals(const google::protobuf::MessageLite& lhs,
+                   const google::protobuf::MessageLite& rhs) {
+  const auto* lhs_generated =
+      google::protobuf::DynamicCastMessage<google::protobuf::Struct>(&lhs);
+  const auto* rhs_generated =
+      google::protobuf::DynamicCastMessage<google::protobuf::Struct>(&rhs);
+  if (lhs_generated && rhs_generated) {
+    return JsonMapEquals(*lhs_generated, *rhs_generated);
+  }
+  if (lhs_generated) {
+    return JsonMapEquals(*lhs_generated,
+                         google::protobuf::DownCastMessage<google::protobuf::Message>(rhs));
+  }
+  if (rhs_generated) {
+    return JsonMapEquals(google::protobuf::DownCastMessage<google::protobuf::Message>(lhs),
+                         *rhs_generated);
+  }
+  return JsonMapEquals(google::protobuf::DownCastMessage<google::protobuf::Message>(lhs),
+                       google::protobuf::DownCastMessage<google::protobuf::Message>(rhs));
 }
 
 namespace {

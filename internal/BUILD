@@ -235,6 +235,7 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
     ],
 )
 
@@ -247,6 +248,8 @@ cc_test(
         ":utf8",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:cord_test_helpers",
         "@com_google_absl//absl/strings:str_format",
     ],
 )
@@ -755,10 +758,12 @@ cc_library(
     hdrs = ["json.h"],
     deps = [
         ":status_macros",
+        ":strings",
         ":well_known_types",
         "//common:json",
         "//extensions/protobuf/internal:map_reflection",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/functional:overload",
         "@com_google_absl//absl/log:absl_check",

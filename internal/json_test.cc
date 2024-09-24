@@ -45,11 +45,68 @@ using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
 using ::cel::internal::test::EqualsProto;
+using ::testing::AnyOf;
 using ::testing::HasSubstr;
 using ::testing::Test;
 using ::testing::VariantWith;
 
 using TestAllTypesProto3 = ::google::api::expr::test::v1::proto3::TestAllTypes;
+
+class CheckJsonTest : public Test {
+ public:
+  absl::Nonnull<google::protobuf::Arena*> arena() { return &arena_; }
+
+  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() {
+    return GetTestingDescriptorPool();
+  }
+
+  absl::Nonnull<google::protobuf::MessageFactory*> message_factory() {
+    return GetTestingMessageFactory();
+  }
+
+  template <typename T>
+  T* MakeGenerated() {
+    return google::protobuf::Arena::Create<T>(arena());
+  }
+
+  template <typename T>
+  google::protobuf::Message* MakeDynamic() {
+    const auto* descriptor = ABSL_DIE_IF_NULL(
+        descriptor_pool()->FindMessageTypeByName(MessageTypeNameFor<T>()));
+    const auto* prototype =
+        ABSL_DIE_IF_NULL(message_factory()->GetPrototype(descriptor));
+    return ABSL_DIE_IF_NULL(prototype->New(arena()));
+  }
+
+ private:
+  google::protobuf::Arena arena_;
+};
+
+TEST_F(CheckJsonTest, Value_Generated) {
+  EXPECT_THAT(CheckJson(*MakeGenerated<google::protobuf::Value>()), IsOk());
+}
+
+TEST_F(CheckJsonTest, Value_Dynamic) {
+  EXPECT_THAT(CheckJson(*MakeDynamic<google::protobuf::Value>()), IsOk());
+}
+
+TEST_F(CheckJsonTest, ListValue_Generated) {
+  EXPECT_THAT(CheckJsonList(*MakeGenerated<google::protobuf::ListValue>()),
+              IsOk());
+}
+
+TEST_F(CheckJsonTest, ListValue_Dynamic) {
+  EXPECT_THAT(CheckJsonList(*MakeDynamic<google::protobuf::ListValue>()),
+              IsOk());
+}
+
+TEST_F(CheckJsonTest, Struct_Generated) {
+  EXPECT_THAT(CheckJsonMap(*MakeGenerated<google::protobuf::Struct>()), IsOk());
+}
+
+TEST_F(CheckJsonTest, Struct_Dynamic) {
+  EXPECT_THAT(CheckJsonMap(*MakeDynamic<google::protobuf::Struct>()), IsOk());
+}
 
 class MessageToJsonTest : public Test {
  public:
@@ -2022,6 +2079,916 @@ TEST_F(MessageFieldToJsonTest, TestAllTypesProto3_Dynamic) {
               IsOk());
   EXPECT_THAT(*result, EqualsTextProto<google::protobuf::Value>(
                            R"pb(bool_value: true)pb"));
+}
+
+class JsonDebugStringTest : public Test {
+ public:
+  absl::Nonnull<google::protobuf::Arena*> arena() { return &arena_; }
+
+  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() {
+    return GetTestingDescriptorPool();
+  }
+
+  absl::Nonnull<google::protobuf::MessageFactory*> message_factory() {
+    return GetTestingMessageFactory();
+  }
+
+  template <typename T>
+  auto GeneratedParseTextProto(absl::string_view text) {
+    return ::cel::internal::GeneratedParseTextProto<T>(
+        arena(), text, descriptor_pool(), message_factory());
+  }
+
+  template <typename T>
+  auto DynamicParseTextProto(absl::string_view text) {
+    return ::cel::internal::DynamicParseTextProto<T>(
+        arena(), text, descriptor_pool(), message_factory());
+  }
+
+ private:
+  google::protobuf::Arena arena_;
+};
+
+TEST_F(JsonDebugStringTest, Null_Generated) {
+  EXPECT_EQ(JsonDebugString(
+                *GeneratedParseTextProto<google::protobuf::Value>(R"pb()pb")),
+            "null");
+}
+
+TEST_F(JsonDebugStringTest, Null_Dynamic) {
+  EXPECT_EQ(JsonDebugString(
+                *DynamicParseTextProto<google::protobuf::Value>(R"pb()pb")),
+            "null");
+}
+
+TEST_F(JsonDebugStringTest, Bool_Generated) {
+  EXPECT_EQ(JsonDebugString(*GeneratedParseTextProto<google::protobuf::Value>(
+                R"pb(bool_value: false)pb")),
+            "false");
+  EXPECT_EQ(JsonDebugString(*GeneratedParseTextProto<google::protobuf::Value>(
+                R"pb(bool_value: true)pb")),
+            "true");
+}
+
+TEST_F(JsonDebugStringTest, Bool_Dynamic) {
+  EXPECT_EQ(JsonDebugString(*DynamicParseTextProto<google::protobuf::Value>(
+                R"pb(bool_value: false)pb")),
+            "false");
+  EXPECT_EQ(JsonDebugString(*DynamicParseTextProto<google::protobuf::Value>(
+                R"pb(bool_value: true)pb")),
+            "true");
+}
+
+TEST_F(JsonDebugStringTest, Number_Generated) {
+  EXPECT_EQ(JsonDebugString(*GeneratedParseTextProto<google::protobuf::Value>(
+                R"pb(number_value: 1.0)pb")),
+            "1.0");
+  EXPECT_EQ(JsonDebugString(*GeneratedParseTextProto<google::protobuf::Value>(
+                R"pb(number_value: 1.1)pb")),
+            "1.1");
+  EXPECT_EQ(JsonDebugString(*GeneratedParseTextProto<google::protobuf::Value>(
+                R"pb(number_value: infinity)pb")),
+            "+infinity");
+  EXPECT_EQ(JsonDebugString(*GeneratedParseTextProto<google::protobuf::Value>(
+                R"pb(number_value: -infinity)pb")),
+            "-infinity");
+  EXPECT_EQ(JsonDebugString(*GeneratedParseTextProto<google::protobuf::Value>(
+                R"pb(number_value: nan)pb")),
+            "nan");
+}
+
+TEST_F(JsonDebugStringTest, Number_Dynamic) {
+  EXPECT_EQ(JsonDebugString(*DynamicParseTextProto<google::protobuf::Value>(
+                R"pb(number_value: 1.0)pb")),
+            "1.0");
+  EXPECT_EQ(JsonDebugString(*DynamicParseTextProto<google::protobuf::Value>(
+                R"pb(number_value: 1.1)pb")),
+            "1.1");
+  EXPECT_EQ(JsonDebugString(*DynamicParseTextProto<google::protobuf::Value>(
+                R"pb(number_value: infinity)pb")),
+            "+infinity");
+  EXPECT_EQ(JsonDebugString(*DynamicParseTextProto<google::protobuf::Value>(
+                R"pb(number_value: -infinity)pb")),
+            "-infinity");
+  EXPECT_EQ(JsonDebugString(*DynamicParseTextProto<google::protobuf::Value>(
+                R"pb(number_value: nan)pb")),
+            "nan");
+}
+
+TEST_F(JsonDebugStringTest, String_Generated) {
+  EXPECT_EQ(JsonDebugString(*GeneratedParseTextProto<google::protobuf::Value>(
+                R"pb(string_value: "foo")pb")),
+            "\"foo\"");
+}
+
+TEST_F(JsonDebugStringTest, String_Dynamic) {
+  EXPECT_EQ(JsonDebugString(*DynamicParseTextProto<google::protobuf::Value>(
+                R"pb(string_value: "foo")pb")),
+            "\"foo\"");
+}
+
+TEST_F(JsonDebugStringTest, List_Generated) {
+  EXPECT_EQ(JsonDebugString(*GeneratedParseTextProto<google::protobuf::Value>(
+                R"pb(list_value: {
+                       values {}
+                       values { bool_value: true }
+                     })pb")),
+            "[null, true]");
+  EXPECT_EQ(
+      JsonListDebugString(*GeneratedParseTextProto<google::protobuf::ListValue>(
+          R"pb(
+            values {}
+            values { bool_value: true })pb")),
+      "[null, true]");
+}
+
+TEST_F(JsonDebugStringTest, List_Dynamic) {
+  EXPECT_EQ(JsonDebugString(*DynamicParseTextProto<google::protobuf::Value>(
+                R"pb(list_value: {
+                       values {}
+                       values { bool_value: true }
+                     })pb")),
+            "[null, true]");
+  EXPECT_EQ(
+      JsonListDebugString(*DynamicParseTextProto<google::protobuf::ListValue>(
+          R"pb(
+            values {}
+            values { bool_value: true })pb")),
+      "[null, true]");
+}
+
+TEST_F(JsonDebugStringTest, Struct_Generated) {
+  EXPECT_THAT(JsonDebugString(*GeneratedParseTextProto<google::protobuf::Value>(
+                  R"pb(struct_value: {
+                         fields {
+                           key: "foo"
+                           value: {}
+                         }
+                         fields {
+                           key: "bar"
+                           value: { bool_value: true }
+                         }
+                       })pb")),
+              AnyOf("{\"foo\": null, \"bar\": true}",
+                    "{\"bar\": true, \"foo\": null}"));
+  EXPECT_THAT(
+      JsonMapDebugString(*GeneratedParseTextProto<google::protobuf::Struct>(
+          R"pb(
+            fields {
+              key: "foo"
+              value: {}
+            }
+            fields {
+              key: "bar"
+              value: { bool_value: true }
+            })pb")),
+      AnyOf("{\"foo\": null, \"bar\": true}",
+            "{\"bar\": true, \"foo\": null}"));
+}
+
+TEST_F(JsonDebugStringTest, Struct_Dynamic) {
+  EXPECT_THAT(JsonDebugString(*DynamicParseTextProto<google::protobuf::Value>(
+                  R"pb(struct_value: {
+                         fields {
+                           key: "foo"
+                           value: {}
+                         }
+                         fields {
+                           key: "bar"
+                           value: { bool_value: true }
+                         }
+                       })pb")),
+              AnyOf("{\"foo\": null, \"bar\": true}",
+                    "{\"bar\": true, \"foo\": null}"));
+  EXPECT_THAT(
+      JsonMapDebugString(*DynamicParseTextProto<google::protobuf::Struct>(
+          R"pb(
+            fields {
+              key: "foo"
+              value: {}
+            }
+            fields {
+              key: "bar"
+              value: { bool_value: true }
+            })pb")),
+      AnyOf("{\"foo\": null, \"bar\": true}",
+            "{\"bar\": true, \"foo\": null}"));
+}
+
+class JsonEqualsTest : public Test {
+ public:
+  absl::Nonnull<google::protobuf::Arena*> arena() { return &arena_; }
+
+  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool() {
+    return GetTestingDescriptorPool();
+  }
+
+  absl::Nonnull<google::protobuf::MessageFactory*> message_factory() {
+    return GetTestingMessageFactory();
+  }
+
+  template <typename T>
+  auto GeneratedParseTextProto(absl::string_view text) {
+    return ::cel::internal::GeneratedParseTextProto<T>(
+        arena(), text, descriptor_pool(), message_factory());
+  }
+
+  template <typename T>
+  auto DynamicParseTextProto(absl::string_view text) {
+    return ::cel::internal::DynamicParseTextProto<T>(
+        arena(), text, descriptor_pool(), message_factory());
+  }
+
+ private:
+  google::protobuf::Arena arena_;
+};
+
+TEST_F(JsonEqualsTest, Null_Null_Generated_Generated) {
+  EXPECT_TRUE(
+      JsonEquals(*GeneratedParseTextProto<google::protobuf::Value>(R"pb()pb"),
+                 *GeneratedParseTextProto<google::protobuf::Value>(R"pb()pb")));
+}
+
+TEST_F(JsonEqualsTest, Null_Null_Generated_Dynamic) {
+  EXPECT_TRUE(
+      JsonEquals(*GeneratedParseTextProto<google::protobuf::Value>(R"pb()pb"),
+                 *DynamicParseTextProto<google::protobuf::Value>(R"pb()pb")));
+}
+
+TEST_F(JsonEqualsTest, Null_Null_Dynamic_Generated) {
+  EXPECT_TRUE(
+      JsonEquals(*DynamicParseTextProto<google::protobuf::Value>(R"pb()pb"),
+                 *GeneratedParseTextProto<google::protobuf::Value>(R"pb()pb")));
+}
+
+TEST_F(JsonEqualsTest, Null_Null_Dynamic_Dynamic) {
+  EXPECT_TRUE(
+      JsonEquals(*DynamicParseTextProto<google::protobuf::Value>(R"pb()pb"),
+                 *DynamicParseTextProto<google::protobuf::Value>(R"pb()pb")));
+}
+
+TEST_F(JsonEqualsTest, Bool_Bool_Generated_Generated) {
+  EXPECT_TRUE(JsonEquals(*GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(bool_value: true)pb"),
+                         *GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(bool_value: true)pb")));
+}
+
+TEST_F(JsonEqualsTest, Bool_Bool_Generated_Dynamic) {
+  EXPECT_TRUE(JsonEquals(*GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(bool_value: true)pb"),
+                         *DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(bool_value: true)pb")));
+}
+
+TEST_F(JsonEqualsTest, Bool_Bool_Dynamic_Generated) {
+  EXPECT_TRUE(JsonEquals(*DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(bool_value: true)pb"),
+                         *GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(bool_value: true)pb")));
+}
+
+TEST_F(JsonEqualsTest, Bool_Bool_Dynamic_Dynamic) {
+  EXPECT_TRUE(JsonEquals(*DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(bool_value: true)pb"),
+                         *DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(bool_value: true)pb")));
+}
+
+TEST_F(JsonEqualsTest, Number_Number_Generated_Generated) {
+  EXPECT_TRUE(JsonEquals(*GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(number_value: 1.0)pb"),
+                         *GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(number_value: 1.0)pb")));
+}
+
+TEST_F(JsonEqualsTest, Number_Number_Generated_Dynamic) {
+  EXPECT_TRUE(JsonEquals(*GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(number_value: 1.0)pb"),
+                         *DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(number_value: 1.0)pb")));
+}
+
+TEST_F(JsonEqualsTest, Number_Number_Dynamic_Generated) {
+  EXPECT_TRUE(JsonEquals(*DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(number_value: 1.0)pb"),
+                         *GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(number_value: 1.0)pb")));
+}
+
+TEST_F(JsonEqualsTest, Number_Number_Dynamic_Dynamic) {
+  EXPECT_TRUE(JsonEquals(*DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(number_value: 1.0)pb"),
+                         *DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(number_value: 1.0)pb")));
+}
+
+TEST_F(JsonEqualsTest, String_String_Generated_Generated) {
+  EXPECT_TRUE(JsonEquals(*GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(string_value: "foo")pb"),
+                         *GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(string_value: "foo")pb")));
+}
+
+TEST_F(JsonEqualsTest, String_String_Generated_Dynamic) {
+  EXPECT_TRUE(JsonEquals(*GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(string_value: "foo")pb"),
+                         *DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(string_value: "foo")pb")));
+}
+
+TEST_F(JsonEqualsTest, String_String_Dynamic_Generated) {
+  EXPECT_TRUE(JsonEquals(*DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(string_value: "foo")pb"),
+                         *GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(string_value: "foo")pb")));
+}
+
+TEST_F(JsonEqualsTest, String_String_Dynamic_Dynamic) {
+  EXPECT_TRUE(JsonEquals(*DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(string_value: "foo")pb"),
+                         *DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(string_value: "foo")pb")));
+}
+
+TEST_F(JsonEqualsTest, List_List_Generated_Generated) {
+  EXPECT_TRUE(JsonEquals(*GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(list_value: {
+                                    values {}
+                                    values { bool_value: true }
+                                  })pb"),
+                         *GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(list_value: {
+                                    values {}
+                                    values { bool_value: true }
+                                  })pb")));
+  EXPECT_TRUE(JsonEquals(static_cast<const google::protobuf::MessageLite&>(
+                             *GeneratedParseTextProto<google::protobuf::Value>(
+                                 R"pb(list_value: {
+                                        values {}
+                                        values { bool_value: true }
+                                      })pb")),
+                         static_cast<const google::protobuf::MessageLite&>(
+                             *GeneratedParseTextProto<google::protobuf::Value>(
+                                 R"pb(list_value: {
+                                        values {}
+                                        values { bool_value: true }
+                                      })pb"))));
+  EXPECT_TRUE(
+      JsonListEquals(*GeneratedParseTextProto<google::protobuf::ListValue>(
+                         R"pb(
+                           values {}
+                           values { bool_value: true }
+                         )pb"),
+                     *GeneratedParseTextProto<google::protobuf::ListValue>(
+                         R"pb(
+                           values {}
+                           values { bool_value: true }
+                         )pb")));
+  EXPECT_TRUE(
+      JsonListEquals(static_cast<const google::protobuf::MessageLite&>(
+                         *GeneratedParseTextProto<google::protobuf::ListValue>(
+                             R"pb(
+                               values {}
+                               values { bool_value: true }
+                             )pb")),
+                     static_cast<const google::protobuf::MessageLite&>(
+                         *GeneratedParseTextProto<google::protobuf::ListValue>(
+                             R"pb(
+                               values {}
+                               values { bool_value: true }
+                             )pb"))));
+}
+
+TEST_F(JsonEqualsTest, List_List_Generated_Dynamic) {
+  EXPECT_TRUE(JsonEquals(*GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(list_value: {
+                                    values {}
+                                    values { bool_value: true }
+                                  })pb"),
+                         *DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(list_value: {
+                                    values {}
+                                    values { bool_value: true }
+                                  })pb")));
+  EXPECT_TRUE(JsonEquals(static_cast<const google::protobuf::MessageLite&>(
+                             *GeneratedParseTextProto<google::protobuf::Value>(
+                                 R"pb(list_value: {
+                                        values {}
+                                        values { bool_value: true }
+                                      })pb")),
+                         static_cast<const google::protobuf::MessageLite&>(
+                             *DynamicParseTextProto<google::protobuf::Value>(
+                                 R"pb(list_value: {
+                                        values {}
+                                        values { bool_value: true }
+                                      })pb"))));
+  EXPECT_TRUE(
+      JsonListEquals(*GeneratedParseTextProto<google::protobuf::ListValue>(
+                         R"pb(
+                           values {}
+                           values { bool_value: true }
+                         )pb"),
+                     *DynamicParseTextProto<google::protobuf::ListValue>(
+                         R"pb(
+                           values {}
+                           values { bool_value: true }
+                         )pb")));
+  EXPECT_TRUE(
+      JsonListEquals(static_cast<const google::protobuf::MessageLite&>(
+                         *GeneratedParseTextProto<google::protobuf::ListValue>(
+                             R"pb(
+                               values {}
+                               values { bool_value: true }
+                             )pb")),
+                     static_cast<const google::protobuf::MessageLite&>(
+                         *DynamicParseTextProto<google::protobuf::ListValue>(
+                             R"pb(
+                               values {}
+                               values { bool_value: true }
+                             )pb"))));
+}
+
+TEST_F(JsonEqualsTest, List_List_Dynamic_Generated) {
+  EXPECT_TRUE(JsonEquals(*DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(list_value: {
+                                    values {}
+                                    values { bool_value: true }
+                                  })pb"),
+                         *GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(list_value: {
+                                    values {}
+                                    values { bool_value: true }
+                                  })pb")));
+  EXPECT_TRUE(JsonEquals(static_cast<const google::protobuf::MessageLite&>(
+                             *DynamicParseTextProto<google::protobuf::Value>(
+                                 R"pb(list_value: {
+                                        values {}
+                                        values { bool_value: true }
+                                      })pb")),
+                         static_cast<const google::protobuf::MessageLite&>(
+                             *GeneratedParseTextProto<google::protobuf::Value>(
+                                 R"pb(list_value: {
+                                        values {}
+                                        values { bool_value: true }
+                                      })pb"))));
+  EXPECT_TRUE(
+      JsonListEquals(*DynamicParseTextProto<google::protobuf::ListValue>(
+                         R"pb(
+                           values {}
+                           values { bool_value: true }
+                         )pb"),
+                     *GeneratedParseTextProto<google::protobuf::ListValue>(
+                         R"pb(
+                           values {}
+                           values { bool_value: true }
+                         )pb")));
+  EXPECT_TRUE(
+      JsonListEquals(static_cast<const google::protobuf::MessageLite&>(
+                         *DynamicParseTextProto<google::protobuf::ListValue>(
+                             R"pb(
+                               values {}
+                               values { bool_value: true }
+                             )pb")),
+                     static_cast<const google::protobuf::MessageLite&>(
+                         *GeneratedParseTextProto<google::protobuf::ListValue>(
+                             R"pb(
+                               values {}
+                               values { bool_value: true }
+                             )pb"))));
+}
+
+TEST_F(JsonEqualsTest, List_List_Dynamic_Dynamic) {
+  EXPECT_TRUE(JsonEquals(*DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(list_value: {
+                                    values {}
+                                    values { bool_value: true }
+                                  })pb"),
+                         *DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(list_value: {
+                                    values {}
+                                    values { bool_value: true }
+                                  })pb")));
+  EXPECT_TRUE(JsonEquals(static_cast<const google::protobuf::MessageLite&>(
+                             *DynamicParseTextProto<google::protobuf::Value>(
+                                 R"pb(list_value: {
+                                        values {}
+                                        values { bool_value: true }
+                                      })pb")),
+                         static_cast<const google::protobuf::MessageLite&>(
+                             *DynamicParseTextProto<google::protobuf::Value>(
+                                 R"pb(list_value: {
+                                        values {}
+                                        values { bool_value: true }
+                                      })pb"))));
+  EXPECT_TRUE(
+      JsonListEquals(*DynamicParseTextProto<google::protobuf::ListValue>(
+                         R"pb(
+                           values {}
+                           values { bool_value: true }
+                         )pb"),
+                     *DynamicParseTextProto<google::protobuf::ListValue>(
+                         R"pb(
+                           values {}
+                           values { bool_value: true }
+                         )pb")));
+  EXPECT_TRUE(
+      JsonListEquals(static_cast<const google::protobuf::MessageLite&>(
+                         *DynamicParseTextProto<google::protobuf::ListValue>(
+                             R"pb(
+                               values {}
+                               values { bool_value: true }
+                             )pb")),
+                     static_cast<const google::protobuf::MessageLite&>(
+                         *DynamicParseTextProto<google::protobuf::ListValue>(
+                             R"pb(
+                               values {}
+                               values { bool_value: true }
+                             )pb"))));
+}
+
+TEST_F(JsonEqualsTest, Map_Map_Generated_Generated) {
+  EXPECT_TRUE(JsonEquals(*GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(struct_value: {
+                                    fields {
+                                      key: "foo"
+                                      value: {}
+                                    }
+                                    fields {
+                                      key: "bar"
+                                      value: { bool_value: true }
+                                    }
+                                  })pb"),
+                         *GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(struct_value: {
+                                    fields {
+                                      key: "foo"
+                                      value: {}
+                                    }
+                                    fields {
+                                      key: "bar"
+                                      value: { bool_value: true }
+                                    }
+                                  })pb")));
+  EXPECT_TRUE(JsonEquals(static_cast<const google::protobuf::MessageLite&>(
+                             *GeneratedParseTextProto<google::protobuf::Value>(
+                                 R"pb(struct_value: {
+                                        fields {
+                                          key: "foo"
+                                          value: {}
+                                        }
+                                        fields {
+                                          key: "bar"
+                                          value: { bool_value: true }
+                                        }
+                                      })pb")),
+                         static_cast<const google::protobuf::MessageLite&>(
+                             *GeneratedParseTextProto<google::protobuf::Value>(
+                                 R"pb(struct_value: {
+                                        fields {
+                                          key: "foo"
+                                          value: {}
+                                        }
+                                        fields {
+                                          key: "bar"
+                                          value: { bool_value: true }
+                                        }
+                                      })pb"))));
+  EXPECT_TRUE(JsonMapEquals(*GeneratedParseTextProto<google::protobuf::Struct>(
+                                R"pb(
+                                  fields {
+                                    key: "foo"
+                                    value: {}
+                                  }
+                                  fields {
+                                    key: "bar"
+                                    value: { bool_value: true }
+                                  }
+                                )pb"),
+                            *GeneratedParseTextProto<google::protobuf::Struct>(
+                                R"pb(
+                                  fields {
+                                    key: "foo"
+                                    value: {}
+                                  }
+                                  fields {
+                                    key: "bar"
+                                    value: { bool_value: true }
+                                  }
+                                )pb")));
+  EXPECT_TRUE(
+      JsonMapEquals(static_cast<const google::protobuf::MessageLite&>(
+                        *GeneratedParseTextProto<google::protobuf::Struct>(
+                            R"pb(
+                              fields {
+                                key: "foo"
+                                value: {}
+                              }
+                              fields {
+                                key: "bar"
+                                value: { bool_value: true }
+                              }
+                            )pb")),
+                    static_cast<const google::protobuf::MessageLite&>(
+                        *GeneratedParseTextProto<google::protobuf::Struct>(
+                            R"pb(
+                              fields {
+                                key: "foo"
+                                value: {}
+                              }
+                              fields {
+                                key: "bar"
+                                value: { bool_value: true }
+                              }
+                            )pb"))));
+}
+
+TEST_F(JsonEqualsTest, Map_Map_Generated_Dynamic) {
+  EXPECT_TRUE(JsonEquals(*GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(struct_value: {
+                                    fields {
+                                      key: "foo"
+                                      value: {}
+                                    }
+                                    fields {
+                                      key: "bar"
+                                      value: { bool_value: true }
+                                    }
+                                  })pb"),
+                         *DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(struct_value: {
+                                    fields {
+                                      key: "foo"
+                                      value: {}
+                                    }
+                                    fields {
+                                      key: "bar"
+                                      value: { bool_value: true }
+                                    }
+                                  })pb")));
+  EXPECT_TRUE(JsonEquals(static_cast<const google::protobuf::MessageLite&>(
+                             *GeneratedParseTextProto<google::protobuf::Value>(
+                                 R"pb(struct_value: {
+                                        fields {
+                                          key: "foo"
+                                          value: {}
+                                        }
+                                        fields {
+                                          key: "bar"
+                                          value: { bool_value: true }
+                                        }
+                                      })pb")),
+                         static_cast<const google::protobuf::MessageLite&>(
+                             *DynamicParseTextProto<google::protobuf::Value>(
+                                 R"pb(struct_value: {
+                                        fields {
+                                          key: "foo"
+                                          value: {}
+                                        }
+                                        fields {
+                                          key: "bar"
+                                          value: { bool_value: true }
+                                        }
+                                      })pb"))));
+  EXPECT_TRUE(JsonMapEquals(*GeneratedParseTextProto<google::protobuf::Struct>(
+                                R"pb(
+                                  fields {
+                                    key: "foo"
+                                    value: {}
+                                  }
+                                  fields {
+                                    key: "bar"
+                                    value: { bool_value: true }
+                                  }
+                                )pb"),
+                            *DynamicParseTextProto<google::protobuf::Struct>(
+                                R"pb(
+                                  fields {
+                                    key: "foo"
+                                    value: {}
+                                  }
+                                  fields {
+                                    key: "bar"
+                                    value: { bool_value: true }
+                                  }
+                                )pb")));
+  EXPECT_TRUE(
+      JsonMapEquals(static_cast<const google::protobuf::MessageLite&>(
+                        *GeneratedParseTextProto<google::protobuf::Struct>(
+                            R"pb(
+                              fields {
+                                key: "foo"
+                                value: {}
+                              }
+                              fields {
+                                key: "bar"
+                                value: { bool_value: true }
+                              }
+                            )pb")),
+                    static_cast<const google::protobuf::MessageLite&>(
+                        *DynamicParseTextProto<google::protobuf::Struct>(
+                            R"pb(
+                              fields {
+                                key: "foo"
+                                value: {}
+                              }
+                              fields {
+                                key: "bar"
+                                value: { bool_value: true }
+                              }
+                            )pb"))));
+}
+
+TEST_F(JsonEqualsTest, Map_Map_Dynamic_Generated) {
+  EXPECT_TRUE(JsonEquals(*DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(struct_value: {
+                                    fields {
+                                      key: "foo"
+                                      value: {}
+                                    }
+                                    fields {
+                                      key: "bar"
+                                      value: { bool_value: true }
+                                    }
+                                  })pb"),
+                         *GeneratedParseTextProto<google::protobuf::Value>(
+                             R"pb(struct_value: {
+                                    fields {
+                                      key: "foo"
+                                      value: {}
+                                    }
+                                    fields {
+                                      key: "bar"
+                                      value: { bool_value: true }
+                                    }
+                                  })pb")));
+  EXPECT_TRUE(JsonEquals(static_cast<const google::protobuf::MessageLite&>(
+                             *DynamicParseTextProto<google::protobuf::Value>(
+                                 R"pb(struct_value: {
+                                        fields {
+                                          key: "foo"
+                                          value: {}
+                                        }
+                                        fields {
+                                          key: "bar"
+                                          value: { bool_value: true }
+                                        }
+                                      })pb")),
+                         static_cast<const google::protobuf::MessageLite&>(
+                             *GeneratedParseTextProto<google::protobuf::Value>(
+                                 R"pb(struct_value: {
+                                        fields {
+                                          key: "foo"
+                                          value: {}
+                                        }
+                                        fields {
+                                          key: "bar"
+                                          value: { bool_value: true }
+                                        }
+                                      })pb"))));
+  EXPECT_TRUE(JsonMapEquals(*DynamicParseTextProto<google::protobuf::Struct>(
+                                R"pb(
+                                  fields {
+                                    key: "foo"
+                                    value: {}
+                                  }
+                                  fields {
+                                    key: "bar"
+                                    value: { bool_value: true }
+                                  }
+                                )pb"),
+                            *GeneratedParseTextProto<google::protobuf::Struct>(
+                                R"pb(
+                                  fields {
+                                    key: "foo"
+                                    value: {}
+                                  }
+                                  fields {
+                                    key: "bar"
+                                    value: { bool_value: true }
+                                  }
+                                )pb")));
+  EXPECT_TRUE(
+      JsonMapEquals(static_cast<const google::protobuf::MessageLite&>(
+                        *DynamicParseTextProto<google::protobuf::Struct>(
+                            R"pb(
+                              fields {
+                                key: "foo"
+                                value: {}
+                              }
+                              fields {
+                                key: "bar"
+                                value: { bool_value: true }
+                              }
+                            )pb")),
+                    static_cast<const google::protobuf::MessageLite&>(
+                        *GeneratedParseTextProto<google::protobuf::Struct>(
+                            R"pb(
+                              fields {
+                                key: "foo"
+                                value: {}
+                              }
+                              fields {
+                                key: "bar"
+                                value: { bool_value: true }
+                              }
+                            )pb"))));
+}
+
+TEST_F(JsonEqualsTest, Map_Map_Dynamic_Dynamic) {
+  EXPECT_TRUE(JsonEquals(*DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(struct_value: {
+                                    fields {
+                                      key: "foo"
+                                      value: {}
+                                    }
+                                    fields {
+                                      key: "bar"
+                                      value: { bool_value: true }
+                                    }
+                                  })pb"),
+                         *DynamicParseTextProto<google::protobuf::Value>(
+                             R"pb(struct_value: {
+                                    fields {
+                                      key: "foo"
+                                      value: {}
+                                    }
+                                    fields {
+                                      key: "bar"
+                                      value: { bool_value: true }
+                                    }
+                                  })pb")));
+  EXPECT_TRUE(JsonEquals(static_cast<const google::protobuf::MessageLite&>(
+                             *DynamicParseTextProto<google::protobuf::Value>(
+                                 R"pb(struct_value: {
+                                        fields {
+                                          key: "foo"
+                                          value: {}
+                                        }
+                                        fields {
+                                          key: "bar"
+                                          value: { bool_value: true }
+                                        }
+                                      })pb")),
+                         static_cast<const google::protobuf::MessageLite&>(
+                             *DynamicParseTextProto<google::protobuf::Value>(
+                                 R"pb(struct_value: {
+                                        fields {
+                                          key: "foo"
+                                          value: {}
+                                        }
+                                        fields {
+                                          key: "bar"
+                                          value: { bool_value: true }
+                                        }
+                                      })pb"))));
+  EXPECT_TRUE(JsonMapEquals(*DynamicParseTextProto<google::protobuf::Struct>(
+                                R"pb(
+                                  fields {
+                                    key: "foo"
+                                    value: {}
+                                  }
+                                  fields {
+                                    key: "bar"
+                                    value: { bool_value: true }
+                                  }
+                                )pb"),
+                            *DynamicParseTextProto<google::protobuf::Struct>(
+                                R"pb(
+                                  fields {
+                                    key: "foo"
+                                    value: {}
+                                  }
+                                  fields {
+                                    key: "bar"
+                                    value: { bool_value: true }
+                                  }
+                                )pb")));
+  EXPECT_TRUE(
+      JsonMapEquals(static_cast<const google::protobuf::MessageLite&>(
+                        *DynamicParseTextProto<google::protobuf::Struct>(
+                            R"pb(
+                              fields {
+                                key: "foo"
+                                value: {}
+                              }
+                              fields {
+                                key: "bar"
+                                value: { bool_value: true }
+                              }
+                            )pb")),
+                    static_cast<const google::protobuf::MessageLite&>(
+                        *DynamicParseTextProto<google::protobuf::Struct>(
+                            R"pb(
+                              fields {
+                                key: "foo"
+                                value: {}
+                              }
+                              fields {
+                                key: "bar"
+                                value: { bool_value: true }
+                              }
+                            )pb"))));
 }
 
 class ProtoJsonNativeJsonTest : public Test {

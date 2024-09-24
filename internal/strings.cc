@@ -19,9 +19,11 @@
 #include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/strings/ascii.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/escaping.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "internal/lexis.h"
 #include "internal/unicode.h"
 #include "internal/utf8.h"
@@ -650,6 +652,13 @@ std::string FormatStringLiteral(absl::string_view str) {
   absl::string_view quote =
       (str.find('"') != str.npos && str.find('\'') == str.npos) ? "'" : "\"";
   return absl::StrCat(quote, EscapeInternal(str, true, quote[0]), quote);
+}
+
+std::string FormatStringLiteral(const absl::Cord& str) {
+  if (auto flat = str.TryFlat(); flat) {
+    return FormatStringLiteral(*flat);
+  }
+  return FormatStringLiteral(static_cast<std::string>(str));
 }
 
 std::string FormatSingleQuotedStringLiteral(absl::string_view str) {

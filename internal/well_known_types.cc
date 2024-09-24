@@ -1268,6 +1268,12 @@ absl::StatusOr<ValueReflection> GetValueReflection(
   CEL_RETURN_IF_ERROR(reflection.Initialize(descriptor));
   return reflection;
 }
+ValueReflection GetValueReflectionOrDie(
+    absl::Nonnull<const google::protobuf::Descriptor*> descriptor) {
+  ValueReflection reflection;
+  ABSL_CHECK_OK(reflection.Initialize(descriptor));  // Crash OK;
+  return reflection;
+}
 
 absl::Status ListValueReflection::Initialize(
     absl::Nonnull<const DescriptorPool*> pool) {

@@ -17,8 +17,8 @@
 
 #include <string>
 
-#include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 
 namespace cel::internal {
@@ -60,6 +60,7 @@ absl::StatusOr<std::string> ParseBytesLiteral(absl::string_view str);
 // Return a quoted and escaped CEL string literal for <str>.
 // May choose to quote with ' or " to produce nicer output.
 std::string FormatStringLiteral(absl::string_view str);
+std::string FormatStringLiteral(const absl::Cord& str);
 
 // Return a quoted and escaped CEL string literal for <str>.
 // Always uses single quotes.

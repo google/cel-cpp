@@ -917,6 +917,14 @@ absl::StatusOr<ValueReflection> GetValueReflection(
     absl::Nonnull<const google::protobuf::Descriptor*> descriptor
         ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
+// `GetValueReflectionOrDie()` is the same as `GetValueReflection`
+// except that it aborts if `descriptor` is not a well formed descriptor of
+// `google.protobuf.Value`. This should only be used in places where it is
+// guaranteed that the aforementioned prerequisites are met.
+ValueReflection GetValueReflectionOrDie(
+    absl::Nonnull<const google::protobuf::Descriptor*> descriptor
+        ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
 class ListValueReflection final {
  public:
   static constexpr google::protobuf::Descriptor::WellKnownType kWellKnownType =
