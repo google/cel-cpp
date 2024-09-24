@@ -130,29 +130,29 @@ void CollectTypeParams(absl::flat_hash_set<std::string>& type_params,
   const auto kind = type.kind();
   switch (kind) {
     case TypeKind::kList: {
-      const auto& list_type = static_cast<ListType>(type);
+      const auto& list_type = type.GetList();
       CollectTypeParams(type_params, list_type.element());
     } break;
     case TypeKind::kMap: {
-      const auto& map_type = static_cast<MapType>(type);
+      const auto& map_type = type.GetMap();
       CollectTypeParams(type_params, map_type.key());
       CollectTypeParams(type_params, map_type.value());
     } break;
     case TypeKind::kOpaque: {
-      const auto& opaque_type = static_cast<OpaqueType>(type);
+      const auto& opaque_type = type.GetOpaque();
       for (const auto& param : opaque_type.GetParameters()) {
         CollectTypeParams(type_params, param);
       }
     } break;
     case TypeKind::kFunction: {
-      const auto& function_type = static_cast<FunctionType>(type);
+      const auto& function_type = type.GetFunction();
       CollectTypeParams(type_params, function_type.result());
       for (const auto& arg : function_type.args()) {
         CollectTypeParams(type_params, arg);
       }
     } break;
     case TypeKind::kTypeParam:
-      type_params.emplace(static_cast<TypeParamType>(type).name());
+      type_params.emplace(type.GetTypeParam().name());
       break;
     default:
       break;

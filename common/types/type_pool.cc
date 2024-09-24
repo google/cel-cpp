@@ -75,8 +75,8 @@ OpaqueType TypePool::MakeOpaqueType(absl::string_view name,
 }
 
 OptionalType TypePool::MakeOptionalType(const Type& parameter) {
-  return static_cast<OptionalType>(
-      MakeOpaqueType(OptionalType::kName, absl::MakeConstSpan(&parameter, 1)));
+  return MakeOpaqueType(OptionalType::kName, absl::MakeConstSpan(&parameter, 1))
+      .GetOptional();
 }
 
 TypeParamType TypePool::MakeTypeParamType(absl::string_view name) {

@@ -128,7 +128,7 @@ TypeParameters Type::GetParameters() const {
 
 bool operator==(const Type& lhs, const Type& rhs) {
   if (lhs.IsStruct() && rhs.IsStruct()) {
-    return static_cast<StructType>(lhs) == static_cast<StructType>(rhs);
+    return lhs.GetStruct() == rhs.GetStruct();
   } else if (lhs.IsStruct() || rhs.IsStruct()) {
     return false;
   } else {
@@ -147,10 +147,6 @@ common_internal::StructTypeVariant Type::ToStructTypeVariant() const {
     return common_internal::StructTypeVariant(*other);
   }
   return common_internal::StructTypeVariant();
-}
-
-bool Type::IsOptional() const {
-  return IsOpaque() && static_cast<OpaqueType>(*this).IsOptional();
 }
 
 namespace {
@@ -301,117 +297,117 @@ T GetOrDie(const common_internal::TypeVariant& variant) {
 
 }  // namespace
 
-Type::operator AnyType() const {
+AnyType Type::GetAny() const {
   ABSL_DCHECK(IsAny()) << DebugString();
   return GetOrDie<AnyType>(variant_);
 }
 
-Type::operator BoolType() const {
+BoolType Type::GetBool() const {
   ABSL_DCHECK(IsBool()) << DebugString();
   return GetOrDie<BoolType>(variant_);
 }
 
-Type::operator BoolWrapperType() const {
+BoolWrapperType Type::GetBoolWrapper() const {
   ABSL_DCHECK(IsBoolWrapper()) << DebugString();
   return GetOrDie<BoolWrapperType>(variant_);
 }
 
-Type::operator BytesType() const {
+BytesType Type::GetBytes() const {
   ABSL_DCHECK(IsBytes()) << DebugString();
   return GetOrDie<BytesType>(variant_);
 }
 
-Type::operator BytesWrapperType() const {
+BytesWrapperType Type::GetBytesWrapper() const {
   ABSL_DCHECK(IsBytesWrapper()) << DebugString();
   return GetOrDie<BytesWrapperType>(variant_);
 }
 
-Type::operator DoubleType() const {
+DoubleType Type::GetDouble() const {
   ABSL_DCHECK(IsDouble()) << DebugString();
   return GetOrDie<DoubleType>(variant_);
 }
 
-Type::operator DoubleWrapperType() const {
+DoubleWrapperType Type::GetDoubleWrapper() const {
   ABSL_DCHECK(IsDoubleWrapper()) << DebugString();
   return GetOrDie<DoubleWrapperType>(variant_);
 }
 
-Type::operator DurationType() const {
+DurationType Type::GetDuration() const {
   ABSL_DCHECK(IsDuration()) << DebugString();
   return GetOrDie<DurationType>(variant_);
 }
 
-Type::operator DynType() const {
+DynType Type::GetDyn() const {
   ABSL_DCHECK(IsDyn()) << DebugString();
   return GetOrDie<DynType>(variant_);
 }
 
-Type::operator EnumType() const {
+EnumType Type::GetEnum() const {
   ABSL_DCHECK(IsEnum()) << DebugString();
   return GetOrDie<EnumType>(variant_);
 }
 
-Type::operator ErrorType() const {
+ErrorType Type::GetError() const {
   ABSL_DCHECK(IsError()) << DebugString();
   return GetOrDie<ErrorType>(variant_);
 }
 
-Type::operator FunctionType() const {
+FunctionType Type::GetFunction() const {
   ABSL_DCHECK(IsFunction()) << DebugString();
   return GetOrDie<FunctionType>(variant_);
 }
 
-Type::operator IntType() const {
+IntType Type::GetInt() const {
   ABSL_DCHECK(IsInt()) << DebugString();
   return GetOrDie<IntType>(variant_);
 }
 
-Type::operator IntWrapperType() const {
+IntWrapperType Type::GetIntWrapper() const {
   ABSL_DCHECK(IsIntWrapper()) << DebugString();
   return GetOrDie<IntWrapperType>(variant_);
 }
 
-Type::operator ListType() const {
+ListType Type::GetList() const {
   ABSL_DCHECK(IsList()) << DebugString();
   return GetOrDie<ListType>(variant_);
 }
 
-Type::operator MapType() const {
+MapType Type::GetMap() const {
   ABSL_DCHECK(IsMap()) << DebugString();
   return GetOrDie<MapType>(variant_);
 }
 
-Type::operator MessageType() const {
+MessageType Type::GetMessage() const {
   ABSL_DCHECK(IsMessage()) << DebugString();
   return GetOrDie<MessageType>(variant_);
 }
 
-Type::operator NullType() const {
+NullType Type::GetNull() const {
   ABSL_DCHECK(IsNull()) << DebugString();
   return GetOrDie<NullType>(variant_);
 }
 
-Type::operator OpaqueType() const {
+OpaqueType Type::GetOpaque() const {
   ABSL_DCHECK(IsOpaque()) << DebugString();
   return GetOrDie<OpaqueType>(variant_);
 }
 
-Type::operator OptionalType() const {
+OptionalType Type::GetOptional() const {
   ABSL_DCHECK(IsOptional()) << DebugString();
-  return static_cast<OptionalType>(GetOrDie<OpaqueType>(variant_));
+  return GetOrDie<OpaqueType>(variant_).GetOptional();
 }
 
-Type::operator StringType() const {
+StringType Type::GetString() const {
   ABSL_DCHECK(IsString()) << DebugString();
   return GetOrDie<StringType>(variant_);
 }
 
-Type::operator StringWrapperType() const {
+StringWrapperType Type::GetStringWrapper() const {
   ABSL_DCHECK(IsStringWrapper()) << DebugString();
   return GetOrDie<StringWrapperType>(variant_);
 }
 
-Type::operator StructType() const {
+StructType Type::GetStruct() const {
   ABSL_DCHECK(IsStruct()) << DebugString();
   if (const auto* alt =
           absl::get_if<common_internal::BasicStructType>(&variant_);
@@ -424,32 +420,32 @@ Type::operator StructType() const {
   return StructType();
 }
 
-Type::operator TimestampType() const {
+TimestampType Type::GetTimestamp() const {
   ABSL_DCHECK(IsTimestamp()) << DebugString();
   return GetOrDie<TimestampType>(variant_);
 }
 
-Type::operator TypeParamType() const {
+TypeParamType Type::GetTypeParam() const {
   ABSL_DCHECK(IsTypeParam()) << DebugString();
   return GetOrDie<TypeParamType>(variant_);
 }
 
-Type::operator TypeType() const {
+TypeType Type::GetType() const {
   ABSL_DCHECK(IsType()) << DebugString();
   return GetOrDie<TypeType>(variant_);
 }
 
-Type::operator UintType() const {
+UintType Type::GetUint() const {
   ABSL_DCHECK(IsUint()) << DebugString();
   return GetOrDie<UintType>(variant_);
 }
 
-Type::operator UintWrapperType() const {
+UintWrapperType Type::GetUintWrapper() const {
   ABSL_DCHECK(IsUintWrapper()) << DebugString();
   return GetOrDie<UintWrapperType>(variant_);
 }
 
-Type::operator UnknownType() const {
+UnknownType Type::GetUnknown() const {
   ABSL_DCHECK(IsUnknown()) << DebugString();
   return GetOrDie<UnknownType>(variant_);
 }

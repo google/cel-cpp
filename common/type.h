@@ -230,7 +230,7 @@ class Type final {
     return absl::holds_alternative<OpaqueType>(variant_);
   }
 
-  bool IsOptional() const;
+  bool IsOptional() const { return IsOpaque() && GetOpaque().IsOptional(); }
 
   bool IsString() const {
     return absl::holds_alternative<StringType>(variant_);
@@ -667,63 +667,216 @@ class Type final {
     return AsUnknown();
   }
 
-  explicit operator AnyType() const;
+  AnyType GetAny() const;
 
-  explicit operator BoolType() const;
+  BoolType GetBool() const;
 
-  explicit operator BoolWrapperType() const;
+  BoolWrapperType GetBoolWrapper() const;
 
-  explicit operator BytesType() const;
+  BytesType GetBytes() const;
 
-  explicit operator BytesWrapperType() const;
+  BytesWrapperType GetBytesWrapper() const;
 
-  explicit operator DoubleType() const;
+  DoubleType GetDouble() const;
 
-  explicit operator DoubleWrapperType() const;
+  DoubleWrapperType GetDoubleWrapper() const;
 
-  explicit operator DurationType() const;
+  DurationType GetDuration() const;
 
-  explicit operator DynType() const;
+  DynType GetDyn() const;
 
-  explicit operator EnumType() const;
+  EnumType GetEnum() const;
 
-  explicit operator ErrorType() const;
+  ErrorType GetError() const;
 
-  explicit operator FunctionType() const;
+  FunctionType GetFunction() const;
 
-  explicit operator IntType() const;
+  IntType GetInt() const;
 
-  explicit operator IntWrapperType() const;
+  IntWrapperType GetIntWrapper() const;
 
-  explicit operator ListType() const;
+  ListType GetList() const;
 
-  explicit operator MapType() const;
+  MapType GetMap() const;
 
-  explicit operator MessageType() const;
+  MessageType GetMessage() const;
 
-  explicit operator NullType() const;
+  NullType GetNull() const;
 
-  explicit operator OpaqueType() const;
+  OpaqueType GetOpaque() const;
 
-  explicit operator OptionalType() const;
+  OptionalType GetOptional() const;
 
-  explicit operator StringType() const;
+  StringType GetString() const;
 
-  explicit operator StringWrapperType() const;
+  StringWrapperType GetStringWrapper() const;
 
-  explicit operator StructType() const;
+  StructType GetStruct() const;
 
-  explicit operator TimestampType() const;
+  TimestampType GetTimestamp() const;
 
-  explicit operator TypeParamType() const;
+  TypeParamType GetTypeParam() const;
 
-  explicit operator TypeType() const;
+  TypeType GetType() const;
 
-  explicit operator UintType() const;
+  UintType GetUint() const;
 
-  explicit operator UintWrapperType() const;
+  UintWrapperType GetUintWrapper() const;
 
-  explicit operator UnknownType() const;
+  UnknownType GetUnknown() const;
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<AnyType, T>, AnyType> Get() const {
+    return GetAny();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BoolType, T>, BoolType> Get() const {
+    return GetBool();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BoolWrapperType, T>, BoolWrapperType> Get()
+      const {
+    return GetBoolWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BytesType, T>, BytesType> Get() const {
+    return GetBytes();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<BytesWrapperType, T>, BytesWrapperType> Get()
+      const {
+    return GetBytesWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DoubleType, T>, DoubleType> Get() const {
+    return GetDouble();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DoubleWrapperType, T>, DoubleWrapperType>
+  Get() const {
+    return GetDoubleWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DurationType, T>, DurationType> Get() const {
+    return GetDuration();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<DynType, T>, DynType> Get() const {
+    return GetDyn();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<EnumType, T>, EnumType> Get() const {
+    return GetEnum();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ErrorType, T>, ErrorType> Get() const {
+    return GetError();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<FunctionType, T>, FunctionType> Get() const {
+    return GetFunction();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<IntType, T>, IntType> Get() const {
+    return GetInt();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<IntWrapperType, T>, IntWrapperType> Get()
+      const {
+    return GetIntWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ListType, T>, ListType> Get() const {
+    return GetList();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MapType, T>, MapType> Get() const {
+    return GetMap();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageType, T>, MessageType> Get() const {
+    return GetMessage();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<NullType, T>, NullType> Get() const {
+    return GetNull();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OpaqueType, T>, OpaqueType> Get() const {
+    return GetOpaque();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalType, T>, OptionalType> Get() const {
+    return GetOptional();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StringType, T>, StringType> Get() const {
+    return GetString();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StringWrapperType, T>, StringWrapperType>
+  Get() const {
+    return GetStringWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<StructType, T>, StructType> Get() const {
+    return GetStruct();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TimestampType, T>, TimestampType> Get()
+      const {
+    return GetTimestamp();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TypeParamType, T>, TypeParamType> Get()
+      const {
+    return GetTypeParam();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<TypeType, T>, TypeType> Get() const {
+    return GetType();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UintType, T>, UintType> Get() const {
+    return GetUint();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UintWrapperType, T>, UintWrapperType> Get()
+      const {
+    return GetUintWrapper();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<UnknownType, T>, UnknownType> Get() const {
+    return GetUnknown();
+  }
 
   // Returns an unwrapped `Type` for a wrapped type, otherwise just returns
   // this.

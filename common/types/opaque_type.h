@@ -91,7 +91,10 @@ class OpaqueType final {
                    absl::optional<OptionalType>>
   As() const;
 
-  explicit operator OptionalType() const;
+  OptionalType GetOptional() const;
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<OptionalType, T>, OptionalType> Get() const;
 
  private:
   friend class OptionalType;

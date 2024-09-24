@@ -94,7 +94,7 @@ class OptionalValue final : public OpaqueValue {
   OptionalValue(Shared<T> interface) : OpaqueValue(std::move(interface)) {}
 
   OptionalType GetRuntimeType() const {
-    return static_cast<OptionalType>((*this)->GetRuntimeType());
+    return (*this)->GetRuntimeType().GetOptional();
   }
 
   bool HasValue() const { return (*this)->HasValue(); }

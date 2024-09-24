@@ -456,97 +456,99 @@ TEST(Type, As) {
               Optional(An<UnknownType>()));
 }
 
-TEST(Type, Cast) {
+template <typename T>
+T DoGet(const Type& type) {
+  return type.template Get<T>();
+}
+
+TEST(Type, Get) {
   google::protobuf::Arena arena;
 
-  EXPECT_THAT(static_cast<AnyType>(Type(AnyType())), An<AnyType>());
+  EXPECT_THAT(DoGet<AnyType>(Type(AnyType())), An<AnyType>());
 
-  EXPECT_THAT(static_cast<BoolType>(Type(BoolType())), An<BoolType>());
+  EXPECT_THAT(DoGet<BoolType>(Type(BoolType())), An<BoolType>());
 
-  EXPECT_THAT(static_cast<BoolWrapperType>(Type(BoolWrapperType())),
+  EXPECT_THAT(DoGet<BoolWrapperType>(Type(BoolWrapperType())),
               An<BoolWrapperType>());
-  EXPECT_THAT(static_cast<BoolWrapperType>(Type(BoolWrapperType())),
+  EXPECT_THAT(DoGet<BoolWrapperType>(Type(BoolWrapperType())),
               An<BoolWrapperType>());
 
-  EXPECT_THAT(static_cast<BytesType>(Type(BytesType())), An<BytesType>());
+  EXPECT_THAT(DoGet<BytesType>(Type(BytesType())), An<BytesType>());
 
-  EXPECT_THAT(static_cast<BytesWrapperType>(Type(BytesWrapperType())),
+  EXPECT_THAT(DoGet<BytesWrapperType>(Type(BytesWrapperType())),
               An<BytesWrapperType>());
-  EXPECT_THAT(static_cast<BytesWrapperType>(Type(BytesWrapperType())),
+  EXPECT_THAT(DoGet<BytesWrapperType>(Type(BytesWrapperType())),
               An<BytesWrapperType>());
 
-  EXPECT_THAT(static_cast<DoubleType>(Type(DoubleType())), An<DoubleType>());
+  EXPECT_THAT(DoGet<DoubleType>(Type(DoubleType())), An<DoubleType>());
 
-  EXPECT_THAT(static_cast<DoubleWrapperType>(Type(DoubleWrapperType())),
+  EXPECT_THAT(DoGet<DoubleWrapperType>(Type(DoubleWrapperType())),
               An<DoubleWrapperType>());
-  EXPECT_THAT(static_cast<DoubleWrapperType>(Type(DoubleWrapperType())),
+  EXPECT_THAT(DoGet<DoubleWrapperType>(Type(DoubleWrapperType())),
               An<DoubleWrapperType>());
 
-  EXPECT_THAT(static_cast<DurationType>(Type(DurationType())),
-              An<DurationType>());
+  EXPECT_THAT(DoGet<DurationType>(Type(DurationType())), An<DurationType>());
 
-  EXPECT_THAT(static_cast<DynType>(Type(DynType())), An<DynType>());
+  EXPECT_THAT(DoGet<DynType>(Type(DynType())), An<DynType>());
 
   EXPECT_THAT(
-      static_cast<EnumType>(Type(EnumType(
+      DoGet<EnumType>(Type(EnumType(
           ABSL_DIE_IF_NULL(GetTestingDescriptorPool()->FindEnumTypeByName(
               "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum"))))),
       An<EnumType>());
 
-  EXPECT_THAT(static_cast<ErrorType>(Type(ErrorType())), An<ErrorType>());
+  EXPECT_THAT(DoGet<ErrorType>(Type(ErrorType())), An<ErrorType>());
 
-  EXPECT_TRUE(Type(FunctionType(&arena, DynType(), {})).Is<FunctionType>());
+  EXPECT_THAT(DoGet<FunctionType>(Type(FunctionType(&arena, DynType(), {}))),
+              An<FunctionType>());
 
-  EXPECT_THAT(static_cast<IntType>(Type(IntType())), An<IntType>());
+  EXPECT_THAT(DoGet<IntType>(Type(IntType())), An<IntType>());
 
-  EXPECT_THAT(static_cast<IntWrapperType>(Type(IntWrapperType())),
+  EXPECT_THAT(DoGet<IntWrapperType>(Type(IntWrapperType())),
               An<IntWrapperType>());
-  EXPECT_THAT(static_cast<IntWrapperType>(Type(IntWrapperType())),
+  EXPECT_THAT(DoGet<IntWrapperType>(Type(IntWrapperType())),
               An<IntWrapperType>());
 
-  EXPECT_THAT(static_cast<ListType>(Type(ListType())), An<ListType>());
+  EXPECT_THAT(DoGet<ListType>(Type(ListType())), An<ListType>());
 
-  EXPECT_THAT(static_cast<MapType>(Type(MapType())), An<MapType>());
+  EXPECT_THAT(DoGet<MapType>(Type(MapType())), An<MapType>());
 
-  EXPECT_THAT(static_cast<StructType>(Type(MessageType(ABSL_DIE_IF_NULL(
+  EXPECT_THAT(DoGet<StructType>(Type(MessageType(ABSL_DIE_IF_NULL(
                   GetTestingDescriptorPool()->FindMessageTypeByName(
                       "google.api.expr.test.v1.proto3.TestAllTypes"))))),
               An<StructType>());
-  EXPECT_THAT(static_cast<MessageType>(Type(MessageType(ABSL_DIE_IF_NULL(
+  EXPECT_THAT(DoGet<MessageType>(Type(MessageType(ABSL_DIE_IF_NULL(
                   GetTestingDescriptorPool()->FindMessageTypeByName(
                       "google.api.expr.test.v1.proto3.TestAllTypes"))))),
               An<MessageType>());
 
-  EXPECT_THAT(static_cast<NullType>(Type(NullType())), An<NullType>());
+  EXPECT_THAT(DoGet<NullType>(Type(NullType())), An<NullType>());
 
-  EXPECT_THAT(static_cast<OptionalType>(Type(OptionalType())),
-              An<OptionalType>());
-  EXPECT_THAT(static_cast<OptionalType>(Type(OptionalType())),
-              An<OptionalType>());
+  EXPECT_THAT(DoGet<OptionalType>(Type(OptionalType())), An<OptionalType>());
+  EXPECT_THAT(DoGet<OptionalType>(Type(OptionalType())), An<OptionalType>());
 
-  EXPECT_THAT(static_cast<StringType>(Type(StringType())), An<StringType>());
+  EXPECT_THAT(DoGet<StringType>(Type(StringType())), An<StringType>());
 
-  EXPECT_THAT(static_cast<StringWrapperType>(Type(StringWrapperType())),
+  EXPECT_THAT(DoGet<StringWrapperType>(Type(StringWrapperType())),
               An<StringWrapperType>());
-  EXPECT_THAT(static_cast<StringWrapperType>(Type(StringWrapperType())),
+  EXPECT_THAT(DoGet<StringWrapperType>(Type(StringWrapperType())),
               An<StringWrapperType>());
 
-  EXPECT_THAT(static_cast<TimestampType>(Type(TimestampType())),
-              An<TimestampType>());
+  EXPECT_THAT(DoGet<TimestampType>(Type(TimestampType())), An<TimestampType>());
 
-  EXPECT_THAT(static_cast<TypeType>(Type(TypeType())), An<TypeType>());
+  EXPECT_THAT(DoGet<TypeType>(Type(TypeType())), An<TypeType>());
 
-  EXPECT_THAT(static_cast<TypeParamType>(Type(TypeParamType("T"))),
+  EXPECT_THAT(DoGet<TypeParamType>(Type(TypeParamType("T"))),
               An<TypeParamType>());
 
-  EXPECT_THAT(static_cast<UintType>(Type(UintType())), An<UintType>());
+  EXPECT_THAT(DoGet<UintType>(Type(UintType())), An<UintType>());
 
-  EXPECT_THAT(static_cast<UintWrapperType>(Type(UintWrapperType())),
+  EXPECT_THAT(DoGet<UintWrapperType>(Type(UintWrapperType())),
               An<UintWrapperType>());
-  EXPECT_THAT(static_cast<UintWrapperType>(Type(UintWrapperType())),
+  EXPECT_THAT(DoGet<UintWrapperType>(Type(UintWrapperType())),
               An<UintWrapperType>());
 
-  EXPECT_THAT(static_cast<UnknownType>(Type(UnknownType())), An<UnknownType>());
+  EXPECT_THAT(DoGet<UnknownType>(Type(UnknownType())), An<UnknownType>());
 }
 
 TEST(Type, VerifyTypeImplementsAbslHashCorrectly) {

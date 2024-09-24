@@ -90,12 +90,12 @@ bool OpaqueType::IsOptional() const {
 
 absl::optional<OptionalType> OpaqueType::AsOptional() const {
   if (IsOptional()) {
-    return static_cast<OptionalType>(*this);
+    return OptionalType(absl::in_place, *this);
   }
   return absl::nullopt;
 }
 
-OpaqueType::operator OptionalType() const {
+OptionalType OpaqueType::GetOptional() const {
   ABSL_DCHECK(IsOptional()) << DebugString();
   return OptionalType(absl::in_place, *this);
 }

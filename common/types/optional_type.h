@@ -108,6 +108,12 @@ OpaqueType::As() const {
   return AsOptional();
 }
 
+template <typename T>
+inline std::enable_if_t<std::is_same_v<OptionalType, T>, OptionalType>
+OpaqueType::Get() const {
+  return GetOptional();
+}
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_TYPES_OPTIONAL_TYPE_H_

@@ -35,7 +35,7 @@ MATCHER_P(IsTypeParam, param, "") {
   if (got.kind() != TypeKind::kTypeParam) {
     return false;
   }
-  TypeParamType type = static_cast<TypeParamType>(got);
+  TypeParamType type = got.GetTypeParam();
 
   return type.name() == param;
 }
@@ -45,7 +45,7 @@ MATCHER_P(IsListType, elems_matcher, "") {
   if (got.kind() != TypeKind::kList) {
     return false;
   }
-  ListType type = static_cast<ListType>(got);
+  ListType type = got.GetList();
 
   Type elem = type.element();
   return SafeMatcherCast<Type>(elems_matcher)
@@ -57,7 +57,7 @@ MATCHER_P2(IsMapType, key_matcher, value_matcher, "") {
   if (got.kind() != TypeKind::kMap) {
     return false;
   }
-  MapType type = static_cast<MapType>(got);
+  MapType type = got.GetMap();
 
   Type key = type.key();
   Type value = type.value();
@@ -86,7 +86,7 @@ MATCHER_P(IsTypeType, matcher, "") {
     return false;
   }
 
-  TypeType type_type = static_cast<TypeType>(got);
+  TypeType type_type = got.GetType();
   if (type_type.GetParameters().size() != 1) {
     return false;
   }

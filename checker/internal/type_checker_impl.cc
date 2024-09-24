@@ -181,13 +181,13 @@ absl::StatusOr<AstType> FlattenType(const Type& type) {
     case TypeKind::kTimestamp:
       return AstType(ast_internal::WellKnownType::kTimestamp);
     case TypeKind::kStruct:
-      return FlattenMessageType(static_cast<StructType>(type));
+      return FlattenMessageType(type.GetStruct());
     case TypeKind::kList:
-      return FlattenListType(static_cast<ListType>(type));
+      return FlattenListType(type.GetList());
     case TypeKind::kMap:
-      return FlattenMapType(static_cast<MapType>(type));
+      return FlattenMapType(type.GetMap());
     case TypeKind::kOpaque:
-      return FlattenAbstractType(static_cast<OpaqueType>(type));
+      return FlattenAbstractType(type.GetOpaque());
     case TypeKind::kBoolWrapper:
       return AstType(ast_internal::PrimitiveTypeWrapper(
           ast_internal::PrimitiveType::kBool));
@@ -210,7 +210,7 @@ absl::StatusOr<AstType> FlattenType(const Type& type) {
       // Convert any remaining free type params to dyn.
       return AstType(ast_internal::DynamicType());
     case TypeKind::kType:
-      return FlattenTypeType(static_cast<TypeType>(type));
+      return FlattenTypeType(type.GetType());
     default:
       return absl::InternalError(
           absl::StrCat("Unsupported type: ", type.DebugString()));
@@ -508,7 +508,7 @@ void ResolveVisitor::PostVisitMap(const Expr& expr, const MapExpr& map) {
     Type value_type = GetTypeOrDyn(value);
     if (entry.optional()) {
       if (value_type.IsOptional()) {
-        value_type = static_cast<OptionalType>(value_type).GetParameter();
+        value_type = value_type.GetOptional().GetParameter();
       }
     }
     if (overall_value_type.has_value()) {
@@ -542,7 +542,7 @@ void ResolveVisitor::PostVisitList(const Expr& expr, const ListExpr& list) {
     Type value_type = GetTypeOrDyn(value);
     if (element.optional()) {
       if (value_type.IsOptional()) {
-        value_type = static_cast<OptionalType>(value_type).GetParameter();
+        value_type = value_type.GetOptional().GetParameter();
       }
     }
     if (overall_value_type.has_value()) {
@@ -678,10 +678,10 @@ void ResolveVisitor::PostVisitComprehensionSubexpression(
       Type iter_type = DynType();
       switch (range_type.kind()) {
         case TypeKind::kList:
-          iter_type = static_cast<ListType>(range_type).element();
+          iter_type = range_type.GetList().element();
           break;
         case TypeKind::kMap:
-          iter_type = static_cast<MapType>(range_type).key();
+          iter_type = range_type.GetMap().key();
           break;
         case TypeKind::kDyn:
           break;

@@ -64,7 +64,7 @@ absl::optional<MessageType> StructType::AsMessage() const {
   return absl::nullopt;
 }
 
-StructType::operator MessageType() const {
+MessageType StructType::GetMessage() const {
   ABSL_DCHECK(IsMessage()) << DebugString();
   return absl::get<MessageType>(variant_);
 }

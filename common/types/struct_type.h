@@ -20,6 +20,7 @@
 
 #include <ostream>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
@@ -93,17 +94,29 @@ class StructType final {
     return absl::holds_alternative<MessageType>(variant_);
   }
 
-  // AsMessage performs a checked cast, returning `MessageType` if this type is
-  // a message or `absl::nullopt` otherwise. If you have
-  // already called `IsMessage()` it is more performant to perform to do
-  // `static_cast<MessageType>(type)`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageType, T>, bool> Is() const {
+    return IsMessage();
+  }
+
   absl::optional<MessageType> AsMessage() const;
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageType, T>, absl::optional<MessageType>>
+  As() const {
+    return AsMessage();
+  }
+
+  MessageType GetMessage() const;
+
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageType, T>, MessageType> Get() const {
+    return GetMessage();
+  }
 
   explicit operator bool() const {
     return !absl::holds_alternative<absl::monostate>(variant_);
   }
-
-  explicit operator MessageType() const;
 
   friend void swap(StructType& lhs, StructType& rhs) noexcept {
     lhs.variant_.swap(rhs.variant_);
