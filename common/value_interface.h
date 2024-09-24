@@ -24,7 +24,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/casting.h"
 #include "common/internal/data_interface.h"
 #include "common/json.h"
 #include "common/value_kind.h"
@@ -54,12 +53,6 @@ class ValueInterface : public common_internal::DataInterface {
   virtual absl::StatusOr<Json> ConvertToJson(
       AnyToJsonConverter& converter) const;
 };
-
-// Enable `InstanceOf`, `Cast`, and `As` using subsumption relationships.
-template <typename To, typename From>
-struct CastTraits<To, From,
-                  EnableIfSubsumptionCastable<To, From, ValueInterface>>
-    : SubsumptionCastTraits<To, From> {};
 
 }  // namespace cel
 

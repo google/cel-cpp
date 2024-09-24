@@ -104,7 +104,6 @@ TEST_P(OptionalValueTest, Cast) {
 
 TEST_P(OptionalValueTest, As) {
   auto value = OptionalNone();
-  EXPECT_THAT(As<OptionalValue>(value), Ne(absl::nullopt));
   EXPECT_THAT(As<OptionalValue>(OpaqueValue(value)), Ne(absl::nullopt));
   EXPECT_THAT(As<OptionalValue>(Value(value)), Ne(absl::nullopt));
 }

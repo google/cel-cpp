@@ -2349,7 +2349,7 @@ absl::Status ProtoMessageFromValueImpl(
   // Not a well known type.
 
   // Deal with legacy values.
-  if (auto legacy_value = As<common_internal::LegacyStructValue>(value);
+  if (auto legacy_value = common_internal::AsLegacyStructValue(value);
       legacy_value) {
     if ((legacy_value->message_ptr() & base_internal::kMessageWrapperTagMask) ==
         base_internal::kMessageWrapperTagMessageValue) {

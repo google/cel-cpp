@@ -74,7 +74,6 @@ TEST_P(BoolValueTest, Cast) {
 }
 
 TEST_P(BoolValueTest, As) {
-  EXPECT_THAT(As<BoolValue>(BoolValue(true)), Ne(absl::nullopt));
   EXPECT_THAT(As<BoolValue>(Value(BoolValue(true))), Ne(absl::nullopt));
 }
 

@@ -29,9 +29,8 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/any.h"
+#include "absl/types/optional.h"
 #include "common/json.h"
-#include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/map_value_interface.h"
 #include "common/values/values.h"
@@ -134,6 +133,12 @@ inline std::ostream& operator<<(std::ostream& out, const LegacyMapValue& type) {
 inline bool Is(const LegacyMapValue& lhs, const LegacyMapValue& rhs) {
   return lhs.impl_ == rhs.impl_;
 }
+
+bool IsLegacyMapValue(const Value& value);
+
+LegacyMapValue GetLegacyMapValue(const Value& value);
+
+absl::optional<LegacyMapValue> AsLegacyMapValue(const Value& value);
 
 }  // namespace common_internal
 

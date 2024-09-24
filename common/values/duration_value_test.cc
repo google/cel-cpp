@@ -79,8 +79,6 @@ TEST_P(DurationValueTest, Cast) {
 }
 
 TEST_P(DurationValueTest, As) {
-  EXPECT_THAT(As<DurationValue>(DurationValue(absl::Seconds(1))),
-              Ne(absl::nullopt));
   EXPECT_THAT(As<DurationValue>(Value(DurationValue(absl::Seconds(1)))),
               Ne(absl::nullopt));
 }

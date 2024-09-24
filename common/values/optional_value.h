@@ -20,25 +20,22 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_OPTIONAL_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_OPTIONAL_VALUE_H_
 
-#include <memory>
 #include <string>
 #include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
-#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/casting.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/value_interface.h"
-#include "common/value_kind.h"
 #include "common/values/opaque_value.h"
+#include "internal/casts.h"
 
 namespace cel {
 
@@ -69,15 +66,6 @@ class OptionalValueInterface : public OpaqueValueInterface {
  private:
   NativeTypeId GetNativeTypeId() const noexcept final {
     return NativeTypeId::For<OptionalValueInterface>();
-  }
-};
-
-template <>
-struct SubsumptionTraits<OptionalValueInterface> {
-  static bool IsA(const ValueInterface& interface) {
-    return interface.kind() == ValueKind::kOpaque &&
-           NativeTypeId::Of(interface) ==
-               NativeTypeId::For<OptionalValueInterface>();
   }
 };
 
@@ -116,11 +104,13 @@ class OptionalValue final : public OpaqueValue {
   cel::Value Value() const;
 
   const interface_type& operator*() const {
-    return cel::Cast<OptionalValueInterface>(OpaqueValue::operator*());
+    return cel::internal::down_cast<const OptionalValueInterface&>(
+        OpaqueValue::operator*());
   }
 
   absl::Nonnull<const interface_type*> operator->() const {
-    return cel::Cast<OptionalValueInterface>(OpaqueValue::operator->());
+    return cel::internal::down_cast<const OptionalValueInterface*>(
+        OpaqueValue::operator->());
   }
 
   bool IsOptional() const = delete;
@@ -166,32 +156,6 @@ class OptionalValue final : public OpaqueValue {
   std::enable_if_t<std::is_same_v<OptionalValue, T>,
                    absl::optional<OptionalValue>>
   Get() const&& = delete;
-
- private:
-  friend struct SubsumptionTraits<OptionalValue>;
-};
-
-template <>
-struct SubsumptionTraits<OptionalValue> final {
-  static bool IsA(const OpaqueValue& value) {
-    return NativeTypeId::Of(value) ==
-           NativeTypeId::For<OptionalValueInterface>();
-  }
-
-  static const OptionalValue& DownCast(const OpaqueValue& value) {
-    ABSL_DCHECK(IsA(value));
-    return *reinterpret_cast<const OptionalValue*>(std::addressof(value));
-  }
-
-  static OptionalValue& DownCast(OpaqueValue& value) {
-    ABSL_DCHECK(IsA(value));
-    return *reinterpret_cast<OptionalValue*>(std::addressof(value));
-  }
-
-  static OptionalValue DownCast(OpaqueValue&& value) {
-    ABSL_DCHECK(IsA(value));
-    return OptionalValue(std::move(value));
-  }
 };
 
 template <typename T>

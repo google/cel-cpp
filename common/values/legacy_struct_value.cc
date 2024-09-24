@@ -18,12 +18,15 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/call_once.h"
+#include "absl/log/absl_check.h"
 #include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "absl/types/variant.h"
 #include "base/internal/message_wrapper.h"
 #include "common/json.h"
 #include "common/type.h"
@@ -327,6 +330,22 @@ absl::StatusOr<int> LegacyStructValue::Qualify(
   return (*legacy_struct_value_vtable.qualify)(message_ptr_, type_info_,
                                                value_manager, qualifiers,
                                                presence_test, result);
+}
+
+bool IsLegacyStructValue(const Value& value) {
+  return absl::holds_alternative<LegacyStructValue>(value.variant_);
+}
+
+LegacyStructValue GetLegacyStructValue(const Value& value) {
+  ABSL_DCHECK(IsLegacyStructValue(value));
+  return absl::get<LegacyStructValue>(value.variant_);
+}
+
+absl::optional<LegacyStructValue> AsLegacyStructValue(const Value& value) {
+  if (IsLegacyStructValue(value)) {
+    return GetLegacyStructValue(value);
+  }
+  return absl::nullopt;
 }
 
 }  // namespace cel::common_internal

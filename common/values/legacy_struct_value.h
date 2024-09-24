@@ -27,6 +27,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
 #include "common/json.h"
@@ -122,6 +123,12 @@ inline std::ostream& operator<<(std::ostream& out,
                                 const LegacyStructValue& value) {
   return out << value.DebugString();
 }
+
+bool IsLegacyStructValue(const Value& value);
+
+LegacyStructValue GetLegacyStructValue(const Value& value);
+
+absl::optional<LegacyStructValue> AsLegacyStructValue(const Value& value);
 
 }  // namespace common_internal
 

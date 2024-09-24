@@ -276,17 +276,6 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "casting_test",
-    srcs = ["casting_test.cc"],
-    deps = [
-        ":casting",
-        ":native_type",
-        "//internal:testing",
-        "@com_google_absl//absl/types:optional",
-    ],
-)
-
 cc_library(
     name = "json",
     srcs = ["json.cc"],
@@ -645,6 +634,7 @@ cc_library(
         "//common/internal:data_interface",
         "//common/internal:reference_count",
         "//common/internal:shared_byte_string",
+        "//internal:casts",
         "//internal:deserialize",
         "//internal:dynamic_loader",
         "//internal:json",

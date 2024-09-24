@@ -80,7 +80,6 @@ TEST_P(TypeValueTest, Cast) {
 }
 
 TEST_P(TypeValueTest, As) {
-  EXPECT_THAT(As<TypeValue>(TypeValue(AnyType())), Ne(absl::nullopt));
   EXPECT_THAT(As<TypeValue>(Value(TypeValue(AnyType()))), Ne(absl::nullopt));
 }
 

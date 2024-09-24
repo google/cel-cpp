@@ -79,7 +79,6 @@ TEST_P(UnknownValueTest, Cast) {
 }
 
 TEST_P(UnknownValueTest, As) {
-  EXPECT_THAT(As<UnknownValue>(UnknownValue()), Ne(absl::nullopt));
   EXPECT_THAT(As<UnknownValue>(Value(UnknownValue())), Ne(absl::nullopt));
 }
 

@@ -22,12 +22,8 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
-#include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/types/optional.h"
-#include "absl/utility/utility.h"
-#include "common/native_type.h"
-#include "common/optional_ref.h"
 #include "internal/casts.h"
 
 namespace cel {
@@ -56,10 +52,6 @@ using propagate_cvref_t = propagate_reference_t<
     propagate_volatile_t<propagate_const_t<To, From>, From>, From>;
 
 }  // namespace common_internal
-
-// Forward declared here, documented in `../casting.h`.
-template <typename To, typename From, typename = void>
-struct CastTraits;
 
 namespace common_internal {
 
@@ -104,7 +96,7 @@ struct ABSL_DEPRECATED("Use Is member functions instead.")
       return true;
     } else {
       // Something else.
-      return CastTraits<To, const From&>::Compatible(from);
+      return from.template Is<To>();
     }
   }
 
@@ -144,8 +136,6 @@ struct ABSL_DEPRECATED(
                   "From must not be volatile qualified");
     static_assert(std::is_class_v<absl::remove_cvref_t<From>>,
                   "From must be a non-union class");
-    ABSL_DCHECK(InstanceOfImpl<To>{}(from))
-        << NativeTypeId::Of(from) << " => " << NativeTypeId::For<To>();
     if constexpr (std::is_polymorphic_v<From>) {
       static_assert(std::is_lvalue_reference_v<From>,
                     "polymorphic casts are only possible on lvalue references");
@@ -171,7 +161,7 @@ struct ABSL_DEPRECATED(
       return static_cast<To>(std::forward<From>(from));
     } else {
       // Something else.
-      return CastTraits<To, From>::Convert(std::forward<From>(from));
+      return std::forward<From>(from).template Get<To>();
     }
   }
 
@@ -219,21 +209,7 @@ struct ABSL_DEPRECATED("Use As member functions instead.") AsImpl final {
                   "From must not be volatile qualified");
     static_assert(std::is_class_v<absl::remove_cvref_t<From>>,
                   "From must be a non-union class");
-    using R = decltype(CastImpl<To>{}(std::forward<From>(from)));
-    if (!InstanceOfImpl<To>{}(from)) {
-      if constexpr (std::is_lvalue_reference_v<R>) {
-        return cel::optional_ref<std::remove_reference_t<R>>{absl::nullopt};
-      } else {
-        return absl::optional<absl::remove_cvref_t<R>>{absl::nullopt};
-      }
-    }
-    if constexpr (std::is_lvalue_reference_v<R>) {
-      return cel::optional_ref<std::remove_reference_t<R>>{
-          CastImpl<To>{}(std::forward<From>(from))};
-    } else {
-      return absl::optional<absl::remove_cvref_t<R>>{
-          absl::in_place, CastImpl<To>{}(std::forward<From>(from))};
-    }
+    return std::forward<From>(from).template As<To>();
   }
 
   // Returns a pointer.
@@ -246,22 +222,11 @@ struct ABSL_DEPRECATED("Use As member functions instead.") AsImpl final {
     static_assert(!std::is_volatile_v<From>,
                   "From must not be volatile qualified");
     static_assert(std::is_class_v<From>, "From must be a non-union class");
-    using R = decltype(CastImpl<To>{}(*from));
-    if (from == nullptr || !InstanceOfImpl<To>{}(from)) {
-      if constexpr (std::is_lvalue_reference_v<R>) {
-        return static_cast<std::add_pointer_t<std::remove_reference_t<R>>>(
-            nullptr);
-      } else {
-        return absl::optional<absl::remove_cvref_t<R>>{absl::nullopt};
-      }
+    using R = decltype(from->template As<To>());
+    if (from == nullptr) {
+      return R{absl::nullopt};
     }
-    if constexpr (std::is_lvalue_reference_v<R>) {
-      return static_cast<std::add_pointer_t<std::remove_reference_t<R>>>(
-          std::addressof(CastImpl<To>{}(*from)));
-    } else {
-      return absl::optional<absl::remove_cvref_t<R>>{absl::in_place,
-                                                     CastImpl<To>{}(*from)};
-    }
+    return from->template As<To>();
   }
 };
 

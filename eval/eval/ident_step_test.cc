@@ -7,6 +7,7 @@
 
 #include "absl/status/status.h"
 #include "base/type_provider.h"
+#include "common/casting.h"
 #include "common/memory.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"

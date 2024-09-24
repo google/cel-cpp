@@ -38,7 +38,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
 #include "absl/utility/utility.h"
-#include "common/casting.h"
 #include "common/json.h"
 #include "common/native_type.h"
 #include "common/value_kind.h"
@@ -194,7 +193,6 @@ class MapValue final {
  private:
   friend class Value;
   friend struct NativeTypeTraits<MapValue>;
-  friend struct CompositionTraits<MapValue>;
   friend bool Is(const MapValue& lhs, const MapValue& rhs);
 
   common_internal::ValueVariant ToValueVariant() const&;
@@ -231,107 +229,6 @@ struct NativeTypeTraits<MapValue> final {
         value.variant_);
   }
 };
-
-template <>
-struct CompositionTraits<MapValue> final {
-  template <typename U>
-  static std::enable_if_t<common_internal::IsMapValueAlternativeV<U>, bool>
-  HasA(const MapValue& value) {
-    using Base = common_internal::BaseMapValueAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::holds_alternative<U>(value.variant_);
-    } else {
-      return absl::holds_alternative<Base>(value.variant_) &&
-             InstanceOf<U>(Get<U>(value));
-    }
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<Value, U>, bool> HasA(
-      const MapValue& value) {
-    return true;
-  }
-
-  template <typename U>
-  static std::enable_if_t<common_internal::IsMapValueAlternativeV<U>, const U&>
-  Get(const MapValue& value) {
-    using Base = common_internal::BaseMapValueAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(value.variant_);
-    } else {
-      return Cast<U>(absl::get<Base>(value.variant_));
-    }
-  }
-
-  template <typename U>
-  static std::enable_if_t<common_internal::IsMapValueAlternativeV<U>, U&> Get(
-      MapValue& value) {
-    using Base = common_internal::BaseMapValueAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(value.variant_);
-    } else {
-      return Cast<U>(absl::get<Base>(value.variant_));
-    }
-  }
-
-  template <typename U>
-  static std::enable_if_t<common_internal::IsMapValueAlternativeV<U>, U> Get(
-      const MapValue&& value) {
-    using Base = common_internal::BaseMapValueAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(std::move(value.variant_));
-    } else {
-      return Cast<U>(absl::get<Base>(std::move(value.variant_)));
-    }
-  }
-
-  template <typename U>
-  static std::enable_if_t<common_internal::IsMapValueAlternativeV<U>, U> Get(
-      MapValue&& value) {
-    using Base = common_internal::BaseMapValueAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(std::move(value.variant_));
-    } else {
-      return Cast<U>(absl::get<Base>(std::move(value.variant_)));
-    }
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<Value, U>, U> Get(
-      const MapValue& value) {
-    return absl::visit(
-        [](const auto& alternative) -> U { return U{alternative}; },
-        value.variant_);
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<Value, U>, U> Get(MapValue& value) {
-    return absl::visit(
-        [](const auto& alternative) -> U { return U{alternative}; },
-        value.variant_);
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<Value, U>, U> Get(
-      const MapValue&& value) {
-    return absl::visit(
-        [](const auto& alternative) -> U { return U{alternative}; },
-        value.variant_);
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<Value, U>, U> Get(MapValue&& value) {
-    return absl::visit(
-        [](auto&& alternative) -> U { return U{std::move(alternative)}; },
-        std::move(value.variant_));
-  }
-};
-
-template <typename To, typename From>
-struct CastTraits<
-    To, From,
-    std::enable_if_t<std::is_same_v<MapValue, absl::remove_cvref_t<From>>>>
-    : CompositionCastTraits<To, From> {};
 
 inline bool Is(const MapValue& lhs, const MapValue& rhs) {
   return absl::visit(

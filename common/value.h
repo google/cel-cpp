@@ -36,7 +36,6 @@
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "absl/utility/utility.h"
-#include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
@@ -75,8 +74,6 @@
 #include "google/protobuf/generated_enum_reflection.h"
 
 namespace cel {
-
-class Value;
 
 // `Value` is a composition type which encompasses all values supported by the
 // Common Expression Language. When default constructed or moved, `Value` is in
@@ -441,11 +438,32 @@ class Value final {
     return absl::holds_alternative<ParsedJsonMapValue>(variant_);
   }
 
+  // Returns `true` if this value is an instance of a parsed list value. If
+  // `true` is returned, it is implied that `IsList()` would also return
+  // true.
+  bool IsParsedList() const {
+    return absl::holds_alternative<ParsedListValue>(variant_);
+  }
+
+  // Returns `true` if this value is an instance of a parsed map value. If
+  // `true` is returned, it is implied that `IsMap()` would also return
+  // true.
+  bool IsParsedMap() const {
+    return absl::holds_alternative<ParsedMapValue>(variant_);
+  }
+
   // Returns `true` if this value is an instance of a parsed message value. If
   // `true` is returned, it is implied that `IsMessage()` would also return
   // true.
   bool IsParsedMessage() const {
     return absl::holds_alternative<ParsedMessageValue>(variant_);
+  }
+
+  // Returns `true` if this value is an instance of a parsed struct value. If
+  // `true` is returned, it is implied that `IsStruct()` would also return
+  // true.
+  bool IsParsedStruct() const {
+    return absl::holds_alternative<ParsedStructValue>(variant_);
   }
 
   // Returns `true` if this value is an instance of a string value.
@@ -576,10 +594,31 @@ class Value final {
   }
 
   // Convenience method for use with template metaprogramming. See
+  // `IsParsedList()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedListValue, T>, bool> Is() const {
+    return IsParsedList();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsParsedMap()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapValue, T>, bool> Is() const {
+    return IsParsedMap();
+  }
+
+  // Convenience method for use with template metaprogramming. See
   // `IsParsedMessage()`.
   template <typename T>
   std::enable_if_t<std::is_same_v<ParsedMessageValue, T>, bool> Is() const {
     return IsParsedMessage();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsParsedStruct()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedStructValue, T>, bool> Is() const {
+    return IsParsedStruct();
   }
 
   // Convenience method for use with template metaprogramming. See
@@ -728,6 +767,26 @@ class Value final {
   absl::optional<ParsedJsonMapValue> AsParsedJsonMap() &&;
   absl::optional<ParsedJsonMapValue> AsParsedJsonMap() const&&;
 
+  // Performs a checked cast from a value to a parsed list value,
+  // returning a non-empty optional with either a value or reference to the
+  // parsed list value. Otherwise an empty optional is returned.
+  optional_ref<const ParsedListValue> AsParsedList() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const ParsedListValue> AsParsedList()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ParsedListValue> AsParsedList() &&;
+  absl::optional<ParsedListValue> AsParsedList() const&&;
+
+  // Performs a checked cast from a value to a parsed map value,
+  // returning a non-empty optional with either a value or reference to the
+  // parsed map value. Otherwise an empty optional is returned.
+  optional_ref<const ParsedMapValue> AsParsedMap() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const ParsedMapValue> AsParsedMap()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ParsedMapValue> AsParsedMap() &&;
+  absl::optional<ParsedMapValue> AsParsedMap() const&&;
+
   // Performs a checked cast from a value to a parsed message value,
   // returning a non-empty optional with either a value or reference to the
   // parsed message value. Otherwise an empty optional is returned.
@@ -737,6 +796,16 @@ class Value final {
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedMessageValue> AsParsedMessage() &&;
   absl::optional<ParsedMessageValue> AsParsedMessage() const&&;
+
+  // Performs a checked cast from a value to a parsed struct value,
+  // returning a non-empty optional with either a value or reference to the
+  // parsed struct value. Otherwise an empty optional is returned.
+  optional_ref<const ParsedStructValue> AsParsedStruct() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const ParsedStructValue> AsParsedStruct()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ParsedStructValue> AsParsedStruct() &&;
+  absl::optional<ParsedStructValue> AsParsedStruct() const&&;
 
   // Performs a checked cast from a value to a string value,
   // returning a non-empty optional with either a value or reference to the
@@ -1131,6 +1200,60 @@ class Value final {
   }
 
   // Convenience method for use with template metaprogramming. See
+  // `AsParsedList()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedListValue, T>,
+                       optional_ref<const ParsedListValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedListValue, T>,
+                   optional_ref<const ParsedListValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedListValue, T>,
+                   absl::optional<ParsedListValue>>
+  As() && {
+    return std::move(*this).AsParsedList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedListValue, T>,
+                   absl::optional<ParsedListValue>>
+  As() const&& {
+    return std::move(*this).AsParsedList();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsParsedMap()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedMapValue, T>,
+                       optional_ref<const ParsedMapValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapValue, T>,
+                   optional_ref<const ParsedMapValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapValue, T>,
+                   absl::optional<ParsedMapValue>>
+  As() && {
+    return std::move(*this).AsParsedMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapValue, T>,
+                   absl::optional<ParsedMapValue>>
+  As() const&& {
+    return std::move(*this).AsParsedMap();
+  }
+
+  // Convenience method for use with template metaprogramming. See
   // `AsParsedMessage()`.
   template <typename T>
       std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
@@ -1155,6 +1278,33 @@ class Value final {
                    absl::optional<ParsedMessageValue>>
   As() const&& {
     return std::move(*this).AsParsedMessage();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsParsedStruct()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedStructValue, T>,
+                       optional_ref<const ParsedStructValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedStruct();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedStructValue, T>,
+                   optional_ref<const ParsedStructValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedStruct();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedStructValue, T>,
+                   absl::optional<ParsedStructValue>>
+  As() && {
+    return std::move(*this).AsParsedStruct();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedStructValue, T>,
+                   absl::optional<ParsedStructValue>>
+  As() const&& {
+    return std::move(*this).AsParsedStruct();
   }
 
   // Convenience method for use with template metaprogramming. See
@@ -1406,6 +1556,22 @@ class Value final {
   ParsedJsonMapValue GetParsedJsonMap() &&;
   ParsedJsonMapValue GetParsedJsonMap() const&&;
 
+  // Performs an unchecked cast from a value to a parsed struct value. In
+  // debug builds a best effort is made to crash. If `IsParsedList()` would
+  // return false, calling this method is undefined behavior.
+  const ParsedListValue& GetParsedList() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const ParsedListValue& GetParsedList() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  ParsedListValue GetParsedList() &&;
+  ParsedListValue GetParsedList() const&&;
+
+  // Performs an unchecked cast from a value to a parsed struct value. In
+  // debug builds a best effort is made to crash. If `IsParsedMap()` would
+  // return false, calling this method is undefined behavior.
+  const ParsedMapValue& GetParsedMap() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const ParsedMapValue& GetParsedMap() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  ParsedMapValue GetParsedMap() &&;
+  ParsedMapValue GetParsedMap() const&&;
+
   // Performs an unchecked cast from a value to a parsed message value. In
   // debug builds a best effort is made to crash. If `IsParsedMessage()` would
   // return false, calling this method is undefined behavior.
@@ -1414,6 +1580,15 @@ class Value final {
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedMessageValue GetParsedMessage() &&;
   ParsedMessageValue GetParsedMessage() const&&;
+
+  // Performs an unchecked cast from a value to a parsed struct value. In
+  // debug builds a best effort is made to crash. If `IsParsedStruct()` would
+  // return false, calling this method is undefined behavior.
+  const ParsedStructValue& GetParsedStruct() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const ParsedStructValue& GetParsedStruct()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  ParsedStructValue GetParsedStruct() &&;
+  ParsedStructValue GetParsedStruct() const&&;
 
   // Performs an unchecked cast from a value to a string value. In
   // debug builds a best effort is made to crash. If `IsString()` would return
@@ -1748,6 +1923,52 @@ class Value final {
   }
 
   // Convenience method for use with template metaprogramming. See
+  // `GetParsedList()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedListValue, T>,
+                       const ParsedListValue&>
+      Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedListValue, T>, const ParsedListValue&>
+  Get() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedListValue, T>, ParsedListValue>
+  Get() && {
+    return std::move(*this).GetParsedList();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedListValue, T>, ParsedListValue> Get()
+      const&& {
+    return std::move(*this).GetParsedList();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetParsedMap()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedMapValue, T>, const ParsedMapValue&>
+      Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapValue, T>, const ParsedMapValue&>
+  Get() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapValue, T>, ParsedMapValue> Get() && {
+    return std::move(*this).GetParsedMap();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapValue, T>, ParsedMapValue> Get()
+      const&& {
+    return std::move(*this).GetParsedMap();
+  }
+
+  // Convenience method for use with template metaprogramming. See
   // `GetParsedMessage()`.
   template <typename T>
       std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
@@ -1770,6 +1991,31 @@ class Value final {
   std::enable_if_t<std::is_same_v<ParsedMessageValue, T>, ParsedMessageValue>
   Get() const&& {
     return std::move(*this).GetParsedMessage();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetParsedStruct()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedStructValue, T>,
+                       const ParsedStructValue&>
+      Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedStruct();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedStructValue, T>,
+                   const ParsedStructValue&>
+  Get() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedStruct();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedStructValue, T>, ParsedStructValue>
+  Get() && {
+    return std::move(*this).GetParsedStruct();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedStructValue, T>, ParsedStructValue>
+  Get() const&& {
+    return std::move(*this).GetParsedStruct();
   }
 
   // Convenience method for use with template metaprogramming. See
@@ -1902,7 +2148,15 @@ class Value final {
 
  private:
   friend struct NativeTypeTraits<Value>;
-  friend struct CompositionTraits<Value>;
+  friend bool common_internal::IsLegacyListValue(const Value& value);
+  friend common_internal::LegacyListValue common_internal::GetLegacyListValue(
+      const Value& value);
+  friend bool common_internal::IsLegacyMapValue(const Value& value);
+  friend common_internal::LegacyMapValue common_internal::GetLegacyMapValue(
+      const Value& value);
+  friend bool common_internal::IsLegacyStructValue(const Value& value);
+  friend common_internal::LegacyStructValue
+  common_internal::GetLegacyStructValue(const Value& value);
 
   constexpr bool IsValid() const {
     return !absl::holds_alternative<absl::monostate>(variant_);
@@ -1952,233 +2206,6 @@ struct NativeTypeTraits<Value> final {
         value.variant_);
   }
 };
-
-template <>
-struct CompositionTraits<Value> final {
-  template <typename U>
-  static std::enable_if_t<common_internal::IsValueAlternativeV<U>, bool> HasA(
-      const Value& value) {
-    value.AssertIsValid();
-    using Base = common_internal::BaseValueAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::holds_alternative<U>(value.variant_);
-    } else {
-      return absl::holds_alternative<Base>(value.variant_) &&
-             InstanceOf<U>(Get<U>(value));
-    }
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<ListValue, U>, bool> HasA(
-      const Value& value) {
-    value.AssertIsValid();
-    return absl::holds_alternative<common_internal::LegacyListValue>(
-               value.variant_) ||
-           absl::holds_alternative<ParsedListValue>(value.variant_);
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<MapValue, U>, bool> HasA(
-      const Value& value) {
-    value.AssertIsValid();
-    return absl::holds_alternative<common_internal::LegacyMapValue>(
-               value.variant_) ||
-           absl::holds_alternative<ParsedMapValue>(value.variant_);
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<StructValue, U>, bool> HasA(
-      const Value& value) {
-    value.AssertIsValid();
-    return absl::holds_alternative<common_internal::LegacyStructValue>(
-               value.variant_) ||
-           absl::holds_alternative<ParsedStructValue>(value.variant_);
-  }
-
-  template <typename U>
-  static std::enable_if_t<common_internal::IsValueAlternativeV<U>, const U&>
-  Get(const Value& value) {
-    value.AssertIsValid();
-    using Base = common_internal::BaseValueAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(value.variant_);
-    } else {
-      return Cast<U>(absl::get<Base>(value.variant_));
-    }
-  }
-
-  template <typename U>
-  static std::enable_if_t<common_internal::IsValueAlternativeV<U>, U&> Get(
-      Value& value) {
-    value.AssertIsValid();
-    using Base = common_internal::BaseValueAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(value.variant_);
-    } else {
-      return Cast<U>(absl::get<Base>(value.variant_));
-    }
-  }
-
-  template <typename U>
-  static std::enable_if_t<common_internal::IsValueAlternativeV<U>, U> Get(
-      const Value&& value) {
-    value.AssertIsValid();
-    using Base = common_internal::BaseValueAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(std::move(value.variant_));
-    } else {
-      return Cast<U>(absl::get<Base>(std::move(value.variant_)));
-    }
-  }
-
-  template <typename U>
-  static std::enable_if_t<common_internal::IsValueAlternativeV<U>, U> Get(
-      Value&& value) {
-    value.AssertIsValid();
-    using Base = common_internal::BaseValueAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(std::move(value.variant_));
-    } else {
-      return Cast<U>(absl::get<Base>(std::move(value.variant_)));
-    }
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<ListValue, U>, U> Get(
-      const Value& value) {
-    value.AssertIsValid();
-    if (absl::holds_alternative<common_internal::LegacyListValue>(
-            value.variant_)) {
-      return U{absl::get<common_internal::LegacyListValue>(value.variant_)};
-    }
-    return U{absl::get<ParsedListValue>(value.variant_)};
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<ListValue, U>, U> Get(Value& value) {
-    value.AssertIsValid();
-    if (absl::holds_alternative<common_internal::LegacyListValue>(
-            value.variant_)) {
-      return U{absl::get<common_internal::LegacyListValue>(value.variant_)};
-    }
-    return U{absl::get<ParsedListValue>(value.variant_)};
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<ListValue, U>, U> Get(
-      const Value&& value) {
-    value.AssertIsValid();
-    if (absl::holds_alternative<common_internal::LegacyListValue>(
-            value.variant_)) {
-      return U{absl::get<common_internal::LegacyListValue>(value.variant_)};
-    }
-    return U{absl::get<ParsedListValue>(value.variant_)};
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<ListValue, U>, U> Get(Value&& value) {
-    value.AssertIsValid();
-    if (absl::holds_alternative<common_internal::LegacyListValue>(
-            value.variant_)) {
-      return U{absl::get<common_internal::LegacyListValue>(
-          std::move(value.variant_))};
-    }
-    return U{absl::get<ParsedListValue>(std::move(value.variant_))};
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<MapValue, U>, U> Get(
-      const Value& value) {
-    value.AssertIsValid();
-    if (absl::holds_alternative<common_internal::LegacyMapValue>(
-            value.variant_)) {
-      return U{absl::get<common_internal::LegacyMapValue>(value.variant_)};
-    }
-    return U{absl::get<ParsedMapValue>(value.variant_)};
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<MapValue, U>, U> Get(Value& value) {
-    value.AssertIsValid();
-    if (absl::holds_alternative<common_internal::LegacyMapValue>(
-            value.variant_)) {
-      return U{absl::get<common_internal::LegacyMapValue>(value.variant_)};
-    }
-    return U{absl::get<ParsedMapValue>(value.variant_)};
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<MapValue, U>, U> Get(
-      const Value&& value) {
-    value.AssertIsValid();
-    if (absl::holds_alternative<common_internal::LegacyMapValue>(
-            value.variant_)) {
-      return U{absl::get<common_internal::LegacyMapValue>(value.variant_)};
-    }
-    return U{absl::get<ParsedMapValue>(value.variant_)};
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<MapValue, U>, U> Get(Value&& value) {
-    value.AssertIsValid();
-    if (absl::holds_alternative<common_internal::LegacyMapValue>(
-            value.variant_)) {
-      return U{absl::get<common_internal::LegacyMapValue>(
-          std::move(value.variant_))};
-    }
-    return U{absl::get<ParsedMapValue>(std::move(value.variant_))};
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<StructValue, U>, U> Get(
-      const Value& value) {
-    value.AssertIsValid();
-    if (absl::holds_alternative<common_internal::LegacyStructValue>(
-            value.variant_)) {
-      return U{absl::get<common_internal::LegacyStructValue>(value.variant_)};
-    }
-    return U{absl::get<ParsedStructValue>(value.variant_)};
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<StructValue, U>, U> Get(Value& value) {
-    value.AssertIsValid();
-    if (absl::holds_alternative<common_internal::LegacyStructValue>(
-            value.variant_)) {
-      return U{absl::get<common_internal::LegacyStructValue>(value.variant_)};
-    }
-    return U{absl::get<ParsedStructValue>(value.variant_)};
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<StructValue, U>, U> Get(
-      const Value&& value) {
-    value.AssertIsValid();
-    if (absl::holds_alternative<common_internal::LegacyStructValue>(
-            value.variant_)) {
-      return U{absl::get<common_internal::LegacyStructValue>(value.variant_)};
-    }
-    return U{absl::get<ParsedStructValue>(value.variant_)};
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<StructValue, U>, U> Get(
-      Value&& value) {
-    value.AssertIsValid();
-    if (absl::holds_alternative<common_internal::LegacyStructValue>(
-            value.variant_)) {
-      return U{absl::get<common_internal::LegacyStructValue>(
-          std::move(value.variant_))};
-    }
-    return U{absl::get<ParsedStructValue>(std::move(value.variant_))};
-  }
-};
-
-template <typename To, typename From>
-struct CastTraits<
-    To, From,
-    std::enable_if_t<std::is_same_v<Value, absl::remove_cvref_t<From>>>>
-    : CompositionCastTraits<To, From> {};
 
 // Statically assert some expectations.
 static_assert(std::is_default_constructible_v<Value>);

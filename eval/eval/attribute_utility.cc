@@ -13,6 +13,7 @@
 #include "base/function_result.h"
 #include "base/function_result_set.h"
 #include "base/internal/unknown_set.h"
+#include "common/casting.h"
 #include "common/value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/internal/errors.h"

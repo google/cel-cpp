@@ -91,7 +91,6 @@ TEST_P(StringValueTest, Cast) {
 }
 
 TEST_P(StringValueTest, As) {
-  EXPECT_THAT(As<StringValue>(StringValue("foo")), Ne(absl::nullopt));
   EXPECT_THAT(As<StringValue>(Value(StringValue(absl::Cord("foo")))),
               Ne(absl::nullopt));
 }

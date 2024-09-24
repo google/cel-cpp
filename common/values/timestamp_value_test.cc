@@ -84,9 +84,6 @@ TEST_P(TimestampValueTest, Cast) {
 }
 
 TEST_P(TimestampValueTest, As) {
-  EXPECT_THAT(
-      As<TimestampValue>(TimestampValue(absl::UnixEpoch() + absl::Seconds(1))),
-      Ne(absl::nullopt));
   EXPECT_THAT(As<TimestampValue>(
                   Value(TimestampValue(absl::UnixEpoch() + absl::Seconds(1)))),
               Ne(absl::nullopt));

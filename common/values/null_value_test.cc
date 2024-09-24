@@ -74,7 +74,6 @@ TEST_P(NullValueTest, Cast) {
 }
 
 TEST_P(NullValueTest, As) {
-  EXPECT_THAT(As<NullValue>(NullValue()), Ne(absl::nullopt));
   EXPECT_THAT(As<NullValue>(Value(NullValue())), Ne(absl::nullopt));
 }
 

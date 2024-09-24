@@ -17,17 +17,17 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
-#include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/call_once.h"
 #include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
-#include "absl/strings/string_view.h"
-#include "common/any.h"
+#include "absl/types/optional.h"
+#include "absl/types/variant.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/type.h"
@@ -35,7 +35,6 @@
 #include "common/values/map_value_interface.h"
 #include "common/values/values.h"
 #include "internal/dynamic_loader.h"  // IWYU pragma: keep
-#include "internal/status_macros.h"
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -264,6 +263,22 @@ absl::Status LegacyMapValue::Equal(ValueManager& value_manager,
   }
   result = BoolValue{false};
   return absl::OkStatus();
+}
+
+bool IsLegacyMapValue(const Value& value) {
+  return absl::holds_alternative<LegacyMapValue>(value.variant_);
+}
+
+LegacyMapValue GetLegacyMapValue(const Value& value) {
+  ABSL_DCHECK(IsLegacyMapValue(value));
+  return absl::get<LegacyMapValue>(value.variant_);
+}
+
+absl::optional<LegacyMapValue> AsLegacyMapValue(const Value& value) {
+  if (IsLegacyMapValue(value)) {
+    return GetLegacyMapValue(value);
+  }
+  return absl::nullopt;
 }
 
 }  // namespace cel::common_internal

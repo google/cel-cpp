@@ -75,7 +75,6 @@ TEST_P(UintValueTest, Cast) {
 }
 
 TEST_P(UintValueTest, As) {
-  EXPECT_THAT(As<UintValue>(UintValue(1)), Ne(absl::nullopt));
   EXPECT_THAT(As<UintValue>(Value(UintValue(1))), Ne(absl::nullopt));
 }
 

@@ -20,6 +20,7 @@
 #include <string>
 
 #include "absl/status/status.h"
+#include "common/casting.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"

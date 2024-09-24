@@ -31,12 +31,10 @@
 #include <utility>
 
 #include "absl/base/nullability.h"
-#include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
-#include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
@@ -215,29 +213,6 @@ struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
 
   static bool SkipDestructor(const T& type) {
     return NativeTypeTraits<ParsedListValue>::SkipDestructor(type);
-  }
-};
-
-// ParsedListValue -> ListValueFor<T>
-template <typename To, typename From>
-struct CastTraits<
-    To, From,
-    std::enable_if_t<std::conjunction_v<
-        std::bool_constant<sizeof(To) == sizeof(absl::remove_cvref_t<From>)>,
-        std::bool_constant<alignof(To) == alignof(absl::remove_cvref_t<From>)>,
-        std::is_same<ParsedListValue, absl::remove_cvref_t<From>>,
-        std::negation<std::is_same<ParsedListValue, To>>,
-        std::is_base_of<ParsedListValue, To>>>>
-    final {
-  static bool Compatible(const absl::remove_cvref_t<From>& from) {
-    return SubsumptionTraits<To>::IsA(from);
-  }
-
-  static decltype(auto) Convert(From from) {
-    // `To` is derived from `From`, `From` is `ParsedListValue`, and `To` has
-    // the same size and alignment as `ParsedListValue`. We can just
-    // reinterpret_cast.
-    return SubsumptionTraits<To>::DownCast(std::move(from));
   }
 };
 

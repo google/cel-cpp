@@ -31,13 +31,11 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
-#include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
@@ -71,13 +69,6 @@ class OpaqueValueInterface : public ValueInterface {
 
   virtual absl::Status Equal(ValueManager& value_manager, const Value& other,
                              Value& result) const = 0;
-};
-
-template <>
-struct SubsumptionTraits<OpaqueValueInterface> {
-  static bool IsA(const ValueInterface& interface) {
-    return interface.kind() == ValueKind::kOpaque;
-  }
 };
 
 class OpaqueValue {
@@ -229,28 +220,6 @@ struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
 
   static bool SkipDestructor(const T& type) {
     return NativeTypeTraits<OpaqueValue>::SkipDestructor(type);
-  }
-};
-
-// OpaqueValue -> OpaqueValueFor<T>
-template <typename To, typename From>
-struct CastTraits<
-    To, From,
-    std::enable_if_t<std::conjunction_v<
-        std::bool_constant<sizeof(To) == sizeof(absl::remove_cvref_t<From>)>,
-        std::bool_constant<alignof(To) == alignof(absl::remove_cvref_t<From>)>,
-        std::is_same<OpaqueValue, absl::remove_cvref_t<From>>,
-        std::negation<std::is_same<OpaqueValue, To>>,
-        std::is_base_of<OpaqueValue, To>>>>
-    final {
-  static bool Compatible(const absl::remove_cvref_t<From>& from) {
-    return SubsumptionTraits<To>::IsA(from);
-  }
-
-  static decltype(auto) Convert(From from) {
-    // `To` is derived from `From`, `From` is `OpaqueValue`, and `To` has the
-    // same size and alignment as `OpaqueValue`. We can just reinterpret_cast.
-    return SubsumptionTraits<To>::DownCast(std::move(from));
   }
 };
 

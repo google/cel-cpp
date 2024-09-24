@@ -29,6 +29,7 @@
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "base/builtins.h"
+#include "common/casting.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"

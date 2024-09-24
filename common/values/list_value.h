@@ -37,7 +37,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
 #include "absl/utility/utility.h"
-#include "common/casting.h"
 #include "common/json.h"
 #include "common/native_type.h"
 #include "common/value_kind.h"
@@ -178,7 +177,6 @@ class ListValue final {
  private:
   friend class Value;
   friend struct NativeTypeTraits<ListValue>;
-  friend struct CompositionTraits<ListValue>;
   friend bool Is(const ListValue& lhs, const ListValue& rhs);
 
   common_internal::ValueVariant ToValueVariant() const&;
@@ -215,107 +213,6 @@ struct NativeTypeTraits<ListValue> final {
         value.variant_);
   }
 };
-
-template <>
-struct CompositionTraits<ListValue> final {
-  template <typename U>
-  static std::enable_if_t<common_internal::IsListValueAlternativeV<U>, bool>
-  HasA(const ListValue& value) {
-    using Base = common_internal::BaseListValueAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::holds_alternative<U>(value.variant_);
-    } else {
-      return absl::holds_alternative<Base>(value.variant_) &&
-             InstanceOf<U>(Get<U>(value));
-    }
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<Value, U>, bool> HasA(
-      const ListValue& value) {
-    return true;
-  }
-
-  template <typename U>
-  static std::enable_if_t<common_internal::IsListValueAlternativeV<U>, const U&>
-  Get(const ListValue& value) {
-    using Base = common_internal::BaseListValueAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(value.variant_);
-    } else {
-      return Cast<U>(absl::get<Base>(value.variant_));
-    }
-  }
-
-  template <typename U>
-  static std::enable_if_t<common_internal::IsListValueAlternativeV<U>, U&> Get(
-      ListValue& value) {
-    using Base = common_internal::BaseListValueAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(value.variant_);
-    } else {
-      return Cast<U>(absl::get<Base>(value.variant_));
-    }
-  }
-
-  template <typename U>
-  static std::enable_if_t<common_internal::IsListValueAlternativeV<U>, U> Get(
-      const ListValue&& value) {
-    using Base = common_internal::BaseListValueAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(std::move(value.variant_));
-    } else {
-      return Cast<U>(absl::get<Base>(std::move(value.variant_)));
-    }
-  }
-
-  template <typename U>
-  static std::enable_if_t<common_internal::IsListValueAlternativeV<U>, U> Get(
-      ListValue&& value) {
-    using Base = common_internal::BaseListValueAlternativeForT<U>;
-    if constexpr (std::is_same_v<Base, U>) {
-      return absl::get<U>(std::move(value.variant_));
-    } else {
-      return Cast<U>(absl::get<Base>(std::move(value.variant_)));
-    }
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<Value, U>, U> Get(
-      const ListValue& value) {
-    return absl::visit(
-        [](const auto& alternative) -> U { return U{alternative}; },
-        value.variant_);
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<Value, U>, U> Get(ListValue& value) {
-    return absl::visit(
-        [](const auto& alternative) -> U { return U{alternative}; },
-        value.variant_);
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<Value, U>, U> Get(
-      const ListValue&& value) {
-    return absl::visit(
-        [](const auto& alternative) -> U { return U{alternative}; },
-        value.variant_);
-  }
-
-  template <typename U>
-  static std::enable_if_t<std::is_same_v<Value, U>, U> Get(ListValue&& value) {
-    return absl::visit(
-        [](auto&& alternative) -> U { return U{std::move(alternative)}; },
-        std::move(value.variant_));
-  }
-};
-
-template <typename To, typename From>
-struct CastTraits<
-    To, From,
-    std::enable_if_t<std::is_same_v<ListValue, absl::remove_cvref_t<From>>>>
-    : CompositionCastTraits<To, From> {};
 
 inline bool Is(const ListValue& lhs, const ListValue& rhs) {
   return absl::visit(

@@ -956,7 +956,7 @@ cel_common_internal_LegacyStructValue_Equal(uintptr_t message_ptr,
                                             uintptr_t type_info,
                                             ValueManager& value_manager,
                                             const Value& other, Value& result) {
-  if (auto legacy_struct_value = As<common_internal::LegacyStructValue>(other);
+  if (auto legacy_struct_value = common_internal::AsLegacyStructValue(other);
       legacy_struct_value.has_value()) {
     auto message_wrapper = AsMessageWrapper(message_ptr, type_info);
     const auto* access_apis =
@@ -1264,7 +1264,7 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
     }
     case ValueKind::kStruct: {
       if (auto legacy_struct_value =
-              As<common_internal::LegacyStructValue>(modern_value);
+              common_internal::AsLegacyStructValue(modern_value);
           legacy_struct_value.has_value()) {
         return CelValue::CreateMessageWrapper(
             AsMessageWrapper(legacy_struct_value->message_ptr(),
@@ -1284,7 +1284,7 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
           Cast<TimestampValue>(modern_value).NativeValue());
     case ValueKind::kList: {
       if (auto legacy_list_value =
-              As<common_internal::LegacyListValue>(modern_value);
+              common_internal::AsLegacyListValue(modern_value);
           legacy_list_value.has_value()) {
         return CelValue::CreateList(
             AsCelList(legacy_list_value->NativeValue()));
@@ -1317,7 +1317,7 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
     }
     case ValueKind::kMap: {
       if (auto legacy_map_value =
-              As<common_internal::LegacyMapValue>(modern_value);
+              common_internal::AsLegacyMapValue(modern_value);
           legacy_map_value.has_value()) {
         return CelValue::CreateMap(AsCelMap(legacy_map_value->NativeValue()));
       }
@@ -1473,7 +1473,7 @@ absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
     }
     case ValueKind::kStruct: {
       if (auto legacy_struct_value =
-              As<common_internal::LegacyStructValue>(value);
+              common_internal::AsLegacyStructValue(value);
           legacy_struct_value.has_value()) {
         return CelValue::CreateMessageWrapper(
             AsMessageWrapper(legacy_struct_value->message_ptr(),
@@ -1491,7 +1491,7 @@ absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
       return CelValue::CreateTimestamp(
           Cast<TimestampValue>(value).NativeValue());
     case ValueKind::kList: {
-      if (auto legacy_list_value = As<common_internal::LegacyListValue>(value);
+      if (auto legacy_list_value = common_internal::AsLegacyListValue(value);
           legacy_list_value.has_value()) {
         return CelValue::CreateList(
             AsCelList(legacy_list_value->NativeValue()));
@@ -1523,7 +1523,7 @@ absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
                                       CelListImpl(elements, list_value_size));
     }
     case ValueKind::kMap: {
-      if (auto legacy_map_value = As<common_internal::LegacyMapValue>(value);
+      if (auto legacy_map_value = common_internal::AsLegacyMapValue(value);
           legacy_map_value.has_value()) {
         return CelValue::CreateMap(AsCelMap(legacy_map_value->NativeValue()));
       }

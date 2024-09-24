@@ -95,8 +95,6 @@ TEST_P(ErrorValueTest, Cast) {
 }
 
 TEST_P(ErrorValueTest, As) {
-  EXPECT_THAT(As<ErrorValue>(ErrorValue(absl::CancelledError())),
-              Ne(absl::nullopt));
   EXPECT_THAT(As<ErrorValue>(Value(ErrorValue(absl::CancelledError()))),
               Ne(absl::nullopt));
 }

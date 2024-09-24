@@ -100,7 +100,6 @@ TEST_P(DoubleValueTest, Cast) {
 }
 
 TEST_P(DoubleValueTest, As) {
-  EXPECT_THAT(As<DoubleValue>(DoubleValue(1.0)), Ne(absl::nullopt));
   EXPECT_THAT(As<DoubleValue>(Value(DoubleValue(1.0))), Ne(absl::nullopt));
 }
 

@@ -14,6 +14,7 @@
 #include "base/attribute.h"
 #include "base/attribute_set.h"
 #include "base/type_provider.h"
+#include "common/casting.h"
 #include "common/legacy_value.h"
 #include "common/value.h"
 #include "common/value_manager.h"

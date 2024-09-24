@@ -25,13 +25,11 @@ cc_library(
     hdrs = ["casting.h"],
     deps = [
         "//common:native_type",
-        "//common:optional_ref",
         "//internal:casts",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/meta:type_traits",
         "@com_google_absl//absl/types:optional",
-        "@com_google_absl//absl/utility",
     ],
 )
 

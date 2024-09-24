@@ -28,6 +28,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/json.h"
 #include "common/value_kind.h"
 #include "common/values/list_value_interface.h"
@@ -132,6 +133,12 @@ inline std::ostream& operator<<(std::ostream& out,
 inline bool Is(const LegacyListValue& lhs, const LegacyListValue& rhs) {
   return lhs.impl_ == rhs.impl_;
 }
+
+bool IsLegacyListValue(const Value& value);
+
+LegacyListValue GetLegacyListValue(const Value& value);
+
+absl::optional<LegacyListValue> AsLegacyListValue(const Value& value);
 
 }  // namespace common_internal
 

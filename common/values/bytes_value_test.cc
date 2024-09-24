@@ -89,7 +89,6 @@ TEST_P(BytesValueTest, Cast) {
 }
 
 TEST_P(BytesValueTest, As) {
-  EXPECT_THAT(As<BytesValue>(BytesValue("foo")), Ne(absl::nullopt));
   EXPECT_THAT(As<BytesValue>(Value(BytesValue(absl::Cord("foo")))),
               Ne(absl::nullopt));
 }

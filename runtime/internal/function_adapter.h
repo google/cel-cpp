@@ -102,7 +102,7 @@ HANDLE_ADAPTED_KIND_OVL(TypeValue, Kind::kType);
 // Adapt a Value to its corresponding argument type in a wrapped c++
 // function.
 struct HandleToAdaptedVisitor {
-  absl::Status operator()(int64_t* out) {
+  absl::Status operator()(int64_t* out) const {
     if (!InstanceOf<IntValue>(input)) {
       return absl::InvalidArgumentError("expected int value");
     }
@@ -110,7 +110,7 @@ struct HandleToAdaptedVisitor {
     return absl::OkStatus();
   }
 
-  absl::Status operator()(uint64_t* out) {
+  absl::Status operator()(uint64_t* out) const {
     if (!InstanceOf<UintValue>(input)) {
       return absl::InvalidArgumentError("expected uint value");
     }
@@ -118,7 +118,7 @@ struct HandleToAdaptedVisitor {
     return absl::OkStatus();
   }
 
-  absl::Status operator()(double* out) {
+  absl::Status operator()(double* out) const {
     if (!InstanceOf<DoubleValue>(input)) {
       return absl::InvalidArgumentError("expected double value");
     }
@@ -126,7 +126,7 @@ struct HandleToAdaptedVisitor {
     return absl::OkStatus();
   }
 
-  absl::Status operator()(bool* out) {
+  absl::Status operator()(bool* out) const {
     if (!InstanceOf<BoolValue>(input)) {
       return absl::InvalidArgumentError("expected bool value");
     }
@@ -134,7 +134,7 @@ struct HandleToAdaptedVisitor {
     return absl::OkStatus();
   }
 
-  absl::Status operator()(absl::Time* out) {
+  absl::Status operator()(absl::Time* out) const {
     if (!InstanceOf<TimestampValue>(input)) {
       return absl::InvalidArgumentError("expected timestamp value");
     }
@@ -142,7 +142,7 @@ struct HandleToAdaptedVisitor {
     return absl::OkStatus();
   }
 
-  absl::Status operator()(absl::Duration* out) {
+  absl::Status operator()(absl::Duration* out) const {
     if (!InstanceOf<DurationValue>(input)) {
       return absl::InvalidArgumentError("expected duration value");
     }
@@ -150,18 +150,18 @@ struct HandleToAdaptedVisitor {
     return absl::OkStatus();
   }
 
-  absl::Status operator()(Value* out) {
+  absl::Status operator()(Value* out) const {
     *out = input;
     return absl::OkStatus();
   }
 
-  absl::Status operator()(const Value** out) {
+  absl::Status operator()(const Value** out) const {
     *out = &input;
     return absl::OkStatus();
   }
 
   template <typename T>
-  absl::Status operator()(T* out) {
+  absl::Status operator()(T* out) const {
     if (!InstanceOf<std::remove_const_t<T>>(input)) {
       return absl::InvalidArgumentError(
           absl::StrCat("expected ", ValueKindToString(T::kKind), " value"));
@@ -171,7 +171,7 @@ struct HandleToAdaptedVisitor {
   }
 
   template <typename T>
-  absl::Status operator()(T** out) {
+  absl::Status operator()(T** out) const {
     if (!InstanceOf<std::remove_const_t<T>>(input)) {
       return absl::InvalidArgumentError(
           absl::StrCat("expected ", ValueKindToString(T::kKind), " value"));

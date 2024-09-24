@@ -490,6 +490,7 @@ cc_library(
         "//base:builtins",
         "//base/ast_internal:ast_impl",
         "//base/ast_internal:expr",
+        "//common:casting",
         "//common:native_type",
         "//common:value",
         "//eval/eval:compiler_constant_step",
