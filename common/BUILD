@@ -150,6 +150,7 @@ cc_library(
         ":constant",
         ":expr",
         "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:variant",
     ],
 )
@@ -163,6 +164,8 @@ cc_test(
         ":constant",
         ":expr",
         "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
     ],
 )
 

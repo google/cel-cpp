@@ -14,15 +14,23 @@
 
 #include "common/ast_traverse.h"
 
+#include <memory>
 #include <stack>
 
 #include "absl/log/absl_log.h"
+#include "absl/status/status.h"
 #include "absl/types/variant.h"
 #include "common/ast_visitor.h"
 #include "common/constant.h"
 #include "common/expr.h"
 
 namespace cel {
+
+namespace common_internal {
+struct AstTraverseContext {
+  bool should_halt = false;
+};
+}  // namespace common_internal
 
 namespace {
 
@@ -318,12 +326,42 @@ void PushDependencies(const StackRecord& record, std::stack<StackRecord>& stack,
 
 }  // namespace
 
+AstTraverseManager::AstTraverseManager(TraversalOptions options)
+    : options_(options) {}
+
+AstTraverseManager::AstTraverseManager() = default;
+AstTraverseManager::~AstTraverseManager() = default;
+
+absl::Status AstTraverseManager::AstTraverse(const Expr& expr,
+                                             AstVisitor& visitor) {
+  if (context_ != nullptr) {
+    return absl::FailedPreconditionError(
+        "AstTraverseManager is already in use");
+  }
+  context_ = std::make_unique<common_internal::AstTraverseContext>();
+  TraversalOptions options = options_;
+  options.manager_context = context_.get();
+  ::cel::AstTraverse(expr, visitor, options);
+  context_ = nullptr;
+  return absl::OkStatus();
+}
+
+void AstTraverseManager::RequestHalt() {
+  if (context_ != nullptr) {
+    context_->should_halt = true;
+  }
+}
+
 void AstTraverse(const Expr& expr, AstVisitor& visitor,
                  TraversalOptions options) {
   std::stack<StackRecord> stack;
   stack.push(StackRecord(&expr));
 
   while (!stack.empty()) {
+    if (options.manager_context != nullptr &&
+        options.manager_context->should_halt) {
+      return;
+    }
     StackRecord& record = stack.top();
     if (!record.visited) {
       PreVisit(record, &visitor);
