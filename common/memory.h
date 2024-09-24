@@ -658,7 +658,7 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI [[nodiscard]] Unique final {
           (arena_ & common_internal::kUniqueArenaBits) ==
               common_internal::kUniqueArenaUnownedBit) {
         // We never registered the destructor, call it if necessary.
-        arena()->OwnDestructor(ptr_);
+        arena()->OwnDestructor(const_cast<std::remove_const_t<T>*>(ptr_));
         arena_ &= common_internal::kUniqueArenaPointerMask;
       }
     }
