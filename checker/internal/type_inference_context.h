@@ -23,6 +23,7 @@
 #include "absl/container/node_hash_map.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
@@ -51,6 +52,15 @@ class TypeInferenceContext {
 
   explicit TypeInferenceContext(google::protobuf::Arena* arena) : arena_(arena) {}
 
+  // Resolves any remaining type parameters in the given type to a concrete
+  // type or dyn.
+  Type FinalizeType(const Type& type) const {
+    return FullySubstitute(type, /*free_to_dyn=*/true);
+  }
+
+  // Replace any generic type parameters in the given type with specific type
+  // variables. Internally, type variables are just a unique string parameter
+  // name.
   Type InstantiateTypeParams(const Type& type);
 
   // Overload for function overload types that need coordination across
@@ -65,10 +75,27 @@ class TypeInferenceContext {
       const FunctionDecl& decl, absl::Span<const Type> argument_types,
       bool is_receiver);
 
-  // Checks if `instance` is assignable to `parameter`.
-  bool IsAssignable(const Type& parameter, const Type& instance);
+  // Checks if `from` is assignable to `to`.
+  bool IsAssignable(const Type& from, const Type& to);
+
+  std::string DebugString() const {
+    return absl::StrCat(
+        "type_parameter_bindings: ",
+        absl::StrJoin(type_parameter_bindings_, "\n ",
+                      [](std::string* out, const auto& binding) {
+                        absl::StrAppend(
+                            out, binding.first, " -> ",
+                            binding.second.value_or(Type(TypeParamType("none")))
+                                .DebugString());
+                      }));
+  }
 
  private:
+  // Alias for a map from type var name to the type it is bound to.
+  //
+  // Used for prospective substitutions during type inference.
+  using SubstitutionMap = absl::flat_hash_map<absl::string_view, Type>;
+
   absl::string_view NewTypeVar() {
     next_type_parameter_id_++;
     auto inserted = type_parameter_bindings_.insert(
@@ -79,15 +106,45 @@ class TypeInferenceContext {
 
   // Returns true if the two types are equivalent with the current type
   // substitutions.
-  bool TypeEquivalent(Type a, Type b);
+  bool TypeEquivalent(const Type& a, const Type& b);
+
+  // Returns true if `from` is assignable to `to` with the current type
+  // substitutions and any additional prospective substitutions.
+  //
+  // `prospective_substitutions` is a map from type var name to the type it
+  // should be bound to in the current context, augmenting any existing
+  // substitutions.
+  //
+  // If the types are not assignable, returns false and leaves
+  // `prospective_substitutions` unmodified.
+  //
+  // If the types are assignable, returns true and updates
+  // `prospective_substitutions` with any new type parameter bindings.
+  bool IsAssignableInternal(const Type& from, const Type& to,
+                            SubstitutionMap& prospective_substitutions);
+
+  bool IsAssignableWithConstraints(const Type& from, const Type& to,
+                                   SubstitutionMap& prospective_substitutions);
+
+  Type Substitute(const Type& type, const SubstitutionMap& substitutions) const;
+
+  Type FullySubstitute(const Type& type, bool free_to_dyn) const;
+
+  void UpdateTypeParameterBindings(
+      const SubstitutionMap& prospective_substitutions);
 
   // Map from type var parameter name to the type it is bound to.
-  // Type var parameters are formatted as "T%<id>".
+  //
+  // Type var parameters are formatted as "T%<id>" to avoid collisions with
+  // provided type parameter names.
+  //
   // node_hash_map is used to preserve pointer stability for use with
   // TypeParamType.
+  //
   // Type parameter instances should be resolved to a concrete type during type
   // checking to remove the lifecycle dependency on the inference context
   // instance.
+  //
   // nullopt signifies a free type variable.
   absl::node_hash_map<std::string, absl::optional<Type>>
       type_parameter_bindings_;

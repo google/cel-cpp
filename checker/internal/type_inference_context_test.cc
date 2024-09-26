@@ -14,8 +14,11 @@
 
 #include "checker/internal/type_inference_context.h"
 
+#include <utility>
 #include <vector>
 
+#include "absl/log/absl_check.h"
+#include "absl/types/optional.h"
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/type_kind.h"
@@ -270,6 +273,442 @@ TEST(TypeInferenceContextTest, MultipleOverloadsResultTypeDyn) {
   ASSERT_TRUE(resolution.has_value());
   EXPECT_THAT(resolution->result_type, IsTypeKind(TypeKind::kDyn));
   EXPECT_THAT(resolution->overloads, SizeIs(2));
+}
+
+MATCHER_P(IsOverloadDecl, name, "") {
+  const OverloadDecl& got = arg;
+  return got.id() == name;
+}
+
+TEST(TypeInferenceContextTest, ResolveOverloadBasic) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  ASSERT_OK_AND_ASSIGN(
+      FunctionDecl decl,
+      MakeFunctionDecl(
+          "_+_", MakeOverloadDecl("add_int", IntType(), IntType(), IntType()),
+          MakeOverloadDecl("add_double", DoubleType(), DoubleType(),
+                           DoubleType())));
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      context.ResolveOverload(decl, {IntType(), IntType()}, false);
+  ASSERT_TRUE(resolution.has_value());
+  EXPECT_THAT(resolution->result_type, IsTypeKind(TypeKind::kInt));
+  EXPECT_THAT(resolution->overloads, ElementsAre(IsOverloadDecl("add_int")));
+}
+
+TEST(TypeInferenceContextTest, ResolveOverloadFails) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  ASSERT_OK_AND_ASSIGN(
+      FunctionDecl decl,
+      MakeFunctionDecl(
+          "_+_", MakeOverloadDecl("add_int", IntType(), IntType(), IntType()),
+          MakeOverloadDecl("add_double", DoubleType(), DoubleType(),
+                           DoubleType())));
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      context.ResolveOverload(decl, {IntType(), DoubleType()}, false);
+  ASSERT_FALSE(resolution.has_value());
+}
+
+TEST(TypeInferenceContextTest, ResolveOverloadWithParamsNoMatch) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  ASSERT_OK_AND_ASSIGN(
+      FunctionDecl decl,
+      MakeFunctionDecl(
+          "_==_", MakeOverloadDecl("equals", BoolType(), TypeParamType("A"),
+                                   TypeParamType("A"))));
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      context.ResolveOverload(decl, {IntType(), DoubleType()}, false);
+  ASSERT_FALSE(resolution.has_value());
+}
+
+TEST(TypeInferenceContextTest, ResolveOverloadWithMixedParamsMatch) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  Type list_of_a = ListType(&arena, TypeParamType("A"));
+
+  ASSERT_OK_AND_ASSIGN(
+      FunctionDecl decl,
+      MakeFunctionDecl(
+          "_==_", MakeOverloadDecl("equals", BoolType(), TypeParamType("A"),
+                                   TypeParamType("A"))));
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      context.ResolveOverload(decl, {list_of_a, list_of_a}, false);
+  ASSERT_TRUE(resolution.has_value()) << context.DebugString();
+}
+
+TEST(TypeInferenceContextTest, ResolveOverloadWithMixedParamsMatch2) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  Type list_of_a = ListType(&arena, TypeParamType("A"));
+  Type list_of_int = ListType(&arena, IntType());
+
+  ASSERT_OK_AND_ASSIGN(
+      FunctionDecl decl,
+      MakeFunctionDecl(
+          "_==_", MakeOverloadDecl("equals", BoolType(), TypeParamType("A"),
+                                   TypeParamType("A"))));
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      context.ResolveOverload(decl, {list_of_a, list_of_int}, false);
+  ASSERT_TRUE(resolution.has_value()) << context.DebugString();
+  EXPECT_THAT(resolution->overloads, ElementsAre(IsOverloadDecl("equals")));
+}
+
+TEST(TypeInferenceContextTest, ResolveOverloadWithParamsMatches) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  ASSERT_OK_AND_ASSIGN(
+      FunctionDecl decl,
+      MakeFunctionDecl(
+          "_==_", MakeOverloadDecl("equals", BoolType(), TypeParamType("A"),
+                                   TypeParamType("A"))));
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      context.ResolveOverload(decl, {IntType(), IntType()}, false);
+  ASSERT_TRUE(resolution.has_value());
+  EXPECT_TRUE(resolution->result_type.IsBool());
+  EXPECT_THAT(resolution->overloads, ElementsAre(IsOverloadDecl("equals")));
+}
+
+TEST(TypeInferenceContextTest, ResolveOverloadWithNestedParamsMatch) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  Type list_of_a = ListType(&arena, TypeParamType("A"));
+  ASSERT_OK_AND_ASSIGN(
+      FunctionDecl decl,
+      MakeFunctionDecl("_+_", MakeOverloadDecl("add_list", list_of_a, list_of_a,
+                                               list_of_a)));
+
+  Type list_of_a_instance = context.InstantiateTypeParams(list_of_a);
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      context.ResolveOverload(
+          decl, {list_of_a_instance, ListType(&arena, IntType())}, false);
+  ASSERT_TRUE(resolution.has_value());
+  EXPECT_TRUE(resolution->result_type.IsList());
+
+  EXPECT_THAT(
+      context.FinalizeType(resolution->result_type).AsList()->GetElement(),
+      IsTypeKind(TypeKind::kInt))
+      << context.DebugString();
+
+  EXPECT_THAT(resolution->overloads, ElementsAre(IsOverloadDecl("add_list")));
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution2 =
+      context.ResolveOverload(
+          decl, {ListType(&arena, IntType()), list_of_a_instance}, false);
+  ASSERT_TRUE(resolution2.has_value());
+  EXPECT_TRUE(resolution2->result_type.IsList());
+
+  EXPECT_THAT(
+      context.FinalizeType(resolution2->result_type).AsList()->GetElement(),
+      IsTypeKind(TypeKind::kInt))
+      << context.DebugString();
+
+  EXPECT_THAT(resolution2->overloads, ElementsAre(IsOverloadDecl("add_list")));
+}
+
+TEST(TypeInferenceContextTest, ResolveOverloadWithNestedParamsNoMatch) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  Type list_of_a = ListType(&arena, TypeParamType("A"));
+  ASSERT_OK_AND_ASSIGN(
+      FunctionDecl decl,
+      MakeFunctionDecl("_+_", MakeOverloadDecl("add_list", list_of_a, list_of_a,
+                                               list_of_a)));
+
+  Type list_of_a_instance = context.InstantiateTypeParams(list_of_a);
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      context.ResolveOverload(decl, {list_of_a_instance, IntType()}, false);
+  EXPECT_FALSE(resolution.has_value());
+}
+
+TEST(TypeInferenceContextTest, InferencesAccumulate) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  Type list_of_a = ListType(&arena, TypeParamType("A"));
+  ASSERT_OK_AND_ASSIGN(
+      FunctionDecl decl,
+      MakeFunctionDecl("_+_", MakeOverloadDecl("add_list", list_of_a, list_of_a,
+                                               list_of_a)));
+
+  Type list_of_a_instance = context.InstantiateTypeParams(list_of_a);
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution1 =
+      context.ResolveOverload(decl, {list_of_a_instance, list_of_a_instance},
+                              false);
+  ASSERT_TRUE(resolution1.has_value());
+  EXPECT_TRUE(resolution1->result_type.IsList());
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution2 =
+      context.ResolveOverload(
+          decl, {resolution1->result_type, ListType(&arena, IntType())}, false);
+  ASSERT_TRUE(resolution2.has_value());
+  EXPECT_TRUE(resolution2->result_type.IsList());
+
+  EXPECT_THAT(
+      context.FinalizeType(resolution2->result_type).AsList()->GetElement(),
+      IsTypeKind(TypeKind::kInt));
+
+  EXPECT_THAT(resolution2->overloads, ElementsAre(IsOverloadDecl("add_list")));
+}
+
+TEST(TypeInferenceContextTest, DebugString) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  Type list_of_a = ListType(&arena, TypeParamType("A"));
+  Type list_of_int = ListType(&arena, IntType());
+  ASSERT_OK_AND_ASSIGN(
+      FunctionDecl decl,
+      MakeFunctionDecl("_+_", MakeOverloadDecl("add_list", list_of_a, list_of_a,
+                                               list_of_a)));
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      context.ResolveOverload(decl, {list_of_int, list_of_int}, false);
+  ASSERT_TRUE(resolution.has_value());
+  EXPECT_TRUE(resolution->result_type.IsList());
+
+  EXPECT_EQ(context.DebugString(), "type_parameter_bindings: T%1 -> int");
+}
+
+struct TypeInferenceContextWrapperTypesTestCase {
+  Type wrapper_type;
+  Type wrapped_primitive_type;
+};
+
+class TypeInferenceContextWrapperTypesTest
+    : public ::testing::TestWithParam<
+          TypeInferenceContextWrapperTypesTestCase> {
+ public:
+  TypeInferenceContextWrapperTypesTest() : context_(&arena_) {
+    auto decl = MakeFunctionDecl(
+        "_?_:_",
+        MakeOverloadDecl("ternary",
+                         /*result_type=*/TypeParamType("A"), BoolType(),
+                         TypeParamType("A"), TypeParamType("A")));
+
+    ABSL_CHECK_OK(decl.status());
+    ternary_decl_ = *std::move(decl);
+  }
+
+ protected:
+  google::protobuf::Arena arena_;
+  TypeInferenceContext context_{&arena_};
+  FunctionDecl ternary_decl_;
+};
+
+TEST_P(TypeInferenceContextWrapperTypesTest, ResolvePrimitiveArg) {
+  const TypeInferenceContextWrapperTypesTestCase& test_case = GetParam();
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      context_.ResolveOverload(ternary_decl_,
+                               {BoolType(), test_case.wrapper_type,
+                                test_case.wrapped_primitive_type},
+                               false);
+  ASSERT_TRUE(resolution.has_value());
+
+  EXPECT_THAT(context_.FinalizeType(resolution->result_type),
+              IsTypeKind(test_case.wrapper_type.kind()))
+      << context_.DebugString();
+
+  EXPECT_THAT(resolution->overloads, ElementsAre(IsOverloadDecl("ternary")));
+}
+
+TEST_P(TypeInferenceContextWrapperTypesTest, ResolveWrapperArg) {
+  const TypeInferenceContextWrapperTypesTestCase& test_case = GetParam();
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      context_.ResolveOverload(
+          ternary_decl_,
+          {BoolType(), test_case.wrapper_type, test_case.wrapper_type}, false);
+  ASSERT_TRUE(resolution.has_value());
+
+  EXPECT_THAT(context_.FinalizeType(resolution->result_type),
+              IsTypeKind(test_case.wrapper_type.kind()))
+      << context_.DebugString();
+
+  EXPECT_THAT(resolution->overloads, ElementsAre(IsOverloadDecl("ternary")));
+}
+
+TEST_P(TypeInferenceContextWrapperTypesTest, ResolveNullArg) {
+  const TypeInferenceContextWrapperTypesTestCase& test_case = GetParam();
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      context_.ResolveOverload(ternary_decl_,
+                               {BoolType(), test_case.wrapper_type, NullType()},
+                               false);
+  ASSERT_TRUE(resolution.has_value());
+
+  EXPECT_THAT(context_.FinalizeType(resolution->result_type),
+              IsTypeKind(test_case.wrapper_type.kind()))
+      << context_.DebugString();
+
+  EXPECT_THAT(resolution->overloads, ElementsAre(IsOverloadDecl("ternary")));
+}
+
+TEST_P(TypeInferenceContextWrapperTypesTest, NullWidens) {
+  const TypeInferenceContextWrapperTypesTestCase& test_case = GetParam();
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      context_.ResolveOverload(ternary_decl_,
+                               {BoolType(), NullType(), test_case.wrapper_type},
+                               false);
+  ASSERT_TRUE(resolution.has_value());
+
+  EXPECT_THAT(context_.FinalizeType(resolution->result_type),
+              IsTypeKind(test_case.wrapper_type.kind()))
+      << context_.DebugString();
+
+  EXPECT_THAT(resolution->overloads, ElementsAre(IsOverloadDecl("ternary")));
+}
+
+TEST_P(TypeInferenceContextWrapperTypesTest, PrimitiveWidens) {
+  const TypeInferenceContextWrapperTypesTestCase& test_case = GetParam();
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      context_.ResolveOverload(ternary_decl_,
+                               {BoolType(), test_case.wrapped_primitive_type,
+                                test_case.wrapper_type},
+                               false);
+  ASSERT_TRUE(resolution.has_value());
+
+  EXPECT_THAT(context_.FinalizeType(resolution->result_type),
+              IsTypeKind(test_case.wrapper_type.kind()))
+      << context_.DebugString();
+
+  EXPECT_THAT(resolution->overloads, ElementsAre(IsOverloadDecl("ternary")));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Types, TypeInferenceContextWrapperTypesTest,
+    ::testing::Values(
+        TypeInferenceContextWrapperTypesTestCase{IntWrapperType(), IntType()},
+        TypeInferenceContextWrapperTypesTestCase{UintWrapperType(), UintType()},
+        TypeInferenceContextWrapperTypesTestCase{DoubleWrapperType(),
+                                                 DoubleType()},
+        TypeInferenceContextWrapperTypesTestCase{StringWrapperType(),
+                                                 StringType()},
+        TypeInferenceContextWrapperTypesTestCase{BytesWrapperType(),
+                                                 BytesType()},
+        TypeInferenceContextWrapperTypesTestCase{BoolWrapperType(), BoolType()},
+        TypeInferenceContextWrapperTypesTestCase{DynType(), IntType()}));
+
+TEST(TypeInferenceContextTest, ResolveOverloadWithUnionTypePromotion) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  ASSERT_OK_AND_ASSIGN(
+      FunctionDecl decl,
+      MakeFunctionDecl(
+          "_?_:_",
+          MakeOverloadDecl("ternary",
+                           /*result_type=*/TypeParamType("A"), BoolType(),
+                           TypeParamType("A"), TypeParamType("A"))));
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      context.ResolveOverload(decl, {BoolType(), NullType(), IntWrapperType()},
+                              false);
+  ASSERT_TRUE(resolution.has_value());
+
+  EXPECT_THAT(context.FinalizeType(resolution->result_type),
+              IsTypeKind(TypeKind::kIntWrapper))
+      << context.DebugString();
+
+  EXPECT_THAT(resolution->overloads, ElementsAre(IsOverloadDecl("ternary")));
+}
+
+// TypeType has special handling (differently-parameterized type-types are
+// always assignable for the sake of comparisons).
+TEST(TypeInferenceContextTest, ResolveOverloadWithTypeType) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  ASSERT_OK_AND_ASSIGN(
+      FunctionDecl decl,
+      MakeFunctionDecl("type",
+                       MakeOverloadDecl("to_type",
+                                        /*result_type=*/
+                                        TypeType(&arena, TypeParamType("A")),
+                                        TypeParamType("A"))));
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      context.ResolveOverload(decl, {StringType()}, false);
+  ASSERT_TRUE(resolution.has_value());
+
+  auto result_type = context.FinalizeType(resolution->result_type);
+  ASSERT_THAT(result_type, IsTypeKind(TypeKind::kType));
+
+  EXPECT_THAT(result_type.AsType()->GetParameters(),
+              ElementsAre(IsTypeKind(TypeKind::kString)));
+
+  EXPECT_THAT(resolution->overloads, ElementsAre(IsOverloadDecl("to_type")));
+}
+
+TEST(TypeInferenceContextTest, ResolveOverloadWithInferredTypeType) {
+  google::protobuf::Arena arena;
+  TypeInferenceContext context(&arena);
+
+  ASSERT_OK_AND_ASSIGN(
+      FunctionDecl to_type_decl,
+      MakeFunctionDecl("type",
+                       MakeOverloadDecl("to_type",
+                                        /*result_type=*/
+                                        TypeType(&arena, TypeParamType("A")),
+                                        TypeParamType("A"))));
+
+  ASSERT_OK_AND_ASSIGN(
+      FunctionDecl equals_decl,
+      MakeFunctionDecl("_==_", MakeOverloadDecl("equals",
+                                                /*result_type=*/
+                                                BoolType(), TypeParamType("A"),
+                                                TypeParamType("A"))));
+
+  absl::optional<TypeInferenceContext::OverloadResolution> resolution =
+      context.ResolveOverload(to_type_decl, {StringType()}, false);
+  ASSERT_TRUE(resolution.has_value());
+
+  auto lhs_result_type = resolution->result_type;
+  ASSERT_THAT(lhs_result_type, IsTypeKind(TypeKind::kType));
+
+  resolution = context.ResolveOverload(to_type_decl, {IntType()}, false);
+  ASSERT_TRUE(resolution.has_value());
+
+  auto rhs_result_type = resolution->result_type;
+  ASSERT_THAT(rhs_result_type, IsTypeKind(TypeKind::kType));
+
+  resolution = context.ResolveOverload(
+      equals_decl, {rhs_result_type, lhs_result_type}, false);
+  ASSERT_TRUE(resolution.has_value());
+  auto result_type = context.FinalizeType(resolution->result_type);
+  ASSERT_THAT(result_type, IsTypeKind(TypeKind::kBool));
+
+  auto inferred_lhs = context.FinalizeType(lhs_result_type);
+  auto inferred_rhs = context.FinalizeType(rhs_result_type);
+
+  ASSERT_THAT(inferred_rhs, IsTypeKind(TypeKind::kType));
+  ASSERT_THAT(inferred_lhs, IsTypeKind(TypeKind::kType));
+
+  ASSERT_THAT(inferred_lhs.AsType()->GetParameters(),
+              ElementsAre(IsTypeKind(TypeKind::kString)));
+  ASSERT_THAT(inferred_rhs.AsType()->GetParameters(),
+              ElementsAre(IsTypeKind(TypeKind::kInt)));
 }
 
 }  // namespace

@@ -14,12 +14,15 @@
 
 #include "checker/internal/type_inference_context.h"
 
+#include <cstddef>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
+#include "absl/strings/match.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
@@ -32,9 +35,53 @@ namespace {
 
 bool IsWildCardType(Type type) {
   switch (type.kind()) {
+    case TypeKind::kAny:
     case TypeKind::kDyn:
     case TypeKind::kError:
       return true;
+    default:
+      return false;
+  }
+}
+
+bool IsTypeVar(absl::string_view name) { return absl::StartsWith(name, "T%"); }
+
+bool IsUnionType(Type t) {
+  switch (t.kind()) {
+    case TypeKind::kAny:
+    case TypeKind::kBoolWrapper:
+    case TypeKind::kBytesWrapper:
+    case TypeKind::kDyn:
+    case TypeKind::kDoubleWrapper:
+    case TypeKind::kIntWrapper:
+    case TypeKind::kStringWrapper:
+    case TypeKind::kUintWrapper:
+      return true;
+    default:
+      return false;
+  }
+}
+
+// Returns true if `a` is a subset of `b`.
+// (b is more general than a and admits a).
+bool IsSubsetOf(Type a, Type b) {
+  switch (b.kind()) {
+    case TypeKind::kAny:
+      return true;
+    case TypeKind::kBoolWrapper:
+      return a.IsBool() || a.IsNull();
+    case TypeKind::kBytesWrapper:
+      return a.IsBytes() || a.IsNull();
+    case TypeKind::kDoubleWrapper:
+      return a.IsDouble() || a.IsNull();
+    case TypeKind::kDyn:
+      return true;
+    case TypeKind::kIntWrapper:
+      return a.IsInt() || a.IsNull();
+    case TypeKind::kStringWrapper:
+      return a.IsString() || a.IsNull();
+    case TypeKind::kUintWrapper:
+      return a.IsUint() || a.IsNull();
     default:
       return false;
   }
@@ -61,6 +108,42 @@ FunctionOverloadInstance InstantiateFunctionOverload(
   return result;
 }
 
+bool OccursWithin(absl::string_view var_name, Type t) {
+  // This is difficult to trigger without lambdas in CEL, but we still check
+  // to guarantee that we don't introduce a recursive type definition (a cycle
+  // in the substitution map).
+  if (t.kind() == TypeKind::kTypeParam && t.AsTypeParam()->name() == var_name) {
+    return true;
+  }
+  for (const auto& param : t.GetParameters()) {
+    if (OccursWithin(var_name, param)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Converts a wrapper type to its corresponding primitive type.
+// Returns nullopt if the type is not a wrapper type.
+absl::optional<Type> WrapperToPrimitive(const Type& t) {
+  switch (t.kind()) {
+    case TypeKind::kBoolWrapper:
+      return BoolType();
+    case TypeKind::kBytesWrapper:
+      return BytesType();
+    case TypeKind::kDoubleWrapper:
+      return DoubleType();
+    case TypeKind::kStringWrapper:
+      return StringType();
+    case TypeKind::kIntWrapper:
+      return IntType();
+    case TypeKind::kUintWrapper:
+      return UintType();
+    default:
+      return absl::nullopt;
+  }
+}
+
 }  // namespace
 
 Type TypeInferenceContext::InstantiateTypeParams(const Type& type) {
@@ -73,29 +156,32 @@ Type TypeInferenceContext::InstantiateTypeParams(
     absl::flat_hash_map<std::string, absl::string_view>& substitutions) {
   switch (type.kind()) {
     // Unparameterized types -- just forward.
+    case TypeKind::kAny:
     case TypeKind::kBool:
-    case TypeKind::kDouble:
-    case TypeKind::kString:
-    case TypeKind::kBytes:
-    case TypeKind::kInt:
-    case TypeKind::kUint:
-    case TypeKind::kTimestamp:
-    case TypeKind::kDuration:
-    case TypeKind::kStruct:
-    case TypeKind::kNull:
-    case TypeKind::kError:
     case TypeKind::kBoolWrapper:
+    case TypeKind::kBytes:
+    case TypeKind::kBytesWrapper:
+    case TypeKind::kDouble:
     case TypeKind::kDoubleWrapper:
+    case TypeKind::kDuration:
+    case TypeKind::kDyn:
+    case TypeKind::kError:
+    case TypeKind::kInt:
+    case TypeKind::kNull:
+    case TypeKind::kString:
+    case TypeKind::kStringWrapper:
+    case TypeKind::kStruct:
+    case TypeKind::kTimestamp:
+    case TypeKind::kUint:
     case TypeKind::kIntWrapper:
     case TypeKind::kUintWrapper:
-    case TypeKind::kBytesWrapper:
-    case TypeKind::kStringWrapper:
-    case TypeKind::kDyn:
       return type;
-    case TypeKind::kAny:
-      return DynType();
     case TypeKind::kTypeParam: {
       absl::string_view name = type.AsTypeParam()->name();
+      if (IsTypeVar(name)) {
+        // Already instantiated (e.g. list comprehension variable).
+        return type;
+      }
       if (auto it = substitutions.find(name); it != substitutions.end()) {
         return TypeParamType(it->second);
       }
@@ -142,14 +228,149 @@ Type TypeInferenceContext::InstantiateTypeParams(
   }
 }
 
-bool TypeInferenceContext::IsAssignable(const Type& parameter,
-                                        const Type& instance) {
+bool TypeInferenceContext::IsAssignable(const Type& from, const Type& to) {
   // Simple assignablility check assuming parameters are correctly bound.
   // TODO: handle resolving type parameter substitution.
-  if (IsWildCardType(parameter) || IsWildCardType(instance)) {
+  if (IsWildCardType(from) || IsWildCardType(to)) {
     return true;
   }
-  return common_internal::TypeIsAssignable(parameter, instance);
+  return common_internal::TypeIsAssignable(from, to);
+}
+
+bool TypeInferenceContext::IsAssignableInternal(
+    const Type& from, const Type& to,
+    SubstitutionMap& prospective_substitutions) {
+  Type to_subs = Substitute(to, prospective_substitutions);
+  Type from_subs = Substitute(from, prospective_substitutions);
+
+  // Types always assignable to themselves.
+  // Remainder is checking for assignability across different types.
+  if (to_subs == from_subs) {
+    return true;
+  }
+
+  // Resolve free type parameters.
+  if (to_subs.kind() == TypeKind::kTypeParam ||
+      from_subs.kind() == TypeKind::kTypeParam) {
+    return IsAssignableWithConstraints(from_subs, to_subs,
+                                       prospective_substitutions);
+  }
+
+  // Type is as concrete as it can be under current substitutions.
+  if (absl::optional<Type> wrapped_type = WrapperToPrimitive(to_subs);
+      wrapped_type.has_value()) {
+    return IsAssignableInternal(NullType(), from_subs,
+                                prospective_substitutions) ||
+           IsAssignableInternal(*wrapped_type, from_subs,
+                                prospective_substitutions);
+  }
+
+  // Maybe widen a prospective type binding if it is a member of a union type.
+  // This enables things like `true ?  1 : single_int64_wrapper` to promote
+  // the left hand side of the ternary to an int wrapper.
+  // This is a bit restricted to encourage more specific type -> type var
+  // assignments.
+  if (
+      // Checking assignability to a specific type var
+      // that has a prospective type assignment.
+      to.kind() == TypeKind::kTypeParam &&
+      prospective_substitutions.contains(to.AsTypeParam()->name()) &&
+      // from is a more general type that to and accepts the current
+      // prospective binding for to.
+      IsUnionType(from_subs) && IsSubsetOf(to_subs, from_subs)) {
+    prospective_substitutions[to.AsTypeParam()->name()] = from_subs;
+    return true;
+  }
+
+  if (from_subs.kind() == TypeKind::kType &&
+      to_subs.kind() == TypeKind::kType) {
+    // Types are always assignable to themselves (even if differently
+    // parameterized).
+    return true;
+  }
+
+  if (IsWildCardType(from_subs) || IsWildCardType(to_subs)) {
+    return true;
+  }
+
+  if (to_subs.kind() != from_subs.kind() ||
+      to_subs.name() != from_subs.name()) {
+    return false;
+  }
+
+  // Recurse for the type parameters.
+  auto to_params = to_subs.GetParameters();
+  auto from_params = from_subs.GetParameters();
+  const auto params_size = to_params.size();
+
+  if (params_size != from_params.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < params_size; ++i) {
+    if (!IsAssignableInternal(from_params[i], to_params[i],
+                              prospective_substitutions)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+Type TypeInferenceContext::Substitute(
+    const Type& type, const SubstitutionMap& substitutions) const {
+  Type subs = type;
+  while (subs.kind() == TypeKind::kTypeParam) {
+    TypeParamType t = subs.GetTypeParam();
+    if (auto it = substitutions.find(t.name()); it != substitutions.end()) {
+      subs = it->second;
+      continue;
+    }
+    if (auto it = type_parameter_bindings_.find(t.name());
+        it != type_parameter_bindings_.end()) {
+      if (it->second.has_value()) {
+        subs = *it->second;
+        continue;
+      }
+    }
+    break;
+  }
+  return subs;
+}
+
+bool TypeInferenceContext::IsAssignableWithConstraints(
+    const Type& from, const Type& to,
+    SubstitutionMap& prospective_substitutions) {
+  if (to.kind() == TypeKind::kTypeParam &&
+      from.kind() == TypeKind::kTypeParam) {
+    if (to.AsTypeParam()->name() != from.AsTypeParam()->name()) {
+      // Simple case, bind from to 'to' if both are free.
+      prospective_substitutions[from.AsTypeParam()->name()] = to;
+    }
+    return true;
+  }
+
+  if (to.kind() == TypeKind::kTypeParam) {
+    absl::string_view name = to.AsTypeParam()->name();
+    if (!OccursWithin(name, from)) {
+      prospective_substitutions[to.AsTypeParam()->name()] = from;
+      return true;
+    }
+  }
+
+  if (from.kind() == TypeKind::kTypeParam) {
+    absl::string_view name = from.AsTypeParam()->name();
+    if (!OccursWithin(name, to)) {
+      prospective_substitutions[from.AsTypeParam()->name()] = to;
+      return true;
+    }
+  }
+
+  // If either types are wild cards but we weren't able to specialize,
+  // assume assignable and continue.
+  if (IsWildCardType(from) || IsWildCardType(to)) {
+    return true;
+  }
+
+  return false;
 }
 
 absl::optional<TypeInferenceContext::OverloadResolution>
@@ -169,8 +390,11 @@ TypeInferenceContext::ResolveOverload(const FunctionDecl& decl,
     ABSL_DCHECK_EQ(argument_types.size(),
                    call_type_instance.param_types.size());
     bool is_match = true;
+    SubstitutionMap prospective_substitutions;
     for (int i = 0; i < argument_types.size(); ++i) {
-      if (!IsAssignable(call_type_instance.param_types[i], argument_types[i])) {
+      if (!IsAssignableInternal(argument_types[i],
+                                call_type_instance.param_types[i],
+                                prospective_substitutions)) {
         is_match = false;
         break;
       }
@@ -178,6 +402,7 @@ TypeInferenceContext::ResolveOverload(const FunctionDecl& decl,
 
     if (is_match) {
       matching_overloads.push_back(ovl);
+      UpdateTypeParameterBindings(prospective_substitutions);
       if (!result_type.has_value()) {
         result_type = call_type_instance.result_type;
       } else {
@@ -192,11 +417,70 @@ TypeInferenceContext::ResolveOverload(const FunctionDecl& decl,
     return absl::nullopt;
   }
   return OverloadResolution{
-      .result_type = *result_type,
+      .result_type = FullySubstitute(*result_type, /*free_to_dyn=*/false),
       .overloads = std::move(matching_overloads),
   };
 }
 
-bool TypeInferenceContext::TypeEquivalent(Type a, Type b) { return a == b; }
+void TypeInferenceContext::UpdateTypeParameterBindings(
+    const SubstitutionMap& prospective_substitutions) {
+  if (prospective_substitutions.empty()) {
+    return;
+  }
+  for (auto iter = prospective_substitutions.begin();
+       iter != prospective_substitutions.end(); ++iter) {
+    if (auto binding_iter = type_parameter_bindings_.find(iter->first);
+        binding_iter != type_parameter_bindings_.end()) {
+      binding_iter->second = iter->second;
+    } else {
+      ABSL_LOG(WARNING) << "Uninstantiated type parameter: " << iter->first;
+    }
+  }
+}
+
+bool TypeInferenceContext::TypeEquivalent(const Type& a, const Type& b) {
+  return a == b;
+}
+
+Type TypeInferenceContext::FullySubstitute(const Type& type,
+                                           bool free_to_dyn) const {
+  switch (type.kind()) {
+    case TypeKind::kTypeParam: {
+      Type subs = Substitute(type, {});
+      if (subs.kind() == TypeKind::kTypeParam) {
+        if (free_to_dyn) {
+          return DynType();
+        }
+        return subs;
+      }
+      return FullySubstitute(subs, free_to_dyn);
+    }
+    case TypeKind::kType: {
+      if (type.AsType()->GetParameters().empty()) {
+        return type;
+      }
+      Type param = FullySubstitute(type.AsType()->GetType(), free_to_dyn);
+      return TypeType(arena_, param);
+    }
+    case TypeKind::kList: {
+      Type elem = FullySubstitute(type.AsList()->GetElement(), free_to_dyn);
+      return ListType(arena_, elem);
+    }
+    case TypeKind::kMap: {
+      Type key = FullySubstitute(type.AsMap()->GetKey(), free_to_dyn);
+      Type value = FullySubstitute(type.AsMap()->GetValue(), free_to_dyn);
+      return MapType(arena_, key, value);
+    }
+    case TypeKind::kOpaque: {
+      std::vector<Type> types;
+      for (const auto& param : type.AsOpaque()->GetParameters()) {
+        types.push_back(FullySubstitute(param, free_to_dyn));
+      }
+      return OpaqueType(arena_, type.AsOpaque()->name(), types);
+    }
+    default:
+      return type;
+  }
+}
 
 }  // namespace cel::checker_internal

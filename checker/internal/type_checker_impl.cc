@@ -618,6 +618,7 @@ void ResolveVisitor::PreVisitComprehension(
 void ResolveVisitor::PostVisitComprehension(
     const Expr& expr, const ComprehensionExpr& comprehension) {
   comprehension_scopes_.pop_back();
+  types_[&expr] = GetTypeOrDyn(&comprehension.result());
 }
 
 void ResolveVisitor::PreVisitComprehensionSubexpression(
@@ -832,9 +833,13 @@ void ResolveVisitor::PostVisitSelect(const Expr& expr,
 class ResolveRewriter : public AstRewriterBase {
  public:
   explicit ResolveRewriter(const ResolveVisitor& visitor,
+                           const TypeInferenceContext& inference_context,
                            AstImpl::ReferenceMap& references,
                            AstImpl::TypeMap& types)
-      : visitor_(visitor), reference_map_(references), type_map_(types) {}
+      : visitor_(visitor),
+        inference_context_(inference_context),
+        reference_map_(references),
+        type_map_(types) {}
   bool PostVisitRewrite(Expr& expr) override {
     bool rewritten = false;
     if (auto iter = visitor_.attributes().find(&expr);
@@ -863,7 +868,8 @@ class ResolveRewriter : public AstRewriterBase {
 
     if (auto iter = visitor_.types().find(&expr);
         iter != visitor_.types().end()) {
-      auto flattened_type = FlattenType(iter->second);
+      auto flattened_type =
+          FlattenType(inference_context_.FinalizeType(iter->second));
 
       if (!flattened_type.ok()) {
         status_.Update(flattened_type.status());
@@ -881,6 +887,7 @@ class ResolveRewriter : public AstRewriterBase {
  private:
   absl::Status status_;
   const ResolveVisitor& visitor_;
+  const TypeInferenceContext& inference_context_;
   AstImpl::ReferenceMap& reference_map_;
   AstImpl::TypeMap& type_map_;
 };
@@ -915,8 +922,8 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
   // Apply updates as needed.
   // Happens in a second pass to simplify validating that pointers haven't
   // been invalidated by other updates.
-  ResolveRewriter rewriter(visitor, ast_impl.reference_map(),
-                           ast_impl.type_map());
+  ResolveRewriter rewriter(visitor, type_inference_context,
+                           ast_impl.reference_map(), ast_impl.type_map());
   AstRewrite(ast_impl.root_expr(), rewriter);
 
   CEL_RETURN_IF_ERROR(rewriter.status());

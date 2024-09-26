@@ -23,6 +23,7 @@
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/match.h"
@@ -92,6 +93,14 @@ absl::Nonnull<google::protobuf::Arena*> TestTypeArena() {
   return &(*kArena);
 }
 
+FunctionDecl MakeIdentFunction() {
+  auto decl = MakeFunctionDecl(
+      "identity",
+      MakeOverloadDecl("identity", TypeParamType("A"), TypeParamType("A")));
+  ABSL_CHECK_OK(decl.status());
+  return decl.value();
+}
+
 MATCHER_P2(IsIssueWithSubstring, severity, substring, "") {
   const TypeCheckIssue& issue = arg;
   if (issue.severity() == severity &&
@@ -143,7 +152,10 @@ class TypeCheckerImplTest : public ::testing::Test {
   TypeCheckerImplTest() = default;
 
   absl::Status RegisterMinimalBuiltins(TypeCheckEnv& env) {
+    Type list_of_a = ListType(&arena_, TypeParamType("A"));
+
     FunctionDecl add_op;
+
     add_op.set_name("_+_");
     CEL_RETURN_IF_ERROR(add_op.AddOverload(
         MakeOverloadDecl("add_int_int", IntType(), IntType(), IntType())));
@@ -151,6 +163,9 @@ class TypeCheckerImplTest : public ::testing::Test {
         MakeOverloadDecl("add_uint_uint", UintType(), UintType(), UintType())));
     CEL_RETURN_IF_ERROR(add_op.AddOverload(MakeOverloadDecl(
         "add_double_double", DoubleType(), DoubleType(), DoubleType())));
+
+    CEL_RETURN_IF_ERROR(add_op.AddOverload(
+        MakeOverloadDecl("add_list", list_of_a, list_of_a, list_of_a)));
 
     FunctionDecl not_op;
     not_op.set_name("!_");
@@ -193,9 +208,9 @@ class TypeCheckerImplTest : public ::testing::Test {
 
     FunctionDecl eq_op;
     eq_op.set_name("_==_");
-    CEL_RETURN_IF_ERROR(eq_op.AddOverload(
-        MakeOverloadDecl("equals",
-                         /*return_type=*/BoolType{}, IntType(), IntType())));
+    CEL_RETURN_IF_ERROR(eq_op.AddOverload(MakeOverloadDecl(
+        "equals",
+        /*return_type=*/BoolType{}, TypeParamType("A"), TypeParamType("A"))));
 
     FunctionDecl ternary_op;
     ternary_op.set_name("_?_:_");
@@ -215,7 +230,7 @@ class TypeCheckerImplTest : public ::testing::Test {
     to_dyn.set_name("dyn");
     CEL_RETURN_IF_ERROR(to_dyn.AddOverload(
         MakeOverloadDecl("to_dyn",
-                         /*return_type=*/DynType(), DynType())));
+                         /*return_type=*/DynType(), TypeParamType("A"))));
 
     env.InsertFunctionIfAbsent(std::move(not_op));
     env.InsertFunctionIfAbsent(std::move(not_strictly_false));
@@ -232,6 +247,9 @@ class TypeCheckerImplTest : public ::testing::Test {
 
     return absl::OkStatus();
   }
+
+ private:
+  google::protobuf::Arena arena_;
 };
 
 TEST_F(TypeCheckerImplTest, SmokeTest) {
@@ -887,7 +905,7 @@ TEST_F(TypeCheckerImplTest, OvlResolutionMultipleOverloads) {
   EXPECT_THAT(ast_impl.reference_map()[3],
               IsFunctionReference("_+_", std::vector<std::string>{
                                              "add_double_double", "add_int_int",
-                                             "add_uint_uint"}));
+                                             "add_list", "add_uint_uint"}));
 }
 
 TEST_F(TypeCheckerImplTest, BasicFunctionResultTypeResolution) {
@@ -937,6 +955,48 @@ TEST_F(TypeCheckerImplTest, BasicOvlResolutionNoMatch) {
               Contains(IsIssueWithSubstring(Severity::kError,
                                             "no matching overload for '_+_'"
                                             " applied to (int, string)")));
+}
+
+TEST_F(TypeCheckerImplTest, ParmeterizedOvlResolutionMatch) {
+  TypeCheckEnv env;
+  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+
+  env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
+  env.InsertVariableIfAbsent(MakeVariableDecl("y", StringType()));
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("([x] + []) == [x]"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+}
+
+TEST_F(TypeCheckerImplTest, AliasedTypeVarSameType) {
+  TypeCheckEnv env;
+  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast,
+                       MakeTestParsedAst("[].exists(x, x == 10 || x == '10')"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_FALSE(result.IsValid());
+  EXPECT_THAT(
+      result.GetIssues(),
+      ElementsAre(IsIssueWithSubstring(
+          Severity::kError, "no matching overload for '_==_' applied to")));
+}
+
+TEST_F(TypeCheckerImplTest, TypeVarRange) {
+  TypeCheckEnv env;
+  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  env.InsertFunctionIfAbsent(MakeIdentFunction());
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast,
+                       MakeTestParsedAst("identity([]).exists(x, x == 10 )"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid()) << absl::StrJoin(result.GetIssues(), "\n");
 }
 
 }  // namespace
