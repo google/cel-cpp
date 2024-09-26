@@ -24,9 +24,25 @@ namespace cel {
 bool IsWellKnownMessageType(absl::string_view name) {
   static constexpr absl::string_view kPrefix = "google.protobuf.";
   static constexpr std::array<absl::string_view, 15> kNames = {
-      "Any",         "BoolValue",   "BytesValue", "DoubleValue", "Duration",
-      "FloatValue",  "Int32Value",  "Int64Value", "ListValue",   "UInt32Value",
-      "UInt64Value", "StringValue", "Struct",     "Timestamp",   "Value",
+      // clang-format off
+      // keep-sorted start
+      "Any",
+      "BoolValue",
+      "BytesValue",
+      "DoubleValue",
+      "Duration",
+      "FloatValue",
+      "Int32Value",
+      "Int64Value",
+      "ListValue",
+      "StringValue",
+      "Struct",
+      "Timestamp",
+      "UInt32Value",
+      "UInt64Value",
+      "Value",
+      // keep-sorted end
+      // clang-format on
   };
   if (!absl::ConsumePrefix(&name, kPrefix)) {
     return false;

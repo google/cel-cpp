@@ -32,6 +32,11 @@ namespace cel {
 class Type;
 class TypeParameters;
 
+// Returns true if the given type name is one of the well known message types
+// that CEL treats specially.
+//
+// For familiarity with textproto, these types may be created using the struct
+// creation syntax, even though they are not considered a struct type in CEL.
 bool IsWellKnownMessageType(absl::string_view name);
 
 namespace common_internal {

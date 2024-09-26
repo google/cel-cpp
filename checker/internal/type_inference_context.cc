@@ -229,12 +229,12 @@ Type TypeInferenceContext::InstantiateTypeParams(
 }
 
 bool TypeInferenceContext::IsAssignable(const Type& from, const Type& to) {
-  // Simple assignablility check assuming parameters are correctly bound.
-  // TODO: handle resolving type parameter substitution.
-  if (IsWildCardType(from) || IsWildCardType(to)) {
-    return true;
+  SubstitutionMap prospective_substitutions;
+  bool result = IsAssignableInternal(from, to, prospective_substitutions);
+  if (result) {
+    UpdateTypeParameterBindings(prospective_substitutions);
   }
-  return common_internal::TypeIsAssignable(from, to);
+  return result;
 }
 
 bool TypeInferenceContext::IsAssignableInternal(

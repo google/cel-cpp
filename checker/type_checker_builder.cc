@@ -25,10 +25,16 @@
 #include "checker/internal/type_checker_impl.h"
 #include "checker/type_checker.h"
 #include "common/decl.h"
+#include "common/type_introspector.h"
 
 namespace cel {
 
 absl::StatusOr<std::unique_ptr<TypeChecker>> TypeCheckerBuilder::Build() && {
+  if (env_.type_providers().empty() && env_.parent() == nullptr) {
+    // Add a default type provider if none have been added to cover
+    // WellKnownTypes.
+    env_.AddTypeProvider(std::make_unique<TypeIntrospector>());
+  }
   return std::make_unique<checker_internal::TypeCheckerImpl>(std::move(env_));
 }
 

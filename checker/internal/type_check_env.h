@@ -18,13 +18,19 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/memory/memory.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
+#include "absl/types/span.h"
 #include "common/decl.h"
+#include "common/type.h"
+#include "common/type_introspector.h"
 
 namespace cel::checker_internal {
 
@@ -68,9 +74,10 @@ class VariableScope {
   absl::flat_hash_map<std::string, VariableDecl> variables_;
 };
 
-// Class managing the type check environment.
+// Class managing the state of the type check environment.
 //
-// Maintains lookup maps for variables and functions.
+// Maintains lookup maps for variables and functions and the set of type
+// providers.
 //
 // This class is thread-compatible.
 class TypeCheckEnv {
@@ -93,6 +100,14 @@ class TypeCheckEnv {
 
   void set_container(std::string container) {
     container_ = std::move(container);
+  }
+
+  absl::Span<const std::unique_ptr<TypeIntrospector>> type_providers() const {
+    return type_providers_;
+  }
+
+  void AddTypeProvider(std::unique_ptr<TypeIntrospector> provider) {
+    type_providers_.push_back(std::move(provider));
   }
 
   const absl::flat_hash_map<std::string, VariableDecl>& variables() const {
@@ -132,6 +147,13 @@ class TypeCheckEnv {
   absl::Nullable<const FunctionDecl*> LookupFunction(
       absl::string_view name) const;
 
+  absl::StatusOr<absl::optional<Type>> LookupTypeName(
+      TypeFactory& type_factory, absl::string_view name) const;
+
+  absl::StatusOr<absl::optional<StructTypeField>> LookupStructField(
+      TypeFactory& type_factory, absl::string_view type_name,
+      absl::string_view field_name) const;
+
   TypeCheckEnv MakeExtendedEnvironment() const { return TypeCheckEnv(this); }
   VariableScope MakeVariableScope() const { return VariableScope(*this); }
 
@@ -142,6 +164,9 @@ class TypeCheckEnv {
   // Maps fully qualified names to declarations.
   absl::flat_hash_map<std::string, VariableDecl> variables_;
   absl::flat_hash_map<std::string, FunctionDecl> functions_;
+
+  // Type providers for custom types.
+  std::vector<std::unique_ptr<TypeIntrospector>> type_providers_;
 };
 
 }  // namespace cel::checker_internal

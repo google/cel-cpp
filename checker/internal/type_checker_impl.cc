@@ -48,14 +48,30 @@
 #include "common/constant.h"
 #include "common/decl.h"
 #include "common/expr.h"
+#include "common/memory.h"
 #include "common/source.h"
 #include "common/type.h"
+#include "common/type_factory.h"
 #include "common/type_kind.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 
 namespace cel::checker_internal {
 namespace {
+
+class TrivialTypeFactory : public TypeFactory {
+ public:
+  explicit TrivialTypeFactory(absl::Nonnull<google::protobuf::Arena*> arena)
+      : arena_(arena) {}
+
+  MemoryManagerRef GetMemoryManager() const override {
+    return extensions::ProtoMemoryManagerRef(arena_);
+  }
+
+ private:
+  absl::Nonnull<google::protobuf::Arena*> arena_;
+};
 
 using cel::ast_internal::AstImpl;
 
@@ -211,6 +227,8 @@ absl::StatusOr<AstType> FlattenType(const Type& type) {
       return AstType(ast_internal::DynamicType());
     case TypeKind::kType:
       return FlattenTypeType(type.GetType());
+    case TypeKind::kAny:
+      return AstType(ast_internal::WellKnownType::kAny);
     default:
       return absl::InternalError(
           absl::StrCat("Unsupported type: ", type.DebugString()));
@@ -229,7 +247,7 @@ class ResolveVisitor : public AstVisitorBase {
                  const TypeCheckEnv& env, const AstImpl& ast,
                  TypeInferenceContext& inference_context,
                  std::vector<TypeCheckIssue>& issues,
-                 absl::Nonnull<google::protobuf::Arena*> arena)
+                 absl::Nonnull<google::protobuf::Arena*> arena, TypeFactory& type_factory)
       : container_(container),
         namespace_generator_(std::move(namespace_generator)),
         env_(&env),
@@ -238,6 +256,7 @@ class ResolveVisitor : public AstVisitorBase {
         ast_(&ast),
         root_scope_(env.MakeVariableScope()),
         arena_(arena),
+        type_factory_(&type_factory),
         current_scope_(&root_scope_) {}
 
   void PreVisitExpr(const Expr& expr) override { expr_stack_.push_back(&expr); }
@@ -276,11 +295,7 @@ class ResolveVisitor : public AstVisitorBase {
   void PostVisitCall(const Expr& expr, const CallExpr& call) override;
 
   void PostVisitStruct(const Expr& expr,
-                       const StructExpr& create_struct) override {
-    // TODO: For now, skip resolving create struct type. To allow
-    // checking other behaviors. The C++ runtime should still resolve the type
-    // based on the runtime configuration.
-  }
+                       const StructExpr& create_struct) override;
 
   // Accessors for resolved values.
   const absl::flat_hash_map<const Expr*, FunctionResolution>& functions()
@@ -291,6 +306,10 @@ class ResolveVisitor : public AstVisitorBase {
   const absl::flat_hash_map<const Expr*, const VariableDecl*>& attributes()
       const {
     return attributes_;
+  }
+
+  const absl::flat_hash_map<const Expr*, std::string>& struct_types() const {
+    return struct_types_;
   }
 
   const absl::flat_hash_map<const Expr*, Type>& types() const { return types_; }
@@ -339,6 +358,43 @@ class ResolveVisitor : public AstVisitorBase {
                      container_, "')")));
   }
 
+  absl::Status CheckFieldAssignments(const Expr& expr,
+                                     const StructExpr& create_struct,
+                                     Type struct_type,
+                                     absl::string_view resolved_name) {
+    for (const auto& field : create_struct.fields()) {
+      const Expr* value = &field.value();
+      Type value_type = GetTypeOrDyn(value);
+
+      // Lookup message type by name to support WellKnownType creation.
+      CEL_ASSIGN_OR_RETURN(
+          absl::optional<StructTypeField> field_info,
+          env_->LookupStructField(*type_factory_, resolved_name, field.name()));
+      if (!field_info.has_value()) {
+        issues_->push_back(TypeCheckIssue::CreateError(
+            ComputeSourceLocation(*ast_, field.id()),
+            absl::StrCat("undefined field '", field.name(),
+                         "' not found in struct '", resolved_name, "'")));
+        continue;
+      }
+      Type field_type = field_info->GetType();
+      if (field.optional()) {
+        field_type = OptionalType(arena_, field_type);
+      }
+      if (!inference_context_->IsAssignable(value_type, field_type)) {
+        issues_->push_back(TypeCheckIssue::CreateError(
+            ComputeSourceLocation(*ast_, field.id()),
+            absl::StrCat("expected type of field '", field_info->name(),
+                         "' is '", field_type.DebugString(),
+                         "' but provided type is '", value_type.DebugString(),
+                         "'")));
+        continue;
+      }
+    }
+
+    return absl::OkStatus();
+  }
+
   // TODO: This should switch to a failing check once all core
   // features are supported. For now, we allow dyn for implementing the
   // typechecker behaviors in isolation.
@@ -355,6 +411,7 @@ class ResolveVisitor : public AstVisitorBase {
   absl::Nonnull<const ast_internal::AstImpl*> ast_;
   VariableScope root_scope_;
   absl::Nonnull<google::protobuf::Arena*> arena_;
+  absl::Nonnull<TypeFactory*> type_factory_;
 
   // state tracking for the traversal.
   const VariableScope* current_scope_;
@@ -368,6 +425,7 @@ class ResolveVisitor : public AstVisitorBase {
   // References that were resolved and may require AST rewrites.
   absl::flat_hash_map<const Expr*, FunctionResolution> functions_;
   absl::flat_hash_map<const Expr*, const VariableDecl*> attributes_;
+  absl::flat_hash_map<const Expr*, std::string> struct_types_;
 
   absl::flat_hash_map<const Expr*, Type> types_;
 };
@@ -560,6 +618,51 @@ void ResolveVisitor::PostVisitList(const Expr& expr, const ListExpr& list) {
   }
 
   types_[&expr] = inference_context_->InstantiateTypeParams(FreeListType());
+}
+
+void ResolveVisitor::PostVisitStruct(const Expr& expr,
+                                     const StructExpr& create_struct) {
+  absl::Status status;
+  std::string resolved_name;
+  Type resolved_type;
+  namespace_generator_.GenerateCandidates(
+      create_struct.name(), [&](const absl::string_view name) {
+        auto type = env_->LookupTypeName(*type_factory_, name);
+        if (!type.ok()) {
+          status.Update(type.status());
+          return false;
+        } else if (type->has_value()) {
+          resolved_name = name;
+          resolved_type = **type;
+          return false;
+        }
+        return true;
+      });
+
+  if (!status.ok()) {
+    status_.Update(status);
+    return;
+  }
+
+  if (resolved_name.empty()) {
+    ReportMissingReference(expr, create_struct.name());
+    return;
+  }
+
+  if (resolved_type.kind() != TypeKind::kStruct &&
+      !IsWellKnownMessageType(resolved_name)) {
+    issues_->push_back(TypeCheckIssue::CreateError(
+        ComputeSourceLocation(*ast_, expr.id()),
+        absl::StrCat("type '", resolved_name,
+                     "' does not support message creation")));
+    return;
+  }
+
+  types_[&expr] = resolved_type;
+  struct_types_[&expr] = resolved_name;
+
+  status_.Update(
+      CheckFieldAssignments(expr, create_struct, resolved_type, resolved_name));
 }
 
 void ResolveVisitor::PostVisitCall(const Expr& expr, const CallExpr& call) {
@@ -864,6 +967,14 @@ class ResolveRewriter : public AstRewriterBase {
         expr.mutable_call_expr().set_target(nullptr);
       }
       rewritten = true;
+    } else if (auto iter = visitor_.struct_types().find(&expr);
+               iter != visitor_.struct_types().end()) {
+      auto& ast_ref = reference_map_[expr.id()];
+      ast_ref.set_name(iter->second);
+      if (expr.has_struct_expr()) {
+        expr.mutable_struct_expr().set_name(iter->second);
+      }
+      rewritten = true;
     }
 
     if (auto iter = visitor_.types().find(&expr);
@@ -904,8 +1015,10 @@ absl::StatusOr<ValidationResult> TypeCheckerImpl::Check(
                        NamespaceGenerator::Create(env_.container()));
 
   TypeInferenceContext type_inference_context(&type_arena);
+  TrivialTypeFactory type_factory(&type_arena);
   ResolveVisitor visitor(env_.container(), std::move(generator), env_, ast_impl,
-                         type_inference_context, issues, &type_arena);
+                         type_inference_context, issues, &type_arena,
+                         type_factory);
 
   TraversalOptions opts;
   opts.use_comprehension_callbacks = true;

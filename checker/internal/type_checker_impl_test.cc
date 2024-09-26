@@ -38,6 +38,7 @@
 #include "common/ast.h"
 #include "common/decl.h"
 #include "common/type.h"
+#include "common/type_introspector.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
@@ -55,8 +56,10 @@ using ::google::api::expr::test::v1::proto3::TestAllTypes;
 using ::testing::_;
 using ::testing::Contains;
 using ::testing::ElementsAre;
+using ::testing::Eq;
 using ::testing::IsEmpty;
 using ::testing::Pair;
+using ::testing::Property;
 
 using AstType = cel::ast_internal::Type;
 
@@ -998,6 +1001,224 @@ TEST_F(TypeCheckerImplTest, TypeVarRange) {
 
   EXPECT_TRUE(result.IsValid()) << absl::StrJoin(result.GetIssues(), "\n");
 }
+
+TEST_F(TypeCheckerImplTest, WellKnownTypeCreation) {
+  TypeCheckEnv env;
+  env.AddTypeProvider(std::make_unique<TypeIntrospector>());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(
+      auto ast, MakeTestParsedAst("google.protobuf.Int32Value{value: 10}"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
+
+  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
+  EXPECT_THAT(ast_impl.type_map(),
+              Contains(Pair(ast_impl.root_expr().id(),
+                            Eq(AstType(ast_internal::PrimitiveTypeWrapper(
+                                ast_internal::PrimitiveType::kInt64))))));
+  EXPECT_THAT(ast_impl.reference_map(),
+              Contains(Pair(ast_impl.root_expr().id(),
+                            Property(&ast_internal::Reference::name,
+                                     "google.protobuf.Int32Value"))));
+}
+
+TEST_F(TypeCheckerImplTest, TypeInferredFromStructCreation) {
+  TypeCheckEnv env;
+  env.AddTypeProvider(std::make_unique<TypeIntrospector>());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast,
+                       MakeTestParsedAst("google.protobuf.Struct{fields: {}}"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
+
+  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
+  int64_t map_expr_id =
+      ast_impl.root_expr().struct_expr().fields().at(0).value().id();
+  ASSERT_NE(map_expr_id, 0);
+  EXPECT_THAT(
+      ast_impl.type_map(),
+      Contains(Pair(
+          map_expr_id,
+          Eq(AstType(ast_internal::MapType(
+              std::make_unique<AstType>(ast_internal::PrimitiveType::kString),
+              std::make_unique<AstType>(ast_internal::DynamicType())))))));
+}
+
+TEST_F(TypeCheckerImplTest, ContainerLookupForMessageCreation) {
+  TypeCheckEnv env;
+  env.set_container("google.protobuf");
+  env.AddTypeProvider(std::make_unique<TypeIntrospector>());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("Int32Value{value: 10}"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
+
+  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
+  EXPECT_THAT(ast_impl.type_map(),
+              Contains(Pair(ast_impl.root_expr().id(),
+                            Eq(AstType(ast_internal::PrimitiveTypeWrapper(
+                                ast_internal::PrimitiveType::kInt64))))));
+  EXPECT_THAT(ast_impl.reference_map(),
+              Contains(Pair(ast_impl.root_expr().id(),
+                            Property(&ast_internal::Reference::name,
+                                     "google.protobuf.Int32Value"))));
+}
+
+struct MessageCreationTestCase {
+  std::string expr;
+  ast_internal::Type expected_result_type;
+  std::string error_substring;
+};
+
+class MessageCreationTest
+    : public testing::TestWithParam<MessageCreationTestCase> {};
+
+TEST_P(MessageCreationTest, MessageCreation) {
+  const MessageCreationTestCase& test_case = GetParam();
+  TypeCheckEnv env;
+  env.AddTypeProvider(std::make_unique<TypeIntrospector>());
+  env.set_container("google.protobuf");
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst(test_case.expr));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  if (!test_case.error_substring.empty()) {
+    EXPECT_THAT(result.GetIssues(),
+                Contains(IsIssueWithSubstring(Severity::kError,
+                                              test_case.error_substring)));
+    return;
+  }
+
+  ASSERT_TRUE(result.IsValid())
+      << absl::StrJoin(result.GetIssues(), "\n",
+                       [](std::string* out, const TypeCheckIssue& issue) {
+                         absl::StrAppend(out, issue.message());
+                       });
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
+
+  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
+  EXPECT_THAT(ast_impl.type_map(),
+              Contains(Pair(ast_impl.root_expr().id(),
+                            Eq(test_case.expected_result_type))));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    WellKnownTypes, MessageCreationTest,
+    ::testing::Values(
+        MessageCreationTestCase{
+            .expr = "google.protobuf.Int32Value{value: 10}",
+            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kInt64)),
+        },
+        MessageCreationTestCase{
+            .expr = ".google.protobuf.Int32Value{value: 10}",
+            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kInt64)),
+        },
+        MessageCreationTestCase{
+            .expr = "Int32Value{value: 10}",
+            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kInt64)),
+        },
+        MessageCreationTestCase{
+            .expr = "google.protobuf.Int32Value{value: '10'}",
+            .expected_result_type = AstType(),
+            .error_substring = "expected type of field 'value' is 'int' but "
+                               "provided type is 'string'"},
+        MessageCreationTestCase{
+            .expr = "google.protobuf.Int32Value{not_a_field: '10'}",
+            .expected_result_type = AstType(),
+            .error_substring = "undefined field 'not_a_field' not found in "
+                               "struct 'google.protobuf.Int32Value'"},
+        MessageCreationTestCase{
+            .expr = "NotAType{not_a_field: '10'}",
+            .expected_result_type = AstType(),
+            .error_substring =
+                "undeclared reference to 'NotAType' (in container "
+                "'google.protobuf')"},
+        MessageCreationTestCase{
+            .expr = ".protobuf.Int32Value{value: 10}",
+            .expected_result_type = AstType(),
+            .error_substring =
+                "undeclared reference to '.protobuf.Int32Value' (in container "
+                "'google.protobuf')"},
+        MessageCreationTestCase{
+            .expr = "Int64Value{value: 10}",
+            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kInt64)),
+        },
+        MessageCreationTestCase{
+            .expr = "BoolValue{value: true}",
+            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kBool)),
+        },
+        MessageCreationTestCase{
+            .expr = "UInt64Value{value: 10u}",
+            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kUint64)),
+        },
+        MessageCreationTestCase{
+            .expr = "UInt32Value{value: 10u}",
+            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kUint64)),
+        },
+        MessageCreationTestCase{
+            .expr = "FloatValue{value: 1.25}",
+            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kDouble)),
+        },
+        MessageCreationTestCase{
+            .expr = "DoubleValue{value: 1.25}",
+            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kDouble)),
+        },
+        MessageCreationTestCase{
+            .expr = "StringValue{value: 'test'}",
+            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kString)),
+        },
+        MessageCreationTestCase{
+            .expr = "BytesValue{value: b'test'}",
+            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kBytes)),
+        },
+        MessageCreationTestCase{
+            .expr = "Duration{seconds: 10, nanos: 11}",
+            .expected_result_type =
+                AstType(ast_internal::WellKnownType::kDuration),
+        },
+        MessageCreationTestCase{
+            .expr = "Timestamp{seconds: 10, nanos: 11}",
+            .expected_result_type =
+                AstType(ast_internal::WellKnownType::kTimestamp),
+        },
+        MessageCreationTestCase{
+            .expr = "Struct{fields: {'key': 'value'}}",
+            .expected_result_type = AstType(ast_internal::MapType(
+                std::make_unique<AstType>(ast_internal::PrimitiveType::kString),
+                std::make_unique<AstType>(ast_internal::DynamicType()))),
+        },
+        MessageCreationTestCase{
+            .expr = "ListValue{values: [1, 2, 3]}",
+            .expected_result_type = AstType(ast_internal::ListType(
+                std::make_unique<AstType>(ast_internal::DynamicType()))),
+        },
+        MessageCreationTestCase{
+            .expr = R"cel(
+              Any{
+                type_url:'type.googleapis.com/google.protobuf.Int32Value',
+                value: b''
+              })cel",
+            .expected_result_type = AstType(ast_internal::WellKnownType::kAny),
+        }));
 
 }  // namespace
 }  // namespace checker_internal

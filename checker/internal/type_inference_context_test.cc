@@ -226,15 +226,15 @@ TEST(TypeInferenceContextTest, WrapperTypeAssignable) {
   google::protobuf::Arena arena;
   TypeInferenceContext context(&arena);
 
-  EXPECT_TRUE(context.IsAssignable(StringWrapperType(), StringType()));
-  EXPECT_TRUE(context.IsAssignable(StringWrapperType(), NullType()));
+  EXPECT_TRUE(context.IsAssignable(StringType(), StringWrapperType()));
+  EXPECT_TRUE(context.IsAssignable(NullType(), StringWrapperType()));
 }
 
 TEST(TypeInferenceContextTest, MismatchedTypeNotAssignable) {
   google::protobuf::Arena arena;
   TypeInferenceContext context(&arena);
 
-  EXPECT_FALSE(context.IsAssignable(StringWrapperType(), IntType()));
+  EXPECT_FALSE(context.IsAssignable(IntType(), StringWrapperType()));
 }
 
 TEST(TypeInferenceContextTest, OverloadResolution) {
