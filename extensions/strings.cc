@@ -25,6 +25,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/ascii.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/str_replace.h"
 #include "absl/strings/string_view.h"
 #include "common/casting.h"
 #include "common/type.h"
@@ -87,6 +88,17 @@ absl::StatusOr<Value> Join2(ValueManager& value_manager, const ListValue& value,
 absl::StatusOr<Value> Join1(ValueManager& value_manager,
                             const ListValue& value) {
   return Join2(value_manager, value, StringValue{});
+}
+
+absl::StatusOr<Value> Replace(ValueManager& value_manager,
+                              const StringValue& string,
+                              const StringValue& original,
+                              const StringValue& replacement) {
+  std::string content = string.NativeString();
+  absl::StrReplaceAll({{original.NativeString(), replacement.NativeString()}},
+                      &content);
+  // We assume the original strings were well-formed.
+  return value_manager.CreateUncheckedStringValue(std::move(content));
 }
 
 struct SplitWithEmptyDelimiter {
@@ -230,6 +242,12 @@ absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
           CreateDescriptor("join", /*receiver_style=*/true),
       BinaryFunctionAdapter<absl::StatusOr<Value>, ListValue,
                             StringValue>::WrapFunction(Join2)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      VariadicFunctionAdapter<
+          absl::StatusOr<Value>, StringValue, StringValue,
+          StringValue>::CreateDescriptor("replace", /*receiver_style=*/true),
+      VariadicFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue,
+                              StringValue>::WrapFunction(Replace)));
   CEL_RETURN_IF_ERROR(registry.Register(
       BinaryFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue>::
           CreateDescriptor("split", /*receiver_style=*/true),
