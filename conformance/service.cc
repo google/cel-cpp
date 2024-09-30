@@ -610,8 +610,9 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
                          cel::extensions::CreateAstFromParsedExpr(parsed_expr));
 
     cel::TypeCheckerBuilder builder;
-    // TODO: apply the type env to the checker builder for custom
-    // variables and functions.
+
+    builder.AddTypeProvider(
+        std::make_unique<cel::extensions::ProtoTypeReflector>());
 
     for (const auto& decl : request.type_env()) {
       const auto& name = decl.name();

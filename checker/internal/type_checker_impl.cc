@@ -24,6 +24,7 @@
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -351,11 +352,22 @@ class ResolveVisitor : public AstVisitorBase {
                                 int arg_count, bool is_receiver,
                                 bool is_namespaced);
 
+  void ResolveSelectOperation(const Expr& expr, absl::string_view field,
+                              const Expr& operand);
+
   void ReportMissingReference(const Expr& expr, absl::string_view name) {
     issues_->push_back(TypeCheckIssue::CreateError(
         ComputeSourceLocation(*ast_, expr.id()),
         absl::StrCat("undeclared reference to '", name, "' (in container '",
                      container_, "')")));
+  }
+
+  void ReportUndefinedField(int64_t expr_id, absl::string_view field_name,
+                            absl::string_view struct_name) {
+    issues_->push_back(TypeCheckIssue::CreateError(
+        ComputeSourceLocation(*ast_, expr_id),
+        absl::StrCat("undefined field '", field_name, "' not found in struct '",
+                     struct_name, "'")));
   }
 
   absl::Status CheckFieldAssignments(const Expr& expr,
@@ -371,10 +383,7 @@ class ResolveVisitor : public AstVisitorBase {
           absl::optional<StructTypeField> field_info,
           env_->LookupStructField(*type_factory_, resolved_name, field.name()));
       if (!field_info.has_value()) {
-        issues_->push_back(TypeCheckIssue::CreateError(
-            ComputeSourceLocation(*ast_, field.id()),
-            absl::StrCat("undefined field '", field.name(),
-                         "' not found in struct '", resolved_name, "'")));
+        ReportUndefinedField(field.id(), field.name(), resolved_name);
         continue;
       }
       Type field_type = field_info->GetType();
@@ -418,6 +427,10 @@ class ResolveVisitor : public AstVisitorBase {
   std::vector<const Expr*> expr_stack_;
   absl::flat_hash_map<const Expr*, std::vector<std::string>>
       maybe_namespaced_functions_;
+  // Select operations that need to be resolved outside of the traversal.
+  // These are handled separately to disambiguate between namespaces and field
+  // accesses
+  absl::flat_hash_set<const Expr*> deferred_select_operations_;
   absl::Status status_;
   std::vector<std::unique_ptr<VariableScope>> comprehension_vars_;
   std::vector<ComprehensionScope> comprehension_scopes_;
@@ -461,7 +474,11 @@ void ResolveVisitor::PostVisitIdent(const Expr& expr, const IdentExpr& ident) {
     }
 
     qualifiers.push_back(parent->select_expr().field());
+    deferred_select_operations_.insert(parent);
     root_candidate = parent;
+    if (parent->select_expr().test_only()) {
+      break;
+    }
   }
 
   if (receiver_call == nullptr) {
@@ -809,6 +826,13 @@ void ResolveVisitor::PostVisitComprehensionSubexpression(
   }
 }
 
+void ResolveVisitor::PostVisitSelect(const Expr& expr,
+                                     const SelectExpr& select) {
+  if (!deferred_select_operations_.contains(&expr)) {
+    ResolveSelectOperation(expr, select.field(), select.operand());
+  }
+}
+
 const FunctionDecl* ResolveVisitor::ResolveFunctionCallShape(
     const Expr& expr, absl::string_view function_name, int arg_count,
     bool is_receiver) {
@@ -922,16 +946,82 @@ void ResolveVisitor::ResolveQualifiedIdentifier(
 
   const int num_select_opts = qualifiers.size() - segment_index_out - 1;
   const Expr* root = &expr;
+  std::vector<const Expr*> select_opts;
+  select_opts.reserve(num_select_opts);
   for (int i = 0; i < num_select_opts; ++i) {
+    select_opts.push_back(root);
     root = &root->select_expr().operand();
   }
 
   attributes_[root] = decl;
   types_[root] = inference_context_->InstantiateTypeParams(decl->type());
+
+  // fix-up select operations that were deferred.
+  for (auto iter = select_opts.rbegin(); iter != select_opts.rend(); ++iter) {
+    ResolveSelectOperation(**iter, (*iter)->select_expr().field(),
+                           (*iter)->select_expr().operand());
+  }
 }
 
-void ResolveVisitor::PostVisitSelect(const Expr& expr,
-                                     const SelectExpr& select) {}
+void ResolveVisitor::ResolveSelectOperation(const Expr& expr,
+                                            absl::string_view field,
+                                            const Expr& operand) {
+  auto impl = [&](const Type& operand_type) -> absl::optional<Type> {
+    if (operand_type.kind() == TypeKind::kDyn ||
+        operand_type.kind() == TypeKind::kAny) {
+      return DynType();
+    }
+
+    if (operand_type.kind() == TypeKind::kStruct) {
+      StructType struct_type = operand_type.GetStruct();
+      auto field_info =
+          env_->LookupStructField(*type_factory_, struct_type.name(), field);
+      if (!field_info.ok()) {
+        status_.Update(field_info.status());
+        return absl::nullopt;
+      }
+      if (!field_info->has_value()) {
+        ReportUndefinedField(expr.id(), field, struct_type.name());
+        return absl::nullopt;
+      }
+      return field_info->value().GetType();
+    }
+
+    if (operand_type.kind() == TypeKind::kMap) {
+      MapType map_type = operand_type.GetMap();
+      if (inference_context_->IsAssignable(StringType(), map_type.GetKey())) {
+        return map_type.GetValue();
+      }
+      // else fall though.
+    }
+
+    issues_->push_back(TypeCheckIssue::CreateError(
+        ComputeSourceLocation(*ast_, expr.id()),
+        absl::StrCat("expression of type '", operand_type.DebugString(),
+                     "' cannot be the operand of a select operation")));
+    return absl::nullopt;
+  };
+
+  const Type& operand_type = GetTypeOrDyn(&operand);
+
+  absl::optional<Type> result_type;
+  // Support short-hand optional chaining.
+  if (operand_type.IsOptional()) {
+    auto optional_type = operand_type.GetOptional();
+    Type held_type = optional_type.GetParameter();
+    result_type = impl(held_type);
+  } else {
+    result_type = impl(operand_type);
+  }
+
+  if (result_type.has_value()) {
+    if (expr.select_expr().test_only()) {
+      types_[&expr] = BoolType();
+    } else {
+      types_[&expr] = *result_type;
+    }
+  }
+}
 
 class ResolveRewriter : public AstRewriterBase {
  public:

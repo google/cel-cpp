@@ -67,6 +67,11 @@ absl::Status TypeCheckerBuilder::AddFunction(const FunctionDecl& decl) {
   return absl::OkStatus();
 }
 
+void TypeCheckerBuilder::AddTypeProvider(
+    std::unique_ptr<TypeIntrospector> provider) {
+  env_.AddTypeProvider(std::move(provider));
+}
+
 void TypeCheckerBuilder::set_container(absl::string_view container) {
   env_.set_container(std::string(container));
 }

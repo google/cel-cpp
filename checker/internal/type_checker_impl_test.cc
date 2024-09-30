@@ -39,10 +39,13 @@
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
+#include "extensions/protobuf/type_reflector.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "proto/test/v1/proto2/test_all_types.pb.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 namespace checker_internal {
@@ -61,10 +64,10 @@ using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::Property;
 
-using AstType = cel::ast_internal::Type;
-
 using AstType = ast_internal::Type;
 using Severity = TypeCheckIssue::Severity;
+
+namespace testpb3 = ::google::api::expr::test::v1::proto3;
 
 std::string SevString(Severity severity) {
   switch (severity) {
@@ -150,115 +153,122 @@ MATCHER_P2(IsFunctionReference, fn_name, overloads, "") {
   return reference.name() == fn_name && got_overload_set == want_overload_set;
 }
 
-class TypeCheckerImplTest : public ::testing::Test {
- public:
-  TypeCheckerImplTest() = default;
+absl::Status RegisterMinimalBuiltins(absl::Nonnull<google::protobuf::Arena*> arena,
+                                     TypeCheckEnv& env) {
+  Type list_of_a = ListType(arena, TypeParamType("A"));
 
-  absl::Status RegisterMinimalBuiltins(TypeCheckEnv& env) {
-    Type list_of_a = ListType(&arena_, TypeParamType("A"));
+  FunctionDecl add_op;
 
-    FunctionDecl add_op;
+  add_op.set_name("_+_");
+  CEL_RETURN_IF_ERROR(add_op.AddOverload(
+      MakeOverloadDecl("add_int_int", IntType(), IntType(), IntType())));
+  CEL_RETURN_IF_ERROR(add_op.AddOverload(
+      MakeOverloadDecl("add_uint_uint", UintType(), UintType(), UintType())));
+  CEL_RETURN_IF_ERROR(add_op.AddOverload(MakeOverloadDecl(
+      "add_double_double", DoubleType(), DoubleType(), DoubleType())));
 
-    add_op.set_name("_+_");
-    CEL_RETURN_IF_ERROR(add_op.AddOverload(
-        MakeOverloadDecl("add_int_int", IntType(), IntType(), IntType())));
-    CEL_RETURN_IF_ERROR(add_op.AddOverload(
-        MakeOverloadDecl("add_uint_uint", UintType(), UintType(), UintType())));
-    CEL_RETURN_IF_ERROR(add_op.AddOverload(MakeOverloadDecl(
-        "add_double_double", DoubleType(), DoubleType(), DoubleType())));
+  CEL_RETURN_IF_ERROR(add_op.AddOverload(
+      MakeOverloadDecl("add_list", list_of_a, list_of_a, list_of_a)));
 
-    CEL_RETURN_IF_ERROR(add_op.AddOverload(
-        MakeOverloadDecl("add_list", list_of_a, list_of_a, list_of_a)));
+  FunctionDecl not_op;
+  not_op.set_name("!_");
+  CEL_RETURN_IF_ERROR(not_op.AddOverload(
+      MakeOverloadDecl("logical_not",
+                       /*return_type=*/BoolType{}, BoolType{})));
+  FunctionDecl not_strictly_false;
+  not_strictly_false.set_name("@not_strictly_false");
+  CEL_RETURN_IF_ERROR(not_strictly_false.AddOverload(
+      MakeOverloadDecl("not_strictly_false",
+                       /*return_type=*/BoolType{}, DynType{})));
+  FunctionDecl mult_op;
+  mult_op.set_name("_*_");
+  CEL_RETURN_IF_ERROR(mult_op.AddOverload(
+      MakeOverloadDecl("mult_int_int",
+                       /*return_type=*/IntType(), IntType(), IntType())));
+  FunctionDecl or_op;
+  or_op.set_name("_||_");
+  CEL_RETURN_IF_ERROR(or_op.AddOverload(
+      MakeOverloadDecl("logical_or",
+                       /*return_type=*/BoolType{}, BoolType{}, BoolType{})));
 
-    FunctionDecl not_op;
-    not_op.set_name("!_");
-    CEL_RETURN_IF_ERROR(not_op.AddOverload(
-        MakeOverloadDecl("logical_not",
-                         /*return_type=*/BoolType{}, BoolType{})));
-    FunctionDecl not_strictly_false;
-    not_strictly_false.set_name("@not_strictly_false");
-    CEL_RETURN_IF_ERROR(not_strictly_false.AddOverload(
-        MakeOverloadDecl("not_strictly_false",
-                         /*return_type=*/BoolType{}, DynType{})));
-    FunctionDecl mult_op;
-    mult_op.set_name("_*_");
-    CEL_RETURN_IF_ERROR(mult_op.AddOverload(
-        MakeOverloadDecl("mult_int_int",
-                         /*return_type=*/IntType(), IntType(), IntType())));
-    FunctionDecl or_op;
-    or_op.set_name("_||_");
-    CEL_RETURN_IF_ERROR(or_op.AddOverload(
-        MakeOverloadDecl("logical_or",
-                         /*return_type=*/BoolType{}, BoolType{}, BoolType{})));
+  FunctionDecl and_op;
+  and_op.set_name("_&&_");
+  CEL_RETURN_IF_ERROR(and_op.AddOverload(
+      MakeOverloadDecl("logical_and",
+                       /*return_type=*/BoolType{}, BoolType{}, BoolType{})));
 
-    FunctionDecl and_op;
-    and_op.set_name("_&&_");
-    CEL_RETURN_IF_ERROR(and_op.AddOverload(
-        MakeOverloadDecl("logical_and",
-                         /*return_type=*/BoolType{}, BoolType{}, BoolType{})));
+  FunctionDecl lt_op;
+  lt_op.set_name("_<_");
+  CEL_RETURN_IF_ERROR(lt_op.AddOverload(
+      MakeOverloadDecl("lt_int_int",
+                       /*return_type=*/BoolType{}, IntType(), IntType())));
 
-    FunctionDecl lt_op;
-    lt_op.set_name("_<_");
-    CEL_RETURN_IF_ERROR(lt_op.AddOverload(
-        MakeOverloadDecl("lt_int_int",
-                         /*return_type=*/BoolType{}, IntType(), IntType())));
+  FunctionDecl gt_op;
+  gt_op.set_name("_>_");
+  CEL_RETURN_IF_ERROR(gt_op.AddOverload(
+      MakeOverloadDecl("gt_int_int",
+                       /*return_type=*/BoolType{}, IntType(), IntType())));
 
-    FunctionDecl gt_op;
-    gt_op.set_name("_>_");
-    CEL_RETURN_IF_ERROR(gt_op.AddOverload(
-        MakeOverloadDecl("gt_int_int",
-                         /*return_type=*/BoolType{}, IntType(), IntType())));
+  FunctionDecl eq_op;
+  eq_op.set_name("_==_");
+  CEL_RETURN_IF_ERROR(eq_op.AddOverload(MakeOverloadDecl(
+      "equals",
+      /*return_type=*/BoolType{}, TypeParamType("A"), TypeParamType("A"))));
 
-    FunctionDecl eq_op;
-    eq_op.set_name("_==_");
-    CEL_RETURN_IF_ERROR(eq_op.AddOverload(MakeOverloadDecl(
-        "equals",
-        /*return_type=*/BoolType{}, TypeParamType("A"), TypeParamType("A"))));
+  FunctionDecl ternary_op;
+  ternary_op.set_name("_?_:_");
+  CEL_RETURN_IF_ERROR(eq_op.AddOverload(MakeOverloadDecl(
+      "conditional",
+      /*return_type=*/
+      TypeParamType("A"), BoolType{}, TypeParamType("A"), TypeParamType("A"))));
 
-    FunctionDecl ternary_op;
-    ternary_op.set_name("_?_:_");
-    CEL_RETURN_IF_ERROR(eq_op.AddOverload(
-        MakeOverloadDecl("conditional",
-                         /*return_type=*/
-                         TypeParamType("A"), BoolType{}, TypeParamType("A"),
-                         TypeParamType("A"))));
+  FunctionDecl to_int;
+  to_int.set_name("int");
+  CEL_RETURN_IF_ERROR(to_int.AddOverload(
+      MakeOverloadDecl("to_int",
+                       /*return_type=*/IntType(), DynType())));
 
-    FunctionDecl to_int;
-    to_int.set_name("int");
-    CEL_RETURN_IF_ERROR(to_int.AddOverload(
-        MakeOverloadDecl("to_int",
-                         /*return_type=*/IntType(), DynType())));
+  FunctionDecl to_duration;
+  to_duration.set_name("duration");
+  CEL_RETURN_IF_ERROR(to_duration.AddOverload(
+      MakeOverloadDecl("to_duration",
+                       /*return_type=*/DurationType(), StringType())));
 
-    FunctionDecl to_dyn;
-    to_dyn.set_name("dyn");
-    CEL_RETURN_IF_ERROR(to_dyn.AddOverload(
-        MakeOverloadDecl("to_dyn",
-                         /*return_type=*/DynType(), TypeParamType("A"))));
+  FunctionDecl to_timestamp;
+  to_timestamp.set_name("timestamp");
+  CEL_RETURN_IF_ERROR(to_timestamp.AddOverload(
+      MakeOverloadDecl("to_timestamp",
+                       /*return_type=*/TimestampType(), IntType())));
 
-    env.InsertFunctionIfAbsent(std::move(not_op));
-    env.InsertFunctionIfAbsent(std::move(not_strictly_false));
-    env.InsertFunctionIfAbsent(std::move(add_op));
-    env.InsertFunctionIfAbsent(std::move(mult_op));
-    env.InsertFunctionIfAbsent(std::move(or_op));
-    env.InsertFunctionIfAbsent(std::move(and_op));
-    env.InsertFunctionIfAbsent(std::move(lt_op));
-    env.InsertFunctionIfAbsent(std::move(gt_op));
-    env.InsertFunctionIfAbsent(std::move(to_int));
-    env.InsertFunctionIfAbsent(std::move(eq_op));
-    env.InsertFunctionIfAbsent(std::move(ternary_op));
-    env.InsertFunctionIfAbsent(std::move(to_dyn));
+  FunctionDecl to_dyn;
+  to_dyn.set_name("dyn");
+  CEL_RETURN_IF_ERROR(to_dyn.AddOverload(
+      MakeOverloadDecl("to_dyn",
+                       /*return_type=*/DynType(), TypeParamType("A"))));
 
-    return absl::OkStatus();
-  }
+  env.InsertFunctionIfAbsent(std::move(not_op));
+  env.InsertFunctionIfAbsent(std::move(not_strictly_false));
+  env.InsertFunctionIfAbsent(std::move(add_op));
+  env.InsertFunctionIfAbsent(std::move(mult_op));
+  env.InsertFunctionIfAbsent(std::move(or_op));
+  env.InsertFunctionIfAbsent(std::move(and_op));
+  env.InsertFunctionIfAbsent(std::move(lt_op));
+  env.InsertFunctionIfAbsent(std::move(gt_op));
+  env.InsertFunctionIfAbsent(std::move(to_int));
+  env.InsertFunctionIfAbsent(std::move(eq_op));
+  env.InsertFunctionIfAbsent(std::move(ternary_op));
+  env.InsertFunctionIfAbsent(std::move(to_dyn));
+  env.InsertFunctionIfAbsent(std::move(to_duration));
+  env.InsertFunctionIfAbsent(std::move(to_timestamp));
 
- private:
-  google::protobuf::Arena arena_;
-};
+  return absl::OkStatus();
+}
 
-TEST_F(TypeCheckerImplTest, SmokeTest) {
+TEST(TypeCheckerImplTest, SmokeTest) {
   TypeCheckEnv env;
 
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("1 + 2"));
@@ -269,10 +279,11 @@ TEST_F(TypeCheckerImplTest, SmokeTest) {
   EXPECT_THAT(result.GetIssues(), IsEmpty());
 }
 
-TEST_F(TypeCheckerImplTest, SimpleIdentsResolved) {
+TEST(TypeCheckerImplTest, SimpleIdentsResolved) {
   TypeCheckEnv env;
 
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
   env.InsertVariableIfAbsent(MakeVariableDecl("y", IntType()));
@@ -286,10 +297,11 @@ TEST_F(TypeCheckerImplTest, SimpleIdentsResolved) {
   EXPECT_THAT(result.GetIssues(), IsEmpty());
 }
 
-TEST_F(TypeCheckerImplTest, ReportMissingIdentDecl) {
+TEST(TypeCheckerImplTest, ReportMissingIdentDecl) {
   TypeCheckEnv env;
 
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
 
@@ -304,10 +316,11 @@ TEST_F(TypeCheckerImplTest, ReportMissingIdentDecl) {
                                                "undeclared reference to 'y'")));
 }
 
-TEST_F(TypeCheckerImplTest, QualifiedIdentsResolved) {
+TEST(TypeCheckerImplTest, QualifiedIdentsResolved) {
   TypeCheckEnv env;
 
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   env.InsertVariableIfAbsent(MakeVariableDecl("x.y", IntType()));
   env.InsertVariableIfAbsent(MakeVariableDecl("x.z", IntType()));
@@ -321,10 +334,11 @@ TEST_F(TypeCheckerImplTest, QualifiedIdentsResolved) {
   EXPECT_THAT(result.GetIssues(), IsEmpty());
 }
 
-TEST_F(TypeCheckerImplTest, ReportMissingQualifiedIdentDecl) {
+TEST(TypeCheckerImplTest, ReportMissingQualifiedIdentDecl) {
   TypeCheckEnv env;
 
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
 
@@ -339,10 +353,11 @@ TEST_F(TypeCheckerImplTest, ReportMissingQualifiedIdentDecl) {
                   Severity::kError, "undeclared reference to 'y.x'")));
 }
 
-TEST_F(TypeCheckerImplTest, ResolveMostQualfiedIdent) {
+TEST(TypeCheckerImplTest, ResolveMostQualfiedIdent) {
   TypeCheckEnv env;
 
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
   env.InsertVariableIfAbsent(MakeVariableDecl("x.y", MapType()));
@@ -357,7 +372,7 @@ TEST_F(TypeCheckerImplTest, ResolveMostQualfiedIdent) {
               Contains(Pair(_, IsVariableReference("x.y"))));
 }
 
-TEST_F(TypeCheckerImplTest, MemberFunctionCallResolved) {
+TEST(TypeCheckerImplTest, MemberFunctionCallResolved) {
   TypeCheckEnv env;
 
   env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
@@ -380,7 +395,7 @@ TEST_F(TypeCheckerImplTest, MemberFunctionCallResolved) {
   EXPECT_THAT(result.GetIssues(), IsEmpty());
 }
 
-TEST_F(TypeCheckerImplTest, MemberFunctionCallNotDeclared) {
+TEST(TypeCheckerImplTest, MemberFunctionCallNotDeclared) {
   TypeCheckEnv env;
 
   env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
@@ -397,7 +412,7 @@ TEST_F(TypeCheckerImplTest, MemberFunctionCallNotDeclared) {
                   Severity::kError, "undeclared reference to 'foo'")));
 }
 
-TEST_F(TypeCheckerImplTest, FunctionShapeMismatch) {
+TEST(TypeCheckerImplTest, FunctionShapeMismatch) {
   TypeCheckEnv env;
   // foo(int, int) -> int
   ASSERT_OK_AND_ASSIGN(
@@ -416,7 +431,7 @@ TEST_F(TypeCheckerImplTest, FunctionShapeMismatch) {
                   Severity::kError, "undeclared reference to 'foo'")));
 }
 
-TEST_F(TypeCheckerImplTest, NamespaceFunctionCallResolved) {
+TEST(TypeCheckerImplTest, NamespaceFunctionCallResolved) {
   TypeCheckEnv env;
   // Variables
   env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
@@ -446,10 +461,40 @@ TEST_F(TypeCheckerImplTest, NamespaceFunctionCallResolved) {
   EXPECT_FALSE(ast_impl.root_expr().call_expr().has_target());
 }
 
-TEST_F(TypeCheckerImplTest, MixedListTypeToDyn) {
+TEST(TypeCheckerImplTest, NamespacedFunctionSkipsFieldCheck) {
+  TypeCheckEnv env;
+  // Variables
+  env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
+
+  // add x.foo as a namespaced function.
+  FunctionDecl foo;
+  foo.set_name("x.y.foo");
+  ASSERT_THAT(
+      foo.AddOverload(MakeOverloadDecl("x_y_foo_int",
+                                       /*return_type=*/IntType(), IntType())),
+      IsOk());
+  env.InsertFunctionIfAbsent(std::move(foo));
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("x.y.foo(x)"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
+  EXPECT_TRUE(ast_impl.root_expr().has_call_expr())
+      << absl::StrCat("kind: ", ast_impl.root_expr().kind().index());
+  EXPECT_EQ(ast_impl.root_expr().call_expr().function(), "x.y.foo");
+  EXPECT_FALSE(ast_impl.root_expr().call_expr().has_target());
+}
+
+TEST(TypeCheckerImplTest, MixedListTypeToDyn) {
   TypeCheckEnv env;
 
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("[1, 'a']"));
@@ -462,10 +507,11 @@ TEST_F(TypeCheckerImplTest, MixedListTypeToDyn) {
   EXPECT_TRUE(ast_impl.type_map().at(1).list_type().elem_type().has_dyn());
 }
 
-TEST_F(TypeCheckerImplTest, FreeListTypeToDyn) {
+TEST(TypeCheckerImplTest, FreeListTypeToDyn) {
   TypeCheckEnv env;
 
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("[]"));
@@ -478,10 +524,11 @@ TEST_F(TypeCheckerImplTest, FreeListTypeToDyn) {
   EXPECT_TRUE(ast_impl.type_map().at(1).list_type().elem_type().has_dyn());
 }
 
-TEST_F(TypeCheckerImplTest, FreeMapTypeToDyn) {
+TEST(TypeCheckerImplTest, FreeMapTypeToDyn) {
   TypeCheckEnv env;
 
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("{}"));
@@ -495,10 +542,11 @@ TEST_F(TypeCheckerImplTest, FreeMapTypeToDyn) {
   EXPECT_TRUE(ast_impl.type_map().at(1).map_type().value_type().has_dyn());
 }
 
-TEST_F(TypeCheckerImplTest, MapTypeWithMixedKeys) {
+TEST(TypeCheckerImplTest, MapTypeWithMixedKeys) {
   TypeCheckEnv env;
 
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("{'a': 1, 2: 3}"));
@@ -513,10 +561,11 @@ TEST_F(TypeCheckerImplTest, MapTypeWithMixedKeys) {
             ast_internal::PrimitiveType::kInt64);
 }
 
-TEST_F(TypeCheckerImplTest, MapTypeUnsupportedKeyWarns) {
+TEST(TypeCheckerImplTest, MapTypeUnsupportedKeyWarns) {
   TypeCheckEnv env;
 
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("{{}: 'a'}"));
@@ -529,10 +578,11 @@ TEST_F(TypeCheckerImplTest, MapTypeUnsupportedKeyWarns) {
                                                "unsupported map key type:")));
 }
 
-TEST_F(TypeCheckerImplTest, MapTypeWithMixedValues) {
+TEST(TypeCheckerImplTest, MapTypeWithMixedValues) {
   TypeCheckEnv env;
 
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("{'a': 1, 'b': '2'}"));
@@ -547,10 +597,11 @@ TEST_F(TypeCheckerImplTest, MapTypeWithMixedValues) {
   EXPECT_TRUE(ast_impl.type_map().at(1).map_type().value_type().has_dyn());
 }
 
-TEST_F(TypeCheckerImplTest, ComprehensionVariablesResolved) {
+TEST(TypeCheckerImplTest, ComprehensionVariablesResolved) {
   TypeCheckEnv env;
 
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast,
@@ -562,10 +613,11 @@ TEST_F(TypeCheckerImplTest, ComprehensionVariablesResolved) {
   EXPECT_THAT(result.GetIssues(), IsEmpty());
 }
 
-TEST_F(TypeCheckerImplTest, MapComprehensionVariablesResolved) {
+TEST(TypeCheckerImplTest, MapComprehensionVariablesResolved) {
   TypeCheckEnv env;
 
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast,
@@ -577,10 +629,11 @@ TEST_F(TypeCheckerImplTest, MapComprehensionVariablesResolved) {
   EXPECT_THAT(result.GetIssues(), IsEmpty());
 }
 
-TEST_F(TypeCheckerImplTest, NestedComprehensions) {
+TEST(TypeCheckerImplTest, NestedComprehensions) {
   TypeCheckEnv env;
 
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(
@@ -593,10 +646,11 @@ TEST_F(TypeCheckerImplTest, NestedComprehensions) {
   EXPECT_THAT(result.GetIssues(), IsEmpty());
 }
 
-TEST_F(TypeCheckerImplTest, ComprehensionVarsFollowNamespacePriorityRules) {
+TEST(TypeCheckerImplTest, ComprehensionVarsFollowNamespacePriorityRules) {
   TypeCheckEnv env;
   env.set_container("com");
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   // Namespace resolution still applies, compre var doesn't shadow com.x
   env.InsertVariableIfAbsent(MakeVariableDecl("com.x", IntType()));
@@ -615,9 +669,10 @@ TEST_F(TypeCheckerImplTest, ComprehensionVarsFollowNamespacePriorityRules) {
               Contains(Pair(_, IsVariableReference("com.x"))));
 }
 
-TEST_F(TypeCheckerImplTest, ComprehensionVarsFollowQualifiedIdentPriority) {
+TEST(TypeCheckerImplTest, ComprehensionVarsFollowQualifiedIdentPriority) {
   TypeCheckEnv env;
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   // Namespace resolution still applies, compre var doesn't shadow x.y
   env.InsertVariableIfAbsent(MakeVariableDecl("x.y", IntType()));
@@ -819,7 +874,7 @@ INSTANTIATE_TEST_SUITE_P(
             .expected_type = AstType(ast_internal::MessageType(
                 "google.api.expr.test.v1.proto3.TestAllTypes"))}));
 
-TEST_F(TypeCheckerImplTest, NullLiteral) {
+TEST(TypeCheckerImplTest, NullLiteral) {
   TypeCheckEnv env;
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("null"));
@@ -831,9 +886,10 @@ TEST_F(TypeCheckerImplTest, NullLiteral) {
   EXPECT_TRUE(ast_impl.type_map()[1].has_null());
 }
 
-TEST_F(TypeCheckerImplTest, ComprehensionUnsupportedRange) {
+TEST(TypeCheckerImplTest, ComprehensionUnsupportedRange) {
   TypeCheckEnv env;
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   env.InsertVariableIfAbsent(MakeVariableDecl("y", IntType()));
 
@@ -849,9 +905,10 @@ TEST_F(TypeCheckerImplTest, ComprehensionUnsupportedRange) {
                                       "the range of a comprehension")));
 }
 
-TEST_F(TypeCheckerImplTest, ComprehensionDynRange) {
+TEST(TypeCheckerImplTest, ComprehensionDynRange) {
   TypeCheckEnv env;
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   env.InsertVariableIfAbsent(MakeVariableDecl("range", DynType()));
 
@@ -864,9 +921,10 @@ TEST_F(TypeCheckerImplTest, ComprehensionDynRange) {
   EXPECT_THAT(result.GetIssues(), IsEmpty());
 }
 
-TEST_F(TypeCheckerImplTest, BasicOvlResolution) {
+TEST(TypeCheckerImplTest, BasicOvlResolution) {
   TypeCheckEnv env;
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   env.InsertVariableIfAbsent(MakeVariableDecl("x", DoubleType()));
   env.InsertVariableIfAbsent(MakeVariableDecl("y", DoubleType()));
@@ -887,9 +945,10 @@ TEST_F(TypeCheckerImplTest, BasicOvlResolution) {
                   "_+_", std::vector<std::string>{"add_double_double"}));
 }
 
-TEST_F(TypeCheckerImplTest, OvlResolutionMultipleOverloads) {
+TEST(TypeCheckerImplTest, OvlResolutionMultipleOverloads) {
   TypeCheckEnv env;
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   env.InsertVariableIfAbsent(MakeVariableDecl("x", DoubleType()));
   env.InsertVariableIfAbsent(MakeVariableDecl("y", DoubleType()));
@@ -911,9 +970,10 @@ TEST_F(TypeCheckerImplTest, OvlResolutionMultipleOverloads) {
                                              "add_list", "add_uint_uint"}));
 }
 
-TEST_F(TypeCheckerImplTest, BasicFunctionResultTypeResolution) {
+TEST(TypeCheckerImplTest, BasicFunctionResultTypeResolution) {
   TypeCheckEnv env;
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   env.InsertVariableIfAbsent(MakeVariableDecl("x", DoubleType()));
   env.InsertVariableIfAbsent(MakeVariableDecl("y", DoubleType()));
@@ -941,9 +1001,10 @@ TEST_F(TypeCheckerImplTest, BasicFunctionResultTypeResolution) {
             ast_internal::PrimitiveType::kDouble);
 }
 
-TEST_F(TypeCheckerImplTest, BasicOvlResolutionNoMatch) {
+TEST(TypeCheckerImplTest, BasicOvlResolutionNoMatch) {
   TypeCheckEnv env;
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
   env.InsertVariableIfAbsent(MakeVariableDecl("y", StringType()));
@@ -960,9 +1021,10 @@ TEST_F(TypeCheckerImplTest, BasicOvlResolutionNoMatch) {
                                             " applied to (int, string)")));
 }
 
-TEST_F(TypeCheckerImplTest, ParmeterizedOvlResolutionMatch) {
+TEST(TypeCheckerImplTest, ParmeterizedOvlResolutionMatch) {
   TypeCheckEnv env;
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
   env.InsertVariableIfAbsent(MakeVariableDecl("y", StringType()));
@@ -974,9 +1036,10 @@ TEST_F(TypeCheckerImplTest, ParmeterizedOvlResolutionMatch) {
   EXPECT_TRUE(result.IsValid());
 }
 
-TEST_F(TypeCheckerImplTest, AliasedTypeVarSameType) {
+TEST(TypeCheckerImplTest, AliasedTypeVarSameType) {
   TypeCheckEnv env;
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
 
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast,
@@ -990,9 +1053,11 @@ TEST_F(TypeCheckerImplTest, AliasedTypeVarSameType) {
           Severity::kError, "no matching overload for '_==_' applied to")));
 }
 
-TEST_F(TypeCheckerImplTest, TypeVarRange) {
+TEST(TypeCheckerImplTest, TypeVarRange) {
   TypeCheckEnv env;
-  ASSERT_THAT(RegisterMinimalBuiltins(env), IsOk());
+  google::protobuf::Arena arena;
+
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
   env.InsertFunctionIfAbsent(MakeIdentFunction());
   TypeCheckerImpl impl(std::move(env));
   ASSERT_OK_AND_ASSIGN(auto ast,
@@ -1002,7 +1067,7 @@ TEST_F(TypeCheckerImplTest, TypeVarRange) {
   EXPECT_TRUE(result.IsValid()) << absl::StrJoin(result.GetIssues(), "\n");
 }
 
-TEST_F(TypeCheckerImplTest, WellKnownTypeCreation) {
+TEST(TypeCheckerImplTest, WellKnownTypeCreation) {
   TypeCheckEnv env;
   env.AddTypeProvider(std::make_unique<TypeIntrospector>());
 
@@ -1024,7 +1089,7 @@ TEST_F(TypeCheckerImplTest, WellKnownTypeCreation) {
                                      "google.protobuf.Int32Value"))));
 }
 
-TEST_F(TypeCheckerImplTest, TypeInferredFromStructCreation) {
+TEST(TypeCheckerImplTest, TypeInferredFromStructCreation) {
   TypeCheckEnv env;
   env.AddTypeProvider(std::make_unique<TypeIntrospector>());
 
@@ -1048,7 +1113,7 @@ TEST_F(TypeCheckerImplTest, TypeInferredFromStructCreation) {
               std::make_unique<AstType>(ast_internal::DynamicType())))))));
 }
 
-TEST_F(TypeCheckerImplTest, ContainerLookupForMessageCreation) {
+TEST(TypeCheckerImplTest, ContainerLookupForMessageCreation) {
   TypeCheckEnv env;
   env.set_container("google.protobuf");
   env.AddTypeProvider(std::make_unique<TypeIntrospector>());
@@ -1070,17 +1135,16 @@ TEST_F(TypeCheckerImplTest, ContainerLookupForMessageCreation) {
                                      "google.protobuf.Int32Value"))));
 }
 
-struct MessageCreationTestCase {
+struct CheckedExprTestCase {
   std::string expr;
   ast_internal::Type expected_result_type;
   std::string error_substring;
 };
 
-class MessageCreationTest
-    : public testing::TestWithParam<MessageCreationTestCase> {};
+class WktCreationTest : public testing::TestWithParam<CheckedExprTestCase> {};
 
-TEST_P(MessageCreationTest, MessageCreation) {
-  const MessageCreationTestCase& test_case = GetParam();
+TEST_P(WktCreationTest, MessageCreation) {
+  const CheckedExprTestCase& test_case = GetParam();
   TypeCheckEnv env;
   env.AddTypeProvider(std::make_unique<TypeIntrospector>());
   env.set_container("google.protobuf");
@@ -1111,107 +1175,113 @@ TEST_P(MessageCreationTest, MessageCreation) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    WellKnownTypes, MessageCreationTest,
+    WellKnownTypes, WktCreationTest,
     ::testing::Values(
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = "google.protobuf.Int32Value{value: 10}",
             .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
                 ast_internal::PrimitiveType::kInt64)),
         },
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = ".google.protobuf.Int32Value{value: 10}",
             .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
                 ast_internal::PrimitiveType::kInt64)),
         },
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = "Int32Value{value: 10}",
             .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
                 ast_internal::PrimitiveType::kInt64)),
         },
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = "google.protobuf.Int32Value{value: '10'}",
             .expected_result_type = AstType(),
             .error_substring = "expected type of field 'value' is 'int' but "
                                "provided type is 'string'"},
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = "google.protobuf.Int32Value{not_a_field: '10'}",
             .expected_result_type = AstType(),
             .error_substring = "undefined field 'not_a_field' not found in "
                                "struct 'google.protobuf.Int32Value'"},
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = "NotAType{not_a_field: '10'}",
             .expected_result_type = AstType(),
             .error_substring =
                 "undeclared reference to 'NotAType' (in container "
                 "'google.protobuf')"},
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = ".protobuf.Int32Value{value: 10}",
             .expected_result_type = AstType(),
             .error_substring =
                 "undeclared reference to '.protobuf.Int32Value' (in container "
                 "'google.protobuf')"},
-        MessageCreationTestCase{
+        CheckedExprTestCase{
+            .expr = "Int32Value{value: 10}.value",
+            .expected_result_type = AstType(),
+            .error_substring =
+                "expression of type 'google.protobuf.Int64Value' cannot be the "
+                "operand of a select operation"},
+        CheckedExprTestCase{
             .expr = "Int64Value{value: 10}",
             .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
                 ast_internal::PrimitiveType::kInt64)),
         },
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = "BoolValue{value: true}",
             .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
                 ast_internal::PrimitiveType::kBool)),
         },
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = "UInt64Value{value: 10u}",
             .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
                 ast_internal::PrimitiveType::kUint64)),
         },
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = "UInt32Value{value: 10u}",
             .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
                 ast_internal::PrimitiveType::kUint64)),
         },
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = "FloatValue{value: 1.25}",
             .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
                 ast_internal::PrimitiveType::kDouble)),
         },
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = "DoubleValue{value: 1.25}",
             .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
                 ast_internal::PrimitiveType::kDouble)),
         },
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = "StringValue{value: 'test'}",
             .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
                 ast_internal::PrimitiveType::kString)),
         },
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = "BytesValue{value: b'test'}",
             .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
                 ast_internal::PrimitiveType::kBytes)),
         },
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = "Duration{seconds: 10, nanos: 11}",
             .expected_result_type =
                 AstType(ast_internal::WellKnownType::kDuration),
         },
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = "Timestamp{seconds: 10, nanos: 11}",
             .expected_result_type =
                 AstType(ast_internal::WellKnownType::kTimestamp),
         },
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = "Struct{fields: {'key': 'value'}}",
             .expected_result_type = AstType(ast_internal::MapType(
                 std::make_unique<AstType>(ast_internal::PrimitiveType::kString),
                 std::make_unique<AstType>(ast_internal::DynamicType()))),
         },
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = "ListValue{values: [1, 2, 3]}",
             .expected_result_type = AstType(ast_internal::ListType(
                 std::make_unique<AstType>(ast_internal::DynamicType()))),
         },
-        MessageCreationTestCase{
+        CheckedExprTestCase{
             .expr = R"cel(
               Any{
                 type_url:'type.googleapis.com/google.protobuf.Int32Value',
@@ -1219,6 +1289,433 @@ INSTANTIATE_TEST_SUITE_P(
               })cel",
             .expected_result_type = AstType(ast_internal::WellKnownType::kAny),
         }));
+
+class GenericMessagesTest : public testing::TestWithParam<CheckedExprTestCase> {
+};
+
+TEST_P(GenericMessagesTest, TypeChecksProto3) {
+  const CheckedExprTestCase& test_case = GetParam();
+  google::protobuf::Arena arena;
+
+  TypeCheckEnv env;
+  env.AddTypeProvider(std::make_unique<cel::extensions::ProtoTypeReflector>());
+  env.set_container("google.api.expr.test.v1.proto3");
+  google::protobuf::LinkMessageReflection<testpb3::TestAllTypes>();
+
+  ASSERT_TRUE(env.InsertVariableIfAbsent(MakeVariableDecl(
+      "test_msg", MessageType(testpb3::TestAllTypes::descriptor()))));
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst(test_case.expr));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  if (!test_case.error_substring.empty()) {
+    EXPECT_THAT(result.GetIssues(),
+                Contains(IsIssueWithSubstring(Severity::kError,
+                                              test_case.error_substring)));
+    return;
+  }
+
+  ASSERT_TRUE(result.IsValid())
+      << absl::StrJoin(result.GetIssues(), "\n",
+                       [](std::string* out, const TypeCheckIssue& issue) {
+                         absl::StrAppend(out, issue.message());
+                       });
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
+
+  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
+  EXPECT_THAT(ast_impl.type_map(),
+              Contains(Pair(ast_impl.root_expr().id(),
+                            Eq(test_case.expected_result_type))));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    TestAllTypesCreation, GenericMessagesTest,
+    ::testing::Values(
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{not_a_field: 10}",
+            .expected_result_type = AstType(),
+            .error_substring =
+                "undefined field 'not_a_field' not found in "
+                "struct 'google.api.expr.test.v1.proto3.TestAllTypes'"},
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_int64: 10}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_int64: 'string'}",
+            .expected_result_type = AstType(),
+            .error_substring =
+                "expected type of field 'single_int64' is 'int' but "
+                "provided type is 'string'"},
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_int32: 10}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_uint64: 10u}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_uint32: 10u}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_sint64: 10}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_sint32: 10}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_fixed64: 10u}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_fixed32: 10u}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_sfixed64: 10}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_sfixed32: 10}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_double: 1.25}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_float: 1.25}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_string: 'string'}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_bool: true}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_bytes: b'string'}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        // Well-known
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_any: TestAllTypes{single_int64: 10}}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_any: 1}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_any: 'string'}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_any: ['string']}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_duration: duration('1s')}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_timestamp: timestamp(0)}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_struct: {}}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_struct: {'key': 'value'}}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_struct: {1: 2}}",
+            .expected_result_type = AstType(),
+            .error_substring = "expected type of field 'single_struct' is "
+                               "'map<string, dyn>' but "
+                               "provided type is 'map<int, int>'"},
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{list_value: [1, 2, 3]}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{list_value: []}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{list_value: 1}",
+            .expected_result_type = AstType(),
+            .error_substring =
+                "expected type of field 'list_value' is 'list<dyn>' but "
+                "provided type is 'int'"},
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_int64_wrapper: 1}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_int64_wrapper: null}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_value: null}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_value: 1.0}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_value: 'string'}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_value: {'string': 'string'}}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_value: ['string']}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{repeated_int64: [1, 2, 3]}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{repeated_int64: ['string']}",
+            .expected_result_type = AstType(),
+            .error_substring =
+                "expected type of field 'repeated_int64' is 'list<int>'"},
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{map_string_int64: ['string']}",
+            .expected_result_type = AstType(),
+            .error_substring = "expected type of field 'map_string_int64' is "
+                               "'map<string, int>'"},
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{map_string_int64: {'string': 1}}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        }));
+
+INSTANTIATE_TEST_SUITE_P(
+    TestAllTypesFieldSelection, GenericMessagesTest,
+    ::testing::Values(
+        CheckedExprTestCase{
+            .expr = "test_msg.not_a_field",
+            .expected_result_type = AstType(),
+            .error_substring =
+                "undefined field 'not_a_field' not found in "
+                "struct 'google.api.expr.test.v1.proto3.TestAllTypes'"},
+        CheckedExprTestCase{
+            .expr = "test_msg.single_int64",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kInt64),
+        },
+        CheckedExprTestCase{
+            .expr = "has(test_msg.not_a_field)",
+            .expected_result_type = AstType(),
+            .error_substring =
+                "undefined field 'not_a_field' not found in "
+                "struct 'google.api.expr.test.v1.proto3.TestAllTypes'"},
+        CheckedExprTestCase{
+            .expr = "has(test_msg.single_int64)",
+            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_int32",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kInt64),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_uint64",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kUint64),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_uint32",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kUint64),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_sint64",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kInt64),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_sint32",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kInt64),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_fixed64",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kUint64),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_fixed32",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kUint64),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_sfixed64",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kInt64),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_sfixed32",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kInt64),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_float",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kDouble),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_double",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kDouble),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_string",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kString),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_bool",
+            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_bytes",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kBytes),
+        },
+        // Basic tests for containers. This is covered in more detail in
+        // conformance tests and the type provider implementation.
+        CheckedExprTestCase{
+            .expr = "test_msg.repeated_int32",
+            .expected_result_type =
+                AstType(ast_internal::ListType(std::make_unique<AstType>(
+                    ast_internal::PrimitiveType::kInt64))),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.repeated_string",
+            .expected_result_type =
+                AstType(ast_internal::ListType(std::make_unique<AstType>(
+                    ast_internal::PrimitiveType::kString))),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.map_bool_bool",
+            .expected_result_type = AstType(ast_internal::MapType(
+                std::make_unique<AstType>(ast_internal::PrimitiveType::kBool),
+                std::make_unique<AstType>(ast_internal::PrimitiveType::kBool))),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.map_bool_bool.field_like_key",
+            .expected_result_type = AstType(),
+            .error_substring =
+                "expression of type 'map<bool, bool>' cannot be the operand"
+                " of a select operation",
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.map_string_int64",
+            .expected_result_type = AstType(ast_internal::MapType(
+                std::make_unique<AstType>(ast_internal::PrimitiveType::kString),
+                std::make_unique<AstType>(
+                    ast_internal::PrimitiveType::kInt64))),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.map_string_int64.field_like_key",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kInt64),
+        },
+        // Well-known
+        CheckedExprTestCase{
+            .expr = "test_msg.single_duration",
+            .expected_result_type =
+                AstType(ast_internal::WellKnownType::kDuration),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_timestamp",
+            .expected_result_type =
+                AstType(ast_internal::WellKnownType::kTimestamp),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_any",
+            .expected_result_type = AstType(ast_internal::WellKnownType::kAny),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_int64_wrapper",
+            .expected_result_type = AstType(ast_internal::PrimitiveTypeWrapper(
+                ast_internal::PrimitiveType::kInt64)),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_struct",
+            .expected_result_type = AstType(ast_internal::MapType(
+                std::make_unique<AstType>(ast_internal::PrimitiveType::kString),
+                std::make_unique<AstType>(ast_internal::DynamicType()))),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.list_value",
+            .expected_result_type = AstType(ast_internal::ListType(
+                std::make_unique<AstType>(ast_internal::DynamicType()))),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.list_value",
+            .expected_result_type = AstType(ast_internal::ListType(
+                std::make_unique<AstType>(ast_internal::DynamicType()))),
+        },
+        // Basic tests for nested messages.
+        CheckedExprTestCase{
+            .expr = "NestedTestAllTypes{}.child.child.payload.single_int64",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kInt64),
+        }
+
+        ));
 
 }  // namespace
 }  // namespace checker_internal

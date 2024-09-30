@@ -28,6 +28,7 @@
 #include "checker/internal/type_check_env.h"
 #include "checker/type_checker.h"
 #include "common/decl.h"
+#include "common/type_introspector.h"
 
 namespace cel {
 
@@ -71,6 +72,8 @@ class TypeCheckerBuilder {
 
   absl::Status AddVariable(const VariableDecl& decl);
   absl::Status AddFunction(const FunctionDecl& decl);
+
+  void AddTypeProvider(std::unique_ptr<TypeIntrospector> provider);
 
   void set_container(absl::string_view container);
 
