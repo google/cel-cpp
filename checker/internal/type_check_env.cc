@@ -14,13 +14,22 @@
 
 #include "checker/internal/type_check_env.h"
 
+#include <cstddef>
+#include <cstdint>
+#include <string>
+
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "common/constant.h"
 #include "common/decl.h"
 #include "common/type.h"
 #include "common/type_factory.h"
+#include "common/type_introspector.h"
+#include "internal/status_macros.h"
+#include "google/protobuf/arena.h"
 
 namespace cel::checker_internal {
 
@@ -61,6 +70,52 @@ absl::StatusOr<absl::optional<Type>> TypeCheckEnv::LookupTypeName(
     }
     scope = scope->parent_;
   }
+  return absl::nullopt;
+}
+
+absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupEnumConstant(
+    TypeFactory& type_factory, absl::string_view type,
+    absl::string_view value) const {
+  const TypeCheckEnv* scope = this;
+  while (scope != nullptr) {
+    for (auto iter = type_providers_.rbegin(); iter != type_providers_.rend();
+         ++iter) {
+      auto enum_constant = (*iter)->FindEnumConstant(type_factory, type, value);
+      if (!enum_constant.ok()) {
+        return enum_constant.status();
+      }
+      if (enum_constant->has_value()) {
+        auto decl =
+            MakeVariableDecl(absl::StrCat((**enum_constant).type_full_name, ".",
+                                          (**enum_constant).value_name),
+                             (**enum_constant).type);
+        decl.set_value(
+            Constant(static_cast<int64_t>((**enum_constant).number)));
+        return decl;
+      }
+    }
+    scope = scope->parent_;
+  }
+  return absl::nullopt;
+}
+
+absl::StatusOr<absl::optional<VariableDecl>> TypeCheckEnv::LookupTypeConstant(
+    TypeFactory& type_factory, absl::Nonnull<google::protobuf::Arena*> arena,
+    absl::string_view name) const {
+  CEL_ASSIGN_OR_RETURN(absl::optional<Type> type,
+                       LookupTypeName(type_factory, name));
+  if (type.has_value()) {
+    return MakeVariableDecl(std::string(type->name()), TypeType(arena, *type));
+  }
+
+  if (name.find('.') != name.npos) {
+    size_t last_dot = name.rfind('.');
+    absl::string_view enum_name_candidate = name.substr(0, last_dot);
+    absl::string_view value_name_candidate = name.substr(last_dot + 1);
+    return LookupEnumConstant(type_factory, enum_name_candidate,
+                              value_name_candidate);
+  }
+
   return absl::nullopt;
 }
 

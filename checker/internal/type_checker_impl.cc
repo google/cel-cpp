@@ -345,6 +345,10 @@ class ResolveVisitor : public AstVisitorBase {
                                                absl::string_view function_name,
                                                int arg_count, bool is_receiver);
 
+  // Resolves the function call shape (i.e. the number of arguments and call
+  // style) for the given function call.
+  absl::Nullable<const VariableDecl*> LookupIdentifier(absl::string_view name);
+
   // Resolves the applicable function overloads for the given function call.
   //
   // If found, assigns a new function decl with the resolved overloads.
@@ -900,12 +904,39 @@ void ResolveVisitor::ResolveFunctionOverloads(const Expr& expr,
   types_[&expr] = resolution->result_type;
 }
 
+absl::Nullable<const VariableDecl*> ResolveVisitor::LookupIdentifier(
+    absl::string_view name) {
+  if (const VariableDecl* decl = current_scope_->LookupVariable(name);
+      decl != nullptr) {
+    return decl;
+  }
+  absl::StatusOr<absl::optional<VariableDecl>> constant =
+      env_->LookupTypeConstant(*type_factory_, arena_, name);
+
+  if (!constant.ok()) {
+    status_.Update(constant.status());
+    return nullptr;
+  }
+
+  if (constant->has_value()) {
+    if (constant->value().type().kind() == TypeKind::kEnum) {
+      // Treat enum constant as just an int after resolving the reference.
+      // This preserves existing behavior in the other type checkers.
+      constant->value().set_type(IntType());
+    }
+    return google::protobuf::Arena::Create<VariableDecl>(
+        arena_, std::move(constant).value().value());
+  }
+
+  return nullptr;
+}
+
 void ResolveVisitor::ResolveSimpleIdentifier(const Expr& expr,
                                              absl::string_view name) {
   const VariableDecl* decl = nullptr;
   namespace_generator_.GenerateCandidates(
       name, [&decl, this](absl::string_view candidate) {
-        decl = current_scope_->LookupVariable(candidate);
+        decl = LookupIdentifier(candidate);
         // continue searching.
         return decl == nullptr;
       });
@@ -931,7 +962,7 @@ void ResolveVisitor::ResolveQualifiedIdentifier(
   namespace_generator_.GenerateCandidates(
       qualifiers, [&decl, &segment_index_out, this](absl::string_view candidate,
                                                     int segment_index) {
-        decl = current_scope_->LookupVariable(candidate);
+        decl = LookupIdentifier(candidate);
         if (decl != nullptr) {
           segment_index_out = segment_index;
           return false;
@@ -984,7 +1015,12 @@ void ResolveVisitor::ResolveSelectOperation(const Expr& expr,
         ReportUndefinedField(expr.id(), field, struct_type.name());
         return absl::nullopt;
       }
-      return field_info->value().GetType();
+      auto type = field_info->value().GetType();
+      if (type.kind() == TypeKind::kEnum) {
+        // Treat enum as just an int.
+        return IntType();
+      }
+      return type;
     }
 
     if (operand_type.kind() == TypeKind::kMap) {
@@ -1040,6 +1076,9 @@ class ResolveRewriter : public AstRewriterBase {
       const VariableDecl* decl = iter->second;
       auto& ast_ref = reference_map_[expr.id()];
       ast_ref.set_name(decl->name());
+      if (decl->has_value()) {
+        ast_ref.set_value(decl->value());
+      }
       expr.mutable_ident_expr().set_name(decl->name());
       rewritten = true;
     } else if (auto iter = visitor_.functions().find(&expr);

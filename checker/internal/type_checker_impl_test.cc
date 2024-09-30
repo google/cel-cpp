@@ -246,6 +246,13 @@ absl::Status RegisterMinimalBuiltins(absl::Nonnull<google::protobuf::Arena*> are
       MakeOverloadDecl("to_dyn",
                        /*return_type=*/DynType(), TypeParamType("A"))));
 
+  FunctionDecl to_type;
+  to_type.set_name("type");
+  CEL_RETURN_IF_ERROR(to_type.AddOverload(
+      MakeOverloadDecl("to_type",
+                       /*return_type=*/TypeType(arena, TypeParamType("A")),
+                       TypeParamType("A"))));
+
   env.InsertFunctionIfAbsent(std::move(not_op));
   env.InsertFunctionIfAbsent(std::move(not_strictly_false));
   env.InsertFunctionIfAbsent(std::move(add_op));
@@ -258,6 +265,7 @@ absl::Status RegisterMinimalBuiltins(absl::Nonnull<google::protobuf::Arena*> are
   env.InsertFunctionIfAbsent(std::move(eq_op));
   env.InsertFunctionIfAbsent(std::move(ternary_op));
   env.InsertFunctionIfAbsent(std::move(to_dyn));
+  env.InsertFunctionIfAbsent(std::move(to_type));
   env.InsertFunctionIfAbsent(std::move(to_duration));
   env.InsertFunctionIfAbsent(std::move(to_timestamp));
 
@@ -1135,6 +1143,26 @@ TEST(TypeCheckerImplTest, ContainerLookupForMessageCreation) {
                                      "google.protobuf.Int32Value"))));
 }
 
+TEST(TypeCheckerImplTest, EnumValueCopiedToReferenceMap) {
+  TypeCheckEnv env;
+  env.set_container("google.api.expr.test.v1.proto3");
+  env.AddTypeProvider(std::make_unique<cel::extensions::ProtoTypeReflector>());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast,
+                       MakeTestParsedAst("TestAllTypes.NestedEnum.BAZ"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
+
+  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
+  auto ref_iter = ast_impl.reference_map().find(ast_impl.root_expr().id());
+  ASSERT_NE(ref_iter, ast_impl.reference_map().end());
+  EXPECT_EQ(ref_iter->second.name(),
+            "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAZ");
+  EXPECT_EQ(ref_iter->second.value().int_value(), 2);
+}
+
 struct CheckedExprTestCase {
   std::string expr;
   ast_internal::Type expected_result_type;
@@ -1538,6 +1566,32 @@ INSTANTIATE_TEST_SUITE_P(
             .expr = "TestAllTypes{map_string_int64: {'string': 1}}",
             .expected_result_type = AstType(ast_internal::MessageType(
                 "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_nested_enum: 1}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr =
+                "TestAllTypes{single_nested_enum: TestAllTypes.NestedEnum.BAR}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes.NestedEnum.BAR",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kInt64),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes",
+            .expected_result_type =
+                AstType(std::make_unique<AstType>(ast_internal::MessageType(
+                    "google.api.expr.test.v1.proto3.TestAllTypes"))),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes == type(TestAllTypes{})",
+            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
         }));
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1553,6 +1607,20 @@ INSTANTIATE_TEST_SUITE_P(
             .expr = "test_msg.single_int64",
             .expected_result_type =
                 AstType(ast_internal::PrimitiveType::kInt64),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_nested_enum",
+            .expected_result_type =
+                AstType(ast_internal::PrimitiveType::kInt64),
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_nested_enum == 1",
+            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
+        },
+        CheckedExprTestCase{
+            .expr =
+                "test_msg.single_nested_enum == TestAllTypes.NestedEnum.BAR",
+            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
         },
         CheckedExprTestCase{
             .expr = "has(test_msg.not_a_field)",
