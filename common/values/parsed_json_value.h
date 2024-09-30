@@ -32,7 +32,6 @@ namespace common_internal {
 // string value. This should be rare and unlikely.
 Value ParsedJsonValue(Allocator<> allocator,
                       Borrowed<const google::protobuf::Message> message);
-Value ParsedJsonValue(Borrowed<const google::protobuf::Value> message);
 
 }  // namespace common_internal
 

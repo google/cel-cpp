@@ -22,7 +22,6 @@
 #include "google/protobuf/struct.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
-#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -48,34 +47,22 @@ namespace cel {
 
 namespace common_internal {
 
-absl::Status CheckWellKnownStructMessage(const google::protobuf::MessageLite& message) {
+absl::Status CheckWellKnownStructMessage(const google::protobuf::Message& message) {
   return internal::CheckJsonMap(message);
 }
 
 }  // namespace common_internal
 
-ParsedJsonMapValue::ParsedJsonMapValue()
-    : ParsedJsonMapValue(common_internal::WrapEternal(
-          &google::protobuf::Struct::default_instance())) {}
-
 std::string ParsedJsonMapValue::DebugString() const {
-  if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
+  if (value_ == nullptr) {
     return "{}";
   }
-  if (const auto* generated_message =
-          google::protobuf::DynamicCastMessage<google::protobuf::Struct>(
-              cel::to_address(value_));
-      generated_message != nullptr) {
-    return internal::JsonMapDebugString(*generated_message);
-  }
-  return internal::JsonMapDebugString(
-      google::protobuf::DownCastMessage<google::protobuf::Message>(*value_));
+  return internal::JsonMapDebugString(*value_);
 }
 
 absl::Status ParsedJsonMapValue::SerializeTo(AnyToJsonConverter& converter,
                                              absl::Cord& value) const {
-  ABSL_DCHECK(*this);
-  if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
+  if (value_ == nullptr) {
     value.Clear();
     return absl::OkStatus();
   }
@@ -87,36 +74,25 @@ absl::Status ParsedJsonMapValue::SerializeTo(AnyToJsonConverter& converter,
 
 absl::StatusOr<Json> ParsedJsonMapValue::ConvertToJson(
     AnyToJsonConverter& converter) const {
-  ABSL_DCHECK(*this);
-  if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
+  if (value_ == nullptr) {
     return JsonObject();
   }
-  if (const auto* generated_message =
-          google::protobuf::DynamicCastMessage<google::protobuf::Struct>(
-              cel::to_address(value_));
-      generated_message != nullptr) {
-    return internal::ProtoJsonMapToNativeJsonMap(*generated_message);
-  }
-  return internal::ProtoJsonMapToNativeJsonMap(
-      google::protobuf::DownCastMessage<google::protobuf::Message>(*value_));
+  return internal::ProtoJsonMapToNativeJsonMap(*value_);
 }
 
 absl::Status ParsedJsonMapValue::Equal(ValueManager& value_manager,
                                        const Value& other,
                                        Value& result) const {
-  {
-    ABSL_DCHECK(*this);
-    if (auto other_value = other.AsParsedJsonMap(); other_value) {
-      result = BoolValue(*this == *other_value);
-      return absl::OkStatus();
-    }
-    if (auto other_value = other.AsMap(); other_value) {
-      return common_internal::MapValueEqual(value_manager, MapValue(*this),
-                                            *other_value, result);
-    }
-    result = BoolValue(false);
+  if (auto other_value = other.AsParsedJsonMap(); other_value) {
+    result = BoolValue(*this == *other_value);
     return absl::OkStatus();
   }
+  if (auto other_value = other.AsMap(); other_value) {
+    return common_internal::MapValueEqual(value_manager, MapValue(*this),
+                                          *other_value, result);
+  }
+  result = BoolValue(false);
+  return absl::OkStatus();
 }
 
 absl::StatusOr<Value> ParsedJsonMapValue::Equal(ValueManager& value_manager,
@@ -126,33 +102,13 @@ absl::StatusOr<Value> ParsedJsonMapValue::Equal(ValueManager& value_manager,
   return result;
 }
 
-namespace {
-
-size_t SizeGenerated(const google::protobuf::Struct& message) {
-  return static_cast<size_t>(
-      well_known_types::StructReflection::FieldsSize(message));
-}
-
-size_t SizeDynamic(const google::protobuf::Message& message) {
-  return static_cast<size_t>(
-      well_known_types::GetStructReflectionOrDie(message.GetDescriptor())
-          .FieldsSize(message));
-}
-
-}  // namespace
-
 size_t ParsedJsonMapValue::Size() const {
-  ABSL_DCHECK(*this);
-  if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
+  if (value_ == nullptr) {
     return 0;
   }
-  if (const auto* generated_message =
-          google::protobuf::DynamicCastMessage<google::protobuf::Struct>(
-              cel::to_address(value_));
-      generated_message != nullptr) {
-    return SizeGenerated(*generated_message);
-  }
-  return SizeDynamic(google::protobuf::DownCastMessage<google::protobuf::Message>(*value_));
+  return static_cast<size_t>(
+      well_known_types::GetStructReflectionOrDie(value_->GetDescriptor())
+          .FieldsSize(*value_));
 }
 
 absl::Status ParsedJsonMapValue::Get(ValueManager& value_manager,
@@ -172,64 +128,32 @@ absl::StatusOr<Value> ParsedJsonMapValue::Get(ValueManager& value_manager,
   return result;
 }
 
-namespace {
-
-bool FindGenerated(Borrowed<const google::protobuf::Struct> message,
-                   ValueManager& value_manager, const StringValue& key,
-                   Value& result) {
-  std::string key_scratch;
-  if (const auto* value = well_known_types::StructReflection::FindField(
-          *message, key.NativeString(key_scratch));
-      value != nullptr) {
-    result = common_internal::ParsedJsonValue(Borrowed(message, value));
-    return true;
-  }
-  result = NullValue();
-  return false;
-}
-
-bool FindDynamic(Borrowed<const google::protobuf::Message> message,
-                 ValueManager& value_manager, const StringValue& key,
-                 Value& result) {
-  std::string key_scratch;
-  if (const auto* value =
-          well_known_types::GetStructReflectionOrDie(message->GetDescriptor())
-              .FindField(*message, key.NativeString(key_scratch));
-      value != nullptr) {
-    result = common_internal::ParsedJsonValue(
-        value_manager.GetMemoryManager().arena(), Borrowed(message, value));
-    return true;
-  }
-  result = NullValue();
-  return false;
-}
-
-}  // namespace
-
 absl::StatusOr<bool> ParsedJsonMapValue::Find(ValueManager& value_manager,
                                               const Value& key,
                                               Value& result) const {
-  ABSL_DCHECK(*this);
   if (key.IsError() || key.IsUnknown()) {
     result = key;
     return false;
   }
-  if (auto string_key = key.AsString(); string_key) {
-    if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
+  if (value_ != nullptr) {
+    if (auto string_key = key.AsString(); string_key) {
+      if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
+        result = NullValue();
+        return false;
+      }
+      std::string key_scratch;
+      if (const auto* value =
+              well_known_types::GetStructReflectionOrDie(
+                  value_->GetDescriptor())
+                  .FindField(*value_, string_key->NativeString(key_scratch));
+          value != nullptr) {
+        result = common_internal::ParsedJsonValue(
+            value_manager.GetMemoryManager().arena(), Borrowed(value_, value));
+        return true;
+      }
       result = NullValue();
       return false;
     }
-    if (const auto* generated_message =
-            google::protobuf::DynamicCastMessage<google::protobuf::Struct>(
-                cel::to_address(value_));
-        generated_message != nullptr) {
-      return FindGenerated(Borrowed(value_, generated_message), value_manager,
-                           *string_key, result);
-    }
-    return FindDynamic(
-        Borrowed(value_, google::protobuf::DownCastMessage<google::protobuf::Message>(
-                             cel::to_address(value_))),
-        value_manager, *string_key, result);
   }
   result = NullValue();
   return false;
@@ -245,57 +169,30 @@ absl::StatusOr<std::pair<Value, bool>> ParsedJsonMapValue::Find(
   return std::pair{NullValue(), found};
 }
 
-namespace {
-
-bool HasGenerated(const google::protobuf::Struct& message,
-                  ValueManager& value_manager, const StringValue& key) {
-  std::string key_scratch;
-  if (const auto* value = well_known_types::StructReflection::FindField(
-          message, key.NativeString(key_scratch));
-      value != nullptr) {
-    return true;
-  }
-  return false;
-}
-
-bool HasDynamic(const google::protobuf::Message& message, ValueManager& value_manager,
-                const StringValue& key) {
-  std::string key_scratch;
-  if (const auto* value =
-          well_known_types::GetStructReflectionOrDie(message.GetDescriptor())
-              .FindField(message, key.NativeString(key_scratch));
-      value != nullptr) {
-    return true;
-  }
-  return false;
-}
-
-}  // namespace
-
 absl::Status ParsedJsonMapValue::Has(ValueManager& value_manager,
                                      const Value& key, Value& result) const {
-  ABSL_DCHECK(*this);
   if (key.IsError() || key.IsUnknown()) {
     result = key;
     return absl::OkStatus();
   }
-  if (auto string_key = key.AsString(); string_key) {
-    if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
-      result = BoolValue(false);
+  if (value_ != nullptr) {
+    if (auto string_key = key.AsString(); string_key) {
+      if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
+        result = BoolValue(false);
+        return absl::OkStatus();
+      }
+      std::string key_scratch;
+      if (const auto* value =
+              well_known_types::GetStructReflectionOrDie(
+                  value_->GetDescriptor())
+                  .FindField(*value_, string_key->NativeString(key_scratch));
+          value != nullptr) {
+        result = BoolValue(true);
+      } else {
+        result = BoolValue(false);
+      }
       return absl::OkStatus();
     }
-    if (const auto* generated_message =
-            google::protobuf::DynamicCastMessage<google::protobuf::Struct>(
-                cel::to_address(value_));
-        generated_message != nullptr) {
-      result = BoolValue(
-          HasGenerated(*generated_message, value_manager, *string_key));
-    } else {
-      result = BoolValue(
-          HasDynamic(google::protobuf::DownCastMessage<google::protobuf::Message>(*value_),
-                     value_manager, *string_key));
-    }
-    return absl::OkStatus();
   }
   result = BoolValue(false);
   return absl::OkStatus();
@@ -419,54 +316,29 @@ struct NativeTypeTraits<ParsedJsonMapValueKeysList> final {
 
 absl::Status ParsedJsonMapValue::ListKeys(ValueManager& value_manager,
                                           ListValue& result) const {
-  ABSL_DCHECK(*this);
-  if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
+  if (value_ == nullptr) {
     result = ListValue();
     return absl::OkStatus();
   }
   google::protobuf::Arena* arena = value_manager.GetMemoryManager().arena();
   size_t keys_size;
   std::string* keys;
-  if (const auto* generated_message =
-          google::protobuf::DynamicCastMessage<google::protobuf::Struct>(
-              cel::to_address(value_));
-      generated_message != nullptr) {
-    keys_size = static_cast<size_t>(
-        well_known_types::StructReflection::FieldsSize(*generated_message));
-    auto keys_it =
-        well_known_types::StructReflection::BeginFields(*generated_message);
-    if (arena != nullptr) {
-      keys = reinterpret_cast<std::string*>(arena->AllocateAligned(
-          keys_size * sizeof(std::string), alignof(std::string)));
-      for (size_t i = 0; i < keys_size; ++i, ++keys_it) {
-        ::new (static_cast<void*>(keys + i)) std::string(keys_it->first);
-      }
-    } else {
-      keys = new std::string[keys_size];
-      for (size_t i = 0; i < keys_size; ++i, ++keys_it) {
-        *(keys + i) = keys_it->first;
-      }
+  const auto reflection =
+      well_known_types::GetStructReflectionOrDie(value_->GetDescriptor());
+  keys_size = static_cast<size_t>(reflection.FieldsSize(*value_));
+  auto keys_it = reflection.BeginFields(*value_);
+  if (arena != nullptr) {
+    keys = reinterpret_cast<std::string*>(arena->AllocateAligned(
+        keys_size * sizeof(std::string), alignof(std::string)));
+    for (size_t i = 0; i < keys_size; ++i, ++keys_it) {
+      ::new (static_cast<void*>(keys + i))
+          std::string(keys_it.GetKey().GetStringValue());
     }
   } else {
-    const auto* dynamic_message =
-        google::protobuf::DownCastMessage<google::protobuf::Message>(cel::to_address(value_));
-    const auto reflection = well_known_types::GetStructReflectionOrDie(
-        dynamic_message->GetDescriptor());
-    keys_size = static_cast<size_t>(reflection.FieldsSize(*dynamic_message));
-    auto keys_it = reflection.BeginFields(*dynamic_message);
-    if (arena != nullptr) {
-      keys = reinterpret_cast<std::string*>(arena->AllocateAligned(
-          keys_size * sizeof(std::string), alignof(std::string)));
-      for (size_t i = 0; i < keys_size; ++i, ++keys_it) {
-        ::new (static_cast<void*>(keys + i))
-            std::string(keys_it.GetKey().GetStringValue());
-      }
-    } else {
-      keys = new std::string[keys_size];
-      for (size_t i = 0; i < keys_size; ++i, ++keys_it) {
-        const auto& key = keys_it.GetKey().GetStringValue();
-        (keys + i)->assign(key.data(), key.size());
-      }
+    keys = new std::string[keys_size];
+    for (size_t i = 0; i < keys_size; ++i, ++keys_it) {
+      const auto& key = keys_it.GetKey().GetStringValue();
+      (keys + i)->assign(key.data(), key.size());
     }
   }
   if (arena != nullptr) {
@@ -488,43 +360,24 @@ absl::StatusOr<ListValue> ParsedJsonMapValue::ListKeys(
   return result;
 }
 
-namespace {
-
-absl::Status ForEachGenerated(Borrowed<const google::protobuf::Struct> message,
-                              ValueManager& value_manager,
-                              ParsedJsonMapValue::ForEachCallback callback) {
-  Value key_scratch;
-  Value value_scratch;
-  auto map_begin = well_known_types::StructReflection::BeginFields(*message);
-  const auto map_end = well_known_types::StructReflection::EndFields(*message);
-  for (; map_begin != map_end; ++map_begin) {
-    key_scratch = StringValue(message, map_begin->first);
-    value_scratch =
-        common_internal::ParsedJsonValue(Borrowed(message, &map_begin->second));
-    CEL_ASSIGN_OR_RETURN(auto ok, callback(key_scratch, value_scratch));
-    if (!ok) {
-      break;
-    }
+absl::Status ParsedJsonMapValue::ForEach(ValueManager& value_manager,
+                                         ForEachCallback callback) const {
+  if (value_ == nullptr) {
+    return absl::OkStatus();
   }
-  return absl::OkStatus();
-}
-
-absl::Status ForEachDynamic(Borrowed<const google::protobuf::Message> message,
-                            ValueManager& value_manager,
-                            ParsedJsonMapValue::ForEachCallback callback) {
   const auto reflection =
-      well_known_types::GetStructReflectionOrDie(message->GetDescriptor());
+      well_known_types::GetStructReflectionOrDie(value_->GetDescriptor());
   Value key_scratch;
   Value value_scratch;
-  auto map_begin = reflection.BeginFields(*message);
-  const auto map_end = reflection.EndFields(*message);
+  auto map_begin = reflection.BeginFields(*value_);
+  const auto map_end = reflection.EndFields(*value_);
   for (; map_begin != map_end; ++map_begin) {
     // We have to copy until `google::protobuf::MapKey` is just a view.
     key_scratch = StringValue(value_manager.GetMemoryManager().arena(),
                               map_begin.GetKey().GetStringValue());
     value_scratch = common_internal::ParsedJsonValue(
         value_manager.GetMemoryManager().arena(),
-        Borrowed(message, &map_begin.GetValueRef().GetMessageValue()));
+        Borrowed(value_, &map_begin.GetValueRef().GetMessageValue()));
     CEL_ASSIGN_OR_RETURN(auto ok, callback(key_scratch, value_scratch));
     if (!ok) {
       break;
@@ -533,60 +386,11 @@ absl::Status ForEachDynamic(Borrowed<const google::protobuf::Message> message,
   return absl::OkStatus();
 }
 
-}  // namespace
-
-absl::Status ParsedJsonMapValue::ForEach(ValueManager& value_manager,
-                                         ForEachCallback callback) const {
-  ABSL_DCHECK(*this);
-  if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
-    return absl::OkStatus();
-  }
-  if (const auto* generated_message =
-          google::protobuf::DynamicCastMessage<google::protobuf::Struct>(
-              cel::to_address(value_));
-      generated_message != nullptr) {
-    return ForEachGenerated(Borrowed(value_, generated_message), value_manager,
-                            callback);
-  }
-  return ForEachDynamic(
-      Borrowed(value_, google::protobuf::DownCastMessage<google::protobuf::Message>(
-                           cel::to_address(value_))),
-      value_manager, callback);
-}
-
 namespace {
 
-class GeneratedParsedJsonMapValueIterator final : public ValueIterator {
+class ParsedJsonMapValueIterator final : public ValueIterator {
  public:
-  explicit GeneratedParsedJsonMapValueIterator(
-      Owned<const google::protobuf::Struct> message)
-      : message_(std::move(message)),
-        begin_(well_known_types::StructReflection::BeginFields(*message_)),
-        end_(well_known_types::StructReflection::EndFields(*message_)) {}
-
-  bool HasNext() override { return begin_ != end_; }
-
-  absl::Status Next(ValueManager& value_manager, Value& result) override {
-    if (ABSL_PREDICT_FALSE(begin_ == end_)) {
-      return absl::FailedPreconditionError(
-          "`ValueIterator::Next` called after `ValueIterator::HasNext` "
-          "returned false");
-    }
-    result = StringValue(message_, begin_->first);
-    ++begin_;
-    return absl::OkStatus();
-  }
-
- private:
-  const Owned<const google::protobuf::Struct> message_;
-  google::protobuf::Map<std::string, google::protobuf::Value>::const_iterator begin_;
-  const google::protobuf::Map<std::string, google::protobuf::Value>::const_iterator end_;
-};
-
-class DynamicParsedJsonMapValueIterator final : public ValueIterator {
- public:
-  explicit DynamicParsedJsonMapValueIterator(
-      Owned<const google::protobuf::Message> message)
+  explicit ParsedJsonMapValueIterator(Owned<const google::protobuf::Message> message)
       : message_(std::move(message)),
         reflection_(well_known_types::GetStructReflectionOrDie(
             message_->GetDescriptor())),
@@ -622,29 +426,21 @@ class DynamicParsedJsonMapValueIterator final : public ValueIterator {
 
 absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>>
 ParsedJsonMapValue::NewIterator(ValueManager& value_manager) const {
-  ABSL_DCHECK(*this);
-  if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
+  if (value_ == nullptr) {
     return NewEmptyValueIterator();
   }
-  if (const auto* generated_message =
-          google::protobuf::DynamicCastMessage<google::protobuf::Struct>(
-              cel::to_address(value_));
-      generated_message != nullptr) {
-    return std::make_unique<GeneratedParsedJsonMapValueIterator>(
-        Owned(value_, generated_message));
-  }
-  return std::make_unique<DynamicParsedJsonMapValueIterator>(
-      Owned(value_,
-            google::protobuf::DownCastMessage<google::protobuf::Message>(cel::to_address(value_))));
+  return std::make_unique<ParsedJsonMapValueIterator>(value_);
 }
 
 bool operator==(const ParsedJsonMapValue& lhs, const ParsedJsonMapValue& rhs) {
   if (cel::to_address(lhs.value_) == cel::to_address(rhs.value_)) {
     return true;
   }
-  if (cel::to_address(lhs.value_) == nullptr ||
-      cel::to_address(rhs.value_) == nullptr) {
-    return false;
+  if (cel::to_address(lhs.value_) == nullptr) {
+    return rhs.IsEmpty();
+  }
+  if (cel::to_address(rhs.value_) == nullptr) {
+    return lhs.IsEmpty();
   }
   return internal::JsonMapEquals(*lhs.value_, *rhs.value_);
 }

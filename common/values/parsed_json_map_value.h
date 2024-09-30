@@ -22,14 +22,12 @@
 #include <memory>
 #include <ostream>
 #include <string>
-#include <type_traits>
 #include <utility>
 
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
-#include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -43,7 +41,6 @@
 #include "internal/status_macros.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
-#include "google/protobuf/message_lite.h"
 
 namespace cel {
 
@@ -53,7 +50,7 @@ class ListValue;
 class ValueIterator;
 
 namespace common_internal {
-absl::Status CheckWellKnownStructMessage(const google::protobuf::MessageLite& message);
+absl::Status CheckWellKnownStructMessage(const google::protobuf::Message& message);
 }  // namespace common_internal
 
 // ParsedJsonMapValue is a MapValue backed by the google.protobuf.Struct
@@ -63,17 +60,13 @@ class ParsedJsonMapValue final {
   static constexpr ValueKind kKind = ValueKind::kMap;
   static constexpr absl::string_view kName = "google.protobuf.Struct";
 
-  template <typename T,
-            typename = std::enable_if_t<std::disjunction_v<
-                std::is_same<google::protobuf::Struct, absl::remove_cv_t<T>>,
-                std::is_same<google::protobuf::Message, absl::remove_cv_t<T>>>>>
-  explicit ParsedJsonMapValue(Owned<T> value)
-      : ParsedJsonMapValue(Owned<const google::protobuf::MessageLite>(std::move(value))) {
+  explicit ParsedJsonMapValue(Owned<const google::protobuf::Message> value)
+      : value_(std::move(value)) {
+    ABSL_DCHECK_OK(CheckStruct(cel::to_address(value_)));
   }
 
   // Constructs an empty `ParsedJsonMapValue`.
-  ParsedJsonMapValue();
-
+  ParsedJsonMapValue() = default;
   ParsedJsonMapValue(const ParsedJsonMapValue&) = default;
   ParsedJsonMapValue(ParsedJsonMapValue&&) = default;
   ParsedJsonMapValue& operator=(const ParsedJsonMapValue&) = default;
@@ -135,10 +128,6 @@ class ParsedJsonMapValue final {
   absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>> NewIterator(
       ValueManager& value_manager) const;
 
-  // Returns `true` if `ParsedJsonMapValue` is in a valid state. Currently only
-  // moves place `ParsedJsonMapValue` in an invalid state.
-  explicit operator bool() const { return static_cast<bool>(value_); }
-
   friend void swap(ParsedJsonMapValue& lhs, ParsedJsonMapValue& rhs) noexcept {
     using std::swap;
     swap(lhs.value_, rhs.value_);
@@ -149,20 +138,13 @@ class ParsedJsonMapValue final {
 
  private:
   static absl::Status CheckStruct(
-      absl::Nullable<const google::protobuf::MessageLite*> message) {
+      absl::Nullable<const google::protobuf::Message*> message) {
     return message == nullptr
                ? absl::OkStatus()
                : common_internal::CheckWellKnownStructMessage(*message);
   }
 
-  explicit ParsedJsonMapValue(Owned<const google::protobuf::MessageLite> value)
-      : value_(std::move(value)) {
-    ABSL_DCHECK_OK(CheckStruct(cel::to_address(value_)));
-  }
-
-  // This is either the generated `google::protobuf::Struct` message, which
-  // may be lite, or a dynamic message representing `google.protobuf.Struct`.
-  Owned<const google::protobuf::MessageLite> value_;
+  Owned<const google::protobuf::Message> value_;
 };
 
 inline bool operator!=(const ParsedJsonMapValue& lhs,

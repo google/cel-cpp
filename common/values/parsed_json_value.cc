@@ -36,7 +36,6 @@ namespace {
 
 using ::cel::well_known_types::AsVariant;
 using ::cel::well_known_types::GetValueReflectionOrDie;
-using ::cel::well_known_types::ValueReflection;
 
 }  // namespace
 
@@ -82,31 +81,6 @@ Value ParsedJsonValue(Allocator<> allocator,
     case google::protobuf::Value::kStructValue:
       return ParsedJsonMapValue(Owned<const google::protobuf::Message>(
           Owner(message), &reflection.GetStructValue(*message)));
-    default:
-      return ErrorValue(absl::InvalidArgumentError(
-          absl::StrCat("unexpected value kind case: ", kind_case)));
-  }
-}
-
-Value ParsedJsonValue(Borrowed<const google::protobuf::Value> message) {
-  const auto kind_case = ValueReflection::GetKindCase(*message);
-  switch (kind_case) {
-    case google::protobuf::Value::KIND_NOT_SET:
-      ABSL_FALLTHROUGH_INTENDED;
-    case google::protobuf::Value::kNullValue:
-      return NullValue();
-    case google::protobuf::Value::kBoolValue:
-      return BoolValue(ValueReflection::GetBoolValue(*message));
-    case google::protobuf::Value::kNumberValue:
-      return DoubleValue(ValueReflection::GetNumberValue(*message));
-    case google::protobuf::Value::kStringValue:
-      return StringValue(message, ValueReflection::GetStringValue(*message));
-    case google::protobuf::Value::kListValue:
-      return ParsedJsonListValue(Owned<const google::protobuf::ListValue>(
-          Owner(message), &ValueReflection::GetListValue(*message)));
-    case google::protobuf::Value::kStructValue:
-      return ParsedJsonMapValue(Owned<const google::protobuf::Struct>(
-          Owner(message), &ValueReflection::GetStructValue(*message)));
     default:
       return ErrorValue(absl::InvalidArgumentError(
           absl::StrCat("unexpected value kind case: ", kind_case)));

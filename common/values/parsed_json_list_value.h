@@ -22,14 +22,12 @@
 #include <memory>
 #include <ostream>
 #include <string>
-#include <type_traits>
 #include <utility>
 
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
-#include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -43,7 +41,6 @@
 #include "internal/status_macros.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
-#include "google/protobuf/message_lite.h"
 
 namespace cel {
 
@@ -52,7 +49,7 @@ class ValueManager;
 class ValueIterator;
 
 namespace common_internal {
-absl::Status CheckWellKnownListValueMessage(const google::protobuf::MessageLite& message);
+absl::Status CheckWellKnownListValueMessage(const google::protobuf::Message& message);
 }  // namespace common_internal
 
 // ParsedJsonListValue is a ListValue backed by the google.protobuf.ListValue
@@ -62,17 +59,13 @@ class ParsedJsonListValue final {
   static constexpr ValueKind kKind = ValueKind::kList;
   static constexpr absl::string_view kName = "google.protobuf.ListValue";
 
-  template <typename T,
-            typename = std::enable_if_t<std::disjunction_v<
-                std::is_same<google::protobuf::ListValue, absl::remove_cv_t<T>>,
-                std::is_same<google::protobuf::Message, absl::remove_cv_t<T>>>>>
-  explicit ParsedJsonListValue(Owned<T> value)
-      : ParsedJsonListValue(
-            Owned<const google::protobuf::MessageLite>(std::move(value))) {}
+  explicit ParsedJsonListValue(Owned<const google::protobuf::Message> value)
+      : value_(std::move(value)) {
+    ABSL_DCHECK_OK(CheckListValue(cel::to_address(value_)));
+  }
 
   // Constructs an empty `ParsedJsonListValue`.
-  ParsedJsonListValue();
-
+  ParsedJsonListValue() = default;
   ParsedJsonListValue(const ParsedJsonListValue&) = default;
   ParsedJsonListValue(ParsedJsonListValue&&) = default;
   ParsedJsonListValue& operator=(const ParsedJsonListValue&) = default;
@@ -132,10 +125,6 @@ class ParsedJsonListValue final {
   absl::StatusOr<Value> Contains(ValueManager& value_manager,
                                  const Value& other) const;
 
-  // Returns `true` if `ParsedJsonListValue` is in a valid state. Currently only
-  // moves place `ParsedJsonListValue` in an invalid state.
-  explicit operator bool() const { return static_cast<bool>(value_); }
-
   friend void swap(ParsedJsonListValue& lhs,
                    ParsedJsonListValue& rhs) noexcept {
     using std::swap;
@@ -147,20 +136,13 @@ class ParsedJsonListValue final {
 
  private:
   static absl::Status CheckListValue(
-      absl::Nullable<const google::protobuf::MessageLite*> message) {
+      absl::Nullable<const google::protobuf::Message*> message) {
     return message == nullptr
                ? absl::OkStatus()
                : common_internal::CheckWellKnownListValueMessage(*message);
   }
 
-  explicit ParsedJsonListValue(Owned<const google::protobuf::MessageLite> value)
-      : value_(std::move(value)) {
-    ABSL_DCHECK_OK(CheckListValue(cel::to_address(value_)));
-  }
-
-  // This is either the generated `google::protobuf::ListValue` message, which
-  // may be lite, or a dynamic message representing `google.protobuf.ListValue`.
-  Owned<const google::protobuf::MessageLite> value_;
+  Owned<const google::protobuf::Message> value_;
 };
 
 inline bool operator!=(const ParsedJsonListValue& lhs,

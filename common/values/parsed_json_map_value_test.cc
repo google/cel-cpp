@@ -136,36 +136,16 @@ TEST_P(ParsedJsonMapValueTest, GetRuntimeType) {
   EXPECT_EQ(ParsedJsonMapValue::GetRuntimeType(), JsonMapType());
 }
 
-TEST_P(ParsedJsonMapValueTest, DebugString_Generated) {
-  ParsedJsonMapValue valid_value(
-      GeneratedParseTextProto<google::protobuf::Struct>(R"pb()pb"));
-  EXPECT_EQ(valid_value.DebugString(), "{}");
-}
-
 TEST_P(ParsedJsonMapValueTest, DebugString_Dynamic) {
   ParsedJsonMapValue valid_value(
       DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"));
   EXPECT_EQ(valid_value.DebugString(), "{}");
 }
 
-TEST_P(ParsedJsonMapValueTest, IsZeroValue_Generated) {
-  ParsedJsonMapValue valid_value(
-      GeneratedParseTextProto<google::protobuf::Struct>(R"pb()pb"));
-  EXPECT_TRUE(valid_value.IsZeroValue());
-}
-
 TEST_P(ParsedJsonMapValueTest, IsZeroValue_Dynamic) {
   ParsedJsonMapValue valid_value(
       DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"));
   EXPECT_TRUE(valid_value.IsZeroValue());
-}
-
-TEST_P(ParsedJsonMapValueTest, SerializeTo_Generated) {
-  ParsedJsonMapValue valid_value(
-      GeneratedParseTextProto<google::protobuf::Struct>(R"pb()pb"));
-  absl::Cord serialized;
-  EXPECT_THAT(valid_value.SerializeTo(value_manager(), serialized), IsOk());
-  EXPECT_THAT(serialized, IsEmpty());
 }
 
 TEST_P(ParsedJsonMapValueTest, SerializeTo_Dynamic) {
@@ -176,33 +156,11 @@ TEST_P(ParsedJsonMapValueTest, SerializeTo_Dynamic) {
   EXPECT_THAT(serialized, IsEmpty());
 }
 
-TEST_P(ParsedJsonMapValueTest, ConvertToJson_Generated) {
-  ParsedJsonMapValue valid_value(
-      GeneratedParseTextProto<google::protobuf::Struct>(R"pb()pb"));
-  EXPECT_THAT(valid_value.ConvertToJson(value_manager()),
-              IsOkAndHolds(VariantWith<JsonObject>(JsonObject())));
-}
-
 TEST_P(ParsedJsonMapValueTest, ConvertToJson_Dynamic) {
   ParsedJsonMapValue valid_value(
       DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"));
   EXPECT_THAT(valid_value.ConvertToJson(value_manager()),
               IsOkAndHolds(VariantWith<JsonObject>(JsonObject())));
-}
-
-TEST_P(ParsedJsonMapValueTest, Equal_Generated) {
-  ParsedJsonMapValue valid_value(
-      GeneratedParseTextProto<google::protobuf::Struct>(R"pb()pb"));
-  EXPECT_THAT(valid_value.Equal(value_manager(), BoolValue()),
-              IsOkAndHolds(BoolValueIs(false)));
-  EXPECT_THAT(
-      valid_value.Equal(
-          value_manager(),
-          ParsedJsonMapValue(
-              GeneratedParseTextProto<google::protobuf::Struct>(R"pb()pb"))),
-      IsOkAndHolds(BoolValueIs(true)));
-  EXPECT_THAT(valid_value.Equal(value_manager(), MapValue()),
-              IsOkAndHolds(BoolValueIs(true)));
 }
 
 TEST_P(ParsedJsonMapValueTest, Equal_Dynamic) {
@@ -220,49 +178,16 @@ TEST_P(ParsedJsonMapValueTest, Equal_Dynamic) {
               IsOkAndHolds(BoolValueIs(true)));
 }
 
-TEST_P(ParsedJsonMapValueTest, Empty_Generated) {
-  ParsedJsonMapValue valid_value(
-      GeneratedParseTextProto<google::protobuf::Struct>(R"pb()pb"));
-  EXPECT_TRUE(valid_value.IsEmpty());
-}
-
 TEST_P(ParsedJsonMapValueTest, Empty_Dynamic) {
   ParsedJsonMapValue valid_value(
       DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"));
   EXPECT_TRUE(valid_value.IsEmpty());
 }
 
-TEST_P(ParsedJsonMapValueTest, Size_Generated) {
-  ParsedJsonMapValue valid_value(
-      GeneratedParseTextProto<google::protobuf::Struct>(R"pb()pb"));
-  EXPECT_EQ(valid_value.Size(), 0);
-}
-
 TEST_P(ParsedJsonMapValueTest, Size_Dynamic) {
   ParsedJsonMapValue valid_value(
       DynamicParseTextProto<google::protobuf::Struct>(R"pb()pb"));
   EXPECT_EQ(valid_value.Size(), 0);
-}
-
-TEST_P(ParsedJsonMapValueTest, Get_Generated) {
-  ParsedJsonMapValue valid_value(
-      GeneratedParseTextProto<google::protobuf::Struct>(
-          R"pb(fields {
-                 key: "foo"
-                 value: {}
-               }
-               fields {
-                 key: "bar"
-                 value: { bool_value: true }
-               })pb"));
-  EXPECT_THAT(valid_value.Get(value_manager(), BoolValue()),
-              StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT(valid_value.Get(value_manager(), StringValue("foo")),
-              IsOkAndHolds(IsNullValue()));
-  EXPECT_THAT(valid_value.Get(value_manager(), StringValue("bar")),
-              IsOkAndHolds(BoolValueIs(true)));
-  EXPECT_THAT(valid_value.Get(value_manager(), StringValue("baz")),
-              StatusIs(absl::StatusCode::kNotFound));
 }
 
 TEST_P(ParsedJsonMapValueTest, Get_Dynamic) {
@@ -286,27 +211,6 @@ TEST_P(ParsedJsonMapValueTest, Get_Dynamic) {
               StatusIs(absl::StatusCode::kNotFound));
 }
 
-TEST_P(ParsedJsonMapValueTest, Find_Generated) {
-  ParsedJsonMapValue valid_value(
-      GeneratedParseTextProto<google::protobuf::Struct>(
-          R"pb(fields {
-                 key: "foo"
-                 value: {}
-               }
-               fields {
-                 key: "bar"
-                 value: { bool_value: true }
-               })pb"));
-  EXPECT_THAT(valid_value.Find(value_manager(), BoolValue()),
-              IsOkAndHolds(Pair(IsNullValue(), IsFalse())));
-  EXPECT_THAT(valid_value.Find(value_manager(), StringValue("foo")),
-              IsOkAndHolds(Pair(IsNullValue(), IsTrue())));
-  EXPECT_THAT(valid_value.Find(value_manager(), StringValue("bar")),
-              IsOkAndHolds(Pair(BoolValueIs(true), IsTrue())));
-  EXPECT_THAT(valid_value.Find(value_manager(), StringValue("baz")),
-              IsOkAndHolds(Pair(IsNullValue(), IsFalse())));
-}
-
 TEST_P(ParsedJsonMapValueTest, Find_Dynamic) {
   ParsedJsonMapValue valid_value(
       DynamicParseTextProto<google::protobuf::Struct>(
@@ -328,27 +232,6 @@ TEST_P(ParsedJsonMapValueTest, Find_Dynamic) {
               IsOkAndHolds(Pair(IsNullValue(), IsFalse())));
 }
 
-TEST_P(ParsedJsonMapValueTest, Has_Generated) {
-  ParsedJsonMapValue valid_value(
-      GeneratedParseTextProto<google::protobuf::Struct>(
-          R"pb(fields {
-                 key: "foo"
-                 value: {}
-               }
-               fields {
-                 key: "bar"
-                 value: { bool_value: true }
-               })pb"));
-  EXPECT_THAT(valid_value.Has(value_manager(), BoolValue()),
-              IsOkAndHolds(BoolValueIs(false)));
-  EXPECT_THAT(valid_value.Has(value_manager(), StringValue("foo")),
-              IsOkAndHolds(BoolValueIs(true)));
-  EXPECT_THAT(valid_value.Has(value_manager(), StringValue("bar")),
-              IsOkAndHolds(BoolValueIs(true)));
-  EXPECT_THAT(valid_value.Has(value_manager(), StringValue("baz")),
-              IsOkAndHolds(BoolValueIs(false)));
-}
-
 TEST_P(ParsedJsonMapValueTest, Has_Dynamic) {
   ParsedJsonMapValue valid_value(
       DynamicParseTextProto<google::protobuf::Struct>(
@@ -368,37 +251,6 @@ TEST_P(ParsedJsonMapValueTest, Has_Dynamic) {
               IsOkAndHolds(BoolValueIs(true)));
   EXPECT_THAT(valid_value.Has(value_manager(), StringValue("baz")),
               IsOkAndHolds(BoolValueIs(false)));
-}
-
-TEST_P(ParsedJsonMapValueTest, ListKeys_Generated) {
-  ParsedJsonMapValue valid_value(
-      GeneratedParseTextProto<google::protobuf::Struct>(
-          R"pb(fields {
-                 key: "foo"
-                 value: {}
-               }
-               fields {
-                 key: "bar"
-                 value: { bool_value: true }
-               })pb"));
-  ASSERT_OK_AND_ASSIGN(auto keys, valid_value.ListKeys(value_manager()));
-  EXPECT_THAT(keys.Size(), IsOkAndHolds(2));
-  EXPECT_THAT(keys.DebugString(),
-              AnyOf("[\"foo\", \"bar\"]", "[\"bar\", \"foo\"]"));
-  EXPECT_THAT(keys.Contains(value_manager(), BoolValue()),
-              IsOkAndHolds(BoolValueIs(false)));
-  EXPECT_THAT(keys.Contains(value_manager(), StringValue("bar")),
-              IsOkAndHolds(BoolValueIs(true)));
-  EXPECT_THAT(keys.Get(value_manager(), 0),
-              IsOkAndHolds(AnyOf(StringValueIs("foo"), StringValueIs("bar"))));
-  EXPECT_THAT(keys.Get(value_manager(), 1),
-              IsOkAndHolds(AnyOf(StringValueIs("foo"), StringValueIs("bar"))));
-  EXPECT_THAT(
-      keys.ConvertToJson(value_manager()),
-      IsOkAndHolds(AnyOf(VariantWith<JsonArray>(MakeJsonArray(
-                             {JsonString("foo"), JsonString("bar")})),
-                         VariantWith<JsonArray>(MakeJsonArray(
-                             {JsonString("bar"), JsonString("foo")})))));
 }
 
 TEST_P(ParsedJsonMapValueTest, ListKeys_Dynamic) {
@@ -432,31 +284,6 @@ TEST_P(ParsedJsonMapValueTest, ListKeys_Dynamic) {
                              {JsonString("bar"), JsonString("foo")})))));
 }
 
-TEST_P(ParsedJsonMapValueTest, ForEach_Generated) {
-  ParsedJsonMapValue valid_value(
-      GeneratedParseTextProto<google::protobuf::Struct>(
-          R"pb(fields {
-                 key: "foo"
-                 value: {}
-               }
-               fields {
-                 key: "bar"
-                 value: { bool_value: true }
-               })pb"));
-  std::vector<std::pair<Value, Value>> entries;
-  EXPECT_THAT(
-      valid_value.ForEach(
-          value_manager(),
-          [&](const Value& key, const Value& value) -> absl::StatusOr<bool> {
-            entries.push_back(std::pair{std::move(key), std::move(value)});
-            return true;
-          }),
-      IsOk());
-  EXPECT_THAT(entries, UnorderedElementsAre(
-                           Pair(StringValueIs("foo"), IsNullValue()),
-                           Pair(StringValueIs("bar"), BoolValueIs(true))));
-}
-
 TEST_P(ParsedJsonMapValueTest, ForEach_Dynamic) {
   ParsedJsonMapValue valid_value(
       DynamicParseTextProto<google::protobuf::Struct>(
@@ -480,29 +307,6 @@ TEST_P(ParsedJsonMapValueTest, ForEach_Dynamic) {
   EXPECT_THAT(entries, UnorderedElementsAre(
                            Pair(StringValueIs("foo"), IsNullValue()),
                            Pair(StringValueIs("bar"), BoolValueIs(true))));
-}
-
-TEST_P(ParsedJsonMapValueTest, NewIterator_Generated) {
-  ParsedJsonMapValue valid_value(
-      GeneratedParseTextProto<google::protobuf::Struct>(
-          R"pb(fields {
-                 key: "foo"
-                 value: {}
-               }
-               fields {
-                 key: "bar"
-                 value: { bool_value: true }
-               })pb"));
-  ASSERT_OK_AND_ASSIGN(auto iterator, valid_value.NewIterator(value_manager()));
-  ASSERT_TRUE(iterator->HasNext());
-  EXPECT_THAT(iterator->Next(value_manager()),
-              IsOkAndHolds(AnyOf(StringValueIs("foo"), StringValueIs("bar"))));
-  ASSERT_TRUE(iterator->HasNext());
-  EXPECT_THAT(iterator->Next(value_manager()),
-              IsOkAndHolds(AnyOf(StringValueIs("foo"), StringValueIs("bar"))));
-  ASSERT_FALSE(iterator->HasNext());
-  EXPECT_THAT(iterator->Next(value_manager()),
-              StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST_P(ParsedJsonMapValueTest, NewIterator_Dynamic) {

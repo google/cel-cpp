@@ -111,15 +111,6 @@ class ParsedJsonValueTest : public TestWithParam<AllocatorKind> {
   absl::optional<Shared<ValueManager>> value_manager_;
 };
 
-TEST_P(ParsedJsonValueTest, Null_Generated) {
-  EXPECT_THAT(ParsedJsonValue(
-                  GeneratedParseTextProto<google::protobuf::Value>(R"pb()pb")),
-              IsNullValue());
-  EXPECT_THAT(ParsedJsonValue(GeneratedParseTextProto<google::protobuf::Value>(
-                  R"pb(null_value: NULL_VALUE)pb")),
-              IsNullValue());
-}
-
 TEST_P(ParsedJsonValueTest, Null_Dynamic) {
   EXPECT_THAT(
       ParsedJsonValue(arena(), DynamicParseTextProto<google::protobuf::Value>(
@@ -131,23 +122,11 @@ TEST_P(ParsedJsonValueTest, Null_Dynamic) {
       IsNullValue());
 }
 
-TEST_P(ParsedJsonValueTest, Bool_Generated) {
-  EXPECT_THAT(ParsedJsonValue(GeneratedParseTextProto<google::protobuf::Value>(
-                  R"pb(bool_value: true)pb")),
-              BoolValueIs(true));
-}
-
 TEST_P(ParsedJsonValueTest, Bool_Dynamic) {
   EXPECT_THAT(
       ParsedJsonValue(arena(), DynamicParseTextProto<google::protobuf::Value>(
                                    R"pb(bool_value: true)pb")),
       BoolValueIs(true));
-}
-
-TEST_P(ParsedJsonValueTest, Double_Generated) {
-  EXPECT_THAT(ParsedJsonValue(GeneratedParseTextProto<google::protobuf::Value>(
-                  R"pb(number_value: 1.0)pb")),
-              DoubleValueIs(1.0));
 }
 
 TEST_P(ParsedJsonValueTest, Double_Dynamic) {
@@ -157,28 +136,11 @@ TEST_P(ParsedJsonValueTest, Double_Dynamic) {
       DoubleValueIs(1.0));
 }
 
-TEST_P(ParsedJsonValueTest, String_Generated) {
-  EXPECT_THAT(ParsedJsonValue(GeneratedParseTextProto<google::protobuf::Value>(
-                  R"pb(string_value: "foo")pb")),
-              StringValueIs("foo"));
-}
-
 TEST_P(ParsedJsonValueTest, String_Dynamic) {
   EXPECT_THAT(
       ParsedJsonValue(arena(), DynamicParseTextProto<google::protobuf::Value>(
                                    R"pb(string_value: "foo")pb")),
       StringValueIs("foo"));
-}
-
-TEST_P(ParsedJsonValueTest, List_Generated) {
-  EXPECT_THAT(
-      ParsedJsonValue(GeneratedParseTextProto<google::protobuf::Value>(
-          R"pb(list_value: {
-                 values {}
-                 values { bool_value: true }
-               })pb")),
-      ListValueIs(ListValueElements(
-          &value_manager(), ElementsAre(IsNullValue(), BoolValueIs(true)))));
 }
 
 TEST_P(ParsedJsonValueTest, List_Dynamic) {
@@ -190,25 +152,6 @@ TEST_P(ParsedJsonValueTest, List_Dynamic) {
                                         })pb")),
       ListValueIs(ListValueElements(
           &value_manager(), ElementsAre(IsNullValue(), BoolValueIs(true)))));
-}
-
-TEST_P(ParsedJsonValueTest, Map_Generated) {
-  EXPECT_THAT(ParsedJsonValue(GeneratedParseTextProto<google::protobuf::Value>(
-                  R"pb(struct_value: {
-                         fields {
-                           key: "foo"
-                           value: {}
-                         }
-                         fields {
-                           key: "bar"
-                           value: { bool_value: true }
-                         }
-                       })pb")),
-              MapValueIs(MapValueElements(
-                  &value_manager(),
-                  UnorderedElementsAre(
-                      Pair(StringValueIs("foo"), IsNullValue()),
-                      Pair(StringValueIs("bar"), BoolValueIs(true))))));
 }
 
 TEST_P(ParsedJsonValueTest, Map_Dynamic) {
