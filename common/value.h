@@ -700,7 +700,9 @@ class Value final {
   // Performs a checked cast from a value to a bytes value,
   // returning a non-empty optional with either a value or reference to the
   // bytes value. Otherwise an empty optional is returned.
-  optional_ref<const BytesValue> AsBytes() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const BytesValue> AsBytes() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsBytes();
+  }
   optional_ref<const BytesValue> AsBytes() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<BytesValue> AsBytes() &&;
   absl::optional<BytesValue> AsBytes() const&&;
@@ -718,7 +720,9 @@ class Value final {
   // Performs a checked cast from a value to an error value,
   // returning a non-empty optional with either a value or reference to the
   // error value. Otherwise an empty optional is returned.
-  optional_ref<const ErrorValue> AsError() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const ErrorValue> AsError() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsError();
+  }
   optional_ref<const ErrorValue> AsError() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ErrorValue> AsError() &&;
   absl::optional<ErrorValue> AsError() const&&;
@@ -731,7 +735,7 @@ class Value final {
   // Performs a checked cast from a value to a list value,
   // returning a non-empty optional with either a value or reference to the
   // list value. Otherwise an empty optional is returned.
-  absl::optional<ListValue> AsList() &;
+  absl::optional<ListValue> AsList() & { return std::as_const(*this).AsList(); }
   absl::optional<ListValue> AsList() const&;
   absl::optional<ListValue> AsList() &&;
   absl::optional<ListValue> AsList() const&&;
@@ -739,7 +743,7 @@ class Value final {
   // Performs a checked cast from a value to a map value,
   // returning a non-empty optional with either a value or reference to the
   // map value. Otherwise an empty optional is returned.
-  absl::optional<MapValue> AsMap() &;
+  absl::optional<MapValue> AsMap() & { return std::as_const(*this).AsMap(); }
   absl::optional<MapValue> AsMap() const&;
   absl::optional<MapValue> AsMap() &&;
   absl::optional<MapValue> AsMap() const&&;
@@ -747,7 +751,9 @@ class Value final {
   // Performs a checked cast from a value to a message value,
   // returning a non-empty optional with either a value or reference to the
   // message value. Otherwise an empty optional is returned.
-  absl::optional<MessageValue> AsMessage() &;
+  absl::optional<MessageValue> AsMessage() & {
+    return std::as_const(*this).AsMessage();
+  }
   absl::optional<MessageValue> AsMessage() const&;
   absl::optional<MessageValue> AsMessage() &&;
   absl::optional<MessageValue> AsMessage() const&&;
@@ -760,7 +766,9 @@ class Value final {
   // Performs a checked cast from a value to an opaque value,
   // returning a non-empty optional with either a value or reference to the
   // opaque value. Otherwise an empty optional is returned.
-  optional_ref<const OpaqueValue> AsOpaque() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const OpaqueValue> AsOpaque() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsOpaque();
+  }
   optional_ref<const OpaqueValue> AsOpaque()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<OpaqueValue> AsOpaque() &&;
@@ -770,7 +778,9 @@ class Value final {
   // returning a non-empty optional with either a value or reference to the
   // optional value. Otherwise an empty optional is returned.
   optional_ref<const OptionalValue> AsOptional() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsOptional();
+  }
   optional_ref<const OptionalValue> AsOptional()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<OptionalValue> AsOptional() &&;
@@ -780,7 +790,9 @@ class Value final {
   // returning a non-empty optional with either a value or reference to the
   // parsed message value. Otherwise an empty optional is returned.
   optional_ref<const ParsedJsonListValue> AsParsedJsonList() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsParsedJsonList();
+  }
   optional_ref<const ParsedJsonListValue> AsParsedJsonList()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedJsonListValue> AsParsedJsonList() &&;
@@ -790,7 +802,9 @@ class Value final {
   // returning a non-empty optional with either a value or reference to the
   // parsed message value. Otherwise an empty optional is returned.
   optional_ref<const ParsedJsonMapValue> AsParsedJsonMap() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsParsedJsonMap();
+  }
   optional_ref<const ParsedJsonMapValue> AsParsedJsonMap()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedJsonMapValue> AsParsedJsonMap() &&;
@@ -800,7 +814,9 @@ class Value final {
   // returning a non-empty optional with either a value or reference to the
   // parsed list value. Otherwise an empty optional is returned.
   optional_ref<const ParsedListValue> AsParsedList() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsParsedList();
+  }
   optional_ref<const ParsedListValue> AsParsedList()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedListValue> AsParsedList() &&;
@@ -810,7 +826,9 @@ class Value final {
   // returning a non-empty optional with either a value or reference to the
   // parsed map value. Otherwise an empty optional is returned.
   optional_ref<const ParsedMapValue> AsParsedMap() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsParsedMap();
+  }
   optional_ref<const ParsedMapValue> AsParsedMap()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedMapValue> AsParsedMap() &&;
@@ -820,7 +838,9 @@ class Value final {
   // returning a non-empty optional with either a value or reference to the
   // parsed map field value. Otherwise an empty optional is returned.
   optional_ref<const ParsedMapFieldValue> AsParsedMapField() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsParsedMapField();
+  }
   optional_ref<const ParsedMapFieldValue> AsParsedMapField()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedMapFieldValue> AsParsedMapField() &&;
@@ -830,7 +850,9 @@ class Value final {
   // returning a non-empty optional with either a value or reference to the
   // parsed message value. Otherwise an empty optional is returned.
   optional_ref<const ParsedMessageValue> AsParsedMessage() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsParsedMessage();
+  }
   optional_ref<const ParsedMessageValue> AsParsedMessage()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedMessageValue> AsParsedMessage() &&;
@@ -840,7 +862,9 @@ class Value final {
   // returning a non-empty optional with either a value or reference to the
   // parsed repeated field value. Otherwise an empty optional is returned.
   optional_ref<const ParsedRepeatedFieldValue> AsParsedRepeatedField() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsParsedRepeatedField();
+  }
   optional_ref<const ParsedRepeatedFieldValue> AsParsedRepeatedField()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedRepeatedFieldValue> AsParsedRepeatedField() &&;
@@ -850,7 +874,9 @@ class Value final {
   // returning a non-empty optional with either a value or reference to the
   // parsed struct value. Otherwise an empty optional is returned.
   optional_ref<const ParsedStructValue> AsParsedStruct() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsParsedStruct();
+  }
   optional_ref<const ParsedStructValue> AsParsedStruct()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedStructValue> AsParsedStruct() &&;
@@ -859,7 +885,9 @@ class Value final {
   // Performs a checked cast from a value to a string value,
   // returning a non-empty optional with either a value or reference to the
   // string value. Otherwise an empty optional is returned.
-  optional_ref<const StringValue> AsString() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const StringValue> AsString() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsString();
+  }
   optional_ref<const StringValue> AsString()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<StringValue> AsString() &&;
@@ -868,7 +896,9 @@ class Value final {
   // Performs a checked cast from a value to a struct value,
   // returning a non-empty optional with either a value or reference to the
   // struct value. Otherwise an empty optional is returned.
-  absl::optional<StructValue> AsStruct() &;
+  absl::optional<StructValue> AsStruct() & {
+    return std::as_const(*this).AsStruct();
+  }
   absl::optional<StructValue> AsStruct() const&;
   absl::optional<StructValue> AsStruct() &&;
   absl::optional<StructValue> AsStruct() const&&;
@@ -881,7 +911,9 @@ class Value final {
   // Performs a checked cast from a value to a type value,
   // returning a non-empty optional with either a value or reference to the
   // type value. Otherwise an empty optional is returned.
-  optional_ref<const TypeValue> AsType() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const TypeValue> AsType() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsType();
+  }
   optional_ref<const TypeValue> AsType() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<TypeValue> AsType() &&;
   absl::optional<TypeValue> AsType() const&&;
@@ -894,7 +926,9 @@ class Value final {
   // Performs a checked cast from a value to an unknown value,
   // returning a non-empty optional with either a value or reference to the
   // unknown value. Otherwise an empty optional is returned.
-  optional_ref<const UnknownValue> AsUnknown() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const UnknownValue> AsUnknown() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsUnknown();
+  }
   optional_ref<const UnknownValue> AsUnknown()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<UnknownValue> AsUnknown() &&;
@@ -1567,7 +1601,9 @@ class Value final {
   // Performs an unchecked cast from a value to a bytes value. In
   // debug builds a best effort is made to crash. If `IsBytes()` would return
   // false, calling this method is undefined behavior.
-  const BytesValue& GetBytes() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const BytesValue& GetBytes() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetBytes();
+  }
   const BytesValue& GetBytes() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   BytesValue GetBytes() &&;
   BytesValue GetBytes() const&&;
@@ -1585,7 +1621,9 @@ class Value final {
   // Performs an unchecked cast from a value to an error value. In
   // debug builds a best effort is made to crash. If `IsError()` would return
   // false, calling this method is undefined behavior.
-  const ErrorValue& GetError() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const ErrorValue& GetError() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetError();
+  }
   const ErrorValue& GetError() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ErrorValue GetError() &&;
   ErrorValue GetError() const&&;
@@ -1598,7 +1636,7 @@ class Value final {
   // Performs an unchecked cast from a value to a list value. In
   // debug builds a best effort is made to crash. If `IsList()` would return
   // false, calling this method is undefined behavior.
-  ListValue GetList() &;
+  ListValue GetList() & { return std::as_const(*this).GetList(); }
   ListValue GetList() const&;
   ListValue GetList() &&;
   ListValue GetList() const&&;
@@ -1606,7 +1644,7 @@ class Value final {
   // Performs an unchecked cast from a value to a map value. In
   // debug builds a best effort is made to crash. If `IsMap()` would return
   // false, calling this method is undefined behavior.
-  MapValue GetMap() &;
+  MapValue GetMap() & { return std::as_const(*this).GetMap(); }
   MapValue GetMap() const&;
   MapValue GetMap() &&;
   MapValue GetMap() const&&;
@@ -1614,7 +1652,7 @@ class Value final {
   // Performs an unchecked cast from a value to a message value. In
   // debug builds a best effort is made to crash. If `IsMessage()` would return
   // false, calling this method is undefined behavior.
-  MessageValue GetMessage() &;
+  MessageValue GetMessage() & { return std::as_const(*this).GetMessage(); }
   MessageValue GetMessage() const&;
   MessageValue GetMessage() &&;
   MessageValue GetMessage() const&&;
@@ -1627,7 +1665,9 @@ class Value final {
   // Performs an unchecked cast from a value to an opaque value. In
   // debug builds a best effort is made to crash. If `IsOpaque()` would return
   // false, calling this method is undefined behavior.
-  const OpaqueValue& GetOpaque() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const OpaqueValue& GetOpaque() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetOpaque();
+  }
   const OpaqueValue& GetOpaque() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   OpaqueValue GetOpaque() &&;
   OpaqueValue GetOpaque() const&&;
@@ -1635,7 +1675,9 @@ class Value final {
   // Performs an unchecked cast from a value to an optional value. In
   // debug builds a best effort is made to crash. If `IsOptional()` would return
   // false, calling this method is undefined behavior.
-  const OptionalValue& GetOptional() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const OptionalValue& GetOptional() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetOptional();
+  }
   const OptionalValue& GetOptional() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   OptionalValue GetOptional() &&;
   OptionalValue GetOptional() const&&;
@@ -1644,7 +1686,9 @@ class Value final {
   // debug builds a best effort is made to crash. If `IsParsedJsonList()` would
   // return false, calling this method is undefined behavior.
   const ParsedJsonListValue& GetParsedJsonList() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetParsedJsonList();
+  }
   const ParsedJsonListValue& GetParsedJsonList()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedJsonListValue GetParsedJsonList() &&;
@@ -1653,7 +1697,9 @@ class Value final {
   // Performs an unchecked cast from a value to a parsed message value. In
   // debug builds a best effort is made to crash. If `IsParsedJsonMap()` would
   // return false, calling this method is undefined behavior.
-  const ParsedJsonMapValue& GetParsedJsonMap() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const ParsedJsonMapValue& GetParsedJsonMap() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetParsedJsonMap();
+  }
   const ParsedJsonMapValue& GetParsedJsonMap()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedJsonMapValue GetParsedJsonMap() &&;
@@ -1662,7 +1708,9 @@ class Value final {
   // Performs an unchecked cast from a value to a parsed list value. In
   // debug builds a best effort is made to crash. If `IsParsedList()` would
   // return false, calling this method is undefined behavior.
-  const ParsedListValue& GetParsedList() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const ParsedListValue& GetParsedList() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetParsedList();
+  }
   const ParsedListValue& GetParsedList() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedListValue GetParsedList() &&;
   ParsedListValue GetParsedList() const&&;
@@ -1670,7 +1718,9 @@ class Value final {
   // Performs an unchecked cast from a value to a parsed map value. In
   // debug builds a best effort is made to crash. If `IsParsedMap()` would
   // return false, calling this method is undefined behavior.
-  const ParsedMapValue& GetParsedMap() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const ParsedMapValue& GetParsedMap() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetParsedMap();
+  }
   const ParsedMapValue& GetParsedMap() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedMapValue GetParsedMap() &&;
   ParsedMapValue GetParsedMap() const&&;
@@ -1679,7 +1729,9 @@ class Value final {
   // debug builds a best effort is made to crash. If `IsParsedMapField()` would
   // return false, calling this method is undefined behavior.
   const ParsedMapFieldValue& GetParsedMapField() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetParsedMapField();
+  }
   const ParsedMapFieldValue& GetParsedMapField()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedMapFieldValue GetParsedMapField() &&;
@@ -1688,7 +1740,9 @@ class Value final {
   // Performs an unchecked cast from a value to a parsed message value. In
   // debug builds a best effort is made to crash. If `IsParsedMessage()` would
   // return false, calling this method is undefined behavior.
-  const ParsedMessageValue& GetParsedMessage() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const ParsedMessageValue& GetParsedMessage() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetParsedMessage();
+  }
   const ParsedMessageValue& GetParsedMessage()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedMessageValue GetParsedMessage() &&;
@@ -1699,7 +1753,9 @@ class Value final {
   // `IsParsedRepeatedField()` would return false, calling this method is
   // undefined behavior.
   const ParsedRepeatedFieldValue& GetParsedRepeatedField() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetParsedRepeatedField();
+  }
   const ParsedRepeatedFieldValue& GetParsedRepeatedField()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedRepeatedFieldValue GetParsedRepeatedField() &&;
@@ -1708,7 +1764,9 @@ class Value final {
   // Performs an unchecked cast from a value to a parsed struct value. In
   // debug builds a best effort is made to crash. If `IsParsedStruct()` would
   // return false, calling this method is undefined behavior.
-  const ParsedStructValue& GetParsedStruct() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const ParsedStructValue& GetParsedStruct() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetParsedStruct();
+  }
   const ParsedStructValue& GetParsedStruct()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedStructValue GetParsedStruct() &&;
@@ -1717,7 +1775,9 @@ class Value final {
   // Performs an unchecked cast from a value to a string value. In
   // debug builds a best effort is made to crash. If `IsString()` would return
   // false, calling this method is undefined behavior.
-  const StringValue& GetString() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const StringValue& GetString() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetString();
+  }
   const StringValue& GetString() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   StringValue GetString() &&;
   StringValue GetString() const&&;
@@ -1725,7 +1785,7 @@ class Value final {
   // Performs an unchecked cast from a value to a struct value. In
   // debug builds a best effort is made to crash. If `IsStruct()` would return
   // false, calling this method is undefined behavior.
-  StructValue GetStruct() &;
+  StructValue GetStruct() & { return std::as_const(*this).GetStruct(); }
   StructValue GetStruct() const&;
   StructValue GetStruct() &&;
   StructValue GetStruct() const&&;
@@ -1738,7 +1798,9 @@ class Value final {
   // Performs an unchecked cast from a value to a type value. In
   // debug builds a best effort is made to crash. If `IsType()` would return
   // false, calling this method is undefined behavior.
-  const TypeValue& GetType() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const TypeValue& GetType() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetType();
+  }
   const TypeValue& GetType() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   TypeValue GetType() &&;
   TypeValue GetType() const&&;
@@ -1751,7 +1813,9 @@ class Value final {
   // Performs an unchecked cast from a value to an unknown value. In
   // debug builds a best effort is made to crash. If `IsUnknown()` would return
   // false, calling this method is undefined behavior.
-  const UnknownValue& GetUnknown() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const UnknownValue& GetUnknown() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetUnknown();
+  }
   const UnknownValue& GetUnknown() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   UnknownValue GetUnknown() &&;
   UnknownValue GetUnknown() const&&;

@@ -37,7 +37,6 @@
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/attribute.h"
-#include "common/casting.h"
 #include "common/json.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
@@ -619,14 +618,6 @@ absl::optional<BoolValue> Value::AsBool() const {
   return absl::nullopt;
 }
 
-optional_ref<const BytesValue> Value::AsBytes() & {
-  if (const auto* alternative = absl::get_if<BytesValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  return absl::nullopt;
-}
-
 optional_ref<const BytesValue> Value::AsBytes() const& {
   if (const auto* alternative = absl::get_if<BytesValue>(&variant_);
       alternative != nullptr) {
@@ -667,14 +658,6 @@ absl::optional<DurationValue> Value::AsDuration() const {
   return absl::nullopt;
 }
 
-optional_ref<const ErrorValue> Value::AsError() & {
-  if (const auto* alternative = absl::get_if<ErrorValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  return absl::nullopt;
-}
-
 optional_ref<const ErrorValue> Value::AsError() const& {
   if (const auto* alternative = absl::get_if<ErrorValue>(&variant_);
       alternative != nullptr) {
@@ -701,28 +684,6 @@ absl::optional<ErrorValue> Value::AsError() const&& {
 
 absl::optional<IntValue> Value::AsInt() const {
   if (const auto* alternative = absl::get_if<IntValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  return absl::nullopt;
-}
-
-absl::optional<ListValue> Value::AsList() & {
-  if (const auto* alternative =
-          absl::get_if<common_internal::LegacyListValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  if (const auto* alternative = absl::get_if<ParsedListValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  if (const auto* alternative =
-          absl::get_if<ParsedRepeatedFieldValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  if (const auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
       alternative != nullptr) {
     return *alternative;
   }
@@ -793,27 +754,6 @@ absl::optional<ListValue> Value::AsList() const&& {
   return absl::nullopt;
 }
 
-absl::optional<MapValue> Value::AsMap() & {
-  if (const auto* alternative =
-          absl::get_if<common_internal::LegacyMapValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  if (const auto* alternative = absl::get_if<ParsedMapValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  if (const auto* alternative = absl::get_if<ParsedMapFieldValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  if (const auto* alternative = absl::get_if<ParsedJsonMapValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  return absl::nullopt;
-}
-
 absl::optional<MapValue> Value::AsMap() const& {
   if (const auto* alternative =
           absl::get_if<common_internal::LegacyMapValue>(&variant_);
@@ -877,14 +817,6 @@ absl::optional<MapValue> Value::AsMap() const&& {
   return absl::nullopt;
 }
 
-absl::optional<MessageValue> Value::AsMessage() & {
-  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  return absl::nullopt;
-}
-
 absl::optional<MessageValue> Value::AsMessage() const& {
   if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
       alternative != nullptr) {
@@ -917,14 +849,6 @@ absl::optional<NullValue> Value::AsNull() const {
   return absl::nullopt;
 }
 
-optional_ref<const OpaqueValue> Value::AsOpaque() & {
-  if (const auto* alternative = absl::get_if<OpaqueValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  return absl::nullopt;
-}
-
 optional_ref<const OpaqueValue> Value::AsOpaque() const& {
   if (const auto* alternative = absl::get_if<OpaqueValue>(&variant_);
       alternative != nullptr) {
@@ -945,14 +869,6 @@ absl::optional<OpaqueValue> Value::AsOpaque() const&& {
   if (auto* alternative = absl::get_if<OpaqueValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
-  }
-  return absl::nullopt;
-}
-
-optional_ref<const OptionalValue> Value::AsOptional() & {
-  if (const auto* alternative = absl::get_if<OpaqueValue>(&variant_);
-      alternative != nullptr && alternative->IsOptional()) {
-    return static_cast<const OptionalValue&>(*alternative);
   }
   return absl::nullopt;
 }
@@ -981,14 +897,6 @@ absl::optional<OptionalValue> Value::AsOptional() const&& {
   return absl::nullopt;
 }
 
-optional_ref<const ParsedJsonListValue> Value::AsParsedJsonList() & {
-  if (const auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  return absl::nullopt;
-}
-
 optional_ref<const ParsedJsonListValue> Value::AsParsedJsonList() const& {
   if (const auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
       alternative != nullptr) {
@@ -1009,14 +917,6 @@ absl::optional<ParsedJsonListValue> Value::AsParsedJsonList() const&& {
   if (auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
-  }
-  return absl::nullopt;
-}
-
-optional_ref<const ParsedJsonMapValue> Value::AsParsedJsonMap() & {
-  if (const auto* alternative = absl::get_if<ParsedJsonMapValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
   }
   return absl::nullopt;
 }
@@ -1045,14 +945,6 @@ absl::optional<ParsedJsonMapValue> Value::AsParsedJsonMap() const&& {
   return absl::nullopt;
 }
 
-optional_ref<const ParsedListValue> Value::AsParsedList() & {
-  if (const auto* alternative = absl::get_if<ParsedListValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  return absl::nullopt;
-}
-
 optional_ref<const ParsedListValue> Value::AsParsedList() const& {
   if (const auto* alternative = absl::get_if<ParsedListValue>(&variant_);
       alternative != nullptr) {
@@ -1073,14 +965,6 @@ absl::optional<ParsedListValue> Value::AsParsedList() const&& {
   if (auto* alternative = absl::get_if<ParsedListValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
-  }
-  return absl::nullopt;
-}
-
-optional_ref<const ParsedMapValue> Value::AsParsedMap() & {
-  if (const auto* alternative = absl::get_if<ParsedMapValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
   }
   return absl::nullopt;
 }
@@ -1109,14 +993,6 @@ absl::optional<ParsedMapValue> Value::AsParsedMap() const&& {
   return absl::nullopt;
 }
 
-optional_ref<const ParsedMapFieldValue> Value::AsParsedMapField() & {
-  if (const auto* alternative = absl::get_if<ParsedMapFieldValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  return absl::nullopt;
-}
-
 optional_ref<const ParsedMapFieldValue> Value::AsParsedMapField() const& {
   if (const auto* alternative = absl::get_if<ParsedMapFieldValue>(&variant_);
       alternative != nullptr) {
@@ -1141,14 +1017,6 @@ absl::optional<ParsedMapFieldValue> Value::AsParsedMapField() const&& {
   return absl::nullopt;
 }
 
-optional_ref<const ParsedMessageValue> Value::AsParsedMessage() & {
-  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  return absl::nullopt;
-}
-
 optional_ref<const ParsedMessageValue> Value::AsParsedMessage() const& {
   if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
       alternative != nullptr) {
@@ -1169,15 +1037,6 @@ absl::optional<ParsedMessageValue> Value::AsParsedMessage() const&& {
   if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
-  }
-  return absl::nullopt;
-}
-
-optional_ref<const ParsedRepeatedFieldValue> Value::AsParsedRepeatedField() & {
-  if (const auto* alternative =
-          absl::get_if<ParsedRepeatedFieldValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
   }
   return absl::nullopt;
 }
@@ -1209,14 +1068,6 @@ absl::optional<ParsedRepeatedFieldValue> Value::AsParsedRepeatedField()
   return absl::nullopt;
 }
 
-optional_ref<const ParsedStructValue> Value::AsParsedStruct() & {
-  if (const auto* alternative = absl::get_if<ParsedStructValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  return absl::nullopt;
-}
-
 optional_ref<const ParsedStructValue> Value::AsParsedStruct() const& {
   if (const auto* alternative = absl::get_if<ParsedStructValue>(&variant_);
       alternative != nullptr) {
@@ -1241,14 +1092,6 @@ absl::optional<ParsedStructValue> Value::AsParsedStruct() const&& {
   return absl::nullopt;
 }
 
-optional_ref<const StringValue> Value::AsString() & {
-  if (const auto* alternative = absl::get_if<StringValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  return absl::nullopt;
-}
-
 optional_ref<const StringValue> Value::AsString() const& {
   if (const auto* alternative = absl::get_if<StringValue>(&variant_);
       alternative != nullptr) {
@@ -1269,23 +1112,6 @@ absl::optional<StringValue> Value::AsString() const&& {
   if (auto* alternative = absl::get_if<StringValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
-  }
-  return absl::nullopt;
-}
-
-absl::optional<StructValue> Value::AsStruct() & {
-  if (const auto* alternative =
-          absl::get_if<common_internal::LegacyStructValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  if (const auto* alternative = absl::get_if<ParsedStructValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
   }
   return absl::nullopt;
 }
@@ -1349,14 +1175,6 @@ absl::optional<TimestampValue> Value::AsTimestamp() const {
   return absl::nullopt;
 }
 
-optional_ref<const TypeValue> Value::AsType() & {
-  if (const auto* alternative = absl::get_if<TypeValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  return absl::nullopt;
-}
-
 optional_ref<const TypeValue> Value::AsType() const& {
   if (const auto* alternative = absl::get_if<TypeValue>(&variant_);
       alternative != nullptr) {
@@ -1383,14 +1201,6 @@ absl::optional<TypeValue> Value::AsType() const&& {
 
 absl::optional<UintValue> Value::AsUint() const {
   if (const auto* alternative = absl::get_if<UintValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  return absl::nullopt;
-}
-
-optional_ref<const UnknownValue> Value::AsUnknown() & {
-  if (const auto* alternative = absl::get_if<UnknownValue>(&variant_);
       alternative != nullptr) {
     return *alternative;
   }
@@ -1426,11 +1236,6 @@ BoolValue Value::GetBool() const {
   return absl::get<BoolValue>(variant_);
 }
 
-const BytesValue& Value::GetBytes() & {
-  ABSL_DCHECK(IsBytes()) << *this;
-  return absl::get<BytesValue>(variant_);
-}
-
 const BytesValue& Value::GetBytes() const& {
   ABSL_DCHECK(IsBytes()) << *this;
   return absl::get<BytesValue>(variant_);
@@ -1454,11 +1259,6 @@ DoubleValue Value::GetDouble() const {
 DurationValue Value::GetDuration() const {
   ABSL_DCHECK(IsDuration()) << *this;
   return absl::get<DurationValue>(variant_);
-}
-
-const ErrorValue& Value::GetError() & {
-  ABSL_DCHECK(IsError()) << *this;
-  return absl::get<ErrorValue>(variant_);
 }
 
 const ErrorValue& Value::GetError() const& {
@@ -1487,29 +1287,6 @@ IntValue Value::GetInt() const {
 #define CEL_VALUE_THROW_BAD_VARIANT_ACCESS() \
   ABSL_LOG(FATAL) << absl::bad_variant_access().what() /* Crash OK */
 #endif
-
-ListValue Value::GetList() & {
-  ABSL_DCHECK(IsList()) << *this;
-  if (const auto* alternative =
-          absl::get_if<common_internal::LegacyListValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  if (const auto* alternative = absl::get_if<ParsedListValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  if (const auto* alternative =
-          absl::get_if<ParsedRepeatedFieldValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  if (const auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
-}
 
 ListValue Value::GetList() const& {
   ABSL_DCHECK(IsList()) << *this;
@@ -1574,28 +1351,6 @@ ListValue Value::GetList() const&& {
   if (auto* alternative = absl::get_if<ParsedJsonListValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
-  }
-  CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
-}
-
-MapValue Value::GetMap() & {
-  ABSL_DCHECK(IsMap()) << *this;
-  if (const auto* alternative =
-          absl::get_if<common_internal::LegacyMapValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  if (const auto* alternative = absl::get_if<ParsedMapValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  if (const auto* alternative = absl::get_if<ParsedMapFieldValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  if (const auto* alternative = absl::get_if<ParsedJsonMapValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
   }
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
@@ -1666,11 +1421,6 @@ MapValue Value::GetMap() const&& {
   CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
-MessageValue Value::GetMessage() & {
-  ABSL_DCHECK(IsMessage()) << *this;
-  return absl::get<ParsedMessageValue>(variant_);
-}
-
 MessageValue Value::GetMessage() const& {
   ABSL_DCHECK(IsMessage()) << *this;
   return absl::get<ParsedMessageValue>(variant_);
@@ -1691,11 +1441,6 @@ NullValue Value::GetNull() const {
   return absl::get<NullValue>(variant_);
 }
 
-const OpaqueValue& Value::GetOpaque() & {
-  ABSL_DCHECK(IsOpaque()) << *this;
-  return absl::get<OpaqueValue>(variant_);
-}
-
 const OpaqueValue& Value::GetOpaque() const& {
   ABSL_DCHECK(IsOpaque()) << *this;
   return absl::get<OpaqueValue>(variant_);
@@ -1709,11 +1454,6 @@ OpaqueValue Value::GetOpaque() && {
 OpaqueValue Value::GetOpaque() const&& {
   ABSL_DCHECK(IsOpaque()) << *this;
   return absl::get<OpaqueValue>(std::move(variant_));
-}
-
-const OptionalValue& Value::GetOptional() & {
-  ABSL_DCHECK(IsOptional()) << *this;
-  return static_cast<OptionalValue&>(absl::get<OpaqueValue>(variant_));
 }
 
 const OptionalValue& Value::GetOptional() const& {
@@ -1733,11 +1473,6 @@ OptionalValue Value::GetOptional() const&& {
       absl::get<OpaqueValue>(std::move(variant_)));
 }
 
-const ParsedJsonListValue& Value::GetParsedJsonList() & {
-  ABSL_DCHECK(IsParsedJsonList()) << *this;
-  return absl::get<ParsedJsonListValue>(variant_);
-}
-
 const ParsedJsonListValue& Value::GetParsedJsonList() const& {
   ABSL_DCHECK(IsParsedJsonList()) << *this;
   return absl::get<ParsedJsonListValue>(variant_);
@@ -1751,11 +1486,6 @@ ParsedJsonListValue Value::GetParsedJsonList() && {
 ParsedJsonListValue Value::GetParsedJsonList() const&& {
   ABSL_DCHECK(IsParsedJsonList()) << *this;
   return absl::get<ParsedJsonListValue>(std::move(variant_));
-}
-
-const ParsedJsonMapValue& Value::GetParsedJsonMap() & {
-  ABSL_DCHECK(IsParsedJsonMap()) << *this;
-  return absl::get<ParsedJsonMapValue>(variant_);
 }
 
 const ParsedJsonMapValue& Value::GetParsedJsonMap() const& {
@@ -1773,11 +1503,6 @@ ParsedJsonMapValue Value::GetParsedJsonMap() const&& {
   return absl::get<ParsedJsonMapValue>(std::move(variant_));
 }
 
-const ParsedListValue& Value::GetParsedList() & {
-  ABSL_DCHECK(IsParsedList()) << *this;
-  return absl::get<ParsedListValue>(variant_);
-}
-
 const ParsedListValue& Value::GetParsedList() const& {
   ABSL_DCHECK(IsParsedList()) << *this;
   return absl::get<ParsedListValue>(variant_);
@@ -1791,11 +1516,6 @@ ParsedListValue Value::GetParsedList() && {
 ParsedListValue Value::GetParsedList() const&& {
   ABSL_DCHECK(IsParsedList()) << *this;
   return absl::get<ParsedListValue>(std::move(variant_));
-}
-
-const ParsedMapValue& Value::GetParsedMap() & {
-  ABSL_DCHECK(IsParsedMap()) << *this;
-  return absl::get<ParsedMapValue>(variant_);
 }
 
 const ParsedMapValue& Value::GetParsedMap() const& {
@@ -1813,11 +1533,6 @@ ParsedMapValue Value::GetParsedMap() const&& {
   return absl::get<ParsedMapValue>(std::move(variant_));
 }
 
-const ParsedMapFieldValue& Value::GetParsedMapField() & {
-  ABSL_DCHECK(IsParsedMapField()) << *this;
-  return absl::get<ParsedMapFieldValue>(variant_);
-}
-
 const ParsedMapFieldValue& Value::GetParsedMapField() const& {
   ABSL_DCHECK(IsParsedMapField()) << *this;
   return absl::get<ParsedMapFieldValue>(variant_);
@@ -1831,11 +1546,6 @@ ParsedMapFieldValue Value::GetParsedMapField() && {
 ParsedMapFieldValue Value::GetParsedMapField() const&& {
   ABSL_DCHECK(IsParsedMapField()) << *this;
   return absl::get<ParsedMapFieldValue>(std::move(variant_));
-}
-
-const ParsedMessageValue& Value::GetParsedMessage() & {
-  ABSL_DCHECK(IsParsedMessage()) << *this;
-  return absl::get<ParsedMessageValue>(variant_);
 }
 
 const ParsedMessageValue& Value::GetParsedMessage() const& {
@@ -1853,11 +1563,6 @@ ParsedMessageValue Value::GetParsedMessage() const&& {
   return absl::get<ParsedMessageValue>(std::move(variant_));
 }
 
-const ParsedRepeatedFieldValue& Value::GetParsedRepeatedField() & {
-  ABSL_DCHECK(IsParsedRepeatedField()) << *this;
-  return absl::get<ParsedRepeatedFieldValue>(variant_);
-}
-
 const ParsedRepeatedFieldValue& Value::GetParsedRepeatedField() const& {
   ABSL_DCHECK(IsParsedRepeatedField()) << *this;
   return absl::get<ParsedRepeatedFieldValue>(variant_);
@@ -1871,11 +1576,6 @@ ParsedRepeatedFieldValue Value::GetParsedRepeatedField() && {
 ParsedRepeatedFieldValue Value::GetParsedRepeatedField() const&& {
   ABSL_DCHECK(IsParsedRepeatedField()) << *this;
   return absl::get<ParsedRepeatedFieldValue>(std::move(variant_));
-}
-
-const ParsedStructValue& Value::GetParsedStruct() & {
-  ABSL_DCHECK(IsParsedMap()) << *this;
-  return absl::get<ParsedStructValue>(variant_);
 }
 
 const ParsedStructValue& Value::GetParsedStruct() const& {
@@ -1893,11 +1593,6 @@ ParsedStructValue Value::GetParsedStruct() const&& {
   return absl::get<ParsedStructValue>(std::move(variant_));
 }
 
-const StringValue& Value::GetString() & {
-  ABSL_DCHECK(IsString()) << *this;
-  return absl::get<StringValue>(variant_);
-}
-
 const StringValue& Value::GetString() const& {
   ABSL_DCHECK(IsString()) << *this;
   return absl::get<StringValue>(variant_);
@@ -1911,24 +1606,6 @@ StringValue Value::GetString() && {
 StringValue Value::GetString() const&& {
   ABSL_DCHECK(IsString()) << *this;
   return absl::get<StringValue>(std::move(variant_));
-}
-
-StructValue Value::GetStruct() & {
-  ABSL_DCHECK(IsStruct()) << *this;
-  if (const auto* alternative =
-          absl::get_if<common_internal::LegacyStructValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  if (const auto* alternative = absl::get_if<ParsedStructValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  CEL_VALUE_THROW_BAD_VARIANT_ACCESS();
 }
 
 StructValue Value::GetStruct() const& {
@@ -1990,11 +1667,6 @@ TimestampValue Value::GetTimestamp() const {
   return absl::get<TimestampValue>(variant_);
 }
 
-const TypeValue& Value::GetType() & {
-  ABSL_DCHECK(IsType()) << *this;
-  return absl::get<TypeValue>(variant_);
-}
-
 const TypeValue& Value::GetType() const& {
   ABSL_DCHECK(IsType()) << *this;
   return absl::get<TypeValue>(variant_);
@@ -2013,11 +1685,6 @@ TypeValue Value::GetType() const&& {
 UintValue Value::GetUint() const {
   ABSL_DCHECK(IsUint()) << *this;
   return absl::get<UintValue>(variant_);
-}
-
-const UnknownValue& Value::GetUnknown() & {
-  ABSL_DCHECK(IsUnknown()) << *this;
-  return absl::get<UnknownValue>(variant_);
 }
 
 const UnknownValue& Value::GetUnknown() const& {
