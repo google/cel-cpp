@@ -43,6 +43,10 @@ class ProtoTypeIntrospector : public virtual TypeIntrospector {
   absl::StatusOr<absl::optional<Type>> FindTypeImpl(
       TypeFactory& type_factory, absl::string_view name) const final;
 
+  absl::StatusOr<absl::optional<TypeIntrospector::EnumConstant>>
+  FindEnumConstantImpl(TypeFactory&, absl::string_view type,
+                       absl::string_view value) const final;
+
   absl::StatusOr<absl::optional<StructTypeField>> FindStructTypeFieldByNameImpl(
       TypeFactory& type_factory, absl::string_view type,
       absl::string_view name) const final;

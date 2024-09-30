@@ -20,6 +20,7 @@
 #include "common/type.h"
 #include "common/type_factory.h"
 #include "common/type_introspector.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel::extensions {
 
@@ -32,6 +33,31 @@ absl::StatusOr<absl::optional<Type>> ProtoTypeIntrospector::FindTypeImpl(
     return absl::nullopt;
   }
   return MessageType(desc);
+}
+
+absl::StatusOr<absl::optional<TypeIntrospector::EnumConstant>>
+ProtoTypeIntrospector::FindEnumConstantImpl(TypeFactory&,
+                                            absl::string_view type,
+                                            absl::string_view value) const {
+  const google::protobuf::EnumDescriptor* enum_desc =
+      descriptor_pool()->FindEnumTypeByName(type);
+  // google.protobuf.NullValue is special cased in the base class.
+  if (enum_desc == nullptr) {
+    return absl::nullopt;
+  }
+
+  // Note: we don't support strong enum typing at this time so only the fully
+  // qualified enum values are meaningful, so we don't provide any signal if the
+  // enum type is found but can't match the value name.
+  const google::protobuf::EnumValueDescriptor* value_desc =
+      enum_desc->FindValueByName(value);
+  if (value_desc == nullptr) {
+    return absl::nullopt;
+  }
+
+  return TypeIntrospector::EnumConstant{
+      EnumType(enum_desc), enum_desc->full_name(), value_desc->name(),
+      value_desc->number()};
 }
 
 absl::StatusOr<absl::optional<StructTypeField>>

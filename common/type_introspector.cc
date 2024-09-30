@@ -222,6 +222,17 @@ absl::StatusOr<absl::optional<Type>> TypeIntrospector::FindType(
   return FindTypeImpl(type_factory, name);
 }
 
+absl::StatusOr<absl::optional<TypeIntrospector::EnumConstant>>
+TypeIntrospector::FindEnumConstant(TypeFactory& type_factory,
+                                   absl::string_view type,
+                                   absl::string_view value) const {
+  if (type == "google.protobuf.NullValue" && value == "NULL_VALUE") {
+    return EnumConstant{NullType{}, "google.protobuf.NullValue", "NULL_VALUE",
+                        0};
+  }
+  return FindEnumConstantImpl(type_factory, type, value);
+}
+
 absl::StatusOr<absl::optional<StructTypeField>>
 TypeIntrospector::FindStructTypeFieldByName(TypeFactory& type_factory,
                                             absl::string_view type,
@@ -235,6 +246,12 @@ TypeIntrospector::FindStructTypeFieldByName(TypeFactory& type_factory,
 
 absl::StatusOr<absl::optional<Type>> TypeIntrospector::FindTypeImpl(
     TypeFactory&, absl::string_view) const {
+  return absl::nullopt;
+}
+
+absl::StatusOr<absl::optional<TypeIntrospector::EnumConstant>>
+TypeIntrospector::FindEnumConstantImpl(TypeFactory&, absl::string_view,
+                                       absl::string_view) const {
   return absl::nullopt;
 }
 

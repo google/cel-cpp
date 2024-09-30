@@ -16,6 +16,7 @@
 
 #include "absl/types/optional.h"
 #include "common/type.h"
+#include "common/type_kind.h"
 #include "common/type_testing.h"
 #include "internal/testing.h"
 #include "proto/test/v1/proto2/test_all_types.pb.h"
@@ -60,6 +61,54 @@ TEST_P(ProtoTypeIntrospectorTest, FindStructTypeFieldByName) {
   EXPECT_THAT(type_manager().FindStructTypeFieldByName(
                   "type.that.does.not.Exist", "does_not_matter"),
               IsOkAndHolds(Eq(absl::nullopt)));
+}
+
+TEST_P(ProtoTypeIntrospectorTest, FindEnumConstant) {
+  ProtoTypeIntrospector introspector;
+  const auto* enum_desc = TestAllTypes::NestedEnum_descriptor();
+  ASSERT_OK_AND_ASSIGN(
+      auto enum_constant,
+      introspector.FindEnumConstant(
+          type_manager(),
+          "google.api.expr.test.v1.proto2.TestAllTypes.NestedEnum", "BAZ"));
+  ASSERT_TRUE(enum_constant.has_value());
+  EXPECT_EQ(enum_constant->type.kind(), TypeKind::kEnum);
+  EXPECT_EQ(enum_constant->type_full_name, enum_desc->full_name());
+  EXPECT_EQ(enum_constant->value_name, "BAZ");
+  EXPECT_EQ(enum_constant->number, 2);
+}
+
+TEST_P(ProtoTypeIntrospectorTest, FindEnumConstantNull) {
+  ProtoTypeIntrospector introspector;
+  ASSERT_OK_AND_ASSIGN(
+      auto enum_constant,
+      introspector.FindEnumConstant(type_manager(), "google.protobuf.NullValue",
+                                    "NULL_VALUE"));
+  ASSERT_TRUE(enum_constant.has_value());
+  EXPECT_EQ(enum_constant->type.kind(), TypeKind::kNull);
+  EXPECT_EQ(enum_constant->type_full_name, "google.protobuf.NullValue");
+  EXPECT_EQ(enum_constant->value_name, "NULL_VALUE");
+  EXPECT_EQ(enum_constant->number, 0);
+}
+
+TEST_P(ProtoTypeIntrospectorTest, FindEnumConstantUnknownEnum) {
+  ProtoTypeIntrospector introspector;
+
+  ASSERT_OK_AND_ASSIGN(
+      auto enum_constant,
+      introspector.FindEnumConstant(type_manager(), "NotARealEnum", "BAZ"));
+  EXPECT_FALSE(enum_constant.has_value());
+}
+
+TEST_P(ProtoTypeIntrospectorTest, FindEnumConstantUnknownValue) {
+  ProtoTypeIntrospector introspector;
+
+  ASSERT_OK_AND_ASSIGN(
+      auto enum_constant,
+      introspector.FindEnumConstant(
+          type_manager(),
+          "google.api.expr.test.v1.proto2.TestAllTypes.NestedEnum", "QUX"));
+  ASSERT_FALSE(enum_constant.has_value());
 }
 
 INSTANTIATE_TEST_SUITE_P(

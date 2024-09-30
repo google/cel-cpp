@@ -15,6 +15,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPE_INTROSPECTOR_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_INTROSPECTOR_H_
 
+#include <cstdint>
+
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
@@ -32,11 +34,26 @@ class TypeFactory;
 // is used by the runtime.
 class TypeIntrospector {
  public:
+  struct EnumConstant {
+    // The type of the enum. For JSON null, this may be a specific type rather
+    // than an enum type.
+    Type type;
+    absl::string_view type_full_name;
+    absl::string_view value_name;
+    int32_t number;
+  };
+
   virtual ~TypeIntrospector() = default;
 
   // `FindType` find the type corresponding to name `name`.
   absl::StatusOr<absl::optional<Type>> FindType(TypeFactory& type_factory,
                                                 absl::string_view name) const;
+
+  // `FindEnumConstant` find a fully qualified enumerator name `name` in enum
+  // type `type`.
+  absl::StatusOr<absl::optional<EnumConstant>> FindEnumConstant(
+      TypeFactory& type_factory, absl::string_view type,
+      absl::string_view value) const;
 
   // `FindStructTypeFieldByName` find the name, number, and type of the field
   // `name` in type `type`.
@@ -55,6 +72,10 @@ class TypeIntrospector {
  protected:
   virtual absl::StatusOr<absl::optional<Type>> FindTypeImpl(
       TypeFactory& type_factory, absl::string_view name) const;
+
+  virtual absl::StatusOr<absl::optional<EnumConstant>> FindEnumConstantImpl(
+      TypeFactory& type_factory, absl::string_view type,
+      absl::string_view value) const;
 
   virtual absl::StatusOr<absl::optional<StructTypeField>>
   FindStructTypeFieldByNameImpl(TypeFactory& type_factory,

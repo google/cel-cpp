@@ -170,6 +170,7 @@ cc_test(
     deps = [
         ":type",
         "//common:type",
+        "//common:type_kind",
         "//common:type_testing",
         "//internal:testing",
         "@com_google_absl//absl/types:optional",
