@@ -1481,8 +1481,9 @@ bool StructReflection::ContainsField(const google::protobuf::Message& message,
                                      absl::string_view name) const {
   ABSL_DCHECK(IsInitialized());
   ABSL_DCHECK_EQ(message.GetDescriptor(), descriptor_);
+  std::string key_scratch(name);
   google::protobuf::MapKey key;
-  key.SetStringValue(std::string(name));
+  key.SetStringValue(key_scratch);
   return cel::extensions::protobuf_internal::ContainsMapKey(
       *message.GetReflection(), message, *fields_field_, key);
 }
@@ -1491,8 +1492,9 @@ absl::Nullable<const google::protobuf::Message*> StructReflection::FindField(
     const google::protobuf::Message& message, absl::string_view name) const {
   ABSL_DCHECK(IsInitialized());
   ABSL_DCHECK_EQ(message.GetDescriptor(), descriptor_);
+  std::string key_scratch(name);
   google::protobuf::MapKey key;
-  key.SetStringValue(std::string(name));
+  key.SetStringValue(key_scratch);
   google::protobuf::MapValueConstRef value;
   if (cel::extensions::protobuf_internal::LookupMapValue(
           *message.GetReflection(), message, *fields_field_, key, &value)) {
@@ -1505,8 +1507,9 @@ absl::Nonnull<google::protobuf::Message*> StructReflection::InsertField(
     absl::Nonnull<google::protobuf::Message*> message, absl::string_view name) const {
   ABSL_DCHECK(IsInitialized());
   ABSL_DCHECK_EQ(message->GetDescriptor(), descriptor_);
+  std::string key_scratch(name);
   google::protobuf::MapKey key;
-  key.SetStringValue(std::string(name));
+  key.SetStringValue(key_scratch);
   google::protobuf::MapValueRef value;
   cel::extensions::protobuf_internal::InsertOrLookupMapValue(
       *message->GetReflection(), message, *fields_field_, key, &value);
@@ -1517,8 +1520,9 @@ bool StructReflection::DeleteField(absl::Nonnull<google::protobuf::Message*> mes
                                    absl::string_view name) const {
   ABSL_DCHECK(IsInitialized());
   ABSL_DCHECK_EQ(message->GetDescriptor(), descriptor_);
+  std::string key_scratch(name);
   google::protobuf::MapKey key;
-  key.SetStringValue(std::string(name));
+  key.SetStringValue(key_scratch);
   return cel::extensions::protobuf_internal::DeleteMapValue(
       message->GetReflection(), message, fields_field_, key);
 }
