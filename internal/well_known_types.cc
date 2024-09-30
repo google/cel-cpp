@@ -365,6 +365,21 @@ absl::Status CheckMapField(absl::Nonnull<const FieldDescriptor*> field) {
 
 }  // namespace
 
+bool StringValue::ConsumePrefix(absl::string_view prefix) {
+  return absl::visit(absl::Overload(
+                         [&](absl::string_view& value) {
+                           return absl::ConsumePrefix(&value, prefix);
+                         },
+                         [&](absl::Cord& cord) {
+                           if (cord.StartsWith(prefix)) {
+                             cord.RemovePrefix(prefix.size());
+                             return true;
+                           }
+                           return false;
+                         }),
+                     AsVariant(*this));
+}
+
 StringValue GetStringField(absl::Nonnull<const google::protobuf::Reflection*> reflection,
                            const google::protobuf::Message& message,
                            absl::Nonnull<const FieldDescriptor*> field,
@@ -926,6 +941,13 @@ absl::StatusOr<AnyReflection> GetAnyReflection(
   return reflection;
 }
 
+AnyReflection GetAnyReflectionOrDie(
+    absl::Nonnull<const google::protobuf::Descriptor*> descriptor) {
+  AnyReflection reflection;
+  ABSL_CHECK_OK(reflection.Initialize(descriptor));  // Crash OK
+  return reflection;
+}
+
 absl::Status DurationReflection::Initialize(
     absl::Nonnull<const DescriptorPool*> pool) {
   CEL_ASSIGN_OR_RETURN(const auto* descriptor,
@@ -977,6 +999,29 @@ void DurationReflection::SetNanos(absl::Nonnull<google::protobuf::Message*> mess
   ABSL_DCHECK(IsInitialized());
   ABSL_DCHECK_EQ(message->GetDescriptor(), descriptor_);
   message->GetReflection()->SetInt32(message, nanos_field_, value);
+}
+
+absl::StatusOr<absl::Duration> DurationReflection::ToAbslDuration(
+    const google::protobuf::Message& message) const {
+  ABSL_DCHECK(IsInitialized());
+  ABSL_DCHECK_EQ(message.GetDescriptor(), descriptor_);
+  int64_t seconds = GetSeconds(message);
+  if (ABSL_PREDICT_FALSE(seconds < TimeUtil::kDurationMinSeconds ||
+                         seconds > TimeUtil::kDurationMaxSeconds)) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("invalid duration seconds: ", seconds));
+  }
+  int32_t nanos = GetNanos(message);
+  if (ABSL_PREDICT_FALSE(nanos < TimeUtil::kDurationMinNanoseconds ||
+                         nanos > TimeUtil::kDurationMaxNanoseconds)) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("invalid duration nanoseconds: ", nanos));
+  }
+  if ((seconds < 0 && nanos > 0) || (seconds > 0 && nanos < 0)) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "duration sign mismatch: seconds=", seconds, ", nanoseconds=", nanos));
+  }
+  return absl::Seconds(seconds) + absl::Nanoseconds(nanos);
 }
 
 absl::StatusOr<DurationReflection> GetDurationReflection(
@@ -1037,6 +1082,23 @@ void TimestampReflection::SetNanos(absl::Nonnull<google::protobuf::Message*> mes
   ABSL_DCHECK(IsInitialized());
   ABSL_DCHECK_EQ(message->GetDescriptor(), descriptor_);
   message->GetReflection()->SetInt32(message, nanos_field_, value);
+}
+
+absl::StatusOr<absl::Time> TimestampReflection::ToAbslTime(
+    const google::protobuf::Message& message) const {
+  int64_t seconds = GetSeconds(message);
+  if (ABSL_PREDICT_FALSE(seconds < TimeUtil::kTimestampMinSeconds ||
+                         seconds > TimeUtil::kTimestampMaxSeconds)) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("invalid timestamp seconds: ", seconds));
+  }
+  int32_t nanos = GetNanos(message);
+  if (ABSL_PREDICT_FALSE(nanos < TimeUtil::kTimestampMinNanoseconds ||
+                         nanos > TimeUtil::kTimestampMaxNanoseconds)) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("invalid timestamp nanoseconds: ", nanos));
+  }
+  return absl::UnixEpoch() + absl::Seconds(seconds) + absl::Nanoseconds(nanos);
 }
 
 absl::StatusOr<TimestampReflection> GetTimestampReflection(
@@ -1591,7 +1653,8 @@ absl::StatusOr<Unique<google::protobuf::Message>> AdaptAny(
     absl::Nullable<google::protobuf::Arena*> arena, AnyReflection& reflection,
     const google::protobuf::Message& message, absl::Nonnull<const Descriptor*> descriptor,
     absl::Nonnull<const DescriptorPool*> pool,
-    absl::Nonnull<google::protobuf::MessageFactory*> factory) {
+    absl::Nonnull<google::protobuf::MessageFactory*> factory,
+    bool error_if_unresolveable) {
   ABSL_DCHECK_EQ(descriptor->well_known_type(), Descriptor::WELLKNOWNTYPE_ANY);
   absl::Nonnull<const google::protobuf::Message*> to_unwrap = &message;
   Unique<google::protobuf::Message> unwrapped;
@@ -1604,11 +1667,17 @@ absl::StatusOr<Unique<google::protobuf::Message>> AdaptAny(
         FlatStringValue(type_url, type_url_scratch);
     if (!absl::ConsumePrefix(&type_url_view, "type.googleapis.com/") &&
         !absl::ConsumePrefix(&type_url_view, "type.googleprod.com/")) {
+      if (!error_if_unresolveable) {
+        break;
+      }
       return absl::InvalidArgumentError(absl::StrCat(
           "unable to find descriptor for type URL: ", type_url_view));
     }
     const auto* packed_descriptor = pool->FindMessageTypeByName(type_url_view);
     if (packed_descriptor == nullptr) {
+      if (!error_if_unresolveable) {
+        break;
+      }
       return absl::InvalidArgumentError(absl::StrCat(
           "unable to find descriptor for type name: ", type_url_view));
     }
@@ -1655,7 +1724,18 @@ absl::StatusOr<Unique<google::protobuf::Message>> UnpackAnyFrom(
   ABSL_DCHECK_EQ(message.GetDescriptor()->well_known_type(),
                  Descriptor::WELLKNOWNTYPE_ANY);
   return AdaptAny(arena, reflection, message, message.GetDescriptor(), pool,
-                  factory);
+                  factory, /*error_if_unresolveable=*/true);
+}
+
+absl::StatusOr<Unique<google::protobuf::Message>> UnpackAnyIfResolveable(
+    absl::Nullable<google::protobuf::Arena*> arena, AnyReflection& reflection,
+    const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> factory) {
+  ABSL_DCHECK_EQ(message.GetDescriptor()->well_known_type(),
+                 Descriptor::WELLKNOWNTYPE_ANY);
+  return AdaptAny(arena, reflection, message, message.GetDescriptor(), pool,
+                  factory, /*error_if_unresolveable=*/false);
 }
 
 absl::StatusOr<well_known_types::Value> AdaptFromMessage(
@@ -1744,41 +1824,11 @@ absl::StatusOr<well_known_types::Value> AdaptFromMessage(
       ABSL_UNREACHABLE();
     case Descriptor::WELLKNOWNTYPE_DURATION: {
       CEL_ASSIGN_OR_RETURN(auto reflection, GetDurationReflection(descriptor));
-      int64_t seconds = reflection.GetSeconds(*to_adapt);
-      if (ABSL_PREDICT_FALSE(seconds < TimeUtil::kDurationMinSeconds ||
-                             seconds > TimeUtil::kDurationMaxSeconds)) {
-        return absl::InvalidArgumentError(
-            absl::StrCat("invalid duration seconds: ", seconds));
-      }
-      int32_t nanos = reflection.GetNanos(*to_adapt);
-      if (ABSL_PREDICT_FALSE(nanos < TimeUtil::kDurationMinNanoseconds ||
-                             nanos > TimeUtil::kDurationMaxNanoseconds)) {
-        return absl::InvalidArgumentError(
-            absl::StrCat("invalid duration nanoseconds: ", nanos));
-      }
-      if ((seconds < 0 && nanos > 0) || (seconds > 0 && nanos < 0)) {
-        return absl::InvalidArgumentError(
-            absl::StrCat("duration sign mismatch: seconds=", seconds,
-                         ", nanoseconds=", nanos));
-      }
-      return absl::Seconds(seconds) + absl::Nanoseconds(nanos);
+      return reflection.ToAbslDuration(*to_adapt);
     }
     case Descriptor::WELLKNOWNTYPE_TIMESTAMP: {
       CEL_ASSIGN_OR_RETURN(auto reflection, GetTimestampReflection(descriptor));
-      int64_t seconds = reflection.GetSeconds(*to_adapt);
-      if (ABSL_PREDICT_FALSE(seconds < TimeUtil::kTimestampMinSeconds ||
-                             seconds > TimeUtil::kTimestampMaxSeconds)) {
-        return absl::InvalidArgumentError(
-            absl::StrCat("invalid timestamp seconds: ", seconds));
-      }
-      int32_t nanos = reflection.GetNanos(*to_adapt);
-      if (ABSL_PREDICT_FALSE(nanos < TimeUtil::kTimestampMinNanoseconds ||
-                             nanos > TimeUtil::kTimestampMaxNanoseconds)) {
-        return absl::InvalidArgumentError(
-            absl::StrCat("invalid timestamp nanoseconds: ", nanos));
-      }
-      return absl::UnixEpoch() + absl::Seconds(seconds) +
-             absl::Nanoseconds(nanos);
+      return reflection.ToAbslTime(*to_adapt);
     }
     case Descriptor::WELLKNOWNTYPE_VALUE: {
       CEL_ASSIGN_OR_RETURN(auto reflection, GetValueReflection(descriptor));

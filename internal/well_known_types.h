@@ -65,6 +65,8 @@ namespace cel::well_known_types {
 class StringValue final : public absl::variant<absl::string_view, absl::Cord> {
  public:
   using absl::variant<absl::string_view, absl::Cord>::variant;
+
+  bool ConsumePrefix(absl::string_view prefix);
 };
 
 // Older versions of GCC do not deal with inheriting from variant correctly when
@@ -647,6 +649,10 @@ absl::StatusOr<AnyReflection> GetAnyReflection(
     absl::Nonnull<const google::protobuf::Descriptor*> descriptor
         ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
+AnyReflection GetAnyReflectionOrDie(
+    absl::Nonnull<const google::protobuf::Descriptor*> descriptor
+        ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
 class DurationReflection final {
  public:
   static constexpr google::protobuf::Descriptor::WellKnownType kWellKnownType =
@@ -689,6 +695,9 @@ class DurationReflection final {
   void SetSeconds(absl::Nonnull<google::protobuf::Message*> message, int64_t value) const;
 
   void SetNanos(absl::Nonnull<google::protobuf::Message*> message, int32_t value) const;
+
+  absl::StatusOr<absl::Duration> ToAbslDuration(
+      const google::protobuf::Message& message) const;
 
  private:
   absl::Nullable<const google::protobuf::Descriptor*> descriptor_ = nullptr;
@@ -742,6 +751,8 @@ class TimestampReflection final {
   void SetSeconds(absl::Nonnull<google::protobuf::Message*> message, int64_t value) const;
 
   void SetNanos(absl::Nonnull<google::protobuf::Message*> message, int32_t value) const;
+
+  absl::StatusOr<absl::Time> ToAbslTime(const google::protobuf::Message& message) const;
 
  private:
   absl::Nullable<const google::protobuf::Descriptor*> descriptor_ = nullptr;
@@ -982,6 +993,11 @@ class ListValueReflection final {
     return values_field_->message_type();
   }
 
+  absl::Nonnull<const google::protobuf::FieldDescriptor*> GetValuesDescriptor() const {
+    ABSL_DCHECK(IsInitialized());
+    return values_field_;
+  }
+
   int ValuesSize(const google::protobuf::Message& message) const;
 
   google::protobuf::RepeatedFieldRef<google::protobuf::Message> Values(
@@ -1079,6 +1095,11 @@ class StructReflection final {
   absl::Nonnull<const google::protobuf::Descriptor*> GetValueDescriptor() const {
     ABSL_DCHECK(IsInitialized());
     return fields_value_field_->message_type();
+  }
+
+  absl::Nonnull<const google::protobuf::FieldDescriptor*> GetFieldsDescriptor() const {
+    ABSL_DCHECK(IsInitialized());
+    return fields_field_;
   }
 
   int FieldsSize(const google::protobuf::Message& message) const;
@@ -1234,6 +1255,15 @@ using Value = absl::variant<absl::monostate, std::nullptr_t, bool, int32_t,
 
 // Unpacks the given instance of `google.protobuf.Any`.
 absl::StatusOr<Unique<google::protobuf::Message>> UnpackAnyFrom(
+    absl::Nullable<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    AnyReflection& reflection, const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> pool
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::Nonnull<google::protobuf::MessageFactory*> factory
+        ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+// Unpacks the given instance of `google.protobuf.Any` if it is resolvable.
+absl::StatusOr<Unique<google::protobuf::Message>> UnpackAnyIfResolveable(
     absl::Nullable<google::protobuf::Arena*> arena ABSL_ATTRIBUTE_LIFETIME_BOUND,
     AnyReflection& reflection, const google::protobuf::Message& message,
     absl::Nonnull<const google::protobuf::DescriptorPool*> pool
