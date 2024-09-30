@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/types/optional.h"
 #include "common/allocator.h"
@@ -77,15 +78,44 @@ TEST_P(MessageValueTest, Default) {
   EXPECT_FALSE(value);
 }
 
+template <typename T>
+constexpr T& AsLValueRef(T& t ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  return t;
+}
+
+template <typename T>
+constexpr const T& AsConstLValueRef(T& t ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  return t;
+}
+
+template <typename T>
+constexpr T&& AsRValueRef(T& t ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  return static_cast<T&&>(t);
+}
+
+template <typename T>
+constexpr const T&& AsConstRValueRef(T& t ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  return static_cast<const T&&>(t);
+}
+
 TEST_P(MessageValueTest, Parsed) {
   MessageValue value(
       ParsedMessageValue(DynamicParseTextProto<TestAllTypesProto3>(
           allocator(), R"pb()pb", descriptor_pool(), message_factory())));
+  MessageValue other_value = value;
   EXPECT_TRUE(value);
   EXPECT_TRUE(value.Is<ParsedMessageValue>());
   EXPECT_THAT(value.As<ParsedMessageValue>(),
               Optional(An<ParsedMessageValue>()));
-  EXPECT_THAT(static_cast<ParsedMessageValue>(value), An<ParsedMessageValue>());
+  EXPECT_THAT(AsLValueRef<MessageValue>(value).Get<ParsedMessageValue>(),
+              An<ParsedMessageValue>());
+  EXPECT_THAT(AsConstLValueRef<MessageValue>(value).Get<ParsedMessageValue>(),
+              An<ParsedMessageValue>());
+  EXPECT_THAT(AsRValueRef<MessageValue>(value).Get<ParsedMessageValue>(),
+              An<ParsedMessageValue>());
+  EXPECT_THAT(
+      AsConstRValueRef<MessageValue>(other_value).Get<ParsedMessageValue>(),
+      An<ParsedMessageValue>());
 }
 
 TEST_P(MessageValueTest, Kind) {

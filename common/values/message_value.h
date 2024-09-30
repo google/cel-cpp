@@ -139,22 +139,14 @@ class MessageValue final {
     return IsParsed();
   }
 
+  cel::optional_ref<const ParsedMessageValue> AsParsed() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsParsed();
+  }
   cel::optional_ref<const ParsedMessageValue> AsParsed()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  cel::optional_ref<const ParsedMessageValue> AsParsed() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  absl::optional<ParsedMessageValue> AsParsed() const&&;
-
   absl::optional<ParsedMessageValue> AsParsed() &&;
-
-  template <typename T>
-  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
-                   cel::optional_ref<const ParsedMessageValue>>
-  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return IsParsed();
-  }
+  absl::optional<ParsedMessageValue> AsParsed() const&&;
 
   template <typename T>
       std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
@@ -162,7 +154,18 @@ class MessageValue final {
       As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return AsParsed();
   }
-
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                   cel::optional_ref<const ParsedMessageValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return IsParsed();
+  }
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                       absl::optional<ParsedMessageValue>>
+      As() && ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::move(*this).AsParsed();
+  }
   template <typename T>
   std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
                    absl::optional<ParsedMessageValue>>
@@ -170,21 +173,35 @@ class MessageValue final {
     return std::move(*this).AsParsed();
   }
 
+  const ParsedMessageValue& GetParsed() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetParsed();
+  }
+  const ParsedMessageValue& GetParsed() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  ParsedMessageValue GetParsed() &&;
+  ParsedMessageValue GetParsed() const&&;
+
   template <typename T>
       std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
-                       absl::optional<ParsedMessageValue>>
-      As() && ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return std::move(*this).AsParsed();
+                       const ParsedMessageValue&>
+      Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsed();
   }
-
-  explicit operator const ParsedMessageValue&()
-      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  explicit operator const ParsedMessageValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  explicit operator ParsedMessageValue() const&&;
-
-  explicit operator ParsedMessageValue() &&;
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                   const ParsedMessageValue&>
+  Get() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsed();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>, ParsedMessageValue>
+  Get() && {
+    return std::move(*this).GetParsed();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>, ParsedMessageValue>
+  Get() const&& {
+    return std::move(*this).GetParsed();
+  }
 
   explicit operator bool() const {
     return !absl::holds_alternative<absl::monostate>(variant_);

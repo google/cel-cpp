@@ -287,10 +287,10 @@ cel::optional_ref<const ParsedMessageValue> MessageValue::AsParsed() const& {
   return absl::nullopt;
 }
 
-cel::optional_ref<const ParsedMessageValue> MessageValue::AsParsed() & {
-  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+absl::optional<ParsedMessageValue> MessageValue::AsParsed() && {
+  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
       alternative != nullptr) {
-    return *alternative;
+    return std::move(*alternative);
   }
   return absl::nullopt;
 }
@@ -303,30 +303,17 @@ absl::optional<ParsedMessageValue> MessageValue::AsParsed() const&& {
   return absl::nullopt;
 }
 
-absl::optional<ParsedMessageValue> MessageValue::AsParsed() && {
-  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
-      alternative != nullptr) {
-    return std::move(*alternative);
-  }
-  return absl::nullopt;
-}
-
-MessageValue::operator const ParsedMessageValue&() const& {
+const ParsedMessageValue& MessageValue::GetParsed() const& {
   ABSL_DCHECK(IsParsed());
   return absl::get<ParsedMessageValue>(variant_);
 }
 
-MessageValue::operator const ParsedMessageValue&() & {
-  ABSL_DCHECK(IsParsed());
-  return absl::get<ParsedMessageValue>(variant_);
-}
-
-MessageValue::operator ParsedMessageValue() const&& {
+ParsedMessageValue MessageValue::GetParsed() && {
   ABSL_DCHECK(IsParsed());
   return absl::get<ParsedMessageValue>(std::move(variant_));
 }
 
-MessageValue::operator ParsedMessageValue() && {
+ParsedMessageValue MessageValue::GetParsed() const&& {
   ABSL_DCHECK(IsParsed());
   return absl::get<ParsedMessageValue>(std::move(variant_));
 }
