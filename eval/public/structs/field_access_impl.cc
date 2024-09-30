@@ -76,7 +76,7 @@ class FieldAccessor {
     return static_cast<const Derived*>(this)->GetDouble();
   }
 
-  const std::string* GetString(std::string* buffer) const {
+  absl::string_view GetString(std::string* buffer) const {
     return static_cast<const Derived*>(this)->GetString(buffer);
   }
 
@@ -125,15 +125,16 @@ class FieldAccessor {
       }
       case FieldDescriptor::CPPTYPE_STRING: {
         std::string buffer;
-        const std::string* value = GetString(&buffer);
-        if (value == &buffer) {
-          value = google::protobuf::Arena::Create<std::string>(arena, std::move(buffer));
+        absl::string_view value = GetString(&buffer);
+        if (value.data() == buffer.data() && value.size() == buffer.size()) {
+          value = absl::string_view(
+              *google::protobuf::Arena::Create<std::string>(arena, std::move(buffer)));
         }
         switch (field_desc_->type()) {
           case FieldDescriptor::TYPE_STRING:
-            return CelValue::CreateString(value);
+            return CelValue::CreateStringView(value);
           case FieldDescriptor::TYPE_BYTES:
-            return CelValue::CreateBytes(value);
+            return CelValue::CreateBytesView(value);
           default:
             return absl::Status(absl::StatusCode::kInvalidArgument,
                                 "Error handling C++ string conversion");
@@ -220,8 +221,8 @@ class ScalarFieldAccessor : public FieldAccessor<ScalarFieldAccessor> {
     return GetReflection()->GetDouble(*msg_, field_desc_);
   }
 
-  const std::string* GetString(std::string* buffer) const {
-    return &GetReflection()->GetStringReference(*msg_, field_desc_, buffer);
+  absl::string_view GetString(std::string* buffer) const {
+    return GetReflection()->GetStringReference(*msg_, field_desc_, buffer);
   }
 
   const Message* GetMessage() const {
@@ -280,9 +281,9 @@ class RepeatedFieldAccessor : public FieldAccessor<RepeatedFieldAccessor> {
     return GetReflection()->GetRepeatedDouble(*msg_, field_desc_, index_);
   }
 
-  const std::string* GetString(std::string* buffer) const {
-    return &GetReflection()->GetRepeatedStringReference(*msg_, field_desc_,
-                                                        index_, buffer);
+  absl::string_view GetString(std::string* buffer) const {
+    return GetReflection()->GetRepeatedStringReference(*msg_, field_desc_,
+                                                       index_, buffer);
   }
 
   const Message* GetMessage() const {
@@ -321,8 +322,8 @@ class MapValueAccessor : public FieldAccessor<MapValueAccessor> {
 
   double GetDouble() const { return value_ref_->GetDoubleValue(); }
 
-  const std::string* GetString(std::string* /*buffer*/) const {
-    return &value_ref_->GetStringValue();
+  absl::string_view GetString(std::string* /*buffer*/) const {
+    return value_ref_->GetStringValue();
   }
 
   const Message* GetMessage() const { return &value_ref_->GetMessageValue(); }
