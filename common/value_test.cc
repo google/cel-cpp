@@ -20,6 +20,7 @@
 #include "google/protobuf/type.pb.h"
 #include "google/protobuf/descriptor.pb.h"
 #include "absl/base/attributes.h"
+#include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
 #include "common/native_type.h"
@@ -123,6 +124,8 @@ TEST(Value, DynamicClosedEnum) {
 }
 
 TEST(Value, Is) {
+  google::protobuf::Arena arena;
+
   EXPECT_TRUE(Value(BoolValue()).Is<BoolValue>());
   EXPECT_TRUE(Value(BoolValue(true)).IsTrue());
   EXPECT_TRUE(Value(BoolValue(false)).IsFalse());
@@ -142,12 +145,33 @@ TEST(Value, Is) {
   EXPECT_TRUE(Value(ParsedListValue()).Is<ParsedListValue>());
   EXPECT_TRUE(Value(ParsedJsonListValue()).Is<ListValue>());
   EXPECT_TRUE(Value(ParsedJsonListValue()).Is<ParsedJsonListValue>());
+  {
+    auto message = DynamicParseTextProto<TestAllTypesProto3>(
+        &arena, R"pb()pb", GetTestingDescriptorPool(),
+        GetTestingMessageFactory());
+    const auto* field = ABSL_DIE_IF_NULL(
+        message->GetDescriptor()->FindFieldByName("repeated_int32"));
+    EXPECT_TRUE(
+        Value(ParsedRepeatedFieldValue(message, field)).Is<ListValue>());
+    EXPECT_TRUE(Value(ParsedRepeatedFieldValue(message, field))
+                    .Is<ParsedRepeatedFieldValue>());
+  }
 
   EXPECT_TRUE(Value(MapValue()).Is<MapValue>());
   EXPECT_TRUE(Value(ParsedMapValue()).Is<MapValue>());
   EXPECT_TRUE(Value(ParsedMapValue()).Is<ParsedMapValue>());
   EXPECT_TRUE(Value(ParsedJsonMapValue()).Is<MapValue>());
   EXPECT_TRUE(Value(ParsedJsonMapValue()).Is<ParsedJsonMapValue>());
+  {
+    auto message = DynamicParseTextProto<TestAllTypesProto3>(
+        &arena, R"pb()pb", GetTestingDescriptorPool(),
+        GetTestingMessageFactory());
+    const auto* field = ABSL_DIE_IF_NULL(
+        message->GetDescriptor()->FindFieldByName("map_int32_int32"));
+    EXPECT_TRUE(Value(ParsedMapFieldValue(message, field)).Is<MapValue>());
+    EXPECT_TRUE(
+        Value(ParsedMapFieldValue(message, field)).Is<ParsedMapFieldValue>());
+  }
 
   EXPECT_TRUE(Value(NullValue()).Is<NullValue>());
 
@@ -302,6 +326,43 @@ TEST(Value, As) {
   }
 
   {
+    auto message = DynamicParseTextProto<TestAllTypesProto3>(
+        &arena, R"pb()pb", GetTestingDescriptorPool(),
+        GetTestingMessageFactory());
+    const auto* field = ABSL_DIE_IF_NULL(
+        message->GetDescriptor()->FindFieldByName("repeated_int32"));
+    Value value(ParsedRepeatedFieldValue{message, field});
+    Value other_value = value;
+    EXPECT_THAT(AsLValueRef<Value>(value).As<ListValue>(),
+                Optional(An<ListValue>()));
+    EXPECT_THAT(AsConstLValueRef<Value>(value).As<ListValue>(),
+                Optional(An<ListValue>()));
+    EXPECT_THAT(AsRValueRef<Value>(value).As<ListValue>(),
+                Optional(An<ListValue>()));
+    EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<ListValue>(),
+                Optional(An<ListValue>()));
+  }
+
+  {
+    auto message = DynamicParseTextProto<TestAllTypesProto3>(
+        &arena, R"pb()pb", GetTestingDescriptorPool(),
+        GetTestingMessageFactory());
+    const auto* field = ABSL_DIE_IF_NULL(
+        message->GetDescriptor()->FindFieldByName("repeated_int32"));
+    Value value(ParsedRepeatedFieldValue{message, field});
+    Value other_value = value;
+    EXPECT_THAT(AsLValueRef<Value>(value).As<ParsedRepeatedFieldValue>(),
+                Optional(An<ParsedRepeatedFieldValue>()));
+    EXPECT_THAT(AsConstLValueRef<Value>(value).As<ParsedRepeatedFieldValue>(),
+                Optional(An<ParsedRepeatedFieldValue>()));
+    EXPECT_THAT(AsRValueRef<Value>(value).As<ParsedRepeatedFieldValue>(),
+                Optional(An<ParsedRepeatedFieldValue>()));
+    EXPECT_THAT(
+        AsConstRValueRef<Value>(other_value).As<ParsedRepeatedFieldValue>(),
+        Optional(An<ParsedRepeatedFieldValue>()));
+  }
+
+  {
     Value value(MapValue{});
     Value other_value = value;
     EXPECT_THAT(AsLValueRef<Value>(value).As<MapValue>(),
@@ -367,6 +428,42 @@ TEST(Value, As) {
                 Optional(An<ParsedMapValue>()));
     EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<ParsedMapValue>(),
                 Optional(An<ParsedMapValue>()));
+  }
+
+  {
+    auto message = DynamicParseTextProto<TestAllTypesProto3>(
+        &arena, R"pb()pb", GetTestingDescriptorPool(),
+        GetTestingMessageFactory());
+    const auto* field = ABSL_DIE_IF_NULL(
+        message->GetDescriptor()->FindFieldByName("map_int32_int32"));
+    Value value(ParsedMapFieldValue{message, field});
+    Value other_value = value;
+    EXPECT_THAT(AsLValueRef<Value>(value).As<MapValue>(),
+                Optional(An<MapValue>()));
+    EXPECT_THAT(AsConstLValueRef<Value>(value).As<MapValue>(),
+                Optional(An<MapValue>()));
+    EXPECT_THAT(AsRValueRef<Value>(value).As<MapValue>(),
+                Optional(An<MapValue>()));
+    EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<MapValue>(),
+                Optional(An<MapValue>()));
+  }
+
+  {
+    auto message = DynamicParseTextProto<TestAllTypesProto3>(
+        &arena, R"pb()pb", GetTestingDescriptorPool(),
+        GetTestingMessageFactory());
+    const auto* field = ABSL_DIE_IF_NULL(
+        message->GetDescriptor()->FindFieldByName("map_int32_int32"));
+    Value value(ParsedMapFieldValue{message, field});
+    Value other_value = value;
+    EXPECT_THAT(AsLValueRef<Value>(value).As<ParsedMapFieldValue>(),
+                Optional(An<ParsedMapFieldValue>()));
+    EXPECT_THAT(AsConstLValueRef<Value>(value).As<ParsedMapFieldValue>(),
+                Optional(An<ParsedMapFieldValue>()));
+    EXPECT_THAT(AsRValueRef<Value>(value).As<ParsedMapFieldValue>(),
+                Optional(An<ParsedMapFieldValue>()));
+    EXPECT_THAT(AsConstRValueRef<Value>(other_value).As<ParsedMapFieldValue>(),
+                Optional(An<ParsedMapFieldValue>()));
   }
 
   {
@@ -616,6 +713,41 @@ TEST(Value, Get) {
   }
 
   {
+    auto message = DynamicParseTextProto<TestAllTypesProto3>(
+        &arena, R"pb()pb", GetTestingDescriptorPool(),
+        GetTestingMessageFactory());
+    const auto* field = ABSL_DIE_IF_NULL(
+        message->GetDescriptor()->FindFieldByName("repeated_int32"));
+    Value value(ParsedRepeatedFieldValue{message, field});
+    Value other_value = value;
+    EXPECT_THAT(DoGet<ListValue>(AsLValueRef<Value>(value)), An<ListValue>());
+    EXPECT_THAT(DoGet<ListValue>(AsConstLValueRef<Value>(value)),
+                An<ListValue>());
+    EXPECT_THAT(DoGet<ListValue>(AsRValueRef<Value>(value)), An<ListValue>());
+    EXPECT_THAT(DoGet<ListValue>(AsConstRValueRef<Value>(other_value)),
+                An<ListValue>());
+  }
+
+  {
+    auto message = DynamicParseTextProto<TestAllTypesProto3>(
+        &arena, R"pb()pb", GetTestingDescriptorPool(),
+        GetTestingMessageFactory());
+    const auto* field = ABSL_DIE_IF_NULL(
+        message->GetDescriptor()->FindFieldByName("repeated_int32"));
+    Value value(ParsedRepeatedFieldValue{message, field});
+    Value other_value = value;
+    EXPECT_THAT(DoGet<ParsedRepeatedFieldValue>(AsLValueRef<Value>(value)),
+                An<ParsedRepeatedFieldValue>());
+    EXPECT_THAT(DoGet<ParsedRepeatedFieldValue>(AsConstLValueRef<Value>(value)),
+                An<ParsedRepeatedFieldValue>());
+    EXPECT_THAT(DoGet<ParsedRepeatedFieldValue>(AsRValueRef<Value>(value)),
+                An<ParsedRepeatedFieldValue>());
+    EXPECT_THAT(
+        DoGet<ParsedRepeatedFieldValue>(AsConstRValueRef<Value>(other_value)),
+        An<ParsedRepeatedFieldValue>());
+  }
+
+  {
     Value value(MapValue{});
     Value other_value = value;
     EXPECT_THAT(DoGet<MapValue>(AsLValueRef<Value>(value)), An<MapValue>());
@@ -672,6 +804,41 @@ TEST(Value, Get) {
                 An<ParsedMapValue>());
     EXPECT_THAT(DoGet<ParsedMapValue>(AsConstRValueRef<Value>(other_value)),
                 An<ParsedMapValue>());
+  }
+
+  {
+    auto message = DynamicParseTextProto<TestAllTypesProto3>(
+        &arena, R"pb()pb", GetTestingDescriptorPool(),
+        GetTestingMessageFactory());
+    const auto* field = ABSL_DIE_IF_NULL(
+        message->GetDescriptor()->FindFieldByName("map_int32_int32"));
+    Value value(ParsedMapFieldValue{message, field});
+    Value other_value = value;
+    EXPECT_THAT(DoGet<MapValue>(AsLValueRef<Value>(value)), An<MapValue>());
+    EXPECT_THAT(DoGet<MapValue>(AsConstLValueRef<Value>(value)),
+                An<MapValue>());
+    EXPECT_THAT(DoGet<MapValue>(AsRValueRef<Value>(value)), An<MapValue>());
+    EXPECT_THAT(DoGet<MapValue>(AsConstRValueRef<Value>(other_value)),
+                An<MapValue>());
+  }
+
+  {
+    auto message = DynamicParseTextProto<TestAllTypesProto3>(
+        &arena, R"pb()pb", GetTestingDescriptorPool(),
+        GetTestingMessageFactory());
+    const auto* field = ABSL_DIE_IF_NULL(
+        message->GetDescriptor()->FindFieldByName("map_int32_int32"));
+    Value value(ParsedMapFieldValue{message, field});
+    Value other_value = value;
+    EXPECT_THAT(DoGet<ParsedMapFieldValue>(AsLValueRef<Value>(value)),
+                An<ParsedMapFieldValue>());
+    EXPECT_THAT(DoGet<ParsedMapFieldValue>(AsConstLValueRef<Value>(value)),
+                An<ParsedMapFieldValue>());
+    EXPECT_THAT(DoGet<ParsedMapFieldValue>(AsRValueRef<Value>(value)),
+                An<ParsedMapFieldValue>());
+    EXPECT_THAT(
+        DoGet<ParsedMapFieldValue>(AsConstRValueRef<Value>(other_value)),
+        An<ParsedMapFieldValue>());
   }
 
   {

@@ -1109,6 +1109,38 @@ absl::optional<ParsedMapValue> Value::AsParsedMap() const&& {
   return absl::nullopt;
 }
 
+optional_ref<const ParsedMapFieldValue> Value::AsParsedMapField() & {
+  if (const auto* alternative = absl::get_if<ParsedMapFieldValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  return absl::nullopt;
+}
+
+optional_ref<const ParsedMapFieldValue> Value::AsParsedMapField() const& {
+  if (const auto* alternative = absl::get_if<ParsedMapFieldValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  return absl::nullopt;
+}
+
+absl::optional<ParsedMapFieldValue> Value::AsParsedMapField() && {
+  if (auto* alternative = absl::get_if<ParsedMapFieldValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  return absl::nullopt;
+}
+
+absl::optional<ParsedMapFieldValue> Value::AsParsedMapField() const&& {
+  if (auto* alternative = absl::get_if<ParsedMapFieldValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  return absl::nullopt;
+}
+
 optional_ref<const ParsedMessageValue> Value::AsParsedMessage() & {
   if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
       alternative != nullptr) {
@@ -1135,6 +1167,42 @@ absl::optional<ParsedMessageValue> Value::AsParsedMessage() && {
 
 absl::optional<ParsedMessageValue> Value::AsParsedMessage() const&& {
   if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  return absl::nullopt;
+}
+
+optional_ref<const ParsedRepeatedFieldValue> Value::AsParsedRepeatedField() & {
+  if (const auto* alternative =
+          absl::get_if<ParsedRepeatedFieldValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  return absl::nullopt;
+}
+
+optional_ref<const ParsedRepeatedFieldValue> Value::AsParsedRepeatedField()
+    const& {
+  if (const auto* alternative =
+          absl::get_if<ParsedRepeatedFieldValue>(&variant_);
+      alternative != nullptr) {
+    return *alternative;
+  }
+  return absl::nullopt;
+}
+
+absl::optional<ParsedRepeatedFieldValue> Value::AsParsedRepeatedField() && {
+  if (auto* alternative = absl::get_if<ParsedRepeatedFieldValue>(&variant_);
+      alternative != nullptr) {
+    return std::move(*alternative);
+  }
+  return absl::nullopt;
+}
+
+absl::optional<ParsedRepeatedFieldValue> Value::AsParsedRepeatedField()
+    const&& {
+  if (auto* alternative = absl::get_if<ParsedRepeatedFieldValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
   }
@@ -1745,6 +1813,26 @@ ParsedMapValue Value::GetParsedMap() const&& {
   return absl::get<ParsedMapValue>(std::move(variant_));
 }
 
+const ParsedMapFieldValue& Value::GetParsedMapField() & {
+  ABSL_DCHECK(IsParsedMapField()) << *this;
+  return absl::get<ParsedMapFieldValue>(variant_);
+}
+
+const ParsedMapFieldValue& Value::GetParsedMapField() const& {
+  ABSL_DCHECK(IsParsedMapField()) << *this;
+  return absl::get<ParsedMapFieldValue>(variant_);
+}
+
+ParsedMapFieldValue Value::GetParsedMapField() && {
+  ABSL_DCHECK(IsParsedMapField()) << *this;
+  return absl::get<ParsedMapFieldValue>(std::move(variant_));
+}
+
+ParsedMapFieldValue Value::GetParsedMapField() const&& {
+  ABSL_DCHECK(IsParsedMapField()) << *this;
+  return absl::get<ParsedMapFieldValue>(std::move(variant_));
+}
+
 const ParsedMessageValue& Value::GetParsedMessage() & {
   ABSL_DCHECK(IsParsedMessage()) << *this;
   return absl::get<ParsedMessageValue>(variant_);
@@ -1763,6 +1851,26 @@ ParsedMessageValue Value::GetParsedMessage() && {
 ParsedMessageValue Value::GetParsedMessage() const&& {
   ABSL_DCHECK(IsParsedMessage()) << *this;
   return absl::get<ParsedMessageValue>(std::move(variant_));
+}
+
+const ParsedRepeatedFieldValue& Value::GetParsedRepeatedField() & {
+  ABSL_DCHECK(IsParsedRepeatedField()) << *this;
+  return absl::get<ParsedRepeatedFieldValue>(variant_);
+}
+
+const ParsedRepeatedFieldValue& Value::GetParsedRepeatedField() const& {
+  ABSL_DCHECK(IsParsedRepeatedField()) << *this;
+  return absl::get<ParsedRepeatedFieldValue>(variant_);
+}
+
+ParsedRepeatedFieldValue Value::GetParsedRepeatedField() && {
+  ABSL_DCHECK(IsParsedRepeatedField()) << *this;
+  return absl::get<ParsedRepeatedFieldValue>(std::move(variant_));
+}
+
+ParsedRepeatedFieldValue Value::GetParsedRepeatedField() const&& {
+  ABSL_DCHECK(IsParsedRepeatedField()) << *this;
+  return absl::get<ParsedRepeatedFieldValue>(std::move(variant_));
 }
 
 const ParsedStructValue& Value::GetParsedStruct() & {

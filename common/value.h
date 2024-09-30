@@ -452,11 +452,25 @@ class Value final {
     return absl::holds_alternative<ParsedMapValue>(variant_);
   }
 
+  // Returns `true` if this value is an instance of a parsed map field value. If
+  // `true` is returned, it is implied that `IsMap()` would also return
+  // true.
+  bool IsParsedMapField() const {
+    return absl::holds_alternative<ParsedMapFieldValue>(variant_);
+  }
+
   // Returns `true` if this value is an instance of a parsed message value. If
   // `true` is returned, it is implied that `IsMessage()` would also return
   // true.
   bool IsParsedMessage() const {
     return absl::holds_alternative<ParsedMessageValue>(variant_);
+  }
+
+  // Returns `true` if this value is an instance of a parsed repeated field
+  // value. If `true` is returned, it is implied that `IsList()` would also
+  // return true.
+  bool IsParsedRepeatedField() const {
+    return absl::holds_alternative<ParsedRepeatedFieldValue>(variant_);
   }
 
   // Returns `true` if this value is an instance of a parsed struct value. If
@@ -608,10 +622,25 @@ class Value final {
   }
 
   // Convenience method for use with template metaprogramming. See
+  // `IsParsedMapField()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapFieldValue, T>, bool> Is() const {
+    return IsParsedMapField();
+  }
+
+  // Convenience method for use with template metaprogramming. See
   // `IsParsedMessage()`.
   template <typename T>
   std::enable_if_t<std::is_same_v<ParsedMessageValue, T>, bool> Is() const {
     return IsParsedMessage();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsParsedRepeatedField()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedRepeatedFieldValue, T>, bool> Is()
+      const {
+    return IsParsedRepeatedField();
   }
 
   // Convenience method for use with template metaprogramming. See
@@ -787,6 +816,16 @@ class Value final {
   absl::optional<ParsedMapValue> AsParsedMap() &&;
   absl::optional<ParsedMapValue> AsParsedMap() const&&;
 
+  // Performs a checked cast from a value to a parsed map field value,
+  // returning a non-empty optional with either a value or reference to the
+  // parsed map field value. Otherwise an empty optional is returned.
+  optional_ref<const ParsedMapFieldValue> AsParsedMapField() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const ParsedMapFieldValue> AsParsedMapField()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ParsedMapFieldValue> AsParsedMapField() &&;
+  absl::optional<ParsedMapFieldValue> AsParsedMapField() const&&;
+
   // Performs a checked cast from a value to a parsed message value,
   // returning a non-empty optional with either a value or reference to the
   // parsed message value. Otherwise an empty optional is returned.
@@ -796,6 +835,16 @@ class Value final {
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedMessageValue> AsParsedMessage() &&;
   absl::optional<ParsedMessageValue> AsParsedMessage() const&&;
+
+  // Performs a checked cast from a value to a parsed repeated field value,
+  // returning a non-empty optional with either a value or reference to the
+  // parsed repeated field value. Otherwise an empty optional is returned.
+  optional_ref<const ParsedRepeatedFieldValue> AsParsedRepeatedField() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  optional_ref<const ParsedRepeatedFieldValue> AsParsedRepeatedField()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ParsedRepeatedFieldValue> AsParsedRepeatedField() &&;
+  absl::optional<ParsedRepeatedFieldValue> AsParsedRepeatedField() const&&;
 
   // Performs a checked cast from a value to a parsed struct value,
   // returning a non-empty optional with either a value or reference to the
@@ -1254,6 +1303,33 @@ class Value final {
   }
 
   // Convenience method for use with template metaprogramming. See
+  // `AsParsedMapField()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedMapFieldValue, T>,
+                       optional_ref<const ParsedMapFieldValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedMapField();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapFieldValue, T>,
+                   optional_ref<const ParsedMapFieldValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedMapField();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapFieldValue, T>,
+                   absl::optional<ParsedMapFieldValue>>
+  As() && {
+    return std::move(*this).AsParsedMapField();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapFieldValue, T>,
+                   absl::optional<ParsedMapFieldValue>>
+  As() const&& {
+    return std::move(*this).AsParsedMapField();
+  }
+
+  // Convenience method for use with template metaprogramming. See
   // `AsParsedMessage()`.
   template <typename T>
       std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
@@ -1278,6 +1354,33 @@ class Value final {
                    absl::optional<ParsedMessageValue>>
   As() const&& {
     return std::move(*this).AsParsedMessage();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsParsedRepeatedField()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedRepeatedFieldValue, T>,
+                       optional_ref<const ParsedRepeatedFieldValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedRepeatedField();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedRepeatedFieldValue, T>,
+                   optional_ref<const ParsedRepeatedFieldValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsedRepeatedField();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedRepeatedFieldValue, T>,
+                   absl::optional<ParsedRepeatedFieldValue>>
+  As() && {
+    return std::move(*this).AsParsedRepeatedField();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedRepeatedFieldValue, T>,
+                   absl::optional<ParsedRepeatedFieldValue>>
+  As() const&& {
+    return std::move(*this).AsParsedRepeatedField();
   }
 
   // Convenience method for use with template metaprogramming. See
@@ -1556,7 +1659,7 @@ class Value final {
   ParsedJsonMapValue GetParsedJsonMap() &&;
   ParsedJsonMapValue GetParsedJsonMap() const&&;
 
-  // Performs an unchecked cast from a value to a parsed struct value. In
+  // Performs an unchecked cast from a value to a parsed list value. In
   // debug builds a best effort is made to crash. If `IsParsedList()` would
   // return false, calling this method is undefined behavior.
   const ParsedListValue& GetParsedList() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
@@ -1564,13 +1667,23 @@ class Value final {
   ParsedListValue GetParsedList() &&;
   ParsedListValue GetParsedList() const&&;
 
-  // Performs an unchecked cast from a value to a parsed struct value. In
+  // Performs an unchecked cast from a value to a parsed map value. In
   // debug builds a best effort is made to crash. If `IsParsedMap()` would
   // return false, calling this method is undefined behavior.
   const ParsedMapValue& GetParsedMap() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
   const ParsedMapValue& GetParsedMap() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedMapValue GetParsedMap() &&;
   ParsedMapValue GetParsedMap() const&&;
+
+  // Performs an unchecked cast from a value to a parsed map field value. In
+  // debug builds a best effort is made to crash. If `IsParsedMapField()` would
+  // return false, calling this method is undefined behavior.
+  const ParsedMapFieldValue& GetParsedMapField() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const ParsedMapFieldValue& GetParsedMapField()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  ParsedMapFieldValue GetParsedMapField() &&;
+  ParsedMapFieldValue GetParsedMapField() const&&;
 
   // Performs an unchecked cast from a value to a parsed message value. In
   // debug builds a best effort is made to crash. If `IsParsedMessage()` would
@@ -1580,6 +1693,17 @@ class Value final {
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedMessageValue GetParsedMessage() &&;
   ParsedMessageValue GetParsedMessage() const&&;
+
+  // Performs an unchecked cast from a value to a parsed repeated field value.
+  // In debug builds a best effort is made to crash. If
+  // `IsParsedRepeatedField()` would return false, calling this method is
+  // undefined behavior.
+  const ParsedRepeatedFieldValue& GetParsedRepeatedField() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const ParsedRepeatedFieldValue& GetParsedRepeatedField()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  ParsedRepeatedFieldValue GetParsedRepeatedField() &&;
+  ParsedRepeatedFieldValue GetParsedRepeatedField() const&&;
 
   // Performs an unchecked cast from a value to a parsed struct value. In
   // debug builds a best effort is made to crash. If `IsParsedStruct()` would
@@ -1969,6 +2093,31 @@ class Value final {
   }
 
   // Convenience method for use with template metaprogramming. See
+  // `GetParsedMapField()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedMapFieldValue, T>,
+                       const ParsedMapFieldValue&>
+      Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedMapField();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapFieldValue, T>,
+                   const ParsedMapFieldValue&>
+  Get() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedMapField();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapFieldValue, T>, ParsedMapFieldValue>
+  Get() && {
+    return std::move(*this).GetParsedMapField();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapFieldValue, T>, ParsedMapFieldValue>
+  Get() const&& {
+    return std::move(*this).GetParsedMapField();
+  }
+
+  // Convenience method for use with template metaprogramming. See
   // `GetParsedMessage()`.
   template <typename T>
       std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
@@ -1991,6 +2140,33 @@ class Value final {
   std::enable_if_t<std::is_same_v<ParsedMessageValue, T>, ParsedMessageValue>
   Get() const&& {
     return std::move(*this).GetParsedMessage();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetParsedRepeatedField()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedRepeatedFieldValue, T>,
+                       const ParsedRepeatedFieldValue&>
+      Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedRepeatedField();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedRepeatedFieldValue, T>,
+                   const ParsedRepeatedFieldValue&>
+  Get() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedRepeatedField();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedRepeatedFieldValue, T>,
+                   ParsedRepeatedFieldValue>
+  Get() && {
+    return std::move(*this).GetParsedRepeatedField();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedRepeatedFieldValue, T>,
+                   ParsedRepeatedFieldValue>
+  Get() const&& {
+    return std::move(*this).GetParsedRepeatedField();
   }
 
   // Convenience method for use with template metaprogramming. See
