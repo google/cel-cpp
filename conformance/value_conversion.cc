@@ -15,22 +15,29 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "google/api/expr/v1alpha1/value.pb.h"
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "common/any.h"
+#include "common/type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "common/value_manager.h"
 #include "extensions/protobuf/value.h"
 #include "internal/proto_time_encoding.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
 namespace cel::conformance_internal {
@@ -169,6 +176,41 @@ absl::StatusOr<google::protobuf::Any> ToProtobufAny(
 
   return result;
 }
+
+// filter well-known types from MessageTypes provided to conformance.
+absl::optional<Type> MaybeWellKnownType(absl::string_view type_name) {
+  static const absl::flat_hash_map<absl::string_view, Type>* kWellKnownTypes =
+      []() {
+        auto* instance = new absl::flat_hash_map<absl::string_view, Type>{
+            // keep-sorted start
+            {"google.protobuf.Any", AnyType()},
+            {"google.protobuf.BoolValue", BoolWrapperType()},
+            {"google.protobuf.BytesValue", BytesWrapperType()},
+            {"google.protobuf.DoubleValue", DoubleWrapperType()},
+            {"google.protobuf.Duration", DurationType()},
+            {"google.protobuf.FloatValue", DoubleWrapperType()},
+            {"google.protobuf.Int32Value", IntWrapperType()},
+            {"google.protobuf.Int64Value", IntWrapperType()},
+            {"google.protobuf.ListValue", ListType()},
+            {"google.protobuf.StringValue", StringWrapperType()},
+            {"google.protobuf.Struct", JsonMapType()},
+            {"google.protobuf.Timestamp", TimestampType()},
+            {"google.protobuf.UInt32Value", UintWrapperType()},
+            {"google.protobuf.UInt64Value", UintWrapperType()},
+            {"google.protobuf.Value", DynType()},
+            // keep-sorted end
+        };
+        return instance;
+      }();
+
+  if (auto it = kWellKnownTypes->find(type_name);
+      it != kWellKnownTypes->end()) {
+    return it->second;
+  }
+
+  return absl::nullopt;
+}
+
 }  // namespace
 
 absl::StatusOr<Value> FromConformanceValue(
@@ -267,6 +309,125 @@ absl::StatusOr<google::api::expr::v1alpha1::Value> ToConformanceValue(
                        ValueKindToString(value->kind())));
   }
   return result;
+}
+
+absl::StatusOr<Type> FromConformanceType(google::protobuf::Arena* arena,
+                                         const google::api::expr::v1alpha1::Type& type) {
+  switch (type.type_kind_case()) {
+    case google::api::expr::v1alpha1::Type::kNull:
+      return NullType();
+    case google::api::expr::v1alpha1::Type::kDyn:
+      return DynType();
+    case google::api::expr::v1alpha1::Type::kPrimitive: {
+      switch (type.primitive()) {
+        case google::api::expr::v1alpha1::Type::BOOL:
+          return BoolType();
+        case google::api::expr::v1alpha1::Type::INT64:
+          return IntType();
+        case google::api::expr::v1alpha1::Type::UINT64:
+          return UintType();
+        case google::api::expr::v1alpha1::Type::DOUBLE:
+          return DoubleType();
+        case google::api::expr::v1alpha1::Type::STRING:
+          return StringType();
+        case google::api::expr::v1alpha1::Type::BYTES:
+          return BytesType();
+        default:
+          return absl::UnimplementedError(absl::StrCat(
+              "FromConformanceType not supported ", type.primitive()));
+      }
+    }
+    case google::api::expr::v1alpha1::Type::kWrapper: {
+      switch (type.wrapper()) {
+        case google::api::expr::v1alpha1::Type::BOOL:
+          return BoolWrapperType();
+        case google::api::expr::v1alpha1::Type::INT64:
+          return IntWrapperType();
+        case google::api::expr::v1alpha1::Type::UINT64:
+          return UintWrapperType();
+        case google::api::expr::v1alpha1::Type::DOUBLE:
+          return DoubleWrapperType();
+        case google::api::expr::v1alpha1::Type::STRING:
+          return StringWrapperType();
+        case google::api::expr::v1alpha1::Type::BYTES:
+          return BytesWrapperType();
+        default:
+          return absl::InvalidArgumentError(absl::StrCat(
+              "FromConformanceType not supported ", type.wrapper()));
+      }
+    }
+    case google::api::expr::v1alpha1::Type::kWellKnown: {
+      switch (type.well_known()) {
+        case google::api::expr::v1alpha1::Type::DURATION:
+          return DurationType();
+        case google::api::expr::v1alpha1::Type::TIMESTAMP:
+          return TimestampType();
+        case google::api::expr::v1alpha1::Type::ANY:
+          return DynType();
+        default:
+          return absl::InvalidArgumentError(absl::StrCat(
+              "FromConformanceType not supported ", type.well_known()));
+      }
+    }
+    case google::api::expr::v1alpha1::Type::kListType: {
+      CEL_ASSIGN_OR_RETURN(
+          Type element_type,
+          FromConformanceType(arena, type.list_type().elem_type()));
+      return ListType(arena, element_type);
+    }
+    case google::api::expr::v1alpha1::Type::kMapType: {
+      CEL_ASSIGN_OR_RETURN(
+          auto key_type,
+          FromConformanceType(arena, type.map_type().key_type()));
+      CEL_ASSIGN_OR_RETURN(
+          auto value_type,
+          FromConformanceType(arena, type.map_type().value_type()));
+      return MapType(arena, key_type, value_type);
+    }
+    case google::api::expr::v1alpha1::Type::kFunction: {
+      return absl::UnimplementedError("Function support not yet implemented");
+    }
+    case google::api::expr::v1alpha1::Type::kMessageType: {
+      if (absl::optional<Type> wkt = MaybeWellKnownType(type.message_type());
+          wkt.has_value()) {
+        return *wkt;
+      }
+      const google::protobuf::Descriptor* descriptor =
+          google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+              type.message_type());
+      if (descriptor == nullptr) {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Message type: '", type.message_type(), "' not linked."));
+      }
+      return MessageType(descriptor);
+    }
+    case google::api::expr::v1alpha1::Type::kTypeParam: {
+      auto* param =
+          google::protobuf::Arena::Create<std::string>(arena, type.type_param());
+      return TypeParamType(*param);
+    }
+    case google::api::expr::v1alpha1::Type::kType: {
+      CEL_ASSIGN_OR_RETURN(Type param_type,
+                           FromConformanceType(arena, type.type()));
+      return TypeType(arena, param_type);
+    }
+    case google::api::expr::v1alpha1::Type::kError: {
+      return absl::InvalidArgumentError("Error type not supported");
+    }
+    case google::api::expr::v1alpha1::Type::kAbstractType: {
+      std::vector<Type> parameters;
+      for (const auto& param : type.abstract_type().parameter_types()) {
+        CEL_ASSIGN_OR_RETURN(auto param_type,
+                             FromConformanceType(arena, param));
+        parameters.push_back(std::move(param_type));
+      }
+      return OpaqueType(arena, type.abstract_type().name(), parameters);
+    }
+    default:
+      return absl::UnimplementedError(absl::StrCat(
+          "FromConformanceType not supported ", type.type_kind_case()));
+  }
+  return absl::InternalError("FromConformanceType not supported: fallthrough");
 }
 
 }  // namespace cel::conformance_internal

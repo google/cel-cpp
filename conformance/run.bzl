@@ -39,11 +39,9 @@ def _conformance_test_name(name, modern, arena, optimize, recursive, skip_check)
     return "_".join(
         [
             name,
-            "modern" if modern else "legacy",
             "arena" if arena else "refcount",
             "optimized" if optimize else "unoptimized",
             "recursive" if recursive else "iterative",
-            "parse_only" if skip_check else "checked",
         ],
     )
 
@@ -77,50 +75,33 @@ def _conformance_test(name, data, modern, arena, optimize, recursive, skip_check
         tags = tags,
     )
 
-def gen_conformance_tests(name, data, dashboard = False, skip_tests_modern = [], skip_tests_legacy = [], tags = []):
+def gen_conformance_tests(name, data, modern = False, checked = False, dashboard = False, skip_tests = [], tags = []):
     """Generates conformance tests.
 
     Args:
         name: prefix for all tests
+        modern: run using modern APIs
+        checked: whether to apply type checking
         data: textproto targets describing conformance tests
-        skip_tests_modern: tests to skip for the modern implementation
-        skip_tests_legacy: tests to skip for the legacy implementation
+        skip_tests: tests to skip in the format of the cel-spec test runner. See documentation
+            in github.com/google/cel-spec/tests/simple/simple_test.go
         tags: tags added to the generated targets
         dashboard: enable dashboard mode
     """
+    skip_check = not checked
 
-    # Modern
-    # TODO: enable refcount mode.
-    for skip_check in (True, False):
-        for optimize in (True, False):
-            for recursive in (True, False):
-                # TODO: switch to noisy error after conformance is passing.
-                if skip_check or dashboard:
-                    _conformance_test(
-                        name,
-                        data,
-                        modern = True,
-                        arena = True,
-                        optimize = optimize,
-                        recursive = recursive,
-                        skip_check = skip_check,
-                        skip_tests = skip_tests_modern,
-                        tags = tags,
-                        dashboard = dashboard,
-                    )
-
-    # Legacy
+    # TODO: enable refcount mode for modern.
     for optimize in (True, False):
         for recursive in (True, False):
             _conformance_test(
-                name = name,
-                data = data,
-                modern = False,
+                name,
+                data,
+                modern = modern,
                 arena = True,
                 optimize = optimize,
                 recursive = recursive,
-                skip_check = True,
-                skip_tests = skip_tests_legacy,
+                skip_check = skip_check,
+                skip_tests = skip_tests,
                 tags = tags,
                 dashboard = dashboard,
             )

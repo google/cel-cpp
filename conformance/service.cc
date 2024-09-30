@@ -38,6 +38,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "checker/standard_library.h"
 #include "checker/type_checker_builder.h"
 #include "common/ast.h"
 #include "common/decl.h"
@@ -227,6 +228,15 @@ google::api::expr::v1alpha1::Expr ExtractExpr(
   google::api::expr::v1alpha1::Expr out;
   (out).MergeFrom(*expr);
   return out;
+}
+
+absl::StatusOr<cel::Type> FromConformanceType(
+    google::protobuf::Arena* arena, const google::api::expr::v1alpha1::Type& type) {
+  google::api::expr::v1alpha1::Type unversioned;
+  if (!unversioned.MergeFromString(type.SerializeAsString())) {
+    return absl::InternalError("Failed to convert from v1alpha1 type.");
+  }
+  return cel::conformance_internal::FromConformanceType(arena, unversioned);
 }
 
 absl::Status LegacyParse(const conformance::v1alpha1::ParseRequest& request,
@@ -470,7 +480,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
         builder, cel::ReferenceResolverEnabled::kAlways));
 
     auto& type_registry = builder.type_registry();
-    // Use linked pbs in the
+    // Use linked pbs in the generated descriptor pool.
     type_registry.AddTypeProvider(
         std::make_unique<cel::extensions::ProtoTypeReflector>());
     CEL_RETURN_IF_ERROR(RegisterProtobufEnum(
@@ -510,7 +520,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
 
   void Check(const conformance::v1alpha1::CheckRequest& request,
              conformance::v1alpha1::CheckResponse& response) override {
-    auto status = DoCheck(request, response);
+    auto status = DoCheck(&constant_arena_, request, response);
     if (!status.ok()) {
       auto* issue = response.add_issues();
       issue->set_code(ToGrpcCode(status.code()));
@@ -600,7 +610,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
                        : cel::MemoryManagerRef::ReferenceCounting()) {}
 
   static absl::Status DoCheck(
-      const conformance::v1alpha1::CheckRequest& request,
+      google::protobuf::Arena* arena, const conformance::v1alpha1::CheckRequest& request,
       conformance::v1alpha1::CheckResponse& response) {
     google::api::expr::v1alpha1::ParsedExpr parsed_expr;
 
@@ -614,6 +624,10 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
     builder.AddTypeProvider(
         std::make_unique<cel::extensions::ProtoTypeReflector>());
 
+    if (!request.no_std_env()) {
+      CEL_RETURN_IF_ERROR(builder.AddLibrary(cel::StandardLibrary()));
+    }
+
     for (const auto& decl : request.type_env()) {
       const auto& name = decl.name();
       if (decl.has_function()) {
@@ -625,18 +639,25 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
           if (overload_pb.is_instance_function()) {
             overload.set_member(true);
           }
-          for (auto& _ : overload_pb.params()) {
-            overload.mutable_args().push_back(DynType{});
+          for (const auto& param : overload_pb.params()) {
+            CEL_ASSIGN_OR_RETURN(auto param_type,
+                                 FromConformanceType(arena, param.type()));
+            overload.mutable_args().push_back(param_type);
           }
+
           CEL_RETURN_IF_ERROR(fn_decl.AddOverload(std::move(overload)));
         }
         CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(fn_decl)));
       } else if (decl.has_ident()) {
         VariableDecl var_decl;
         var_decl.set_name(name);
+        CEL_ASSIGN_OR_RETURN(auto var_type,
+                             FromConformanceType(arena, decl.ident().type()));
+        var_decl.set_type(var_type);
         CEL_RETURN_IF_ERROR(builder.AddVariable(var_decl));
       }
     }
+    builder.set_container(request.container());
 
     CEL_ASSIGN_OR_RETURN(auto checker, std::move(builder).Build());
 

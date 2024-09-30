@@ -24,15 +24,19 @@ cc_library(
     hdrs = ["value_conversion.h"],
     deps = [
         "//common:any",
+        "//common:type",
         "//common:value",
         "//common:value_kind",
         "//extensions/protobuf:value",
         "//internal:proto_time_encoding",
         "//internal:status_macros",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:value_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
@@ -45,6 +49,7 @@ cc_library(
     hdrs = ["service.h"],
     deps = [
         ":value_conversion",
+        "//checker:standard_library",
         "//checker:type_checker_builder",
         "//common:ast",
         "//common:decl",
@@ -297,25 +302,76 @@ _TESTS_TO_SKIP_LEGACY_DASHBOARD = [
 ]
 
 # Generates a bunch of `cc_test` whose names follow the pattern
-# `conformance_{modern|legacy}_{arena|refcount}_{optimized|unoptimized}_{recursive|iterative}`.
+# `conformance_(...)_{arena|refcount}_{optimized|unoptimized}_{recursive|iterative}`.
 gen_conformance_tests(
-    name = "conformance",
+    name = "conformance_parse_only",
     data = _ALL_TESTS,
-    skip_tests_legacy = _TESTS_TO_SKIP_LEGACY,
-    skip_tests_modern = _TESTS_TO_SKIP_MODERN,
+    modern = True,
+    skip_tests = _TESTS_TO_SKIP_MODERN,
+)
+
+gen_conformance_tests(
+    name = "conformance_legacy_parse_only",
+    data = _ALL_TESTS,
+    modern = False,
+    skip_tests = _TESTS_TO_SKIP_LEGACY,
+)
+
+gen_conformance_tests(
+    name = "conformance_checked",
+    checked = True,
+    data = _ALL_TESTS,
+    modern = True,
+    skip_tests = _TESTS_TO_SKIP_MODERN + [
+        # TODO: Need to add function declarations for these extensions.
+        "string_ext",
+        "math_ext",
+        "encoders_ext",
+        "optionals",
+        # block is a post-check optimization that inserts internal variables. The C++ type checker
+        # needs support for a proper optimizer for this to work.
+        "block_ext",
+        # Test has a typo, C++ conformance runner doesn't accept declaring a message type that isn't
+        # known.
+        "dynamic/any/var",
+    ],
 )
 
 # Generates a bunch of `cc_test` whose names follow the pattern
-# `conformance_dashboard_{modern|legacy}_{arena|refcount}_{optimized|unoptimized}_{recursive|iterative}`.
+# `conformance_dashboard_..._{arena|refcount}_{optimized|unoptimized}_{recursive|iterative}`.
 gen_conformance_tests(
-    name = "conformance_dashboard",
+    name = "conformance_dashboard_parse_only",
     dashboard = True,
     data = _ALL_TESTS,
-    skip_tests_legacy = _TESTS_TO_SKIP_LEGACY_DASHBOARD,
-    skip_tests_modern = _TESTS_TO_SKIP_MODERN_DASHBOARD,
+    modern = True,
+    skip_tests = _TESTS_TO_SKIP_MODERN_DASHBOARD,
     tags = [
         "guitar",
-        "manual",
+        "notap",
+    ],
+)
+
+gen_conformance_tests(
+    name = "conformance_dashboard_checked",
+    checked = True,
+    dashboard = True,
+    data = _ALL_TESTS,
+    modern = True,
+    skip_tests = _TESTS_TO_SKIP_MODERN_DASHBOARD,
+    tags = [
+        "guitar",
+        "notap",
+    ],
+)
+
+gen_conformance_tests(
+    name = "conformance_dashboard_legacy_parse_only",
+    dashboard = True,
+    data = _ALL_TESTS,
+    modern = False,
+    skip_tests = _TESTS_TO_SKIP_LEGACY_DASHBOARD,
+    tags = [
+        "guitar",
         "notap",
     ],
 )
