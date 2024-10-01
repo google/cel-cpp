@@ -28,6 +28,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
 #include "common/constant.h"
 #include "common/type.h"
 #include "internal/status_macros.h"
@@ -309,18 +310,22 @@ class FunctionDecl final {
     return status;
   }
 
-  ABSL_MUST_USE_RESULT const OverloadDeclHashSet& overloads() const
+  ABSL_MUST_USE_RESULT absl::Span<const OverloadDecl> overloads() const
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return overloads_;
-  }
-
-  ABSL_MUST_USE_RESULT OverloadDeclHashSet release_overloads() {
-    OverloadDeclHashSet released;
-    released.swap(overloads_);
-    return released;
+    return overloads_.insertion_order;
   }
 
  private:
+  struct Overloads {
+    std::vector<OverloadDecl> insertion_order;
+    OverloadDeclHashSet set;
+
+    void Reserve(size_t size) {
+      insertion_order.reserve(size);
+      set.reserve(size);
+    }
+  };
+
   template <typename... Overloads>
   friend absl::StatusOr<FunctionDecl> MakeFunctionDecl(
       std::string name, Overloads&&... overloads);
@@ -329,7 +334,7 @@ class FunctionDecl final {
   void AddOverloadImpl(OverloadDecl&& overload, absl::Status& status);
 
   std::string name_;
-  OverloadDeclHashSet overloads_;
+  Overloads overloads_;
 };
 
 inline bool operator==(const FunctionDecl& lhs, const FunctionDecl& rhs) {
@@ -346,7 +351,7 @@ absl::StatusOr<FunctionDecl> MakeFunctionDecl(std::string name,
                                               Overloads&&... overloads) {
   FunctionDecl function_decl;
   function_decl.set_name(std::move(name));
-  function_decl.overloads_.reserve(sizeof...(Overloads));
+  function_decl.overloads_.Reserve(sizeof...(Overloads));
   absl::Status status;
   (function_decl.AddOverloadImpl(std::forward<Overloads>(overloads), status),
    ...);

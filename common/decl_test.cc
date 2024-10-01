@@ -26,6 +26,7 @@ namespace {
 using ::absl_testing::StatusIs;
 using ::testing::ElementsAre;
 using ::testing::IsEmpty;
+using ::testing::Property;
 using ::testing::UnorderedElementsAre;
 
 TEST(VariableDecl, Name) {
@@ -145,9 +146,16 @@ TEST(FunctionDecl, Overloads) {
       auto function_decl,
       MakeFunctionDecl(
           "hello", MakeOverloadDecl("foo", StringType{}, StringType{}),
-          MakeMemberOverloadDecl("bar", StringType{}, StringType{})));
+          MakeMemberOverloadDecl("bar", StringType{}, StringType{}),
+          MakeOverloadDecl("baz", IntType{}, IntType{})));
+
+  EXPECT_THAT(function_decl.overloads(),
+              ElementsAre(Property(&OverloadDecl::id, "foo"),
+                          Property(&OverloadDecl::id, "bar"),
+                          Property(&OverloadDecl::id, "baz")));
+
   EXPECT_THAT(function_decl.AddOverload(
-                  MakeOverloadDecl("baz", DynType{}, StringType{})),
+                  MakeOverloadDecl("qux", DynType{}, StringType{})),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 

@@ -54,7 +54,6 @@ cc_library(
     srcs = ["decl.cc"],
     hdrs = ["decl.h"],
     deps = [
-        ":casting",
         ":constant",
         ":type",
         ":type_kind",
@@ -69,6 +68,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
     ],
 )
 

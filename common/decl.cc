@@ -17,6 +17,7 @@
 #include <cstddef>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/absl_check.h"
@@ -102,7 +103,8 @@ bool SignaturesOverlap(const OverloadDecl& lhs, const OverloadDecl& rhs) {
 }
 
 template <typename Overload>
-void AddOverloadInternal(OverloadDeclHashSet& overloads, Overload&& overload,
+void AddOverloadInternal(std::vector<OverloadDecl>& insertion_order,
+                         OverloadDeclHashSet& overloads, Overload&& overload,
                          absl::Status& status) {
   if (!status.ok()) {
     return;
@@ -120,9 +122,9 @@ void AddOverloadInternal(OverloadDeclHashSet& overloads, Overload&& overload,
       return;
     }
   }
-  const auto inserted =
-      overloads.insert(std::forward<Overload>(overload)).second;
-  ABSL_DCHECK(inserted);
+  const auto inserted = overloads.insert(std::forward<Overload>(overload));
+  ABSL_DCHECK(inserted.second);
+  insertion_order.push_back(*inserted.first);
 }
 
 void CollectTypeParams(absl::flat_hash_set<std::string>& type_params,
@@ -172,12 +174,14 @@ absl::flat_hash_set<std::string> OverloadDecl::GetTypeParams() const {
 
 void FunctionDecl::AddOverloadImpl(const OverloadDecl& overload,
                                    absl::Status& status) {
-  AddOverloadInternal(overloads_, overload, status);
+  AddOverloadInternal(overloads_.insertion_order, overloads_.set, overload,
+                      status);
 }
 
 void FunctionDecl::AddOverloadImpl(OverloadDecl&& overload,
                                    absl::Status& status) {
-  AddOverloadInternal(overloads_, std::move(overload), status);
+  AddOverloadInternal(overloads_.insertion_order, overloads_.set,
+                      std::move(overload), status);
 }
 
 }  // namespace cel
