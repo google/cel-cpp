@@ -158,6 +158,15 @@ class OptionalValue final : public OpaqueValue {
   Get() const&& = delete;
 };
 
+inline optional_ref<const OptionalValue> OpaqueValue::AsOptional() &
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return std::as_const(*this).AsOptional();
+}
+
+inline absl::optional<OptionalValue> OpaqueValue::AsOptional() const&& {
+  return common_internal::AsOptional(AsOptional());
+}
+
 template <typename T>
     inline std::enable_if_t<std::is_same_v<OptionalValue, T>,
                             optional_ref<const OptionalValue>>
@@ -184,6 +193,15 @@ inline std::enable_if_t<std::is_same_v<OptionalValue, T>,
                         absl::optional<OptionalValue>>
 OpaqueValue::As() const&& {
   return std::move(*this).AsOptional();
+}
+
+inline const OptionalValue& OpaqueValue::GetOptional() &
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  return std::as_const(*this).GetOptional();
+}
+
+inline OptionalValue OpaqueValue::GetOptional() const&& {
+  return GetOptional();
 }
 
 template <typename T>

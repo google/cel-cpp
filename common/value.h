@@ -705,7 +705,9 @@ class Value final {
   }
   optional_ref<const BytesValue> AsBytes() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<BytesValue> AsBytes() &&;
-  absl::optional<BytesValue> AsBytes() const&&;
+  absl::optional<BytesValue> AsBytes() const&& {
+    return common_internal::AsOptional(AsBytes());
+  }
 
   // Performs a checked cast from a value to a double value,
   // returning a non-empty optional with either a value or reference to the
@@ -725,7 +727,9 @@ class Value final {
   }
   optional_ref<const ErrorValue> AsError() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ErrorValue> AsError() &&;
-  absl::optional<ErrorValue> AsError() const&&;
+  absl::optional<ErrorValue> AsError() const&& {
+    return common_internal::AsOptional(AsError());
+  }
 
   // Performs a checked cast from a value to an int value,
   // returning a non-empty optional with either a value or reference to the
@@ -738,7 +742,9 @@ class Value final {
   absl::optional<ListValue> AsList() & { return std::as_const(*this).AsList(); }
   absl::optional<ListValue> AsList() const&;
   absl::optional<ListValue> AsList() &&;
-  absl::optional<ListValue> AsList() const&&;
+  absl::optional<ListValue> AsList() const&& {
+    return common_internal::AsOptional(AsList());
+  }
 
   // Performs a checked cast from a value to a map value,
   // returning a non-empty optional with either a value or reference to the
@@ -746,7 +752,9 @@ class Value final {
   absl::optional<MapValue> AsMap() & { return std::as_const(*this).AsMap(); }
   absl::optional<MapValue> AsMap() const&;
   absl::optional<MapValue> AsMap() &&;
-  absl::optional<MapValue> AsMap() const&&;
+  absl::optional<MapValue> AsMap() const&& {
+    return common_internal::AsOptional(AsMap());
+  }
 
   // Performs a checked cast from a value to a message value,
   // returning a non-empty optional with either a value or reference to the
@@ -756,7 +764,9 @@ class Value final {
   }
   absl::optional<MessageValue> AsMessage() const&;
   absl::optional<MessageValue> AsMessage() &&;
-  absl::optional<MessageValue> AsMessage() const&&;
+  absl::optional<MessageValue> AsMessage() const&& {
+    return common_internal::AsOptional(AsMessage());
+  }
 
   // Performs a checked cast from a value to a null value,
   // returning a non-empty optional with either a value or reference to the
@@ -772,7 +782,9 @@ class Value final {
   optional_ref<const OpaqueValue> AsOpaque()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<OpaqueValue> AsOpaque() &&;
-  absl::optional<OpaqueValue> AsOpaque() const&&;
+  absl::optional<OpaqueValue> AsOpaque() const&& {
+    return common_internal::AsOptional(AsOpaque());
+  }
 
   // Performs a checked cast from a value to an optional value,
   // returning a non-empty optional with either a value or reference to the
@@ -784,7 +796,9 @@ class Value final {
   optional_ref<const OptionalValue> AsOptional()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<OptionalValue> AsOptional() &&;
-  absl::optional<OptionalValue> AsOptional() const&&;
+  absl::optional<OptionalValue> AsOptional() const&& {
+    return common_internal::AsOptional(AsOptional());
+  }
 
   // Performs a checked cast from a value to a parsed JSON list value,
   // returning a non-empty optional with either a value or reference to the
@@ -796,7 +810,9 @@ class Value final {
   optional_ref<const ParsedJsonListValue> AsParsedJsonList()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedJsonListValue> AsParsedJsonList() &&;
-  absl::optional<ParsedJsonListValue> AsParsedJsonList() const&&;
+  absl::optional<ParsedJsonListValue> AsParsedJsonList() const&& {
+    return common_internal::AsOptional(AsParsedJsonList());
+  }
 
   // Performs a checked cast from a value to a parsed JSON map value,
   // returning a non-empty optional with either a value or reference to the
@@ -808,7 +824,9 @@ class Value final {
   optional_ref<const ParsedJsonMapValue> AsParsedJsonMap()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedJsonMapValue> AsParsedJsonMap() &&;
-  absl::optional<ParsedJsonMapValue> AsParsedJsonMap() const&&;
+  absl::optional<ParsedJsonMapValue> AsParsedJsonMap() const&& {
+    return common_internal::AsOptional(AsParsedJsonMap());
+  }
 
   // Performs a checked cast from a value to a parsed list value,
   // returning a non-empty optional with either a value or reference to the
@@ -820,7 +838,9 @@ class Value final {
   optional_ref<const ParsedListValue> AsParsedList()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedListValue> AsParsedList() &&;
-  absl::optional<ParsedListValue> AsParsedList() const&&;
+  absl::optional<ParsedListValue> AsParsedList() const&& {
+    return common_internal::AsOptional(AsParsedList());
+  }
 
   // Performs a checked cast from a value to a parsed map value,
   // returning a non-empty optional with either a value or reference to the
@@ -832,7 +852,9 @@ class Value final {
   optional_ref<const ParsedMapValue> AsParsedMap()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedMapValue> AsParsedMap() &&;
-  absl::optional<ParsedMapValue> AsParsedMap() const&&;
+  absl::optional<ParsedMapValue> AsParsedMap() const&& {
+    return common_internal::AsOptional(AsParsedMap());
+  }
 
   // Performs a checked cast from a value to a parsed map field value,
   // returning a non-empty optional with either a value or reference to the
@@ -844,7 +866,9 @@ class Value final {
   optional_ref<const ParsedMapFieldValue> AsParsedMapField()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedMapFieldValue> AsParsedMapField() &&;
-  absl::optional<ParsedMapFieldValue> AsParsedMapField() const&&;
+  absl::optional<ParsedMapFieldValue> AsParsedMapField() const&& {
+    return common_internal::AsOptional(AsParsedMapField());
+  }
 
   // Performs a checked cast from a value to a parsed message value,
   // returning a non-empty optional with either a value or reference to the
@@ -856,7 +880,9 @@ class Value final {
   optional_ref<const ParsedMessageValue> AsParsedMessage()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedMessageValue> AsParsedMessage() &&;
-  absl::optional<ParsedMessageValue> AsParsedMessage() const&&;
+  absl::optional<ParsedMessageValue> AsParsedMessage() const&& {
+    return common_internal::AsOptional(AsParsedMessage());
+  }
 
   // Performs a checked cast from a value to a parsed repeated field value,
   // returning a non-empty optional with either a value or reference to the
@@ -868,7 +894,9 @@ class Value final {
   optional_ref<const ParsedRepeatedFieldValue> AsParsedRepeatedField()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedRepeatedFieldValue> AsParsedRepeatedField() &&;
-  absl::optional<ParsedRepeatedFieldValue> AsParsedRepeatedField() const&&;
+  absl::optional<ParsedRepeatedFieldValue> AsParsedRepeatedField() const&& {
+    return common_internal::AsOptional(AsParsedRepeatedField());
+  }
 
   // Performs a checked cast from a value to a parsed struct value,
   // returning a non-empty optional with either a value or reference to the
@@ -880,7 +908,9 @@ class Value final {
   optional_ref<const ParsedStructValue> AsParsedStruct()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedStructValue> AsParsedStruct() &&;
-  absl::optional<ParsedStructValue> AsParsedStruct() const&&;
+  absl::optional<ParsedStructValue> AsParsedStruct() const&& {
+    return common_internal::AsOptional(AsParsedStruct());
+  }
 
   // Performs a checked cast from a value to a string value,
   // returning a non-empty optional with either a value or reference to the
@@ -891,7 +921,9 @@ class Value final {
   optional_ref<const StringValue> AsString()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<StringValue> AsString() &&;
-  absl::optional<StringValue> AsString() const&&;
+  absl::optional<StringValue> AsString() const&& {
+    return common_internal::AsOptional(AsString());
+  }
 
   // Performs a checked cast from a value to a struct value,
   // returning a non-empty optional with either a value or reference to the
@@ -901,7 +933,9 @@ class Value final {
   }
   absl::optional<StructValue> AsStruct() const&;
   absl::optional<StructValue> AsStruct() &&;
-  absl::optional<StructValue> AsStruct() const&&;
+  absl::optional<StructValue> AsStruct() const&& {
+    return common_internal::AsOptional(AsStruct());
+  }
 
   // Performs a checked cast from a value to a timestamp value,
   // returning a non-empty optional with either a value or reference to the
@@ -916,7 +950,9 @@ class Value final {
   }
   optional_ref<const TypeValue> AsType() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<TypeValue> AsType() &&;
-  absl::optional<TypeValue> AsType() const&&;
+  absl::optional<TypeValue> AsType() const&& {
+    return common_internal::AsOptional(AsType());
+  }
 
   // Performs a checked cast from a value to an uint value,
   // returning a non-empty optional with either a value or reference to the
@@ -932,7 +968,9 @@ class Value final {
   optional_ref<const UnknownValue> AsUnknown()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<UnknownValue> AsUnknown() &&;
-  absl::optional<UnknownValue> AsUnknown() const&&;
+  absl::optional<UnknownValue> AsUnknown() const&& {
+    return common_internal::AsOptional(AsUnknown());
+  }
 
   // Convenience method for use with template metaprogramming. See
   // `AsBool()`.
@@ -1606,7 +1644,7 @@ class Value final {
   }
   const BytesValue& GetBytes() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   BytesValue GetBytes() &&;
-  BytesValue GetBytes() const&&;
+  BytesValue GetBytes() const&& { return GetBytes(); }
 
   // Performs an unchecked cast from a value to a double value. In
   // debug builds a best effort is made to crash. If `IsDouble()` would return
@@ -1626,7 +1664,7 @@ class Value final {
   }
   const ErrorValue& GetError() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ErrorValue GetError() &&;
-  ErrorValue GetError() const&&;
+  ErrorValue GetError() const&& { return GetError(); }
 
   // Performs an unchecked cast from a value to an int value. In
   // debug builds a best effort is made to crash. If `IsInt()` would return
@@ -1639,7 +1677,7 @@ class Value final {
   ListValue GetList() & { return std::as_const(*this).GetList(); }
   ListValue GetList() const&;
   ListValue GetList() &&;
-  ListValue GetList() const&&;
+  ListValue GetList() const&& { return GetList(); }
 
   // Performs an unchecked cast from a value to a map value. In
   // debug builds a best effort is made to crash. If `IsMap()` would return
@@ -1647,7 +1685,7 @@ class Value final {
   MapValue GetMap() & { return std::as_const(*this).GetMap(); }
   MapValue GetMap() const&;
   MapValue GetMap() &&;
-  MapValue GetMap() const&&;
+  MapValue GetMap() const&& { return GetMap(); }
 
   // Performs an unchecked cast from a value to a message value. In
   // debug builds a best effort is made to crash. If `IsMessage()` would return
@@ -1655,7 +1693,7 @@ class Value final {
   MessageValue GetMessage() & { return std::as_const(*this).GetMessage(); }
   MessageValue GetMessage() const&;
   MessageValue GetMessage() &&;
-  MessageValue GetMessage() const&&;
+  MessageValue GetMessage() const&& { return GetMessage(); }
 
   // Performs an unchecked cast from a value to a null value. In
   // debug builds a best effort is made to crash. If `IsNull()` would return
@@ -1670,7 +1708,7 @@ class Value final {
   }
   const OpaqueValue& GetOpaque() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   OpaqueValue GetOpaque() &&;
-  OpaqueValue GetOpaque() const&&;
+  OpaqueValue GetOpaque() const&& { return GetOpaque(); }
 
   // Performs an unchecked cast from a value to an optional value. In
   // debug builds a best effort is made to crash. If `IsOptional()` would return
@@ -1680,7 +1718,7 @@ class Value final {
   }
   const OptionalValue& GetOptional() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   OptionalValue GetOptional() &&;
-  OptionalValue GetOptional() const&&;
+  OptionalValue GetOptional() const&& { return GetOptional(); }
 
   // Performs an unchecked cast from a value to a parsed message value. In
   // debug builds a best effort is made to crash. If `IsParsedJsonList()` would
@@ -1692,7 +1730,9 @@ class Value final {
   const ParsedJsonListValue& GetParsedJsonList()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedJsonListValue GetParsedJsonList() &&;
-  ParsedJsonListValue GetParsedJsonList() const&&;
+  ParsedJsonListValue GetParsedJsonList() const&& {
+    return GetParsedJsonList();
+  }
 
   // Performs an unchecked cast from a value to a parsed message value. In
   // debug builds a best effort is made to crash. If `IsParsedJsonMap()` would
@@ -1703,7 +1743,7 @@ class Value final {
   const ParsedJsonMapValue& GetParsedJsonMap()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedJsonMapValue GetParsedJsonMap() &&;
-  ParsedJsonMapValue GetParsedJsonMap() const&&;
+  ParsedJsonMapValue GetParsedJsonMap() const&& { return GetParsedJsonMap(); }
 
   // Performs an unchecked cast from a value to a parsed list value. In
   // debug builds a best effort is made to crash. If `IsParsedList()` would
@@ -1713,7 +1753,7 @@ class Value final {
   }
   const ParsedListValue& GetParsedList() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedListValue GetParsedList() &&;
-  ParsedListValue GetParsedList() const&&;
+  ParsedListValue GetParsedList() const&& { return GetParsedList(); }
 
   // Performs an unchecked cast from a value to a parsed map value. In
   // debug builds a best effort is made to crash. If `IsParsedMap()` would
@@ -1723,7 +1763,7 @@ class Value final {
   }
   const ParsedMapValue& GetParsedMap() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedMapValue GetParsedMap() &&;
-  ParsedMapValue GetParsedMap() const&&;
+  ParsedMapValue GetParsedMap() const&& { return GetParsedMap(); }
 
   // Performs an unchecked cast from a value to a parsed map field value. In
   // debug builds a best effort is made to crash. If `IsParsedMapField()` would
@@ -1735,7 +1775,9 @@ class Value final {
   const ParsedMapFieldValue& GetParsedMapField()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedMapFieldValue GetParsedMapField() &&;
-  ParsedMapFieldValue GetParsedMapField() const&&;
+  ParsedMapFieldValue GetParsedMapField() const&& {
+    return GetParsedMapField();
+  }
 
   // Performs an unchecked cast from a value to a parsed message value. In
   // debug builds a best effort is made to crash. If `IsParsedMessage()` would
@@ -1746,7 +1788,7 @@ class Value final {
   const ParsedMessageValue& GetParsedMessage()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedMessageValue GetParsedMessage() &&;
-  ParsedMessageValue GetParsedMessage() const&&;
+  ParsedMessageValue GetParsedMessage() const&& { return GetParsedMessage(); }
 
   // Performs an unchecked cast from a value to a parsed repeated field value.
   // In debug builds a best effort is made to crash. If
@@ -1759,7 +1801,9 @@ class Value final {
   const ParsedRepeatedFieldValue& GetParsedRepeatedField()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedRepeatedFieldValue GetParsedRepeatedField() &&;
-  ParsedRepeatedFieldValue GetParsedRepeatedField() const&&;
+  ParsedRepeatedFieldValue GetParsedRepeatedField() const&& {
+    return GetParsedRepeatedField();
+  }
 
   // Performs an unchecked cast from a value to a parsed struct value. In
   // debug builds a best effort is made to crash. If `IsParsedStruct()` would
@@ -1770,7 +1814,7 @@ class Value final {
   const ParsedStructValue& GetParsedStruct()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedStructValue GetParsedStruct() &&;
-  ParsedStructValue GetParsedStruct() const&&;
+  ParsedStructValue GetParsedStruct() const&& { return GetParsedStruct(); }
 
   // Performs an unchecked cast from a value to a string value. In
   // debug builds a best effort is made to crash. If `IsString()` would return
@@ -1780,7 +1824,7 @@ class Value final {
   }
   const StringValue& GetString() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   StringValue GetString() &&;
-  StringValue GetString() const&&;
+  StringValue GetString() const&& { return GetString(); }
 
   // Performs an unchecked cast from a value to a struct value. In
   // debug builds a best effort is made to crash. If `IsStruct()` would return
@@ -1788,7 +1832,7 @@ class Value final {
   StructValue GetStruct() & { return std::as_const(*this).GetStruct(); }
   StructValue GetStruct() const&;
   StructValue GetStruct() &&;
-  StructValue GetStruct() const&&;
+  StructValue GetStruct() const&& { return GetStruct(); }
 
   // Performs an unchecked cast from a value to a timestamp value. In
   // debug builds a best effort is made to crash. If `IsTimestamp()` would
@@ -1803,7 +1847,7 @@ class Value final {
   }
   const TypeValue& GetType() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   TypeValue GetType() &&;
-  TypeValue GetType() const&&;
+  TypeValue GetType() const&& { return GetType(); }
 
   // Performs an unchecked cast from a value to an uint value. In
   // debug builds a best effort is made to crash. If `IsUint()` would return
@@ -1818,7 +1862,7 @@ class Value final {
   }
   const UnknownValue& GetUnknown() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   UnknownValue GetUnknown() &&;
-  UnknownValue GetUnknown() const&&;
+  UnknownValue GetUnknown() const&& { return GetUnknown(); }
 
   // Convenience method for use with template metaprogramming. See
   // `GetBool()`.

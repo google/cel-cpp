@@ -295,25 +295,12 @@ absl::optional<ParsedMessageValue> MessageValue::AsParsed() && {
   return absl::nullopt;
 }
 
-absl::optional<ParsedMessageValue> MessageValue::AsParsed() const&& {
-  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
-      alternative != nullptr) {
-    return std::move(*alternative);
-  }
-  return absl::nullopt;
-}
-
 const ParsedMessageValue& MessageValue::GetParsed() const& {
   ABSL_DCHECK(IsParsed());
   return absl::get<ParsedMessageValue>(variant_);
 }
 
 ParsedMessageValue MessageValue::GetParsed() && {
-  ABSL_DCHECK(IsParsed());
-  return absl::get<ParsedMessageValue>(std::move(variant_));
-}
-
-ParsedMessageValue MessageValue::GetParsed() const&& {
   ABSL_DCHECK(IsParsed());
   return absl::get<ParsedMessageValue>(std::move(variant_));
 }

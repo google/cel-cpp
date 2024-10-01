@@ -146,7 +146,9 @@ class MessageValue final {
   cel::optional_ref<const ParsedMessageValue> AsParsed()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedMessageValue> AsParsed() &&;
-  absl::optional<ParsedMessageValue> AsParsed() const&&;
+  absl::optional<ParsedMessageValue> AsParsed() const&& {
+    return common_internal::AsOptional(AsParsed());
+  }
 
   template <typename T>
       std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
@@ -178,7 +180,7 @@ class MessageValue final {
   }
   const ParsedMessageValue& GetParsed() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   ParsedMessageValue GetParsed() &&;
-  ParsedMessageValue GetParsed() const&&;
+  ParsedMessageValue GetParsed() const&& { return GetParsed(); }
 
   template <typename T>
       std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,

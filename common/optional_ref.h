@@ -136,6 +136,23 @@ constexpr bool operator!=(absl::nullopt_t, const optional_ref<T>& rhs) {
   return !operator==(absl::nullopt, rhs);
 }
 
+namespace common_internal {
+
+template <typename T>
+absl::optional<std::decay_t<T>> AsOptional(optional_ref<T> ref) {
+  if (ref) {
+    return *ref;
+  }
+  return absl::nullopt;
+}
+
+template <typename T>
+absl::optional<T> AsOptional(absl::optional<T> opt) {
+  return opt;
+}
+
+}  // namespace common_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_OPTIONAL_REF_H_

@@ -33,13 +33,6 @@ bool OpaqueValue::IsOptional() const {
          NativeTypeId::For<OptionalValueInterface>();
 }
 
-optional_ref<const OptionalValue> OpaqueValue::AsOptional() & {
-  if (IsOptional()) {
-    return *reinterpret_cast<const OptionalValue*>(this);
-  }
-  return absl::nullopt;
-}
-
 optional_ref<const OptionalValue> OpaqueValue::AsOptional() const& {
   if (IsOptional()) {
     return *reinterpret_cast<const OptionalValue*>(this);
@@ -54,18 +47,6 @@ absl::optional<OptionalValue> OpaqueValue::AsOptional() && {
   return absl::nullopt;
 }
 
-absl::optional<OptionalValue> OpaqueValue::AsOptional() const&& {
-  if (IsOptional()) {
-    return std::move(*reinterpret_cast<const OptionalValue*>(this));
-  }
-  return absl::nullopt;
-}
-
-const OptionalValue& OpaqueValue::GetOptional() & {
-  ABSL_DCHECK(IsOptional()) << *this;
-  return *reinterpret_cast<const OptionalValue*>(this);
-}
-
 const OptionalValue& OpaqueValue::GetOptional() const& {
   ABSL_DCHECK(IsOptional()) << *this;
   return *reinterpret_cast<const OptionalValue*>(this);
@@ -74,11 +55,6 @@ const OptionalValue& OpaqueValue::GetOptional() const& {
 OptionalValue OpaqueValue::GetOptional() && {
   ABSL_DCHECK(IsOptional()) << *this;
   return std::move(*reinterpret_cast<OptionalValue*>(this));
-}
-
-OptionalValue OpaqueValue::GetOptional() const&& {
-  ABSL_DCHECK(IsOptional()) << *this;
-  return std::move(*reinterpret_cast<const OptionalValue*>(this));
 }
 
 }  // namespace cel
