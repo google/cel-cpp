@@ -1600,6 +1600,13 @@ absl::Status Reflection::Initialize(absl::Nonnull<const DescriptorPool*> pool) {
   CEL_RETURN_IF_ERROR(Value().Initialize(pool));
   CEL_RETURN_IF_ERROR(ListValue().Initialize(pool));
   CEL_RETURN_IF_ERROR(Struct().Initialize(pool));
+  // google.protobuf.FieldMask is not strictly mandatory, but we do have to
+  // treat it specifically for JSON. So use it if we have it.
+  if (const auto* descriptor =
+          pool->FindMessageTypeByName("google.protobuf.FieldMask");
+      descriptor != nullptr) {
+    CEL_RETURN_IF_ERROR(FieldMask().Initialize(descriptor));
+  }
   return absl::OkStatus();
 }
 
