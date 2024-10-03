@@ -145,6 +145,13 @@ absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
         return IsConst::kNonConst;
       }
 
+      // For now we skip constant folding for cel.@block. We do not yet setup
+      // slots. When we enable constant folding for comprehensions (like
+      // cel.bind), we can address cel.@block.
+      if (call.function() == "cel.@block") {
+        return IsConst::kNonConst;
+      }
+
       int arg_len = call.args().size() + (call.has_target() ? 1 : 0);
       std::vector<cel::Kind> arg_matcher(arg_len, cel::Kind::kAny);
       // Check for any lazy overloads (activation dependant)
