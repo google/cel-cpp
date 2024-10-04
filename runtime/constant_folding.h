@@ -15,9 +15,11 @@
 #ifndef THIRD_PARTY_CEL_CPP_RUNTIME_CONSTANT_FOLDING_H_
 #define THIRD_PARTY_CEL_CPP_RUNTIME_CONSTANT_FOLDING_H_
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
-#include "common/memory.h"
+#include "common/allocator.h"
 #include "runtime/runtime_builder.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions {
 
@@ -27,10 +29,16 @@ namespace cel::extensions {
 // at plan time to simplify the resulting program. User extensions functions are
 // executed if they are eagerly bound.
 //
-// The provided memory manager must outlive the runtime object built
-// from builder.
+// The underlying implementation of `allocator` must outlive the resulting
+// runtime and any programs it creates.
+//
+// The provided `google::protobuf::MessageFactory` must outlive the resulting runtime and
+// any program it creates.
 absl::Status EnableConstantFolding(RuntimeBuilder& builder,
-                                   MemoryManagerRef memory_manager);
+                                   Allocator<> allocator);
+absl::Status EnableConstantFolding(
+    RuntimeBuilder& builder, Allocator<> allocator,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory);
 
 }  // namespace cel::extensions
 

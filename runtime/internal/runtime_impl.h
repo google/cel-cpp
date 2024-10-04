@@ -22,6 +22,7 @@
 #include "base/type_provider.h"
 #include "common/native_type.h"
 #include "eval/compiler/flat_expr_builder.h"
+#include "internal/well_known_types.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
@@ -34,6 +35,7 @@ class RuntimeImpl : public Runtime {
   struct Environment {
     TypeRegistry type_registry;
     FunctionRegistry function_registry;
+    well_known_types::Reflection well_known_types;
   };
 
   explicit RuntimeImpl(const RuntimeOptions& options)
@@ -51,6 +53,13 @@ class RuntimeImpl : public Runtime {
   }
   const FunctionRegistry& function_registry() const {
     return environment_->function_registry;
+  }
+
+  well_known_types::Reflection& well_known_types() {
+    return environment_->well_known_types;
+  }
+  const well_known_types::Reflection& well_known_types() const {
+    return environment_->well_known_types;
   }
 
   // implement Runtime

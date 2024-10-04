@@ -357,6 +357,7 @@ cc_test(
         "//common:value",
         "//extensions/protobuf:runtime_adapter",
         "//internal:testing",
+        "//internal:testing_descriptor_pool",
         "//parser",
         "//parser:options",
         "//runtime",

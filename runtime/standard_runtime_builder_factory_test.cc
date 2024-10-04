@@ -47,6 +47,7 @@
 #include "runtime/runtime_issue.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel {
 namespace {
@@ -101,7 +102,9 @@ TEST_P(StandardRuntimeTest, Defaults) {
   RuntimeOptions opts;
   const EvaluateResultTestCase& test_case = GetTestCase();
 
-  ASSERT_OK_AND_ASSIGN(auto builder, CreateStandardRuntimeBuilder(opts));
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           google::protobuf::DescriptorPool::generated_pool(), opts));
 
   ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
 
@@ -133,7 +136,9 @@ TEST_P(StandardRuntimeTest, Recursive) {
   opts.max_recursion_depth = -1;
   const EvaluateResultTestCase& test_case = GetTestCase();
 
-  ASSERT_OK_AND_ASSIGN(auto builder, CreateStandardRuntimeBuilder(opts));
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           google::protobuf::DescriptorPool::generated_pool(), opts));
 
   ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
 
@@ -513,7 +518,9 @@ TEST(StandardRuntimeTest, RuntimeIssueSupport) {
   google::protobuf::Arena arena;
   auto memory_manager = ProtoMemoryManagerRef(&arena);
 
-  ASSERT_OK_AND_ASSIGN(auto builder, CreateStandardRuntimeBuilder(options));
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           google::protobuf::DescriptorPool::generated_pool(), options));
 
   ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
 

@@ -17,19 +17,27 @@
 #include <memory>
 #include <utility>
 
+#include "absl/base/nullability.h"
+#include "absl/status/statusor.h"
+#include "internal/status_macros.h"
 #include "runtime/internal/runtime_impl.h"
 #include "runtime/runtime_builder.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel {
 
-RuntimeBuilder CreateRuntimeBuilder(const RuntimeOptions& options) {
+absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    const RuntimeOptions& options) {
   // TODO: and internal API for adding extensions that need to
   // downcast to the runtime impl.
   // TODO: add API for attaching an issue listener (replacing the
   // vector<status> overloads).
   auto mutable_runtime =
       std::make_unique<runtime_internal::RuntimeImpl>(options);
+  CEL_RETURN_IF_ERROR(
+      mutable_runtime->well_known_types().Initialize(descriptor_pool));
   mutable_runtime->expr_builder().set_container(options.container);
 
   auto& type_registry = mutable_runtime->type_registry();

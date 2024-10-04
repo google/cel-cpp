@@ -24,6 +24,7 @@
 #include "common/values/legacy_value_manager.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
 #include "parser/options.h"
 #include "parser/parser.h"
 #include "runtime/activation.h"
@@ -42,7 +43,9 @@ using ::google::api::expr::parser::ParserOptions;
 TEST(Strings, SplitWithEmptyDelimiterCord) {
   MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
   const auto options = RuntimeOptions{};
-  ASSERT_OK_AND_ASSIGN(auto builder, CreateStandardRuntimeBuilder(options));
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
   EXPECT_OK(RegisterStringsFunctions(builder.function_registry(), options));
 
   ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());

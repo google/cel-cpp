@@ -15,9 +15,11 @@
 #include "runtime/constant_folding.h"
 
 #include "absl/base/macros.h"
+#include "absl/base/nullability.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "common/memory.h"
+#include "common/allocator.h"
 #include "common/native_type.h"
 #include "eval/compiler/constant_folding.h"
 #include "internal/casts.h"
@@ -26,6 +28,7 @@
 #include "runtime/internal/runtime_impl.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_builder.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions {
 namespace {
@@ -52,12 +55,25 @@ absl::StatusOr<RuntimeImpl*> RuntimeImplFromBuilder(RuntimeBuilder& builder) {
 }  // namespace
 
 absl::Status EnableConstantFolding(RuntimeBuilder& builder,
-                                   MemoryManagerRef memory_manager) {
+                                   Allocator<> allocator) {
   CEL_ASSIGN_OR_RETURN(RuntimeImpl * runtime_impl,
                        RuntimeImplFromBuilder(builder));
   ABSL_ASSERT(runtime_impl != nullptr);
   runtime_impl->expr_builder().AddProgramOptimizer(
-      runtime_internal::CreateConstantFoldingOptimizer(memory_manager));
+      runtime_internal::CreateConstantFoldingOptimizer(allocator, nullptr));
+  return absl::OkStatus();
+}
+
+absl::Status EnableConstantFolding(
+    RuntimeBuilder& builder, Allocator<> allocator,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory) {
+  ABSL_DCHECK(message_factory != nullptr);
+  CEL_ASSIGN_OR_RETURN(RuntimeImpl * runtime_impl,
+                       RuntimeImplFromBuilder(builder));
+  ABSL_ASSERT(runtime_impl != nullptr);
+  runtime_impl->expr_builder().AddProgramOptimizer(
+      runtime_internal::CreateConstantFoldingOptimizer(allocator,
+                                                       message_factory));
   return absl::OkStatus();
 }
 

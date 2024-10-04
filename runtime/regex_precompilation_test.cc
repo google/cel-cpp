@@ -26,6 +26,7 @@
 #include "common/value.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
 #include "parser/parser.h"
 #include "runtime/activation.h"
 #include "runtime/constant_folding.h"
@@ -76,7 +77,8 @@ TEST_P(RegexPrecompilationTest, Basic) {
   RuntimeOptions options;
   const TestCase& test_case = GetParam();
   ASSERT_OK_AND_ASSIGN(cel::RuntimeBuilder builder,
-                       CreateStandardRuntimeBuilder(options));
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
 
   auto status = RegisterHelper<BinaryFunctionAdapter<
       absl::StatusOr<Value>, const StringValue&, const StringValue&>>::
@@ -122,7 +124,8 @@ TEST_P(RegexPrecompilationTest, WithConstantFolding) {
   RuntimeOptions options;
   const TestCase& test_case = GetParam();
   ASSERT_OK_AND_ASSIGN(cel::RuntimeBuilder builder,
-                       CreateStandardRuntimeBuilder(options));
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
 
   auto status = RegisterHelper<BinaryFunctionAdapter<
       absl::StatusOr<Value>, const StringValue&, const StringValue&>>::

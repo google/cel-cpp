@@ -14,23 +14,25 @@
 
 #include "runtime/standard_runtime_builder_factory.h"
 
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "internal/status_macros.h"
 #include "runtime/runtime_builder.h"
 #include "runtime/runtime_builder_factory.h"
 #include "runtime/runtime_options.h"
 #include "runtime/standard_functions.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel {
 
 absl::StatusOr<RuntimeBuilder> CreateStandardRuntimeBuilder(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
     const RuntimeOptions& options) {
-  RuntimeBuilder result = CreateRuntimeBuilder(options);
-
+  CEL_ASSIGN_OR_RETURN(auto builder,
+                       CreateRuntimeBuilder(descriptor_pool, options));
   CEL_RETURN_IF_ERROR(
-      RegisterStandardFunctions(result.function_registry(), options));
-
-  return result;
+      RegisterStandardFunctions(builder.function_registry(), options));
+  return builder;
 }
 
 }  // namespace cel

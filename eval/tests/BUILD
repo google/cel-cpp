@@ -92,6 +92,7 @@ cc_test(
         "//extensions/protobuf:value",
         "//internal:benchmark",
         "//internal:testing",
+        "//internal:testing_descriptor_pool",
         "//parser",
         "//runtime",
         "//runtime:activation",

@@ -90,6 +90,7 @@ cc_library(
         "//eval/eval:evaluator_core",
         "//internal:casts",
         "//internal:status_macros",
+        "//internal:well_known_types",
         "//runtime",
         "//runtime:activation_interface",
         "//runtime:function_registry",

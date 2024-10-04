@@ -15,8 +15,10 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_COMPILER_CONSTANT_FOLDING_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_CONSTANT_FOLDING_H_
 
-#include "common/memory.h"
+#include "absl/base/nullability.h"
+#include "common/allocator.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
+#include "google/protobuf/message.h"
 
 namespace cel::runtime_internal {
 
@@ -28,7 +30,9 @@ namespace cel::runtime_internal {
 // MemoryManager so it must outlive any programs created with this
 // extension.
 google::api::expr::runtime::ProgramOptimizerFactory
-CreateConstantFoldingOptimizer(MemoryManagerRef manager);
+CreateConstantFoldingOptimizer(
+    Allocator<> allocator,
+    absl::Nullable<google::protobuf::MessageFactory*> message_factory = nullptr);
 
 }  // namespace cel::runtime_internal
 

@@ -84,11 +84,11 @@
 #include "proto/test/v1/proto2/test_all_types_extensions.pb.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
 
 using ::cel::CreateStandardRuntimeBuilder;
-using ::cel::DynType;
 using ::cel::FunctionDecl;
 using ::cel::Runtime;
 using ::cel::RuntimeOptions;
@@ -470,11 +470,14 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
       absl::string_view container) {
     RuntimeOptions options(options_);
     options.container = std::string(container);
-    CEL_ASSIGN_OR_RETURN(auto builder, CreateStandardRuntimeBuilder(options));
+    CEL_ASSIGN_OR_RETURN(
+        auto builder, CreateStandardRuntimeBuilder(
+                          google::protobuf::DescriptorPool::generated_pool(), options));
 
     if (enable_optimizations_) {
       CEL_RETURN_IF_ERROR(cel::extensions::EnableConstantFolding(
-          builder, constant_memory_manager_));
+          builder, constant_memory_manager_,
+          google::protobuf::MessageFactory::generated_factory()));
     }
     CEL_RETURN_IF_ERROR(cel::EnableReferenceResolver(
         builder, cel::ReferenceResolverEnabled::kAlways));

@@ -47,6 +47,7 @@
 #include "extensions/protobuf/value.h"
 #include "internal/benchmark.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
 #include "parser/parser.h"
 #include "runtime/activation.h"
 #include "runtime/constant_folding.h"
@@ -90,7 +91,8 @@ enum class ConstFoldingEnabled { kNo, kYes };
 std::unique_ptr<const cel::Runtime> StandardRuntimeOrDie(
     const cel::RuntimeOptions& options, google::protobuf::Arena* arena = nullptr,
     ConstFoldingEnabled const_folding = ConstFoldingEnabled::kNo) {
-  auto builder = CreateStandardRuntimeBuilder(options);
+  auto builder = CreateStandardRuntimeBuilder(
+      internal::GetTestingDescriptorPool(), options);
   ABSL_CHECK_OK(builder.status());
 
   switch (const_folding) {

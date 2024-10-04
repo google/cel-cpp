@@ -189,7 +189,9 @@ cc_library(
         ":runtime",
         ":runtime_options",
         ":type_registry",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -211,8 +213,12 @@ cc_library(
     deps = [
         ":runtime_builder",
         ":runtime_options",
-        "//common:value",
+        "//internal:status_macros",
         "//runtime/internal:runtime_impl",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -226,7 +232,10 @@ cc_library(
         ":runtime_options",
         ":standard_functions",
         "//internal:status_macros",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -291,6 +300,7 @@ cc_library(
     deps = [
         ":runtime",
         ":runtime_builder",
+        "//common:allocator",
         "//common:memory",
         "//common:native_type",
         "//eval/compiler:constant_folding",
@@ -299,8 +309,11 @@ cc_library(
         "//runtime/internal:runtime_friend_access",
         "//runtime/internal:runtime_impl",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:nullability",
+        "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -319,6 +332,7 @@ cc_test(
         "//common:value",
         "//extensions/protobuf:runtime_adapter",
         "//internal:testing",
+        "//internal:testing_descriptor_pool",
         "//parser",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -363,6 +377,7 @@ cc_test(
         "//common:value",
         "//extensions/protobuf:runtime_adapter",
         "//internal:testing",
+        "//internal:testing_descriptor_pool",
         "//parser",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -406,6 +421,7 @@ cc_test(
         "//common:value",
         "//extensions/protobuf:runtime_adapter",
         "//internal:testing",
+        "//internal:testing_descriptor_pool",
         "//parser",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
@@ -450,6 +466,7 @@ cc_test(
         ":standard_runtime_builder_factory",
         "//extensions/protobuf:runtime_adapter",
         "//internal:testing",
+        "//internal:testing_descriptor_pool",
         "//parser",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings:string_view",
@@ -540,6 +557,7 @@ cc_test(
         "//extensions/protobuf:memory_manager",
         "//extensions/protobuf:runtime_adapter",
         "//internal:testing",
+        "//internal:testing_descriptor_pool",
         "//parser",
         "//parser:options",
         "//runtime/internal:runtime_impl",

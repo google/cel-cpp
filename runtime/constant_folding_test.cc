@@ -26,6 +26,7 @@
 #include "common/value.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
 #include "parser/parser.h"
 #include "runtime/activation.h"
 #include "runtime/managed_value_factory.h"
@@ -74,7 +75,8 @@ TEST_P(ConstantFoldingExtTest, Runner) {
   RuntimeOptions options;
   const TestCase& test_case = GetParam();
   ASSERT_OK_AND_ASSIGN(cel::RuntimeBuilder builder,
-                       CreateStandardRuntimeBuilder(options));
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
 
   auto status = RegisterHelper<BinaryFunctionAdapter<
       absl::StatusOr<Value>, const StringValue&, const StringValue&>>::

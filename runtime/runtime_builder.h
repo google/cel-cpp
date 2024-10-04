@@ -18,11 +18,13 @@
 #include <memory>
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime.h"
 #include "runtime/runtime_options.h"
 #include "runtime/type_registry.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel {
 
@@ -33,7 +35,8 @@ class RuntimeFriendAccess;
 }  // namespace runtime_internal
 
 class RuntimeBuilder;
-RuntimeBuilder CreateRuntimeBuilder(const RuntimeOptions&);
+absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
+    absl::Nonnull<const google::protobuf::DescriptorPool*>, const RuntimeOptions&);
 
 // RuntimeBuilder provides mutable accessors to configure a new runtime.
 //
@@ -60,7 +63,8 @@ class RuntimeBuilder {
 
  private:
   friend class runtime_internal::RuntimeFriendAccess;
-  friend RuntimeBuilder CreateRuntimeBuilder(const RuntimeOptions&);
+  friend absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
+      absl::Nonnull<const google::protobuf::DescriptorPool*>, const RuntimeOptions&);
 
   // Constructor for a new runtime builder.
   //

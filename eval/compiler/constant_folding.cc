@@ -16,18 +16,20 @@
 
 #include <cstddef>
 #include <memory>
-#include <string>
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "base/builtins.h"
 #include "base/kind.h"
 #include "base/type_provider.h"
+#include "common/allocator.h"
 #include "common/value.h"
 #include "common/value_manager.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
@@ -37,6 +39,8 @@
 #include "internal/status_macros.h"
 #include "runtime/activation.h"
 #include "runtime/internal/convert_constant.h"
+#include "google/protobuf/dynamic_message.h"
+#include "google/protobuf/message.h"
 
 namespace cel::runtime_internal {
 
@@ -69,11 +73,19 @@ using ::google::api::expr::runtime::Resolver;
 
 class ConstantFoldingExtension : public ProgramOptimizer {
  public:
-  ConstantFoldingExtension(MemoryManagerRef memory_manager,
-                           const TypeProvider& type_provider)
-      : memory_manager_(memory_manager),
+  ConstantFoldingExtension(
+      Allocator<> allocator,
+      absl::Nullable<google::protobuf::MessageFactory*> message_factory,
+      const TypeProvider& type_provider)
+      : memory_manager_(allocator),
         state_(kDefaultStackLimit, kComprehensionSlotCount, type_provider,
-               memory_manager_) {}
+               MemoryManager(allocator)) {
+    if (message_factory == nullptr) {
+      message_factory_ = &dynamic_message_factory_.emplace();
+    } else {
+      message_factory_ = message_factory;
+    }
+  }
 
   absl::Status OnPreVisit(google::api::expr::runtime::PlannerContext& context,
                           const Expr& node) override;
@@ -93,9 +105,12 @@ class ConstantFoldingExtension : public ProgramOptimizer {
   // if the comprehension variables are only used in a const way.
   static constexpr size_t kComprehensionSlotCount = 0;
 
-  MemoryManagerRef memory_manager_;
+  MemoryManager memory_manager_;
   Activation empty_;
   FlatExpressionEvaluatorState state_;
+  // Not yet used, will be in future.
+  absl::optional<google::protobuf::DynamicMessageFactory> dynamic_message_factory_;
+  absl::Nonnull<google::protobuf::MessageFactory*> message_factory_;
 
   std::vector<IsConst> is_const_;
 };
@@ -245,11 +260,12 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
 }  // namespace
 
 ProgramOptimizerFactory CreateConstantFoldingOptimizer(
-    MemoryManagerRef memory_manager) {
-  return [memory_manager](PlannerContext& ctx, const AstImpl&)
+    Allocator<> allocator,
+    absl::Nullable<google::protobuf::MessageFactory*> message_factory) {
+  return [allocator, message_factory](PlannerContext& ctx, const AstImpl&)
              -> absl::StatusOr<std::unique_ptr<ProgramOptimizer>> {
     return std::make_unique<ConstantFoldingExtension>(
-        memory_manager, ctx.value_factory().type_provider());
+        allocator, message_factory, ctx.value_factory().type_provider());
   };
 }
 

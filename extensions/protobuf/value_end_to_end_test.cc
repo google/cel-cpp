@@ -21,7 +21,6 @@
 #include <vector>
 
 #include "absl/status/status.h"
-#include "absl/strings/match.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "common/memory.h"
@@ -36,6 +35,7 @@
 #include "runtime/runtime_options.h"
 #include "runtime/standard_runtime_builder_factory.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "google/protobuf/descriptor.h"
 #include "google/protobuf/text_format.h"
 
 namespace cel::extensions {
@@ -97,7 +97,9 @@ TEST_P(ProtobufValueEndToEndTest, Runner) {
 
   RuntimeOptions opts;
   opts.enable_empty_wrapper_null_unboxing = true;
-  ASSERT_OK_AND_ASSIGN(auto builder, CreateStandardRuntimeBuilder(opts));
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           google::protobuf::DescriptorPool::generated_pool(), opts));
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<const Runtime> runtime,
                        std::move(builder).Build());

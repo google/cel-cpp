@@ -24,6 +24,7 @@
 #include "common/value.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
 #include "parser/parser.h"
 #include "runtime/activation.h"
 #include "runtime/managed_value_factory.h"
@@ -49,7 +50,8 @@ using ::testing::HasSubstr;
 TEST(ReferenceResolver, ResolveQualifiedFunctions) {
   RuntimeOptions options;
   ASSERT_OK_AND_ASSIGN(RuntimeBuilder builder,
-                       CreateStandardRuntimeBuilder(options));
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
 
   ASSERT_OK(
       EnableReferenceResolver(builder, ReferenceResolverEnabled::kAlways));
@@ -90,7 +92,8 @@ TEST(ReferenceResolver, ResolveQualifiedFunctions) {
 TEST(ReferenceResolver, ResolveQualifiedFunctionsCheckedOnly) {
   RuntimeOptions options;
   ASSERT_OK_AND_ASSIGN(RuntimeBuilder builder,
-                       CreateStandardRuntimeBuilder(options));
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
 
   ASSERT_OK(EnableReferenceResolver(
       builder, ReferenceResolverEnabled::kCheckedExpressionOnly));
@@ -189,7 +192,8 @@ constexpr absl::string_view kIdentifierExpression = R"pb(
 TEST(ReferenceResolver, ResolveQualifiedIdentifiers) {
   RuntimeOptions options;
   ASSERT_OK_AND_ASSIGN(RuntimeBuilder builder,
-                       CreateStandardRuntimeBuilder(options));
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
 
   ASSERT_OK(EnableReferenceResolver(
       builder, ReferenceResolverEnabled::kCheckedExpressionOnly));
@@ -222,7 +226,8 @@ TEST(ReferenceResolver, ResolveQualifiedIdentifiers) {
 TEST(ReferenceResolver, ResolveQualifiedIdentifiersSkipParseOnly) {
   RuntimeOptions options;
   ASSERT_OK_AND_ASSIGN(RuntimeBuilder builder,
-                       CreateStandardRuntimeBuilder(options));
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
 
   ASSERT_OK(EnableReferenceResolver(
       builder, ReferenceResolverEnabled::kCheckedExpressionOnly));
@@ -314,7 +319,8 @@ constexpr absl::string_view kEnumExpr = R"pb(
 TEST(ReferenceResolver, ResolveEnumConstants) {
   RuntimeOptions options;
   ASSERT_OK_AND_ASSIGN(RuntimeBuilder builder,
-                       CreateStandardRuntimeBuilder(options));
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
 
   ASSERT_OK(EnableReferenceResolver(
       builder, ReferenceResolverEnabled::kCheckedExpressionOnly));
@@ -341,7 +347,8 @@ TEST(ReferenceResolver, ResolveEnumConstants) {
 TEST(ReferenceResolver, ResolveEnumConstantsSkipParseOnly) {
   RuntimeOptions options;
   ASSERT_OK_AND_ASSIGN(RuntimeBuilder builder,
-                       CreateStandardRuntimeBuilder(options));
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
 
   ASSERT_OK(EnableReferenceResolver(
       builder, ReferenceResolverEnabled::kCheckedExpressionOnly));

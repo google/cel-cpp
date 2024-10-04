@@ -1813,6 +1813,8 @@ class MemoryManager final {
     return MemoryManager(arena);
   }
 
+  explicit MemoryManager(Allocator<> allocator) : arena_(allocator.arena()) {}
+
   MemoryManager() = delete;
   MemoryManager(const MemoryManager&) = default;
   MemoryManager& operator=(const MemoryManager&) = default;
@@ -1886,6 +1888,12 @@ class MemoryManager final {
   }
 
   absl::Nullable<google::protobuf::Arena*> arena() const noexcept { return arena_; }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  template <typename T>
+  operator Allocator<T>() const {
+    return arena();
+  }
 
   friend void swap(MemoryManager& lhs, MemoryManager& rhs) noexcept {
     using std::swap;

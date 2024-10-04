@@ -35,6 +35,7 @@
 #include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/runtime_adapter.h"
 #include "internal/testing.h"
+#include "internal/testing_descriptor_pool.h"
 #include "parser/options.h"
 #include "parser/parser.h"
 #include "runtime/activation.h"
@@ -96,36 +97,44 @@ MATCHER_P2(MatchesOptionalIndex, kind1, kind2, "") {
 }
 
 TEST(EnableOptionalTypes, HeterogeneousEqualityRequired) {
-  ASSERT_OK_AND_ASSIGN(auto builder,
-                       CreateStandardRuntimeBuilder(RuntimeOptions{
-                           .enable_qualified_type_identifiers = true,
-                           .enable_heterogeneous_equality = false}));
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      CreateStandardRuntimeBuilder(
+          internal::GetTestingDescriptorPool(),
+          RuntimeOptions{.enable_qualified_type_identifiers = true,
+                         .enable_heterogeneous_equality = false}));
   EXPECT_THAT(EnableOptionalTypes(builder),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST(EnableOptionalTypes, QualifiedTypeIdentifiersRequired) {
-  ASSERT_OK_AND_ASSIGN(auto builder,
-                       CreateStandardRuntimeBuilder(RuntimeOptions{
-                           .enable_qualified_type_identifiers = false,
-                           .enable_heterogeneous_equality = true}));
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      CreateStandardRuntimeBuilder(
+          internal::GetTestingDescriptorPool(),
+          RuntimeOptions{.enable_qualified_type_identifiers = false,
+                         .enable_heterogeneous_equality = true}));
   EXPECT_THAT(EnableOptionalTypes(builder),
               StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST(EnableOptionalTypes, PreconditionsSatisfied) {
-  ASSERT_OK_AND_ASSIGN(auto builder,
-                       CreateStandardRuntimeBuilder(RuntimeOptions{
-                           .enable_qualified_type_identifiers = true,
-                           .enable_heterogeneous_equality = true}));
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      CreateStandardRuntimeBuilder(
+          internal::GetTestingDescriptorPool(),
+          RuntimeOptions{.enable_qualified_type_identifiers = true,
+                         .enable_heterogeneous_equality = true}));
   EXPECT_THAT(EnableOptionalTypes(builder), IsOk());
 }
 
 TEST(EnableOptionalTypes, Functions) {
-  ASSERT_OK_AND_ASSIGN(auto builder,
-                       CreateStandardRuntimeBuilder(RuntimeOptions{
-                           .enable_qualified_type_identifiers = true,
-                           .enable_heterogeneous_equality = true}));
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      CreateStandardRuntimeBuilder(
+          internal::GetTestingDescriptorPool(),
+          RuntimeOptions{.enable_qualified_type_identifiers = true,
+                         .enable_heterogeneous_equality = true}));
   ASSERT_THAT(EnableOptionalTypes(builder), IsOk());
 
   EXPECT_THAT(builder.function_registry().FindStaticOverloads("hasValue", true,
@@ -188,7 +197,9 @@ TEST_P(OptionalTypesTest, RecursivePlan) {
 
   const EvaluateResultTestCase& test_case = GetTestCase();
 
-  ASSERT_OK_AND_ASSIGN(auto builder, CreateStandardRuntimeBuilder(opts));
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      CreateStandardRuntimeBuilder(internal::GetTestingDescriptorPool(), opts));
 
   ASSERT_OK(EnableOptionalTypes(builder));
   ASSERT_OK(
@@ -223,7 +234,9 @@ TEST_P(OptionalTypesTest, Defaults) {
   opts.short_circuiting = EnableShortCircuiting();
   const EvaluateResultTestCase& test_case = GetTestCase();
 
-  ASSERT_OK_AND_ASSIGN(auto builder, CreateStandardRuntimeBuilder(opts));
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      CreateStandardRuntimeBuilder(internal::GetTestingDescriptorPool(), opts));
 
   ASSERT_OK(EnableOptionalTypes(builder));
   ASSERT_OK(
@@ -294,7 +307,9 @@ TEST(OptionalTypesTest, ErrorShortCircuiting) {
   google::protobuf::Arena arena;
   auto memory_manager = ProtoMemoryManagerRef(&arena);
 
-  ASSERT_OK_AND_ASSIGN(auto builder, CreateStandardRuntimeBuilder(opts));
+  ASSERT_OK_AND_ASSIGN(
+      auto builder,
+      CreateStandardRuntimeBuilder(internal::GetTestingDescriptorPool(), opts));
 
   int64_t unreachable_count = 0;
 

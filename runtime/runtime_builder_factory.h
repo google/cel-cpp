@@ -15,18 +15,45 @@
 #ifndef THIRD_PARTY_CEL_CPP_RUNTIME_RUNTIME_BUILDER_FACTORY_H_
 #define THIRD_PARTY_CEL_CPP_RUNTIME_RUNTIME_BUILDER_FACTORY_H_
 
+#include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
+#include "absl/status/statusor.h"
 #include "runtime/runtime_builder.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/descriptor.h"
 
 namespace cel {
 
 // Create an unconfigured builder using the default Runtime implementation.
 //
+// The provided descriptor pool is used when dealing with `google.protobuf.Any`
+// messages, as well as for implementing struct creation syntax
+// `foo.Bar{my_field: 1}`. The descriptor pool must outlive the resulting
+// RuntimeBuilder, the `Runtime` it creates, and any `Program` that the
+// `Runtime` creates. The descriptor pool must include the minimally necessary
+// descriptors required by CEL. Those are the following:
+// - google.protobuf.NullValue
+// - google.protobuf.BoolValue
+// - google.protobuf.Int32Value
+// - google.protobuf.Int64Value
+// - google.protobuf.UInt32Value
+// - google.protobuf.UInt64Value
+// - google.protobuf.FloatValue
+// - google.protobuf.DoubleValue
+// - google.protobuf.BytesValue
+// - google.protobuf.StringValue
+// - google.protobuf.Any
+// - google.protobuf.Duration
+// - google.protobuf.Timestamp
+//
 // This is provided for environments that only use a subset of the CEL standard
 // builtins. Most users should prefer CreateStandardRuntimeBuilder.
 //
 // Callers must register appropriate builtins.
-RuntimeBuilder CreateRuntimeBuilder(const RuntimeOptions& options);
+absl::StatusOr<RuntimeBuilder> CreateRuntimeBuilder(
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool
+        ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const RuntimeOptions& options);
 
 }  // namespace cel
 
