@@ -45,6 +45,7 @@
 #include "common/json.h"
 #include "common/memory.h"
 #include "extensions/protobuf/internal/map_reflection.h"
+#include "internal/protobuf_runtime_version.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
@@ -1481,9 +1482,14 @@ bool StructReflection::ContainsField(const google::protobuf::Message& message,
                                      absl::string_view name) const {
   ABSL_DCHECK(IsInitialized());
   ABSL_DCHECK_EQ(message.GetDescriptor(), descriptor_);
+#if CEL_INTERNAL_PROTOBUF_OSS_VERSION_PREREQ(5, 30, 0)
+  google::protobuf::MapKey key;
+  key.SetStringValue(name);
+#else
   std::string key_scratch(name);
   google::protobuf::MapKey key;
   key.SetStringValue(key_scratch);
+#endif
   return cel::extensions::protobuf_internal::ContainsMapKey(
       *message.GetReflection(), message, *fields_field_, key);
 }
@@ -1492,9 +1498,14 @@ absl::Nullable<const google::protobuf::Message*> StructReflection::FindField(
     const google::protobuf::Message& message, absl::string_view name) const {
   ABSL_DCHECK(IsInitialized());
   ABSL_DCHECK_EQ(message.GetDescriptor(), descriptor_);
+#if CEL_INTERNAL_PROTOBUF_OSS_VERSION_PREREQ(5, 30, 0)
+  google::protobuf::MapKey key;
+  key.SetStringValue(name);
+#else
   std::string key_scratch(name);
   google::protobuf::MapKey key;
   key.SetStringValue(key_scratch);
+#endif
   google::protobuf::MapValueConstRef value;
   if (cel::extensions::protobuf_internal::LookupMapValue(
           *message.GetReflection(), message, *fields_field_, key, &value)) {
@@ -1507,9 +1518,14 @@ absl::Nonnull<google::protobuf::Message*> StructReflection::InsertField(
     absl::Nonnull<google::protobuf::Message*> message, absl::string_view name) const {
   ABSL_DCHECK(IsInitialized());
   ABSL_DCHECK_EQ(message->GetDescriptor(), descriptor_);
+#if CEL_INTERNAL_PROTOBUF_OSS_VERSION_PREREQ(5, 30, 0)
+  google::protobuf::MapKey key;
+  key.SetStringValue(name);
+#else
   std::string key_scratch(name);
   google::protobuf::MapKey key;
   key.SetStringValue(key_scratch);
+#endif
   google::protobuf::MapValueRef value;
   cel::extensions::protobuf_internal::InsertOrLookupMapValue(
       *message->GetReflection(), message, *fields_field_, key, &value);
@@ -1520,9 +1536,14 @@ bool StructReflection::DeleteField(absl::Nonnull<google::protobuf::Message*> mes
                                    absl::string_view name) const {
   ABSL_DCHECK(IsInitialized());
   ABSL_DCHECK_EQ(message->GetDescriptor(), descriptor_);
+#if CEL_INTERNAL_PROTOBUF_OSS_VERSION_PREREQ(5, 30, 0)
+  google::protobuf::MapKey key;
+  key.SetStringValue(name);
+#else
   std::string key_scratch(name);
   google::protobuf::MapKey key;
   key.SetStringValue(key_scratch);
+#endif
   return cel::extensions::protobuf_internal::DeleteMapValue(
       message->GetReflection(), message, fields_field_, key);
 }

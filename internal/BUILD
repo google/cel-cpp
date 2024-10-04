@@ -687,6 +687,7 @@ cc_library(
     srcs = ["well_known_types.cc"],
     hdrs = ["well_known_types.h"],
     deps = [
+        ":protobuf_runtime_version",
         ":status_macros",
         "//common:any",
         "//common:json",
@@ -832,4 +833,10 @@ cc_test(
         "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
+)
+
+cc_library(
+    name = "protobuf_runtime_version",
+    hdrs = ["protobuf_runtime_version.h"],
+    deps = ["@com_google_protobuf//:protobuf"],
 )

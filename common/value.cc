@@ -49,6 +49,7 @@
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/values.h"
+#include "internal/protobuf_runtime_version.h"
 #include "internal/status_macros.h"
 #include "internal/well_known_types.h"
 #include "runtime/runtime_options.h"
@@ -665,9 +666,15 @@ void UInt64MapFieldKeyAccessor(Allocator<>, Borrower, const google::protobuf::Ma
   result = UintValue(key.GetUInt64Value());
 }
 
-void StringMapFieldKeyAccessor(Allocator<> allocator, Borrower,
+void StringMapFieldKeyAccessor(Allocator<> allocator, Borrower borrower,
                                const google::protobuf::MapKey& key, Value& result) {
+#if CEL_INTERNAL_PROTOBUF_OSS_VERSION_PREREQ(5, 30, 0)
+  static_cast<void>(allocator);
+  result = StringValue(borrower, key.GetStringValue());
+#else
+  static_cast<void>(borrower);
   result = StringValue(allocator, key.GetStringValue());
+#endif
 }
 
 }  // namespace
