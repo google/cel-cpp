@@ -19,10 +19,10 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
@@ -39,7 +39,6 @@
 #include "internal/status_macros.h"
 #include "runtime/activation.h"
 #include "runtime/internal/convert_constant.h"
-#include "google/protobuf/dynamic_message.h"
 #include "google/protobuf/message.h"
 
 namespace cel::runtime_internal {
@@ -79,13 +78,8 @@ class ConstantFoldingExtension : public ProgramOptimizer {
       const TypeProvider& type_provider)
       : memory_manager_(allocator),
         state_(kDefaultStackLimit, kComprehensionSlotCount, type_provider,
-               MemoryManager(allocator)) {
-    if (message_factory == nullptr) {
-      message_factory_ = &dynamic_message_factory_.emplace();
-    } else {
-      message_factory_ = message_factory;
-    }
-  }
+               MemoryManager(allocator)),
+        message_factory_(message_factory) {}
 
   absl::Status OnPreVisit(google::api::expr::runtime::PlannerContext& context,
                           const Expr& node) override;
@@ -109,8 +103,8 @@ class ConstantFoldingExtension : public ProgramOptimizer {
   Activation empty_;
   FlatExpressionEvaluatorState state_;
   // Not yet used, will be in future.
-  absl::optional<google::protobuf::DynamicMessageFactory> dynamic_message_factory_;
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory_;
+  ABSL_ATTRIBUTE_UNUSED
+  absl::Nullable<google::protobuf::MessageFactory*> message_factory_;
 
   std::vector<IsConst> is_const_;
 };

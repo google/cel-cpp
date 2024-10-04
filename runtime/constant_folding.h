@@ -33,7 +33,8 @@ namespace cel::extensions {
 // runtime and any programs it creates.
 //
 // The provided `google::protobuf::MessageFactory` must outlive the resulting runtime and
-// any program it creates.
+// any program it creates. Failure to pass a message factory may result in
+// certain optimizations being disabled.
 absl::Status EnableConstantFolding(RuntimeBuilder& builder,
                                    Allocator<> allocator);
 absl::Status EnableConstantFolding(
