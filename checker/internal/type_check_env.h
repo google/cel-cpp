@@ -138,6 +138,10 @@ class TypeCheckEnv {
     return functions_.insert({decl.name(), std::move(decl)}).second;
   }
 
+  void InsertOrReplaceFunction(FunctionDecl decl) {
+    functions_[decl.name()] = std::move(decl);
+  }
+
   absl::Nullable<const TypeCheckEnv*> parent() const { return parent_; }
   void set_parent(TypeCheckEnv* parent) { parent_ = parent; }
 

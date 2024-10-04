@@ -58,6 +58,9 @@ class TypeInferenceContext {
     return FullySubstitute(type, /*free_to_dyn=*/true);
   }
 
+  // Recursively apply any substitutions to the given type.
+  Type FullySubstitute(const Type& type, bool free_to_dyn = false) const;
+
   // Replace any generic type parameters in the given type with specific type
   // variables. Internally, type variables are just a unique string parameter
   // name.
@@ -127,8 +130,6 @@ class TypeInferenceContext {
                                    SubstitutionMap& prospective_substitutions);
 
   Type Substitute(const Type& type, const SubstitutionMap& substitutions) const;
-
-  Type FullySubstitute(const Type& type, bool free_to_dyn) const;
 
   void UpdateTypeParameterBindings(
       const SubstitutionMap& prospective_substitutions);

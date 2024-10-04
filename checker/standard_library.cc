@@ -610,7 +610,7 @@ absl::Status AddConatainerOps(TypeCheckerBuilder& builder) {
       StandardOverloads::kIndexList, TypeParamA(), ListOfA(), IntType())));
   CEL_RETURN_IF_ERROR(index.AddOverload(MakeOverloadDecl(
       StandardOverloads::kIndexMap, TypeParamB(), MapOfAB(), TypeParamA())));
-  CEL_RETURN_IF_ERROR(builder.AddFunction(std::move(index)));
+  CEL_RETURN_IF_ERROR(builder.MergeFunction(std::move(index)));
 
   FunctionDecl in_op;
   in_op.set_name(builtin::kIn);

@@ -73,6 +73,13 @@ class TypeCheckerBuilder {
   absl::Status AddVariable(const VariableDecl& decl);
   absl::Status AddFunction(const FunctionDecl& decl);
 
+  // Adds function declaration overloads to the TypeChecker being built.
+  //
+  // Attempts to merge with any existing overloads for a function decl with the
+  // same name. If the overloads are not compatible, an error is returned and
+  // no change is made.
+  absl::Status MergeFunction(const FunctionDecl& decl);
+
   void AddTypeProvider(std::unique_ptr<TypeIntrospector> provider);
 
   void set_container(absl::string_view container);

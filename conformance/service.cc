@@ -38,6 +38,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "checker/optional.h"
 #include "checker/standard_library.h"
 #include "checker/type_checker_builder.h"
 #include "common/ast.h"
@@ -629,6 +630,7 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
 
     if (!request.no_std_env()) {
       CEL_RETURN_IF_ERROR(builder.AddLibrary(cel::StandardLibrary()));
+      CEL_RETURN_IF_ERROR(builder.AddLibrary(cel::OptionalCheckerLibrary()));
     }
 
     for (const auto& decl : request.type_env()) {

@@ -21,6 +21,7 @@
 #include "common/ast.h"
 #include "extensions/protobuf/ast_converters.h"
 #include "internal/status_macros.h"
+#include "parser/options.h"
 #include "parser/parser.h"
 
 namespace cel::checker_internal {
@@ -30,7 +31,10 @@ using ::google::api::expr::parser::Parse;
 
 absl::StatusOr<std::unique_ptr<Ast>> MakeTestParsedAst(
     absl::string_view expression) {
-  CEL_ASSIGN_OR_RETURN(auto parsed, Parse(expression));
+  static ParserOptions options;
+  options.enable_optional_syntax = true;
+  CEL_ASSIGN_OR_RETURN(auto parsed,
+                       Parse(expression, /*description=*/expression, options));
 
   return CreateAstFromParsedExpr(std::move(parsed));
 }

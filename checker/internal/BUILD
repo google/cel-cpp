@@ -27,6 +27,7 @@ cc_library(
         "//extensions/protobuf:ast_converters",
         "//internal:status_macros",
         "//parser",
+        "//parser:options",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
     ],

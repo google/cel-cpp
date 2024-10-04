@@ -49,6 +49,7 @@ cc_library(
     hdrs = ["service.h"],
     deps = [
         ":value_conversion",
+        "//checker:optional",
         "//checker:standard_library",
         "//checker:type_checker_builder",
         "//common:ast",
@@ -327,7 +328,6 @@ gen_conformance_tests(
         "string_ext",
         "math_ext",
         "encoders_ext",
-        "optionals",
         # block is a post-check optimization that inserts internal variables. The C++ type checker
         # needs support for a proper optimizer for this to work.
         "block_ext",

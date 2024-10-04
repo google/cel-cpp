@@ -186,7 +186,8 @@ class ConformanceTest : public testing::Test {
       (*check_request.mutable_type_env()) = test_.type_env();
       CheckResponse check_response;
       service_->Check(check_request, check_response);
-      ASSERT_THAT(check_response.issues(), IsEmpty());
+      ASSERT_THAT(check_response.issues(), IsEmpty()) << absl::StrCat(
+          "unexpected type check issues for: '", test_.expr(), "'\n");
       eval_request.set_allocated_checked_expr(
           check_response.release_checked_expr());
     }

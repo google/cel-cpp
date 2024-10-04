@@ -61,6 +61,13 @@
 namespace cel::checker_internal {
 namespace {
 
+using cel::ast_internal::AstImpl;
+
+using AstType = cel::ast_internal::Type;
+using Severity = TypeCheckIssue::Severity;
+
+constexpr const char kOptionalSelect[] = "_?._";
+
 class TrivialTypeFactory : public TypeFactory {
  public:
   explicit TrivialTypeFactory(absl::Nonnull<google::protobuf::Arena*> arena)
@@ -73,24 +80,6 @@ class TrivialTypeFactory : public TypeFactory {
  private:
   absl::Nonnull<google::protobuf::Arena*> arena_;
 };
-
-using cel::ast_internal::AstImpl;
-
-using AstType = cel::ast_internal::Type;
-using Severity = TypeCheckIssue::Severity;
-
-Type FreeListType() {
-  static absl::NoDestructor<Type> kInstance(
-      Type(ListType(BuiltinsArena(), TypeParamType("element_type"))));
-  return *kInstance;
-}
-
-Type FreeMapType() {
-  static absl::NoDestructor<Type> kInstance(
-      Type(MapType(BuiltinsArena(), TypeParamType("key_type"),
-                   TypeParamType("value_type"))));
-  return *kInstance;
-}
 
 std::string FormatCandidate(absl::Span<const std::string> qualifiers) {
   return absl::StrJoin(qualifiers, ".");
@@ -374,6 +363,17 @@ class ResolveVisitor : public AstVisitorBase {
                      struct_name, "'")));
   }
 
+  void ReportTypeMismatch(int64_t expr_id, const Type& expected,
+                          const Type& actual) {
+    issues_->push_back(TypeCheckIssue::CreateError(
+        ComputeSourceLocation(*ast_, expr_id),
+        absl::StrCat("expected type '",
+                     inference_context_->FinalizeType(expected).DebugString(),
+                     "' but found '",
+                     inference_context_->FinalizeType(actual).DebugString(),
+                     "'")));
+  }
+
   absl::Status CheckFieldAssignments(const Expr& expr,
                                      const StructExpr& create_struct,
                                      Type struct_type,
@@ -397,16 +397,23 @@ class ResolveVisitor : public AstVisitorBase {
       if (!inference_context_->IsAssignable(value_type, field_type)) {
         issues_->push_back(TypeCheckIssue::CreateError(
             ComputeSourceLocation(*ast_, field.id()),
-            absl::StrCat("expected type of field '", field_info->name(),
-                         "' is '", field_type.DebugString(),
-                         "' but provided type is '", value_type.DebugString(),
-                         "'")));
+            absl::StrCat(
+                "expected type of field '", field_info->name(), "' is '",
+                inference_context_->FinalizeType(field_type).DebugString(),
+                "' but provided type is '",
+                inference_context_->FinalizeType(value_type).DebugString(),
+                "'")));
         continue;
       }
     }
 
     return absl::OkStatus();
   }
+
+  absl::optional<Type> CheckFieldType(int64_t expr_id, const Type& operand_type,
+                                      absl::string_view field_name);
+
+  void HandleOptSelect(const Expr& expr);
 
   // TODO: This should switch to a failing check once all core
   // features are supported. For now, we allow dyn for implementing the
@@ -558,8 +565,10 @@ void ResolveVisitor::PostVisitMap(const Expr& expr, const MapExpr& map) {
   // typed maps unless tagged as JSON (and the values are assignable to
   // the JSON value union type).
 
-  absl::optional<Type> overall_key_type;
-  absl::optional<Type> overall_value_type;
+  Type overall_key_type =
+      inference_context_->InstantiateTypeParams(TypeParamType("K"));
+  Type overall_value_type =
+      inference_context_->InstantiateTypeParams(TypeParamType("V"));
 
   for (const auto& entry : map.entries()) {
     const Expr* key = &entry.key();
@@ -573,14 +582,13 @@ void ResolveVisitor::PostVisitMap(const Expr& expr, const MapExpr& map) {
       // we should consider making this an error.
       issues_->push_back(TypeCheckIssue(
           Severity::kWarning, ComputeSourceLocation(*ast_, key->id()),
-          absl::StrCat("unsupported map key type: ", key_type.DebugString())));
+          absl::StrCat(
+              "unsupported map key type: ",
+              inference_context_->FinalizeType(key_type).DebugString())));
     }
-    if (overall_key_type.has_value()) {
-      if (key_type != *overall_key_type) {
-        overall_key_type = DynType();
-      }
-    } else {
-      overall_key_type = key_type;
+
+    if (!inference_context_->IsAssignable(key_type, overall_key_type)) {
+      overall_key_type = DynType();
     }
 
     const Expr* value = &entry.value();
@@ -588,57 +596,46 @@ void ResolveVisitor::PostVisitMap(const Expr& expr, const MapExpr& map) {
     if (entry.optional()) {
       if (value_type.IsOptional()) {
         value_type = value_type.GetOptional().GetParameter();
+      } else {
+        ReportTypeMismatch(entry.id(), OptionalType(arena_, value_type),
+                           value_type);
+        continue;
       }
     }
-    if (overall_value_type.has_value()) {
-      if (value_type != *overall_value_type) {
-        overall_value_type = DynType();
-      }
-    } else {
-      overall_value_type = value_type;
+    if (!inference_context_->IsAssignable(value_type, overall_value_type)) {
+      overall_value_type = DynType();
     }
   }
 
-  if (overall_value_type.has_value() && overall_key_type.has_value()) {
-    types_[&expr] = MapType(arena_, *overall_key_type, *overall_value_type);
-    return;
-  } else if (overall_value_type.has_value() != overall_key_type.has_value()) {
-    status_.Update(absl::InternalError(
-        "Map has mismatched key and value type inference resolution"));
-    return;
-  }
-
-  types_[&expr] = inference_context_->InstantiateTypeParams(FreeMapType());
+  types_[&expr] = inference_context_->FullySubstitute(
+      MapType(arena_, overall_key_type, overall_value_type));
 }
 
 void ResolveVisitor::PostVisitList(const Expr& expr, const ListExpr& list) {
   // Follows list type inferencing behavior in Go (see map comments above).
 
-  absl::optional<Type> overall_value_type;
-
+  Type overall_elem_type =
+      inference_context_->InstantiateTypeParams(TypeParamType("E"));
   for (const auto& element : list.elements()) {
     const Expr* value = &element.expr();
     Type value_type = GetTypeOrDyn(value);
     if (element.optional()) {
       if (value_type.IsOptional()) {
         value_type = value_type.GetOptional().GetParameter();
+      } else {
+        ReportTypeMismatch(element.expr().id(),
+                           OptionalType(arena_, value_type), value_type);
+        continue;
       }
     }
-    if (overall_value_type.has_value()) {
-      if (value_type != *overall_value_type) {
-        overall_value_type = DynType();
-      }
-    } else {
-      overall_value_type = value_type;
+
+    if (!inference_context_->IsAssignable(value_type, overall_elem_type)) {
+      overall_elem_type = DynType();
     }
   }
 
-  if (overall_value_type.has_value()) {
-    types_[&expr] = ListType(arena_, *overall_value_type);
-    return;
-  }
-
-  types_[&expr] = inference_context_->InstantiateTypeParams(FreeListType());
+  types_[&expr] =
+      inference_context_->FullySubstitute(ListType(arena_, overall_elem_type));
 }
 
 void ResolveVisitor::PostVisitStruct(const Expr& expr,
@@ -687,6 +684,10 @@ void ResolveVisitor::PostVisitStruct(const Expr& expr,
 }
 
 void ResolveVisitor::PostVisitCall(const Expr& expr, const CallExpr& call) {
+  if (call.function() == kOptionalSelect) {
+    HandleOptSelect(expr);
+    return;
+  }
   // Handle disambiguation of namespaced functions.
   if (auto iter = maybe_namespaced_functions_.find(&expr);
       iter != maybe_namespaced_functions_.end()) {
@@ -813,9 +814,11 @@ void ResolveVisitor::PostVisitComprehensionSubexpression(
         default:
           issues_->push_back(TypeCheckIssue::CreateError(
               ComputeSourceLocation(*ast_, expr.id()),
-              absl::StrCat("expression of type '", range_type.DebugString(),
-                           "' cannot be the range of a comprehension (must be "
-                           "list, map, or dynamic)")));
+              absl::StrCat(
+                  "expression of type '",
+                  inference_context_->FinalizeType(range_type).DebugString(),
+                  "' cannot be the range of a comprehension (must be "
+                  "list, map, or dynamic)")));
           break;
       }
       scope.iter_scope->InsertVariableIfAbsent(
@@ -994,16 +997,16 @@ void ResolveVisitor::ResolveQualifiedIdentifier(
   }
 }
 
-void ResolveVisitor::ResolveSelectOperation(const Expr& expr,
-                                            absl::string_view field,
-                                            const Expr& operand) {
-  auto impl = [&](const Type& operand_type) -> absl::optional<Type> {
-    if (operand_type.kind() == TypeKind::kDyn ||
-        operand_type.kind() == TypeKind::kAny) {
-      return DynType();
-    }
+absl::optional<Type> ResolveVisitor::CheckFieldType(int64_t id,
+                                                    const Type& operand_type,
+                                                    absl::string_view field) {
+  if (operand_type.kind() == TypeKind::kDyn ||
+      operand_type.kind() == TypeKind::kAny) {
+    return DynType();
+  }
 
-    if (operand_type.kind() == TypeKind::kStruct) {
+  switch (operand_type.kind()) {
+    case TypeKind::kStruct: {
       StructType struct_type = operand_type.GetStruct();
       auto field_info =
           env_->LookupStructField(*type_factory_, struct_type.name(), field);
@@ -1012,7 +1015,7 @@ void ResolveVisitor::ResolveSelectOperation(const Expr& expr,
         return absl::nullopt;
       }
       if (!field_info->has_value()) {
-        ReportUndefinedField(expr.id(), field, struct_type.name());
+        ReportUndefinedField(id, field, struct_type.name());
         return absl::nullopt;
       }
       auto type = field_info->value().GetType();
@@ -1023,31 +1026,47 @@ void ResolveVisitor::ResolveSelectOperation(const Expr& expr,
       return type;
     }
 
-    if (operand_type.kind() == TypeKind::kMap) {
+    case TypeKind::kMap: {
       MapType map_type = operand_type.GetMap();
-      if (inference_context_->IsAssignable(StringType(), map_type.GetKey())) {
-        return map_type.GetValue();
-      }
-      // else fall though.
+      return map_type.GetValue();
     }
+    case TypeKind::kTypeParam: {
+      // If the operand is a free type variable, bind it to dyn to prevent
+      // an alternative type from being inferred.
+      if (inference_context_->IsAssignable(DynType(), operand_type)) {
+        return DynType();
+      }
+      break;
+    }
+    default:
+      break;
+  }
 
-    issues_->push_back(TypeCheckIssue::CreateError(
-        ComputeSourceLocation(*ast_, expr.id()),
-        absl::StrCat("expression of type '", operand_type.DebugString(),
-                     "' cannot be the operand of a select operation")));
-    return absl::nullopt;
-  };
+  issues_->push_back(TypeCheckIssue::CreateError(
+      ComputeSourceLocation(*ast_, id),
+      absl::StrCat("expression of type '",
+                   inference_context_->FinalizeType(operand_type).DebugString(),
+                   "' cannot be the operand of a select operation")));
+  return absl::nullopt;
+}
 
+void ResolveVisitor::ResolveSelectOperation(const Expr& expr,
+                                            absl::string_view field,
+                                            const Expr& operand) {
   const Type& operand_type = GetTypeOrDyn(&operand);
 
   absl::optional<Type> result_type;
+  int64_t id = expr.id();
   // Support short-hand optional chaining.
   if (operand_type.IsOptional()) {
     auto optional_type = operand_type.GetOptional();
     Type held_type = optional_type.GetParameter();
-    result_type = impl(held_type);
+    result_type = CheckFieldType(id, held_type, field);
+    if (result_type.has_value()) {
+      result_type = OptionalType(arena_, *result_type);
+    }
   } else {
-    result_type = impl(operand_type);
+    result_type = CheckFieldType(id, operand_type, field);
   }
 
   if (result_type.has_value()) {
@@ -1056,6 +1075,40 @@ void ResolveVisitor::ResolveSelectOperation(const Expr& expr,
     } else {
       types_[&expr] = *result_type;
     }
+  }
+}
+
+void ResolveVisitor::HandleOptSelect(const Expr& expr) {
+  if (expr.call_expr().function() != kOptionalSelect ||
+      expr.call_expr().args().size() != 2) {
+    status_.Update(
+        absl::InvalidArgumentError("Malformed optional select expression."));
+    return;
+  }
+
+  const Expr* operand = &expr.call_expr().args().at(0);
+  const Expr* field = &expr.call_expr().args().at(1);
+  if (!field->has_const_expr() || !field->const_expr().has_string_value()) {
+    status_.Update(
+        absl::InvalidArgumentError("Malformed optional select expression."));
+    return;
+  }
+
+  Type operand_type = GetTypeOrDyn(operand);
+  if (operand_type.IsOptional()) {
+    operand_type = operand_type.GetOptional().GetParameter();
+  }
+
+  absl::optional<Type> field_type = CheckFieldType(
+      expr.id(), operand_type, field->const_expr().string_value());
+  if (!field_type.has_value()) {
+    return;
+  }
+  const FunctionDecl* select_decl = env_->LookupFunction(kOptionalSelect);
+  types_[&expr] = OptionalType(arena_, field_type.value());
+  if (select_decl != nullptr) {
+    functions_[&expr] = FunctionResolution{select_decl,
+                                           /*.namespace_rewrite=*/false};
   }
 }
 

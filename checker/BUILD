@@ -118,13 +118,10 @@ cc_library(
         "//checker/internal:builtins_arena",
         "//common:constant",
         "//common:decl",
-        "//common:memory",
         "//common:type",
         "//internal:status_macros",
         "@com_google_absl//absl/base:no_destructor",
-        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -144,5 +141,42 @@ cc_test(
         "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
+    ],
+)
+
+cc_library(
+    name = "optional",
+    srcs = ["optional.cc"],
+    hdrs = ["optional.h"],
+    deps = [
+        ":type_checker_builder",
+        "//base:builtins",
+        "//checker/internal:builtins_arena",
+        "//common:decl",
+        "//common:type",
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+cc_test(
+    name = "optional_test",
+    srcs = ["optional_test.cc"],
+    deps = [
+        ":optional",
+        ":standard_library",
+        ":type_check_issue",
+        ":type_checker",
+        ":type_checker_builder",
+        "//base/ast_internal:ast_impl",
+        "//base/ast_internal:expr",
+        "//checker/internal:test_ast_helpers",
+        "//extensions/protobuf:value",
+        "//internal:testing",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings",
+        "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )

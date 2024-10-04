@@ -532,6 +532,24 @@ TEST(TypeCheckerImplTest, FreeListTypeToDyn) {
   EXPECT_TRUE(ast_impl.type_map().at(1).list_type().elem_type().has_dyn());
 }
 
+TEST(TypeCheckerImplTest, FreeMapValueTypeToDyn) {
+  TypeCheckEnv env;
+
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("{}.field"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  ASSERT_TRUE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+  auto& ast_impl = AstImpl::CastFromPublicAst(*result.GetAst());
+  auto root_id = ast_impl.root_expr().id();
+  EXPECT_TRUE(ast_impl.type_map().at(root_id).has_dyn());
+}
+
 TEST(TypeCheckerImplTest, FreeMapTypeToDyn) {
   TypeCheckEnv env;
 
@@ -1721,12 +1739,12 @@ INSTANTIATE_TEST_SUITE_P(
                 std::make_unique<AstType>(ast_internal::PrimitiveType::kBool),
                 std::make_unique<AstType>(ast_internal::PrimitiveType::kBool))),
         },
+        // Note: The Go type checker permits this so C++ does as well. Some
+        // test cases expect that field selection on a map is always allowed,
+        // even if a specific, non-string key type is known.
         CheckedExprTestCase{
             .expr = "test_msg.map_bool_bool.field_like_key",
-            .expected_result_type = AstType(),
-            .error_substring =
-                "expression of type 'map<bool, bool>' cannot be the operand"
-                " of a select operation",
+            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
         },
         CheckedExprTestCase{
             .expr = "test_msg.map_string_int64",
@@ -1781,9 +1799,15 @@ INSTANTIATE_TEST_SUITE_P(
             .expr = "NestedTestAllTypes{}.child.child.payload.single_int64",
             .expected_result_type =
                 AstType(ast_internal::PrimitiveType::kInt64),
-        }
-
-        ));
+        },
+        CheckedExprTestCase{
+            .expr = "test_msg.single_struct.field.nested_field",
+            .expected_result_type = AstType(ast_internal::DynamicType()),
+        },
+        CheckedExprTestCase{
+            .expr = "{}.field.nested_field",
+            .expected_result_type = AstType(ast_internal::DynamicType()),
+        }));
 
 }  // namespace
 }  // namespace checker_internal

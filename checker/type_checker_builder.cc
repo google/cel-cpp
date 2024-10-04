@@ -67,6 +67,28 @@ absl::Status TypeCheckerBuilder::AddFunction(const FunctionDecl& decl) {
   return absl::OkStatus();
 }
 
+absl::Status TypeCheckerBuilder::MergeFunction(const FunctionDecl& decl) {
+  const FunctionDecl* existing = env_.LookupFunction(decl.name());
+  if (existing == nullptr) {
+    return AddFunction(decl);
+  }
+
+  FunctionDecl merged = *existing;
+
+  for (const auto& overload : decl.overloads()) {
+    if (!merged.AddOverload(overload).ok()) {
+      return absl::AlreadyExistsError(
+          absl::StrCat("function '", decl.name(),
+                       "' already has overload that conflicts with overload ''",
+                       overload.id(), "'"));
+    }
+  }
+
+  env_.InsertOrReplaceFunction(std::move(merged));
+
+  return absl::OkStatus();
+}
+
 void TypeCheckerBuilder::AddTypeProvider(
     std::unique_ptr<TypeIntrospector> provider) {
   env_.AddTypeProvider(std::move(provider));
