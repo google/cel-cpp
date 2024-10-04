@@ -47,7 +47,12 @@ class ProtoTypeReflector : public TypeReflector, public ProtoTypeIntrospector {
   NewStructValueBuilder(ValueFactory& value_factory,
                         const StructType& type) const final;
 
-  absl::Nonnull<google::protobuf::MessageFactory*> message_factory() const {
+  absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool()
+      const override {
+    return ProtoTypeIntrospector::descriptor_pool();
+  }
+
+  absl::Nonnull<google::protobuf::MessageFactory*> message_factory() const override {
     return message_factory_;
   }
 

@@ -25,7 +25,10 @@
 #include <utility>
 
 #include "google/protobuf/any.pb.h"
+#include "google/protobuf/duration.pb.h"
 #include "google/protobuf/struct.pb.h"
+#include "google/protobuf/timestamp.pb.h"
+#include "google/protobuf/wrappers.pb.h"
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
@@ -46,6 +49,7 @@
 #include "common/values/values.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/message_lite.h"
 
 namespace cel {
 
@@ -68,7 +72,6 @@ class MessageValue final {
   // Places the `MessageValue` into an unspecified state. Anything except
   // assigning to `MessageValue` is undefined behavior.
   MessageValue() = default;
-
   MessageValue(const MessageValue&) = default;
   MessageValue(MessageValue&&) = default;
   MessageValue& operator=(const MessageValue&) = default;

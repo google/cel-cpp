@@ -48,6 +48,7 @@ class Value;
 class ValueManager;
 class ListValue;
 class ValueIterator;
+class ParsedMapFieldValue;
 
 namespace common_internal {
 absl::Status CheckWellKnownStructMessage(const google::protobuf::Message& message);
@@ -137,6 +138,8 @@ class ParsedJsonMapValue final {
                          const ParsedJsonMapValue& rhs);
 
  private:
+  friend class ParsedMapFieldValue;
+
   static absl::Status CheckStruct(
       absl::Nullable<const google::protobuf::Message*> message) {
     return message == nullptr

@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_TYPE_REFLECTOR_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_TYPE_REFLECTOR_H_
 
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
@@ -24,6 +25,8 @@
 #include "common/type_introspector.h"
 #include "common/value.h"
 #include "common/value_factory.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -76,6 +79,15 @@ class TypeReflector : public virtual TypeIntrospector {
   absl::StatusOr<absl::optional<Value>> DeserializeValue(
       ValueFactory& value_factory, absl::string_view type_url,
       const absl::Cord& value) const;
+
+  virtual absl::Nullable<const google::protobuf::DescriptorPool*> descriptor_pool()
+      const {
+    return nullptr;
+  }
+
+  virtual absl::Nullable<google::protobuf::MessageFactory*> message_factory() const {
+    return nullptr;
+  }
 
  protected:
   virtual absl::StatusOr<absl::optional<Value>> DeserializeValueImpl(

@@ -165,14 +165,12 @@ ProtoMessageToValue(ValueManager& value_manager, T&& value) {
     auto dispatcher = absl::Overload(
         [&](Tp&& m) {
           return protobuf_internal::ProtoMessageToValueImpl(
-              value_manager, &m, sizeof(T), alignof(T),
-              &protobuf_internal::ProtoMessageTraits<Tp>::ArenaMoveConstruct,
+              value_manager, &m,
               &protobuf_internal::ProtoMessageTraits<Tp>::MoveConstruct);
         },
         [&](const Tp& m) {
           return protobuf_internal::ProtoMessageToValueImpl(
-              value_manager, &m, sizeof(T), alignof(T),
-              &protobuf_internal::ProtoMessageTraits<Tp>::ArenaCopyConstruct,
+              value_manager, &m,
               &protobuf_internal::ProtoMessageTraits<Tp>::CopyConstruct);
         });
     return dispatcher(std::forward<T>(value));

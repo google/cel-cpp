@@ -47,6 +47,7 @@ namespace cel {
 class Value;
 class ValueManager;
 class ValueIterator;
+class ParsedRepeatedFieldValue;
 
 namespace common_internal {
 absl::Status CheckWellKnownListValueMessage(const google::protobuf::Message& message);
@@ -135,6 +136,8 @@ class ParsedJsonListValue final {
                          const ParsedJsonListValue& rhs);
 
  private:
+  friend class ParsedRepeatedFieldValue;
+
   static absl::Status CheckListValue(
       absl::Nullable<const google::protobuf::Message*> message) {
     return message == nullptr

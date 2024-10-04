@@ -731,21 +731,18 @@ INSTANTIATE_TEST_SUITE_P(
                map_string_int64 { key: "key1" value: -42 }
              )pb",
              BoolValueIs(false)},
-            // TODO: with heterogeneous lookups enabled, this
-            // should just be no such key.
-            // Add support for convertible double keys.
             {"map_int32_out_of_range", "msg.map_int32_int64[0x1FFFFFFFF]",
              R"pb(
                map_int32_int64 { key: 10 value: -42 }
              )pb",
-             ErrorValueIs(StatusIs(absl::StatusCode::kOutOfRange,
-                                   HasSubstr("int64 to int32_t overflow")))},
+             ErrorValueIs(StatusIs(absl::StatusCode::kNotFound,
+                                   HasSubstr("Key not found in map")))},
             {"map_uint32_out_of_range", "msg.map_uint32_int64[0x1FFFFFFFFu]",
              R"pb(
                map_uint32_int64 { key: 10 value: -42 }
              )pb",
-             ErrorValueIs(StatusIs(absl::StatusCode::kOutOfRange,
-                                   HasSubstr("uint64 to uint32_t overflow")))}})),
+             ErrorValueIs(StatusIs(absl::StatusCode::kNotFound,
+                                   HasSubstr("Key not found in map")))}})),
     ProtobufValueEndToEndTest::ToString);
 
 MATCHER_P(CelSizeIs, size, "") {

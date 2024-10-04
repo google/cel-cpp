@@ -30,7 +30,6 @@
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
-#include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -63,6 +62,8 @@ class ParsedMessageValue final {
       : value_(std::move(value)) {
     ABSL_DCHECK(!value_ || !IsWellKnownMessageType(value_->GetDescriptor()))
         << value_->GetTypeName() << " is a well known type";
+    ABSL_DCHECK(!value_ || value_->GetReflection() != nullptr)
+        << value_->GetTypeName() << " is missing reflection";
   }
 
   // Places the `ParsedMessageValue` into an invalid state. Anything except
@@ -76,19 +77,15 @@ class ParsedMessageValue final {
 
   static ValueKind kind() { return kKind; }
 
-  absl::string_view GetTypeName() const {
-    return (*this)->GetDescriptor()->full_name();
-  }
+  absl::string_view GetTypeName() const { return GetDescriptor()->full_name(); }
 
-  MessageType GetRuntimeType() const {
-    return MessageType((*this)->GetDescriptor());
-  }
+  MessageType GetRuntimeType() const { return MessageType(GetDescriptor()); }
 
   absl::Nonnull<const google::protobuf::Descriptor*> GetDescriptor() const {
     return (*this)->GetDescriptor();
   }
 
-  absl::Nullable<const google::protobuf::Reflection*> GetReflection() const {
+  absl::Nonnull<const google::protobuf::Reflection*> GetReflection() const {
     return (*this)->GetReflection();
   }
 
@@ -163,9 +160,12 @@ class ParsedMessageValue final {
   friend std::pointer_traits<ParsedMessageValue>;
   friend class StructValue;
 
-  absl::Nonnull<const google::protobuf::Reflection*> GetReflectionOrDie() const {
-    return ABSL_DIE_IF_NULL(GetReflection());  // Crash OK
-  }
+  absl::Status GetField(ValueManager& value_manager,
+                        absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+                        Value& result,
+                        ProtoWrapperTypeOptions unboxing_options) const;
+
+  bool HasField(absl::Nonnull<const google::protobuf::FieldDescriptor*> field) const;
 
   Owned<const google::protobuf::Message> value_;
 };

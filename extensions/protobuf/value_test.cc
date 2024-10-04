@@ -387,20 +387,6 @@ TEST_P(ProtoValueWrapTest, HasFieldByNumberNoSuchField) {
       StatusIs(absl::StatusCode::kNotFound, HasSubstr("no_such_field")));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoMessageDebugString) {
-  ASSERT_OK_AND_ASSIGN(
-      auto value, ProtoMessageToValue(value_manager(),
-                                      ParseTextOrDie<TestAllTypes>(
-                                          R"pb(single_int32: 1, single_int64: 2
-                                          )pb")));
-  EXPECT_THAT(value, StructValueIs(_));
-  StructValue struct_value = Cast<StructValue>(value);
-
-  EXPECT_THAT(struct_value.DebugString(),
-              AllOf(HasSubstr("single_int32:"), HasSubstr("1"),
-                    HasSubstr("single_int64:"), HasSubstr("2")));
-}
-
 TEST_P(ProtoValueWrapTest, ProtoMessageEqual) {
   ASSERT_OK_AND_ASSIGN(
       auto value, ProtoMessageToValue(value_manager(),
@@ -653,28 +639,6 @@ TEST_P(ProtoValueWrapTest, ProtoStringMapListKeys) {
   EXPECT_THAT(key0, StringValueIs("key1"));
 }
 
-TEST_P(ProtoValueWrapTest, ProtoMapDebugString) {
-  ASSERT_OK_AND_ASSIGN(
-      auto value,
-      ProtoMessageToValue(value_manager(),
-                          ParseTextOrDie<TestAllTypes>(
-                              R"pb(
-                                map_int64_int64 { key: 10 value: 20 }
-                                map_int64_int64 { key: 12 value: 24 }
-                              )pb")));
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       Cast<StructValue>(value).GetFieldByName(
-                           value_manager(), "map_int64_int64"));
-
-  ASSERT_THAT(field_value, MapValueIs(_));
-
-  MapValue map_value = Cast<MapValue>(field_value);
-
-  EXPECT_THAT(map_value.DebugString(),
-              AllOf(HasSubstr("10:"), HasSubstr("20"), HasSubstr("12:"),
-                    HasSubstr("24")));
-}
-
 TEST_P(ProtoValueWrapTest, ProtoMapIterator) {
   ASSERT_OK_AND_ASSIGN(
       auto value,
@@ -789,25 +753,6 @@ TEST_P(ProtoValueWrapTest, ProtoListForEachWithIndex) {
 
   EXPECT_THAT(elements,
               ElementsAre(Pair(0, IntValueIs(1)), Pair(1, IntValueIs(2))));
-}
-
-TEST_P(ProtoValueWrapTest, ProtoListDebugString) {
-  ASSERT_OK_AND_ASSIGN(
-      auto value,
-      ProtoMessageToValue(value_manager(), ParseTextOrDie<TestAllTypes>(
-                                               R"pb(
-                                                 repeated_int64: 1
-                                                 repeated_int64: 2
-                                               )pb")));
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       Cast<StructValue>(value).GetFieldByName(
-                           value_manager(), "repeated_int64"));
-
-  ASSERT_THAT(field_value, ListValueIs(_));
-
-  ListValue list_value = Cast<ListValue>(field_value);
-
-  EXPECT_THAT(list_value.DebugString(), AllOf(HasSubstr("1"), HasSubstr("2")));
 }
 
 INSTANTIATE_TEST_SUITE_P(ProtoValueTest, ProtoValueWrapTest,

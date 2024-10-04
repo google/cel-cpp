@@ -37,7 +37,6 @@
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_factory.h"
-#include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_factory.h"
 #include "common/values/piecewise_value_manager.h"

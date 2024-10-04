@@ -22,6 +22,7 @@
 
 #include "google/protobuf/any.pb.h"
 #include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -30,6 +31,8 @@
 #include "absl/types/variant.h"
 #include "common/any.h"
 #include "internal/copy_on_write.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -490,7 +493,32 @@ class AnyToJsonConverter {
   absl::StatusOr<Json> ConvertToJson(const google::protobuf::Any& any) {
     return ConvertToJson(any.type_url(), GetAnyValueAsCord(any));
   }
+
+  virtual absl::Nullable<const google::protobuf::DescriptorPool*> descriptor_pool()
+      const {
+    return nullptr;
+  }
+
+  virtual absl::Nullable<google::protobuf::MessageFactory*> message_factory() const {
+    return nullptr;
+  }
 };
+
+inline std::pair<absl::Nonnull<const google::protobuf::DescriptorPool*>,
+                 absl::Nonnull<google::protobuf::MessageFactory*>>
+GetDescriptorPoolAndMessageFactory(
+    AnyToJsonConverter& converter ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    const google::protobuf::Message& message ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+  const auto* descriptor_pool = converter.descriptor_pool();
+  auto* message_factory = converter.message_factory();
+  if (descriptor_pool == nullptr) {
+    descriptor_pool = message.GetDescriptor()->file()->pool();
+    if (message_factory == nullptr) {
+      message_factory = message.GetReflection()->GetMessageFactory();
+    }
+  }
+  return std::pair{descriptor_pool, message_factory};
+}
 
 template <typename T>
 JsonArray MakeJsonArray(std::initializer_list<T> il) {

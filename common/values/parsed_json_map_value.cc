@@ -22,6 +22,7 @@
 #include "google/protobuf/struct.pb.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -34,6 +35,7 @@
 #include "common/value_manager.h"
 #include "common/values/parsed_json_value.h"
 #include "internal/json.h"
+#include "internal/message_equality.h"
 #include "internal/status_macros.h"
 #include "internal/strings.h"
 #include "internal/well_known_types.h"
@@ -85,6 +87,30 @@ absl::Status ParsedJsonMapValue::Equal(ValueManager& value_manager,
                                        Value& result) const {
   if (auto other_value = other.AsParsedJsonMap(); other_value) {
     result = BoolValue(*this == *other_value);
+    return absl::OkStatus();
+  }
+  if (auto other_value = other.AsParsedMapField(); other_value) {
+    if (value_ == nullptr) {
+      result = BoolValue(other_value->IsEmpty());
+      return absl::OkStatus();
+    }
+    const auto* descriptor_pool = value_manager.descriptor_pool();
+    auto* message_factory = value_manager.message_factory();
+    if (descriptor_pool == nullptr) {
+      descriptor_pool = other_value->message_->GetDescriptor()->file()->pool();
+      if (message_factory == nullptr) {
+        message_factory =
+            other_value->message_->GetReflection()->GetMessageFactory();
+      }
+    }
+    ABSL_DCHECK(other_value->field_ != nullptr);
+    ABSL_DCHECK(descriptor_pool != nullptr);
+    ABSL_DCHECK(message_factory != nullptr);
+    CEL_ASSIGN_OR_RETURN(
+        auto equal, internal::MessageFieldEquals(
+                        *value_, *other_value->message_, other_value->field_,
+                        descriptor_pool, message_factory));
+    result = BoolValue(equal);
     return absl::OkStatus();
   }
   if (auto other_value = other.AsMap(); other_value) {

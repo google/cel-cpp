@@ -13,19 +13,19 @@
 // limitations under the License.
 
 #include "absl/base/nullability.h"
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/allocator.h"
+#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "common/value_manager.h"
+#include "common/value_testing.h"
 #include "internal/parse_text_proto.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
@@ -38,13 +38,17 @@
 namespace cel {
 namespace {
 
-using ::absl_testing::StatusIs;
+using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
 using ::cel::internal::DynamicParseTextProto;
 using ::cel::internal::GetTestingDescriptorPool;
 using ::cel::internal::GetTestingMessageFactory;
+using ::cel::test::BoolValueIs;
 using ::testing::_;
+using ::testing::IsEmpty;
 using ::testing::PrintToStringParamName;
 using ::testing::TestWithParam;
+using ::testing::VariantWith;
 
 using TestAllTypesProto3 = ::google::api::expr::test::v1::proto3::TestAllTypes;
 
@@ -105,86 +109,68 @@ TEST_P(ParsedMessageValueTest, Default) {
 }
 
 TEST_P(ParsedMessageValueTest, Field) {
-  ParsedMessageValue value(DynamicParseTextProto<TestAllTypesProto3>(
-      allocator(), R"pb()pb", descriptor_pool(), message_factory()));
+  ParsedMessageValue value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
   EXPECT_TRUE(value);
 }
 
 TEST_P(ParsedMessageValueTest, Kind) {
-  ParsedMessageValue value(DynamicParseTextProto<TestAllTypesProto3>(
-      allocator(), R"pb()pb", descriptor_pool(), message_factory()));
+  ParsedMessageValue value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
   EXPECT_EQ(value.kind(), ParsedMessageValue::kKind);
   EXPECT_EQ(value.kind(), ValueKind::kStruct);
 }
 
 TEST_P(ParsedMessageValueTest, GetTypeName) {
-  ParsedMessageValue value(DynamicParseTextProto<TestAllTypesProto3>(
-      allocator(), R"pb()pb", descriptor_pool(), message_factory()));
+  ParsedMessageValue value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
   EXPECT_EQ(value.GetTypeName(), "google.api.expr.test.v1.proto3.TestAllTypes");
 }
 
 TEST_P(ParsedMessageValueTest, GetRuntimeType) {
-  ParsedMessageValue value(DynamicParseTextProto<TestAllTypesProto3>(
-      allocator(), R"pb()pb", descriptor_pool(), message_factory()));
+  ParsedMessageValue value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
   EXPECT_EQ(value.GetRuntimeType(), MessageType(value.GetDescriptor()));
 }
 
 TEST_P(ParsedMessageValueTest, DebugString) {
-  ParsedMessageValue valid_value(DynamicParseTextProto<TestAllTypesProto3>(
-      allocator(), R"pb()pb", descriptor_pool(), message_factory()));
-  EXPECT_THAT(valid_value.DebugString(), _);
+  ParsedMessageValue value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
+  EXPECT_THAT(value.DebugString(), _);
 }
 
 TEST_P(ParsedMessageValueTest, IsZeroValue) {
-  MessageValue valid_value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
-  EXPECT_TRUE(valid_value.IsZeroValue());
+  MessageValue value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
+  EXPECT_TRUE(value.IsZeroValue());
 }
 
 TEST_P(ParsedMessageValueTest, SerializeTo) {
-  MessageValue valid_value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
+  MessageValue value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
   absl::Cord serialized;
-  EXPECT_THAT(valid_value.SerializeTo(value_manager(), serialized),
-              StatusIs(absl::StatusCode::kUnimplemented));
+  EXPECT_THAT(value.SerializeTo(value_manager(), serialized), IsOk());
+  EXPECT_THAT(serialized, IsEmpty());
 }
 
 TEST_P(ParsedMessageValueTest, ConvertToJson) {
-  MessageValue valid_value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
-  EXPECT_THAT(valid_value.ConvertToJson(value_manager()),
-              StatusIs(absl::StatusCode::kUnimplemented));
+  MessageValue value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
+  EXPECT_THAT(value.ConvertToJson(value_manager()),
+              IsOkAndHolds(VariantWith<JsonObject>(JsonObject())));
 }
 
 TEST_P(ParsedMessageValueTest, Equal) {
-  MessageValue valid_value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
-  EXPECT_THAT(valid_value.Equal(value_manager(), BoolValue()),
-              StatusIs(absl::StatusCode::kUnimplemented));
+  MessageValue value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
+  EXPECT_THAT(value.Equal(value_manager(), BoolValue()),
+              IsOkAndHolds(BoolValueIs(false)));
+  EXPECT_THAT(value.Equal(value_manager(),
+                          MakeParsedMessage<TestAllTypesProto3>(R"pb()pb")),
+              IsOkAndHolds(BoolValueIs(true)));
 }
 
 TEST_P(ParsedMessageValueTest, GetFieldByName) {
-  MessageValue valid_value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
-  EXPECT_THAT(valid_value.GetFieldByName(value_manager(), "does_not_exist"),
-              StatusIs(absl::StatusCode::kUnimplemented));
+  MessageValue value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
+  EXPECT_THAT(value.GetFieldByName(value_manager(), "single_bool"),
+              IsOkAndHolds(BoolValueIs(false)));
 }
 
 TEST_P(ParsedMessageValueTest, GetFieldByNumber) {
-  MessageValue valid_value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
-  EXPECT_THAT(valid_value.GetFieldByNumber(value_manager(), 1),
-              StatusIs(absl::StatusCode::kUnimplemented));
-}
-
-TEST_P(ParsedMessageValueTest, ForEachField) {
-  MessageValue valid_value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
-  EXPECT_THAT(valid_value.ForEachField(
-                  value_manager(),
-                  [](absl::string_view, const Value&) -> absl::StatusOr<bool> {
-                    return true;
-                  }),
-              StatusIs(absl::StatusCode::kUnimplemented));
-}
-
-TEST_P(ParsedMessageValueTest, Qualify) {
-  MessageValue valid_value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
-  EXPECT_THAT(valid_value.Qualify(value_manager(), {}, /*presence_test=*/false),
-              StatusIs(absl::StatusCode::kUnimplemented));
+  MessageValue value = MakeParsedMessage<TestAllTypesProto3>(R"pb()pb");
+  EXPECT_THAT(value.GetFieldByNumber(value_manager(), 13),
+              IsOkAndHolds(BoolValueIs(false)));
 }
 
 INSTANTIATE_TEST_SUITE_P(ParsedMessageValueTest, ParsedMessageValueTest,

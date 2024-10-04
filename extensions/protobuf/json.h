@@ -34,6 +34,15 @@ class ProtoAnyToJsonConverter final : public AnyToJsonConverter {
   absl::StatusOr<Json> ConvertToJson(absl::string_view type_url,
                                      const absl::Cord& value) override;
 
+  absl::Nullable<const google::protobuf::DescriptorPool*> descriptor_pool()
+      const override {
+    return pool_;
+  }
+
+  absl::Nullable<google::protobuf::MessageFactory*> message_factory() const override {
+    return factory_;
+  }
+
  private:
   const google::protobuf::DescriptorPool* const pool_;
   google::protobuf::MessageFactory* const factory_;

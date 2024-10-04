@@ -45,6 +45,7 @@ namespace cel {
 class Value;
 class ValueManager;
 class ValueIterator;
+class ParsedJsonListValue;
 
 // ParsedRepeatedFieldValue is a ListValue over a repeated field of a parsed
 // protocol buffer message.
@@ -132,7 +133,9 @@ class ParsedRepeatedFieldValue final {
   }
 
  private:
-  absl::Nonnull<const google::protobuf::Reflection*> GetReflectionOrDie() const;
+  friend class ParsedJsonListValue;
+
+  absl::Nonnull<const google::protobuf::Reflection*> GetReflection() const;
 
   Owned<const google::protobuf::Message> message_;
   absl::Nullable<const google::protobuf::FieldDescriptor*> field_ = nullptr;

@@ -17,14 +17,18 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <ostream>
 #include <string>
 #include <type_traits>
 #include <utility>
 
+#include "google/protobuf/struct.pb.h"
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
+#include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/meta/type_traits.h"
@@ -33,18 +37,24 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/attribute.h"
+#include "common/allocator.h"
 #include "common/json.h"
+#include "common/memory.h"
 #include "common/optional_ref.h"
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/values.h"
 #include "internal/status_macros.h"
+#include "internal/well_known_types.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace cel {
 namespace {
@@ -585,13 +595,35 @@ absl::StatusOr<std::pair<Value, int>> StructValue::Qualify(
   return std::pair{std::move(result), count};
 }
 
+namespace {
+
+Value NonNullEnumValue(
+    absl::Nonnull<const google::protobuf::EnumValueDescriptor*> value) {
+  ABSL_DCHECK(value != nullptr);
+  return IntValue(value->number());
+}
+
+Value NonNullEnumValue(absl::Nonnull<const google::protobuf::EnumDescriptor*> type,
+                       int32_t number) {
+  ABSL_DCHECK(type != nullptr);
+  if (type->is_closed()) {
+    if (ABSL_PREDICT_FALSE(type->FindValueByNumber(number) == nullptr)) {
+      return ErrorValue(absl::InvalidArgumentError(absl::StrCat(
+          "closed enum has no such value: ", type->full_name(), ".", number)));
+    }
+  }
+  return IntValue(number);
+}
+
+}  // namespace
+
 Value Value::Enum(absl::Nonnull<const google::protobuf::EnumValueDescriptor*> value) {
   ABSL_DCHECK(value != nullptr);
   if (value->type()->full_name() == "google.protobuf.NullValue") {
     ABSL_DCHECK_EQ(value->number(), 0);
     return NullValue();
   }
-  return IntValue(value->number());
+  return NonNullEnumValue(value);
 }
 
 Value Value::Enum(absl::Nonnull<const google::protobuf::EnumDescriptor*> type,
@@ -601,13 +633,940 @@ Value Value::Enum(absl::Nonnull<const google::protobuf::EnumDescriptor*> type,
     ABSL_DCHECK_EQ(number, 0);
     return NullValue();
   }
-  if (type->is_closed()) {
-    if (ABSL_PREDICT_FALSE(type->FindValueByNumber(number) == nullptr)) {
-      return ErrorValue(absl::InvalidArgumentError(absl::StrCat(
-          "closed enum has no such value: ", type->full_name(), ".", number)));
-    }
+  return NonNullEnumValue(type, number);
+}
+
+namespace common_internal {
+
+namespace {
+
+void BoolMapFieldKeyAccessor(Allocator<>, Borrower, const google::protobuf::MapKey& key,
+                             Value& result) {
+  result = BoolValue(key.GetBoolValue());
+}
+
+void Int32MapFieldKeyAccessor(Allocator<>, Borrower, const google::protobuf::MapKey& key,
+                              Value& result) {
+  result = IntValue(key.GetInt32Value());
+}
+
+void Int64MapFieldKeyAccessor(Allocator<>, Borrower, const google::protobuf::MapKey& key,
+                              Value& result) {
+  result = IntValue(key.GetInt64Value());
+}
+
+void UInt32MapFieldKeyAccessor(Allocator<>, Borrower, const google::protobuf::MapKey& key,
+                               Value& result) {
+  result = UintValue(key.GetUInt32Value());
+}
+
+void UInt64MapFieldKeyAccessor(Allocator<>, Borrower, const google::protobuf::MapKey& key,
+                               Value& result) {
+  result = UintValue(key.GetUInt64Value());
+}
+
+void StringMapFieldKeyAccessor(Allocator<> allocator, Borrower,
+                               const google::protobuf::MapKey& key, Value& result) {
+  result = StringValue(allocator, key.GetStringValue());
+}
+
+}  // namespace
+
+absl::StatusOr<MapFieldKeyAccessor> MapFieldKeyAccessorFor(
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
+  switch (field->cpp_type()) {
+    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
+      return &BoolMapFieldKeyAccessor;
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
+      return &Int32MapFieldKeyAccessor;
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
+      return &Int64MapFieldKeyAccessor;
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
+      return &UInt32MapFieldKeyAccessor;
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+      return &UInt64MapFieldKeyAccessor;
+    case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
+      return &StringMapFieldKeyAccessor;
+    default:
+      return absl::InvalidArgumentError(
+          absl::StrCat("unexpected map key type: ", field->cpp_type_name()));
   }
-  return IntValue(number);
+}
+
+namespace {
+
+void DoubleMapFieldValueAccessor(
+    Borrower, const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK(!field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE);
+  result = DoubleValue(value.GetDoubleValue());
+}
+
+void FloatMapFieldValueAccessor(
+    Borrower, const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK(!field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_FLOAT);
+  result = DoubleValue(value.GetFloatValue());
+}
+
+void Int64MapFieldValueAccessor(
+    Borrower, const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK(!field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_INT64);
+  result = IntValue(value.GetInt64Value());
+}
+
+void UInt64MapFieldValueAccessor(
+    Borrower, const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK(!field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_UINT64);
+  result = UintValue(value.GetUInt64Value());
+}
+
+void Int32MapFieldValueAccessor(
+    Borrower, const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK(!field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_INT32);
+  result = IntValue(value.GetInt32Value());
+}
+
+void UInt32MapFieldValueAccessor(
+    Borrower, const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK(!field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_UINT32);
+  result = UintValue(value.GetUInt32Value());
+}
+
+void BoolMapFieldValueAccessor(
+    Borrower, const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK(!field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_BOOL);
+  result = BoolValue(value.GetBoolValue());
+}
+
+void StringMapFieldValueAccessor(
+    Borrower borrower, const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK(!field->is_repeated());
+  ABSL_DCHECK_EQ(field->type(), google::protobuf::FieldDescriptor::TYPE_STRING);
+  result = StringValue(borrower, value.GetStringValue());
+}
+
+void MessageMapFieldValueAccessor(
+    Borrower borrower, const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory, Value& result) {
+  ABSL_DCHECK(!field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE);
+  result = Value::Message(Borrowed(borrower, &value.GetMessageValue()),
+                          descriptor_pool, message_factory);
+}
+
+void BytesMapFieldValueAccessor(
+    Borrower borrower, const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK(!field->is_repeated());
+  ABSL_DCHECK_EQ(field->type(), google::protobuf::FieldDescriptor::TYPE_BYTES);
+  result = BytesValue(borrower, value.GetStringValue());
+}
+
+void EnumMapFieldValueAccessor(
+    Borrower, const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK(!field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_ENUM);
+  result = NonNullEnumValue(field->enum_type(), value.GetEnumValue());
+}
+
+void NullMapFieldValueAccessor(
+    Borrower, const google::protobuf::MapValueConstRef&,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK(!field->is_repeated());
+  ABSL_DCHECK(field->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_ENUM &&
+              field->enum_type()->full_name() == "google.protobuf.NullValue");
+  result = NullValue();
+}
+
+}  // namespace
+
+absl::StatusOr<MapFieldValueAccessor> MapFieldValueAccessorFor(
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
+  switch (field->type()) {
+    case google::protobuf::FieldDescriptor::TYPE_DOUBLE:
+      return &DoubleMapFieldValueAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_FLOAT:
+      return &FloatMapFieldValueAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_SFIXED64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_SINT64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_INT64:
+      return &Int64MapFieldValueAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_FIXED64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_UINT64:
+      return &UInt64MapFieldValueAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_SFIXED32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_SINT32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_INT32:
+      return &Int32MapFieldValueAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_BOOL:
+      return &BoolMapFieldValueAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_STRING:
+      return &StringMapFieldValueAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_GROUP:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
+      return &MessageMapFieldValueAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_BYTES:
+      return &BytesMapFieldValueAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_FIXED32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_UINT32:
+      return &UInt32MapFieldValueAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_ENUM:
+      if (field->enum_type()->full_name() == "google.protobuf.NullValue") {
+        return &NullMapFieldValueAccessor;
+      }
+      return &EnumMapFieldValueAccessor;
+    default:
+      return absl::InvalidArgumentError(
+          absl::StrCat("unexpected protocol buffer message field type: ",
+                       field->type_name()));
+  }
+}
+
+namespace {
+
+void DoubleRepeatedFieldAccessor(
+    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK_EQ(reflection, message->GetReflection());
+  ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
+  ABSL_DCHECK(field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE);
+  ABSL_DCHECK_GE(index, 0);
+  ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
+  result = DoubleValue(reflection->GetRepeatedDouble(*message, field, index));
+}
+
+void FloatRepeatedFieldAccessor(
+    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK_EQ(reflection, message->GetReflection());
+  ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
+  ABSL_DCHECK(field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_FLOAT);
+  ABSL_DCHECK_GE(index, 0);
+  ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
+  result = DoubleValue(reflection->GetRepeatedFloat(*message, field, index));
+}
+
+void Int64RepeatedFieldAccessor(
+    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK_EQ(reflection, message->GetReflection());
+  ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
+  ABSL_DCHECK(field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_INT64);
+  ABSL_DCHECK_GE(index, 0);
+  ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
+  result = IntValue(reflection->GetRepeatedInt64(*message, field, index));
+}
+
+void UInt64RepeatedFieldAccessor(
+    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK_EQ(reflection, message->GetReflection());
+  ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
+  ABSL_DCHECK(field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_UINT64);
+  ABSL_DCHECK_GE(index, 0);
+  ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
+  result = UintValue(reflection->GetRepeatedUInt64(*message, field, index));
+}
+
+void Int32RepeatedFieldAccessor(
+    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK_EQ(reflection, message->GetReflection());
+  ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
+  ABSL_DCHECK(field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_INT32);
+  ABSL_DCHECK_GE(index, 0);
+  ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
+  result = IntValue(reflection->GetRepeatedInt32(*message, field, index));
+}
+
+void UInt32RepeatedFieldAccessor(
+    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK_EQ(reflection, message->GetReflection());
+  ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
+  ABSL_DCHECK(field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_UINT32);
+  ABSL_DCHECK_GE(index, 0);
+  ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
+  result = UintValue(reflection->GetRepeatedUInt32(*message, field, index));
+}
+
+void BoolRepeatedFieldAccessor(
+    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK_EQ(reflection, message->GetReflection());
+  ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
+  ABSL_DCHECK(field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_BOOL);
+  ABSL_DCHECK_GE(index, 0);
+  ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
+  result = BoolValue(reflection->GetRepeatedBool(*message, field, index));
+}
+
+void StringRepeatedFieldAccessor(
+    Allocator<> allocator, Borrowed<const google::protobuf::Message> message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK_EQ(reflection, message->GetReflection());
+  ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
+  ABSL_DCHECK(field->is_repeated());
+  ABSL_DCHECK_EQ(field->type(), google::protobuf::FieldDescriptor::TYPE_STRING);
+  ABSL_DCHECK_GE(index, 0);
+  ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
+  std::string scratch;
+  absl::visit(
+      absl::Overload(
+          [&](absl::string_view string) {
+            if (string.data() == scratch.data() &&
+                string.size() == scratch.size()) {
+              result = StringValue(allocator, std::move(scratch));
+            } else {
+              result = StringValue(Borrower(message), string);
+            }
+          },
+          [&](absl::Cord&& cord) { result = StringValue(std::move(cord)); }),
+      well_known_types::AsVariant(well_known_types::GetRepeatedStringField(
+          *message, field, index, scratch)));
+}
+
+void MessageRepeatedFieldAccessor(
+    Allocator<> allocator, Borrowed<const google::protobuf::Message> message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory, Value& result) {
+  ABSL_DCHECK_EQ(reflection, message->GetReflection());
+  ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
+  ABSL_DCHECK(field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE);
+  ABSL_DCHECK_GE(index, 0);
+  ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
+  result = Value::Message(Borrowed(message, &reflection->GetRepeatedMessage(
+                                                *message, field, index)),
+                          descriptor_pool, message_factory);
+}
+
+void BytesRepeatedFieldAccessor(
+    Allocator<> allocator, Borrowed<const google::protobuf::Message> message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK_EQ(reflection, message->GetReflection());
+  ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
+  ABSL_DCHECK(field->is_repeated());
+  ABSL_DCHECK_EQ(field->type(), google::protobuf::FieldDescriptor::TYPE_BYTES);
+  ABSL_DCHECK_GE(index, 0);
+  ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
+  std::string scratch;
+  absl::visit(
+      absl::Overload(
+          [&](absl::string_view string) {
+            if (string.data() == scratch.data() &&
+                string.size() == scratch.size()) {
+              result = BytesValue(allocator, std::move(scratch));
+            } else {
+              result = BytesValue(Borrower(message), string);
+            }
+          },
+          [&](absl::Cord&& cord) { result = BytesValue(std::move(cord)); }),
+      well_known_types::AsVariant(well_known_types::GetRepeatedBytesField(
+          *message, field, index, scratch)));
+}
+
+void EnumRepeatedFieldAccessor(
+    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK_EQ(reflection, message->GetReflection());
+  ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
+  ABSL_DCHECK(field->is_repeated());
+  ABSL_DCHECK_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_ENUM);
+  ABSL_DCHECK_GE(index, 0);
+  ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
+  result = NonNullEnumValue(
+      field->enum_type(),
+      reflection->GetRepeatedEnumValue(*message, field, index));
+}
+
+void NullRepeatedFieldAccessor(
+    Allocator<>, Borrowed<const google::protobuf::Message> message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    absl::Nonnull<const google::protobuf::Reflection*> reflection, int index,
+    absl::Nonnull<const google::protobuf::DescriptorPool*>,
+    absl::Nonnull<google::protobuf::MessageFactory*>, Value& result) {
+  ABSL_DCHECK_EQ(reflection, message->GetReflection());
+  ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
+  ABSL_DCHECK(field->is_repeated());
+  ABSL_DCHECK(field->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_ENUM &&
+              field->enum_type()->full_name() == "google.protobuf.NullValue");
+  ABSL_DCHECK_GE(index, 0);
+  ABSL_DCHECK_LT(index, reflection->FieldSize(*message, field));
+  result = NullValue();
+}
+
+}  // namespace
+
+absl::StatusOr<RepeatedFieldAccessor> RepeatedFieldAccessorFor(
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field) {
+  switch (field->type()) {
+    case google::protobuf::FieldDescriptor::TYPE_DOUBLE:
+      return &DoubleRepeatedFieldAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_FLOAT:
+      return &FloatRepeatedFieldAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_SFIXED64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_SINT64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_INT64:
+      return &Int64RepeatedFieldAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_FIXED64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_UINT64:
+      return &UInt64RepeatedFieldAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_SFIXED32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_SINT32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_INT32:
+      return &Int32RepeatedFieldAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_BOOL:
+      return &BoolRepeatedFieldAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_STRING:
+      return &StringRepeatedFieldAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_GROUP:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
+      return &MessageRepeatedFieldAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_BYTES:
+      return &BytesRepeatedFieldAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_FIXED32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_UINT32:
+      return &UInt32RepeatedFieldAccessor;
+    case google::protobuf::FieldDescriptor::TYPE_ENUM:
+      if (field->enum_type()->full_name() == "google.protobuf.NullValue") {
+        return &NullRepeatedFieldAccessor;
+      }
+      return &EnumRepeatedFieldAccessor;
+    default:
+      return absl::InvalidArgumentError(
+          absl::StrCat("unexpected protocol buffer message field type: ",
+                       field->type_name()));
+  }
+}
+
+}  // namespace common_internal
+
+namespace {
+
+// WellKnownTypesValueVisitor is the base visitor for `well_known_types::Value`
+// which handles the primitive values which require no special handling based on
+// allocators.
+struct WellKnownTypesValueVisitor {
+  Value operator()(std::nullptr_t) const { return NullValue(); }
+
+  Value operator()(bool value) const { return BoolValue(value); }
+
+  Value operator()(int32_t value) const { return IntValue(value); }
+
+  Value operator()(int64_t value) const { return IntValue(value); }
+
+  Value operator()(uint32_t value) const { return UintValue(value); }
+
+  Value operator()(uint64_t value) const { return UintValue(value); }
+
+  Value operator()(float value) const { return DoubleValue(value); }
+
+  Value operator()(double value) const { return DoubleValue(value); }
+
+  Value operator()(absl::Duration value) const { return DurationValue(value); }
+
+  Value operator()(absl::Time value) const { return TimestampValue(value); }
+};
+
+struct BorrowingWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
+  Borrower borrower;
+  absl::Nonnull<std::string*> scratch;
+
+  using WellKnownTypesValueVisitor::operator();
+
+  Value operator()(well_known_types::BytesValue&& value) const {
+    return absl::visit(absl::Overload(
+                           [&](absl::string_view string) -> BytesValue {
+                             if (string.data() == scratch->data() &&
+                                 string.size() == scratch->size()) {
+                               return BytesValue(borrower.arena(),
+                                                 std::move(*scratch));
+                             } else {
+                               return BytesValue(borrower, string);
+                             }
+                           },
+                           [&](absl::Cord&& cord) -> BytesValue {
+                             return BytesValue(std::move(cord));
+                           }),
+                       well_known_types::AsVariant(std::move(value)));
+  }
+
+  Value operator()(well_known_types::StringValue&& value) const {
+    return absl::visit(absl::Overload(
+                           [&](absl::string_view string) -> StringValue {
+                             if (string.data() == scratch->data() &&
+                                 string.size() == scratch->size()) {
+                               return StringValue(borrower.arena(),
+                                                  std::move(*scratch));
+                             } else {
+                               return StringValue(borrower, string);
+                             }
+                           },
+                           [&](absl::Cord&& cord) -> StringValue {
+                             return StringValue(std::move(cord));
+                           }),
+                       well_known_types::AsVariant(std::move(value)));
+  }
+
+  Value operator()(well_known_types::ListValue&& value) const {
+    return absl::visit(
+        absl::Overload(
+            [&](well_known_types::ListValueConstRef value)
+                -> ParsedJsonListValue {
+              return ParsedJsonListValue(Owned(Owner(borrower), &value.get()));
+            },
+            [&](well_known_types::ListValuePtr value) -> ParsedJsonListValue {
+              return ParsedJsonListValue(Owned(std::move(value)));
+            }),
+        well_known_types::AsVariant(std::move(value)));
+  }
+
+  Value operator()(well_known_types::Struct&& value) const {
+    return absl::visit(
+        absl::Overload(
+            [&](well_known_types::StructConstRef value) -> ParsedJsonMapValue {
+              return ParsedJsonMapValue(Owned(Owner(borrower), &value.get()));
+            },
+            [&](well_known_types::StructPtr value) -> ParsedJsonMapValue {
+              return ParsedJsonMapValue(Owned(std::move(value)));
+            }),
+        well_known_types::AsVariant(std::move(value)));
+  }
+
+  Value operator()(Unique<google::protobuf::Message>&& value) const {
+    return ParsedMessageValue(Owned(std::move(value)));
+  }
+};
+
+}  // namespace
+
+Value Value::Message(
+    Borrowed<const google::protobuf::Message> message,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  std::string scratch;
+  auto status_or_adapted = well_known_types::AdaptFromMessage(
+      message.arena(), *message, descriptor_pool, message_factory, scratch);
+  if (ABSL_PREDICT_FALSE(!status_or_adapted.ok())) {
+    return ErrorValue(std::move(status_or_adapted).status());
+  }
+  return absl::visit(
+      absl::Overload(BorrowingWellKnownTypesValueVisitor{.borrower = message,
+                                                         .scratch = &scratch},
+                     [&](absl::monostate) -> Value {
+                       return ParsedMessageValue(Owned(message));
+                     }),
+      std::move(status_or_adapted).value());
+}
+
+Value Value::Field(Borrowed<const google::protobuf::Message> message,
+                   absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+                   ProtoWrapperTypeOptions wrapper_type_options) {
+  const auto* descriptor = message->GetDescriptor();
+  const auto* reflection = message->GetReflection();
+  return Field(std::move(message), field, descriptor->file()->pool(),
+               reflection->GetMessageFactory(), wrapper_type_options);
+}
+
+namespace {
+
+bool IsWellKnownMessageWrapperType(
+    absl::Nonnull<const google::protobuf::Descriptor*> descriptor) {
+  switch (descriptor->well_known_type()) {
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_BOOLVALUE:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_INT32VALUE:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_INT64VALUE:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT32VALUE:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT64VALUE:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_FLOATVALUE:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_DOUBLEVALUE:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_BYTESVALUE:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::Descriptor::WELLKNOWNTYPE_STRINGVALUE:
+      return true;
+    default:
+      return false;
+  }
+}
+
+}  // namespace
+
+Value Value::Field(Borrowed<const google::protobuf::Message> message,
+                   absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+                   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+                   absl::Nonnull<google::protobuf::MessageFactory*> message_factory,
+                   ProtoWrapperTypeOptions wrapper_type_options) {
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK_EQ(message->GetDescriptor(), field->containing_type());
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  ABSL_DCHECK(!IsWellKnownMessageType(message->GetDescriptor()));
+  const auto* reflection = message->GetReflection();
+  if (field->is_map()) {
+    if (reflection->FieldSize(*message, field) == 0) {
+      return MapValue();
+    }
+    return ParsedMapFieldValue(Owned(message), field);
+  }
+  if (field->is_repeated()) {
+    if (reflection->FieldSize(*message, field) == 0) {
+      return ListValue();
+    }
+    return ParsedRepeatedFieldValue(Owned(message), field);
+  }
+  switch (field->type()) {
+    case google::protobuf::FieldDescriptor::TYPE_DOUBLE:
+      return DoubleValue(reflection->GetDouble(*message, field));
+    case google::protobuf::FieldDescriptor::TYPE_FLOAT:
+      return DoubleValue(reflection->GetFloat(*message, field));
+    case google::protobuf::FieldDescriptor::TYPE_INT64:
+      return IntValue(reflection->GetInt64(*message, field));
+    case google::protobuf::FieldDescriptor::TYPE_UINT64:
+      return UintValue(reflection->GetUInt64(*message, field));
+    case google::protobuf::FieldDescriptor::TYPE_INT32:
+      return IntValue(reflection->GetInt32(*message, field));
+    case google::protobuf::FieldDescriptor::TYPE_FIXED64:
+      return UintValue(reflection->GetUInt64(*message, field));
+    case google::protobuf::FieldDescriptor::TYPE_FIXED32:
+      return UintValue(reflection->GetUInt32(*message, field));
+    case google::protobuf::FieldDescriptor::TYPE_BOOL:
+      return BoolValue(reflection->GetBool(*message, field));
+    case google::protobuf::FieldDescriptor::TYPE_STRING: {
+      std::string scratch;
+      return absl::visit(
+          absl::Overload(
+              [&](absl::string_view string) -> StringValue {
+                if (string.data() == scratch.data() &&
+                    string.size() == scratch.size()) {
+                  return StringValue(message.arena(), std::move(scratch));
+                } else {
+                  return StringValue(message, string);
+                }
+              },
+              [&](absl::Cord&& cord) -> StringValue {
+                return StringValue(std::move(cord));
+              }),
+          well_known_types::AsVariant(
+              well_known_types::GetStringField(*message, field, scratch)));
+    }
+    case google::protobuf::FieldDescriptor::TYPE_GROUP:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
+      if (wrapper_type_options == ProtoWrapperTypeOptions::kUnsetNull &&
+          IsWellKnownMessageWrapperType(field->message_type()) &&
+          !reflection->HasField(*message, field)) {
+        return NullValue();
+      }
+      return Message(
+          Borrowed(message, &reflection->GetMessage(*message, field)),
+          descriptor_pool, message_factory);
+    case google::protobuf::FieldDescriptor::TYPE_BYTES: {
+      std::string scratch;
+      return absl::visit(
+          absl::Overload(
+              [&](absl::string_view string) -> BytesValue {
+                if (string.data() == scratch.data() &&
+                    string.size() == scratch.size()) {
+                  return BytesValue(message.arena(), std::move(scratch));
+                } else {
+                  return BytesValue(message, string);
+                }
+              },
+              [&](absl::Cord&& cord) -> BytesValue {
+                return BytesValue(std::move(cord));
+              }),
+          well_known_types::AsVariant(
+              well_known_types::GetBytesField(*message, field, scratch)));
+    }
+    case google::protobuf::FieldDescriptor::TYPE_UINT32:
+      return UintValue(reflection->GetUInt32(*message, field));
+    case google::protobuf::FieldDescriptor::TYPE_ENUM:
+      return Value::Enum(field->enum_type(),
+                         reflection->GetEnumValue(*message, field));
+    case google::protobuf::FieldDescriptor::TYPE_SFIXED32:
+      return IntValue(reflection->GetInt32(*message, field));
+    case google::protobuf::FieldDescriptor::TYPE_SFIXED64:
+      return IntValue(reflection->GetInt64(*message, field));
+    case google::protobuf::FieldDescriptor::TYPE_SINT32:
+      return IntValue(reflection->GetInt32(*message, field));
+    case google::protobuf::FieldDescriptor::TYPE_SINT64:
+      return IntValue(reflection->GetInt64(*message, field));
+    default:
+      return ErrorValue(absl::InvalidArgumentError(
+          absl::StrCat("unexpected protocol buffer message field type: ",
+                       field->type_name())));
+  }
+}
+
+Value Value::RepeatedField(Borrowed<const google::protobuf::Message> message,
+                           absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+                           int index) {
+  return RepeatedField(message, field, index,
+                       message->GetDescriptor()->file()->pool(),
+                       message->GetReflection()->GetMessageFactory());
+}
+
+Value Value::RepeatedField(
+    Borrowed<const google::protobuf::Message> message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field, int index,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory) {
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK_EQ(field->containing_type(), message->GetDescriptor());
+  ABSL_DCHECK(!field->is_map() && field->is_repeated());
+  ABSL_DCHECK_GE(index, 0);
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  const auto* reflection = message->GetReflection();
+  const int size = reflection->FieldSize(*message, field);
+  if (ABSL_PREDICT_FALSE(index < 0 || index >= size)) {
+    return ErrorValue(absl::InvalidArgumentError(
+        absl::StrCat("index out of bounds: ", index)));
+  }
+  switch (field->type()) {
+    case google::protobuf::FieldDescriptor::TYPE_DOUBLE:
+      return DoubleValue(reflection->GetRepeatedDouble(*message, field, index));
+    case google::protobuf::FieldDescriptor::TYPE_FLOAT:
+      return DoubleValue(reflection->GetRepeatedFloat(*message, field, index));
+    case google::protobuf::FieldDescriptor::TYPE_SFIXED64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_SINT64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_INT64:
+      return IntValue(reflection->GetRepeatedInt64(*message, field, index));
+    case google::protobuf::FieldDescriptor::TYPE_FIXED64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_UINT64:
+      return UintValue(reflection->GetRepeatedUInt64(*message, field, index));
+    case google::protobuf::FieldDescriptor::TYPE_SFIXED32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_SINT32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_INT32:
+      return IntValue(reflection->GetRepeatedInt32(*message, field, index));
+    case google::protobuf::FieldDescriptor::TYPE_BOOL:
+      return BoolValue(reflection->GetRepeatedBool(*message, field, index));
+    case google::protobuf::FieldDescriptor::TYPE_STRING: {
+      std::string scratch;
+      return absl::visit(
+          absl::Overload(
+              [&](absl::string_view string) -> StringValue {
+                if (string.data() == scratch.data() &&
+                    string.size() == scratch.size()) {
+                  return StringValue(message.arena(), std::move(scratch));
+                } else {
+                  return StringValue(message, string);
+                }
+              },
+              [&](absl::Cord&& cord) -> StringValue {
+                return StringValue(std::move(cord));
+              }),
+          well_known_types::AsVariant(well_known_types::GetRepeatedStringField(
+              reflection, *message, field, index, scratch)));
+    }
+    case google::protobuf::FieldDescriptor::TYPE_GROUP:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
+      return Message(Borrowed(message, &reflection->GetRepeatedMessage(
+                                           *message, field, index)),
+                     descriptor_pool, message_factory);
+    case google::protobuf::FieldDescriptor::TYPE_BYTES: {
+      std::string scratch;
+      return absl::visit(
+          absl::Overload(
+              [&](absl::string_view string) -> BytesValue {
+                if (string.data() == scratch.data() &&
+                    string.size() == scratch.size()) {
+                  return BytesValue(message.arena(), std::move(scratch));
+                } else {
+                  return BytesValue(message, string);
+                }
+              },
+              [&](absl::Cord&& cord) -> BytesValue {
+                return BytesValue(std::move(cord));
+              }),
+          well_known_types::AsVariant(well_known_types::GetRepeatedBytesField(
+              reflection, *message, field, index, scratch)));
+    }
+    case google::protobuf::FieldDescriptor::TYPE_FIXED32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_UINT32:
+      return UintValue(reflection->GetRepeatedUInt32(*message, field, index));
+    case google::protobuf::FieldDescriptor::TYPE_ENUM:
+      return Enum(field->enum_type(),
+                  reflection->GetRepeatedEnumValue(*message, field, index));
+    default:
+      return ErrorValue(absl::InvalidArgumentError(
+          absl::StrCat("unexpected message field type: ", field->type_name())));
+  }
+}
+
+Value Value::MapFieldValue(Borrowed<const google::protobuf::Message> message,
+                           absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+                           const google::protobuf::MapValueConstRef& value) {
+  return MapFieldValue(message, field, value,
+                       message->GetDescriptor()->file()->pool(),
+                       message->GetReflection()->GetMessageFactory());
+}
+
+Value Value::MapFieldValue(
+    Borrowed<const google::protobuf::Message> message,
+    absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
+    const google::protobuf::MapValueConstRef& value,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory) {
+  ABSL_DCHECK(field != nullptr);
+  ABSL_DCHECK_EQ(field->containing_type()->containing_type(),
+                 message->GetDescriptor());
+  ABSL_DCHECK(!field->is_map() && !field->is_repeated());
+  ABSL_DCHECK_EQ(value.type(), field->cpp_type());
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  switch (field->type()) {
+    case google::protobuf::FieldDescriptor::TYPE_DOUBLE:
+      return DoubleValue(value.GetDoubleValue());
+    case google::protobuf::FieldDescriptor::TYPE_FLOAT:
+      return DoubleValue(value.GetFloatValue());
+    case google::protobuf::FieldDescriptor::TYPE_SFIXED64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_SINT64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_INT64:
+      return IntValue(value.GetInt64Value());
+    case google::protobuf::FieldDescriptor::TYPE_FIXED64:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_UINT64:
+      return UintValue(value.GetUInt64Value());
+    case google::protobuf::FieldDescriptor::TYPE_SFIXED32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_SINT32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_INT32:
+      return IntValue(value.GetInt32Value());
+    case google::protobuf::FieldDescriptor::TYPE_BOOL:
+      return BoolValue(value.GetBoolValue());
+    case google::protobuf::FieldDescriptor::TYPE_STRING:
+      return StringValue(message, value.GetStringValue());
+    case google::protobuf::FieldDescriptor::TYPE_GROUP:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
+      return Message(Borrowed<const google::protobuf::Message>(Borrower(message),
+                                                     &value.GetMessageValue()),
+                     descriptor_pool, message_factory);
+    case google::protobuf::FieldDescriptor::TYPE_BYTES:
+      return BytesValue(message, value.GetStringValue());
+    case google::protobuf::FieldDescriptor::TYPE_FIXED32:
+      ABSL_FALLTHROUGH_INTENDED;
+    case google::protobuf::FieldDescriptor::TYPE_UINT32:
+      return UintValue(value.GetUInt32Value());
+    case google::protobuf::FieldDescriptor::TYPE_ENUM:
+      return Enum(field->enum_type(), value.GetEnumValue());
+    default:
+      return ErrorValue(absl::InvalidArgumentError(
+          absl::StrCat("unexpected message field type: ", field->type_name())));
+  }
 }
 
 absl::optional<BoolValue> Value::AsBool() const {

@@ -15,7 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_MESSAGE_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_MESSAGE_H_
 
-#include <cstddef>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -42,8 +41,8 @@ template <typename T>
 struct ProtoMessageTraits {
   static_assert(IsProtoMessage<T>);
 
-  static absl::Nonnull<google::protobuf::Message*> ArenaCopyConstruct(
-      absl::Nonnull<google::protobuf::Arena*> arena,
+  static absl::Nonnull<google::protobuf::Message*> CopyConstruct(
+      absl::Nullable<google::protobuf::Arena*> arena,
       absl::Nonnull<const google::protobuf::Message*> from) {
     if constexpr (google::protobuf::Arena::is_arena_constructable<T>::value) {
       return google::protobuf::Arena::Create<T>(arena,
@@ -55,14 +54,8 @@ struct ProtoMessageTraits {
     }
   }
 
-  static absl::Nonnull<google::protobuf::Message*> CopyConstruct(
-      absl::Nonnull<void*> address,
-      absl::Nonnull<const google::protobuf::Message*> from) {
-    return ::new (address) T(*google::protobuf::DynamicCastToGenerated<T>(from));
-  }
-
-  static absl::Nonnull<google::protobuf::Message*> ArenaMoveConstruct(
-      absl::Nonnull<google::protobuf::Arena*> arena,
+  static absl::Nonnull<google::protobuf::Message*> MoveConstruct(
+      absl::Nullable<google::protobuf::Arena*> arena,
       absl::Nonnull<google::protobuf::Message*> from) {
     if constexpr (google::protobuf::Arena::is_arena_constructable<T>::value) {
       return google::protobuf::Arena::Create<T>(
@@ -72,12 +65,6 @@ struct ProtoMessageTraits {
       *to = std::move(*google::protobuf::DynamicCastToGenerated<T>(from));
       return to;
     }
-  }
-
-  static absl::Nonnull<google::protobuf::Message*> MoveConstruct(
-      absl::Nonnull<void*> address, absl::Nonnull<google::protobuf::Message*> from) {
-    return ::new (address)
-        T(std::move(*google::protobuf::DynamicCastToGenerated<T>(from)));
   }
 };
 
@@ -96,30 +83,20 @@ absl::StatusOr<absl::Nonnull<const google::protobuf::Reflection*>> GetReflection
 absl::Nonnull<const google::protobuf::Reflection*> GetReflectionOrDie(
     const google::protobuf::Message& message ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
-using ProtoMessageArenaCopyConstructor = absl::Nonnull<google::protobuf::Message*> (*)(
-    absl::Nonnull<google::protobuf::Arena*>, absl::Nonnull<const google::protobuf::Message*>);
-
 using ProtoMessageCopyConstructor = absl::Nonnull<google::protobuf::Message*> (*)(
-    absl::Nonnull<void*>, absl::Nonnull<const google::protobuf::Message*>);
-
-using ProtoMessageArenaMoveConstructor = absl::Nonnull<google::protobuf::Message*> (*)(
-    absl::Nonnull<google::protobuf::Arena*>, absl::Nonnull<google::protobuf::Message*>);
+    absl::Nullable<google::protobuf::Arena*>, absl::Nonnull<const google::protobuf::Message*>);
 
 using ProtoMessageMoveConstructor = absl::Nonnull<google::protobuf::Message*> (*)(
-    absl::Nonnull<void*>, absl::Nonnull<google::protobuf::Message*>);
+    absl::Nullable<google::protobuf::Arena*>, absl::Nonnull<google::protobuf::Message*>);
 
 // Adapts a protocol buffer message to a value, copying it.
 absl::StatusOr<Value> ProtoMessageToValueImpl(
     ValueManager& value_manager, absl::Nonnull<const google::protobuf::Message*> message,
-    size_t size, size_t align,
-    absl::Nonnull<ProtoMessageArenaCopyConstructor> arena_copy_construct,
     absl::Nonnull<ProtoMessageCopyConstructor> copy_construct);
 
 // Adapts a protocol buffer message to a value, moving it if possible.
 absl::StatusOr<Value> ProtoMessageToValueImpl(
     ValueManager& value_manager, absl::Nonnull<google::protobuf::Message*> message,
-    size_t size, size_t align,
-    absl::Nonnull<ProtoMessageArenaMoveConstructor> arena_move_construct,
     absl::Nonnull<ProtoMessageMoveConstructor> move_construct);
 
 // Aliasing conversion. Assumes `aliased` is the owner of `message`.

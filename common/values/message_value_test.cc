@@ -14,11 +14,19 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
+#include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "common/allocator.h"
+#include "common/memory.h"
 #include "common/type.h"
+#include "common/type_reflector.h"
 #include "common/value.h"
 #include "common/value_kind.h"
+#include "common/value_manager.h"
 #include "internal/parse_text_proto.h"
 #include "internal/testing.h"
 #include "internal/testing_descriptor_pool.h"
@@ -31,6 +39,7 @@
 namespace cel {
 namespace {
 
+using ::absl_testing::StatusIs;
 using ::cel::internal::DynamicParseTextProto;
 using ::cel::internal::GetTestingDescriptorPool;
 using ::cel::internal::GetTestingMessageFactory;
@@ -47,13 +56,23 @@ class MessageValueTest : public TestWithParam<AllocatorKind> {
     switch (GetParam()) {
       case AllocatorKind::kArena:
         arena_.emplace();
+        value_manager_ = NewThreadCompatibleValueManager(
+            MemoryManager::Pooling(arena()),
+            NewThreadCompatibleTypeReflector(MemoryManager::Pooling(arena())));
         break;
       case AllocatorKind::kNewDelete:
+        value_manager_ = NewThreadCompatibleValueManager(
+            MemoryManager::ReferenceCounting(),
+            NewThreadCompatibleTypeReflector(
+                MemoryManager::ReferenceCounting()));
         break;
     }
   }
 
-  void TearDown() override { arena_.reset(); }
+  void TearDown() override {
+    value_manager_.reset();
+    arena_.reset();
+  }
 
   Allocator<> allocator() {
     return arena_ ? ArenaAllocator(&*arena_) : NewDeleteAllocator();
@@ -69,13 +88,44 @@ class MessageValueTest : public TestWithParam<AllocatorKind> {
     return GetTestingMessageFactory();
   }
 
+  ValueManager& value_manager() { return **value_manager_; }
+
  private:
   absl::optional<google::protobuf::Arena> arena_;
+  absl::optional<Shared<ValueManager>> value_manager_;
 };
 
 TEST_P(MessageValueTest, Default) {
   MessageValue value;
   EXPECT_FALSE(value);
+  absl::Cord serialized;
+  EXPECT_THAT(value.SerializeTo(value_manager(), serialized),
+              StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(value.ConvertToJson(value_manager()),
+              StatusIs(absl::StatusCode::kInternal));
+  Value scratch;
+  EXPECT_THAT(value.Equal(value_manager(), NullValue()),
+              StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(value.Equal(value_manager(), NullValue(), scratch),
+              StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(value.GetFieldByName(value_manager(), ""),
+              StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(value.GetFieldByName(value_manager(), "", scratch),
+              StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(value.GetFieldByNumber(value_manager(), 0),
+              StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(value.GetFieldByNumber(value_manager(), 0, scratch),
+              StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(value.HasFieldByName(""), StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(value.HasFieldByNumber(0), StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(value.ForEachField(value_manager(),
+                                 [](absl::string_view, const Value&)
+                                     -> absl::StatusOr<bool> { return true; }),
+              StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(value.Qualify(value_manager(), {}, false),
+              StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(value.Qualify(value_manager(), {}, false, scratch),
+              StatusIs(absl::StatusCode::kInternal));
 }
 
 template <typename T>

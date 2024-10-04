@@ -46,6 +46,7 @@ class Value;
 class ValueManager;
 class ValueIterator;
 class ListValue;
+class ParsedJsonMapValue;
 
 // ParsedMapFieldValue is a MapValue over a map field of a parsed protocol
 // buffer message.
@@ -134,7 +135,9 @@ class ParsedMapFieldValue final {
   }
 
  private:
-  absl::Nonnull<const google::protobuf::Reflection*> GetReflectionOrDie() const;
+  friend class ParsedJsonMapValue;
+
+  absl::Nonnull<const google::protobuf::Reflection*> GetReflection() const;
 
   Owned<const google::protobuf::Message> message_;
   absl::Nullable<const google::protobuf::FieldDescriptor*> field_ = nullptr;
