@@ -738,6 +738,18 @@ using ExprKind =
     absl::variant<UnspecifiedExpr, Constant, IdentExpr, SelectExpr, CallExpr,
                   ListExpr, StructExpr, MapExpr, ComprehensionExpr>;
 
+enum class ExprKindCase {
+  kUnspecifiedExpr,
+  kConstant,
+  kIdentExpr,
+  kSelectExpr,
+  kCallExpr,
+  kListExpr,
+  kStructExpr,
+  kMapExpr,
+  kComprehensionExpr,
+};
+
 // `Expr` is a node in the Common Expression Language's abstract syntax tree. It
 // is composed of a numeric ID and a kind variant.
 class Expr final {
@@ -920,6 +932,8 @@ class Expr final {
   ABSL_MUST_USE_RESULT ComprehensionExpr release_comprehension_expr() {
     return release_kind<ComprehensionExpr>();
   }
+
+  ExprKindCase kind_case() const;
 
   friend void swap(Expr& lhs, Expr& rhs) noexcept;
 
@@ -1392,6 +1406,14 @@ ABSL_MUST_USE_RESULT T Expr::release_kind() {
   }
   kind_.emplace<UnspecifiedExpr>();
   return result;
+}
+
+inline ExprKindCase Expr::kind_case() const {
+  static_assert(absl::variant_size_v<ExprKind> == 9);
+  if (kind_.index() <= 9 && kind_.index() >= 0) {
+    return static_cast<ExprKindCase>(kind_.index());
+  }
+  return ExprKindCase::kUnspecifiedExpr;
 }
 
 inline void swap(Expr& lhs, Expr& rhs) noexcept {

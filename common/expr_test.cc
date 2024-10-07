@@ -440,6 +440,7 @@ TEST(Expr, Unspecified) {
   Expr expr;
   EXPECT_THAT(expr.id(), Eq(ExprId{0}));
   EXPECT_THAT(expr.kind(), VariantWith<UnspecifiedExpr>(_));
+  EXPECT_EQ(expr.kind_case(), ExprKindCase::kUnspecifiedExpr);
   EXPECT_EQ(expr, Expr{});
 }
 
@@ -452,6 +453,7 @@ TEST(Expr, Ident) {
   EXPECT_NE(expr, Expr{});
   ident_expr.set_name("foo");
   EXPECT_NE(expr.ident_expr(), IdentExpr{});
+  EXPECT_EQ(expr.kind_case(), ExprKindCase::kIdentExpr);
   static_cast<void>(expr.release_ident_expr());
   EXPECT_THAT(expr.has_ident_expr(), IsFalse());
   EXPECT_EQ(expr.ident_expr(), IdentExpr{});
@@ -467,6 +469,7 @@ TEST(Expr, Select) {
   EXPECT_NE(expr, Expr{});
   select_expr.set_field("foo");
   EXPECT_NE(expr.select_expr(), SelectExpr{});
+  EXPECT_EQ(expr.kind_case(), ExprKindCase::kSelectExpr);
   static_cast<void>(expr.release_select_expr());
   EXPECT_THAT(expr.has_select_expr(), IsFalse());
   EXPECT_EQ(expr.select_expr(), SelectExpr{});
@@ -482,6 +485,7 @@ TEST(Expr, Call) {
   EXPECT_NE(expr, Expr{});
   call_expr.set_function("foo");
   EXPECT_NE(expr.call_expr(), CallExpr{});
+  EXPECT_EQ(expr.kind_case(), ExprKindCase::kCallExpr);
   static_cast<void>(expr.release_call_expr());
   EXPECT_THAT(expr.has_call_expr(), IsFalse());
   EXPECT_EQ(expr.call_expr(), CallExpr{});
@@ -497,6 +501,7 @@ TEST(Expr, List) {
   EXPECT_NE(expr, Expr{});
   list_expr.mutable_elements().push_back(MakeListExprElement(Expr{}, true));
   EXPECT_NE(expr.list_expr(), ListExpr{});
+  EXPECT_EQ(expr.kind_case(), ExprKindCase::kListExpr);
   static_cast<void>(expr.release_list_expr());
   EXPECT_THAT(expr.has_list_expr(), IsFalse());
   EXPECT_EQ(expr.list_expr(), ListExpr{});
@@ -512,6 +517,7 @@ TEST(Expr, Struct) {
   EXPECT_NE(expr, Expr{});
   struct_expr.set_name("foo");
   EXPECT_NE(expr.struct_expr(), StructExpr{});
+  EXPECT_EQ(expr.kind_case(), ExprKindCase::kStructExpr);
   static_cast<void>(expr.release_struct_expr());
   EXPECT_THAT(expr.has_struct_expr(), IsFalse());
   EXPECT_EQ(expr.struct_expr(), StructExpr{});
@@ -527,6 +533,7 @@ TEST(Expr, Map) {
   EXPECT_NE(expr, Expr{});
   map_expr.mutable_entries().push_back(MakeMapExprEntry(1, Expr{}, Expr{}));
   EXPECT_NE(expr.map_expr(), MapExpr{});
+  EXPECT_EQ(expr.kind_case(), ExprKindCase::kMapExpr);
   static_cast<void>(expr.release_map_expr());
   EXPECT_THAT(expr.has_map_expr(), IsFalse());
   EXPECT_EQ(expr.map_expr(), MapExpr{});
@@ -542,6 +549,7 @@ TEST(Expr, Comprehension) {
   EXPECT_NE(expr, Expr{});
   comprehension_expr.set_iter_var("foo");
   EXPECT_NE(expr.comprehension_expr(), ComprehensionExpr{});
+  EXPECT_EQ(expr.kind_case(), ExprKindCase::kComprehensionExpr);
   static_cast<void>(expr.release_comprehension_expr());
   EXPECT_THAT(expr.has_comprehension_expr(), IsFalse());
   EXPECT_EQ(expr.comprehension_expr(), ComprehensionExpr{});

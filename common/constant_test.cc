@@ -37,6 +37,7 @@ TEST(Constant, NullValue) {
   const_expr.set_null_value();
   EXPECT_THAT(const_expr.has_null_value(), IsTrue());
   EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<std::nullptr_t>());
+  EXPECT_EQ(const_expr.kind_case(), ConstantKindCase::kNull);
 }
 
 TEST(Constant, BoolValue) {
@@ -47,6 +48,7 @@ TEST(Constant, BoolValue) {
   EXPECT_THAT(const_expr.has_bool_value(), IsTrue());
   EXPECT_EQ(const_expr.bool_value(), false);
   EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<bool>());
+  EXPECT_EQ(const_expr.kind_case(), ConstantKindCase::kBool);
 }
 
 TEST(Constant, IntValue) {
@@ -57,6 +59,7 @@ TEST(Constant, IntValue) {
   EXPECT_THAT(const_expr.has_int_value(), IsTrue());
   EXPECT_EQ(const_expr.int_value(), 0);
   EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<int64_t>());
+  EXPECT_EQ(const_expr.kind_case(), ConstantKindCase::kInt);
 }
 
 TEST(Constant, UintValue) {
@@ -67,6 +70,7 @@ TEST(Constant, UintValue) {
   EXPECT_THAT(const_expr.has_uint_value(), IsTrue());
   EXPECT_EQ(const_expr.uint_value(), 0);
   EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<uint64_t>());
+  EXPECT_EQ(const_expr.kind_case(), ConstantKindCase::kUint);
 }
 
 TEST(Constant, DoubleValue) {
@@ -77,6 +81,7 @@ TEST(Constant, DoubleValue) {
   EXPECT_THAT(const_expr.has_double_value(), IsTrue());
   EXPECT_EQ(const_expr.double_value(), 0);
   EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<double>());
+  EXPECT_EQ(const_expr.kind_case(), ConstantKindCase::kDouble);
 }
 
 TEST(Constant, BytesValue) {
@@ -87,6 +92,7 @@ TEST(Constant, BytesValue) {
   EXPECT_THAT(const_expr.has_bytes_value(), IsTrue());
   EXPECT_EQ(const_expr.bytes_value(), "foo");
   EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<BytesConstant>());
+  EXPECT_EQ(const_expr.kind_case(), ConstantKindCase::kBytes);
 }
 
 TEST(Constant, StringValue) {
@@ -97,6 +103,7 @@ TEST(Constant, StringValue) {
   EXPECT_THAT(const_expr.has_string_value(), IsTrue());
   EXPECT_EQ(const_expr.string_value(), "foo");
   EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<StringConstant>());
+  EXPECT_EQ(const_expr.kind_case(), ConstantKindCase::kString);
 }
 
 TEST(Constant, DurationValue) {
@@ -107,6 +114,7 @@ TEST(Constant, DurationValue) {
   EXPECT_THAT(const_expr.has_duration_value(), IsTrue());
   EXPECT_EQ(const_expr.duration_value(), absl::ZeroDuration());
   EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<absl::Duration>());
+  EXPECT_EQ(const_expr.kind_case(), ConstantKindCase::kDuration);
 }
 
 TEST(Constant, TimestampValue) {
@@ -117,6 +125,12 @@ TEST(Constant, TimestampValue) {
   EXPECT_THAT(const_expr.has_timestamp_value(), IsTrue());
   EXPECT_EQ(const_expr.timestamp_value(), absl::UnixEpoch());
   EXPECT_EQ(const_expr.kind().index(), ConstantKindIndexOf<absl::Time>());
+  EXPECT_EQ(const_expr.kind_case(), ConstantKindCase::kTimestamp);
+}
+
+TEST(Constant, DefaultConstructed) {
+  Constant const_expr;
+  EXPECT_EQ(const_expr.kind_case(), ConstantKindCase::kUnspecified);
 }
 
 TEST(Constant, Equality) {

@@ -140,6 +140,19 @@ static_assert(ConstantKind::IndexOf<void>() == absl::variant_npos);
 // Expression Language.
 using ConstantKind = common_internal::ConstantKind::VariantType;
 
+enum class ConstantKindCase {
+  kUnspecified,
+  kNull,
+  kBool,
+  kInt,
+  kUint,
+  kDouble,
+  kBytes,
+  kString,
+  kDuration,
+  kTimestamp,
+};
+
 template <typename U>
 constexpr size_t ConstantKindIndexOf() {
   return common_internal::ConstantKind::IndexOf<U>();
@@ -398,6 +411,14 @@ class Constant final {
   ABSL_DEPRECATED("Use timestamp_value()")
   ABSL_MUST_USE_RESULT absl::Time time_value() const {
     return timestamp_value();
+  }
+
+  ConstantKindCase kind_case() const {
+    static_assert(absl::variant_size_v<ConstantKind> == 10);
+    if (kind_.index() <= 10 && kind_.index() >= 0) {
+      return static_cast<ConstantKindCase>(kind_.index());
+    }
+    return ConstantKindCase::kUnspecified;
   }
 
  private:
