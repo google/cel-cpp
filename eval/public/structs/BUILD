@@ -265,7 +265,6 @@ cc_library(
         ":legacy_type_info_apis",
         "//base:attributes",
         "//common:memory",
-        "//common:value",
         "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//eval/public:message_wrapper",

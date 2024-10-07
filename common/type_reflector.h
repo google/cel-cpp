@@ -100,6 +100,12 @@ Shared<TypeReflector> NewThreadCompatibleTypeReflector(
 
 namespace common_internal {
 
+absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>> NewLegacyListValueBuilder(
+    ValueFactory& value_factory, const ListType& type);
+
+absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>> NewLegacyMapValueBuilder(
+    ValueFactory& value_factory, const MapType& type);
+
 // Implementation backing LegacyBuiltin().
 class LegacyTypeReflector : public TypeReflector {
  public:

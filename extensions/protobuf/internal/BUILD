@@ -484,24 +484,6 @@ cc_library(
 )
 
 cc_library(
-    name = "legacy_value",
-    srcs = select({
-        "//conditions:default": ["legacy_value_heavy.cc"],
-    }),
-    hdrs = ["legacy_value.h"],
-    deps = [
-        "//common:value",
-        "//eval/public:message_wrapper",
-        "//eval/public/structs:proto_message_type_adapter",
-        "//extensions/protobuf:value",
-        "//internal:status_macros",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
     name = "is_message_lite",
     hdrs = ["is_message_lite.h"],
     deps = ["@com_google_protobuf//:protobuf"],

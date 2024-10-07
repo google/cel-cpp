@@ -490,17 +490,6 @@ cc_test(
 )
 
 cc_library(
-    name = "dynamic_loader",
-    srcs = ["dynamic_loader.cc"],
-    hdrs = ["dynamic_loader.h"],
-    linkopts = ["-ldl"],
-    deps = [
-        "@com_google_absl//absl/log:absl_check",
-        "@com_google_absl//absl/types:optional",
-    ],
-)
-
-cc_library(
     name = "to_address",
     hdrs = ["to_address.h"],
     deps = [
