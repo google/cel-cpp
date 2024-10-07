@@ -74,7 +74,7 @@ class Allocator<void> {
   template <typename U, typename = std::enable_if_t<!std::is_void_v<U>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   constexpr Allocator(const Allocator<U>& other) noexcept
-      : arena_(other.arena()) {}
+      : arena_(other.arena_) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   constexpr Allocator(absl::Nullable<google::protobuf::Arena*> arena) noexcept
@@ -229,6 +229,7 @@ inline Allocator<T> NewDeleteAllocatorFor() noexcept {
 
 inline Allocator<> ArenaAllocator(
     absl::Nonnull<google::protobuf::Arena*> arena) noexcept {
+  ABSL_DCHECK(arena != nullptr);
   return Allocator<>(arena);
 }
 
@@ -236,6 +237,7 @@ template <typename T>
 inline Allocator<T> ArenaAllocatorFor(
     absl::Nonnull<google::protobuf::Arena*> arena) noexcept {
   static_assert(!std::is_void_v<T>);
+  ABSL_DCHECK(arena != nullptr);
   return Allocator<T>(arena);
 }
 
