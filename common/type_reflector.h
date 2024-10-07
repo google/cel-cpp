@@ -48,24 +48,24 @@ class TypeReflector : public virtual TypeIntrospector {
 
   // `NewListValueBuilder` returns a new `ListValueBuilderInterface` for the
   // corresponding `ListType` `type`.
-  virtual absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(
-      ValueFactory& value_factory, const ListType& type) const;
+  virtual absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>>
+  NewListValueBuilder(ValueFactory& value_factory, const ListType& type) const;
 
   // `NewMapValueBuilder` returns a new `MapValueBuilderInterface` for the
   // corresponding `MapType` `type`.
-  virtual absl::StatusOr<Unique<MapValueBuilder>> NewMapValueBuilder(
+  virtual absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>> NewMapValueBuilder(
       ValueFactory& value_factory, const MapType& type) const;
 
   // `NewStructValueBuilder` returns a new `StructValueBuilder` for the
   // corresponding `StructType` `type`.
-  virtual absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
+  virtual absl::StatusOr<absl::Nullable<StructValueBuilderPtr>>
   NewStructValueBuilder(ValueFactory& value_factory,
                         const StructType& type) const;
 
   // `NewValueBuilder` returns a new `ValueBuilder` for the corresponding type
   // `name`.  It is primarily used to handle wrapper types which sometimes show
   // up literally in expressions.
-  absl::StatusOr<absl::optional<Unique<ValueBuilder>>> NewValueBuilder(
+  absl::StatusOr<absl::Nullable<ValueBuilderPtr>> NewValueBuilder(
       ValueFactory& value_factory, absl::string_view name) const;
 
   // `FindValue` returns a new `Value` for the corresponding name `name`. This
@@ -103,10 +103,10 @@ namespace common_internal {
 // Implementation backing LegacyBuiltin().
 class LegacyTypeReflector : public TypeReflector {
  public:
-  absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(
+  absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>> NewListValueBuilder(
       ValueFactory& value_factory, const ListType& type) const override;
 
-  absl::StatusOr<Unique<MapValueBuilder>> NewMapValueBuilder(
+  absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>> NewMapValueBuilder(
       ValueFactory& value_factory, const MapType& type) const override;
 };
 

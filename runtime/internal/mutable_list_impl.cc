@@ -26,8 +26,7 @@
 namespace cel::runtime_internal {
 using ::cel::NativeTypeId;
 
-MutableListValue::MutableListValue(
-    cel::Unique<cel::ListValueBuilder> list_builder)
+MutableListValue::MutableListValue(cel::ListValueBuilderPtr list_builder)
     : cel::OpaqueValueInterface(), list_builder_(std::move(list_builder)) {}
 
 absl::Status MutableListValue::Append(cel::Value element) {

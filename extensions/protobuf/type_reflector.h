@@ -43,9 +43,8 @@ class ProtoTypeReflector : public TypeReflector, public ProtoTypeIntrospector {
       : ProtoTypeIntrospector(descriptor_pool),
         message_factory_(message_factory) {}
 
-  absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
-  NewStructValueBuilder(ValueFactory& value_factory,
-                        const StructType& type) const final;
+  absl::StatusOr<absl::Nullable<StructValueBuilderPtr>> NewStructValueBuilder(
+      ValueFactory& value_factory, const StructType& type) const final;
 
   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool()
       const override {

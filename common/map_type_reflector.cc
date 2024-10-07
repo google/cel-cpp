@@ -453,7 +453,8 @@ class MapValueBuilderImpl final : public MapValueBuilder {
 };
 
 using LegacyTypeReflector_NewMapValueBuilder =
-    absl::StatusOr<Unique<MapValueBuilder>> (*)(ValueFactory&, const MapType&);
+    absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>> (*)(ValueFactory&,
+                                                          const MapType&);
 
 ABSL_CONST_INIT struct {
   absl::once_flag init_once;
@@ -466,7 +467,7 @@ ABSL_CONST_INIT struct {
 #endif
 
 #if ABSL_HAVE_ATTRIBUTE_WEAK
-extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<Unique<MapValueBuilder>>
+extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>>
 cel_common_internal_LegacyTypeReflector_NewMapValueBuilder(
     ValueFactory& value_factory, const MapType& type);
 #endif
@@ -494,8 +495,9 @@ void InitializeLegacyTypeReflector() {
 
 }  // namespace
 
-absl::StatusOr<Unique<MapValueBuilder>> TypeReflector::NewMapValueBuilder(
-    ValueFactory& value_factory, const MapType& type) const {
+absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>>
+TypeReflector::NewMapValueBuilder(ValueFactory& value_factory,
+                                  const MapType& type) const {
   InitializeLegacyTypeReflector();
   auto memory_manager = value_factory.GetMemoryManager();
   if (memory_manager.memory_management() == MemoryManagement::kPooling &&
@@ -510,13 +512,14 @@ absl::StatusOr<Unique<MapValueBuilder>> TypeReflector::NewMapValueBuilder(
       return status_or_builder;
     }
   }
-  return memory_manager.MakeUnique<MapValueBuilderImpl>(memory_manager);
+  return std::make_unique<MapValueBuilderImpl>(memory_manager);
 }
 
 namespace common_internal {
 
-absl::StatusOr<Unique<MapValueBuilder>> LegacyTypeReflector::NewMapValueBuilder(
-    ValueFactory& value_factory, const MapType& type) const {
+absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>>
+LegacyTypeReflector::NewMapValueBuilder(ValueFactory& value_factory,
+                                        const MapType& type) const {
   InitializeLegacyTypeReflector();
   auto memory_manager = value_factory.GetMemoryManager();
   if (memory_manager.memory_management() == MemoryManagement::kPooling &&

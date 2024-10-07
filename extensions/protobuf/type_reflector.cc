@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -766,7 +767,7 @@ class ProtoStructValueBuilder final : public StructValueBuilder {
 
 }  // namespace
 
-absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
+absl::StatusOr<absl::Nullable<StructValueBuilderPtr>>
 ProtoTypeReflector::NewStructValueBuilder(ValueFactory& value_factory,
                                           const StructType& type) const {
   // Well known types are handled via `NewValueBuilder`. If we are requested to
@@ -774,7 +775,7 @@ ProtoTypeReflector::NewStructValueBuilder(ValueFactory& value_factory,
   const auto* descriptor =
       descriptor_pool()->FindMessageTypeByName(type.name());
   if (descriptor == nullptr) {
-    return absl::nullopt;
+    return nullptr;
   }
   switch (descriptor->well_known_type()) {
     case google::protobuf::Descriptor::WELLKNOWNTYPE_BOOLVALUE:
@@ -806,13 +807,13 @@ ProtoTypeReflector::NewStructValueBuilder(ValueFactory& value_factory,
     case google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::Descriptor::WELLKNOWNTYPE_ANY:
-      return absl::nullopt;
+      return nullptr;
     default:
       break;
   }
   const auto* prototype = message_factory()->GetPrototype(descriptor);
   if (prototype == nullptr) {
-    return absl::nullopt;
+    return nullptr;
   }
   auto memory_manager = value_factory.GetMemoryManager();
   auto* arena = ProtoMemoryManagerArena(memory_manager);
@@ -821,7 +822,7 @@ ProtoTypeReflector::NewStructValueBuilder(ValueFactory& value_factory,
   CEL_ASSIGN_OR_RETURN(const auto* reflection,
                        protobuf_internal::GetReflection(*message));
   CEL_ASSIGN_OR_RETURN(descriptor, protobuf_internal::GetDescriptor(*message));
-  return memory_manager.MakeUnique<ProtoStructValueBuilder>(
+  return std::make_unique<ProtoStructValueBuilder>(
       *this, value_factory, arena, message.release(), reflection, descriptor);
 }
 

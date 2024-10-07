@@ -1066,7 +1066,7 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
 namespace {}  // namespace
 
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
-    absl::StatusOr<Unique<ListValueBuilder>>
+    absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>>
     cel_common_internal_LegacyTypeReflector_NewListValueBuilder(
         ValueFactory& value_factory, const ListType& type) {
   auto memory_manager = value_factory.GetMemoryManager();
@@ -1076,12 +1076,12 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
         "cel_common_internal_LegacyTypeReflector_NewListValueBuilder only "
         "supports google::protobuf::Arena");
   }
-  return memory_manager.MakeUnique<CelListValueBuilder>(value_factory, arena,
-                                                        ListType(type));
+  return std::make_unique<CelListValueBuilder>(value_factory, arena,
+                                               ListType(type));
 }
 
 extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
-    absl::StatusOr<Unique<MapValueBuilder>>
+    absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>>
     cel_common_internal_LegacyTypeReflector_NewMapValueBuilder(
         ValueFactory& value_factory, const MapType& type) {
   auto memory_manager = value_factory.GetMemoryManager();
@@ -1091,7 +1091,7 @@ extern "C" CEL_ATTRIBUTE_USED CEL_ATTRIBUTE_DEFAULT_VISIBILITY
         "cel_common_internal_LegacyTypeReflector_NewMapValueBuilder only "
         "supports google::protobuf::Arena");
   }
-  return memory_manager.MakeUnique<CelMapValueBuilder>(arena, MapType(type));
+  return std::make_unique<CelMapValueBuilder>(arena, MapType(type));
 }
 
 absl::Status ModernValue(google::protobuf::Arena* arena,

@@ -29,6 +29,7 @@ cc_library(
         "//common:type",
         "//common:value",
         "//internal:status_macros",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/strings:string_view",

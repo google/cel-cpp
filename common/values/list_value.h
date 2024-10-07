@@ -243,6 +243,8 @@ class ListValueBuilder {
   virtual ListValue Build() && = 0;
 };
 
+using ListValueBuilderPtr = std::unique_ptr<ListValueBuilder>;
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_LIST_VALUE_H_

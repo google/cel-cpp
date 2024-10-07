@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
@@ -52,17 +53,16 @@ class ComposedTypeProvider : public TypeReflector {
 
   // `NewListValueBuilder` returns a new `ListValueBuilderInterface` for the
   // corresponding `ListType` `type`.
-  absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(
+  absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>> NewListValueBuilder(
       ValueFactory& value_factory, const ListType& type) const override;
 
   // `NewMapValueBuilder` returns a new `MapValueBuilderInterface` for the
   // corresponding `MapType` `type`.
-  absl::StatusOr<Unique<MapValueBuilder>> NewMapValueBuilder(
+  absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>> NewMapValueBuilder(
       ValueFactory& value_factory, const MapType& type) const override;
 
-  absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
-  NewStructValueBuilder(ValueFactory& value_factory,
-                        const StructType& type) const override;
+  absl::StatusOr<absl::Nullable<StructValueBuilderPtr>> NewStructValueBuilder(
+      ValueFactory& value_factory, const StructType& type) const override;
 
   absl::StatusOr<bool> FindValue(ValueFactory& value_factory,
                                  absl::string_view name,

@@ -259,6 +259,8 @@ class MapValueBuilder {
   virtual MapValue Build() && = 0;
 };
 
+using MapValueBuilderPtr = std::unique_ptr<MapValueBuilder>;
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_MAP_VALUE_H_

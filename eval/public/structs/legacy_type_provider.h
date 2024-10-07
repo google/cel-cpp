@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_TYPE_PROVIDER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_TYPE_PROVIDER_H_
 
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
@@ -58,7 +59,7 @@ class LegacyTypeProvider : public cel::TypeReflector {
     return absl::nullopt;
   }
 
-  absl::StatusOr<absl::optional<cel::Unique<cel::StructValueBuilder>>>
+  absl::StatusOr<absl::Nullable<cel::StructValueBuilderPtr>>
   NewStructValueBuilder(cel::ValueFactory& value_factory,
                         const cel::StructType& type) const final;
 

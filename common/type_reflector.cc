@@ -15,10 +15,12 @@
 #include "common/type_reflector.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 
 #include "absl/base/no_destructor.h"
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -820,14 +822,16 @@ class AnyValueBuilder final : public WellKnownValueBuilder {
   absl::Cord value_;
 };
 
-using WellKnownValueBuilderProvider = Unique<WellKnownValueBuilder> (*)(
-    MemoryManagerRef, const TypeReflector&, ValueFactory&);
+using WellKnownValueBuilderProvider =
+    std::unique_ptr<WellKnownValueBuilder> (*)(MemoryManagerRef,
+                                               const TypeReflector&,
+                                               ValueFactory&);
 
 template <typename T>
-Unique<WellKnownValueBuilder> WellKnownValueBuilderProviderFor(
+std::unique_ptr<WellKnownValueBuilder> WellKnownValueBuilderProviderFor(
     MemoryManagerRef memory_manager, const TypeReflector& type_reflector,
     ValueFactory& value_factory) {
-  return memory_manager.MakeUnique<T>(type_reflector, value_factory);
+  return std::make_unique<T>(type_reflector, value_factory);
 }
 
 using WellKnownValueBuilderMap =
@@ -889,7 +893,7 @@ const WellKnownValueBuilderMap& GetWellKnownValueBuilderMap() {
 
 class ValueBuilderForStruct final : public ValueBuilder {
  public:
-  explicit ValueBuilderForStruct(Unique<StructValueBuilder> delegate)
+  explicit ValueBuilderForStruct(StructValueBuilderPtr delegate)
       : delegate_(std::move(delegate)) {}
 
   absl::Status SetFieldByName(absl::string_view name, Value value) override {
@@ -909,14 +913,13 @@ class ValueBuilderForStruct final : public ValueBuilder {
   }
 
  private:
-  Unique<StructValueBuilder> delegate_;
+  StructValueBuilderPtr delegate_;
 };
 
 }  // namespace
 
-absl::StatusOr<absl::optional<Unique<ValueBuilder>>>
-TypeReflector::NewValueBuilder(ValueFactory& value_factory,
-                               absl::string_view name) const {
+absl::StatusOr<absl::Nullable<ValueBuilderPtr>> TypeReflector::NewValueBuilder(
+    ValueFactory& value_factory, absl::string_view name) const {
   const auto& well_known_value_builders = GetWellKnownValueBuilderMap();
   if (auto well_known_value_builder = well_known_value_builders.find(name);
       well_known_value_builder != well_known_value_builders.end()) {
@@ -927,11 +930,10 @@ TypeReflector::NewValueBuilder(ValueFactory& value_factory,
       auto maybe_builder,
       NewStructValueBuilder(value_factory,
                             common_internal::MakeBasicStructType(name)));
-  if (maybe_builder.has_value()) {
-    return value_factory.GetMemoryManager().MakeUnique<ValueBuilderForStruct>(
-        std::move(*maybe_builder));
+  if (maybe_builder != nullptr) {
+    return std::make_unique<ValueBuilderForStruct>(std::move(maybe_builder));
   }
-  return absl::nullopt;
+  return nullptr;
 }
 
 absl::StatusOr<absl::optional<Value>> TypeReflector::DeserializeValue(
@@ -956,9 +958,9 @@ absl::StatusOr<absl::optional<Value>> TypeReflector::DeserializeValueImpl(
   return absl::nullopt;
 }
 
-absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
+absl::StatusOr<absl::Nullable<StructValueBuilderPtr>>
 TypeReflector::NewStructValueBuilder(ValueFactory&, const StructType&) const {
-  return absl::nullopt;
+  return nullptr;
 }
 
 absl::StatusOr<bool> TypeReflector::FindValue(ValueFactory&, absl::string_view,

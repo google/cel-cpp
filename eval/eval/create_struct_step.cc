@@ -88,11 +88,10 @@ absl::StatusOr<Value> CreateStructStepForStruct::DoEvaluate(
   if (!builder_or_status.ok()) {
     return builder_or_status.status();
   }
-  auto maybe_builder = std::move(*builder_or_status);
-  if (!maybe_builder.has_value()) {
+  auto builder = std::move(*builder_or_status);
+  if (builder == nullptr) {
     return absl::NotFoundError(absl::StrCat("Unable to find builder: ", name_));
   }
-  auto builder = std::move(*maybe_builder);
 
   for (int i = 0; i < entries_size; ++i) {
     const auto& entry = entries_[i];
@@ -164,12 +163,12 @@ absl::Status DirectCreateStructStep::Evaluate(ExecutionFrameBase& frame,
     result = frame.value_manager().CreateErrorValue(builder_or_status.status());
     return absl::OkStatus();
   }
-  if (!builder_or_status->has_value()) {
+  auto builder = std::move(*builder_or_status);
+  if (builder == nullptr) {
     result = frame.value_manager().CreateErrorValue(
         absl::NotFoundError(absl::StrCat("Unable to find builder: ", name_)));
     return absl::OkStatus();
   }
-  auto& builder = **builder_or_status;
 
   for (int i = 0; i < field_keys_.size(); i++) {
     CEL_RETURN_IF_ERROR(deps_[i]->Evaluate(frame, field_value, field_attr));

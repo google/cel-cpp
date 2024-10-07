@@ -15,6 +15,7 @@
 
 #include <memory>
 
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
@@ -27,7 +28,7 @@
 
 namespace cel::runtime_internal {
 
-absl::StatusOr<Unique<ListValueBuilder>>
+absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>>
 ComposedTypeProvider::NewListValueBuilder(ValueFactory& value_factory,
                                           const ListType& type) const {
   if (use_legacy_container_builders_) {
@@ -38,7 +39,7 @@ ComposedTypeProvider::NewListValueBuilder(ValueFactory& value_factory,
                                                             type);
 }
 
-absl::StatusOr<Unique<MapValueBuilder>>
+absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>>
 ComposedTypeProvider::NewMapValueBuilder(ValueFactory& value_factory,
                                          const MapType& type) const {
   if (use_legacy_container_builders_) {
@@ -48,17 +49,17 @@ ComposedTypeProvider::NewMapValueBuilder(ValueFactory& value_factory,
   return TypeReflector::ModernBuiltin().NewMapValueBuilder(value_factory, type);
 }
 
-absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
+absl::StatusOr<absl::Nullable<StructValueBuilderPtr>>
 ComposedTypeProvider::NewStructValueBuilder(ValueFactory& value_factory,
                                             const StructType& type) const {
   for (const std::unique_ptr<TypeReflector>& provider : providers_) {
     CEL_ASSIGN_OR_RETURN(auto builder,
                          provider->NewStructValueBuilder(value_factory, type));
-    if (builder) {
+    if (builder != nullptr) {
       return builder;
     }
   }
-  return absl::nullopt;
+  return nullptr;
 }
 
 absl::StatusOr<bool> ComposedTypeProvider::FindValue(

@@ -15,8 +15,10 @@
 #include "eval/public/structs/legacy_type_provider.h"
 
 #include <cstdint>
+#include <memory>
 #include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -95,7 +97,7 @@ class LegacyStructValueBuilder final : public cel::StructValueBuilder {
 
 }  // namespace
 
-absl::StatusOr<absl::optional<cel::Unique<cel::StructValueBuilder>>>
+absl::StatusOr<absl::Nullable<cel::StructValueBuilderPtr>>
 LegacyTypeProvider::NewStructValueBuilder(cel::ValueFactory& value_factory,
                                           const cel::StructType& type) const {
   if (auto type_adapter = ProvideLegacyType(type.name());
@@ -107,12 +109,10 @@ LegacyTypeProvider::NewStructValueBuilder(cel::ValueFactory& value_factory,
     }
     CEL_ASSIGN_OR_RETURN(auto builder, mutation_apis->NewInstance(
                                            value_factory.GetMemoryManager()));
-    return value_factory.GetMemoryManager()
-        .MakeUnique<LegacyStructValueBuilder>(value_factory.GetMemoryManager(),
-                                              *type_adapter,
-                                              std::move(builder));
+    return std::make_unique<LegacyStructValueBuilder>(
+        value_factory.GetMemoryManager(), *type_adapter, std::move(builder));
   }
-  return absl::nullopt;
+  return nullptr;
 }
 
 absl::StatusOr<absl::optional<cel::Value>>

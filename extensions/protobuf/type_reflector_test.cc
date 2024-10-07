@@ -16,7 +16,6 @@
 
 #include "google/protobuf/wrappers.pb.h"
 #include "absl/status/status.h"
-#include "absl/types/optional.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/type_reflector.h"
@@ -24,13 +23,14 @@
 #include "common/value_testing.h"
 #include "internal/testing.h"
 #include "proto/test/v1/proto2/test_all_types.pb.h"
-#include "google/protobuf/descriptor.h"
 
 namespace cel::extensions {
 namespace {
 
 using ::absl_testing::StatusIs;
 using ::google::api::expr::test::v1::proto2::TestAllTypes;
+using ::testing::IsNull;
+using ::testing::NotNull;
 
 class ProtoTypeReflectorTest
     : public common_internal::ThreadCompatibleValueTest<> {
@@ -46,15 +46,15 @@ TEST_P(ProtoTypeReflectorTest, NewStructValueBuilder_NoSuchType) {
       auto builder,
       value_manager().NewStructValueBuilder(
           common_internal::MakeBasicStructType("message.that.does.not.Exist")));
-  ASSERT_FALSE(builder.has_value());
+  EXPECT_THAT(builder, IsNull());
 }
 
 TEST_P(ProtoTypeReflectorTest, NewStructValueBuilder_SetFieldByNumber) {
   ASSERT_OK_AND_ASSIGN(auto builder,
                        value_manager().NewStructValueBuilder(
                            MessageType(TestAllTypes::descriptor())));
-  ASSERT_TRUE(builder.has_value());
-  EXPECT_THAT((*builder)->SetFieldByNumber(13, UnknownValue{}),
+  ASSERT_THAT(builder, NotNull());
+  EXPECT_THAT(builder->SetFieldByNumber(13, UnknownValue{}),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -62,56 +62,48 @@ TEST_P(ProtoTypeReflectorTest, NewStructValueBuilder_TypeConversionError) {
   ASSERT_OK_AND_ASSIGN(auto builder,
                        value_manager().NewStructValueBuilder(
                            MessageType(TestAllTypes::descriptor())));
-  ASSERT_TRUE(builder.has_value());
-  EXPECT_THAT((*builder)->SetFieldByName("single_bool", UnknownValue{}),
+  ASSERT_THAT(builder, NotNull());
+  EXPECT_THAT(builder->SetFieldByName("single_bool", UnknownValue{}),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByName("single_int32", UnknownValue{}),
+  EXPECT_THAT(builder->SetFieldByName("single_int32", UnknownValue{}),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByName("single_int64", UnknownValue{}),
+  EXPECT_THAT(builder->SetFieldByName("single_int64", UnknownValue{}),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByName("single_uint32", UnknownValue{}),
+  EXPECT_THAT(builder->SetFieldByName("single_uint32", UnknownValue{}),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByName("single_uint64", UnknownValue{}),
+  EXPECT_THAT(builder->SetFieldByName("single_uint64", UnknownValue{}),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByName("single_float", UnknownValue{}),
+  EXPECT_THAT(builder->SetFieldByName("single_float", UnknownValue{}),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByName("single_double", UnknownValue{}),
+  EXPECT_THAT(builder->SetFieldByName("single_double", UnknownValue{}),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByName("single_string", UnknownValue{}),
+  EXPECT_THAT(builder->SetFieldByName("single_string", UnknownValue{}),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByName("single_bytes", UnknownValue{}),
+  EXPECT_THAT(builder->SetFieldByName("single_bytes", UnknownValue{}),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByName("single_bool_wrapper", UnknownValue{}),
+  EXPECT_THAT(builder->SetFieldByName("single_bool_wrapper", UnknownValue{}),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(
-      (*builder)->SetFieldByName("single_int32_wrapper", UnknownValue{}),
-      StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(
-      (*builder)->SetFieldByName("single_int64_wrapper", UnknownValue{}),
-      StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(
-      (*builder)->SetFieldByName("single_uint32_wrapper", UnknownValue{}),
-      StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(
-      (*builder)->SetFieldByName("single_uint64_wrapper", UnknownValue{}),
-      StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(
-      (*builder)->SetFieldByName("single_float_wrapper", UnknownValue{}),
-      StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(
-      (*builder)->SetFieldByName("single_double_wrapper", UnknownValue{}),
-      StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(
-      (*builder)->SetFieldByName("single_string_wrapper", UnknownValue{}),
-      StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(
-      (*builder)->SetFieldByName("single_bytes_wrapper", UnknownValue{}),
-      StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByName("null_value", UnknownValue{}),
+  EXPECT_THAT(builder->SetFieldByName("single_int32_wrapper", UnknownValue{}),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByName("repeated_bool", UnknownValue{}),
+  EXPECT_THAT(builder->SetFieldByName("single_int64_wrapper", UnknownValue{}),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByName("map_bool_bool", UnknownValue{}),
+  EXPECT_THAT(builder->SetFieldByName("single_uint32_wrapper", UnknownValue{}),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(builder->SetFieldByName("single_uint64_wrapper", UnknownValue{}),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(builder->SetFieldByName("single_float_wrapper", UnknownValue{}),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(builder->SetFieldByName("single_double_wrapper", UnknownValue{}),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(builder->SetFieldByName("single_string_wrapper", UnknownValue{}),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(builder->SetFieldByName("single_bytes_wrapper", UnknownValue{}),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(builder->SetFieldByName("null_value", UnknownValue{}),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(builder->SetFieldByName("repeated_bool", UnknownValue{}),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(builder->SetFieldByName("map_bool_bool", UnknownValue{}),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 

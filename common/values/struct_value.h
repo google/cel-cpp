@@ -423,6 +423,8 @@ class StructValueBuilder {
   virtual absl::StatusOr<StructValue> Build() && = 0;
 };
 
+using StructValueBuilderPtr = std::unique_ptr<StructValueBuilder>;
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_STRUCT_VALUE_H_

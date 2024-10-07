@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUE_MANAGER_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUE_MANAGER_H_
 
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
@@ -38,25 +39,25 @@ class ValueManager : public virtual ValueFactory,
   const TypeReflector& type_provider() const { return GetTypeReflector(); }
 
   // See `TypeReflector::NewListValueBuilder`.
-  absl::StatusOr<Unique<ListValueBuilder>> NewListValueBuilder(
+  absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>> NewListValueBuilder(
       const ListType& type) {
     return GetTypeReflector().NewListValueBuilder(*this, type);
   }
 
   // See `TypeReflector::NewMapValueBuilder`.
-  absl::StatusOr<Unique<MapValueBuilder>> NewMapValueBuilder(
+  absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>> NewMapValueBuilder(
       const MapType& type) {
     return GetTypeReflector().NewMapValueBuilder(*this, type);
   }
 
   // See `TypeReflector::NewStructValueBuilder`.
-  absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
-  NewStructValueBuilder(const StructType& type) {
+  absl::StatusOr<absl::Nullable<StructValueBuilderPtr>> NewStructValueBuilder(
+      const StructType& type) {
     return GetTypeReflector().NewStructValueBuilder(*this, type);
   }
 
   // See `TypeReflector::NewValueBuilder`.
-  absl::StatusOr<absl::optional<Unique<ValueBuilder>>> NewValueBuilder(
+  absl::StatusOr<absl::Nullable<ValueBuilderPtr>> NewValueBuilder(
       absl::string_view name) {
     return GetTypeReflector().NewValueBuilder(*this, name);
   }

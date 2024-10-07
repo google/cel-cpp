@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/base/attributes.h"
 #include "absl/base/call_once.h"
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -149,8 +151,8 @@ class ListValueBuilderImpl final : public ListValueBuilder {
 };
 
 using LegacyTypeReflector_NewListValueBuilder =
-    absl::StatusOr<Unique<ListValueBuilder>> (*)(ValueFactory&,
-                                                 const ListType&);
+    absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>> (*)(ValueFactory&,
+                                                           const ListType&);
 
 ABSL_CONST_INIT struct {
   absl::once_flag init_once;
@@ -158,9 +160,10 @@ ABSL_CONST_INIT struct {
 } legacy_type_reflector_vtable;
 
 #if ABSL_HAVE_ATTRIBUTE_WEAK
-extern "C" ABSL_ATTRIBUTE_WEAK absl::StatusOr<Unique<ListValueBuilder>>
-cel_common_internal_LegacyTypeReflector_NewListValueBuilder(
-    ValueFactory& value_factory, const ListType& type);
+extern "C" ABSL_ATTRIBUTE_WEAK
+    absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>>
+    cel_common_internal_LegacyTypeReflector_NewListValueBuilder(
+        ValueFactory& value_factory, const ListType& type);
 #endif
 
 void InitializeLegacyTypeReflector() {
@@ -182,15 +185,16 @@ void InitializeLegacyTypeReflector() {
 
 }  // namespace
 
-absl::StatusOr<Unique<ListValueBuilder>> TypeReflector::NewListValueBuilder(
-    ValueFactory& value_factory, const ListType& type) const {
+absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>>
+TypeReflector::NewListValueBuilder(ValueFactory& value_factory,
+                                   const ListType& type) const {
   auto memory_manager = value_factory.GetMemoryManager();
-  return memory_manager.MakeUnique<ListValueBuilderImpl>(memory_manager);
+  return std::make_unique<ListValueBuilderImpl>(memory_manager);
 }
 
 namespace common_internal {
 
-absl::StatusOr<Unique<ListValueBuilder>>
+absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>>
 LegacyTypeReflector::NewListValueBuilder(ValueFactory& value_factory,
                                          const ListType& type) const {
   InitializeLegacyTypeReflector();

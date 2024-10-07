@@ -14,6 +14,7 @@
 
 #include "common/values/thread_compatible_type_reflector.h"
 
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
@@ -23,10 +24,10 @@
 
 namespace cel::common_internal {
 
-absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
+absl::StatusOr<absl::Nullable<StructValueBuilderPtr>>
 ThreadCompatibleTypeReflector::NewStructValueBuilder(ValueFactory&,
                                                      const StructType&) const {
-  return absl::nullopt;
+  return nullptr;
 }
 
 absl::StatusOr<bool> ThreadCompatibleTypeReflector::FindValue(ValueFactory&,

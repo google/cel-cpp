@@ -54,7 +54,7 @@ class MutableListValue final : public cel::OpaqueValueInterface {
         cel::internal::down_cast<const MutableListValue&>(*value));
   }
 
-  explicit MutableListValue(cel::Unique<cel::ListValueBuilder> list_builder);
+  explicit MutableListValue(cel::ListValueBuilderPtr list_builder);
 
   OpaqueType GetRuntimeType() const override { return OpaqueType(); }
 
@@ -82,7 +82,7 @@ class MutableListValue final : public cel::OpaqueValueInterface {
  private:
   cel::NativeTypeId GetNativeTypeId() const override;
 
-  cel::Unique<cel::ListValueBuilder> list_builder_;
+  cel::ListValueBuilderPtr list_builder_;
 };
 
 }  //  namespace cel::runtime_internal

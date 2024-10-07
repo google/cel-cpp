@@ -17,31 +17,35 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_COMPATIBLE_TYPE_REFLECTOR_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_COMPATIBLE_TYPE_REFLECTOR_H_
 
+#include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
-#include "common/memory.h"
 #include "common/type.h"
 #include "common/type_reflector.h"
 #include "common/types/thread_compatible_type_introspector.h"
 #include "common/value.h"
 
-namespace cel::common_internal {
+namespace cel {
+
+class ValueFactory;
+
+namespace common_internal {
 
 class ThreadCompatibleTypeReflector : public ThreadCompatibleTypeIntrospector,
                                       public TypeReflector {
  public:
   ThreadCompatibleTypeReflector() : ThreadCompatibleTypeIntrospector() {}
 
-  absl::StatusOr<absl::optional<Unique<StructValueBuilder>>>
-  NewStructValueBuilder(ValueFactory& value_factory,
-                        const StructType& type) const override;
+  absl::StatusOr<absl::Nullable<StructValueBuilderPtr>> NewStructValueBuilder(
+      ValueFactory& value_factory, const StructType& type) const override;
 
   absl::StatusOr<bool> FindValue(ValueFactory& value_factory,
                                  absl::string_view name,
                                  Value& result) const override;
 };
 
-}  // namespace cel::common_internal
+}  // namespace common_internal
+
+}  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_THREAD_COMPATIBLE_TYPE_REFLECTOR_H_

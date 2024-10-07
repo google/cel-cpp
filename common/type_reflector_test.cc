@@ -17,14 +17,13 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/time/time.h"
 #include "common/casting.h"
-#include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
 #include "common/value.h"
 #include "common/value_testing.h"
-#include "common/values/legacy_value_manager.h"
 #include "common/values/list_value.h"
 #include "internal/testing.h"
 
@@ -34,7 +33,7 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
-using ::testing::Optional;
+using ::testing::NotNull;
 
 using TypeReflectorTest = common_internal::ThreadCompatibleValueTest<>;
 
@@ -223,18 +222,18 @@ TEST_P(TypeReflectorTest, JsonKeyCoverage) {
 TEST_P(TypeReflectorTest, NewValueBuilder_BoolValue) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.BoolValue"));
-  ASSERT_TRUE(builder.has_value());
-  EXPECT_THAT((*builder)->SetFieldByName("value", BoolValue(true)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByName("does_not_exist", BoolValue(true)),
+  ASSERT_THAT(builder, NotNull());
+  EXPECT_THAT(builder->SetFieldByName("value", BoolValue(true)), IsOk());
+  EXPECT_THAT(builder->SetFieldByName("does_not_exist", BoolValue(true)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByName("value", IntValue(1)),
+  EXPECT_THAT(builder->SetFieldByName("value", IntValue(1)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, BoolValue(true)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByNumber(2, BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, BoolValue(true)), IsOk());
+  EXPECT_THAT(builder->SetFieldByNumber(2, BoolValue(true)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, IntValue(1)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, IntValue(1)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  auto value = std::move(**builder).Build();
+  auto value = std::move(*builder).Build();
   EXPECT_TRUE(InstanceOf<BoolValue>(value));
   EXPECT_EQ(Cast<BoolValue>(value).NativeValue(), true);
 }
@@ -242,24 +241,24 @@ TEST_P(TypeReflectorTest, NewValueBuilder_BoolValue) {
 TEST_P(TypeReflectorTest, NewValueBuilder_Int32Value) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.Int32Value"));
-  ASSERT_TRUE(builder.has_value());
-  EXPECT_THAT((*builder)->SetFieldByName("value", IntValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByName("does_not_exist", IntValue(1)),
+  ASSERT_THAT(builder, NotNull());
+  EXPECT_THAT(builder->SetFieldByName("value", IntValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByName("does_not_exist", IntValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByName("value", BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByName("value", BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByName(
+  EXPECT_THAT(builder->SetFieldByName(
                   "value", IntValue(std::numeric_limits<int64_t>::max())),
               StatusIs(absl::StatusCode::kOutOfRange));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, IntValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByNumber(2, IntValue(1)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, IntValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByNumber(2, IntValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByNumber(
+  EXPECT_THAT(builder->SetFieldByNumber(
                   1, IntValue(std::numeric_limits<int64_t>::max())),
               StatusIs(absl::StatusCode::kOutOfRange));
-  auto value = std::move(**builder).Build();
+  auto value = std::move(*builder).Build();
   EXPECT_TRUE(InstanceOf<IntValue>(value));
   EXPECT_EQ(Cast<IntValue>(value).NativeValue(), 1);
 }
@@ -267,18 +266,18 @@ TEST_P(TypeReflectorTest, NewValueBuilder_Int32Value) {
 TEST_P(TypeReflectorTest, NewValueBuilder_Int64Value) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.Int64Value"));
-  ASSERT_TRUE(builder.has_value());
-  EXPECT_THAT((*builder)->SetFieldByName("value", IntValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByName("does_not_exist", IntValue(1)),
+  ASSERT_THAT(builder, NotNull());
+  EXPECT_THAT(builder->SetFieldByName("value", IntValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByName("does_not_exist", IntValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByName("value", BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByName("value", BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, IntValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByNumber(2, IntValue(1)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, IntValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByNumber(2, IntValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  auto value = std::move(**builder).Build();
+  auto value = std::move(*builder).Build();
   EXPECT_TRUE(InstanceOf<IntValue>(value));
   EXPECT_EQ(Cast<IntValue>(value).NativeValue(), 1);
 }
@@ -286,24 +285,24 @@ TEST_P(TypeReflectorTest, NewValueBuilder_Int64Value) {
 TEST_P(TypeReflectorTest, NewValueBuilder_UInt32Value) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.UInt32Value"));
-  ASSERT_TRUE(builder.has_value());
-  EXPECT_THAT((*builder)->SetFieldByName("value", UintValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByName("does_not_exist", UintValue(1)),
+  ASSERT_THAT(builder, NotNull());
+  EXPECT_THAT(builder->SetFieldByName("value", UintValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByName("does_not_exist", UintValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByName("value", BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByName("value", BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByName(
+  EXPECT_THAT(builder->SetFieldByName(
                   "value", UintValue(std::numeric_limits<uint64_t>::max())),
               StatusIs(absl::StatusCode::kOutOfRange));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, UintValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByNumber(2, UintValue(1)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, UintValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByNumber(2, UintValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByNumber(
+  EXPECT_THAT(builder->SetFieldByNumber(
                   1, UintValue(std::numeric_limits<uint64_t>::max())),
               StatusIs(absl::StatusCode::kOutOfRange));
-  auto value = std::move(**builder).Build();
+  auto value = std::move(*builder).Build();
   EXPECT_TRUE(InstanceOf<UintValue>(value));
   EXPECT_EQ(Cast<UintValue>(value).NativeValue(), 1);
 }
@@ -311,18 +310,18 @@ TEST_P(TypeReflectorTest, NewValueBuilder_UInt32Value) {
 TEST_P(TypeReflectorTest, NewValueBuilder_UInt64Value) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.UInt64Value"));
-  ASSERT_TRUE(builder.has_value());
-  EXPECT_THAT((*builder)->SetFieldByName("value", UintValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByName("does_not_exist", UintValue(1)),
+  ASSERT_THAT(builder, NotNull());
+  EXPECT_THAT(builder->SetFieldByName("value", UintValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByName("does_not_exist", UintValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByName("value", BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByName("value", BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, UintValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByNumber(2, UintValue(1)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, UintValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByNumber(2, UintValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  auto value = std::move(**builder).Build();
+  auto value = std::move(*builder).Build();
   EXPECT_TRUE(InstanceOf<UintValue>(value));
   EXPECT_EQ(Cast<UintValue>(value).NativeValue(), 1);
 }
@@ -330,18 +329,18 @@ TEST_P(TypeReflectorTest, NewValueBuilder_UInt64Value) {
 TEST_P(TypeReflectorTest, NewValueBuilder_FloatValue) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.FloatValue"));
-  ASSERT_TRUE(builder.has_value());
-  EXPECT_THAT((*builder)->SetFieldByName("value", DoubleValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByName("does_not_exist", DoubleValue(1)),
+  ASSERT_THAT(builder, NotNull());
+  EXPECT_THAT(builder->SetFieldByName("value", DoubleValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByName("does_not_exist", DoubleValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByName("value", BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByName("value", BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, DoubleValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByNumber(2, DoubleValue(1)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, DoubleValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByNumber(2, DoubleValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  auto value = std::move(**builder).Build();
+  auto value = std::move(*builder).Build();
   EXPECT_TRUE(InstanceOf<DoubleValue>(value));
   EXPECT_EQ(Cast<DoubleValue>(value).NativeValue(), 1);
 }
@@ -349,18 +348,18 @@ TEST_P(TypeReflectorTest, NewValueBuilder_FloatValue) {
 TEST_P(TypeReflectorTest, NewValueBuilder_DoubleValue) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.DoubleValue"));
-  ASSERT_TRUE(builder.has_value());
-  EXPECT_THAT((*builder)->SetFieldByName("value", DoubleValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByName("does_not_exist", DoubleValue(1)),
+  ASSERT_THAT(builder, NotNull());
+  EXPECT_THAT(builder->SetFieldByName("value", DoubleValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByName("does_not_exist", DoubleValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByName("value", BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByName("value", BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, DoubleValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByNumber(2, DoubleValue(1)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, DoubleValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByNumber(2, DoubleValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  auto value = std::move(**builder).Build();
+  auto value = std::move(*builder).Build();
   EXPECT_TRUE(InstanceOf<DoubleValue>(value));
   EXPECT_EQ(Cast<DoubleValue>(value).NativeValue(), 1);
 }
@@ -368,18 +367,18 @@ TEST_P(TypeReflectorTest, NewValueBuilder_DoubleValue) {
 TEST_P(TypeReflectorTest, NewValueBuilder_StringValue) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.StringValue"));
-  ASSERT_TRUE(builder.has_value());
-  EXPECT_THAT((*builder)->SetFieldByName("value", StringValue("foo")), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByName("does_not_exist", StringValue("foo")),
+  ASSERT_THAT(builder, NotNull());
+  EXPECT_THAT(builder->SetFieldByName("value", StringValue("foo")), IsOk());
+  EXPECT_THAT(builder->SetFieldByName("does_not_exist", StringValue("foo")),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByName("value", BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByName("value", BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, StringValue("foo")), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByNumber(2, StringValue("foo")),
+  EXPECT_THAT(builder->SetFieldByNumber(1, StringValue("foo")), IsOk());
+  EXPECT_THAT(builder->SetFieldByNumber(2, StringValue("foo")),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  auto value = std::move(**builder).Build();
+  auto value = std::move(*builder).Build();
   EXPECT_TRUE(InstanceOf<StringValue>(value));
   EXPECT_EQ(Cast<StringValue>(value).NativeString(), "foo");
 }
@@ -387,18 +386,18 @@ TEST_P(TypeReflectorTest, NewValueBuilder_StringValue) {
 TEST_P(TypeReflectorTest, NewValueBuilder_BytesValue) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.BytesValue"));
-  ASSERT_TRUE(builder.has_value());
-  EXPECT_THAT((*builder)->SetFieldByName("value", BytesValue("foo")), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByName("does_not_exist", BytesValue("foo")),
+  ASSERT_THAT(builder, NotNull());
+  EXPECT_THAT(builder->SetFieldByName("value", BytesValue("foo")), IsOk());
+  EXPECT_THAT(builder->SetFieldByName("does_not_exist", BytesValue("foo")),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByName("value", BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByName("value", BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, BytesValue("foo")), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByNumber(2, BytesValue("foo")),
+  EXPECT_THAT(builder->SetFieldByNumber(1, BytesValue("foo")), IsOk());
+  EXPECT_THAT(builder->SetFieldByNumber(2, BytesValue("foo")),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  auto value = std::move(**builder).Build();
+  auto value = std::move(*builder).Build();
   EXPECT_TRUE(InstanceOf<BytesValue>(value));
   EXPECT_EQ(Cast<BytesValue>(value).NativeString(), "foo");
 }
@@ -406,30 +405,30 @@ TEST_P(TypeReflectorTest, NewValueBuilder_BytesValue) {
 TEST_P(TypeReflectorTest, NewValueBuilder_Duration) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.Duration"));
-  ASSERT_TRUE(builder.has_value());
-  EXPECT_THAT((*builder)->SetFieldByName("seconds", IntValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByName("does_not_exist", IntValue(1)),
+  ASSERT_THAT(builder, NotNull());
+  EXPECT_THAT(builder->SetFieldByName("seconds", IntValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByName("does_not_exist", IntValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByName("seconds", BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByName("seconds", BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByName("nanos", IntValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByName(
+  EXPECT_THAT(builder->SetFieldByName("nanos", IntValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByName(
                   "nanos", IntValue(std::numeric_limits<int64_t>::max())),
               StatusIs(absl::StatusCode::kOutOfRange));
-  EXPECT_THAT((*builder)->SetFieldByName("nanos", BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByName("nanos", BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, IntValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByNumber(3, IntValue(1)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, IntValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByNumber(3, IntValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByNumber(2, IntValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByNumber(
+  EXPECT_THAT(builder->SetFieldByNumber(2, IntValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByNumber(
                   2, IntValue(std::numeric_limits<int64_t>::max())),
               StatusIs(absl::StatusCode::kOutOfRange));
-  EXPECT_THAT((*builder)->SetFieldByNumber(2, BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByNumber(2, BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  auto value = std::move(**builder).Build();
+  auto value = std::move(*builder).Build();
   EXPECT_TRUE(InstanceOf<DurationValue>(value));
   EXPECT_EQ(Cast<DurationValue>(value).NativeValue(),
             absl::Seconds(1) + absl::Nanoseconds(1));
@@ -438,30 +437,30 @@ TEST_P(TypeReflectorTest, NewValueBuilder_Duration) {
 TEST_P(TypeReflectorTest, NewValueBuilder_Timestamp) {
   ASSERT_OK_AND_ASSIGN(auto builder, value_manager().NewValueBuilder(
                                          "google.protobuf.Timestamp"));
-  ASSERT_TRUE(builder.has_value());
-  EXPECT_THAT((*builder)->SetFieldByName("seconds", IntValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByName("does_not_exist", IntValue(1)),
+  ASSERT_THAT(builder, NotNull());
+  EXPECT_THAT(builder->SetFieldByName("seconds", IntValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByName("does_not_exist", IntValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByName("seconds", BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByName("seconds", BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByName("nanos", IntValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByName(
+  EXPECT_THAT(builder->SetFieldByName("nanos", IntValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByName(
                   "nanos", IntValue(std::numeric_limits<int64_t>::max())),
               StatusIs(absl::StatusCode::kOutOfRange));
-  EXPECT_THAT((*builder)->SetFieldByName("nanos", BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByName("nanos", BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, IntValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByNumber(3, IntValue(1)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, IntValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByNumber(3, IntValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByNumber(2, IntValue(1)), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByNumber(
+  EXPECT_THAT(builder->SetFieldByNumber(2, IntValue(1)), IsOk());
+  EXPECT_THAT(builder->SetFieldByNumber(
                   2, IntValue(std::numeric_limits<int64_t>::max())),
               StatusIs(absl::StatusCode::kOutOfRange));
-  EXPECT_THAT((*builder)->SetFieldByNumber(2, BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByNumber(2, BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  auto value = std::move(**builder).Build();
+  auto value = std::move(*builder).Build();
   EXPECT_TRUE(InstanceOf<TimestampValue>(value));
   EXPECT_EQ(Cast<TimestampValue>(value).NativeValue(),
             absl::UnixEpoch() + absl::Seconds(1) + absl::Nanoseconds(1));
@@ -470,30 +469,30 @@ TEST_P(TypeReflectorTest, NewValueBuilder_Timestamp) {
 TEST_P(TypeReflectorTest, NewValueBuilder_Any) {
   ASSERT_OK_AND_ASSIGN(auto builder,
                        value_manager().NewValueBuilder("google.protobuf.Any"));
-  ASSERT_TRUE(builder.has_value());
-  EXPECT_THAT((*builder)->SetFieldByName(
+  ASSERT_THAT(builder, NotNull());
+  EXPECT_THAT(builder->SetFieldByName(
                   "type_url",
                   StringValue("type.googleapis.com/google.protobuf.BoolValue")),
               IsOk());
-  EXPECT_THAT((*builder)->SetFieldByName("does_not_exist", IntValue(1)),
+  EXPECT_THAT(builder->SetFieldByName("does_not_exist", IntValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByName("type_url", BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByName("type_url", BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByName("value", BytesValue()), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByName("value", BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByName("value", BytesValue()), IsOk());
+  EXPECT_THAT(builder->SetFieldByName("value", BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
   EXPECT_THAT(
-      (*builder)->SetFieldByNumber(
+      builder->SetFieldByNumber(
           1, StringValue("type.googleapis.com/google.protobuf.BoolValue")),
       IsOk());
-  EXPECT_THAT((*builder)->SetFieldByNumber(3, IntValue(1)),
+  EXPECT_THAT(builder->SetFieldByNumber(3, IntValue(1)),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT((*builder)->SetFieldByNumber(1, BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByNumber(1, BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT((*builder)->SetFieldByNumber(2, BytesValue()), IsOk());
-  EXPECT_THAT((*builder)->SetFieldByNumber(2, BoolValue(true)),
+  EXPECT_THAT(builder->SetFieldByNumber(2, BytesValue()), IsOk());
+  EXPECT_THAT(builder->SetFieldByNumber(2, BoolValue(true)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  auto value = std::move(**builder).Build();
+  auto value = std::move(*builder).Build();
   EXPECT_TRUE(InstanceOf<BoolValue>(value));
   EXPECT_EQ(Cast<BoolValue>(value).NativeValue(), false);
 }

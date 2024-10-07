@@ -2596,6 +2596,8 @@ class ValueBuilder {
   virtual Value Build() && = 0;
 };
 
+using ValueBuilderPtr = std::unique_ptr<ValueBuilder>;
+
 using ListValueBuilderInterface = ListValueBuilder;
 using MapValueBuilderInterface = MapValueBuilder;
 using StructValueBuilderInterface = StructValueBuilder;
