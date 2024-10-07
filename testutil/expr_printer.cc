@@ -15,230 +15,239 @@
 #include "testutil/expr_printer.h"
 
 #include <algorithm>
+#include <memory>
 #include <string>
 
+#include "absl/base/no_destructor.h"
+#include "absl/log/absl_log.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_format.h"
+#include "base/ast_internal/ast_impl.h"
+#include "common/ast.h"
+#include "common/constant.h"
+#include "common/expr.h"
+#include "extensions/protobuf/ast_converters.h"
 #include "internal/strings.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace testutil {
+namespace cel::test {
 namespace {
 
-using ::google::api::expr::v1alpha1::Expr;
+using ::cel::extensions::CreateAstFromParsedExpr;
 
-class EmptyAdorner : public ExpressionAdorner {
+class EmptyAdornerImpl : public ExpressionAdorner {
  public:
-  ~EmptyAdorner() override {}
+  std::string Adorn(const Expr& e) const override { return ""; }
 
-  std::string adorn(const Expr& e) const override { return ""; }
-
-  std::string adorn(const Expr::CreateStruct::Entry& e) const override {
+  std::string AdornStructField(const StructExprField& e) const override {
     return "";
   }
+
+  std::string AdornMapEntry(const MapExprEntry& e) const override { return ""; }
 };
 
-const EmptyAdorner the_empty_adorner;
-
-class Writer {
+class StringBuilder {
  public:
-  explicit Writer(const ExpressionAdorner& adorner)
+  explicit StringBuilder(const ExpressionAdorner& adorner)
       : adorner_(adorner), line_start_(true), indent_(0) {}
 
-  void appendExpr(const Expr& e) {
-    switch (e.expr_kind_case()) {
-      case Expr::kConstExpr:
-        append(formatLiteral(e.const_expr()));
+  std::string Print(const Expr& expr) {
+    AppendExpr(expr);
+    return s_;
+  }
+
+ private:
+  void AppendExpr(const Expr& e) {
+    switch (e.kind_case()) {
+      case ExprKindCase::kConstant:
+        Append(FormatLiteral(e.const_expr()));
         break;
-      case Expr::kIdentExpr:
-        append(e.ident_expr().name());
+      case ExprKindCase::kIdentExpr:
+        Append(e.ident_expr().name());
         break;
-      case Expr::kSelectExpr:
-        appendSelect(e.select_expr());
+      case ExprKindCase::kSelectExpr:
+        AppendSelect(e.select_expr());
         break;
-      case Expr::kCallExpr:
-        appendCall(e.call_expr());
+      case ExprKindCase::kCallExpr:
+        AppendCall(e.call_expr());
         break;
-      case Expr::kListExpr:
-        appendList(e.list_expr());
+      case ExprKindCase::kListExpr:
+        AppendList(e.list_expr());
         break;
-      case Expr::kStructExpr:
-        appendStruct(e.struct_expr());
+      case ExprKindCase::kMapExpr:
+        AppendMap(e.map_expr());
         break;
-      case Expr::kComprehensionExpr:
-        appendComprehension(e.comprehension_expr());
+      case ExprKindCase::kStructExpr:
+        AppendStruct(e.struct_expr());
+        break;
+      case ExprKindCase::kComprehensionExpr:
+        AppendComprehension(e.comprehension_expr());
         break;
       default:
         break;
     }
-    appendAdorn(e);
+    Append(adorner_.Adorn(e));
   }
 
-  void appendSelect(const Expr::Select& sel) {
-    appendExpr(sel.operand());
-    append(".");
-    append(sel.field());
+  void AppendSelect(const SelectExpr& sel) {
+    AppendExpr(sel.operand());
+    Append(".");
+    Append(sel.field());
     if (sel.test_only()) {
-      append("~test-only~");
+      Append("~test-only~");
     }
   }
 
-  void appendCall(const Expr::Call& call) {
+  void AppendCall(const CallExpr& call) {
     if (call.has_target()) {
-      appendExpr(call.target());
+      AppendExpr(call.target());
       s_ += ".";
     }
-    append(call.function());
-    append("(");
-    if (call.args_size() > 0) {
-      addIndent();
-      appendLine();
-      for (int i = 0; i < call.args_size(); ++i) {
-        const auto& arg = call.args(i);
-        if (i > 0) {
-          append(",");
-          appendLine();
-        }
-        appendExpr(arg);
+
+    Append(call.function());
+    if (call.args().empty()) {
+      Append("()");
+      return;
+    }
+
+    Append("(");
+    Indent();
+    AppendLine();
+    for (int i = 0; i < call.args().size(); ++i) {
+      const auto& arg = call.args()[i];
+      if (i > 0) {
+        Append(",");
+        AppendLine();
       }
-      removeIndent();
-      appendLine();
+      AppendExpr(arg);
     }
-    append(")");
+    AppendLine();
+    Unindent();
+    Append(")");
   }
 
-  void appendList(const Expr::CreateList& list) {
-    append("[");
-    if (list.elements_size() > 0) {
-      appendLine();
-      addIndent();
-      for (int i = 0; i < list.elements_size(); ++i) {
-        const auto& elem = list.elements(i);
-        if (i > 0) {
-          append(",");
-          appendLine();
-        }
-        if (std::find(list.optional_indices().begin(),
-                      list.optional_indices().end(), static_cast<int32_t>(i)) !=
-            list.optional_indices().end()) {
-          append("?");
-        }
-        appendExpr(elem);
+  void AppendList(const ListExpr& list) {
+    if (list.elements().empty()) {
+      Append("[]");
+      return;
+    }
+    Append("[");
+    AppendLine();
+    Indent();
+    for (int i = 0; i < list.elements().size(); ++i) {
+      const auto& elem = list.elements()[i];
+      if (i > 0) {
+        Append(",");
+        AppendLine();
       }
-      removeIndent();
-      appendLine();
-    }
-    append("]");
-  }
-
-  void appendStruct(const Expr::CreateStruct& obj) {
-    if (obj.message_name().empty()) {
-      appendMap(obj);
-    } else {
-      appendObject(obj);
-    }
-  }
-
-  void appendMap(const Expr::CreateStruct& obj) {
-    append("{");
-    if (obj.entries_size() > 0) {
-      appendLine();
-      addIndent();
-      for (int i = 0; i < obj.entries_size(); ++i) {
-        const auto& entry = obj.entries(i);
-        if (i > 0) {
-          append(",");
-          appendLine();
-        }
-        if (entry.optional_entry()) {
-          append("?");
-        }
-        appendExpr(entry.map_key());
-        append(":");
-        appendExpr(entry.value());
-        appendAdorn(entry);
+      if (elem.optional()) {
+        Append("?");
       }
-      removeIndent();
-      appendLine();
+      AppendExpr(elem.expr());
     }
-    append("}");
+    AppendLine();
+    Unindent();
+    Append("]");
   }
 
-  void appendObject(const Expr::CreateStruct& obj) {
-    append(obj.message_name());
-    append("{");
-    if (obj.entries_size() > 0) {
-      appendLine();
-      addIndent();
-      for (int i = 0; i < obj.entries_size(); ++i) {
-        const auto& entry = obj.entries(i);
-        if (i > 0) {
-          append(",");
-          appendLine();
-        }
-        if (entry.optional_entry()) {
-          append("?");
-        }
-        append(entry.field_key());
-        append(":");
-        appendExpr(entry.value());
-        appendAdorn(entry);
+  void AppendStruct(const StructExpr& obj) {
+    Append(obj.name());
+
+    if (obj.fields().empty()) {
+      Append("{}");
+      return;
+    }
+
+    Append("{");
+    AppendLine();
+    Indent();
+    for (int i = 0; i < obj.fields().size(); ++i) {
+      const auto& entry = obj.fields()[i];
+      if (i > 0) {
+        Append(",");
+        AppendLine();
       }
-      removeIndent();
-      appendLine();
+      if (entry.optional()) {
+        Append("?");
+      }
+      Append(entry.name());
+      Append(":");
+      AppendExpr(entry.value());
+      Append(adorner_.AdornStructField(entry));
     }
-    append("}");
+    AppendLine();
+    Unindent();
+    Append("}");
   }
 
-  void appendComprehension(const Expr::Comprehension& comprehension) {
-    append("__comprehension__(");
-    addIndent();
-    appendLine();
-    append("// Variable");
-    appendLine();
-    append(comprehension.iter_var());
-    append(",");
-    appendLine();
-    append("// Target");
-    appendLine();
-    appendExpr(comprehension.iter_range());
-    append(",");
-    appendLine();
-    append("// Accumulator");
-    appendLine();
-    append(comprehension.accu_var());
-    append(",");
-    appendLine();
-    append("// Init");
-    appendLine();
-    appendExpr(comprehension.accu_init());
-    append(",");
-    appendLine();
-    append("// LoopCondition");
-    appendLine();
-    appendExpr(comprehension.loop_condition());
-    append(",");
-    appendLine();
-    append("// LoopStep");
-    appendLine();
-    appendExpr(comprehension.loop_step());
-    append(",");
-    appendLine();
-    append("// Result");
-    appendLine();
-    appendExpr(comprehension.result());
-    append(")");
-    removeIndent();
+  void AppendMap(const MapExpr& obj) {
+    if (obj.entries().empty()) {
+      Append("{}");
+      return;
+    }
+    Append("{");
+    AppendLine();
+    Indent();
+    for (int i = 0; i < obj.entries().size(); ++i) {
+      const auto& entry = obj.entries()[i];
+      if (i > 0) {
+        Append(",");
+        AppendLine();
+      }
+      if (entry.optional()) {
+        Append("?");
+      }
+      AppendExpr(entry.key());
+      Append(":");
+      AppendExpr(entry.value());
+      Append(adorner_.AdornMapEntry(entry));
+    }
+    AppendLine();
+    Unindent();
+    Append("}");
   }
 
-  void appendAdorn(const Expr& e) { append(adorner_.adorn(e)); }
-
-  void appendAdorn(const Expr::CreateStruct::Entry& e) {
-    append(adorner_.adorn(e));
+  void AppendComprehension(const ComprehensionExpr& comprehension) {
+    Append("__comprehension__(");
+    Indent();
+    AppendLine();
+    Append("// Variable");
+    AppendLine();
+    Append(comprehension.iter_var());
+    Append(",");
+    AppendLine();
+    Append("// Target");
+    AppendLine();
+    AppendExpr(comprehension.iter_range());
+    Append(",");
+    AppendLine();
+    Append("// Accumulator");
+    AppendLine();
+    Append(comprehension.accu_var());
+    Append(",");
+    AppendLine();
+    Append("// Init");
+    AppendLine();
+    AppendExpr(comprehension.accu_init());
+    Append(",");
+    AppendLine();
+    Append("// LoopCondition");
+    AppendLine();
+    AppendExpr(comprehension.loop_condition());
+    Append(",");
+    AppendLine();
+    Append("// LoopStep");
+    AppendLine();
+    AppendExpr(comprehension.loop_step());
+    Append(",");
+    AppendLine();
+    Append("// Result");
+    AppendLine();
+    AppendExpr(comprehension.result());
+    Append(")");
+    Unindent();
   }
 
-  void append(const std::string& s) {
+  void Append(const std::string& s) {
     if (line_start_) {
       line_start_ = false;
       for (int i = 0; i < indent_; ++i) {
@@ -248,26 +257,27 @@ class Writer {
     s_ += s;
   }
 
-  void appendLine() {
+  void AppendLine() {
     s_ += "\n";
     line_start_ = true;
   }
 
-  void addIndent() { indent_ += 1; }
-
-  void removeIndent() {
-    if (indent_ > 0) {
-      indent_ -= 1;
+  void Indent() { ++indent_; }
+  void Unindent() {
+    if (indent_ >= 0) {
+      --indent_;
+    } else {
+      ABSL_LOG(ERROR) << "ExprPrinter indent underflow";
     }
   }
 
-  std::string formatLiteral(const google::api::expr::v1alpha1::Constant& c) {
-    switch (c.constant_kind_case()) {
-      case google::api::expr::v1alpha1::Constant::kBoolValue:
+  std::string FormatLiteral(const Constant& c) {
+    switch (c.kind_case()) {
+      case ConstantKindCase::kBool:
         return absl::StrFormat("%s", c.bool_value() ? "true" : "false");
-      case google::api::expr::v1alpha1::Constant::kBytesValue:
+      case ConstantKindCase::kBytes:
         return cel::internal::FormatDoubleQuotedBytesLiteral(c.bytes_value());
-      case google::api::expr::v1alpha1::Constant::kDoubleValue: {
+      case ConstantKindCase::kDouble: {
         std::string s = absl::StrFormat("%f", c.double_value());
         // remove trailing zeros, i.e., convert 1.600000 to just 1.6 without
         // forcing a specific precision. There seems to be no flag to get this
@@ -277,25 +287,19 @@ class Writer {
         s.erase(idx.base(), s.end());
         return s;
       }
-      case google::api::expr::v1alpha1::Constant::kInt64Value:
-        return absl::StrFormat("%d", c.int64_value());
-      case google::api::expr::v1alpha1::Constant::kStringValue:
+      case ConstantKindCase::kInt:
+        return absl::StrFormat("%d", c.int_value());
+      case ConstantKindCase::kString:
         return cel::internal::FormatDoubleQuotedStringLiteral(c.string_value());
-      case google::api::expr::v1alpha1::Constant::kUint64Value:
-        return absl::StrFormat("%uu", c.uint64_value());
-      case google::api::expr::v1alpha1::Constant::kNullValue:
+      case ConstantKindCase::kUint:
+        return absl::StrFormat("%uu", c.uint_value());
+      case ConstantKindCase::kNull:
         return "null";
       default:
         return "<<ERROR>>";
     }
   }
 
-  std::string print(const Expr& expr) {
-    appendExpr(expr);
-    return s_;
-  }
-
- private:
   std::string s_;
   const ExpressionAdorner& adorner_;
   bool line_start_;
@@ -304,14 +308,25 @@ class Writer {
 
 }  // namespace
 
-const ExpressionAdorner& empty_adorner() { return the_empty_adorner; }
-
-std::string ExprPrinter::print(const Expr& expr) const {
-  Writer w(adorner_);
-  return w.print(expr);
+const ExpressionAdorner& EmptyAdorner() {
+  static absl::NoDestructor<EmptyAdornerImpl> kInstance;
+  return *kInstance;
 }
 
-}  // namespace testutil
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+std::string ExprPrinter::PrintProto(const google::api::expr::v1alpha1::Expr& expr) const {
+  StringBuilder w(adorner_);
+  absl::StatusOr<std::unique_ptr<Ast>> ast = CreateAstFromParsedExpr(expr);
+  if (!ast.ok()) {
+    return std::string(ast.status().message());
+  }
+  const ast_internal::AstImpl& ast_impl =
+      ast_internal::AstImpl::CastFromPublicAst(*ast.value());
+  return w.Print(ast_impl.root_expr());
+}
+
+std::string ExprPrinter::Print(const Expr& expr) const {
+  StringBuilder w(adorner_);
+  return w.Print(expr);
+}
+
+}  // namespace cel::test

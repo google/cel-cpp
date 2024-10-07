@@ -21,9 +21,31 @@ cc_library(
     srcs = ["expr_printer.cc"],
     hdrs = ["expr_printer.h"],
     deps = [
+        "//base/ast_internal:ast_impl",
+        "//common:ast",
+        "//common:constant",
+        "//common:expr",
+        "//extensions/protobuf:ast_converters",
         "//internal:strings",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/log:absl_log",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "expr_printer_test",
+    srcs = ["expr_printer_test.cc"],
+    deps = [
+        ":expr_printer",
+        "//common:expr",
+        "//internal:testing",
+        "//parser",
+        "//parser:options",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/strings",
     ],
 )
 

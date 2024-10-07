@@ -14,6 +14,7 @@
 
 #include "parser/parser.h"
 
+#include <cstdint>
 #include <list>
 #include <string>
 #include <thread>
@@ -22,11 +23,15 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/algorithm/container.h"
+#include "absl/status/status_matchers.h"
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "common/constant.h"
+#include "common/expr.h"
 #include "internal/benchmark.h"
 #include "internal/testing.h"
 #include "parser/macro.h"
@@ -39,6 +44,9 @@ namespace google::api::expr::parser {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::cel::ConstantKindCase;
+using ::cel::ExprKindCase;
+using ::cel::test::ExprPrinter;
 using ::google::api::expr::v1alpha1::Expr;
 using ::testing::HasSubstr;
 using ::testing::Not;
@@ -1214,7 +1222,51 @@ std::vector<TestInfo> test_cases = {
      "   f^#4:Expr.Ident#)^#10:Expr.Comprehension#,\n  "
      "optional.none()^#11:Expr.Call#\n)^#12:Expr.Call#"}};
 
-class KindAndIdAdorner : public testutil::ExpressionAdorner {
+absl::string_view ConstantKind(const cel::Constant& c) {
+  switch (c.kind_case()) {
+    case ConstantKindCase::kBool:
+      return "bool";
+    case ConstantKindCase::kInt:
+      return "int64";
+    case ConstantKindCase::kUint:
+      return "uint64";
+    case ConstantKindCase::kDouble:
+      return "double";
+    case ConstantKindCase::kString:
+      return "string";
+    case ConstantKindCase::kBytes:
+      return "bytes";
+    case ConstantKindCase::kNull:
+      return "NullValue";
+    default:
+      return "unspecified_constant";
+  }
+}
+
+absl::string_view ExprKind(const cel::Expr& e) {
+  switch (e.kind_case()) {
+    case ExprKindCase::kConstant:
+      // special cased, this doesn't appear.
+      return "Expr.Constant";
+    case ExprKindCase::kIdentExpr:
+      return "Expr.Ident";
+    case ExprKindCase::kSelectExpr:
+      return "Expr.Select";
+    case ExprKindCase::kCallExpr:
+      return "Expr.Call";
+    case ExprKindCase::kListExpr:
+      return "Expr.CreateList";
+    case ExprKindCase::kMapExpr:
+    case ExprKindCase::kStructExpr:
+      return "Expr.CreateStruct";
+    case ExprKindCase::kComprehensionExpr:
+      return "Expr.Comprehension";
+    default:
+      return "unspecified_expr";
+  }
+}
+
+class KindAndIdAdorner : public cel::test::ExpressionAdorner {
  public:
   // Use default source_info constructor to make source_info "optional". This
   // will prevent macro_calls lookups from interfering with adorning expressions
@@ -1224,7 +1276,7 @@ class KindAndIdAdorner : public testutil::ExpressionAdorner {
           google::api::expr::v1alpha1::SourceInfo::default_instance())
       : source_info_(source_info) {}
 
-  std::string adorn(const Expr& e) const override {
+  std::string Adorn(const cel::Expr& e) const override {
     // source_info_ might be empty on non-macro_calls tests
     if (source_info_.macro_calls_size() != 0 &&
         source_info_.macro_calls().contains(e.id())) {
@@ -1235,48 +1287,52 @@ class KindAndIdAdorner : public testutil::ExpressionAdorner {
 
     if (e.has_const_expr()) {
       auto& const_expr = e.const_expr();
-      auto reflection = const_expr.GetReflection();
-      auto oneof = const_expr.GetDescriptor()->FindOneofByName("constant_kind");
-      auto field_desc = reflection->GetOneofFieldDescriptor(const_expr, oneof);
-      auto enum_desc = field_desc->enum_type();
-      if (enum_desc) {
-        return absl::StrFormat("^#%d:%s#", e.id(), nameChain(enum_desc));
-      } else {
-        return absl::StrFormat("^#%d:%s#", e.id(), field_desc->type_name());
-      }
+      return absl::StrCat("^#", e.id(), ":", ConstantKind(const_expr), "#");
     } else {
-      auto reflection = e.GetReflection();
-      auto oneof = e.GetDescriptor()->FindOneofByName("expr_kind");
-      auto desc = reflection->GetOneofFieldDescriptor(e, oneof)->message_type();
-      return absl::StrFormat("^#%d:%s#", e.id(), nameChain(desc));
+      return absl::StrCat("^#", e.id(), ":", ExprKind(e), "#");
     }
   }
 
-  std::string adorn(const Expr::CreateStruct::Entry& e) const override {
+  std::string AdornStructField(const cel::StructExprField& e) const override {
+    return absl::StrFormat("^#%d:Expr.CreateStruct.Entry#", e.id());
+  }
+
+  std::string AdornMapEntry(const cel::MapExprEntry& e) const override {
     return absl::StrFormat("^#%d:Expr.CreateStruct.Entry#", e.id());
   }
 
  private:
-  template <class T>
-  std::string nameChain(const T* descriptor) const {
-    std::list<std::string> name_chain{descriptor->name()};
-    const google::protobuf::Descriptor* desc = descriptor->containing_type();
-    while (desc) {
-      name_chain.push_front(desc->name());
-      desc = desc->containing_type();
-    }
-    return absl::StrJoin(name_chain, ".");
-  }
-
   const google::api::expr::v1alpha1::SourceInfo& source_info_;
 };
 
-class LocationAdorner : public testutil::ExpressionAdorner {
+class LocationAdorner : public cel::test::ExpressionAdorner {
  public:
   explicit LocationAdorner(const google::api::expr::v1alpha1::SourceInfo& source_info)
       : source_info_(source_info) {}
 
-  absl::optional<std::pair<int32_t, int32_t>> getLocation(int64_t id) const {
+  std::string Adorn(const cel::Expr& e) const override {
+    return LocationToString(e.id());
+  }
+
+  std::string AdornStructField(const cel::StructExprField& e) const override {
+    return LocationToString(e.id());
+  }
+
+  std::string AdornMapEntry(const cel::MapExprEntry& e) const override {
+    return LocationToString(e.id());
+  }
+
+ private:
+  std::string LocationToString(int64_t id) const {
+    auto loc = GetLocation(id);
+    if (loc) {
+      return absl::StrFormat("^#%d[%d,%d]#", id, loc->first, loc->second);
+    } else {
+      return absl::StrFormat("^#%d[NO_POS]#", id);
+    }
+  }
+
+  absl::optional<std::pair<int32_t, int32_t>> GetLocation(int64_t id) const {
     absl::optional<std::pair<int32_t, int32_t>> location;
     const auto& positions = source_info_.positions();
     if (positions.find(id) == positions.end()) {
@@ -1299,37 +1355,6 @@ class LocationAdorner : public testutil::ExpressionAdorner {
     return std::make_pair(line, col);
   }
 
-  std::string adorn(const Expr& e) const override {
-    auto loc = getLocation(e.id());
-    if (loc) {
-      return absl::StrFormat("^#%d[%d,%d]#", e.id(), loc->first, loc->second);
-    } else {
-      return absl::StrFormat("^#%d[NO_POS]#", e.id());
-    }
-  }
-
-  std::string adorn(const Expr::CreateStruct::Entry& e) const override {
-    auto loc = getLocation(e.id());
-    if (loc) {
-      return absl::StrFormat("^#%d[%d,%d]#", e.id(), loc->first, loc->second);
-    } else {
-      return absl::StrFormat("^#%d[NO_POS]#", e.id());
-    }
-  }
-
- private:
-  template <class T>
-  std::string nameChain(const T* descriptor) const {
-    std::list<std::string> name_chain{descriptor->name()};
-    const google::protobuf::Descriptor* desc = descriptor->containing_type();
-    while (desc) {
-      name_chain.push_front(desc->name());
-      desc = desc->containing_type();
-    }
-    return absl::StrJoin(name_chain, ".");
-  }
-
- private:
   const google::api::expr::v1alpha1::SourceInfo& source_info_;
 };
 
@@ -1346,7 +1371,7 @@ std::string ConvertEnrichedSourceInfoToString(
 std::string ConvertMacroCallsToString(
     const google::api::expr::v1alpha1::SourceInfo& source_info) {
   KindAndIdAdorner macro_calls_adorner(source_info);
-  testutil::ExprPrinter w(macro_calls_adorner);
+  ExprPrinter w(macro_calls_adorner);
   // Use a list so we can sort the macro calls ensuring order for appending
   std::vector<std::pair<int64_t, google::api::expr::v1alpha1::Expr>> macro_calls;
   for (auto pair : source_info.macro_calls()) {
@@ -1362,7 +1387,7 @@ std::string ConvertMacroCallsToString(
                });
   std::string result = "";
   for (const auto& pair : macro_calls) {
-    result += w.print(pair.second) += ",\n";
+    result += w.PrintProto(pair.second) += ",\n";
   }
   // substring last ",\n"
   return result.substr(0, result.size() - 3);
@@ -1391,15 +1416,15 @@ TEST_P(ExpressionTest, Parse) {
 
   if (!test_info.P.empty()) {
     KindAndIdAdorner kind_and_id_adorner;
-    testutil::ExprPrinter w(kind_and_id_adorner);
-    std::string adorned_string = w.print(result->parsed_expr().expr());
+    ExprPrinter w(kind_and_id_adorner);
+    std::string adorned_string = w.PrintProto(result->parsed_expr().expr());
     EXPECT_EQ(test_info.P, adorned_string) << result->parsed_expr();
   }
 
   if (!test_info.L.empty()) {
     LocationAdorner location_adorner(result->parsed_expr().source_info());
-    testutil::ExprPrinter w(location_adorner);
-    std::string adorned_string = w.print(result->parsed_expr().expr());
+    ExprPrinter w(location_adorner);
+    std::string adorned_string = w.PrintProto(result->parsed_expr().expr());
     EXPECT_EQ(test_info.L, adorned_string) << result->parsed_expr();
     ;
   }
