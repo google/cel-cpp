@@ -44,7 +44,10 @@ using ::testing::Contains;
 using ::testing::Eq;
 using ::testing::HasSubstr;
 using ::testing::IsEmpty;
+using ::testing::Key;
+using ::testing::Not;
 using ::testing::Property;
+using ::testing::SizeIs;
 
 using AstType = ast_internal::Type;
 
@@ -71,6 +74,35 @@ MATCHER_P(IsOptionalType, inner_type, "") {
   *result_listener << "unexpected inner type: "
                    << abs_type.parameter_types()[0].type_kind().index();
   return false;
+}
+
+TEST(OptionalTest, OptSelectDoesNotAnnotateFieldType) {
+  TypeCheckerBuilder builder;
+  ASSERT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
+  ASSERT_THAT(builder.AddLibrary(OptionalCheckerLibrary()), IsOk());
+  google::protobuf::LinkMessageReflection<TestAllTypes>();
+  builder.AddTypeProvider(
+      std::make_unique<cel::extensions::ProtoTypeReflector>());
+  builder.set_container("google.api.expr.test.v1.proto3");
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> checker,
+                       std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(auto ast,
+                       MakeTestParsedAst("TestAllTypes{}.?single_int64"));
+
+  ASSERT_OK_AND_ASSIGN(auto result, checker->Check(std::move(ast)));
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  const auto& ast_impl = ast_internal::AstImpl::CastFromPublicAst(*checked_ast);
+
+  ASSERT_THAT(ast_impl.root_expr().call_expr().args(), SizeIs(2));
+  int64_t field_id = ast_impl.root_expr().call_expr().args()[1].id();
+  EXPECT_NE(field_id, 0);
+
+  EXPECT_THAT(ast_impl.type_map(), Not(Contains(Key(field_id))));
+  EXPECT_THAT(ast_impl.GetType(ast_impl.root_expr().id()),
+              IsOptionalType(AstType(ast_internal::PrimitiveType::kInt64)));
 }
 
 struct TestCase {

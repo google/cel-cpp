@@ -1106,6 +1106,9 @@ void ResolveVisitor::HandleOptSelect(const Expr& expr) {
   }
   const FunctionDecl* select_decl = env_->LookupFunction(kOptionalSelect);
   types_[&expr] = OptionalType(arena_, field_type.value());
+  // Remove the type annotation for the field now that we've validated it as
+  // a valid field access instead of a string literal.
+  types_.erase(field);
   if (select_decl != nullptr) {
     functions_[&expr] = FunctionResolution{select_decl,
                                            /*.namespace_rewrite=*/false};
