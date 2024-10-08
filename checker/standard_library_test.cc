@@ -41,6 +41,8 @@ using ::testing::IsEmpty;
 using ::testing::Pointee;
 using ::testing::Property;
 
+using AstType = cel::ast_internal::Type;
+
 TEST(StandardLibraryTest, StandardLibraryAddsDecls) {
   TypeCheckerBuilder builder;
   EXPECT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
@@ -85,11 +87,14 @@ TEST_P(StdlibTypeVarDefinitionTest, DefinesTypeConstants) {
               Pointee(Property(&Reference::name, GetParam())));
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    StdlibTypeVarDefinitions, StdlibTypeVarDefinitionTest,
-    ::testing::Values("bool", "int", "uint", "double", "string", "bytes",
-                      "list", "map", "duration", "timestamp", "null_type"),
-    [](const auto& info) -> std::string { return info.param; });
+INSTANTIATE_TEST_SUITE_P(StdlibTypeVarDefinitions, StdlibTypeVarDefinitionTest,
+                         ::testing::Values("bool", "int", "uint", "double",
+                                           "string", "bytes", "list", "map",
+                                           "duration", "timestamp", "null_type",
+                                           "type"),
+                         [](const auto& info) -> std::string {
+                           return info.param;
+                         });
 
 TEST_F(StandardLibraryDefinitionsTest, DefinesProtoStructNull) {
   auto ast = std::make_unique<AstImpl>();
@@ -116,7 +121,24 @@ TEST_F(StandardLibraryDefinitionsTest, DefinesProtoStructNull) {
   EXPECT_THAT(checked_impl.GetReference(4),
               Pointee(Property(&Reference::name,
                                "google.protobuf.NullValue.NULL_VALUE")));
-  // TODO: Add support for compiler constants (null value here).
+}
+
+TEST_F(StandardLibraryDefinitionsTest, DefinesTypeType) {
+  auto ast = std::make_unique<AstImpl>();
+
+  auto& ident = ast->root_expr();
+  ident.set_id(1);
+  ident.mutable_ident_expr().set_name("type");
+
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       stdlib_type_checker_->Check(std::move(ast)));
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
+  const auto& checked_impl = AstImpl::CastFromPublicAst(*checked_ast);
+  EXPECT_THAT(checked_impl.GetReference(1),
+              Pointee(Property(&Reference::name, "type")));
+  EXPECT_THAT(checked_impl.GetType(1), Property(&AstType::has_type, true));
 }
 
 struct DefinitionsTestCase {
@@ -212,6 +234,9 @@ INSTANTIATE_TEST_SUITE_P(TypeCasts, StdLibDefinitionsTest,
                                            },
                                            DefinitionsTestCase{
                                                /* .expr = */ "duration('1s')",
+                                           },
+                                           DefinitionsTestCase{
+                                               /* .expr = */ "type(1)",
                                            }));
 
 INSTANTIATE_TEST_SUITE_P(Arithmetic, StdLibDefinitionsTest,
@@ -392,6 +417,9 @@ INSTANTIATE_TEST_SUITE_P(Logic, StdLibDefinitionsTest,
                                            },
                                            DefinitionsTestCase{
                                                /* .expr = */ "!true",
+                                           },
+                                           DefinitionsTestCase{
+                                               /* .expr = */ "true ? 1 : 2",
                                            }));
 
 }  // namespace

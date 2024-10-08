@@ -50,6 +50,12 @@ Type MapOfAB() {
   return *kInstance;
 }
 
+Type TypeOfType() {
+  static absl::NoDestructor<Type> kInstance(
+      TypeType(BuiltinsArena(), TypeType()));
+  return *kInstance;
+}
+
 Type TypeOfA() {
   static absl::NoDestructor<Type> kInstance(
       TypeType(BuiltinsArena(), TypeParamA()));
@@ -1025,7 +1031,8 @@ absl::Status AddTypeConstantVariables(TypeCheckerBuilder& builder) {
   CEL_RETURN_IF_ERROR(
       builder.AddVariable(MakeVariableDecl("map", TypeMapType())));
 
-  CEL_RETURN_IF_ERROR(builder.AddVariable(MakeVariableDecl("type", TypeOfA())));
+  CEL_RETURN_IF_ERROR(
+      builder.AddVariable(MakeVariableDecl("type", TypeOfType())));
 
   return absl::OkStatus();
 }
