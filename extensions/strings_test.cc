@@ -18,6 +18,7 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/status/status_matchers.h"
 #include "absl/strings/cord.h"
 #include "common/memory.h"
 #include "common/value.h"
@@ -36,6 +37,7 @@
 namespace cel::extensions {
 namespace {
 
+using ::absl_testing::IsOk;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using ::google::api::expr::parser::ParserOptions;
@@ -46,7 +48,8 @@ TEST(Strings, SplitWithEmptyDelimiterCord) {
   ASSERT_OK_AND_ASSIGN(auto builder,
                        CreateStandardRuntimeBuilder(
                            internal::GetTestingDescriptorPool(), options));
-  EXPECT_OK(RegisterStringsFunctions(builder.function_registry(), options));
+  EXPECT_THAT(RegisterStringsFunctions(builder.function_registry(), options),
+              IsOk());
 
   ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
 
@@ -64,6 +67,126 @@ TEST(Strings, SplitWithEmptyDelimiterCord) {
   Activation activation;
   activation.InsertOrAssignValue("foo",
                                  StringValue{absl::Cord("hello world!")});
+
+  ASSERT_OK_AND_ASSIGN(Value result,
+                       program->Evaluate(activation, value_factory));
+  ASSERT_TRUE(result.Is<BoolValue>());
+  EXPECT_TRUE(result.GetBool().NativeValue());
+}
+
+TEST(Strings, Replace) {
+  MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
+  const auto options = RuntimeOptions{};
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
+  EXPECT_THAT(RegisterStringsFunctions(builder.function_registry(), options),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                       Parse("foo.replace('he', 'we') == 'wello wello'",
+                             "<input>", ParserOptions{}));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+
+  common_internal::LegacyValueManager value_factory(memory_manager,
+                                                    runtime->GetTypeProvider());
+
+  Activation activation;
+  activation.InsertOrAssignValue("foo", StringValue{absl::Cord("hello hello")});
+
+  ASSERT_OK_AND_ASSIGN(Value result,
+                       program->Evaluate(activation, value_factory));
+  ASSERT_TRUE(result.Is<BoolValue>());
+  EXPECT_TRUE(result.GetBool().NativeValue());
+}
+
+TEST(Strings, ReplaceWithNegativeLimit) {
+  MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
+  const auto options = RuntimeOptions{};
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
+  EXPECT_THAT(RegisterStringsFunctions(builder.function_registry(), options),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                       Parse("foo.replace('he', 'we', -1) == 'wello wello'",
+                             "<input>", ParserOptions{}));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+
+  common_internal::LegacyValueManager value_factory(memory_manager,
+                                                    runtime->GetTypeProvider());
+
+  Activation activation;
+  activation.InsertOrAssignValue("foo", StringValue{absl::Cord("hello hello")});
+
+  ASSERT_OK_AND_ASSIGN(Value result,
+                       program->Evaluate(activation, value_factory));
+  ASSERT_TRUE(result.Is<BoolValue>());
+  EXPECT_TRUE(result.GetBool().NativeValue());
+}
+
+TEST(Strings, ReplaceWithLimit) {
+  MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
+  const auto options = RuntimeOptions{};
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
+  EXPECT_THAT(RegisterStringsFunctions(builder.function_registry(), options),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                       Parse("foo.replace('he', 'we', 1) == 'wello hello'",
+                             "<input>", ParserOptions{}));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+
+  common_internal::LegacyValueManager value_factory(memory_manager,
+                                                    runtime->GetTypeProvider());
+
+  Activation activation;
+  activation.InsertOrAssignValue("foo", StringValue{absl::Cord("hello hello")});
+
+  ASSERT_OK_AND_ASSIGN(Value result,
+                       program->Evaluate(activation, value_factory));
+  ASSERT_TRUE(result.Is<BoolValue>());
+  EXPECT_TRUE(result.GetBool().NativeValue());
+}
+
+TEST(Strings, ReplaceWithZeroLimit) {
+  MemoryManagerRef memory_manager = MemoryManagerRef::ReferenceCounting();
+  const auto options = RuntimeOptions{};
+  ASSERT_OK_AND_ASSIGN(auto builder,
+                       CreateStandardRuntimeBuilder(
+                           internal::GetTestingDescriptorPool(), options));
+  EXPECT_THAT(RegisterStringsFunctions(builder.function_registry(), options),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(auto runtime, std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                       Parse("foo.replace('he', 'we', 0) == 'hello hello'",
+                             "<input>", ParserOptions{}));
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Program> program,
+                       ProtobufRuntimeAdapter::CreateProgram(*runtime, expr));
+
+  common_internal::LegacyValueManager value_factory(memory_manager,
+                                                    runtime->GetTypeProvider());
+
+  Activation activation;
+  activation.InsertOrAssignValue("foo", StringValue{absl::Cord("hello hello")});
 
   ASSERT_OK_AND_ASSIGN(Value result,
                        program->Evaluate(activation, value_factory));
