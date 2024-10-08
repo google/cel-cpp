@@ -57,3 +57,32 @@ cc_library(
     ],
     deps = ["//internal:proto_matchers"],
 )
+
+cc_library(
+    name = "baseline_tests",
+    testonly = True,
+    srcs = ["baseline_tests.cc"],
+    hdrs = ["baseline_tests.h"],
+    deps = [
+        ":expr_printer",
+        "//base/ast_internal:ast_impl",
+        "//base/ast_internal:expr",
+        "//common:ast",
+        "//common:expr",
+        "//extensions/protobuf:ast_converters",
+        "@com_google_absl//absl/strings",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "baseline_tests_test",
+    srcs = ["baseline_tests_test.cc"],
+    deps = [
+        ":baseline_tests",
+        "//base/ast_internal:ast_impl",
+        "//base/ast_internal:expr",
+        "//internal:testing",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
