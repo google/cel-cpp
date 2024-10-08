@@ -8,8 +8,6 @@ import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
-option cc_enable_arenas = true;
-
 enum TestEnum {
   TEST_ENUM_UNSPECIFIED = 0;
   TEST_ENUM_1 = 10;
@@ -20,17 +18,14 @@ enum TestEnum {
 message TestMessage {
   int32 int32_value = 1;
   int64 int64_value = 2;
-
   uint32 uint32_value = 3;
   uint64 uint64_value = 4;
-
   float float_value = 5;
   double double_value = 6;
-
   string string_value = 7;
   string cord_value = 8 [ctype = CORD];
-  bytes bytes_value = 9;
 
+  bytes bytes_value = 9;
   bool bool_value = 10;
 
   enum TestEnum {
@@ -40,7 +35,6 @@ message TestMessage {
   }
 
   TestEnum enum_value = 11;
-
   TestMessage message_value = 12;
 
   reserved 99;
@@ -53,12 +47,12 @@ message TestMessage {
   repeated double double_list = 106;
   repeated string string_list = 107;
   repeated string cord_list = 108 [ctype = CORD];
+
   repeated bytes bytes_list = 109;
   repeated bool bool_list = 110;
   repeated TestEnum enum_list = 111;
   repeated TestMessage message_list = 112;
   repeated google.protobuf.Timestamp timestamp_list = 113;
-
   map<int64, int32> int64_int32_map = 201;
   map<uint64, int32> uint64_int32_map = 202;
   map<string, int32> string_int32_map = 203;
