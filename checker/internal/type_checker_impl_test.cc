@@ -37,6 +37,7 @@
 #include "checker/validation_result.h"
 #include "common/ast.h"
 #include "common/decl.h"
+#include "common/source.h"
 #include "common/type.h"
 #include "common/type_introspector.h"
 #include "extensions/protobuf/type_reflector.h"
@@ -322,6 +323,46 @@ TEST(TypeCheckerImplTest, ReportMissingIdentDecl) {
   EXPECT_THAT(result.GetIssues(),
               ElementsAre(IsIssueWithSubstring(Severity::kError,
                                                "undeclared reference to 'y'")));
+}
+
+MATCHER_P3(IsIssueWithLocation, line, column, message, "") {
+  const TypeCheckIssue& issue = arg;
+  if (issue.location().line == line && issue.location().column == column &&
+      absl::StrContains(issue.message(), message)) {
+    return true;
+  }
+  return false;
+}
+
+TEST(TypeCheckerImplTest, LocationCalculation) {
+  TypeCheckEnv env;
+
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
+
+  env.InsertVariableIfAbsent(MakeVariableDecl("x", IntType()));
+
+  TypeCheckerImpl impl(std::move(env));
+  ASSERT_OK_AND_ASSIGN(auto source, NewSource("a ||\n"
+                                              "b ||\n"
+                                              " c ||\n"
+                                              " d"));
+  ASSERT_OK_AND_ASSIGN(auto ast,
+                       MakeTestParsedAst(source->content().ToString()));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_FALSE(result.IsValid());
+
+  EXPECT_THAT(
+      result.GetIssues(),
+      ElementsAre(IsIssueWithLocation(1, 0, "undeclared reference to 'a'"),
+                  IsIssueWithLocation(2, 0, "undeclared reference to 'b'"),
+                  IsIssueWithLocation(3, 1, "undeclared reference to 'c'"),
+                  IsIssueWithLocation(4, 1, "undeclared reference to 'd'")))
+      << absl::StrJoin(result.GetIssues(), "\n",
+                       [&](std::string* out, const TypeCheckIssue& issue) {
+                         absl::StrAppend(out, issue.ToDisplayString(*source));
+                       });
 }
 
 TEST(TypeCheckerImplTest, QualifiedIdentsResolved) {

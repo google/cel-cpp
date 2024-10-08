@@ -23,8 +23,9 @@ namespace {
 TEST(TypeCheckIssueTest, DisplayString) {
   ASSERT_OK_AND_ASSIGN(auto source, NewSource("test{\n\tfield1: 123\n}"));
   TypeCheckIssue issue = TypeCheckIssue::CreateError(2, 2, "test error");
+  // Note: The column is displayed as 1 based to match the Go checker.
   EXPECT_EQ(issue.ToDisplayString(*source),
-            "ERROR: <input>:2:2: test error\n"
+            "ERROR: <input>:2:3: test error\n"
             " |  field1: 123\n"
             " | ..^");
 }

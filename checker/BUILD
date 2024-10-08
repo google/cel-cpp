@@ -34,7 +34,6 @@ cc_test(
     deps = [
         ":type_check_issue",
         "//common:source",
-        "//internal:status_macros",
         "//internal:testing",
     ],
 )

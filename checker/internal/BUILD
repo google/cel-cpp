@@ -110,7 +110,6 @@ cc_library(
     srcs = ["type_checker_impl.cc"],
     hdrs = ["type_checker_impl.h"],
     deps = [
-        ":builtins_arena",
         ":namespace_generator",
         ":type_check_env",
         ":type_inference_context",
@@ -133,7 +132,6 @@ cc_library(
         "//common:type_kind",
         "//extensions/protobuf:memory_manager",
         "//internal:status_macros",
-        "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -161,6 +159,7 @@ cc_test(
         "//checker:validation_result",
         "//common:ast",
         "//common:decl",
+        "//common:source",
         "//common:type",
         "//extensions/protobuf:value",
         "//internal:status_macros",

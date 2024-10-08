@@ -21,7 +21,6 @@
 #include <utility>
 #include <vector>
 
-#include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
@@ -35,7 +34,6 @@
 #include "absl/types/span.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
-#include "checker/internal/builtins_arena.h"
 #include "checker/internal/namespace_generator.h"
 #include "checker/internal/type_check_env.h"
 #include "checker/internal/type_inference_context.h"
@@ -93,19 +91,21 @@ SourceLocation ComputeSourceLocation(const AstImpl& ast, int64_t expr_id) {
   }
   int32_t absolute_position = iter->second;
   int32_t line_idx = -1;
-  for (int32_t offset : source_info.line_offsets()) {
-    if (absolute_position >= offset) {
+  for (int32_t i = 0; i < source_info.line_offsets().size(); ++i) {
+    int32_t offset = source_info.line_offsets()[i];
+    if (absolute_position < offset) {
+      line_idx = i;
       break;
     }
-    ++line_idx;
   }
 
-  if (line_idx < 0 || line_idx >= source_info.line_offsets().size()) {
+  if (line_idx <= 0 || line_idx >= source_info.line_offsets().size()) {
     return SourceLocation{1, absolute_position};
   }
 
-  int32_t rel_position =
-      absolute_position - source_info.line_offsets()[line_idx] + 1;
+  auto offset = source_info.line_offsets()[line_idx - 1];
+
+  int32_t rel_position = absolute_position - offset;
 
   return SourceLocation{line_idx + 1, rel_position};
 }
