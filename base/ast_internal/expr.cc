@@ -26,13 +26,16 @@ namespace cel::ast_internal {
 namespace {
 
 const Type& default_type() {
-  static absl::NoDestructor<Type> type;
+  static absl::NoDestructor<Type> type(TypeKind{UnspecifiedType()});
   return *type;
 }
 
 TypeKind CopyImpl(const TypeKind& other) {
   return absl::visit(absl::Overload(
                          [](const std::unique_ptr<Type>& other) -> TypeKind {
+                           if (other == nullptr) {
+                             return std::make_unique<Type>();
+                           }
                            return std::make_unique<Type>(*other);
                          },
                          [](const auto& other) -> TypeKind {

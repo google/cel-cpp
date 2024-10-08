@@ -42,7 +42,6 @@
 
 namespace cel::extensions {
 namespace internal {
-namespace {
 
 using ::cel::ast_internal::AbstractType;
 using ::cel::ast_internal::Bytes;
@@ -68,14 +67,13 @@ using ::cel::ast_internal::Reference;
 using ::cel::ast_internal::Select;
 using ::cel::ast_internal::SourceInfo;
 using ::cel::ast_internal::Type;
+using ::cel::ast_internal::UnspecifiedType;
 using ::cel::ast_internal::WellKnownType;
 
 using ExprPb = google::api::expr::v1alpha1::Expr;
 using ParsedExprPb = google::api::expr::v1alpha1::ParsedExpr;
 using CheckedExprPb = google::api::expr::v1alpha1::CheckedExpr;
 using ExtensionPb = google::api::expr::v1alpha1::SourceInfo::Extension;
-
-}  // namespace
 
 absl::StatusOr<Constant> ConvertConstant(
     const google::api::expr::v1alpha1::Constant& constant) {
@@ -312,6 +310,10 @@ absl::StatusOr<Type> ConvertProtoTypeToNative(
     case google::api::expr::v1alpha1::Type::kTypeParam:
       return Type(ParamType(type.type_param()));
     case google::api::expr::v1alpha1::Type::kType: {
+      if (type.type().type_kind_case() ==
+          google::api::expr::v1alpha1::Type::TypeKindCase::TYPE_KIND_NOT_SET) {
+        return Type(std::unique_ptr<Type>());
+      }
       auto native_type = ConvertProtoTypeToNative(type.type());
       if (!native_type.ok()) {
         return native_type.status();
@@ -327,6 +329,8 @@ absl::StatusOr<Type> ConvertProtoTypeToNative(
       }
       return Type(*(std::move(native_abstract)));
     }
+    case google::api::expr::v1alpha1::Type::TYPE_KIND_NOT_SET:
+      return Type(UnspecifiedType());
     default:
       return absl::InvalidArgumentError(
           "Illegal type specified for google::api::expr::v1alpha1::Type.");
@@ -380,6 +384,7 @@ using ::cel::ast_internal::Reference;
 using ::cel::ast_internal::Select;
 using ::cel::ast_internal::SourceInfo;
 using ::cel::ast_internal::Type;
+using ::cel::ast_internal::UnspecifiedType;
 using ::cel::ast_internal::WellKnownType;
 
 using ExprPb = google::api::expr::v1alpha1::Expr;
@@ -553,6 +558,11 @@ struct TypeKindToProtoVisitor {
     return absl::OkStatus();
   }
 
+  absl::Status operator()(UnspecifiedType) {
+    result->clear_type_kind();
+    return absl::OkStatus();
+  }
+
   absl::Status operator()(DynamicType) {
     result->mutable_dyn();
     return absl::OkStatus();
@@ -629,7 +639,8 @@ struct TypeKindToProtoVisitor {
   }
 
   absl::Status operator()(const std::unique_ptr<Type>& type_type) {
-    return TypeToProto(*type_type, result->mutable_type());
+    return TypeToProto((type_type != nullptr) ? *type_type : Type(),
+                       result->mutable_type());
   }
 
   absl::Status operator()(const ParamType& param_type) {

@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
@@ -563,12 +564,16 @@ class ParamType {
 // errors present in the expression.
 enum class ErrorType { kErrorTypeValue = 0 };
 
-using DynamicType = absl::monostate;
+struct UnspecifiedType : public absl::monostate {};
+
+struct DynamicType : public absl::monostate {};
 
 using TypeKind =
-    absl::variant<DynamicType, NullValue, PrimitiveType, PrimitiveTypeWrapper,
-                  WellKnownType, ListType, MapType, FunctionType, MessageType,
-                  ParamType, std::unique_ptr<Type>, ErrorType, AbstractType>;
+    absl::variant<UnspecifiedType, DynamicType, NullValue, PrimitiveType,
+                  PrimitiveTypeWrapper, WellKnownType, ListType, MapType,
+                  FunctionType, MessageType, ParamType,
+                  absl::Nullable<std::unique_ptr<Type>>, ErrorType,
+                  AbstractType>;
 
 // Analogous to google::api::expr::v1alpha1::Type.
 // Represents a CEL type.

@@ -26,7 +26,9 @@
 #include "google/protobuf/timestamp.pb.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/variant.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
 #include "internal/proto_matchers.h"
@@ -39,6 +41,7 @@ namespace cel::extensions {
 namespace internal {
 namespace {
 
+using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 using ::cel::ast_internal::NullValue;
 using ::cel::ast_internal::PrimitiveType;
@@ -353,13 +356,12 @@ TEST(AstConvertersTest, NestedTypeToNative) {
   EXPECT_TRUE(native_type->type().has_dyn());
 }
 
-TEST(AstConvertersTest, TypeError) {
+TEST(AstConvertersTest, TypeTypeDefault) {
   auto native_type = ConvertProtoTypeToNative(google::api::expr::v1alpha1::Type());
 
-  EXPECT_EQ(native_type.status().code(), absl::StatusCode::kInvalidArgument);
-  EXPECT_THAT(native_type.status().message(),
-              ::testing::HasSubstr(
-                  "Illegal type specified for google::api::expr::v1alpha1::Type."));
+  ASSERT_THAT(native_type, IsOk());
+  EXPECT_TRUE(absl::holds_alternative<ast_internal::UnspecifiedType>(
+      native_type->type_kind()));
 }
 
 TEST(AstConvertersTest, ReferenceToNative) {
@@ -586,6 +588,9 @@ INSTANTIATE_TEST_SUITE_P(
          )pb"},
         {R"pb(
            type { primitive: INT64 }
+         )pb"},
+        {R"pb(
+           type { type {} }
          )pb"},
         {R"pb(type_param: "T")pb"},
         {R"pb(
