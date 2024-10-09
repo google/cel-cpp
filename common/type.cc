@@ -627,4 +627,65 @@ TypeParameters::TypeParameters(const Type& key, const Type& value) : size_(2) {
   std::memcpy(&internal_[0] + sizeof(key), &value, sizeof(value));
 }
 
+namespace common_internal {
+
+namespace {
+
+constexpr absl::string_view kNullTypeName = "null_type";
+constexpr absl::string_view kBoolTypeName = "bool";
+constexpr absl::string_view kInt64TypeName = "int";
+constexpr absl::string_view kUInt64TypeName = "uint";
+constexpr absl::string_view kDoubleTypeName = "double";
+constexpr absl::string_view kStringTypeName = "string";
+constexpr absl::string_view kBytesTypeName = "bytes";
+constexpr absl::string_view kDurationTypeName = "google.protobuf.Duration";
+constexpr absl::string_view kTimestampTypeName = "google.protobuf.Timestamp";
+constexpr absl::string_view kListTypeName = "list";
+constexpr absl::string_view kMapTypeName = "map";
+constexpr absl::string_view kCelTypeTypeName = "type";
+
+}  // namespace
+
+Type LegacyRuntimeType(absl::string_view name) {
+  if (name == kNullTypeName) {
+    return NullType{};
+  }
+  if (name == kBoolTypeName) {
+    return BoolType{};
+  }
+  if (name == kInt64TypeName) {
+    return IntType{};
+  }
+  if (name == kUInt64TypeName) {
+    return UintType{};
+  }
+  if (name == kDoubleTypeName) {
+    return DoubleType{};
+  }
+  if (name == kStringTypeName) {
+    return StringType{};
+  }
+  if (name == kBytesTypeName) {
+    return BytesType{};
+  }
+  if (name == kDurationTypeName) {
+    return DurationType{};
+  }
+  if (name == kTimestampTypeName) {
+    return TimestampType{};
+  }
+  if (name == kListTypeName) {
+    return ListType{};
+  }
+  if (name == kMapTypeName) {
+    return MapType{};
+  }
+  if (name == kCelTypeTypeName) {
+    return TypeType{};
+  }
+  return common_internal::MakeBasicStructType(name);
+}
+
+}  // namespace common_internal
+
 }  // namespace cel

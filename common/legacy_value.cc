@@ -78,19 +78,6 @@ using google::api::expr::runtime::ContainerBackedListImpl;
 using google::api::expr::runtime::LegacyTypeInfoApis;
 using google::api::expr::runtime::MessageWrapper;
 
-constexpr absl::string_view kNullTypeName = "null_type";
-constexpr absl::string_view kBoolTypeName = "bool";
-constexpr absl::string_view kInt64TypeName = "int";
-constexpr absl::string_view kUInt64TypeName = "uint";
-constexpr absl::string_view kDoubleTypeName = "double";
-constexpr absl::string_view kStringTypeName = "string";
-constexpr absl::string_view kBytesTypeName = "bytes";
-constexpr absl::string_view kDurationTypeName = "google.protobuf.Duration";
-constexpr absl::string_view kTimestampTypeName = "google.protobuf.Timestamp";
-constexpr absl::string_view kListTypeName = "list";
-constexpr absl::string_view kMapTypeName = "map";
-constexpr absl::string_view kCelTypeTypeName = "type";
-
 absl::Status InvalidMapKeyTypeError(ValueKind kind) {
   return absl::InvalidArgumentError(
       absl::StrCat("Invalid map key type: '", ValueKindToString(kind), "'"));
@@ -1230,56 +1217,8 @@ absl::Status ModernValue(google::protobuf::Arena* arena,
       result = UnknownValue{*legacy_value.UnknownSetOrDie()};
       return absl::OkStatus();
     case CelValue::Type::kCelType: {
-      auto type_name = legacy_value.CelTypeOrDie().value();
-      if (type_name == kNullTypeName) {
-        result = TypeValue{NullType{}};
-        return absl::OkStatus();
-      }
-      if (type_name == kBoolTypeName) {
-        result = TypeValue{BoolType{}};
-        return absl::OkStatus();
-      }
-      if (type_name == kInt64TypeName) {
-        result = TypeValue{IntType{}};
-        return absl::OkStatus();
-      }
-      if (type_name == kUInt64TypeName) {
-        result = TypeValue{UintType{}};
-        return absl::OkStatus();
-      }
-      if (type_name == kDoubleTypeName) {
-        result = TypeValue{DoubleType{}};
-        return absl::OkStatus();
-      }
-      if (type_name == kStringTypeName) {
-        result = TypeValue{StringType{}};
-        return absl::OkStatus();
-      }
-      if (type_name == kBytesTypeName) {
-        result = TypeValue{BytesType{}};
-        return absl::OkStatus();
-      }
-      if (type_name == kDurationTypeName) {
-        result = TypeValue{DurationType{}};
-        return absl::OkStatus();
-      }
-      if (type_name == kTimestampTypeName) {
-        result = TypeValue{TimestampType{}};
-        return absl::OkStatus();
-      }
-      if (type_name == kListTypeName) {
-        result = TypeValue{ListType{}};
-        return absl::OkStatus();
-      }
-      if (type_name == kMapTypeName) {
-        result = TypeValue{MapType{}};
-        return absl::OkStatus();
-      }
-      if (type_name == kCelTypeTypeName) {
-        result = TypeValue{TypeType{}};
-        return absl::OkStatus();
-      }
-      result = TypeValue{common_internal::MakeBasicStructType(type_name)};
+      result = TypeValue{common_internal::LegacyRuntimeType(
+          legacy_value.CelTypeOrDie().value())};
       return absl::OkStatus();
     }
     case CelValue::Type::kError:
@@ -1697,45 +1636,7 @@ google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
 
 TypeValue CreateTypeValueFromView(google::protobuf::Arena* arena,
                                   absl::string_view input) {
-  auto type_name = input;
-  if (type_name == kNullTypeName) {
-    return TypeValue{NullType{}};
-  }
-  if (type_name == kBoolTypeName) {
-    return TypeValue{BoolType{}};
-  }
-  if (type_name == kInt64TypeName) {
-    return TypeValue{IntType{}};
-  }
-  if (type_name == kUInt64TypeName) {
-    return TypeValue{UintType{}};
-  }
-  if (type_name == kDoubleTypeName) {
-    return TypeValue{DoubleType{}};
-  }
-  if (type_name == kStringTypeName) {
-    return TypeValue{StringType{}};
-  }
-  if (type_name == kBytesTypeName) {
-    return TypeValue{BytesType{}};
-  }
-  if (type_name == kDurationTypeName) {
-    return TypeValue{DurationType{}};
-  }
-  if (type_name == kTimestampTypeName) {
-    return TypeValue{TimestampType{}};
-  }
-  if (type_name == kListTypeName) {
-    return TypeValue{ListType{}};
-  }
-  if (type_name == kMapTypeName) {
-    return TypeValue{MapType{}};
-  }
-  if (type_name == kCelTypeTypeName) {
-    return TypeValue{TypeType{}};
-  }
-  // This is bad, but technically OK since we are using an arena.
-  return TypeValue{common_internal::MakeBasicStructType(type_name)};
+  return common_internal::LegacyRuntimeType(input);
 }
 
 bool TestOnly_IsLegacyListBuilder(const ListValueBuilder& builder) {

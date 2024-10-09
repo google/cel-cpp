@@ -1286,6 +1286,15 @@ inline H AbslHashValue(H state, const FunctionType& type) {
   return H::combine(std::move(state), args.size());
 }
 
+namespace common_internal {
+
+// Converts the string returned from `CelValue::CelTypeHolder` to `cel::Type`.
+// The underlying content of `name` must outlive the resulting type and any of
+// its shallow copies.
+Type LegacyRuntimeType(absl::string_view name);
+
+}  // namespace common_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_TYPE_H_
