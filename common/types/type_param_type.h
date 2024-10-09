@@ -52,11 +52,6 @@ class TypeParamType final {
 
   std::string DebugString() const { return std::string(name()); }
 
-  friend void swap(TypeParamType& lhs, TypeParamType& rhs) noexcept {
-    using std::swap;
-    swap(lhs.name_, rhs.name_);
-  }
-
  private:
   absl::string_view name_;
 };

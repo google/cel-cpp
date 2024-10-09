@@ -52,14 +52,7 @@ class BoolWrapperType final {
   static TypeParameters GetParameters();
 
   static std::string DebugString() { return std::string(name()); }
-
-  constexpr void swap(BoolWrapperType&) noexcept {}
 };
-
-inline constexpr void swap(BoolWrapperType& lhs,
-                           BoolWrapperType& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline constexpr bool operator==(BoolWrapperType, BoolWrapperType) {
   return true;

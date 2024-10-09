@@ -51,13 +51,7 @@ class AnyType final {
   static TypeParameters GetParameters();
 
   static std::string DebugString() { return std::string(name()); }
-
-  constexpr void swap(AnyType&) noexcept {}
 };
-
-inline constexpr void swap(AnyType& lhs, AnyType& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline constexpr bool operator==(AnyType, AnyType) { return true; }
 

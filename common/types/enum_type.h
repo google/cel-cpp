@@ -83,11 +83,6 @@ class EnumType final {
 
   explicit operator bool() const { return descriptor_ != nullptr; }
 
-  friend void swap(EnumType& lhs, EnumType& rhs) noexcept {
-    using std::swap;
-    swap(lhs.descriptor_, rhs.descriptor_);
-  }
-
  private:
   friend struct std::pointer_traits<EnumType>;
 

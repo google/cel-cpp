@@ -49,13 +49,7 @@ class IntType final {
   static TypeParameters GetParameters();
 
   static std::string DebugString() { return std::string(name()); }
-
-  constexpr void swap(IntType&) noexcept {}
 };
-
-inline constexpr void swap(IntType& lhs, IntType& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline constexpr bool operator==(IntType, IntType) { return true; }
 

@@ -21,7 +21,6 @@
 #include <cstdint>
 #include <ostream>
 #include <string>
-#include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
@@ -74,11 +73,6 @@ class MapType final {
   std::string DebugString() const;
 
   TypeParameters GetParameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  friend void swap(MapType& lhs, MapType& rhs) noexcept {
-    using std::swap;
-    swap(lhs.data_, rhs.data_);
-  }
 
   ABSL_DEPRECATED("Use GetKey")
   Type key() const;

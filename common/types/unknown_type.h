@@ -50,13 +50,7 @@ class UnknownType final {
   static TypeParameters GetParameters();
 
   static std::string DebugString() { return std::string(name()); }
-
-  constexpr void swap(UnknownType&) noexcept {}
 };
-
-inline constexpr void swap(UnknownType& lhs, UnknownType& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline constexpr bool operator==(UnknownType, UnknownType) { return true; }
 

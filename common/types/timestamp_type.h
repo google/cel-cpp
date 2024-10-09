@@ -49,13 +49,7 @@ class TimestampType final {
   static TypeParameters GetParameters();
 
   static std::string DebugString() { return std::string(name()); }
-
-  constexpr void swap(TimestampType&) noexcept {}
 };
-
-inline constexpr void swap(TimestampType& lhs, TimestampType& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline constexpr bool operator==(TimestampType, TimestampType) { return true; }
 

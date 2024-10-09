@@ -59,11 +59,6 @@ class TypeType final {
 
   std::string DebugString() const { return std::string(name()); }
 
-  friend void swap(TypeType& lhs, TypeType& rhs) noexcept {
-    using std::swap;
-    swap(lhs.data_, rhs.data_);
-  }
-
   Type GetType() const;
 
  private:

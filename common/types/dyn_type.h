@@ -50,13 +50,7 @@ class DynType final {
   static TypeParameters GetParameters();
 
   static std::string DebugString() { return std::string(name()); }
-
-  constexpr void swap(DynType&) noexcept {}
 };
-
-inline constexpr void swap(DynType& lhs, DynType& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline constexpr bool operator==(DynType, DynType) { return true; }
 

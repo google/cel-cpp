@@ -49,13 +49,7 @@ class NullType final {
   static TypeParameters GetParameters();
 
   static std::string DebugString() { return std::string(name()); }
-
-  constexpr void swap(NullType&) noexcept {}
 };
-
-inline constexpr void swap(NullType& lhs, NullType& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline constexpr bool operator==(NullType, NullType) { return true; }
 

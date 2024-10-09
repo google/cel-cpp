@@ -49,13 +49,7 @@ class BoolType final {
   static TypeParameters GetParameters();
 
   static std::string DebugString() { return std::string(name()); }
-
-  constexpr void swap(BoolType&) noexcept {}
 };
-
-inline constexpr void swap(BoolType& lhs, BoolType& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline constexpr bool operator==(BoolType, BoolType) { return true; }
 

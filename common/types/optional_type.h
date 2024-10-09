@@ -64,11 +64,6 @@ class OptionalType final {
 
   explicit operator bool() const { return static_cast<bool>(opaque_); }
 
-  friend void swap(OptionalType& lhs, OptionalType& rhs) noexcept {
-    using std::swap;
-    swap(lhs.opaque_, rhs.opaque_);
-  }
-
   template <typename H>
   friend H AbslHashValue(H state, const OptionalType& type) {
     return H::combine(std::move(state), type.opaque_);

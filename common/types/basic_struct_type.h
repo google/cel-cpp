@@ -75,11 +75,6 @@ class BasicStructType final {
 
   explicit operator bool() const { return !name_.empty(); }
 
-  friend void swap(BasicStructType& lhs, BasicStructType& rhs) noexcept {
-    using std::swap;
-    swap(lhs.name_, rhs.name_);
-  }
-
  private:
   friend BasicStructType MakeBasicStructType(
       absl::string_view name ABSL_ATTRIBUTE_LIFETIME_BOUND);

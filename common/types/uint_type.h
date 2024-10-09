@@ -49,13 +49,7 @@ class UintType final {
   static TypeParameters GetParameters();
 
   static std::string DebugString() { return std::string(name()); }
-
-  constexpr void swap(UintType&) noexcept {}
 };
-
-inline constexpr void swap(UintType& lhs, UintType& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline constexpr bool operator==(UintType, UintType) { return true; }
 

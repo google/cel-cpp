@@ -22,7 +22,6 @@
 #include <ostream>
 #include <string>
 #include <type_traits>
-#include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
@@ -71,11 +70,6 @@ class OpaqueType final {
   TypeParameters GetParameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   explicit operator bool() const { return data_ != nullptr; }
-
-  friend void swap(OpaqueType& lhs, OpaqueType& rhs) noexcept {
-    using std::swap;
-    swap(lhs.data_, rhs.data_);
-  }
 
   bool IsOptional() const;
 

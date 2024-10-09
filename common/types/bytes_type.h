@@ -49,13 +49,7 @@ class BytesType final {
   static TypeParameters GetParameters();
 
   static std::string DebugString() { return std::string(name()); }
-
-  constexpr void swap(BytesType&) noexcept {}
 };
-
-inline constexpr void swap(BytesType& lhs, BytesType& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline constexpr bool operator==(BytesType, BytesType) { return true; }
 

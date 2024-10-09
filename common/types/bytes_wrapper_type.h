@@ -52,14 +52,7 @@ class BytesWrapperType final {
   static TypeParameters GetParameters();
 
   static std::string DebugString() { return std::string(name()); }
-
-  constexpr void swap(BytesWrapperType&) noexcept {}
 };
-
-inline constexpr void swap(BytesWrapperType& lhs,
-                           BytesWrapperType& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline constexpr bool operator==(BytesWrapperType, BytesWrapperType) {
   return true;

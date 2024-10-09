@@ -20,7 +20,6 @@
 
 #include <ostream>
 #include <string>
-#include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
@@ -64,11 +63,6 @@ class FunctionType final {
   const Type& result() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   absl::Span<const Type> args() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  friend void swap(FunctionType& lhs, FunctionType& rhs) noexcept {
-    using std::swap;
-    swap(lhs.data_, rhs.data_);
-  }
 
   explicit operator bool() const { return data_ != nullptr; }
 

@@ -49,13 +49,7 @@ class DurationType final {
   static TypeParameters GetParameters();
 
   static std::string DebugString() { return std::string(name()); }
-
-  constexpr void swap(DurationType&) noexcept {}
 };
-
-inline constexpr void swap(DurationType& lhs, DurationType& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline constexpr bool operator==(DurationType, DurationType) { return true; }
 

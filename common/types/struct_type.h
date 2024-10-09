@@ -118,10 +118,6 @@ class StructType final {
     return !absl::holds_alternative<absl::monostate>(variant_);
   }
 
-  friend void swap(StructType& lhs, StructType& rhs) noexcept {
-    lhs.variant_.swap(rhs.variant_);
-  }
-
  private:
   friend class Type;
   friend class MessageType;

@@ -49,13 +49,7 @@ class DoubleType final {
   static TypeParameters GetParameters();
 
   static std::string DebugString() { return std::string(name()); }
-
-  constexpr void swap(DoubleType&) noexcept {}
 };
-
-inline constexpr void swap(DoubleType& lhs, DoubleType& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline constexpr bool operator==(DoubleType, DoubleType) { return true; }
 

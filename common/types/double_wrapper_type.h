@@ -52,14 +52,7 @@ class DoubleWrapperType final {
   static TypeParameters GetParameters();
 
   static std::string DebugString() { return std::string(name()); }
-
-  constexpr void swap(DoubleWrapperType&) noexcept {}
 };
-
-inline constexpr void swap(DoubleWrapperType& lhs,
-                           DoubleWrapperType& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline constexpr bool operator==(DoubleWrapperType, DoubleWrapperType) {
   return true;

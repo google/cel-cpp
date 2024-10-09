@@ -86,11 +86,6 @@ class MessageType final {
 
   explicit operator bool() const { return descriptor_ != nullptr; }
 
-  friend void swap(MessageType& lhs, MessageType& rhs) noexcept {
-    using std::swap;
-    swap(lhs.descriptor_, rhs.descriptor_);
-  }
-
  private:
   friend struct std::pointer_traits<MessageType>;
 

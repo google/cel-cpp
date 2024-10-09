@@ -49,13 +49,7 @@ class StringType final {
   static TypeParameters GetParameters();
 
   std::string DebugString() const { return std::string(name()); }
-
-  constexpr void swap(StringType&) noexcept {}
 };
-
-inline constexpr void swap(StringType& lhs, StringType& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline constexpr bool operator==(StringType, StringType) { return true; }
 

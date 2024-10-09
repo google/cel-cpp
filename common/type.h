@@ -151,10 +151,6 @@ class Type final {
 
   Parameters GetParameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  friend void swap(Type& lhs, Type& rhs) noexcept {
-    lhs.variant_.swap(rhs.variant_);
-  }
-
   template <typename H>
   friend H AbslHashValue(H state, const Type& type) {
     return absl::visit(
@@ -908,7 +904,6 @@ static_assert(std::is_copy_constructible_v<Type>);
 static_assert(std::is_copy_assignable_v<Type>);
 static_assert(std::is_nothrow_move_constructible_v<Type>);
 static_assert(std::is_nothrow_move_assignable_v<Type>);
-static_assert(std::is_nothrow_swappable_v<Type>);
 
 // TypeParameters is a specialized view of a contiguous list of `Type`. It is
 // very similar to `absl::Span<const Type>`, except that it has a small amount

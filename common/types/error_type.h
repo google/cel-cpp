@@ -51,13 +51,7 @@ class ErrorType final {
   static TypeParameters GetParameters();
 
   static std::string DebugString() { return std::string(name()); }
-
-  constexpr void swap(ErrorType&) noexcept {}
 };
-
-inline constexpr void swap(ErrorType& lhs, ErrorType& rhs) noexcept {
-  lhs.swap(rhs);
-}
 
 inline constexpr bool operator==(ErrorType, ErrorType) { return true; }
 
