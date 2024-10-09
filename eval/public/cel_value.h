@@ -537,6 +537,9 @@ static_assert(absl::is_trivially_destructible<CelValue>::value,
 // CelList is a base class for list adapting classes.
 class CelList {
  public:
+  ABSL_DEPRECATED(
+      "Unless you are sure of the underlying CelList implementation, call Get "
+      "and pass an arena instead")
   virtual CelValue operator[](int index) const = 0;
 
   // Like `operator[](int)` above, but also accepts an arena. Prefer calling
@@ -579,6 +582,9 @@ class CelMap {
   // error if the type does not agree with the expected key types held by the
   // container.
   // TODO: Make this method const correct.
+  ABSL_DEPRECATED(
+      "Unless you are sure of the underlying CelMap implementation, call Get "
+      "and pass an arena instead")
   virtual absl::optional<CelValue> operator[](CelValue key) const = 0;
 
   // Like `operator[](CelValue)` above, but also accepts an arena. Prefer
@@ -621,6 +627,9 @@ class CelMap {
 
   // Return list of keys. CelList is owned by Arena, so no
   // ownership is passed.
+  ABSL_DEPRECATED(
+      "Unless you are sure of the underlying CelMap implementation, call "
+      "ListKeys and pass an arena instead")
   virtual absl::StatusOr<const CelList*> ListKeys() const = 0;
 
   // Like `ListKeys()` above, but also accepts an arena. Prefer calling this
