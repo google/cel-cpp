@@ -32,6 +32,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/allocator.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
@@ -96,6 +97,8 @@ class ParsedRepeatedFieldValue final {
 
   bool IsEmpty() const;
 
+  ParsedRepeatedFieldValue Clone(Allocator<> allocator) const;
+
   size_t Size() const;
 
   // See ListValueInterface::Get for documentation.
@@ -121,6 +124,16 @@ class ParsedRepeatedFieldValue final {
                         Value& result) const;
   absl::StatusOr<Value> Contains(ValueManager& value_manager,
                                  const Value& other) const;
+
+  const google::protobuf::Message& message() const {
+    ABSL_DCHECK(*this);
+    return *message_;
+  }
+
+  absl::Nonnull<const google::protobuf::FieldDescriptor*> field() const {
+    ABSL_DCHECK(*this);
+    return field_;
+  }
 
   // Returns `true` if `ParsedRepeatedFieldValue` is in a valid state.
   explicit operator bool() const { return field_ != nullptr; }

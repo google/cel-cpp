@@ -971,5 +971,21 @@ TEST(Value, Get) {
   }
 }
 
+TEST(Value, NumericHeterogeneousEquality) {
+  EXPECT_EQ(IntValue(1), UintValue(1));
+  EXPECT_EQ(UintValue(1), IntValue(1));
+  EXPECT_EQ(IntValue(1), DoubleValue(1));
+  EXPECT_EQ(DoubleValue(1), IntValue(1));
+  EXPECT_EQ(UintValue(1), DoubleValue(1));
+  EXPECT_EQ(DoubleValue(1), UintValue(1));
+
+  EXPECT_NE(IntValue(1), UintValue(2));
+  EXPECT_NE(UintValue(1), IntValue(2));
+  EXPECT_NE(IntValue(1), DoubleValue(2));
+  EXPECT_NE(DoubleValue(1), IntValue(2));
+  EXPECT_NE(UintValue(1), DoubleValue(2));
+  EXPECT_NE(DoubleValue(1), UintValue(2));
+}
+
 }  // namespace
 }  // namespace cel

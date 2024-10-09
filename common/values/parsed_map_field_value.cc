@@ -152,6 +152,25 @@ absl::StatusOr<Value> ParsedMapFieldValue::Equal(ValueManager& value_manager,
 
 bool ParsedMapFieldValue::IsZeroValue() const { return IsEmpty(); }
 
+ParsedMapFieldValue ParsedMapFieldValue::Clone(Allocator<> allocator) const {
+  ABSL_DCHECK(*this);
+  if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
+    return ParsedMapFieldValue();
+  }
+  if (message_.arena() == allocator.arena()) {
+    return *this;
+  }
+  auto field = message_->GetReflection()->GetRepeatedFieldRef<google::protobuf::Message>(
+      *message_, field_);
+  auto cloned = WrapShared(message_->New(allocator.arena()), allocator);
+  auto cloned_field =
+      cloned->GetReflection()->GetMutableRepeatedFieldRef<google::protobuf::Message>(
+          cel::to_address(cloned), field_);
+  cloned_field.Reserve(field.size());
+  cloned_field.CopyFrom(field);
+  return ParsedMapFieldValue(std::move(cloned), field_);
+}
+
 bool ParsedMapFieldValue::IsEmpty() const { return Size() == 0; }
 
 size_t ParsedMapFieldValue::Size() const {
