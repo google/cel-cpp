@@ -35,7 +35,7 @@ TEST(AllocatorKind, AbslStringify) {
 }
 
 TEST(NewDeleteAllocator, Bytes) {
-  auto allocator = NewDeleteAllocator();
+  auto allocator = NewDeleteAllocator<>();
   void* p = allocator.allocate_bytes(17, 8);
   EXPECT_THAT(p, NotNull());
   allocator.deallocate_bytes(p, 17, 8);
@@ -43,7 +43,7 @@ TEST(NewDeleteAllocator, Bytes) {
 
 TEST(ArenaAllocator, Bytes) {
   google::protobuf::Arena arena;
-  auto allocator = ArenaAllocator(&arena);
+  auto allocator = ArenaAllocator<>(&arena);
   void* p = allocator.allocate_bytes(17, 8);
   EXPECT_THAT(p, NotNull());
   allocator.deallocate_bytes(p, 17, 8);
@@ -54,7 +54,7 @@ struct TrivialObject {
 };
 
 TEST(NewDeleteAllocator, NewDeleteObject) {
-  auto allocator = NewDeleteAllocator();
+  auto allocator = NewDeleteAllocator<>();
   auto* p = allocator.new_object<TrivialObject>();
   EXPECT_THAT(p, NotNull());
   allocator.delete_object(p);
@@ -62,14 +62,14 @@ TEST(NewDeleteAllocator, NewDeleteObject) {
 
 TEST(ArenaAllocator, NewDeleteObject) {
   google::protobuf::Arena arena;
-  auto allocator = ArenaAllocator(&arena);
+  auto allocator = ArenaAllocator<>(&arena);
   auto* p = allocator.new_object<TrivialObject>();
   EXPECT_THAT(p, NotNull());
   allocator.delete_object(p);
 }
 
 TEST(NewDeleteAllocator, Object) {
-  auto allocator = NewDeleteAllocator();
+  auto allocator = NewDeleteAllocator<>();
   auto* p = allocator.allocate_object<TrivialObject>();
   EXPECT_THAT(p, NotNull());
   allocator.deallocate_object(p);
@@ -77,14 +77,14 @@ TEST(NewDeleteAllocator, Object) {
 
 TEST(ArenaAllocator, Object) {
   google::protobuf::Arena arena;
-  auto allocator = ArenaAllocator(&arena);
+  auto allocator = ArenaAllocator<>(&arena);
   auto* p = allocator.allocate_object<TrivialObject>();
   EXPECT_THAT(p, NotNull());
   allocator.deallocate_object(p);
 }
 
 TEST(NewDeleteAllocator, ObjectArray) {
-  auto allocator = NewDeleteAllocator();
+  auto allocator = NewDeleteAllocator<>();
   auto* p = allocator.allocate_object<TrivialObject>(2);
   EXPECT_THAT(p, NotNull());
   allocator.deallocate_object(p, 2);
@@ -92,7 +92,7 @@ TEST(NewDeleteAllocator, ObjectArray) {
 
 TEST(ArenaAllocator, ObjectArray) {
   google::protobuf::Arena arena;
-  auto allocator = ArenaAllocator(&arena);
+  auto allocator = ArenaAllocator<>(&arena);
   auto* p = allocator.allocate_object<TrivialObject>(2);
   EXPECT_THAT(p, NotNull());
   allocator.deallocate_object(p, 2);

@@ -96,7 +96,8 @@ class ParsedMapFieldValueTest : public TestWithParam<AllocatorKind> {
   }
 
   Allocator<> allocator() {
-    return arena_ ? ArenaAllocator(&*arena_) : NewDeleteAllocator();
+    return arena_ ? Allocator(ArenaAllocator<>{&*arena_})
+                  : Allocator(NewDeleteAllocator<>{});
   }
 
   absl::Nullable<google::protobuf::Arena*> arena() { return allocator().arena(); }

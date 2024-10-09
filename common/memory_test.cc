@@ -877,8 +877,8 @@ TEST(Owner, None) {
 
 TEST(Owner, Allocator) {
   google::protobuf::Arena arena;
-  EXPECT_THAT(Owner::Allocator(NewDeleteAllocator()), IsFalse());
-  EXPECT_THAT(Owner::Allocator(ArenaAllocator(&arena)), IsTrue());
+  EXPECT_THAT(Owner::Allocator(NewDeleteAllocator<>{}), IsFalse());
+  EXPECT_THAT(Owner::Allocator(ArenaAllocator<>{&arena}), IsTrue());
 }
 
 TEST(Owner, Arena) {
@@ -898,12 +898,12 @@ TEST(Owner, Equality) {
   google::protobuf::Arena arena1;
   google::protobuf::Arena arena2;
   EXPECT_EQ(Owner::None(), Owner::None());
-  EXPECT_EQ(Owner::Allocator(NewDeleteAllocator()), Owner::None());
+  EXPECT_EQ(Owner::Allocator(NewDeleteAllocator<>{}), Owner::None());
   EXPECT_EQ(Owner::Arena(&arena1), Owner::Arena(&arena1));
   EXPECT_NE(Owner::Arena(&arena1), Owner::None());
   EXPECT_NE(Owner::None(), Owner::Arena(&arena1));
   EXPECT_NE(Owner::Arena(&arena1), Owner::Arena(&arena2));
-  EXPECT_EQ(Owner::Allocator(ArenaAllocator(&arena1)), Owner::Arena(&arena1));
+  EXPECT_EQ(Owner::Allocator(ArenaAllocator<>{&arena1}), Owner::Arena(&arena1));
 }
 
 TEST(Borrower, None) {
@@ -913,8 +913,8 @@ TEST(Borrower, None) {
 
 TEST(Borrower, Allocator) {
   google::protobuf::Arena arena;
-  EXPECT_THAT(Borrower::Allocator(NewDeleteAllocator()), IsFalse());
-  EXPECT_THAT(Borrower::Allocator(ArenaAllocator(&arena)), IsTrue());
+  EXPECT_THAT(Borrower::Allocator(NewDeleteAllocator<>{}), IsFalse());
+  EXPECT_THAT(Borrower::Allocator(ArenaAllocator<>{&arena}), IsTrue());
 }
 
 TEST(Borrower, Arena) {
@@ -934,12 +934,12 @@ TEST(Borrower, Equality) {
   google::protobuf::Arena arena1;
   google::protobuf::Arena arena2;
   EXPECT_EQ(Borrower::None(), Borrower::None());
-  EXPECT_EQ(Borrower::Allocator(NewDeleteAllocator()), Borrower::None());
+  EXPECT_EQ(Borrower::Allocator(NewDeleteAllocator<>{}), Borrower::None());
   EXPECT_EQ(Borrower::Arena(&arena1), Borrower::Arena(&arena1));
   EXPECT_NE(Borrower::Arena(&arena1), Borrower::None());
   EXPECT_NE(Borrower::None(), Borrower::Arena(&arena1));
   EXPECT_NE(Borrower::Arena(&arena1), Borrower::Arena(&arena2));
-  EXPECT_EQ(Borrower::Allocator(ArenaAllocator(&arena1)),
+  EXPECT_EQ(Borrower::Allocator(ArenaAllocator<>{&arena1}),
             Borrower::Arena(&arena1));
 }
 
@@ -990,7 +990,7 @@ TEST(OwnerBorrower, MoveAssign) {
 TEST(Unique, ToAddress) {
   Unique<bool> unique;
   EXPECT_EQ(cel::to_address(unique), nullptr);
-  unique = AllocateUnique<bool>(NewDeleteAllocator());
+  unique = AllocateUnique<bool>(NewDeleteAllocator<>{});
   EXPECT_EQ(cel::to_address(unique), unique.operator->());
 }
 
@@ -999,9 +999,9 @@ class OwnedTest : public TestWithParam<MemoryManagement> {
   Allocator<> GetAllocator() {
     switch (GetParam()) {
       case MemoryManagement::kPooling:
-        return ArenaAllocator(&arena_);
+        return ArenaAllocator<>{&arena_};
       case MemoryManagement::kReferenceCounting:
-        return NewDeleteAllocator();
+        return NewDeleteAllocator<>{};
     }
   }
 
@@ -1183,9 +1183,9 @@ class BorrowedTest : public TestWithParam<MemoryManagement> {
   Allocator<> GetAllocator() {
     switch (GetParam()) {
       case MemoryManagement::kPooling:
-        return ArenaAllocator(&arena_);
+        return ArenaAllocator<>{&arena_};
       case MemoryManagement::kReferenceCounting:
-        return NewDeleteAllocator();
+        return NewDeleteAllocator<>{};
     }
   }
 

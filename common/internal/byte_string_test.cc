@@ -91,9 +91,9 @@ class ByteStringTest : public TestWithParam<MemoryManagement>,
   Allocator<> GetAllocator() {
     switch (GetParam()) {
       case MemoryManagement::kPooling:
-        return ArenaAllocator(&arena_);
+        return ArenaAllocator<>(&arena_);
       case MemoryManagement::kReferenceCounting:
-        return NewDeleteAllocator();
+        return NewDeleteAllocator<>{};
     }
   }
 
@@ -320,7 +320,7 @@ TEST_P(ByteStringTest, CopyFromByteStringView) {
   ByteString large_byte_string =
       ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
 
-  ByteString new_delete_byte_string(NewDeleteAllocator());
+  ByteString new_delete_byte_string(NewDeleteAllocator<>{});
   // Small <= Small
   new_delete_byte_string = ByteStringView(small_byte_string);
   EXPECT_EQ(new_delete_byte_string, ByteStringView(small_byte_string));
@@ -350,7 +350,7 @@ TEST_P(ByteStringTest, CopyFromByteStringView) {
   EXPECT_EQ(new_delete_byte_string, ByteStringView(small_byte_string));
 
   google::protobuf::Arena arena;
-  ByteString arena_byte_string(ArenaAllocator(&arena));
+  ByteString arena_byte_string(ArenaAllocator<>{&arena});
   // Small <= Small
   arena_byte_string = ByteStringView(small_byte_string);
   EXPECT_EQ(arena_byte_string, ByteStringView(small_byte_string));
@@ -421,9 +421,9 @@ TEST_P(ByteStringTest, CopyFromByteStringView) {
   allocator_byte_string = ByteStringView(absl::Cord(GetSmallStringView()));
   EXPECT_EQ(allocator_byte_string, GetSmallStringView());
   // Large <= Medium Arena String
-  ByteString large_new_delete_byte_string(NewDeleteAllocator(),
+  ByteString large_new_delete_byte_string(NewDeleteAllocator<>{},
                                           GetMediumOrLargeCord());
-  ByteString medium_arena_byte_string(ArenaAllocator(&arena),
+  ByteString medium_arena_byte_string(ArenaAllocator<>{&arena},
                                       GetMediumStringView());
   large_new_delete_byte_string = ByteStringView(medium_arena_byte_string);
   EXPECT_EQ(large_new_delete_byte_string, medium_arena_byte_string);
@@ -437,7 +437,7 @@ TEST_P(ByteStringTest, CopyFromByteString) {
   ByteString large_byte_string =
       ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
 
-  ByteString new_delete_byte_string(NewDeleteAllocator());
+  ByteString new_delete_byte_string(NewDeleteAllocator<>{});
   // Small <= Small
   new_delete_byte_string = small_byte_string;
   EXPECT_EQ(new_delete_byte_string, small_byte_string);
@@ -467,7 +467,7 @@ TEST_P(ByteStringTest, CopyFromByteString) {
   EXPECT_EQ(new_delete_byte_string, small_byte_string);
 
   google::protobuf::Arena arena;
-  ByteString arena_byte_string(ArenaAllocator(&arena));
+  ByteString arena_byte_string(ArenaAllocator<>{&arena});
   // Small <= Small
   arena_byte_string = small_byte_string;
   EXPECT_EQ(arena_byte_string, small_byte_string);
@@ -527,9 +527,9 @@ TEST_P(ByteStringTest, CopyFromByteString) {
 
   // Miscellaneous cases not covered above.
   // Large <= Medium Arena String
-  ByteString large_new_delete_byte_string(NewDeleteAllocator(),
+  ByteString large_new_delete_byte_string(NewDeleteAllocator<>{},
                                           GetMediumOrLargeCord());
-  ByteString medium_arena_byte_string(ArenaAllocator(&arena),
+  ByteString medium_arena_byte_string(ArenaAllocator<>{&arena},
                                       GetMediumStringView());
   large_new_delete_byte_string = medium_arena_byte_string;
   EXPECT_EQ(large_new_delete_byte_string, medium_arena_byte_string);
@@ -546,7 +546,7 @@ TEST_P(ByteStringTest, MoveFrom) {
     return ByteString::Owned(GetAllocator(), GetMediumOrLargeCord());
   };
 
-  ByteString new_delete_byte_string(NewDeleteAllocator());
+  ByteString new_delete_byte_string(NewDeleteAllocator<>{});
   // Small <= Small
   new_delete_byte_string = small_byte_string();
   EXPECT_EQ(new_delete_byte_string, small_byte_string());
@@ -576,7 +576,7 @@ TEST_P(ByteStringTest, MoveFrom) {
   EXPECT_EQ(new_delete_byte_string, small_byte_string());
 
   google::protobuf::Arena arena;
-  ByteString arena_byte_string(ArenaAllocator(&arena));
+  ByteString arena_byte_string(ArenaAllocator<>{&arena});
   // Small <= Small
   arena_byte_string = small_byte_string();
   EXPECT_EQ(arena_byte_string, small_byte_string());
@@ -636,9 +636,9 @@ TEST_P(ByteStringTest, MoveFrom) {
 
   // Miscellaneous cases not covered above.
   // Large <= Medium Arena String
-  ByteString large_new_delete_byte_string(NewDeleteAllocator(),
+  ByteString large_new_delete_byte_string(NewDeleteAllocator<>{},
                                           GetMediumOrLargeCord());
-  ByteString medium_arena_byte_string(ArenaAllocator(&arena),
+  ByteString medium_arena_byte_string(ArenaAllocator<>{&arena},
                                       GetMediumStringView());
   large_new_delete_byte_string = std::move(medium_arena_byte_string);
   EXPECT_EQ(large_new_delete_byte_string, GetMediumStringView());
@@ -714,26 +714,26 @@ TEST_P(ByteStringTest, Swap) {
   // restore state, so they are destructive.
   // Small <=> Different Allocator Medium
   ByteString medium_new_delete_byte_string =
-      ByteString::Owned(NewDeleteAllocator(), kDifferentMediumStringView);
+      ByteString::Owned(NewDeleteAllocator<>{}, kDifferentMediumStringView);
   swap(empty_byte_string, medium_new_delete_byte_string);
   EXPECT_EQ(empty_byte_string, kDifferentMediumStringView);
   EXPECT_EQ(medium_new_delete_byte_string, "");
   // Small <=> Different Allocator Large
   ByteString large_new_delete_byte_string =
-      ByteString::Owned(NewDeleteAllocator(), GetMediumOrLargeCord());
+      ByteString::Owned(NewDeleteAllocator<>{}, GetMediumOrLargeCord());
   swap(small_byte_string, large_new_delete_byte_string);
   EXPECT_EQ(small_byte_string, GetMediumOrLargeCord());
   EXPECT_EQ(large_new_delete_byte_string, GetSmallStringView());
   // Medium <=> Different Allocator Large
   large_new_delete_byte_string =
-      ByteString::Owned(NewDeleteAllocator(), different_medium_or_large_cord);
+      ByteString::Owned(NewDeleteAllocator<>{}, different_medium_or_large_cord);
   swap(medium_byte_string, large_new_delete_byte_string);
   EXPECT_EQ(medium_byte_string, different_medium_or_large_cord);
   EXPECT_EQ(large_new_delete_byte_string, GetMediumStringView());
   // Medium <=> Different Allocator Medium
   medium_byte_string = ByteString::Owned(GetAllocator(), GetMediumStringView());
   medium_new_delete_byte_string =
-      ByteString::Owned(NewDeleteAllocator(), kDifferentMediumStringView);
+      ByteString::Owned(NewDeleteAllocator<>{}, kDifferentMediumStringView);
   swap(medium_byte_string, medium_new_delete_byte_string);
   EXPECT_EQ(medium_byte_string, kDifferentMediumStringView);
   EXPECT_EQ(medium_new_delete_byte_string, GetMediumStringView());
@@ -974,9 +974,9 @@ class ByteStringViewTest : public TestWithParam<MemoryManagement>,
   Allocator<> GetAllocator() {
     switch (GetParam()) {
       case MemoryManagement::kPooling:
-        return ArenaAllocator(&arena_);
+        return ArenaAllocator<>(&arena_);
       case MemoryManagement::kReferenceCounting:
-        return NewDeleteAllocator();
+        return NewDeleteAllocator<>{};
     }
   }
 

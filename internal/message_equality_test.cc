@@ -58,7 +58,7 @@ using TestAllTypesProto3 = ::google::api::expr::test::v1::proto3::TestAllTypes;
 
 template <typename T>
 Owned<google::protobuf::Message> ParseTextProto(absl::string_view text) {
-  return DynamicParseTextProto<T>(NewDeleteAllocator(), text,
+  return DynamicParseTextProto<T>(NewDeleteAllocator<>{}, text,
                                   GetTestingDescriptorPool(),
                                   GetTestingMessageFactory());
 }
@@ -82,7 +82,7 @@ Owned<google::protobuf::Message> PackMessage(const google::protobuf::Message& me
           MessageTypeNameFor<google::protobuf::Any>()));
   const auto* prototype =
       ABSL_DIE_IF_NULL(GetTestingMessageFactory()->GetPrototype(descriptor));
-  auto instance = WrapShared(prototype->New(), NewDeleteAllocator());
+  auto instance = WrapShared(prototype->New(), NewDeleteAllocator<>{});
   auto reflection = well_known_types::GetAnyReflectionOrDie(descriptor);
   reflection.SetTypeUrl(
       cel::to_address(instance),
@@ -400,7 +400,7 @@ PackTestAllTypesProto3Field(
       field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
     const auto* descriptor = message.GetDescriptor();
     const auto* any_field = descriptor->FindFieldByName("repeated_any");
-    auto packed = WrapShared(message.New(), NewDeleteAllocator());
+    auto packed = WrapShared(message.New(), NewDeleteAllocator<>{});
     const int size = message.GetReflection()->FieldSize(message, field);
     for (int i = 0; i < size; ++i) {
       PackMessageTo(
@@ -414,7 +414,7 @@ PackTestAllTypesProto3Field(
       field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
     const auto* descriptor = message.GetDescriptor();
     const auto* any_field = descriptor->FindFieldByName("single_any");
-    auto packed = WrapShared(message.New(), NewDeleteAllocator());
+    auto packed = WrapShared(message.New(), NewDeleteAllocator<>{});
     PackMessageTo(message.GetReflection()->GetMessage(message, field),
                   packed->GetReflection()->MutableMessage(
                       cel::to_address(packed), any_field));
