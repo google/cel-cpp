@@ -50,7 +50,10 @@ class TypeInferenceContext {
     std::vector<OverloadDecl> overloads;
   };
 
-  explicit TypeInferenceContext(google::protobuf::Arena* arena) : arena_(arena) {}
+  explicit TypeInferenceContext(google::protobuf::Arena* arena,
+                                bool enable_legacy_null_assignment = true)
+      : arena_(arena),
+        enable_legacy_null_assignment_(enable_legacy_null_assignment) {}
 
   // Resolves any remaining type parameters in the given type to a concrete
   // type or dyn.
@@ -151,6 +154,7 @@ class TypeInferenceContext {
       type_parameter_bindings_;
   int64_t next_type_parameter_id_ = 0;
   google::protobuf::Arena* arena_;
+  bool enable_legacy_null_assignment_;
 };
 
 }  // namespace cel::checker_internal

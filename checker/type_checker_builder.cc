@@ -35,7 +35,9 @@ absl::StatusOr<std::unique_ptr<TypeChecker>> TypeCheckerBuilder::Build() && {
     // WellKnownTypes.
     env_.AddTypeProvider(std::make_unique<TypeIntrospector>());
   }
-  return std::make_unique<checker_internal::TypeCheckerImpl>(std::move(env_));
+  auto checker = std::make_unique<checker_internal::TypeCheckerImpl>(
+      std::move(env_), options_);
+  return checker;
 }
 
 absl::Status TypeCheckerBuilder::AddLibrary(CheckerLibrary library) {

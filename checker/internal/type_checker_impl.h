@@ -19,6 +19,7 @@
 #include <utility>
 
 #include "absl/status/statusor.h"
+#include "checker/checker_options.h"
 #include "checker/internal/type_check_env.h"
 #include "checker/type_checker.h"
 #include "checker/validation_result.h"
@@ -32,7 +33,8 @@ namespace cel::checker_internal {
 // See cel::TypeCheckerBuilder for constructing instances.
 class TypeCheckerImpl : public TypeChecker {
  public:
-  explicit TypeCheckerImpl(TypeCheckEnv env) : env_(std::move(env)) {}
+  TypeCheckerImpl(TypeCheckEnv env, CheckerOptions options = {})
+      : env_(std::move(env)), options_(options) {}
 
   TypeCheckerImpl(const TypeCheckerImpl&) = delete;
   TypeCheckerImpl& operator=(const TypeCheckerImpl&) = delete;
@@ -45,6 +47,7 @@ class TypeCheckerImpl : public TypeChecker {
  private:
   TypeCheckEnv env_;
   google::protobuf::Arena type_arena_;
+  CheckerOptions options_;
 };
 
 }  // namespace cel::checker_internal

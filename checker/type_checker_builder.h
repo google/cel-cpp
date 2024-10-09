@@ -25,6 +25,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "checker/checker_options.h"
 #include "checker/internal/type_check_env.h"
 #include "checker/type_checker.h"
 #include "common/decl.h"
@@ -43,16 +44,6 @@ struct CheckerLibrary {
   std::string id;
   // Functional implementation applying the library features to the builder.
   ConfigureBuilderCallback options;
-};
-
-// Options for enabling core type checker features.
-struct CheckerOptions {
-  // Enable overloads for numeric comparisons across types.
-  // For example, 1.0 < 2 will resolve to lt_double_int.
-  //
-  // By default, this is disabled and expressions must explicitly cast to dyn or
-  // the same type to compare.
-  bool enable_cross_numeric_comparisons = false;
 };
 
 // Builder for TypeChecker instances.

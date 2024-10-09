@@ -17,6 +17,11 @@ package(
 )
 
 cc_library(
+    name = "checker_options",
+    hdrs = ["checker_options.h"],
+)
+
+cc_library(
     name = "type_check_issue",
     srcs = ["type_check_issue.cc"],
     hdrs = ["type_check_issue.h"],
@@ -79,6 +84,7 @@ cc_library(
     srcs = ["type_checker_builder.cc"],
     hdrs = ["type_checker_builder.h"],
     deps = [
+        ":checker_options",
         ":type_checker",
         "//checker/internal:type_check_env",
         "//checker/internal:type_checker_impl",
@@ -163,6 +169,7 @@ cc_test(
     name = "optional_test",
     srcs = ["optional_test.cc"],
     deps = [
+        ":checker_options",
         ":optional",
         ":standard_library",
         ":type_check_issue",

@@ -44,6 +44,26 @@ bool IsWildCardType(Type type) {
   }
 }
 
+// Returns true if the given type is a legacy nullable type.
+//
+// Historically, structs and abstract types were considered nullable. This is
+// inconsistent with CEL's usual interpretation of null as a literal JSON null.
+//
+// TODO: Need a concrete plan for updating existing CEL expressions
+// that depend on the old behavior.
+bool IsLegacyNullable(Type type) {
+  switch (type.kind()) {
+    case TypeKind::kStruct:
+    case TypeKind::kDuration:
+    case TypeKind::kTimestamp:
+    case TypeKind::kAny:
+    case TypeKind::kOpaque:
+      return true;
+    default:
+      return false;
+  }
+}
+
 bool IsTypeVar(absl::string_view name) { return absl::StartsWith(name, "T%"); }
 
 bool IsUnionType(Type t) {
@@ -280,6 +300,16 @@ bool TypeInferenceContext::IsAssignableInternal(
       IsUnionType(from_subs) && IsSubsetOf(to_subs, from_subs)) {
     prospective_substitutions[to.AsTypeParam()->name()] = from_subs;
     return true;
+  }
+
+  if (enable_legacy_null_assignment_) {
+    if (from_subs.IsNull() && IsLegacyNullable(to_subs)) {
+      return true;
+    }
+
+    if (to_subs.IsNull() && IsLegacyNullable(from_subs)) {
+      return true;
+    }
   }
 
   if (from_subs.kind() == TypeKind::kType &&

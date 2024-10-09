@@ -1041,9 +1041,9 @@ absl::Status AddEnumConstants(TypeCheckerBuilder& builder) {
   VariableDecl pb_null;
   pb_null.set_name("google.protobuf.NullValue.NULL_VALUE");
   // TODO: This is interpreted as an enum (int) or null in
-  // different cases. Need to check that defining as CEL null doesn't break any
-  // existing expressions.
-  pb_null.set_type(NullType());
+  // different cases. We should add some additional spec tests to cover this and
+  // update the behavior to be consistent.
+  pb_null.set_type(IntType());
   pb_null.set_value(Constant(nullptr));
   CEL_RETURN_IF_ERROR(builder.AddVariable(std::move(pb_null)));
   return absl::OkStatus();

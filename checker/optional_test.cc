@@ -23,6 +23,7 @@
 #include "absl/strings/str_join.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
+#include "checker/checker_options.h"
 #include "checker/internal/test_ast_helpers.h"
 #include "checker/standard_library.h"
 #include "checker/type_check_issue.h"
@@ -251,9 +252,77 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{"optional.of('abc').optMap(x, x + 'def')",
                  IsOptionalType(AstType(ast_internal::PrimitiveType::kString))},
         TestCase{"optional.of('abc').optFlatMap(x, optional.of(x + 'def'))",
-                 IsOptionalType(AstType(ast_internal::PrimitiveType::kString))}
+                 IsOptionalType(AstType(ast_internal::PrimitiveType::kString))},
+        // Legacy nullability behaviors.
+        TestCase{"google.api.expr.test.v1.proto3.TestAllTypes{?null_value: "
+                 "optional.of(0)}",
+                 Eq(AstType(ast_internal::MessageType(
+                     "google.api.expr.test.v1.proto3.TestAllTypes")))},
+        TestCase{
+            "google.api.expr.test.v1.proto3.TestAllTypes{?null_value: null}",
+            Eq(AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")))},
+        TestCase{"google.api.expr.test.v1.proto3.TestAllTypes{?null_value: "
+                 "optional.of(null)}",
+                 Eq(AstType(ast_internal::MessageType(
+                     "google.api.expr.test.v1.proto3.TestAllTypes")))},
+        TestCase{"google.api.expr.test.v1.proto3.TestAllTypes{}.?single_int64 "
+                 "== null",
+                 Eq(AstType(ast_internal::PrimitiveType::kBool))}));
 
-        ));
+class OptionalStrictNullAssignmentTest
+    : public testing::TestWithParam<TestCase> {};
+
+TEST_P(OptionalStrictNullAssignmentTest, Runner) {
+  CheckerOptions options;
+  options.enable_legacy_null_assignment = false;
+  TypeCheckerBuilder builder(options);
+  const TestCase& test_case = GetParam();
+  ASSERT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
+  ASSERT_THAT(builder.AddLibrary(OptionalCheckerLibrary()), IsOk());
+  google::protobuf::LinkMessageReflection<TestAllTypes>();
+  builder.AddTypeProvider(
+      std::make_unique<cel::extensions::ProtoTypeReflector>());
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> checker,
+                       std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst(test_case.expr));
+
+  ASSERT_OK_AND_ASSIGN(auto result, checker->Check(std::move(ast)));
+
+  if (!test_case.error_substring.empty()) {
+    EXPECT_THAT(result.GetIssues(),
+                Contains(Property(&TypeCheckIssue::message,
+                                  HasSubstr(test_case.error_substring))))
+        << absl::StrJoin(result.GetIssues(), "\n",
+                         [](std::string* out, const auto& i) {
+                           absl::StrAppend(out, i.message());
+                         });
+    return;
+  }
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty())
+      << "for expression: " << test_case.expr;
+  ASSERT_OK_AND_ASSIGN(auto checked_ast, result.ReleaseAst());
+  const auto& ast_impl = ast_internal::AstImpl::CastFromPublicAst(*checked_ast);
+
+  int64_t root_id = ast_impl.root_expr().id();
+
+  EXPECT_THAT(ast_impl.GetType(root_id), test_case.result_type_matcher)
+      << "for expression: " << test_case.expr;
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    OptionalTests, OptionalStrictNullAssignmentTest,
+    ::testing::Values(
+        TestCase{
+            "google.api.expr.test.v1.proto3.TestAllTypes{?single_int64: null}",
+            _,
+            "expected type of field 'single_int64' is 'optional_type<int>' but "
+            "provided type is 'null_type'"},
+        TestCase{"google.api.expr.test.v1.proto3.TestAllTypes{}.?single_int64 "
+                 "== null",
+                 _, "no matching overload for '_==_'"}));
 
 }  // namespace
 }  // namespace cel

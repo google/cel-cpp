@@ -31,6 +31,7 @@
 #include "absl/strings/str_join.h"
 #include "base/ast_internal/ast_impl.h"
 #include "base/ast_internal/expr.h"
+#include "checker/checker_options.h"
 #include "checker/internal/test_ast_helpers.h"
 #include "checker/internal/type_check_env.h"
 #include "checker/type_check_issue.h"
@@ -1651,6 +1652,45 @@ INSTANTIATE_TEST_SUITE_P(
         CheckedExprTestCase{
             .expr = "TestAllTypes == type(TestAllTypes{})",
             .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
+        },
+        // Special case for the NullValue enum.
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{null_value: 0}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{null_value: null}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        // Legacy nullability behaviors.
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_duration: null}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_timestamp: null}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_nested_message: null}",
+            .expected_result_type = AstType(ast_internal::MessageType(
+                "google.api.expr.test.v1.proto3.TestAllTypes")),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{}.single_duration == null",
+            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{}.single_timestamp == null",
+            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{}.single_nested_message == null",
+            .expected_result_type = AstType(ast_internal::PrimitiveType::kBool),
         }));
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1848,6 +1888,84 @@ INSTANTIATE_TEST_SUITE_P(
         CheckedExprTestCase{
             .expr = "{}.field.nested_field",
             .expected_result_type = AstType(ast_internal::DynamicType()),
+        }));
+
+class StrictNullAssignmentTest
+    : public testing::TestWithParam<CheckedExprTestCase> {};
+
+TEST_P(StrictNullAssignmentTest, TypeChecksProto3) {
+  const CheckedExprTestCase& test_case = GetParam();
+  google::protobuf::Arena arena;
+
+  TypeCheckEnv env;
+  env.AddTypeProvider(std::make_unique<cel::extensions::ProtoTypeReflector>());
+  env.set_container("google.api.expr.test.v1.proto3");
+  google::protobuf::LinkMessageReflection<testpb3::TestAllTypes>();
+
+  ASSERT_TRUE(env.InsertVariableIfAbsent(MakeVariableDecl(
+      "test_msg", MessageType(testpb3::TestAllTypes::descriptor()))));
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
+  CheckerOptions options;
+  options.enable_legacy_null_assignment = false;
+  TypeCheckerImpl impl(std::move(env), options);
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst(test_case.expr));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  if (!test_case.error_substring.empty()) {
+    EXPECT_THAT(result.GetIssues(),
+                Contains(IsIssueWithSubstring(Severity::kError,
+                                              test_case.error_substring)));
+    return;
+  }
+
+  ASSERT_TRUE(result.IsValid())
+      << absl::StrJoin(result.GetIssues(), "\n",
+                       [](std::string* out, const TypeCheckIssue& issue) {
+                         absl::StrAppend(out, issue.message());
+                       });
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<Ast> checked_ast, result.ReleaseAst());
+
+  const auto& ast_impl = AstImpl::CastFromPublicAst(*checked_ast);
+  EXPECT_THAT(ast_impl.type_map(),
+              Contains(Pair(ast_impl.root_expr().id(),
+                            Eq(test_case.expected_result_type))));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    TestStrictNullAssignment, StrictNullAssignmentTest,
+    ::testing::Values(
+        // Legacy nullability behaviors rejected.
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_duration: null}",
+            .expected_result_type = AstType(),
+            .error_substring =
+                "'single_duration' is 'google.protobuf.Duration' but provided "
+                "type is 'null_type'"},
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_timestamp: null}",
+            .expected_result_type = AstType(),
+            .error_substring =
+                "'single_timestamp' is 'google.protobuf.Timestamp' but "
+                "provided type is 'null_type'"},
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{single_nested_message: null}",
+            .expected_result_type = AstType(),
+            // Debug string includes descriptor address.
+            .error_substring = "but provided type is 'null_type'"},
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{}.single_duration == null",
+            .expected_result_type = AstType(),
+            .error_substring = "no matching overload for '_==_'",
+        },
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{}.single_timestamp == null",
+            .expected_result_type = AstType(),
+            .error_substring = "no matching overload for '_==_'"},
+        CheckedExprTestCase{
+            .expr = "TestAllTypes{}.single_nested_message == null",
+            .expected_result_type = AstType(),
+            .error_substring = "no matching overload for '_==_'",
         }));
 
 }  // namespace
