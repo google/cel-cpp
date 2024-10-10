@@ -12,15 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <utility>
-
+#include "absl/base/nullability.h"
+#include "absl/base/optimization.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
+#include "base/attribute.h"
+#include "common/allocator.h"
 #include "common/casting.h"
+#include "common/memory.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "common/values/values.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 
@@ -44,6 +49,19 @@ absl::Status ParsedStructValueInterface::EqualImpl(
     ValueManager& value_manager, const ParsedStructValue& other,
     Value& result) const {
   return common_internal::StructValueEqual(value_manager, *this, other, result);
+}
+
+ParsedStructValue ParsedStructValue::Clone(Allocator<> allocator) const {
+  ABSL_DCHECK(*this);
+  if (ABSL_PREDICT_FALSE(!interface_)) {
+    return ParsedStructValue();
+  }
+  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
+      arena != nullptr &&
+      common_internal::GetReferenceCount(interface_) != nullptr) {
+    return interface_->Clone(arena);
+  }
+  return *this;
 }
 
 absl::StatusOr<int> ParsedStructValueInterface::Qualify(

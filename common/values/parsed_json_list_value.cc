@@ -28,6 +28,7 @@
 #include "absl/strings/cord.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
+#include "common/allocator.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/value.h"
@@ -121,6 +122,18 @@ absl::StatusOr<Value> ParsedJsonListValue::Equal(ValueManager& value_manager,
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
+}
+
+ParsedJsonListValue ParsedJsonListValue::Clone(Allocator<> allocator) const {
+  if (value_ == nullptr) {
+    return ParsedJsonListValue();
+  }
+  if (value_.arena() == allocator.arena()) {
+    return *this;
+  }
+  auto cloned = WrapShared(value_->New(allocator.arena()), allocator);
+  cloned->CopyFrom(*value_);
+  return ParsedJsonListValue(std::move(cloned));
 }
 
 size_t ParsedJsonListValue::Size() const {

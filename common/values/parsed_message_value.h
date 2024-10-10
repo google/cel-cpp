@@ -36,6 +36,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
+#include "common/allocator.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
@@ -77,6 +78,8 @@ class ParsedMessageValue final {
 
   static ValueKind kind() { return kKind; }
 
+  Allocator<> get_allocator() const { return Allocator<>(value_.arena()); }
+
   absl::string_view GetTypeName() const { return GetDescriptor()->full_name(); }
 
   MessageType GetRuntimeType() const { return MessageType(GetDescriptor()); }
@@ -113,6 +116,8 @@ class ParsedMessageValue final {
                      Value& result) const;
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
                               const Value& other) const;
+
+  ParsedMessageValue Clone(Allocator<> allocator) const;
 
   absl::Status GetFieldByName(ValueManager& value_manager,
                               absl::string_view name, Value& result,
