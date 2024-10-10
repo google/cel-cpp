@@ -36,6 +36,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "common/allocator.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
@@ -54,9 +55,6 @@ class OpaqueValue;
 class TypeFactory;
 class ValueManager;
 
-// `Is` checks whether `lhs` and `rhs` have the same identity.
-bool Is(const OpaqueValue& lhs, const OpaqueValue& rhs);
-
 class OpaqueValueInterface : public ValueInterface {
  public:
   using alternative_type = OpaqueValue;
@@ -69,6 +67,8 @@ class OpaqueValueInterface : public ValueInterface {
 
   virtual absl::Status Equal(ValueManager& value_manager, const Value& other,
                              Value& result) const = 0;
+
+  virtual OpaqueValue Clone(ArenaAllocator<> allocator) const = 0;
 };
 
 class OpaqueValue {
@@ -112,6 +112,8 @@ class OpaqueValue {
                               const Value& other) const;
 
   bool IsZeroValue() const { return false; }
+
+  OpaqueValue Clone(Allocator<> allocator) const;
 
   // Returns `true` if this opaque value is an instance of an optional value.
   bool IsOptional() const;
@@ -185,9 +187,10 @@ class OpaqueValue {
     return interface_.operator->();
   }
 
+  explicit operator bool() const { return static_cast<bool>(interface_); }
+
  private:
   friend struct NativeTypeTraits<OpaqueValue>;
-  friend bool Is(const OpaqueValue& lhs, const OpaqueValue& rhs);
 
   Shared<const OpaqueValueInterface> interface_;
 };
@@ -222,10 +225,6 @@ struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
     return NativeTypeTraits<OpaqueValue>::SkipDestructor(type);
   }
 };
-
-inline bool Is(const OpaqueValue& lhs, const OpaqueValue& rhs) {
-  return lhs.operator->() == rhs.operator->();
-}
 
 }  // namespace cel
 

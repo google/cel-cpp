@@ -36,6 +36,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/allocator.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
@@ -51,9 +52,6 @@ class ListValue;
 class ParsedMapValueInterface;
 class ParsedMapValue;
 class ValueManager;
-
-// `Is` checks whether `lhs` and `rhs` have the same identity.
-bool Is(const ParsedMapValue& lhs, const ParsedMapValue& rhs);
 
 class ParsedMapValueInterface : public MapValueInterface {
  public:
@@ -105,6 +103,8 @@ class ParsedMapValueInterface : public MapValueInterface {
   // specified otherwise, assume the iteration order is random.
   virtual absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const = 0;
+
+  virtual ParsedMapValue Clone(ArenaAllocator<> allocator) const = 0;
 
  protected:
   // Called by `Find` after performing various argument checks.
@@ -161,6 +161,8 @@ class ParsedMapValue {
 
   bool IsZeroValue() const { return interface_->IsZeroValue(); }
 
+  ParsedMapValue Clone(Allocator<> allocator) const;
+
   bool IsEmpty() const { return interface_->IsEmpty(); }
 
   size_t Size() const { return interface_->Size(); }
@@ -209,9 +211,10 @@ class ParsedMapValue {
     return interface_.operator->();
   }
 
+  explicit operator bool() const { return static_cast<bool>(interface_); }
+
  private:
   friend struct NativeTypeTraits<ParsedMapValue>;
-  friend bool Is(const ParsedMapValue& lhs, const ParsedMapValue& rhs);
 
   Shared<const ParsedMapValueInterface> interface_;
 };
@@ -248,10 +251,6 @@ struct NativeTypeTraits<T, std::enable_if_t<std::conjunction_v<
     return NativeTypeTraits<ParsedMapValue>::SkipDestructor(type);
   }
 };
-
-inline bool Is(const ParsedMapValue& lhs, const ParsedMapValue& rhs) {
-  return lhs.interface_.operator->() == rhs.interface_.operator->();
-}
 
 }  // namespace cel
 

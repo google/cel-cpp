@@ -158,6 +158,10 @@ class NewDeleteAllocator : public NewDeleteAllocator<void> {
 
   using NewDeleteAllocator<void>::NewDeleteAllocator;
 
+  template <typename U, typename = std::enable_if_t<!std::is_same_v<U, T>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  constexpr NewDeleteAllocator(const NewDeleteAllocator<U>& other) noexcept {}
+
   pointer allocate(size_type n, const void* /*hint*/ = nullptr) {
     return reinterpret_cast<pointer>(internal::AlignedNew(
         n * sizeof(T), static_cast<std::align_val_t>(alignof(T))));
@@ -184,13 +188,11 @@ class NewDeleteAllocator : public NewDeleteAllocator<void> {
 
   template <typename U, typename... Args>
   void construct(U* p, Args&&... args) {
-    static_assert(std::is_same_v<T*, U*>);
-    ::new (static_cast<void*>(p)) T(std::forward<Args>(args)...);
+    ::new (static_cast<void*>(p)) U(std::forward<Args>(args)...);
   }
 
   template <typename U>
   void destroy(U* p) noexcept {
-    static_assert(std::is_same_v<T*, U*>);
     std::destroy_at(p);
   }
 };
@@ -205,6 +207,10 @@ inline bool operator!=(NewDeleteAllocator<T> lhs,
                        NewDeleteAllocator<U> rhs) noexcept {
   return !operator==(lhs, rhs);
 }
+
+NewDeleteAllocator() -> NewDeleteAllocator<void>;
+template <typename T>
+NewDeleteAllocator(const NewDeleteAllocator<T>&) -> NewDeleteAllocator<T>;
 
 // `ArenaAllocator<>` is a type-erased vocabulary type capable of performing
 // allocation/deallocation and construction/destruction using memory owned by
@@ -227,8 +233,8 @@ class ArenaAllocator<void> {
 
   template <typename U, typename = std::enable_if_t<!std::is_void_v<U>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ArenaAllocator(const ArenaAllocator<U>& other) noexcept
-      : ArenaAllocator(other.arena()) {}
+  constexpr ArenaAllocator(const ArenaAllocator<U>& other) noexcept
+      : arena_(other.arena()) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor)
   ArenaAllocator(absl::Nonnull<google::protobuf::Arena*> arena) noexcept
@@ -311,6 +317,9 @@ class ArenaAllocator<void> {
 // which accept custom STL allocators.
 template <typename T>
 class ArenaAllocator : public ArenaAllocator<void> {
+ private:
+  using Base = ArenaAllocator<void>;
+
  public:
   static_assert(!std::is_const_v<T>, "T must not be const qualified");
   static_assert(!std::is_volatile_v<T>, "T must not be volatile qualified");
@@ -323,6 +332,11 @@ class ArenaAllocator : public ArenaAllocator<void> {
   using const_reference = const value_type&;
 
   using ArenaAllocator<void>::ArenaAllocator;
+
+  template <typename U, typename = std::enable_if_t<!std::is_same_v<U, T>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  constexpr ArenaAllocator(const ArenaAllocator<U>& other) noexcept
+      : Base(other) {}
 
   pointer allocate(size_type n, const void* /*hint*/ = nullptr) {
     return static_cast<pointer>(
@@ -343,15 +357,13 @@ class ArenaAllocator : public ArenaAllocator<void> {
 
   template <typename U, typename... Args>
   void construct(U* p, Args&&... args) {
-    static_assert(std::is_same_v<T*, U*>);
-    static_assert(!IsArenaConstructible<T>::value);
-    ::new (static_cast<void*>(p)) T(std::forward<Args>(args)...);
+    static_assert(!IsArenaConstructible<U>::value);
+    ::new (static_cast<void*>(p)) U(std::forward<Args>(args)...);
   }
 
   template <typename U>
   void destroy(U* p) noexcept {
-    static_assert(std::is_same_v<T*, U*>);
-    static_assert(!IsArenaConstructible<T>::value);
+    static_assert(!IsArenaConstructible<U>::value);
     std::destroy_at(p);
   }
 };
@@ -366,7 +378,9 @@ inline bool operator!=(ArenaAllocator<T> lhs, ArenaAllocator<U> rhs) noexcept {
   return !operator==(lhs, rhs);
 }
 
-ArenaAllocator() -> ArenaAllocator<void>;
+ArenaAllocator(absl::Nonnull<google::protobuf::Arena*>) -> ArenaAllocator<void>;
+template <typename T>
+ArenaAllocator(const ArenaAllocator<T>&) -> ArenaAllocator<T>;
 
 // `Allocator<>` is a type-erased vocabulary type capable of performing
 // allocation/deallocation and construction/destruction using memory owned by
@@ -492,6 +506,11 @@ class Allocator : public Allocator<void> {
 
   using Allocator<void>::Allocator;
 
+  template <typename U, typename = std::enable_if_t<!std::is_same_v<U, T>>>
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  constexpr Allocator(const Allocator<U>& other) noexcept
+      : Allocator(other.arena_) {}
+
   pointer allocate(size_type n, const void* /*hint*/ = nullptr) {
     return arena() != nullptr ? ArenaAllocator<T>(arena()).allocate(n)
                               : NewDeleteAllocator<T>().allocate(n);
@@ -534,6 +553,8 @@ inline bool operator!=(Allocator<T> lhs, Allocator<U> rhs) noexcept {
   return !operator==(lhs, rhs);
 }
 
+template <typename T>
+Allocator(const Allocator<T>&) -> Allocator<T>;
 template <typename T>
 Allocator(const NewDeleteAllocator<T>&) -> Allocator<T>;
 template <typename T>

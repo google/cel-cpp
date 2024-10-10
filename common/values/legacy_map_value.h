@@ -45,8 +45,6 @@ namespace common_internal {
 
 class LegacyMapValue;
 
-bool Is(const LegacyMapValue& lhs, const LegacyMapValue& rhs);
-
 class LegacyMapValue final {
  public:
   static constexpr ValueKind kKind = ValueKind::kMap;
@@ -117,8 +115,6 @@ class LegacyMapValue final {
   uintptr_t NativeValue() const { return impl_; }
 
  private:
-  friend bool Is(const LegacyMapValue& lhs, const LegacyMapValue& rhs);
-
   uintptr_t impl_;
 };
 
@@ -128,10 +124,6 @@ inline void swap(LegacyMapValue& lhs, LegacyMapValue& rhs) noexcept {
 
 inline std::ostream& operator<<(std::ostream& out, const LegacyMapValue& type) {
   return out << type.DebugString();
-}
-
-inline bool Is(const LegacyMapValue& lhs, const LegacyMapValue& rhs) {
-  return lhs.impl_ == rhs.impl_;
 }
 
 bool IsLegacyMapValue(const Value& value);
