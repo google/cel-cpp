@@ -19,24 +19,30 @@
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/allocator.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
-#include "common/native_type.h"
 #include "common/value.h"
+#include "common/values/list_value_builder.h"
 #include "common/values/values.h"
+#include "eval/public/cel_value.h"
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 
 namespace {
 
-class EmptyListValue final : public ParsedListValueInterface {
+using ::google::api::expr::runtime::CelValue;
+
+class EmptyListValue final : public common_internal::CompatListValue {
  public:
   static const EmptyListValue& Get() {
     static const absl::NoDestructor<EmptyListValue> empty;
@@ -56,11 +62,27 @@ class EmptyListValue final : public ParsedListValueInterface {
     return JsonArray();
   }
 
- private:
-  NativeTypeId GetNativeTypeId() const noexcept override {
-    return NativeTypeId::For<EmptyListValue>();
+  ParsedListValue Clone(ArenaAllocator<>) const override {
+    return ParsedListValue();
   }
 
+  int size() const override { return 0; }
+
+  CelValue operator[](int index) const override {
+    static const absl::NoDestructor<absl::Status> error(
+        absl::InvalidArgumentError("index out of bounds"));
+    return CelValue::CreateError(&*error);
+  }
+
+  CelValue Get(google::protobuf::Arena* arena, int index) const override {
+    if (arena == nullptr) {
+      return (*this)[index];
+    }
+    return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
+        arena, absl::InvalidArgumentError("index out of bounds")));
+  }
+
+ private:
   absl::Status GetImpl(ValueManager&, size_t, Value&) const override {
     // Not reachable, `Get` performs index checking.
     return absl::InternalError("unreachable");
@@ -68,6 +90,14 @@ class EmptyListValue final : public ParsedListValueInterface {
 };
 
 }  // namespace
+
+namespace common_internal {
+
+absl::Nonnull<const CompatListValue*> EmptyCompatListValue() {
+  return &EmptyListValue::Get();
+}
+
+}  // namespace common_internal
 
 class ParsedListValueInterfaceIterator final : public ValueIterator {
  public:
@@ -96,8 +126,8 @@ class ParsedListValueInterfaceIterator final : public ValueIterator {
 };
 
 absl::Status ParsedListValueInterface::SerializeTo(
-    AnyToJsonConverter& value_manager, absl::Cord& value) const {
-  CEL_ASSIGN_OR_RETURN(auto json, ConvertToJsonArray(value_manager));
+    AnyToJsonConverter& converter, absl::Cord& value) const {
+  CEL_ASSIGN_OR_RETURN(auto json, ConvertToJsonArray(converter));
   return internal::SerializeListValue(json, value);
 }
 
@@ -172,5 +202,18 @@ absl::Status ParsedListValueInterface::Contains(ValueManager& value_manager,
 ParsedListValue::ParsedListValue()
     : ParsedListValue(
           common_internal::MakeShared(&EmptyListValue::Get(), nullptr)) {}
+
+ParsedListValue ParsedListValue::Clone(Allocator<> allocator) const {
+  ABSL_DCHECK(*this);
+  if (ABSL_PREDICT_FALSE(!interface_)) {
+    return ParsedListValue();
+  }
+  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
+      arena != nullptr &&
+      common_internal::GetReferenceCount(interface_) != nullptr) {
+    return interface_->Clone(arena);
+  }
+  return *this;
+}
 
 }  // namespace cel
