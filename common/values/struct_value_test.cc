@@ -94,7 +94,12 @@ TEST(StructValue, As) {
   }
 }
 
-TEST(StructValue, Cast) {
+template <typename To, typename From>
+decltype(auto) DoGet(From&& from) {
+  return std::forward<From>(from).template Get<To>();
+}
+
+TEST(StructValue, Get) {
   google::protobuf::Arena arena;
 
   {
@@ -103,15 +108,14 @@ TEST(StructValue, Cast) {
             &arena, R"pb()pb", GetTestingDescriptorPool(),
             GetTestingMessageFactory())});
     StructValue other_value = value;
-    EXPECT_THAT(static_cast<MessageValue>(AsLValueRef<StructValue>(value)),
+    EXPECT_THAT(DoGet<MessageValue>(AsLValueRef<StructValue>(value)),
                 An<MessageValue>());
-    EXPECT_THAT(static_cast<MessageValue>(AsConstLValueRef<StructValue>(value)),
+    EXPECT_THAT(DoGet<MessageValue>(AsConstLValueRef<StructValue>(value)),
                 An<MessageValue>());
-    EXPECT_THAT(static_cast<MessageValue>(AsRValueRef<StructValue>(value)),
+    EXPECT_THAT(DoGet<MessageValue>(AsRValueRef<StructValue>(value)),
                 An<MessageValue>());
-    EXPECT_THAT(
-        static_cast<MessageValue>(AsConstRValueRef<StructValue>(other_value)),
-        An<MessageValue>());
+    EXPECT_THAT(DoGet<MessageValue>(AsConstRValueRef<StructValue>(other_value)),
+                An<MessageValue>());
   }
 
   {
@@ -120,18 +124,15 @@ TEST(StructValue, Cast) {
             &arena, R"pb()pb", GetTestingDescriptorPool(),
             GetTestingMessageFactory())});
     StructValue other_value = value;
-    EXPECT_THAT(
-        static_cast<ParsedMessageValue>(AsLValueRef<StructValue>(value)),
-        An<ParsedMessageValue>());
-    EXPECT_THAT(
-        static_cast<ParsedMessageValue>(AsConstLValueRef<StructValue>(value)),
-        An<ParsedMessageValue>());
-    EXPECT_THAT(
-        static_cast<ParsedMessageValue>(AsRValueRef<StructValue>(value)),
-        An<ParsedMessageValue>());
-    EXPECT_THAT(static_cast<ParsedMessageValue>(
-                    AsConstRValueRef<StructValue>(other_value)),
+    EXPECT_THAT(DoGet<ParsedMessageValue>(AsLValueRef<StructValue>(value)),
                 An<ParsedMessageValue>());
+    EXPECT_THAT(DoGet<ParsedMessageValue>(AsConstLValueRef<StructValue>(value)),
+                An<ParsedMessageValue>());
+    EXPECT_THAT(DoGet<ParsedMessageValue>(AsRValueRef<StructValue>(value)),
+                An<ParsedMessageValue>());
+    EXPECT_THAT(
+        DoGet<ParsedMessageValue>(AsConstRValueRef<StructValue>(other_value)),
+        An<ParsedMessageValue>());
   }
 }
 

@@ -31,6 +31,7 @@
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
+#include "common/allocator.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/value.h"
@@ -135,6 +136,19 @@ absl::StatusOr<Value> ParsedMessageValue::Equal(ValueManager& value_manager,
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
+}
+
+ParsedMessageValue ParsedMessageValue::Clone(Allocator<> allocator) const {
+  ABSL_DCHECK(*this);
+  if (ABSL_PREDICT_FALSE(value_ == nullptr)) {
+    return ParsedMessageValue();
+  }
+  if (value_.arena() == allocator.arena()) {
+    return *this;
+  }
+  auto cloned = WrapShared(value_->New(allocator.arena()), allocator);
+  cloned->CopyFrom(*value_);
+  return ParsedMessageValue(std::move(cloned));
 }
 
 absl::Status ParsedMessageValue::GetFieldByName(

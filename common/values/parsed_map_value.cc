@@ -20,24 +20,32 @@
 #include "absl/base/no_destructor.h"
 #include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "common/casting.h"
+#include "absl/types/optional.h"
+#include "common/allocator.h"
 #include "common/json.h"
 #include "common/memory.h"
-#include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_kind.h"
+#include "common/values/list_value_builder.h"
+#include "common/values/map_value_builder.h"
 #include "common/values/values.h"
+#include "eval/public/cel_value.h"
 #include "internal/serialize.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 
 namespace {
+
+using ::google::api::expr::runtime::CelList;
+using ::google::api::expr::runtime::CelValue;
 
 absl::Status NoSuchKeyError(const Value& key) {
   return absl::NotFoundError(
@@ -60,7 +68,7 @@ class EmptyMapValueKeyIterator final : public ValueIterator {
   }
 };
 
-class EmptyMapValue final : public ParsedMapValueInterface {
+class EmptyMapValue final : public common_internal::CompatMapValue {
  public:
   static const EmptyMapValue& Get() {
     static const absl::NoDestructor<EmptyMapValue> empty;
@@ -90,11 +98,32 @@ class EmptyMapValue final : public ParsedMapValueInterface {
     return JsonObject();
   }
 
- private:
-  NativeTypeId GetNativeTypeId() const noexcept override {
-    return NativeTypeId::For<EmptyMapValue>();
+  ParsedMapValue Clone(ArenaAllocator<>) const override {
+    return ParsedMapValue();
   }
 
+  absl::optional<CelValue> operator[](CelValue key) const override {
+    return absl::nullopt;
+  }
+
+  absl::optional<CelValue> Get(google::protobuf::Arena* arena,
+                               CelValue key) const override {
+    return absl::nullopt;
+  }
+
+  absl::StatusOr<bool> Has(const CelValue& key) const override { return false; }
+
+  int size() const override { return static_cast<int>(Size()); }
+
+  absl::StatusOr<const CelList*> ListKeys() const override {
+    return common_internal::EmptyCompatListValue();
+  }
+
+  absl::StatusOr<const CelList*> ListKeys(google::protobuf::Arena*) const override {
+    return ListKeys();
+  }
+
+ private:
   absl::StatusOr<bool> FindImpl(ValueManager&, const Value&,
                                 Value&) const override {
     return false;
@@ -106,6 +135,14 @@ class EmptyMapValue final : public ParsedMapValueInterface {
 };
 
 }  // namespace
+
+namespace common_internal {
+
+absl::Nonnull<const CompatMapValue*> EmptyCompatMapValue() {
+  return &EmptyMapValue::Get();
+}
+
+}  // namespace common_internal
 
 absl::Status ParsedMapValueInterface::SerializeTo(
     AnyToJsonConverter& value_manager, absl::Cord& value) const {
@@ -212,5 +249,18 @@ absl::Status ParsedMapValueInterface::Equal(ValueManager& value_manager,
 ParsedMapValue::ParsedMapValue()
     : ParsedMapValue(
           common_internal::MakeShared(&EmptyMapValue::Get(), nullptr)) {}
+
+ParsedMapValue ParsedMapValue::Clone(Allocator<> allocator) const {
+  ABSL_DCHECK(*this);
+  if (ABSL_PREDICT_FALSE(!interface_)) {
+    return ParsedMapValue();
+  }
+  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
+      arena != nullptr &&
+      common_internal::GetReferenceCount(interface_) != nullptr) {
+    return interface_->Clone(arena);
+  }
+  return *this;
+}
 
 }  // namespace cel

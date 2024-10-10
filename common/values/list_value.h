@@ -55,8 +55,6 @@ class Value;
 class ValueManager;
 class TypeManager;
 
-bool Is(const ListValue& lhs, const ListValue& rhs);
-
 class ListValue final {
  public:
   using interface_type = ListValueInterface;
@@ -177,7 +175,6 @@ class ListValue final {
  private:
   friend class Value;
   friend struct NativeTypeTraits<ListValue>;
-  friend bool Is(const ListValue& lhs, const ListValue& rhs);
 
   common_internal::ValueVariant ToValueVariant() const&;
   common_internal::ValueVariant ToValueVariant() &&;
@@ -213,20 +210,6 @@ struct NativeTypeTraits<ListValue> final {
         value.variant_);
   }
 };
-
-inline bool Is(const ListValue& lhs, const ListValue& rhs) {
-  return absl::visit(
-      [](const auto& alternative_lhs, const auto& alternative_rhs) -> bool {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative_lhs)>,
-                          absl::remove_cvref_t<decltype(alternative_rhs)>>) {
-          return cel::Is(alternative_lhs, alternative_rhs);
-        } else {
-          return false;
-        }
-      },
-      lhs.variant_, rhs.variant_);
-}
 
 class ListValueBuilder {
  public:

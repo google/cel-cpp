@@ -21,6 +21,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/allocator.h"
 #include "common/any.h"
 #include "common/casting.h"
 #include "common/json.h"
@@ -76,6 +77,10 @@ absl::Status BytesValue::Equal(ValueManager&, const Value& other,
   }
   result = BoolValue{false};
   return absl::OkStatus();
+}
+
+BytesValue BytesValue::Clone(Allocator<> allocator) const {
+  return BytesValue(value_.Clone(allocator));
 }
 
 size_t BytesValue::Size() const {

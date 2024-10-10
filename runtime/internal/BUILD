@@ -42,12 +42,14 @@ cc_library(
     srcs = ["mutable_list_impl.cc"],
     hdrs = ["mutable_list_impl.h"],
     deps = [
+        "//common:allocator",
         "//common:casting",
         "//common:memory",
         "//common:native_type",
         "//common:type",
         "//common:value",
         "//internal:casts",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/status",
     ],
 )

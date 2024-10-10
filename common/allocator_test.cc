@@ -19,6 +19,8 @@
 
 #include "common/allocator.h"
 
+#include <type_traits>
+
 #include "absl/strings/str_cat.h"
 #include "internal/testing.h"
 #include "google/protobuf/arena.h"
@@ -115,6 +117,79 @@ TEST(ArenaAllocator, T) {
   allocator.construct(p);
   allocator.destroy(p);
   allocator.deallocate(p, 1);
+}
+
+TEST(NewDeleteAllocator, CopyConstructible) {
+  EXPECT_TRUE(
+      (std::is_trivially_constructible_v<NewDeleteAllocator<void>,
+                                         const NewDeleteAllocator<void>&>));
+  EXPECT_TRUE(
+      (std::is_trivially_constructible_v<NewDeleteAllocator<bool>,
+                                         const NewDeleteAllocator<bool>&>));
+  EXPECT_TRUE((std::is_constructible_v<NewDeleteAllocator<void>,
+                                       const NewDeleteAllocator<bool>&>));
+  EXPECT_TRUE((std::is_constructible_v<NewDeleteAllocator<bool>,
+                                       const NewDeleteAllocator<void>&>));
+  EXPECT_TRUE((std::is_constructible_v<NewDeleteAllocator<char>,
+                                       const NewDeleteAllocator<bool>&>));
+  EXPECT_TRUE((std::is_constructible_v<NewDeleteAllocator<bool>,
+                                       const NewDeleteAllocator<char>&>));
+}
+
+TEST(ArenaAllocator, CopyConstructible) {
+  EXPECT_TRUE((std::is_trivially_constructible_v<ArenaAllocator<void>,
+                                                 const ArenaAllocator<void>&>));
+  EXPECT_TRUE((std::is_trivially_constructible_v<ArenaAllocator<bool>,
+                                                 const ArenaAllocator<bool>&>));
+  EXPECT_TRUE((std::is_constructible_v<ArenaAllocator<void>,
+                                       const ArenaAllocator<bool>&>));
+  EXPECT_TRUE((std::is_constructible_v<ArenaAllocator<bool>,
+                                       const ArenaAllocator<void>&>));
+  EXPECT_TRUE((std::is_constructible_v<ArenaAllocator<char>,
+                                       const ArenaAllocator<bool>&>));
+  EXPECT_TRUE((std::is_constructible_v<ArenaAllocator<bool>,
+                                       const ArenaAllocator<char>&>));
+}
+
+TEST(Allocator, CopyConstructible) {
+  EXPECT_TRUE((std::is_trivially_constructible_v<Allocator<void>,
+                                                 const Allocator<void>&>));
+  EXPECT_TRUE((std::is_trivially_constructible_v<Allocator<bool>,
+                                                 const Allocator<bool>&>));
+  EXPECT_TRUE(
+      (std::is_constructible_v<Allocator<void>, const Allocator<bool>&>));
+  EXPECT_TRUE(
+      (std::is_constructible_v<Allocator<bool>, const Allocator<void>&>));
+  EXPECT_TRUE(
+      (std::is_constructible_v<Allocator<char>, const Allocator<bool>&>));
+  EXPECT_TRUE(
+      (std::is_constructible_v<Allocator<bool>, const Allocator<char>&>));
+
+  EXPECT_TRUE((std::is_constructible_v<Allocator<void>,
+                                       const NewDeleteAllocator<void>&>));
+  EXPECT_TRUE((std::is_constructible_v<Allocator<void>,
+                                       const NewDeleteAllocator<bool>&>));
+  EXPECT_TRUE((std::is_constructible_v<Allocator<bool>,
+                                       const NewDeleteAllocator<void>&>));
+  EXPECT_TRUE((std::is_constructible_v<Allocator<bool>,
+                                       const NewDeleteAllocator<bool>&>));
+  EXPECT_TRUE((std::is_constructible_v<Allocator<bool>,
+                                       const NewDeleteAllocator<char>&>));
+  EXPECT_TRUE((std::is_constructible_v<Allocator<char>,
+                                       const NewDeleteAllocator<bool>&>));
+
+  EXPECT_TRUE(
+      (std::is_constructible_v<Allocator<void>, const ArenaAllocator<void>&>));
+  EXPECT_TRUE(
+      (std::is_constructible_v<Allocator<void>, const ArenaAllocator<bool>&>));
+  EXPECT_TRUE(
+      (std::is_constructible_v<Allocator<bool>, const ArenaAllocator<void>&>));
+  EXPECT_TRUE(
+      (std::is_constructible_v<Allocator<bool>, const ArenaAllocator<bool>&>));
+  EXPECT_TRUE(
+      (std::is_constructible_v<Allocator<bool>, const ArenaAllocator<char>&>));
+  EXPECT_TRUE(
+      (std::is_constructible_v<Allocator<char>, const ArenaAllocator<bool>&>));
 }
 
 }  // namespace
