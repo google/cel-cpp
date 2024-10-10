@@ -166,6 +166,13 @@ class CreateListDirectStep : public DirectExpressionStep {
         }
       }
 
+      if (!unknowns.IsEmpty()) {
+        // We found an unknown, there is no point in attempting to create a
+        // list. Instead iterate through the remaining elements and look for
+        // more unknowns.
+        continue;
+      }
+
       // Conditionally add if optional.
       if (optional_indices_.contains(static_cast<int32_t>(i))) {
         if (auto optional_arg =
