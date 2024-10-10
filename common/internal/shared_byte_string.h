@@ -37,6 +37,8 @@
 
 namespace cel::common_internal {
 
+class TrivialValue;
+
 inline constexpr bool IsStringLiteral(absl::string_view string) {
 #ifdef ABSL_HAVE_CONSTANT_EVALUATED
   if (!absl::is_constant_evaluated()) {
@@ -188,6 +190,8 @@ class SharedByteString final {
     return *this;
   }
 
+  SharedByteString Clone(Allocator<> allocator) const;
+
   template <typename Visitor>
   std::common_type_t<std::invoke_result_t<Visitor, absl::string_view>,
                      std::invoke_result_t<Visitor, const absl::Cord&>>
@@ -328,6 +332,7 @@ class SharedByteString final {
   }
 
  private:
+  friend class TrivialValue;
   friend class SharedByteStringView;
 
   static void SwapMixed(SharedByteString& cord,

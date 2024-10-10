@@ -17,9 +17,12 @@
 #include <cstdint>
 #include <string>
 
+#include "absl/base/nullability.h"
+#include "absl/functional/overload.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "common/allocator.h"
+#include "common/internal/arena_string.h"
 #include "common/internal/reference_count.h"
 #include "google/protobuf/arena.h"
 
@@ -60,6 +63,25 @@ SharedByteString::SharedByteString(Allocator<> allocator,
     }
     content_.string.refcount = 0;
   }
+}
+
+SharedByteString SharedByteString::Clone(Allocator<> allocator) const {
+  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
+      arena != nullptr) {
+    if (!header_.is_cord && (IsPooledString() || !IsManagedString())) {
+      return *this;
+    }
+    auto* cloned = google::protobuf::Arena::Create<std::string>(arena);
+    Visit(absl::Overload(
+        [cloned](absl::string_view string) {
+          cloned->assign(string.data(), string.size());
+        },
+        [cloned](const absl::Cord& cord) {
+          absl::CopyCordToString(cord, cloned);
+        }));
+    return SharedByteString(ArenaString(*cloned));
+  }
+  return *this;
 }
 
 }  // namespace cel::common_internal

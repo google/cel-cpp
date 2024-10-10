@@ -18,13 +18,12 @@
 #include <cstdint>
 #include <vector>
 
-#include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "absl/types/span.h"
-#include "common/unknown.h"
 #include "common/value.h"
 #include "eval/public/cel_value.h"
 #include "internal/status_macros.h"
@@ -44,6 +43,15 @@ inline absl::StatusOr<Value> ModernValue(
 
 absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
     google::protobuf::Arena* arena, const Value& modern_value);
+
+namespace common_internal {
+
+// Converts `Value` to `google::api::expr::runtime::CelValue`, or returns an
+// error value.
+google::api::expr::runtime::CelValue LegacyTrivialValue(
+    absl::Nonnull<google::protobuf::Arena*> arena, const TrivialValue& value);
+
+}  // namespace common_internal
 
 }  // namespace cel
 
@@ -100,16 +108,6 @@ google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
 
 TypeValue CreateTypeValueFromView(google::protobuf::Arena* arena,
                                   absl::string_view input);
-
-// Test only function for verifying that legacy list builders are used.
-// This is important for performance in some cases, but not exposed in public
-// APIs.
-bool TestOnly_IsLegacyListBuilder(const ListValueBuilder& builder);
-
-// Test only function for verifying that legacy map builders are used.
-// This is important for performance in some cases, but not exposed in public
-// APIs.
-bool TestOnly_IsLegacyMapBuilder(const MapValueBuilder& builder);
 
 }  // namespace cel::interop_internal
 
