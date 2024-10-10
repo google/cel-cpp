@@ -14,14 +14,20 @@
 
 #include "common/values/legacy_map_value.h"
 
+#include <cstdint>
+
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "common/casting.h"
+#include "common/native_type.h"
 #include "common/value_manager.h"
+#include "common/values/map_value_builder.h"
 #include "common/values/map_value_interface.h"
 #include "common/values/values.h"
+#include "eval/public/cel_value.h"
+#include "internal/casts.h"
 
 namespace cel::common_internal {
 
@@ -46,6 +52,14 @@ LegacyMapValue GetLegacyMapValue(const Value& value) {
 absl::optional<LegacyMapValue> AsLegacyMapValue(const Value& value) {
   if (IsLegacyMapValue(value)) {
     return GetLegacyMapValue(value);
+  }
+  if (auto map_value = value.AsParsedMap();
+      map_value &&
+      NativeTypeId::Of(*map_value) == NativeTypeId::For<CompatMapValue>()) {
+    return LegacyMapValue(reinterpret_cast<uintptr_t>(
+        static_cast<const google::api::expr::runtime::CelMap*>(
+            cel::internal::down_cast<const CompatMapValue*>(
+                (*map_value).operator->()))));
   }
   return absl::nullopt;
 }

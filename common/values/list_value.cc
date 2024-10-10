@@ -90,10 +90,6 @@ namespace common_internal {
 
 absl::Status ListValueEqual(ValueManager& value_manager, const ListValue& lhs,
                             const ListValue& rhs, Value& result) {
-  if (Is(lhs, rhs)) {
-    result = BoolValue{true};
-    return absl::OkStatus();
-  }
   CEL_ASSIGN_OR_RETURN(auto lhs_size, lhs.Size());
   CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
   if (lhs_size != rhs_size) {
