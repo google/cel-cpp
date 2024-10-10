@@ -46,6 +46,10 @@ class ValueManager;
 class BytesValue;
 class TypeManager;
 
+namespace common_internal {
+class TrivialValue;
+}  // namespace common_internal
+
 // `BytesValue` represents values of the primitive `bytes` type.
 class BytesValue final {
  public:
@@ -115,6 +119,8 @@ class BytesValue final {
     return NativeValue([](const auto& value) -> bool { return value.empty(); });
   }
 
+  BytesValue Clone(Allocator<> allocator) const;
+
   std::string NativeString() const { return value_.ToString(); }
 
   absl::string_view NativeString(
@@ -154,6 +160,7 @@ class BytesValue final {
   absl::Cord ToCord() const { return NativeCord(); }
 
  private:
+  friend class common_internal::TrivialValue;
   friend const common_internal::SharedByteString&
   common_internal::AsSharedByteString(const BytesValue& value);
 

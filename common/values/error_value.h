@@ -22,15 +22,19 @@
 #include <string>
 #include <utility>
 
-#include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/variant.h"
+#include "absl/utility/utility.h"
+#include "common/allocator.h"
 #include "common/json.h"
 #include "common/type.h"
 #include "common/value_kind.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 
@@ -40,17 +44,18 @@ class ErrorValue;
 class TypeManager;
 
 // `ErrorValue` represents values of the `ErrorType`.
-class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final {
+class ErrorValue final {
  public:
   static constexpr ValueKind kKind = ValueKind::kError;
 
-  explicit ErrorValue(absl::Status value) : value_(std::move(value)) {
-    ABSL_DCHECK(!value_.ok()) << "ErrorValue requires a non-OK absl::Status";
+  explicit ErrorValue(absl::Status value)
+      : variant_(absl::in_place_type<absl::Status>, std::move(value)) {
+    ABSL_DCHECK(*this) << "ErrorValue requires a non-OK absl::Status";
   }
 
   ErrorValue& operator=(absl::Status status) {
-    value_ = std::move(status);
-    ABSL_DCHECK(!value_.ok()) << "ErrorValue requires a non-OK absl::Status";
+    variant_.emplace<absl::Status>(std::move(status));
+    ABSL_DCHECK(*this) << "ErrorValue requires a non-OK absl::Status";
     return *this;
   }
 
@@ -81,23 +86,29 @@ class ABSL_ATTRIBUTE_TRIVIAL_ABI ErrorValue final {
 
   bool IsZeroValue() const { return false; }
 
-  absl::Status NativeValue() const& {
-    ABSL_DCHECK(!value_.ok()) << "use of moved-from ErrorValue";
-    return value_;
-  }
+  ErrorValue Clone(Allocator<> allocator) const;
 
-  absl::Status NativeValue() && {
-    ABSL_DCHECK(!value_.ok()) << "use of moved-from ErrorValue";
-    return std::move(value_);
-  }
+  absl::Status NativeValue() const&;
 
-  friend void swap(ErrorValue& lhs, ErrorValue& rhs) noexcept {
-    using std::swap;
-    swap(lhs.value_, rhs.value_);
-  }
+  absl::Status NativeValue() &&;
+
+  friend void swap(ErrorValue& lhs, ErrorValue& rhs) noexcept;
+
+  explicit operator bool() const;
 
  private:
-  absl::Status value_;
+  using ArenaStatus = std::pair<absl::Nullable<google::protobuf::Arena*>,
+                                absl::Nonnull<const absl::Status*>>;
+  using Variant = absl::variant<absl::Status, ArenaStatus>;
+
+  ErrorValue(absl::Nullable<google::protobuf::Arena*> arena,
+             absl::Nonnull<const absl::Status*> status)
+      : variant_(absl::in_place_type<ArenaStatus>, arena, status) {}
+
+  explicit ErrorValue(const ArenaStatus& status)
+      : ErrorValue(status.first, status.second) {}
+
+  Variant variant_;
 };
 
 ErrorValue NoSuchFieldError(absl::string_view field);
