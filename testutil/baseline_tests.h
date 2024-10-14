@@ -46,8 +46,12 @@
 
 namespace cel::test {
 
+// Returns a string representation of the AST that matches the baseline format
+// used in tests across the CEL libraries.
 std::string FormatBaselineAst(const Ast& ast);
 
+// Returns a string representation of the protobuf AST that matches the baseline
+// format used in tests across the CEL libraries.
 std::string FormatBaselineCheckedExpr(
     const cel::expr::CheckedExpr& checked);
 
