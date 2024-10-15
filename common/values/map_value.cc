@@ -13,14 +13,19 @@
 // limitations under the License.
 
 #include <cstddef>
+#include <string>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/variant.h"
 #include "common/casting.h"
+#include "common/json.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "internal/status_macros.h"
@@ -101,10 +106,6 @@ namespace common_internal {
 
 absl::Status MapValueEqual(ValueManager& value_manager, const MapValue& lhs,
                            const MapValue& rhs, Value& result) {
-  if (Is(lhs, rhs)) {
-    result = BoolValue{true};
-    return absl::OkStatus();
-  }
   CEL_ASSIGN_OR_RETURN(auto lhs_size, lhs.Size());
   CEL_ASSIGN_OR_RETURN(auto rhs_size, rhs.Size());
   if (lhs_size != rhs_size) {
@@ -184,6 +185,8 @@ absl::Status CheckMapKey(const Value& key) {
       ABSL_FALLTHROUGH_INTENDED;
     case ValueKind::kString:
       return absl::OkStatus();
+    case ValueKind::kError:
+      return key.GetError().NativeValue();
     default:
       return InvalidMapKeyTypeError(key.kind());
   }

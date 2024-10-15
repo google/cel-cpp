@@ -19,7 +19,7 @@
 #include <string>
 #include <utility>
 
-#include "absl/base/nullability.h"
+#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -30,7 +30,6 @@
 #include "common/type_factory.h"
 #include "common/unknown.h"
 #include "common/value.h"
-#include "google/protobuf/message.h"
 
 namespace cel {
 
@@ -43,14 +42,17 @@ class ValueFactory : public virtual TypeFactory {
  public:
   // `CreateValueFromJson` constructs a new `Value` that is equivalent to the
   // JSON value `json`.
+  ABSL_DEPRECATED("Avoid using Json/JsonArray/JsonObject")
   Value CreateValueFromJson(Json json);
 
   // `CreateListValueFromJsonArray` constructs a new `ListValue` that is
   // equivalent to the JSON array `JsonArray`.
+  ABSL_DEPRECATED("Use ParsedJsonListValue instead")
   ListValue CreateListValueFromJsonArray(JsonArray json);
 
   // `CreateMapValueFromJsonObject` constructs a new `MapValue` that is
   // equivalent to the JSON object `JsonObject`.
+  ABSL_DEPRECATED("Use ParsedJsonMapValue instead")
   MapValue CreateMapValueFromJsonObject(JsonObject json);
 
   // `GetDynListType` gets a view of the `ListType` type `list(dyn)`.

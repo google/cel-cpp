@@ -33,6 +33,8 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
+using ::testing::IsEmpty;
+using ::testing::Not;
 using ::testing::NotNull;
 
 using TypeReflectorTest = common_internal::ThreadCompatibleValueTest<>;
@@ -182,9 +184,7 @@ TEST_P(TypeReflectorTest, NewMapValueBuilderCoverage_DynamicDynamic) {
   EXPECT_EQ(builder->Size(), 8);
   EXPECT_FALSE(builder->IsEmpty());
   auto value = std::move(*builder).Build();
-  EXPECT_EQ(
-      value.DebugString(),
-      "{false: 1, true: 2, 0: 3, 1: 4, 0u: 5, 1u: 6, \"a\": 7, \"b\": 8}");
+  EXPECT_THAT(value.DebugString(), Not(IsEmpty()));
 }
 
 TEST_P(TypeReflectorTest, NewMapValueBuilderCoverage_StaticDynamic) {

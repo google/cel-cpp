@@ -14,7 +14,6 @@
 
 #include "common/legacy_value.h"
 
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -28,7 +27,6 @@
 #include "absl/base/optimization.h"
 #include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
-#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -39,22 +37,23 @@
 #include "absl/types/variant.h"
 #include "base/attribute.h"
 #include "base/internal/message_wrapper.h"
+#include "common/allocator.h"
 #include "common/casting.h"
 #include "common/internal/arena_string.h"
 #include "common/json.h"
 #include "common/kind.h"
-#include "common/native_type.h"
+#include "common/memory.h"
 #include "common/type.h"
 #include "common/unknown.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "common/value_manager.h"
-#include "common/values/legacy_type_reflector.h"
-#include "common/values/legacy_value_manager.h"
+#include "common/values/list_value_builder.h"
+#include "common/values/map_value_builder.h"
 #include "eval/internal/cel_value_equal.h"
 #include "eval/public/cel_value.h"
-#include "eval/public/containers/container_backed_list_impl.h"
-#include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/containers/field_backed_list_impl.h"
+#include "eval/public/containers/field_backed_map_impl.h"
 #include "eval/public/message_wrapper.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
@@ -63,6 +62,7 @@
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
+#include "internal/well_known_types.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 
@@ -72,9 +72,10 @@ namespace {
 
 using google::api::expr::runtime::CelList;
 using google::api::expr::runtime::CelMap;
-using google::api::expr::runtime::CelMapBuilder;
 using google::api::expr::runtime::CelValue;
-using google::api::expr::runtime::ContainerBackedListImpl;
+using google::api::expr::runtime::FieldBackedListImpl;
+using google::api::expr::runtime::FieldBackedMapImpl;
+using google::api::expr::runtime::GetGenericProtoTypeInfoInstance;
 using google::api::expr::runtime::LegacyTypeInfoApis;
 using google::api::expr::runtime::MessageWrapper;
 
@@ -258,241 +259,6 @@ absl::StatusOr<JsonObject> MessageWrapperToJsonObject(
   return std::move(builder).Build();
 }
 
-class CelListImpl final : public CelList {
- public:
-  CelListImpl() : CelListImpl(nullptr, 0) {}
-
-  CelListImpl(const CelValue* elements, size_t elements_size)
-      : elements_(elements), elements_size_(elements_size) {}
-
-  CelValue operator[](int index) const override {
-    ABSL_DCHECK_LT(index, size());
-    return elements_[index];
-  }
-
-  int size() const override { return static_cast<int>(elements_size_); }
-
-  bool empty() const override { return elements_size_ == 0; }
-
- private:
-  const CelValue* const elements_;
-  const size_t elements_size_;
-};
-
-class CelMapImpl final : public CelMap, public CelList {
- public:
-  using Entry = std::pair<CelValue, CelValue>;
-
-  // We sort in the following partitions in order: [bool, int, uint, string].
-  // Among the partitions the values are sorted as if by `<`.
-  static bool LessKey(const CelValue& lhs, const CelValue& rhs) {
-    if (lhs.IsBool()) {
-      if (rhs.IsBool()) {
-        return lhs.BoolOrDie() < rhs.BoolOrDie();
-      }
-      return true;
-    }
-    if (lhs.IsInt64()) {
-      if (rhs.IsInt64()) {
-        return lhs.Int64OrDie() < rhs.Int64OrDie();
-      }
-      return !rhs.IsBool();
-    }
-    if (lhs.IsUint64()) {
-      if (rhs.IsUint64()) {
-        return lhs.Uint64OrDie() < rhs.Uint64OrDie();
-      }
-      return !(rhs.IsBool() || rhs.IsInt64());
-    }
-    if (lhs.IsString()) {
-      if (rhs.IsString()) {
-        return lhs.StringOrDie().value() < rhs.StringOrDie().value();
-      }
-      return !(rhs.IsBool() || rhs.IsInt64() || rhs.IsUint64());
-    }
-    ABSL_DLOG(FATAL) << "invalid map key";
-    return false;
-  }
-
-  static bool EqualKey(const CelValue& lhs, const CelValue& rhs) {
-    if (lhs.IsBool() && rhs.IsBool()) {
-      return lhs.BoolOrDie() == rhs.BoolOrDie();
-    }
-    if (lhs.IsInt64() && rhs.IsInt64()) {
-      return lhs.Int64OrDie() == rhs.Int64OrDie();
-    }
-    if (lhs.IsUint64() && rhs.IsUint64()) {
-      return lhs.Uint64OrDie() == rhs.Uint64OrDie();
-    }
-    if (lhs.IsString() && rhs.IsString()) {
-      return lhs.StringOrDie().value() == rhs.StringOrDie().value();
-    }
-    return false;
-  }
-
-  struct KeyCompare {
-    using is_transparent = void;
-
-    bool operator()(const CelValue& lhs, const CelValue& rhs) const {
-      return LessKey(lhs, rhs);
-    }
-
-    bool operator()(const Entry& lhs, const Entry& rhs) const {
-      return (*this)(lhs.first, rhs.first);
-    }
-
-    bool operator()(const CelValue& lhs, const Entry& rhs) const {
-      return (*this)(lhs, rhs.first);
-    }
-
-    bool operator()(const Entry& lhs, const CelValue& rhs) const {
-      return (*this)(lhs.first, rhs);
-    }
-  };
-
-  CelMapImpl() : CelMapImpl(nullptr, 0) {}
-
-  CelMapImpl(const Entry* entries, size_t entries_size)
-      : entries_(entries), entries_size_(entries_size) {}
-
-  absl::optional<CelValue> operator[](CelValue key) const override {
-    if (key.IsError() || key.IsUnknownSet()) {
-      return key;
-    }
-    auto it = std::lower_bound(begin(), end(), key, KeyCompare{});
-    if (it == end() || !EqualKey(it->first, key)) {
-      return absl::nullopt;
-    }
-    return it->second;
-  }
-
-  CelValue operator[](int index) const override {
-    if (index >= size()) {
-      return CelValue::CreateNull();
-    }
-    return entries_[index].first;
-  }
-
-  absl::StatusOr<bool> Has(const CelValue& key) const override {
-    CEL_RETURN_IF_ERROR(CelValue::CheckMapKeyType(key));
-    auto it = std::lower_bound(begin(), end(), key, KeyCompare{});
-    return it != end() && EqualKey(it->first, key);
-  }
-
-  int size() const override { return entries_size_; }
-
-  bool empty() const override { return entries_size_ == 0; }
-
-  const Entry* begin() const { return entries_; }
-
-  const Entry* end() const { return entries_ + entries_size_; }
-
-  absl::StatusOr<const CelList*> ListKeys() const override { return this; }
-
- private:
-  const Entry* const entries_;
-  const size_t entries_size_;
-};
-
-class CelListValue final : public ContainerBackedListImpl {
- public:
-  CelListValue(ListType type, std::vector<CelValue> elements)
-      : ContainerBackedListImpl(std::move(elements)), type_(std::move(type)) {}
-
-  const ListType& GetType() const { return type_; }
-
- private:
-  cel::NativeTypeId GetNativeTypeId() const override {
-    return cel::NativeTypeId::For<CelListValue>();
-  }
-
-  ListType type_;
-};
-
-class CelListValueBuilder final : public ListValueBuilder {
- public:
-  CelListValueBuilder(ValueFactory& value_factory, google::protobuf::Arena* arena,
-                      ListType type)
-      : value_factory_(value_factory), arena_(arena), type_(std::move(type)) {}
-
-  absl::Status Add(Value value) override {
-    if (value.Is<ErrorValue>()) {
-      return std::move(value).Get<ErrorValue>().NativeValue();
-    }
-    CEL_ASSIGN_OR_RETURN(auto legacy_value, LegacyValue(arena_, value));
-    elements_.push_back(legacy_value);
-    return absl::OkStatus();
-  }
-
-  bool IsEmpty() const override { return elements_.empty(); }
-
-  size_t Size() const override { return elements_.size(); }
-
-  void Reserve(size_t capacity) override { elements_.reserve(capacity); }
-
-  ListValue Build() && override {
-    if (elements_.empty()) {
-      return ListValue();
-    }
-    return common_internal::LegacyListValue{reinterpret_cast<uintptr_t>(
-        static_cast<CelList*>(google::protobuf::Arena::Create<CelListValue>(
-            arena_, std::move(type_), std::move(elements_))))};
-  }
-
- private:
-  ValueFactory& value_factory_;
-  google::protobuf::Arena* arena_;
-  std::vector<CelValue> elements_;
-  ListType type_;
-};
-
-class CelMapValue final : public CelMapBuilder {
- public:
-  explicit CelMapValue(MapType type)
-      : CelMapBuilder(), type_(std::move(type)) {}
-
-  const MapType& GetType() const { return type_; }
-
- private:
-  cel::NativeTypeId GetNativeTypeId() const override {
-    return cel::NativeTypeId::For<CelMapValue>();
-  }
-
-  MapType type_;
-};
-
-class CelMapValueBuilder final : public MapValueBuilder {
- public:
-  explicit CelMapValueBuilder(google::protobuf::Arena* arena, MapType type)
-      : arena_(arena),
-        builder_(google::protobuf::Arena::Create<CelMapValue>(arena_, std::move(type))) {}
-
-  absl::Status Put(Value key, Value value) override {
-    if (key.Is<ErrorValue>()) {
-      return std::move(key).Get<ErrorValue>().NativeValue();
-    }
-    if (value.Is<ErrorValue>()) {
-      return std::move(value).Get<ErrorValue>().NativeValue();
-    }
-    CEL_ASSIGN_OR_RETURN(auto legacy_key, LegacyValue(arena_, key));
-    CEL_ASSIGN_OR_RETURN(auto legacy_value, LegacyValue(arena_, value));
-    return builder_->Add(legacy_key, legacy_value);
-  }
-
-  bool IsEmpty() const override { return builder_->size() == 0; }
-
-  size_t Size() const override { return static_cast<size_t>(builder_->size()); }
-
-  MapValue Build() && override {
-    return common_internal::LegacyMapValue{
-        reinterpret_cast<uintptr_t>(static_cast<CelMap*>(builder_))};
-  }
-
- private:
-  google::protobuf::Arena* arena_;
-  CelMapValue* builder_;
-};
-
 std::string cel_common_internal_LegacyListValue_DebugString(uintptr_t impl) {
   return CelValue::CreateList(AsCelList(impl)).DebugString();
 }
@@ -588,6 +354,147 @@ absl::Status cel_common_internal_LegacyListValue_Contains(
 }
 
 }  // namespace
+
+namespace common_internal {
+
+namespace {
+
+CelValue LegacyTrivialStructValue(absl::Nonnull<google::protobuf::Arena*> arena,
+                                  const Value& value) {
+  if (auto legacy_struct_value = common_internal::AsLegacyStructValue(value);
+      legacy_struct_value) {
+    return CelValue::CreateMessageWrapper(
+        AsMessageWrapper(legacy_struct_value->message_ptr(),
+                         legacy_struct_value->legacy_type_info()));
+  }
+  if (auto parsed_message_value = value.AsParsedMessage();
+      parsed_message_value) {
+    auto maybe_cloned = parsed_message_value->Clone(ArenaAllocator<>{arena});
+    return CelValue::CreateMessageWrapper(MessageWrapper(
+        cel::to_address(maybe_cloned), &GetGenericProtoTypeInfoInstance()));
+  }
+  return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
+      arena, absl::InvalidArgumentError(absl::StrCat(
+                 "unsupported conversion from cel::StructValue to CelValue: ",
+                 value.GetRuntimeType().DebugString()))));
+}
+
+CelValue LegacyTrivialListValue(absl::Nonnull<google::protobuf::Arena*> arena,
+                                const Value& value) {
+  if (auto legacy_list_value = common_internal::AsLegacyListValue(value);
+      legacy_list_value) {
+    return CelValue::CreateList(AsCelList(legacy_list_value->NativeValue()));
+  }
+  if (auto parsed_repeated_field_value = value.AsParsedRepeatedField();
+      parsed_repeated_field_value) {
+    auto maybe_cloned =
+        parsed_repeated_field_value->Clone(ArenaAllocator<>{arena});
+    return CelValue::CreateList(google::protobuf::Arena::Create<FieldBackedListImpl>(
+        arena, &maybe_cloned.message(), maybe_cloned.field(), arena));
+  }
+  if (auto parsed_json_list_value = value.AsParsedJsonList();
+      parsed_json_list_value) {
+    auto maybe_cloned = parsed_json_list_value->Clone(ArenaAllocator<>{arena});
+    return CelValue::CreateList(google::protobuf::Arena::Create<FieldBackedListImpl>(
+        arena, cel::to_address(maybe_cloned),
+        well_known_types::GetListValueReflectionOrDie(
+            maybe_cloned->GetDescriptor())
+            .GetValuesDescriptor(),
+        arena));
+  }
+  if (auto parsed_list_value = value.AsParsedList(); parsed_list_value) {
+    auto status_or_compat_list =
+        common_internal::MakeCompatListValue(arena, *parsed_list_value);
+    if (!status_or_compat_list.ok()) {
+      return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
+          arena, std::move(status_or_compat_list).status()));
+    }
+    return CelValue::CreateList(*status_or_compat_list);
+  }
+  return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
+      arena, absl::InvalidArgumentError(absl::StrCat(
+                 "unsupported conversion from cel::ListValue to CelValue: ",
+                 value.GetRuntimeType().DebugString()))));
+}
+
+CelValue LegacyTrivialMapValue(absl::Nonnull<google::protobuf::Arena*> arena,
+                               const Value& value) {
+  if (auto legacy_map_value = common_internal::AsLegacyMapValue(value);
+      legacy_map_value) {
+    return CelValue::CreateMap(AsCelMap(legacy_map_value->NativeValue()));
+  }
+  if (auto parsed_map_field_value = value.AsParsedMapField();
+      parsed_map_field_value) {
+    auto maybe_cloned = parsed_map_field_value->Clone(ArenaAllocator<>{arena});
+    return CelValue::CreateMap(google::protobuf::Arena::Create<FieldBackedMapImpl>(
+        arena, &maybe_cloned.message(), maybe_cloned.field(), arena));
+  }
+  if (auto parsed_json_map_value = value.AsParsedJsonMap();
+      parsed_json_map_value) {
+    auto maybe_cloned = parsed_json_map_value->Clone(ArenaAllocator<>{arena});
+    return CelValue::CreateMap(google::protobuf::Arena::Create<FieldBackedMapImpl>(
+        arena, cel::to_address(maybe_cloned),
+        well_known_types::GetStructReflectionOrDie(
+            maybe_cloned->GetDescriptor())
+            .GetFieldsDescriptor(),
+        arena));
+  }
+  if (auto parsed_map_value = value.AsParsedMap(); parsed_map_value) {
+    auto status_or_compat_map =
+        common_internal::MakeCompatMapValue(arena, *parsed_map_value);
+    if (!status_or_compat_map.ok()) {
+      return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
+          arena, std::move(status_or_compat_map).status()));
+    }
+    return CelValue::CreateMap(*status_or_compat_map);
+  }
+  return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
+      arena, absl::InvalidArgumentError(absl::StrCat(
+                 "unsupported conversion from cel::MapValue to CelValue: ",
+                 value.GetRuntimeType().DebugString()))));
+}
+
+}  // namespace
+
+google::api::expr::runtime::CelValue LegacyTrivialValue(
+    absl::Nonnull<google::protobuf::Arena*> arena, const TrivialValue& value) {
+  switch (value->kind()) {
+    case ValueKind::kNull:
+      return CelValue::CreateNull();
+    case ValueKind::kBool:
+      return CelValue::CreateBool(value->GetBool().NativeValue());
+    case ValueKind::kInt:
+      return CelValue::CreateInt64(value->GetInt().NativeValue());
+    case ValueKind::kUint:
+      return CelValue::CreateUint64(value->GetUint().NativeValue());
+    case ValueKind::kDouble:
+      return CelValue::CreateDouble(value->GetDouble().NativeValue());
+    case ValueKind::kString:
+      return CelValue::CreateStringView(value.ToString());
+    case ValueKind::kBytes:
+      return CelValue::CreateBytesView(value.ToBytes());
+    case ValueKind::kStruct:
+      return LegacyTrivialStructValue(arena, *value);
+    case ValueKind::kDuration:
+      return CelValue::CreateDuration(value->GetDuration().NativeValue());
+    case ValueKind::kTimestamp:
+      return CelValue::CreateTimestamp(value->GetTimestamp().NativeValue());
+    case ValueKind::kList:
+      return LegacyTrivialListValue(arena, *value);
+    case ValueKind::kMap:
+      return LegacyTrivialMapValue(arena, *value);
+    case ValueKind::kType:
+      return CelValue::CreateCelTypeView(value->GetType().name());
+    default:
+      // Everything else is unsupported.
+      return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
+          arena, absl::InvalidArgumentError(absl::StrCat(
+                     "unsupported conversion from cel::Value to CelValue: ",
+                     value->GetRuntimeType().DebugString()))));
+  }
+}
+
+}  // namespace common_internal
 
 namespace common_internal {
 
@@ -1135,31 +1042,6 @@ absl::StatusOr<int> LegacyStructValue::Qualify(
       result);
 }
 
-absl::StatusOr<absl::Nonnull<ListValueBuilderPtr>> NewLegacyListValueBuilder(
-    ValueFactory& value_factory, const ListType& type) {
-  auto memory_manager = value_factory.GetMemoryManager();
-  auto* arena = extensions::ProtoMemoryManagerArena(memory_manager);
-  if (arena == nullptr) {
-    return absl::UnimplementedError(
-        "cel_common_internal_LegacyTypeReflector_NewListValueBuilder only "
-        "supports google::protobuf::Arena");
-  }
-  return std::make_unique<CelListValueBuilder>(value_factory, arena,
-                                               ListType(type));
-}
-
-absl::StatusOr<absl::Nonnull<MapValueBuilderPtr>> NewLegacyMapValueBuilder(
-    ValueFactory& value_factory, const MapType& type) {
-  auto memory_manager = value_factory.GetMemoryManager();
-  auto* arena = extensions::ProtoMemoryManagerArena(memory_manager);
-  if (arena == nullptr) {
-    return absl::UnimplementedError(
-        "cel_common_internal_LegacyTypeReflector_NewMapValueBuilder only "
-        "supports google::protobuf::Arena");
-  }
-  return std::make_unique<CelMapValueBuilder>(arena, MapType(type));
-}
-
 }  // namespace common_internal
 
 absl::Status ModernValue(google::protobuf::Arena* arena,
@@ -1282,100 +1164,18 @@ absl::StatusOr<google::api::expr::runtime::CelValue> LegacyValue(
                 arena, static_cast<std::string>(string)));
           }));
     }
-    case ValueKind::kStruct: {
-      if (auto legacy_struct_value =
-              common_internal::AsLegacyStructValue(modern_value);
-          legacy_struct_value.has_value()) {
-        return CelValue::CreateMessageWrapper(
-            AsMessageWrapper(legacy_struct_value->message_ptr(),
-                             legacy_struct_value->legacy_type_info()));
-      }
-      if (auto parsed_message_value = modern_value.AsParsedMessage();
-          parsed_message_value) {
-        return CelValue::CreateMessageWrapper(
-            google::api::expr::runtime::MessageWrapper(
-                &**parsed_message_value,
-                &google::api::expr::runtime::
-                    GetGenericProtoTypeInfoInstance()));
-      }
-      return absl::InvalidArgumentError(
-          absl::StrCat("google::api::expr::runtime::CelValue does not support ",
-                       ValueKindToString(modern_value.kind())));
-    }
+    case ValueKind::kStruct:
+      return common_internal::LegacyTrivialStructValue(arena, modern_value);
     case ValueKind::kDuration:
       return CelValue::CreateUncheckedDuration(
           Cast<DurationValue>(modern_value).NativeValue());
     case ValueKind::kTimestamp:
       return CelValue::CreateTimestamp(
           Cast<TimestampValue>(modern_value).NativeValue());
-    case ValueKind::kList: {
-      if (auto legacy_list_value =
-              common_internal::AsLegacyListValue(modern_value);
-          legacy_list_value.has_value()) {
-        return CelValue::CreateList(
-            AsCelList(legacy_list_value->NativeValue()));
-      }
-      // We have a non-legacy `ListValue`. We are going to have to
-      // materialize it in its entirety to `CelList`.
-      auto list_value = Cast<ListValue>(modern_value);
-      CEL_ASSIGN_OR_RETURN(auto list_value_size, list_value.Size());
-      if (list_value_size == 0) {
-        return CelValue::CreateList();
-      }
-      auto* elements = static_cast<CelValue*>(arena->AllocateAligned(
-          sizeof(CelValue) * list_value_size, alignof(CelValue)));
-      common_internal::LegacyTypeReflector value_provider;
-      common_internal::LegacyValueManager value_manager(
-          extensions::ProtoMemoryManagerRef(arena), value_provider);
-      CEL_RETURN_IF_ERROR(list_value.ForEach(
-          value_manager,
-          [arena, elements](size_t index,
-                            const Value& element) -> absl::StatusOr<bool> {
-            CEL_ASSIGN_OR_RETURN(elements[index], LegacyValue(arena, element));
-            return true;
-          }));
-      // We don't bother registering CelListImpl's destructor, it doesn't own
-      // anything and is not trivially destructible simply due to having a
-      // virtual destructor.
-      return CelValue::CreateList(::new (
-          arena->AllocateAligned(sizeof(CelListImpl), alignof(CelListImpl)))
-                                      CelListImpl(elements, list_value_size));
-    }
-    case ValueKind::kMap: {
-      if (auto legacy_map_value =
-              common_internal::AsLegacyMapValue(modern_value);
-          legacy_map_value.has_value()) {
-        return CelValue::CreateMap(AsCelMap(legacy_map_value->NativeValue()));
-      }
-      // We have a non-legacy `MapValue`. We are going to have to
-      // materialize it in its entirety to `CelMap`.
-      auto map_value = Cast<MapValue>(modern_value);
-      CEL_ASSIGN_OR_RETURN(auto map_value_size, map_value.Size());
-      if (map_value_size == 0) {
-        return CelValue::CreateMap();
-      }
-      auto* entries = static_cast<CelMapImpl::Entry*>(
-          arena->AllocateAligned(sizeof(CelMapImpl::Entry) * map_value_size,
-                                 alignof(CelMapImpl::Entry)));
-      size_t entry_count = 0;
-      common_internal::LegacyTypeReflector value_provider;
-      common_internal::LegacyValueManager value_manager(
-          extensions::ProtoMemoryManagerRef(arena), value_provider);
-      CEL_RETURN_IF_ERROR(map_value.ForEach(
-          value_manager,
-          [arena, entries, &entry_count](
-              const Value& key, const Value& value) -> absl::StatusOr<bool> {
-            auto* entry = ::new (static_cast<void*>(entries + entry_count++))
-                CelMapImpl::Entry{};
-            CEL_ASSIGN_OR_RETURN(entry->first, LegacyValue(arena, key));
-            CEL_ASSIGN_OR_RETURN(entry->second, LegacyValue(arena, value));
-            return true;
-          }));
-      std::sort(entries, entries + map_value_size, CelMapImpl::KeyCompare{});
-      return CelValue::CreateMap(::new (
-          arena->AllocateAligned(sizeof(CelMapImpl), alignof(CelMapImpl)))
-                                     CelMapImpl(entries, map_value_size));
-    }
+    case ValueKind::kList:
+      return common_internal::LegacyTrivialListValue(arena, modern_value);
+    case ValueKind::kMap:
+      return common_internal::LegacyTrivialMapValue(arena, modern_value);
     case ValueKind::kUnknown:
       return CelValue::CreateUnknownSet(google::protobuf::Arena::Create<Unknown>(
           arena, Cast<UnknownValue>(modern_value).NativeValue()));
@@ -1497,98 +1297,18 @@ absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
                 arena, static_cast<std::string>(string)));
           }));
     }
-    case ValueKind::kStruct: {
-      if (auto legacy_struct_value =
-              common_internal::AsLegacyStructValue(value);
-          legacy_struct_value.has_value()) {
-        return CelValue::CreateMessageWrapper(
-            AsMessageWrapper(legacy_struct_value->message_ptr(),
-                             legacy_struct_value->legacy_type_info()));
-      }
-      if (auto parsed_message_value = value.AsParsedMessage();
-          parsed_message_value) {
-        return CelValue::CreateMessageWrapper(
-            google::api::expr::runtime::MessageWrapper(
-                &**parsed_message_value,
-                &google::api::expr::runtime::
-                    GetGenericProtoTypeInfoInstance()));
-      }
-      return absl::InvalidArgumentError(
-          absl::StrCat("google::api::expr::runtime::CelValue does not support ",
-                       ValueKindToString(value.kind())));
-    }
+    case ValueKind::kStruct:
+      return common_internal::LegacyTrivialStructValue(arena, value);
     case ValueKind::kDuration:
       return CelValue::CreateUncheckedDuration(
           Cast<DurationValue>(value).NativeValue());
     case ValueKind::kTimestamp:
       return CelValue::CreateTimestamp(
           Cast<TimestampValue>(value).NativeValue());
-    case ValueKind::kList: {
-      if (auto legacy_list_value = common_internal::AsLegacyListValue(value);
-          legacy_list_value.has_value()) {
-        return CelValue::CreateList(
-            AsCelList(legacy_list_value->NativeValue()));
-      }
-      // We have a non-legacy `ListValue`. We are going to have to
-      // materialize it in its entirety to `CelList`.
-      auto list_value = Cast<ListValue>(value);
-      CEL_ASSIGN_OR_RETURN(auto list_value_size, list_value.Size());
-      if (list_value_size == 0) {
-        return CelValue::CreateList();
-      }
-      auto* elements = static_cast<CelValue*>(arena->AllocateAligned(
-          sizeof(CelValue) * list_value_size, alignof(CelValue)));
-      common_internal::LegacyTypeReflector value_provider;
-      common_internal::LegacyValueManager value_manager(
-          extensions::ProtoMemoryManagerRef(arena), value_provider);
-      CEL_RETURN_IF_ERROR(list_value.ForEach(
-          value_manager,
-          [arena, elements](size_t index,
-                            const Value& element) -> absl::StatusOr<bool> {
-            CEL_ASSIGN_OR_RETURN(elements[index], LegacyValue(arena, element));
-            return true;
-          }));
-      // We don't bother registering CelListImpl's destructor, it doesn't own
-      // anything and is not trivially destructible simply due to having a
-      // virtual destructor.
-      return CelValue::CreateList(::new (
-          arena->AllocateAligned(sizeof(CelListImpl), alignof(CelListImpl)))
-                                      CelListImpl(elements, list_value_size));
-    }
-    case ValueKind::kMap: {
-      if (auto legacy_map_value = common_internal::AsLegacyMapValue(value);
-          legacy_map_value.has_value()) {
-        return CelValue::CreateMap(AsCelMap(legacy_map_value->NativeValue()));
-      }
-      // We have a non-legacy `MapValue`. We are going to have to
-      // materialize it in its entirety to `CelMap`.
-      auto map_value = Cast<MapValue>(value);
-      CEL_ASSIGN_OR_RETURN(auto map_value_size, map_value.Size());
-      if (map_value_size == 0) {
-        return CelValue::CreateMap();
-      }
-      auto* entries = static_cast<CelMapImpl::Entry*>(
-          arena->AllocateAligned(sizeof(CelMapImpl::Entry) * map_value_size,
-                                 alignof(CelMapImpl::Entry)));
-      size_t entry_count = 0;
-      common_internal::LegacyTypeReflector value_provider;
-      common_internal::LegacyValueManager value_manager(
-          extensions::ProtoMemoryManagerRef(arena), value_provider);
-      CEL_RETURN_IF_ERROR(map_value.ForEach(
-          value_manager,
-          [arena, entries, &entry_count](
-              const Value& key, const Value& value) -> absl::StatusOr<bool> {
-            auto* entry = ::new (static_cast<void*>(entries + entry_count++))
-                CelMapImpl::Entry{};
-            CEL_ASSIGN_OR_RETURN(entry->first, LegacyValue(arena, key));
-            CEL_ASSIGN_OR_RETURN(entry->second, LegacyValue(arena, value));
-            return true;
-          }));
-      std::sort(entries, entries + map_value_size, CelMapImpl::KeyCompare{});
-      return CelValue::CreateMap(::new (
-          arena->AllocateAligned(sizeof(CelMapImpl), alignof(CelMapImpl)))
-                                     CelMapImpl(entries, map_value_size));
-    }
+    case ValueKind::kList:
+      return common_internal::LegacyTrivialListValue(arena, value);
+    case ValueKind::kMap:
+      return common_internal::LegacyTrivialMapValue(arena, value);
     case ValueKind::kUnknown:
       return CelValue::CreateUnknownSet(google::protobuf::Arena::Create<Unknown>(
           arena, Cast<UnknownValue>(value).NativeValue()));
@@ -1637,14 +1357,6 @@ google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
 TypeValue CreateTypeValueFromView(google::protobuf::Arena* arena,
                                   absl::string_view input) {
   return common_internal::LegacyRuntimeType(input);
-}
-
-bool TestOnly_IsLegacyListBuilder(const ListValueBuilder& builder) {
-  return dynamic_cast<const CelListValueBuilder*>(&builder) != nullptr;
-}
-
-bool TestOnly_IsLegacyMapBuilder(const MapValueBuilder& builder) {
-  return dynamic_cast<const CelMapValueBuilder*>(&builder) != nullptr;
 }
 
 }  // namespace interop_internal

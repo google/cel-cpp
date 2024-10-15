@@ -49,6 +49,7 @@
 #include "common/type.h"
 #include "common/value_kind.h"
 #include "common/values/values.h"
+#include "internal/number.h"
 #include "internal/protobuf_runtime_version.h"
 #include "internal/status_macros.h"
 #include "internal/well_known_types.h"
@@ -123,13 +124,18 @@ ValueKind Value::kind() const {
   return kValueToKindArray[variant_.index()];
 }
 
+namespace {
+
+template <typename T>
+struct IsMonostate : std::is_same<absl::remove_cvref_t<T>, absl::monostate> {};
+
+}  // namespace
+
 absl::string_view Value::GetTypeName() const {
   AssertIsValid();
   return absl::visit(
       [](const auto& alternative) -> absl::string_view {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
+        if constexpr (IsMonostate<decltype(alternative)>::value) {
           // In optimized builds, we just return an empty string. In debug
           // builds we cannot reach here.
           return absl::string_view();
@@ -144,9 +150,7 @@ std::string Value::DebugString() const {
   AssertIsValid();
   return absl::visit(
       [](const auto& alternative) -> std::string {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
+        if constexpr (IsMonostate<decltype(alternative)>::value) {
           // In optimized builds, we just return an empty string. In debug
           // builds we cannot reach here.
           return std::string();
@@ -162,9 +166,7 @@ absl::Status Value::SerializeTo(AnyToJsonConverter& value_manager,
   AssertIsValid();
   return absl::visit(
       [&value_manager, &value](const auto& alternative) -> absl::Status {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
+        if constexpr (IsMonostate<decltype(alternative)>::value) {
           // In optimized builds, we just return an error. In debug builds we
           // cannot reach here.
           return absl::InternalError("use of invalid Value");
@@ -180,9 +182,7 @@ absl::StatusOr<Json> Value::ConvertToJson(
   AssertIsValid();
   return absl::visit(
       [&value_manager](const auto& alternative) -> absl::StatusOr<Json> {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
+        if constexpr (IsMonostate<decltype(alternative)>::value) {
           // In optimized builds, we just return an error. In debug
           // builds we cannot reach here.
           return absl::InternalError("use of invalid Value");
@@ -199,9 +199,7 @@ absl::Status Value::Equal(ValueManager& value_manager, const Value& other,
   return absl::visit(
       [&value_manager, &other,
        &result](const auto& alternative) -> absl::Status {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
+        if constexpr (IsMonostate<decltype(alternative)>::value) {
           // In optimized builds, we just return an error. In debug
           // builds we cannot reach here.
           return absl::InternalError("use of invalid Value");
@@ -223,9 +221,7 @@ bool Value::IsZeroValue() const {
   AssertIsValid();
   return absl::visit(
       [](const auto& alternative) -> bool {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
+        if constexpr (IsMonostate<decltype(alternative)>::value) {
           // In optimized builds, we just return false. In debug
           // builds we cannot reach here.
           return false;
@@ -236,12 +232,38 @@ bool Value::IsZeroValue() const {
       variant_);
 }
 
+namespace {
+
+template <typename, typename = void>
+struct HasCloneMethod : std::false_type {};
+
+template <typename T>
+struct HasCloneMethod<T, std::void_t<decltype(std::declval<const T>().Clone(
+                             std::declval<Allocator<>>()))>> : std::true_type {
+};
+
+}  // namespace
+
+Value Value::Clone(Allocator<> allocator) const {
+  AssertIsValid();
+  return absl::visit(
+      [allocator](const auto& alternative) -> Value {
+        if constexpr (IsMonostate<decltype(alternative)>::value) {
+          return Value();
+        } else if constexpr (HasCloneMethod<absl::remove_cvref_t<
+                                 decltype(alternative)>>::value) {
+          return alternative.Clone(allocator);
+        } else {
+          return alternative;
+        }
+      },
+      variant_);
+}
+
 std::ostream& operator<<(std::ostream& out, const Value& value) {
   return absl::visit(
       [&out](const auto& alternative) -> std::ostream& {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative)>,
-                          absl::monostate>) {
+        if constexpr (IsMonostate<decltype(alternative)>::value) {
           return out << "default ctor Value";
         } else {
           return out << alternative;
@@ -1510,6 +1532,17 @@ Value Value::RepeatedField(
   }
 }
 
+StringValue Value::MapFieldKeyString(Borrowed<const google::protobuf::Message> message,
+                                     const google::protobuf::MapKey& key) {
+  ABSL_DCHECK(message);
+  ABSL_DCHECK_EQ(key.type(), google::protobuf::FieldDescriptor::CPPTYPE_STRING);
+#if CEL_INTERNAL_PROTOBUF_OSS_VERSION_PREREQ(5, 30, 0)
+  return StringValue(message, key.GetStringValue());
+#else
+  return StringValue(Allocator<>{message.arena()}, key.GetStringValue());
+#endif
+}
+
 Value Value::MapFieldValue(Borrowed<const google::protobuf::Message> message,
                            absl::Nonnull<const google::protobuf::FieldDescriptor*> field,
                            const google::protobuf::MapValueConstRef& value) {
@@ -2355,5 +2388,52 @@ class EmptyValueIterator final : public ValueIterator {
 absl::Nonnull<std::unique_ptr<ValueIterator>> NewEmptyValueIterator() {
   return std::make_unique<EmptyValueIterator>();
 }
+
+bool operator==(IntValue lhs, UintValue rhs) {
+  return internal::Number::FromInt64(lhs.NativeValue()) ==
+         internal::Number::FromUint64(rhs.NativeValue());
+}
+
+bool operator==(UintValue lhs, IntValue rhs) {
+  return internal::Number::FromUint64(lhs.NativeValue()) ==
+         internal::Number::FromInt64(rhs.NativeValue());
+}
+
+bool operator==(IntValue lhs, DoubleValue rhs) {
+  return internal::Number::FromInt64(lhs.NativeValue()) ==
+         internal::Number::FromDouble(rhs.NativeValue());
+}
+
+bool operator==(DoubleValue lhs, IntValue rhs) {
+  return internal::Number::FromDouble(lhs.NativeValue()) ==
+         internal::Number::FromInt64(rhs.NativeValue());
+}
+
+bool operator==(UintValue lhs, DoubleValue rhs) {
+  return internal::Number::FromUint64(lhs.NativeValue()) ==
+         internal::Number::FromDouble(rhs.NativeValue());
+}
+
+bool operator==(DoubleValue lhs, UintValue rhs) {
+  return internal::Number::FromDouble(lhs.NativeValue()) ==
+         internal::Number::FromUint64(rhs.NativeValue());
+}
+
+namespace common_internal {
+
+TrivialValue MakeTrivialValue(const Value& value,
+                              absl::Nonnull<google::protobuf::Arena*> arena) {
+  return TrivialValue(value.Clone(ArenaAllocator<>{arena}));
+}
+
+absl::string_view TrivialValue::ToString() const {
+  return (*this)->GetString().value_.AsStringView();
+}
+
+absl::string_view TrivialValue::ToBytes() const {
+  return (*this)->GetBytes().value_.AsStringView();
+}
+
+}  // namespace common_internal
 
 }  // namespace cel

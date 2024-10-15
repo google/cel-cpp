@@ -18,7 +18,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_PARSED_STRUCT_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_PARSED_STRUCT_VALUE_H_
 
-#include <cstddef>
 #include <cstdint>
 #include <ostream>
 #include <string>
@@ -31,12 +30,11 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
-#include "common/any.h"
+#include "common/allocator.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
 #include "common/type.h"
-#include "common/type_manager.h"
 #include "common/value_kind.h"
 #include "common/values/struct_value_interface.h"
 #include "runtime/runtime_options.h"
@@ -76,6 +74,8 @@ class ParsedStructValueInterface : public StructValueInterface {
       ValueManager& value_manager, absl::Span<const SelectQualifier> qualifiers,
       bool presence_test, Value& result) const;
 
+  virtual ParsedStructValue Clone(ArenaAllocator<> allocator) const = 0;
+
  protected:
   virtual absl::Status EqualImpl(ValueManager& value_manager,
                                  const ParsedStructValue& other,
@@ -92,6 +92,7 @@ class ParsedStructValue {
   ParsedStructValue(Shared<const ParsedStructValueInterface> interface)
       : interface_(std::move(interface)) {}
 
+  ParsedStructValue() = default;
   ParsedStructValue(const ParsedStructValue&) = default;
   ParsedStructValue(ParsedStructValue&&) = default;
   ParsedStructValue& operator=(const ParsedStructValue&) = default;
@@ -118,6 +119,8 @@ class ParsedStructValue {
                      Value& result) const;
 
   bool IsZeroValue() const { return interface_->IsZeroValue(); }
+
+  ParsedStructValue Clone(Allocator<> allocator) const;
 
   void swap(ParsedStructValue& other) noexcept {
     using std::swap;
@@ -154,6 +157,8 @@ class ParsedStructValue {
   absl::Nonnull<const interface_type*> operator->() const {
     return interface_.operator->();
   }
+
+  explicit operator bool() const { return static_cast<bool>(interface_); }
 
  private:
   friend struct NativeTypeTraits<ParsedStructValue>;

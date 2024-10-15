@@ -28,16 +28,16 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "common/allocator.h"
 #include "common/json.h"
 #include "common/memory.h"
-#include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_manager.h"
+#include "common/values/list_value_builder.h"
 #include "common/values/parsed_json_value.h"
 #include "internal/json.h"
 #include "internal/message_equality.h"
 #include "internal/status_macros.h"
-#include "internal/strings.h"
 #include "internal/well_known_types.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/map.h"
@@ -126,6 +126,18 @@ absl::StatusOr<Value> ParsedJsonMapValue::Equal(ValueManager& value_manager,
   Value result;
   CEL_RETURN_IF_ERROR(Equal(value_manager, other, result));
   return result;
+}
+
+ParsedJsonMapValue ParsedJsonMapValue::Clone(Allocator<> allocator) const {
+  if (value_ == nullptr) {
+    return ParsedJsonMapValue();
+  }
+  if (value_.arena() == allocator.arena()) {
+    return *this;
+  }
+  auto cloned = WrapShared(value_->New(allocator.arena()), allocator);
+  cloned->CopyFrom(*value_);
+  return ParsedJsonMapValue(std::move(cloned));
 }
 
 size_t ParsedJsonMapValue::Size() const {
@@ -231,151 +243,23 @@ absl::StatusOr<Value> ParsedJsonMapValue::Has(ValueManager& value_manager,
   return result;
 }
 
-namespace {
-
-class ParsedJsonMapValueKeysList final
-    : public ParsedListValueInterface,
-      public EnableSharedFromThis<ParsedJsonMapValueKeysList> {
- public:
-  ParsedJsonMapValueKeysList(Owned<const google::protobuf::MessageLite> message,
-                             absl::Nullable<google::protobuf::Arena*> keys_arena,
-                             std::string* keys, size_t keys_size)
-      : message_(std::move(message)),
-        keys_arena_(keys_arena),
-        keys_(keys),
-        keys_size_(keys_size) {}
-
-  ~ParsedJsonMapValueKeysList() override {
-    // Called if this was allocated using reference counting.
-    if (keys_arena_ == nullptr) {
-      delete[] keys_;
-    }
-  }
-
-  std::string DebugString() const override {
-    std::string result;
-    result.push_back('[');
-    for (size_t i = 0; i < keys_size_; ++i) {
-      if (i > 0) {
-        result.append(", ");
-      }
-      result.append(internal::FormatStringLiteral(keys_[i]));
-    }
-    result.push_back(']');
-    return result;
-  }
-
-  size_t Size() const override { return keys_size_; }
-
-  absl::Status Contains(ValueManager& value_manager, const Value& other,
-                        Value& result) const override {
-    if (ABSL_PREDICT_FALSE(other.IsError() || other.IsUnknown())) {
-      result = other;
-      return absl::OkStatus();
-    }
-    if (const auto other_string = other.AsString(); other_string) {
-      for (size_t i = 0; i < keys_size_; ++i) {
-        if (keys_[i] == *other_string) {
-          result = BoolValue(true);
-          return absl::OkStatus();
-        }
-      }
-    }
-    result = BoolValue(false);
-    return absl::OkStatus();
-  }
-
-  absl::StatusOr<JsonArray> ConvertToJsonArray(
-      AnyToJsonConverter&) const override {
-    JsonArrayBuilder builder;
-    builder.reserve(keys_size_);
-    for (size_t i = 0; i < keys_size_; ++i) {
-      builder.push_back(JsonString(keys_[i]));
-    }
-    return std::move(builder).Build();
-  }
-
- protected:
-  absl::Status GetImpl(ValueManager& value_manager, size_t index,
-                       Value& result) const override {
-    result =
-        StringValue(value_manager.GetMemoryManager().arena(), keys_[index]);
-    return absl::OkStatus();
-  }
-
- private:
-  friend struct cel::NativeTypeTraits<ParsedJsonMapValueKeysList>;
-
-  NativeTypeId GetNativeTypeId() const noexcept override {
-    return NativeTypeId::For<ParsedJsonMapValueKeysList>();
-  }
-
-  const Owned<const google::protobuf::MessageLite> message_;
-  const absl::Nullable<google::protobuf::Arena*> keys_arena_;
-  std::string* const keys_;
-  const size_t keys_size_;
-};
-
-struct ArenaStringArray {
-  absl::Nullable<std::string*> data;
-  size_t size;
-};
-
-void DestroyArenaStringArray(void* strings) {
-  std::destroy_n(reinterpret_cast<ArenaStringArray*>(strings)->data,
-                 reinterpret_cast<ArenaStringArray*>(strings)->size);
-}
-
-}  // namespace
-
-template <>
-struct NativeTypeTraits<ParsedJsonMapValueKeysList> final {
-  static NativeTypeId Id(const ParsedJsonMapValueKeysList& type) {
-    return type.GetNativeTypeId();
-  }
-
-  static bool SkipDestructor(const ParsedJsonMapValueKeysList& type) {
-    return NativeType::SkipDestructor(type.message_) &&
-           type.keys_arena_ != nullptr;
-  }
-};
-
 absl::Status ParsedJsonMapValue::ListKeys(ValueManager& value_manager,
                                           ListValue& result) const {
   if (value_ == nullptr) {
     result = ListValue();
     return absl::OkStatus();
   }
-  google::protobuf::Arena* arena = value_manager.GetMemoryManager().arena();
-  size_t keys_size;
-  std::string* keys;
   const auto reflection =
       well_known_types::GetStructReflectionOrDie(value_->GetDescriptor());
-  keys_size = static_cast<size_t>(reflection.FieldsSize(*value_));
-  auto keys_it = reflection.BeginFields(*value_);
-  if (arena != nullptr) {
-    keys = reinterpret_cast<std::string*>(arena->AllocateAligned(
-        keys_size * sizeof(std::string), alignof(std::string)));
-    for (size_t i = 0; i < keys_size; ++i, ++keys_it) {
-      ::new (static_cast<void*>(keys + i))
-          std::string(keys_it.GetKey().GetStringValue());
-    }
-  } else {
-    keys = new std::string[keys_size];
-    for (size_t i = 0; i < keys_size; ++i, ++keys_it) {
-      const auto& key = keys_it.GetKey().GetStringValue();
-      (keys + i)->assign(key.data(), key.size());
-    }
+  auto builder = common_internal::NewListValueBuilder(value_manager);
+  builder->Reserve(static_cast<size_t>(reflection.FieldsSize(*value_)));
+  auto keys_begin = reflection.BeginFields(*value_);
+  const auto keys_end = reflection.EndFields(*value_);
+  for (; keys_begin != keys_end; ++keys_begin) {
+    CEL_RETURN_IF_ERROR(
+        builder->Add(Value::MapFieldKeyString(value_, keys_begin.GetKey())));
   }
-  if (arena != nullptr) {
-    ArenaStringArray* array = google::protobuf::Arena::Create<ArenaStringArray>(arena);
-    array->data = keys;
-    array->size = keys_size;
-    arena->OwnCustomDestructor(array, &DestroyArenaStringArray);
-  }
-  result = ParsedListValue(
-      value_manager.GetMemoryManager().MakeShared<ParsedJsonMapValueKeysList>(
-          value_, arena, keys, keys_size));
+  result = std::move(*builder).Build();
   return absl::OkStatus();
 }
 

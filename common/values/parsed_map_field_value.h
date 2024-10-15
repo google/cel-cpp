@@ -32,6 +32,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/allocator.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
@@ -94,6 +95,8 @@ class ParsedMapFieldValue final {
 
   bool IsZeroValue() const;
 
+  ParsedMapFieldValue Clone(Allocator<> allocator) const;
+
   bool IsEmpty() const;
 
   size_t Size() const;
@@ -123,6 +126,16 @@ class ParsedMapFieldValue final {
 
   absl::StatusOr<absl::Nonnull<std::unique_ptr<ValueIterator>>> NewIterator(
       ValueManager& value_manager) const;
+
+  const google::protobuf::Message& message() const {
+    ABSL_DCHECK(*this);
+    return *message_;
+  }
+
+  absl::Nonnull<const google::protobuf::FieldDescriptor*> field() const {
+    ABSL_DCHECK(*this);
+    return field_;
+  }
 
   // Returns `true` if `ParsedMapFieldValue` is in a valid state.
   explicit operator bool() const { return field_ != nullptr; }

@@ -58,8 +58,6 @@ class TypeManager;
 
 absl::Status CheckMapKey(const Value& key);
 
-bool Is(const MapValue& lhs, const MapValue& rhs);
-
 class MapValue final {
  public:
   using interface_type = MapValueInterface;
@@ -193,7 +191,6 @@ class MapValue final {
  private:
   friend class Value;
   friend struct NativeTypeTraits<MapValue>;
-  friend bool Is(const MapValue& lhs, const MapValue& rhs);
 
   common_internal::ValueVariant ToValueVariant() const&;
   common_internal::ValueVariant ToValueVariant() &&;
@@ -229,20 +226,6 @@ struct NativeTypeTraits<MapValue> final {
         value.variant_);
   }
 };
-
-inline bool Is(const MapValue& lhs, const MapValue& rhs) {
-  return absl::visit(
-      [](const auto& alternative_lhs, const auto& alternative_rhs) -> bool {
-        if constexpr (std::is_same_v<
-                          absl::remove_cvref_t<decltype(alternative_lhs)>,
-                          absl::remove_cvref_t<decltype(alternative_rhs)>>) {
-          return cel::Is(alternative_lhs, alternative_rhs);
-        } else {
-          return false;
-        }
-      },
-      lhs.variant_, rhs.variant_);
-}
 
 class MapValueBuilder {
  public:

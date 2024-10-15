@@ -145,6 +145,26 @@ absl::StatusOr<Value> ParsedRepeatedFieldValue::Equal(
 
 bool ParsedRepeatedFieldValue::IsZeroValue() const { return IsEmpty(); }
 
+ParsedRepeatedFieldValue ParsedRepeatedFieldValue::Clone(
+    Allocator<> allocator) const {
+  ABSL_DCHECK(*this);
+  if (ABSL_PREDICT_FALSE(field_ == nullptr)) {
+    return ParsedRepeatedFieldValue();
+  }
+  if (message_.arena() == allocator.arena()) {
+    return *this;
+  }
+  auto field = message_->GetReflection()->GetRepeatedFieldRef<google::protobuf::Message>(
+      *message_, field_);
+  auto cloned = WrapShared(message_->New(allocator.arena()), allocator);
+  auto cloned_field =
+      cloned->GetReflection()->GetMutableRepeatedFieldRef<google::protobuf::Message>(
+          cel::to_address(cloned), field_);
+  cloned_field.Reserve(field.size());
+  cloned_field.CopyFrom(field);
+  return ParsedRepeatedFieldValue(std::move(cloned), field_);
+}
+
 bool ParsedRepeatedFieldValue::IsEmpty() const { return Size() == 0; }
 
 size_t ParsedRepeatedFieldValue::Size() const {

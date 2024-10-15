@@ -44,8 +44,6 @@ namespace common_internal {
 
 class LegacyListValue;
 
-bool Is(const LegacyListValue& lhs, const LegacyListValue& rhs);
-
 class LegacyListValue final {
  public:
   static constexpr ValueKind kKind = ValueKind::kList;
@@ -116,8 +114,6 @@ class LegacyListValue final {
   uintptr_t NativeValue() const { return impl_; }
 
  private:
-  friend bool Is(const LegacyListValue& lhs, const LegacyListValue& rhs);
-
   uintptr_t impl_;
 };
 
@@ -128,10 +124,6 @@ inline void swap(LegacyListValue& lhs, LegacyListValue& rhs) noexcept {
 inline std::ostream& operator<<(std::ostream& out,
                                 const LegacyListValue& type) {
   return out << type.DebugString();
-}
-
-inline bool Is(const LegacyListValue& lhs, const LegacyListValue& rhs) {
-  return lhs.impl_ == rhs.impl_;
 }
 
 bool IsLegacyListValue(const Value& value);

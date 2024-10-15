@@ -15,6 +15,7 @@
 #include "common/values/legacy_list_value.h"
 
 #include <cstddef>
+#include <cstdint>
 
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
@@ -22,9 +23,13 @@
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "common/casting.h"
+#include "common/native_type.h"
 #include "common/value.h"
 #include "common/value_manager.h"
+#include "common/values/list_value_builder.h"
 #include "common/values/values.h"
+#include "eval/public/cel_value.h"
+#include "internal/casts.h"
 
 namespace cel::common_internal {
 
@@ -58,6 +63,14 @@ LegacyListValue GetLegacyListValue(const Value& value) {
 absl::optional<LegacyListValue> AsLegacyListValue(const Value& value) {
   if (IsLegacyListValue(value)) {
     return GetLegacyListValue(value);
+  }
+  if (auto list_value = value.AsParsedList();
+      list_value &&
+      NativeTypeId::Of(*list_value) == NativeTypeId::For<CompatListValue>()) {
+    return LegacyListValue(reinterpret_cast<uintptr_t>(
+        static_cast<const google::api::expr::runtime::CelList*>(
+            cel::internal::down_cast<const CompatListValue*>(
+                (*list_value).operator->()))));
   }
   return absl::nullopt;
 }

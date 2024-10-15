@@ -26,6 +26,7 @@
 
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/struct.pb.h"
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
@@ -33,6 +34,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "common/allocator.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
@@ -60,6 +62,8 @@ class ParsedJsonListValue final {
   static constexpr ValueKind kKind = ValueKind::kList;
   static constexpr absl::string_view kName = "google.protobuf.ListValue";
 
+  using element_type = const google::protobuf::Message;
+
   explicit ParsedJsonListValue(Owned<const google::protobuf::Message> value)
       : value_(std::move(value)) {
     ABSL_DCHECK_OK(CheckListValue(cel::to_address(value_)));
@@ -77,6 +81,17 @@ class ParsedJsonListValue final {
   static absl::string_view GetTypeName() { return kName; }
 
   static ListType GetRuntimeType() { return JsonListType(); }
+
+  const google::protobuf::Message& operator*() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    ABSL_DCHECK(*this);
+    return *value_;
+  }
+
+  absl::Nonnull<const google::protobuf::Message*> operator->() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    ABSL_DCHECK(*this);
+    return value_.operator->();
+  }
 
   std::string DebugString() const;
 
@@ -97,6 +112,8 @@ class ParsedJsonListValue final {
                               const Value& other) const;
 
   bool IsZeroValue() const { return IsEmpty(); }
+
+  ParsedJsonListValue Clone(Allocator<> allocator) const;
 
   bool IsEmpty() const { return Size() == 0; }
 
@@ -126,6 +143,8 @@ class ParsedJsonListValue final {
   absl::StatusOr<Value> Contains(ValueManager& value_manager,
                                  const Value& other) const;
 
+  explicit operator bool() const { return static_cast<bool>(value_); }
+
   friend void swap(ParsedJsonListValue& lhs,
                    ParsedJsonListValue& rhs) noexcept {
     using std::swap;
@@ -136,6 +155,7 @@ class ParsedJsonListValue final {
                          const ParsedJsonListValue& rhs);
 
  private:
+  friend std::pointer_traits<ParsedJsonListValue>;
   friend class ParsedRepeatedFieldValue;
 
   static absl::Status CheckListValue(
@@ -159,5 +179,20 @@ inline std::ostream& operator<<(std::ostream& out,
 }
 
 }  // namespace cel
+
+namespace std {
+
+template <>
+struct pointer_traits<cel::ParsedJsonListValue> {
+  using pointer = cel::ParsedJsonListValue;
+  using element_type = typename cel::ParsedJsonListValue::element_type;
+  using difference_type = ptrdiff_t;
+
+  static element_type* to_address(const pointer& p) noexcept {
+    return cel::to_address(p.value_);
+  }
+};
+
+}  // namespace std
 
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_VALUES_PARSED_JSON_LIST_VALUE_H_

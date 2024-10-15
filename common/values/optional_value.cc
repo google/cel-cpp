@@ -19,6 +19,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "common/allocator.h"
 #include "common/casting.h"
 #include "common/memory.h"
 #include "common/native_type.h"
@@ -33,6 +34,8 @@ class EmptyOptionalValue final : public OptionalValueInterface {
  public:
   EmptyOptionalValue() = default;
 
+  OpaqueValue Clone(ArenaAllocator<>) const override { return OptionalValue(); }
+
   bool HasValue() const override { return false; }
 
   void Value(cel::Value& result) const override {
@@ -44,6 +47,11 @@ class EmptyOptionalValue final : public OptionalValueInterface {
 class FullOptionalValue final : public OptionalValueInterface {
  public:
   explicit FullOptionalValue(cel::Value value) : value_(std::move(value)) {}
+
+  OpaqueValue Clone(ArenaAllocator<> allocator) const override {
+    return MemoryManager(allocator).MakeShared<FullOptionalValue>(
+        value_.Clone(allocator));
+  }
 
   bool HasValue() const override { return true; }
 

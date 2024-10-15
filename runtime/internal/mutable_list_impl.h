@@ -20,6 +20,7 @@
 #include <string>
 
 #include "absl/status/status.h"
+#include "common/allocator.h"
 #include "common/casting.h"
 #include "common/memory.h"
 #include "common/type.h"
@@ -78,6 +79,8 @@ class MutableListValue final : public cel::OpaqueValueInterface {
   absl::StatusOr<cel::ListValue> Build() &&;
 
   std::string DebugString() const override;
+
+  OpaqueValue Clone(ArenaAllocator<> allocator) const override;
 
  private:
   cel::NativeTypeId GetNativeTypeId() const override;

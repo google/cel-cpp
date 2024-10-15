@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #include <string>
+#include <utility>
 
 #include "absl/base/no_destructor.h"
+#include "absl/base/nullability.h"
+#include "absl/functional/overload.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -22,9 +25,12 @@
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/variant.h"
+#include "common/allocator.h"
 #include "common/json.h"
 #include "common/type.h"
 #include "common/value.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 
@@ -84,22 +90,87 @@ bool IsNoSuchKey(const ErrorValue& value) {
                           "Key not found in map");
 }
 
-std::string ErrorValue::DebugString() const { return ErrorDebugString(value_); }
+std::string ErrorValue::DebugString() const {
+  return ErrorDebugString(NativeValue());
+}
 
 absl::Status ErrorValue::SerializeTo(AnyToJsonConverter&, absl::Cord&) const {
+  ABSL_DCHECK(*this);
   return absl::FailedPreconditionError(
       absl::StrCat(GetTypeName(), " is unserializable"));
 }
 
 absl::StatusOr<Json> ErrorValue::ConvertToJson(AnyToJsonConverter&) const {
+  ABSL_DCHECK(*this);
   return absl::FailedPreconditionError(
       absl::StrCat(GetTypeName(), " is not convertable to JSON"));
 }
 
 absl::Status ErrorValue::Equal(ValueManager&, const Value&,
                                Value& result) const {
+  ABSL_DCHECK(*this);
   result = BoolValue{false};
   return absl::OkStatus();
+}
+
+ErrorValue ErrorValue::Clone(Allocator<> allocator) const {
+  ABSL_DCHECK(*this);
+  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
+      arena != nullptr) {
+    return ErrorValue(absl::visit(
+        absl::Overload(
+            [arena](const absl::Status& status) -> ArenaStatus {
+              return ArenaStatus{
+                  arena, google::protobuf::Arena::Create<absl::Status>(arena, status)};
+            },
+            [arena](const ArenaStatus& status) -> ArenaStatus {
+              if (status.first != nullptr && status.first != arena) {
+                return ArenaStatus{arena, google::protobuf::Arena::Create<absl::Status>(
+                                              arena, *status.second)};
+              }
+              return status;
+            }),
+        variant_));
+  }
+  return ErrorValue(NativeValue());
+}
+
+absl::Status ErrorValue::NativeValue() const& {
+  ABSL_DCHECK(*this);
+  return absl::visit(absl::Overload(
+                         [](const absl::Status& status) -> const absl::Status& {
+                           return status;
+                         },
+                         [](const ArenaStatus& status) -> const absl::Status& {
+                           return *status.second;
+                         }),
+                     variant_);
+}
+
+absl::Status ErrorValue::NativeValue() && {
+  ABSL_DCHECK(*this);
+  return absl::visit(absl::Overload(
+                         [](absl::Status&& status) -> absl::Status {
+                           return std::move(status);
+                         },
+                         [](const ArenaStatus& status) -> absl::Status {
+                           return *status.second;
+                         }),
+                     std::move(variant_));
+}
+
+ErrorValue::operator bool() const {
+  return absl::visit(
+      absl::Overload(
+          [](const absl::Status& status) -> bool { return !status.ok(); },
+          [](const ArenaStatus& status) -> bool {
+            return !status.second->ok();
+          }),
+      variant_);
+}
+
+void swap(ErrorValue& lhs, ErrorValue& rhs) noexcept {
+  lhs.variant_.swap(rhs.variant_);
 }
 
 }  // namespace cel

@@ -36,6 +36,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/types/optional.h"
+#include "common/allocator.h"
 #include "common/casting.h"
 #include "common/json.h"
 #include "common/memory.h"
@@ -408,6 +409,11 @@ class RequestMapImpl : public ParsedMapValueInterface {
   absl::StatusOr<JsonObject> ConvertToJsonObject(
       AnyToJsonConverter& converter) const override {
     return absl::UnimplementedError("Unsupported");
+  }
+
+  ParsedMapValue Clone(ArenaAllocator<> allocator) const override {
+    return ParsedMapValue(
+        MemoryManager::Pooling(allocator.arena()).MakeShared<RequestMapImpl>());
   }
 
  protected:

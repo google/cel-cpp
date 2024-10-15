@@ -184,13 +184,11 @@ class NewDeleteAllocator : public NewDeleteAllocator<void> {
 
   template <typename U, typename... Args>
   void construct(U* p, Args&&... args) {
-    static_assert(std::is_same_v<T*, U*>);
-    ::new (static_cast<void*>(p)) T(std::forward<Args>(args)...);
+    ::new (static_cast<void*>(p)) U(std::forward<Args>(args)...);
   }
 
   template <typename U>
   void destroy(U* p) noexcept {
-    static_assert(std::is_same_v<T*, U*>);
     std::destroy_at(p);
   }
 };
@@ -343,15 +341,13 @@ class ArenaAllocator : public ArenaAllocator<void> {
 
   template <typename U, typename... Args>
   void construct(U* p, Args&&... args) {
-    static_assert(std::is_same_v<T*, U*>);
-    static_assert(!IsArenaConstructible<T>::value);
-    ::new (static_cast<void*>(p)) T(std::forward<Args>(args)...);
+    static_assert(!IsArenaConstructible<U>::value);
+    ::new (static_cast<void*>(p)) U(std::forward<Args>(args)...);
   }
 
   template <typename U>
   void destroy(U* p) noexcept {
-    static_assert(std::is_same_v<T*, U*>);
-    static_assert(!IsArenaConstructible<T>::value);
+    static_assert(!IsArenaConstructible<U>::value);
     std::destroy_at(p);
   }
 };

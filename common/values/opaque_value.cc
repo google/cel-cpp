@@ -15,11 +15,16 @@
 #include <type_traits>
 #include <utility>
 
+#include "absl/base/nullability.h"
+#include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/types/optional.h"
+#include "common/allocator.h"
+#include "common/memory.h"
 #include "common/native_type.h"
 #include "common/optional_ref.h"
 #include "common/value.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 
@@ -27,6 +32,22 @@ namespace cel {
 static_assert(std::is_base_of_v<OpaqueValue, OptionalValue>);
 static_assert(sizeof(OpaqueValue) == sizeof(OptionalValue));
 static_assert(alignof(OpaqueValue) == alignof(OptionalValue));
+
+OpaqueValue OpaqueValue::Clone(Allocator<> allocator) const {
+  ABSL_DCHECK(*this);
+  if (ABSL_PREDICT_FALSE(!interface_)) {
+    return OpaqueValue();
+  }
+  // Shared does not keep track of the allocating arena. We need to upgrade it
+  // to Owned. For now we only copy if this is reference counted and the target
+  // is an arena allocator.
+  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
+      arena != nullptr &&
+      common_internal::GetReferenceCount(interface_) != nullptr) {
+    return interface_->Clone(arena);
+  }
+  return *this;
+}
 
 bool OpaqueValue::IsOptional() const {
   return NativeTypeId::Of(*interface_) ==

@@ -21,6 +21,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/allocator.h"
 #include "common/any.h"
 #include "common/casting.h"
 #include "common/json.h"
@@ -106,6 +107,10 @@ bool StringValue::Equals(const absl::Cord& string) const {
 bool StringValue::Equals(const StringValue& string) const {
   return string.NativeValue(
       [this](const auto& alternative) -> bool { return Equals(alternative); });
+}
+
+StringValue StringValue::Clone(Allocator<> allocator) const {
+  return StringValue(value_.Clone(allocator));
 }
 
 namespace {

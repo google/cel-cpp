@@ -19,8 +19,9 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/optimization.h"
+#include "common/allocator.h"
 #include "common/native_type.h"
-#include "common/type.h"
 #include "common/value.h"
 
 namespace cel::runtime_internal {
@@ -43,6 +44,12 @@ std::string MutableListValue::DebugString() const {
 
 NativeTypeId MutableListValue::GetNativeTypeId() const {
   return cel::NativeTypeId::For<MutableListValue>();
+}
+
+OpaqueValue MutableListValue::Clone(ArenaAllocator<> allocator) const {
+  // There should never be a way in which MutableList can be cloned, at least
+  // not today.
+  ABSL_UNREACHABLE();
 }
 
 }  // namespace cel::runtime_internal

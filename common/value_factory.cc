@@ -33,6 +33,7 @@
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
+#include "common/allocator.h"
 #include "common/casting.h"
 #include "common/internal/arena_string.h"
 #include "common/internal/reference_count.h"
@@ -150,6 +151,11 @@ class JsonListValue final : public ParsedListValueInterface {
     return array_;
   }
 
+  ParsedListValue Clone(ArenaAllocator<> allocator) const override {
+    return ParsedListValue(MemoryManager::Pooling(allocator.arena())
+                               .MakeShared<JsonListValue>(array_));
+  }
+
  private:
   absl::Status GetImpl(ValueManager& value_manager, size_t index,
                        Value& result) const override {
@@ -227,6 +233,11 @@ class JsonMapValue final : public ParsedMapValueInterface {
   absl::StatusOr<JsonObject> ConvertToJsonObject(
       AnyToJsonConverter&) const override {
     return object_;
+  }
+
+  ParsedMapValue Clone(ArenaAllocator<> allocator) const override {
+    return ParsedMapValue(MemoryManager::Pooling(allocator.arena())
+                              .MakeShared<JsonMapValue>(object_));
   }
 
  private:

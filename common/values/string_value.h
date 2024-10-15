@@ -46,6 +46,10 @@ class ValueManager;
 class StringValue;
 class TypeManager;
 
+namespace common_internal {
+class TrivialValue;
+}  // namespace common_internal
+
 // `StringValue` represents values of the primitive `string` type.
 class StringValue final {
  public:
@@ -113,6 +117,8 @@ class StringValue final {
   absl::StatusOr<Value> Equal(ValueManager& value_manager,
                               const Value& other) const;
 
+  StringValue Clone(Allocator<> allocator) const;
+
   bool IsZeroValue() const {
     return NativeValue([](const auto& value) -> bool { return value.empty(); });
   }
@@ -169,6 +175,7 @@ class StringValue final {
   }
 
  private:
+  friend class common_internal::TrivialValue;
   friend const common_internal::SharedByteString&
   common_internal::AsSharedByteString(const StringValue& value);
 

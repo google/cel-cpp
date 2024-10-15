@@ -35,6 +35,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "common/allocator.h"
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/native_type.h"
@@ -88,6 +89,8 @@ class ParsedListValueInterface : public ListValueInterface {
   virtual absl::Status Contains(ValueManager& value_manager, const Value& other,
                                 Value& result) const;
 
+  virtual ParsedListValue Clone(ArenaAllocator<> allocator) const = 0;
+
  protected:
   friend class ParsedListValueInterfaceIterator;
 
@@ -139,6 +142,8 @@ class ParsedListValue {
 
   bool IsZeroValue() const { return interface_->IsZeroValue(); }
 
+  ParsedListValue Clone(Allocator<> allocator) const;
+
   bool IsEmpty() const { return interface_->IsEmpty(); }
 
   size_t Size() const { return interface_->Size(); }
@@ -174,6 +179,8 @@ class ParsedListValue {
   absl::Nonnull<const interface_type*> operator->() const {
     return interface_.operator->();
   }
+
+  explicit operator bool() const { return static_cast<bool>(interface_); }
 
  private:
   friend struct NativeTypeTraits<ParsedListValue>;

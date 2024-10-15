@@ -644,8 +644,8 @@ cc_library(
         "//eval/internal:cel_value_equal",
         "//eval/public:cel_value",
         "//eval/public:message_wrapper",
-        "//eval/public/containers:container_backed_list_impl",
-        "//eval/public/containers:container_backed_map_impl",
+        "//eval/public/containers:field_backed_list_impl",
+        "//eval/public/containers:field_backed_map_impl",
         "//eval/public/structs:legacy_type_adapter",
         "//eval/public/structs:legacy_type_info_apis",
         "//eval/public/structs:proto_message_type_adapter",
@@ -667,6 +667,7 @@ cc_library(
         "//internal:utf8",
         "//internal:well_known_types",
         "//runtime:runtime_options",
+        "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/base:nullability",
@@ -744,22 +745,6 @@ cc_library(
 alias(
     name = "legacy_value",
     actual = ":value",
-)
-
-# Due to how dynamic linking works for legacy types, we need this to be separate from the standard
-# value tests, which assume the fallback behavior if dynamic loading for legacy types isn't
-# available.
-cc_test(
-    name = "legacy_type_reflector_test",
-    srcs = ["legacy_type_reflector_test.cc"],
-    deps = [
-        ":legacy_value",
-        ":memory",
-        ":value",
-        ":value_testing",
-        "//internal:testing",
-        "@com_google_absl//absl/status",
-    ],
 )
 
 cc_library(

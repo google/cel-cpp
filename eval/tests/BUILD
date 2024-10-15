@@ -81,6 +81,7 @@ cc_test(
     tags = ["benchmark"],
     deps = [
         ":request_context_cc_proto",
+        "//common:allocator",
         "//common:casting",
         "//common:json",
         "//common:legacy_value",

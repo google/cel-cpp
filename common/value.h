@@ -18,7 +18,9 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <memory>
+#include <new>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -71,6 +73,7 @@
 #include "common/values/values.h"
 #include "internal/status_macros.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/generated_enum_reflection.h"
 #include "google/protobuf/map_field.h"
@@ -150,6 +153,11 @@ class Value final {
           ABSL_ATTRIBUTE_LIFETIME_BOUND,
       absl::Nonnull<google::protobuf::MessageFactory*> message_factory
           ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+  // Returns an appropriate `StringValue` for the dynamic protobuf message map
+  // field key. The map field key must be a string or the behavior is undefined.
+  static StringValue MapFieldKeyString(Borrowed<const google::protobuf::Message> message,
+                                       const google::protobuf::MapKey& key);
 
   // Returns an appropriate `Value` for the dynamic protobuf message map
   // field value. If `field` in `message`, which is `value`, is the well known
@@ -405,6 +413,12 @@ class Value final {
                               const Value& other) const;
 
   bool IsZeroValue() const;
+
+  // Clones the value to another allocator, if necessary. For compatible
+  // allocators, no allocation is performed. The exact logic for whether
+  // allocators are compatible is a little fuzzy at the moment, so avoid calling
+  // this function as it should be considered experimental.
+  Value Clone(Allocator<> allocator) const;
 
   friend void swap(Value& lhs, Value& rhs) noexcept {
     using std::swap;
@@ -2517,6 +2531,32 @@ class Value final {
   common_internal::ValueVariant variant_;
 };
 
+// Overloads for heterogeneous equality of numeric values.
+bool operator==(IntValue lhs, UintValue rhs);
+bool operator==(UintValue lhs, IntValue rhs);
+bool operator==(IntValue lhs, DoubleValue rhs);
+bool operator==(DoubleValue lhs, IntValue rhs);
+bool operator==(UintValue lhs, DoubleValue rhs);
+bool operator==(DoubleValue lhs, UintValue rhs);
+inline bool operator!=(IntValue lhs, UintValue rhs) {
+  return !operator==(lhs, rhs);
+}
+inline bool operator!=(UintValue lhs, IntValue rhs) {
+  return !operator==(lhs, rhs);
+}
+inline bool operator!=(IntValue lhs, DoubleValue rhs) {
+  return !operator==(lhs, rhs);
+}
+inline bool operator!=(DoubleValue lhs, IntValue rhs) {
+  return !operator==(lhs, rhs);
+}
+inline bool operator!=(UintValue lhs, DoubleValue rhs) {
+  return !operator==(lhs, rhs);
+}
+inline bool operator!=(DoubleValue lhs, UintValue rhs) {
+  return !operator==(lhs, rhs);
+}
+
 template <>
 struct NativeTypeTraits<Value> final {
   static NativeTypeId Id(const Value& value) {
@@ -2749,6 +2789,91 @@ using RepeatedFieldAccessor =
 
 absl::StatusOr<RepeatedFieldAccessor> RepeatedFieldAccessorFor(
     absl::Nonnull<const google::protobuf::FieldDescriptor*> field);
+
+// Wrapper around `Value`, providing the same API as `TrivialValue`.
+class NonTrivialValue final {
+ public:
+  NonTrivialValue() = default;
+  NonTrivialValue(const NonTrivialValue&) = default;
+  NonTrivialValue(NonTrivialValue&&) = default;
+  NonTrivialValue& operator=(const NonTrivialValue&) = default;
+  NonTrivialValue& operator=(NonTrivialValue&&) = default;
+
+  explicit NonTrivialValue(const Value& other) : value_(other) {}
+
+  explicit NonTrivialValue(Value&& other) : value_(std::move(other)) {}
+
+  absl::Nonnull<Value*> get() { return std::addressof(value_); }
+
+  absl::Nonnull<const Value*> get() const { return std::addressof(value_); }
+
+  Value& operator*() ABSL_ATTRIBUTE_LIFETIME_BOUND { return *get(); }
+
+  const Value& operator*() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return *get();
+  }
+
+  absl::Nonnull<Value*> operator->() { return get(); }
+
+  absl::Nonnull<const Value*> operator->() const { return get(); }
+
+  friend void swap(NonTrivialValue& lhs, NonTrivialValue& rhs) noexcept {
+    using std::swap;
+    swap(lhs.value_, rhs.value_);
+  }
+
+ private:
+  Value value_;
+};
+
+class TrivialValue;
+
+TrivialValue MakeTrivialValue(const Value& value,
+                              absl::Nonnull<google::protobuf::Arena*> arena);
+
+// Wrapper around `Value` which makes it trivial, providing the same API as
+// `NonTrivialValue`.
+class TrivialValue final {
+ public:
+  TrivialValue() : TrivialValue(Value()) {}
+  TrivialValue(const TrivialValue&) = default;
+  TrivialValue(TrivialValue&&) = default;
+  TrivialValue& operator=(const TrivialValue&) = default;
+  TrivialValue& operator=(TrivialValue&&) = default;
+
+  absl::Nonnull<Value*> get() {
+    return std::launder(reinterpret_cast<Value*>(&value_[0]));
+  }
+
+  absl::Nonnull<const Value*> get() const {
+    return std::launder(reinterpret_cast<const Value*>(&value_[0]));
+  }
+
+  Value& operator*() ABSL_ATTRIBUTE_LIFETIME_BOUND { return *get(); }
+
+  const Value& operator*() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return *get();
+  }
+
+  absl::Nonnull<Value*> operator->() { return get(); }
+
+  absl::Nonnull<const Value*> operator->() const { return get(); }
+
+  absl::string_view ToString() const;
+
+  absl::string_view ToBytes() const;
+
+ private:
+  friend TrivialValue MakeTrivialValue(const Value& value,
+                                       absl::Nonnull<google::protobuf::Arena*> arena);
+
+  explicit TrivialValue(const Value& other) {
+    std::memcpy(&value_[0], static_cast<const void*>(std::addressof(other)),
+                sizeof(Value));
+  }
+
+  alignas(Value) char value_[sizeof(Value)];
+};
 
 }  // namespace common_internal
 
