@@ -14,7 +14,10 @@
 
 #include "common/type.h"
 
+#include <string>
+
 #include "absl/base/nullability.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "google/protobuf/arena.h"
 
@@ -40,6 +43,14 @@ struct TypeTypeData final {
 };
 
 }  // namespace common_internal
+
+std::string TypeType::DebugString() const {
+  std::string s(name());
+  if (!GetParameters().empty()) {
+    absl::StrAppend(&s, "(", GetParameters().front().DebugString(), ")");
+  }
+  return s;
+}
 
 TypeType::TypeType(absl::Nonnull<google::protobuf::Arena*> arena, const Type& parameter)
     : TypeType(common_internal::TypeTypeData::Create(arena, parameter)) {}
