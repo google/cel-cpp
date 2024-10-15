@@ -247,14 +247,6 @@ absl::Status StructValueEqual(ValueManager& value_manager,
 
 }  // namespace common_internal
 
-absl::optional<MessageValue> StructValue::AsMessage() & {
-  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
-  }
-  return absl::nullopt;
-}
-
 absl::optional<MessageValue> StructValue::AsMessage() const& {
   if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
       alternative != nullptr) {
@@ -267,22 +259,6 @@ absl::optional<MessageValue> StructValue::AsMessage() && {
   if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
       alternative != nullptr) {
     return std::move(*alternative);
-  }
-  return absl::nullopt;
-}
-
-absl::optional<MessageValue> StructValue::AsMessage() const&& {
-  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
-      alternative != nullptr) {
-    return std::move(*alternative);
-  }
-  return absl::nullopt;
-}
-
-optional_ref<const ParsedMessageValue> StructValue::AsParsedMessage() & {
-  if (const auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
-      alternative != nullptr) {
-    return *alternative;
   }
   return absl::nullopt;
 }
@@ -303,50 +279,22 @@ absl::optional<ParsedMessageValue> StructValue::AsParsedMessage() && {
   return absl::nullopt;
 }
 
-absl::optional<ParsedMessageValue> StructValue::AsParsedMessage() const&& {
-  if (auto* alternative = absl::get_if<ParsedMessageValue>(&variant_);
-      alternative != nullptr) {
-    return std::move(*alternative);
-  }
-  return absl::nullopt;
-}
-
-StructValue::operator MessageValue() & {
+MessageValue StructValue::GetMessage() const& {
   ABSL_DCHECK(IsMessage()) << *this;
   return absl::get<ParsedMessageValue>(variant_);
 }
 
-StructValue::operator MessageValue() const& {
-  ABSL_DCHECK(IsMessage()) << *this;
-  return absl::get<ParsedMessageValue>(variant_);
-}
-
-StructValue::operator MessageValue() && {
+MessageValue StructValue::GetMessage() && {
   ABSL_DCHECK(IsMessage()) << *this;
   return absl::get<ParsedMessageValue>(std::move(variant_));
 }
 
-StructValue::operator MessageValue() const&& {
-  ABSL_DCHECK(IsMessage()) << *this;
-  return absl::get<ParsedMessageValue>(std::move(variant_));
-}
-
-StructValue::operator const ParsedMessageValue&() & {
+const ParsedMessageValue& StructValue::GetParsedMessage() const& {
   ABSL_DCHECK(IsParsedMessage()) << *this;
   return absl::get<ParsedMessageValue>(variant_);
 }
 
-StructValue::operator const ParsedMessageValue&() const& {
-  ABSL_DCHECK(IsParsedMessage()) << *this;
-  return absl::get<ParsedMessageValue>(variant_);
-}
-
-StructValue::operator ParsedMessageValue() && {
-  ABSL_DCHECK(IsParsedMessage()) << *this;
-  return absl::get<ParsedMessageValue>(std::move(variant_));
-}
-
-StructValue::operator ParsedMessageValue() const&& {
+ParsedMessageValue StructValue::GetParsedMessage() && {
   ABSL_DCHECK(IsParsedMessage()) << *this;
   return absl::get<ParsedMessageValue>(std::move(variant_));
 }

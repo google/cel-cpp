@@ -220,20 +220,26 @@ class StructValue final {
   // Performs a checked cast from a value to a message value,
   // returning a non-empty optional with either a value or reference to the
   // message value. Otherwise an empty optional is returned.
-  absl::optional<MessageValue> AsMessage() &;
+  absl::optional<MessageValue> AsMessage() & {
+    return std::as_const(*this).AsMessage();
+  }
   absl::optional<MessageValue> AsMessage() const&;
   absl::optional<MessageValue> AsMessage() &&;
-  absl::optional<MessageValue> AsMessage() const&&;
+  absl::optional<MessageValue> AsMessage() const&& { return AsMessage(); }
 
   // Performs a checked cast from a value to a parsed message value,
   // returning a non-empty optional with either a value or reference to the
   // parsed message value. Otherwise an empty optional is returned.
   optional_ref<const ParsedMessageValue> AsParsedMessage() &
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsParsedMessage();
+  }
   optional_ref<const ParsedMessageValue> AsParsedMessage()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
   absl::optional<ParsedMessageValue> AsParsedMessage() &&;
-  absl::optional<ParsedMessageValue> AsParsedMessage() const&&;
+  absl::optional<ParsedMessageValue> AsParsedMessage() const&& {
+    return common_internal::AsOptional(AsParsedMessage());
+  }
 
   // Convenience method for use with template metaprogramming. See
   // `AsMessage()`.
@@ -276,19 +282,66 @@ class StructValue final {
   // Performs an unchecked cast from a value to a message value. In
   // debug builds a best effort is made to crash. If `IsMessage()` would return
   // false, calling this method is undefined behavior.
-  explicit operator MessageValue() &;
-  explicit operator MessageValue() const&;
-  explicit operator MessageValue() &&;
-  explicit operator MessageValue() const&&;
+  MessageValue GetMessage() & { return std::as_const(*this).GetMessage(); }
+  MessageValue GetMessage() const&;
+  MessageValue GetMessage() &&;
+  MessageValue GetMessage() const&& { return GetMessage(); }
 
   // Performs an unchecked cast from a value to a parsed message value. In
   // debug builds a best effort is made to crash. If `IsParsedMessage()` would
   // return false, calling this method is undefined behavior.
-  explicit operator const ParsedMessageValue&() & ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator const ParsedMessageValue&()
+  const ParsedMessageValue& GetParsedMessage() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetParsedMessage();
+  }
+  const ParsedMessageValue& GetParsedMessage()
       const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
-  explicit operator ParsedMessageValue() &&;
-  explicit operator ParsedMessageValue() const&&;
+  ParsedMessageValue GetParsedMessage() &&;
+  ParsedMessageValue GetParsedMessage() const&& { return GetParsedMessage(); }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetMessage()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>, MessageValue> Get() & {
+    return GetMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>, MessageValue> Get() const& {
+    return GetMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>, MessageValue> Get() && {
+    return std::move(*this).GetMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<MessageValue, T>, MessageValue> Get()
+      const&& {
+    return std::move(*this).GetMessage();
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetParsedMessage()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                       const ParsedMessageValue&>
+      Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>,
+                   const ParsedMessageValue&>
+  Get() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsedMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>, ParsedMessageValue>
+  Get() && {
+    return std::move(*this).GetParsedMessage();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMessageValue, T>, ParsedMessageValue>
+  Get() const&& {
+    return std::move(*this).GetParsedMessage();
+  }
 
  private:
   friend class Value;
