@@ -260,6 +260,8 @@ Value Value::Clone(Allocator<> allocator) const {
       variant_);
 }
 
+void swap(Value& lhs, Value& rhs) noexcept { lhs.variant_.swap(rhs.variant_); }
+
 std::ostream& operator<<(std::ostream& out, const Value& value) {
   return absl::visit(
       [&out](const auto& alternative) -> std::ostream& {

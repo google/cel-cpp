@@ -420,10 +420,7 @@ class Value final {
   // this function as it should be considered experimental.
   Value Clone(Allocator<> allocator) const;
 
-  friend void swap(Value& lhs, Value& rhs) noexcept {
-    using std::swap;
-    swap(lhs.variant_, rhs.variant_);
-  }
+  friend void swap(Value& lhs, Value& rhs) noexcept;
 
   friend std::ostream& operator<<(std::ostream& out, const Value& value);
 
