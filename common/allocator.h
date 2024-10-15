@@ -63,7 +63,7 @@ class Allocator;
 // allocation/deallocation and construction/destruction using memory owned by
 // `operator new`.
 template <>
-struct NewDeleteAllocator<void> {
+class NewDeleteAllocator<void> {
  public:
   using size_type = size_t;
   using difference_type = ptrdiff_t;
