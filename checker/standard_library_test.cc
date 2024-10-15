@@ -28,7 +28,10 @@
 #include "checker/validation_result.h"
 #include "common/ast.h"
 #include "common/constant.h"
+#include "common/decl.h"
+#include "common/type.h"
 #include "internal/testing.h"
+#include "google/protobuf/arena.h"
 
 namespace cel {
 namespace {
@@ -54,6 +57,43 @@ TEST(StandardLibraryTest, StandardLibraryErrorsIfAddedTwice) {
   EXPECT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
   EXPECT_THAT(builder.AddLibrary(StandardLibrary()),
               StatusIs(absl::StatusCode::kAlreadyExists));
+}
+
+TEST(StandardLibraryTest, ComprehensionVarsIndirectCyclicParamAssignability) {
+  google::protobuf::Arena arena;
+  TypeCheckerBuilder builder;
+  ASSERT_THAT(builder.AddLibrary(StandardLibrary()), IsOk());
+
+  // Note: this is atypical -- parameterized variables aren't well supported
+  // outside of built-in syntax.
+  // e.g. `list : Type(List(A))` is instantiated per reference to bind A to
+  // the concrete type of a list in the same assignability context.
+  //
+  // Validate that parameterization is sanitized to be contextual
+  // List(V) -> List(T%1)
+  // Map(K, V) -> Map(T%2, T%3)
+  Type list_type = ListType(&arena, TypeParamType("V"));
+  Type map_type = MapType(&arena, TypeParamType("K"), TypeParamType("V"));
+
+  ASSERT_THAT(builder.AddVariable(MakeVariableDecl("list_var", list_type)),
+              IsOk());
+  ASSERT_THAT(builder.AddVariable(MakeVariableDecl("map_var", map_type)),
+              IsOk());
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<TypeChecker> type_checker,
+                       std::move(builder).Build());
+
+  ASSERT_OK_AND_ASSIGN(
+      auto ast, checker_internal::MakeTestParsedAst(
+                    "list_var.exists(v,"
+                    "  map_var.filter(k, map_var[k] > 1.0).size() > int(v)"
+                    ")"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result,
+                       type_checker->Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
 }
 
 class StandardLibraryDefinitionsTest : public ::testing::Test {

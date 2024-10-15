@@ -759,6 +759,53 @@ TEST(TypeCheckerImplTest, ComprehensionVarsFollowQualifiedIdentPriority) {
               Contains(Pair(_, IsVariableReference("x.y"))));
 }
 
+TEST(TypeCheckerImplTest, ComprehensionVarsCyclicParamAssignability) {
+  TypeCheckEnv env;
+  google::protobuf::Arena arena;
+  ASSERT_THAT(RegisterMinimalBuiltins(&arena, env), IsOk());
+
+  TypeCheckerImpl impl(std::move(env));
+  // This is valid because the list construction in the transform will resolve
+  // to list(dyn) since candidates E1 -> E2 and list(E1) -> E2 don't agree.
+  ASSERT_OK_AND_ASSIGN(auto ast, MakeTestParsedAst("[].map(c, [ c, [c] ])"));
+  ASSERT_OK_AND_ASSIGN(ValidationResult result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+
+  EXPECT_THAT(result.GetIssues(), IsEmpty());
+
+  // Remainder are conceptually the same, but confirm generality.
+  ASSERT_OK_AND_ASSIGN(ast, MakeTestParsedAst("[].map(c, [ c, [[c]] ])"));
+  ASSERT_OK_AND_ASSIGN(result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+
+  ASSERT_OK_AND_ASSIGN(ast, MakeTestParsedAst("[].map(c, [ [c], [[c]] ])"));
+  ASSERT_OK_AND_ASSIGN(result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+
+  ASSERT_OK_AND_ASSIGN(ast, MakeTestParsedAst("[].map(c, [ c, c ])"));
+  ASSERT_OK_AND_ASSIGN(result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+
+  ASSERT_OK_AND_ASSIGN(ast, MakeTestParsedAst("[].map(c, [ [c], c ])"));
+  ASSERT_OK_AND_ASSIGN(result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+
+  ASSERT_OK_AND_ASSIGN(ast, MakeTestParsedAst("[].map(c, [ [[c]], c ])"));
+  ASSERT_OK_AND_ASSIGN(result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+
+  ASSERT_OK_AND_ASSIGN(ast, MakeTestParsedAst("[].map(c, [ c, type(c) ])"));
+  ASSERT_OK_AND_ASSIGN(result, impl.Check(std::move(ast)));
+
+  EXPECT_TRUE(result.IsValid());
+}
+
 struct PrimitiveLiteralsTestCase {
   std::string expr;
   ast_internal::PrimitiveType expected_type;
