@@ -89,7 +89,7 @@ TEST(RegisterContainerFunctions, RegisterRuntimeListAppend) {
                                            {Kind::kAny, Kind::kAny}),
               UnorderedElementsAre(MatchesDescriptor(
                   builtin::kRuntimeListAppend, false,
-                  std::vector<Kind>{Kind::kOpaque, Kind::kList})));
+                  std::vector<Kind>{Kind::kList, Kind::kList})));
 }
 
 // TODO: move functional parsed expr tests when modern APIs for

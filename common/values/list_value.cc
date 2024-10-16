@@ -13,13 +13,19 @@
 // limitations under the License.
 
 #include <cstddef>
+#include <string>
 #include <utility>
 
 #include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "common/casting.h"
+#include "common/json.h"
+#include "common/optional_ref.h"
 #include "common/value.h"
 #include "internal/status_macros.h"
 
@@ -148,6 +154,31 @@ absl::Status ListValueEqual(ValueManager& value_manager,
 }
 
 }  // namespace common_internal
+
+optional_ref<const ParsedListValue> ListValue::AsParsed() const& {
+  if (const auto* alt = absl::get_if<ParsedListValue>(&variant_);
+      alt != nullptr) {
+    return *alt;
+  }
+  return absl::nullopt;
+}
+
+absl::optional<ParsedListValue> ListValue::AsParsed() && {
+  if (auto* alt = absl::get_if<ParsedListValue>(&variant_); alt != nullptr) {
+    return std::move(*alt);
+  }
+  return absl::nullopt;
+}
+
+const ParsedListValue& ListValue::GetParsed() const& {
+  ABSL_DCHECK(IsParsed());
+  return absl::get<ParsedListValue>(variant_);
+}
+
+ParsedListValue ListValue::GetParsed() && {
+  ABSL_DCHECK(IsParsed());
+  return absl::get<ParsedListValue>(std::move(variant_));
+}
 
 common_internal::ValueVariant ListValue::ToValueVariant() const& {
   return absl::visit(

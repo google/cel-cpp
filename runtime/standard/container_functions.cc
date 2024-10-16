@@ -14,6 +14,7 @@
 
 #include "runtime/standard/container_functions.h"
 
+#include <cstdint>
 #include <utility>
 
 #include "absl/status/status.h"
@@ -22,15 +23,13 @@
 #include "base/function_adapter.h"
 #include "common/value.h"
 #include "common/value_manager.h"
+#include "common/values/list_value_builder.h"
 #include "internal/status_macros.h"
 #include "runtime/function_registry.h"
-#include "runtime/internal/mutable_list_impl.h"
 #include "runtime/runtime_options.h"
 
 namespace cel {
 namespace {
-
-using cel::runtime_internal::MutableListValue;
 
 absl::StatusOr<int64_t> MapSizeImpl(ValueManager&, const MapValue& value) {
   return value.Size();
@@ -77,23 +76,22 @@ absl::StatusOr<ListValue> ConcatList(ValueManager& factory,
 // This call will only be invoked within comprehensions where `value1` is an
 // intermediate result which cannot be directly assigned or co-mingled with a
 // user-provided list.
-absl::StatusOr<OpaqueValue> AppendList(ValueManager& factory,
-                                       OpaqueValue value1,
-                                       const ListValue& value2) {
+absl::StatusOr<ListValue> AppendList(ValueManager& factory, ListValue value1,
+                                     const ListValue& value2) {
   // The `value1` object cannot be directly addressed and is an intermediate
   // variable. Once the comprehension completes this value will in effect be
   // treated as immutable.
-  if (!MutableListValue::Is(value1)) {
-    return absl::InvalidArgumentError(
-        "Unexpected call to runtime list append.");
+  if (auto mutable_list_value =
+          cel::common_internal::AsMutableListValue(value1);
+      mutable_list_value) {
+    CEL_ASSIGN_OR_RETURN(auto size2, value2.Size());
+    for (int i = 0; i < size2; i++) {
+      CEL_ASSIGN_OR_RETURN(Value elem, value2.Get(factory, i));
+      CEL_RETURN_IF_ERROR(mutable_list_value->Append(std::move(elem)));
+    }
+    return value1;
   }
-  MutableListValue& mutable_list = MutableListValue::Cast(value1);
-  CEL_ASSIGN_OR_RETURN(auto size2, value2.Size());
-  for (int i = 0; i < size2; i++) {
-    CEL_ASSIGN_OR_RETURN(Value elem, value2.Get(factory, i));
-    CEL_RETURN_IF_ERROR(mutable_list.Append(std::move(elem)));
-  }
-  return value1;
+  return absl::InvalidArgumentError("Unexpected call to runtime list append.");
 }
 }  // namespace
 
@@ -126,10 +124,10 @@ absl::Status RegisterContainerFunctions(FunctionRegistry& registry,
 
   return registry.Register(
       BinaryFunctionAdapter<
-          absl::StatusOr<OpaqueValue>, OpaqueValue,
+          absl::StatusOr<ListValue>, ListValue,
           const ListValue&>::CreateDescriptor(cel::builtin::kRuntimeListAppend,
                                               false),
-      BinaryFunctionAdapter<absl::StatusOr<OpaqueValue>, OpaqueValue,
+      BinaryFunctionAdapter<absl::StatusOr<ListValue>, ListValue,
                             const ListValue&>::WrapFunction(AppendList));
 }
 

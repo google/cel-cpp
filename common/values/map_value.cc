@@ -23,9 +23,11 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "common/casting.h"
 #include "common/json.h"
+#include "common/optional_ref.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "internal/status_macros.h"
@@ -190,6 +192,31 @@ absl::Status CheckMapKey(const Value& key) {
     default:
       return InvalidMapKeyTypeError(key.kind());
   }
+}
+
+optional_ref<const ParsedMapValue> MapValue::AsParsed() const& {
+  if (const auto* alt = absl::get_if<ParsedMapValue>(&variant_);
+      alt != nullptr) {
+    return *alt;
+  }
+  return absl::nullopt;
+}
+
+absl::optional<ParsedMapValue> MapValue::AsParsed() && {
+  if (auto* alt = absl::get_if<ParsedMapValue>(&variant_); alt != nullptr) {
+    return std::move(*alt);
+  }
+  return absl::nullopt;
+}
+
+const ParsedMapValue& MapValue::GetParsed() const& {
+  ABSL_DCHECK(IsParsed());
+  return absl::get<ParsedMapValue>(variant_);
+}
+
+ParsedMapValue MapValue::GetParsed() && {
+  ABSL_DCHECK(IsParsed());
+  return absl::get<ParsedMapValue>(std::move(variant_));
 }
 
 common_internal::ValueVariant MapValue::ToValueVariant() const& {

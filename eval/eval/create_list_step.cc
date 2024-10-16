@@ -13,13 +13,13 @@
 #include "base/ast_internal/expr.h"
 #include "common/casting.h"
 #include "common/value.h"
+#include "common/values/list_value_builder.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/attribute_utility.h"
 #include "eval/eval/direct_expression_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "internal/status_macros.h"
-#include "runtime/internal/mutable_list_impl.h"
 
 namespace google::api::expr::runtime {
 
@@ -31,7 +31,6 @@ using ::cel::InstanceOf;
 using ::cel::ListValueBuilderInterface;
 using ::cel::UnknownValue;
 using ::cel::Value;
-using ::cel::runtime_internal::MutableListValue;
 
 class CreateListStep : public ExpressionStepBase {
  public:
@@ -214,13 +213,9 @@ class MutableListStep : public ExpressionStepBase {
 };
 
 absl::Status MutableListStep::Evaluate(ExecutionFrame* frame) const {
-  CEL_ASSIGN_OR_RETURN(auto builder,
-                       frame->value_manager().NewListValueBuilder(
-                           frame->value_manager().GetDynListType()));
-
-  frame->value_stack().Push(cel::OpaqueValue{
-      frame->value_manager().GetMemoryManager().MakeShared<MutableListValue>(
-          std::move(builder))});
+  frame->value_stack().Push(
+      cel::ParsedListValue(cel::common_internal::NewMutableListValue(
+          frame->memory_manager().arena())));
   return absl::OkStatus();
 }
 
@@ -239,10 +234,8 @@ absl::Status DirectMutableListStep::Evaluate(
   CEL_ASSIGN_OR_RETURN(auto builder,
                        frame.value_manager().NewListValueBuilder(
                            frame.value_manager().GetDynListType()));
-
-  result = cel::OpaqueValue{
-      frame.value_manager().GetMemoryManager().MakeShared<MutableListValue>(
-          std::move(builder))};
+  result = cel::ParsedListValue(cel::common_internal::NewMutableListValue(
+      frame.value_manager().GetMemoryManager().arena()));
   return absl::OkStatus();
 }
 

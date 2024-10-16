@@ -15,8 +15,14 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_LIST_VALUE_BUILDER_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_LIST_VALUE_BUILDER_H_
 
+#include <cstddef>
+
+#include "absl/base/attributes.h"
 #include "absl/base/nullability.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "common/allocator.h"
+#include "common/memory.h"
 #include "common/native_type.h"
 #include "common/value.h"
 #include "eval/public/cel_value.h"
@@ -43,6 +49,52 @@ absl::Nonnull<const CompatListValue*> EmptyCompatListValue();
 
 absl::StatusOr<absl::Nonnull<const CompatListValue*>> MakeCompatListValue(
     absl::Nonnull<google::protobuf::Arena*> arena, const ParsedListValue& value);
+
+// Extension of ParsedListValueInterface which is also mutable. Accessing this
+// like a normal list before all elements are finished being appended is a bug.
+// This is primarily used by the runtime to efficiently implement comprehensions
+// which accumulate results into a list.
+//
+// IMPORTANT: This type is only meant to be utilized by the runtime.
+class MutableListValue : public ParsedListValueInterface {
+ public:
+  virtual absl::Status Append(Value value) const = 0;
+
+  virtual void Reserve(size_t capacity) const {}
+
+ private:
+  NativeTypeId GetNativeTypeId() const override {
+    return NativeTypeId::For<MutableListValue>();
+  }
+};
+
+// Special implementation of list which is both a modern list, legacy list, and
+// mutable.
+//
+// NOTE: We do not extend CompatListValue to avoid having to use virtual
+// inheritance and `dynamic_cast`.
+class MutableCompatListValue : public MutableListValue,
+                               public google::api::expr::runtime::CelList {
+ private:
+  NativeTypeId GetNativeTypeId() const final {
+    return NativeTypeId::For<MutableCompatListValue>();
+  }
+};
+
+Shared<MutableListValue> NewMutableListValue(Allocator<> allocator);
+
+bool IsMutableListValue(const Value& value);
+bool IsMutableListValue(const ListValue& value);
+
+absl::Nullable<const MutableListValue*> AsMutableListValue(
+    const Value& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
+absl::Nullable<const MutableListValue*> AsMutableListValue(
+    const ListValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+const MutableListValue& GetMutableListValue(
+    const Value& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
+const MutableListValue& GetMutableListValue(
+    const ListValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
 absl::Nonnull<cel::ListValueBuilderPtr> NewListValueBuilder(
     ValueFactory& value_factory);

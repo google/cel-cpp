@@ -38,36 +38,6 @@ cc_library(
 )
 
 cc_library(
-    name = "mutable_list_impl",
-    srcs = ["mutable_list_impl.cc"],
-    hdrs = ["mutable_list_impl.h"],
-    deps = [
-        "//common:allocator",
-        "//common:casting",
-        "//common:memory",
-        "//common:native_type",
-        "//common:type",
-        "//common:value",
-        "//internal:casts",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/status",
-    ],
-)
-
-cc_test(
-    name = "mutable_list_impl_test",
-    srcs = ["mutable_list_impl_test.cc"],
-    deps = [
-        ":mutable_list_impl",
-        "//base:data",
-        "//common:memory",
-        "//common:type",
-        "//common:value",
-        "//internal:testing",
-    ],
-)
-
-cc_library(
     name = "runtime_friend_access",
     hdrs = ["runtime_friend_access.h"],
     deps = [

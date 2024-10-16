@@ -48,6 +48,7 @@
 #include "common/values/list_value_builder.h"
 #include "common/values/map_value_builder.h"
 #include "eval/public/cel_value.h"
+#include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/arena.h"
 
@@ -307,6 +308,186 @@ class NonTrivialListValueImpl final : public ParsedListValueInterface {
   const NonTrivialValueVector elements_;
 };
 
+class TrivialMutableListValueImpl final : public MutableCompatListValue {
+ public:
+  explicit TrivialMutableListValueImpl(absl::Nonnull<google::protobuf::Arena*> arena)
+      : elements_(ArenaAllocator<TrivialValue>{arena}) {}
+
+  std::string DebugString() const override {
+    return absl::StrCat("[", absl::StrJoin(elements_, ", ", ValueFormatter{}),
+                        "]");
+  }
+
+  absl::StatusOr<JsonArray> ConvertToJsonArray(
+      AnyToJsonConverter& converter) const override {
+    return ListValueToJsonArray(elements_, converter);
+  }
+
+  ParsedListValue Clone(ArenaAllocator<> allocator) const override {
+    // This is unreachable with the current logic in ParsedListValue, but could
+    // be called once we keep track of the owning arena in ParsedListValue.
+    TrivialValueVector cloned_elements(
+        elements_, ArenaAllocator<TrivialValue>{allocator.arena()});
+    return ParsedListValue(
+        MemoryManager(allocator).MakeShared<TrivialListValueImpl>(
+            std::move(cloned_elements)));
+  }
+
+  size_t Size() const override { return elements_.size(); }
+
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachCallback callback) const override {
+    return ForEach(
+        value_manager,
+        [callback](size_t index, const Value& element) -> absl::StatusOr<bool> {
+          return callback(element);
+        });
+  }
+
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachWithIndexCallback callback) const override {
+    const size_t size = elements_.size();
+    for (size_t i = 0; i < size; ++i) {
+      CEL_ASSIGN_OR_RETURN(auto ok, callback(i, *elements_[i]));
+      if (!ok) {
+        break;
+      }
+    }
+    return absl::OkStatus();
+  }
+
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
+      ValueManager&) const override {
+    return std::make_unique<ListValueImplIterator<TrivialValue>>(
+        absl::MakeConstSpan(elements_));
+  }
+
+  CelValue operator[](int index) const override {
+    return common_internal::LegacyTrivialValue(
+        elements_.get_allocator().arena(), elements_[index]);
+  }
+
+  // Like `operator[](int)` above, but also accepts an arena. Prefer calling
+  // this variant if the arena is known.
+  CelValue Get(google::protobuf::Arena* arena, int index) const override {
+    return common_internal::LegacyTrivialValue(
+        arena != nullptr ? arena : elements_.get_allocator().arena(),
+        elements_[index]);
+  }
+
+  int size() const override { return static_cast<int>(Size()); }
+
+  absl::Status Append(Value value) const override {
+    CEL_RETURN_IF_ERROR(CheckListElement(value));
+    elements_.emplace_back(
+        MakeTrivialValue(value, elements_.get_allocator().arena()));
+    return absl::OkStatus();
+  }
+
+  void Reserve(size_t capacity) const override { elements_.reserve(capacity); }
+
+ protected:
+  absl::Status GetImpl(ValueManager&, size_t index,
+                       Value& result) const override {
+    result = *elements_[index];
+    return absl::OkStatus();
+  }
+
+ private:
+  mutable TrivialValueVector elements_;
+};
+
+}  // namespace
+
+}  // namespace common_internal
+
+template <>
+struct NativeTypeTraits<common_internal::TrivialMutableListValueImpl> {
+  static bool SkipDestructor(
+      const common_internal::TrivialMutableListValueImpl&) {
+    return true;
+  }
+};
+
+namespace common_internal {
+
+namespace {
+
+class NonTrivialMutableListValueImpl final : public MutableListValue {
+ public:
+  NonTrivialMutableListValueImpl() = default;
+
+  std::string DebugString() const override {
+    return absl::StrCat("[", absl::StrJoin(elements_, ", ", ValueFormatter{}),
+                        "]");
+  }
+
+  absl::StatusOr<JsonArray> ConvertToJsonArray(
+      AnyToJsonConverter& converter) const override {
+    return ListValueToJsonArray(elements_, converter);
+  }
+
+  ParsedListValue Clone(ArenaAllocator<> allocator) const override {
+    TrivialValueVector cloned_elements(
+        ArenaAllocator<TrivialValue>{allocator.arena()});
+    cloned_elements.reserve(elements_.size());
+    for (const auto& element : elements_) {
+      cloned_elements.emplace_back(
+          MakeTrivialValue(*element, allocator.arena()));
+    }
+    return ParsedListValue(
+        MemoryManager(allocator).MakeShared<TrivialListValueImpl>(
+            std::move(cloned_elements)));
+  }
+
+  size_t Size() const override { return elements_.size(); }
+
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachCallback callback) const override {
+    return ForEach(
+        value_manager,
+        [callback](size_t index, const Value& element) -> absl::StatusOr<bool> {
+          return callback(element);
+        });
+  }
+
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachWithIndexCallback callback) const override {
+    const size_t size = elements_.size();
+    for (size_t i = 0; i < size; ++i) {
+      CEL_ASSIGN_OR_RETURN(auto ok, callback(i, *elements_[i]));
+      if (!ok) {
+        break;
+      }
+    }
+    return absl::OkStatus();
+  }
+
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
+      ValueManager&) const override {
+    return std::make_unique<ListValueImplIterator<NonTrivialValue>>(
+        absl::MakeConstSpan(elements_));
+  }
+
+  absl::Status Append(Value value) const override {
+    CEL_RETURN_IF_ERROR(CheckListElement(value));
+    elements_.emplace_back(std::move(value));
+    return absl::OkStatus();
+  }
+
+  void Reserve(size_t capacity) const override { elements_.reserve(capacity); }
+
+ protected:
+  absl::Status GetImpl(ValueManager&, size_t index,
+                       Value& result) const override {
+    result = *elements_[index];
+    return absl::OkStatus();
+  }
+
+ private:
+  mutable NonTrivialValueVector elements_;
+};
+
 class TrivialListValueBuilderImpl final : public ListValueBuilder {
  public:
   TrivialListValueBuilderImpl(ValueFactory& value_factory,
@@ -387,6 +568,99 @@ absl::StatusOr<absl::Nonnull<const CompatListValue*>> MakeCompatListValue(
         return true;
       }));
   return google::protobuf::Arena::Create<TrivialListValueImpl>(arena, std::move(vector));
+}
+
+Shared<MutableListValue> NewMutableListValue(Allocator<> allocator) {
+  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
+      arena != nullptr) {
+    return MemoryManager::Pooling(arena)
+        .MakeShared<TrivialMutableListValueImpl>(arena);
+  }
+  return MemoryManager::ReferenceCounting()
+      .MakeShared<NonTrivialMutableListValueImpl>();
+}
+
+bool IsMutableListValue(const Value& value) {
+  if (auto parsed_list_value = value.AsParsedList(); parsed_list_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(**parsed_list_value);
+    if (native_type_id == NativeTypeId::For<MutableListValue>() ||
+        native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool IsMutableListValue(const ListValue& value) {
+  if (auto parsed_list_value = value.AsParsed(); parsed_list_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(**parsed_list_value);
+    if (native_type_id == NativeTypeId::For<MutableListValue>() ||
+        native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+absl::Nullable<const MutableListValue*> AsMutableListValue(const Value& value) {
+  if (auto parsed_list_value = value.AsParsedList(); parsed_list_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(**parsed_list_value);
+    if (native_type_id == NativeTypeId::For<MutableListValue>()) {
+      return cel::internal::down_cast<const MutableListValue*>(
+          (*parsed_list_value).operator->());
+    }
+    if (native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
+      return cel::internal::down_cast<const MutableCompatListValue*>(
+          (*parsed_list_value).operator->());
+    }
+  }
+  return nullptr;
+}
+
+absl::Nullable<const MutableListValue*> AsMutableListValue(
+    const ListValue& value) {
+  if (auto parsed_list_value = value.AsParsed(); parsed_list_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(**parsed_list_value);
+    if (native_type_id == NativeTypeId::For<MutableListValue>()) {
+      return cel::internal::down_cast<const MutableListValue*>(
+          (*parsed_list_value).operator->());
+    }
+    if (native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
+      return cel::internal::down_cast<const MutableCompatListValue*>(
+          (*parsed_list_value).operator->());
+    }
+  }
+  return nullptr;
+}
+
+const MutableListValue& GetMutableListValue(const Value& value) {
+  ABSL_DCHECK(IsMutableListValue(value)) << value;
+  const auto& parsed_list_value = value.GetParsedList();
+  NativeTypeId native_type_id = NativeTypeId::Of(*parsed_list_value);
+  if (native_type_id == NativeTypeId::For<MutableListValue>()) {
+    return cel::internal::down_cast<const MutableListValue&>(
+        *parsed_list_value);
+  }
+  if (native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
+    return cel::internal::down_cast<const MutableCompatListValue&>(
+        *parsed_list_value);
+  }
+  ABSL_UNREACHABLE();
+}
+
+const MutableListValue& GetMutableListValue(const ListValue& value) {
+  ABSL_DCHECK(IsMutableListValue(value)) << value;
+  const auto& parsed_list_value = value.GetParsed();
+  NativeTypeId native_type_id = NativeTypeId::Of(*parsed_list_value);
+  if (native_type_id == NativeTypeId::For<MutableListValue>()) {
+    return cel::internal::down_cast<const MutableListValue&>(
+        *parsed_list_value);
+  }
+  if (native_type_id == NativeTypeId::For<MutableCompatListValue>()) {
+    return cel::internal::down_cast<const MutableCompatListValue&>(
+        *parsed_list_value);
+  }
+  ABSL_UNREACHABLE();
 }
 
 absl::Nonnull<cel::ListValueBuilderPtr> NewListValueBuilder(
@@ -921,6 +1195,262 @@ class NonTrivialMapValueImpl final : public ParsedMapValueInterface {
   const NonTrivialValueFlatHashMap map_;
 };
 
+class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
+ public:
+  explicit TrivialMutableMapValueImpl(absl::Nonnull<google::protobuf::Arena*> arena)
+      : map_(TrivialValueFlatHashMapAllocator{arena}) {}
+
+  std::string DebugString() const override {
+    return absl::StrCat("{", absl::StrJoin(map_, ", ", ValueFormatter{}), "}");
+  }
+
+  absl::StatusOr<JsonObject> ConvertToJsonObject(
+      AnyToJsonConverter& converter) const override {
+    return MapValueToJsonObject(map_, converter);
+  }
+
+  ParsedMapValue Clone(ArenaAllocator<> allocator) const override {
+    // This is unreachable with the current logic in ParsedMapValue, but could
+    // be called once we keep track of the owning arena in ParsedListValue.
+    TrivialValueFlatHashMap cloned_entries(
+        map_, ArenaAllocator<TrivialValue>{allocator.arena()});
+    return ParsedMapValue(
+        MemoryManager(allocator).MakeShared<TrivialMapValueImpl>(
+            std::move(cloned_entries)));
+  }
+
+  size_t Size() const override { return map_.size(); }
+
+  absl::Status ListKeys(ValueManager& value_manager,
+                        ListValue& result) const override {
+    result = ParsedListValue(MakeShared(kAdoptRef, ProjectKeys(), nullptr));
+    return absl::OkStatus();
+  }
+
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachCallback callback) const override {
+    for (const auto& entry : map_) {
+      CEL_ASSIGN_OR_RETURN(auto ok, callback(*entry.first, *entry.second));
+      if (!ok) {
+        break;
+      }
+    }
+    return absl::OkStatus();
+  }
+
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
+      ValueManager& value_manager) const override {
+    return std::make_unique<MapValueImplIterator<TrivialValue>>(&map_);
+  }
+
+  absl::optional<CelValue> operator[](CelValue key) const override {
+    if (auto status = CelValue::CheckMapKeyType(key); !status.ok()) {
+      status.IgnoreError();
+      return absl::nullopt;
+    }
+    if (auto it = map_.find(key); it != map_.end()) {
+      return LegacyTrivialValue(map_.get_allocator().arena(), it->second);
+    }
+    return absl::nullopt;
+  }
+
+  absl::optional<CelValue> Get(google::protobuf::Arena* arena,
+                               CelValue key) const override {
+    if (auto status = CelValue::CheckMapKeyType(key); !status.ok()) {
+      status.IgnoreError();
+      return absl::nullopt;
+    }
+    if (auto it = map_.find(key); it != map_.end()) {
+      return LegacyTrivialValue(
+          arena != nullptr ? arena : map_.get_allocator().arena(), it->second);
+    }
+    return absl::nullopt;
+  }
+
+  absl::StatusOr<bool> Has(const CelValue& key) const override {
+    // This check safeguards against issues with invalid key types such as NaN.
+    CEL_RETURN_IF_ERROR(CelValue::CheckMapKeyType(key));
+    return map_.find(key) != map_.end();
+  }
+
+  int size() const override { return static_cast<int>(Size()); }
+
+  absl::StatusOr<const CelList*> ListKeys() const override {
+    return ProjectKeys();
+  }
+
+  absl::StatusOr<const CelList*> ListKeys(google::protobuf::Arena* arena) const override {
+    return ProjectKeys();
+  }
+
+  absl::Status Put(Value key, Value value) const override {
+    CEL_RETURN_IF_ERROR(CheckMapKey(key));
+    CEL_RETURN_IF_ERROR(CheckMapValue(value));
+    if (auto it = map_.find(key); ABSL_PREDICT_FALSE(it != map_.end())) {
+      return DuplicateKeyError().NativeValue();
+    }
+    absl::Nonnull<google::protobuf::Arena*> arena = map_.get_allocator().arena();
+    auto inserted = map_.insert(std::pair{MakeTrivialValue(key, arena),
+                                          MakeTrivialValue(value, arena)})
+                        .second;
+    ABSL_DCHECK(inserted);
+    return absl::OkStatus();
+  }
+
+  void Reserve(size_t capacity) const override { map_.reserve(capacity); }
+
+ protected:
+  absl::StatusOr<bool> FindImpl(ValueManager& value_manager, const Value& key,
+                                Value& result) const override {
+    CEL_RETURN_IF_ERROR(CheckMapKey(key));
+    if (auto it = map_.find(key); it != map_.end()) {
+      result = *it->second;
+      return true;
+    }
+    return false;
+  }
+
+  absl::StatusOr<bool> HasImpl(ValueManager& value_manager,
+                               const Value& key) const override {
+    CEL_RETURN_IF_ERROR(CheckMapKey(key));
+    return map_.find(key) != map_.end();
+  }
+
+ private:
+  absl::Nonnull<const CompatListValue*> ProjectKeys() const {
+    absl::call_once(keys_once_, [this]() {
+      TrivialValueVector elements(map_.get_allocator().arena());
+      elements.reserve(map_.size());
+      for (const auto& entry : map_) {
+        elements.push_back(entry.first);
+      }
+      ::new (static_cast<void*>(&keys_[0]))
+          TrivialListValueImpl(std::move(elements));
+    });
+    return std::launder(
+        reinterpret_cast<const TrivialListValueImpl*>(&keys_[0]));
+  }
+
+  mutable TrivialValueFlatHashMap map_;
+  mutable absl::once_flag keys_once_;
+  alignas(
+      TrivialListValueImpl) mutable char keys_[sizeof(TrivialListValueImpl)];
+};
+
+}  // namespace
+
+}  // namespace common_internal
+
+template <>
+struct NativeTypeTraits<common_internal::TrivialMutableMapValueImpl> {
+  static bool SkipDestructor(
+      const common_internal::TrivialMutableMapValueImpl&) {
+    return true;
+  }
+};
+
+namespace common_internal {
+
+namespace {
+
+class NonTrivialMutableMapValueImpl final : public MutableMapValue {
+ public:
+  NonTrivialMutableMapValueImpl() = default;
+
+  std::string DebugString() const override {
+    return absl::StrCat("{", absl::StrJoin(map_, ", ", ValueFormatter{}), "}");
+  }
+
+  absl::StatusOr<JsonObject> ConvertToJsonObject(
+      AnyToJsonConverter& converter) const override {
+    return MapValueToJsonObject(map_, converter);
+  }
+
+  ParsedMapValue Clone(ArenaAllocator<> allocator) const override {
+    // This is unreachable with the current logic in ParsedMapValue, but could
+    // be called once we keep track of the owning arena in ParsedListValue.
+    TrivialValueFlatHashMap cloned_entries(
+        ArenaAllocator<TrivialValue>{allocator.arena()});
+    cloned_entries.reserve(map_.size());
+    for (const auto& entry : map_) {
+      const auto inserted =
+          cloned_entries
+              .insert_or_assign(
+                  MakeTrivialValue(*entry.first, allocator.arena()),
+                  MakeTrivialValue(*entry.second, allocator.arena()))
+              .second;
+      ABSL_DCHECK(inserted);
+    }
+    return ParsedMapValue(
+        MemoryManager(allocator).MakeShared<TrivialMapValueImpl>(
+            std::move(cloned_entries)));
+  }
+
+  size_t Size() const override { return map_.size(); }
+
+  absl::Status ListKeys(ValueManager& value_manager,
+                        ListValue& result) const override {
+    auto builder = NewListValueBuilder(value_manager);
+    builder->Reserve(Size());
+    for (const auto& entry : map_) {
+      CEL_RETURN_IF_ERROR(builder->Add(*entry.first));
+    }
+    result = std::move(*builder).Build();
+    return absl::OkStatus();
+  }
+
+  absl::Status ForEach(ValueManager& value_manager,
+                       ForEachCallback callback) const override {
+    for (const auto& entry : map_) {
+      CEL_ASSIGN_OR_RETURN(auto ok, callback(*entry.first, *entry.second));
+      if (!ok) {
+        break;
+      }
+    }
+    return absl::OkStatus();
+  }
+
+  absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
+      ValueManager& value_manager) const override {
+    return std::make_unique<MapValueImplIterator<NonTrivialValue>>(&map_);
+  }
+
+  absl::Status Put(Value key, Value value) const override {
+    CEL_RETURN_IF_ERROR(CheckMapKey(key));
+    CEL_RETURN_IF_ERROR(CheckMapValue(value));
+    if (auto inserted =
+            map_.insert(std::pair{NonTrivialValue(std::move(key)),
+                                  NonTrivialValue(std::move(value))})
+                .second;
+        !inserted) {
+      return DuplicateKeyError().NativeValue();
+    }
+    return absl::OkStatus();
+  }
+
+  void Reserve(size_t capacity) const override { map_.reserve(capacity); }
+
+ protected:
+  absl::StatusOr<bool> FindImpl(ValueManager& value_manager, const Value& key,
+                                Value& result) const override {
+    CEL_RETURN_IF_ERROR(CheckMapKey(key));
+    if (auto it = map_.find(key); it != map_.end()) {
+      result = *it->second;
+      return true;
+    }
+    return false;
+  }
+
+  absl::StatusOr<bool> HasImpl(ValueManager& value_manager,
+                               const Value& key) const override {
+    CEL_RETURN_IF_ERROR(CheckMapKey(key));
+    return map_.find(key) != map_.end();
+  }
+
+ private:
+  mutable NonTrivialValueFlatHashMap map_;
+};
+
 class TrivialMapValueBuilderImpl final : public MapValueBuilder {
  public:
   TrivialMapValueBuilderImpl(ValueFactory& value_factory,
@@ -1022,6 +1552,97 @@ absl::StatusOr<absl::Nonnull<const CompatMapValue*>> MakeCompatMapValue(
         return true;
       }));
   return google::protobuf::Arena::Create<TrivialMapValueImpl>(arena, std::move(map));
+}
+
+Shared<MutableMapValue> NewMutableMapValue(Allocator<> allocator) {
+  if (absl::Nullable<google::protobuf::Arena*> arena = allocator.arena();
+      arena != nullptr) {
+    return MemoryManager::Pooling(arena).MakeShared<TrivialMutableMapValueImpl>(
+        arena);
+  }
+  return MemoryManager::ReferenceCounting()
+      .MakeShared<NonTrivialMutableMapValueImpl>();
+}
+
+bool IsMutableMapValue(const Value& value) {
+  if (auto parsed_map_value = value.AsParsedMap(); parsed_map_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(**parsed_map_value);
+    if (native_type_id == NativeTypeId::For<MutableMapValue>() ||
+        native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool IsMutableMapValue(const MapValue& value) {
+  if (auto parsed_map_value = value.AsParsed(); parsed_map_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(**parsed_map_value);
+    if (native_type_id == NativeTypeId::For<MutableMapValue>() ||
+        native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+absl::Nullable<const MutableMapValue*> AsMutableMapValue(const Value& value) {
+  if (auto parsed_map_value = value.AsParsedMap(); parsed_map_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(**parsed_map_value);
+    if (native_type_id == NativeTypeId::For<MutableMapValue>()) {
+      return cel::internal::down_cast<const MutableMapValue*>(
+          (*parsed_map_value).operator->());
+    }
+    if (native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
+      return cel::internal::down_cast<const MutableCompatMapValue*>(
+          (*parsed_map_value).operator->());
+    }
+  }
+  return nullptr;
+}
+
+absl::Nullable<const MutableMapValue*> AsMutableMapValue(
+    const MapValue& value) {
+  if (auto parsed_map_value = value.AsParsed(); parsed_map_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(**parsed_map_value);
+    if (native_type_id == NativeTypeId::For<MutableMapValue>()) {
+      return cel::internal::down_cast<const MutableMapValue*>(
+          (*parsed_map_value).operator->());
+    }
+    if (native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
+      return cel::internal::down_cast<const MutableCompatMapValue*>(
+          (*parsed_map_value).operator->());
+    }
+  }
+  return nullptr;
+}
+
+const MutableMapValue& GetMutableMapValue(const Value& value) {
+  ABSL_DCHECK(IsMutableMapValue(value)) << value;
+  const auto& parsed_map_value = value.GetParsedMap();
+  NativeTypeId native_type_id = NativeTypeId::Of(*parsed_map_value);
+  if (native_type_id == NativeTypeId::For<MutableMapValue>()) {
+    return cel::internal::down_cast<const MutableMapValue&>(*parsed_map_value);
+  }
+  if (native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
+    return cel::internal::down_cast<const MutableCompatMapValue&>(
+        *parsed_map_value);
+  }
+  ABSL_UNREACHABLE();
+}
+
+const MutableMapValue& GetMutableMapValue(const MapValue& value) {
+  ABSL_DCHECK(IsMutableMapValue(value)) << value;
+  const auto& parsed_map_value = value.GetParsed();
+  NativeTypeId native_type_id = NativeTypeId::Of(*parsed_map_value);
+  if (native_type_id == NativeTypeId::For<MutableMapValue>()) {
+    return cel::internal::down_cast<const MutableMapValue&>(*parsed_map_value);
+  }
+  if (native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
+    return cel::internal::down_cast<const MutableCompatMapValue&>(
+        *parsed_map_value);
+  }
+  ABSL_UNREACHABLE();
 }
 
 absl::Nonnull<cel::MapValueBuilderPtr> NewMapValueBuilder(

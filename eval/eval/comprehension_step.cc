@@ -23,7 +23,6 @@
 #include "eval/internal/errors.h"
 #include "eval/public/cel_attribute.h"
 #include "internal/status_macros.h"
-#include "runtime/internal/mutable_list_impl.h"
 
 namespace google::api::expr::runtime {
 namespace {
@@ -37,7 +36,6 @@ using ::cel::MapValue;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::runtime_internal::CreateNoMatchingOverloadError;
-using ::cel::runtime_internal::MutableListValue;
 
 class ComprehensionFinish : public ExpressionStepBase {
  public:
@@ -62,14 +60,6 @@ absl::Status ComprehensionFinish::Evaluate(ExecutionFrame* frame) const {
   }
   Value result = frame->value_stack().Peek();
   frame->value_stack().Pop(3);
-  if (frame->enable_comprehension_list_append() &&
-      MutableListValue::Is(result)) {
-    // We assume this is 'owned' by the evaluator stack so const cast is safe
-    // here.
-    // Convert the buildable list to an actual cel::ListValue.
-    MutableListValue& list_value = MutableListValue::Cast(result);
-    CEL_ASSIGN_OR_RETURN(result, std::move(list_value).Build());
-  }
   frame->value_stack().Push(std::move(result));
   frame->comprehension_slots().ClearSlot(accu_slot_);
   return absl::OkStatus();
@@ -263,15 +253,6 @@ absl::Status ComprehensionDirectStep::Evaluate(ExecutionFrameBase& frame,
   }
 
   CEL_RETURN_IF_ERROR(result_step_->Evaluate(frame, result, trail));
-  if (frame.options().enable_comprehension_list_append &&
-      MutableListValue::Is(result)) {
-    // We assume the list builder is 'owned' by the evaluator stack so
-    // destructive operation is safe here.
-    //
-    // Convert the buildable list to an actual cel::ListValue.
-    MutableListValue& list_value = MutableListValue::Cast(result);
-    CEL_ASSIGN_OR_RETURN(result, std::move(list_value).Build());
-  }
   frame.comprehension_slots().ClearSlot(accu_slot_);
   return absl::OkStatus();
 }

@@ -30,16 +30,19 @@
 #include <type_traits>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
 #include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "absl/utility/utility.h"
 #include "common/json.h"
 #include "common/native_type.h"
+#include "common/optional_ref.h"
 #include "common/value_kind.h"
 #include "common/values/legacy_map_value.h"  // IWYU pragma: export
 #include "common/values/map_value_interface.h"  // IWYU pragma: export
@@ -187,6 +190,91 @@ class MapValue final {
   // documentation.
   absl::StatusOr<absl::Nonnull<ValueIteratorPtr>> NewIterator(
       ValueManager& value_manager) const;
+
+  // Returns `true` if this value is an instance of a parsed map value.
+  bool IsParsed() const {
+    return absl::holds_alternative<ParsedMapValue>(variant_);
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `IsParsed()`.
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapValue, T>, bool> Is() const {
+    return IsParsed();
+  }
+
+  // Performs a checked cast from a value to a parsed map value,
+  // returning a non-empty optional with either a value or reference to the
+  // parsed map value. Otherwise an empty optional is returned.
+  optional_ref<const ParsedMapValue> AsParsed() &
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).AsParsed();
+  }
+  optional_ref<const ParsedMapValue> AsParsed()
+      const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::optional<ParsedMapValue> AsParsed() &&;
+  absl::optional<ParsedMapValue> AsParsed() const&& {
+    return common_internal::AsOptional(AsParsed());
+  }
+
+  // Convenience method for use with template metaprogramming. See
+  // `AsParsed()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedMapValue, T>,
+                       optional_ref<const ParsedMapValue>>
+      As() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsed();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapValue, T>,
+                   optional_ref<const ParsedMapValue>>
+  As() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AsParsed();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapValue, T>,
+                   absl::optional<ParsedMapValue>>
+  As() && {
+    return std::move(*this).AsParsed();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapValue, T>,
+                   absl::optional<ParsedMapValue>>
+  As() const&& {
+    return std::move(*this).AsParsed();
+  }
+
+  // Performs an unchecked cast from a value to a parsed map value. In
+  // debug builds a best effort is made to crash. If `IsParsed()` would
+  // return false, calling this method is undefined behavior.
+  const ParsedMapValue& GetParsed() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return std::as_const(*this).GetParsed();
+  }
+  const ParsedMapValue& GetParsed() const& ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  ParsedMapValue GetParsed() &&;
+  ParsedMapValue GetParsed() const&& { return GetParsed(); }
+
+  // Convenience method for use with template metaprogramming. See
+  // `GetParsed()`.
+  template <typename T>
+      std::enable_if_t<std::is_same_v<ParsedMapValue, T>, const ParsedMapValue&>
+      Get() & ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsed();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapValue, T>, const ParsedMapValue&>
+  Get() const& ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetParsed();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapValue, T>, ParsedMapValue> Get() && {
+    return std::move(*this).GetParsed();
+  }
+  template <typename T>
+  std::enable_if_t<std::is_same_v<ParsedMapValue, T>, ParsedMapValue> Get()
+      const&& {
+    return std::move(*this).GetParsed();
+  }
 
  private:
   friend class Value;

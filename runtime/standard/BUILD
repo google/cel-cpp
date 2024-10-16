@@ -201,7 +201,6 @@ cc_library(
         "//internal:status_macros",
         "//runtime:function_registry",
         "//runtime:runtime_options",
-        "//runtime/internal:mutable_list_impl",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
     ],

@@ -53,13 +53,19 @@ absl::optional<LegacyMapValue> AsLegacyMapValue(const Value& value) {
   if (IsLegacyMapValue(value)) {
     return GetLegacyMapValue(value);
   }
-  if (auto map_value = value.AsParsedMap();
-      map_value &&
-      NativeTypeId::Of(*map_value) == NativeTypeId::For<CompatMapValue>()) {
-    return LegacyMapValue(reinterpret_cast<uintptr_t>(
-        static_cast<const google::api::expr::runtime::CelMap*>(
-            cel::internal::down_cast<const CompatMapValue*>(
-                (*map_value).operator->()))));
+  if (auto parsed_map_value = value.AsParsedMap(); parsed_map_value) {
+    NativeTypeId native_type_id = NativeTypeId::Of(*parsed_map_value);
+    if (native_type_id == NativeTypeId::For<CompatMapValue>()) {
+      return LegacyMapValue(reinterpret_cast<uintptr_t>(
+          static_cast<const google::api::expr::runtime::CelMap*>(
+              cel::internal::down_cast<const CompatMapValue*>(
+                  (*parsed_map_value).operator->()))));
+    } else if (native_type_id == NativeTypeId::For<MutableCompatMapValue>()) {
+      return LegacyMapValue(reinterpret_cast<uintptr_t>(
+          static_cast<const google::api::expr::runtime::CelMap*>(
+              cel::internal::down_cast<const MutableCompatMapValue*>(
+                  (*parsed_map_value).operator->()))));
+    }
   }
   return absl::nullopt;
 }
