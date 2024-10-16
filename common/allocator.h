@@ -78,7 +78,8 @@ class NewDeleteAllocator<void> {
 
   template <typename U, typename = std::enable_if_t<!std::is_void_v<U>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr NewDeleteAllocator(const NewDeleteAllocator<U>& other) noexcept {}
+  constexpr NewDeleteAllocator(
+      [[maybe_unused]] const NewDeleteAllocator<U>& other) noexcept {}
 
   // Allocates at least `nbytes` bytes with a minimum alignment of `alignment`
   // from the underlying memory resource. When the underlying memory resource is
@@ -160,7 +161,8 @@ class NewDeleteAllocator : public NewDeleteAllocator<void> {
 
   template <typename U, typename = std::enable_if_t<!std::is_same_v<U, T>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr NewDeleteAllocator(const NewDeleteAllocator<U>& other) noexcept {}
+  constexpr NewDeleteAllocator(
+      [[maybe_unused]] const NewDeleteAllocator<U>& other) noexcept {}
 
   pointer allocate(size_type n, const void* /*hint*/ = nullptr) {
     return reinterpret_cast<pointer>(internal::AlignedNew(
@@ -412,7 +414,8 @@ class Allocator<void> {
 
   template <typename U>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr Allocator(const NewDeleteAllocator<U>& other) noexcept
+  constexpr Allocator(
+      [[maybe_unused]] const NewDeleteAllocator<U>& other) noexcept
       : arena_(nullptr) {}
 
   template <typename U>
