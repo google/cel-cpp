@@ -290,7 +290,36 @@ bool IsOptimizableListAppend(
   return call_expr->function() == cel::builtin::kAdd &&
          call_expr->args().size() == 2 &&
          call_expr->args()[0].has_ident_expr() &&
-         call_expr->args()[0].ident_expr().name() == accu_var;
+         call_expr->args()[0].ident_expr().name() == accu_var &&
+         call_expr->args()[1].has_list_expr() &&
+         call_expr->args()[1].list_expr().elements().size() == 1;
+}
+
+// Assuming `IsOptimizableListAppend()` return true, return a pointer to the
+// call `accu_var + [elem]`.
+const cel::ast_internal::Call* GetOptimizableListAppendCall(
+    const cel::ast_internal::Comprehension* comprehension) {
+  ABSL_DCHECK(IsOptimizableListAppend(
+      comprehension, /*enable_comprehension_list_append=*/true));
+
+  // Macro loop_step for a filter() will contain a ternary:
+  //   filter ? accu_var + [elem] : accu_var
+  // Macro loop_step for a map() will contain a list concat operation:
+  //   accu_var + [elem]
+  const auto* call_expr = &comprehension->loop_step().call_expr();
+
+  if (call_expr->function() == cel::builtin::kTernary &&
+      call_expr->args().size() == 3) {
+    call_expr = &(call_expr->args()[1].call_expr());
+  }
+  return call_expr;
+}
+
+// Assuming `IsOptimizableListAppend()` return true, return a pointer to the
+// node `[elem]`.
+const cel::ast_internal::Expr* GetOptimizableListAppendOperand(
+    const cel::ast_internal::Comprehension* comprehension) {
+  return &GetOptimizableListAppendCall(comprehension)->args()[1];
 }
 
 bool IsBind(const cel::ast_internal::Comprehension* comprehension) {
@@ -1398,14 +1427,19 @@ class FlatExprVisitor : public cel::AstVisitor {
     if (!comprehension_stack_.empty()) {
       const ComprehensionStackRecord& comprehension =
           comprehension_stack_.back();
-      if (comprehension.is_optimizable_list_append &&
-          &(comprehension.comprehension->accu_init()) == &expr) {
-        if (options_.max_recursion_depth != 0) {
-          SetRecursiveStep(CreateDirectMutableListStep(expr.id()), 1);
+      if (comprehension.is_optimizable_list_append) {
+        if (&(comprehension.comprehension->accu_init()) == &expr) {
+          if (options_.max_recursion_depth != 0) {
+            SetRecursiveStep(CreateDirectMutableListStep(expr.id()), 1);
+            return;
+          }
+          AddStep(CreateMutableListStep(expr.id()));
           return;
         }
-        AddStep(CreateMutableListStep(expr.id()));
-        return;
+        if (GetOptimizableListAppendOperand(comprehension.comprehension) ==
+            &expr) {
+          return;
+        }
       }
     }
     absl::optional<int> depth = RecursionEligible();
