@@ -121,7 +121,7 @@ absl::Status SnakeCaseToCamelCase(const well_known_types::StringValue& input,
                      AsVariant(input));
 }
 
-struct MessageToJsonState;
+class MessageToJsonState;
 
 using MapFieldKeyToString = std::string (*)(const google::protobuf::MapKey&);
 
