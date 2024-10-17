@@ -143,9 +143,12 @@ cc_test(
         "//checker/internal:test_ast_helpers",
         "//common:ast",
         "//common:constant",
+        "//common:decl",
+        "//common:type",
         "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
