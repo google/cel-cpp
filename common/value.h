@@ -115,6 +115,16 @@ class Value final {
   // `message` is the well known type `google.protobuf.Any`, `descriptor_pool`
   // and `message_factory` will be used to unpack the value. Both must outlive
   // the resulting value and any of its shallow copies.
+  static Value Message(Allocator<> allocator, const google::protobuf::Message& message,
+                       absl::Nonnull<const google::protobuf::DescriptorPool*>
+                           descriptor_pool ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                       absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+                           ABSL_ATTRIBUTE_LIFETIME_BOUND);
+  static Value Message(Allocator<> allocator, google::protobuf::Message&& message,
+                       absl::Nonnull<const google::protobuf::DescriptorPool*>
+                           descriptor_pool ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                       absl::Nonnull<google::protobuf::MessageFactory*> message_factory
+                           ABSL_ATTRIBUTE_LIFETIME_BOUND);
   static Value Message(Borrowed<const google::protobuf::Message> message,
                        absl::Nonnull<const google::protobuf::DescriptorPool*>
                            descriptor_pool ABSL_ATTRIBUTE_LIFETIME_BOUND,

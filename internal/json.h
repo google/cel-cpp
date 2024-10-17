@@ -149,6 +149,18 @@ absl::StatusOr<JsonObject> ProtoJsonMapToNativeJsonMap(
 absl::Status NativeJsonToProtoJson(const Json& json,
                                    absl::Nonnull<google::protobuf::Message*> proto);
 
+// Temporary function which converts from `cel::JsonArray` to
+// `google.protobuf.ListValue`. In future `cel::JsonArray` will be killed in
+// favor of pure proto.
+absl::Status NativeJsonListToProtoJsonList(
+    const JsonArray& json, absl::Nonnull<google::protobuf::Message*> proto);
+
+// Temporary function which converts from `cel::JsonObject` to
+// `google.protobuf.Struct`. In future `cel::JsonObject` will be killed in
+// favor of pure proto.
+absl::Status NativeJsonMapToProtoJsonMap(const JsonObject& json,
+                                         absl::Nonnull<google::protobuf::Message*> proto);
+
 }  // namespace cel::internal
 
 #endif  // THIRD_PARTY_CEL_CPP_INTERNAL_JSON_H_
