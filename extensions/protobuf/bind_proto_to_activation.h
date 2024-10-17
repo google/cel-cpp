@@ -15,11 +15,12 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_BIND_PROTO_TO_ACTIVATION_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_BIND_PROTO_TO_ACTIVATION_H_
 
+#include <type_traits>
+
 #include "absl/status/status.h"
 #include "common/casting.h"
 #include "common/value.h"
 #include "common/value_manager.h"
-#include "extensions/protobuf/internal/message.h"
 #include "extensions/protobuf/value.h"
 #include "internal/status_macros.h"
 #include "runtime/activation.h"
@@ -85,7 +86,7 @@ absl::Status BindProtoToActivation(
     const T& context, ValueManager& value_manager, Activation& activation,
     BindProtoUnsetFieldBehavior unset_field_behavior =
         BindProtoUnsetFieldBehavior::kSkip) {
-  static_assert(protobuf_internal::IsProtoMessage<T>);
+  static_assert(std::is_base_of_v<google::protobuf::Message, T>);
   // TODO: for simplicity, just convert the whole message to a
   // struct value. For performance, may be better to convert members as needed.
   CEL_ASSIGN_OR_RETURN(Value parent,

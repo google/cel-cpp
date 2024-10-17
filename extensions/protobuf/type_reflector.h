@@ -20,7 +20,6 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "common/memory.h"
 #include "common/type.h"
 #include "common/type_reflector.h"
 #include "common/value.h"

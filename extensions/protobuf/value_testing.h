@@ -16,12 +16,17 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_VALUE_TESTING_H_
 
 #include <ostream>
+#include <type_traits>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/str_cat.h"
+#include "base/internal/message_wrapper.h"
+#include "common/type.h"
 #include "common/value.h"
-#include "extensions/protobuf/internal/message.h"
-#include "extensions/protobuf/value.h"
 #include "internal/testing.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions::test {
 
@@ -36,7 +41,7 @@ class StructValueAsProtoMatcher {
   bool MatchAndExplain(cel::Value v,
                        testing::MatchResultListener* result_listener) const {
     MessageType msg;
-    absl::Status s = ProtoMessageFromValue(v, msg);
+    absl::Status s = ValueToMessage(v, &msg);
     if (!s.ok()) {
       *result_listener << "cannot convert to "
                        << MessageType::descriptor()->full_name() << ": " << s;
@@ -54,6 +59,49 @@ class StructValueAsProtoMatcher {
   }
 
  private:
+  static absl::Status ValueToMessage(
+      const cel::Value& value, absl::Nonnull<google::protobuf::Message*> dest_message) {
+    const auto* dest_descriptor = dest_message->GetDescriptor();
+    if (auto legacy_struct_value =
+            cel::common_internal::AsLegacyStructValue(value);
+        legacy_struct_value) {
+      const auto* src_message = reinterpret_cast<const google::protobuf::Message*>(
+          legacy_struct_value->message_ptr() &
+          cel::base_internal::kMessageWrapperPtrMask);
+      return ValueToMessage(*src_message, dest_message);
+    }
+    if (auto parsed_message_value = value.AsParsedMessage();
+        parsed_message_value) {
+      return ValueToMessage(**parsed_message_value, dest_message);
+    }
+    return TypeConversionError(value.GetRuntimeType(),
+                               cel::MessageType(dest_descriptor))
+        .NativeValue();
+  }
+
+  static absl::Status ValueToMessage(
+      const google::protobuf::Message& src_message,
+      absl::Nonnull<google::protobuf::Message*> dest_message) {
+    const auto* src_descriptor = src_message.GetDescriptor();
+    const auto* dest_descriptor = dest_message->GetDescriptor();
+    if (dest_descriptor == src_descriptor ||
+        dest_descriptor->full_name() == src_descriptor->full_name()) {
+      absl::Cord serialized;
+      if (!src_message.SerializePartialToCord(&serialized)) {
+        return absl::UnknownError(absl::StrCat("failed to serialize message: ",
+                                               src_descriptor->full_name()));
+      }
+      if (!dest_message->ParsePartialFromCord(serialized)) {
+        return absl::UnknownError(absl::StrCat("failed to parse message: ",
+                                               dest_descriptor->full_name()));
+      }
+      return absl::OkStatus();
+    }
+    return TypeConversionError(cel::MessageType(src_descriptor),
+                               cel::MessageType(dest_descriptor))
+        .NativeValue();
+  }
+
   testing::Matcher<MessageType> m_;
 };
 
@@ -68,8 +116,7 @@ class StructValueAsProtoMatcher {
 template <typename MessageType>
 inline StructValueAsProtoMatcher<MessageType> StructValueAsProto(
     testing::Matcher<MessageType>&& m) {
-  static_assert(
-      cel::extensions::protobuf_internal::IsProtoMessage<MessageType>);
+  static_assert(std::is_base_of_v<google::protobuf::Message, MessageType>);
   return StructValueAsProtoMatcher<MessageType>(std::move(m));
 }
 
