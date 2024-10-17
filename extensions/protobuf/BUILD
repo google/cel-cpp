@@ -20,25 +20,6 @@ package(
 licenses(["notice"])
 
 cc_library(
-    name = "json",
-    srcs = ["json.cc"],
-    hdrs = ["json.h"],
-    deps = [
-        "//common:any",
-        "//common:json",
-        "//extensions/protobuf/internal:json",
-        "@com_google_absl//absl/base:nullability",
-        "@com_google_absl//absl/memory",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/strings:string_view",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
     name = "memory_manager",
     srcs = ["memory_manager.cc"],
     hdrs = ["memory_manager.h"],
@@ -142,11 +123,9 @@ cc_library(
 cc_library(
     name = "type",
     srcs = [
-        "type.cc",
         "type_introspector.cc",
     ],
     hdrs = [
-        "type.h",
         "type_introspector.h",
     ],
     deps = [
@@ -167,7 +146,6 @@ cc_test(
     name = "type_test",
     srcs = [
         "type_introspector_test.cc",
-        "type_test.cc",
     ],
     deps = [
         ":type",
@@ -192,38 +170,27 @@ cc_library(
         "value.h",
     ],
     deps = [
-        ":json",
-        ":memory_manager",
         ":type",
         "//common:any",
         "//common:casting",
-        "//common:json",
         "//common:memory",
         "//common:type",
         "//common:value",
-        "//extensions/protobuf/internal:any",
-        "//extensions/protobuf/internal:duration",
         "//extensions/protobuf/internal:duration_lite",
         "//extensions/protobuf/internal:enum",
-        "//extensions/protobuf/internal:map_reflection",
         "//extensions/protobuf/internal:message",
-        "//extensions/protobuf/internal:struct",
         "//extensions/protobuf/internal:struct_lite",
-        "//extensions/protobuf/internal:timestamp",
         "//extensions/protobuf/internal:timestamp_lite",
-        "//extensions/protobuf/internal:wrappers",
         "//extensions/protobuf/internal:wrappers_lite",
         "//internal:status_macros",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/functional:overload",
-        "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/types:optional",
-        "@com_google_absl//absl/types:variant",
         "@com_google_protobuf//:protobuf",
     ],
 )

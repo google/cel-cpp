@@ -2191,6 +2191,25 @@ struct NativeJsonToProtoJsonState {
     return absl::OkStatus();
   }
 
+  absl::Status InitializeListValue(absl::Nonnull<google::protobuf::Message*> proto) {
+    CEL_RETURN_IF_ERROR(
+        list_value_reflection.Initialize(proto->GetDescriptor()));
+    CEL_RETURN_IF_ERROR(value_reflection.Initialize(
+        list_value_reflection.GetValueDescriptor()));
+    CEL_RETURN_IF_ERROR(
+        struct_reflection.Initialize(value_reflection.GetStructDescriptor()));
+    return absl::OkStatus();
+  }
+
+  absl::Status InitializeStruct(absl::Nonnull<google::protobuf::Message*> proto) {
+    CEL_RETURN_IF_ERROR(struct_reflection.Initialize(proto->GetDescriptor()));
+    CEL_RETURN_IF_ERROR(
+        value_reflection.Initialize(struct_reflection.GetValueDescriptor()));
+    CEL_RETURN_IF_ERROR(list_value_reflection.Initialize(
+        value_reflection.GetListValueDescriptor()));
+    return absl::OkStatus();
+  }
+
   absl::Status ToProtoJson(const Json& json,
                            absl::Nonnull<google::protobuf::Message*> proto) {
     return absl::visit(
@@ -2212,26 +2231,34 @@ struct NativeJsonToProtoJsonState {
               return absl::OkStatus();
             },
             [&](const JsonArray& value) -> absl::Status {
-              auto* list_proto = value_reflection.MutableListValue(proto);
-              list_value_reflection.ReserveValues(
-                  list_proto, static_cast<int>(value.size()));
-              for (const auto& element : value) {
-                CEL_RETURN_IF_ERROR(ToProtoJson(
-                    element, list_value_reflection.AddValues(list_proto)));
-              }
-              return absl::OkStatus();
+              return ToProtoJsonList(value,
+                                     value_reflection.MutableListValue(proto));
             },
             [&](const JsonObject& value) -> absl::Status {
-              auto* struct_proto = value_reflection.MutableStructValue(proto);
-              for (const auto& entry : value) {
-                CEL_RETURN_IF_ERROR(ToProtoJson(
-                    entry.second,
-                    struct_reflection.InsertField(
-                        struct_proto, static_cast<std::string>(entry.first))));
-              }
-              return absl::OkStatus();
+              return ToProtoJsonMap(value,
+                                    value_reflection.MutableStructValue(proto));
             }),
         json);
+  }
+
+  absl::Status ToProtoJsonList(const JsonArray& json,
+                               absl::Nonnull<google::protobuf::Message*> proto) {
+    list_value_reflection.ReserveValues(proto, static_cast<int>(json.size()));
+    for (const auto& element : json) {
+      CEL_RETURN_IF_ERROR(
+          ToProtoJson(element, list_value_reflection.AddValues(proto)));
+    }
+    return absl::OkStatus();
+  }
+
+  absl::Status ToProtoJsonMap(const JsonObject& json,
+                              absl::Nonnull<google::protobuf::Message*> proto) {
+    for (const auto& entry : json) {
+      CEL_RETURN_IF_ERROR(ToProtoJson(
+          entry.second, struct_reflection.InsertField(
+                            proto, static_cast<std::string>(entry.first))));
+    }
+    return absl::OkStatus();
   }
 };
 
@@ -2242,6 +2269,20 @@ absl::Status NativeJsonToProtoJson(const Json& json,
   NativeJsonToProtoJsonState state;
   CEL_RETURN_IF_ERROR(state.Initialize(proto));
   return state.ToProtoJson(json, proto);
+}
+
+absl::Status NativeJsonListToProtoJsonList(
+    const JsonArray& json, absl::Nonnull<google::protobuf::Message*> proto) {
+  NativeJsonToProtoJsonState state;
+  CEL_RETURN_IF_ERROR(state.InitializeListValue(proto));
+  return state.ToProtoJsonList(json, proto);
+}
+
+absl::Status NativeJsonMapToProtoJsonMap(
+    const JsonObject& json, absl::Nonnull<google::protobuf::Message*> proto) {
+  NativeJsonToProtoJsonState state;
+  CEL_RETURN_IF_ERROR(state.InitializeStruct(proto));
+  return state.ToProtoJsonMap(json, proto);
 }
 
 }  // namespace cel::internal
