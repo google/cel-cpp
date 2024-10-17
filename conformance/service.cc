@@ -655,9 +655,14 @@ class ModernConformanceServiceImpl : public ConformanceServiceInterface {
           }
           for (const auto& param : overload_pb.params()) {
             CEL_ASSIGN_OR_RETURN(auto param_type,
-                                 FromConformanceType(arena, param.type()));
+                                 FromConformanceType(arena, param));
             overload.mutable_args().push_back(param_type);
           }
+
+          CEL_ASSIGN_OR_RETURN(
+              auto return_type,
+              FromConformanceType(arena, overload_pb.result_type()));
+          overload.set_result(return_type);
 
           CEL_RETURN_IF_ERROR(fn_decl.AddOverload(std::move(overload)));
         }

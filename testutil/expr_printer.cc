@@ -21,6 +21,7 @@
 #include "absl/base/no_destructor.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/match.h"
 #include "absl/strings/str_format.h"
 #include "base/ast_internal/ast_impl.h"
 #include "common/ast.h"
@@ -285,6 +286,9 @@ class StringBuilder {
         auto idx = std::find_if_not(s.rbegin(), s.rend(),
                                     [](const char c) { return c == '0'; });
         s.erase(idx.base(), s.end());
+        if (absl::EndsWith(s, ".")) {
+          s += '0';
+        }
         return s;
       }
       case ConstantKindCase::kInt:

@@ -421,7 +421,9 @@ absl::StatusOr<Type> FromConformanceType(google::protobuf::Arena* arena,
                              FromConformanceType(arena, param));
         parameters.push_back(std::move(param_type));
       }
-      return OpaqueType(arena, type.abstract_type().name(), parameters);
+      const auto* name = google::protobuf::Arena::Create<std::string>(
+          arena, type.abstract_type().name());
+      return OpaqueType(arena, *name, parameters);
     }
     default:
       return absl::UnimplementedError(absl::StrCat(
