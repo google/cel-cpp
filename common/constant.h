@@ -415,7 +415,7 @@ class Constant final {
 
   ConstantKindCase kind_case() const {
     static_assert(absl::variant_size_v<ConstantKind> == 10);
-    if (kind_.index() <= 10 && kind_.index() >= 0) {
+    if (kind_.index() <= 10) {
       return static_cast<ConstantKindCase>(kind_.index());
     }
     return ConstantKindCase::kUnspecified;

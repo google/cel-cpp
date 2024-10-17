@@ -1410,7 +1410,7 @@ ABSL_MUST_USE_RESULT T Expr::release_kind() {
 
 inline ExprKindCase Expr::kind_case() const {
   static_assert(absl::variant_size_v<ExprKind> == 9);
-  if (kind_.index() <= 9 && kind_.index() >= 0) {
+  if (kind_.index() <= 9) {
     return static_cast<ExprKindCase>(kind_.index());
   }
   return ExprKindCase::kUnspecifiedExpr;
