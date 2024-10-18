@@ -556,6 +556,7 @@ inline bool operator!=(Allocator<T> lhs, Allocator<U> rhs) noexcept {
   return !operator==(lhs, rhs);
 }
 
+Allocator(absl::Nullable<google::protobuf::Arena*>) -> Allocator<void>;
 template <typename T>
 Allocator(const Allocator<T>&) -> Allocator<T>;
 template <typename T>

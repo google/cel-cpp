@@ -247,6 +247,11 @@ class BoolValueReflection final {
 
   bool IsInitialized() const { return descriptor_ != nullptr; }
 
+  absl::Nonnull<const google::protobuf::Descriptor*> GetDescriptor() const {
+    ABSL_DCHECK(IsInitialized());
+    return descriptor_;
+  }
+
   bool GetValue(const google::protobuf::Message& message) const;
 
   void SetValue(absl::Nonnull<google::protobuf::Message*> message, bool value) const;
@@ -285,6 +290,11 @@ class Int32ValueReflection final {
   absl::Status Initialize(absl::Nonnull<const google::protobuf::Descriptor*> descriptor);
 
   bool IsInitialized() const { return descriptor_ != nullptr; }
+
+  absl::Nonnull<const google::protobuf::Descriptor*> GetDescriptor() const {
+    ABSL_DCHECK(IsInitialized());
+    return descriptor_;
+  }
 
   int32_t GetValue(const google::protobuf::Message& message) const;
 
@@ -325,6 +335,11 @@ class Int64ValueReflection final {
 
   bool IsInitialized() const { return descriptor_ != nullptr; }
 
+  absl::Nonnull<const google::protobuf::Descriptor*> GetDescriptor() const {
+    ABSL_DCHECK(IsInitialized());
+    return descriptor_;
+  }
+
   int64_t GetValue(const google::protobuf::Message& message) const;
 
   void SetValue(absl::Nonnull<google::protobuf::Message*> message, int64_t value) const;
@@ -363,6 +378,11 @@ class UInt32ValueReflection final {
   absl::Status Initialize(absl::Nonnull<const google::protobuf::Descriptor*> descriptor);
 
   bool IsInitialized() const { return descriptor_ != nullptr; }
+
+  absl::Nonnull<const google::protobuf::Descriptor*> GetDescriptor() const {
+    ABSL_DCHECK(IsInitialized());
+    return descriptor_;
+  }
 
   uint32_t GetValue(const google::protobuf::Message& message) const;
 
@@ -403,6 +423,11 @@ class UInt64ValueReflection final {
 
   bool IsInitialized() const { return descriptor_ != nullptr; }
 
+  absl::Nonnull<const google::protobuf::Descriptor*> GetDescriptor() const {
+    ABSL_DCHECK(IsInitialized());
+    return descriptor_;
+  }
+
   uint64_t GetValue(const google::protobuf::Message& message) const;
 
   void SetValue(absl::Nonnull<google::protobuf::Message*> message, uint64_t value) const;
@@ -441,6 +466,11 @@ class FloatValueReflection final {
   absl::Status Initialize(absl::Nonnull<const google::protobuf::Descriptor*> descriptor);
 
   bool IsInitialized() const { return descriptor_ != nullptr; }
+
+  absl::Nonnull<const google::protobuf::Descriptor*> GetDescriptor() const {
+    ABSL_DCHECK(IsInitialized());
+    return descriptor_;
+  }
 
   float GetValue(const google::protobuf::Message& message) const;
 
@@ -481,6 +511,11 @@ class DoubleValueReflection final {
 
   bool IsInitialized() const { return descriptor_ != nullptr; }
 
+  absl::Nonnull<const google::protobuf::Descriptor*> GetDescriptor() const {
+    ABSL_DCHECK(IsInitialized());
+    return descriptor_;
+  }
+
   double GetValue(const google::protobuf::Message& message) const;
 
   void SetValue(absl::Nonnull<google::protobuf::Message*> message, double value) const;
@@ -519,6 +554,11 @@ class BytesValueReflection final {
   absl::Status Initialize(absl::Nonnull<const google::protobuf::Descriptor*> descriptor);
 
   bool IsInitialized() const { return descriptor_ != nullptr; }
+
+  absl::Nonnull<const google::protobuf::Descriptor*> GetDescriptor() const {
+    ABSL_DCHECK(IsInitialized());
+    return descriptor_;
+  }
 
   BytesValue GetValue(const google::protobuf::Message& message
                           ABSL_ATTRIBUTE_LIFETIME_BOUND,
@@ -566,6 +606,11 @@ class StringValueReflection final {
   absl::Status Initialize(absl::Nonnull<const google::protobuf::Descriptor*> descriptor);
 
   bool IsInitialized() const { return descriptor_ != nullptr; }
+
+  absl::Nonnull<const google::protobuf::Descriptor*> GetDescriptor() const {
+    ABSL_DCHECK(IsInitialized());
+    return descriptor_;
+  }
 
   StringValue GetValue(
       const google::protobuf::Message& message ABSL_ATTRIBUTE_LIFETIME_BOUND,
@@ -622,6 +667,11 @@ class AnyReflection final {
   absl::Status Initialize(absl::Nonnull<const google::protobuf::Descriptor*> descriptor);
 
   bool IsInitialized() const { return descriptor_ != nullptr; }
+
+  absl::Nonnull<const google::protobuf::Descriptor*> GetDescriptor() const {
+    ABSL_DCHECK(IsInitialized());
+    return descriptor_;
+  }
 
   void SetTypeUrl(absl::Nonnull<google::protobuf::Message*> message,
                   absl::string_view type_url) const;
@@ -688,6 +738,11 @@ class DurationReflection final {
 
   bool IsInitialized() const { return descriptor_ != nullptr; }
 
+  absl::Nonnull<const google::protobuf::Descriptor*> GetDescriptor() const {
+    ABSL_DCHECK(IsInitialized());
+    return descriptor_;
+  }
+
   int64_t GetSeconds(const google::protobuf::Message& message) const;
 
   int32_t GetNanos(const google::protobuf::Message& message) const;
@@ -695,6 +750,9 @@ class DurationReflection final {
   void SetSeconds(absl::Nonnull<google::protobuf::Message*> message, int64_t value) const;
 
   void SetNanos(absl::Nonnull<google::protobuf::Message*> message, int32_t value) const;
+
+  absl::Status SetFromAbslDuration(absl::Nonnull<google::protobuf::Message*> message,
+                                   absl::Duration duration) const;
 
   absl::StatusOr<absl::Duration> ToAbslDuration(
       const google::protobuf::Message& message) const;
@@ -744,6 +802,11 @@ class TimestampReflection final {
 
   bool IsInitialized() const { return descriptor_ != nullptr; }
 
+  absl::Nonnull<const google::protobuf::Descriptor*> GetDescriptor() const {
+    ABSL_DCHECK(IsInitialized());
+    return descriptor_;
+  }
+
   int64_t GetSeconds(const google::protobuf::Message& message) const;
 
   int32_t GetNanos(const google::protobuf::Message& message) const;
@@ -753,6 +816,9 @@ class TimestampReflection final {
   void SetNanos(absl::Nonnull<google::protobuf::Message*> message, int32_t value) const;
 
   absl::StatusOr<absl::Time> ToAbslTime(const google::protobuf::Message& message) const;
+
+  absl::Status SetFromAbslTime(absl::Nonnull<google::protobuf::Message*> message,
+                               absl::Time time) const;
 
  private:
   absl::Nullable<const google::protobuf::Descriptor*> descriptor_ = nullptr;
@@ -1167,6 +1233,11 @@ class FieldMaskReflection final {
   absl::Status Initialize(absl::Nonnull<const google::protobuf::Descriptor*> descriptor);
 
   bool IsInitialized() const { return descriptor_ != nullptr; }
+
+  absl::Nonnull<const google::protobuf::Descriptor*> GetDescriptor() const {
+    ABSL_DCHECK(IsInitialized());
+    return descriptor_;
+  }
 
   int PathsSize(const google::protobuf::Message& message) const;
 
