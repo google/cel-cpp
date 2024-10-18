@@ -1192,6 +1192,104 @@ struct WellKnownTypesValueVisitor {
   Value operator()(absl::Time value) const { return TimestampValue(value); }
 };
 
+struct OwningWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
+  absl::Nullable<google::protobuf::Arena*> arena;
+  absl::Nonnull<std::string*> scratch;
+
+  using WellKnownTypesValueVisitor::operator();
+
+  Value operator()(well_known_types::BytesValue&& value) const {
+    return absl::visit(absl::Overload(
+                           [&](absl::string_view string) -> BytesValue {
+                             if (string.empty()) {
+                               return BytesValue();
+                             }
+                             if (scratch->data() == string.data() &&
+                                 scratch->size() == string.size()) {
+                               return BytesValue(Allocator(arena),
+                                                 std::move(*scratch));
+                             }
+                             return BytesValue(Allocator(arena), string);
+                           },
+                           [&](absl::Cord&& cord) -> BytesValue {
+                             if (cord.empty()) {
+                               return BytesValue();
+                             }
+                             return BytesValue(Allocator(arena), cord);
+                           }),
+                       well_known_types::AsVariant(std::move(value)));
+  }
+
+  Value operator()(well_known_types::StringValue&& value) const {
+    return absl::visit(absl::Overload(
+                           [&](absl::string_view string) -> StringValue {
+                             if (string.empty()) {
+                               return StringValue();
+                             }
+                             if (scratch->data() == string.data() &&
+                                 scratch->size() == string.size()) {
+                               return StringValue(Allocator(arena),
+                                                  std::move(*scratch));
+                             }
+                             return StringValue(Allocator(arena), string);
+                           },
+                           [&](absl::Cord&& cord) -> StringValue {
+                             if (cord.empty()) {
+                               return StringValue();
+                             }
+                             return StringValue(Allocator(arena), cord);
+                           }),
+                       well_known_types::AsVariant(std::move(value)));
+  }
+
+  Value operator()(well_known_types::ListValue&& value) const {
+    return absl::visit(
+        absl::Overload(
+            [&](well_known_types::ListValueConstRef value) -> ListValue {
+              auto cloned = WrapShared(value.get().New(arena), arena);
+              cloned->CopyFrom(value.get());
+              return ParsedJsonListValue(std::move(cloned));
+            },
+            [&](well_known_types::ListValuePtr value) -> ListValue {
+              if (value.arena() != arena) {
+                auto cloned = WrapShared(value->New(arena), arena);
+                cloned->CopyFrom(*value);
+                return ParsedJsonListValue(std::move(cloned));
+              }
+              return ParsedJsonListValue(Owned(std::move(value)));
+            }),
+        well_known_types::AsVariant(std::move(value)));
+  }
+
+  Value operator()(well_known_types::Struct&& value) const {
+    return absl::visit(
+        absl::Overload(
+            [&](well_known_types::StructConstRef value) -> MapValue {
+              auto cloned = WrapShared(value.get().New(arena), arena);
+              cloned->CopyFrom(value.get());
+              return ParsedJsonMapValue(std::move(cloned));
+            },
+            [&](well_known_types::StructPtr value) -> MapValue {
+              if (value.arena() != arena) {
+                auto cloned = WrapShared(value->New(arena), arena);
+                cloned->CopyFrom(*value);
+                return ParsedJsonMapValue(std::move(cloned));
+              }
+              return ParsedJsonMapValue(Owned(std::move(value)));
+            }),
+        well_known_types::AsVariant(std::move(value)));
+  }
+
+  Value operator()(Unique<google::protobuf::Message> value) const {
+    if (value.arena() != arena) {
+      auto cloned = WrapShared(value->New(arena), arena);
+      cloned->CopyFrom(*value);
+      return ParsedMessageValue(std::move(cloned));
+    }
+    return ParsedMessageValue(Owned(std::move(value)));
+  }
+};
+
 struct BorrowingWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
   Borrower borrower;
   absl::Nonnull<std::string*> scratch;
@@ -1263,6 +1361,54 @@ struct BorrowingWellKnownTypesValueVisitor : public WellKnownTypesValueVisitor {
 };
 
 }  // namespace
+
+Value Value::Message(
+    Allocator<> allocator, const google::protobuf::Message& message,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  std::string scratch;
+  auto status_or_adapted = well_known_types::AdaptFromMessage(
+      allocator.arena(), message, descriptor_pool, message_factory, scratch);
+  if (ABSL_PREDICT_FALSE(!status_or_adapted.ok())) {
+    return ErrorValue(std::move(status_or_adapted).status());
+  }
+  return absl::visit(absl::Overload(
+                         OwningWellKnownTypesValueVisitor{
+                             .arena = allocator.arena(), .scratch = &scratch},
+                         [&](absl::monostate) -> Value {
+                           auto cloned = WrapShared(
+                               message.New(allocator.arena()), allocator);
+                           cloned->CopyFrom(message);
+                           return ParsedMessageValue(std::move(cloned));
+                         }),
+                     std::move(status_or_adapted).value());
+}
+
+Value Value::Message(
+    Allocator<> allocator, google::protobuf::Message&& message,
+    absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool,
+    absl::Nonnull<google::protobuf::MessageFactory*> message_factory) {
+  ABSL_DCHECK(descriptor_pool != nullptr);
+  ABSL_DCHECK(message_factory != nullptr);
+  std::string scratch;
+  auto status_or_adapted = well_known_types::AdaptFromMessage(
+      allocator.arena(), message, descriptor_pool, message_factory, scratch);
+  if (ABSL_PREDICT_FALSE(!status_or_adapted.ok())) {
+    return ErrorValue(std::move(status_or_adapted).status());
+  }
+  return absl::visit(
+      absl::Overload(
+          OwningWellKnownTypesValueVisitor{.arena = allocator.arena(),
+                                           .scratch = &scratch},
+          [&](absl::monostate) -> Value {
+            auto cloned = WrapShared(message.New(allocator.arena()), allocator);
+            cloned->GetReflection()->Swap(cel::to_address(cloned), &message);
+            return ParsedMessageValue(std::move(cloned));
+          }),
+      std::move(status_or_adapted).value());
+}
 
 Value Value::Message(
     Borrowed<const google::protobuf::Message> message,

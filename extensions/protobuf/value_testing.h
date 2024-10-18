@@ -16,12 +16,13 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_VALUE_TESTING_H_
 
 #include <ostream>
+#include <type_traits>
 
 #include "absl/status/status.h"
 #include "common/value.h"
-#include "extensions/protobuf/internal/message.h"
 #include "extensions/protobuf/value.h"
 #include "internal/testing.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions::test {
 
@@ -68,8 +69,7 @@ class StructValueAsProtoMatcher {
 template <typename MessageType>
 inline StructValueAsProtoMatcher<MessageType> StructValueAsProto(
     testing::Matcher<MessageType>&& m) {
-  static_assert(
-      cel::extensions::protobuf_internal::IsProtoMessage<MessageType>);
+  static_assert(std::is_base_of_v<google::protobuf::Message, MessageType>);
   return StructValueAsProtoMatcher<MessageType>(std::move(m));
 }
 

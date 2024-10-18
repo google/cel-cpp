@@ -15,7 +15,6 @@
 #include "extensions/protobuf/value.h"
 
 #include <cstddef>
-#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
@@ -32,15 +31,12 @@
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "base/attribute.h"
-#include "base/internal/message_wrapper.h"
 #include "common/casting.h"
 #include "common/memory.h"
 #include "common/value.h"
 #include "common/value_kind.h"
 #include "common/value_testing.h"
-#include "eval/public/structs/proto_message_type_adapter.h"
 #include "extensions/protobuf/memory_manager.h"
-#include "internal/proto_matchers.h"
 #include "internal/testing.h"
 #include "proto/test/v1/proto2/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
@@ -49,10 +45,8 @@
 namespace cel::extensions {
 namespace {
 
-using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
-using ::cel::internal::test::EqualsProto;
 using ::cel::test::BoolValueIs;
 using ::cel::test::BytesValueIs;
 using ::cel::test::DoubleValueIs;
@@ -70,7 +64,6 @@ using ::cel::test::UintValueIs;
 using ::cel::test::ValueKindIs;
 using ::google::api::expr::test::v1::proto2::TestAllTypes;
 using ::testing::_;
-using ::testing::AllOf;
 using ::testing::ElementsAre;
 using ::testing::Eq;
 using ::testing::HasSubstr;
@@ -96,18 +89,6 @@ class ProtoValueTest : public common_internal::ThreadCompatibleValueTest<> {
 };
 
 class ProtoValueWrapTest : public ProtoValueTest {};
-
-TEST_P(ProtoValueWrapTest, ProtoEnumToValue) {
-  ASSERT_OK_AND_ASSIGN(
-      auto enum_value,
-      ProtoEnumToValue(value_factory(),
-                       google::protobuf::NullValue::NULL_VALUE));
-  ASSERT_TRUE(InstanceOf<NullValue>(enum_value));
-  ASSERT_OK_AND_ASSIGN(enum_value,
-                       ProtoEnumToValue(value_factory(), TestAllTypes::BAR));
-  ASSERT_TRUE(InstanceOf<IntValue>(enum_value));
-  ASSERT_THAT(Cast<IntValue>(enum_value).NativeValue(), Eq(1));
-}
 
 TEST_P(ProtoValueWrapTest, ProtoBoolValueToValue) {
   google::protobuf::BoolValue message;
@@ -756,318 +737,6 @@ TEST_P(ProtoValueWrapTest, ProtoListForEachWithIndex) {
 }
 
 INSTANTIATE_TEST_SUITE_P(ProtoValueTest, ProtoValueWrapTest,
-                         testing::Values(MemoryManagement::kPooling,
-                                         MemoryManagement::kReferenceCounting),
-                         ProtoValueTest::ToString);
-
-struct DefaultArenaDeleter {
-  template <typename T>
-  void operator()(T* message) const {
-    if (arena == nullptr) {
-      delete message;
-    }
-  }
-
-  google::protobuf::Arena* arena = nullptr;
-};
-
-template <typename T>
-using ArenaUniquePtr = std::unique_ptr<T, DefaultArenaDeleter>;
-
-template <typename T>
-ArenaUniquePtr<T> WrapArenaUnique(T* message) {
-  return ArenaUniquePtr<T>(message, DefaultArenaDeleter{message->GetArena()});
-}
-
-template <typename T>
-absl::StatusOr<ArenaUniquePtr<T>> WrapArenaUnique(absl::StatusOr<T*> message) {
-  if (!message.ok()) {
-    return message.status();
-  }
-  return WrapArenaUnique(*message);
-}
-
-class ProtoValueUnwrapTest : public ProtoValueTest {};
-
-TEST_P(ProtoValueUnwrapTest, ProtoBoolValueFromValue) {
-  google::protobuf::BoolValue message;
-  EXPECT_THAT(ProtoMessageFromValue(BoolValue{true}, message), IsOk());
-  EXPECT_EQ(message.value(), true);
-
-  EXPECT_THAT(WrapArenaUnique(ProtoMessageFromValue(
-                  BoolValue{true}, ProtoMemoryManagerArena(memory_manager()))),
-              IsOkAndHolds(Pointee(EqualsProto(message))));
-
-  EXPECT_THAT(ProtoMessageFromValue(UnknownValue{}, message),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoInt32ValueFromValue) {
-  google::protobuf::Int32Value message;
-  EXPECT_THAT(ProtoMessageFromValue(IntValue{1}, message), IsOk());
-  EXPECT_EQ(message.value(), 1);
-  EXPECT_THAT(
-      ProtoMessageFromValue(
-          IntValue{static_cast<int64_t>(std::numeric_limits<int32_t>::max()) +
-                   1},
-          message),
-      StatusIs(absl::StatusCode::kOutOfRange));
-
-  EXPECT_THAT(ProtoMessageFromValue(UnknownValue{}, message),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoInt64ValueFromValue) {
-  google::protobuf::Int64Value message;
-  EXPECT_THAT(ProtoMessageFromValue(IntValue{1}, message), IsOk());
-  EXPECT_EQ(message.value(), true);
-
-  EXPECT_THAT(WrapArenaUnique(ProtoMessageFromValue(
-                  IntValue{1}, ProtoMemoryManagerArena(memory_manager()))),
-              IsOkAndHolds(Pointee(EqualsProto(message))));
-
-  EXPECT_THAT(ProtoMessageFromValue(UnknownValue{}, message),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoUInt32ValueFromValue) {
-  google::protobuf::UInt32Value message;
-  EXPECT_THAT(ProtoMessageFromValue(UintValue{1}, message), IsOk());
-  EXPECT_EQ(message.value(), 1);
-  EXPECT_THAT(
-      ProtoMessageFromValue(
-          UintValue{
-              static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) + 1},
-          message),
-      StatusIs(absl::StatusCode::kOutOfRange));
-
-  EXPECT_THAT(ProtoMessageFromValue(UnknownValue{}, message),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoUInt64ValueFromValue) {
-  google::protobuf::UInt64Value message;
-  EXPECT_THAT(ProtoMessageFromValue(UintValue{1}, message), IsOk());
-  EXPECT_EQ(message.value(), 1);
-
-  EXPECT_THAT(WrapArenaUnique(ProtoMessageFromValue(
-                  UintValue{1}, ProtoMemoryManagerArena(memory_manager()))),
-              IsOkAndHolds(Pointee(EqualsProto(message))));
-
-  EXPECT_THAT(ProtoMessageFromValue(UnknownValue{}, message),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoFloatValueFromValue) {
-  google::protobuf::FloatValue message;
-  EXPECT_THAT(ProtoMessageFromValue(DoubleValue{1}, message), IsOk());
-  EXPECT_EQ(message.value(), 1);
-
-  EXPECT_THAT(ProtoMessageFromValue(UnknownValue{}, message),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoDoubleValueFromValue) {
-  google::protobuf::DoubleValue message;
-  EXPECT_THAT(ProtoMessageFromValue(DoubleValue{1}, message), IsOk());
-  EXPECT_EQ(message.value(), 1);
-
-  EXPECT_THAT(WrapArenaUnique(ProtoMessageFromValue(
-                  DoubleValue{1}, ProtoMemoryManagerArena(memory_manager()))),
-              IsOkAndHolds(Pointee(EqualsProto(message))));
-
-  EXPECT_THAT(ProtoMessageFromValue(UnknownValue{}, message),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoBytesValueFromValue) {
-  google::protobuf::BytesValue message;
-  EXPECT_THAT(ProtoMessageFromValue(BytesValue{"foo"}, message), IsOk());
-  EXPECT_EQ(message.value(), "foo");
-
-  EXPECT_THAT(
-      WrapArenaUnique(ProtoMessageFromValue(
-          BytesValue{"foo"}, ProtoMemoryManagerArena(memory_manager()))),
-      IsOkAndHolds(Pointee(EqualsProto(message))));
-
-  EXPECT_THAT(ProtoMessageFromValue(UnknownValue{}, message),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoStringValueFromValue) {
-  google::protobuf::StringValue message;
-  EXPECT_THAT(ProtoMessageFromValue(StringValue{"foo"}, message), IsOk());
-  EXPECT_EQ(message.value(), "foo");
-
-  EXPECT_THAT(
-      WrapArenaUnique(ProtoMessageFromValue(
-          StringValue{"foo"}, ProtoMemoryManagerArena(memory_manager()))),
-      IsOkAndHolds(Pointee(EqualsProto(message))));
-
-  EXPECT_THAT(ProtoMessageFromValue(UnknownValue{}, message),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoDurationFromValue) {
-  google::protobuf::Duration message;
-  EXPECT_THAT(
-      ProtoMessageFromValue(
-          DurationValue{absl::Seconds(1) + absl::Nanoseconds(1)}, message),
-      IsOk());
-  EXPECT_EQ(message.seconds(), 1);
-  EXPECT_EQ(message.nanos(), 1);
-
-  EXPECT_THAT(WrapArenaUnique(ProtoMessageFromValue(
-                  DurationValue{absl::Seconds(1) + absl::Nanoseconds(1)},
-                  ProtoMemoryManagerArena(memory_manager()))),
-              IsOkAndHolds(Pointee(EqualsProto(message))));
-
-  EXPECT_THAT(ProtoMessageFromValue(UnknownValue{}, message),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoTimestampFromValue) {
-  google::protobuf::Timestamp message;
-  EXPECT_THAT(ProtoMessageFromValue(
-                  TimestampValue{absl::UnixEpoch() + absl::Seconds(1) +
-                                 absl::Nanoseconds(1)},
-                  message),
-              IsOk());
-  EXPECT_EQ(message.seconds(), 1);
-  EXPECT_EQ(message.nanos(), 1);
-
-  EXPECT_THAT(WrapArenaUnique(ProtoMessageFromValue(
-                  TimestampValue{absl::UnixEpoch() + absl::Seconds(1) +
-                                 absl::Nanoseconds(1)},
-                  ProtoMemoryManagerArena(memory_manager()))),
-              IsOkAndHolds(Pointee(EqualsProto(message))));
-
-  EXPECT_THAT(ProtoMessageFromValue(UnknownValue{}, message),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoValueFromValue) {
-  google::protobuf::Value message;
-  EXPECT_THAT(ProtoMessageFromValue(NullValue{}, message), IsOk());
-  EXPECT_TRUE(message.has_null_value());
-  EXPECT_THAT(ProtoMessageFromValue(BoolValue{true}, message), IsOk());
-  EXPECT_EQ(message.bool_value(), true);
-  EXPECT_THAT(ProtoMessageFromValue(DoubleValue{1}, message), IsOk());
-  EXPECT_EQ(message.number_value(), 1);
-  EXPECT_THAT(ProtoMessageFromValue(ListValue{}, message), IsOk());
-  EXPECT_TRUE(message.has_list_value());
-  EXPECT_TRUE(message.list_value().values().empty());
-  EXPECT_THAT(ProtoMessageFromValue(MapValue{}, message), IsOk());
-  EXPECT_TRUE(message.has_struct_value());
-  EXPECT_TRUE(message.struct_value().fields().empty());
-
-  message.set_null_value(google::protobuf::NULL_VALUE);
-  EXPECT_THAT(WrapArenaUnique(ProtoMessageFromValue(
-                  NullValue{}, ProtoMemoryManagerArena(memory_manager()))),
-              IsOkAndHolds(Pointee(EqualsProto(message))));
-
-  EXPECT_THAT(ProtoMessageFromValue(UnknownValue{}, message),
-              StatusIs(absl::StatusCode::kFailedPrecondition));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoListValueFromValue) {
-  google::protobuf::ListValue message;
-  EXPECT_THAT(ProtoMessageFromValue(ListValue{}, message), IsOk());
-  EXPECT_TRUE(message.values().empty());
-
-  EXPECT_THAT(WrapArenaUnique(ProtoMessageFromValue(
-                  ListValue{}, ProtoMemoryManagerArena(memory_manager()))),
-              IsOkAndHolds(Pointee(EqualsProto(message))));
-
-  EXPECT_THAT(ProtoMessageFromValue(UnknownValue{}, message),
-              StatusIs(absl::StatusCode::kFailedPrecondition));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoStructFromValue) {
-  google::protobuf::Struct message;
-  EXPECT_THAT(ProtoMessageFromValue(MapValue{}, message), IsOk());
-  EXPECT_TRUE(message.fields().empty());
-
-  EXPECT_THAT(WrapArenaUnique(ProtoMessageFromValue(
-                  MapValue{}, ProtoMemoryManagerArena(memory_manager()))),
-              IsOkAndHolds(Pointee(EqualsProto(message))));
-
-  EXPECT_THAT(ProtoMessageFromValue(UnknownValue{}, message),
-              StatusIs(absl::StatusCode::kFailedPrecondition));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoAnyFromValue) {
-  google::protobuf::Any message;
-  EXPECT_THAT(ProtoMessageFromValue(BoolValue{false}, message), IsOk());
-  EXPECT_EQ(message.type_url(),
-            "type.googleapis.com/google.protobuf.BoolValue");
-  EXPECT_TRUE(message.value().empty());
-
-  EXPECT_THAT(ProtoMessageFromValue(UnknownValue{}, message),
-              StatusIs(absl::StatusCode::kFailedPrecondition));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoMessageFromValue) {
-  TestAllTypes want;
-  want.set_single_bool(true);
-  want.set_single_int64(1);
-  ASSERT_OK_AND_ASSIGN(auto value, ProtoMessageToValue(value_manager(), want));
-  TestAllTypes got;
-  EXPECT_THAT(ProtoMessageFromValue(value, got), IsOk());
-  EXPECT_THAT(got, EqualsProto(want));
-
-  EXPECT_THAT(ProtoMessageFromValue(UnknownValue{}, got),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-
-  EXPECT_THAT(WrapArenaUnique(ProtoMessageFromValue(
-                  value, ProtoMemoryManagerArena(memory_manager()))),
-              IsOkAndHolds(Pointee(EqualsProto(want))));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoMessageFromLegacyValue) {
-  TestAllTypes want;
-  want.set_single_bool(true);
-  want.set_single_int64(1);
-  auto value = Value(common_internal::LegacyStructValue{
-      reinterpret_cast<uintptr_t>(&want) |
-          base_internal::kMessageWrapperTagMessageValue,
-      reinterpret_cast<uintptr_t>(
-          &google::api::expr::runtime::GetGenericProtoTypeInfoInstance())});
-  TestAllTypes got;
-  EXPECT_THAT(ProtoMessageFromValue(value, got), IsOk());
-  EXPECT_THAT(got, EqualsProto(want));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoMessageLiteFromLegacyValue) {
-  TestAllTypes want;
-  want.set_single_bool(true);
-  want.set_single_int64(1);
-  auto value = Value(common_internal::LegacyStructValue{
-      reinterpret_cast<uintptr_t>(&want),
-      reinterpret_cast<uintptr_t>(
-          &google::api::expr::runtime::GetGenericProtoTypeInfoInstance())});
-  TestAllTypes got;
-  EXPECT_THAT(ProtoMessageFromValue(value, got), IsOk());
-  EXPECT_THAT(got, EqualsProto(want));
-}
-
-TEST_P(ProtoValueUnwrapTest, ProtoEnumFromValue) {
-  EXPECT_THAT(ProtoEnumFromValue<google::protobuf::NullValue>(NullValue{}),
-              IsOkAndHolds(Eq(google::protobuf::NULL_VALUE)));
-  EXPECT_THAT(
-      ProtoEnumFromValue<google::protobuf::NullValue>(IntValue{0xdeadbeef}),
-      IsOkAndHolds(Eq(google::protobuf::NULL_VALUE)));
-  EXPECT_THAT(ProtoEnumFromValue<google::protobuf::NullValue>(StringValue{}),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(ProtoEnumFromValue<TestAllTypes::NestedEnum>(IntValue{1}),
-              IsOkAndHolds(Eq(TestAllTypes::BAR)));
-  EXPECT_THAT(ProtoEnumFromValue<TestAllTypes::NestedEnum>(IntValue{1000}),
-              StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT(ProtoEnumFromValue<TestAllTypes::NestedEnum>(StringValue{}),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-}
-
-INSTANTIATE_TEST_SUITE_P(ProtoValueTest, ProtoValueUnwrapTest,
                          testing::Values(MemoryManagement::kPooling,
                                          MemoryManagement::kReferenceCounting),
                          ProtoValueTest::ToString);
