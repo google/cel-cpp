@@ -400,7 +400,7 @@ class DemoTypeProvider : public LegacyTypeProvider {
 
   const std::string& GetStableType(
       const google::protobuf::MessageLite* wrapped_message) const {
-    std::string name = wrapped_message->GetTypeName();
+    std::string name(wrapped_message->GetTypeName());
     auto [iter, inserted] = stable_types_.insert(name);
     return *iter;
   }
@@ -419,7 +419,7 @@ class DemoTypeProvider : public LegacyTypeProvider {
 
 std::string DemoTypeInfo::DebugString(
     const MessageWrapper& wrapped_message) const {
-  return wrapped_message.message_ptr()->GetTypeName();
+  return std::string(wrapped_message.message_ptr()->GetTypeName());
 }
 
 absl::string_view DemoTypeInfo::GetTypename(
