@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "extensions/protobuf/enum_adapter.h"
 
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -36,7 +37,7 @@ absl::Status RegisterProtobufEnum(
   std::vector<TypeRegistry::Enumerator> enumerators;
   enumerators.reserve(enum_descriptor->value_count());
   for (int i = 0; i < enum_descriptor->value_count(); i++) {
-    enumerators.push_back({enum_descriptor->value(i)->name(),
+    enumerators.push_back({std::string(enum_descriptor->value(i)->name()),
                            enum_descriptor->value(i)->number()});
   }
   registry.RegisterEnum(enum_descriptor->full_name(), std::move(enumerators));
