@@ -966,6 +966,18 @@ class ValueReflection final {
   void SetStringValue(absl::Nonnull<google::protobuf::Message*> message,
                       const absl::Cord& value) const;
 
+  void SetStringValueFromBytes(absl::Nonnull<google::protobuf::Message*> message,
+                               absl::string_view value) const;
+
+  void SetStringValueFromBytes(absl::Nonnull<google::protobuf::Message*> message,
+                               const absl::Cord& value) const;
+
+  void SetStringValueFromDuration(absl::Nonnull<google::protobuf::Message*> message,
+                                  absl::Duration duration) const;
+
+  void SetStringValueFromTimestamp(absl::Nonnull<google::protobuf::Message*> message,
+                                   absl::Time time) const;
+
   absl::Nonnull<google::protobuf::Message*> MutableListValue(
       absl::Nonnull<google::protobuf::Message*> message) const;
 

@@ -25,20 +25,25 @@ namespace cel::internal {
 
 class StatusBuilder;
 
-template <typename Invocable, typename Argument, typename Expected>
-inline constexpr bool kResultMatches =
-    std::is_same_v<std::decay_t<std::invoke_result_t<Invocable, Argument>>,
-                   Expected>;
+template <typename Fn, typename Arg, typename Expected>
+inline constexpr bool StatusBuilderResultMatches =
+    std::is_same_v<std::decay_t<std::invoke_result_t<Fn, Arg>>, Expected>;
 
 template <typename Adaptor, typename Builder>
-using EnableIfStatusBuilder =
-    std::enable_if_t<kResultMatches<Adaptor, Builder, StatusBuilder>,
+using StatusBuilderPurePolicy = std::enable_if_t<
+    StatusBuilderResultMatches<Adaptor, Builder, StatusBuilder>,
+    std::invoke_result_t<Adaptor, Builder>>;
+
+template <typename Adaptor, typename Builder>
+using StatusBuilderSideEffect =
+    std::enable_if_t<StatusBuilderResultMatches<Adaptor, Builder, absl::Status>,
                      std::invoke_result_t<Adaptor, Builder>>;
 
 template <typename Adaptor, typename Builder>
-using EnableIfStatus =
-    std::enable_if_t<kResultMatches<Adaptor, Builder, absl::Status>,
-                     std::invoke_result_t<Adaptor, Builder>>;
+using StatusBuilderConversion = std::enable_if_t<
+    !StatusBuilderResultMatches<Adaptor, Builder, StatusBuilder> &&
+        !StatusBuilderResultMatches<Adaptor, Builder, absl::Status>,
+    std::invoke_result_t<Adaptor, Builder>>;
 
 class StatusBuilder final {
  public:
@@ -66,24 +71,37 @@ class StatusBuilder final {
 
   template <typename Adaptor>
   auto With(
-      Adaptor&& adaptor) & -> EnableIfStatusBuilder<Adaptor, StatusBuilder&> {
+      Adaptor&& adaptor) & -> StatusBuilderPurePolicy<Adaptor, StatusBuilder&> {
     return std::forward<Adaptor>(adaptor)(*this);
   }
-
   template <typename Adaptor>
   ABSL_MUST_USE_RESULT auto With(
-      Adaptor&& adaptor) && -> EnableIfStatusBuilder<Adaptor, StatusBuilder&&> {
+      Adaptor&&
+          adaptor) && -> StatusBuilderPurePolicy<Adaptor, StatusBuilder&&> {
     return std::forward<Adaptor>(adaptor)(std::move(*this));
   }
 
   template <typename Adaptor>
-  auto With(Adaptor&& adaptor) & -> EnableIfStatus<Adaptor, StatusBuilder&> {
+  auto With(
+      Adaptor&& adaptor) & -> StatusBuilderSideEffect<Adaptor, StatusBuilder&> {
     return std::forward<Adaptor>(adaptor)(*this);
+  }
+  template <typename Adaptor>
+  ABSL_MUST_USE_RESULT auto With(
+      Adaptor&&
+          adaptor) && -> StatusBuilderSideEffect<Adaptor, StatusBuilder&&> {
+    return std::forward<Adaptor>(adaptor)(std::move(*this));
   }
 
   template <typename Adaptor>
+  auto With(
+      Adaptor&& adaptor) & -> StatusBuilderConversion<Adaptor, StatusBuilder&> {
+    return std::forward<Adaptor>(adaptor)(*this);
+  }
+  template <typename Adaptor>
   ABSL_MUST_USE_RESULT auto With(
-      Adaptor&& adaptor) && -> EnableIfStatus<Adaptor, StatusBuilder&&> {
+      Adaptor&&
+          adaptor) && -> StatusBuilderConversion<Adaptor, StatusBuilder&&> {
     return std::forward<Adaptor>(adaptor)(std::move(*this));
   }
 

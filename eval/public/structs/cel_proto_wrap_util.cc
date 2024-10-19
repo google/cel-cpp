@@ -14,11 +14,9 @@
 
 #include "eval/public/structs/cel_proto_wrap_util.h"
 
-#include <math.h>
-
+#include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <memory>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -29,31 +27,28 @@
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/wrappers.pb.h"
-#include "google/protobuf/message.h"
-#include "absl/base/attributes.h"
+#include "absl/base/nullability.h"
 #include "absl/base/optimization.h"
-#include "absl/container/flat_hash_map.h"
+#include "absl/functional/overload.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/escaping.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "absl/strings/substitute.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
-#include "common/any.h"
+#include "absl/types/variant.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/protobuf_value_factory.h"
 #include "eval/testutil/test_message.pb.h"
-#include "extensions/protobuf/internal/any.h"
-#include "extensions/protobuf/internal/duration.h"
-#include "extensions/protobuf/internal/struct.h"
-#include "extensions/protobuf/internal/timestamp.h"
-#include "extensions/protobuf/internal/wrappers.h"
 #include "internal/overflow.h"
 #include "internal/proto_time_encoding.h"
+#include "internal/status_macros.h"
 #include "internal/time.h"
+#include "internal/well_known_types.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
@@ -65,7 +60,6 @@ namespace {
 
 using cel::internal::DecodeDuration;
 using cel::internal::DecodeTime;
-using cel::internal::EncodeTime;
 using google::protobuf::Any;
 using google::protobuf::BoolValue;
 using google::protobuf::BytesValue;
@@ -194,6 +188,29 @@ class DynamicMap : public CelMap {
   const DynamicMapKeyList key_list_;
 };
 
+// Adapter for usage with CEL_RETURN_IF_ERROR and CEL_ASSIGN_OR_RETURN.
+class ReturnCelValueError {
+ public:
+  explicit ReturnCelValueError(absl::Nonnull<google::protobuf::Arena*> arena)
+      : arena_(arena) {}
+
+  CelValue operator()(const absl::Status& status) const {
+    ABSL_DCHECK(!status.ok());
+    return CelValue::CreateError(
+        google::protobuf::Arena::Create<absl::Status>(arena_, status));
+  }
+
+ private:
+  absl::Nonnull<google::protobuf::Arena*> arena_;
+};
+
+struct IgnoreErrorAndReturnNullptr {
+  std::nullptr_t operator()(const absl::Status& status) const {
+    status.IgnoreError();
+    return nullptr;
+  }
+};
+
 // ValueManager provides ValueFromMessage(....) function family.
 // Functions of this family create CelValue object from specific subtypes of
 // protobuf message.
@@ -221,13 +238,13 @@ class ValueManager {
   }
 
   CelValue ValueFromDuration(const google::protobuf::Message* message) {
-    auto status_or_unwrapped =
-        cel::extensions::protobuf_internal::UnwrapDynamicDurationProto(
-            *message);
-    if (!status_or_unwrapped.ok()) {
-      return CreateErrorValue(arena_, status_or_unwrapped.status());
-    }
-    return ValueFromDuration(*status_or_unwrapped);
+    CEL_ASSIGN_OR_RETURN(
+        auto reflection,
+        cel::well_known_types::GetDurationReflection(message->GetDescriptor()),
+        _.With(ReturnCelValueError(arena_)));
+    CEL_ASSIGN_OR_RETURN(auto duration, reflection.ToAbslDuration(*message),
+                         _.With(ReturnCelValueError(arena_)));
+    return CelValue::CreateDuration(duration);
   }
 
   CelValue ValueFromMessage(const Duration* duration) {
@@ -235,13 +252,13 @@ class ValueManager {
   }
 
   CelValue ValueFromTimestamp(const google::protobuf::Message* message) {
-    auto status_or_unwrapped =
-        cel::extensions::protobuf_internal::UnwrapDynamicTimestampProto(
-            *message);
-    if (!status_or_unwrapped.ok()) {
-      return CreateErrorValue(arena_, status_or_unwrapped.status());
-    }
-    return ValueFromTimestamp(*status_or_unwrapped);
+    CEL_ASSIGN_OR_RETURN(
+        auto reflection,
+        cel::well_known_types::GetTimestampReflection(message->GetDescriptor()),
+        _.With(ReturnCelValueError(arena_)));
+    CEL_ASSIGN_OR_RETURN(auto time, reflection.ToAbslTime(*message),
+                         _.With(ReturnCelValueError(arena_)));
+    return CelValue::CreateTimestamp(time);
   }
 
   static CelValue ValueFromTimestamp(absl::Time timestamp) {
@@ -263,27 +280,42 @@ class ValueManager {
   }
 
   CelValue ValueFromAny(const google::protobuf::Message* message) {
-    auto status_or_unwrapped =
-        cel::extensions::protobuf_internal::UnwrapDynamicAnyProto(*message);
-    if (!status_or_unwrapped.ok()) {
-      return CreateErrorValue(arena_, status_or_unwrapped.status());
-    }
-    return ValueFromAny(status_or_unwrapped->type_url(),
-                        cel::GetAnyValueAsCord(*status_or_unwrapped),
+    CEL_ASSIGN_OR_RETURN(
+        auto reflection,
+        cel::well_known_types::GetAnyReflection(message->GetDescriptor()),
+        _.With(ReturnCelValueError(arena_)));
+    std::string type_url_scratch;
+    std::string value_scratch;
+    return ValueFromAny(reflection.GetTypeUrl(*message, type_url_scratch),
+                        reflection.GetValue(*message, value_scratch),
                         descriptor_pool_, message_factory_);
   }
 
-  CelValue ValueFromAny(absl::string_view type_url, const absl::Cord& payload,
+  CelValue ValueFromAny(const cel::well_known_types::StringValue& type_url,
+                        const cel::well_known_types::BytesValue& payload,
                         const DescriptorPool* descriptor_pool,
                         MessageFactory* message_factory) {
-    auto pos = type_url.find_last_of('/');
-    if (pos == absl::string_view::npos) {
+    std::string type_url_string_scratch;
+    absl::string_view type_url_string = absl::visit(
+        absl::Overload([](absl::string_view string)
+                           -> absl::string_view { return string; },
+                       [&type_url_string_scratch](
+                           const absl::Cord& cord) -> absl::string_view {
+                         if (auto flat = cord.TryFlat(); flat) {
+                           return *flat;
+                         }
+                         absl::CopyCordToString(cord, &type_url_string_scratch);
+                         return absl::string_view(type_url_string_scratch);
+                       }),
+        cel::well_known_types::AsVariant(type_url));
+    auto pos = type_url_string.find_last_of('/');
+    if (pos == type_url_string.npos) {
       // TODO What error code?
       // Malformed type_url
       return CreateErrorValue(arena_, "Malformed type_url string");
     }
 
-    std::string full_name = std::string(type_url.substr(pos + 1));
+    absl::string_view full_name = type_url_string.substr(pos + 1);
     const Descriptor* nested_descriptor =
         descriptor_pool->FindMessageTypeByName(full_name);
 
@@ -301,7 +333,16 @@ class ValueManager {
     }
 
     Message* nested_message = prototype->New(arena_);
-    if (!nested_message->ParseFromCord(payload)) {
+    bool ok =
+        absl::visit(absl::Overload(
+                        [nested_message](absl::string_view string) -> bool {
+                          return nested_message->ParsePartialFromString(string);
+                        },
+                        [nested_message](const absl::Cord& cord) -> bool {
+                          return nested_message->ParsePartialFromCord(cord);
+                        }),
+                    cel::well_known_types::AsVariant(payload));
+    if (!ok) {
       // Failed to unpack.
       // TODO What error code?
       return CreateErrorValue(arena_, "Failed to unpack Any into message");
@@ -322,13 +363,11 @@ class ValueManager {
   }
 
   CelValue ValueFromBool(const google::protobuf::Message* message) {
-    auto status_or_unwrapped =
-        cel::extensions::protobuf_internal::UnwrapDynamicBoolValueProto(
-            *message);
-    if (!status_or_unwrapped.ok()) {
-      return CreateErrorValue(arena_, status_or_unwrapped.status());
-    }
-    return ValueFromBool(*status_or_unwrapped);
+    CEL_ASSIGN_OR_RETURN(
+        auto reflection,
+        cel::well_known_types::GetBoolValueReflection(message->GetDescriptor()),
+        _.With(ReturnCelValueError(arena_)));
+    return ValueFromBool(reflection.GetValue(*message));
   }
 
   static CelValue ValueFromBool(bool value) {
@@ -340,13 +379,11 @@ class ValueManager {
   }
 
   CelValue ValueFromInt32(const google::protobuf::Message* message) {
-    auto status_or_unwrapped =
-        cel::extensions::protobuf_internal::UnwrapDynamicInt32ValueProto(
-            *message);
-    if (!status_or_unwrapped.ok()) {
-      return CreateErrorValue(arena_, status_or_unwrapped.status());
-    }
-    return ValueFromInt32(*status_or_unwrapped);
+    CEL_ASSIGN_OR_RETURN(auto reflection,
+                         cel::well_known_types::GetInt32ValueReflection(
+                             message->GetDescriptor()),
+                         _.With(ReturnCelValueError(arena_)));
+    return ValueFromInt32(reflection.GetValue(*message));
   }
 
   static CelValue ValueFromInt32(int32_t value) {
@@ -358,13 +395,11 @@ class ValueManager {
   }
 
   CelValue ValueFromUInt32(const google::protobuf::Message* message) {
-    auto status_or_unwrapped =
-        cel::extensions::protobuf_internal::UnwrapDynamicUInt32ValueProto(
-            *message);
-    if (!status_or_unwrapped.ok()) {
-      return CreateErrorValue(arena_, status_or_unwrapped.status());
-    }
-    return ValueFromUInt32(*status_or_unwrapped);
+    CEL_ASSIGN_OR_RETURN(auto reflection,
+                         cel::well_known_types::GetUInt32ValueReflection(
+                             message->GetDescriptor()),
+                         _.With(ReturnCelValueError(arena_)));
+    return ValueFromUInt32(reflection.GetValue(*message));
   }
 
   static CelValue ValueFromUInt32(uint32_t value) {
@@ -376,13 +411,11 @@ class ValueManager {
   }
 
   CelValue ValueFromInt64(const google::protobuf::Message* message) {
-    auto status_or_unwrapped =
-        cel::extensions::protobuf_internal::UnwrapDynamicInt64ValueProto(
-            *message);
-    if (!status_or_unwrapped.ok()) {
-      return CreateErrorValue(arena_, status_or_unwrapped.status());
-    }
-    return ValueFromInt64(*status_or_unwrapped);
+    CEL_ASSIGN_OR_RETURN(auto reflection,
+                         cel::well_known_types::GetInt64ValueReflection(
+                             message->GetDescriptor()),
+                         _.With(ReturnCelValueError(arena_)));
+    return ValueFromInt64(reflection.GetValue(*message));
   }
 
   static CelValue ValueFromInt64(int64_t value) {
@@ -394,13 +427,11 @@ class ValueManager {
   }
 
   CelValue ValueFromUInt64(const google::protobuf::Message* message) {
-    auto status_or_unwrapped =
-        cel::extensions::protobuf_internal::UnwrapDynamicUInt64ValueProto(
-            *message);
-    if (!status_or_unwrapped.ok()) {
-      return CreateErrorValue(arena_, status_or_unwrapped.status());
-    }
-    return ValueFromUInt64(*status_or_unwrapped);
+    CEL_ASSIGN_OR_RETURN(auto reflection,
+                         cel::well_known_types::GetUInt64ValueReflection(
+                             message->GetDescriptor()),
+                         _.With(ReturnCelValueError(arena_)));
+    return ValueFromUInt64(reflection.GetValue(*message));
   }
 
   static CelValue ValueFromUInt64(uint64_t value) {
@@ -412,13 +443,11 @@ class ValueManager {
   }
 
   CelValue ValueFromFloat(const google::protobuf::Message* message) {
-    auto status_or_unwrapped =
-        cel::extensions::protobuf_internal::UnwrapDynamicFloatValueProto(
-            *message);
-    if (!status_or_unwrapped.ok()) {
-      return CreateErrorValue(arena_, status_or_unwrapped.status());
-    }
-    return ValueFromFloat(*status_or_unwrapped);
+    CEL_ASSIGN_OR_RETURN(auto reflection,
+                         cel::well_known_types::GetFloatValueReflection(
+                             message->GetDescriptor()),
+                         _.With(ReturnCelValueError(arena_)));
+    return ValueFromFloat(reflection.GetValue(*message));
   }
 
   static CelValue ValueFromFloat(float value) {
@@ -430,13 +459,11 @@ class ValueManager {
   }
 
   CelValue ValueFromDouble(const google::protobuf::Message* message) {
-    auto status_or_unwrapped =
-        cel::extensions::protobuf_internal::UnwrapDynamicDoubleValueProto(
-            *message);
-    if (!status_or_unwrapped.ok()) {
-      return CreateErrorValue(arena_, status_or_unwrapped.status());
-    }
-    return ValueFromDouble(*status_or_unwrapped);
+    CEL_ASSIGN_OR_RETURN(auto reflection,
+                         cel::well_known_types::GetDoubleValueReflection(
+                             message->GetDescriptor()),
+                         _.With(ReturnCelValueError(arena_)));
+    return ValueFromDouble(reflection.GetValue(*message));
   }
 
   static CelValue ValueFromDouble(double value) {
@@ -448,13 +475,30 @@ class ValueManager {
   }
 
   CelValue ValueFromString(const google::protobuf::Message* message) {
-    auto status_or_unwrapped =
-        cel::extensions::protobuf_internal::UnwrapDynamicStringValueProto(
-            *message);
-    if (!status_or_unwrapped.ok()) {
-      return CreateErrorValue(arena_, status_or_unwrapped.status());
-    }
-    return ValueFromString(*status_or_unwrapped);
+    CEL_ASSIGN_OR_RETURN(auto reflection,
+                         cel::well_known_types::GetStringValueReflection(
+                             message->GetDescriptor()),
+                         _.With(ReturnCelValueError(arena_)));
+    std::string scratch;
+    return absl::visit(
+        absl::Overload(
+            [&](absl::string_view string) -> CelValue {
+              if (string.data() == scratch.data() &&
+                  string.size() == scratch.size()) {
+                return CelValue::CreateString(
+                    google::protobuf::Arena::Create<std::string>(arena_,
+                                                       std::move(scratch)));
+              }
+              return CelValue::CreateString(google::protobuf::Arena::Create<std::string>(
+                  arena_, std::string(string)));
+            },
+            [&](absl::Cord&& cord) -> CelValue {
+              auto* string = google::protobuf::Arena::Create<std::string>(arena_);
+              absl::CopyCordToString(cord, string);
+              return CelValue::CreateString(string);
+            }),
+        cel::well_known_types::AsVariant(
+            reflection.GetValue(*message, scratch)));
   }
 
   CelValue ValueFromString(const absl::Cord& value) {
@@ -471,13 +515,29 @@ class ValueManager {
   }
 
   CelValue ValueFromBytes(const google::protobuf::Message* message) {
-    auto status_or_unwrapped =
-        cel::extensions::protobuf_internal::UnwrapDynamicBytesValueProto(
-            *message);
-    if (!status_or_unwrapped.ok()) {
-      return CreateErrorValue(arena_, status_or_unwrapped.status());
-    }
-    return ValueFromBytes(*status_or_unwrapped);
+    CEL_ASSIGN_OR_RETURN(auto reflection,
+                         cel::well_known_types::GetBytesValueReflection(
+                             message->GetDescriptor()),
+                         _.With(ReturnCelValueError(arena_)));
+    std::string scratch;
+    return absl::visit(
+        absl::Overload(
+            [&](absl::string_view string) -> CelValue {
+              if (string.data() == scratch.data() &&
+                  string.size() == scratch.size()) {
+                return CelValue::CreateBytes(google::protobuf::Arena::Create<std::string>(
+                    arena_, std::move(scratch)));
+              }
+              return CelValue::CreateBytes(google::protobuf::Arena::Create<std::string>(
+                  arena_, std::string(string)));
+            },
+            [&](absl::Cord&& cord) -> CelValue {
+              auto* string = google::protobuf::Arena::Create<std::string>(arena_);
+              absl::CopyCordToString(cord, string);
+              return CelValue::CreateBytes(string);
+            }),
+        cel::well_known_types::AsVariant(
+            reflection.GetValue(*message, scratch)));
   }
 
   CelValue ValueFromBytes(const absl::Cord& value) {
@@ -678,13 +738,12 @@ google::protobuf::Message* DurationFromValue(const google::protobuf::Message* pr
     return nullptr;
   }
   auto* message = prototype->New(arena);
-  auto status_or_wrapped =
-      cel::extensions::protobuf_internal::WrapDynamicDurationProto(val,
-                                                                   *message);
-  if (!status_or_wrapped.ok()) {
-    status_or_wrapped.IgnoreError();
-    return nullptr;
-  }
+  CEL_ASSIGN_OR_RETURN(
+      auto reflection,
+      cel::well_known_types::GetDurationReflection(message->GetDescriptor()),
+      _.With(IgnoreErrorAndReturnNullptr()));
+  CEL_RETURN_IF_ERROR(reflection.SetFromAbslDuration(message, val))
+      .With(IgnoreErrorAndReturnNullptr());
   return message;
 }
 
@@ -695,13 +754,11 @@ google::protobuf::Message* BoolFromValue(const google::protobuf::Message* protot
     return nullptr;
   }
   auto* message = prototype->New(arena);
-  auto status_or_wrapped =
-      cel::extensions::protobuf_internal::WrapDynamicBoolValueProto(val,
-                                                                    *message);
-  if (!status_or_wrapped.ok()) {
-    status_or_wrapped.IgnoreError();
-    return nullptr;
-  }
+  CEL_ASSIGN_OR_RETURN(
+      auto reflection,
+      cel::well_known_types::GetBoolValueReflection(message->GetDescriptor()),
+      _.With(IgnoreErrorAndReturnNullptr()));
+  reflection.SetValue(message, val);
   return message;
 }
 
@@ -712,13 +769,11 @@ google::protobuf::Message* BytesFromValue(const google::protobuf::Message* proto
     return nullptr;
   }
   auto* message = prototype->New(arena);
-  auto status_or_wrapped =
-      cel::extensions::protobuf_internal::WrapDynamicBytesValueProto(
-          absl::Cord(view_val.value()), *message);
-  if (!status_or_wrapped.ok()) {
-    status_or_wrapped.IgnoreError();
-    return nullptr;
-  }
+  CEL_ASSIGN_OR_RETURN(
+      auto reflection,
+      cel::well_known_types::GetBytesValueReflection(message->GetDescriptor()),
+      _.With(IgnoreErrorAndReturnNullptr()));
+  reflection.SetValue(message, view_val.value());
   return message;
 }
 
@@ -729,13 +784,11 @@ google::protobuf::Message* DoubleFromValue(const google::protobuf::Message* prot
     return nullptr;
   }
   auto* message = prototype->New(arena);
-  auto status_or_wrapped =
-      cel::extensions::protobuf_internal::WrapDynamicDoubleValueProto(val,
-                                                                      *message);
-  if (!status_or_wrapped.ok()) {
-    status_or_wrapped.IgnoreError();
-    return nullptr;
-  }
+  CEL_ASSIGN_OR_RETURN(
+      auto reflection,
+      cel::well_known_types::GetDoubleValueReflection(message->GetDescriptor()),
+      _.With(IgnoreErrorAndReturnNullptr()));
+  reflection.SetValue(message, val);
   return message;
 }
 
@@ -753,13 +806,11 @@ google::protobuf::Message* FloatFromValue(const google::protobuf::Message* proto
     fval = -std::numeric_limits<float>::infinity();
   }
   auto* message = prototype->New(arena);
-  auto status_or_wrapped =
-      cel::extensions::protobuf_internal::WrapDynamicFloatValueProto(fval,
-                                                                     *message);
-  if (!status_or_wrapped.ok()) {
-    status_or_wrapped.IgnoreError();
-    return nullptr;
-  }
+  CEL_ASSIGN_OR_RETURN(
+      auto reflection,
+      cel::well_known_types::GetFloatValueReflection(message->GetDescriptor()),
+      _.With(IgnoreErrorAndReturnNullptr()));
+  reflection.SetValue(message, static_cast<float>(fval));
   return message;
 }
 
@@ -774,13 +825,11 @@ google::protobuf::Message* Int32FromValue(const google::protobuf::Message* proto
   }
   int32_t ival = static_cast<int32_t>(val);
   auto* message = prototype->New(arena);
-  auto status_or_wrapped =
-      cel::extensions::protobuf_internal::WrapDynamicInt32ValueProto(ival,
-                                                                     *message);
-  if (!status_or_wrapped.ok()) {
-    status_or_wrapped.IgnoreError();
-    return nullptr;
-  }
+  CEL_ASSIGN_OR_RETURN(
+      auto reflection,
+      cel::well_known_types::GetInt32ValueReflection(message->GetDescriptor()),
+      _.With(IgnoreErrorAndReturnNullptr()));
+  reflection.SetValue(message, ival);
   return message;
 }
 
@@ -791,13 +840,11 @@ google::protobuf::Message* Int64FromValue(const google::protobuf::Message* proto
     return nullptr;
   }
   auto* message = prototype->New(arena);
-  auto status_or_wrapped =
-      cel::extensions::protobuf_internal::WrapDynamicInt64ValueProto(val,
-                                                                     *message);
-  if (!status_or_wrapped.ok()) {
-    status_or_wrapped.IgnoreError();
-    return nullptr;
-  }
+  CEL_ASSIGN_OR_RETURN(
+      auto reflection,
+      cel::well_known_types::GetInt64ValueReflection(message->GetDescriptor()),
+      _.With(IgnoreErrorAndReturnNullptr()));
+  reflection.SetValue(message, val);
   return message;
 }
 
@@ -808,13 +855,11 @@ google::protobuf::Message* StringFromValue(const google::protobuf::Message* prot
     return nullptr;
   }
   auto* message = prototype->New(arena);
-  auto status_or_wrapped =
-      cel::extensions::protobuf_internal::WrapDynamicStringValueProto(
-          absl::Cord(view_val.value()), *message);
-  if (!status_or_wrapped.ok()) {
-    status_or_wrapped.IgnoreError();
-    return nullptr;
-  }
+  CEL_ASSIGN_OR_RETURN(
+      auto reflection,
+      cel::well_known_types::GetStringValueReflection(message->GetDescriptor()),
+      _.With(IgnoreErrorAndReturnNullptr()));
+  reflection.SetValue(message, view_val.value());
   return message;
 }
 
@@ -829,13 +874,12 @@ google::protobuf::Message* TimestampFromValue(const google::protobuf::Message* p
     return nullptr;
   }
   auto* message = prototype->New(arena);
-  auto status_or_wrapped =
-      cel::extensions::protobuf_internal::WrapDynamicTimestampProto(val,
-                                                                    *message);
-  if (!status_or_wrapped.ok()) {
-    status_or_wrapped.IgnoreError();
-    return nullptr;
-  }
+  CEL_ASSIGN_OR_RETURN(
+      auto reflection,
+      cel::well_known_types::GetTimestampReflection(message->GetDescriptor()),
+      _.With(IgnoreErrorAndReturnNullptr()));
+  CEL_RETURN_IF_ERROR(reflection.SetFromAbslTime(message, val))
+      .With(IgnoreErrorAndReturnNullptr());
   return message;
 }
 
@@ -850,13 +894,11 @@ google::protobuf::Message* UInt32FromValue(const google::protobuf::Message* prot
   }
   uint32_t ival = static_cast<uint32_t>(val);
   auto* message = prototype->New(arena);
-  auto status_or_wrapped =
-      cel::extensions::protobuf_internal::WrapDynamicUInt32ValueProto(ival,
-                                                                      *message);
-  if (!status_or_wrapped.ok()) {
-    status_or_wrapped.IgnoreError();
-    return nullptr;
-  }
+  CEL_ASSIGN_OR_RETURN(
+      auto reflection,
+      cel::well_known_types::GetUInt32ValueReflection(message->GetDescriptor()),
+      _.With(IgnoreErrorAndReturnNullptr()));
+  reflection.SetValue(message, ival);
   return message;
 }
 
@@ -867,13 +909,11 @@ google::protobuf::Message* UInt64FromValue(const google::protobuf::Message* prot
     return nullptr;
   }
   auto* message = prototype->New(arena);
-  auto status_or_wrapped =
-      cel::extensions::protobuf_internal::WrapDynamicUInt64ValueProto(val,
-                                                                      *message);
-  if (!status_or_wrapped.ok()) {
-    status_or_wrapped.IgnoreError();
-    return nullptr;
-  }
+  CEL_ASSIGN_OR_RETURN(
+      auto reflection,
+      cel::well_known_types::GetUInt64ValueReflection(message->GetDescriptor()),
+      _.With(IgnoreErrorAndReturnNullptr()));
+  reflection.SetValue(message, val);
   return message;
 }
 
@@ -891,15 +931,14 @@ google::protobuf::Message* ListFromValue(google::protobuf::Message* message, con
     return nullptr;
   }
   const CelList& list = *value.ListOrDie();
+  CEL_ASSIGN_OR_RETURN(
+      auto reflection,
+      cel::well_known_types::GetListValueReflection(message->GetDescriptor()),
+      _.With(IgnoreErrorAndReturnNullptr()));
   for (int i = 0; i < list.size(); i++) {
     auto e = list.Get(arena, i);
-    auto status_or_elem =
-        cel::extensions::protobuf_internal::DynamicListValueProtoAddElement(
-            message);
-    if (!status_or_elem.ok()) {
-      return nullptr;
-    }
-    if (ValueFromValue(*status_or_elem, e, arena) == nullptr) {
+    auto* elem = reflection.AddValues(message);
+    if (ValueFromValue(elem, e, arena) == nullptr) {
       return nullptr;
     }
   }
@@ -928,6 +967,10 @@ google::protobuf::Message* StructFromValue(google::protobuf::Message* message,
     return nullptr;
   }
   const CelList& keys = **keys_or;
+  CEL_ASSIGN_OR_RETURN(
+      auto reflection,
+      cel::well_known_types::GetStructReflection(message->GetDescriptor()),
+      _.With(IgnoreErrorAndReturnNullptr()));
   for (int i = 0; i < keys.size(); i++) {
     auto k = keys.Get(arena, i);
     // If the key is not a string type, abort the conversion.
@@ -940,13 +983,8 @@ google::protobuf::Message* StructFromValue(google::protobuf::Message* message,
     if (!v.has_value()) {
       return nullptr;
     }
-    auto status_or_value =
-        cel::extensions::protobuf_internal::DynamicStructValueProtoAddField(
-            key, message);
-    if (!status_or_value.ok()) {
-      return nullptr;
-    }
-    if (ValueFromValue(*status_or_value, *v, arena) == nullptr) {
+    auto* field = reflection.InsertField(message, key);
+    if (ValueFromValue(field, *v, arena) == nullptr) {
       return nullptr;
     }
   }
@@ -963,52 +1001,42 @@ google::protobuf::Message* StructFromValue(const google::protobuf::Message* prot
 
 google::protobuf::Message* ValueFromValue(google::protobuf::Message* message, const CelValue& value,
                                 google::protobuf::Arena* arena) {
+  CEL_ASSIGN_OR_RETURN(
+      auto reflection,
+      cel::well_known_types::GetValueReflection(message->GetDescriptor()),
+      _.With(IgnoreErrorAndReturnNullptr()));
   switch (value.type()) {
     case CelValue::Type::kBool: {
       bool val;
       if (value.GetValue(&val)) {
-        if (cel::extensions::protobuf_internal::DynamicValueProtoSetBoolValue(
-                val, message)
-                .ok()) {
-          return message;
-        }
+        reflection.SetBoolValue(message, val);
+        return message;
       }
     } break;
     case CelValue::Type::kBytes: {
-      // Base64 encode byte strings to ensure they can safely be transpored
+      // Base64 encode byte strings to ensure they can safely be transported
       // in a JSON string.
       CelValue::BytesHolder val;
       if (value.GetValue(&val)) {
-        if (cel::extensions::protobuf_internal::DynamicValueProtoSetStringValue(
-                absl::Base64Escape(val.value()), message)
-                .ok()) {
-          return message;
-        }
+        reflection.SetStringValueFromBytes(message, val.value());
+        return message;
       }
     } break;
     case CelValue::Type::kDouble: {
       double val;
       if (value.GetValue(&val)) {
-        if (cel::extensions::protobuf_internal::DynamicValueProtoSetNumberValue(
-                val, message)
-                .ok()) {
-          return message;
-        }
+        reflection.SetNumberValue(message, val);
+        return message;
       }
     } break;
     case CelValue::Type::kDuration: {
       // Convert duration values to a protobuf JSON format.
       absl::Duration val;
       if (value.GetValue(&val)) {
-        auto encode = cel::internal::EncodeDurationToString(val);
-        if (!encode.ok()) {
-          return nullptr;
-        }
-        if (cel::extensions::protobuf_internal::DynamicValueProtoSetStringValue(
-                *encode, message)
-                .ok()) {
-          return message;
-        }
+        CEL_RETURN_IF_ERROR(cel::internal::ValidateDuration(val))
+            .With(IgnoreErrorAndReturnNullptr());
+        reflection.SetStringValueFromDuration(message, val);
+        return message;
       }
     } break;
     case CelValue::Type::kInt64: {
@@ -1016,45 +1044,25 @@ google::protobuf::Message* ValueFromValue(google::protobuf::Message* message, co
       // Convert int64_t values within the int53 range to doubles, otherwise
       // serialize the value to a string.
       if (value.GetValue(&val)) {
-        if (IsJSONSafe(val)) {
-          if (cel::extensions::protobuf_internal::
-                  DynamicValueProtoSetNumberValue(static_cast<double>(val),
-                                                  message)
-                      .ok()) {
-            return message;
-          }
-        } else {
-          if (cel::extensions::protobuf_internal::
-                  DynamicValueProtoSetStringValue(absl::StrCat(val), message)
-                      .ok()) {
-            return message;
-          }
-        }
+        reflection.SetNumberValue(message, val);
+        return message;
       }
     } break;
     case CelValue::Type::kString: {
       CelValue::StringHolder val;
       if (value.GetValue(&val)) {
-        if (cel::extensions::protobuf_internal::DynamicValueProtoSetStringValue(
-                val.value(), message)
-                .ok()) {
-          return message;
-        }
+        reflection.SetStringValue(message, val.value());
+        return message;
       }
     } break;
     case CelValue::Type::kTimestamp: {
       // Convert timestamp values to a protobuf JSON format.
       absl::Time val;
       if (value.GetValue(&val)) {
-        auto encode = cel::internal::EncodeTimeToString(val);
-        if (!encode.ok()) {
-          return nullptr;
-        }
-        if (cel::extensions::protobuf_internal::DynamicValueProtoSetStringValue(
-                *encode, message)
-                .ok()) {
-          return message;
-        }
+        CEL_RETURN_IF_ERROR(cel::internal::ValidateTimestamp(val))
+            .With(IgnoreErrorAndReturnNullptr());
+        reflection.SetStringValueFromTimestamp(message, val);
+        return message;
       }
     } break;
     case CelValue::Type::kUint64: {
@@ -1062,49 +1070,25 @@ google::protobuf::Message* ValueFromValue(google::protobuf::Message* message, co
       // Convert uint64_t values within the int53 range to doubles, otherwise
       // serialize the value to a string.
       if (value.GetValue(&val)) {
-        if (IsJSONSafe(val)) {
-          if (cel::extensions::protobuf_internal::
-                  DynamicValueProtoSetNumberValue(static_cast<double>(val),
-                                                  message)
-                      .ok()) {
-            return message;
-          }
-        } else {
-          if (cel::extensions::protobuf_internal::
-                  DynamicValueProtoSetStringValue(absl::StrCat(val), message)
-                      .ok()) {
-            return message;
-          }
-        }
+        reflection.SetNumberValue(message, val);
+        return message;
       }
     } break;
     case CelValue::Type::kList: {
-      auto status_or_list =
-          cel::extensions::protobuf_internal::DynamicValueProtoMutableListValue(
-              message);
-      if (!status_or_list.ok()) {
-        return nullptr;
-      }
-      if (ListFromValue(*status_or_list, value, arena) != nullptr) {
+      if (ListFromValue(reflection.MutableListValue(message), value, arena) !=
+          nullptr) {
         return message;
       }
     } break;
     case CelValue::Type::kMap: {
-      auto status_or_struct = cel::extensions::protobuf_internal::
-          DynamicValueProtoMutableStructValue(message);
-      if (!status_or_struct.ok()) {
-        return nullptr;
-      }
-      if (StructFromValue(*status_or_struct, value, arena) != nullptr) {
+      if (StructFromValue(reflection.MutableStructValue(message), value,
+                          arena) != nullptr) {
         return message;
       }
     } break;
     case CelValue::Type::kNullType:
-      if (cel::extensions::protobuf_internal::DynamicValueProtoSetNullValue(
-              message)
-              .ok()) {
-        return message;
-      }
+      reflection.SetNullValue(message);
+      return message;
       break;
     default:
       return nullptr;
@@ -1176,7 +1160,7 @@ bool ValueFromValue(Value* json, const CelValue& value, google::protobuf::Arena*
       }
     } break;
     case CelValue::Type::kBytes: {
-      // Base64 encode byte strings to ensure they can safely be transpored
+      // Base64 encode byte strings to ensure they can safely be transported
       // in a JSON string.
       CelValue::BytesHolder val;
       if (value.GetValue(&val)) {
@@ -1351,12 +1335,14 @@ google::protobuf::Message* AnyFromValue(const google::protobuf::Message* prototy
   }
 
   auto* message = prototype->New(arena);
-  if (cel::extensions::protobuf_internal::WrapDynamicAnyProto(
-          absl::StrCat("type.googleapis.com/", type_name), payload, *message)
-          .ok()) {
-    return message;
-  }
-  return nullptr;
+  CEL_ASSIGN_OR_RETURN(
+      auto reflection,
+      cel::well_known_types::GetAnyReflection(message->GetDescriptor()),
+      _.With(IgnoreErrorAndReturnNullptr()));
+  reflection.SetTypeUrl(message,
+                        absl::StrCat("type.googleapis.com/", type_name));
+  reflection.SetValue(message, payload);
+  return message;
 }
 
 bool IsAlreadyWrapped(google::protobuf::Descriptor::WellKnownType wkt,

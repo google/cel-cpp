@@ -652,7 +652,6 @@ cc_library(
         "//extensions/protobuf:memory_manager",
         "//extensions/protobuf/internal:map_reflection",
         "//extensions/protobuf/internal:qualify",
-        "//extensions/protobuf/internal:struct_lite",
         "//internal:casts",
         "//internal:deserialize",
         "//internal:json",
