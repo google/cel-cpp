@@ -125,13 +125,14 @@ TEST_P(StdlibTypeVarDefinitionTest, DefinesTypeConstants) {
   const auto& checked_impl = AstImpl::CastFromPublicAst(*checked_ast);
   EXPECT_THAT(checked_impl.GetReference(1),
               Pointee(Property(&Reference::name, GetParam())));
+  EXPECT_THAT(checked_impl.GetType(1), Property(&AstType::has_type, true));
 }
 
 INSTANTIATE_TEST_SUITE_P(StdlibTypeVarDefinitions, StdlibTypeVarDefinitionTest,
-                         ::testing::Values("bool", "int", "uint", "double",
-                                           "string", "bytes", "list", "map",
-                                           "duration", "timestamp", "null_type",
-                                           "type"),
+                         ::testing::Values("bool", "bytes", "double",
+                                           "duration", "dyn", "int", "list",
+                                           "map", "null_type", "string",
+                                           "timestamp", "type", "uint"),
                          [](const auto& info) -> std::string {
                            return info.param;
                          });

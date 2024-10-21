@@ -116,6 +116,12 @@ Type TypeTimestampType() {
   return *kInstance;
 }
 
+Type TypeDynType() {
+  static absl::NoDestructor<Type> kInstance(
+      TypeType(BuiltinsArena(), DynType()));
+  return *kInstance;
+}
+
 Type TypeListType() {
   static absl::NoDestructor<Type> kInstance(
       TypeType(BuiltinsArena(), ListOfA()));
@@ -998,6 +1004,9 @@ absl::Status AddTimeFunctions(TypeCheckerBuilder& builder) {
 }
 
 absl::Status AddTypeConstantVariables(TypeCheckerBuilder& builder) {
+  CEL_RETURN_IF_ERROR(
+      builder.AddVariable(MakeVariableDecl(builtin::kDyn, TypeDynType())));
+
   CEL_RETURN_IF_ERROR(
       builder.AddVariable(MakeVariableDecl("bool", TypeBoolType())));
 
