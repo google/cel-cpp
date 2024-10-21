@@ -87,13 +87,14 @@ class TypeInferenceContext {
   std::string DebugString() const {
     return absl::StrCat(
         "type_parameter_bindings: ",
-        absl::StrJoin(type_parameter_bindings_, "\n ",
-                      [](std::string* out, const auto& binding) {
-                        absl::StrAppend(
-                            out, binding.first, " -> ",
-                            binding.second.value_or(Type(TypeParamType("none")))
-                                .DebugString());
-                      }));
+        absl::StrJoin(
+            type_parameter_bindings_, "\n ",
+            [](std::string* out, const auto& binding) {
+              absl::StrAppend(
+                  out, binding.first, " (", binding.second.name, ") -> ",
+                  binding.second.type.value_or(Type(TypeParamType("none")))
+                      .DebugString());
+            }));
   }
 
  private:
@@ -102,10 +103,15 @@ class TypeInferenceContext {
   // Used for prospective substitutions during type inference.
   using SubstitutionMap = absl::flat_hash_map<absl::string_view, Type>;
 
-  absl::string_view NewTypeVar() {
+  struct TypeVar {
+    absl::optional<Type> type;
+    absl::string_view name;
+  };
+
+  absl::string_view NewTypeVar(absl::string_view name = "") {
     next_type_parameter_id_++;
     auto inserted = type_parameter_bindings_.insert(
-        {absl::StrCat("T%", next_type_parameter_id_), absl::nullopt});
+        {absl::StrCat("T%", next_type_parameter_id_), {absl::nullopt, name}});
     ABSL_DCHECK(inserted.second);
     return inserted.first->first;
   }
@@ -134,6 +140,9 @@ class TypeInferenceContext {
 
   Type Substitute(const Type& type, const SubstitutionMap& substitutions) const;
 
+  bool OccursWithin(absl::string_view var_name, const Type& type,
+                    const SubstitutionMap& substitutions) const;
+
   void UpdateTypeParameterBindings(
       const SubstitutionMap& prospective_substitutions);
 
@@ -150,8 +159,7 @@ class TypeInferenceContext {
   // instance.
   //
   // nullopt signifies a free type variable.
-  absl::node_hash_map<std::string, absl::optional<Type>>
-      type_parameter_bindings_;
+  absl::node_hash_map<std::string, TypeVar> type_parameter_bindings_;
   int64_t next_type_parameter_id_ = 0;
   google::protobuf::Arena* arena_;
   bool enable_legacy_null_assignment_;

@@ -57,7 +57,7 @@ class TypeType final {
 
   TypeParameters GetParameters() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  std::string DebugString() const { return std::string(name()); }
+  std::string DebugString() const;
 
   Type GetType() const;
 

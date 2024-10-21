@@ -128,21 +128,6 @@ FunctionOverloadInstance InstantiateFunctionOverload(
   return result;
 }
 
-bool OccursWithin(absl::string_view var_name, Type t) {
-  // This is difficult to trigger without lambdas in CEL, but we still check
-  // to guarantee that we don't introduce a recursive type definition (a cycle
-  // in the substitution map).
-  if (t.kind() == TypeKind::kTypeParam && t.AsTypeParam()->name() == var_name) {
-    return true;
-  }
-  for (const auto& param : t.GetParameters()) {
-    if (OccursWithin(var_name, param)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 // Converts a wrapper type to its corresponding primitive type.
 // Returns nullopt if the type is not a wrapper type.
 absl::optional<Type> WrapperToPrimitive(const Type& t) {
@@ -205,7 +190,7 @@ Type TypeInferenceContext::InstantiateTypeParams(
       if (auto it = substitutions.find(name); it != substitutions.end()) {
         return TypeParamType(it->second);
       }
-      absl::string_view substitution = NewTypeVar();
+      absl::string_view substitution = NewTypeVar(name);
       substitutions[type.AsTypeParam()->name()] = substitution;
       return TypeParamType(substitution);
     }
@@ -360,14 +345,41 @@ Type TypeInferenceContext::Substitute(
     }
     if (auto it = type_parameter_bindings_.find(t.name());
         it != type_parameter_bindings_.end()) {
-      if (it->second.has_value()) {
-        subs = *it->second;
+      if (it->second.type.has_value()) {
+        subs = *it->second.type;
         continue;
       }
     }
     break;
   }
   return subs;
+}
+
+bool TypeInferenceContext::OccursWithin(
+    absl::string_view var_name, const Type& type,
+    const SubstitutionMap& substitutions) const {
+  // This is difficult to trigger in normal CEL expressions, but may
+  // happen with comprehensions where we can potentially reference a variable
+  // with a free type var in different ways.
+  //
+  // This check guarantees that we don't introduce a recursive type definition
+  // (a cycle in the substitution map).
+  if (type.kind() == TypeKind::kTypeParam) {
+    if (type.AsTypeParam()->name() == var_name) {
+      return true;
+    }
+    auto typeSubs = Substitute(type, substitutions);
+    if (typeSubs != type && OccursWithin(var_name, typeSubs, substitutions)) {
+      return true;
+    }
+  }
+
+  for (const auto& param : type.GetParameters()) {
+    if (OccursWithin(var_name, param, substitutions)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool TypeInferenceContext::IsAssignableWithConstraints(
@@ -384,16 +396,16 @@ bool TypeInferenceContext::IsAssignableWithConstraints(
 
   if (to.kind() == TypeKind::kTypeParam) {
     absl::string_view name = to.AsTypeParam()->name();
-    if (!OccursWithin(name, from)) {
-      prospective_substitutions[to.AsTypeParam()->name()] = from;
+    if (!OccursWithin(name, from, prospective_substitutions)) {
+      prospective_substitutions[name] = from;
       return true;
     }
   }
 
   if (from.kind() == TypeKind::kTypeParam) {
     absl::string_view name = from.AsTypeParam()->name();
-    if (!OccursWithin(name, to)) {
-      prospective_substitutions[from.AsTypeParam()->name()] = to;
+    if (!OccursWithin(name, to, prospective_substitutions)) {
+      prospective_substitutions[name] = to;
       return true;
     }
   }
@@ -465,7 +477,7 @@ void TypeInferenceContext::UpdateTypeParameterBindings(
        iter != prospective_substitutions.end(); ++iter) {
     if (auto binding_iter = type_parameter_bindings_.find(iter->first);
         binding_iter != type_parameter_bindings_.end()) {
-      binding_iter->second = iter->second;
+      binding_iter->second.type = iter->second;
     } else {
       ABSL_LOG(WARNING) << "Uninstantiated type parameter: " << iter->first;
     }

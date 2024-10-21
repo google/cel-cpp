@@ -485,7 +485,7 @@ TEST(TypeInferenceContextTest, DebugString) {
   ASSERT_TRUE(resolution.has_value());
   EXPECT_TRUE(resolution->result_type.IsList());
 
-  EXPECT_EQ(context.DebugString(), "type_parameter_bindings: T%1 -> int");
+  EXPECT_EQ(context.DebugString(), "type_parameter_bindings: T%1 (A) -> int");
 }
 
 struct TypeInferenceContextWrapperTypesTestCase {
