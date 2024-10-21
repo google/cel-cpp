@@ -16,12 +16,12 @@
 #define THIRD_PARTY_CEL_CPP_INTERNAL_PROTO_UTIL_H_
 
 #include <string>
+#include <type_traits>
 
 #include "google/protobuf/descriptor.pb.h"
 #include "google/protobuf/util/message_differencer.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_format.h"
-#include "extensions/protobuf/internal/is_message_lite.h"
 
 namespace google {
 namespace api {
@@ -38,8 +38,7 @@ struct DefaultProtoEqual {
 template <class MessageType>
 absl::Status ValidateStandardMessageType(
     const google::protobuf::DescriptorPool& descriptor_pool) {
-  if constexpr (cel::extensions::protobuf_internal::NotMessageLite<
-                    MessageType>) {
+  if constexpr (std::is_base_of_v<google::protobuf::Message, MessageType>) {
     const google::protobuf::Descriptor* descriptor = MessageType::descriptor();
     const google::protobuf::Descriptor* descriptor_from_pool =
         descriptor_pool.FindMessageTypeByName(descriptor->full_name());

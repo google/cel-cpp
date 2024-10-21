@@ -281,7 +281,6 @@ cc_library(
     hdrs = ["proto_util.h"],
     deps = [
         ":status_macros",
-        "//extensions/protobuf/internal:is_message_lite",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_protobuf//:protobuf",

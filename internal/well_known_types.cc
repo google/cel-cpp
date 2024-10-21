@@ -36,6 +36,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/escaping.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
@@ -1113,22 +1114,21 @@ void TimestampReflection::SetNanos(absl::Nonnull<google::protobuf::Message*> mes
 
 absl::Status TimestampReflection::SetFromAbslTime(
     absl::Nonnull<google::protobuf::Message*> message, absl::Time time) const {
-  absl::Duration duration = time - absl::UnixEpoch();
-  int64_t seconds = absl::IDivDuration(duration, absl::Seconds(1), &duration);
+  int64_t seconds = absl::ToUnixSeconds(time);
   if (ABSL_PREDICT_FALSE(seconds < TimeUtil::kTimestampMinSeconds ||
                          seconds > TimeUtil::kTimestampMaxSeconds)) {
     return absl::InvalidArgumentError(
         absl::StrCat("invalid timestamp seconds: ", seconds));
   }
-  int32_t nanos = static_cast<int32_t>(
-      absl::IDivDuration(duration, absl::Nanoseconds(1), &duration));
+  int64_t nanos = static_cast<int64_t>((time - absl::FromUnixSeconds(seconds)) /
+                                       absl::Nanoseconds(1));
   if (ABSL_PREDICT_FALSE(nanos < TimeUtil::kTimestampMinNanoseconds ||
                          nanos > TimeUtil::kTimestampMaxNanoseconds)) {
     return absl::InvalidArgumentError(
         absl::StrCat("invalid timestamp nanoseconds: ", nanos));
   }
   SetSeconds(message, seconds);
-  SetNanos(message, nanos);
+  SetNanos(message, static_cast<int32_t>(nanos));
   return absl::OkStatus();
 }
 
@@ -1330,6 +1330,54 @@ void ValueReflection::SetStringValue(absl::Nonnull<google::protobuf::Message*> m
   ABSL_DCHECK(IsInitialized());
   ABSL_DCHECK_EQ(message->GetDescriptor(), descriptor_);
   message->GetReflection()->SetString(message, string_value_field_, value);
+}
+
+void ValueReflection::SetStringValueFromBytes(
+    absl::Nonnull<google::protobuf::Message*> message, absl::string_view value) const {
+  ABSL_DCHECK(IsInitialized());
+  ABSL_DCHECK_EQ(message->GetDescriptor(), descriptor_);
+  if (value.empty()) {
+    SetStringValue(message, value);
+    return;
+  }
+  SetStringValue(message, absl::Base64Escape(value));
+}
+
+void ValueReflection::SetStringValueFromBytes(
+    absl::Nonnull<google::protobuf::Message*> message, const absl::Cord& value) const {
+  ABSL_DCHECK(IsInitialized());
+  ABSL_DCHECK_EQ(message->GetDescriptor(), descriptor_);
+  if (value.empty()) {
+    SetStringValue(message, value);
+    return;
+  }
+  if (auto flat = value.TryFlat(); flat) {
+    SetStringValue(message, absl::Base64Escape(*flat));
+    return;
+  }
+  std::string flat;
+  absl::CopyCordToString(value, &flat);
+  SetStringValue(message, absl::Base64Escape(flat));
+}
+
+void ValueReflection::SetStringValueFromDuration(
+    absl::Nonnull<google::protobuf::Message*> message, absl::Duration duration) const {
+  google::protobuf::Duration proto;
+  proto.set_seconds(absl::IDivDuration(duration, absl::Seconds(1), &duration));
+  proto.set_nanos(static_cast<int32_t>(
+      absl::IDivDuration(duration, absl::Nanoseconds(1), &duration)));
+  ABSL_DCHECK(TimeUtil::IsDurationValid(proto));
+  SetStringValue(message, TimeUtil::ToString(proto));
+}
+
+void ValueReflection::SetStringValueFromTimestamp(
+    absl::Nonnull<google::protobuf::Message*> message, absl::Time time) const {
+  google::protobuf::Timestamp proto;
+  proto.set_seconds(absl::ToUnixSeconds(time));
+  proto.set_nanos((time - absl::FromUnixSeconds(proto.seconds())) /
+                  absl::Nanoseconds(1));
+  ABSL_DCHECK(TimeUtil::IsTimestampValid(proto));
+  SetStringValue(message, TimeUtil::ToString(proto));
 }
 
 absl::Nonnull<google::protobuf::Message*> ValueReflection::MutableListValue(
