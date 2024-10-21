@@ -365,6 +365,7 @@ cc_test(
         "//runtime:runtime_builder",
         "//runtime:runtime_options",
         "//runtime:standard_runtime_builder_factory",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/strings:cord",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],

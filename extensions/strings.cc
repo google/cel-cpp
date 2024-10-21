@@ -216,6 +216,51 @@ absl::StatusOr<Value> LowerAscii(ValueManager& value_manager,
   return value_manager.CreateUncheckedStringValue(std::move(content));
 }
 
+absl::StatusOr<Value> Replace2(ValueManager& value_manager,
+                               const StringValue& string,
+                               const StringValue& old_sub,
+                               const StringValue& new_sub, int64_t limit) {
+  if (limit == 0) {
+    // When the replacement limit is 0, the result is the original string.
+    return string;
+  }
+  if (limit < 0) {
+    // Per spec, when limit is negative treat is as unlimited.
+    limit = std::numeric_limits<int64_t>::max();
+  }
+
+  std::string result;
+  std::string old_sub_scratch;
+  absl::string_view old_sub_view = old_sub.NativeString(old_sub_scratch);
+  std::string new_sub_scratch;
+  absl::string_view new_sub_view = new_sub.NativeString(new_sub_scratch);
+  std::string content_scratch;
+  absl::string_view content_view = string.NativeString(content_scratch);
+  while (limit > 0 && !content_view.empty()) {
+    auto pos = content_view.find(old_sub_view);
+    if (pos == absl::string_view::npos) {
+      break;
+    }
+    result.append(content_view.substr(0, pos));
+    result.append(new_sub_view);
+    --limit;
+    content_view.remove_prefix(pos + old_sub_view.size());
+  }
+  // Add the remainder of the string.
+  if (!content_view.empty()) {
+    result.append(content_view);
+  }
+
+  return value_manager.CreateUncheckedStringValue(std::move(result));
+}
+
+absl::StatusOr<Value> Replace1(ValueManager& value_manager,
+                               const StringValue& string,
+                               const StringValue& old_sub,
+                               const StringValue& new_sub) {
+  return Replace2(value_manager, string, old_sub, new_sub, -1);
+}
+
 }  // namespace
 
 absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
@@ -246,6 +291,18 @@ absl::Status RegisterStringsFunctions(FunctionRegistry& registry,
           CreateDescriptor("lowerAscii", /*receiver_style=*/true),
       UnaryFunctionAdapter<absl::StatusOr<Value>, StringValue>::WrapFunction(
           LowerAscii)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      VariadicFunctionAdapter<
+          absl::StatusOr<Value>, StringValue, StringValue,
+          StringValue>::CreateDescriptor("replace", /*receiver_style=*/true),
+      VariadicFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue,
+                              StringValue>::WrapFunction(Replace1)));
+  CEL_RETURN_IF_ERROR(registry.Register(
+      VariadicFunctionAdapter<
+          absl::StatusOr<Value>, StringValue, StringValue, StringValue,
+          int64_t>::CreateDescriptor("replace", /*receiver_style=*/true),
+      VariadicFunctionAdapter<absl::StatusOr<Value>, StringValue, StringValue,
+                              StringValue, int64_t>::WrapFunction(Replace2)));
   return absl::OkStatus();
 }
 
