@@ -149,13 +149,15 @@ size_t ParsedJsonListValue::Size() const {
 absl::Status ParsedJsonListValue::Get(ValueManager& value_manager, size_t index,
                                       Value& result) const {
   if (value_ == nullptr) {
-    return absl::InvalidArgumentError("index out of bounds");
+    result = IndexOutOfBoundsError(index);
+    return absl::OkStatus();
   }
   const auto reflection =
       well_known_types::GetListValueReflectionOrDie(value_->GetDescriptor());
   if (ABSL_PREDICT_FALSE(index >=
                          static_cast<size_t>(reflection.ValuesSize(*value_)))) {
-    return absl::InvalidArgumentError("index out of bounds");
+    result = IndexOutOfBoundsError(index);
+    return absl::OkStatus();
   }
   result = common_internal::ParsedJsonValue(
       value_manager.GetMemoryManager().arena(),

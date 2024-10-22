@@ -196,13 +196,19 @@ class TrivialListValueImpl final : public CompatListValue {
   }
 
   CelValue operator[](int index) const override {
-    return common_internal::LegacyTrivialValue(
-        elements_.get_allocator().arena(), elements_[index]);
+    return Get(elements_.get_allocator().arena(), index);
   }
 
   // Like `operator[](int)` above, but also accepts an arena. Prefer calling
   // this variant if the arena is known.
   CelValue Get(google::protobuf::Arena* arena, int index) const override {
+    if (arena == nullptr) {
+      arena = elements_.get_allocator().arena();
+    }
+    if (ABSL_PREDICT_FALSE(index < 0 || index >= size())) {
+      return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
+          arena, IndexOutOfBoundsError(index).NativeValue()));
+    }
     return common_internal::LegacyTrivialValue(
         arena != nullptr ? arena : elements_.get_allocator().arena(),
         elements_[index]);
@@ -363,13 +369,19 @@ class TrivialMutableListValueImpl final : public MutableCompatListValue {
   }
 
   CelValue operator[](int index) const override {
-    return common_internal::LegacyTrivialValue(
-        elements_.get_allocator().arena(), elements_[index]);
+    return Get(elements_.get_allocator().arena(), index);
   }
 
   // Like `operator[](int)` above, but also accepts an arena. Prefer calling
   // this variant if the arena is known.
   CelValue Get(google::protobuf::Arena* arena, int index) const override {
+    if (arena == nullptr) {
+      arena = elements_.get_allocator().arena();
+    }
+    if (ABSL_PREDICT_FALSE(index < 0 || index >= size())) {
+      return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
+          arena, IndexOutOfBoundsError(index).NativeValue()));
+    }
     return common_internal::LegacyTrivialValue(
         arena != nullptr ? arena : elements_.get_allocator().arena(),
         elements_[index]);
@@ -1015,14 +1027,7 @@ class TrivialMapValueImpl final : public CompatMapValue {
   }
 
   absl::optional<CelValue> operator[](CelValue key) const override {
-    if (auto status = CelValue::CheckMapKeyType(key); !status.ok()) {
-      status.IgnoreError();
-      return absl::nullopt;
-    }
-    if (auto it = map_.find(key); it != map_.end()) {
-      return LegacyTrivialValue(map_.get_allocator().arena(), it->second);
-    }
-    return absl::nullopt;
+    return Get(map_.get_allocator().arena(), key);
   }
 
   absl::optional<CelValue> Get(google::protobuf::Arena* arena,
@@ -1244,14 +1249,7 @@ class TrivialMutableMapValueImpl final : public MutableCompatMapValue {
   }
 
   absl::optional<CelValue> operator[](CelValue key) const override {
-    if (auto status = CelValue::CheckMapKeyType(key); !status.ok()) {
-      status.IgnoreError();
-      return absl::nullopt;
-    }
-    if (auto it = map_.find(key); it != map_.end()) {
-      return LegacyTrivialValue(map_.get_allocator().arena(), it->second);
-    }
-    return absl::nullopt;
+    return Get(map_.get_allocator().arena(), key);
   }
 
   absl::optional<CelValue> Get(google::protobuf::Arena* arena,

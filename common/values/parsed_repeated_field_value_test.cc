@@ -55,6 +55,7 @@ using ::cel::test::BoolValueIs;
 using ::cel::test::BytesValueIs;
 using ::cel::test::DoubleValueIs;
 using ::cel::test::DurationValueIs;
+using ::cel::test::ErrorValueIs;
 using ::cel::test::IntValueIs;
 using ::cel::test::IsNullValue;
 using ::cel::test::UintValueIs;
@@ -243,8 +244,9 @@ TEST_P(ParsedRepeatedFieldValueTest, Get) {
       DynamicGetField<TestAllTypesProto3>("repeated_bool"));
   EXPECT_THAT(value.Get(value_manager(), 0), IsOkAndHolds(BoolValueIs(false)));
   EXPECT_THAT(value.Get(value_manager(), 1), IsOkAndHolds(BoolValueIs(true)));
-  EXPECT_THAT(value.Get(value_manager(), 2),
-              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(
+      value.Get(value_manager(), 2),
+      IsOkAndHolds(ErrorValueIs(StatusIs(absl::StatusCode::kInvalidArgument))));
 }
 
 TEST_P(ParsedRepeatedFieldValueTest, ForEach_Bool) {

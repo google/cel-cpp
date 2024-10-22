@@ -161,7 +161,8 @@ absl::Status ParsedMapValueInterface::Get(ValueManager& value_manager,
       case ValueKind::kUnknown:
         break;
       default:
-        return NoSuchKeyError(key);
+        result = ErrorValue(NoSuchKeyError(key));
+        break;
     }
   }
   return absl::OkStatus();
@@ -185,7 +186,8 @@ absl::StatusOr<bool> ParsedMapValueInterface::Find(ValueManager& value_manager,
     case ValueKind::kString:
       break;
     default:
-      return InvalidMapKeyTypeError(key.kind());
+      result = ErrorValue(InvalidMapKeyTypeError(key.kind()));
+      return false;
   }
   CEL_ASSIGN_OR_RETURN(auto ok, FindImpl(value_manager, key, result));
   if (ok) {

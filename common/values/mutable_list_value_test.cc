@@ -38,6 +38,7 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
+using ::cel::test::ErrorValueIs;
 using ::cel::test::StringValueIs;
 using ::testing::IsEmpty;
 using ::testing::Pair;
@@ -156,8 +157,9 @@ TEST_P(MutableListValueTest, Get) {
   auto mutable_list_value = NewMutableListValue(allocator());
   mutable_list_value->Reserve(1);
   Value value;
-  EXPECT_THAT(mutable_list_value->Get(value_manager(), 0, value),
-              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(mutable_list_value->Get(value_manager(), 0, value), IsOk());
+  EXPECT_THAT(value,
+              ErrorValueIs(StatusIs(absl::StatusCode::kInvalidArgument)));
   EXPECT_THAT(mutable_list_value->Append(StringValue("foo")), IsOk());
   EXPECT_THAT(mutable_list_value->Get(value_manager(), 0, value), IsOk());
   EXPECT_THAT(value, StringValueIs("foo"));

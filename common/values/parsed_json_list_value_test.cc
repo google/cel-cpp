@@ -50,6 +50,7 @@ using ::absl_testing::StatusIs;
 using ::cel::internal::GetTestingDescriptorPool;
 using ::cel::internal::GetTestingMessageFactory;
 using ::cel::test::BoolValueIs;
+using ::cel::test::ErrorValueIs;
 using ::cel::test::IsNullValue;
 using ::testing::ElementsAre;
 using ::testing::IsEmpty;
@@ -193,8 +194,9 @@ TEST_P(ParsedJsonListValueTest, Get_Dynamic) {
   EXPECT_THAT(valid_value.Get(value_manager(), 0), IsOkAndHolds(IsNullValue()));
   EXPECT_THAT(valid_value.Get(value_manager(), 1),
               IsOkAndHolds(BoolValueIs(true)));
-  EXPECT_THAT(valid_value.Get(value_manager(), 2),
-              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(
+      valid_value.Get(value_manager(), 2),
+      IsOkAndHolds(ErrorValueIs(StatusIs(absl::StatusCode::kInvalidArgument))));
 }
 
 TEST_P(ParsedJsonListValueTest, ForEach_Dynamic) {

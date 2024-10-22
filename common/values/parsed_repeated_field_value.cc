@@ -183,7 +183,8 @@ absl::Status ParsedRepeatedFieldValue::Get(ValueManager& value_manager,
                          index >= std::numeric_limits<int>::max() ||
                          static_cast<int>(index) >=
                              GetReflection()->FieldSize(*message_, field_))) {
-    return absl::InvalidArgumentError("index out of range");
+    result = IndexOutOfBoundsError(index);
+    return absl::OkStatus();
   }
   absl::Nonnull<const google::protobuf::DescriptorPool*> descriptor_pool;
   absl::Nonnull<google::protobuf::MessageFactory*> message_factory;

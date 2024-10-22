@@ -37,6 +37,7 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
+using ::cel::test::ErrorValueIs;
 using ::testing::IsEmpty;
 using ::testing::Not;
 using ::testing::TestParamInfo;
@@ -150,8 +151,9 @@ TEST_P(MapValueTest, Get) {
   ASSERT_OK_AND_ASSIGN(value, map_value.Get(value_manager(), IntValue(2)));
   ASSERT_TRUE(InstanceOf<DoubleValue>(value));
   ASSERT_EQ(Cast<DoubleValue>(value).NativeValue(), 5.0);
-  EXPECT_THAT(map_value.Get(value_manager(), IntValue(3)),
-              StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(
+      map_value.Get(value_manager(), IntValue(3)),
+      IsOkAndHolds(ErrorValueIs(StatusIs(absl::StatusCode::kNotFound))));
 }
 
 TEST_P(MapValueTest, Find) {

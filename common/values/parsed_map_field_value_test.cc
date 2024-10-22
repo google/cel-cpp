@@ -56,6 +56,7 @@ using ::cel::test::BoolValueIs;
 using ::cel::test::BytesValueIs;
 using ::cel::test::DoubleValueIs;
 using ::cel::test::DurationValueIs;
+using ::cel::test::ErrorValueIs;
 using ::cel::test::IntValueIs;
 using ::cel::test::IsNullValue;
 using ::cel::test::StringValueIs;
@@ -253,14 +254,16 @@ TEST_P(ParsedMapFieldValueTest, Get) {
         map_string_bool { key: "bar" value: true }
       )pb"),
       DynamicGetField<TestAllTypesProto3>("map_string_bool"));
-  EXPECT_THAT(value.Get(value_manager(), BoolValue()),
-              StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(
+      value.Get(value_manager(), BoolValue()),
+      IsOkAndHolds(ErrorValueIs(StatusIs(absl::StatusCode::kNotFound))));
   EXPECT_THAT(value.Get(value_manager(), StringValue("foo")),
               IsOkAndHolds(BoolValueIs(false)));
   EXPECT_THAT(value.Get(value_manager(), StringValue("bar")),
               IsOkAndHolds(BoolValueIs(true)));
-  EXPECT_THAT(value.Get(value_manager(), StringValue("baz")),
-              StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(
+      value.Get(value_manager(), StringValue("baz")),
+      IsOkAndHolds(ErrorValueIs(StatusIs(absl::StatusCode::kNotFound))));
 }
 
 TEST_P(ParsedMapFieldValueTest, Find) {

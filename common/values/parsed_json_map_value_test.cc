@@ -50,6 +50,7 @@ using ::absl_testing::StatusIs;
 using ::cel::internal::GetTestingDescriptorPool;
 using ::cel::internal::GetTestingMessageFactory;
 using ::cel::test::BoolValueIs;
+using ::cel::test::ErrorValueIs;
 using ::cel::test::IsNullValue;
 using ::cel::test::StringValueIs;
 using ::testing::AnyOf;
@@ -202,14 +203,16 @@ TEST_P(ParsedJsonMapValueTest, Get_Dynamic) {
                  key: "bar"
                  value: { bool_value: true }
                })pb"));
-  EXPECT_THAT(valid_value.Get(value_manager(), BoolValue()),
-              StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(
+      valid_value.Get(value_manager(), BoolValue()),
+      IsOkAndHolds(ErrorValueIs(StatusIs(absl::StatusCode::kNotFound))));
   EXPECT_THAT(valid_value.Get(value_manager(), StringValue("foo")),
               IsOkAndHolds(IsNullValue()));
   EXPECT_THAT(valid_value.Get(value_manager(), StringValue("bar")),
               IsOkAndHolds(BoolValueIs(true)));
-  EXPECT_THAT(valid_value.Get(value_manager(), StringValue("baz")),
-              StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(
+      valid_value.Get(value_manager(), StringValue("baz")),
+      IsOkAndHolds(ErrorValueIs(StatusIs(absl::StatusCode::kNotFound))));
 }
 
 TEST_P(ParsedJsonMapValueTest, Find_Dynamic) {

@@ -29,7 +29,6 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
-#include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "common/allocator.h"
@@ -312,8 +311,7 @@ absl::Status ParsedMapFieldValue::Get(ValueManager& value_manager,
                                       const Value& key, Value& result) const {
   CEL_ASSIGN_OR_RETURN(bool ok, Find(value_manager, key, result));
   if (ABSL_PREDICT_FALSE(!ok) && !(result.IsError() || result.IsUnknown())) {
-    return absl::NotFoundError(
-        absl::StrCat("Key not found in map : ", key.DebugString()));
+    result = ErrorValue(NoSuchKeyError(key.DebugString()));
   }
   return absl::OkStatus();
 }

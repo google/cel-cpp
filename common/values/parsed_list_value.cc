@@ -134,7 +134,8 @@ absl::Status ParsedListValueInterface::SerializeTo(
 absl::Status ParsedListValueInterface::Get(ValueManager& value_manager,
                                            size_t index, Value& result) const {
   if (ABSL_PREDICT_FALSE(index >= Size())) {
-    return absl::InvalidArgumentError("index out of bounds");
+    result = IndexOutOfBoundsError(index);
+    return absl::OkStatus();
   }
   return GetImpl(value_manager, index, result);
 }

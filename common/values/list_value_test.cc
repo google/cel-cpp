@@ -24,7 +24,6 @@
 #include "common/json.h"
 #include "common/memory.h"
 #include "common/type.h"
-#include "common/type_factory.h"
 #include "common/value.h"
 #include "common/value_testing.h"
 #include "internal/status_macros.h"
@@ -35,6 +34,7 @@ namespace {
 
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
+using ::cel::test::ErrorValueIs;
 using ::testing::ElementsAreArray;
 using ::testing::TestParamInfo;
 
@@ -107,8 +107,9 @@ TEST_P(ListValueTest, Get) {
   ASSERT_OK_AND_ASSIGN(element, value.Get(value_manager(), 2));
   ASSERT_TRUE(InstanceOf<IntValue>(element));
   ASSERT_EQ(Cast<IntValue>(element).NativeValue(), 2);
-  EXPECT_THAT(value.Get(value_manager(), 3),
-              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(
+      value.Get(value_manager(), 3),
+      IsOkAndHolds(ErrorValueIs(StatusIs(absl::StatusCode::kInvalidArgument))));
 }
 
 TEST_P(ListValueTest, ForEach) {

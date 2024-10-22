@@ -18,8 +18,10 @@
 #ifndef THIRD_PARTY_CEL_CPP_COMMON_VALUES_ERROR_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_COMMON_VALUES_ERROR_VALUE_H_
 
+#include <cstddef>
 #include <ostream>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "absl/base/nullability.h"
@@ -122,6 +124,29 @@ ErrorValue DuplicateKeyError();
 ErrorValue TypeConversionError(absl::string_view from, absl::string_view to);
 
 ErrorValue TypeConversionError(const Type& from, const Type& to);
+
+ErrorValue IndexOutOfBoundsError(size_t index);
+
+ErrorValue IndexOutOfBoundsError(ptrdiff_t index);
+
+// Catch other integrals and forward them to the above ones. This is needed to
+// avoid ambiguous overload issues for smaller integral types like `int`.
+template <typename T>
+std::enable_if_t<std::conjunction_v<std::is_integral<T>, std::is_unsigned<T>,
+                                    std::negation<std::is_same<T, size_t>>>,
+                 ErrorValue>
+IndexOutOfBoundsError(T index) {
+  static_assert(sizeof(T) <= sizeof(size_t));
+  return IndexOutOfBoundsError(static_cast<size_t>(index));
+}
+template <typename T>
+std::enable_if_t<std::conjunction_v<std::is_integral<T>, std::is_signed<T>,
+                                    std::negation<std::is_same<T, ptrdiff_t>>>,
+                 ErrorValue>
+IndexOutOfBoundsError(T index) {
+  static_assert(sizeof(T) <= sizeof(ptrdiff_t));
+  return IndexOutOfBoundsError(static_cast<ptrdiff_t>(index));
+}
 
 inline std::ostream& operator<<(std::ostream& out, const ErrorValue& value) {
   return out << value.DebugString();

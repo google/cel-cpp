@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstddef>
 #include <string>
 #include <utility>
 
@@ -77,6 +78,16 @@ ErrorValue TypeConversionError(absl::string_view from, absl::string_view to) {
 
 ErrorValue TypeConversionError(const Type& from, const Type& to) {
   return TypeConversionError(from.DebugString(), to.DebugString());
+}
+
+ErrorValue IndexOutOfBoundsError(size_t index) {
+  return ErrorValue(
+      absl::InvalidArgumentError(absl::StrCat("index out of bounds: ", index)));
+}
+
+ErrorValue IndexOutOfBoundsError(ptrdiff_t index) {
+  return ErrorValue(
+      absl::InvalidArgumentError(absl::StrCat("index out of bounds: ", index)));
 }
 
 bool IsNoSuchField(const ErrorValue& value) {
