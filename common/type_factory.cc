@@ -14,34 +14,9 @@
 
 #include "common/type_factory.h"
 
-#include "absl/base/attributes.h"
 #include "common/type.h"
-#include "common/type_kind.h"
 
 namespace cel {
-
-namespace {
-
-bool IsValidMapKeyType(const Type& type) {
-  switch (type.kind()) {
-    case TypeKind::kDyn:
-      ABSL_FALLTHROUGH_INTENDED;
-    case TypeKind::kError:
-      ABSL_FALLTHROUGH_INTENDED;
-    case TypeKind::kBool:
-      ABSL_FALLTHROUGH_INTENDED;
-    case TypeKind::kInt:
-      ABSL_FALLTHROUGH_INTENDED;
-    case TypeKind::kUint:
-      ABSL_FALLTHROUGH_INTENDED;
-    case TypeKind::kString:
-      return true;
-    default:
-      return false;
-  }
-}
-
-}  // namespace
 
 ListType TypeFactory::GetDynListType() { return ListType(); }
 

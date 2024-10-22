@@ -1196,7 +1196,6 @@ class StructReflection final {
   absl::Nullable<const google::protobuf::FieldDescriptor*> fields_field_ = nullptr;
   absl::Nullable<const google::protobuf::FieldDescriptor*> fields_key_field_ = nullptr;
   absl::Nullable<const google::protobuf::FieldDescriptor*> fields_value_field_ = nullptr;
-  google::protobuf::FieldDescriptor::CppStringType fields_key_field_string_type_;
 };
 
 absl::StatusOr<StructReflection> GetStructReflection(
