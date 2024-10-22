@@ -738,16 +738,16 @@ TEST_P(SelectStepConformanceTest, CustomAccessorErrorHandling) {
 
   // For get field, implementation may return an error-type cel value or a
   // status (e.g. broken assumption using a core type).
-  ASSERT_THAT(RunExpression(value, "message_value",
-                            /*test=*/false,
-                            /*unknown_path=*/"", options),
-              StatusIs(absl::StatusCode::kInternal));
-
-  // testonly select (has) errors are coerced to CelError.
   ASSERT_OK_AND_ASSIGN(CelValue result,
                        RunExpression(value, "message_value",
-                                     /*test=*/true,
+                                     /*test=*/false,
                                      /*unknown_path=*/"", options));
+  EXPECT_THAT(result, test::IsCelError(StatusIs(absl::StatusCode::kInternal)));
+
+  // testonly select (has) errors are coerced to CelError.
+  ASSERT_OK_AND_ASSIGN(result, RunExpression(value, "message_value",
+                                             /*test=*/true,
+                                             /*unknown_path=*/"", options));
 
   EXPECT_THAT(result, test::IsCelError(StatusIs(absl::StatusCode::kNotFound)));
 }

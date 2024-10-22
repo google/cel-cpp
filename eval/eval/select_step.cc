@@ -223,16 +223,22 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   switch (arg->kind()) {
     case ValueKind::kStruct: {
       Value result;
-      CEL_RETURN_IF_ERROR(arg.GetStruct().GetFieldByName(
-          frame->value_factory(), field_, result, unboxing_option_));
+      auto status = arg.GetStruct().GetFieldByName(
+          frame->value_factory(), field_, result, unboxing_option_);
+      if (!status.ok()) {
+        result = ErrorValue(std::move(status));
+      }
       frame->value_stack().PopAndPush(std::move(result),
                                       std::move(result_trail));
       return absl::OkStatus();
     }
     case ValueKind::kMap: {
       Value result;
-      CEL_RETURN_IF_ERROR(
-          arg.GetMap().Get(frame->value_factory(), field_value_, result));
+      auto status =
+          arg.GetMap().Get(frame->value_factory(), field_value_, result);
+      if (!status.ok()) {
+        result = ErrorValue(std::move(status));
+      }
       frame->value_stack().PopAndPush(std::move(result),
                                       std::move(result_trail));
       return absl::OkStatus();
@@ -372,7 +378,11 @@ class DirectSelectStep : public DirectExpressionStep {
       return PerformOptionalSelect(frame, optional_arg->Value(), result);
     }
 
-    return PerformSelect(frame, result, result);
+    auto status = PerformSelect(frame, result, result);
+    if (!status.ok()) {
+      result = ErrorValue(std::move(status));
+    }
+    return absl::OkStatus();
   }
 
  private:
